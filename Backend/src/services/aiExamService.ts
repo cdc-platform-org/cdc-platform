@@ -1,12 +1,12 @@
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
-import { OPENAI_API_KEY } from '../utils/env';
+import { GEMINI_API_KEY } from '../utils/env';
 
 export function isAiExamConfigured(): boolean {
-  return !!OPENAI_API_KEY;
+  return !!GEMINI_API_KEY;
 }
 
-const client = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
+const client = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
 export interface GeneratedQuestion {
   id: string;
@@ -49,7 +49,7 @@ export class AiExamGenerationError extends Error {
 
 export async function generateExamQuestions(params: GenerateExamParams): Promise<GeneratedQuestion[]> {
   if (!client) {
-    throw new AiExamGenerationError('OpenAI is not configured (OPENAI_API_KEY missing).');
+    throw new AiExamGenerationError('Gemini is not configured (GEMINI_API_KEY missing).');
   }
 
   const focusLine = params.focusTopics?.length
@@ -64,26 +64,30 @@ Lesson topics covered: ${params.lessonTitles.join(', ') || '(no lessons listed)'
 Generate exactly ${params.questionCount} multiple-choice questions that test real understanding of the course material (not trivia). Each question must have exactly 4 options (A, B, C, D), one correct answer, and a short explanation of why it's correct. Vary the topics across the course's lessons. Respond with strict JSON matching this shape:
 {"questions": [{"topic": string, "question": string, "options": {"A": string, "B": string, "C": string, "D": string}, "correctAnswer": "A"|"B"|"C"|"D", "explanation": string}]}`;
 
-  const completion = await client.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: prompt }],
-    response_format: { type: 'json_object' },
-    temperature: 0.7,
+  const model = client.getGenerativeModel({
+    model: 'gemini-2.5-pro',
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.7 },
   });
 
-  const raw = completion.choices[0]?.message?.content;
-  if (!raw) throw new AiExamGenerationError('OpenAI returned an empty response.');
+  let raw: string;
+  try {
+    const result = await model.generateContent(prompt);
+    raw = result.response.text();
+  } catch (err) {
+    throw new AiExamGenerationError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');
+  }
+  if (!raw) throw new AiExamGenerationError('Gemini returned an empty response.');
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new AiExamGenerationError('OpenAI returned malformed JSON.');
+    throw new AiExamGenerationError('Gemini returned malformed JSON.');
   }
 
   const result = questionsResponseSchema.safeParse(parsed);
   if (!result.success || result.data.questions.length === 0) {
-    throw new AiExamGenerationError('OpenAI returned an unexpected question format.');
+    throw new AiExamGenerationError('Gemini returned an unexpected question format.');
   }
 
   return result.data.questions.slice(0, params.questionCount).map((q, i) => ({ id: `q${i + 1}`, ...q }));

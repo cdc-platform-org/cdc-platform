@@ -295,7 +295,7 @@ router.get('/:id/exam/status', authenticate, requireCourseAccess, async (req: Re
 router.post('/:id/exam/start', authenticate, requireCourseAccess, async (req: Request, res: Response) => {
   const courseId = req.params.id;
   if (!isAiExamConfigured()) {
-    return res.status(501).json({ message: 'AI exam generation is not configured yet (OPENAI_API_KEY).' });
+    return res.status(501).json({ message: 'AI exam generation is not configured yet (GEMINI_API_KEY).' });
   }
 
   const [course, exam] = await Promise.all([

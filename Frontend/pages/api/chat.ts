@@ -1,61 +1,33 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-
-// 🔑 აზურეს პარამეტრები (აქ ჩაწერ შენს რეალურ მონაცემებს აზურეს პანელიდან)
-const AZURE_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT || "https://your-resource.openai.azure.com/";
-const AZURE_KEY = process.env.AZURE_OPENAI_KEY || "YOUR_AZURE_API_KEY";
-const DEPLOYMENT_NAME = "cdc-chatbot-model"; // შენი მოდელის სახელი აზურეში
+import { askCdcAssistant, isGeminiConfigured } from '../../lib/gemini';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { message, lang } = req.body;
+  const { message, lang } = req.body as { message?: string; lang?: 'GEO' | 'ENG' };
+  if (!message || typeof message !== 'string') {
+    return res.status(400).json({ reply: 'Missing message.' });
+  }
+  const effectiveLang: 'GEO' | 'ENG' = lang === 'ENG' ? 'ENG' : 'GEO';
 
-  // 🧠 სისტემური ინსტრუქცია (System Prompt) ბოტის გასაწვრთნელად
-  const systemPrompt = `
-    You are the official AI Career Assistant for CDC (Digital Careers Center) in Guria, Georgia.
-    Supported by HEKS/EPER Georgia.
-    Courses available:
-    1. Vibe Coding - Web Development with AI (2 months, instructor: Imedo Martikovi).
-    2. Social Media Marketing & AI (2 months, instructor: Marika Gagua).
-    3. Graphic Design with Figma & AI (1 month, mentor: Ia Tavdishvili).
-    
-    Rules:
-    - Always respond in the language requested by the user. Current language state: ${lang}.
-    - Be polite, helpful, and act like a tech career expert.
-    - If asked about high-paying jobs, mention that tech, AI engineering and programming (like Vibe Coding) are at the top right now.
-  `;
+  if (!isGeminiConfigured()) {
+    return res.status(501).json({
+      reply:
+        effectiveLang === 'GEO'
+          ? '🤖 ასისტენტი ჯერ არ არის კონფიგურირებული (GEMINI_API_KEY).'
+          : '🤖 The assistant is not configured yet (GEMINI_API_KEY).',
+    });
+  }
 
   try {
-    // 🌐 ვუკავშირდებით Azure OpenAI REST API-ს პირდაპირ ფეჩით
-    const response = await fetch(`${AZURE_ENDPOINT}/openai/deployments/${DEPLOYMENT_NAME}/chat/completions?api-version=2023-05-15`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': AZURE_KEY
-      },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: message }
-        ],
-        max_tokens: 800,
-        temperature: 0.7
-      })
-    });
-
-    const data = await response.json();
-    
-    if (data.choices && data.choices[0]) {
-      const botReply = data.choices[0].message.content;
-      return res.status(200).json({ reply: botReply });
-    } else {
-      return res.status(500).json({ reply: lang === 'GEO' ? '🤖 აზურეს მოდელმა პასუხი ვერ დააბრუნა.' : '🤖 Azure model failed to respond.' });
-    }
-
+    const reply = await askCdcAssistant(message, effectiveLang);
+    return res.status(200).json({ reply });
   } catch (error) {
-    console.error("Azure AI Integration Error:", error);
-    return res.status(500).json({ reply: lang === 'GEO' ? '❌ ბექენდის ხარვეზი აზურესთან კავშირისას.' : '❌ Backend error connecting to Azure.' });
+    console.error('Gemini chat error:', error);
+    return res.status(500).json({
+      reply: effectiveLang === 'GEO' ? '❌ ასისტენტთან კავშირის ხარვეზი.' : '❌ Error connecting to the assistant.',
+    });
   }
 }
