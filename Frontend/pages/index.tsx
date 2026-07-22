@@ -3,6 +3,22 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuthModal } from '../src/context/AuthModalContext';
 
+// Minimal surface of the YouTube IFrame Player API we actually use — see the
+// hero background video effect below for why this replaces the simpler
+// `loop=1&playlist=<id>` URL param approach.
+declare global {
+  interface Window {
+    YT?: {
+      Player: new (elementId: string, options: Record<string, unknown>) => { destroy: () => void };
+      PlayerState: { ENDED: number };
+    };
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
+
+const HERO_VIDEO_ID = 'zIDWV4e6R8I';
+const HERO_VIDEO_ELEMENT_ID = 'hero-bg-video';
+
 export default function Home() {
   const router = useRouter();
   const { openAuthModal } = useAuthModal();
@@ -53,6 +69,52 @@ export default function Home() {
       router.replace('/', undefined, { shallow: true });
     }
   }, [router, router.query.assistant]);
+
+  // Loops the hero background video via the IFrame Player API's onStateChange
+  // + seekTo(0) instead of the `loop=1&playlist=<id>` URL param. The
+  // playlist-param approach makes YouTube treat this as a (single-item)
+  // playlist, which keeps its prev/pause/next chrome visible even with
+  // controls=0 — this API-driven loop avoids that playlist context entirely,
+  // so the video plays as clean, chrome-free ambient background footage.
+  useEffect(() => {
+    let player: { destroy: () => void } | undefined;
+    let cancelled = false;
+
+    function initPlayer() {
+      if (cancelled || !window.YT) return;
+      player = new window.YT.Player(HERO_VIDEO_ELEMENT_ID, {
+        events: {
+          onStateChange: (event: { data: number; target: { seekTo: (s: number, allow: boolean) => void; playVideo: () => void } }) => {
+            if (window.YT && event.data === window.YT.PlayerState.ENDED) {
+              event.target.seekTo(0, true);
+              event.target.playVideo();
+            }
+          },
+        },
+      });
+    }
+
+    if (window.YT?.Player) {
+      initPlayer();
+    } else {
+      const previousCallback = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        previousCallback?.();
+        initPlayer();
+      };
+      if (!document.getElementById('youtube-iframe-api')) {
+        const script = document.createElement('script');
+        script.id = 'youtube-iframe-api';
+        script.src = 'https://www.youtube.com/iframe_api';
+        document.body.appendChild(script);
+      }
+    }
+
+    return () => {
+      cancelled = true;
+      player?.destroy();
+    };
+  }, []);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   useEffect(() => {
@@ -239,23 +301,34 @@ export default function Home() {
         )}
       </nav>
 
-      {/* 🎬 HERO SECTION — left-aligned content, unobstructed video on the right */}
+      {/* 🎬 HERO SECTION — left-aligned content on lg+, full-bleed ambient video background below lg */}
       <div className="relative w-full overflow-hidden min-h-[70vh] sm:min-h-[80vh] lg:min-h-[92vh] flex items-center bg-slate-950">
-        {/* Background video — always fills the full hero, never cropped/shifted;
-            the gradient scrim below is what visually "reveals" it on the right. */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden scale-150">
+        {/* Background video — purely ambient (no controls, no pointer events, not
+            focusable), always fills the full hero without letterboxing. On lg+ the
+            scrim below only darkens the left text column, revealing it crisply on
+            the right; below lg it's the sole background layer under the content. */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {/* Looped via the IFrame Player API (see the effect above) instead of
+              `loop=1&playlist=<id>` — that URL-param approach makes YouTube treat
+              this as a playlist, which keeps prev/pause/next chrome visible even
+              with controls=0. This way the video is genuinely chrome-free. */}
           <iframe
-            className="w-full h-full object-cover border-none"
-            src="https://www.youtube.com/embed/zIDWV4e6R8I?autoplay=1&mute=1&loop=1&playlist=zIDWV4e6R8I&controls=0&showinfo=0&rel=0&modestbranding=1"
+            id={HERO_VIDEO_ELEMENT_ID}
+            className="absolute inset-0 w-full h-full scale-110 object-cover border-none pointer-events-none"
+            src={`https://www.youtube.com/embed/${HERO_VIDEO_ID}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&disablekb=1&iv_load_policy=3&enablejsapi=1&playsinline=1`}
             title="CDC Hero Background Video"
             allow="autoplay; encrypted-media"
+            tabIndex={-1}
+            aria-hidden="true"
           />
         </div>
 
-        {/* Ambient scrim: opaque over the text column, fully transparent past it —
-            no card, no backdrop-blur, so the video stays crisp on the right.
-            Mobile has no room for a split layout, so it darkens top-to-bottom instead. */}
-        <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/90 via-black/85 to-black/70 sm:bg-gradient-to-r sm:from-black/85 sm:via-black/55 sm:to-transparent" />
+        {/* Ambient scrim: below lg (no split layout — video is a full-bleed
+            background) it darkens bottom-to-top so the stacked text stays 100%
+            legible with no letterboxing. At lg+ it flips to a left-to-right
+            reveal so only the text column is scrimmed and the video stays crisp
+            on the right — no card, no backdrop-blur. */}
+        <div className="absolute inset-0 z-10 bg-gradient-to-t from-slate-950 via-slate-950/80 to-slate-950/40 lg:bg-gradient-to-r lg:from-slate-950/90 lg:via-slate-950/55 lg:to-transparent" />
 
         <header className="relative z-20 w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 py-16">
           <div className="grid grid-cols-1 lg:grid-cols-12 items-center gap-10">
@@ -270,12 +343,17 @@ export default function Home() {
               </div>
 
               {/* Heading */}
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-tight text-white mb-6">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-tight text-white mb-3">
                 {translate(
                   <>გახდი მოთხოვნადი <span className="inline-block bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent leading-normal py-1">ციფრული ეპოქის</span> პროფესიონალი</>,
                   <>Become a High-Demand <span className="inline-block bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent leading-normal py-1">Digital-Era</span> Professional</>
                 )}
               </h1>
+
+              {/* Job placement subtitle */}
+              <p className="text-xl sm:text-2xl font-semibold text-cyan-400 mb-4">
+                {translate('...და დასაქმდი ჩვენივე პლატფორმაზე!', '...and get hired directly on our platform!')}
+              </p>
 
               {/* Description */}
               <p className="text-base sm:text-lg text-slate-200/90 max-w-xl leading-relaxed mb-9 font-medium">
@@ -288,9 +366,9 @@ export default function Home() {
               {/* CTA */}
               <a
                 href="#courses"
-                className="group inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black px-9 py-4 rounded-xl text-sm uppercase tracking-widest no-underline shadow-xl shadow-cyan-500/20 hover:shadow-2xl hover:shadow-cyan-500/40 hover:scale-105 transition-all duration-300"
+                className="group inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl text-sm uppercase tracking-widest no-underline shadow-xl shadow-cyan-500/20 hover:shadow-2xl hover:shadow-cyan-500/40 hover:scale-105 transition-all duration-300 whitespace-nowrap"
               >
-                {translate('კურსების ნახვა', 'View Courses')}
+                {translate('კურსების ნახვა ციფრულ კოლეჯში', 'Explore Digital College Courses')}
                 <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
               </a>
             </div>
