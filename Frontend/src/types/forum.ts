@@ -1,7 +1,7 @@
 interface Author {
   id: string;
   name: string;
-  role: 'Student' | 'Mentor' | 'SuperAdmin' | 'EnterpriseClient';
+  role: 'Student' | 'Mentor' | 'SuperAdmin' | 'Client';
 }
 
 // ============================================================

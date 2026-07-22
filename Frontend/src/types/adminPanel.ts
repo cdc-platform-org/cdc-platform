@@ -6,7 +6,7 @@ export interface DashboardStats {
     pendingApproval: number;
     banned: number;
     students: number;
-    enterpriseClients: number;
+    clients: number;
   };
   gigs: {
     total: number;

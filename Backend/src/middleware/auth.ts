@@ -5,7 +5,7 @@ import { JWT_SECRET } from '../utils/env';
 
 export interface AuthenticatedUser {
   id: string;
-  role: 'Student' | 'Mentor' | 'SuperAdmin' | 'EnterpriseClient';
+  role: 'Student' | 'Mentor' | 'SuperAdmin' | 'Client';
   email: string;
 }
 

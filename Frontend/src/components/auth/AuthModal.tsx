@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
 import { useAuthModal } from '../../context/AuthModalContext';
 import PasswordInput from './PasswordInput';
@@ -33,6 +34,10 @@ const STRINGS = {
     hasAccount: 'უკვე გაქვთ ანგარიში?',
     switchToRegister: 'დარეგისტრირდით',
     switchToLogin: 'შედით',
+    forgotPassword: 'დაგავიწყდა პაროლი?',
+    roleLabel: 'რეგისტრირდები როგორც',
+    roleStudent: '🎓 სტუდენტი',
+    roleClient: '💼 დამკვეთი',
     registerSuccessTitle: 'თითქმის მზად ხართ!',
     registerSuccessBody:
       'თქვენი ანგარიში შეიქმნა. გთხოვთ დაადასტუროთ ელ-ფოსტა იმ ბმულით, რომელიც გამოგზავნილია — სანამ ამას გააკეთებთ, ზოგიერთი მოქმედება დაბლოკილი იქნება.',
@@ -61,6 +66,10 @@ const STRINGS = {
     hasAccount: 'Already have an account?',
     switchToRegister: 'Register',
     switchToLogin: 'Log in',
+    forgotPassword: 'Forgot password?',
+    roleLabel: 'Registering as',
+    roleStudent: '🎓 Student',
+    roleClient: '💼 Client',
     registerSuccessTitle: 'Almost there!',
     registerSuccessBody:
       "Your account has been created. Please confirm your email using the link we just sent — some actions stay locked until you do.",
@@ -82,6 +91,7 @@ export default function AuthModal() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'Student' | 'Client'>('Student');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [registered, setRegistered] = useState(false);
@@ -118,6 +128,7 @@ export default function AuthModal() {
       setName('');
       setEmail('');
       setPassword('');
+      setRole('Student');
     }
   }, [isOpen, initialMode]);
 
@@ -132,7 +143,9 @@ export default function AuthModal() {
       callback: (response) => {
         setSubmitting(true);
         setError(null);
-        loginWithGoogle(response.credential)
+        // role only matters if this Google identity is creating a brand-new
+        // account — ignored for an existing one (see Backend's /google route).
+        loginWithGoogle(response.credential, mode === 'register' ? role : undefined)
           .then((loggedInUser) => handlePostLogin(loggedInUser))
           .catch(() => setError(t.genericError))
           .finally(() => setSubmitting(false));
@@ -145,7 +158,7 @@ export default function AuthModal() {
       text: mode === 'register' ? 'signup_with' : 'signin_with',
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, mode, registered]);
+  }, [isOpen, mode, registered, role]);
 
   if (!isOpen) return null;
 
@@ -158,7 +171,7 @@ export default function AuthModal() {
         const loggedInUser = await login({ email, password });
         handlePostLogin(loggedInUser);
       } else {
-        await register({ name, email, password });
+        await register({ name, email, password, role });
         setRegistered(true);
       }
     } catch (err: any) {
@@ -276,7 +289,18 @@ export default function AuthModal() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.passwordLabel}</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-medium text-gray-700">{t.passwordLabel}</label>
+                  {mode === 'login' && (
+                    <Link
+                      href="/auth/forgot-password"
+                      onClick={closeAuthModal}
+                      className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                    >
+                      {t.forgotPassword}
+                    </Link>
+                  )}
+                </div>
                 <PasswordInput
                   required
                   minLength={8}
@@ -286,6 +310,38 @@ export default function AuthModal() {
                   inputClassName="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
+
+              {mode === 'register' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.roleLabel}</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setRole('Student')}
+                      aria-pressed={role === 'Student'}
+                      className={`rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
+                        role === 'Student'
+                          ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      {t.roleStudent}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRole('Client')}
+                      aria-pressed={role === 'Client'}
+                      className={`rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
+                        role === 'Client'
+                          ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      {t.roleClient}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <button
                 type="submit"

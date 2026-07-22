@@ -44,8 +44,8 @@ export function useAuthState() {
     return newUser;
   }, []);
 
-  const loginWithGoogle = useCallback(async (idToken: string) => {
-    const { user: loggedInUser, token } = await loginWithGoogleRequest(idToken);
+  const loginWithGoogle = useCallback(async (idToken: string, role?: 'Student' | 'Client') => {
+    const { user: loggedInUser, token } = await loginWithGoogleRequest(idToken, role);
     localStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem(USER_KEY, JSON.stringify(loggedInUser));
     setUser(loggedInUser);

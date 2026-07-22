@@ -1,7 +1,7 @@
 interface OfferParticipant {
   id: string;
   name: string;
-  role: 'Student' | 'Mentor' | 'SuperAdmin' | 'EnterpriseClient';
+  role: 'Student' | 'Mentor' | 'SuperAdmin' | 'Client';
 }
 
 export type DirectOfferStatus = 'pending' | 'accepted' | 'declined' | 'withdrawn';

@@ -60,7 +60,7 @@ function VacanciesPageContent() {
   }, [loadVacancies]);
 
   const canApply = !isAuthenticated || user?.role === 'Student';
-  const canPost = user?.role === 'EnterpriseClient' || user?.role === 'SuperAdmin';
+  const canPost = user?.role === 'Client' || user?.role === 'SuperAdmin';
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10">

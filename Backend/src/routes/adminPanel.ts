@@ -23,7 +23,7 @@ router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'ADMIN', 'MODERAT
     pendingApproval,
     bannedUsers,
     studentCount,
-    enterpriseClientCount,
+    clientCount,
     gigsByStatus,
     vacanciesByStatus,
     volumeAgg,
@@ -32,7 +32,7 @@ router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'ADMIN', 'MODERAT
     prisma.user.count({ where: { status: 'PENDING_APPROVAL' } }),
     prisma.user.count({ where: { isBanned: true } }),
     prisma.user.count({ where: { role: 'Student' } }),
-    prisma.user.count({ where: { role: 'EnterpriseClient' } }),
+    prisma.user.count({ where: { role: 'Client' } }),
     prisma.gig.groupBy({ by: ['status'], _count: { _all: true } }),
     prisma.vacancy.groupBy({ by: ['status'], _count: { _all: true } }),
     prisma.gigTransaction.aggregate({
@@ -51,7 +51,7 @@ router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'ADMIN', 'MODERAT
       pendingApproval,
       banned: bannedUsers,
       students: studentCount,
-      enterpriseClients: enterpriseClientCount,
+      clients: clientCount,
     },
     gigs: {
       total: Object.values(gigStatusCounts).reduce((a, b) => a + b, 0),

@@ -82,7 +82,7 @@ function GigsPageContent() {
   // Guests see the same Apply button as Students — clicking it is what
   // triggers the sign-in prompt, rather than the button just not existing.
   const canApply = !isAuthenticated || user?.role === 'Student';
-  const canPost = user?.role === 'EnterpriseClient' || user?.role === 'SuperAdmin';
+  const canPost = user?.role === 'Client' || user?.role === 'SuperAdmin';
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10">

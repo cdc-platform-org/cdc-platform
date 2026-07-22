@@ -40,7 +40,7 @@ function ProfileContent() {
 
   const canHire =
     !!viewer &&
-    (viewer.role === 'EnterpriseClient' || viewer.role === 'SuperAdmin') &&
+    (viewer.role === 'Client' || viewer.role === 'SuperAdmin') &&
     profileUser?.role === 'Student';
   // Guests can't be role-checked yet, so the button stays visible for any
   // freelancer profile and the sign-in prompt decides eligibility afterward.

@@ -53,6 +53,21 @@ router.get('/', async (req: Request, res: Response) => {
   res.json(gigs);
 });
 
+// Client Portal — gigs the caller posted, with enough info to render "order
+// briefs, project statuses, and invoices" without extra round-trips. Must be
+// registered before GET /:id, or a request to /mine would match :id="mine".
+router.get('/mine', authenticate, requireApproved, async (req: Request, res: Response) => {
+  const gigs = await prisma.gig.findMany({
+    where: { postedById: req.user!.id },
+    include: {
+      assignedFreelancer: posterSelect,
+      transaction: true,
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json(gigs);
+});
+
 router.get('/:id', async (req: Request, res: Response) => {
   const gig = await prisma.gig.findUnique({
     where: { id: req.params.id },
@@ -66,7 +81,7 @@ router.post(
   '/',
   authenticate,
   requireApproved,
-  requireRole('EnterpriseClient', 'SuperAdmin'),
+  requireRole('Client', 'SuperAdmin'),
   async (req: Request, res: Response) => {
     const result = postGigSchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ errors: result.error.errors });

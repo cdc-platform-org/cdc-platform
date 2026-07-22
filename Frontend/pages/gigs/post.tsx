@@ -9,7 +9,7 @@ function PostGigPageContent() {
     <div className="min-h-screen bg-gray-50 px-4 py-10">
       <h1 className="text-2xl font-semibold text-gray-900 text-center mb-8">Post a Gig</h1>
       <RoleGate
-        allowedRoles={['EnterpriseClient', 'SuperAdmin']}
+        allowedRoles={['Client', 'SuperAdmin']}
         fallback={
           <p className="text-center text-sm text-gray-500">
             Only Enterprise Clients and Administrators can post gigs.

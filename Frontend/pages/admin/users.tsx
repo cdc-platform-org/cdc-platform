@@ -27,6 +27,7 @@ function UserManagement() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<AdminUser['status'] | ''>('');
+  const [roleTab, setRoleTab] = useState<'all' | 'Student' | 'Client' | 'Admin'>('all');
   const [actioningId, setActioningId] = useState<string | null>(null);
 
   // Only ADMIN/SUPER_ADMIN can approve/reject/badge — mirrors the backend's
@@ -50,11 +51,26 @@ function UserManagement() {
     loadUsers();
   }, [loadUsers]);
 
+  const tabCounts = useMemo(
+    () => ({
+      all: users.length,
+      Student: users.filter((u) => u.role === 'Student').length,
+      Client: users.filter((u) => u.role === 'Client').length,
+      Admin: users.filter((u) => !!u.adminRole).length,
+    }),
+    [users]
+  );
+
   const filteredUsers = useMemo(() => {
+    let result = users;
+    if (roleTab === 'Student') result = result.filter((u) => u.role === 'Student');
+    else if (roleTab === 'Client') result = result.filter((u) => u.role === 'Client');
+    else if (roleTab === 'Admin') result = result.filter((u) => !!u.adminRole);
+
     const q = search.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter((u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
-  }, [users, search]);
+    if (!q) return result;
+    return result.filter((u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+  }, [users, search, roleTab]);
 
   const runAction = async (userId: string, action: () => Promise<AdminUser>) => {
     setActioningId(userId);
@@ -78,6 +94,28 @@ function UserManagement() {
         <div className="mb-6">
           <h1 className="text-2xl font-semibold text-gray-900">User Management</h1>
           <p className="text-sm text-gray-500 mt-1">Search users, assign CDC Graduate badges, and ban/unban accounts.</p>
+        </div>
+
+        <div className="flex gap-1.5 mb-5 border-b border-gray-200">
+          {([
+            ['all', 'All'],
+            ['Student', 'Students'],
+            ['Client', 'Clients'],
+            ['Admin', 'Admins'],
+          ] as const).map(([tab, label]) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setRoleTab(tab)}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors bg-transparent cursor-pointer ${
+                roleTab === tab
+                  ? 'border-indigo-600 text-indigo-700'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {label} <span className="text-xs text-gray-400">({tabCounts[tab]})</span>
+            </button>
+          ))}
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 mb-6">

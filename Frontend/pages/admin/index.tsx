@@ -79,8 +79,8 @@ function DashboardOverview() {
                 <StatCard label="Total Gigs" value={stats.gigs.total} icon="📋" accent="cyan" />
                 <StatCard label="Total Vacancies" value={stats.vacancies.total} icon="🏢" accent="purple" />
                 <StatCard
-                  label="Enterprise Clients"
-                  value={stats.users.enterpriseClients}
+                  label="Clients"
+                  value={stats.users.clients}
                   icon="🏬"
                   accent="amber"
                 />

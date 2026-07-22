@@ -93,9 +93,14 @@ function LoginPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">
-              {t('login.passwordLabel')}
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                {t('login.passwordLabel')}
+              </label>
+              <Link href="/auth/forgot-password" className="text-xs font-medium text-indigo-600 hover:text-indigo-500">
+                {t('login.forgotPassword')}
+              </Link>
+            </div>
             <PasswordInput
               id="password"
               required

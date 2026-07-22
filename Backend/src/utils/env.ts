@@ -55,3 +55,8 @@ export const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS || '')
   .split(',')
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
+// Deliberately NOT requireEnv() — the app must still boot without a Resend
+// account configured; email sends fall back to console-logging the link
+// instead (see services/emailService.ts). Same reasoning as GOOGLE_CLIENT_ID.
+export const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+export const EMAIL_FROM = process.env.EMAIL_FROM || 'CDC Platform <no-reply@cdc.org.ge>';

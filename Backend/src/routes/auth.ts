@@ -11,9 +11,12 @@ import {
   deleteAccountSchema,
   verifyEmailSchema,
   googleAuthSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 } from '../schemas/authSchemas';
 import { authenticate } from '../middleware/auth';
 import { JWT_SECRET, GOOGLE_CLIENT_ID, SUPER_ADMIN_EMAILS } from '../utils/env';
+import { sendVerificationEmail, sendPasswordResetEmail } from '../services/emailService';
 
 const router = Router();
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
@@ -77,22 +80,13 @@ function toUserResponse(user: {
   };
 }
 
-// No email provider is configured in this project — this stands in for
-// actually sending mail. In production this would be replaced by a real
-// provider call (SendGrid/SES/etc); for now the link just goes to the logs
-// so the flow is fully testable end-to-end without one.
-function sendVerificationEmail(email: string, token: string) {
-  const link = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/verify-email?token=${token}`;
-  console.log(`[DEV EMAIL] Verification link for ${email}: ${link}`);
-}
-
 router.post('/register', async (req, res) => {
   const result = registerSchema.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({ errors: result.error.errors });
   }
 
-  const { name, email, password } = result.data;
+  const { name, email, password, role } = result.data;
   const normalizedEmail = email.toLowerCase();
 
   const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
@@ -107,7 +101,7 @@ router.post('/register', async (req, res) => {
       name,
       email: normalizedEmail,
       password: hashed,
-      role: 'Student',
+      role,
       emailVerificationToken,
       emailVerificationTokenExpires: new Date(Date.now() + EMAIL_VERIFICATION_TOKEN_TTL_MS),
     },
@@ -244,6 +238,57 @@ router.post('/resend-verification', authenticate, async (req, res) => {
   res.json({ message: 'Verification email sent.' });
 });
 
+const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour — shorter than email verification since it grants account takeover, not just a status flag
+
+router.post('/forgot-password', async (req, res) => {
+  const result = forgotPasswordSchema.safeParse(req.body);
+  if (!result.success) {
+    return res.status(400).json({ errors: result.error.errors });
+  }
+
+  const user = await prisma.user.findUnique({ where: { email: result.data.email.toLowerCase() } });
+  // Deliberately always 200, whether or not the account exists — a
+  // different response here would let anyone enumerate registered emails.
+  if (!user || user.isBanned || user.deletionRequestedAt) {
+    return res.json({ message: 'If an account exists for that email, a reset link has been sent.' });
+  }
+
+  const passwordResetToken = crypto.randomBytes(32).toString('hex');
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      passwordResetToken,
+      passwordResetTokenExpires: new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS),
+    },
+  });
+  sendPasswordResetEmail(user.email, passwordResetToken);
+
+  res.json({ message: 'If an account exists for that email, a reset link has been sent.' });
+});
+
+router.post('/reset-password', async (req, res) => {
+  const result = resetPasswordSchema.safeParse(req.body);
+  if (!result.success) {
+    return res.status(400).json({ errors: result.error.errors });
+  }
+
+  const user = await prisma.user.findUnique({ where: { passwordResetToken: result.data.token } });
+  if (!user) {
+    return res.status(400).json({ message: 'Invalid or already-used reset link.' });
+  }
+  if (!user.passwordResetTokenExpires || user.passwordResetTokenExpires < new Date()) {
+    return res.status(400).json({ message: 'This reset link has expired. Please request a new one.' });
+  }
+
+  const hashed = await bcrypt.hash(result.data.password, 12);
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { password: hashed, passwordResetToken: null, passwordResetTokenExpires: null },
+  });
+
+  res.json({ message: 'Password reset successfully. You can now log in with your new password.' });
+});
+
 // "1-Click" Google Sign-In: the frontend loads Google's GSI script, gets an
 // ID token credential from the button/One Tap prompt, and POSTs it here —
 // this never sees the user's Google password, only a signed token we verify
@@ -295,7 +340,7 @@ router.post('/google', async (req, res) => {
         name: payload.name || normalizedEmail.split('@')[0],
         email: normalizedEmail,
         password: randomPassword, // unusable for password login — this account signs in via Google only
-        role: 'Student',
+        role: result.data.role ?? 'Student',
         googleId: payload.sub,
         emailVerifiedAt: new Date(), // Google already verified this email
       },

@@ -14,7 +14,10 @@ enum Role {
   Student
   Mentor
   SuperAdmin
-  EnterpriseClient
+  // Renamed from EnterpriseClient — same role (gig/vacancy posting client),
+  // just a shorter name now that registration exposes it as a self-serve
+  // choice ("💼 დამკვეთი") rather than an admin-only/B2B-only designation.
+  Client
 }
 
 enum UserStatus {
@@ -161,6 +164,9 @@ model User {
   emailVerifiedAt                DateTime?
   emailVerificationToken         String?   @unique
   emailVerificationTokenExpires  DateTime?
+  // Self-service password reset (POST /api/auth/forgot-password + /reset-password).
+  passwordResetToken             String?   @unique
+  passwordResetTokenExpires      DateTime?
   // Set for accounts created (or later linked) via Google Sign-In. Such
   // accounts get a random unusable password hash — there is no password-based
   // login path for them (see routes/auth.ts).

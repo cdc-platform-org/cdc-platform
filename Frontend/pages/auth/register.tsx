@@ -18,6 +18,7 @@ function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'Student' | 'Client'>('Student');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,8 +28,7 @@ function RegisterPage() {
     setSubmitting(true);
 
     try {
-      // ბექენდის ვალიდაციის დასაკმაყოფილებლად დროებით ხელით ვატანთ role: 'Student'
-      await register({ name, email, password, role: 'Student' } as any);
+      await register({ name, email, password, role });
       router.push('/auth/pending-approval');
     } catch (err) {
       const axiosErr = err as AxiosError<{ message?: string; errors?: Array<{ message: string }> }>;
@@ -109,6 +109,40 @@ function RegisterPage() {
               inputClassName="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               placeholder={t('register.passwordPlaceholder')}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              {t('register.roleLabel')}
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setRole('Student')}
+                aria-pressed={role === 'Student'}
+                className={`flex flex-col items-center gap-1 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
+                  role === 'Student'
+                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                }`}
+              >
+                <span className="text-xl">🎓</span>
+                {t('register.roleStudent')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('Client')}
+                aria-pressed={role === 'Client'}
+                className={`flex flex-col items-center gap-1 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
+                  role === 'Client'
+                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                }`}
+              >
+                <span className="text-xl">💼</span>
+                {t('register.roleClient')}
+              </button>
+            </div>
           </div>
 
           <button

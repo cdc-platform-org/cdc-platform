@@ -50,7 +50,7 @@ router.post(
   '/',
   authenticate,
   requireApproved,
-  requireRole('EnterpriseClient', 'SuperAdmin'),
+  requireRole('Client', 'SuperAdmin'),
   async (req: Request, res: Response) => {
     const result = postVacancySchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ errors: result.error.errors });

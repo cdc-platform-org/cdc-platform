@@ -3,7 +3,7 @@ export type ReviewType = 'CLIENT_TO_FREELANCER' | 'FREELANCER_TO_CLIENT';
 interface ReviewParticipant {
   id: string;
   name: string;
-  role: 'Student' | 'Mentor' | 'SuperAdmin' | 'EnterpriseClient';
+  role: 'Student' | 'Mentor' | 'SuperAdmin' | 'Client';
 }
 
 export interface Review {

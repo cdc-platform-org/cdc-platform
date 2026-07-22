@@ -1,6 +1,6 @@
 // Bootstraps accounts that have no API path to create themselves: the very
-// first SuperAdmin, and (optionally) an initial EnterpriseClient. Registration
-// is deliberately hardcoded to Student (see schemas/authSchemas.ts), and the
+// first SuperAdmin, and (optionally) an initial Client. Registration now supports self-serve Client sign-up too, so this is mostly useful for pre-approving one without them registering first
+// defaults to Student but accepts Client too (see schemas/authSchemas.ts), and the
 // admin routes only approve/reject — there is no role-change endpoint — so
 // without this script there is no way to ever get past the first account.
 //
@@ -52,7 +52,7 @@ async function main() {
 
   const enterpriseEmail = process.env.SEED_ENTERPRISE_EMAIL?.toLowerCase();
   if (!enterpriseEmail) {
-    console.log('SEED_ENTERPRISE_EMAIL not set — skipping initial EnterpriseClient seed.');
+    console.log('SEED_ENTERPRISE_EMAIL not set — skipping initial Client seed.');
     return;
   }
 
@@ -60,20 +60,20 @@ async function main() {
   if (enterprisePassword.length < 8) {
     throw new Error('SEED_ENTERPRISE_PASSWORD must be at least 8 characters.');
   }
-  const enterpriseName = process.env.SEED_ENTERPRISE_NAME ?? 'Enterprise Client';
+  const enterpriseName = process.env.SEED_ENTERPRISE_NAME ?? 'Client';
 
   const enterprise = await prisma.user.upsert({
     where: { email: enterpriseEmail },
-    update: { role: 'EnterpriseClient', status: 'APPROVED' },
+    update: { role: 'Client', status: 'APPROVED' },
     create: {
       name: enterpriseName,
       email: enterpriseEmail,
       password: await bcrypt.hash(enterprisePassword, 12),
-      role: 'EnterpriseClient',
+      role: 'Client',
       status: 'APPROVED',
     },
   });
-  console.log(`EnterpriseClient ready: ${enterprise.email} (${enterprise.id})`);
+  console.log(`Client ready: ${enterprise.email} (${enterprise.id})`);
 }
 
 main()

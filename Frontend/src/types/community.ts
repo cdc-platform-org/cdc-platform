@@ -1,7 +1,7 @@
 interface Poster {
   id: string;
   name: string;
-  role: 'EnterpriseClient' | 'SuperAdmin';
+  role: 'Client' | 'SuperAdmin';
 }
 
 interface AssignedFreelancer {
@@ -78,6 +78,37 @@ export interface Gig {
   deliveryFiles: string[];
   deliveryLinks: string[];
   postedAt: string;
+}
+
+// --- Client Portal: gigs the caller posted (GET /gigs/mine) ---
+
+export interface MyGigTransaction {
+  id: string;
+  status: 'HELD_IN_ESCROW' | 'RELEASED';
+  grossAmount: number;
+  commissionAmount: number;
+  netAmount: number;
+  currency: string;
+  capturedAt: string;
+  releasedAt: string | null;
+}
+
+export interface MyGig {
+  id: string;
+  title: string;
+  description: string;
+  budgetType: GigBudgetType;
+  budgetAmount: number;
+  currency: string;
+  skillsRequired: string[];
+  deadline: string | null;
+  status: GigStatus;
+  assignedFreelancerId: string | null;
+  assignedFreelancer: AssignedFreelancer | null;
+  applicationsCount: number;
+  submittedAt: string | null;
+  createdAt: string;
+  transaction: MyGigTransaction | null;
 }
 
 export interface GigApplication {
