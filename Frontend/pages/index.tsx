@@ -272,8 +272,8 @@ export default function Home() {
               {/* Heading */}
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-tight text-white mb-6">
                 {translate(
-                  <>გახდი მოთხოვნადი <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">ციფრული ეპოქის</span> პროფესიონალი</>,
-                  <>Become a High-Demand <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">Digital-Era</span> Professional</>
+                  <>გახდი მოთხოვნადი <span className="inline-block bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent leading-normal py-1">ციფრული ეპოქის</span> პროფესიონალი</>,
+                  <>Become a High-Demand <span className="inline-block bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent leading-normal py-1">Digital-Era</span> Professional</>
                 )}
               </h1>
 
