@@ -18,16 +18,30 @@ function LoginPage() {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [redirectingAdmin, setRedirectingAdmin] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
+    let redirectingToAdmin = false;
 
     try {
-      await login({ email, password });
-      const redirectTo = (router.query.redirect as string) || '/courses';
-      router.push(redirectTo);
+      const loggedInUser = await login({ email, password });
+      const explicitRedirect = router.query.redirect as string | undefined;
+      // An explicit ?redirect= (set by ProtectedRoute when it bounced a
+      // guest here) always wins — the user was already headed somewhere
+      // specific. Otherwise route by role: admin-team members land in the
+      // Admin Workspace, everyone else in the course catalog.
+      if (explicitRedirect) {
+        router.push(explicitRedirect);
+      } else if (loggedInUser.adminRole) {
+        redirectingToAdmin = true;
+        setRedirectingAdmin(true);
+        setTimeout(() => router.push('/admin'), 900);
+      } else {
+        router.push('/courses');
+      }
     } catch (err) {
       const axiosErr = err as AxiosError<{ message?: string }>;
       setError(
@@ -35,7 +49,7 @@ function LoginPage() {
         'Unable to log in. Please check your credentials and try again.'
       );
     } finally {
-      setSubmitting(false);
+      if (!redirectingToAdmin) setSubmitting(false);
     }
   };
 
@@ -51,6 +65,12 @@ function LoginPage() {
         {error && (
           <div className="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
             {error}
+          </div>
+        )}
+
+        {redirectingAdmin && (
+          <div className="mb-6 rounded-lg bg-indigo-50 border border-indigo-200 px-4 py-3 text-sm text-indigo-700 text-center">
+            🛡️ Signed in — redirecting to the Admin Workspace…
           </div>
         )}
 

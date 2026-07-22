@@ -38,6 +38,7 @@ const STRINGS = {
     continueButton: 'გაგრძელება',
     genericError: 'დაფიქსირდა შეცდომა. სცადეთ თავიდან.',
     close: 'დახურვა',
+    redirectingToAdmin: '✓ შესვლა წარმატებულია — გადამისამართება Admin სამუშაო სივრცეში…',
   },
   en: {
     loginTab: 'Login',
@@ -65,13 +66,14 @@ const STRINGS = {
     continueButton: 'Continue',
     genericError: 'Something went wrong. Please try again.',
     close: 'Close',
+    redirectingToAdmin: '✓ Signed in — redirecting to the Admin Workspace…',
   },
 } as const;
 
 export default function AuthModal() {
   const router = useRouter();
   const { login, register, loginWithGoogle } = useAuth();
-  const { isOpen, contextMessage, initialMode, closeAuthModal } = useAuthModal();
+  const { isOpen, contextMessage, initialMode, onSuccess, closeAuthModal } = useAuthModal();
   const lang = router.locale === 'en' ? 'en' : 'ka';
   const t = STRINGS[lang];
 
@@ -82,13 +84,36 @@ export default function AuthModal() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [registered, setRegistered] = useState(false);
+  const [redirectingAdmin, setRedirectingAdmin] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement>(null);
+
+  // Runs once login (email/password or Google) succeeds. A pending onSuccess
+  // (e.g. "resume checkout for the course I was trying to buy") always wins
+  // over the default admin-workspace redirect — the user had a specific
+  // intent, don't bounce them somewhere else.
+  const handlePostLogin = (loggedInUser: { adminRole: string | null }) => {
+    if (onSuccess) {
+      closeAuthModal();
+      onSuccess();
+      return;
+    }
+    if (loggedInUser.adminRole) {
+      setRedirectingAdmin(true);
+      setTimeout(() => {
+        closeAuthModal();
+        router.push('/admin');
+      }, 900);
+      return;
+    }
+    closeAuthModal();
+  };
 
   useEffect(() => {
     if (isOpen) {
       setMode(initialMode);
       setError(null);
       setRegistered(false);
+      setRedirectingAdmin(false);
       setName('');
       setEmail('');
       setPassword('');
@@ -107,7 +132,7 @@ export default function AuthModal() {
         setSubmitting(true);
         setError(null);
         loginWithGoogle(response.credential)
-          .then(() => closeAuthModal())
+          .then((loggedInUser) => handlePostLogin(loggedInUser))
           .catch(() => setError(t.genericError))
           .finally(() => setSubmitting(false));
       },
@@ -129,8 +154,8 @@ export default function AuthModal() {
     setSubmitting(true);
     try {
       if (mode === 'login') {
-        await login({ email, password });
-        closeAuthModal();
+        const loggedInUser = await login({ email, password });
+        handlePostLogin(loggedInUser);
       } else {
         await register({ name, email, password });
         setRegistered(true);
@@ -162,7 +187,12 @@ export default function AuthModal() {
           ✕
         </button>
 
-        {registered ? (
+        {redirectingAdmin ? (
+          <div className="text-center pt-2 pb-4">
+            <div className="text-4xl mb-3">🛡️</div>
+            <p className="text-sm font-semibold text-indigo-600">{t.redirectingToAdmin}</p>
+          </div>
+        ) : registered ? (
           <div className="text-center pt-2">
             <div className="text-4xl mb-3">📧</div>
             <h2 className="text-lg font-semibold text-gray-900 mb-2">{t.registerSuccessTitle}</h2>

@@ -32,7 +32,7 @@ const dict = {
 };
 
 function formatPrice(minorUnits: number): string {
-  return `${(minorUnits / 100).toFixed(0)} ₾`;
+  return `${(minorUnits / 100).toFixed(2)} ₾`;
 }
 
 export default function CoursesPage() {
@@ -61,11 +61,7 @@ export default function CoursesPage() {
     load();
   }, [load]);
 
-  const handleEnroll = async (course: Course) => {
-    if (!isAuthenticated) {
-      openAuthModal({ message: t.signInToEnroll });
-      return;
-    }
+  const startCheckout = async (course: Course) => {
     setError(null);
     setEnrollingId(course.id);
     try {
@@ -75,6 +71,16 @@ export default function CoursesPage() {
       setError(lang === 'en' ? 'Unable to start checkout. Please try again.' : 'გადახდის დაწყება ვერ მოხერხდა.');
       setEnrollingId(null);
     }
+  };
+
+  const handleEnroll = (course: Course) => {
+    if (!isAuthenticated) {
+      // Guests never proceed to checkout directly — sign in first, then
+      // resume straight into BOG checkout for this exact course.
+      openAuthModal({ message: t.signInToEnroll, onSuccess: () => startCheckout(course) });
+      return;
+    }
+    startCheckout(course);
   };
 
   return (
@@ -100,9 +106,12 @@ export default function CoursesPage() {
                 className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 flex flex-col justify-between transition-all duration-300 hover:border-cyan-400/50 hover:shadow-[0_0_25px_rgba(34,211,238,0.15)]"
               >
                 <div>
-                  <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-300 bg-purple-500/10 border-purple-500/20">
-                    {course.category}
-                  </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-300 bg-purple-500/10 border-purple-500/20">
+                      {course.category}
+                    </span>
+                    <span className="text-sm font-black text-cyan-300 whitespace-nowrap">{formatPrice(course.price)}</span>
+                  </div>
                   <Link href={`/courses/${course.id}`} className="block no-underline text-current">
                     <h3 className="text-lg font-black mt-4 mb-2 text-white hover:text-cyan-300 transition-colors">{course.title}</h3>
                   </Link>

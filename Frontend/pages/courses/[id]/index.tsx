@@ -32,7 +32,7 @@ const dict = {
 };
 
 function formatPrice(minorUnits: number): string {
-  return `${(minorUnits / 100).toFixed(0)} ₾`;
+  return `${(minorUnits / 100).toFixed(2)} ₾`;
 }
 
 export default function CourseDetailPage() {
@@ -78,11 +78,7 @@ export default function CourseDetailPage() {
     load();
   }, [load]);
 
-  const handleEnroll = async () => {
-    if (!isAuthenticated) {
-      openAuthModal({ message: t.signInToEnroll });
-      return;
-    }
+  const startCheckout = async () => {
     if (!courseId) return;
     setError(null);
     setProcessing(true);
@@ -93,6 +89,16 @@ export default function CourseDetailPage() {
       setError(lang === 'en' ? 'Unable to start checkout. Please try again.' : 'გადახდის დაწყება ვერ მოხერხდა.');
       setProcessing(false);
     }
+  };
+
+  const handleEnroll = () => {
+    if (!isAuthenticated) {
+      // Guests never proceed to checkout directly — sign in first, then
+      // resume straight into BOG checkout for this exact course.
+      openAuthModal({ message: t.signInToEnroll, onSuccess: startCheckout });
+      return;
+    }
+    startCheckout();
   };
 
   if (loading) {
@@ -112,9 +118,12 @@ export default function CourseDetailPage() {
           {t.backToCourses}
         </Link>
 
-        <span className="mt-6 inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-300 bg-purple-500/10 border-purple-500/20">
-          {course.category}
-        </span>
+        <div className="mt-6 flex items-center justify-between gap-3">
+          <span className="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-300 bg-purple-500/10 border-purple-500/20">
+            {course.category}
+          </span>
+          <span className="text-lg font-black text-cyan-300">{formatPrice(course.price)}</span>
+        </div>
         <h1 className="text-3xl md:text-4xl font-black mt-4 mb-4">{course.title}</h1>
         <p className="text-slate-300 leading-relaxed mb-8">{course.description}</p>
 
