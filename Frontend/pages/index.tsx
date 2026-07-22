@@ -4,22 +4,6 @@ import { useRouter } from 'next/router';
 import { useAuthModal } from '../src/context/AuthModalContext';
 import SiteFooter from '../src/components/layout/SiteFooter';
 
-// Minimal surface of the YouTube IFrame Player API we actually use — see the
-// hero background video effect below for why this replaces the simpler
-// `loop=1&playlist=<id>` URL param approach.
-declare global {
-  interface Window {
-    YT?: {
-      Player: new (elementId: string, options: Record<string, unknown>) => { destroy: () => void };
-      PlayerState: { ENDED: number };
-    };
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
-
-const HERO_VIDEO_ID = 'zIDWV4e6R8I';
-const HERO_VIDEO_ELEMENT_ID = 'hero-bg-video';
-
 export default function Home() {
   const router = useRouter();
   const { openAuthModal } = useAuthModal();
@@ -70,52 +54,6 @@ export default function Home() {
       router.replace('/', undefined, { shallow: true });
     }
   }, [router, router.query.assistant]);
-
-  // Loops the hero background video via the IFrame Player API's onStateChange
-  // + seekTo(0) instead of the `loop=1&playlist=<id>` URL param. The
-  // playlist-param approach makes YouTube treat this as a (single-item)
-  // playlist, which keeps its prev/pause/next chrome visible even with
-  // controls=0 — this API-driven loop avoids that playlist context entirely,
-  // so the video plays as clean, chrome-free ambient background footage.
-  useEffect(() => {
-    let player: { destroy: () => void } | undefined;
-    let cancelled = false;
-
-    function initPlayer() {
-      if (cancelled || !window.YT) return;
-      player = new window.YT.Player(HERO_VIDEO_ELEMENT_ID, {
-        events: {
-          onStateChange: (event: { data: number; target: { seekTo: (s: number, allow: boolean) => void; playVideo: () => void } }) => {
-            if (window.YT && event.data === window.YT.PlayerState.ENDED) {
-              event.target.seekTo(0, true);
-              event.target.playVideo();
-            }
-          },
-        },
-      });
-    }
-
-    if (window.YT?.Player) {
-      initPlayer();
-    } else {
-      const previousCallback = window.onYouTubeIframeAPIReady;
-      window.onYouTubeIframeAPIReady = () => {
-        previousCallback?.();
-        initPlayer();
-      };
-      if (!document.getElementById('youtube-iframe-api')) {
-        const script = document.createElement('script');
-        script.id = 'youtube-iframe-api';
-        script.src = 'https://www.youtube.com/iframe_api';
-        document.body.appendChild(script);
-      }
-    }
-
-    return () => {
-      cancelled = true;
-      player?.destroy();
-    };
-  }, []);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   useEffect(() => {
@@ -309,17 +247,15 @@ export default function Home() {
             scrim below only darkens the left text column, revealing it crisply on
             the right; below lg it's the sole background layer under the content. */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {/* Looped via the IFrame Player API (see the effect above) instead of
-              `loop=1&playlist=<id>` — that URL-param approach makes YouTube treat
-              this as a playlist, which keeps prev/pause/next chrome visible even
-              with controls=0. This way the video is genuinely chrome-free. */}
-          <iframe
-            id={HERO_VIDEO_ELEMENT_ID}
-            className="absolute inset-0 w-full h-full object-cover border-none pointer-events-none"
-            src={`https://www.youtube.com/embed/${HERO_VIDEO_ID}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&disablekb=1&iv_load_policy=3&enablejsapi=1&playsinline=1`}
-            title="CDC Hero Background Video"
-            allow="autoplay; encrypted-media"
-            tabIndex={-1}
+          {/* Self-hosted MP4 — genuinely chrome-free (no YouTube UI to fight
+              with) and loops natively via the `loop` attribute. */}
+          <video
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+            src="/videos/hero.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
             aria-hidden="true"
           />
         </div>

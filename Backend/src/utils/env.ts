@@ -46,3 +46,12 @@ export const BUNNY_STREAM_LIBRARY_ID = process.env.BUNNY_STREAM_LIBRARY_ID || ''
 // Pull-zone hostname for direct asset delivery (thumbnails), e.g. "vz-xxxxx.b-cdn.net".
 // Distinct from the fixed player.mediadelivery.net embed domain, which is not configurable.
 export const BUNNY_CDN_HOSTNAME = process.env.BUNNY_CDN_HOSTNAME || '';
+// Deliberately NOT requireEnv() — comma-separated allow-list of emails that
+// get auto-promoted to adminRole SUPER_ADMIN the moment they register, log
+// in, or sign in with Google (see routes/auth.ts's maybePromoteSuperAdmin).
+// Empty by default so this is opt-in per deployment, not a code-level
+// backdoor baked into every environment that runs this codebase.
+export const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS || '')
+  .split(',')
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean);

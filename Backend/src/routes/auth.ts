@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
+import { User } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import {
   registerSchema,
@@ -12,12 +13,27 @@ import {
   googleAuthSchema,
 } from '../schemas/authSchemas';
 import { authenticate } from '../middleware/auth';
-import { JWT_SECRET, GOOGLE_CLIENT_ID } from '../utils/env';
+import { JWT_SECRET, GOOGLE_CLIENT_ID, SUPER_ADMIN_EMAILS } from '../utils/env';
 
 const router = Router();
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 const EMAIL_VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+
+// Auto-promotes accounts on the SUPER_ADMIN_EMAILS allow-list (see
+// utils/env.ts) — checked on every register/login/Google sign-in so it takes
+// effect immediately whichever path the account first appears through, and
+// keeps re-asserting it (idempotent) in case admin rights were ever revoked
+// by mistake. No-op (returns the user unchanged) if the email isn't listed
+// or the account is already SUPER_ADMIN.
+async function maybePromoteSuperAdmin(user: User): Promise<User> {
+  if (!SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase())) return user;
+  if (user.adminRole === 'SUPER_ADMIN' && user.role === 'SuperAdmin' && user.status === 'APPROVED') return user;
+  return prisma.user.update({
+    where: { id: user.id },
+    data: { adminRole: 'SUPER_ADMIN', role: 'SuperAdmin', status: 'APPROVED' },
+  });
+}
 
 function signToken(user: { id: string; role: string; email: string }) {
   return jwt.sign({ userId: user.id, role: user.role, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
@@ -70,7 +86,7 @@ router.post('/register', async (req, res) => {
 
   const hashed = await bcrypt.hash(password, 12);
   const emailVerificationToken = crypto.randomBytes(32).toString('hex');
-  const user = await prisma.user.create({
+  let user = await prisma.user.create({
     data: {
       name,
       email: normalizedEmail,
@@ -82,6 +98,7 @@ router.post('/register', async (req, res) => {
   });
 
   sendVerificationEmail(user.email, emailVerificationToken);
+  user = await maybePromoteSuperAdmin(user);
 
   const token = signToken(user);
 
@@ -98,7 +115,7 @@ router.post('/login', async (req, res) => {
   }
 
   const { email, password } = result.data;
-  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+  let user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
   if (!user) {
     return res.status(401).json({ message: 'Invalid credentials.' });
   }
@@ -115,6 +132,7 @@ router.post('/login', async (req, res) => {
     return res.status(403).json({ message: 'This account has been deactivated.' });
   }
 
+  user = await maybePromoteSuperAdmin(user);
   const token = signToken(user);
 
   res.json({
@@ -268,6 +286,7 @@ router.post('/google', async (req, res) => {
     });
   }
 
+  user = await maybePromoteSuperAdmin(user);
   const token = signToken(user);
   res.json({ token, user: toUserResponse(user) });
 });
