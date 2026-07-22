@@ -302,7 +302,7 @@ export default function Home() {
       </nav>
 
       {/* 🎬 HERO SECTION — left-aligned content on lg+, full-bleed ambient video background below lg */}
-      <div className="relative w-full overflow-hidden min-h-[70vh] sm:min-h-[80vh] lg:min-h-[92vh] flex items-center bg-slate-950">
+      <div className="relative w-full overflow-hidden min-h-[60vh] sm:min-h-[75vh] lg:min-h-[92vh] flex items-center bg-slate-950">
         {/* Background video — purely ambient (no controls, no pointer events, not
             focusable), always fills the full hero without letterboxing. On lg+ the
             scrim below only darkens the left text column, revealing it crisply on
@@ -314,7 +314,7 @@ export default function Home() {
               with controls=0. This way the video is genuinely chrome-free. */}
           <iframe
             id={HERO_VIDEO_ELEMENT_ID}
-            className="absolute inset-0 w-full h-full scale-110 object-cover border-none pointer-events-none"
+            className="absolute inset-0 w-full h-full object-cover border-none pointer-events-none"
             src={`https://www.youtube.com/embed/${HERO_VIDEO_ID}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&disablekb=1&iv_load_policy=3&enablejsapi=1&playsinline=1`}
             title="CDC Hero Background Video"
             allow="autoplay; encrypted-media"
@@ -324,17 +324,18 @@ export default function Home() {
         </div>
 
         {/* Ambient scrim: below lg (no split layout — video is a full-bleed
-            background) it darkens bottom-to-top so the stacked text stays 100%
-            legible with no letterboxing. At lg+ it flips to a left-to-right
-            reveal so only the text column is scrimmed and the video stays crisp
-            on the right — no card, no backdrop-blur. */}
-        <div className="absolute inset-0 z-10 bg-gradient-to-t from-slate-950 via-slate-950/80 to-slate-950/40 lg:bg-gradient-to-r lg:from-slate-950/90 lg:via-slate-950/55 lg:to-transparent" />
+            background) it's a single flat dark scrim across the whole section so
+            legibility is uniform top-to-bottom (no half-black/split look). At lg+
+            it switches to a left-to-right reveal so only the text column is
+            scrimmed and the video stays crisp on the right — no card, no
+            backdrop-blur. */}
+        <div className="absolute inset-0 z-10 bg-slate-950/70 lg:bg-gradient-to-r lg:from-slate-950/90 lg:via-slate-950/55 lg:to-transparent" />
 
-        <header className="relative z-20 w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 py-16">
+        <header className="relative z-20 w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 py-8 sm:py-12 lg:py-16">
           <div className="grid grid-cols-1 lg:grid-cols-12 items-center gap-10">
             <div className="lg:col-span-7">
               {/* Badge */}
-              <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full text-xs font-black tracking-wider mb-7 border border-white/20 bg-white/10 backdrop-blur-md text-white">
+              <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full text-xs font-black tracking-wider mb-4 sm:mb-7 border border-white/20 bg-white/10 backdrop-blur-md text-white">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
@@ -343,7 +344,7 @@ export default function Home() {
               </div>
 
               {/* Heading */}
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-tight text-white mb-3">
+              <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-tight text-white mb-2 sm:mb-3">
                 {translate(
                   <>გახდი მოთხოვნადი <span className="inline-block bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent leading-normal py-1">ციფრული ეპოქის</span> პროფესიონალი</>,
                   <>Become a High-Demand <span className="inline-block bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent leading-normal py-1">Digital-Era</span> Professional</>
@@ -351,12 +352,12 @@ export default function Home() {
               </h1>
 
               {/* Job placement subtitle */}
-              <p className="text-xl sm:text-2xl font-semibold text-cyan-400 mb-4">
+              <p className="text-base sm:text-xl lg:text-2xl font-semibold text-cyan-400 mb-2 sm:mb-4">
                 {translate('...და დასაქმდი ჩვენივე პლატფორმაზე!', '...and get hired directly on our platform!')}
               </p>
 
               {/* Description */}
-              <p className="text-base sm:text-lg text-slate-200/90 max-w-xl leading-relaxed mb-9 font-medium">
+              <p className="text-sm sm:text-base lg:text-lg text-slate-200/90 max-w-xl leading-relaxed mb-5 sm:mb-9 font-medium">
                 {translate(
                   <>{safeText('HEKS/EPER Georgia')}-ს მხარდაჭერით შექმნილი ეკოსისტემა გურიაში. ჩვენ ვაძლიერებთ ახალგაზრდებსა და ქალებს ციფრული წიგნიერების, ხელოვნური ინტელექტისა და კრეატიული ინდუსტრიების საშუალებით.</>,
                   <>An ecosystem created in Guria with the support of {safeText('HEKS/EPER Georgia')}. We empower youth and women through digital literacy, artificial intelligence, and creative industries.</>

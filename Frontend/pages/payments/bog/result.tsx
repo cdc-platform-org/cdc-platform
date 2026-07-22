@@ -12,6 +12,7 @@ const dict = {
     failed: 'გადახდა ვერ განხორციელდა ან გაუქმდა.',
     pendingLong:
       'გადახდა ჯერ კიდევ მუშავდება. თუ ეს გვერდი დიდხანს არ განახლდება, დაუკავშირდით მხარდაჭერას.',
+    redirectingToCourse: 'გადამისამართება კურსზე…',
     course: 'კურსზე წვდომა',
     mentorship: 'მენტორის სესია',
     gig: 'გარიგების ესქროუ დაფინანსება',
@@ -27,6 +28,7 @@ const dict = {
     failed: 'Payment failed or was cancelled.',
     pendingLong:
       'Your payment is still being processed. If this page doesn’t update soon, please contact support.',
+    redirectingToCourse: 'Redirecting to your course…',
     course: 'Course access',
     mentorship: 'Mentorship session',
     gig: 'Gig escrow funding',
@@ -81,6 +83,17 @@ function BogResultContent() {
     };
   }, [paymentId, poll]);
 
+  // Course purchases go straight to the learn page once payment clears —
+  // no separate "continue" click needed.
+  useEffect(() => {
+    if (status?.status === 'COMPLETED' && status.purpose === 'COURSE') {
+      const redirect = setTimeout(() => {
+        router.push(`/courses/${status.referenceId}/learn`);
+      }, 1800);
+      return () => clearTimeout(redirect);
+    }
+  }, [status, router]);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center">
@@ -108,6 +121,9 @@ function BogResultContent() {
             <p className="text-sm font-medium text-gray-900">
               {status.status === 'COMPLETED' ? t.completed : status.status === 'PENDING' ? t.waiting : t.failed}
             </p>
+            {status.status === 'COMPLETED' && status.purpose === 'COURSE' && (
+              <p className="text-xs text-gray-400">{t.redirectingToCourse}</p>
+            )}
             {status.status === 'PENDING' && !polling && <p className="text-xs text-gray-400">{t.pendingLong}</p>}
             <div className="text-xs text-gray-500 border-t border-gray-100 pt-4 space-y-1">
               <p>{purposeKey[status.purpose] ? t[purposeKey[status.purpose]] : status.purpose}</p>

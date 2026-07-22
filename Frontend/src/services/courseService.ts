@@ -8,6 +8,7 @@ import {
   AdminLesson,
   SectionPayload,
   LessonPayload,
+  CertificateVerification,
 } from '../types/lms';
 
 // --- Course CRUD (admin) / listing (public) ---
@@ -105,5 +106,12 @@ export async function uploadLessonVideo(
       if (onProgress && evt.total) onProgress(Math.round((evt.loaded / evt.total) * 100));
     },
   });
+  return response.data.data;
+}
+
+// --- Public certificate verification (no auth — the QR code target) ---
+
+export async function verifyCertificate(code: string): Promise<CertificateVerification> {
+  const response = await apiClient.get<{ data: CertificateVerification }>(`/courses/verify/${code}`);
   return response.data.data;
 }

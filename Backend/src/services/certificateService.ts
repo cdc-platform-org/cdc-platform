@@ -1,9 +1,15 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import QRCode from 'qrcode';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 
 const TEMPLATE_PATH = path.join(__dirname, '..', '..', 'public', 'templates', 'certificate-template.pdf');
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+export function getVerificationUrl(verificationCode: string): string {
+  return `${FRONTEND_URL}/verify/${verificationCode}`;
+}
 
 export class CertificateTemplateMissingError extends Error {
   constructor() {
@@ -100,6 +106,30 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Buf
     x: 48,
     y: 40,
     size: 9,
+    font: serif,
+    color: slate,
+  });
+
+  // QR code, bottom-right corner — encodes the public /verify/[code] page so
+  // the certificate can be authenticity-checked by scanning, without typing
+  // the code in by hand.
+  const verificationUrl = getVerificationUrl(data.verificationCode);
+  const qrPngDataUrl = await QRCode.toDataURL(verificationUrl, { margin: 1, width: 200 });
+  const qrPngBytes = Buffer.from(qrPngDataUrl.split(',')[1], 'base64');
+  const qrImage = await doc.embedPng(qrPngBytes);
+  // Sized and positioned to clear the template's "Issue Date" signature line
+  // (x: [width-260, width-90], y: 90) with margin to spare.
+  const qrSize = 48;
+  page.drawImage(qrImage, {
+    x: width - 20 - qrSize,
+    y: 24,
+    width: qrSize,
+    height: qrSize,
+  });
+  page.drawText('Scan to verify', {
+    x: width - 20 - qrSize,
+    y: 14,
+    size: 7,
     font: serif,
     color: slate,
   });

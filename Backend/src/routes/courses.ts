@@ -241,6 +241,31 @@ router.get('/:id/certificate', authenticate, requireCourseAccess, async (req: Re
   }
 });
 
+// ---- Public certificate verification (no auth) — the target of the QR code
+// printed on every certificate PDF, see certificateService.ts. Deliberately
+// returns only what's needed to confirm authenticity, not the student's
+// account details beyond their name. ----
+
+router.get('/verify/:code', async (req: Request, res: Response) => {
+  const certificate = await prisma.courseCertificate.findUnique({
+    where: { verificationCode: req.params.code },
+    include: { user: { select: { name: true } }, course: { select: { title: true, mentorName: true, mentorTitle: true } } },
+  });
+  if (!certificate) {
+    return res.status(404).json({ message: 'No certificate found for this verification code.' });
+  }
+  res.json({
+    data: {
+      verificationCode: certificate.verificationCode,
+      studentName: certificate.user.name,
+      courseTitle: certificate.course.title,
+      instructorName: certificate.course.mentorName,
+      instructorTitle: certificate.course.mentorTitle,
+      issuedAt: certificate.issuedAt,
+    },
+  });
+});
+
 // ---- Admin: sections & lessons ----
 
 router.post('/:courseId/sections', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req: Request, res: Response) => {

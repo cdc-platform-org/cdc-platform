@@ -52,6 +52,15 @@ export interface CourseProgressSummary {
   percent: number;
 }
 
+export interface CertificateVerification {
+  verificationCode: string;
+  studentName: string;
+  courseTitle: string;
+  instructorName: string | null;
+  instructorTitle: string | null;
+  issuedAt: string;
+}
+
 // --- Admin-facing curriculum (course editor) ---
 
 export interface AdminLesson {
