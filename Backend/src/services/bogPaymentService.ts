@@ -111,7 +111,11 @@ async function getAccessToken(): Promise<string> {
 
 export interface CreateBogOrderParams {
   externalOrderId: string;
-  amount: number; // major currency units, e.g. 49.99
+  // Minor currency units (cents/tetri) — matches this codebase's convention
+  // for every other Int money field (Gig.budgetAmount, GigApplication.bidAmount,
+  // GigTransaction.grossAmount, BogPayment.amount). Converted to BOG's expected
+  // major-unit decimal (e.g. 49.99) only at this API boundary.
+  amount: number;
   currency: 'GEL' | 'USD' | 'EUR' | 'GBP';
   basketItemName: string;
   callbackUrl: string;
@@ -126,6 +130,7 @@ export interface CreateBogOrderResult {
 
 export async function createBogOrder(params: CreateBogOrderParams): Promise<CreateBogOrderResult> {
   const accessToken = await getAccessToken();
+  const majorAmount = Math.round(params.amount) / 100;
   const response = await fetch(CREATE_ORDER_URL, {
     method: 'POST',
     headers: {
@@ -137,12 +142,12 @@ export async function createBogOrder(params: CreateBogOrderParams): Promise<Crea
       external_order_id: params.externalOrderId,
       purchase_units: {
         currency: params.currency,
-        total_amount: params.amount,
+        total_amount: majorAmount,
         basket: [
           {
             product_id: params.externalOrderId,
             quantity: 1,
-            unit_price: params.amount,
+            unit_price: majorAmount,
             unit_discount_price: 0,
           },
         ],
