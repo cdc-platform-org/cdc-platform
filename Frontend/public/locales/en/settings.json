@@ -1,0 +1,45 @@
+{
+  "pageTitle": "Account Settings",
+  "backToHome": "← Back to Home",
+  "paymentSection": {
+    "title": "Saved Payment Method",
+    "empty": "You don't have any saved payment methods yet.",
+    "default": "Default",
+    "expires": "Expires",
+    "deleteButton": "Delete Card",
+    "removing": "Removing…",
+    "removeError": "Unable to remove this payment method. Please try again.",
+    "loading": "Loading…"
+  },
+  "removeCardModal": {
+    "title": "Delete this card?",
+    "body": "This will permanently remove the card ending in {{last4}} from your account.",
+    "cancel": "Cancel",
+    "confirm": "Delete Card",
+    "confirming": "Deleting…"
+  },
+  "dangerZone": {
+    "title": "Danger Zone",
+    "description": "Deleting your account is permanent — after the 60-day grace period, it cannot be undone.",
+    "deleteAccountButton": "Delete Account"
+  },
+  "deleteAccountModal": {
+    "title": "Delete Account",
+    "warning": "Are you sure you want to delete your account? Your profile will be deactivated and permanently deleted from our servers in 60 days.",
+    "confirmMethodLabel": "Confirm with your password, or type DELETE below",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter your current password",
+    "orDivider": "OR",
+    "confirmTextLabel": "Type DELETE to confirm",
+    "confirmTextPlaceholder": "DELETE",
+    "cancel": "Cancel",
+    "confirm": "Delete My Account",
+    "confirming": "Deleting…",
+    "error": "Unable to delete your account. Please try again.",
+    "validation": "Enter your password or type DELETE to confirm.",
+    "wrongPassword": "Incorrect password."
+  },
+  "toast": {
+    "accountDeleted": "Your account has been successfully deleted."
+  }
+}

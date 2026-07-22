@@ -1,0 +1,36 @@
+{
+  "pageTitle": "Payments & Billing",
+  "loading": "Loading…",
+  "loadError": "Unable to load your billing information. Please try again.",
+  "removeError": "Unable to remove this payment method. Please try again.",
+  "downloadError": "Unable to download this invoice. Please try again.",
+  "savedCards": {
+    "title": "Saved Payment Methods",
+    "empty": "You don't have any saved payment methods yet.",
+    "default": "Default",
+    "remove": "Remove",
+    "removing": "Removing…",
+    "confirmRemove": "Remove this card?",
+    "confirmYes": "Yes, remove",
+    "confirmNo": "Cancel"
+  },
+  "billingHistory": {
+    "title": "Billing History",
+    "empty": "You don't have any invoices yet.",
+    "download": "Download PDF",
+    "columns": {
+      "invoice": "Invoice",
+      "description": "Description",
+      "amount": "Amount",
+      "status": "Status",
+      "date": "Date",
+      "actions": "Actions"
+    },
+    "status": {
+      "paid": "Paid",
+      "pending": "Pending",
+      "failed": "Failed",
+      "refunded": "Refunded"
+    }
+  }
+}

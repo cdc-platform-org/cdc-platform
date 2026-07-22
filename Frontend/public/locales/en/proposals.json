@@ -1,0 +1,58 @@
+{
+  "applyButton": "Send Proposal",
+  "proposalsCount": "{{count}} proposals",
+  "proposalModal": {
+    "title": "Send Proposal",
+    "clientBudgetLabel": "Client Budget",
+    "proposedBudgetLabel": "Proposed Budget (GEL)",
+    "proposedBudgetPlaceholder": "0.00",
+    "deliveryLabel": "Delivery Timeframe (days)",
+    "deliveryPlaceholder": "e.g. 7",
+    "coverLetterLabel": "Cover Letter",
+    "coverLetterPlaceholder": "Explain your approach, relevant experience, and why you're a great fit…",
+    "feeCalculator": {
+      "title": "Earnings Estimate",
+      "platformFee": "Platform Fee ({{rate}}%)",
+      "netEarnings": "Net Earnings for Freelancer",
+      "tooltip": "CDC charges a {{rate}}% platform fee on the amount you propose. This is an estimate — the final fee is calculated on the accepted bid."
+    },
+    "cancel": "Cancel",
+    "submit": "Send Proposal",
+    "submitting": "Sending…",
+    "error": "Unable to submit your proposal. Please try again.",
+    "validation": {
+      "budget": "Enter a proposed budget greater than 0.",
+      "delivery": "Enter a delivery timeframe in days.",
+      "cover": "Cover letter must be at least 10 characters."
+    }
+  },
+  "directHireModal": {
+    "title": "Contact {{name}}",
+    "optionOffer": "Send Direct Project Offer",
+    "optionChat": "Start Direct Chat",
+    "sourceLabel": "What are you offering?",
+    "sourceExisting": "One of my open jobs",
+    "sourceCustom": "A custom quick offer",
+    "selectJobLabel": "Select a job",
+    "selectJobPlaceholder": "Choose an open job…",
+    "noOpenJobs": "You don't have any open jobs yet.",
+    "titleLabel": "Offer Title",
+    "descriptionLabel": "Description",
+    "budgetLabel": "Fixed-Price Budget (GEL)",
+    "messageLabel": "Message to freelancer",
+    "messagePlaceholder": "Introduce the project and why you'd like to work with them…",
+    "escrowNotice": "Funds are safely held in CDC Escrow and only released to the freelancer once the work is completed and approved.",
+    "cancel": "Cancel",
+    "submit": "Send Offer",
+    "submitting": "Sending…",
+    "success": "Offer sent!",
+    "error": "Unable to send this offer. Please try again.",
+    "validation": {
+      "title": "Title must be at least 5 characters.",
+      "description": "Description must be at least 20 characters.",
+      "budget": "Enter a budget greater than 0.",
+      "message": "Message must be at least 10 characters.",
+      "job": "Select one of your open jobs."
+    }
+  }
+}
