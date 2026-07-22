@@ -204,6 +204,7 @@ model User {
   courseEnrollments      CourseEnrollment[]
   lessonProgress         LessonProgress[]
   courseCertificates     CourseCertificate[]
+  examAttempts           ExamAttempt[]
 
   @@map("users")
 }
@@ -416,6 +417,10 @@ model Course {
   enrollments  CourseEnrollment[]
   sections     CourseSection[]
   certificates CourseCertificate[]
+  // One AI-generated certification exam per course, if configured by an
+  // admin — courses without one keep the old "100% lessons" certificate gate
+  // (see routes/courses.ts's GET /:id/certificate).
+  exam         Exam?
 
   @@map("courses")
 }
@@ -490,6 +495,57 @@ model CourseCertificate {
 
   @@unique([userId, courseId])
   @@map("course_certificates")
+}
+
+// ============================================================
+// AI EXAM & CERTIFICATION GATE — one Exam per course (admin-configured);
+// questions are generated on demand by services/aiExamService.ts, not
+// stored ahead of time. Each attempt is scored server-side and recorded
+// here; GET /:id/certificate requires a `passed` ExamAttempt to exist for
+// courses that have an Exam configured.
+// ============================================================
+
+model Exam {
+  id       String @id @default(uuid())
+  courseId String @unique
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  // Percentage (0-100) required to pass, e.g. 95.
+  passingScore Int @default(95)
+  // Minimum wait between a failed attempt and the next one.
+  cooldownHours Int @default(24)
+  questionCount Int @default(10)
+  // Free-text steer for the AI question generator (topics to emphasize,
+  // difficulty, tone) — appended to the base prompt in aiExamService.ts.
+  aiPromptContext String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attempts ExamAttempt[]
+
+  @@map("exams")
+}
+
+model ExamAttempt {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  examId String
+  exam   Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  score       Float
+  passed      Boolean
+  // Snapshot of the questions this attempt was scored against (including
+  // correct answers + explanations) — lets a student review what they got
+  // wrong without trusting the client to have kept an honest copy.
+  questions   Json
+  weakTopics  String[] @default([])
+  completedAt DateTime @default(now())
+
+  @@index([userId, examId])
+  @@index([examId])
+  @@map("exam_attempts")
 }
 
 // ============================================================

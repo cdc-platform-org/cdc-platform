@@ -9,6 +9,12 @@ import {
   SectionPayload,
   LessonPayload,
   CertificateVerification,
+  Exam,
+  ExamSettingsPayload,
+  ExamStatus,
+  ExamStartResult,
+  ExamSubmitResult,
+  ExamAnswerLetter,
 } from '../types/lms';
 
 // --- Course CRUD (admin) / listing (public) ---
@@ -106,6 +112,42 @@ export async function uploadLessonVideo(
       if (onProgress && evt.total) onProgress(Math.round((evt.loaded / evt.total) * 100));
     },
   });
+  return response.data.data;
+}
+
+// --- AI Exam & Certification Gate ---
+
+export async function getExamStatus(courseId: string): Promise<ExamStatus> {
+  const response = await apiClient.get<{ data: ExamStatus }>(`/courses/${courseId}/exam/status`);
+  return response.data.data;
+}
+
+export async function startExam(courseId: string): Promise<ExamStartResult> {
+  const response = await apiClient.post<{ data: ExamStartResult }>(`/courses/${courseId}/exam/start`);
+  return response.data.data;
+}
+
+export async function submitExam(
+  courseId: string,
+  sessionToken: string,
+  answers: Record<string, ExamAnswerLetter>
+): Promise<ExamSubmitResult> {
+  const response = await apiClient.post<{ data: ExamSubmitResult }>(`/courses/${courseId}/exam/submit`, {
+    sessionToken,
+    answers,
+  });
+  return response.data.data;
+}
+
+// --- Admin: exam settings ---
+
+export async function getExamSettings(courseId: string): Promise<Exam | null> {
+  const response = await apiClient.get<{ data: Exam | null }>(`/courses/${courseId}/exam`);
+  return response.data.data;
+}
+
+export async function updateExamSettings(courseId: string, payload: ExamSettingsPayload): Promise<Exam> {
+  const response = await apiClient.put<{ data: Exam }>(`/courses/${courseId}/exam`, payload);
   return response.data.data;
 }
 

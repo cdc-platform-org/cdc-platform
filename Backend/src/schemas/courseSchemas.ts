@@ -72,3 +72,18 @@ export const lessonUpdateSchema = lessonCreateSchema.partial();
 export const lessonProgressUpdateSchema = z.object({
   completed: z.boolean(),
 });
+
+// --- AI Exam & Certification Gate ---
+
+export const examSettingsSchema = z.object({
+  passingScore: z.number().int().min(1).max(100).optional().default(95),
+  cooldownHours: z.number().int().min(0).max(24 * 30).optional().default(24),
+  questionCount: z.number().int().min(3).max(30).optional().default(10),
+  aiPromptContext: z.string().trim().max(2000).optional().nullable(),
+});
+
+export const examSubmitSchema = z.object({
+  sessionToken: z.string().min(1),
+  // questionId -> selected option letter.
+  answers: z.record(z.string(), z.enum(['A', 'B', 'C', 'D'])),
+});

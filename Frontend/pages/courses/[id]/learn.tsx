@@ -1,15 +1,17 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import Link from 'next/link';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import CourseVideoPlayer from '../../../src/components/courses/CourseVideoPlayer';
-import { LmsSection, LmsLesson, CourseProgressSummary, Course } from '../../../src/types/lms';
+import { LmsSection, LmsLesson, CourseProgressSummary, Course, ExamStatus } from '../../../src/types/lms';
 import {
   getCourse,
   getCurriculum,
   getProgressSummary,
   setLessonProgress,
   downloadCertificate,
+  getExamStatus,
 } from '../../../src/services/courseService';
 
 const dict = {
@@ -22,6 +24,8 @@ const dict = {
     curriculum: 'სილაბუსი',
     completed: 'დასრულებულია',
     certificate: '🎓 სერტიფიკატის ჩამოტვირთვა (PDF)',
+    takeExam: '🎓 სერტიფიცირების გამოცდის დაწყება',
+    examPassed: '🎓 გამოცდა ჩაბარებულია — სერტიფიკატის ჩამოტვირთვა',
     generating: 'გენერირდება…',
     loading: 'იტვირთება…',
     notEnrolled: 'თქვენ არ ხართ ჩარიცხული ამ კურსზე.',
@@ -37,6 +41,8 @@ const dict = {
     curriculum: 'Curriculum',
     completed: 'Completed',
     certificate: '🎓 Download Certificate (PDF)',
+    takeExam: '🎓 Take Certification Exam',
+    examPassed: '🎓 Exam passed — Download Certificate',
     generating: 'Generating…',
     loading: 'Loading…',
     notEnrolled: 'You are not enrolled in this course.',
@@ -60,6 +66,7 @@ function LearnContent() {
   const [course, setCourse] = useState<Course | null>(null);
   const [sections, setSections] = useState<LmsSection[]>([]);
   const [progress, setProgress] = useState<CourseProgressSummary | null>(null);
+  const [examStatus, setExamStatus] = useState<ExamStatus | null>(null);
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
   const [expandedSectionIds, setExpandedSectionIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<'overview' | 'resources' | 'assignment'>('overview');
@@ -75,14 +82,16 @@ function LearnContent() {
     setLoading(true);
     setError(null);
     try {
-      const [courseData, curriculumData, progressData] = await Promise.all([
+      const [courseData, curriculumData, progressData, examStatusData] = await Promise.all([
         getCourse(courseId),
         getCurriculum(courseId),
         getProgressSummary(courseId),
+        getExamStatus(courseId),
       ]);
       setCourse(courseData);
       setSections(curriculumData);
       setProgress(progressData);
+      setExamStatus(examStatusData);
       setExpandedSectionIds(new Set(curriculumData.map((s) => s.id)));
       const firstIncomplete = curriculumData.flatMap((s) => s.lessons).find((l) => !l.completed);
       const first = curriculumData[0]?.lessons[0];
@@ -218,7 +227,27 @@ function LearnContent() {
             </div>
           </div>
 
-          {progress && progress.percent === 100 && (
+          {progress && progress.percent === 100 && examStatus?.configured && !examStatus.passed && (
+            <Link
+              href={`/courses/${courseId}/exam`}
+              className="w-full mb-5 block text-center rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-white font-bold text-sm py-3 shadow-lg hover:shadow-xl transition-all"
+            >
+              {t.takeExam}
+            </Link>
+          )}
+
+          {progress && progress.percent === 100 && examStatus?.configured && examStatus.passed && (
+            <button
+              type="button"
+              onClick={handleDownloadCertificate}
+              disabled={downloadingCert}
+              className="w-full mb-5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold text-sm py-3 shadow-lg hover:shadow-xl transition-all disabled:opacity-60"
+            >
+              {downloadingCert ? t.generating : t.examPassed}
+            </button>
+          )}
+
+          {progress && progress.percent === 100 && examStatus && !examStatus.configured && (
             <button
               type="button"
               onClick={handleDownloadCertificate}

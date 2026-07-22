@@ -1,5 +1,6 @@
 import { useState, ReactNode } from 'react';
 import Head from 'next/head';
+import Image from 'next/image';
 import Link from 'next/link';
 import SiteFooter from './SiteFooter';
 
@@ -26,9 +27,13 @@ export default function SimpleSiteLayout({ titleKa, titleEn, children }: SimpleS
       <nav className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 no-underline text-current">
-            <div className="bg-gradient-to-tr from-cyan-500 to-purple-600 text-white px-3 py-1.5 rounded-lg font-black text-sm tracking-wider">
-              CDC
-            </div>
+            <Image
+              src="/images/cdc-logo.png"
+              alt={lang === 'GEO' ? 'CDC ლოგო' : 'CDC Logo'}
+              width={44}
+              height={44}
+              className="h-10 w-auto rounded-xl object-cover"
+            />
           </Link>
           <button
             type="button"

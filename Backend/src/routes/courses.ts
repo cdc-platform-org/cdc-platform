@@ -10,6 +10,8 @@ import {
   lessonCreateSchema,
   lessonUpdateSchema,
   lessonProgressUpdateSchema,
+  examSettingsSchema,
+  examSubmitSchema,
 } from '../schemas/courseSchemas';
 import {
   createBunnyVideo,
@@ -21,6 +23,8 @@ import {
 } from '../services/bunnyStreamService';
 import { generateCertificatePdf, generateVerificationCode, CertificateTemplateMissingError } from '../services/certificateService';
 import { withCurrentPrice } from '../services/coursePricing';
+import { generateExamQuestions, isAiExamConfigured, AiExamGenerationError, GeneratedQuestion } from '../services/aiExamService';
+import { createExamSessionToken, verifyExamSessionToken, ExamSessionError } from '../services/examSessionService';
 
 const router = Router();
 
@@ -206,15 +210,213 @@ router.post('/lessons/:lessonId/progress', authenticate, async (req: Request, re
   res.json({ data: { lessonId: progress.lessonId, completed: progress.completed } });
 });
 
+// ---- AI Exam & Certification Gate ----
+// One Exam per course (admin-configured via PUT below). Questions are
+// generated fresh on every /exam/start call (never persisted ahead of
+// time) and scored server-side via an encrypted, signed session token —
+// see services/examSessionService.ts for why a plain JWT isn't enough on
+// its own. Courses with an Exam configured require a passed ExamAttempt to
+// download a certificate; courses without one keep the old 100%-lessons gate.
+
+const EXAM_MIN_DURATION_MINUTES = 10;
+
+function examDurationMinutes(questionCount: number): number {
+  return Math.max(EXAM_MIN_DURATION_MINUTES, Math.ceil(questionCount * 1.5));
+}
+
+function toStudentQuestion(q: GeneratedQuestion) {
+  return { id: q.id, topic: q.topic, question: q.question, options: q.options };
+}
+
+async function getCourseCompletion(courseId: string, userId: string) {
+  const totalLessons = await prisma.lesson.count({ where: { section: { courseId } } });
+  const completedLessons = await prisma.lessonProgress.count({
+    where: { completed: true, userId, lesson: { section: { courseId } } },
+  });
+  return totalLessons > 0 && completedLessons >= totalLessons;
+}
+
+// Admin: view a course's exam settings (null if none configured yet).
+router.get('/:id/exam', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req: Request, res: Response) => {
+  const exam = await prisma.exam.findUnique({ where: { courseId: req.params.id } });
+  res.json({ data: exam });
+});
+
+// Admin: create or update a course's exam settings.
+router.put('/:id/exam', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req: Request, res: Response) => {
+  const result = examSettingsSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+  const course = await prisma.course.findUnique({ where: { id: req.params.id } });
+  if (!course) return res.status(404).json({ message: 'Course not found.' });
+
+  const exam = await prisma.exam.upsert({
+    where: { courseId: req.params.id },
+    update: result.data,
+    create: { ...result.data, courseId: req.params.id },
+  });
+  res.json({ data: exam });
+});
+
+// Student: whether an exam exists for this course, whether they can (re)take
+// it right now, and their best result so far.
+router.get('/:id/exam/status', authenticate, requireCourseAccess, async (req: Request, res: Response) => {
+  const courseId = req.params.id;
+  const exam = await prisma.exam.findUnique({ where: { courseId } });
+  if (!exam) return res.json({ data: { configured: false } });
+
+  const courseComplete = await getCourseCompletion(courseId, req.user!.id);
+  const [passedAttempt, lastAttempt] = await Promise.all([
+    prisma.examAttempt.findFirst({ where: { userId: req.user!.id, examId: exam.id, passed: true }, orderBy: { completedAt: 'desc' } }),
+    prisma.examAttempt.findFirst({ where: { userId: req.user!.id, examId: exam.id }, orderBy: { completedAt: 'desc' } }),
+  ]);
+
+  const cooldownEndsAt =
+    lastAttempt && !passedAttempt ? new Date(lastAttempt.completedAt.getTime() + exam.cooldownHours * 60 * 60 * 1000) : null;
+  const inCooldown = !!cooldownEndsAt && cooldownEndsAt.getTime() > Date.now();
+
+  res.json({
+    data: {
+      configured: true,
+      passingScore: exam.passingScore,
+      cooldownHours: exam.cooldownHours,
+      questionCount: exam.questionCount,
+      courseComplete,
+      passed: !!passedAttempt,
+      bestScore: passedAttempt?.score ?? lastAttempt?.score ?? null,
+      lastAttemptAt: lastAttempt?.completedAt ?? null,
+      weakTopics: !passedAttempt ? lastAttempt?.weakTopics ?? [] : [],
+      inCooldown,
+      cooldownEndsAt,
+      canStart: courseComplete && !passedAttempt && !inCooldown,
+    },
+  });
+});
+
+router.post('/:id/exam/start', authenticate, requireCourseAccess, async (req: Request, res: Response) => {
+  const courseId = req.params.id;
+  if (!isAiExamConfigured()) {
+    return res.status(501).json({ message: 'AI exam generation is not configured yet (OPENAI_API_KEY).' });
+  }
+
+  const [course, exam] = await Promise.all([
+    prisma.course.findUnique({ where: { id: courseId } }),
+    prisma.exam.findUnique({ where: { courseId } }),
+  ]);
+  if (!course) return res.status(404).json({ message: 'Course not found.' });
+  if (!exam) return res.status(404).json({ message: 'This course does not have a certification exam configured.' });
+
+  if (!(await getCourseCompletion(courseId, req.user!.id))) {
+    return res.status(400).json({ message: 'Complete 100% of the course lessons before taking the exam.' });
+  }
+
+  const [passedAttempt, lastAttempt] = await Promise.all([
+    prisma.examAttempt.findFirst({ where: { userId: req.user!.id, examId: exam.id, passed: true } }),
+    prisma.examAttempt.findFirst({ where: { userId: req.user!.id, examId: exam.id }, orderBy: { completedAt: 'desc' } }),
+  ]);
+  if (passedAttempt) {
+    return res.status(400).json({ message: 'You have already passed this exam.' });
+  }
+  if (lastAttempt) {
+    const cooldownEndsAt = new Date(lastAttempt.completedAt.getTime() + exam.cooldownHours * 60 * 60 * 1000);
+    if (cooldownEndsAt.getTime() > Date.now()) {
+      return res.status(429).json({ message: 'You are on a retake cooldown.', cooldownEndsAt });
+    }
+  }
+
+  const lessonTitles = (await prisma.lesson.findMany({ where: { section: { courseId } }, select: { title: true } })).map(
+    (l) => l.title
+  );
+
+  let questions: GeneratedQuestion[];
+  try {
+    questions = await generateExamQuestions({
+      courseTitle: course.title,
+      courseDescription: course.description,
+      lessonTitles,
+      questionCount: exam.questionCount,
+      aiPromptContext: exam.aiPromptContext,
+      focusTopics: lastAttempt?.weakTopics.length ? lastAttempt.weakTopics : undefined,
+    });
+  } catch (err) {
+    if (err instanceof AiExamGenerationError) {
+      return res.status(502).json({ message: err.message });
+    }
+    throw err;
+  }
+
+  const durationMinutes = examDurationMinutes(exam.questionCount);
+  const sessionToken = createExamSessionToken({ userId: req.user!.id, courseId, examId: exam.id, questions, durationMinutes });
+
+  res.json({
+    data: { sessionToken, durationMinutes, passingScore: exam.passingScore, questions: questions.map(toStudentQuestion) },
+  });
+});
+
+router.post('/:id/exam/submit', authenticate, requireCourseAccess, async (req: Request, res: Response) => {
+  const courseId = req.params.id;
+  const result = examSubmitSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  let session;
+  try {
+    session = verifyExamSessionToken(result.data.sessionToken);
+  } catch (err) {
+    return res.status(400).json({ message: err instanceof ExamSessionError ? err.message : 'Invalid exam session.' });
+  }
+  if (session.userId !== req.user!.id || session.courseId !== courseId) {
+    return res.status(400).json({ message: 'This exam session does not belong to you.' });
+  }
+
+  const exam = await prisma.exam.findUnique({ where: { id: session.examId } });
+  if (!exam || exam.courseId !== courseId) {
+    return res.status(404).json({ message: 'Exam not found.' });
+  }
+
+  const total = session.questions.length;
+  let correctCount = 0;
+  const wrongTopics: string[] = [];
+  const review = session.questions.map((q) => {
+    const selected = result.data.answers[q.id];
+    const correct = selected === q.correctAnswer;
+    if (correct) correctCount += 1;
+    else wrongTopics.push(q.topic);
+    return {
+      id: q.id,
+      topic: q.topic,
+      question: q.question,
+      options: q.options,
+      correctAnswer: q.correctAnswer,
+      selected: selected ?? null,
+      correct,
+      explanation: q.explanation,
+    };
+  });
+
+  const score = total === 0 ? 0 : Math.round((correctCount / total) * 100);
+  const passed = score >= exam.passingScore;
+  const weakTopics = Array.from(new Set(wrongTopics));
+
+  await prisma.examAttempt.create({
+    data: { userId: req.user!.id, examId: exam.id, score, passed, questions: review, weakTopics },
+  });
+
+  const cooldownEndsAt = passed ? null : new Date(Date.now() + exam.cooldownHours * 60 * 60 * 1000);
+
+  res.json({ data: { score, passed, correctCount, total, passingScore: exam.passingScore, weakTopics, cooldownEndsAt, review } });
+});
+
 // ---- Certificate ----
 
 router.get('/:id/certificate', authenticate, requireCourseAccess, async (req: Request, res: Response) => {
   const courseId = req.params.id;
-  const totalLessons = await prisma.lesson.count({ where: { section: { courseId } } });
-  const completedLessons = await prisma.lessonProgress.count({
-    where: { completed: true, userId: req.user!.id, lesson: { section: { courseId } } },
-  });
-  if (totalLessons === 0 || completedLessons < totalLessons) {
+  const exam = await prisma.exam.findUnique({ where: { courseId } });
+
+  if (exam) {
+    const passedAttempt = await prisma.examAttempt.findFirst({ where: { userId: req.user!.id, examId: exam.id, passed: true } });
+    if (!passedAttempt) {
+      return res.status(400).json({ message: 'You must pass the certification exam to generate a certificate.' });
+    }
+  } else if (!(await getCourseCompletion(courseId, req.user!.id))) {
     return res.status(400).json({ message: 'Course must be 100% complete to generate a certificate.' });
   }
 

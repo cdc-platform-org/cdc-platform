@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, FormEvent, ChangeEvent } from
 import Head from 'next/head';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
-import { Course, CoursePayload, AdminSection, AdminLesson } from '../../src/types/lms';
+import { Course, CoursePayload, AdminSection, AdminLesson, Exam } from '../../src/types/lms';
 import {
   getCourses,
   createCourse,
@@ -15,6 +15,8 @@ import {
   updateLesson,
   deleteLesson,
   uploadLessonVideo,
+  getExamSettings,
+  updateExamSettings,
 } from '../../src/services/courseService';
 
 const DISCOUNT_PRESETS = [10, 20, 30, 40, 50, 60];
@@ -351,6 +353,128 @@ function SectionCard({ section, onChanged }: { section: AdminSection; onChanged:
   );
 }
 
+const emptyExamForm = {
+  passingScore: 95,
+  cooldownHours: 24,
+  questionCount: 10,
+  aiPromptContext: '',
+};
+
+function ExamSettingsPanel({ course }: { course: Course }) {
+  const [exam, setExam] = useState<Exam | null>(null);
+  const [form, setForm] = useState(emptyExamForm);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getExamSettings(course.id);
+      setExam(data);
+      if (data) {
+        setForm({
+          passingScore: data.passingScore,
+          cooldownHours: data.cooldownHours,
+          questionCount: data.questionCount,
+          aiPromptContext: data.aiPromptContext ?? '',
+        });
+      } else {
+        setForm(emptyExamForm);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [course.id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const handleSave = async (e: FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setSaved(false);
+    try {
+      const updated = await updateExamSettings(course.id, {
+        passingScore: Number(form.passingScore),
+        cooldownHours: Number(form.cooldownHours),
+        questionCount: Number(form.questionCount),
+        aiPromptContext: form.aiPromptContext.trim() || null,
+      });
+      setExam(updated);
+      setSaved(true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mt-6 pt-6 border-t border-gray-100">
+      <h3 className="text-sm font-semibold text-gray-900 mb-1">🎓 AI Certification Exam — {course.title}</h3>
+      <p className="text-xs text-gray-500 mb-4">
+        {exam ? 'Configured — students must pass this exam (after 100% lesson completion) to unlock their certificate.' : 'Not configured yet — students fall back to the old 100%-lessons certificate gate.'}
+      </p>
+      {loading ? (
+        <p className="text-sm text-gray-400">Loading…</p>
+      ) : (
+        <form onSubmit={handleSave} className="space-y-4">
+          <div className="grid md:grid-cols-3 gap-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Passing Score (%)</label>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={form.passingScore}
+                onChange={(e) => setForm({ ...form, passingScore: Number(e.target.value) })}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Retake Cooldown (hours)</label>
+              <input
+                type="number"
+                min={0}
+                value={form.cooldownHours}
+                onChange={(e) => setForm({ ...form, cooldownHours: Number(e.target.value) })}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Question Count</label>
+              <input
+                type="number"
+                min={3}
+                max={30}
+                value={form.questionCount}
+                onChange={(e) => setForm({ ...form, questionCount: Number(e.target.value) })}
+                className={inputClass}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">AI Prompt Context (optional)</label>
+            <textarea
+              rows={2}
+              value={form.aiPromptContext}
+              onChange={(e) => setForm({ ...form, aiPromptContext: e.target.value })}
+              placeholder="e.g. Emphasize practical scenarios over theory; keep difficulty moderate."
+              className={inputClass}
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <button type="submit" disabled={saving} className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60">
+              {saving ? 'Saving…' : exam ? 'Update Exam Settings' : 'Enable Exam'}
+            </button>
+            {saved && <span className="text-xs font-medium text-emerald-600">Saved ✓</span>}
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
 function CurriculumEditor({ course }: { course: Course }) {
   const [sections, setSections] = useState<AdminSection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -466,6 +590,7 @@ function AdminCoursesDashboard() {
           <h2 className="text-base font-semibold text-gray-900 mb-6">{editingCourse ? 'Edit Course' : 'New Course'}</h2>
           <CourseForm editingCourse={editingCourse} onSaved={handleSaved} onCancel={() => setEditingCourse(null)} />
           {managingCourse && <CurriculumEditor course={managingCourse} />}
+          {managingCourse && <ExamSettingsPanel course={managingCourse} />}
         </div>
 
         <div>

@@ -60,3 +60,7 @@ export const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS || '')
 // instead (see services/emailService.ts). Same reasoning as GOOGLE_CLIENT_ID.
 export const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 export const EMAIL_FROM = process.env.EMAIL_FROM || 'CDC Platform <no-reply@cdc.org.ge>';
+// Deliberately NOT requireEnv() — the app must still boot without an OpenAI
+// account configured; exam question generation just responds 501 until this
+// is set (see services/aiExamService.ts), same pattern as Bunny/BOG above.
+export const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';

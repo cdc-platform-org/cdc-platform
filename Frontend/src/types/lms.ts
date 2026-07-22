@@ -111,3 +111,72 @@ export interface LessonPayload {
   resources?: string[];
   order: number;
 }
+
+// --- AI Exam & Certification Gate ---
+
+export interface Exam {
+  id: string;
+  courseId: string;
+  passingScore: number;
+  cooldownHours: number;
+  questionCount: number;
+  aiPromptContext: string | null;
+}
+
+export interface ExamSettingsPayload {
+  passingScore?: number;
+  cooldownHours?: number;
+  questionCount?: number;
+  aiPromptContext?: string | null;
+}
+
+export interface ExamStatus {
+  configured: boolean;
+  passingScore?: number;
+  cooldownHours?: number;
+  questionCount?: number;
+  courseComplete?: boolean;
+  passed?: boolean;
+  bestScore?: number | null;
+  lastAttemptAt?: string | null;
+  weakTopics?: string[];
+  inCooldown?: boolean;
+  cooldownEndsAt?: string | null;
+  canStart?: boolean;
+}
+
+// Student-facing question — no correct answer, that's kept server-side in
+// the encrypted session token until /exam/submit scores it.
+export interface ExamQuestion {
+  id: string;
+  topic: string;
+  question: string;
+  options: { A: string; B: string; C: string; D: string };
+}
+
+export interface ExamStartResult {
+  sessionToken: string;
+  durationMinutes: number;
+  passingScore: number;
+  questions: ExamQuestion[];
+}
+
+export type ExamAnswerLetter = 'A' | 'B' | 'C' | 'D';
+
+export interface ExamReviewQuestion extends ExamQuestion {
+  correctAnswer: ExamAnswerLetter;
+  selected: ExamAnswerLetter | null;
+  correct: boolean;
+  explanation: string;
+}
+
+export interface ExamSubmitResult {
+  score: number;
+  passed: boolean;
+  correctCount: number;
+  total: number;
+  passingScore: number;
+  weakTopics: string[];
+  cooldownEndsAt: string | null;
+  review: ExamReviewQuestion[];
+}

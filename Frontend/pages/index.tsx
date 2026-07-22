@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
+import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuthModal } from '../src/context/AuthModalContext';
 import SiteFooter from '../src/components/layout/SiteFooter';
@@ -156,13 +158,20 @@ export default function Home() {
       {/* 🧭 NAVIGATION */}
       <nav className={`sticky top-0 z-50 w-full max-w-full overflow-x-hidden border-b px-4 sm:px-6 md:px-12 py-4 sm:py-5 ${darkMode ? 'border-slate-800 bg-[#0e1422]/90 backdrop-blur-md' : 'border-slate-200/60 bg-white/90 backdrop-blur-md'}`}>
         <div className="max-w-7xl mx-auto flex justify-between items-center gap-3 sm:gap-6">
-          <div className="flex items-center space-x-3 shrink-0">
-            <div className="bg-gradient-to-tr from-cyan-500 to-purple-600 text-white px-4 py-2 rounded-xl font-black text-sm tracking-wider">{safeText('CDC')}</div>
+          <Link href="/" className="flex items-center space-x-3 shrink-0 no-underline text-current">
+            <Image
+              src="/images/cdc-logo.png"
+              alt={translate('CDC ლოგო', 'CDC Logo') as string}
+              width={48}
+              height={48}
+              priority
+              className="h-10 sm:h-12 w-auto rounded-xl object-cover"
+            />
             <div className="hidden sm:block">
               <span className="font-bold text-lg block leading-none tracking-tight">{safeText('CDC')}</span>
               <span className="text-[11px] text-slate-400 font-bold block mt-1">{translate('ციფრული პროფესიები', 'Digital Careers')}</span>
             </div>
-          </div>
+          </Link>
 
           {/* 🔍 SEARCH BAR */}
           <div className="relative flex-1 max-w-sm md:max-w-md hidden sm:block">
