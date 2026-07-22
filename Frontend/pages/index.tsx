@@ -239,28 +239,62 @@ export default function Home() {
         )}
       </nav>
 
-      {/* 🎬 HERO SECTION WITH YOUTUBE COVER */}
-      <div className="relative w-full overflow-hidden min-h-[60vh] md:min-h-[70vh] flex items-center justify-center bg-slate-950">
-        <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-40 dark:opacity-30 scale-150">
+      {/* 🎬 HERO SECTION — left-aligned content, unobstructed video on the right */}
+      <div className="relative w-full overflow-hidden min-h-[70vh] sm:min-h-[80vh] lg:min-h-[92vh] flex items-center bg-slate-950">
+        {/* Background video — always fills the full hero, never cropped/shifted;
+            the gradient scrim below is what visually "reveals" it on the right. */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden scale-150">
           <iframe
             className="w-full h-full object-cover border-none"
-            src="https://www.youtube.com/embed/zIDWV4e6R8I?autoplay=1&mute=1&loop=1&playlist=zIDWV4e6R8I&controls=0&showinfo=0&rel=0&enablejsapi=1"
+            src="https://www.youtube.com/embed/zIDWV4e6R8I?autoplay=1&mute=1&loop=1&playlist=zIDWV4e6R8I&controls=0&showinfo=0&rel=0&modestbranding=1"
             title="CDC Hero Background Video"
             allow="autoplay; encrypted-media"
           />
         </div>
-        <div className={`absolute inset-0 z-10 ${darkMode ? 'bg-gradient-to-b from-slate-950/40 via-slate-950/60 to-[#0b0f19]' : 'bg-gradient-to-b from-white/20 via-white/40 to-[#f8fafc]'}`} />
 
-        <header className="relative z-20 max-w-7xl mx-auto text-center px-6 py-8 md:py-10">
-          <div className={`max-w-[850px] mx-auto rounded-3xl p-6 md:p-10 border backdrop-blur-md shadow-2xl transition-all duration-500 hover:border-cyan-400 hover:shadow-[0_0_35px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-slate-950/30 border-slate-800' : 'bg-white/30 border-white/40'}`}>
-            <div className={`px-5 py-2 rounded-full text-xs font-black inline-block mb-6 tracking-wider border backdrop-blur-sm ${darkMode ? 'bg-slate-900/80 text-cyan-400 border-slate-800' : 'bg-white/80 text-cyan-600 border-slate-200'}`}>{translate('გააციფრულე შენი უნარები | დაარსდა 2023 წელს', 'Digitize Your Skills | Est. 2023')}</div>
-            <h1 className="text-[2rem] sm:text-[2.2rem] md:text-[2.5rem] font-black mb-5 tracking-wide leading-tight text-slate-900 dark:text-white">{translate('გახდი მოთხოვნადი ციფრული ეპოქის პროფესიონალი', 'Become a High-Demand Digital Professional')}</h1>
-            <p className="text-sm md:text-base max-w-2xl mx-auto mb-8 font-medium leading-relaxed text-slate-700 dark:text-slate-300">
-              {translate(<>{safeText('HEKS/EPER Georgia')}-ს მხარდაჭერით შექმნილი ეკოსისტემა გურიაში. ჩვენ ვაძლიერებთ ახალგაზრდებსა და ქალებს ციფრული წიგნიერების, ხელოვნური ინტელექტისა და კრეატიული ინდუსტრიების საშუალებით.</>, <>An ecosystem created in Guria with the support of {safeText('HEKS/EPER Georgia')}. We empower youth and women through digital literacy, AI, and creative industries.</>)}
-            </p>
-            <div className="flex justify-center">
-              <a href="#courses" className="bg-gradient-to-r from-cyan-500 to-sky-600 text-white font-black px-10 py-3.5 rounded-xl text-sm uppercase tracking-widest no-underline shadow-xl transform hover:scale-105 duration-200">{translate('კურსების ნახვა →', 'View Courses →')}</a>
+        {/* Ambient scrim: opaque over the text column, fully transparent past it —
+            no card, no backdrop-blur, so the video stays crisp on the right.
+            Mobile has no room for a split layout, so it darkens top-to-bottom instead. */}
+        <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/90 via-black/85 to-black/70 sm:bg-gradient-to-r sm:from-black/85 sm:via-black/55 sm:to-transparent" />
+
+        <header className="relative z-20 w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 py-16">
+          <div className="grid grid-cols-1 lg:grid-cols-12 items-center gap-10">
+            <div className="lg:col-span-7">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full text-xs font-black tracking-wider mb-7 border border-white/20 bg-white/10 backdrop-blur-md text-white">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
+                </span>
+                {translate('გააციფრულე შენი უნარები | დაარსდა 2023 წელს', 'Digitize Your Skills | Est. 2023')}
+              </div>
+
+              {/* Heading */}
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-tight text-white mb-6">
+                {translate(
+                  <>გახდი მოთხოვნადი <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">ციფრული ეპოქის</span> პროფესიონალი</>,
+                  <>Become a High-Demand <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">Digital-Era</span> Professional</>
+                )}
+              </h1>
+
+              {/* Description */}
+              <p className="text-base sm:text-lg text-slate-200/90 max-w-xl leading-relaxed mb-9 font-medium">
+                {translate(
+                  <>{safeText('HEKS/EPER Georgia')}-ს მხარდაჭერით შექმნილი ეკოსისტემა გურიაში. ჩვენ ვაძლიერებთ ახალგაზრდებსა და ქალებს ციფრული წიგნიერების, ხელოვნური ინტელექტისა და კრეატიული ინდუსტრიების საშუალებით.</>,
+                  <>An ecosystem created in Guria with the support of {safeText('HEKS/EPER Georgia')}. We empower youth and women through digital literacy, artificial intelligence, and creative industries.</>
+                )}
+              </p>
+
+              {/* CTA */}
+              <a
+                href="#courses"
+                className="group inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black px-9 py-4 rounded-xl text-sm uppercase tracking-widest no-underline shadow-xl shadow-cyan-500/20 hover:shadow-2xl hover:shadow-cyan-500/40 hover:scale-105 transition-all duration-300"
+              >
+                {translate('კურსების ნახვა', 'View Courses')}
+                <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+              </a>
             </div>
+            {/* lg:col-span-5 intentionally left empty — this is where the video reads clearly */}
           </div>
         </header>
       </div>
