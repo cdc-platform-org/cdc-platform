@@ -11,6 +11,7 @@ import {
 import { DefaultAzureCredential } from '@azure/identity';
 import { AZURE_STORAGE_ACCOUNT_URL, AZURE_STORAGE_CONTAINER_NAME } from '../utils/env';
 import { authenticate } from '../middleware/auth';
+import { shouldCompress, compressVideoBuffer } from '../services/videoCompressionService';
 
 const router = express.Router();
 
@@ -88,6 +89,32 @@ const upload = multer({
   limits: { fileSize: 100 * 1024 * 1024 } // 100MB
 });
 
+// Re-encodes the just-uploaded blob in place (same blob name — nothing else
+// needs to change) once compression finishes. Fire-and-forget: the caller
+// never awaits this, so the client already has its response with the
+// original file playable immediately. If compression fails for any reason
+// (ffmpeg missing, corrupt input, transient Azure error), the original blob
+// is simply left as-is — this can only make a blob smaller, never break it.
+async function compressAndReplaceInBackground(blobName: string, originalBuffer: Buffer, mimetype: string): Promise<void> {
+  try {
+    const compressed = await compressVideoBuffer(originalBuffer);
+    if (compressed.length >= originalBuffer.length) {
+      console.log(`[video-compression] skipped ${blobName}: compressed size was not smaller.`);
+      return;
+    }
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+    await blockBlobClient.uploadData(compressed, {
+      blobHTTPHeaders: { blobContentType: mimetype },
+    });
+    console.log(
+      `[video-compression] ${blobName}: ${originalBuffer.length} -> ${compressed.length} bytes ` +
+        `(${Math.round((1 - compressed.length / originalBuffer.length) * 100)}% smaller)`
+    );
+  } catch (err) {
+    console.error(`[video-compression] failed for ${blobName}, original file kept as-is:`, err);
+  }
+}
+
 router.post('/video', authenticate, upload.single('video'), async (req: Request, res: Response) => {
   if (!req.file) {
     return res.status(400).json({ error: 'ფაილი არ არის არჩეული' });
@@ -108,6 +135,11 @@ router.post('/video', authenticate, upload.single('video'), async (req: Request,
       // not this URL. Re-fetch via GET /video/:blobName when playback is needed.
       video_url: await sasUrlFor(blobName),
     });
+
+    // Runs after the response is already sent — never blocks the upload.
+    if (shouldCompress(req.file.buffer)) {
+      compressAndReplaceInBackground(blobName, req.file.buffer, req.file.mimetype);
+    }
   } catch (err) {
     res.status(502).json({ error: 'ვიდეოს ატვირთვა ვერ მოხერხდა. სცადეთ თავიდან.' });
   }
