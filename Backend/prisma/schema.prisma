@@ -196,6 +196,8 @@ model User {
   paymentMethods         PaymentMethod[]
   bogPayments            BogPayment[]
   courseEnrollments      CourseEnrollment[]
+  lessonProgress         LessonProgress[]
+  courseCertificates     CourseCertificate[]
 
   @@map("users")
 }
@@ -383,16 +385,97 @@ model Course {
   title       String
   description String
   category    String
-  lessons     Json
-  price       Int
-  published   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  // Legacy flat lesson blob — predates CourseSection/Lesson below and is left
+  // as-is for backward compat with the existing admin course-create form
+  // (lib/api.ts's CoursePayload). The Udemy-style /learn player reads the
+  // relational `sections` instead.
+  lessons      Json
+  price        Int
+  published    Boolean @default(false)
+  mentorName   String?
+  mentorTitle  String?
+  thumbnailUrl String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  orders      Order[]            @relation("OrderCourses")
-  enrollments CourseEnrollment[]
+  orders       Order[]             @relation("OrderCourses")
+  enrollments  CourseEnrollment[]
+  sections     CourseSection[]
+  certificates CourseCertificate[]
 
   @@map("courses")
+}
+
+// ============================================================
+// LMS — relational curriculum (sections -> lessons), per-user lesson
+// progress, and issued certificates. Coexists with the legacy Course.lessons
+// Json blob above.
+// ============================================================
+
+model CourseSection {
+  id        String   @id @default(uuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title     String
+  order     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lessons Lesson[]
+
+  @@index([courseId])
+  @@map("course_sections")
+}
+
+model Lesson {
+  id              String   @id @default(uuid())
+  sectionId       String
+  section         CourseSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  title           String
+  durationSeconds Int      @default(0)
+  // Bunny Stream video GUID (services/bunnyStreamService.ts) — null until an
+  // admin uploads a video for this lesson.
+  bunnyVideoId    String?
+  resources       String[] @default([])
+  order           Int
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  progress LessonProgress[]
+
+  @@index([sectionId])
+  @@map("lessons")
+}
+
+model LessonProgress {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  lessonId    String
+  lesson      Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, lessonId])
+  @@index([userId])
+  @@map("lesson_progress")
+}
+
+// One row per (user, course) once a certificate has been generated — makes
+// re-downloads idempotent (same verification code every time) rather than
+// minting a new "unique" code on every click.
+model CourseCertificate {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  courseId         String
+  course           Course   @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  verificationCode String   @unique
+  issuedAt         DateTime @default(now())
+
+  @@unique([userId, courseId])
+  @@map("course_certificates")
 }
 
 // ============================================================

@@ -15,6 +15,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/users', label: 'User Management', icon: '👥' },
   { href: '/admin/gigs', label: 'Gigs & Vacancies', icon: '💼' },
   { href: '/admin/blog', label: 'Content / Blog', icon: '📝', tiers: ['SUPER_ADMIN', 'ADMIN'] },
+  { href: '/admin/courses', label: 'Courses / LMS', icon: '🎓', tiers: ['SUPER_ADMIN', 'ADMIN'] },
   { href: '/admin/financials', label: 'Financials & BOG', icon: '💰', tiers: ['SUPER_ADMIN'] },
   { href: '/admin/team', label: 'Team & Permissions', icon: '🔐', tiers: ['SUPER_ADMIN'] },
 ];

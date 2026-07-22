@@ -37,3 +37,12 @@ export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 // when these are unset, so the app must still boot without them.
 export const BOG_CLIENT_ID = process.env.BOG_CLIENT_ID || '';
 export const BOG_SECRET_KEY = process.env.BOG_SECRET_KEY || '';
+// Deliberately NOT requireEnv() — the app (and course browsing/purchasing)
+// must still boot without a Bunny Stream account configured yet; video
+// upload/playback routes just respond 501 until these are set (see
+// services/bunnyStreamService.ts).
+export const BUNNY_STREAM_API_KEY = process.env.BUNNY_STREAM_API_KEY || '';
+export const BUNNY_STREAM_LIBRARY_ID = process.env.BUNNY_STREAM_LIBRARY_ID || '';
+// Pull-zone hostname for direct asset delivery (thumbnails), e.g. "vz-xxxxx.b-cdn.net".
+// Distinct from the fixed player.mediadelivery.net embed domain, which is not configurable.
+export const BUNNY_CDN_HOSTNAME = process.env.BUNNY_CDN_HOSTNAME || '';
