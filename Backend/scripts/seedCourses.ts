@@ -36,8 +36,7 @@ const COURSES: CourseSeed[] = [
     description:
       'რეალური ვებ პროექტების შექმნა, კოდის გენერირება ხელოვნური ინტელექტის დახმარებით და მონაცემთა ბაზების ინტეგრაცია. კურსი მოიცავს HTML/CSS/JavaScript საფუძვლებს, თანამედროვე React ეკოსისტემას და AI კოდის ასისტენტების პრაქტიკულ გამოყენებას.',
     category: 'პროგრამირება',
-    // Live BOG smoke-test pricing — 1 GEL (100 tetri), not the real launch price.
-    price: 100,
+    price: 89900, // 899 GEL — production launch price
     mentorName: 'იმედო მარტიკოვი',
     mentorTitle: 'კურსის ლექტორი & AI ინჟინერი',
     sections: [
@@ -79,8 +78,7 @@ const COURSES: CourseSeed[] = [
     description:
       'ბიზნეს გვერდების ოპტიმიზაცია, Google SEO, სარეკლამო კამპანიების მართვა და AI კონტენტის გენერაცია. კურსი მიმართულია ადგილობრივი ბიზნესებისა და პირადი ბრენდის ციფრული ზრდისკენ.',
     category: 'მარკეტინგი',
-    // Live BOG smoke-test pricing — 1 GEL (100 tetri), not the real launch price.
-    price: 100,
+    price: 69900, // 699 GEL — production launch price
     mentorName: 'მარიკა გაგუა',
     mentorTitle: 'კურსის ლექტორი & SMM სტრატეგი',
     sections: [
@@ -113,8 +111,7 @@ const COURSES: CourseSeed[] = [
     description:
       'თანამედროვე ინტერფეისების დიზაინი, პროტოტიპირება და ხელოვნური ინტელექტის გენერაციული მოდელები. კურსი გაძღვება ნულიდან პირველი პორტფოლიო პროექტის დასრულებამდე.',
     category: 'დიზაინი',
-    // Live BOG smoke-test pricing — 1 GEL (100 tetri), not the real launch price.
-    price: 100,
+    price: 49900, // 499 GEL — production launch price
     mentorName: 'ია თავდიშვილი',
     mentorTitle: 'კურსის მენტორი & დირექტორი',
     sections: [

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuthModal } from '../src/context/AuthModalContext';
+import SiteFooter from '../src/components/layout/SiteFooter';
 
 // Minimal surface of the YouTube IFrame Player API we actually use — see the
 // hero background video effect below for why this replaces the simpler
@@ -323,17 +324,20 @@ export default function Home() {
           />
         </div>
 
-        {/* Ambient scrim: below lg (no split layout — video is a full-bleed
-            background) it's a single flat dark scrim across the whole section so
-            legibility is uniform top-to-bottom (no half-black/split look). At lg+
-            it switches to a left-to-right reveal so only the text column is
-            scrimmed and the video stays crisp on the right — no card, no
-            backdrop-blur. */}
-        <div className="absolute inset-0 z-10 bg-slate-950/70 lg:bg-gradient-to-r lg:from-slate-950/90 lg:via-slate-950/55 lg:to-transparent" />
+        {/* Ambient scrim: kept as light as possible so the video plays bright
+            and clearly — just enough of a dark base to keep white text
+            legible, not a heavy cover. Below lg (no split layout) it's a
+            single flat scrim across the whole section for even legibility;
+            at lg+ it's a much lighter left-to-right reveal, mostly
+            transparent past the text column, so the video/instructor on the
+            right stays bright and crisp. No card, no backdrop-blur on the
+            video itself. Text below carries a drop-shadow as extra
+            legibility insurance now that the scrim is this light. */}
+        <div className="absolute inset-0 z-10 bg-slate-950/40 lg:bg-gradient-to-r lg:from-slate-950/55 lg:via-slate-950/10 lg:to-transparent" />
 
         <header className="relative z-20 w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 py-8 sm:py-12 lg:py-16">
           <div className="grid grid-cols-1 lg:grid-cols-12 items-center gap-10">
-            <div className="lg:col-span-7">
+            <div className="lg:col-span-7 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
               {/* Badge */}
               <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full text-xs font-black tracking-wider mb-4 sm:mb-7 border border-white/20 bg-white/10 backdrop-blur-md text-white">
                 <span className="relative flex h-2 w-2">
@@ -551,9 +555,7 @@ export default function Home() {
         )}
       </div>
 
-      <footer className="text-center py-8 border-t bg-slate-900 text-slate-500 border-slate-800 text-[11px] m-0">
-        © 2026 CDC Platform. All rights reserved.
-      </footer>
+      <SiteFooter lang={lang} />
     </div>
   );
 }

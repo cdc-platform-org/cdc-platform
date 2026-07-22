@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
+import SiteFooter from '../src/components/layout/SiteFooter';
 
 interface Project {
   id: number;
@@ -179,9 +180,7 @@ export default function Agency() {
         </div>
       </main>
 
-      <footer className="text-center py-8 border-t bg-slate-900 text-slate-500 border-slate-800 text-[11px] m-0">
-        © 2026 CDC Platform. All rights reserved.
-      </footer>
+      <SiteFooter lang={lang} />
     </div>
   );
 }

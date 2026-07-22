@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
+import SiteFooter from '../src/components/layout/SiteFooter';
 
 interface Post {
   id: number;
@@ -309,9 +310,10 @@ export default function Community() {
         </div>
       </div>
 
-      <footer className="text-center py-8 border-t bg-slate-900 text-slate-500 border-slate-800 text-[11px] m-0 mt-12">
-        © 2026 CDC Platform. All rights reserved.
-      </footer>
+      <div className="mt-12">
+        {/* This page has no language toggle of its own (content is Georgian-only) */}
+        <SiteFooter lang="GEO" />
+      </div>
     </div>
   );
 }
