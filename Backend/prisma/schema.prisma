@@ -390,7 +390,15 @@ model Course {
   // (lib/api.ts's CoursePayload). The Udemy-style /learn player reads the
   // relational `sections` instead.
   lessons      Json
-  price        Int
+  // Minor units (tetri) — matches this codebase's Int-money convention
+  // everywhere else (Gig.budgetAmount, BogPayment.amount, etc.). The user-
+  // facing "sale price" is never stored — see services/coursePricing.ts's
+  // getCurrentPrice(), computed at read time so an expired discountEndDate
+  // reverts to originalPrice automatically with no cron/cleanup needed.
+  originalPrice   Int
+  discountPercent Int?
+  discountEndDate DateTime?
+  isOnSale        Boolean  @default(false)
   published    Boolean @default(false)
   mentorName   String?
   mentorTitle  String?

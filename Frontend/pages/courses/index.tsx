@@ -7,6 +7,7 @@ import { useAuthModal } from '../../src/context/AuthModalContext';
 import { Course } from '../../src/types/lms';
 import { getCourses } from '../../src/services/courseService';
 import { checkoutCourse } from '../../src/services/paymentService';
+import { formatPrice, getSaleCountdownLabel } from '../../src/utils/coursePricing';
 
 const dict = {
   ka: {
@@ -30,10 +31,6 @@ const dict = {
     signInToEnroll: { ka: 'გთხოვთ გაიაროთ ავტორიზაცია კურსზე ჩასარიცხად', en: 'Please sign in to enroll in a course' },
   },
 };
-
-function formatPrice(minorUnits: number): string {
-  return `${(minorUnits / 100).toFixed(2)} ₾`;
-}
 
 export default function CoursesPage() {
   const router = useRouter();
@@ -100,55 +97,71 @@ export default function CoursesPage() {
           <p className="text-slate-400 text-sm">{t.empty}</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {courses.map((course) => (
-              <div
-                key={course.id}
-                className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 flex flex-col justify-between transition-all duration-300 hover:border-cyan-400/50 hover:shadow-[0_0_25px_rgba(34,211,238,0.15)]"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-300 bg-purple-500/10 border-purple-500/20">
-                      {course.category}
+            {courses.map((course) => {
+              const countdown = course.saleActive ? getSaleCountdownLabel(course.discountEndDate, lang) : null;
+              return (
+                <div
+                  key={course.id}
+                  className="relative rounded-2xl border border-slate-800 bg-slate-900/60 p-6 flex flex-col justify-between transition-all duration-300 hover:border-cyan-400/50 hover:shadow-[0_0_25px_rgba(34,211,238,0.15)]"
+                >
+                  {course.saleActive && (
+                    <span className="absolute -top-2.5 -right-2.5 text-xs font-black text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg shadow-rose-500/30">
+                      -{course.discountPercent}% {lang === 'ka' ? '' : 'OFF'}
                     </span>
-                    <span className="text-sm font-black text-cyan-300 whitespace-nowrap">{formatPrice(course.price)}</span>
-                  </div>
-                  <Link href={`/courses/${course.id}`} className="block no-underline text-current">
-                    <h3 className="text-lg font-black mt-4 mb-2 text-white hover:text-cyan-300 transition-colors">{course.title}</h3>
-                  </Link>
-                  <p className="text-sm text-slate-400 leading-relaxed mb-6 line-clamp-3">{course.description}</p>
-                  {course.mentorName && (
-                    <div className="flex items-center gap-3 mb-6 p-3 rounded-xl bg-slate-800/60 border border-slate-800">
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white text-xs font-black shrink-0">
-                        {course.mentorName.slice(0, 2)}
+                  )}
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-300 bg-purple-500/10 border-purple-500/20">
+                        {course.category}
+                      </span>
+                      <span className="text-sm font-black text-cyan-300 whitespace-nowrap">{formatPrice(course.currentPrice)}</span>
+                    </div>
+                    <Link href={`/courses/${course.id}`} className="block no-underline text-current">
+                      <h3 className="text-lg font-black mt-4 mb-2 text-white hover:text-cyan-300 transition-colors">{course.title}</h3>
+                    </Link>
+                    <p className="text-sm text-slate-400 leading-relaxed mb-6 line-clamp-3">{course.description}</p>
+                    {course.mentorName && (
+                      <div className="flex items-center gap-3 mb-6 p-3 rounded-xl bg-slate-800/60 border border-slate-800">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white text-xs font-black shrink-0">
+                          {course.mentorName.slice(0, 2)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-200 truncate">{course.mentorName}</p>
+                          {course.mentorTitle && <p className="text-[11px] text-slate-500 truncate">{course.mentorTitle}</p>}
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-200 truncate">{course.mentorName}</p>
-                        {course.mentorTitle && <p className="text-[11px] text-slate-500 truncate">{course.mentorTitle}</p>}
+                    )}
+                  </div>
+                  <div>
+                    {countdown && <p className="text-[11px] font-bold text-rose-400 mb-2">⏳ {countdown}</p>}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-baseline gap-2">
+                        {course.saleActive && (
+                          <s className="text-sm text-slate-500">{formatPrice(course.originalPrice)}</s>
+                        )}
+                        <span className="text-xl font-black text-white">{formatPrice(course.currentPrice)}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Link
+                          href={`/courses/${course.id}`}
+                          className="text-xs font-bold text-slate-300 hover:text-white px-3 py-2.5 rounded-lg border border-slate-700 no-underline"
+                        >
+                          {t.viewDetails}
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => handleEnroll(course)}
+                          disabled={enrollingId === course.id}
+                          className="text-xs font-black text-white px-4 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:shadow-lg hover:shadow-cyan-500/30 transition-all disabled:opacity-60"
+                        >
+                          {enrollingId === course.id ? t.enrolling : t.enroll}
+                        </button>
                       </div>
                     </div>
-                  )}
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xl font-black text-white">{formatPrice(course.price)}</span>
-                  <div className="flex gap-2">
-                    <Link
-                      href={`/courses/${course.id}`}
-                      className="text-xs font-bold text-slate-300 hover:text-white px-3 py-2.5 rounded-lg border border-slate-700 no-underline"
-                    >
-                      {t.viewDetails}
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => handleEnroll(course)}
-                      disabled={enrollingId === course.id}
-                      className="text-xs font-black text-white px-4 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:shadow-lg hover:shadow-cyan-500/30 transition-all disabled:opacity-60"
-                    >
-                      {enrollingId === course.id ? t.enrolling : t.enroll}
-                    </button>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

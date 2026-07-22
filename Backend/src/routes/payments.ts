@@ -10,6 +10,7 @@ import {
   BogOrderStatusKey,
 } from '../services/bogPaymentService';
 import { captureEscrow } from '../services/escrowService';
+import { getCurrentPrice } from '../services/coursePricing';
 
 const router = Router();
 
@@ -43,13 +44,16 @@ router.post(
       return res.status(400).json({ message: 'You are already enrolled in this course.' });
     }
 
+    // Charges whatever the course actually costs right now — if it's on an
+    // active sale, that's the discounted price, not originalPrice.
+    const chargeAmount = getCurrentPrice(course);
     const bogPayment = await prisma.bogPayment.create({
       data: {
         bogOrderId: `pending-${crypto.randomUUID()}`,
         userId: req.user!.id,
         purpose: 'COURSE',
         referenceId: course.id,
-        amount: course.price,
+        amount: chargeAmount,
         currency: 'GEL',
         status: 'PENDING',
       },
@@ -57,7 +61,7 @@ router.post(
     const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
     const order = await createBogOrder({
       externalOrderId: bogPayment.id,
-      amount: course.price,
+      amount: chargeAmount,
       currency: 'GEL',
       basketItemName: course.title,
       callbackUrl: CALLBACK_URL,

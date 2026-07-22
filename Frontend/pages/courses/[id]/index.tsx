@@ -7,6 +7,7 @@ import { useAuthModal } from '../../../src/context/AuthModalContext';
 import { Course } from '../../../src/types/lms';
 import { getCourse, getProgressSummary } from '../../../src/services/courseService';
 import { checkoutCourse } from '../../../src/services/paymentService';
+import { formatPrice, getSaleCountdownLabel } from '../../../src/utils/coursePricing';
 
 const dict = {
   ka: {
@@ -30,10 +31,6 @@ const dict = {
     signInToEnroll: { ka: 'გთხოვთ გაიაროთ ავტორიზაცია კურსზე ჩასარიცხად', en: 'Please sign in to enroll in a course' },
   },
 };
-
-function formatPrice(minorUnits: number): string {
-  return `${(minorUnits / 100).toFixed(2)} ₾`;
-}
 
 export default function CourseDetailPage() {
   const router = useRouter();
@@ -119,10 +116,20 @@ export default function CourseDetailPage() {
         </Link>
 
         <div className="mt-6 flex items-center justify-between gap-3">
-          <span className="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-300 bg-purple-500/10 border-purple-500/20">
-            {course.category}
-          </span>
-          <span className="text-lg font-black text-cyan-300">{formatPrice(course.price)}</span>
+          <div className="flex items-center gap-2">
+            <span className="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-300 bg-purple-500/10 border-purple-500/20">
+              {course.category}
+            </span>
+            {course.saleActive && (
+              <span className="text-[10px] font-black text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500">
+                -{course.discountPercent}% {lang === 'ka' ? '' : 'OFF'}
+              </span>
+            )}
+          </div>
+          <div className="flex items-baseline gap-2">
+            {course.saleActive && <s className="text-sm text-slate-500">{formatPrice(course.originalPrice)}</s>}
+            <span className="text-lg font-black text-cyan-300">{formatPrice(course.currentPrice)}</span>
+          </div>
         </div>
         <h1 className="text-3xl md:text-4xl font-black mt-4 mb-4">{course.title}</h1>
         <p className="text-slate-300 leading-relaxed mb-8">{course.description}</p>
@@ -142,8 +149,14 @@ export default function CourseDetailPage() {
 
         {error && <div className="mb-6 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-300">{error}</div>}
 
+        {course.saleActive && getSaleCountdownLabel(course.discountEndDate, lang) && (
+          <p className="text-xs font-bold text-rose-400 mb-3">⏳ {getSaleCountdownLabel(course.discountEndDate, lang)}</p>
+        )}
         <div className="flex items-center justify-between p-6 rounded-2xl border border-slate-800 bg-slate-900/60">
-          <span className="text-3xl font-black text-white">{formatPrice(course.price)}</span>
+          <div className="flex items-baseline gap-3">
+            {course.saleActive && <s className="text-lg text-slate-500">{formatPrice(course.originalPrice)}</s>}
+            <span className="text-3xl font-black text-white">{formatPrice(course.currentPrice)}</span>
+          </div>
           {enrolled ? (
             <Link
               href={`/courses/${course.id}/learn`}

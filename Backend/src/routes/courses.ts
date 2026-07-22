@@ -20,12 +20,22 @@ import {
   isBunnyConfigured,
 } from '../services/bunnyStreamService';
 import { generateCertificatePdf, generateVerificationCode, CertificateTemplateMissingError } from '../services/certificateService';
+import { withCurrentPrice } from '../services/coursePricing';
 
 const router = Router();
 
+// zod validates discountEndDate as an ISO string (or '' / null / undefined
+// for "no sale end date") — Prisma's DateTime field needs an actual Date or
+// null, never an empty string.
+function toPrismaDiscountEndDate(value: string | null | undefined): Date | null | undefined {
+  if (value === undefined) return undefined;
+  if (!value) return null;
+  return new Date(value);
+}
+
 router.get('/', async (req, res) => {
   const courses = await prisma.course.findMany({ orderBy: { createdAt: 'desc' } });
-  res.json({ data: courses });
+  res.json({ data: courses.map(withCurrentPrice) });
 });
 
 router.get('/:id', async (req, res) => {
@@ -33,7 +43,7 @@ router.get('/:id', async (req, res) => {
   if (!course) {
     return res.status(404).json({ message: 'Course not found.' });
   }
-  res.json({ data: course });
+  res.json({ data: withCurrentPrice(course) });
 });
 
 router.post('/', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
@@ -42,8 +52,10 @@ router.post('/', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (
     return res.status(400).json({ errors: result.error.errors });
   }
 
-  const course = await prisma.course.create({ data: result.data });
-  res.status(201).json({ data: course });
+  const course = await prisma.course.create({
+    data: { ...result.data, discountEndDate: toPrismaDiscountEndDate(result.data.discountEndDate) },
+  });
+  res.status(201).json({ data: withCurrentPrice(course) });
 });
 
 router.put('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
@@ -53,8 +65,11 @@ router.put('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async
   }
 
   try {
-    const course = await prisma.course.update({ where: { id: req.params.id }, data: result.data });
-    res.json({ data: course });
+    const course = await prisma.course.update({
+      where: { id: req.params.id },
+      data: { ...result.data, discountEndDate: toPrismaDiscountEndDate(result.data.discountEndDate) },
+    });
+    res.json({ data: withCurrentPrice(course) });
   } catch (err: any) {
     if (err.code === 'P2025') {
       return res.status(404).json({ message: 'Course not found.' });

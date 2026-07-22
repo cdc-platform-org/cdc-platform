@@ -24,14 +24,30 @@ const EMAIL_VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 // utils/env.ts) — checked on every register/login/Google sign-in so it takes
 // effect immediately whichever path the account first appears through, and
 // keeps re-asserting it (idempotent) in case admin rights were ever revoked
-// by mistake. No-op (returns the user unchanged) if the email isn't listed
-// or the account is already SUPER_ADMIN.
+// by mistake. Also auto-verifies their email — SUPER_ADMIN_EMAILS is an
+// explicit allow-list the operator controls, so there's no one else's inbox
+// this could leak access to; the point of email verification (proving you
+// own the address) is moot for an address that's already hardcoded as
+// trusted. No-op (returns the user unchanged) if the email isn't listed or
+// the account already has everything applied.
 async function maybePromoteSuperAdmin(user: User): Promise<User> {
   if (!SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase())) return user;
-  if (user.adminRole === 'SUPER_ADMIN' && user.role === 'SuperAdmin' && user.status === 'APPROVED') return user;
+  if (
+    user.adminRole === 'SUPER_ADMIN' &&
+    user.role === 'SuperAdmin' &&
+    user.status === 'APPROVED' &&
+    user.emailVerifiedAt
+  ) {
+    return user;
+  }
   return prisma.user.update({
     where: { id: user.id },
-    data: { adminRole: 'SUPER_ADMIN', role: 'SuperAdmin', status: 'APPROVED' },
+    data: {
+      adminRole: 'SUPER_ADMIN',
+      role: 'SuperAdmin',
+      status: 'APPROVED',
+      emailVerifiedAt: user.emailVerifiedAt ?? new Date(),
+    },
   });
 }
 

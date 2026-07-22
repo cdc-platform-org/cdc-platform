@@ -24,7 +24,7 @@ interface CourseSeed {
   title: string;
   description: string;
   category: string;
-  price: number; // minor units (tetri) — matches GigApplication.bidAmount/Gig.budgetAmount convention
+  originalPrice: number; // minor units (tetri) — matches GigApplication.bidAmount/Gig.budgetAmount convention
   mentorName: string;
   mentorTitle: string;
   sections: SectionSeed[];
@@ -36,7 +36,7 @@ const COURSES: CourseSeed[] = [
     description:
       'რეალური ვებ პროექტების შექმნა, კოდის გენერირება ხელოვნური ინტელექტის დახმარებით და მონაცემთა ბაზების ინტეგრაცია. კურსი მოიცავს HTML/CSS/JavaScript საფუძვლებს, თანამედროვე React ეკოსისტემას და AI კოდის ასისტენტების პრაქტიკულ გამოყენებას.',
     category: 'პროგრამირება',
-    price: 89900, // 899 GEL — production launch price
+    originalPrice: 89900, // 899 GEL — production launch price
     mentorName: 'იმედო მარტიკოვი',
     mentorTitle: 'კურსის ლექტორი & AI ინჟინერი',
     sections: [
@@ -78,7 +78,7 @@ const COURSES: CourseSeed[] = [
     description:
       'ბიზნეს გვერდების ოპტიმიზაცია, Google SEO, სარეკლამო კამპანიების მართვა და AI კონტენტის გენერაცია. კურსი მიმართულია ადგილობრივი ბიზნესებისა და პირადი ბრენდის ციფრული ზრდისკენ.',
     category: 'მარკეტინგი',
-    price: 69900, // 699 GEL — production launch price
+    originalPrice: 69900, // 699 GEL — production launch price
     mentorName: 'მარიკა გაგუა',
     mentorTitle: 'კურსის ლექტორი & SMM სტრატეგი',
     sections: [
@@ -111,7 +111,7 @@ const COURSES: CourseSeed[] = [
     description:
       'თანამედროვე ინტერფეისების დიზაინი, პროტოტიპირება და ხელოვნური ინტელექტის გენერაციული მოდელები. კურსი გაძღვება ნულიდან პირველი პორტფოლიო პროექტის დასრულებამდე.',
     category: 'დიზაინი',
-    price: 49900, // 499 GEL — production launch price
+    originalPrice: 49900, // 499 GEL — production launch price
     mentorName: 'ია თავდიშვილი',
     mentorTitle: 'კურსის მენტორი & დირექტორი',
     sections: [
@@ -150,7 +150,7 @@ async function main() {
           data: {
             description: courseSeed.description,
             category: courseSeed.category,
-            price: courseSeed.price,
+            originalPrice: courseSeed.originalPrice,
             mentorName: courseSeed.mentorName,
             mentorTitle: courseSeed.mentorTitle,
             published: true,
@@ -161,7 +161,7 @@ async function main() {
             title: courseSeed.title,
             description: courseSeed.description,
             category: courseSeed.category,
-            price: courseSeed.price,
+            originalPrice: courseSeed.originalPrice,
             mentorName: courseSeed.mentorName,
             mentorTitle: courseSeed.mentorTitle,
             published: true,

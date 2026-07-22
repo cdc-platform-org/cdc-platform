@@ -7,21 +7,49 @@ export const lessonSchema = z.object({
   resources: z.array(z.string().url()).optional()
 });
 
-export const courseCreateSchema = z.object({
-  title: z.string().min(3).max(200),
-  description: z.string().min(20),
-  category: z.string().min(2).max(100),
-  lessons: z.array(lessonSchema).min(1),
-  price: z.number().int().min(0),
-  published: z.boolean().optional().default(false),
-  mentorName: z.string().trim().max(200).optional(),
-  mentorTitle: z.string().trim().max(200).optional(),
-  thumbnailUrl: z.string().trim().max(2000).optional(),
-});
+const coursePricingFields = {
+  originalPrice: z.number().int().min(0),
+  isOnSale: z.boolean().optional().default(false),
+  discountPercent: z.number().int().min(1).max(90).optional().nullable(),
+  // Accepts an ISO string from the admin form's <input type="datetime-local">.
+  discountEndDate: z.string().datetime().optional().nullable().or(z.literal('')),
+};
 
-export const courseUpdateSchema = courseCreateSchema.partial().extend({
-  published: z.boolean().optional()
-});
+export const courseCreateSchema = z
+  .object({
+    title: z.string().min(3).max(200),
+    description: z.string().min(20),
+    category: z.string().min(2).max(100),
+    lessons: z.array(lessonSchema).min(1),
+    published: z.boolean().optional().default(false),
+    mentorName: z.string().trim().max(200).optional(),
+    mentorTitle: z.string().trim().max(200).optional(),
+    thumbnailUrl: z.string().trim().max(2000).optional(),
+    ...coursePricingFields,
+  })
+  .refine((data) => !data.isOnSale || !!data.discountPercent, {
+    message: 'discountPercent is required when isOnSale is true.',
+    path: ['discountPercent'],
+  });
+
+export const courseUpdateSchema = z
+  .object({
+    title: z.string().min(3).max(200).optional(),
+    description: z.string().min(20).optional(),
+    category: z.string().min(2).max(100).optional(),
+    lessons: z.array(lessonSchema).min(1).optional(),
+    published: z.boolean().optional(),
+    mentorName: z.string().trim().max(200).optional(),
+    mentorTitle: z.string().trim().max(200).optional(),
+    thumbnailUrl: z.string().trim().max(2000).optional(),
+    ...coursePricingFields,
+    originalPrice: coursePricingFields.originalPrice.optional(),
+    isOnSale: coursePricingFields.isOnSale.optional(),
+  })
+  .refine((data) => !data.isOnSale || !!data.discountPercent, {
+    message: 'discountPercent is required when isOnSale is true.',
+    path: ['discountPercent'],
+  });
 
 // --- LMS curriculum (relational) ---
 

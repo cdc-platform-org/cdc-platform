@@ -17,16 +17,29 @@ import {
   uploadLessonVideo,
 } from '../../src/services/courseService';
 
+const DISCOUNT_PRESETS = [10, 20, 30, 40, 50, 60];
+
 const emptyForm = {
   title: '',
   description: '',
   category: '',
-  price: 0,
+  originalPrice: 0,
   published: false,
   mentorName: '',
   mentorTitle: '',
   thumbnailUrl: '',
+  isOnSale: false,
+  discountPercent: 20,
+  discountPercentCustom: '',
+  useCustomDiscount: false,
+  // <input type="datetime-local"> value, e.g. "2026-08-01T14:30" — converted
+  // to a full ISO string on submit.
+  discountEndDate: '',
 };
+
+function formatGel(minorUnits: number): string {
+  return `${(minorUnits / 100).toFixed(2)} ₾`;
+}
 
 const inputClass =
   'w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent';
@@ -46,20 +59,31 @@ function CourseForm({
 
   useEffect(() => {
     if (editingCourse) {
+      const presetMatch = editingCourse.discountPercent != null && DISCOUNT_PRESETS.includes(editingCourse.discountPercent);
       setForm({
         title: editingCourse.title,
         description: editingCourse.description,
         category: editingCourse.category,
-        price: editingCourse.price,
+        originalPrice: editingCourse.originalPrice,
         published: editingCourse.published,
         mentorName: editingCourse.mentorName ?? '',
         mentorTitle: editingCourse.mentorTitle ?? '',
         thumbnailUrl: editingCourse.thumbnailUrl ?? '',
+        isOnSale: editingCourse.isOnSale,
+        discountPercent: presetMatch ? editingCourse.discountPercent! : DISCOUNT_PRESETS[1],
+        discountPercentCustom: !presetMatch && editingCourse.discountPercent != null ? String(editingCourse.discountPercent) : '',
+        useCustomDiscount: !presetMatch && editingCourse.discountPercent != null,
+        discountEndDate: editingCourse.discountEndDate ? editingCourse.discountEndDate.slice(0, 16) : '',
       });
     } else {
       setForm(emptyForm);
     }
   }, [editingCourse]);
+
+  const effectiveDiscountPercent = form.useCustomDiscount ? Number(form.discountPercentCustom) || 0 : form.discountPercent;
+  const previewPrice = form.isOnSale && effectiveDiscountPercent > 0
+    ? Math.round(form.originalPrice * (1 - effectiveDiscountPercent / 100))
+    : form.originalPrice;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -67,6 +91,7 @@ function CourseForm({
     if (form.title.trim().length < 3) return setError('Title is too short.');
     if (form.description.trim().length < 20) return setError('Description is too short.');
     if (!form.category.trim()) return setError('Category is required.');
+    if (form.isOnSale && effectiveDiscountPercent <= 0) return setError('Enter a valid discount percentage.');
 
     setSubmitting(true);
     try {
@@ -74,11 +99,14 @@ function CourseForm({
         title: form.title.trim(),
         description: form.description.trim(),
         category: form.category.trim(),
-        price: Number(form.price) || 0,
+        originalPrice: Number(form.originalPrice) || 0,
         published: form.published,
         mentorName: form.mentorName.trim() || undefined,
         mentorTitle: form.mentorTitle.trim() || undefined,
         thumbnailUrl: form.thumbnailUrl.trim() || undefined,
+        isOnSale: form.isOnSale,
+        discountPercent: form.isOnSale ? effectiveDiscountPercent : null,
+        discountEndDate: form.isOnSale && form.discountEndDate ? new Date(form.discountEndDate).toISOString() : null,
         // Legacy field still required by the create schema — the real
         // curriculum lives in sections/lessons, managed below once the
         // course exists.
@@ -113,14 +141,15 @@ function CourseForm({
       </div>
       <div className="grid md:grid-cols-3 gap-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Price (minor units)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Original Price (minor units)</label>
           <input
             type="number"
             min={0}
-            value={form.price}
-            onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
+            value={form.originalPrice}
+            onChange={(e) => setForm({ ...form, originalPrice: Number(e.target.value) })}
             className={inputClass}
           />
+          <p className="text-xs text-gray-400 mt-1">{formatGel(form.originalPrice)}</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Mentor Name</label>
@@ -135,6 +164,73 @@ function CourseForm({
         <label className="block text-sm font-medium text-gray-700 mb-1.5">Thumbnail URL</label>
         <input value={form.thumbnailUrl} onChange={(e) => setForm({ ...form, thumbnailUrl: e.target.value })} className={inputClass} placeholder="https://..." />
       </div>
+
+      <div className="rounded-xl border border-gray-200 p-4">
+        <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={form.isOnSale}
+            onChange={(e) => setForm({ ...form, isOnSale: e.target.checked })}
+            className="w-4 h-4 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
+          />
+          🏷️ Discount / Sale
+        </label>
+
+        {form.isOnSale && (
+          <div className="mt-4 space-y-4">
+            <div className="grid md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Discount</label>
+                <select
+                  value={form.useCustomDiscount ? 'custom' : String(form.discountPercent)}
+                  onChange={(e) => {
+                    if (e.target.value === 'custom') {
+                      setForm({ ...form, useCustomDiscount: true });
+                    } else {
+                      setForm({ ...form, useCustomDiscount: false, discountPercent: Number(e.target.value) });
+                    }
+                  }}
+                  className={inputClass}
+                >
+                  {DISCOUNT_PRESETS.map((p) => (
+                    <option key={p} value={p}>
+                      {p}%
+                    </option>
+                  ))}
+                  <option value="custom">Custom…</option>
+                </select>
+                {form.useCustomDiscount && (
+                  <input
+                    type="number"
+                    min={1}
+                    max={90}
+                    placeholder="e.g. 35"
+                    value={form.discountPercentCustom}
+                    onChange={(e) => setForm({ ...form, discountPercentCustom: e.target.value })}
+                    className={`${inputClass} mt-2`}
+                  />
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Sale Ends (optional)</label>
+                <input
+                  type="datetime-local"
+                  value={form.discountEndDate}
+                  onChange={(e) => setForm({ ...form, discountEndDate: e.target.value })}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-rose-50 border border-rose-200 px-4 py-3 text-sm">
+              <span className="text-gray-500 line-through mr-2">{formatGel(form.originalPrice)}</span>
+              <span className="font-black text-rose-600">{formatGel(previewPrice)}</span>
+              <span className="text-rose-500 font-bold ml-2">-{effectiveDiscountPercent}%</span>
+            </div>
+          </div>
+        )}
+      </div>
+
       <label className="flex items-center gap-2 text-sm text-gray-600">
         <input
           type="checkbox"

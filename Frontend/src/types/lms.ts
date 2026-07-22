@@ -3,7 +3,16 @@ export interface Course {
   title: string;
   description: string;
   category: string;
-  price: number;
+  // originalPrice is the sticker price; currentPrice/saleActive are computed
+  // server-side (see Backend's services/coursePricing.ts) — always use
+  // currentPrice for anything charge-related, originalPrice only for the
+  // strikethrough display.
+  originalPrice: number;
+  discountPercent: number | null;
+  discountEndDate: string | null;
+  isOnSale: boolean;
+  currentPrice: number;
+  saleActive: boolean;
   published: boolean;
   mentorName: string | null;
   mentorTitle: string | null;
@@ -19,7 +28,11 @@ export interface CoursePayload {
   // Legacy flat lessons blob — kept required by the backend's create schema,
   // but the LMS player reads the relational sections/lessons below instead.
   lessons: { title: string; content: string; durationMinutes: number; resources?: string[] }[];
-  price: number;
+  originalPrice: number;
+  isOnSale?: boolean;
+  discountPercent?: number | null;
+  // ISO datetime string, or null to clear — see Backend's toPrismaDiscountEndDate().
+  discountEndDate?: string | null;
   published?: boolean;
   mentorName?: string;
   mentorTitle?: string;
