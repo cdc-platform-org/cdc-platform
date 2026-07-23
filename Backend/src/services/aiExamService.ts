@@ -65,7 +65,11 @@ Generate exactly ${params.questionCount} multiple-choice questions that test rea
 {"questions": [{"topic": string, "question": string, "options": {"A": string, "B": string, "C": string, "D": string}, "correctAnswer": "A"|"B"|"C"|"D", "explanation": string}]}`;
 
   const model = client.getGenerativeModel({
-    model: 'gemini-2.5-pro',
+    // "gemini-2.5-pro" / "gemini-pro-latest" both return a hard 0 free-tier
+    // quota on this account (confirmed via direct API probes) — only the
+    // Flash family has real free-tier headroom, so that's what's wired up
+    // until the Google Cloud project has billing enabled for Pro models.
+    model: 'gemini-flash-latest',
     generationConfig: { responseMimeType: 'application/json', temperature: 0.7 },
   });
 

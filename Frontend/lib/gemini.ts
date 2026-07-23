@@ -41,7 +41,11 @@ export async function askCdcAssistant(message: string, lang: 'GEO' | 'ENG'): Pro
   if (!client) throw new GeminiNotConfiguredError();
 
   const model = client.getGenerativeModel({
-    model: 'gemini-2.5-pro',
+    // "gemini-2.5-pro" / "gemini-pro-latest" both return a hard 0 free-tier
+    // quota on this account (confirmed via direct API probes) — only the
+    // Flash family has real free-tier headroom, so that's what's wired up
+    // until the Google Cloud project has billing enabled for Pro models.
+    model: 'gemini-flash-latest',
     systemInstruction: `${SYSTEM_PROMPT}\n\nAlways respond in the language requested by the user. Current language: ${lang === 'GEO' ? 'Georgian' : 'English'}.`,
   });
 
