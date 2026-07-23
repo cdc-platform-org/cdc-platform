@@ -50,6 +50,26 @@ router.get('/:id', async (req, res) => {
   res.json({ data: withCurrentPrice(course) });
 });
 
+// Public curriculum outline (section/lesson titles + durations only — no
+// video embed URLs) for the course details page's syllabus preview, so a
+// visitor can see what they'd be buying before enrolling. Deliberately
+// separate from GET /:id/curriculum (authenticated, requires enrollment,
+// includes playable video embeds).
+router.get('/:id/syllabus', async (req, res) => {
+  const sections = await prisma.courseSection.findMany({
+    where: { courseId: req.params.id },
+    orderBy: { order: 'asc' },
+    include: { lessons: { orderBy: { order: 'asc' }, select: { id: true, title: true, durationSeconds: true } } },
+  });
+  res.json({
+    data: sections.map((section) => ({
+      id: section.id,
+      title: section.title,
+      lessons: section.lessons,
+    })),
+  });
+});
+
 router.post('/', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
   const result = courseCreateSchema.safeParse(req.body);
   if (!result.success) {

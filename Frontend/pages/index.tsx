@@ -5,7 +5,12 @@ import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import { useRouter } from 'next/router';
 import { useAuthModal } from '../src/context/AuthModalContext';
+import { useAuth } from '../src/context/AuthContext';
 import SiteFooter from '../src/components/layout/SiteFooter';
+import { Course } from '../src/types/lms';
+import { getCourses } from '../src/services/courseService';
+import { checkoutCourse } from '../src/services/paymentService';
+import { formatPrice, getSaleCountdownLabel } from '../src/utils/coursePricing';
 
 // Compact overrides so the assistant's Markdown (bold/headers/bullets) fits
 // a narrow chat bubble instead of using default prose spacing/sizing.
@@ -25,8 +30,13 @@ const chatMarkdownComponents = {
 export default function Home() {
   const router = useRouter();
   const { openAuthModal } = useAuthModal();
+  const { isAuthenticated } = useAuth();
   const [darkMode, setDarkMode] = useState<boolean>(false);
-  const [cartAdded, setCartAdded] = useState<number | null>(null);
+
+  // 📚 რეალური კურსები (ბექენდიდან) — homepage-ის კურსების სექციისთვის
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(true);
+  const [enrollingId, setEnrollingId] = useState<string | null>(null);
 
   // 🌐 ენის გადართვის სთეითი
   const [lang, setLang] = useState<'GEO' | 'ENG'>('GEO');
@@ -99,9 +109,31 @@ export default function Home() {
     }
   };
 
-  const handleAddToCart = (index: number) => {
-    setCartAdded(index);
-    setTimeout(() => setCartAdded(null), 2000);
+  useEffect(() => {
+    getCourses()
+      .then((data) => setCourses(data.filter((c) => c.published)))
+      .finally(() => setCoursesLoading(false));
+  }, []);
+
+  const startCheckout = async (course: Course) => {
+    setEnrollingId(course.id);
+    try {
+      const { redirectUrl } = await checkoutCourse(course.id);
+      window.location.href = redirectUrl;
+    } catch {
+      setEnrollingId(null);
+    }
+  };
+
+  const handleEnroll = (course: Course) => {
+    if (!isAuthenticated) {
+      openAuthModal({
+        message: { ka: 'გთხოვთ გაიაროთ ავტორიზაცია კურსზე ჩასარიცხად', en: 'Please sign in to enroll in a course' },
+        onSuccess: () => startCheckout(course),
+      });
+      return;
+    }
+    startCheckout(course);
   };
 
   // 🌐 ჭკვიანი ავტომატური თარგმანის მექანიზმი
@@ -191,7 +223,14 @@ export default function Home() {
 
           {/* 🔍 SEARCH BAR */}
           <div className="relative flex-1 max-w-sm md:max-w-md hidden sm:block">
-            <div className="relative">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                setShowSuggestions(false);
+                if (searchQuery.trim()) router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+              }}
+              className="relative"
+            >
               <input
                 type="text"
                 value={searchQuery}
@@ -206,10 +245,42 @@ export default function Home() {
                   darkMode ? 'bg-[#161f30] border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
                 }`}
               />
-              <svg className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
+              <button
+                type="submit"
+                aria-label={translate('ძებნა', 'Search') as string}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 border-none bg-transparent cursor-pointer p-0"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </button>
+            </form>
+            {showSuggestions && searchQuery.length > 0 && (
+              <div className={`absolute top-full left-0 right-0 mt-2 rounded-xl border shadow-xl z-50 overflow-hidden ${darkMode ? 'bg-[#161f30] border-slate-700' : 'bg-white border-slate-200'}`}>
+                {suggestions.filter((s) => s.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 ? (
+                  <button
+                    type="button"
+                    onMouseDown={() => router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)}
+                    className={`w-full text-left px-4 py-3 text-sm border-none bg-transparent cursor-pointer ${darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-50'}`}
+                  >
+                    {translate(`ძებნა: "${searchQuery}"`, `Search for: "${searchQuery}"`)}
+                  </button>
+                ) : (
+                  suggestions
+                    .filter((s) => s.toLowerCase().includes(searchQuery.toLowerCase()))
+                    .map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onMouseDown={() => router.push(`/search?q=${encodeURIComponent(s)}`)}
+                        className={`w-full text-left px-4 py-2.5 text-sm border-none bg-transparent cursor-pointer ${darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-50'}`}
+                      >
+                        🔍 {s}
+                      </button>
+                    ))
+                )}
+              </div>
+            )}
           </div>
 
           <div className={`hidden lg:flex items-center space-x-8 text-base font-bold tracking-wide shrink-0 ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
@@ -369,62 +440,73 @@ export default function Home() {
       {/* 📚 COURSES CATALOG */}
       <section id="courses" className="max-w-7xl mx-auto py-28 px-6">
         <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{translate('ავტორიზებული სასწავლო პროგრამები', 'Authorized Programs')}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          
-          {/* კურსი 1 */}
-          <div className={`border rounded-3xl p-8 flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200/80'}`}>
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-400 bg-purple-500/10 border-purple-500/20">{translate('2 თვე', '2 Months')}</span>
-              <h3 className="text-lg font-black mt-5 mb-3">{safeText('Vibe Coding')} - {translate('ვებ-დეველოპმენტი AI-ით', `Web Development with ${safeText('AI')}`)}</h3>
-              <p className="text-xs md:text-sm text-slate-400 leading-relaxed font-medium mb-8">{translate('რეალური ვებ პროექტების შექმნა, კოდის გენერირება ხელოვნური ინტელექტის დახმარებით და მონაცემთა ბაზების ინტეგრაცია.', 'Creating real web projects, code generation using artificial intelligence.')}</p>
-              
-              <div className={`p-4 rounded-2xl border flex items-center space-x-4 ${darkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
-                <div className="w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center text-white text-sm font-black">IM</div>
-                <div>
-                  <h4 className="text-sm font-black text-slate-800 dark:text-slate-200">{translate('იმედო მარტიკოვი', 'Imedo Martikovi')}</h4>
-                  <p className="text-xs text-slate-400 font-bold">{translate(`კურსის ლექტორი & AI ინჟინერი`, `Course Lecturer & ${safeText('AI')} Engineer`)}</p>
-                </div>
-              </div>
-            </div>
-            <button type="button" onClick={() => handleAddToCart(0)} className="w-full text-center py-4 bg-slate-900 text-white rounded-xl font-black text-sm mt-8 cursor-pointer border-none shadow-md duration-150">{cartAdded === 0 ? translate('დაემატა! 🎉', 'Added! 🎉') : translate('კალათაში დამატება 🛒', 'Add to Cart 🛒')}</button>
-          </div>
+        {coursesLoading ? (
+          <p className="text-center text-slate-400 text-sm">{translate('იტვირთება…', 'Loading…')}</p>
+        ) : courses.length === 0 ? (
+          <p className="text-center text-slate-400 text-sm">{translate('კურსები ჯერ არ არის დამატებული.', 'No courses have been published yet.')}</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {courses.map((course) => {
+              const countdown = course.saleActive ? getSaleCountdownLabel(course.discountEndDate, lang === 'GEO' ? 'ka' : 'en') : null;
+              return (
+                <div
+                  key={course.id}
+                  className={`relative border rounded-3xl p-8 flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200/80'}`}
+                >
+                  {course.saleActive && (
+                    <span className="absolute -top-2.5 -right-2.5 text-xs font-black text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg shadow-rose-500/30">
+                      -{course.discountPercent}%
+                    </span>
+                  )}
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-400 bg-purple-500/10 border-purple-500/20">
+                      {course.category}
+                    </span>
+                    <Link href={`/courses/${course.id}`} className="block no-underline text-current">
+                      <h3 className="text-lg font-black mt-5 mb-3 hover:text-cyan-500 transition-colors">{course.title}</h3>
+                    </Link>
+                    <p className="text-xs md:text-sm text-slate-400 leading-relaxed font-medium mb-6 line-clamp-3">{course.description}</p>
 
-          {/* კურსი 2 */}
-          <div className={`border rounded-3xl p-8 flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200/80'}`}>
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-400 bg-purple-500/10 border-purple-500/20">{translate('2 თვე', '2 Months')}</span>
-              <h3 className="text-lg font-black mt-5 mb-3">{translate(<>{safeText('Social Media Marketing')} & {safeText('AI')}</>, <>{safeText('Social Media Marketing')} & {safeText('AI')}</>)}</h3>
-              <p className="text-xs md:text-sm text-slate-400 leading-relaxed font-medium mb-8">{translate('ბიზნეს გვერდების ოპტიმიზაცია, Google SEO, სარეკლამო კამპანიების მართვა და AI კონტენტის გენერაცია.', 'Business page optimization, Google SEO, ad campaign management.')}</p>
-              
-              <div className={`p-4 rounded-2xl border flex items-center space-x-4 ${darkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
-                <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white text-sm font-black">MG</div>
-                <div>
-                  <h4 className="text-sm font-black text-slate-800 dark:text-slate-200">{translate('მარიკა გაგუა', 'Marika Gagua')}</h4>
-                  <p className="text-xs text-slate-400 font-bold">{translate(`კურსის ლექტორი & SMM სტრატეგი`, `Course Lecturer & ${safeText('SMM')} Strategist`)}</p>
+                    {course.mentorName && (
+                      <div className={`p-4 rounded-2xl border flex items-center space-x-4 mb-6 ${darkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white text-sm font-black shrink-0">
+                          {course.mentorName.slice(0, 2)}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-black text-slate-800 dark:text-slate-200 truncate">{course.mentorName}</h4>
+                          {course.mentorTitle && <p className="text-xs text-slate-400 font-bold truncate">{course.mentorTitle}</p>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    {countdown && <p className="text-[11px] font-bold text-rose-400 mb-3">⏳ {countdown}</p>}
+                    <div className="flex items-baseline gap-2 mb-4">
+                      {course.saleActive && <s className="text-sm text-slate-500">{formatPrice(course.originalPrice)}</s>}
+                      <span className="text-xl font-black">{formatPrice(course.currentPrice)}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Link
+                        href={`/courses/${course.id}`}
+                        className={`flex-1 text-center py-3.5 rounded-xl font-black text-xs no-underline transition-colors ${darkMode ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-slate-100 text-slate-900 hover:bg-slate-200'}`}
+                      >
+                        {translate('ვრცლად', 'View Details')}
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleEnroll(course)}
+                        disabled={enrollingId === course.id}
+                        className="flex-1 text-center py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-black text-xs cursor-pointer border-none shadow-md duration-150 hover:shadow-lg disabled:opacity-60"
+                      >
+                        {enrollingId === course.id ? translate('იტვირთება…', 'Loading…') : translate('ჩარიცხვა →', 'Enroll →')}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-            <button type="button" onClick={() => handleAddToCart(1)} className="w-full text-center py-4 bg-slate-900 text-white rounded-xl font-black text-sm mt-8 cursor-pointer border-none shadow-md duration-150">{cartAdded === 1 ? translate('დაემატა! 🎉', 'Added! 🎉') : translate('კალათაში დამატება 🛒', 'Add to Cart 🛒')}</button>
+              );
+            })}
           </div>
-
-          {/* კურსი 3 */}
-          <div className={`border rounded-3xl p-8 flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200/80'}`}>
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-400 bg-purple-500/10 border-purple-500/20">{translate('1 თვე', '1 Month')}</span>
-              <h3 className="text-lg font-black mt-5 mb-3">{translate(<>{safeText('Figma')} გრაფიკული დიზაინი & {safeText('AI')}</>, <>Graphic Design with {safeText('Figma')} & {safeText('AI')}</>)}</h3>
-              <p className="text-xs md:text-sm text-slate-400 leading-relaxed font-medium mb-8">{translate('თანამედროვე ინტერფეისების დიზაინი, პროტოტიპირება და ხელოვნური ინტელექტის გენერაციული მოდელები.', 'Modern interface design, prototyping and generative AI models.')}</p>
-              
-              <div className={`p-4 rounded-2xl border flex items-center space-x-4 ${darkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
-                <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm font-black">IT</div>
-                <div>
-                  <h4 className="text-sm font-black text-slate-800 dark:text-slate-200">{translate('ია თავდიშვილი', 'Ia Tavdishvili')}</h4>
-                  <p className="text-xs text-slate-400 font-bold">{translate('კურსის მენტორი & დირექტორი', 'Course Mentor & Director')}</p>
-                </div>
-              </div>
-            </div>
-            <button type="button" onClick={() => handleAddToCart(2)} className="w-full text-center py-4 bg-slate-900 text-white rounded-xl font-black text-sm mt-8 cursor-pointer border-none shadow-md duration-150">{cartAdded === 2 ? translate('დაემატა! 🎉', 'Added! 🎉') : translate('კალათაში დამატება 🛒', 'Add to Cart 🛒')}</button>
-          </div>
-        </div>
+        )}
       </section>
 
       {/* 📰 NEWS & BLOG SECTION */}

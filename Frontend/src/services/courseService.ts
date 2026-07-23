@@ -15,6 +15,7 @@ import {
   ExamStartResult,
   ExamSubmitResult,
   ExamAnswerLetter,
+  SyllabusSection,
 } from '../types/lms';
 
 // --- Course CRUD (admin) / listing (public) ---
@@ -41,6 +42,11 @@ export async function updateCourse(courseId: string, payload: Partial<CoursePayl
 
 export async function deleteCourse(courseId: string): Promise<void> {
   await apiClient.delete(`/courses/${courseId}`);
+}
+
+export async function getSyllabus(courseId: string): Promise<SyllabusSection[]> {
+  const response = await apiClient.get<{ data: SyllabusSection[] }>(`/courses/${courseId}/syllabus`);
+  return response.data.data;
 }
 
 // --- Student curriculum / progress / certificate (learn page) ---

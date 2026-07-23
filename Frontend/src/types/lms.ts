@@ -59,6 +59,20 @@ export interface LmsSection {
   lessons: LmsLesson[];
 }
 
+// Public curriculum outline for the course details page — no auth/enrollment
+// required, no video embed URLs (see courseService.getSyllabus()).
+export interface SyllabusLesson {
+  id: string;
+  title: string;
+  durationSeconds: number;
+}
+
+export interface SyllabusSection {
+  id: string;
+  title: string;
+  lessons: SyllabusLesson[];
+}
+
 export interface CourseProgressSummary {
   totalLessons: number;
   completedLessons: number;

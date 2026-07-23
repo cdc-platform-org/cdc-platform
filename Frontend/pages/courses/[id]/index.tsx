@@ -4,8 +4,8 @@ import Link from 'next/link';
 import Head from 'next/head';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useAuthModal } from '../../../src/context/AuthModalContext';
-import { Course } from '../../../src/types/lms';
-import { getCourse, getProgressSummary } from '../../../src/services/courseService';
+import { Course, SyllabusSection } from '../../../src/types/lms';
+import { getCourse, getProgressSummary, getSyllabus } from '../../../src/services/courseService';
 import { checkoutCourse } from '../../../src/services/paymentService';
 import { formatPrice, getSaleCountdownLabel } from '../../../src/utils/coursePricing';
 
@@ -18,6 +18,10 @@ const dict = {
     continueLearning: 'სწავლის გაგრძელება →',
     backToCourses: '← ყველა კურსი',
     mentor: 'ლექტორი',
+    duration: 'ხანგრძლივობა',
+    lessons: 'გაკვეთილი',
+    syllabus: 'სილაბუსი',
+    noSyllabus: 'სილაბუსი მალე დაემატება.',
     signInToEnroll: { ka: 'გთხოვთ გაიაროთ ავტორიზაცია კურსზე ჩასარიცხად', en: 'Please sign in to enroll in a course' },
   },
   en: {
@@ -28,9 +32,28 @@ const dict = {
     continueLearning: 'Continue Learning →',
     backToCourses: '← All Courses',
     mentor: 'Instructor',
+    duration: 'Duration',
+    lessons: 'lessons',
+    syllabus: 'Syllabus',
+    noSyllabus: 'Syllabus coming soon.',
     signInToEnroll: { ka: 'გთხოვთ გაიაროთ ავტორიზაცია კურსზე ჩასარიცხად', en: 'Please sign in to enroll in a course' },
   },
 };
+
+function formatTotalDuration(totalSeconds: number, lang: 'ka' | 'en'): string {
+  const totalMinutes = Math.round(totalSeconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return lang === 'ka' ? `${minutes} წუთი` : `${minutes} min`;
+  if (minutes === 0) return lang === 'ka' ? `${hours} სთ` : `${hours}h`;
+  return lang === 'ka' ? `${hours} სთ ${minutes} წთ` : `${hours}h ${minutes}m`;
+}
+
+function formatLessonDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
 
 export default function CourseDetailPage() {
   const router = useRouter();
@@ -41,6 +64,7 @@ export default function CourseDetailPage() {
   const { openAuthModal } = useAuthModal();
 
   const [course, setCourse] = useState<Course | null>(null);
+  const [syllabus, setSyllabus] = useState<SyllabusSection[]>([]);
   const [enrolled, setEnrolled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -52,8 +76,9 @@ export default function CourseDetailPage() {
     setLoading(true);
     setNotFound(false);
     try {
-      const courseData = await getCourse(courseId);
+      const [courseData, syllabusData] = await Promise.all([getCourse(courseId), getSyllabus(courseId).catch(() => [])]);
       setCourse(courseData);
+      setSyllabus(syllabusData);
       if (isAuthenticated) {
         try {
           await getProgressSummary(courseId);
@@ -98,6 +123,10 @@ export default function CourseDetailPage() {
     startCheckout();
   };
 
+  const allLessons = syllabus.flatMap((s) => s.lessons);
+  const totalLessonCount = allLessons.length;
+  const totalDurationSeconds = allLessons.reduce((sum, l) => sum + l.durationSeconds, 0);
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400 text-sm">{t.loading}</div>;
   }
@@ -134,18 +163,30 @@ export default function CourseDetailPage() {
         <h1 className="text-3xl md:text-4xl font-black mt-4 mb-4">{course.title}</h1>
         <p className="text-slate-300 leading-relaxed mb-8">{course.description}</p>
 
-        {course.mentorName && (
-          <div className="flex items-center gap-4 mb-8 p-4 rounded-xl bg-slate-900/60 border border-slate-800">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white text-sm font-black shrink-0">
-              {course.mentorName.slice(0, 2)}
+        <div className="flex flex-wrap gap-4 mb-8">
+          {course.mentorName && (
+            <div className="flex-1 min-w-[220px] flex items-center gap-4 p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white text-sm font-black shrink-0">
+                {course.mentorName.slice(0, 2)}
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-widest text-slate-500 font-bold">{t.mentor}</p>
+                <p className="text-sm font-bold text-white">{course.mentorName}</p>
+                {course.mentorTitle && <p className="text-xs text-slate-400">{course.mentorTitle}</p>}
+              </div>
             </div>
-            <div>
-              <p className="text-[11px] uppercase tracking-widest text-slate-500 font-bold">{t.mentor}</p>
-              <p className="text-sm font-bold text-white">{course.mentorName}</p>
-              {course.mentorTitle && <p className="text-xs text-slate-400">{course.mentorTitle}</p>}
+          )}
+          {totalLessonCount > 0 && (
+            <div className="flex-1 min-w-[220px] flex items-center gap-4 p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+              <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-cyan-300 text-lg shrink-0">⏱️</div>
+              <div>
+                <p className="text-[11px] uppercase tracking-widest text-slate-500 font-bold">{t.duration}</p>
+                <p className="text-sm font-bold text-white">{formatTotalDuration(totalDurationSeconds, lang)}</p>
+                <p className="text-xs text-slate-400">{totalLessonCount} {t.lessons}</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {error && <div className="mb-6 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-300">{error}</div>}
 
@@ -173,6 +214,34 @@ export default function CourseDetailPage() {
             >
               {processing ? t.enrolling : t.enroll}
             </button>
+          )}
+        </div>
+
+        {/* Syllabus */}
+        <div className="mt-12">
+          <h2 className="text-xl font-black mb-5">{t.syllabus}</h2>
+          {syllabus.length === 0 ? (
+            <p className="text-sm text-slate-500">{t.noSyllabus}</p>
+          ) : (
+            <div className="space-y-3">
+              {syllabus.map((section, sIdx) => (
+                <div key={section.id} className="rounded-xl border border-slate-800 overflow-hidden">
+                  <div className="px-4 py-3 bg-slate-900/60 text-sm font-bold text-white">
+                    {sIdx + 1}. {section.title}
+                  </div>
+                  {section.lessons.length > 0 && (
+                    <div className="divide-y divide-slate-800/80">
+                      {section.lessons.map((lesson) => (
+                        <div key={lesson.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-xs text-slate-300">
+                          <span className="flex-1">{lesson.title}</span>
+                          <span className="text-slate-500 shrink-0">{formatLessonDuration(lesson.durationSeconds)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
