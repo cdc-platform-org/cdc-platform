@@ -44,13 +44,15 @@ export default function SiteFooter({ lang }: SiteFooterProps) {
   const t = STRINGS[lang];
   const year = new Date().getFullYear();
 
+  const noHoverFx = 'outline-none hover:outline-none focus:outline-none border-none hover:border-none hover:shadow-none hover:ring-0';
+
   return (
-    <footer className="border-t bg-slate-900 border-slate-800 text-slate-400 text-sm">
-      <div className="max-w-7xl mx-auto px-6 py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+    <footer className={`border-t bg-slate-900 border-slate-800 text-slate-400 text-sm ${noHoverFx}`}>
+      <div className={`max-w-7xl mx-auto px-6 py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 ${noHoverFx}`}>
         {/* Brand */}
-        <div>
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="bg-gradient-to-tr from-cyan-500 to-purple-600 text-white px-3 py-1.5 rounded-lg font-black text-sm tracking-wider">
+        <div className={noHoverFx}>
+          <div className={`flex items-center gap-2.5 mb-3 ${noHoverFx}`}>
+            <div className={`bg-gradient-to-tr from-cyan-500 to-purple-600 text-white px-3 py-1.5 rounded-lg font-black text-sm tracking-wider ${noHoverFx}`}>
               CDC
             </div>
           </div>
@@ -58,7 +60,7 @@ export default function SiteFooter({ lang }: SiteFooterProps) {
         </div>
 
         {/* Quick links */}
-        <div>
+        <div className={noHoverFx}>
           <h3 className="text-xs font-black uppercase tracking-widest text-slate-300 mb-4">{t.linksHeading}</h3>
           <ul className="space-y-2.5 text-xs">
             <li><Link href="/about" className="hover:text-cyan-400 transition-colors no-underline text-current">{t.about}</Link></li>
@@ -69,7 +71,7 @@ export default function SiteFooter({ lang }: SiteFooterProps) {
         </div>
 
         {/* Legal links */}
-        <div>
+        <div className={noHoverFx}>
           <h3 className="text-xs font-black uppercase tracking-widest text-slate-300 mb-4">{t.legalHeading}</h3>
           <ul className="space-y-2.5 text-xs">
             <li><Link href="/privacy" className="hover:text-cyan-400 transition-colors no-underline text-current">{t.privacy}</Link></li>
@@ -79,7 +81,7 @@ export default function SiteFooter({ lang }: SiteFooterProps) {
         </div>
 
         {/* Contact */}
-        <div>
+        <div className={noHoverFx}>
           <h3 className="text-xs font-black uppercase tracking-widest text-slate-300 mb-4">{t.contactHeading}</h3>
           <ul className="space-y-2.5 text-xs">
             <li>
@@ -99,8 +101,8 @@ export default function SiteFooter({ lang }: SiteFooterProps) {
       {/* Merchant / legal-entity compliance block — always bilingual regardless
           of the page's language toggle, since this is compliance identity
           information (Bank of Georgia merchant requirement), not UI copy. */}
-      <div className="border-t border-slate-800">
-        <div className="max-w-7xl mx-auto px-6 py-6 text-[11px] leading-relaxed text-slate-500 space-y-1">
+      <div className={`border-t border-slate-800 ${noHoverFx}`}>
+        <div className={`max-w-7xl mx-auto px-6 py-6 text-[11px] leading-relaxed text-slate-500 space-y-1 ${noHoverFx}`}>
           <p className="text-slate-400 font-semibold">
             {merchantInfo.orgNameKa} / {merchantInfo.orgNameEn}
           </p>
