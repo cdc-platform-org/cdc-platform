@@ -298,7 +298,7 @@ export default function Home() {
 
         <header className="relative z-20 w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 py-8 sm:py-12 lg:py-16">
           <div className="grid grid-cols-1 lg:grid-cols-12 items-center gap-10">
-            <div className="lg:col-span-7 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+            <div className="lg:col-span-7 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] outline-none hover:outline-none focus:outline-none border-none hover:border-none hover:shadow-none hover:ring-0">
               {/* Badge */}
               <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full text-xs font-black tracking-wider mb-4 sm:mb-7 border border-white/20 bg-white/10 backdrop-blur-md text-white">
                 <span className="relative flex h-2 w-2">
@@ -309,7 +309,7 @@ export default function Home() {
               </div>
 
               {/* Heading */}
-              <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-tight text-white mb-2 sm:mb-3">
+              <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-tight text-white mb-2 sm:mb-3 outline-none hover:outline-none focus:outline-none border-none hover:border-none hover:shadow-none hover:ring-0">
                 {translate(
                   <>გახდი მოთხოვნადი <span className="inline-block bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent leading-normal py-1">ციფრული ეპოქის</span> პროფესიონალი</>,
                   <>Become a High-Demand <span className="inline-block bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent leading-normal py-1">Digital-Era</span> Professional</>
