@@ -1,10 +1,8 @@
-trigger:
-  branches:
-    include:
-      - main
-  paths:
-    include:
-      - Backend/*
+# Disabled — Azure DevOps isn't set up yet (dockerRegistryServiceConnection,
+# azureSubscription, and webAppName below are still unfilled placeholders,
+# so any run would fail at the first Docker@2 task). Re-enable the branch
+# trigger below once those service connections + App Service exist.
+trigger: none
 
 pr: none
 
