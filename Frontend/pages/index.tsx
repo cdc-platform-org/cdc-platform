@@ -2,9 +2,25 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
 import { useRouter } from 'next/router';
 import { useAuthModal } from '../src/context/AuthModalContext';
 import SiteFooter from '../src/components/layout/SiteFooter';
+
+// Compact overrides so the assistant's Markdown (bold/headers/bullets) fits
+// a narrow chat bubble instead of using default prose spacing/sizing.
+const chatMarkdownComponents = {
+  p: (props: React.ComponentPropsWithoutRef<'p'>) => <p className="mb-1.5 last:mb-0" {...props} />,
+  strong: (props: React.ComponentPropsWithoutRef<'strong'>) => <strong className="font-bold" {...props} />,
+  ul: (props: React.ComponentPropsWithoutRef<'ul'>) => <ul className="list-disc pl-4 mb-1.5 space-y-0.5" {...props} />,
+  ol: (props: React.ComponentPropsWithoutRef<'ol'>) => <ol className="list-decimal pl-4 mb-1.5 space-y-0.5" {...props} />,
+  li: (props: React.ComponentPropsWithoutRef<'li'>) => <li {...props} />,
+  h1: (props: React.ComponentPropsWithoutRef<'h1'>) => <p className="font-black text-[13px] mb-1 mt-1.5" {...props} />,
+  h2: (props: React.ComponentPropsWithoutRef<'h2'>) => <p className="font-black text-[13px] mb-1 mt-1.5" {...props} />,
+  h3: (props: React.ComponentPropsWithoutRef<'h3'>) => <p className="font-bold text-xs mb-1 mt-1.5" {...props} />,
+  hr: () => <hr className="my-2 border-slate-200 dark:border-slate-700" />,
+  a: (props: React.ComponentPropsWithoutRef<'a'>) => <a className="underline text-cyan-600 dark:text-cyan-400" target="_blank" rel="noopener noreferrer" {...props} />,
+};
 
 export default function Home() {
   const router = useRouter();
@@ -474,7 +490,13 @@ export default function Home() {
             <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs bg-slate-50 dark:bg-[#0b0f17]">
               {chatMessages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`p-3 rounded-xl max-w-[85%] ${msg.sender === 'user' ? 'bg-cyan-500 text-white' : 'bg-white dark:bg-[#161f30] border border-slate-200 dark:border-slate-800'}`}>{msg.text}</div>
+                  <div className={`p-3 rounded-xl max-w-[85%] ${msg.sender === 'user' ? 'bg-cyan-500 text-white' : 'bg-white dark:bg-[#161f30] border border-slate-200 dark:border-slate-800'}`}>
+                    {msg.sender === 'bot' ? (
+                      <ReactMarkdown components={chatMarkdownComponents}>{msg.text}</ReactMarkdown>
+                    ) : (
+                      msg.text
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
