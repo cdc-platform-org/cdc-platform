@@ -13,6 +13,31 @@ export interface User {
   // admin team at all (most users).
   adminRole: AdminRole | null;
   createdAt: string;
+  // Legal identity fields (self-reported under /dashboard/settings) — used
+  // for certificates and payout paperwork instead of the display `name`
+  // when set. All optional.
+  legalFirstNameKa: string | null;
+  legalLastNameKa: string | null;
+  legalFirstNameEn: string | null;
+  legalLastNameEn: string | null;
+  nationalId: string | null;
+  phone: string | null;
+  payoutIban: string | null;
+}
+
+export interface UpdateProfilePayload {
+  legalFirstNameKa?: string | null;
+  legalLastNameKa?: string | null;
+  legalFirstNameEn?: string | null;
+  legalLastNameEn?: string | null;
+  nationalId?: string | null;
+  phone?: string | null;
+  payoutIban?: string | null;
+}
+
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
 }
 
 // --- Request payloads ---

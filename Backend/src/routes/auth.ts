@@ -13,6 +13,8 @@ import {
   googleAuthSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  updateProfileSchema,
+  changePasswordSchema,
 } from '../schemas/authSchemas';
 import { authenticate } from '../middleware/auth';
 import { JWT_SECRET, GOOGLE_CLIENT_ID, SUPER_ADMIN_EMAILS } from '../utils/env';
@@ -67,6 +69,13 @@ function toUserResponse(user: {
   isVerifiedGraduate: boolean;
   emailVerifiedAt: Date | null;
   adminRole: string | null;
+  legalFirstNameKa?: string | null;
+  legalLastNameKa?: string | null;
+  legalFirstNameEn?: string | null;
+  legalLastNameEn?: string | null;
+  nationalId?: string | null;
+  phone?: string | null;
+  payoutIban?: string | null;
 }) {
   return {
     id: user.id,
@@ -77,6 +86,13 @@ function toUserResponse(user: {
     isVerifiedGraduate: user.isVerifiedGraduate,
     emailVerifiedAt: user.emailVerifiedAt,
     adminRole: user.adminRole,
+    legalFirstNameKa: user.legalFirstNameKa ?? null,
+    legalLastNameKa: user.legalLastNameKa ?? null,
+    legalFirstNameEn: user.legalFirstNameEn ?? null,
+    legalLastNameEn: user.legalLastNameEn ?? null,
+    nationalId: user.nationalId ?? null,
+    phone: user.phone ?? null,
+    payoutIban: user.payoutIban ?? null,
   };
 }
 
@@ -350,6 +366,47 @@ router.post('/google', async (req, res) => {
   user = await maybePromoteSuperAdmin(user);
   const token = signToken(user);
   res.json({ token, user: toUserResponse(user) });
+});
+
+// ============================================================
+// PROFILE — legal identity fields (dashboard/settings), separate from the
+// admin-facing user management in routes/admin.ts.
+// ============================================================
+
+router.get('/me', authenticate, async (req, res) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+  if (!user) return res.status(404).json({ message: 'Account no longer exists.' });
+  res.json({ user: toUserResponse(user) });
+});
+
+router.put('/me', authenticate, async (req, res) => {
+  const result = updateProfileSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const { payoutIban, ...rest } = result.data;
+  const user = await prisma.user.update({
+    where: { id: req.user!.id },
+    data: { ...rest, payoutIban: payoutIban || null },
+  });
+  res.json({ user: toUserResponse(user) });
+});
+
+router.put('/me/password', authenticate, async (req, res) => {
+  const result = changePasswordSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+  if (!user) return res.status(404).json({ message: 'Account no longer exists.' });
+  if (user.googleId) {
+    return res.status(400).json({ message: 'This account signs in via Google and has no password to change.' });
+  }
+  const currentMatches = await bcrypt.compare(result.data.currentPassword, user.password);
+  if (!currentMatches) {
+    return res.status(400).json({ message: 'Current password is incorrect.' });
+  }
+  const hashed = await bcrypt.hash(result.data.newPassword, 12);
+  await prisma.user.update({ where: { id: user.id }, data: { password: hashed } });
+  res.json({ message: 'Password updated successfully.' });
 });
 
 export default router;

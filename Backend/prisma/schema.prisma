@@ -189,6 +189,21 @@ model User {
   isBanned        Boolean    @default(false)
   bannedAt        DateTime?
   banReason       String?
+  // Legal identity fields — self-reported by the student under
+  // /dashboard/settings. Deliberately separate from the display `name`
+  // (which can be anything): certificates and payout paperwork use these
+  // when set, since they need to match the person's actual ID/bank records.
+  // All optional — falls back to `name` for both languages until filled in.
+  legalFirstNameKa String?
+  legalLastNameKa  String?
+  legalFirstNameEn String?
+  legalLastNameEn  String?
+  nationalId       String?
+  phone            String?
+  // Default IBAN pre-filled into new payout requests — the request itself
+  // still stores its own snapshot, so changing this later doesn't alter
+  // past requests.
+  payoutIban       String?
   createdAt       DateTime   @default(now())
 
   postedGigs             Gig[]                @relation("PostedGigs")

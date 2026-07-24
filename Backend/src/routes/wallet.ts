@@ -35,8 +35,12 @@ router.post('/payout-requests', authenticate, requireRole('Student'), async (req
   const result = createPayoutRequestSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
-  const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { earningsBalance: true } });
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { earningsBalance: true, payoutIban: true } });
   if (!user) return res.status(404).json({ message: 'User not found.' });
+  const iban = result.data.iban || user.payoutIban;
+  if (!iban) {
+    return res.status(400).json({ message: 'Add an IBAN in your account settings, or provide one with this request.' });
+  }
   if (result.data.amount > user.earningsBalance) {
     return res.status(400).json({ message: 'Requested amount exceeds your available balance.' });
   }
@@ -49,7 +53,7 @@ router.post('/payout-requests', authenticate, requireRole('Student'), async (req
   }
 
   const request = await prisma.payoutRequest.create({
-    data: { userId: req.user!.id, amount: result.data.amount, iban: result.data.iban },
+    data: { userId: req.user!.id, amount: result.data.amount, iban },
   });
   res.status(201).json({ data: request });
 });

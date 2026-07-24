@@ -1,5 +1,5 @@
 import apiClient from './apiClient';
-import { Gig, GigApplication, MyGig } from '../types/community';
+import { Gig, GigApplication, MyGig, AssignedGig } from '../types/community';
 
 export interface GigFilters {
   skills?: string[];
@@ -20,6 +20,16 @@ export async function getGigById(id: string): Promise<Gig> {
 // Client Portal — gigs the caller posted, with escrow/invoice info attached.
 export async function getMyGigs(): Promise<MyGig[]> {
   const response = await apiClient.get<MyGig[]>('/gigs/mine');
+  return response.data;
+}
+
+export async function getAssignedGigs(): Promise<AssignedGig[]> {
+  const response = await apiClient.get<AssignedGig[]>('/gigs/assigned-to-me');
+  return response.data;
+}
+
+export async function requestMentorHelp(gigId: string): Promise<AssignedGig> {
+  const response = await apiClient.post<AssignedGig>(`/gigs/${gigId}/request-mentor-help`);
   return response.data;
 }
 

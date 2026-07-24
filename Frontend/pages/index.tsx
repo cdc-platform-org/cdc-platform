@@ -449,7 +449,7 @@ export default function Home() {
                   'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&w=800&q=80';
               }}
               alt="HEKS/EPER Georgia"
-              className="w-full h-48 object-cover rounded-t-3xl shrink-0"
+              className="w-full h-64 sm:h-72 object-cover object-top rounded-t-3xl shrink-0"
             />
             <div className="p-8 md:p-10 flex-1 flex flex-col justify-center">
               <div className="flex items-center space-x-3 mb-6 text-sky-500">

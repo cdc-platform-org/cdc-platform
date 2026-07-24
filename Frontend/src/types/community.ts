@@ -111,6 +111,34 @@ export interface MyGig {
   transaction: MyGigTransaction | null;
 }
 
+interface GigParticipant {
+  id: string;
+  name: string;
+  role: 'Student' | 'Mentor' | 'SuperAdmin' | 'Client';
+  isVerifiedGraduate: boolean;
+}
+
+// Freelancer-side counterpart to MyGig — gigs the current user is assigned
+// to work on (GET /gigs/assigned-to-me), for the dashboard workspace.
+export interface AssignedGig {
+  id: string;
+  title: string;
+  description: string;
+  budgetType: GigBudgetType;
+  budgetAmount: number;
+  currency: string;
+  skillsRequired: string[];
+  deadline: string | null;
+  status: GigStatus;
+  postedById: string;
+  postedBy: GigParticipant;
+  mentorHelpRequestedAt: string | null;
+  isFirstOrder: boolean;
+  submittedAt: string | null;
+  createdAt: string;
+  transaction: MyGigTransaction | null;
+}
+
 export interface GigApplication {
   id: string;
   gigId: string;

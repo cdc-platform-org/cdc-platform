@@ -28,8 +28,11 @@ export interface PayoutRequestRow {
   resolvedAt: string | null;
 }
 
-export async function createPayoutRequest(amount: number, iban: string): Promise<PayoutRequestRow> {
-  const response = await apiClient.post<{ data: PayoutRequestRow }>('/wallet/payout-requests', { amount, iban });
+// iban is optional — omit it to fall back to the student's saved
+// payoutIban (see /dashboard/settings); the backend rejects the request if
+// neither is present.
+export async function createPayoutRequest(amount: number, iban?: string): Promise<PayoutRequestRow> {
+  const response = await apiClient.post<{ data: PayoutRequestRow }>('/wallet/payout-requests', { amount, iban: iban || undefined });
   return response.data.data;
 }
 

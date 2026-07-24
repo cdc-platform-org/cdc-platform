@@ -67,7 +67,12 @@ export const lessonCreateSchema = z.object({
   order: z.number().int().min(0),
 });
 
-export const lessonUpdateSchema = lessonCreateSchema.partial();
+export const lessonUpdateSchema = lessonCreateSchema.partial().extend({
+  // Manual fallback for when direct-upload-to-Bunny fails/isn't configured
+  // — accepts either a raw Bunny Stream video GUID or a full embed URL
+  // (the URL is parsed down to just the ID before saving, see routes/courses.ts).
+  bunnyVideoId: z.string().trim().max(500).optional().nullable(),
+});
 
 export const lessonProgressUpdateSchema = z.object({
   completed: z.boolean(),

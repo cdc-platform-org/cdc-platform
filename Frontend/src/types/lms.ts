@@ -79,6 +79,15 @@ export interface CourseProgressSummary {
   percent: number;
 }
 
+// Student dashboard: enrolled courses with per-course progress + certificate
+// availability (see Backend's GET /courses/mine).
+export interface MyCourseWithProgress {
+  course: Course;
+  progress: CourseProgressSummary;
+  hasCertificate: boolean;
+  grantedAt: string;
+}
+
 export interface CertificateVerification {
   verificationCode: string;
   studentName: string;
@@ -124,6 +133,9 @@ export interface LessonPayload {
   durationSeconds?: number;
   resources?: string[];
   order: number;
+  // Manual fallback for when direct upload-to-Bunny fails — a raw Bunny
+  // Stream video GUID or a full embed URL (parsed server-side).
+  bunnyVideoId?: string | null;
 }
 
 // --- AI Exam & Certification Gate ---

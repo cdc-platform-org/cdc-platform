@@ -69,6 +69,27 @@ router.get('/mine', authenticate, requireApproved, async (req: Request, res: Res
   res.json(gigs);
 });
 
+// The freelancer-side counterpart to /mine above — gigs the current user is
+// assigned to work on, for their dashboard workspace. Also registered
+// before GET /:id for the same route-ordering reason.
+router.get('/assigned-to-me', authenticate, requireApproved, async (req: Request, res: Response) => {
+  const gigs = await prisma.gig.findMany({
+    where: { assignedFreelancerId: req.user!.id },
+    include: { postedBy: posterSelect, transaction: true },
+    orderBy: { createdAt: 'desc' },
+  });
+  const completedCount = await prisma.gig.count({ where: { assignedFreelancerId: req.user!.id, status: 'completed' } });
+  res.json(
+    gigs.map((gig) => ({
+      ...gig,
+      // Same "is this their first-ever gig" computation as GET /:id — a
+      // completed gig doesn't count itself, so this stays accurate even
+      // for the gig that just became their first completion.
+      isFirstOrder: gig.status === 'completed' ? completedCount <= 1 : completedCount === 0,
+    }))
+  );
+});
+
 router.get('/:id', async (req: Request, res: Response) => {
   const gig = await prisma.gig.findUnique({
     where: { id: req.params.id },

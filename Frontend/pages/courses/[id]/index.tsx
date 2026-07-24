@@ -2,12 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Head from 'next/head';
-import { useAuth } from '../../../src/context/AuthContext';
-import { useAuthModal } from '../../../src/context/AuthModalContext';
+import SiteHeader from '../../../src/components/layout/SiteHeader';
+import SiteFooter from '../../../src/components/layout/SiteFooter';
 import { Course, SyllabusSection } from '../../../src/types/lms';
 import { getCourse, getProgressSummary, getSyllabus } from '../../../src/services/courseService';
 import { checkoutCourse } from '../../../src/services/paymentService';
 import { formatPrice, getSaleCountdownLabel } from '../../../src/utils/coursePricing';
+import { useAuth } from '../../../src/context/AuthContext';
+import { useAuthModal } from '../../../src/context/AuthModalContext';
 
 const dict = {
   ka: {
@@ -128,25 +130,38 @@ export default function CourseDetailPage() {
   const totalDurationSeconds = allLessons.reduce((sum, l) => sum + l.durationSeconds, 0);
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400 text-sm">{t.loading}</div>;
+    return (
+      <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+        <SiteHeader />
+        <div className="flex-1 flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">{t.loading}</div>
+        <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+      </div>
+    );
   }
   if (notFound || !course) {
-    return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-300 text-sm">{t.notFound}</div>;
+    return (
+      <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+        <SiteHeader />
+        <div className="flex-1 flex items-center justify-center text-sm text-slate-600 dark:text-slate-300">{t.notFound}</div>
+        <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-16">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       <Head>
         <title>{course.title} | CDC</title>
       </Head>
-      <div className="max-w-3xl mx-auto">
-        <Link href="/courses" className="text-sm text-slate-400 hover:text-white no-underline">
+      <SiteHeader />
+      <div className="max-w-3xl mx-auto px-6 py-16 flex-1 w-full">
+        <Link href="/courses" className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white no-underline">
           {t.backToCourses}
         </Link>
 
         <div className="mt-6 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-300 bg-purple-500/10 border-purple-500/20">
+            <span className="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-600 dark:text-purple-300 bg-purple-500/10 border-purple-500/20">
               {course.category}
             </span>
             {course.saleActive && (
@@ -157,46 +172,46 @@ export default function CourseDetailPage() {
           </div>
           <div className="flex items-baseline gap-2">
             {course.saleActive && <s className="text-sm text-slate-500">{formatPrice(course.originalPrice)}</s>}
-            <span className="text-lg font-black text-cyan-300">{formatPrice(course.currentPrice)}</span>
+            <span className="text-lg font-black text-cyan-600 dark:text-cyan-300">{formatPrice(course.currentPrice)}</span>
           </div>
         </div>
         <h1 className="text-3xl md:text-4xl font-black mt-4 mb-4">{course.title}</h1>
-        <p className="text-slate-300 leading-relaxed mb-8">{course.description}</p>
+        <p className="text-slate-600 dark:text-slate-300 leading-relaxed mb-8">{course.description}</p>
 
         <div className="flex flex-wrap gap-4 mb-8">
           {course.mentorName && (
-            <div className="flex-1 min-w-[220px] flex items-center gap-4 p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+            <div className="flex-1 min-w-[220px] flex items-center gap-4 p-4 rounded-xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
               <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white text-sm font-black shrink-0">
                 {course.mentorName.slice(0, 2)}
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-widest text-slate-500 font-bold">{t.mentor}</p>
-                <p className="text-sm font-bold text-white">{course.mentorName}</p>
-                {course.mentorTitle && <p className="text-xs text-slate-400">{course.mentorTitle}</p>}
+                <p className="text-sm font-bold text-slate-900 dark:text-white">{course.mentorName}</p>
+                {course.mentorTitle && <p className="text-xs text-slate-500 dark:text-slate-400">{course.mentorTitle}</p>}
               </div>
             </div>
           )}
           {totalLessonCount > 0 && (
-            <div className="flex-1 min-w-[220px] flex items-center gap-4 p-4 rounded-xl bg-slate-900/60 border border-slate-800">
-              <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-cyan-300 text-lg shrink-0">⏱️</div>
+            <div className="flex-1 min-w-[220px] flex items-center gap-4 p-4 rounded-xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+              <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-cyan-600 dark:text-cyan-300 text-lg shrink-0">⏱️</div>
               <div>
                 <p className="text-[11px] uppercase tracking-widest text-slate-500 font-bold">{t.duration}</p>
-                <p className="text-sm font-bold text-white">{formatTotalDuration(totalDurationSeconds, lang)}</p>
-                <p className="text-xs text-slate-400">{totalLessonCount} {t.lessons}</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-white">{formatTotalDuration(totalDurationSeconds, lang)}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{totalLessonCount} {t.lessons}</p>
               </div>
             </div>
           )}
         </div>
 
-        {error && <div className="mb-6 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-300">{error}</div>}
+        {error && <div className="mb-6 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-600 dark:text-red-300">{error}</div>}
 
         {course.saleActive && getSaleCountdownLabel(course.discountEndDate, lang) && (
-          <p className="text-xs font-bold text-rose-400 mb-3">⏳ {getSaleCountdownLabel(course.discountEndDate, lang)}</p>
+          <p className="text-xs font-bold text-rose-500 dark:text-rose-400 mb-3">⏳ {getSaleCountdownLabel(course.discountEndDate, lang)}</p>
         )}
-        <div className="flex items-center justify-between p-6 rounded-2xl border border-slate-800 bg-slate-900/60">
+        <div className="flex items-center justify-between p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60">
           <div className="flex items-baseline gap-3">
             {course.saleActive && <s className="text-lg text-slate-500">{formatPrice(course.originalPrice)}</s>}
-            <span className="text-3xl font-black text-white">{formatPrice(course.currentPrice)}</span>
+            <span className="text-3xl font-black text-slate-900 dark:text-white">{formatPrice(course.currentPrice)}</span>
           </div>
           {enrolled ? (
             <Link
@@ -225,14 +240,14 @@ export default function CourseDetailPage() {
           ) : (
             <div className="space-y-3">
               {syllabus.map((section, sIdx) => (
-                <div key={section.id} className="rounded-xl border border-slate-800 overflow-hidden">
-                  <div className="px-4 py-3 bg-slate-900/60 text-sm font-bold text-white">
+                <div key={section.id} className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                  <div className="px-4 py-3 bg-slate-100 dark:bg-slate-900/60 text-sm font-bold text-slate-900 dark:text-white">
                     {sIdx + 1}. {section.title}
                   </div>
                   {section.lessons.length > 0 && (
-                    <div className="divide-y divide-slate-800/80">
+                    <div className="divide-y divide-slate-200 dark:divide-slate-800/80">
                       {section.lessons.map((lesson) => (
-                        <div key={lesson.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-xs text-slate-300">
+                        <div key={lesson.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-xs text-slate-600 dark:text-slate-300">
                           <span className="flex-1">{lesson.title}</span>
                           <span className="text-slate-500 shrink-0">{formatLessonDuration(lesson.durationSeconds)}</span>
                         </div>
@@ -245,6 +260,7 @@ export default function CourseDetailPage() {
           )}
         </div>
       </div>
+      <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import CourseVideoPlayer from '../../../src/components/courses/CourseVideoPlayer';
+import { useAuth } from '../../../src/context/AuthContext';
 import { LmsSection, LmsLesson, CourseProgressSummary, Course, ExamStatus } from '../../../src/types/lms';
 import {
   getCourse,
@@ -31,6 +32,12 @@ const dict = {
     notEnrolled: 'თქვენ არ ხართ ჩარიცხული ამ კურსზე.',
     lessons: 'გაკვეთილი',
     back: 'კურსზე დაბრუნება',
+    confirmTitle: 'გთხოვთ შეამოწმოთ!',
+    confirmBody: 'სერტიფიკატზე დაიბეჭდება სახელი და გვარი:',
+    confirmChangeHint: 'თუ გსურთ სახელის შეცვლა, გადადით პროფილის პარამეტრებში.',
+    confirmDownload: 'დადასტურება და ჩამოტვირთვა',
+    confirmChangeName: 'სახელის შეცვლა (პროფილში გადასვლა)',
+    confirmCancel: 'გაუქმება',
   },
   en: {
     overview: 'Overview',
@@ -48,6 +55,12 @@ const dict = {
     notEnrolled: 'You are not enrolled in this course.',
     lessons: 'lesson',
     back: 'Back to course',
+    confirmTitle: 'Please double-check!',
+    confirmBody: 'This name will be printed on your certificate:',
+    confirmChangeHint: 'To change it, go to your account settings.',
+    confirmDownload: 'Confirm & Download',
+    confirmChangeName: 'Change Name (Go to Settings)',
+    confirmCancel: 'Cancel',
   },
 };
 
@@ -62,6 +75,7 @@ function LearnContent() {
   const lang = router.locale === 'en' ? 'en' : 'ka';
   const t = dict[lang];
   const courseId = typeof router.query.id === 'string' ? router.query.id : null;
+  const { user } = useAuth();
 
   const [course, setCourse] = useState<Course | null>(null);
   const [sections, setSections] = useState<LmsSection[]>([]);
@@ -73,6 +87,7 @@ function LearnContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloadingCert, setDownloadingCert] = useState(false);
+  const [showDownloadConfirm, setShowDownloadConfirm] = useState(false);
 
   const allLessons = useMemo(() => sections.flatMap((s) => s.lessons), [sections]);
   const activeLesson: LmsLesson | undefined = allLessons.find((l) => l.id === activeLessonId);
@@ -131,6 +146,15 @@ function LearnContent() {
       );
     }
   };
+
+  // Same precedence as the backend's certificate generator — legal name if
+  // both parts are set, else the display name. Shown in the pre-download
+  // confirmation modal so the student can catch a wrong/misspelled name
+  // before it ends up permanently printed on their certificate.
+  const certificateNameKa =
+    user?.legalFirstNameKa && user?.legalLastNameKa ? `${user.legalFirstNameKa} ${user.legalLastNameKa}` : user?.name ?? '';
+  const certificateNameEn =
+    user?.legalFirstNameEn && user?.legalLastNameEn ? `${user.legalFirstNameEn} ${user.legalLastNameEn}` : null;
 
   const handleDownloadCertificate = async () => {
     if (!courseId) return;
@@ -239,7 +263,7 @@ function LearnContent() {
           {progress && progress.percent === 100 && examStatus?.configured && examStatus.passed && (
             <button
               type="button"
-              onClick={handleDownloadCertificate}
+              onClick={() => setShowDownloadConfirm(true)}
               disabled={downloadingCert}
               className="w-full mb-5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold text-sm py-3 shadow-lg hover:shadow-xl transition-all disabled:opacity-60"
             >
@@ -250,7 +274,7 @@ function LearnContent() {
           {progress && progress.percent === 100 && examStatus && !examStatus.configured && (
             <button
               type="button"
-              onClick={handleDownloadCertificate}
+              onClick={() => setShowDownloadConfirm(true)}
               disabled={downloadingCert}
               className="w-full mb-5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold text-sm py-3 shadow-lg hover:shadow-xl transition-all disabled:opacity-60"
             >
@@ -304,6 +328,47 @@ function LearnContent() {
           </div>
         </aside>
       </div>
+
+      {showDownloadConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={() => setShowDownloadConfirm(false)}>
+          <div
+            className="w-full max-w-sm rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-black mb-3">{t.confirmTitle}</h2>
+            <p className="text-sm text-slate-300 mb-2">{t.confirmBody}</p>
+            <p className="text-lg font-bold text-cyan-300 mb-1">{certificateNameKa}</p>
+            {certificateNameEn && <p className="text-sm text-slate-400 mb-3">{certificateNameEn}</p>}
+            <p className="text-xs text-slate-500 mb-6">{t.confirmChangeHint}</p>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDownloadConfirm(false);
+                  handleDownloadCertificate();
+                }}
+                disabled={downloadingCert}
+                className="w-full rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold text-sm py-3 shadow-lg hover:shadow-xl transition-all disabled:opacity-60"
+              >
+                {downloadingCert ? t.generating : t.confirmDownload}
+              </button>
+              <Link
+                href="/dashboard/settings"
+                className="w-full text-center rounded-xl border border-slate-700 text-slate-300 font-bold text-sm py-3 no-underline hover:bg-slate-800 transition-colors"
+              >
+                {t.confirmChangeName}
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowDownloadConfirm(false)}
+                className="w-full text-center text-xs text-slate-500 hover:text-slate-300 bg-transparent border-none cursor-pointer py-1"
+              >
+                {t.confirmCancel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

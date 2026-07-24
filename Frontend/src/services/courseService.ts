@@ -16,6 +16,7 @@ import {
   ExamSubmitResult,
   ExamAnswerLetter,
   SyllabusSection,
+  MyCourseWithProgress,
 } from '../types/lms';
 
 // --- Course CRUD (admin) / listing (public) ---
@@ -46,6 +47,13 @@ export async function deleteCourse(courseId: string): Promise<void> {
 
 export async function getSyllabus(courseId: string): Promise<SyllabusSection[]> {
   const response = await apiClient.get<{ data: SyllabusSection[] }>(`/courses/${courseId}/syllabus`);
+  return response.data.data;
+}
+
+// --- Student dashboard: enrolled courses with progress + certificate flag ---
+
+export async function getMyCourses(): Promise<MyCourseWithProgress[]> {
+  const response = await apiClient.get<{ data: MyCourseWithProgress[] }>('/courses/mine');
   return response.data.data;
 }
 

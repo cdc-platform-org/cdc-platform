@@ -42,6 +42,40 @@ router.get('/', async (req, res) => {
   res.json({ data: courses.map(withCurrentPrice) });
 });
 
+// Student's own enrolled courses + per-course progress, for the dashboard
+// overview/"My Courses" tab. Registered before GET /:id for the same
+// route-ordering reason as /gigs/mine.
+router.get('/mine', authenticate, async (req: Request, res: Response) => {
+  const enrollments = await prisma.courseEnrollment.findMany({
+    where: { userId: req.user!.id },
+    include: { course: true },
+    orderBy: { grantedAt: 'desc' },
+  });
+
+  const data = await Promise.all(
+    enrollments.map(async (enrollment) => {
+      const [totalLessons, completedLessons, certificate] = await Promise.all([
+        prisma.lesson.count({ where: { section: { courseId: enrollment.courseId } } }),
+        prisma.lessonProgress.count({
+          where: { completed: true, userId: req.user!.id, lesson: { section: { courseId: enrollment.courseId } } },
+        }),
+        prisma.courseCertificate.findUnique({
+          where: { userId_courseId: { userId: req.user!.id, courseId: enrollment.courseId } },
+        }),
+      ]);
+      const percent = totalLessons === 0 ? 0 : Math.round((completedLessons / totalLessons) * 100);
+      return {
+        course: withCurrentPrice(enrollment.course),
+        progress: { totalLessons, completedLessons, percent },
+        hasCertificate: !!certificate,
+        grantedAt: enrollment.grantedAt,
+      };
+    })
+  );
+
+  res.json({ data });
+});
+
 router.get('/:id', async (req, res) => {
   const course = await prisma.course.findUnique({ where: { id: req.params.id } });
   if (!course) {
@@ -442,9 +476,21 @@ router.get('/:id/certificate', authenticate, requireCourseAccess, async (req: Re
 
   const [course, student] = await Promise.all([
     prisma.course.findUnique({ where: { id: courseId } }),
-    prisma.user.findUnique({ where: { id: req.user!.id }, select: { name: true } }),
+    prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { name: true, legalFirstNameKa: true, legalLastNameKa: true, legalFirstNameEn: true, legalLastNameEn: true },
+    }),
   ]);
   if (!course || !student) return res.status(404).json({ message: 'Course not found.' });
+
+  // Legal name (if the student has filled it in under /dashboard/settings)
+  // takes precedence over the display `name` — certificates need to match
+  // the person's real identity. The English transliteration line is only
+  // shown when explicitly set; we never guess a transliteration.
+  const legalNameKa =
+    student.legalFirstNameKa && student.legalLastNameKa ? `${student.legalFirstNameKa} ${student.legalLastNameKa}` : null;
+  const legalNameEn =
+    student.legalFirstNameEn && student.legalLastNameEn ? `${student.legalFirstNameEn} ${student.legalLastNameEn}` : null;
 
   const existing = await prisma.courseCertificate.findUnique({
     where: { userId_courseId: { userId: req.user!.id, courseId } },
@@ -461,7 +507,8 @@ router.get('/:id/certificate', authenticate, requireCourseAccess, async (req: Re
 
   try {
     const pdfBuffer = await generateCertificatePdf({
-      studentName: student.name,
+      studentName: legalNameKa || student.name,
+      studentNameSecondary: legalNameEn,
       courseTitle: course.title,
       instructorName: course.mentorName || 'CDC Faculty',
       issueDate: certificate.issuedAt,
@@ -545,11 +592,23 @@ router.post('/sections/:sectionId/lessons', authenticate, requireAdminRole('SUPE
   res.status(201).json({ data: { ...lesson, ...lessonWithPlayback(lesson) } });
 });
 
+// Pulls a bare Bunny Stream video GUID out of a pasted embed/play URL
+// (e.g. "https://iframe.mediadelivery.net/embed/710897/<guid>") — passes
+// through unchanged if it's already just the ID.
+function extractBunnyVideoId(input: string): string {
+  const match = input.match(/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/);
+  return match ? match[1] : input.trim();
+}
+
 router.put('/lessons/:lessonId', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   const result = lessonUpdateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
+  const { bunnyVideoId, ...rest } = result.data;
   try {
-    const lesson = await prisma.lesson.update({ where: { id: req.params.lessonId }, data: result.data });
+    const lesson = await prisma.lesson.update({
+      where: { id: req.params.lessonId },
+      data: { ...rest, ...(bunnyVideoId !== undefined ? { bunnyVideoId: bunnyVideoId ? extractBunnyVideoId(bunnyVideoId) : null } : {}) },
+    });
     res.json({ data: { ...lesson, ...lessonWithPlayback(lesson) } });
   } catch (err: any) {
     if (err.code === 'P2025') return res.status(404).json({ message: 'Lesson not found.' });

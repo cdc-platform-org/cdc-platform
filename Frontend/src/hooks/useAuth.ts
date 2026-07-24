@@ -3,6 +3,7 @@ import {
   login as loginRequest,
   register as registerRequest,
   loginWithGoogle as loginWithGoogleRequest,
+  getMe as getMeRequest,
 } from '../services/authService';
 import { User, LoginPayload, RegisterPayload } from '../types/auth';
 
@@ -58,6 +59,16 @@ export function useAuthState() {
     setUser(null);
   }, []);
 
+  // Re-syncs the cached user from the server — call after profile/settings
+  // updates so every consumer (certificate name, payout IBAN prefill,
+  // header greeting) reflects the change without a full reload.
+  const refreshUser = useCallback(async () => {
+    const freshUser = await getMeRequest();
+    localStorage.setItem(USER_KEY, JSON.stringify(freshUser));
+    setUser(freshUser);
+    return freshUser;
+  }, []);
+
   return {
     user,
     isAuthenticated: !!user,
@@ -66,5 +77,6 @@ export function useAuthState() {
     register,
     loginWithGoogle,
     logout,
+    refreshUser,
   };
 }

@@ -259,6 +259,9 @@ function CourseForm({
 function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () => void }) {
   const [uploading, setUploading] = useState(false);
   const [uploadPct, setUploadPct] = useState(0);
+  const [showManualInput, setShowManualInput] = useState(false);
+  const [manualVideoId, setManualVideoId] = useState('');
+  const [savingManual, setSavingManual] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -270,10 +273,26 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
       await uploadLessonVideo(lesson.id, file, setUploadPct);
       onChanged();
     } catch {
-      alert('Video upload failed.');
+      alert('Direct upload failed — you can paste a Bunny Stream Video ID or embed URL instead using "Set Bunny Video ID" below.');
+      setShowManualInput(true);
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleSaveManualId = async () => {
+    if (!manualVideoId.trim()) return;
+    setSavingManual(true);
+    try {
+      await updateLesson(lesson.id, { bunnyVideoId: manualVideoId.trim() });
+      setManualVideoId('');
+      setShowManualInput(false);
+      onChanged();
+    } catch {
+      alert('Unable to save that Bunny Video ID.');
+    } finally {
+      setSavingManual(false);
     }
   };
 
@@ -284,16 +303,43 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
   };
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5 border-t border-gray-100 text-sm">
-      <span className={`w-2 h-2 rounded-full shrink-0 ${lesson.bunnyVideoId ? 'bg-emerald-500' : 'bg-gray-300'}`} title={lesson.bunnyVideoId ? 'Video uploaded' : 'No video yet'} />
-      <span className="flex-1 truncate text-gray-800">{lesson.title}</span>
-      <label className="shrink-0 text-xs font-medium text-indigo-600 hover:text-indigo-800 cursor-pointer px-2 py-1 rounded hover:bg-indigo-50">
-        {uploading ? `Uploading ${uploadPct}%…` : lesson.bunnyVideoId ? 'Replace video' : 'Upload video'}
-        <input ref={fileInputRef} type="file" accept="video/*" onChange={handleFile} disabled={uploading} className="hidden" />
-      </label>
-      <button type="button" onClick={handleDelete} className="shrink-0 text-xs font-medium text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50">
-        Delete
-      </button>
+    <div className="border-t border-gray-100">
+      <div className="flex items-center gap-3 px-4 py-2.5 text-sm">
+        <span className={`w-2 h-2 rounded-full shrink-0 ${lesson.bunnyVideoId ? 'bg-emerald-500' : 'bg-gray-300'}`} title={lesson.bunnyVideoId ? 'Video set' : 'No video yet'} />
+        <span className="flex-1 truncate text-gray-800">{lesson.title}</span>
+        <label className="shrink-0 text-xs font-medium text-indigo-600 hover:text-indigo-800 cursor-pointer px-2 py-1 rounded hover:bg-indigo-50">
+          {uploading ? `Uploading ${uploadPct}%…` : lesson.bunnyVideoId ? 'Replace video' : 'Upload video'}
+          <input ref={fileInputRef} type="file" accept="video/*" onChange={handleFile} disabled={uploading} className="hidden" />
+        </label>
+        <button
+          type="button"
+          onClick={() => setShowManualInput((v) => !v)}
+          className="shrink-0 text-xs font-medium text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-50"
+        >
+          Set Bunny Video ID
+        </button>
+        <button type="button" onClick={handleDelete} className="shrink-0 text-xs font-medium text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50">
+          Delete
+        </button>
+      </div>
+      {showManualInput && (
+        <div className="flex items-center gap-2 px-4 pb-3">
+          <input
+            value={manualVideoId}
+            onChange={(e) => setManualVideoId(e.target.value)}
+            placeholder="Enter Bunny Stream Video ID or Embed URL…"
+            className="flex-1 text-xs rounded-lg border border-gray-300 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <button
+            type="button"
+            onClick={handleSaveManualId}
+            disabled={savingManual}
+            className="text-xs font-medium text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60"
+          >
+            {savingManual ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

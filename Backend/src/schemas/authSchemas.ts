@@ -45,3 +45,24 @@ export const resetPasswordSchema = z.object({
   token: z.string().min(1),
   password: z.string().min(8).max(128),
 });
+
+// Legal identity fields, self-reported under /dashboard/settings — used
+// wherever the person's real name/bank details matter (certificates,
+// payout requests), separate from the display `name`.
+export const updateProfileSchema = z.object({
+  legalFirstNameKa: z.string().trim().max(100).optional().nullable(),
+  legalLastNameKa: z.string().trim().max(100).optional().nullable(),
+  legalFirstNameEn: z.string().trim().max(100).optional().nullable(),
+  legalLastNameEn: z.string().trim().max(100).optional().nullable(),
+  nationalId: z.string().trim().max(50).optional().nullable(),
+  phone: z.string().trim().max(30).optional().nullable(),
+  payoutIban: z
+    .union([z.string().trim().toUpperCase().regex(/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/, 'Enter a valid IBAN.'), z.literal('')])
+    .optional()
+    .nullable(),
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8).max(128),
+});

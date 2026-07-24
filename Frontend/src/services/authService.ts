@@ -1,5 +1,14 @@
 import apiClient from './apiClient';
-import { AuthResponse, LoginPayload, RegisterPayload, User, ForgotPasswordPayload, ResetPasswordPayload } from '../types/auth';
+import {
+  AuthResponse,
+  LoginPayload,
+  RegisterPayload,
+  User,
+  ForgotPasswordPayload,
+  ResetPasswordPayload,
+  UpdateProfilePayload,
+  ChangePasswordPayload,
+} from '../types/auth';
 
 export async function login(payload: LoginPayload): Promise<AuthResponse> {
   const response = await apiClient.post<AuthResponse>('/auth/login', payload);
@@ -51,5 +60,20 @@ export async function forgotPassword(payload: ForgotPasswordPayload): Promise<{ 
 
 export async function resetPassword(payload: ResetPasswordPayload): Promise<{ message: string }> {
   const response = await apiClient.post('/auth/reset-password', payload);
+  return response.data;
+}
+
+export async function getMe(): Promise<User> {
+  const response = await apiClient.get<{ user: User }>('/auth/me');
+  return response.data.user;
+}
+
+export async function updateProfile(payload: UpdateProfilePayload): Promise<User> {
+  const response = await apiClient.put<{ user: User }>('/auth/me', payload);
+  return response.data.user;
+}
+
+export async function changePassword(payload: ChangePasswordPayload): Promise<{ message: string }> {
+  const response = await apiClient.put('/auth/me/password', payload);
   return response.data;
 }

@@ -10,6 +10,7 @@ interface AuthContextValue {
   register: (payload: RegisterPayload) => Promise<User>;
   loginWithGoogle: (idToken: string, role?: 'Student' | 'Client') => Promise<User>;
   logout: () => void;
+  refreshUser: () => Promise<User>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
