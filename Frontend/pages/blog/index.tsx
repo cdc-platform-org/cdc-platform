@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Head from 'next/head';
 import { BlogPost } from '../../src/types/blog';
 import { getBlogPosts, resolveBlogImageUrl, blogTitle, blogDescription, isSuccessStory } from '../../src/services/blogService';
+import { onImageErrorFallback } from '../../src/utils/imageFallback';
 
 const dict = {
   ka: {
@@ -107,7 +108,7 @@ export default function BlogIndexPage() {
               >
                 {post.imageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={resolveBlogImageUrl(post.imageUrl)} alt={blogTitle(post, lang)} className="w-full h-40 object-cover" />
+                  <img src={resolveBlogImageUrl(post.imageUrl)} alt={blogTitle(post, lang)} onError={onImageErrorFallback} className="w-full h-40 object-cover" />
                 )}
                 <div className="p-6 flex-1 flex flex-col">
                   <div className="flex flex-wrap gap-2 mb-4">

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import CourseVideoPlayer from '../../../src/components/courses/CourseVideoPlayer';
 import { useAuth } from '../../../src/context/AuthContext';
+import { useEscapeToClose } from '../../../src/hooks/useEscapeToClose';
 import { LmsSection, LmsLesson, CourseProgressSummary, Course, ExamStatus } from '../../../src/types/lms';
 import {
   getCourse,
@@ -88,6 +89,8 @@ function LearnContent() {
   const [error, setError] = useState<string | null>(null);
   const [downloadingCert, setDownloadingCert] = useState(false);
   const [showDownloadConfirm, setShowDownloadConfirm] = useState(false);
+
+  useEscapeToClose(showDownloadConfirm, () => setShowDownloadConfirm(false));
 
   const allLessons = useMemo(() => sections.flatMap((s) => s.lessons), [sections]);
   const activeLesson: LmsLesson | undefined = allLessons.find((l) => l.id === activeLessonId);

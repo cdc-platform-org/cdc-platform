@@ -13,6 +13,7 @@ import { getCourses } from '../src/services/courseService';
 import { checkoutCourse } from '../src/services/paymentService';
 import { getSiteContent } from '../src/services/siteContentService';
 import { resolveBlogImageUrl } from '../src/services/blogService';
+import { onImageErrorFallback } from '../src/utils/imageFallback';
 import { formatPrice, getSaleCountdownLabel } from '../src/utils/coursePricing';
 
 const DEFAULT_HOMEPAGE_STATS: HomepageStat[] = [
@@ -146,7 +147,7 @@ export default function Home() {
 
   useEffect(() => {
     getSiteContent<{ images?: GalleryImage[] }>('gallery')
-      .then((row) => setGalleryPreview((row?.content.images ?? []).slice(0, 6)))
+      .then((row) => setGalleryPreview((row?.content.images ?? []).filter((img) => img.url.trim().length > 0).slice(0, 6)))
       .catch(() => setGalleryPreview([]));
   }, []);
 
@@ -531,7 +532,7 @@ export default function Home() {
                 className={`relative aspect-square rounded-2xl overflow-hidden border transition-all duration-300 transform hover:scale-[1.02] no-underline ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={resolveBlogImageUrl(img.url)} alt={img.captionKa ?? img.captionEn ?? ''} className="w-full h-full object-cover" />
+                <img src={resolveBlogImageUrl(img.url)} alt={img.captionKa ?? img.captionEn ?? ''} onError={onImageErrorFallback} className="w-full h-full object-cover" />
               </Link>
             ))}
           </div>

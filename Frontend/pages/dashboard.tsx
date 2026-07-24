@@ -10,6 +10,7 @@ import { MyCourseWithProgress } from '../src/types/lms';
 import { getMyCourses, downloadCertificate } from '../src/services/courseService';
 import { AssignedGig, GigStatus } from '../src/types/community';
 import { getAssignedGigs, requestMentorHelp } from '../src/services/gigService';
+import { useEscapeToClose } from '../src/hooks/useEscapeToClose';
 import {
   getWalletSummary,
   getMyPayoutRequests,
@@ -170,6 +171,8 @@ function DashboardContent() {
   const [downloadingCourseId, setDownloadingCourseId] = useState<string | null>(null);
   const [confirmCourseId, setConfirmCourseId] = useState<string | null>(null);
   const [requestingMentorFor, setRequestingMentorFor] = useState<string | null>(null);
+
+  useEscapeToClose(confirmCourseId !== null, () => setConfirmCourseId(null));
 
   const [payoutAmount, setPayoutAmount] = useState('');
   const [payoutIban, setPayoutIban] = useState('');

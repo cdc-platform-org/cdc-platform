@@ -1,5 +1,6 @@
 import { useState, FormEvent } from 'react';
 import StarRating from './StarRating';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 
 interface ReviewModalProps {
   gigTitle: string;
@@ -13,6 +14,8 @@ export default function ReviewModal({ gigTitle, revieweeName, onSubmit, onClose 
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEscapeToClose(true, onClose);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

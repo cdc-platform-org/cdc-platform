@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface SocialShareButtonsProps {
   // Absolute URL to share. Falls back to window.location.href when omitted
@@ -25,8 +25,25 @@ const dict = {
 export default function SocialShareButtons({ url, title, lang = 'ka', className = '', variant = 'auto' }: SocialShareButtonsProps) {
   const t = dict[lang];
   const [copied, setCopied] = useState(false);
+  const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const shareUrl = url ?? (typeof window !== 'undefined' ? window.location.href : '');
+  // Reading window.location.href directly during render would make the
+  // server-rendered HTML (window undefined -> empty url) differ from the
+  // first client render (window defined -> real url), which React flags as
+  // a hydration mismatch and leaves the share links pointing at "u=" until
+  // hydration catches up. Deriving it in an effect keeps SSR and the first
+  // client paint identical, then fills in the real URL right after mount.
+  const [resolvedUrl, setResolvedUrl] = useState(url ?? '');
+  useEffect(() => {
+    if (!url) setResolvedUrl(window.location.href);
+  }, [url]);
+  const shareUrl = url ?? resolvedUrl;
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current);
+    };
+  }, []);
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -34,7 +51,8 @@ export default function SocialShareButtons({ url, title, lang = 'ka', className 
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current);
+      copiedTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
     } catch {
       // Clipboard API unavailable (e.g. insecure context) — silently no-op,
       // the link is still visible/selectable in the address bar.

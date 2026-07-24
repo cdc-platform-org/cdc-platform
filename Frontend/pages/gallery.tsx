@@ -6,6 +6,8 @@ import SiteFooter from '../src/components/layout/SiteFooter';
 import { GalleryContent } from '../src/types/siteContent';
 import { getSiteContent } from '../src/services/siteContentService';
 import { resolveBlogImageUrl } from '../src/services/blogService';
+import { onImageErrorFallback } from '../src/utils/imageFallback';
+import { useEscapeToClose } from '../src/hooks/useEscapeToClose';
 
 const dict = {
   ka: {
@@ -29,11 +31,13 @@ export default function GalleryPage() {
   const [loading, setLoading] = useState(true);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
+  useEscapeToClose(lightboxIndex !== null, () => setLightboxIndex(null));
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const row = await getSiteContent<GalleryContent>('gallery');
-      setImages(row?.content.images ?? []);
+      setImages((row?.content.images ?? []).filter((img) => img.url.trim().length > 0));
     } finally {
       setLoading(false);
     }
@@ -73,6 +77,7 @@ export default function GalleryPage() {
                 <img
                   src={resolveBlogImageUrl(img.url)}
                   alt={(lang === 'en' && img.captionEn) || img.captionKa || ''}
+                  onError={onImageErrorFallback}
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
                 {(img.captionKa || img.captionEn) && (
@@ -95,6 +100,7 @@ export default function GalleryPage() {
           <img
             src={resolveBlogImageUrl(list[lightboxIndex].url)}
             alt={(lang === 'en' && list[lightboxIndex].captionEn) || list[lightboxIndex].captionKa || ''}
+            onError={onImageErrorFallback}
             className="max-w-full max-h-full object-contain rounded-lg"
           />
         </div>

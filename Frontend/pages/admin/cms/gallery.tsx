@@ -35,7 +35,12 @@ function GalleryCmsDashboard() {
     setSaving(true);
     setSaved(false);
     try {
-      await updateSiteContent('gallery', content);
+      // Drop any "+ Add by URL" rows left blank — an empty url would
+      // resolve to the bare API origin and render as a broken image on the
+      // public /gallery page and the homepage preview grid.
+      const cleaned = { ...content, images: (content.images ?? []).filter((img) => img.url.trim().length > 0) };
+      await updateSiteContent('gallery', cleaned);
+      setContent(cleaned);
       setSaved(true);
     } finally {
       setSaving(false);

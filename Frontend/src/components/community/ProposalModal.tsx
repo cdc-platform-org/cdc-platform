@@ -1,5 +1,6 @@
 import { useState, useMemo, FormEvent } from 'react';
 import { useTranslation } from 'next-i18next';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 
 const PLATFORM_FEE_RATE = 0.1; // 10% — shown live as the freelancer types their bid
 
@@ -24,6 +25,8 @@ export default function ProposalModal({
   const [coverLetter, setCoverLetter] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEscapeToClose(true, onClose);
 
   const proposedMajor = parseFloat(proposedBudget) || 0;
   const platformFee = useMemo(() => proposedMajor * PLATFORM_FEE_RATE, [proposedMajor]);

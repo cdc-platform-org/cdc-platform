@@ -6,6 +6,7 @@ import { User } from '../../types/auth';
 import { useAuthModal } from '../../context/AuthModalContext';
 import PasswordInput from './PasswordInput';
 import Toast from '../shared/Toast';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 
 type Mode = 'login' | 'register';
 
@@ -102,6 +103,22 @@ export default function AuthModal() {
   const [showRegisterToast, setShowRegisterToast] = useState(false);
   const [redirectingAdmin, setRedirectingAdmin] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement>(null);
+  // AuthModal is mounted once globally (pages/_app.tsx) and never unmounts,
+  // but these timers can still race each other if the modal is closed and
+  // reopened (e.g. a second registration) before the first one fires —
+  // tracking them lets a new open cancel any stale pending timer instead of
+  // it firing later and clobbering fresh state.
+  const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
+  }, []);
+
+  useEscapeToClose(isOpen, closeAuthModal);
 
   // Runs once login (email/password or Google) succeeds. A pending onSuccess
   // (e.g. "resume checkout for the course I was trying to buy") always wins
@@ -115,7 +132,8 @@ export default function AuthModal() {
     }
     if (loggedInUser.adminRole) {
       setRedirectingAdmin(true);
-      setTimeout(() => {
+      if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
+      redirectTimeoutRef.current = setTimeout(() => {
         closeAuthModal();
         router.push('/admin');
       }, 900);
@@ -126,6 +144,8 @@ export default function AuthModal() {
 
   useEffect(() => {
     if (isOpen) {
+      if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
       setMode(initialMode);
       setError(null);
       setRegistered(false);
@@ -180,7 +200,8 @@ export default function AuthModal() {
         await register({ name, email, password, role });
         setRegistered(true);
         setShowRegisterToast(true);
-        setTimeout(() => setShowRegisterToast(false), 4000);
+        if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+        toastTimeoutRef.current = setTimeout(() => setShowRegisterToast(false), 4000);
       }
     } catch (err: any) {
       const apiErrors = err?.response?.data?.errors;

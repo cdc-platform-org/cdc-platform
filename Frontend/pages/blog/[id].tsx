@@ -5,6 +5,7 @@ import Head from 'next/head';
 import { BlogPost } from '../../src/types/blog';
 import { getBlogPostById, resolveBlogImageUrl, blogTitle, blogContent, isSuccessStory } from '../../src/services/blogService';
 import SocialShareButtons from '../../src/components/shared/SocialShareButtons';
+import { onImageErrorFallback } from '../../src/utils/imageFallback';
 
 const dict = {
   ka: {
@@ -97,7 +98,7 @@ export default function BlogPostPage() {
 
         {post.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={resolveBlogImageUrl(post.imageUrl)} alt={blogTitle(post, lang)} className="w-full rounded-2xl mb-8 object-cover max-h-96" />
+          <img src={resolveBlogImageUrl(post.imageUrl)} alt={blogTitle(post, lang)} onError={onImageErrorFallback} className="w-full rounded-2xl mb-8 object-cover max-h-96" />
         )}
 
         <div className="text-slate-300 leading-relaxed whitespace-pre-wrap">{blogContent(post, lang)}</div>
