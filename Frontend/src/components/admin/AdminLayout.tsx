@@ -18,6 +18,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/mentorship', label: 'Mentorship Queue', icon: '🧑‍🏫' },
   { href: '/admin/messages', label: 'Message Oversight', icon: '🛡️' },
   { href: '/admin/forum', label: 'Forum Moderation', icon: '💬' },
+  { href: '/admin/cms/homepage', label: 'Homepage CMS', icon: '🖋️', tiers: ['SUPER_ADMIN', 'MANAGER'] },
   { href: '/admin/blog', label: 'Content / Blog', icon: '📝', tiers: ['SUPER_ADMIN', 'MANAGER'] },
   { href: '/admin/courses', label: 'Courses / LMS', icon: '🎓', tiers: ['SUPER_ADMIN', 'MANAGER'] },
   { href: '/admin/analytics', label: 'Analytics', icon: '📈', tiers: ['SUPER_ADMIN', 'MANAGER'] },

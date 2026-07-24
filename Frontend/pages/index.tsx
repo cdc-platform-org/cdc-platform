@@ -8,9 +8,16 @@ import { useAuthModal } from '../src/context/AuthModalContext';
 import { useAuth } from '../src/context/AuthContext';
 import SiteFooter from '../src/components/layout/SiteFooter';
 import { Course } from '../src/types/lms';
+import { HomepageContent, HomepageStat } from '../src/types/siteContent';
 import { getCourses } from '../src/services/courseService';
 import { checkoutCourse } from '../src/services/paymentService';
+import { getSiteContent } from '../src/services/siteContentService';
 import { formatPrice, getSaleCountdownLabel } from '../src/utils/coursePricing';
+
+const DEFAULT_HOMEPAGE_STATS: HomepageStat[] = [
+  { valueKa: '200+', labelKa: 'კურსდამთავრებული', valueEn: '200+', labelEn: 'Graduates' },
+  { valueKa: '100%', labelKa: 'პრაქტიკული დავალებები', valueEn: '100%', labelEn: 'Practical Tasks' },
+];
 
 // Compact overrides so the assistant's Markdown (bold/headers/bullets) fits
 // a narrow chat bubble instead of using default prose spacing/sizing.
@@ -37,6 +44,11 @@ export default function Home() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
   const [enrollingId, setEnrollingId] = useState<string | null>(null);
+
+  // 🖋️ CMS-editable homepage content (hero title/subtitle, stats, FAQ) —
+  // falls back to the hardcoded defaults below when no admin has set
+  // anything yet, so the page never renders blank.
+  const [cms, setCms] = useState<HomepageContent | null>(null);
 
   // 🌐 ენის გადართვის სთეითი
   const [lang, setLang] = useState<'GEO' | 'ENG'>('GEO');
@@ -113,6 +125,12 @@ export default function Home() {
     getCourses()
       .then((data) => setCourses(data.filter((c) => c.published)))
       .finally(() => setCoursesLoading(false));
+  }, []);
+
+  useEffect(() => {
+    getSiteContent<HomepageContent>('homepage')
+      .then((row) => setCms(row?.content ?? null))
+      .catch(() => setCms(null));
   }, []);
 
   const startCheckout = async (course: Course) => {
@@ -379,17 +397,22 @@ export default function Home() {
                 {translate('გააციფრულე შენი უნარები | დაარსდა 2023 წელს', 'Digitize Your Skills | Est. 2023')}
               </div>
 
-              {/* Heading */}
+              {/* Heading — CMS override renders as plain text (no gradient
+                  highlight word); the default keeps the styled version. */}
               <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-tight text-white mb-2 sm:mb-3 outline-none hover:outline-none focus:outline-none border-none hover:border-none hover:shadow-none hover:ring-0">
-                {translate(
-                  <>გახდი მოთხოვნადი <span className="inline-block bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent leading-normal py-1">ციფრული ეპოქის</span> პროფესიონალი</>,
-                  <>Become a High-Demand <span className="inline-block bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent leading-normal py-1">Digital-Era</span> Professional</>
-                )}
+                {cms?.heroTitleKa || cms?.heroTitleEn
+                  ? translate(cms.heroTitleKa || cms.heroTitleEn, cms.heroTitleEn || cms.heroTitleKa)
+                  : translate(
+                      <>გახდი მოთხოვნადი <span className="inline-block bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent leading-normal py-1">ციფრული ეპოქის</span> პროფესიონალი</>,
+                      <>Become a High-Demand <span className="inline-block bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent leading-normal py-1">Digital-Era</span> Professional</>
+                    )}
               </h1>
 
               {/* Job placement subtitle */}
               <p className="text-base sm:text-xl lg:text-2xl font-semibold text-cyan-400 mb-2 sm:mb-4">
-                {translate('...და დასაქმდი ჩვენივე პლატფორმაზე!', '...and get hired directly on our platform!')}
+                {cms?.heroSubtitleKa || cms?.heroSubtitleEn
+                  ? translate(cms.heroSubtitleKa || cms.heroSubtitleEn, cms.heroSubtitleEn || cms.heroSubtitleKa)
+                  : translate('...და დასაქმდი ჩვენივე პლატფორმაზე!', '...and get hired directly on our platform!')}
               </p>
 
               {/* Description */}
@@ -418,22 +441,36 @@ export default function Home() {
       <section id="about" className="max-w-7xl mx-auto pt-28 px-6">
         <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{translate('ციფრული ეკოსისტემის მიღწევები', 'Ecosystem Achievements')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 auto-rows-[240px]">
-          <div className={`md:col-span-2 md:row-span-2 rounded-3xl p-10 border backdrop-blur-md flex flex-col justify-end transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422]/60 border-slate-800' : 'bg-white/60 border-slate-200'}`}>
-            <div className="flex items-center space-x-3 mb-6 text-sky-500">
-              <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm0-1.5a8.5 8.5 0 1 1 0-17 8.5 8.5 0 0 1 0 17zm0-11.85l.91 1.84 2.04 .3-1.48 1.44 .35 2.02-1.82-.96-1.82 .96 .35-2.02-1.48-1.44 2.04-.3 .91-1.84z" /></svg>
-              <span className="text-xl font-black tracking-widest text-slate-400 font-sans">EU</span>
+          <div className={`md:col-span-2 md:row-span-2 rounded-3xl border backdrop-blur-md overflow-hidden flex flex-col transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422]/60 border-slate-800' : 'bg-white/60 border-slate-200'}`}>
+            <img
+              src="/images/heks-eper.jpg"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src =
+                  'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&w=800&q=80';
+              }}
+              alt="HEKS/EPER Georgia"
+              className="w-full h-48 object-cover rounded-t-3xl shrink-0"
+            />
+            <div className="p-8 md:p-10 flex-1 flex flex-col justify-center">
+              <div className="flex items-center space-x-3 mb-6 text-sky-500">
+                <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm0-1.5a8.5 8.5 0 1 1 0-17 8.5 8.5 0 0 1 0 17zm0-11.85l.91 1.84 2.04 .3-1.48 1.44 .35 2.02-1.82-.96-1.82 .96 .35-2.02-1.48-1.44 2.04-.3 .91-1.84z" /></svg>
+                <span className="text-xl font-black tracking-widest text-slate-400 font-sans">EU</span>
+              </div>
+              <h3 className="text-xl md:text-2xl font-black mb-4">{translate(<>{safeText('HEKS/EPER Georgia')}-ს მხარდაჭერა</>, <>{safeText('HEKS/EPER Georgia')} Support</>)}</h3>
+              <p className="text-sm md:text-base text-slate-400 leading-relaxed font-medium">{translate('საერთაშორისო სტანდარტების სასწავლო მეთოდოლოგია და რესურსები, რომელიც სპეციალურად რეგიონული ტექნოლოგიური წინსვლისთვის შეიქმნა.', 'International standard educational methodology and resources specially designed for regional technological progress.')}</p>
             </div>
-            <h3 className="text-xl md:text-2xl font-black mb-4">{translate(<>{safeText('HEKS/EPER Georgia')}-ს მხარდაჭერა</>, <>{safeText('HEKS/EPER Georgia')} Support</>)}</h3>
-            <p className="text-sm md:text-base text-slate-400 leading-relaxed font-medium">{translate('საერთაშორისო სტანდარტების სასწავლო მეთოდოლოგია და რესურსები, რომელიც სპეციალურად რეგიონული ტექნოლოგიური წინსვლისთვის შეიქმნა.', 'International standard educational methodology and resources specially designed for regional technological progress.')}</p>
           </div>
-          <div className={`rounded-3xl p-8 border backdrop-blur-md flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422]/60 border-slate-800' : 'bg-white/60 border-slate-200'}`}>
-            <span className="text-5xl font-black text-cyan-500">200+</span>
-            <span className="text-sm font-black uppercase tracking-wider text-slate-400">{translate('კურსდამთავრებული', 'Graduates')}</span>
-          </div>
-          <div className={`rounded-3xl p-8 border backdrop-blur-md flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422]/60 border-slate-800' : 'bg-white/60 border-slate-200'}`}>
-            <span className="text-5xl font-black text-purple-500">100%</span>
-            <span className="text-sm font-black uppercase tracking-wider text-slate-400">{translate('პრაქტიკული დავალებები', 'Practical Tasks')}</span>
-          </div>
+          {(cms?.stats?.length ? cms.stats : DEFAULT_HOMEPAGE_STATS).map((stat, i) => (
+            <div
+              key={i}
+              className={`rounded-3xl p-8 border backdrop-blur-md flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422]/60 border-slate-800' : 'bg-white/60 border-slate-200'}`}
+            >
+              <span className={`text-5xl font-black ${i % 2 === 0 ? 'text-cyan-500' : 'text-purple-500'}`}>
+                {translate(stat.valueKa, stat.valueEn)}
+              </span>
+              <span className="text-sm font-black uppercase tracking-wider text-slate-400">{translate(stat.labelKa, stat.labelEn)}</span>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -559,6 +596,29 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* ❓ FAQ SECTION — CMS-managed, hidden entirely with no questions set */}
+      {!!cms?.faq?.length && (
+        <section className={`py-28 border-t ${darkMode ? 'bg-[#0e1422]/20 border-slate-800' : 'bg-slate-100/40 border-slate-200'}`}>
+          <div className="max-w-3xl mx-auto px-6">
+            <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{translate('ხშირად დასმული კითხვები', 'Frequently Asked Questions')}</h2>
+            <div className="space-y-3">
+              {cms.faq.map((item, i) => (
+                <details
+                  key={i}
+                  className={`group rounded-2xl border px-6 py-4 transition-all duration-300 ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}
+                >
+                  <summary className="cursor-pointer list-none flex items-center justify-between gap-4 font-bold text-sm md:text-base">
+                    {translate(item.questionKa, item.questionEn)}
+                    <span className="shrink-0 text-cyan-500 transition-transform duration-300 group-open:rotate-45 text-xl leading-none">+</span>
+                  </summary>
+                  <p className="mt-3 text-sm text-slate-400 leading-relaxed font-medium">{translate(item.answerKa, item.answerEn)}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* 🤖 AI ASSISTANT CHAT PANEL */}
       <div className="fixed bottom-56 sm:bottom-60 right-4 md:right-6 z-50 flex flex-col gap-3 items-end">

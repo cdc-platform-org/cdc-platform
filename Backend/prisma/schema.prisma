@@ -221,6 +221,7 @@ model User {
   payoutRequests         PayoutRequest[]    @relation("PayoutRequests")
   payoutRequestsReviewed PayoutRequest[]    @relation("PayoutRequestsReviewed")
   auditLogs              AuditLog[]
+  siteContentUpdates     SiteContent[]
 
   @@map("users")
 }
@@ -971,4 +972,24 @@ model AuditLog {
   @@index([targetType, targetId])
   @@index([performedById])
   @@map("audit_logs")
+}
+
+// ============================================================
+// SITE CONTENT — simple per-page CMS store. One row per editable page
+// ("homepage", "about", ...), content shape is page-specific and owned by
+// the frontend (see pages/admin/cms/[page].tsx) — the backend just stores
+// and serves the JSON blob, no schema validation on its internal shape
+// beyond "it's an object".
+// ============================================================
+
+model SiteContent {
+  id   String @id @default(uuid())
+  page String @unique
+  content Json
+
+  updatedById String?
+  updatedBy   User?   @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedAt   DateTime @updatedAt
+
+  @@map("site_content")
 }
