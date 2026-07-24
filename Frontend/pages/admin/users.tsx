@@ -3,6 +3,8 @@ import Head from 'next/head';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
 import { useAuth } from '../../src/context/AuthContext';
+import { useAdminLang } from '../../src/context/AdminLangContext';
+import { adminDict } from '../../src/data/adminDict';
 import { AdminUser } from '../../src/types/admin';
 import {
   getAdminUsers,
@@ -20,8 +22,60 @@ const STATUS_BADGE: Record<AdminUser['status'], string> = {
   REJECTED: 'bg-gray-100 text-gray-500 border-gray-200',
 };
 
+const PAGE_DICT = {
+  ka: {
+    title: 'მომხმარებლების მართვა',
+    subtitle: 'მოძებნეთ მომხმარებლები, მიანიჭეთ CDC კურსდამთავრებულის სტატუსი და დაბლოკეთ/გახსენით ანგარიშები.',
+    tabAll: 'ყველა',
+    tabStudents: 'სტუდენტები',
+    tabClients: 'კლიენტები',
+    tabAdmins: 'ადმინები',
+    searchPlaceholder: 'ძებნა სახელით ან ელ. ფოსტით…',
+    allStatuses: 'ყველა სტატუსი',
+    statusPending: 'დასამტკიცებელი',
+    statusApproved: 'დამტკიცებული',
+    statusRejected: 'უარყოფილი',
+    badges: 'ნიშნები',
+    graduate: 'კურსდამთავრებული',
+    banned: 'დაბლოკილი',
+    removeBadge: 'ნიშნის მოხსნა',
+    assignBadge: '🎓 ნიშნის მინიჭება',
+    unban: 'განბლოკვა',
+    ban: 'დაბლოკვა',
+    noUsers: 'მომხმარებელი ვერ მოიძებნა.',
+    loadError: 'მომხმარებლების ჩატვირთვა ვერ მოხერხდა. სცადეთ ხელახლა.',
+    actionError: 'მოქმედება ვერ შესრულდა. სცადეთ ხელახლა.',
+  },
+  en: {
+    title: 'User Management',
+    subtitle: 'Search users, assign CDC Graduate badges, and ban/unban accounts.',
+    tabAll: 'All',
+    tabStudents: 'Students',
+    tabClients: 'Clients',
+    tabAdmins: 'Admins',
+    searchPlaceholder: 'Search by name or email…',
+    allStatuses: 'All statuses',
+    statusPending: 'Pending Approval',
+    statusApproved: 'Approved',
+    statusRejected: 'Rejected',
+    badges: 'Badges',
+    graduate: 'Graduate',
+    banned: 'Banned',
+    removeBadge: 'Remove Badge',
+    assignBadge: '🎓 Assign Badge',
+    unban: 'Unban',
+    ban: 'Ban',
+    noUsers: 'No users match your search.',
+    loadError: 'Unable to load users. Please try again.',
+    actionError: 'Action failed. Please try again.',
+  },
+} as const;
+
 function UserManagement() {
   const { user: viewer } = useAuth();
+  const { lang } = useAdminLang();
+  const t = adminDict[lang];
+  const p = PAGE_DICT[lang];
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,11 +95,11 @@ function UserManagement() {
       const data = await getAdminUsers(statusFilter || undefined);
       setUsers(data);
     } catch {
-      setError('Unable to load users. Please try again.');
+      setError(p.loadError);
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, p.loadError]);
 
   useEffect(() => {
     loadUsers();
@@ -79,7 +133,7 @@ function UserManagement() {
       const updated = await action();
       setUsers((prev) => prev.map((u) => (u.id === userId ? updated : u)));
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Action failed. Please try again.');
+      setError(err?.response?.data?.message ?? p.actionError);
     } finally {
       setActioningId(null);
     }
@@ -92,16 +146,16 @@ function UserManagement() {
       </Head>
       <div>
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">User Management</h1>
-          <p className="text-sm text-gray-500 mt-1">Search users, assign CDC Graduate badges, and ban/unban accounts.</p>
+          <h1 className="text-2xl font-semibold text-gray-900">{p.title}</h1>
+          <p className="text-sm text-gray-500 mt-1">{p.subtitle}</p>
         </div>
 
         <div className="flex gap-1.5 mb-5 border-b border-gray-200">
           {([
-            ['all', 'All'],
-            ['Student', 'Students'],
-            ['Client', 'Clients'],
-            ['Admin', 'Admins'],
+            ['all', p.tabAll],
+            ['Student', p.tabStudents],
+            ['Client', p.tabClients],
+            ['Admin', p.tabAdmins],
           ] as const).map(([tab, label]) => (
             <button
               key={tab}
@@ -123,7 +177,7 @@ function UserManagement() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or email…"
+            placeholder={p.searchPlaceholder}
             className="flex-1 rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           <select
@@ -131,10 +185,10 @@ function UserManagement() {
             onChange={(e) => setStatusFilter(e.target.value as AdminUser['status'] | '')}
             className="rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            <option value="">All statuses</option>
-            <option value="PENDING_APPROVAL">Pending Approval</option>
-            <option value="APPROVED">Approved</option>
-            <option value="REJECTED">Rejected</option>
+            <option value="">{p.allStatuses}</option>
+            <option value="PENDING_APPROVAL">{p.statusPending}</option>
+            <option value="APPROVED">{p.statusApproved}</option>
+            <option value="REJECTED">{p.statusRejected}</option>
           </select>
         </div>
 
@@ -143,20 +197,20 @@ function UserManagement() {
         )}
 
         {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <p className="text-sm text-gray-400">{t.common.loading}</p>
         ) : filteredUsers.length === 0 ? (
-          <p className="text-sm text-gray-500">No users match your search.</p>
+          <p className="text-sm text-gray-500">{p.noUsers}</p>
         ) : (
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-gray-500 border-b border-gray-100 bg-gray-50">
-                    <th className="px-4 py-3 font-medium">User</th>
-                    <th className="px-4 py-3 font-medium">Role</th>
-                    <th className="px-4 py-3 font-medium">Status</th>
-                    <th className="px-4 py-3 font-medium">Badges</th>
-                    <th className="px-4 py-3 font-medium text-right">Actions</th>
+                    <th className="px-4 py-3 font-medium">{t.common.user}</th>
+                    <th className="px-4 py-3 font-medium">{t.common.role}</th>
+                    <th className="px-4 py-3 font-medium">{t.common.status}</th>
+                    <th className="px-4 py-3 font-medium">{p.badges}</th>
+                    <th className="px-4 py-3 font-medium text-right">{t.common.actions}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -173,19 +227,19 @@ function UserManagement() {
                           <span
                             className={`text-xs font-medium px-2 py-0.5 rounded-full border ${STATUS_BADGE[u.status]}`}
                           >
-                            {u.status.replace('_', ' ')}
+                            {u.status === 'PENDING_APPROVAL' ? p.statusPending : u.status === 'APPROVED' ? p.statusApproved : p.statusRejected}
                           </span>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-1">
                             {u.isVerifiedGraduate && (
                               <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-50 to-blue-50 border border-amber-300 text-blue-900">
-                                🎓 Graduate
+                                🎓 {p.graduate}
                               </span>
                             )}
                             {u.isBanned && (
                               <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700">
-                                🚫 Banned
+                                🚫 {p.banned}
                               </span>
                             )}
                             {u.adminRole && (
@@ -204,14 +258,14 @@ function UserManagement() {
                                   onClick={() => runAction(u.id, () => approveUser(u.id))}
                                   className="text-xs font-medium text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg disabled:opacity-50"
                                 >
-                                  Approve
+                                  {t.common.approve}
                                 </button>
                                 <button
                                   disabled={isActioning}
                                   onClick={() => runAction(u.id, () => rejectUser(u.id))}
                                   className="text-xs font-medium text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded-lg disabled:opacity-50"
                                 >
-                                  Reject
+                                  {t.common.reject}
                                 </button>
                               </>
                             )}
@@ -225,7 +279,7 @@ function UserManagement() {
                                 }
                                 className="text-xs font-medium text-indigo-700 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg disabled:opacity-50"
                               >
-                                {u.isVerifiedGraduate ? 'Remove Badge' : '🎓 Assign Badge'}
+                                {u.isVerifiedGraduate ? p.removeBadge : p.assignBadge}
                               </button>
                             )}
                             {u.id !== viewer?.id && (
@@ -240,7 +294,7 @@ function UserManagement() {
                                     : 'text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100'
                                 }`}
                               >
-                                {u.isBanned ? 'Unban' : 'Ban'}
+                                {u.isBanned ? p.unban : p.ban}
                               </button>
                             )}
                           </div>

@@ -5,7 +5,7 @@ import Head from 'next/head';
 import { Course } from '../src/types/lms';
 import { BlogPost } from '../src/types/blog';
 import { getCourses } from '../src/services/courseService';
-import { getBlogPosts } from '../src/services/blogService';
+import { getBlogPosts, blogTitle, blogDescription } from '../src/services/blogService';
 import { formatPrice } from '../src/utils/coursePricing';
 
 const dict = {
@@ -160,8 +160,8 @@ export default function SearchPage() {
                       <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-cyan-300 bg-cyan-500/10 border-cyan-500/20 self-start mb-4">
                         {post.category}
                       </span>
-                      <h3 className="text-lg font-black mb-2 text-white">{post.title}</h3>
-                      <p className="text-sm text-slate-400 leading-relaxed line-clamp-3">{post.description}</p>
+                      <h3 className="text-lg font-black mb-2 text-white">{blogTitle(post, lang)}</h3>
+                      <p className="text-sm text-slate-400 leading-relaxed line-clamp-3">{blogDescription(post, lang)}</p>
                     </Link>
                   ))}
                 </div>

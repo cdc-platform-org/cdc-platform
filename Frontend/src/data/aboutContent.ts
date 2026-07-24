@@ -39,8 +39,8 @@ export const aboutContent = {
     en: 'Founded in 2023 under the HEKS/EPER-supported project "Social Innovation Platform – Phase 2".',
   },
   physicalAddress: {
-    ka: 'საქართველო, ქ. ოზურგეთი, ჭავჭავაძის ქ. N19',
-    en: '#19 Chavchavadze St., Ozurgeti, Georgia',
+    ka: 'საქართველო, ქალაქი სამტრედია, თამარ მეფის ქ., N 8, ბინა N2',
+    en: 'Tamar Mepe St. N8, Apt. N2, Samtredia, Georgia',
   },
   descriptionParagraphs: [
     {

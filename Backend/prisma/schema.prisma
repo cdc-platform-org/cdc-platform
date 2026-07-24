@@ -629,10 +629,17 @@ model Order {
 
 model BlogPost {
   id          String   @id @default(uuid())
+  // title/description/content are the Georgian (primary) copy — matches all
+  // existing rows. The *En twins are optional; public pages fall back to the
+  // Georgian fields when the English ones are unset (see /admin/blog's
+  // Auto-Translate button and pages/blog's rendering).
   title       String
   description String
   category    String
   content     String
+  titleEn       String?
+  descriptionEn String?
+  contentEn     String?
   imageUrl    String?
   authorId    String
   author      User     @relation(fields: [authorId], references: [id], onDelete: Restrict)

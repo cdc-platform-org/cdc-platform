@@ -1,6 +1,18 @@
 import apiClient from './apiClient';
 import { BlogPost } from '../types/blog';
 
+// English falls back to the Georgian (primary) field whenever the post has
+// no translation set yet — used by the public /blog pages.
+export function blogTitle(post: BlogPost, lang: 'ka' | 'en'): string {
+  return (lang === 'en' && post.titleEn) || post.title;
+}
+export function blogDescription(post: BlogPost, lang: 'ka' | 'en'): string {
+  return (lang === 'en' && post.descriptionEn) || post.description;
+}
+export function blogContent(post: BlogPost, lang: 'ka' | 'en'): string {
+  return (lang === 'en' && post.contentEn) || post.content;
+}
+
 export async function getBlogPosts(category?: string): Promise<BlogPost[]> {
   const response = await apiClient.get<{ data: BlogPost[] }>('/blog', {
     params: category ? { category } : undefined,
@@ -18,6 +30,9 @@ export interface BlogPostPayload {
   description: string;
   category: string;
   content: string;
+  titleEn?: string | null;
+  descriptionEn?: string | null;
+  contentEn?: string | null;
   imageUrl?: string;
   published?: boolean;
 }
@@ -34,6 +49,22 @@ export async function updateBlogPost(id: string, payload: Partial<BlogPostPayloa
 
 export async function deleteBlogPost(id: string): Promise<void> {
   await apiClient.delete(`/blog/${id}`);
+}
+
+export interface TranslateBlogPostResult {
+  titleEn: string;
+  descriptionEn: string;
+  contentEn: string;
+}
+
+// Gemini-backed — see Backend's POST /api/ai/translate. Admin-only.
+export async function translateBlogPost(payload: {
+  title: string;
+  description: string;
+  content: string;
+}): Promise<TranslateBlogPostResult> {
+  const response = await apiClient.post<{ data: TranslateBlogPostResult }>('/ai/translate', payload);
+  return response.data.data;
 }
 
 export async function uploadBlogImage(file: File): Promise<string> {

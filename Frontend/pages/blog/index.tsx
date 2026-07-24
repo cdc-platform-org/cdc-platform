@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Head from 'next/head';
 import { BlogPost } from '../../src/types/blog';
-import { getBlogPosts, resolveBlogImageUrl } from '../../src/services/blogService';
+import { getBlogPosts, resolveBlogImageUrl, blogTitle, blogDescription } from '../../src/services/blogService';
 
 const dict = {
   ka: {
@@ -69,14 +69,14 @@ export default function BlogIndexPage() {
               >
                 {post.imageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={resolveBlogImageUrl(post.imageUrl)} alt={post.title} className="w-full h-40 object-cover" />
+                  <img src={resolveBlogImageUrl(post.imageUrl)} alt={blogTitle(post, lang)} className="w-full h-40 object-cover" />
                 )}
                 <div className="p-6 flex-1 flex flex-col">
                   <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-cyan-300 bg-cyan-500/10 border-cyan-500/20 self-start mb-4">
                     {post.category}
                   </span>
-                  <h3 className="text-lg font-black mb-2 text-white">{post.title}</h3>
-                  <p className="text-sm text-slate-400 leading-relaxed line-clamp-3 mb-4 flex-1">{post.description}</p>
+                  <h3 className="text-lg font-black mb-2 text-white">{blogTitle(post, lang)}</h3>
+                  <p className="text-sm text-slate-400 leading-relaxed line-clamp-3 mb-4 flex-1">{blogDescription(post, lang)}</p>
                   <span className="text-xs font-bold text-cyan-400">{t.readMore}</span>
                 </div>
               </Link>

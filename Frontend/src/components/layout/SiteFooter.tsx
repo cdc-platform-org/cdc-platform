@@ -9,6 +9,34 @@ interface SiteFooterProps {
   lang: 'GEO' | 'ENG';
 }
 
+const SOCIAL_LINKS = [
+  {
+    name: 'Facebook',
+    href: 'https://www.facebook.com/cdc.digitalcareers',
+    icon: (
+      <path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.78-3.89 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99A10 10 0 0 0 22 12Z" />
+    ),
+  },
+  {
+    name: 'Instagram',
+    href: 'https://www.instagram.com/digitalcareers1/',
+    icon: (
+      <>
+        <rect x="2" y="2" width="20" height="20" rx="5" ry="5" fill="none" stroke="currentColor" strokeWidth="2" />
+        <circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" strokeWidth="2" />
+        <circle cx="17.4" cy="6.6" r="1.2" />
+      </>
+    ),
+  },
+  {
+    name: 'TikTok',
+    href: 'https://www.tiktok.com/@digitalcareers.geo',
+    icon: (
+      <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17c1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97c-.57-.26-1.1-.59-1.62-.93c-.01 2.92.01 5.84-.02 8.75c-.08 1.4-.54 2.79-1.35 3.94c-1.31 1.92-3.58 3.17-5.91 3.21c-1.43.08-2.86-.31-4.08-1.03c-2.02-1.19-3.44-3.37-3.65-5.71c-.02-.5-.03-1-.01-1.49c.18-1.9 1.12-3.72 2.58-4.96c1.66-1.44 3.98-2.13 6.15-1.72c.02 1.48-.04 2.96-.04 4.44c-.99-.32-2.15-.23-3.02.37c-.63.41-1.11 1.04-1.36 1.75c-.21.51-.15 1.07-.14 1.61c.24 1.64 1.82 3.02 3.5 2.87c1.12-.01 2.19-.66 2.77-1.61c.19-.33.4-.67.41-1.06c.1-1.79.06-3.57.07-5.36c.01-4.03-.01-8.05.02-12.07Z" />
+    ),
+  },
+];
+
 const STRINGS = {
   GEO: {
     tagline: 'ვასწავლით ციფრულ პროფესიებს გურიაში — HEKS/EPER Georgia-ს მხარდაჭერით.',
@@ -23,6 +51,7 @@ const STRINGS = {
     refund: 'თანხის დაბრუნების პოლიტიკა',
     contactHeading: 'კონტაქტი',
     rights: 'ყველა უფლება დაცულია.',
+    followUs: 'გამოგვყევით',
   },
   ENG: {
     tagline: 'Teaching digital professions in Guria — supported by HEKS/EPER Georgia.',
@@ -37,6 +66,7 @@ const STRINGS = {
     refund: 'Refund Policy',
     contactHeading: 'Contact',
     rights: 'All rights reserved.',
+    followUs: 'Follow Us',
   },
 } as const;
 
@@ -56,7 +86,24 @@ export default function SiteFooter({ lang }: SiteFooterProps) {
               CDC
             </div>
           </div>
-          <p className="text-xs leading-relaxed text-slate-500">{t.tagline}</p>
+          <p className="text-xs leading-relaxed text-slate-500 mb-4">{t.tagline}</p>
+          <h3 className="text-xs font-black uppercase tracking-widest text-slate-300 mb-3">{t.followUs}</h3>
+          <div className="flex items-center gap-2.5">
+            {SOCIAL_LINKS.map((social) => (
+              <a
+                key={social.name}
+                href={social.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={social.name}
+                className="flex items-center justify-center w-9 h-9 rounded-lg border border-slate-800 text-slate-400 hover:text-cyan-400 hover:border-cyan-400 transition-colors no-underline"
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+                  {social.icon}
+                </svg>
+              </a>
+            ))}
+          </div>
         </div>
 
         {/* Quick links */}

@@ -10,6 +10,7 @@ import {
   deleteBlogPost,
   uploadBlogImage,
   resolveBlogImageUrl,
+  translateBlogPost,
   BlogPostPayload,
 } from '../../src/services/blogService';
 
@@ -18,6 +19,9 @@ const emptyForm: BlogPostPayload = {
   description: '',
   category: '',
   content: '',
+  titleEn: '',
+  descriptionEn: '',
+  contentEn: '',
   imageUrl: '',
   published: true,
 };
@@ -31,6 +35,8 @@ function AdminBlogDashboard() {
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [activeLangTab, setActiveLangTab] = useState<'ka' | 'en'>('ka');
+  const [translating, setTranslating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadPosts = useCallback(async () => {
@@ -64,11 +70,37 @@ function AdminBlogDashboard() {
       description: post.description,
       category: post.category,
       content: post.content,
+      titleEn: post.titleEn ?? '',
+      descriptionEn: post.descriptionEn ?? '',
+      contentEn: post.contentEn ?? '',
       imageUrl: post.imageUrl ?? '',
       published: post.published,
     });
+    setActiveLangTab('ka');
     setFormError(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleAutoTranslate = async () => {
+    setFormError(null);
+    if (form.title.trim().length < 3 || form.description.trim().length < 10 || form.content.trim().length < 20) {
+      setFormError('თარგმნამდე შეავსეთ ქართული სათაური, აღწერა და კონტენტი.');
+      return;
+    }
+    setTranslating(true);
+    try {
+      const translated = await translateBlogPost({
+        title: form.title.trim(),
+        description: form.description.trim(),
+        content: form.content.trim(),
+      });
+      setForm((f) => ({ ...f, ...translated }));
+      setActiveLangTab('en');
+    } catch (err: any) {
+      setFormError(err?.response?.data?.message ?? 'თარგმნა ვერ მოხერხდა.');
+    } finally {
+      setTranslating(false);
+    }
   };
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -101,6 +133,9 @@ function AdminBlogDashboard() {
         description: form.description.trim(),
         category: form.category.trim(),
         content: form.content.trim(),
+        titleEn: form.titleEn?.trim() || null,
+        descriptionEn: form.descriptionEn?.trim() || null,
+        contentEn: form.contentEn?.trim() || null,
         imageUrl: form.imageUrl?.trim() || undefined,
         published: form.published,
       };
@@ -156,50 +191,111 @@ function AdminBlogDashboard() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid md:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">სათაური</label>
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className={inputClass}
-                  placeholder="სტატიის სათაური"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">კატეგორია</label>
-                <input
-                  type="text"
-                  value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  className={inputClass}
-                  placeholder="ტექნოლოგიები, მარკეტინგი..."
-                />
-              </div>
-            </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">მოკლე აღწერა</label>
-              <textarea
-                rows={2}
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">კატეგორია</label>
+              <input
+                type="text"
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
                 className={inputClass}
-                placeholder="მოკლე აღწერა, რომელიც გამოჩნდება სიაში..."
+                placeholder="ტექნოლოგიები, მარკეტინგი..."
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">კონტენტი</label>
-              <textarea
-                rows={8}
-                value={form.content}
-                onChange={(e) => setForm({ ...form, content: e.target.value })}
-                className={inputClass}
-                placeholder="სტატიის სრული ტექსტი..."
-              />
+            <div className="flex items-center justify-between border-b border-gray-200">
+              <div className="flex gap-1">
+                {(['ka', 'en'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveLangTab(tab)}
+                    className={`px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors bg-transparent cursor-pointer ${
+                      activeLangTab === tab
+                        ? 'border-indigo-600 text-indigo-700'
+                        : 'border-transparent text-gray-400 hover:text-gray-600'
+                    }`}
+                  >
+                    {tab === 'ka' ? '🇬🇪 ქართული' : '🇬🇧 English'}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={handleAutoTranslate}
+                disabled={translating}
+                className="mb-1.5 text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg disabled:opacity-60"
+              >
+                {translating ? 'ითარგმნება…' : '✨ Auto-Translate to English'}
+              </button>
             </div>
+
+            {activeLangTab === 'ka' ? (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">სათაური (KA)</label>
+                  <input
+                    type="text"
+                    value={form.title}
+                    onChange={(e) => setForm({ ...form, title: e.target.value })}
+                    className={inputClass}
+                    placeholder="სტატიის სათაური"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">მოკლე აღწერა (KA)</label>
+                  <textarea
+                    rows={2}
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    className={inputClass}
+                    placeholder="მოკლე აღწერა, რომელიც გამოჩნდება სიაში..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">კონტენტი (KA)</label>
+                  <textarea
+                    rows={8}
+                    value={form.content}
+                    onChange={(e) => setForm({ ...form, content: e.target.value })}
+                    className={inputClass}
+                    placeholder="სტატიის სრული ტექსტი..."
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Title (EN)</label>
+                  <input
+                    type="text"
+                    value={form.titleEn ?? ''}
+                    onChange={(e) => setForm({ ...form, titleEn: e.target.value })}
+                    className={inputClass}
+                    placeholder="Article title — falls back to Georgian if left blank"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Short description (EN)</label>
+                  <textarea
+                    rows={2}
+                    value={form.descriptionEn ?? ''}
+                    onChange={(e) => setForm({ ...form, descriptionEn: e.target.value })}
+                    className={inputClass}
+                    placeholder="Shown in listings — falls back to Georgian if left blank"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Content (EN)</label>
+                  <textarea
+                    rows={8}
+                    value={form.contentEn ?? ''}
+                    onChange={(e) => setForm({ ...form, contentEn: e.target.value })}
+                    className={inputClass}
+                    placeholder="Full article body — falls back to Georgian if left blank"
+                  />
+                </div>
+              </>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
