@@ -66,3 +66,13 @@ export const EMAIL_FROM = process.env.EMAIL_FROM || 'CDC Platform <no-reply@cdc.
 // Same key as Frontend's GEMINI_API_KEY (used server-side there too, in
 // pages/api/chat.ts — never exposed to the browser).
 export const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+// Bunny Storage (a plain object-storage zone — distinct from Bunny Stream
+// above, which is video-specific). Deliberately NOT requireEnv() — the app
+// must still boot without it configured; image upload routes just respond
+// 501 until these are set (see services/bunnyStorage.ts).
+export const BUNNY_STORAGE_ZONE_NAME = process.env.BUNNY_STORAGE_ZONE_NAME || '';
+export const BUNNY_STORAGE_API_KEY = process.env.BUNNY_STORAGE_API_KEY || '';
+export const BUNNY_STORAGE_HOST = process.env.BUNNY_STORAGE_HOST || 'storage.bunnycdn.com';
+// Public pull-zone base URL for reading back what was uploaded, e.g.
+// "https://cdc-storage.b-cdn.net" — no trailing slash.
+export const BUNNY_CDN_URL = process.env.BUNNY_CDN_URL || '';

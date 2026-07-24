@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { blogPostCreateSchema, blogPostUpdateSchema } from '../schemas/blogSchemas';
+import { uploadToBunnyStorage, isBunnyStorageConfigured, BunnyStorageUploadError } from '../services/bunnyStorage';
 
 // Migrated from requireRole('SuperAdmin') to the admin-team adminRole system
 // (SUPER_ADMIN + ADMIN) — content management is explicitly ADMIN's domain
@@ -85,7 +86,9 @@ router.delete('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), 
   }
 });
 
-// --- Image upload: stores locally under Backend/public/uploads, served at /uploads/<file>. ---
+// --- Image upload: buffered in memory, then pushed straight to Bunny
+// Storage — nothing ever touches this server's disk. Reused by both the
+// blog editor and the CMS image pickers (homepage HEKS card, gallery). ---
 const imageFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   if (file.mimetype.startsWith('image/')) {
     cb(null, true);
@@ -95,12 +98,7 @@ const imageFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFil
 };
 
 const imageUpload = multer({
-  storage: multer.diskStorage({
-    destination: path.join(__dirname, '..', '..', 'public', 'uploads'),
-    filename: (req, file, cb) => {
-      cb(null, `blog-${Date.now()}-${crypto.randomUUID()}${path.extname(file.originalname)}`);
-    },
-  }),
+  storage: multer.memoryStorage(),
   fileFilter: imageFilter,
   limits: { fileSize: 8 * 1024 * 1024 }, // 8MB
 });
@@ -109,12 +107,30 @@ router.post(
   '/upload-image',
   authenticate,
   requireAdminRole('SUPER_ADMIN', 'MANAGER'),
+  (req: Request, res: Response, next) => {
+    if (!isBunnyStorageConfigured()) {
+      return res.status(501).json({ message: 'Bunny Storage is not configured (BUNNY_STORAGE_ZONE_NAME / BUNNY_STORAGE_API_KEY / BUNNY_CDN_URL).' });
+    }
+    next();
+  },
   imageUpload.single('image'),
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     if (!req.file) {
       return res.status(400).json({ message: 'ფაილი არ არის არჩეული' });
     }
-    res.status(201).json({ url: `/uploads/${req.file.filename}` });
+    const filename = `blog-${Date.now()}-${crypto.randomUUID()}${path.extname(req.file.originalname)}`;
+    try {
+      const url = await uploadToBunnyStorage({
+        buffer: req.file.buffer,
+        mimetype: req.file.mimetype,
+        folderName: 'blog',
+        filename,
+      });
+      res.status(201).json({ url });
+    } catch (err) {
+      const message = err instanceof BunnyStorageUploadError ? err.message : 'Image upload failed. Please try again.';
+      res.status(500).json({ message });
+    }
   }
 );
 
