@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
 import Head from 'next/head';
 import AdminGuard from '../../../src/components/admin/AdminGuard';
 import AdminLayout from '../../../src/components/admin/AdminLayout';
 import { HomepageContent, HomepageStat, HomepageFaqItem } from '../../../src/types/siteContent';
-import { getAdminSiteContent, updateSiteContent } from '../../../src/services/siteContentService';
+import { getAdminSiteContent, updateSiteContent, uploadCmsImage } from '../../../src/services/siteContentService';
+import { resolveBlogImageUrl } from '../../../src/services/blogService';
 
 const emptyStat: HomepageStat = { valueKa: '', labelKa: '', valueEn: '', labelEn: '' };
 const emptyFaq: HomepageFaqItem = { questionKa: '', answerKa: '', questionEn: '', answerEn: '' };
@@ -15,6 +16,9 @@ function HomepageCmsDashboard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [uploadingHeksImage, setUploadingHeksImage] = useState(false);
+  const [heksUploadError, setHeksUploadError] = useState<string | null>(null);
+  const heksFileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,6 +55,25 @@ function HomepageCmsDashboard() {
     const faq = [...(content.faq ?? [])];
     faq[i] = { ...faq[i], ...patch };
     setContent({ ...content, faq });
+  };
+
+  const updateHeksCard = (patch: Partial<NonNullable<HomepageContent['heksCard']>>) => {
+    setContent({ ...content, heksCard: { ...content.heksCard, ...patch } });
+  };
+
+  const handleHeksFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingHeksImage(true);
+    setHeksUploadError(null);
+    try {
+      const url = await uploadCmsImage(file);
+      updateHeksCard({ imageUrl: url });
+    } catch {
+      setHeksUploadError('სურათის ატვირთვა ვერ მოხერხდა.');
+    } finally {
+      setUploadingHeksImage(false);
+    }
   };
 
   if (loading) {
@@ -124,6 +147,82 @@ function HomepageCmsDashboard() {
                 className={inputClass}
                 placeholder="(default) ...and get hired directly on our platform!"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* HEKS/EPER card image */}
+        <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
+          <h2 className="font-semibold text-sm text-gray-900 mb-1">HEKS/EPER Card Image</h2>
+          <p className="text-xs text-gray-500 mb-4">
+            Controls the photo on the "Ecosystem Achievements" section's large HEKS/EPER card. Leave blank to use the
+            bundled default image.
+          </p>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Image URL</label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    value={content.heksCard?.imageUrl ?? ''}
+                    onChange={(e) => updateHeksCard({ imageUrl: e.target.value })}
+                    className={`${inputClass} flex-1`}
+                    placeholder="https://... or /images/heks-eper.jpg"
+                  />
+                  <label className="shrink-0 inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-gray-300 text-sm font-medium text-gray-600 cursor-pointer hover:bg-gray-50">
+                    {uploadingHeksImage ? 'იტვირთება…' : '📁 Upload'}
+                    <input
+                      ref={heksFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleHeksFileChange}
+                      className="hidden"
+                      disabled={uploadingHeksImage}
+                    />
+                  </label>
+                </div>
+                {heksUploadError && <p className="text-xs text-red-600 mt-1.5">{heksUploadError}</p>}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Focus / Crop Position</label>
+                  <select
+                    value={content.heksCard?.objectPosition ?? 'top'}
+                    onChange={(e) => updateHeksCard({ objectPosition: e.target.value as 'top' | 'center' | 'bottom' })}
+                    className={inputClass}
+                  >
+                    <option value="top">Top (faces near top)</option>
+                    <option value="center">Center</option>
+                    <option value="bottom">Bottom</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Container Height</label>
+                  <select
+                    value={content.heksCard?.heightPreset ?? 'normal'}
+                    onChange={(e) => updateHeksCard({ heightPreset: e.target.value as 'normal' | 'tall' })}
+                    className={inputClass}
+                  >
+                    <option value="normal">Normal</option>
+                    <option value="tall">Tall (more of the photo visible)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">Preview</label>
+              <div className={`rounded-lg overflow-hidden border border-gray-200 ${content.heksCard?.heightPreset === 'tall' ? 'h-56' : 'h-40'}`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={content.heksCard?.imageUrl ? resolveBlogImageUrl(content.heksCard.imageUrl) : '/images/heks-eper.jpg'}
+                  alt="HEKS/EPER card preview"
+                  className="w-full h-full object-cover"
+                  style={{ objectPosition: content.heksCard?.objectPosition ?? 'top' }}
+                />
+              </div>
             </div>
           </div>
         </div>

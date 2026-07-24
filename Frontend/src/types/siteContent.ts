@@ -12,6 +12,14 @@ export interface HomepageFaqItem {
   answerEn: string;
 }
 
+export interface HeksCardConfig {
+  // Absolute URL or a server-relative /uploads/... path (see uploadCmsImage).
+  // Falls back to the bundled /images/heks-eper.jpg when unset.
+  imageUrl?: string;
+  objectPosition?: 'top' | 'center' | 'bottom';
+  heightPreset?: 'normal' | 'tall';
+}
+
 export interface HomepageContent {
   heroTitleKa?: string;
   heroTitleEn?: string;
@@ -19,4 +27,5 @@ export interface HomepageContent {
   heroSubtitleEn?: string;
   stats?: HomepageStat[];
   faq?: HomepageFaqItem[];
+  heksCard?: HeksCardConfig;
 }

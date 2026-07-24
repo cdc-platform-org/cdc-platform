@@ -12,12 +12,22 @@ import { HomepageContent, HomepageStat } from '../src/types/siteContent';
 import { getCourses } from '../src/services/courseService';
 import { checkoutCourse } from '../src/services/paymentService';
 import { getSiteContent } from '../src/services/siteContentService';
+import { resolveBlogImageUrl } from '../src/services/blogService';
 import { formatPrice, getSaleCountdownLabel } from '../src/utils/coursePricing';
 
 const DEFAULT_HOMEPAGE_STATS: HomepageStat[] = [
   { valueKa: '200+', labelKa: 'კურსდამთავრებული', valueEn: '200+', labelEn: 'Graduates' },
   { valueKa: '100%', labelKa: 'პრაქტიკული დავალებები', valueEn: '100%', labelEn: 'Practical Tasks' },
 ];
+
+// Tailwind's JIT scanner needs complete literal class names in source — an
+// interpolated `object-${x}` string would silently produce no CSS, so this
+// maps the CMS-editable position value to a fully literal class instead.
+const HEKS_OBJECT_POSITION_CLASS: Record<'top' | 'center' | 'bottom', string> = {
+  top: 'object-top',
+  center: 'object-center',
+  bottom: 'object-bottom',
+};
 
 // Compact overrides so the assistant's Markdown (bold/headers/bullets) fits
 // a narrow chat bubble instead of using default prose spacing/sizing.
@@ -443,13 +453,17 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 auto-rows-[240px]">
           <div className={`md:col-span-2 md:row-span-2 rounded-3xl border backdrop-blur-md overflow-hidden flex flex-col transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422]/60 border-slate-800' : 'bg-white/60 border-slate-200'}`}>
             <img
-              src="/images/heks-eper.jpg"
+              src={cms?.heksCard?.imageUrl ? resolveBlogImageUrl(cms.heksCard.imageUrl) : '/images/heks-eper.jpg'}
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).src =
                   'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&w=800&q=80';
               }}
               alt="HEKS/EPER Georgia"
-              className="w-full h-64 sm:h-72 object-cover object-top rounded-t-3xl shrink-0"
+              className={`w-full ${
+                cms?.heksCard?.heightPreset === 'tall' ? 'h-80 sm:h-96' : 'h-64 sm:h-72'
+              } object-cover ${
+                HEKS_OBJECT_POSITION_CLASS[cms?.heksCard?.objectPosition ?? 'top']
+              } rounded-t-3xl shrink-0`}
             />
             <div className="p-8 md:p-10 flex-1 flex flex-col justify-center">
               <div className="flex items-center space-x-3 mb-6 text-sky-500">
