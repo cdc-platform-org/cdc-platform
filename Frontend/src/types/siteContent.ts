@@ -12,6 +12,18 @@ export interface HomepageFaqItem {
   answerEn: string;
 }
 
+// --- Photo Gallery (page: "gallery") ---
+
+export interface GalleryImage {
+  url: string; // absolute URL or a server-relative /uploads/... path
+  captionKa?: string;
+  captionEn?: string;
+}
+
+export interface GalleryContent {
+  images?: GalleryImage[];
+}
+
 export interface HeksCardConfig {
   // Absolute URL or a server-relative /uploads/... path (see uploadCmsImage).
   // Falls back to the bundled /images/heks-eper.jpg when unset.

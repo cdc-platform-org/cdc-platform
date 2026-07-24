@@ -39,6 +39,9 @@ export const googleAuthSchema = z.object({
 
 export const forgotPasswordSchema = z.object({
   email: z.string().email(),
+  // Which language to render the reset email in — sent by the frontend
+  // based on the current site locale (see services/emailService.ts).
+  lang: z.enum(['ka', 'en']).optional(),
 });
 
 export const resetPasswordSchema = z.object({

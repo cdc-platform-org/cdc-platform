@@ -3,9 +3,9 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { GetServerSideProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import ThreadListItem from '../../../src/components/forum/ThreadListItem';
 import { useAuth } from '../../../src/context/AuthContext';
+import { useAuthModal } from '../../../src/context/AuthModalContext';
 import { ForumCategory, ForumThread } from '../../../src/types/forum';
 import {
   getCategories,
@@ -21,7 +21,8 @@ const PAGE_SIZE = 20;
 function ThreadListingContent() {
   const router = useRouter();
   const { categorySlug } = router.query;
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const { openAuthModal } = useAuthModal();
   const [category, setCategory] = useState<ForumCategory | null>(null);
   const [threads, setThreads] = useState<ForumThread[]>([]);
   const [page, setPage] = useState(1);
@@ -109,12 +110,27 @@ function ThreadListingContent() {
             <h1 className="text-2xl font-semibold text-gray-900">{category?.name}</h1>
             <p className="text-sm text-gray-500 mt-1">{category?.description}</p>
           </div>
-          <Link
-            href={`/forum/${categorySlug}/new`}
-            className="text-sm font-medium text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700 whitespace-nowrap"
-          >
-            New Thread
-          </Link>
+          {isAuthenticated ? (
+            <Link
+              href={`/forum/${categorySlug}/new`}
+              className="text-sm font-medium text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700 whitespace-nowrap"
+            >
+              New Thread
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() =>
+                openAuthModal({
+                  message: { ka: 'გთხოვთ გაიაროთ ავტორიზაცია ფორუმზე დასაწერად', en: 'Please sign in to post on the forum' },
+                  onSuccess: () => router.push(`/forum/${categorySlug}/new`),
+                })
+              }
+              className="text-sm font-medium text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700 whitespace-nowrap"
+            >
+              New Thread
+            </button>
+          )}
         </div>
 
         {error && (
@@ -168,11 +184,7 @@ function ThreadListingContent() {
 }
 
 export default function ThreadListingPage() {
-  return (
-    <ProtectedRoute>
-      <ThreadListingContent />
-    </ProtectedRoute>
-  );
+  return <ThreadListingContent />;
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({

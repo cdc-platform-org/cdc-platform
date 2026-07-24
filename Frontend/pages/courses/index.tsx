@@ -10,6 +10,7 @@ import { Course } from '../../src/types/lms';
 import { getCourses } from '../../src/services/courseService';
 import { checkoutCourse } from '../../src/services/paymentService';
 import { formatPrice, getSaleCountdownLabel } from '../../src/utils/coursePricing';
+import { courseLanguageBadge } from '../../src/utils/courseLanguage';
 
 const dict = {
   ka: {
@@ -114,9 +115,14 @@ export default function CoursesPage() {
                   )}
                   <div>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-600 dark:text-purple-300 bg-purple-500/10 border-purple-500/20">
-                        {course.category}
-                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-600 dark:text-purple-300 bg-purple-500/10 border-purple-500/20">
+                          {course.category}
+                        </span>
+                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-slate-600 dark:text-slate-300 bg-slate-500/10 border-slate-500/20 whitespace-nowrap">
+                          {courseLanguageBadge(course.language, lang)}
+                        </span>
+                      </div>
                       <span className="text-sm font-black text-cyan-600 dark:text-cyan-300 whitespace-nowrap">{formatPrice(course.currentPrice)}</span>
                     </div>
                     <Link href={`/courses/${course.id}`} className="block no-underline text-current">

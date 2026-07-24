@@ -425,6 +425,12 @@ model VacancyApplication {
 // COURSE
 // ============================================================
 
+enum CourseLanguage {
+  GEORGIAN
+  ENGLISH
+  BOTH
+}
+
 model Course {
   id          String   @id @default(uuid())
   title       String
@@ -448,6 +454,9 @@ model Course {
   mentorName   String?
   mentorTitle  String?
   thumbnailUrl String?
+  // Instruction language, shown as a badge on course cards. Defaults to
+  // GEORGIAN since every pre-existing course is Georgian-taught.
+  language     CourseLanguage @default(GEORGIAN)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

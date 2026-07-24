@@ -277,7 +277,7 @@ router.post('/forgot-password', async (req, res) => {
       passwordResetTokenExpires: new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS),
     },
   });
-  sendPasswordResetEmail(user.email, passwordResetToken);
+  sendPasswordResetEmail(user.email, passwordResetToken, result.data.lang ?? 'ka');
 
   res.json({ message: 'If an account exists for that email, a reset link has been sent.' });
 });

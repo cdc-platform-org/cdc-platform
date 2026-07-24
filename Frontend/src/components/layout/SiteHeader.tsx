@@ -7,8 +7,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useAuthModal } from '../../context/AuthModalContext';
 
 const dict = {
-  ka: { login: 'შესვლა', logout: 'გასვლა', dashboard: 'პირადი კაბინეტი', admin: 'ადმინი' },
-  en: { login: 'Log In', logout: 'Log Out', dashboard: 'Dashboard', admin: 'Admin' },
+  ka: { login: 'შესვლა', logout: 'გასვლა', dashboard: 'პირადი კაბინეტი', admin: 'ადმინი', about: 'ჩვენ შესახებ', gallery: 'გალერეა' },
+  en: { login: 'Log In', logout: 'Log Out', dashboard: 'Dashboard', admin: 'Admin', about: 'About', gallery: 'Gallery' },
 };
 
 // Shared, theme-aware header for content pages that don't have their own
@@ -43,6 +43,14 @@ export default function SiteHeader() {
         </Link>
 
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          <div className="hidden md:flex items-center gap-4 text-xs font-bold text-slate-600 dark:text-slate-300">
+            <Link href="/about" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
+              {t.about}
+            </Link>
+            <Link href="/gallery" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
+              {t.gallery}
+            </Link>
+          </div>
           <LanguageSwitcher />
           <button
             type="button"

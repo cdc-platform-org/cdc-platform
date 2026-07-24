@@ -3,8 +3,8 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { GetServerSideProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import { useAuth } from '../../../src/context/AuthContext';
+import { useAuthModal } from '../../../src/context/AuthModalContext';
 import { ForumThread, ForumComment } from '../../../src/types/forum';
 import {
   getThreadById,
@@ -21,7 +21,9 @@ const COMMENTS_PAGE_SIZE = 20;
 function ThreadDetailContent() {
   const router = useRouter();
   const { id } = router.query;
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const { openAuthModal } = useAuthModal();
+  const SIGN_IN_TO_ENGAGE = { ka: 'გთხოვთ გაიაროთ ავტორიზაცია ფორუმზე დასაწერად', en: 'Please sign in to post on the forum' };
   const [thread, setThread] = useState<ForumThread | null>(null);
   const [comments, setComments] = useState<ForumComment[]>([]);
   const [commentsPage, setCommentsPage] = useState(1);
@@ -61,6 +63,10 @@ function ThreadDetailContent() {
 
   const handleThreadLikeToggle = async () => {
     if (!thread) return;
+    if (!isAuthenticated) {
+      openAuthModal({ message: SIGN_IN_TO_ENGAGE });
+      return;
+    }
     const updated = thread.isLikedByCurrentUser
       ? await unlikeThread(thread.id)
       : await likeThread(thread.id);
@@ -68,6 +74,10 @@ function ThreadDetailContent() {
   };
 
   const handleCommentLikeToggle = async (comment: ForumComment) => {
+    if (!isAuthenticated) {
+      openAuthModal({ message: SIGN_IN_TO_ENGAGE });
+      return;
+    }
     const updated = comment.isLikedByCurrentUser
       ? await unlikeComment(comment.id)
       : await likeComment(comment.id);
@@ -77,6 +87,10 @@ function ThreadDetailContent() {
   const handleSubmitComment = async (e: FormEvent) => {
     e.preventDefault();
     if (typeof id !== 'string') return;
+    if (!isAuthenticated) {
+      openAuthModal({ message: SIGN_IN_TO_ENGAGE });
+      return;
+    }
     setCommentError(null);
     if (newComment.trim().length < 2) {
       setCommentError('Comment is too short.');
@@ -242,11 +256,7 @@ function ThreadDetailContent() {
 }
 
 export default function ThreadDetailPage() {
-  return (
-    <ProtectedRoute>
-      <ThreadDetailContent />
-    </ProtectedRoute>
-  );
+  return <ThreadDetailContent />;
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({

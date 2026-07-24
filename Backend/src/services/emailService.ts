@@ -91,13 +91,22 @@ export async function sendVacancyApplicationEmail(
   await sendEmail(employerEmail, `ახალი განაცხადი: ${vacancyTitle}`, html, link);
 }
 
-export async function sendPasswordResetEmail(email: string, token: string): Promise<void> {
+export async function sendPasswordResetEmail(email: string, token: string, lang: 'ka' | 'en' = 'ka'): Promise<void> {
   const link = `${FRONTEND_URL}/reset-password?token=${token}`;
-  const html = wrapTemplate(
-    'პაროლის აღდგენა',
-    'მიღებულია მოთხოვნა თქვენი CDC ანგარიშის პაროლის აღდგენაზე. თუ ეს თქვენ არ მოგითხოვიათ, უბრალოდ იგნორირება გაუკეთეთ ამ წერილს — თქვენი პაროლი უცვლელი დარჩება. ბმული ვალიდურია 1 საათის განმავლობაში.',
-    'პაროლის აღდგენა',
-    link
-  );
-  await sendEmail(email, 'CDC — პაროლის აღდგენა', html, link);
+  const html =
+    lang === 'en'
+      ? wrapTemplate(
+          'Reset Your Password',
+          'We received a request to reset your CDC account password. If you did not request this, simply ignore this email — your password will remain unchanged. This link is valid for 1 hour.',
+          'Reset Password',
+          link
+        )
+      : wrapTemplate(
+          'პაროლის აღდგენა',
+          'მიღებულია მოთხოვნა თქვენი CDC ანგარიშის პაროლის აღდგენაზე. თუ ეს თქვენ არ მოგითხოვიათ, უბრალოდ იგნორირება გაუკეთეთ ამ წერილს — თქვენი პაროლი უცვლელი დარჩება. ბმული ვალიდურია 1 საათის განმავლობაში.',
+          'პაროლის აღდგენა',
+          link
+        );
+  const subject = lang === 'en' ? 'CDC — Password Reset' : 'CDC — პაროლის აღდგენა';
+  await sendEmail(email, subject, html, link);
 }

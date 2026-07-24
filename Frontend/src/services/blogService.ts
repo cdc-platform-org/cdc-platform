@@ -1,6 +1,17 @@
 import apiClient from './apiClient';
 import { BlogPost } from '../types/blog';
 
+// Canonical "Success Stories" category label — a post is treated as a
+// graduate success story purely by category match (no separate boolean
+// field), so the badge/filter work for posts tagged in either language.
+export const SUCCESS_STORIES_CATEGORY_KA = 'წარმატებული ისტორიები';
+export const SUCCESS_STORIES_CATEGORY_EN = 'Success Stories';
+
+export function isSuccessStory(post: BlogPost): boolean {
+  const category = post.category.trim().toLowerCase();
+  return category === SUCCESS_STORIES_CATEGORY_KA.toLowerCase() || category === SUCCESS_STORIES_CATEGORY_EN.toLowerCase();
+}
+
 // English falls back to the Georgian (primary) field whenever the post has
 // no translation set yet — used by the public /blog pages.
 export function blogTitle(post: BlogPost, lang: 'ka' | 'en'): string {

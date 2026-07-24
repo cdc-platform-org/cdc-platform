@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, FormEvent, ChangeEvent } from
 import Head from 'next/head';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
-import { Course, CoursePayload, AdminSection, AdminLesson, Exam } from '../../src/types/lms';
+import { Course, CoursePayload, CourseLanguage, AdminSection, AdminLesson, Exam } from '../../src/types/lms';
 import {
   getCourses,
   createCourse,
@@ -30,6 +30,7 @@ const emptyForm = {
   mentorName: '',
   mentorTitle: '',
   thumbnailUrl: '',
+  language: 'GEORGIAN' as CourseLanguage,
   isOnSale: false,
   discountPercent: 20,
   discountPercentCustom: '',
@@ -71,6 +72,7 @@ function CourseForm({
         mentorName: editingCourse.mentorName ?? '',
         mentorTitle: editingCourse.mentorTitle ?? '',
         thumbnailUrl: editingCourse.thumbnailUrl ?? '',
+        language: editingCourse.language ?? 'GEORGIAN',
         isOnSale: editingCourse.isOnSale,
         discountPercent: presetMatch ? editingCourse.discountPercent! : DISCOUNT_PRESETS[1],
         discountPercentCustom: !presetMatch && editingCourse.discountPercent != null ? String(editingCourse.discountPercent) : '',
@@ -106,6 +108,7 @@ function CourseForm({
         mentorName: form.mentorName.trim() || undefined,
         mentorTitle: form.mentorTitle.trim() || undefined,
         thumbnailUrl: form.thumbnailUrl.trim() || undefined,
+        language: form.language,
         isOnSale: form.isOnSale,
         discountPercent: form.isOnSale ? effectiveDiscountPercent : null,
         discountEndDate: form.isOnSale && form.discountEndDate ? new Date(form.discountEndDate).toISOString() : null,
@@ -162,9 +165,23 @@ function CourseForm({
           <input value={form.mentorTitle} onChange={(e) => setForm({ ...form, mentorTitle: e.target.value })} className={inputClass} />
         </div>
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">Thumbnail URL</label>
-        <input value={form.thumbnailUrl} onChange={(e) => setForm({ ...form, thumbnailUrl: e.target.value })} className={inputClass} placeholder="https://..." />
+      <div className="grid md:grid-cols-2 gap-5">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Thumbnail URL</label>
+          <input value={form.thumbnailUrl} onChange={(e) => setForm({ ...form, thumbnailUrl: e.target.value })} className={inputClass} placeholder="https://..." />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Instruction Language</label>
+          <select
+            value={form.language}
+            onChange={(e) => setForm({ ...form, language: e.target.value as CourseLanguage })}
+            className={inputClass}
+          >
+            <option value="GEORGIAN">🇬🇪 Georgian</option>
+            <option value="ENGLISH">🇬🇧 English</option>
+            <option value="BOTH">🇬🇪🇬🇧 Both</option>
+          </select>
+        </div>
       </div>
 
       <div className="rounded-xl border border-gray-200 p-4">

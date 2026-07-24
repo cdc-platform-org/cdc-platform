@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import CategoryCard from '../../src/components/forum/CategoryCard';
 import { ForumCategory } from '../../src/types/forum';
 import { getCategories } from '../../src/services/forumService';
@@ -51,11 +50,7 @@ function ForumIndexContent() {
 }
 
 export default function ForumIndexPage() {
-  return (
-    <ProtectedRoute>
-      <ForumIndexContent />
-    </ProtectedRoute>
-  );
+  return <ForumIndexContent />;
 }
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => ({

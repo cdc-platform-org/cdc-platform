@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { Vacancy } from '../../types/community';
+import SocialShareButtons from '../shared/SocialShareButtons';
 
 interface VacancyCardProps {
   vacancy: Vacancy;
@@ -17,6 +19,8 @@ const employmentTypeLabels: Record<Vacancy['employmentType'], string> = {
 
 export default function VacancyCard({ vacancy, onApply, canApply, isOwnerOrAdmin }: VacancyCardProps) {
   const hasSalaryRange = vacancy.salaryMin !== null || vacancy.salaryMax !== null;
+  const router = useRouter();
+  const lang = router.locale === 'en' ? 'en' : 'ka';
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 hover:border-indigo-300 transition-colors">
@@ -76,6 +80,11 @@ export default function VacancyCard({ vacancy, onApply, canApply, isOwnerOrAdmin
           )}
         </div>
       </div>
+      {vacancy.status === 'open' && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <SocialShareButtons title={vacancy.title} lang={lang} />
+        </div>
+      )}
     </div>
   );
 }

@@ -3,7 +3,8 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Head from 'next/head';
 import { BlogPost } from '../../src/types/blog';
-import { getBlogPostById, resolveBlogImageUrl, blogTitle, blogContent } from '../../src/services/blogService';
+import { getBlogPostById, resolveBlogImageUrl, blogTitle, blogContent, isSuccessStory } from '../../src/services/blogService';
+import SocialShareButtons from '../../src/components/shared/SocialShareButtons';
 
 const dict = {
   ka: {
@@ -76,13 +77,23 @@ export default function BlogPostPage() {
           {t.back}
         </Link>
 
-        <span className="inline-block mt-6 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-cyan-300 bg-cyan-500/10 border-cyan-500/20">
-          {post.category}
-        </span>
+        <div className="flex flex-wrap gap-2 mt-6">
+          <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-cyan-300 bg-cyan-500/10 border-cyan-500/20">
+            {post.category}
+          </span>
+          {isSuccessStory(post) && (
+            <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-amber-300 bg-amber-500/10 border-amber-500/20">
+              {lang === 'ka' ? '🎓 კურსდამთავრებული' : '🎓 Graduate Success'}
+            </span>
+          )}
+        </div>
         <h1 className="text-3xl md:text-4xl font-black mt-4 mb-3">{blogTitle(post, lang)}</h1>
-        <p className="text-xs text-slate-500 mb-8">
-          {t.by} {post.author.name} · {new Date(post.createdAt).toLocaleDateString(lang === 'ka' ? 'ka-GE' : 'en-US')}
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
+          <p className="text-xs text-slate-500">
+            {t.by} {post.author.name} · {new Date(post.createdAt).toLocaleDateString(lang === 'ka' ? 'ka-GE' : 'en-US')}
+          </p>
+          <SocialShareButtons title={blogTitle(post, lang)} lang={lang} variant="dark" />
+        </div>
 
         {post.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element

@@ -1,5 +1,6 @@
 import { useState, FormEvent } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { AxiosError } from 'axios';
 import GuestRoute from '../../src/components/auth/GuestRoute';
 import LanguageSwitcher from '../../src/components/layout/LanguageSwitcher';
@@ -10,6 +11,8 @@ import { GetStaticProps } from 'next';
 
 function ForgotPasswordPage() {
   const { t } = useTranslation('auth');
+  const router = useRouter();
+  const lang = router.locale === 'en' ? 'en' : 'ka';
 
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -21,7 +24,7 @@ function ForgotPasswordPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await forgotPassword({ email });
+      await forgotPassword({ email, lang });
       // Always shown regardless of whether the account exists — the backend
       // deliberately responds the same way either way to avoid leaking
       // which emails are registered.

@@ -1,8 +1,11 @@
+export type CourseLanguage = 'GEORGIAN' | 'ENGLISH' | 'BOTH';
+
 export interface Course {
   id: string;
   title: string;
   description: string;
   category: string;
+  language: CourseLanguage;
   // originalPrice is the sticker price; currentPrice/saleActive are computed
   // server-side (see Backend's services/coursePricing.ts) — always use
   // currentPrice for anything charge-related, originalPrice only for the
@@ -37,6 +40,7 @@ export interface CoursePayload {
   mentorName?: string;
   mentorTitle?: string;
   thumbnailUrl?: string;
+  language?: CourseLanguage;
 }
 
 // --- Student-facing curriculum (learn page) ---

@@ -1,7 +1,9 @@
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { Gig } from '../../types/community';
 import VerifiedGraduateBadge from './VerifiedGraduateBadge';
+import SocialShareButtons from '../shared/SocialShareButtons';
 
 interface GigCardProps {
   gig: Gig;
@@ -23,6 +25,8 @@ export default function GigCard({
   onReview,
 }: GigCardProps) {
   const { t } = useTranslation('proposals');
+  const router = useRouter();
+  const lang = router.locale === 'en' ? 'en' : 'ka';
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 hover:border-indigo-300 transition-colors">
@@ -99,6 +103,11 @@ export default function GigCard({
           )}
         </div>
       </div>
+      {gig.status === 'open' && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <SocialShareButtons title={gig.title} lang={lang} />
+        </div>
+      )}
     </div>
   );
 }

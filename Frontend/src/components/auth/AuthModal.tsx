@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { User } from '../../types/auth';
 import { useAuthModal } from '../../context/AuthModalContext';
 import PasswordInput from './PasswordInput';
+import Toast from '../shared/Toast';
 
 type Mode = 'login' | 'register';
 
@@ -42,6 +43,7 @@ const STRINGS = {
     registerSuccessTitle: 'თითქმის მზად ხართ!',
     registerSuccessBody:
       'თქვენი ანგარიში შეიქმნა. გთხოვთ დაადასტუროთ ელ-ფოსტა იმ ბმულით, რომელიც გამოგზავნილია — სანამ ამას გააკეთებთ, ზოგიერთი მოქმედება დაბლოკილი იქნება.',
+    registerSuccessToast: 'რეგისტრაცია წარმატებით დასრულდა!',
     continueButton: 'გაგრძელება',
     genericError: 'დაფიქსირდა შეცდომა. სცადეთ თავიდან.',
     close: 'დახურვა',
@@ -74,6 +76,7 @@ const STRINGS = {
     registerSuccessTitle: 'Almost there!',
     registerSuccessBody:
       "Your account has been created. Please confirm your email using the link we just sent — some actions stay locked until you do.",
+    registerSuccessToast: 'Registration successful!',
     continueButton: 'Continue',
     genericError: 'Something went wrong. Please try again.',
     close: 'Close',
@@ -96,6 +99,7 @@ export default function AuthModal() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [registered, setRegistered] = useState(false);
+  const [showRegisterToast, setShowRegisterToast] = useState(false);
   const [redirectingAdmin, setRedirectingAdmin] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement>(null);
 
@@ -125,6 +129,7 @@ export default function AuthModal() {
       setMode(initialMode);
       setError(null);
       setRegistered(false);
+      setShowRegisterToast(false);
       setRedirectingAdmin(false);
       setName('');
       setEmail('');
@@ -174,6 +179,8 @@ export default function AuthModal() {
       } else {
         await register({ name, email, password, role });
         setRegistered(true);
+        setShowRegisterToast(true);
+        setTimeout(() => setShowRegisterToast(false), 4000);
       }
     } catch (err: any) {
       const apiErrors = err?.response?.data?.errors;
@@ -390,6 +397,7 @@ export default function AuthModal() {
           </>
         )}
       </div>
+      {showRegisterToast && <Toast message={t.registerSuccessToast} />}
     </div>
   );
 }

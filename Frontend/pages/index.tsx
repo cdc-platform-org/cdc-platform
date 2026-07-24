@@ -8,7 +8,7 @@ import { useAuthModal } from '../src/context/AuthModalContext';
 import { useAuth } from '../src/context/AuthContext';
 import SiteFooter from '../src/components/layout/SiteFooter';
 import { Course } from '../src/types/lms';
-import { HomepageContent, HomepageStat } from '../src/types/siteContent';
+import { HomepageContent, HomepageStat, GalleryImage } from '../src/types/siteContent';
 import { getCourses } from '../src/services/courseService';
 import { checkoutCourse } from '../src/services/paymentService';
 import { getSiteContent } from '../src/services/siteContentService';
@@ -59,6 +59,7 @@ export default function Home() {
   // falls back to the hardcoded defaults below when no admin has set
   // anything yet, so the page never renders blank.
   const [cms, setCms] = useState<HomepageContent | null>(null);
+  const [galleryPreview, setGalleryPreview] = useState<GalleryImage[]>([]);
 
   // 🌐 ენის გადართვის სთეითი
   const [lang, setLang] = useState<'GEO' | 'ENG'>('GEO');
@@ -141,6 +142,12 @@ export default function Home() {
     getSiteContent<HomepageContent>('homepage')
       .then((row) => setCms(row?.content ?? null))
       .catch(() => setCms(null));
+  }, []);
+
+  useEffect(() => {
+    getSiteContent<{ images?: GalleryImage[] }>('gallery')
+      .then((row) => setGalleryPreview((row?.content.images ?? []).slice(0, 6)))
+      .catch(() => setGalleryPreview([]));
   }, []);
 
   const startCheckout = async (course: Course) => {
@@ -312,7 +319,21 @@ export default function Home() {
           </div>
 
           <div className={`hidden lg:flex items-center space-x-8 text-base font-bold tracking-wide shrink-0 ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
-            <a href="#about" className="hover:text-cyan-500 transition no-underline text-current">{translate('ჩვენ შესახებ', 'About Us')}</a>
+            <div className="relative group py-2 -my-2">
+              <span className="hover:text-cyan-500 transition cursor-pointer">{translate('ჩვენ შესახებ', 'About Us')} ▾</span>
+              <div
+                className={`absolute left-0 top-full pt-2 w-52 opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150`}
+              >
+                <div className={`rounded-xl border shadow-lg overflow-hidden text-sm ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}>
+                  <Link href="/about" className={`block px-4 py-3 no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
+                    {translate('ცენტრის შესახებ', 'About Center')}
+                  </Link>
+                  <Link href="/gallery" className={`block px-4 py-3 no-underline hover:text-cyan-500 transition border-t ${darkMode ? 'text-slate-200 border-slate-800' : 'text-slate-700 border-slate-100'}`}>
+                    {translate('ფოტოგალერეა', 'Photo Gallery')}
+                  </Link>
+                </div>
+              </div>
+            </div>
             <a href="#courses" className="hover:text-cyan-500 transition no-underline text-current">{translate('კურსები', 'Courses')}</a>
             <a href="#blog" className="hover:text-cyan-500 transition no-underline text-current">{translate('ბლოგი', 'Blog')}</a>
             <a href="/agency" className="hover:text-cyan-500 transition no-underline text-current">{safeText('CDC Studio')}</a>
@@ -348,7 +369,9 @@ export default function Home() {
         {/* 📱 MOBILE MENU PANEL */}
         {isMobileMenuOpen && (
           <div className={`lg:hidden max-w-full overflow-x-hidden mt-4 pt-4 border-t flex flex-col gap-1 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-            <a href="#about" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('ჩვენ შესახებ', 'About Us')}</a>
+            <span className={`px-2 pt-3 pb-1 font-black text-xs uppercase tracking-widest ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{translate('ჩვენ შესახებ', 'About Us')}</span>
+            <Link href="/about" onClick={() => setIsMobileMenuOpen(false)} className={`px-4 py-2.5 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('› ცენტრის შესახებ', '› About Center')}</Link>
+            <Link href="/gallery" onClick={() => setIsMobileMenuOpen(false)} className={`px-4 py-2.5 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition mb-1 ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('› ფოტოგალერეა', '› Photo Gallery')}</Link>
             <a href="#courses" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('კურსები', 'Courses')}</a>
             <a href="#blog" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('ბლოგი', 'Blog')}</a>
             <a href="/agency" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{safeText('CDC Studio')}</a>
@@ -495,6 +518,33 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      {/* 🖼️ CDC LIFE — PHOTO GALLERY PREVIEW */}
+      {galleryPreview.length > 0 && (
+        <section className="max-w-7xl mx-auto pt-28 px-6">
+          <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{translate('CDC Life / ფოტოგალერეა', 'CDC Life / Photo Gallery')}</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+            {galleryPreview.map((img, i) => (
+              <Link
+                key={i}
+                href="/gallery"
+                className={`relative aspect-square rounded-2xl overflow-hidden border transition-all duration-300 transform hover:scale-[1.02] no-underline ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={resolveBlogImageUrl(img.url)} alt={img.captionKa ?? img.captionEn ?? ''} className="w-full h-full object-cover" />
+              </Link>
+            ))}
+          </div>
+          <div className="text-center mt-10">
+            <Link
+              href="/gallery"
+              className="inline-flex items-center gap-2 border font-black text-sm px-6 py-3 rounded-xl transition no-underline border-cyan-500/40 text-cyan-500 hover:bg-cyan-500/10"
+            >
+              {translate('ყველა ფოტოს ნახვა', 'See All Photos')} →
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* 📚 COURSES CATALOG */}
       <section id="courses" className="max-w-7xl mx-auto py-28 px-6">

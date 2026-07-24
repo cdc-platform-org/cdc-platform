@@ -8,8 +8,10 @@ import { Course, SyllabusSection } from '../../../src/types/lms';
 import { getCourse, getProgressSummary, getSyllabus } from '../../../src/services/courseService';
 import { checkoutCourse } from '../../../src/services/paymentService';
 import { formatPrice, getSaleCountdownLabel } from '../../../src/utils/coursePricing';
+import { courseLanguageBadge } from '../../../src/utils/courseLanguage';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useAuthModal } from '../../../src/context/AuthModalContext';
+import SocialShareButtons from '../../../src/components/shared/SocialShareButtons';
 
 const dict = {
   ka: {
@@ -164,6 +166,9 @@ export default function CourseDetailPage() {
             <span className="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-600 dark:text-purple-300 bg-purple-500/10 border-purple-500/20">
               {course.category}
             </span>
+            <span className="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-slate-600 dark:text-slate-300 bg-slate-500/10 border-slate-500/20 whitespace-nowrap">
+              {courseLanguageBadge(course.language, lang)}
+            </span>
             {course.saleActive && (
               <span className="text-[10px] font-black text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500">
                 -{course.discountPercent}% {lang === 'ka' ? '' : 'OFF'}
@@ -176,6 +181,9 @@ export default function CourseDetailPage() {
           </div>
         </div>
         <h1 className="text-3xl md:text-4xl font-black mt-4 mb-4">{course.title}</h1>
+        <div className="mb-6">
+          <SocialShareButtons title={course.title} lang={lang} />
+        </div>
         <p className="text-slate-600 dark:text-slate-300 leading-relaxed mb-8">{course.description}</p>
 
         <div className="flex flex-wrap gap-4 mb-8">

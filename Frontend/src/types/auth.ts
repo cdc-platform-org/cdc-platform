@@ -57,6 +57,7 @@ export interface RegisterPayload {
 
 export interface ForgotPasswordPayload {
   email: string;
+  lang?: 'ka' | 'en';
 }
 
 export interface ResetPasswordPayload {
