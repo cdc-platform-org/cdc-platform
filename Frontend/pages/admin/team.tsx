@@ -9,11 +9,11 @@ import { getTeam, addTeamMember, updateTeamMemberRole, removeTeamMember } from '
 
 const TIER_BADGE: Record<AdminRole, string> = {
   SUPER_ADMIN: 'bg-gradient-to-r from-amber-400 to-orange-500 text-white',
-  ADMIN: 'bg-gradient-to-r from-cyan-500 to-sky-600 text-white',
+  MANAGER: 'bg-gradient-to-r from-cyan-500 to-sky-600 text-white',
   MODERATOR: 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white',
 };
 
-const TIERS: AdminRole[] = ['SUPER_ADMIN', 'ADMIN', 'MODERATOR'];
+const TIERS: AdminRole[] = ['SUPER_ADMIN', 'MANAGER', 'MODERATOR'];
 
 function TeamManagement() {
   const { user: viewer } = useAuth();

@@ -30,7 +30,10 @@ function VacanciesPageContent() {
 
   const handleApplyClick = (vacancy: Vacancy) => {
     if (!isAuthenticated) {
-      openAuthModal({ message: SIGN_IN_TO_APPLY });
+      // Preserve intent — reopen the application modal for this exact
+      // vacancy right after the guest signs in, instead of leaving them
+      // logged in with nothing happening.
+      openAuthModal({ message: SIGN_IN_TO_APPLY, onSuccess: () => setApplyingTo(vacancy) });
       return;
     }
     setApplyingTo(vacancy);

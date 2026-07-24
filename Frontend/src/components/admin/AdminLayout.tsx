@@ -7,22 +7,29 @@ interface NavItem {
   href: string;
   label: string;
   icon: string;
-  tiers?: ('SUPER_ADMIN' | 'ADMIN' | 'MODERATOR')[]; // omit = visible to any admin-team member
+  tiers?: ('SUPER_ADMIN' | 'MANAGER' | 'MODERATOR')[]; // omit = visible to any admin-team member
 }
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/admin', label: 'Dashboard Overview', icon: '📊' },
   { href: '/admin/users', label: 'User Management', icon: '👥' },
   { href: '/admin/gigs', label: 'Gigs & Vacancies', icon: '💼' },
-  { href: '/admin/blog', label: 'Content / Blog', icon: '📝', tiers: ['SUPER_ADMIN', 'ADMIN'] },
-  { href: '/admin/courses', label: 'Courses / LMS', icon: '🎓', tiers: ['SUPER_ADMIN', 'ADMIN'] },
-  { href: '/admin/financials', label: 'Financials & BOG', icon: '💰', tiers: ['SUPER_ADMIN'] },
+  { href: '/admin/disputes', label: 'Disputes', icon: '⚖️', tiers: ['SUPER_ADMIN', 'MANAGER'] },
+  { href: '/admin/mentorship', label: 'Mentorship Queue', icon: '🧑‍🏫' },
+  { href: '/admin/messages', label: 'Message Oversight', icon: '🛡️' },
+  { href: '/admin/forum', label: 'Forum Moderation', icon: '💬' },
+  { href: '/admin/blog', label: 'Content / Blog', icon: '📝', tiers: ['SUPER_ADMIN', 'MANAGER'] },
+  { href: '/admin/courses', label: 'Courses / LMS', icon: '🎓', tiers: ['SUPER_ADMIN', 'MANAGER'] },
+  { href: '/admin/analytics', label: 'Analytics', icon: '📈', tiers: ['SUPER_ADMIN', 'MANAGER'] },
+  { href: '/admin/finance', label: 'Course Finance', icon: '💳', tiers: ['SUPER_ADMIN'] },
+  { href: '/admin/finance/payouts', label: 'Student Payouts', icon: '🏦', tiers: ['SUPER_ADMIN'] },
+  { href: '/admin/financials', label: 'Gig Escrow & BOG', icon: '💰', tiers: ['SUPER_ADMIN'] },
   { href: '/admin/team', label: 'Team & Permissions', icon: '🔐', tiers: ['SUPER_ADMIN'] },
 ];
 
 const TIER_BADGE: Record<string, string> = {
   SUPER_ADMIN: 'bg-gradient-to-r from-amber-400 to-orange-500 text-white',
-  ADMIN: 'bg-gradient-to-r from-cyan-500 to-sky-600 text-white',
+  MANAGER: 'bg-gradient-to-r from-cyan-500 to-sky-600 text-white',
   MODERATOR: 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white',
 };
 

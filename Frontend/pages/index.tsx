@@ -288,7 +288,7 @@ export default function Home() {
             <a href="#courses" className="hover:text-cyan-500 transition no-underline text-current">{translate('კურსები', 'Courses')}</a>
             <a href="#blog" className="hover:text-cyan-500 transition no-underline text-current">{translate('ბლოგი', 'Blog')}</a>
             <a href="/agency" className="hover:text-cyan-500 transition no-underline text-current">{safeText('CDC Studio')}</a>
-            <a href="/community" className="hover:text-cyan-500 transition no-underline text-current">{translate('ფორუმი', 'Forum')}</a>
+            <a href="/forum" className="hover:text-cyan-500 transition no-underline text-current">{translate('ფორუმი', 'Forum')}</a>
           </div>
 
           <div className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-4 shrink-0">
@@ -324,7 +324,7 @@ export default function Home() {
             <a href="#courses" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('კურსები', 'Courses')}</a>
             <a href="#blog" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('ბლოგი', 'Blog')}</a>
             <a href="/agency" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{safeText('CDC Studio')}</a>
-            <a href="/community" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('ფორუმი', 'Forum')}</a>
+            <a href="/forum" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('ფორუმი', 'Forum')}</a>
             <button
               type="button"
               onClick={() => { setIsMobileMenuOpen(false); openAuthModal(); }}

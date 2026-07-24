@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireRole, requireApproved } from '../middleware/auth';
 import { postGigSchema, applyToGigSchema, submitGigWorkSchema } from '../schemas/gigSchemas';
+import { openDisputeSchema } from '../schemas/disputeSchemas';
 import { captureEscrow } from '../services/escrowService';
 import { approveGigWork, GigApprovalError } from '../services/gigApprovalService';
 import { z } from 'zod';
@@ -74,7 +75,48 @@ router.get('/:id', async (req: Request, res: Response) => {
     include: { postedBy: posterSelect, assignedFreelancer: posterSelect },
   });
   if (!gig) return res.status(404).json({ message: 'Gig not found.' });
+
+  // Computed, not stored — "is this the freelancer's first-ever gig" is
+  // derived from their completed-gig count so it can never drift out of
+  // sync with reality. Only meaningful once a freelancer is assigned.
+  let isFirstOrder = false;
+  if (gig.assignedFreelancerId) {
+    const priorCompletedCount = await prisma.gig.count({
+      where: { assignedFreelancerId: gig.assignedFreelancerId, status: 'completed', id: { not: gig.id } },
+    });
+    isFirstOrder = priorCompletedCount === 0;
+  }
+  res.json({ ...gig, isFirstOrder });
+});
+
+// Freelancer-only — surfaces in the admin mentorship queue
+// (GET /api/admin/mentorship).
+router.post('/:id/request-mentor-help', authenticate, requireApproved, loadGig, async (req: Request, res: Response) => {
+  if (req.gig!.assignedFreelancerId !== req.user!.id) {
+    return res.status(403).json({ message: 'Only the assigned freelancer can request mentor help on this gig.' });
+  }
+  const gig = await prisma.gig.update({ where: { id: req.gig!.id }, data: { mentorHelpRequestedAt: new Date() } });
   res.json(gig);
+});
+
+// Either participant (client or freelancer) can open a dispute once work
+// has been submitted.
+router.post('/:id/dispute', authenticate, requireApproved, loadGig, async (req: Request, res: Response) => {
+  const result = openDisputeSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const isParticipant = req.gig!.postedById === req.user!.id || req.gig!.assignedFreelancerId === req.user!.id;
+  if (!isParticipant) {
+    return res.status(403).json({ message: 'Only the client or assigned freelancer can open a dispute on this gig.' });
+  }
+  const existing = await prisma.dispute.findFirst({ where: { gigId: req.gig!.id, status: 'OPEN' } });
+  if (existing) {
+    return res.status(409).json({ message: 'There is already an open dispute for this gig.' });
+  }
+  const dispute = await prisma.dispute.create({
+    data: { gigId: req.gig!.id, raisedById: req.user!.id, reason: result.data.reason },
+  });
+  res.status(201).json(dispute);
 });
 
 router.post(

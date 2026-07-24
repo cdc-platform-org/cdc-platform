@@ -1,4 +1,4 @@
-export type AdminRole = 'SUPER_ADMIN' | 'ADMIN' | 'MODERATOR';
+export type AdminRole = 'SUPER_ADMIN' | 'MANAGER' | 'MODERATOR';
 
 // --- Core domain model ---
 export interface User {

@@ -648,7 +648,7 @@ function AdminCoursesDashboard() {
 
 export default function AdminCoursesPage() {
   return (
-    <AdminGuard requiredTiers={['SUPER_ADMIN', 'ADMIN']}>
+    <AdminGuard requiredTiers={['SUPER_ADMIN', 'MANAGER']}>
       <AdminLayout>
         <AdminCoursesDashboard />
       </AdminLayout>

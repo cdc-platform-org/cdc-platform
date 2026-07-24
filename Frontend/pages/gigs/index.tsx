@@ -40,7 +40,16 @@ function GigsPageContent() {
 
   const handleApplyClick = (gig: Gig) => {
     if (!isAuthenticated) {
-      openAuthModal({ message: SIGN_IN_TO_APPLY });
+      // Preserve intent — resume straight into the same apply flow once
+      // the guest signs in, instead of leaving them logged in with
+      // nothing happening.
+      openAuthModal({
+        message: SIGN_IN_TO_APPLY,
+        onSuccess: (loggedInUser) => {
+          if (loggedInUser?.isVerifiedGraduate) setApplyingTo(gig);
+          else setShowGraduateGate(true);
+        },
+      });
     } else if (user?.isVerifiedGraduate) {
       setApplyingTo(gig);
     } else {

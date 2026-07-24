@@ -34,7 +34,7 @@ router.get('/:id', async (req: Request, res: Response) => {
   res.json({ data: post });
 });
 
-router.post('/', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req: Request, res: Response) => {
+router.post('/', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   const result = blogPostCreateSchema.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({ errors: result.error.errors });
@@ -50,7 +50,7 @@ router.post('/', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (
   res.status(201).json({ data: post });
 });
 
-router.put('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req: Request, res: Response) => {
+router.put('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   const result = blogPostUpdateSchema.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({ errors: result.error.errors });
@@ -73,7 +73,7 @@ router.put('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async
   }
 });
 
-router.delete('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req: Request, res: Response) => {
+router.delete('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   try {
     await prisma.blogPost.delete({ where: { id: req.params.id } });
     res.status(204).send();
@@ -108,7 +108,7 @@ const imageUpload = multer({
 router.post(
   '/upload-image',
   authenticate,
-  requireAdminRole('SUPER_ADMIN', 'ADMIN'),
+  requireAdminRole('SUPER_ADMIN', 'MANAGER'),
   imageUpload.single('image'),
   (req: Request, res: Response) => {
     if (!req.file) {

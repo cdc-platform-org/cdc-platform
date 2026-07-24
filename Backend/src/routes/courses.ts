@@ -70,7 +70,7 @@ router.get('/:id/syllabus', async (req, res) => {
   });
 });
 
-router.post('/', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
+router.post('/', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req, res) => {
   const result = courseCreateSchema.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({ errors: result.error.errors });
@@ -82,7 +82,7 @@ router.post('/', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (
   res.status(201).json({ data: withCurrentPrice(course) });
 });
 
-router.put('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
+router.put('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req, res) => {
   const result = courseUpdateSchema.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({ errors: result.error.errors });
@@ -102,7 +102,7 @@ router.put('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async
   }
 });
 
-router.delete('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
+router.delete('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req, res) => {
   try {
     await prisma.course.delete({ where: { id: req.params.id } });
     res.status(204).send();
@@ -257,13 +257,13 @@ async function getCourseCompletion(courseId: string, userId: string) {
 }
 
 // Admin: view a course's exam settings (null if none configured yet).
-router.get('/:id/exam', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req: Request, res: Response) => {
+router.get('/:id/exam', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   const exam = await prisma.exam.findUnique({ where: { courseId: req.params.id } });
   res.json({ data: exam });
 });
 
 // Admin: create or update a course's exam settings.
-router.put('/:id/exam', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req: Request, res: Response) => {
+router.put('/:id/exam', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   const result = examSettingsSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
   const course = await prisma.course.findUnique({ where: { id: req.params.id } });
@@ -505,7 +505,7 @@ router.get('/verify/:code', async (req: Request, res: Response) => {
 
 // ---- Admin: sections & lessons ----
 
-router.post('/:courseId/sections', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req: Request, res: Response) => {
+router.post('/:courseId/sections', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   const result = sectionCreateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
   const course = await prisma.course.findUnique({ where: { id: req.params.courseId } });
@@ -514,7 +514,7 @@ router.post('/:courseId/sections', authenticate, requireAdminRole('SUPER_ADMIN',
   res.status(201).json({ data: section });
 });
 
-router.put('/sections/:sectionId', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req: Request, res: Response) => {
+router.put('/sections/:sectionId', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   const result = sectionUpdateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
   try {
@@ -526,7 +526,7 @@ router.put('/sections/:sectionId', authenticate, requireAdminRole('SUPER_ADMIN',
   }
 });
 
-router.delete('/sections/:sectionId', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req: Request, res: Response) => {
+router.delete('/sections/:sectionId', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   try {
     await prisma.courseSection.delete({ where: { id: req.params.sectionId } });
     res.status(204).send();
@@ -536,7 +536,7 @@ router.delete('/sections/:sectionId', authenticate, requireAdminRole('SUPER_ADMI
   }
 });
 
-router.post('/sections/:sectionId/lessons', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req: Request, res: Response) => {
+router.post('/sections/:sectionId/lessons', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   const result = lessonCreateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
   const section = await prisma.courseSection.findUnique({ where: { id: req.params.sectionId } });
@@ -545,7 +545,7 @@ router.post('/sections/:sectionId/lessons', authenticate, requireAdminRole('SUPE
   res.status(201).json({ data: { ...lesson, ...lessonWithPlayback(lesson) } });
 });
 
-router.put('/lessons/:lessonId', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req: Request, res: Response) => {
+router.put('/lessons/:lessonId', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   const result = lessonUpdateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
   try {
@@ -557,7 +557,7 @@ router.put('/lessons/:lessonId', authenticate, requireAdminRole('SUPER_ADMIN', '
   }
 });
 
-router.delete('/lessons/:lessonId', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req: Request, res: Response) => {
+router.delete('/lessons/:lessonId', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   const lesson = await prisma.lesson.findUnique({ where: { id: req.params.lessonId } });
   if (!lesson) return res.status(404).json({ message: 'Lesson not found.' });
   if (lesson.bunnyVideoId) {
@@ -569,7 +569,7 @@ router.delete('/lessons/:lessonId', authenticate, requireAdminRole('SUPER_ADMIN'
 
 // Admin: full curriculum (bypasses enrollment — admin-team gate only), for
 // the /admin/courses editor to list/manage sections+lessons.
-router.get('/:courseId/curriculum/admin', authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req: Request, res: Response) => {
+router.get('/:courseId/curriculum/admin', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   const sections = await prisma.courseSection.findMany({
     where: { courseId: req.params.courseId },
     orderBy: { order: 'asc' },
@@ -597,7 +597,7 @@ const videoUpload = multer({
 router.post(
   '/lessons/:lessonId/video',
   authenticate,
-  requireAdminRole('SUPER_ADMIN', 'ADMIN'),
+  requireAdminRole('SUPER_ADMIN', 'MANAGER'),
   (req: Request, res: Response, next: NextFunction) => {
     if (!isBunnyConfigured()) {
       return res.status(501).json({ message: 'Bunny Stream is not configured (BUNNY_STREAM_API_KEY / BUNNY_STREAM_LIBRARY_ID).' });

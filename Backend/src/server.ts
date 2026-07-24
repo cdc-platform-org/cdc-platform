@@ -21,6 +21,14 @@ import messageRoutes from './routes/messages';
 import cronRoutes from './routes/cron';
 import billingRoutes from './routes/billing';
 import paymentRoutes from './routes/payments';
+import forumRoutes from './routes/forum';
+import adminForumRoutes from './routes/adminForum';
+import adminFinanceRoutes from './routes/adminFinance';
+import adminAnalyticsRoutes from './routes/adminAnalytics';
+import adminPayoutsRoutes from './routes/adminPayouts';
+import adminDisputesRoutes from './routes/adminDisputes';
+import adminMentorshipRoutes from './routes/adminMentorship';
+import adminMessagesRoutes from './routes/adminMessages';
 import { errorHandler } from './middleware/errorHandler';
 import { PORT } from './utils/env';
 import { autoApproveOverdueGigs } from './services/gigApprovalService';
@@ -58,6 +66,14 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/cron', cronRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/forum', forumRoutes);
+app.use('/api/admin/forum', adminForumRoutes);
+app.use('/api/admin/finance', adminFinanceRoutes);
+app.use('/api/admin/finance/payouts', adminPayoutsRoutes);
+app.use('/api/admin/analytics', adminAnalyticsRoutes);
+app.use('/api/admin/disputes', adminDisputesRoutes);
+app.use('/api/admin/mentorship', adminMentorshipRoutes);
+app.use('/api/admin/messages', adminMessagesRoutes);
 
 const swaggerDocument = {
   openapi: '3.0.3',

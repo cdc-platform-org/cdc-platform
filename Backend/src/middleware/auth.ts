@@ -77,7 +77,7 @@ export async function requireApproved(req: Request, res: Response, next: NextFun
   next();
 }
 
-export type AdminRoleTier = 'SUPER_ADMIN' | 'ADMIN' | 'MODERATOR';
+export type AdminRoleTier = 'SUPER_ADMIN' | 'MANAGER' | 'MODERATOR';
 
 // Internal admin-team permission tier — deliberately separate from
 // requireRole('SuperAdmin') (the marketplace role). The JWT doesn't carry

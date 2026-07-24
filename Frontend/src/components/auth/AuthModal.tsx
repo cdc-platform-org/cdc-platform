@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
+import { User } from '../../types/auth';
 import { useAuthModal } from '../../context/AuthModalContext';
 import PasswordInput from './PasswordInput';
 
@@ -102,10 +103,10 @@ export default function AuthModal() {
   // (e.g. "resume checkout for the course I was trying to buy") always wins
   // over the default admin-workspace redirect — the user had a specific
   // intent, don't bounce them somewhere else.
-  const handlePostLogin = (loggedInUser: { adminRole: string | null }) => {
+  const handlePostLogin = (loggedInUser: User) => {
     if (onSuccess) {
       closeAuthModal();
-      onSuccess();
+      onSuccess(loggedInUser);
       return;
     }
     if (loggedInUser.adminRole) {

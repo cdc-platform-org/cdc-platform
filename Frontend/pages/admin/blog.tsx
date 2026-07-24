@@ -331,7 +331,7 @@ function AdminBlogDashboard() {
 
 export default function AdminBlogPage() {
   return (
-    <AdminGuard requiredTiers={['SUPER_ADMIN', 'ADMIN']}>
+    <AdminGuard requiredTiers={['SUPER_ADMIN', 'MANAGER']}>
       <AdminLayout>
         <AdminBlogDashboard />
       </AdminLayout>

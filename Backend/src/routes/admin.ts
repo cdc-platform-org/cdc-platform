@@ -6,7 +6,7 @@ const router = Router();
 
 // Baseline: any admin-team member can at least read. Mutating routes below
 // layer a stricter requireAdminRole() on top where the task calls for it.
-router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'ADMIN', 'MODERATOR'));
+router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'));
 
 router.get('/users', async (req: Request, res: Response) => {
   const { status } = req.query;
@@ -22,7 +22,7 @@ router.get('/users', async (req: Request, res: Response) => {
   res.json(users);
 });
 
-router.post('/users/:id/approve', requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req: Request, res: Response) => {
+router.post('/users/:id/approve', requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   const user = await prisma.user.findUnique({ where: { id: req.params.id } });
   if (!user) return res.status(404).json({ message: 'User not found.' });
   if (user.status === 'APPROVED') {
@@ -36,7 +36,7 @@ router.post('/users/:id/approve', requireAdminRole('SUPER_ADMIN', 'ADMIN'), asyn
   res.json(updated);
 });
 
-router.post('/users/:id/reject', requireAdminRole('SUPER_ADMIN', 'ADMIN'), async (req: Request, res: Response) => {
+router.post('/users/:id/reject', requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   const result = rejectUserSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
   const user = await prisma.user.findUnique({ where: { id: req.params.id } });
@@ -54,7 +54,7 @@ router.post('/users/:id/reject', requireAdminRole('SUPER_ADMIN', 'ADMIN'), async
 
 router.post(
   '/users/:id/verify-graduate',
-  requireAdminRole('SUPER_ADMIN', 'ADMIN'),
+  requireAdminRole('SUPER_ADMIN', 'MANAGER'),
   async (req: Request, res: Response) => {
     const user = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!user) return res.status(404).json({ message: 'User not found.' });
@@ -75,7 +75,7 @@ router.post(
 
 router.post(
   '/users/:id/unverify-graduate',
-  requireAdminRole('SUPER_ADMIN', 'ADMIN'),
+  requireAdminRole('SUPER_ADMIN', 'MANAGER'),
   async (req: Request, res: Response) => {
     const user = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!user) return res.status(404).json({ message: 'User not found.' });

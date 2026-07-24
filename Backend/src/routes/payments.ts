@@ -227,7 +227,7 @@ router.post('/bog/callback', async (req: Request, res: Response) => {
   res.status(200).json({ received: true });
 });
 
-async function applyBogPaymentResult(
+export async function applyBogPaymentResult(
   bogPaymentId: string,
   statusKey: BogOrderStatusKey,
   rawCallback: unknown

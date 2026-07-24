@@ -29,6 +29,23 @@ export async function captureEscrow(params: {
     },
   });
 }
+// Dispute resolved in the client's favor — marks escrow REFUNDED and does
+// NOT credit the freelancer. Same posture as the course-payment refund
+// path: this is a record-keeping action, the admin still processes the
+// actual bank refund to the client via BOG separately.
+export async function refundEscrow(gigId: string) {
+  const transaction = await prisma.gigTransaction.findUnique({ where: { gigId } });
+  if (!transaction) throw new Error('No escrow transaction found for this gig.');
+  if (transaction.status !== 'HELD_IN_ESCROW') {
+    throw new Error('Funds are not currently held in escrow.');
+  }
+  const [updatedTransaction] = await prisma.$transaction([
+    prisma.gigTransaction.update({ where: { id: transaction.id }, data: { status: 'REFUNDED' } }),
+    prisma.gig.update({ where: { id: gigId }, data: { status: 'cancelled' } }),
+  ]);
+  return updatedTransaction;
+}
+
 export async function releaseEscrow(gigId: string) {
   return prisma.$transaction(async (tx) => {
     const transaction = await tx.gigTransaction.findUnique({ where: { gigId } });

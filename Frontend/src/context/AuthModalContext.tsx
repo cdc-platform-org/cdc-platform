@@ -1,9 +1,12 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
+import { User } from '../types/auth';
 
 export interface AuthModalContextMessage {
   ka: string;
   en: string;
 }
+
+type AuthModalSuccessHandler = (user: User) => void;
 
 interface OpenAuthModalOptions {
   message?: AuthModalContextMessage;
@@ -11,15 +14,17 @@ interface OpenAuthModalOptions {
   // Fires once login succeeds (email/password or Google) instead of the
   // default role-based redirect — used to resume an interrupted action, e.g.
   // "sign in to enroll" continuing straight into BOG checkout for the exact
-  // course the guest was trying to buy.
-  onSuccess?: () => void;
+  // course the guest was trying to buy. Receives the freshly-logged-in user
+  // (not the stale one captured in the closure that called openAuthModal)
+  // for callers that need to branch on it, e.g. isVerifiedGraduate.
+  onSuccess?: AuthModalSuccessHandler;
 }
 
 interface AuthModalContextValue {
   isOpen: boolean;
   contextMessage: AuthModalContextMessage | null;
   initialMode: 'login' | 'register';
-  onSuccess: (() => void) | null;
+  onSuccess: AuthModalSuccessHandler | null;
   openAuthModal: (options?: OpenAuthModalOptions) => void;
   closeAuthModal: () => void;
 }
@@ -30,7 +35,7 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [contextMessage, setContextMessage] = useState<AuthModalContextMessage | null>(null);
   const [initialMode, setInitialMode] = useState<'login' | 'register'>('login');
-  const [onSuccess, setOnSuccess] = useState<(() => void) | null>(null);
+  const [onSuccess, setOnSuccess] = useState<AuthModalSuccessHandler | null>(null);
 
   const openAuthModal = (options?: OpenAuthModalOptions) => {
     setContextMessage(options?.message ?? null);

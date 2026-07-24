@@ -99,7 +99,9 @@ enum DirectOfferStatus {
 // at every call site and avoid the two ever being confused for each other.
 enum AdminRole {
   SUPER_ADMIN
-  ADMIN
+  // Renamed from ADMIN — same tier (course CMS, gigs moderation, disputes),
+  // just a name that matches the platform's public RBAC hierarchy naming.
+  MANAGER
   MODERATOR
 }
 
@@ -123,6 +125,11 @@ enum BogPaymentStatus {
   COMPLETED
   FAILED
   CANCELLED
+  // Set only by an admin's manual "Refund & Access Revocation" action
+  // (see routes/adminFinance.ts) — this is a record-keeping status, it does
+  // NOT itself trigger a real bank refund through BOG; the admin still
+  // processes the actual refund via BOG's own dashboard/support.
+  REFUNDED
 }
 
 // ============================================================
@@ -205,6 +212,15 @@ model User {
   lessonProgress         LessonProgress[]
   courseCertificates     CourseCertificate[]
   examAttempts           ExamAttempt[]
+  forumThreads           ForumThread[]
+  forumComments          ForumComment[]
+  forumThreadLikes       ForumThreadLike[]
+  forumCommentLikes      ForumCommentLike[]
+  disputesRaised         Dispute[]          @relation("DisputesRaised")
+  disputesResolved       Dispute[]          @relation("DisputesResolved")
+  payoutRequests         PayoutRequest[]    @relation("PayoutRequests")
+  payoutRequestsReviewed PayoutRequest[]    @relation("PayoutRequestsReviewed")
+  auditLogs              AuditLog[]
 
   @@map("users")
 }
@@ -236,6 +252,11 @@ model Gig {
   submittedAt          DateTime?
   deliveryComment      String?
   deliveryFiles        String[]      @default([])
+  // Set when the assigned freelancer clicks "Request CDC Mentor Help" —
+  // surfaces in the admin mentorship queue. Whether this is the student's
+  // first-ever gig is computed at read time (their completed-gig count),
+  // not stored, so it can never drift out of sync.
+  mentorHelpRequestedAt DateTime?
   deliveryLinks        String[]      @default([])
   // Post-hoc moderation (not a pre-publish queue — listings go live
   // immediately on posting, same as before; a moderator can take one down
@@ -250,6 +271,7 @@ model Gig {
   transaction  GigTransaction?
   reviews      Review[]
   directOffers DirectOffer[]
+  disputes     Dispute[]
 
   @@index([status])
   @@index([status, skillsRequired])
@@ -762,4 +784,191 @@ model BogPayment {
   @@index([userId])
   @@index([purpose, referenceId])
   @@map("bog_payments")
+}
+
+// ============================================================
+// FORUM — categories, threads, comments, likes. New threads are
+// pre-moderated (PENDING until a Mentor/SuperAdmin approves them);
+// comments are not, matching the admin brief's "pending POSTS require
+// approval" scope. Pin/lock are separate moderator actions available on
+// already-approved threads.
+// ============================================================
+
+enum ForumModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ForumCategory {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  name        String
+  description String
+  createdAt   DateTime @default(now())
+
+  threads ForumThread[]
+
+  @@map("forum_categories")
+}
+
+model ForumThread {
+  id         String        @id @default(uuid())
+  categoryId String
+  category   ForumCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User          @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  title      String
+  content    String
+
+  moderationStatus ForumModerationStatus @default(PENDING)
+  moderationReason String?
+  moderatedAt      DateTime?
+  isPinned         Boolean               @default(false)
+  isLocked         Boolean               @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  comments ForumComment[]
+  likes    ForumThreadLike[]
+
+  @@index([categoryId])
+  @@index([moderationStatus])
+  @@map("forum_threads")
+}
+
+model ForumComment {
+  id       String      @id @default(uuid())
+  threadId String
+  thread   ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  authorId String
+  author   User        @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  content  String
+
+  createdAt DateTime @default(now())
+
+  likes ForumCommentLike[]
+
+  @@index([threadId])
+  @@map("forum_comments")
+}
+
+model ForumThreadLike {
+  id       String      @id @default(uuid())
+  threadId String
+  thread   ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([threadId, userId])
+  @@map("forum_thread_likes")
+}
+
+model ForumCommentLike {
+  id        String       @id @default(uuid())
+  commentId String
+  comment   ForumComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@map("forum_comment_likes")
+}
+
+// ============================================================
+// DISPUTES — opened by either party on a gig when work is incomplete or
+// disputed. Resolution is a manual admin action (refund the client or
+// release payout to the freelancer); no automatic money movement here,
+// same posture as PayoutRequest below.
+// ============================================================
+
+enum DisputeStatus {
+  OPEN
+  RESOLVED_REFUND
+  RESOLVED_PAYOUT
+  DISMISSED
+}
+
+model Dispute {
+  id     String @id @default(uuid())
+  gigId  String
+  gig    Gig    @relation(fields: [gigId], references: [id], onDelete: Cascade)
+
+  raisedById String
+  raisedBy   User   @relation("DisputesRaised", fields: [raisedById], references: [id], onDelete: Restrict)
+  reason     String
+
+  status       DisputeStatus @default(OPEN)
+  resolution   String?
+  resolvedById String?
+  resolvedBy   User?         @relation("DisputesResolved", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedAt   DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([gigId])
+  @@index([status])
+  @@map("disputes")
+}
+
+// ============================================================
+// PAYOUT REQUESTS — a student's ask to withdraw their earningsBalance to a
+// bank account. This only tracks the request/approval workflow; approving
+// one debits earningsBalance and writes a WalletEntry(PAYOUT_DEBIT), same
+// as every other wallet mutation, but the actual bank transfer happens
+// manually outside the platform (an admin wires the money via BOG's own
+// dashboard/banking), same posture as the BOG merchant credentials already
+// being admin-managed rather than fully automated end-to-end.
+// ============================================================
+
+enum PayoutRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+model PayoutRequest {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("PayoutRequests", fields: [userId], references: [id], onDelete: Restrict)
+
+  amount Int    // minor units
+  iban   String
+
+  status       PayoutRequestStatus @default(PENDING)
+  adminNote    String?
+  reviewedById String?
+  reviewedBy   User?               @relation("PayoutRequestsReviewed", fields: [reviewedById], references: [id], onDelete: SetNull)
+  resolvedAt   DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([status])
+  @@map("payout_requests")
+}
+
+// ============================================================
+// AUDIT LOG — append-only record of sensitive admin actions (bans, role
+// changes, payout approvals, dispute resolutions, forum moderation, manual
+// course grants, refunds). Written by services/auditLogService.ts.
+// ============================================================
+
+model AuditLog {
+  id String @id @default(uuid())
+
+  action        String // e.g. "user.ban", "payout.approve", "dispute.resolve"
+  targetType    String // e.g. "User", "PayoutRequest", "ForumThread"
+  targetId      String
+  performedById String
+  performedBy   User   @relation(fields: [performedById], references: [id], onDelete: Restrict)
+  metadata      Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([targetType, targetId])
+  @@index([performedById])
+  @@map("audit_logs")
 }

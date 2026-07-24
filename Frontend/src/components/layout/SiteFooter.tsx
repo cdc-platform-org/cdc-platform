@@ -65,7 +65,7 @@ export default function SiteFooter({ lang }: SiteFooterProps) {
           <ul className="space-y-2.5 text-xs">
             <li><Link href="/about" className="hover:text-cyan-400 transition-colors no-underline text-current">{t.about}</Link></li>
             <li><Link href="/courses" className="hover:text-cyan-400 transition-colors no-underline text-current">{t.courses}</Link></li>
-            <li><Link href="/community" className="hover:text-cyan-400 transition-colors no-underline text-current">{t.forum}</Link></li>
+            <li><Link href="/forum" className="hover:text-cyan-400 transition-colors no-underline text-current">{t.forum}</Link></li>
             <li><Link href="/agency" className="hover:text-cyan-400 transition-colors no-underline text-current">{t.studio}</Link></li>
           </ul>
         </div>

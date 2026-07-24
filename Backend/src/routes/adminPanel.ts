@@ -17,7 +17,7 @@ router.use(authenticate);
 // DASHBOARD OVERVIEW — any admin tier. Headline KPIs only; the detailed
 // transaction ledger lives under /financials/transactions (SUPER_ADMIN only).
 // ============================================================
-router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'ADMIN', 'MODERATOR'), async (_req, res) => {
+router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'), async (_req, res) => {
   const [
     totalUsers,
     pendingApproval,
@@ -76,7 +76,7 @@ router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'ADMIN', 'MODERAT
 // go live immediately on posting (unchanged); this lets a mod take one down
 // after the fact, or restore it. Not a pre-publish approval queue.
 // ============================================================
-router.get('/listings', requireAdminRole('SUPER_ADMIN', 'ADMIN', 'MODERATOR'), async (req, res) => {
+router.get('/listings', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'), async (req, res) => {
   const { type, moderationStatus } = req.query;
   const modFilter = moderationStatus ? { moderationStatus: moderationStatus as 'approved' | 'removed' } : {};
 
@@ -109,7 +109,7 @@ router.get('/listings', requireAdminRole('SUPER_ADMIN', 'ADMIN', 'MODERATOR'), a
 
 router.post(
   '/gigs/:id/moderate',
-  requireAdminRole('SUPER_ADMIN', 'ADMIN', 'MODERATOR'),
+  requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'),
   async (req: Request, res: Response) => {
     const result = moderateListingSchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ errors: result.error.errors });
@@ -129,7 +129,7 @@ router.post(
 
 router.post(
   '/gigs/:id/restore',
-  requireAdminRole('SUPER_ADMIN', 'ADMIN', 'MODERATOR'),
+  requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'),
   async (req: Request, res: Response) => {
     const gig = await prisma.gig.findUnique({ where: { id: req.params.id } });
     if (!gig) return res.status(404).json({ message: 'Gig not found.' });
@@ -143,7 +143,7 @@ router.post(
 
 router.post(
   '/vacancies/:id/moderate',
-  requireAdminRole('SUPER_ADMIN', 'ADMIN', 'MODERATOR'),
+  requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'),
   async (req: Request, res: Response) => {
     const result = moderateListingSchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ errors: result.error.errors });
@@ -163,7 +163,7 @@ router.post(
 
 router.post(
   '/vacancies/:id/restore',
-  requireAdminRole('SUPER_ADMIN', 'ADMIN', 'MODERATOR'),
+  requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'),
   async (req: Request, res: Response) => {
     const vacancy = await prisma.vacancy.findUnique({ where: { id: req.params.id } });
     if (!vacancy) return res.status(404).json({ message: 'Vacancy not found.' });

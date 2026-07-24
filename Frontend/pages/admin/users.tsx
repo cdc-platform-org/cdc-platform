@@ -31,8 +31,8 @@ function UserManagement() {
   const [actioningId, setActioningId] = useState<string | null>(null);
 
   // Only ADMIN/SUPER_ADMIN can approve/reject/badge — mirrors the backend's
-  // requireAdminRole('SUPER_ADMIN','ADMIN') on those specific routes.
-  const canManageContent = viewer?.adminRole === 'SUPER_ADMIN' || viewer?.adminRole === 'ADMIN';
+  // requireAdminRole('SUPER_ADMIN','MANAGER') on those specific routes.
+  const canManageContent = viewer?.adminRole === 'SUPER_ADMIN' || viewer?.adminRole === 'MANAGER';
 
   const loadUsers = useCallback(async () => {
     setLoading(true);

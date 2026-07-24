@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireRole, requireApproved } from '../middleware/auth';
 import { postVacancySchema, applyToVacancySchema, reviewVacancyApplicationSchema } from '../schemas/vacancySchemas';
+import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
+import { sendVacancyApplicationEmail } from '../services/emailService';
 const router = Router();
 const posterSelect = { select: { id: true, name: true, role: true } };
 declare global {
@@ -91,6 +93,21 @@ router.post(
         },
         include: { applicant: { select: { name: true } } },
       });
+
+      // Kick off a real message thread with the employer + notify them by
+      // email — the application shouldn't just sit in a list with no way
+      // for either side to actually talk.
+      const employer = await prisma.user.findUnique({ where: { id: req.vacancy!.postedById } });
+      if (employer && employer.id !== req.user!.id) {
+        const { sanitized } = sanitizeChatMessage(
+          `Applied to "${req.vacancy!.title}":\n\n${result.data.coverNote}`
+        );
+        await prisma.message.create({
+          data: { senderId: req.user!.id, recipientId: employer.id, content: sanitized },
+        });
+        await sendVacancyApplicationEmail(employer.email, application.applicant.name, req.vacancy!.title, req.user!.id);
+      }
+
       res.status(201).json(application);
     } catch (err: any) {
       if (err.code === 'P2002') {

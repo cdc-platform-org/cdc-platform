@@ -75,6 +75,22 @@ export async function sendVerificationEmail(email: string, token: string): Promi
   await sendEmail(email, 'დაადასტურეთ თქვენი CDC ანგარიში', html, link);
 }
 
+export async function sendVacancyApplicationEmail(
+  employerEmail: string,
+  applicantName: string,
+  vacancyTitle: string,
+  applicantId: string
+): Promise<void> {
+  const link = `${FRONTEND_URL}/messages/${applicantId}`;
+  const html = wrapTemplate(
+    'ახალი განაცხადი ვაკანსიაზე',
+    `<strong>${applicantName}</strong>-მა გამოგიგზავნათ განაცხადი თქვენს ვაკანსიაზე „${vacancyTitle}“. დააჭირეთ ქვემოთ მოცემულ ღილაკს, რომ ნახოთ მისი შეტყობინება და დაუკავშირდეთ პირდაპირ პლატფორმაზე.`,
+    'შეტყობინების ნახვა',
+    link
+  );
+  await sendEmail(employerEmail, `ახალი განაცხადი: ${vacancyTitle}`, html, link);
+}
+
 export async function sendPasswordResetEmail(email: string, token: string): Promise<void> {
   const link = `${FRONTEND_URL}/reset-password?token=${token}`;
   const html = wrapTemplate(
