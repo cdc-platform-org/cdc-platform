@@ -110,6 +110,14 @@ export default function AuthModal() {
   // it firing later and clobbering fresh state.
   const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Google's GSI script (pages/_app.tsx) loads asynchronously — if the
+  // modal opens before it's ready, window.google is still undefined and
+  // there'd be nothing to make the button-render effect below try again.
+  // This tracks readiness explicitly so that effect re-runs the moment the
+  // script actually finishes loading, even if the modal was opened first.
+  const [googleReady, setGoogleReady] = useState(
+    () => typeof window !== 'undefined' && !!window.google?.accounts?.id
+  );
 
   useEffect(() => {
     return () => {
@@ -117,6 +125,13 @@ export default function AuthModal() {
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (googleReady) return;
+    const handleReady = () => setGoogleReady(true);
+    window.addEventListener('google-gsi-ready', handleReady);
+    return () => window.removeEventListener('google-gsi-ready', handleReady);
+  }, [googleReady]);
 
   useEscapeToClose(isOpen, closeAuthModal);
 
@@ -166,6 +181,10 @@ export default function AuthModal() {
     }
     window.google.accounts.id.initialize({
       client_id: clientId,
+      // Without this, Google's own button/popup text follows the browser's
+      // locale instead of this site's — the one piece of the modal that
+      // wasn't actually driven by our STRINGS dict.
+      locale: lang,
       callback: (response) => {
         setSubmitting(true);
         setError(null);
@@ -184,7 +203,7 @@ export default function AuthModal() {
       text: mode === 'register' ? 'signup_with' : 'signin_with',
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, mode, registered, role]);
+  }, [isOpen, mode, registered, role, googleReady, lang]);
 
   if (!isOpen) return null;
 

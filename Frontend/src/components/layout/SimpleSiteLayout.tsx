@@ -2,6 +2,7 @@ import { useState, ReactNode } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import SiteFooter from './SiteFooter';
 
 interface SimpleSiteLayoutProps {
@@ -16,7 +17,22 @@ interface SimpleSiteLayoutProps {
 // content-only pages — /about, /privacy, /terms, /refund-policy — that don't
 // need the homepage's full nav (search bar, mobile menu, chat assistant).
 export default function SimpleSiteLayout({ titleKa, titleEn, children }: SimpleSiteLayoutProps) {
-  const [lang, setLang] = useState<'GEO' | 'ENG'>('GEO');
+  const router = useRouter();
+  // Initialized from and kept in sync with router.locale — globally-mounted
+  // shared components (AuthModal chief among them) read router.locale
+  // directly, so a purely-local toggle here would leave them showing the
+  // wrong language after a switch (confirmed bug on the homepage's own
+  // equivalent toggle).
+  const [lang, setLang] = useState<'GEO' | 'ENG'>(() => (router.locale === 'en' ? 'ENG' : 'GEO'));
+
+  const handleLangToggle = () => {
+    const next = lang === 'GEO' ? 'ENG' : 'GEO';
+    setLang(next);
+    router.push({ pathname: router.pathname, query: router.query }, router.asPath, {
+      locale: next === 'ENG' ? 'en' : 'ka',
+      shallow: true,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
@@ -37,7 +53,7 @@ export default function SimpleSiteLayout({ titleKa, titleEn, children }: SimpleS
           </Link>
           <button
             type="button"
-            onClick={() => setLang(lang === 'GEO' ? 'ENG' : 'GEO')}
+            onClick={handleLangToggle}
             className="font-black text-xs px-2.5 py-1.5 rounded-lg border border-slate-800 bg-slate-900/60 text-cyan-400 cursor-pointer"
           >
             {lang}

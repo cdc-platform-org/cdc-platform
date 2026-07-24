@@ -85,7 +85,15 @@ function App({ Component, pageProps }: AppProps) {
           }
         `}</style>
       </Head>
-      <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
+      <Script
+        src="https://accounts.google.com/gsi/client"
+        strategy="afterInteractive"
+        // Google's script loads async — if AuthModal.tsx opens before this
+        // fires, window.google is still undefined and its render-button
+        // effect has nothing to retry on. This event lets it react once the
+        // script actually becomes available instead of silently giving up.
+        onLoad={() => window.dispatchEvent(new Event('google-gsi-ready'))}
+      />
       <AuthProvider>
         <AuthModalProvider>
           <Component {...pageProps} />

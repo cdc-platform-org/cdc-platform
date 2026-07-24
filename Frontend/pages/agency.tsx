@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 import SiteFooter from '../src/components/layout/SiteFooter';
 
 interface Project {
@@ -12,10 +13,21 @@ interface Project {
 }
 
 export default function Agency() {
+  const router = useRouter();
   const [darkMode, setDarkMode] = useState<boolean>(false);
-  
-  // 🌐 ენის სთეითი სააგენტოს გვერდისთვისაც!
-  const [lang, setLang] = useState<'GEO' | 'ENG'>('GEO');
+
+  // 🌐 ენის სთეითი სააგენტოს გვერდისთვისაც! — synced with router.locale so
+  // globally-mounted shared components (AuthModal) pick up the switch too.
+  const [lang, setLang] = useState<'GEO' | 'ENG'>(() => (router.locale === 'en' ? 'ENG' : 'GEO'));
+
+  const handleLangToggle = () => {
+    const next = lang === 'GEO' ? 'ENG' : 'GEO';
+    setLang(next);
+    router.push({ pathname: router.pathname, query: router.query }, router.asPath, {
+      locale: next === 'ENG' ? 'en' : 'ka',
+      shallow: true,
+    });
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -104,7 +116,7 @@ export default function Agency() {
             {/* 🌐 ენის გადამრთველი სააგენტოს გვერდზეც! */}
             <button 
               type="button"
-              onClick={() => setLang(lang === 'GEO' ? 'ENG' : 'GEO')}
+              onClick={handleLangToggle}
               className={`font-sans font-black text-xs px-2.5 py-1.5 rounded-lg border transition duration-200 cursor-pointer ${
                 darkMode ? 'border-slate-800 bg-slate-900/60 text-cyan-400' : 'border-slate-200 bg-slate-50 text-slate-600'
               }`}

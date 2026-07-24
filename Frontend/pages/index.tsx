@@ -62,8 +62,25 @@ export default function Home() {
   const [cms, setCms] = useState<HomepageContent | null>(null);
   const [galleryPreview, setGalleryPreview] = useState<GalleryImage[]>([]);
 
-  // 🌐 ენის გადართვის სთეითი
-  const [lang, setLang] = useState<'GEO' | 'ENG'>('GEO');
+  // 🌐 ენის გადართვის სთეითი — initialized from router.locale so a visitor
+  // arriving already on the English locale (e.g. via a link from an
+  // English-rendered page) sees the homepage start in English too.
+  const [lang, setLang] = useState<'GEO' | 'ENG'>(() => (router.locale === 'en' ? 'ENG' : 'GEO'));
+
+  // This toggle previously only flipped the local `lang` state above, which
+  // drives this page's own inline content — but left next/router's `locale`
+  // untouched. Globally-mounted shared components (AuthModal chief among
+  // them, via router.locale) never found out the user had switched
+  // languages, so opening the login modal after toggling to English still
+  // showed Georgian labels. Pushing the locale keeps both in sync.
+  const handleLangToggle = () => {
+    const next = lang === 'GEO' ? 'ENG' : 'GEO';
+    setLang(next);
+    router.push({ pathname: router.pathname, query: router.query }, router.asPath, {
+      locale: next === 'ENG' ? 'en' : 'ka',
+      shallow: true,
+    });
+  };
 
   // 🔍 საძიებო ველის სთეითები
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -344,7 +361,7 @@ export default function Home() {
           <div className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-4 shrink-0">
             <button
               type="button"
-              onClick={() => setLang(lang === 'GEO' ? 'ENG' : 'GEO')}
+              onClick={handleLangToggle}
               className={`font-sans font-black text-xs px-2.5 py-1.5 rounded-lg border transition duration-200 cursor-pointer ${
                 darkMode ? 'border-slate-800 bg-slate-900/60 text-cyan-400' : 'border-slate-200 bg-slate-50 text-slate-600'
               }`}

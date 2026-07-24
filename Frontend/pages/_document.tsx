@@ -1,4 +1,4 @@
-import Document, { Html, Head, Main, NextScript } from 'next/document';
+import Document, { Html, Head, Main, NextScript, DocumentContext } from 'next/document';
 
 // Runs before hydration/first paint on every page, so the `dark` class is
 // correct immediately — no flash of the wrong theme, and no race with
@@ -18,9 +18,18 @@ const themeInitScript = `
 `;
 
 export default class MyDocument extends Document {
+  static async getInitialProps(ctx: DocumentContext) {
+    const initialProps = await Document.getInitialProps(ctx);
+    return { ...initialProps, locale: ctx.locale ?? 'ka' };
+  }
+
   render() {
+    // Was hardcoded to "en" regardless of the actual active locale — wrong
+    // for accessibility (screen readers) and SEO on every Georgian page,
+    // which is most of the site's default traffic.
+    const locale = (this.props as { locale?: string }).locale ?? 'ka';
     return (
-      <Html lang="en">
+      <Html lang={locale}>
         <Head>
           <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         </Head>

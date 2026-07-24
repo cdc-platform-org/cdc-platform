@@ -10,6 +10,10 @@ declare global {
           initialize: (config: {
             client_id: string;
             callback: (response: { credential: string }) => void;
+            // ISO 639-1 code (e.g. "en", "ka") — without this, Google
+            // auto-detects the button/popup language from the browser's own
+            // locale instead of following the site's language.
+            locale?: string;
           }) => void;
           renderButton: (
             parent: HTMLElement,
