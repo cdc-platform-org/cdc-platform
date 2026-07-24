@@ -457,7 +457,15 @@ export default function Home() {
                 <span className="text-xl font-black tracking-widest text-slate-400 font-sans">EU</span>
               </div>
               <h3 className="text-xl md:text-2xl font-black mb-4">{translate(<>{safeText('HEKS/EPER Georgia')}-ს მხარდაჭერა</>, <>{safeText('HEKS/EPER Georgia')} Support</>)}</h3>
-              <p className="text-sm md:text-base text-slate-400 leading-relaxed font-medium">{translate('საერთაშორისო სტანდარტების სასწავლო მეთოდოლოგია და რესურსები, რომელიც სპეციალურად რეგიონული ტექნოლოგიური წინსვლისთვის შეიქმნა.', 'International standard educational methodology and resources specially designed for regional technological progress.')}</p>
+              <p className="text-sm md:text-base text-slate-400 leading-relaxed font-medium mb-5">{translate('საერთაშორისო სტანდარტების სასწავლო მეთოდოლოგია და რესურსები, რომელიც სპეციალურად რეგიონული ტექნოლოგიური წინსვლისთვის შეიქმნა.', 'International standard educational methodology and resources specially designed for regional technological progress.')}</p>
+              <a
+                href="https://socialinnovation.ge/%e1%83%aa%e1%83%98%e1%83%a4%e1%83%a0%e1%83%a3%e1%83%9a%e1%83%98-%e1%83%9e%e1%83%a0%e1%83%9d%e1%83%a4%e1%83%94%e1%83%a1%e1%83%98%e1%83%91%e1%83%98%e1%83%a1-%e1%83%aa%e1%83%94%e1%83%9c%e1%83%a2/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 self-start text-xs font-bold uppercase tracking-wider text-cyan-500 hover:text-cyan-400 no-underline transition-colors"
+              >
+                {translate('პროექტის შესახებ', 'About the Project')} 🔗
+              </a>
             </div>
           </div>
           {(cms?.stats?.length ? cms.stats : DEFAULT_HOMEPAGE_STATS).map((stat, i) => (

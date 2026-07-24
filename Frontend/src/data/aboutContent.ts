@@ -42,6 +42,17 @@ export const aboutContent = {
     ka: 'საქართველო, ქალაქი სამტრედია, თამარ მეფის ქ., N 8, ბინა N2',
     en: 'Tamar Mepe St. N8, Apt. N2, Samtredia, Georgia',
   },
+  grantAnnouncement: {
+    text: {
+      ka: 'ცენტრი დაფუძნდა სოციალური ინოვაციების პლატფორმის (Social Innovation Georgia) გამარჯვებული პროექტის ფარგლებში.',
+      en: 'The center was established within the winning project of Social Innovation Georgia.',
+    },
+    linkLabel: {
+      ka: 'იხილეთ ვრცლად',
+      en: 'Read Announcement',
+    },
+    url: 'https://socialinnovation.ge/%e1%83%aa%e1%83%98%e1%83%a4%e1%83%a0%e1%83%a3%e1%83%9a%e1%83%98-%e1%83%9e%e1%83%a0%e1%83%9d%e1%83%a4%e1%83%94%e1%83%a1%e1%83%98%e1%83%91%e1%83%98%e1%83%a1-%e1%83%aa%e1%83%94%e1%83%9c%e1%83%a2/',
+  },
   descriptionParagraphs: [
     {
       ka: 'ჩვენი მისიაა რეგიონული ტექნოლოგიური წინსვლა: ვასწავლით საერთაშორისო სტანდარტების სასწავლო მეთოდოლოგიით და ვუზრუნველყოფთ კურსდამთავრებულებს რეალურ პროექტებზე მუშაობის გამოცდილებით ჩვენივე ფრილანს/სამუშაო პლატფორმის საშუალებით.',
