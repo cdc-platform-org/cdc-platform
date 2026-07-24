@@ -1,9 +1,10 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { AxiosError } from 'axios';
 import PasswordInput from '../src/components/auth/PasswordInput';
 import LanguageSwitcher from '../src/components/layout/LanguageSwitcher';
+import Toast from '../src/components/shared/Toast';
 import { resetPassword } from '../src/services/authService';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
@@ -15,18 +16,34 @@ function ResetPasswordPage() {
   const token = typeof router.query.token === 'string' ? router.query.token : null;
 
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!token) return;
     setError(null);
+    if (password !== confirmPassword) {
+      setError(t('resetPassword.passwordMismatch'));
+      return;
+    }
     setSubmitting(true);
     try {
       await resetPassword({ token, password });
       setSuccess(true);
+      setShowToast(true);
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+      toastTimeoutRef.current = setTimeout(() => setShowToast(false), 4000);
       setTimeout(() => router.push('/auth/login'), 2000);
     } catch (err) {
       const axiosErr = err as AxiosError<{ message?: string }>;
@@ -77,6 +94,22 @@ function ResetPasswordPage() {
                 />
               </div>
 
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  {t('resetPassword.confirmPasswordLabel')}
+                </label>
+                <PasswordInput
+                  id="confirmPassword"
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  inputClassName="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder={t('resetPassword.confirmPasswordPlaceholder')}
+                />
+              </div>
+
               <button
                 type="submit"
                 disabled={submitting}
@@ -94,6 +127,7 @@ function ResetPasswordPage() {
           </Link>
         </p>
       </div>
+      {showToast && <Toast message={t('resetPassword.successToast') as string} />}
     </div>
   );
 }

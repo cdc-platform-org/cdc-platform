@@ -1,9 +1,10 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { AxiosError } from 'axios';
 import GuestRoute from '../../src/components/auth/GuestRoute';
 import LanguageSwitcher from '../../src/components/layout/LanguageSwitcher';
+import Toast from '../../src/components/shared/Toast';
 import { forgotPassword } from '../../src/services/authService';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
@@ -18,6 +19,14 @@ function ForgotPasswordPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -29,6 +38,9 @@ function ForgotPasswordPage() {
       // deliberately responds the same way either way to avoid leaking
       // which emails are registered.
       setSent(true);
+      setShowToast(true);
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+      toastTimeoutRef.current = setTimeout(() => setShowToast(false), 4000);
     } catch (err) {
       const axiosErr = err as AxiosError<{ message?: string }>;
       setError(axiosErr.response?.data?.message || t('login.genericError'));
@@ -90,6 +102,7 @@ function ForgotPasswordPage() {
           </Link>
         </p>
       </div>
+      {showToast && <Toast message={t('forgotPassword.successToast') as string} />}
     </div>
   );
 }

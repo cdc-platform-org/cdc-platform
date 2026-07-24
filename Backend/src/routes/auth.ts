@@ -23,6 +23,15 @@ import { sendVerificationEmail, sendPasswordResetEmail } from '../services/email
 const router = Router();
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
+// Only the SHA-256 hash of a password-reset token is ever persisted — the
+// raw token exists only in the emailed link and the requester's browser.
+// A DB read (backup leak, injection, etc.) on its own can't be turned into
+// a working reset link this way, the same defense-in-depth pattern as
+// storing bcrypt hashes of passwords rather than the passwords themselves.
+function hashResetToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
 const EMAIL_VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
 // Auto-promotes accounts on the SUPER_ADMIN_EMAILS allow-list (see
@@ -273,10 +282,12 @@ router.post('/forgot-password', async (req, res) => {
   await prisma.user.update({
     where: { id: user.id },
     data: {
-      passwordResetToken,
+      passwordResetToken: hashResetToken(passwordResetToken),
       passwordResetTokenExpires: new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS),
     },
   });
+  // The raw (unhashed) token is what goes in the email link — only its hash
+  // is ever stored, see hashResetToken() above.
   sendPasswordResetEmail(user.email, passwordResetToken, result.data.lang ?? 'ka');
 
   res.json({ message: 'If an account exists for that email, a reset link has been sent.' });
@@ -288,7 +299,7 @@ router.post('/reset-password', async (req, res) => {
     return res.status(400).json({ errors: result.error.errors });
   }
 
-  const user = await prisma.user.findUnique({ where: { passwordResetToken: result.data.token } });
+  const user = await prisma.user.findUnique({ where: { passwordResetToken: hashResetToken(result.data.token) } });
   if (!user) {
     return res.status(400).json({ message: 'Invalid or already-used reset link.' });
   }
