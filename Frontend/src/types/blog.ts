@@ -2,6 +2,7 @@ interface BlogAuthor {
   id: string;
   name: string;
   role: 'Student' | 'Mentor' | 'SuperAdmin' | 'Client';
+  avatarUrl: string | null;
 }
 
 export interface BlogPost {
@@ -19,6 +20,26 @@ export interface BlogPost {
   imageUrl: string | null;
   author: BlogAuthor;
   published: boolean;
+  // URL-friendly identifier for /blog/[slug] — every post has one
+  // (auto-generated at creation, backfilled for older rows), so links
+  // should always prefer this over the raw id.
+  slug: string;
   createdAt: string;
   updatedAt: string;
+}
+
+interface BlogCommentAuthor {
+  id: string;
+  name: string;
+  role: 'Student' | 'Mentor' | 'SuperAdmin' | 'Client';
+  avatarUrl: string | null;
+}
+
+export interface BlogComment {
+  id: string;
+  postId: string;
+  author: BlogCommentAuthor;
+  content: string;
+  parentId: string | null;
+  createdAt: string;
 }

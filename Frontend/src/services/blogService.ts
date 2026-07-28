@@ -1,5 +1,5 @@
 import apiClient from './apiClient';
-import { BlogPost } from '../types/blog';
+import { BlogPost, BlogComment } from '../types/blog';
 
 // Canonical "Success Stories" category label — a post is treated as a
 // graduate success story purely by category match (no separate boolean
@@ -31,9 +31,32 @@ export async function getBlogPosts(category?: string): Promise<BlogPost[]> {
   return response.data.data;
 }
 
-export async function getBlogPostById(id: string): Promise<BlogPost> {
-  const response = await apiClient.get<{ data: BlogPost }>(`/blog/${id}`);
+// Accepts either the post's id or its slug — the backend route resolves
+// whichever was passed (see Backend's routes/blog.ts).
+export async function getBlogPostById(idOrSlug: string): Promise<BlogPost> {
+  const response = await apiClient.get<{ data: BlogPost }>(`/blog/${idOrSlug}`);
   return response.data.data;
+}
+
+// Estimate only — no separate stored field, computed the same way every
+// time it's needed (~200 words/minute, matches common blog conventions).
+export function estimateReadingMinutes(content: string): number {
+  const words = content.trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.round(words / 200));
+}
+
+export async function getBlogComments(idOrSlug: string): Promise<BlogComment[]> {
+  const response = await apiClient.get<{ data: BlogComment[] }>(`/blog/${idOrSlug}/comments`);
+  return response.data.data;
+}
+
+export async function createBlogComment(idOrSlug: string, payload: { content: string; parentId?: string | null }): Promise<BlogComment> {
+  const response = await apiClient.post<{ data: BlogComment }>(`/blog/${idOrSlug}/comments`, payload);
+  return response.data.data;
+}
+
+export async function deleteBlogComment(commentId: string): Promise<void> {
+  await apiClient.delete(`/blog/comments/${commentId}`);
 }
 
 export interface BlogPostPayload {

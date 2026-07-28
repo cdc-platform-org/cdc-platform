@@ -283,6 +283,7 @@ model User {
   // Agent model's own comment for why billing fields live there instead of
   // a separate Subscription model for now.
   agents                 Agent[]
+  blogComments           BlogComment[]
 
   @@map("users")
 }
@@ -699,12 +700,47 @@ model BlogPost {
   authorId    String
   author      User     @relation(fields: [authorId], references: [id], onDelete: Restrict)
   published   Boolean  @default(true)
+  // URL-friendly identifier for /blog/[slug], auto-generated from the
+  // Georgian title at creation (see routes/blog.ts's slugify) and never
+  // regenerated on a later title edit — a live post's URL must stay
+  // stable, not shift under anyone who already bookmarked/shared it.
+  // Nullable + not unique-enforced-at-the-DB-level would be simpler, but a
+  // real unique constraint is what actually prevents a race from ever
+  // creating two posts with the same slug.
+  slug        String   @unique
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  comments BlogComment[]
 
   @@index([category])
   @@index([published])
   @@map("blog_posts")
+}
+
+// ============================================================
+// BLOG COMMENT — one level deep (a comment can reply to a post OR to
+// another comment via parentId), authenticated users only. Moderation is
+// deletion-only (no edit/hide state) via /admin/blog's moderation panel —
+// matches the brief's "review or delete comments," and a soft-hide state
+// would just be unused complexity without a "restore" UI anywhere.
+// ============================================================
+
+model BlogComment {
+  id        String   @id @default(uuid())
+  postId    String
+  post      BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content   String
+  parentId  String?
+  parent    BlogComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   BlogComment[] @relation("CommentReplies")
+  createdAt DateTime @default(now())
+
+  @@index([postId])
+  @@index([parentId])
+  @@map("blog_comments")
 }
 
 // ============================================================
@@ -1228,4 +1264,30 @@ model PromoCode {
   createdAt       DateTime  @default(now())
 
   @@map("promo_codes")
+}
+
+// ============================================================
+// SUCCESS STORY — curated graduate testimonials shown on the homepage and
+// course detail pages. Deliberately NOT tied to a real User row: these are
+// admin-curated marketing content (name/role/course are free text an
+// admin types in, not necessarily matching an actual platform account),
+// same posture as the homepage's other admin-authored content blocks.
+// ============================================================
+
+model SuccessStory {
+  id            String   @id @default(uuid())
+  studentName   String
+  // Uploaded via the same Bunny Storage pipeline as everything else
+  // (POST /api/success-stories/upload-avatar) — never a freely-settable
+  // external URL, consistent with avatarUrl/verificationDocUrl elsewhere.
+  avatarUrl     String?
+  roleTitle     String
+  courseName    String
+  testimonial   String
+  linkedinUrl   String?
+  isFeatured    Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  @@index([isFeatured])
+  @@map("success_stories")
 }

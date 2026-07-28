@@ -4,15 +4,16 @@ import path from 'path';
 import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
-import { blogPostCreateSchema, blogPostUpdateSchema } from '../schemas/blogSchemas';
+import { blogPostCreateSchema, blogPostUpdateSchema, blogCommentSchema } from '../schemas/blogSchemas';
 import { uploadToBunnyStorage, isBunnyStorageConfigured, BunnyStorageUploadError, deleteBunnyStorageUrlIfManaged } from '../services/bunnyStorage';
+import { slugify, randomSlugSuffix } from '../utils/slugify';
 
 // Migrated from requireRole('SuperAdmin') to the admin-team adminRole system
 // (SUPER_ADMIN + ADMIN) — content management is explicitly ADMIN's domain
 // per the /admin panel's RBAC design, and this file's small/self-contained
 // enough that migrating it doesn't carry the risk a wider sweep would.
 const router = Router();
-const authorSelect = { select: { id: true, name: true, role: true } };
+const authorSelect = { select: { id: true, name: true, role: true, avatarUrl: true } };
 
 router.get('/', async (req: Request, res: Response) => {
   const { category } = req.query;
@@ -24,9 +25,12 @@ router.get('/', async (req: Request, res: Response) => {
   res.json({ data: posts });
 });
 
-router.get('/:id', async (req: Request, res: Response) => {
-  const post = await prisma.blogPost.findUnique({
-    where: { id: req.params.id },
+// Accepts either the post's id (UUID, used by admin/blog's editor and old
+// links) or its slug (the public /blog/[slug] page) — a single param that
+// resolves either way keeps the route surface small.
+router.get('/:idOrSlug', async (req: Request, res: Response) => {
+  const post = await prisma.blogPost.findFirst({
+    where: { OR: [{ id: req.params.idOrSlug }, { slug: req.params.idOrSlug }] },
     include: { author: authorSelect },
   });
   if (!post) {
@@ -35,16 +39,32 @@ router.get('/:id', async (req: Request, res: Response) => {
   res.json({ data: post });
 });
 
+// Loops on a real unique-constraint collision (P2002) rather than
+// pre-checking existence — the pre-check-then-insert shape has a race
+// window two concurrent creates could both slip through; retrying on the
+// DB's own rejection doesn't.
+async function createUniqueSlug(title: string): Promise<string> {
+  const base = slugify(title) || 'post';
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const candidate = attempt === 0 ? base : `${base}-${randomSlugSuffix()}`;
+    const existing = await prisma.blogPost.findUnique({ where: { slug: candidate }, select: { id: true } });
+    if (!existing) return candidate;
+  }
+  return `${base}-${randomSlugSuffix()}`;
+}
+
 router.post('/', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   const result = blogPostCreateSchema.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({ errors: result.error.errors });
   }
+  const slug = await createUniqueSlug(result.data.title);
   const post = await prisma.blogPost.create({
     data: {
       ...result.data,
       imageUrl: result.data.imageUrl || null,
       authorId: req.user!.id,
+      slug,
     },
     include: { author: authorSelect },
   });
@@ -102,6 +122,64 @@ router.delete('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), 
     }
     throw err;
   }
+});
+
+// ============================================================
+// COMMENTS — one level deep (a top-level comment or a reply to one),
+// authenticated platform users only. Public read (anyone can read
+// comments on a public post), admin-only delete for moderation.
+// ============================================================
+
+const commentAuthorSelect = { select: { id: true, name: true, role: true, avatarUrl: true } };
+
+router.get('/:idOrSlug/comments', async (req: Request, res: Response) => {
+  const post = await prisma.blogPost.findFirst({
+    where: { OR: [{ id: req.params.idOrSlug }, { slug: req.params.idOrSlug }] },
+    select: { id: true },
+  });
+  if (!post) return res.status(404).json({ message: 'Blog post not found.' });
+
+  const comments = await prisma.blogComment.findMany({
+    where: { postId: post.id },
+    include: { author: commentAuthorSelect },
+    orderBy: { createdAt: 'asc' },
+  });
+  res.json({ data: comments });
+});
+
+router.post('/:idOrSlug/comments', authenticate, async (req: Request, res: Response) => {
+  const result = blogCommentSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const post = await prisma.blogPost.findFirst({
+    where: { OR: [{ id: req.params.idOrSlug }, { slug: req.params.idOrSlug }] },
+    select: { id: true },
+  });
+  if (!post) return res.status(404).json({ message: 'Blog post not found.' });
+
+  if (result.data.parentId) {
+    const parent = await prisma.blogComment.findFirst({ where: { id: result.data.parentId, postId: post.id } });
+    if (!parent) return res.status(400).json({ message: 'The comment being replied to was not found on this post.' });
+  }
+
+  const comment = await prisma.blogComment.create({
+    data: {
+      postId: post.id,
+      authorId: req.user!.id,
+      content: result.data.content,
+      parentId: result.data.parentId ?? null,
+    },
+    include: { author: commentAuthorSelect },
+  });
+  res.status(201).json({ data: comment });
+});
+
+// Moderation — admin-only delete. No edit/hide state; see the model's own
+// comment for why deletion-only is enough here.
+router.delete('/comments/:commentId', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
+  const comment = await prisma.blogComment.delete({ where: { id: req.params.commentId } }).catch(() => null);
+  if (!comment) return res.status(404).json({ message: 'Comment not found.' });
+  res.status(204).send();
 });
 
 // --- Image upload: buffered in memory, then pushed straight to Bunny

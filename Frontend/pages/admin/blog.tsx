@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef, FormEvent, ChangeEvent } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
+import { ExternalLink, MessageSquare, Trash2 } from 'lucide-react';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
-import { BlogPost } from '../../src/types/blog';
+import { BlogPost, BlogComment } from '../../src/types/blog';
 import {
   getBlogPosts,
   createBlogPost,
@@ -13,6 +15,8 @@ import {
   translateBlogPost,
   SUCCESS_STORIES_CATEGORY_KA,
   BlogPostPayload,
+  getBlogComments,
+  deleteBlogComment,
 } from '../../src/services/blogService';
 
 const emptyForm: BlogPostPayload = {
@@ -39,6 +43,13 @@ function AdminBlogDashboard() {
   const [activeLangTab, setActiveLangTab] = useState<'ka' | 'en'>('ka');
   const [translating, setTranslating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Comment moderation — fetched on demand per post (no dedicated "all
+  // comments" admin endpoint exists; the public per-post listing works fine
+  // for admins too, and DELETE /blog/comments/:id is already admin-gated).
+  const [expandedCommentsPostId, setExpandedCommentsPostId] = useState<string | null>(null);
+  const [commentsByPost, setCommentsByPost] = useState<Record<string, BlogComment[]>>({});
+  const [commentsLoading, setCommentsLoading] = useState(false);
 
   const loadPosts = useCallback(async () => {
     setLoading(true);
@@ -163,6 +174,39 @@ function AdminBlogDashboard() {
       if (editingId === id) resetForm();
     } catch {
       setError('სტატიის წაშლა ვერ მოხერხდა.');
+    }
+  };
+
+  const toggleComments = async (post: BlogPost) => {
+    if (expandedCommentsPostId === post.id) {
+      setExpandedCommentsPostId(null);
+      return;
+    }
+    setExpandedCommentsPostId(post.id);
+    if (!commentsByPost[post.id]) {
+      setCommentsLoading(true);
+      try {
+        const data = await getBlogComments(post.slug);
+        setCommentsByPost((prev) => ({ ...prev, [post.id]: data }));
+      } catch {
+        setCommentsByPost((prev) => ({ ...prev, [post.id]: [] }));
+      } finally {
+        setCommentsLoading(false);
+      }
+    }
+  };
+
+  const handleDeleteComment = async (postId: string, commentId: string) => {
+    if (!window.confirm('ნამდვილად გსურთ კომენტარის წაშლა?')) return;
+    const previous = commentsByPost[postId] ?? [];
+    setCommentsByPost((prev) => ({
+      ...prev,
+      [postId]: previous.filter((c) => c.id !== commentId && c.parentId !== commentId),
+    }));
+    try {
+      await deleteBlogComment(commentId);
+    } catch {
+      setCommentsByPost((prev) => ({ ...prev, [postId]: previous }));
     }
   };
 
@@ -385,46 +429,101 @@ function AdminBlogDashboard() {
           ) : (
             <div className="space-y-3">
               {posts.map((post) => (
-                <div key={post.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4">
-                  {post.imageUrl ? (
-                    <img
-                      src={resolveBlogImageUrl(post.imageUrl)}
-                      alt=""
-                      className="w-16 h-16 rounded-lg object-cover shrink-0 border border-gray-200"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 rounded-lg bg-gray-100 shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
-                        {post.category}
-                      </span>
-                      {!post.published && (
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
-                          დრაფტი
+                <div key={post.id} className="bg-white border border-gray-200 rounded-xl p-4">
+                  <div className="flex items-center gap-4">
+                    {post.imageUrl ? (
+                      <img
+                        src={resolveBlogImageUrl(post.imageUrl)}
+                        alt=""
+                        className="w-16 h-16 rounded-lg object-cover shrink-0 border border-gray-200"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg bg-gray-100 shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                          {post.category}
                         </span>
+                        {!post.published && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
+                            დრაფტი
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="font-semibold text-sm text-gray-900 truncate mt-1">{post.title}</h3>
+                      <p className="text-xs text-gray-500 truncate">{post.description}</p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      {post.published && (
+                        <Link
+                          href={`/blog/${post.slug}`}
+                          target="_blank"
+                          className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+                        >
+                          <ExternalLink size={13} /> გახსნა
+                        </Link>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => toggleComments(post)}
+                        className={`flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg ${
+                          expandedCommentsPostId === post.id ? 'text-indigo-700 bg-indigo-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <MessageSquare size={13} /> კომენტარები
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => startEdit(post)}
+                        className="text-xs font-medium text-indigo-600 hover:text-indigo-800 px-3 py-1.5 rounded-lg hover:bg-indigo-50"
+                      >
+                        რედაქტირება
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(post.id)}
+                        className="text-xs font-medium text-red-500 hover:text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-50"
+                      >
+                        წაშლა
+                      </button>
+                    </div>
+                  </div>
+
+                  {expandedCommentsPostId === post.id && (
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      {commentsLoading && !commentsByPost[post.id] ? (
+                        <p className="text-xs text-gray-400">იტვირთება…</p>
+                      ) : (commentsByPost[post.id] ?? []).length === 0 ? (
+                        <p className="text-xs text-gray-400">კომენტარები არ არის.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {(commentsByPost[post.id] ?? []).map((comment) => (
+                            <div
+                              key={comment.id}
+                              className={`flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2 ${comment.parentId ? 'ml-6' : ''}`}
+                            >
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-gray-800">
+                                  {comment.author.name} <span className="text-gray-400 font-normal">· {new Date(comment.createdAt).toLocaleDateString()}</span>
+                                </p>
+                                <p className="text-xs text-gray-600 mt-0.5 whitespace-pre-wrap">{comment.content}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteComment(post.id, comment.id)}
+                                aria-label="წაშლა"
+                                title="წაშლა"
+                                className="shrink-0 text-gray-400 hover:text-red-500"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
-                    <h3 className="font-semibold text-sm text-gray-900 truncate mt-1">{post.title}</h3>
-                    <p className="text-xs text-gray-500 truncate">{post.description}</p>
-                  </div>
-                  <div className="flex gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => startEdit(post)}
-                      className="text-xs font-medium text-indigo-600 hover:text-indigo-800 px-3 py-1.5 rounded-lg hover:bg-indigo-50"
-                    >
-                      რედაქტირება
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(post.id)}
-                      className="text-xs font-medium text-red-500 hover:text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-50"
-                    >
-                      წაშლა
-                    </button>
-                  </div>
+                  )}
                 </div>
               ))}
             </div>

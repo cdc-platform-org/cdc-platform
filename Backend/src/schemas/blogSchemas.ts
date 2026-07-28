@@ -16,3 +16,10 @@ export const blogPostCreateSchema = z.object({
 });
 
 export const blogPostUpdateSchema = blogPostCreateSchema.partial();
+
+export const blogCommentSchema = z.object({
+  content: z.string().trim().min(1, 'Comment cannot be empty.').max(2000),
+  // Set only when replying to another comment on the same post — validated
+  // against the post's own comment set in the route, not here.
+  parentId: z.string().uuid().optional().nullable(),
+});

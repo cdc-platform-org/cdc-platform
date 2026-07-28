@@ -38,6 +38,8 @@ import aiRoutes from './routes/ai';
 import agentsRoutes from './routes/agents';
 import chatApiRoutes from './routes/chatApi';
 import adminPromosRoutes from './routes/adminPromos';
+import successStoriesRoutes from './routes/successStories';
+import adminSuccessStoriesRoutes from './routes/adminSuccessStories';
 import { errorHandler } from './middleware/errorHandler';
 import { PORT } from './utils/env';
 import { autoApproveOverdueGigs } from './services/gigApprovalService';
@@ -97,7 +99,9 @@ app.use('/api/ai', aiRoutes);
 // posture — deliberately outside the app's normal auth model).
 app.use('/api/agents', agentsRoutes);
 app.use('/api/v1', chatApiRoutes);
+app.use('/api/v1/success-stories', successStoriesRoutes);
 app.use('/api/admin/promos', adminPromosRoutes);
+app.use('/api/admin/success-stories', adminSuccessStoriesRoutes);
 
 const swaggerDocument = {
   openapi: '3.0.3',

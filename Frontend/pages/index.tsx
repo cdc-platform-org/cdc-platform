@@ -11,6 +11,8 @@ import SiteFooter from '../src/components/layout/SiteFooter';
 import { Course } from '../src/types/lms';
 import { HomepageContent, HomepageStat, GalleryImage } from '../src/types/siteContent';
 import { getCourses } from '../src/services/courseService';
+import { getBlogPosts, blogTitle, blogDescription } from '../src/services/blogService';
+import { BlogPost } from '../src/types/blog';
 import { checkoutCourse } from '../src/services/paymentService';
 import { getSiteContent } from '../src/services/siteContentService';
 import { resolveBlogImageUrl } from '../src/services/blogService';
@@ -56,6 +58,9 @@ export default function Home() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
   const [enrollingId, setEnrollingId] = useState<string | null>(null);
+
+  // Real published blog posts (latest 3) for the homepage's news/blog preview section.
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
 
   // 🖋️ CMS-editable homepage content (hero title/subtitle, stats, FAQ) —
   // falls back to the hardcoded defaults below when no admin has set
@@ -167,6 +172,12 @@ export default function Home() {
     getCourses()
       .then((data) => setCourses(data.filter((c) => c.published)))
       .finally(() => setCoursesLoading(false));
+  }, []);
+
+  useEffect(() => {
+    getBlogPosts()
+      .then((data) => setBlogPosts(data.filter((p) => p.published).slice(0, 3)))
+      .catch(() => setBlogPosts([]));
   }, []);
 
   useEffect(() => {
@@ -673,26 +684,41 @@ export default function Home() {
         )}
       </section>
 
-      {/* 📰 NEWS & BLOG SECTION */}
+      {/* 📰 NEWS & BLOG SECTION — real published posts from GET /api/v1/blog */}
       <section id="blog" className={`py-28 border-t ${darkMode ? 'bg-[#0e1422]/40 border-slate-800' : 'bg-slate-50/60 border-slate-200'}`}>
         <div className="max-w-7xl mx-auto px-6">
           <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{translate('სიახლეები & სტატიები ბლოგიდან', 'News & Blog Articles')}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className={`p-8 rounded-3xl border backdrop-blur-md transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}>
-              <span className="text-[11px] font-black text-cyan-500 uppercase tracking-widest block mb-3">{translate('ტექნოლოგიები', 'Tech')}</span>
-              <h3 className="text-lg font-black mb-3">{translate(<>როგორ ცვლის {safeText('Vibe Coding')} ყოველდღიურობას?</>, <>How {safeText('Vibe Coding')} Changes Daily Work?</>)}</h3>
-              <p className="text-sm text-slate-400 leading-relaxed font-medium">{translate('ხელოვნური ინტელექტის ინსტრუმენტების ეპოქაში კოდირება უფრო კრეატიული პროცესი გახდა.', 'In the era of AI tools, coding has become a more creative process.')}</p>
+          {blogPosts.length === 0 ? (
+            <p className="text-center text-sm text-slate-400 font-medium">{translate('სტატიები მალე გამოქვეყნდება.', 'Articles will be published soon.')}</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {blogPosts.map((post, idx) => {
+                const badgeColor = [
+                  darkMode ? 'text-cyan-400' : 'text-cyan-500',
+                  darkMode ? 'text-purple-400' : 'text-purple-500',
+                  darkMode ? 'text-emerald-400' : 'text-emerald-500',
+                ][idx % 3];
+                return (
+                  <Link
+                    key={post.id}
+                    href={`/blog/${post.slug}`}
+                    className={`p-8 rounded-3xl border backdrop-blur-md transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}
+                  >
+                    <span className={`text-[11px] font-black uppercase tracking-widest block mb-3 ${badgeColor}`}>{post.category}</span>
+                    <h3 className="text-lg font-black mb-3">{blogTitle(post, lang === 'GEO' ? 'ka' : 'en')}</h3>
+                    <p className="text-sm text-slate-400 leading-relaxed font-medium line-clamp-3">{blogDescription(post, lang === 'GEO' ? 'ka' : 'en')}</p>
+                  </Link>
+                );
+              })}
             </div>
-            <div className={`p-8 rounded-3xl border backdrop-blur-md transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}>
-              <span className="text-[11px] font-black text-purple-500 uppercase tracking-widest block mb-3">{translate('მარკეტინგი', 'Marketing')}</span>
-              <h3 className="text-lg font-black mb-3">{translate('ციფრული მარკეტინგის ტრენდები', 'Digital Marketing Trends')}</h3>
-              <p className="text-sm text-slate-400 leading-relaxed font-medium">{translate('ლოკალური ბიზნესების განვითარებისთვის სოციალური მედიის სწორ ოპტიმიზაციას გადამწყვეტი როლი აქვს.', 'Proper social media optimization plays a crucial role for regional business growth.')}</p>
-            </div>
-            <div className={`p-8 rounded-3xl border backdrop-blur-md transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}>
-              <span className="text-[11px] font-black text-emerald-500 uppercase tracking-widest block mb-3">{translate('სტარტაპები', 'Startups')}</span>
-              <h3 className="text-lg font-black mb-3">{translate('ინოვაციები გურიის რეგიონში', 'Innovations in Guria Region')}</h3>
-              <p className="text-sm text-slate-400 leading-relaxed font-medium">{translate('როგორ ეხმარება ციფრული ეკოსისტემა ახალგაზრდებსა და ქალებს საკუთარი იდეების რეალიზებაში.', 'How the digital ecosystem helps young people realize their potential and startup ideas.')}</p>
-            </div>
+          )}
+          <div className="text-center mt-14">
+            <Link
+              href="/blog"
+              className={`inline-block px-8 py-3 rounded-full text-sm font-black uppercase tracking-widest border transition-all duration-300 hover:scale-105 ${darkMode ? 'border-cyan-500 text-cyan-400 hover:bg-cyan-500/10' : 'border-cyan-500 text-cyan-600 hover:bg-cyan-50'}`}
+            >
+              {translate('ყველა სტატია →', 'All Articles →')}
+            </Link>
           </div>
         </div>
       </section>

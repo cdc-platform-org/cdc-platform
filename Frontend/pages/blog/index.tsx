@@ -2,9 +2,12 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Head from 'next/head';
+import { Search, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BlogPost } from '../../src/types/blog';
-import { getBlogPosts, resolveBlogImageUrl, blogTitle, blogDescription, isSuccessStory } from '../../src/services/blogService';
+import { getBlogPosts, resolveBlogImageUrl, blogTitle, blogDescription, blogContent, estimateReadingMinutes, isSuccessStory } from '../../src/services/blogService';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
+
+const POSTS_PER_PAGE = 9;
 
 const dict = {
   ka: {
@@ -12,18 +15,28 @@ const dict = {
     subtitle: 'სიახლეები, სტატიები და გამოცდილება ციფრული პროფესიების სამყაროდან.',
     loading: 'იტვირთება…',
     empty: 'სტატიები ჯერ არ არის დამატებული.',
+    noResults: 'თქვენი ძიების შესაბამისი სტატია ვერ მოიძებნა.',
     readMore: 'სრულად წაკითხვა →',
     all: 'ყველა',
     graduateBadge: '🎓 კურსდამთავრებული',
+    searchPlaceholder: 'ძებნა სათაურით ან აღწერით…',
+    minRead: (n: number) => `${n} წთ კითხვა`,
+    prev: 'წინა',
+    next: 'შემდეგი',
   },
   en: {
     title: 'Blog',
     subtitle: 'News, articles, and insights from the world of digital careers.',
     loading: 'Loading…',
     empty: 'No articles have been published yet.',
+    noResults: 'No articles match your search.',
     readMore: 'Read more →',
     all: 'All',
     graduateBadge: '🎓 Graduate Success',
+    searchPlaceholder: 'Search by title or description…',
+    minRead: (n: number) => `${n} min read`,
+    prev: 'Prev',
+    next: 'Next',
   },
 };
 
@@ -35,6 +48,8 @@ export default function BlogIndexPage() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,7 +68,24 @@ export default function BlogIndexPage() {
   }, [load]);
 
   const categories = useMemo(() => Array.from(new Set(posts.map((p) => p.category))).sort(), [posts]);
-  const visiblePosts = activeCategory ? posts.filter((p) => p.category === activeCategory) : posts;
+
+  const visiblePosts = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return posts.filter((post) => {
+      if (activeCategory && post.category !== activeCategory) return false;
+      if (!query) return true;
+      const haystack = `${blogTitle(post, lang)} ${blogDescription(post, lang)}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [posts, activeCategory, searchQuery, lang]);
+
+  // Reset to page 1 whenever the filtered set changes shape (new search/category).
+  useEffect(() => {
+    setPage(1);
+  }, [activeCategory, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(visiblePosts.length / POSTS_PER_PAGE));
+  const pagedPosts = visiblePosts.slice((page - 1) * POSTS_PER_PAGE, page * POSTS_PER_PAGE);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-16">
@@ -63,6 +95,17 @@ export default function BlogIndexPage() {
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-black mb-2">{t.title}</h1>
         <p className="text-slate-400 mb-10">{t.subtitle}</p>
+
+        <div className="relative mb-8 max-w-md">
+          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t.searchPlaceholder}
+            className="w-full pl-11 pr-4 py-2.5 rounded-full border border-slate-800 bg-slate-900/60 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/60"
+          />
+        </div>
 
         {!loading && categories.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-10">
@@ -96,38 +139,70 @@ export default function BlogIndexPage() {
 
         {loading ? (
           <p className="text-slate-400 text-sm">{t.loading}</p>
-        ) : visiblePosts.length === 0 ? (
+        ) : posts.length === 0 ? (
           <p className="text-slate-400 text-sm">{t.empty}</p>
+        ) : visiblePosts.length === 0 ? (
+          <p className="text-slate-400 text-sm">{t.noResults}</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {visiblePosts.map((post) => (
-              <Link
-                key={post.id}
-                href={`/blog/${post.id}`}
-                className="rounded-2xl border border-slate-800 bg-slate-900/60 overflow-hidden flex flex-col transition-all duration-300 hover:border-cyan-400/50 hover:shadow-[0_0_25px_rgba(34,211,238,0.15)] no-underline text-current"
-              >
-                {post.imageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={resolveBlogImageUrl(post.imageUrl)} alt={blogTitle(post, lang)} onError={onImageErrorFallback} className="w-full h-40 object-cover" />
-                )}
-                <div className="p-6 flex-1 flex flex-col">
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-cyan-300 bg-cyan-500/10 border-cyan-500/20 self-start">
-                      {post.category}
-                    </span>
-                    {isSuccessStory(post) && (
-                      <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-amber-300 bg-amber-500/10 border-amber-500/20 self-start">
-                        {t.graduateBadge}
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {pagedPosts.map((post) => (
+                <Link
+                  key={post.id}
+                  href={`/blog/${post.slug}`}
+                  className="rounded-2xl border border-slate-800 bg-slate-900/60 overflow-hidden flex flex-col transition-all duration-300 hover:border-cyan-400/50 hover:shadow-[0_0_25px_rgba(34,211,238,0.15)] no-underline text-current"
+                >
+                  {post.imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={resolveBlogImageUrl(post.imageUrl)} alt={blogTitle(post, lang)} onError={onImageErrorFallback} className="w-full h-40 object-cover" />
+                  )}
+                  <div className="p-6 flex-1 flex flex-col">
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-cyan-300 bg-cyan-500/10 border-cyan-500/20 self-start">
+                        {post.category}
                       </span>
-                    )}
+                      {isSuccessStory(post) && (
+                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-amber-300 bg-amber-500/10 border-amber-500/20 self-start">
+                          {t.graduateBadge}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-lg font-black mb-2 text-white">{blogTitle(post, lang)}</h3>
+                    <p className="text-sm text-slate-400 leading-relaxed line-clamp-3 mb-4 flex-1">{blogDescription(post, lang)}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-cyan-400">{t.readMore}</span>
+                      <span className="flex items-center gap-1 text-[11px] text-slate-500 font-medium">
+                        <Clock size={12} />
+                        {t.minRead(estimateReadingMinutes(blogContent(post, lang)))}
+                      </span>
+                    </div>
                   </div>
-                  <h3 className="text-lg font-black mb-2 text-white">{blogTitle(post, lang)}</h3>
-                  <p className="text-sm text-slate-400 leading-relaxed line-clamp-3 mb-4 flex-1">{blogDescription(post, lang)}</p>
-                  <span className="text-xs font-bold text-cyan-400">{t.readMore}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
+                </Link>
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-4 mt-12">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full border border-slate-800 text-slate-300 hover:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft size={14} /> {t.prev}
+                </button>
+                <span className="text-xs text-slate-500 font-bold">{page} / {totalPages}</span>
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full border border-slate-800 text-slate-300 hover:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  {t.next} <ChevronRight size={14} />
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
