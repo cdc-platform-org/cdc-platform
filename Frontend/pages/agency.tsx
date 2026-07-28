@@ -1,20 +1,65 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import SiteFooter from '../src/components/layout/SiteFooter';
+import Toast from '../src/components/shared/Toast';
+import { AgencyContent, AgencyPortfolioItem } from '../src/types/siteContent';
+import { getSiteContent } from '../src/services/siteContentService';
+import { submitStudioInquiry } from '../src/services/studioService';
 
-interface Project {
-  id: number;
-  badge: React.ReactNode;
-  title: React.ReactNode;
-  subtitle: React.ReactNode;
-  desc: React.ReactNode;
-  status: React.ReactNode;
-}
+// Bundled fallback shown until (or unless) an admin adds portfolio items via
+// /admin/cms/agency — keeps the page populated on a fresh install with no
+// CMS rows yet, same fallback pattern as the homepage's DEFAULT stats/FAQ.
+const DEFAULT_PORTFOLIO: AgencyPortfolioItem[] = [
+  {
+    badgeKa: 'GITA მხარდაჭერა',
+    badgeEn: 'GITA Support',
+    titleKa: 'თაილორ.გე - ინოვაციური სტარტაპი',
+    titleEn: 'Taylor.ge - Innovative Startup',
+    subtitleKa: 'ვებ-დეველოპმენტი & მარკეტინგი',
+    subtitleEn: 'Web Development & Marketing',
+    descKa: 'ციფრული სამკერვალო თარგების პლატფორმის სრული ვებ-მხარდაჭერა და სოციალური ქსელების მართვა.',
+    descEn: 'Full web support and social media management for a digital sewing patterns platform.',
+    statusKa: '✓ წარმატებული ქეისი',
+    statusEn: '✓ Success Case',
+  },
+  {
+    badgeKa: 'ტურიზმი',
+    badgeEn: 'Tourism',
+    titleKa: 'მწვანე გურია - ეკო ტურიზმი',
+    titleEn: 'Green Guria - Eco Tourism',
+    subtitleKa: 'UI/UX დიზაინი & საიტი',
+    subtitleEn: 'UI/UX Design & Web',
+    descKa: 'გურიის 10 ნაკლებად ცნობილი ლოკაციის ციფრული პლატფორმა და საინფორმაციო QR ფირფიშების დიზაინი.',
+    descEn: 'Digital platform and informational QR plates design for 10 hidden locations of Guria.',
+    statusKa: '✓ წარმატებული ქეისი',
+    statusEn: '✓ Success Case',
+  },
+  {
+    badgeKa: 'SMM',
+    badgeEn: 'SMM',
+    titleKa: 'ლოკალური ბიზნესების ციფრული მხარდაჭერა',
+    titleEn: 'Digital Support for Local Businesses',
+    subtitleKa: 'SMM & ანიმაცია',
+    subtitleEn: 'SMM & Animation',
+    descKa: 'სოციალური მედიის სარეკლამო კონტენტის, ანიმაციებისა და ბრენდინგის მიწოდება რეგიონული ბიზნესებისთვის.',
+    descEn: 'Providing social media advertising content, animations, and branding for regional businesses.',
+    statusKa: '✓ წარმატებული ქეისი',
+    statusEn: '✓ Success Case',
+  },
+];
+
+const emptyForm = { name: '', email: '', phone: '', company: '', projectType: '', budgetRange: '', message: '' };
 
 export default function Agency() {
   const router = useRouter();
   const [darkMode, setDarkMode] = useState<boolean>(false);
+  const [portfolio, setPortfolio] = useState<AgencyPortfolioItem[]>(DEFAULT_PORTFOLIO);
+
+  const [form, setForm] = useState(emptyForm);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [showToast, setShowToast] = useState(false);
 
   // 🌐 ენის სთეითი სააგენტოს გვერდისთვისაც! — synced with router.locale so
   // globally-mounted shared components (AuthModal) pick up the switch too.
@@ -41,6 +86,22 @@ export default function Agency() {
     }
   }, []);
 
+  useEffect(() => {
+    getSiteContent<AgencyContent>('agency')
+      .then((row) => {
+        if (row?.content.portfolio && row.content.portfolio.length > 0) {
+          setPortfolio(row.content.portfolio);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!showToast) return;
+    const timer = setTimeout(() => setShowToast(false), 4000);
+    return () => clearTimeout(timer);
+  }, [showToast]);
+
   const toggleDarkMode = () => {
     const nextDark = !darkMode;
     setDarkMode(nextDark);
@@ -61,33 +122,42 @@ export default function Agency() {
     return lang === 'GEO' ? geo : eng;
   };
 
-  // 📂 გაწმენდილი და თარგმნილი პროექტების პორტფოლიო (ყოველგვარი [cite] ნაგვის გარეშე!)
-  const projects: Project[] = [
-    {
-      id: 1,
-      badge: translate(<>{safeText('GITA')} მხარდაჭერა</>, <>{safeText('GITA')} Support</>),
-      title: translate(<>თაილორ.გე - ინოვაციური სტარტაპი</>, <>Taylor.ge - Innovative Startup</>),
-      subtitle: translate(<>ვებ-დეველოპმენტი & მარკეტინგი</>, <>Web Development & Marketing</>),
-      desc: translate(<>ციფრული სამკერვალო თარგების პლატფორმის სრული ვებ-მხარდაჭერა და სოციალური ქსელების მართვა.</>, <>Full web support and social media management for a digital sewing patterns platform.</>),
-      status: translate(<>✓ წარმატებული ქეისი</>, <>✓ Success Case</>)
-    },
-    {
-      id: 2,
-      badge: translate(<>ტურიზმი</>, <>Tourism</>),
-      title: translate(<>მწვანე გურია - ეკო ტურიზმი</>, <>Green Guria - Eco Tourism</>),
-      subtitle: translate(<>{safeText('UI/UX')} დიზაინი & საიტი</>, <>{safeText('UI/UX')} Design & Web</>),
-      desc: translate(<>გურიის 10 ნაკლებად ცნობილი ლოკაციის ციფრული პლატფორმა და საინფორმაციო QR ფირფიშების დიზაინი.</>, <>Digital platform and informational QR plates design for 10 hidden locations of Guria.</>),
-      status: translate(<>✓ წარმატებული ქეისი</>, <>✓ Success Case</>)
-    },
-    {
-      id: 3,
-      badge: translate(<>{safeText('SMM')}</>, <>{safeText('SMM')}</>),
-      title: translate(<>ლოკალური ბიზნესების ციფრული მხარდაჭერა</>, <>Digital Support for Local Businesses</>),
-      subtitle: translate(<>{safeText('SMM')} & ანიმაცია</>, <>{safeText('SMM')} & Animation</>),
-      desc: translate(<>სოციალური მედიის სარეკლამო კონტენტის, ანიმაციებისა და ბრენდინგის მიწოდება რეგიონული ბიზნესებისთვის.</>, <>Providing social media advertising content, animations, and branding for regional businesses.</>),
-      status: translate(<>✓ წარმატებული ქეისი</>, <>✓ Success Case</>)
+  const handleFormChange = (field: keyof typeof emptyForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setForm((prev) => ({ ...prev, [field]: e.target.value }));
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+    setSubmitting(true);
+    try {
+      await submitStudioInquiry({
+        name: form.name,
+        email: form.email,
+        phone: form.phone || undefined,
+        company: form.company || undefined,
+        projectType: form.projectType,
+        budgetRange: form.budgetRange || undefined,
+        message: form.message,
+      });
+      setForm(emptyForm);
+      setShowToast(true);
+    } catch (err: any) {
+      const apiErrors = err?.response?.data?.errors;
+      const apiMessage = err?.response?.data?.message;
+      setFormError(
+        Array.isArray(apiErrors)
+          ? apiErrors.map((issue: any) => issue.message).join(' ')
+          : apiMessage || translate('მოთხოვნის გაგზავნა ვერ მოხერხდა. სცადეთ თავიდან.', 'Unable to submit your request. Please try again.')
+      );
+    } finally {
+      setSubmitting(false);
     }
-  ];
+  };
+
+  const inputClass = `w-full rounded-xl border px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
+    darkMode ? 'bg-[#0e1422] border-slate-800 text-white placeholder-slate-500' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400'
+  }`;
 
   return (
     <div className={`min-h-screen font-sans antialiased transition-colors duration-300 relative overflow-hidden ${darkMode ? 'text-slate-200 bg-[#0b0f19]' : 'text-slate-800 bg-[#f8fafc]'}`}>
@@ -112,9 +182,9 @@ export default function Agency() {
 
           <div className="flex items-center space-x-6 text-base font-bold tracking-wide">
             <a href="/" className="hover:text-cyan-500 transition no-underline text-current">{translate('მთავარზე დაბრუნება', 'Return Home')}</a>
-            
+
             {/* 🌐 ენის გადამრთველი სააგენტოს გვერდზეც! */}
-            <button 
+            <button
               type="button"
               onClick={handleLangToggle}
               className={`font-sans font-black text-xs px-2.5 py-1.5 rounded-lg border transition duration-200 cursor-pointer ${
@@ -137,17 +207,26 @@ export default function Agency() {
               💼 {translate('სოციალური მეწარმეობა & ციფრული სააგენტო', 'Social Entrepreneurship & Digital Agency')}
             </span>
           </div>
-          
+
           <h1 className="text-3xl md:text-5xl font-black mt-4 mb-6 tracking-wide text-slate-900 dark:text-white leading-tight">
             {translate('პროფესიონალური ციფრული სერვისები თქვენი ბიზნესისთვის', 'Professional Digital Services For Your Business')}
           </h1>
-          
+
           <p className="text-sm md:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed font-medium">
             {translate(
               <>{safeText('CDC Studio')} აერთიანებს ნიჭიერ სტუდენტებსა და გამოცდილ მენტორებს. ჩვენ ვქმნით საიტებს, რეკლამას, კონტენტსა და ვიზუალებს ლოკალური და საერთაშორისო ბიზნესებისთვის.</>,
               <>{safeText('CDC Studio')} combines talented students and experienced mentors. We create websites, advertisement, content, and visuals for local and international businesses.</>
             )}
           </p>
+
+          <div className="mt-8">
+            <a
+              href="#request-project"
+              className="inline-block bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-8 py-3.5 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+            >
+              {translate('შეუკვეთე პროექტი', 'Request a Project')}
+            </a>
+          </div>
         </div>
       </div>
 
@@ -157,34 +236,34 @@ export default function Agency() {
           ✨ {translate('ჩვენი შესრულებული სამუშაოები', 'Our Portfolio')}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {projects.map(p => (
-            <div 
-              key={p.id} 
+          {portfolio.map((p, i) => (
+            <div
+              key={i}
               className={`border rounded-3xl p-8 transition-all duration-300 transform hover:scale-[1.03] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] flex flex-col justify-between min-h-[300px] ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}
             >
               <div>
                 <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border ${
                   darkMode ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' : 'text-cyan-700 bg-cyan-50 border-cyan-100'
                 }`}>
-                  {p.badge}
+                  {translate(p.badgeKa, p.badgeEn)}
                 </span>
-                
+
                 <h3 className="text-lg font-black mt-5 mb-2 tracking-wide leading-snug">
-                  {p.title}
+                  {translate(p.titleKa, p.titleEn)}
                 </h3>
-                
+
                 <h4 className="text-xs font-bold text-slate-400 mb-5 uppercase tracking-wide">
-                  {p.subtitle}
+                  {translate(p.subtitleKa, p.subtitleEn)}
                 </h4>
-                
+
                 <p className="text-xs md:text-sm text-slate-400 leading-relaxed font-medium">
-                  {p.desc}
+                  {translate(p.descKa, p.descEn)}
                 </p>
               </div>
 
               <div className="pt-6 mt-6 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
                 <span className="text-xs font-bold text-emerald-500">
-                  {p.status}
+                  {translate(p.statusKa, p.statusEn)}
                 </span>
               </div>
             </div>
@@ -192,7 +271,102 @@ export default function Agency() {
         </div>
       </main>
 
+      {/* 📝 REQUEST A PROJECT */}
+      <section id="request-project" className={`border-t py-20 ${darkMode ? 'border-slate-800 bg-[#0e1422]/40' : 'border-slate-200 bg-slate-100/40'}`}>
+        <div className="max-w-2xl mx-auto px-6">
+          <h2 className="text-xl md:text-2xl font-black mb-3 tracking-wide flex items-center gap-2">
+            📝 {translate('შეუკვეთე პროექტი', 'Request a Project')}
+          </h2>
+          <p className="text-sm text-slate-400 mb-10 leading-relaxed">
+            {translate(
+              'შეავსეთ ფორმა და ჩვენი გუნდი 1-2 სამუშაო დღეში დაგიკავშირდებათ.',
+              "Fill out the form and our team will get back to you within 1-2 business days."
+            )}
+          </p>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {formError && (
+              <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-500 font-medium">
+                {formError}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input
+                required
+                placeholder={translate('სახელი', 'Name') as string}
+                value={form.name}
+                onChange={handleFormChange('name')}
+                className={inputClass}
+              />
+              <input
+                required
+                type="email"
+                placeholder={translate('ელ-ფოსტა', 'Email') as string}
+                value={form.email}
+                onChange={handleFormChange('email')}
+                className={inputClass}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input
+                placeholder={translate('ტელეფონი (არასავალდებულო)', 'Phone (optional)') as string}
+                value={form.phone}
+                onChange={handleFormChange('phone')}
+                className={inputClass}
+              />
+              <input
+                placeholder={translate('კომპანია (არასავალდებულო)', 'Company (optional)') as string}
+                value={form.company}
+                onChange={handleFormChange('company')}
+                className={inputClass}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input
+                required
+                placeholder={translate('პროექტის ტიპი (მაგ. ვებ-საიტი, SMM)', 'Project type (e.g. Website, SMM)') as string}
+                value={form.projectType}
+                onChange={handleFormChange('projectType')}
+                className={inputClass}
+              />
+              <input
+                placeholder={translate('ბიუჯეტის დიაპაზონი (არასავალდებულო)', 'Budget range (optional)') as string}
+                value={form.budgetRange}
+                onChange={handleFormChange('budgetRange')}
+                className={inputClass}
+              />
+            </div>
+
+            <textarea
+              required
+              rows={5}
+              placeholder={translate('მოგვიყევით პროექტზე...', 'Tell us about your project...') as string}
+              value={form.message}
+              onChange={handleFormChange('message')}
+              className={inputClass}
+            />
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-8 py-3.5 rounded-xl hover:shadow-lg hover:shadow-cyan-500/30 transition-all disabled:opacity-60"
+            >
+              {submitting
+                ? translate('იგზავნება...', 'Submitting...')
+                : translate('მოთხოვნის გაგზავნა', 'Submit Request')}
+            </button>
+          </form>
+        </div>
+      </section>
+
       <SiteFooter lang={lang} />
+
+      {showToast && (
+        <Toast message={translate('მოთხოვნა წარმატებით გაიგზავნა!', 'Your request has been submitted!') as string} />
+      )}
     </div>
   );
 }

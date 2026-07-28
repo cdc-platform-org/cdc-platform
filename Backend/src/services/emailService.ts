@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { RESEND_API_KEY, EMAIL_FROM } from '../utils/env';
+import { RESEND_API_KEY, EMAIL_FROM, SUPER_ADMIN_EMAILS } from '../utils/env';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
@@ -89,6 +89,30 @@ export async function sendVacancyApplicationEmail(
     link
   );
   await sendEmail(employerEmail, `ახალი განაცხადი: ${vacancyTitle}`, html, link);
+}
+
+export async function sendStudioInquiryEmail(
+  inquiryId: string,
+  name: string,
+  email: string,
+  projectType: string
+): Promise<void> {
+  if (SUPER_ADMIN_EMAILS.length === 0) {
+    // No admin recipients configured — same posture as an unconfigured
+    // Resend key: log so the inquiry is still discoverable, don't throw.
+    console.log(`[DEV EMAIL] No SUPER_ADMIN_EMAILS configured — new studio inquiry ${inquiryId} from ${email} not emailed.`);
+    return;
+  }
+  const link = `${FRONTEND_URL}/admin/studio`;
+  const html = wrapTemplate(
+    'New CDC Studio Inquiry',
+    `<strong>${name}</strong> (${email}) submitted a new project inquiry — type: <strong>${projectType}</strong>. Review it in the admin panel.`,
+    'View Inquiry',
+    link
+  );
+  await Promise.all(
+    SUPER_ADMIN_EMAILS.map((adminEmail) => sendEmail(adminEmail, `New Studio Inquiry: ${projectType}`, html, link))
+  );
 }
 
 export async function sendPasswordResetEmail(email: string, token: string, lang: 'ka' | 'en' = 'ka'): Promise<void> {

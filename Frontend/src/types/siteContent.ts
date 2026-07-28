@@ -41,3 +41,22 @@ export interface HomepageContent {
   faq?: HomepageFaqItem[];
   heksCard?: HeksCardConfig;
 }
+
+// --- CDC Studio Portfolio (page: "agency") ---
+
+export interface AgencyPortfolioItem {
+  badgeKa: string;
+  badgeEn: string;
+  titleKa: string;
+  titleEn: string;
+  subtitleKa: string;
+  subtitleEn: string;
+  descKa: string;
+  descEn: string;
+  statusKa: string;
+  statusEn: string;
+}
+
+export interface AgencyContent {
+  portfolio?: AgencyPortfolioItem[];
+}

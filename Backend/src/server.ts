@@ -31,6 +31,8 @@ import adminMentorshipRoutes from './routes/adminMentorship';
 import adminMessagesRoutes from './routes/adminMessages';
 import siteContentRoutes from './routes/siteContent';
 import adminCmsRoutes from './routes/adminCms';
+import studioRoutes from './routes/studio';
+import adminStudioRoutes from './routes/adminStudio';
 import aiRoutes from './routes/ai';
 import { errorHandler } from './middleware/errorHandler';
 import { PORT } from './utils/env';
@@ -79,6 +81,8 @@ app.use('/api/admin/mentorship', adminMentorshipRoutes);
 app.use('/api/admin/messages', adminMessagesRoutes);
 app.use('/api/site-content', siteContentRoutes);
 app.use('/api/admin/cms', adminCmsRoutes);
+app.use('/api/studio', studioRoutes);
+app.use('/api/admin/studio', adminStudioRoutes);
 app.use('/api/ai', aiRoutes);
 
 const swaggerDocument = {

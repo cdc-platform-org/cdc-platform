@@ -5,6 +5,7 @@ import { AxiosError } from 'axios';
 import { useAuth } from '../../src/context/AuthContext';
 import GuestRoute from '../../src/components/auth/GuestRoute';
 import PasswordInput from '../../src/components/auth/PasswordInput';
+import GoogleSignInButton from '../../src/components/auth/GoogleSignInButton';
 import LanguageSwitcher from '../../src/components/layout/LanguageSwitcher';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
@@ -12,14 +13,40 @@ import { GetStaticProps } from 'next';
 
 function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const { t } = useTranslation('auth');
+  const lang = router.locale === 'en' ? 'en' : 'ka';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [redirectingAdmin, setRedirectingAdmin] = useState(false);
+
+  const handlePostLogin = (loggedInUser: Awaited<ReturnType<typeof login>>) => {
+    const explicitRedirect = router.query.redirect as string | undefined;
+    if (explicitRedirect) {
+      router.push(explicitRedirect);
+    } else if (loggedInUser.adminRole) {
+      setRedirectingAdmin(true);
+      setTimeout(() => router.push('/admin'), 900);
+    } else {
+      router.push('/courses');
+    }
+  };
+
+  const handleGoogleCredential = async (idToken: string) => {
+    setError(null);
+    setSubmitting(true);
+    try {
+      const loggedInUser = await loginWithGoogle(idToken);
+      handlePostLogin(loggedInUser);
+    } catch {
+      setError('Unable to sign in with Google. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -29,20 +56,12 @@ function LoginPage() {
 
     try {
       const loggedInUser = await login({ email, password });
-      const explicitRedirect = router.query.redirect as string | undefined;
       // An explicit ?redirect= (set by ProtectedRoute when it bounced a
       // guest here) always wins — the user was already headed somewhere
       // specific. Otherwise route by role: admin-team members land in the
       // Admin Workspace, everyone else in the course catalog.
-      if (explicitRedirect) {
-        router.push(explicitRedirect);
-      } else if (loggedInUser.adminRole) {
-        redirectingToAdmin = true;
-        setRedirectingAdmin(true);
-        setTimeout(() => router.push('/admin'), 900);
-      } else {
-        router.push('/courses');
-      }
+      redirectingToAdmin = !!loggedInUser.adminRole && !router.query.redirect;
+      handlePostLogin(loggedInUser);
     } catch (err) {
       const axiosErr = err as AxiosError<{ message?: string }>;
       setError(
@@ -120,6 +139,20 @@ function LoginPage() {
             {submitting ? t('login.submittingButton') : t('login.submitButton')}
           </button>
         </form>
+
+        <div className="flex items-center gap-3 my-5">
+          <div className="flex-1 h-px bg-gray-200" />
+          <span className="text-xs font-medium text-gray-400">{t('orDivider')}</span>
+          <div className="flex-1 h-px bg-gray-200" />
+        </div>
+
+        <GoogleSignInButton
+          mode="login"
+          lang={lang}
+          onCredential={handleGoogleCredential}
+          disabledLabel={t('googleButton')}
+          disabledTitle={t('googleNotConfigured')}
+        />
 
         <p className="mt-6 text-center text-sm text-gray-500">
           {t('login.noAccount')}{' '}

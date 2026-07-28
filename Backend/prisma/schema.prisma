@@ -237,6 +237,7 @@ model User {
   payoutRequestsReviewed PayoutRequest[]    @relation("PayoutRequestsReviewed")
   auditLogs              AuditLog[]
   siteContentUpdates     SiteContent[]
+  studioInquiriesReviewed StudioInquiry[]
 
   @@map("users")
 }
@@ -1023,4 +1024,41 @@ model SiteContent {
   updatedAt   DateTime @updatedAt
 
   @@map("site_content")
+}
+
+// ============================================================
+// STUDIO INQUIRY — public lead-gen submissions from the CDC Studio
+// (/agency) "Request a Project" form. No User relation for the
+// submitter — these come from prospective clients who aren't necessarily
+// platform accounts, so contact details are captured directly on the row,
+// same posture as Order's enterprise/contactEmail fields.
+// ============================================================
+
+enum StudioInquiryStatus {
+  PENDING
+  IN_REVIEW
+  ACCEPTED
+  DECLINED
+}
+
+model StudioInquiry {
+  id          String @id @default(uuid())
+  name        String
+  email       String
+  phone       String?
+  company     String?
+  projectType String
+  budgetRange String?
+  message     String
+
+  status       StudioInquiryStatus @default(PENDING)
+  adminNote    String?
+  reviewedById String?
+  reviewedBy   User?               @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+  resolvedAt   DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([status])
+  @@map("studio_inquiries")
 }

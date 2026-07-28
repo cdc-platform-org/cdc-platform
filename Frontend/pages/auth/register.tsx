@@ -5,6 +5,7 @@ import { AxiosError } from 'axios';
 import { useAuth } from '../../src/context/AuthContext';
 import GuestRoute from '../../src/components/auth/GuestRoute';
 import PasswordInput from '../../src/components/auth/PasswordInput';
+import GoogleSignInButton from '../../src/components/auth/GoogleSignInButton';
 import LanguageSwitcher from '../../src/components/layout/LanguageSwitcher';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
@@ -12,8 +13,9 @@ import { GetStaticProps } from 'next';
 
 function RegisterPage() {
   const router = useRouter();
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
   const { t } = useTranslation('auth');
+  const lang = router.locale === 'en' ? 'en' : 'ka';
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -22,14 +24,30 @@ function RegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const handleGoogleCredential = async (idToken: string) => {
+    setError(null);
+    setSubmitting(true);
+    try {
+      const loggedInUser = await loginWithGoogle(idToken, role);
+      router.push(loggedInUser.status === 'PENDING_APPROVAL' ? '/auth/pending-approval' : '/courses');
+    } catch {
+      setError('Unable to sign in with Google. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
 
     try {
-      await register({ name, email, password, role });
-      router.push('/auth/pending-approval');
+      const newUser = await register({ name, email, password, role });
+      // Self-serve Student/Client signups are auto-approved (see backend's
+      // POST /register) — pending-approval is now only reachable for a
+      // future role that still needs manual vetting.
+      router.push(newUser.status === 'PENDING_APPROVAL' ? '/auth/pending-approval' : '/courses');
     } catch (err) {
       const axiosErr = err as AxiosError<{ message?: string; errors?: Array<{ message: string }> }>;
       const zodErrors = axiosErr.response?.data?.errors;
@@ -153,6 +171,21 @@ function RegisterPage() {
             {submitting ? t('register.submittingButton') : t('register.submitButton')}
           </button>
         </form>
+
+        <div className="flex items-center gap-3 my-5">
+          <div className="flex-1 h-px bg-gray-200" />
+          <span className="text-xs font-medium text-gray-400">{t('orDivider')}</span>
+          <div className="flex-1 h-px bg-gray-200" />
+        </div>
+
+        <GoogleSignInButton
+          mode="register"
+          role={role}
+          lang={lang}
+          onCredential={handleGoogleCredential}
+          disabledLabel={t('googleButton')}
+          disabledTitle={t('googleNotConfigured')}
+        />
 
         <p className="mt-6 text-center text-sm text-gray-500">
           {t('register.hasAccount')}{' '}

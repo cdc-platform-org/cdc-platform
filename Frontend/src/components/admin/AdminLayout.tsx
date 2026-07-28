@@ -22,6 +22,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/forum', labelKey: 'forum', icon: '💬' },
   { href: '/admin/cms/homepage', labelKey: 'cms', icon: '🖋️', tiers: ['SUPER_ADMIN', 'MANAGER'] },
   { href: '/admin/cms/gallery', labelKey: 'gallery', icon: '🖼️', tiers: ['SUPER_ADMIN', 'MANAGER'] },
+  { href: '/admin/cms/agency', labelKey: 'agencyCms', icon: '🏢', tiers: ['SUPER_ADMIN', 'MANAGER'] },
+  { href: '/admin/studio', labelKey: 'studio', icon: '📋', tiers: ['SUPER_ADMIN', 'MANAGER'] },
   { href: '/admin/blog', labelKey: 'blog', icon: '📝', tiers: ['SUPER_ADMIN', 'MANAGER'] },
   { href: '/admin/courses', labelKey: 'courses', icon: '🎓', tiers: ['SUPER_ADMIN', 'MANAGER'] },
   { href: '/admin/analytics', labelKey: 'analytics', icon: '📈', tiers: ['SUPER_ADMIN', 'MANAGER'] },

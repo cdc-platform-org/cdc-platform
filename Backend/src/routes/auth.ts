@@ -127,6 +127,12 @@ router.post('/register', async (req, res) => {
       email: normalizedEmail,
       password: hashed,
       role,
+      // registerSchema only ever grants Student or Client (see its comment) —
+      // both are self-serve roles with no vetting step, so manual admin
+      // approval (UserStatus's PENDING_APPROVAL default, reserved for
+      // roles like Mentor that DO need vetting) would just be a pointless
+      // wall between a normal signup and their dashboard.
+      status: 'APPROVED',
       emailVerificationToken,
       emailVerificationTokenExpires: new Date(Date.now() + EMAIL_VERIFICATION_TOKEN_TTL_MS),
     },
@@ -368,6 +374,10 @@ router.post('/google', async (req, res) => {
         email: normalizedEmail,
         password: randomPassword, // unusable for password login — this account signs in via Google only
         role: result.data.role ?? 'Student',
+        // Same reasoning as POST /register — googleAuthSchema only ever
+        // grants Student or Client, both self-serve roles that don't need
+        // manual admin vetting.
+        status: 'APPROVED',
         googleId: payload.sub,
         emailVerifiedAt: new Date(), // Google already verified this email
       },
