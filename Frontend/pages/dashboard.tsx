@@ -18,6 +18,7 @@ import {
   WalletSummary,
   PayoutRequestRow,
 } from '../src/services/walletService';
+import { getMyPayments, MyPaymentRow } from '../src/services/paymentService';
 
 type Tab = 'overview' | 'courses' | 'wallet' | 'gigs';
 
@@ -58,6 +59,9 @@ const dict = {
     submitting: 'იგზავნება…',
     payoutHistory: 'გატანების ისტორია',
     noPayouts: 'გატანის მოთხოვნები ჯერ არ არის.',
+    paymentHistory: 'გადახდების ისტორია',
+    noPayments: 'გადახდები ჯერ არ არის.',
+    paymentPurpose: { COURSE: 'კურსი', MENTORSHIP: 'მენტორობა', GIG_ESCROW_FUNDING: 'გიგის დაფინანსება' } as Record<string, string>,
     // Gigs tab
     gigsTitle: 'ჩემი გიგები / სამუშაო სივრცე',
     noGigs: 'თქვენ ჯერ არცერთ გიგზე არ ხართ დანიშნული.',
@@ -108,6 +112,9 @@ const dict = {
     submitting: 'Submitting…',
     payoutHistory: 'Payout History',
     noPayouts: 'No payout requests yet.',
+    paymentHistory: 'Payment History',
+    noPayments: 'No payments yet.',
+    paymentPurpose: { COURSE: 'Course', MENTORSHIP: 'Mentorship', GIG_ESCROW_FUNDING: 'Gig Funding' } as Record<string, string>,
     gigsTitle: 'My Gigs / Workspace',
     noGigs: "You're not assigned to any gigs yet.",
     browseGigs: 'Browse Gigs',
@@ -140,8 +147,20 @@ const PAYOUT_STATUS_BADGE: Record<string, string> = {
   PAID: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
 };
 
+const PAYMENT_STATUS_BADGE: Record<string, string> = {
+  PENDING: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30',
+  COMPLETED: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+  FAILED: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30',
+  CANCELLED: 'bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-500/30',
+  REFUNDED: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30',
+};
+
 function formatGel(minorUnits: number): string {
   return `${(minorUnits / 100).toFixed(2)} ₾`;
+}
+
+function formatMoney(minorUnits: number, currency: string): string {
+  return `${(minorUnits / 100).toFixed(2)} ${currency === 'GEL' ? '₾' : currency}`;
 }
 
 function ProgressBar({ percent }: { percent: number }) {
@@ -167,6 +186,7 @@ function DashboardContent() {
   const [gigs, setGigs] = useState<AssignedGig[]>([]);
   const [wallet, setWallet] = useState<WalletSummary | null>(null);
   const [payoutRequests, setPayoutRequests] = useState<PayoutRequestRow[]>([]);
+  const [payments, setPayments] = useState<MyPaymentRow[]>([]);
 
   const [downloadingCourseId, setDownloadingCourseId] = useState<string | null>(null);
   const [confirmCourseId, setConfirmCourseId] = useState<string | null>(null);
@@ -189,16 +209,18 @@ function DashboardContent() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [coursesData, gigsData, walletData, payoutData] = await Promise.all([
+      const [coursesData, gigsData, walletData, payoutData, paymentsData] = await Promise.all([
         getMyCourses(),
         getAssignedGigs(),
         getWalletSummary(),
         getMyPayoutRequests(),
+        getMyPayments(),
       ]);
       setCourses(coursesData);
       setGigs(gigsData);
       setWallet(walletData);
       setPayoutRequests(payoutData);
+      setPayments(paymentsData);
     } finally {
       setLoading(false);
     }
@@ -501,6 +523,33 @@ function DashboardContent() {
                                 <td className="px-4 py-3 text-right">
                                   <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded border ${PAYOUT_STATUS_BADGE[r.status]}`}>
                                     {r.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-bold mb-4">{t.paymentHistory}</h3>
+                    {payments.length === 0 ? (
+                      <p className="text-xs text-slate-500 dark:text-slate-500">{t.noPayments}</p>
+                    ) : (
+                      <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+                        <table className="w-full text-xs">
+                          <tbody>
+                            {payments.map((p) => (
+                              <tr key={p.id} className="border-b last:border-0 border-slate-200 dark:border-slate-800">
+                                <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{t.paymentPurpose[p.purpose] ?? p.purpose}</td>
+                                <td className="px-4 py-3 text-slate-800 dark:text-slate-200">{p.referenceTitle ?? '—'}</td>
+                                <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">{formatMoney(p.amount, p.currency)}</td>
+                                <td className="px-4 py-3 text-slate-500 dark:text-slate-500">{new Date(p.createdAt).toLocaleDateString()}</td>
+                                <td className="px-4 py-3 text-right">
+                                  <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded border ${PAYMENT_STATUS_BADGE[p.status]}`}>
+                                    {p.status}
                                   </span>
                                 </td>
                               </tr>

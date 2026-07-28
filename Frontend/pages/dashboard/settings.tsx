@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -6,12 +6,19 @@ import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import { useAuth } from '../../src/context/AuthContext';
-import { updateProfile, changePassword } from '../../src/services/authService';
+import { updateProfile, changePassword, uploadAvatar } from '../../src/services/authService';
 
 const dict = {
   ka: {
     title: 'ანგარიშის პარამეტრები',
     back: '← პირად კაბინეტში დაბრუნება',
+    profileTitle: 'პროფილი',
+    avatarChange: '📁 სურათის შეცვლა',
+    avatarUploading: 'იტვირთება…',
+    avatarError: 'სურათის ატვირთვა ვერ მოხერხდა.',
+    displayName: 'სახელი (საჯარო)',
+    bio: 'ბიო / სათაური',
+    bioPlaceholder: 'მოკლედ მოგვიყევით საკუთარ თავზე...',
     identityTitle: 'იურიდიული ვინაობა',
     identityHint:
       'ეს მონაცემები გამოიყენება სერტიფიკატებზე და გადახდის დოკუმენტაციაში — შეავსეთ ისე, როგორც პირადობის მოწმობაშია.',
@@ -40,6 +47,13 @@ const dict = {
   en: {
     title: 'Account Settings',
     back: '← Back to Dashboard',
+    profileTitle: 'Profile',
+    avatarChange: '📁 Change Photo',
+    avatarUploading: 'Uploading…',
+    avatarError: 'Unable to upload the image.',
+    displayName: 'Display Name',
+    bio: 'Bio / Headline',
+    bioPlaceholder: 'Tell us a bit about yourself...',
     identityTitle: 'Legal Identity',
     identityHint: 'Used on certificates and payout paperwork — fill in exactly as it appears on your ID.',
     firstNameKa: 'First Name (Georgian)',
@@ -77,6 +91,8 @@ function SettingsContent() {
   const { user, refreshUser } = useAuth();
 
   const [form, setForm] = useState({
+    name: '',
+    bio: '',
     legalFirstNameKa: '',
     legalLastNameKa: '',
     legalFirstNameEn: '',
@@ -89,6 +105,10 @@ function SettingsContent() {
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
+
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [updatingPassword, setUpdatingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -96,6 +116,8 @@ function SettingsContent() {
   useEffect(() => {
     if (!user) return;
     setForm({
+      name: user.name ?? '',
+      bio: user.bio ?? '',
       legalFirstNameKa: user.legalFirstNameKa ?? '',
       legalLastNameKa: user.legalLastNameKa ?? '',
       legalFirstNameEn: user.legalFirstNameEn ?? '',
@@ -106,7 +128,23 @@ function SettingsContent() {
     });
   }, [user]);
 
-  const handleChange = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAvatar(true);
+    setAvatarError(null);
+    try {
+      await uploadAvatar(file);
+      await refreshUser();
+    } catch {
+      setAvatarError(t.avatarError);
+    } finally {
+      setUploadingAvatar(false);
+      if (avatarFileInputRef.current) avatarFileInputRef.current.value = '';
+    }
+  };
+
+  const handleChange = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
     setSaved(false);
   };
@@ -117,6 +155,8 @@ function SettingsContent() {
     setSaving(true);
     try {
       await updateProfile({
+        name: form.name,
+        bio: form.bio || null,
         legalFirstNameKa: form.legalFirstNameKa || null,
         legalLastNameKa: form.legalLastNameKa || null,
         legalFirstNameEn: form.legalFirstNameEn || null,
@@ -177,6 +217,45 @@ function SettingsContent() {
         <h1 className="text-2xl font-black mb-8">{t.title}</h1>
 
         <form onSubmit={handleSave} className="space-y-8">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 space-y-4">
+            <h2 className="text-sm font-bold">{t.profileTitle}</h2>
+
+            <div className="flex items-center gap-5">
+              <div className="w-16 h-16 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shrink-0 flex items-center justify-center">
+                {user?.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-xl font-black text-slate-400">{(user?.name ?? '?').charAt(0).toUpperCase()}</span>
+                )}
+              </div>
+              <div>
+                <label className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-gray-300 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800">
+                  {uploadingAvatar ? t.avatarUploading : t.avatarChange}
+                  <input
+                    ref={avatarFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarFileChange}
+                    className="hidden"
+                    disabled={uploadingAvatar}
+                  />
+                </label>
+                {avatarError && <p className="text-xs text-red-600 mt-1.5">{avatarError}</p>}
+              </div>
+            </div>
+
+            <div>
+              <label className={labelClass}>{t.displayName}</label>
+              <input className={inputClass} value={form.name} onChange={handleChange('name')} />
+            </div>
+
+            <div>
+              <label className={labelClass}>{t.bio}</label>
+              <textarea rows={3} className={inputClass} value={form.bio} onChange={handleChange('bio')} placeholder={t.bioPlaceholder} maxLength={300} />
+            </div>
+          </div>
+
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 space-y-4">
             <div>
               <h2 className="text-sm font-bold mb-1">{t.identityTitle}</h2>

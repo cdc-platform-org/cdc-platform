@@ -53,6 +53,8 @@ export const resetPasswordSchema = z.object({
 // wherever the person's real name/bank details matter (certificates,
 // payout requests), separate from the display `name`.
 export const updateProfileSchema = z.object({
+  name: z.string().trim().min(2).max(120).optional(),
+  bio: z.string().trim().max(300).optional().nullable(),
   legalFirstNameKa: z.string().trim().max(100).optional().nullable(),
   legalLastNameKa: z.string().trim().max(100).optional().nullable(),
   legalFirstNameEn: z.string().trim().max(100).optional().nullable(),

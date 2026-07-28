@@ -204,6 +204,13 @@ model User {
   // still stores its own snapshot, so changing this later doesn't alter
   // past requests.
   payoutIban       String?
+  // Profile picture — set only via POST /api/auth/me/avatar (uploads
+  // straight to Bunny Storage, see services/bunnyStorage.ts), never a
+  // freely-settable URL, so a user's public-facing avatar can't be pointed
+  // at an arbitrary external image.
+  avatarUrl        String?
+  // Short bio/headline shown on the profile — self-reported, plain text.
+  bio              String?
   createdAt       DateTime   @default(now())
 
   postedGigs             Gig[]                @relation("PostedGigs")

@@ -338,4 +338,41 @@ router.get('/bog/status/:paymentId', authenticate, async (req: Request, res: Res
   });
 });
 
+// ============================================================
+// MY PAYMENT HISTORY — self-serve, for the dashboard. Every BogPayment row
+// is a real completed-or-attempted BOG order across all three checkout
+// flows (course/mentorship/gig-escrow) — referenceId is a polymorphic
+// pointer (see the model's own comment), so for COURSE purchases a
+// best-effort course title is resolved and attached; the other two
+// purposes are self-descriptive already (mentorship's referenceId is
+// already a free-text package label, gig-escrow's title isn't critical
+// here since the Gigs tab covers that relationship in full).
+// ============================================================
+router.get('/my', authenticate, async (req: Request, res: Response) => {
+  const payments = await prisma.bogPayment.findMany({
+    where: { userId: req.user!.id },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const courseIds = payments.filter((p) => p.purpose === 'COURSE').map((p) => p.referenceId);
+  const courses = courseIds.length
+    ? await prisma.course.findMany({ where: { id: { in: courseIds } }, select: { id: true, title: true } })
+    : [];
+  const courseTitleById = new Map(courses.map((c) => [c.id, c.title]));
+
+  res.json({
+    data: payments.map((p) => ({
+      id: p.id,
+      purpose: p.purpose,
+      referenceId: p.referenceId,
+      referenceTitle: p.purpose === 'COURSE' ? courseTitleById.get(p.referenceId) ?? null : null,
+      amount: p.amount,
+      currency: p.currency,
+      status: p.status,
+      createdAt: p.createdAt,
+      completedAt: p.completedAt,
+    })),
+  });
+});
+
 export default router;

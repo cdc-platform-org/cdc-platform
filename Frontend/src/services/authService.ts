@@ -77,3 +77,12 @@ export async function changePassword(payload: ChangePasswordPayload): Promise<{ 
   const response = await apiClient.put('/auth/me/password', payload);
   return response.data;
 }
+
+export async function uploadAvatar(file: File): Promise<User> {
+  const formData = new FormData();
+  formData.append('avatar', file);
+  const response = await apiClient.post<{ user: User }>('/auth/me/avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data.user;
+}

@@ -1,7 +1,9 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import multer from 'multer';
+import path from 'path';
 import { OAuth2Client } from 'google-auth-library';
 import { User } from '@prisma/client';
 import { prisma } from '../lib/prisma';
@@ -19,6 +21,7 @@ import {
 import { authenticate } from '../middleware/auth';
 import { JWT_SECRET, GOOGLE_CLIENT_ID, SUPER_ADMIN_EMAILS } from '../utils/env';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../services/emailService';
+import { uploadToBunnyStorage, isBunnyStorageConfigured, BunnyStorageUploadError, deleteBunnyStorageUrlIfManaged } from '../services/bunnyStorage';
 
 const router = Router();
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
@@ -85,6 +88,8 @@ function toUserResponse(user: {
   nationalId?: string | null;
   phone?: string | null;
   payoutIban?: string | null;
+  avatarUrl?: string | null;
+  bio?: string | null;
 }) {
   return {
     id: user.id,
@@ -102,6 +107,8 @@ function toUserResponse(user: {
     nationalId: user.nationalId ?? null,
     phone: user.phone ?? null,
     payoutIban: user.payoutIban ?? null,
+    avatarUrl: user.avatarUrl ?? null,
+    bio: user.bio ?? null,
   };
 }
 
@@ -399,6 +406,61 @@ router.get('/me', authenticate, async (req, res) => {
   if (!user) return res.status(404).json({ message: 'Account no longer exists.' });
   res.json({ user: toUserResponse(user) });
 });
+
+// Self-serve avatar upload — any authenticated user, buffered in memory then
+// pushed straight to Bunny Storage (no local disk write). Deliberately its
+// own endpoint rather than a freely-settable field on PUT /me: this way the
+// server always computes the URL from an actual uploaded file, so a user's
+// public-facing avatar can never be pointed at an arbitrary external URL.
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image uploads are allowed.'));
+    }
+  },
+  limits: { fileSize: 4 * 1024 * 1024 }, // 4MB — plenty for an avatar
+});
+
+router.post(
+  '/me/avatar',
+  authenticate,
+  (req: Request, res: Response, next) => {
+    if (!isBunnyStorageConfigured()) {
+      return res.status(501).json({ message: 'Bunny Storage is not configured (BUNNY_STORAGE_ZONE_NAME / BUNNY_STORAGE_API_KEY / BUNNY_CDN_URL).' });
+    }
+    next();
+  },
+  avatarUpload.single('avatar'),
+  async (req: Request, res: Response) => {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file was selected.' });
+    }
+    const previous = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { avatarUrl: true } });
+
+    const filename = `avatar-${req.user!.id}-${Date.now()}${path.extname(req.file.originalname)}`;
+    try {
+      const url = await uploadToBunnyStorage({
+        buffer: req.file.buffer,
+        mimetype: req.file.mimetype,
+        folderName: 'avatars',
+        filename,
+      });
+      const user = await prisma.user.update({ where: { id: req.user!.id }, data: { avatarUrl: url } });
+
+      if (previous?.avatarUrl && previous.avatarUrl !== url) {
+        deleteBunnyStorageUrlIfManaged(previous.avatarUrl).catch(() => {});
+      }
+
+      res.status(201).json({ user: toUserResponse(user) });
+    } catch (err) {
+      const message = err instanceof BunnyStorageUploadError ? err.message : 'Avatar upload failed. Please try again.';
+      res.status(500).json({ message });
+    }
+  }
+);
 
 router.put('/me', authenticate, async (req, res) => {
   const result = updateProfileSchema.safeParse(req.body);

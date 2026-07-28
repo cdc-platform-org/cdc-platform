@@ -41,3 +41,23 @@ export async function getBogPaymentStatus(paymentId: string): Promise<BogPayment
   const response = await apiClient.get<{ data: BogPaymentStatusData }>(`/payments/bog/status/${paymentId}`);
   return response.data.data;
 }
+
+export interface MyPaymentRow {
+  id: string;
+  purpose: BogPaymentPurpose;
+  referenceId: string;
+  // Resolved course title for COURSE purchases — null for the other two
+  // purposes (mentorship's referenceId is already a free-text label; gig
+  // escrow funding is already covered in full by the dashboard's Gigs tab).
+  referenceTitle: string | null;
+  amount: number;
+  currency: string;
+  status: BogPaymentStatus | 'REFUNDED';
+  createdAt: string;
+  completedAt: string | null;
+}
+
+export async function getMyPayments(): Promise<MyPaymentRow[]> {
+  const response = await apiClient.get<{ data: MyPaymentRow[] }>('/payments/my');
+  return response.data.data;
+}

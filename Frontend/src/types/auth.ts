@@ -23,9 +23,15 @@ export interface User {
   nationalId: string | null;
   phone: string | null;
   payoutIban: string | null;
+  // Set only via POST /auth/me/avatar (uploads to Bunny Storage) — never a
+  // freely-settable URL, see Backend's routes/auth.ts.
+  avatarUrl: string | null;
+  bio: string | null;
 }
 
 export interface UpdateProfilePayload {
+  name?: string;
+  bio?: string | null;
   legalFirstNameKa?: string | null;
   legalLastNameKa?: string | null;
   legalFirstNameEn?: string | null;
