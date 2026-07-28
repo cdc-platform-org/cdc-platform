@@ -4,6 +4,7 @@ import { ExternalLink, Eye, EyeOff } from 'lucide-react';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
 import { SuccessStory } from '../../src/types/successStory';
+import { onImageErrorFallback } from '../../src/utils/imageFallback';
 import {
   adminGetSuccessStories,
   createSuccessStory,
@@ -171,7 +172,7 @@ function AdminSuccessStoriesDashboard() {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">ფოტო</label>
               <div className="flex items-center gap-4">
                 {form.avatarUrl ? (
-                  <img src={form.avatarUrl} alt="გადახედვა" className="w-16 h-16 rounded-full object-cover border border-gray-200" />
+                  <img src={form.avatarUrl} alt="გადახედვა" onError={onImageErrorFallback} className="w-16 h-16 rounded-full object-cover border border-gray-200" />
                 ) : (
                   <div className="w-16 h-16 rounded-full bg-gray-100 border border-gray-200" />
                 )}
@@ -291,7 +292,7 @@ function AdminSuccessStoriesDashboard() {
               {stories.map((story) => (
                 <div key={story.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4">
                   {story.avatarUrl ? (
-                    <img src={story.avatarUrl} alt="" className="w-14 h-14 rounded-full object-cover shrink-0 border border-gray-200" />
+                    <img src={story.avatarUrl} alt="" onError={onImageErrorFallback} className="w-14 h-14 rounded-full object-cover shrink-0 border border-gray-200" />
                   ) : (
                     <div className="w-14 h-14 rounded-full bg-gray-100 shrink-0" />
                   )}
@@ -317,6 +318,7 @@ function AdminSuccessStoriesDashboard() {
                       type="button"
                       onClick={() => handleToggleFeatured(story)}
                       title={story.isFeatured ? 'დამალვა' : 'გამოჩენა'}
+                      aria-label={story.isFeatured ? 'დამალვა' : 'გამოჩენა'}
                       className="text-xs font-medium text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50"
                     >
                       {story.isFeatured ? <Eye size={14} /> : <EyeOff size={14} />}

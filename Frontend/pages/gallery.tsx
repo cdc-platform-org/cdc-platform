@@ -7,7 +7,7 @@ import { GalleryContent } from '../src/types/siteContent';
 import { getSiteContent } from '../src/services/siteContentService';
 import { resolveBlogImageUrl } from '../src/services/blogService';
 import { onImageErrorFallback } from '../src/utils/imageFallback';
-import { useEscapeToClose } from '../src/hooks/useEscapeToClose';
+import Lightbox from '../src/components/shared/Lightbox';
 
 const dict = {
   ka: {
@@ -30,8 +30,6 @@ export default function GalleryPage() {
   const [images, setImages] = useState<GalleryContent['images']>([]);
   const [loading, setLoading] = useState(true);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-
-  useEscapeToClose(lightboxIndex !== null, () => setLightboxIndex(null));
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -91,20 +89,15 @@ export default function GalleryPage() {
         )}
       </div>
 
-      {lightboxIndex !== null && list[lightboxIndex] && (
-        <div
-          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-6"
-          onClick={() => setLightboxIndex(null)}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={resolveBlogImageUrl(list[lightboxIndex].url)}
-            alt={(lang === 'en' && list[lightboxIndex].captionEn) || list[lightboxIndex].captionKa || ''}
-            onError={onImageErrorFallback}
-            className="max-w-full max-h-full object-contain rounded-lg"
-          />
-        </div>
-      )}
+      <Lightbox
+        images={list.map((img) => ({
+          url: resolveBlogImageUrl(img.url),
+          alt: (lang === 'en' && img.captionEn) || img.captionKa || '',
+        }))}
+        index={lightboxIndex}
+        onClose={() => setLightboxIndex(null)}
+        onIndexChange={setLightboxIndex}
+      />
 
       <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
     </div>

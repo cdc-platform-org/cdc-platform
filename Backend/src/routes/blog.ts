@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
-import { authenticate, requireAdminRole } from '../middleware/auth';
+import { authenticate, requireAdminRole, optionalAuthenticate } from '../middleware/auth';
 import { blogPostCreateSchema, blogPostUpdateSchema, blogCommentSchema } from '../schemas/blogSchemas';
 import { uploadToBunnyStorage, isBunnyStorageConfigured, BunnyStorageUploadError, deleteBunnyStorageUrlIfManaged } from '../services/bunnyStorage';
 import { slugify, randomSlugSuffix } from '../utils/slugify';
@@ -15,10 +15,25 @@ import { slugify, randomSlugSuffix } from '../utils/slugify';
 const router = Router();
 const authorSelect = { select: { id: true, name: true, role: true, avatarUrl: true } };
 
-router.get('/', async (req: Request, res: Response) => {
+// Both list/detail routes are public (no `authenticate` requirement — the
+// homepage feed and /blog pages call them anonymously) but must not leak
+// draft content: only a logged-in SUPER_ADMIN/MANAGER (the admin/blog editor)
+// gets unpublished posts. Skips the DB lookup entirely for the common case
+// of an anonymous request (no bearer token at all).
+async function canViewDrafts(req: Request): Promise<boolean> {
+  if (!req.user) return false;
+  const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { adminRole: true } });
+  return user?.adminRole === 'SUPER_ADMIN' || user?.adminRole === 'MANAGER';
+}
+
+router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
   const { category } = req.query;
+  const includeDrafts = await canViewDrafts(req);
   const posts = await prisma.blogPost.findMany({
-    where: category ? { category: String(category) } : undefined,
+    where: {
+      ...(category ? { category: String(category) } : {}),
+      ...(includeDrafts ? {} : { published: true }),
+    },
     include: { author: authorSelect },
     orderBy: { createdAt: 'desc' },
   });
@@ -28,9 +43,13 @@ router.get('/', async (req: Request, res: Response) => {
 // Accepts either the post's id (UUID, used by admin/blog's editor and old
 // links) or its slug (the public /blog/[slug] page) — a single param that
 // resolves either way keeps the route surface small.
-router.get('/:idOrSlug', async (req: Request, res: Response) => {
+router.get('/:idOrSlug', optionalAuthenticate, async (req: Request, res: Response) => {
+  const includeDrafts = await canViewDrafts(req);
   const post = await prisma.blogPost.findFirst({
-    where: { OR: [{ id: req.params.idOrSlug }, { slug: req.params.idOrSlug }] },
+    where: {
+      OR: [{ id: req.params.idOrSlug }, { slug: req.params.idOrSlug }],
+      ...(includeDrafts ? {} : { published: true }),
+    },
     include: { author: authorSelect },
   });
   if (!post) {
@@ -132,9 +151,13 @@ router.delete('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), 
 
 const commentAuthorSelect = { select: { id: true, name: true, role: true, avatarUrl: true } };
 
-router.get('/:idOrSlug/comments', async (req: Request, res: Response) => {
+router.get('/:idOrSlug/comments', optionalAuthenticate, async (req: Request, res: Response) => {
+  const includeDrafts = await canViewDrafts(req);
   const post = await prisma.blogPost.findFirst({
-    where: { OR: [{ id: req.params.idOrSlug }, { slug: req.params.idOrSlug }] },
+    where: {
+      OR: [{ id: req.params.idOrSlug }, { slug: req.params.idOrSlug }],
+      ...(includeDrafts ? {} : { published: true }),
+    },
     select: { id: true },
   });
   if (!post) return res.status(404).json({ message: 'Blog post not found.' });
@@ -151,8 +174,12 @@ router.post('/:idOrSlug/comments', authenticate, async (req: Request, res: Respo
   const result = blogCommentSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
+  const includeDrafts = await canViewDrafts(req);
   const post = await prisma.blogPost.findFirst({
-    where: { OR: [{ id: req.params.idOrSlug }, { slug: req.params.idOrSlug }] },
+    where: {
+      OR: [{ id: req.params.idOrSlug }, { slug: req.params.idOrSlug }],
+      ...(includeDrafts ? {} : { published: true }),
+    },
     select: { id: true },
   });
   if (!post) return res.status(404).json({ message: 'Blog post not found.' });
@@ -160,6 +187,10 @@ router.post('/:idOrSlug/comments', authenticate, async (req: Request, res: Respo
   if (result.data.parentId) {
     const parent = await prisma.blogComment.findFirst({ where: { id: result.data.parentId, postId: post.id } });
     if (!parent) return res.status(400).json({ message: 'The comment being replied to was not found on this post.' });
+    // Enforce the one-level-deep design (see the COMMENTS section comment
+    // above) — without this, a direct API call could create a reply-to-a-
+    // reply that the frontend's two-level rendering would never surface.
+    if (parent.parentId) return res.status(400).json({ message: 'Replies can only be posted on top-level comments.' });
   }
 
   const comment = await prisma.blogComment.create({

@@ -21,6 +21,7 @@ import {
   deleteBlogComment,
 } from '../../src/services/blogService';
 import SocialShareButtons from '../../src/components/shared/SocialShareButtons';
+import Lightbox, { LightboxImage } from '../../src/components/shared/Lightbox';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
 
 const dict = {
@@ -101,6 +102,24 @@ function extractHeadings(markdown: string): Heading[] {
   return headings;
 }
 
+interface ContentImage {
+  url: string;
+  alt: string;
+}
+
+// Extracted straight from the markdown source (not the rendered DOM) — same
+// "parse the raw string, then re-derive in the same order while
+// ReactMarkdown renders" approach as extractHeadings, via contentImageIndexRef.
+function extractContentImages(markdown: string): ContentImage[] {
+  const images: ContentImage[] = [];
+  const regex = /!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(markdown))) {
+    images.push({ alt: match[1], url: match[2] });
+  }
+  return images;
+}
+
 interface CommentThreadProps {
   comment: BlogComment;
   replies: BlogComment[];
@@ -175,7 +194,7 @@ function CommentThread({
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
       <CommentHeader comment={comment} lang={lang} t={t} canModerate={canModerate} onDelete={onDelete} />
-      <p className="text-sm text-slate-300 mt-2 whitespace-pre-wrap">{comment.content}</p>
+      <p className="text-sm text-slate-300 mt-2 whitespace-pre-wrap break-words">{comment.content}</p>
       <button
         type="button"
         onClick={() => onReply(comment.id)}
@@ -210,7 +229,7 @@ function CommentThread({
           {replies.map((reply) => (
             <div key={reply.id}>
               <CommentHeader comment={reply} lang={lang} t={t} canModerate={canModerate} onDelete={onDelete} />
-              <p className="text-sm text-slate-300 mt-2 whitespace-pre-wrap">{reply.content}</p>
+              <p className="text-sm text-slate-300 mt-2 whitespace-pre-wrap break-words">{reply.content}</p>
             </div>
           ))}
         </div>
@@ -290,6 +309,20 @@ export default function BlogPostPage() {
   const headingIndexRef = useRef(0);
   headingIndexRef.current = 0;
 
+  const contentImages = useMemo(() => extractContentImages(content), [content]);
+  // Cover image (when present) occupies index 0; content images follow in
+  // document order — contentImageIndexRef mirrors headingIndexRef's trick of
+  // re-deriving the same order while ReactMarkdown renders.
+  const galleryImages = useMemo<LightboxImage[]>(() => {
+    const items: LightboxImage[] = [];
+    if (post?.imageUrl) items.push({ url: resolveBlogImageUrl(post.imageUrl), alt: blogTitle(post, lang) });
+    for (const img of contentImages) items.push({ url: resolveBlogImageUrl(img.url), alt: img.alt });
+    return items;
+  }, [post, contentImages, lang]);
+  const contentImageIndexRef = useRef(0);
+  contentImageIndexRef.current = post?.imageUrl ? 1 : 0;
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
   const markdownComponents = useMemo(
     () => ({
       h2: (props: React.ComponentPropsWithoutRef<'h2'>) => {
@@ -312,10 +345,28 @@ export default function BlogPostPage() {
       code: (props: React.ComponentPropsWithoutRef<'code'>) => (
         <code className="px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 text-[13px]" {...props} />
       ),
-      img: (props: React.ComponentPropsWithoutRef<'img'>) => (
-        // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
-        <img {...props} onError={onImageErrorFallback} className="w-full rounded-xl my-5" />
-      ),
+      img: (props: React.ComponentPropsWithoutRef<'img'>) => {
+        const idx = contentImageIndexRef.current;
+        contentImageIndexRef.current += 1;
+        return (
+          // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+          <img
+            {...props}
+            src={props.src ? resolveBlogImageUrl(props.src) : props.src}
+            onError={onImageErrorFallback}
+            onClick={() => setLightboxIndex(idx)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setLightboxIndex(idx);
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            className="w-full rounded-xl my-5 cursor-zoom-in"
+          />
+        );
+      },
     }),
     [headings]
   );
@@ -369,6 +420,7 @@ export default function BlogPostPage() {
       await deleteBlogComment(commentId);
     } catch {
       setComments(previous);
+      setCommentError(t.commentError);
     }
   };
 
@@ -460,8 +512,15 @@ export default function BlogPostPage() {
             </div>
 
             {post.imageUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={resolveBlogImageUrl(post.imageUrl)} alt={title} onError={onImageErrorFallback} className="w-full rounded-2xl mb-8 object-cover max-h-96" />
+              <button
+                type="button"
+                onClick={() => setLightboxIndex(0)}
+                aria-label={title}
+                className="block w-full mb-8 p-0 border-0 bg-transparent cursor-zoom-in"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={resolveBlogImageUrl(post.imageUrl)} alt={title} onError={onImageErrorFallback} className="w-full rounded-2xl object-cover max-h-96" />
+              </button>
             )}
 
             {headings.length > 0 && (
@@ -577,6 +636,13 @@ export default function BlogPostPage() {
           )}
         </div>
       </div>
+
+      <Lightbox
+        images={galleryImages}
+        index={lightboxIndex}
+        onClose={() => setLightboxIndex(null)}
+        onIndexChange={setLightboxIndex}
+      />
     </div>
   );
 }

@@ -20,8 +20,10 @@ router.post('/', async (req: Request, res: Response) => {
   const result = successStoryCreateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
-  const { linkedinUrl, ...rest } = result.data;
-  const story = await prisma.successStory.create({ data: { ...rest, linkedinUrl: linkedinUrl || null } });
+  const { linkedinUrl, avatarUrl, ...rest } = result.data;
+  const story = await prisma.successStory.create({
+    data: { ...rest, linkedinUrl: linkedinUrl || null, avatarUrl: avatarUrl || null },
+  });
   await logAdminAction({ action: 'success-story.create', targetType: 'SuccessStory', targetId: story.id, performedById: req.user!.id });
   res.status(201).json({ data: story });
 });
@@ -30,26 +32,48 @@ router.put('/:id', async (req: Request, res: Response) => {
   const result = successStoryUpdateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
-  const { linkedinUrl, ...rest } = result.data;
-  const story = await prisma.successStory
-    .update({
-      where: { id: req.params.id },
-      data: { ...rest, ...(linkedinUrl !== undefined && { linkedinUrl: linkedinUrl || null }) },
-    })
-    .catch(() => null);
-  if (!story) return res.status(404).json({ message: 'Success story not found.' });
+  const { linkedinUrl, avatarUrl, ...rest } = result.data;
+  try {
+    // Read the pre-update avatarUrl only when it's actually changing, so a
+    // save that doesn't touch the photo skips the extra query entirely —
+    // same pattern as blog.ts's PUT /:id.
+    const previous =
+      avatarUrl !== undefined
+        ? await prisma.successStory.findUnique({ where: { id: req.params.id }, select: { avatarUrl: true } })
+        : null;
 
-  await logAdminAction({ action: 'success-story.update', targetType: 'SuccessStory', targetId: story.id, performedById: req.user!.id });
-  res.json({ data: story });
+    const story = await prisma.successStory.update({
+      where: { id: req.params.id },
+      data: {
+        ...rest,
+        ...(linkedinUrl !== undefined && { linkedinUrl: linkedinUrl || null }),
+        ...(avatarUrl !== undefined && { avatarUrl: avatarUrl || null }),
+      },
+    });
+
+    if (previous && previous.avatarUrl && previous.avatarUrl !== (avatarUrl || null)) {
+      deleteBunnyStorageUrlIfManaged(previous.avatarUrl).catch(() => {});
+    }
+
+    await logAdminAction({ action: 'success-story.update', targetType: 'SuccessStory', targetId: story.id, performedById: req.user!.id });
+    res.json({ data: story });
+  } catch (err: any) {
+    if (err.code === 'P2025') return res.status(404).json({ message: 'Success story not found.' });
+    throw err;
+  }
 });
 
 router.delete('/:id', async (req: Request, res: Response) => {
-  const story = await prisma.successStory.delete({ where: { id: req.params.id } }).catch(() => null);
-  if (!story) return res.status(404).json({ message: 'Success story not found.' });
-  if (story.avatarUrl) deleteBunnyStorageUrlIfManaged(story.avatarUrl).catch(() => {});
+  try {
+    const story = await prisma.successStory.delete({ where: { id: req.params.id } });
+    if (story.avatarUrl) deleteBunnyStorageUrlIfManaged(story.avatarUrl).catch(() => {});
 
-  await logAdminAction({ action: 'success-story.delete', targetType: 'SuccessStory', targetId: story.id, performedById: req.user!.id });
-  res.status(204).send();
+    await logAdminAction({ action: 'success-story.delete', targetType: 'SuccessStory', targetId: story.id, performedById: req.user!.id });
+    res.status(204).send();
+  } catch (err: any) {
+    if (err.code === 'P2025') return res.status(404).json({ message: 'Success story not found.' });
+    throw err;
+  }
 });
 
 // --- Avatar upload: same buffered-straight-to-Bunny pattern as blog.ts's

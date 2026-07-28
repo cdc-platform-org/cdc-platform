@@ -18,6 +18,7 @@ import {
   getBlogComments,
   deleteBlogComment,
 } from '../../src/services/blogService';
+import { onImageErrorFallback } from '../../src/utils/imageFallback';
 
 const emptyForm: BlogPostPayload = {
   title: '',
@@ -207,6 +208,7 @@ function AdminBlogDashboard() {
       await deleteBlogComment(commentId);
     } catch {
       setCommentsByPost((prev) => ({ ...prev, [postId]: previous }));
+      setError('კომენტარის წაშლა ვერ მოხერხდა.');
     }
   };
 
@@ -379,6 +381,7 @@ function AdminBlogDashboard() {
                 <img
                   src={resolveBlogImageUrl(form.imageUrl)}
                   alt="გადახედვა"
+                  onError={onImageErrorFallback}
                   className="mt-3 h-32 w-auto rounded-lg border border-gray-200 object-cover"
                 />
               )}
@@ -435,6 +438,7 @@ function AdminBlogDashboard() {
                       <img
                         src={resolveBlogImageUrl(post.imageUrl)}
                         alt=""
+                        onError={onImageErrorFallback}
                         className="w-16 h-16 rounded-lg object-cover shrink-0 border border-gray-200"
                       />
                     ) : (
@@ -507,7 +511,7 @@ function AdminBlogDashboard() {
                                 <p className="text-xs font-semibold text-gray-800">
                                   {comment.author.name} <span className="text-gray-400 font-normal">· {new Date(comment.createdAt).toLocaleDateString()}</span>
                                 </p>
-                                <p className="text-xs text-gray-600 mt-0.5 whitespace-pre-wrap">{comment.content}</p>
+                                <p className="text-xs text-gray-600 mt-0.5 whitespace-pre-wrap break-words">{comment.content}</p>
                               </div>
                               <button
                                 type="button"

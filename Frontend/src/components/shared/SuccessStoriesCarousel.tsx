@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Quote, GraduationCap } from 'lucide-react';
 import { SuccessStory } from '../../types/successStory';
 import { getSuccessStories } from '../../services/successStoryService';
+import { onImageErrorFallback } from '../../utils/imageFallback';
+import Lightbox from './Lightbox';
 
 interface SuccessStoriesCarouselProps {
   lang: 'ka' | 'en';
@@ -35,6 +37,7 @@ export default function SuccessStoriesCarousel({ lang, darkMode = false }: Succe
   const t = dict[lang];
   const [stories, setStories] = useState<SuccessStory[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   useEffect(() => {
     getSuccessStories(true)
@@ -42,6 +45,16 @@ export default function SuccessStoriesCarousel({ lang, darkMode = false }: Succe
       .catch(() => setStories([]))
       .finally(() => setLoaded(true));
   }, []);
+
+  // Photos only — stories without an avatar don't participate in the
+  // gallery, so their card doesn't render a (non-functional) zoom target.
+  const avatarImages = useMemo(
+    () =>
+      stories
+        .filter((s): s is SuccessStory & { avatarUrl: string } => !!s.avatarUrl)
+        .map((s) => ({ url: s.avatarUrl, alt: s.studentName })),
+    [stories]
+  );
 
   // Nothing to show yet (or admin hasn't added any) — render nothing rather
   // than an empty section on the homepage/course pages.
@@ -62,11 +75,23 @@ export default function SuccessStoriesCarousel({ lang, darkMode = false }: Succe
               }`}
             >
               <Quote size={22} className="text-cyan-500/60 mb-3" />
-              <p className={`text-sm leading-relaxed mb-6 line-clamp-5 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>{story.testimonial}</p>
+              <p className={`text-sm leading-relaxed mb-6 line-clamp-5 break-words ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>{story.testimonial}</p>
               <div className="flex items-center gap-3">
                 {story.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={story.avatarUrl} alt={story.studentName} className="w-11 h-11 rounded-full object-cover shrink-0" />
+                  <button
+                    type="button"
+                    onClick={() => setLightboxIndex(avatarImages.findIndex((img) => img.url === story.avatarUrl))}
+                    aria-label={story.studentName}
+                    className="shrink-0 w-11 h-11 rounded-full p-0 border-0 bg-transparent cursor-zoom-in"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={story.avatarUrl}
+                      alt={story.studentName}
+                      onError={onImageErrorFallback}
+                      className="w-11 h-11 rounded-full object-cover"
+                    />
+                  </button>
                 ) : (
                   <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white text-sm font-black shrink-0">
                     {story.studentName.charAt(0).toUpperCase()}
@@ -97,6 +122,13 @@ export default function SuccessStoriesCarousel({ lang, darkMode = false }: Succe
           ))}
         </div>
       </div>
+
+      <Lightbox
+        images={avatarImages}
+        index={lightboxIndex}
+        onClose={() => setLightboxIndex(null)}
+        onIndexChange={setLightboxIndex}
+      />
     </section>
   );
 }

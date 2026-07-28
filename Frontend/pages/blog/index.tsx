@@ -167,7 +167,7 @@ export default function BlogIndexPage() {
                         </span>
                       )}
                     </div>
-                    <h3 className="text-lg font-black mb-2 text-white">{blogTitle(post, lang)}</h3>
+                    <h3 className="text-lg font-black mb-2 text-white line-clamp-2 break-words">{blogTitle(post, lang)}</h3>
                     <p className="text-sm text-slate-400 leading-relaxed line-clamp-3 mb-4 flex-1">{blogDescription(post, lang)}</p>
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-cyan-400">{t.readMore}</span>

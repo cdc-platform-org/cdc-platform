@@ -42,6 +42,24 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+// Like authenticate(), but never rejects — a missing/invalid/expired token
+// just proceeds as anonymous (req.user stays undefined). For routes that are
+// public by default but behave differently for a logged-in caller (e.g. the
+// blog list/detail routes showing drafts to admins only).
+export function optionalAuthenticate(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return next();
+  const token = authHeader.slice('Bearer '.length);
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    req.user = { id: payload.userId, role: payload.role, email: payload.email };
+  } catch {
+    // Invalid/expired token on an optional-auth route — proceed as anonymous
+    // rather than 401ing a visitor who just has a stale token in storage.
+  }
+  next();
+}
+
 export function requireRole(...allowedRoles: AuthenticatedUser['role'][]) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user || !allowedRoles.includes(req.user.role)) {
