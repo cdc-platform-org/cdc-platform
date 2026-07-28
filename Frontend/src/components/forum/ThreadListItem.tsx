@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { useTranslation } from 'next-i18next';
 import { ForumThread } from '../../types/forum';
 
 interface ThreadListItemProps {
@@ -18,6 +19,7 @@ export default function ThreadListItem({
   onLock,
   onUnlock,
 }: ThreadListItemProps) {
+  const { t } = useTranslation('forum');
   return (
     <div
       className={`rounded-xl border p-5 transition-colors ${
@@ -31,12 +33,12 @@ export default function ThreadListItem({
           <div className="flex items-center gap-2 flex-wrap">
             {thread.isPinned && (
               <span className="text-xs font-medium text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full">
-                📌 Pinned
+                📌 {t('pinned')}
               </span>
             )}
             {thread.isLocked && (
               <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                🔒 Locked
+                🔒 {t('locked')}
               </span>
             )}
             {thread.author.role !== 'Student' && (
@@ -56,28 +58,28 @@ export default function ThreadListItem({
           </p>
         </div>
         <div className="flex flex-col items-end gap-1 text-xs text-gray-400 whitespace-nowrap">
-          <span>{thread.likeCount} likes</span>
-          <span>{thread.commentCount} replies</span>
+          <span>{t('likesCount', { count: thread.likeCount })}</span>
+          <span>{t('repliesCount', { count: thread.commentCount })}</span>
         </div>
       </div>
       {canModerate && (
         <div className="flex gap-3 mt-4 pt-4 border-t border-gray-100 text-xs font-medium">
           {thread.isPinned ? (
             <button onClick={() => onUnpin(thread.id)} className="text-gray-500 hover:text-gray-700">
-              Unpin
+              {t('unpin')}
             </button>
           ) : (
             <button onClick={() => onPin(thread.id)} className="text-gray-500 hover:text-gray-700">
-              Pin
+              {t('pin')}
             </button>
           )}
           {thread.isLocked ? (
             <button onClick={() => onUnlock(thread.id)} className="text-gray-500 hover:text-gray-700">
-              Unlock
+              {t('unlock')}
             </button>
           ) : (
             <button onClick={() => onLock(thread.id)} className="text-gray-500 hover:text-gray-700">
-              Lock
+              {t('lock')}
             </button>
           )}
         </div>

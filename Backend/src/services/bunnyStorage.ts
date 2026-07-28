@@ -84,3 +84,43 @@ export async function deleteFromBunnyStorage(folderName: string, filename: strin
   const storageUrl = `https://${BUNNY_STORAGE_HOST}/${BUNNY_STORAGE_ZONE_NAME}/${safeFolder}/${safeFilename}`;
   await fetch(storageUrl, { method: 'DELETE', headers: { AccessKey: BUNNY_STORAGE_API_KEY } }).catch(() => {});
 }
+
+// Recursively walks an arbitrary JSON value (the shape varies per CMS page
+// — see Frontend/src/types/siteContent.ts) and collects every string that
+// looks like one of our Bunny CDN URLs, wherever it's nested (a single
+// heksCard.imageUrl field, an array of gallery.images[].url entries,
+// etc). Used to diff a CMS page's old vs new content on save, so an image
+// that got replaced or removed from the page doesn't leave an orphaned
+// file behind in storage — without adminCms.ts needing to know the shape
+// of any particular page's content.
+export function extractBunnyStorageUrls(value: unknown, into: Set<string> = new Set()): Set<string> {
+  if (typeof value === 'string') {
+    if (BUNNY_CDN_URL && value.startsWith(`${BUNNY_CDN_URL.replace(/\/$/, '')}/`)) {
+      into.add(value);
+    }
+  } else if (Array.isArray(value)) {
+    for (const item of value) extractBunnyStorageUrls(item, into);
+  } else if (value && typeof value === 'object') {
+    for (const item of Object.values(value)) extractBunnyStorageUrls(item, into);
+  }
+  return into;
+}
+
+// Takes whatever URL a DB record happened to have stored (a real Bunny CDN
+// URL from uploadToBunnyStorage, a legacy local /uploads/... path from
+// before the Bunny migration, or an arbitrary external URL someone pasted
+// into a "paste an image URL" field) and deletes it from Bunny Storage only
+// if it's actually one of ours — parsing folder/filename out of anything
+// else would either no-op against a URL we don't own or, worse, misparse
+// into deleting the wrong object. Safe to call with null/undefined/empty.
+export async function deleteBunnyStorageUrlIfManaged(url: string | null | undefined): Promise<void> {
+  if (!url || !isBunnyStorageConfigured()) return;
+  const base = BUNNY_CDN_URL.replace(/\/$/, '');
+  if (!url.startsWith(`${base}/`)) return;
+  const pathPart = url.slice(base.length + 1); // "<folder>/<filename>"
+  const slashIndex = pathPart.indexOf('/');
+  if (slashIndex <= 0 || slashIndex === pathPart.length - 1) return; // malformed — no folder or no filename
+  const folderName = pathPart.slice(0, slashIndex);
+  const filename = pathPart.slice(slashIndex + 1);
+  await deleteFromBunnyStorage(folderName, filename);
+}

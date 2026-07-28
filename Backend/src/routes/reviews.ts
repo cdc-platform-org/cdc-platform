@@ -76,9 +76,29 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
   }
 });
 
+// Scoped to the gig's two participants (+ admin-team) — unlike
+// GET /user/:userId below (intentionally public: it's the reputation
+// summary shown on a public profile), a single gig's review thread can
+// include private-ish context and isn't meant for arbitrary logged-in
+// users to browse by guessing gig IDs.
 router.get('/gig/:gigId', authenticate, async (req: Request, res: Response) => {
+  const gig = await prisma.gig.findUnique({
+    where: { id: req.params.gigId },
+    select: { id: true, postedById: true, assignedFreelancerId: true },
+  });
+  if (!gig) {
+    return res.status(404).json({ message: 'Gig not found.' });
+  }
+  const isParticipant = gig.postedById === req.user!.id || gig.assignedFreelancerId === req.user!.id;
+  if (!isParticipant) {
+    const requester = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } });
+    if (!requester?.adminRole) {
+      return res.status(403).json({ message: 'You are not a participant of this gig.' });
+    }
+  }
+
   const reviews = await prisma.review.findMany({
-    where: { gigId: req.params.gigId },
+    where: { gigId: gig.id },
     include: { reviewer: participantSelect, reviewee: participantSelect },
     orderBy: { createdAt: 'desc' },
   });

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { useTranslation } from 'next-i18next';
 
 interface CategoryCardProps {
   id: string;
@@ -9,6 +10,7 @@ interface CategoryCardProps {
 }
 
 export default function CategoryCard({ slug, name, description, threadCount }: CategoryCardProps) {
+  const { t } = useTranslation('forum');
   return (
     <Link
       href={`/forum/${slug}`}
@@ -20,7 +22,7 @@ export default function CategoryCard({ slug, name, description, threadCount }: C
           <p className="text-sm text-gray-500 mt-1">{description}</p>
         </div>
         <span className="text-xs font-medium text-gray-400 whitespace-nowrap ml-4">
-          {threadCount} thread{threadCount !== 1 ? 's' : ''}
+          {t('threadCount', { count: threadCount })}
         </span>
       </div>
     </Link>

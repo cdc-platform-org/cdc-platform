@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { blogPostCreateSchema, blogPostUpdateSchema } from '../schemas/blogSchemas';
-import { uploadToBunnyStorage, isBunnyStorageConfigured, BunnyStorageUploadError } from '../services/bunnyStorage';
+import { uploadToBunnyStorage, isBunnyStorageConfigured, BunnyStorageUploadError, deleteBunnyStorageUrlIfManaged } from '../services/bunnyStorage';
 
 // Migrated from requireRole('SuperAdmin') to the admin-team adminRole system
 // (SUPER_ADMIN + ADMIN) — content management is explicitly ADMIN's domain
@@ -56,15 +56,30 @@ router.put('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), asy
   if (!result.success) {
     return res.status(400).json({ errors: result.error.errors });
   }
+  const nextImageUrl = result.data.imageUrl !== undefined ? result.data.imageUrl || null : undefined;
   try {
+    // Read the pre-update imageUrl only when it's actually changing, so a
+    // save that doesn't touch the image skips the extra query entirely.
+    const previous =
+      nextImageUrl !== undefined
+        ? await prisma.blogPost.findUnique({ where: { id: req.params.id }, select: { imageUrl: true } })
+        : null;
+
     const post = await prisma.blogPost.update({
       where: { id: req.params.id },
       data: {
         ...result.data,
-        imageUrl: result.data.imageUrl !== undefined ? result.data.imageUrl || null : undefined,
+        imageUrl: nextImageUrl,
       },
       include: { author: authorSelect },
     });
+
+    if (previous && previous.imageUrl && previous.imageUrl !== nextImageUrl) {
+      // Fire-and-forget — the response shouldn't wait on Bunny, and a
+      // failed cleanup just leaves harmless orphaned storage debris.
+      deleteBunnyStorageUrlIfManaged(previous.imageUrl).catch(() => {});
+    }
+
     res.json({ data: post });
   } catch (err: any) {
     if (err.code === 'P2025') {
@@ -76,7 +91,10 @@ router.put('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), asy
 
 router.delete('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   try {
-    await prisma.blogPost.delete({ where: { id: req.params.id } });
+    const deleted = await prisma.blogPost.delete({ where: { id: req.params.id }, select: { imageUrl: true } });
+    if (deleted.imageUrl) {
+      deleteBunnyStorageUrlIfManaged(deleted.imageUrl).catch(() => {});
+    }
     res.status(204).send();
   } catch (err: any) {
     if (err.code === 'P2025') {

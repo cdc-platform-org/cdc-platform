@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { GetStaticProps } from 'next';
 import Link from 'next/link';
+import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import GigCard from '../../src/components/community/GigCard';
 import FilterBar from '../../src/components/community/FilterBar';
@@ -27,6 +28,7 @@ const SIGN_IN_TO_REVIEW = {
 };
 
 function GigsPageContent() {
+  const { t } = useTranslation('proposals');
   const { user, isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
   const [gigs, setGigs] = useState<Gig[]>([]);
@@ -97,14 +99,14 @@ function GigsPageContent() {
     <div className="min-h-screen bg-gray-50 px-4 py-10">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">Freelance Gigs</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">{t('marketplace.gigsTitle')}</h1>
           {!isAuthenticated ? (
             <button
               type="button"
               onClick={handlePostGigClick}
               className="text-sm font-medium text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700"
             >
-              Post a Gig
+              {t('marketplace.postGig')}
             </button>
           ) : (
             canPost && (
@@ -112,7 +114,7 @@ function GigsPageContent() {
                 href="/gigs/post"
                 className="text-sm font-medium text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700"
               >
-                Post a Gig
+                {t('marketplace.postGig')}
               </Link>
             )
           )}
@@ -121,21 +123,22 @@ function GigsPageContent() {
         <FilterBar
           skills={skillsFilter}
           onSkillsChange={setSkillsFilter}
+          skillsPlaceholder={t('marketplace.skillsFilterPlaceholder')}
           extraFilter={{
-            label: 'Budget type',
+            label: t('marketplace.budgetTypeLabel'),
             value: budgetTypeFilter,
             onChange: setBudgetTypeFilter,
             options: [
-              { value: 'fixed', label: 'Fixed price' },
-              { value: 'hourly', label: 'Hourly' },
+              { value: 'fixed', label: t('marketplace.budgetFixed') },
+              { value: 'hourly', label: t('marketplace.budgetHourly') },
             ],
           }}
         />
 
         {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <p className="text-sm text-gray-400">{t('marketplace.loading')}</p>
         ) : gigs.length === 0 ? (
-          <p className="text-sm text-gray-500">No gigs match your filters right now.</p>
+          <p className="text-sm text-gray-500">{t('marketplace.noGigsMatch')}</p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             {gigs.map((gig) => (
@@ -178,7 +181,7 @@ function GigsPageContent() {
           gigTitle={reviewingGig.title}
           revieweeName={
             reviewingGig.postedBy.id === user?.id
-              ? reviewingGig.assignedFreelancer?.name ?? 'the freelancer'
+              ? reviewingGig.assignedFreelancer?.name ?? t('marketplace.freelancerFallbackName')
               : reviewingGig.postedBy.name
           }
           onClose={() => setReviewingGig(null)}

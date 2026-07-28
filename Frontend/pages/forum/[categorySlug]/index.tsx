@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { GetServerSideProps } from 'next';
+import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import ThreadListItem from '../../../src/components/forum/ThreadListItem';
 import { useAuth } from '../../../src/context/AuthContext';
@@ -19,6 +20,7 @@ import {
 const PAGE_SIZE = 20;
 
 function ThreadListingContent() {
+  const { t } = useTranslation('forum');
   const router = useRouter();
   const { categorySlug } = router.query;
   const { user, isAuthenticated } = useAuth();
@@ -61,11 +63,11 @@ function ThreadListingContent() {
       setThreads(sorted);
       setTotalCount(result.totalCount);
     } catch (error) {
-      setError('Unable to load threads. Please try again.');
+      setError(t('loadThreadsError'));
     } finally {
       setLoading(false);
     }
-  }, [categorySlug, page]);
+  }, [categorySlug, page, t]);
 
   useEffect(() => {
     loadThreads();
@@ -90,11 +92,11 @@ function ThreadListingContent() {
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   if (loading && !category) {
-    return <p className="text-center text-sm text-gray-400 py-10">Loading…</p>;
+    return <p className="text-center text-sm text-gray-400 py-10">{t('loading')}</p>;
   }
 
   if (notFound) {
-    return <p className="text-center text-sm text-gray-500 py-10">This category doesn't exist.</p>;
+    return <p className="text-center text-sm text-gray-500 py-10">{t('categoryNotFound')}</p>;
   }
 
   return (
@@ -102,7 +104,7 @@ function ThreadListingContent() {
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-2">
           <Link href="/forum" className="text-sm text-gray-500 hover:text-gray-700">
-            ← All categories
+            {t('backToCategories')}
           </Link>
         </div>
         <div className="flex items-center justify-between mb-8">
@@ -115,7 +117,7 @@ function ThreadListingContent() {
               href={`/forum/${categorySlug}/new`}
               className="text-sm font-medium text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700 whitespace-nowrap"
             >
-              New Thread
+              {t('newThread')}
             </Link>
           ) : (
             <button
@@ -128,7 +130,7 @@ function ThreadListingContent() {
               }
               className="text-sm font-medium text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700 whitespace-nowrap"
             >
-              New Thread
+              {t('newThread')}
             </button>
           )}
         </div>
@@ -140,7 +142,7 @@ function ThreadListingContent() {
         )}
 
         {threads.length === 0 ? (
-          <p className="text-sm text-gray-500">No threads yet — be the first to post.</p>
+          <p className="text-sm text-gray-500">{t('noThreads')}</p>
         ) : (
           <div className="space-y-3">
             {threads.map((thread) => (
@@ -164,17 +166,15 @@ function ThreadListingContent() {
               disabled={page === 1}
               className="text-sm font-medium text-gray-600 disabled:opacity-40"
             >
-              Previous
+              {t('previous')}
             </button>
-            <span className="text-sm text-gray-400">
-              Page {page} of {totalPages}
-            </span>
+            <span className="text-sm text-gray-400">{t('pageOf', { page, total: totalPages })}</span>
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
               className="text-sm font-medium text-gray-600 disabled:opacity-40"
             >
-              Next
+              {t('next')}
             </button>
           </div>
         )}
@@ -188,5 +188,5 @@ export default function ThreadListingPage() {
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'ka', ['common'])) },
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['forum'])) },
 });

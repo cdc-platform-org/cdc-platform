@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useTranslation } from 'next-i18next';
 import { Vacancy } from '../../types/community';
 import SocialShareButtons from '../shared/SocialShareButtons';
 
@@ -10,14 +11,14 @@ interface VacancyCardProps {
   isOwnerOrAdmin: boolean;
 }
 
-const employmentTypeLabels: Record<Vacancy['employmentType'], string> = {
-  full_time: 'Full-time',
-  part_time: 'Part-time',
-  contract: 'Contract',
-  internship: 'Internship',
-};
-
 export default function VacancyCard({ vacancy, onApply, canApply, isOwnerOrAdmin }: VacancyCardProps) {
+  const { t } = useTranslation('proposals');
+  const employmentTypeLabels: Record<Vacancy['employmentType'], string> = {
+    full_time: t('marketplace.employmentFullTime'),
+    part_time: t('marketplace.employmentPartTime'),
+    contract: t('marketplace.employmentContract'),
+    internship: t('marketplace.employmentInternship'),
+  };
   const hasSalaryRange = vacancy.salaryMin !== null || vacancy.salaryMax !== null;
   const router = useRouter();
   const lang = router.locale === 'en' ? 'en' : 'ka';
@@ -55,7 +56,7 @@ export default function VacancyCard({ vacancy, onApply, canApply, isOwnerOrAdmin
             </span>
           )}
           {vacancy.applicationDeadline && (
-            <span>Due {new Date(vacancy.applicationDeadline).toLocaleDateString()}</span>
+            <span>{t('marketplace.dueDate', { date: new Date(vacancy.applicationDeadline).toLocaleDateString() })}</span>
           )}
         </div>
         <div className="flex items-center gap-4">
@@ -64,7 +65,7 @@ export default function VacancyCard({ vacancy, onApply, canApply, isOwnerOrAdmin
               href={`/vacancies/${vacancy.id}/applications`}
               className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
             >
-              View Applications
+              {t('marketplace.viewApplications')}
             </Link>
           )}
           {canApply && vacancy.status === 'open' && (
@@ -72,7 +73,7 @@ export default function VacancyCard({ vacancy, onApply, canApply, isOwnerOrAdmin
               onClick={() => onApply(vacancy)}
               className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
             >
-              Apply
+              {t('marketplace.apply')}
             </button>
           )}
           {!isOwnerOrAdmin && vacancy.status !== 'open' && (

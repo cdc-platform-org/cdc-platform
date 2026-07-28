@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, FormEvent } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { GetServerSideProps } from 'next';
+import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useAuthModal } from '../../../src/context/AuthModalContext';
@@ -19,6 +20,7 @@ import {
 const COMMENTS_PAGE_SIZE = 20;
 
 function ThreadDetailContent() {
+  const { t } = useTranslation('forum');
   const router = useRouter();
   const { id } = router.query;
   const { user, isAuthenticated } = useAuth();
@@ -52,9 +54,9 @@ function ThreadDetailContent() {
       setComments(result.items);
       setTotalComments(result.totalCount);
     } catch {
-      setError('Unable to load comments. Please try again.');
+      setError(t('loadCommentsError'));
     }
-  }, [id, commentsPage]);
+  }, [id, commentsPage, t]);
 
   useEffect(() => {
     setLoading(true);
@@ -93,7 +95,7 @@ function ThreadDetailContent() {
     }
     setCommentError(null);
     if (newComment.trim().length < 2) {
-      setCommentError('Comment is too short.');
+      setCommentError(t('commentTooShort'));
       return;
     }
     setSubmittingComment(true);
@@ -104,7 +106,7 @@ function ThreadDetailContent() {
       setNewComment('');
       setThread((prev) => (prev ? { ...prev, commentCount: prev.commentCount + 1 } : prev));
     } catch {
-      setCommentError('Unable to post your comment. Please try again.');
+      setCommentError(t('postCommentError'));
     } finally {
       setSubmittingComment(false);
     }
@@ -113,30 +115,30 @@ function ThreadDetailContent() {
   const totalPages = Math.ceil(totalComments / COMMENTS_PAGE_SIZE);
 
   if (loading) {
-    return <p className="text-center text-sm text-gray-400 py-10">Loading…</p>;
+    return <p className="text-center text-sm text-gray-400 py-10">{t('loading')}</p>;
   }
 
   if (notFound || !thread) {
-    return <p className="text-center text-sm text-gray-500 py-10">This thread doesn't exist.</p>;
+    return <p className="text-center text-sm text-gray-500 py-10">{t('threadNotFound')}</p>;
   }
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10">
       <div className="max-w-2xl mx-auto">
         <Link href="/forum" className="text-sm text-gray-500 hover:text-gray-700">
-          ← All categories
+          {t('backToCategories')}
         </Link>
-        
+
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mt-4">
           <div className="flex items-center gap-2 flex-wrap mb-2">
             {thread.isPinned && (
               <span className="text-xs font-medium text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full">
-                📌 Pinned
+                📌 {t('pinned')}
               </span>
             )}
             {thread.isLocked && (
               <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                🔒 Locked
+                🔒 {t('locked')}
               </span>
             )}
             {thread.author.role !== 'Student' && (
@@ -159,15 +161,13 @@ function ThreadDetailContent() {
             >
               {thread.isLikedByCurrentUser ? '♥' : '♡'} {thread.likeCount}
             </button>
-            <span className="text-sm text-gray-400">{thread.commentCount} replies</span>
+            <span className="text-sm text-gray-400">{t('repliesCount', { count: thread.commentCount })}</span>
           </div>
         </div>
 
         <div className="mt-6">
           {thread.isLocked ? (
-            <p className="text-sm text-gray-500 bg-gray-100 rounded-lg px-4 py-3">
-              This thread is locked. New replies are disabled.
-            </p>
+            <p className="text-sm text-gray-500 bg-gray-100 rounded-lg px-4 py-3">{t('threadLockedNotice')}</p>
           ) : (
             <form onSubmit={handleSubmitComment} className="bg-white rounded-xl border border-gray-200 p-4">
               {commentError && (
@@ -177,7 +177,7 @@ function ThreadDetailContent() {
                 rows={3}
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Write a reply…"
+                placeholder={t('replyPlaceholder')}
                 className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
               <div className="flex justify-end mt-2">
@@ -186,7 +186,7 @@ function ThreadDetailContent() {
                   disabled={submittingComment}
                   className="text-sm font-medium text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-60"
                 >
-                  {submittingComment ? 'Posting…' : 'Reply'}
+                  {submittingComment ? t('postingReply') : t('reply')}
                 </button>
               </div>
             </form>
@@ -200,7 +200,7 @@ function ThreadDetailContent() {
             </div>
           )}
           {comments.length === 0 ? (
-            <p className="text-sm text-gray-500">No replies yet.</p>
+            <p className="text-sm text-gray-500">{t('noReplies')}</p>
           ) : (
             comments.map((comment) => (
               <div key={comment.id} className="bg-white rounded-xl border border-gray-200 p-4">

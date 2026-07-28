@@ -1,4 +1,6 @@
 import { useState, FormEvent } from 'react';
+import { useTranslation } from 'next-i18next';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 
 interface ApplicationModalProps {
   title: string;
@@ -8,10 +10,13 @@ interface ApplicationModalProps {
 }
 
 export default function ApplicationModal({ title, includeBid, onSubmit, onClose }: ApplicationModalProps) {
+  const { t } = useTranslation('proposals');
   const [note, setNote] = useState('');
   const [bidAmount, setBidAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEscapeToClose(true, onClose);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -24,7 +29,7 @@ export default function ApplicationModal({ title, includeBid, onSubmit, onClose 
       });
       onClose();
     } catch {
-      setError('Unable to submit your application. Please try again.');
+      setError(t('marketplace.applicationError'));
     } finally {
       setSubmitting(false);
     }
@@ -44,7 +49,7 @@ export default function ApplicationModal({ title, includeBid, onSubmit, onClose 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              {includeBid ? 'Proposal' : 'Cover note'}
+              {includeBid ? t('marketplace.proposalLabel') : t('marketplace.coverNoteLabel')}
             </label>
             <textarea
               required
@@ -52,13 +57,13 @@ export default function ApplicationModal({ title, includeBid, onSubmit, onClose 
               value={note}
               onChange={(e) => setNote(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder={includeBid ? 'Describe your approach and relevant experience…' : 'Why are you a good fit?'}
+              placeholder={includeBid ? t('marketplace.proposalPlaceholder') : t('marketplace.coverNotePlaceholder')}
             />
           </div>
 
           {includeBid && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Your bid</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('marketplace.yourBid')}</label>
               <input
                 type="number"
                 required
@@ -78,14 +83,14 @@ export default function ApplicationModal({ title, includeBid, onSubmit, onClose 
               onClick={onClose}
               className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
-              Cancel
+              {t('marketplace.cancel')}
             </button>
             <button
               type="submit"
               disabled={submitting}
               className="flex-1 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
             >
-              {submitting ? 'Submitting…' : 'Submit'}
+              {submitting ? t('marketplace.submitting') : t('marketplace.submit')}
             </button>
           </div>
         </form>

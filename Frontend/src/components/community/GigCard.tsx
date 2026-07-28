@@ -66,7 +66,7 @@ export default function GigCard({
       </div>
       <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
         <span className="text-xs text-gray-400">
-          {gig.deadline ? `Due ${new Date(gig.deadline).toLocaleDateString()}` : 'No deadline'}
+          {gig.deadline ? t('marketplace.dueDate', { date: new Date(gig.deadline).toLocaleDateString() }) : t('marketplace.noDeadline')}
           {gig.applicationsCount > 0 && ` · ${t('proposalsCount', { count: gig.applicationsCount })}`}
         </span>
         <div className="flex items-center gap-4">
@@ -75,7 +75,7 @@ export default function GigCard({
               href={`/gigs/${gig.id}/applications`}
               className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
             >
-              View Applications
+              {t('marketplace.viewApplications')}
             </Link>
           )}
           {canApply && gig.status === 'open' && (
@@ -89,13 +89,13 @@ export default function GigCard({
           {canReview &&
             gig.status === 'completed' &&
             (alreadyReviewed ? (
-              <span className="text-xs font-medium text-emerald-600">✓ Reviewed</span>
+              <span className="text-xs font-medium text-emerald-600">✓ {t('marketplace.reviewed')}</span>
             ) : (
               <button
                 onClick={() => onReview?.(gig)}
                 className="text-sm font-medium text-amber-600 hover:text-amber-700"
               >
-                ⭐ Leave a review
+                ⭐ {t('marketplace.leaveReview')}
               </button>
             ))}
           {!isOwnerOrAdmin && !canReview && gig.status !== 'open' && (

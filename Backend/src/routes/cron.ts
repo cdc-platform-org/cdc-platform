@@ -1,16 +1,27 @@
 import { Router, Request, Response } from 'express';
+import crypto from 'crypto';
 import { CRON_SECRET } from '../utils/env';
 import { autoApproveOverdueGigs } from '../services/gigApprovalService';
 import { cleanupExpiredDeletedAccounts } from '../services/accountCleanupService';
 
 const router = Router();
+const expectedSecretBuffer = Buffer.from(CRON_SECRET);
 
 // No JWT here on purpose — this is called by an external scheduler (Azure
 // Logic App / GitHub Actions cron / cron-job.org), not a logged-in user.
 // Auth is a shared secret header instead, same shape as a webhook.
 function requireCronSecret(req: Request, res: Response, next: () => void) {
   const provided = req.headers['x-cron-secret'];
-  if (provided !== CRON_SECRET) {
+  const providedBuffer = Buffer.from(typeof provided === 'string' ? provided : '');
+  // crypto.timingSafeEqual throws on a length mismatch, so that check has
+  // to happen first — but doing it as a plain !== short-circuit (like the
+  // previous `provided !== CRON_SECRET`) would let an attacker binary-search
+  // the secret's length via response timing before ever reaching the
+  // constant-time byte comparison. A length mismatch is itself treated as
+  // "not equal" without comparing bytes, same as tsscmp/most timing-safe
+  // string-compare helpers.
+  const isValid = providedBuffer.length === expectedSecretBuffer.length && crypto.timingSafeEqual(providedBuffer, expectedSecretBuffer);
+  if (!isValid) {
     return res.status(401).json({ message: 'Invalid or missing cron secret.' });
   }
   next();
