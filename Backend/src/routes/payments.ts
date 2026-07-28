@@ -8,6 +8,9 @@ import {
   getBogOrderDetails,
   verifyBogCallbackSignature,
   BogOrderStatusKey,
+  BogNotConfiguredError,
+  CreateBogOrderParams,
+  CreateBogOrderResult,
 } from '../services/bogPaymentService';
 import { captureEscrow } from '../services/escrowService';
 import { getCurrentPrice } from '../services/coursePricing';
@@ -23,6 +26,26 @@ function resultRedirects(paymentId: string) {
     successRedirectUrl: `${FRONTEND_URL}/payments/bog/result?paymentId=${paymentId}`,
     failRedirectUrl: `${FRONTEND_URL}/payments/bog/result?paymentId=${paymentId}&status=fail`,
   };
+}
+
+// Without this, any createBogOrder failure (missing credentials, BOG
+// rejecting the request, a network error) fell through to the global error
+// handler's generic "Server error" — unhelpful for diagnosing exactly what
+// went wrong (e.g. a non-HTTPS callback URL, which is what BOG's API
+// actually reports). 501 for "not configured" (matches the pattern used by
+// Bunny/Gemini elsewhere in this codebase), 502 for BOG rejecting or being
+// unreachable — both with BOG's own message surfaced, not swallowed.
+async function createBogOrderOrRespond(res: Response, params: CreateBogOrderParams): Promise<CreateBogOrderResult | null> {
+  try {
+    return await createBogOrder(params);
+  } catch (err) {
+    if (err instanceof BogNotConfiguredError) {
+      res.status(501).json({ message: err.message });
+    } else {
+      res.status(502).json({ message: err instanceof Error ? err.message : 'Payment gateway request failed.' });
+    }
+    return null;
+  }
 }
 
 // ============================================================
@@ -59,7 +82,7 @@ router.post(
       },
     });
     const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
-    const order = await createBogOrder({
+    const order = await createBogOrderOrRespond(res, {
       externalOrderId: bogPayment.id,
       amount: chargeAmount,
       currency: 'GEL',
@@ -68,6 +91,7 @@ router.post(
       successRedirectUrl,
       failRedirectUrl,
     });
+    if (!order) return;
     const updated = await prisma.bogPayment.update({
       where: { id: bogPayment.id },
       data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },
@@ -108,7 +132,7 @@ router.post(
       },
     });
     const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
-    const order = await createBogOrder({
+    const order = await createBogOrderOrRespond(res, {
       externalOrderId: bogPayment.id,
       amount: result.data.amount,
       currency: result.data.currency,
@@ -117,6 +141,7 @@ router.post(
       successRedirectUrl,
       failRedirectUrl,
     });
+    if (!order) return;
     const updated = await prisma.bogPayment.update({
       where: { id: bogPayment.id },
       data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },
@@ -167,7 +192,7 @@ router.post(
       },
     });
     const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
-    const order = await createBogOrder({
+    const order = await createBogOrderOrRespond(res, {
       externalOrderId: bogPayment.id,
       amount: application.bidAmount,
       currency: 'GEL',
@@ -176,6 +201,7 @@ router.post(
       successRedirectUrl,
       failRedirectUrl,
     });
+    if (!order) return;
     const updated = await prisma.bogPayment.update({
       where: { id: bogPayment.id },
       data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },

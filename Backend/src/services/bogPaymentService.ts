@@ -49,7 +49,7 @@ export interface BogOrderDetails {
   [key: string]: unknown;
 }
 
-class BogNotConfiguredError extends Error {
+export class BogNotConfiguredError extends Error {
   constructor() {
     super(
       'Bank of Georgia payment gateway is not configured. Set BOG_CLIENT_ID/BOG_SECRET_KEY or fill in the Admin Panel BOG settings (/admin/financials).'
