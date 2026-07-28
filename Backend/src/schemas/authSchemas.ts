@@ -80,6 +80,10 @@ export const updateProfileSchema = z.object({
     .optional()
     .nullable(),
   companyDescription: z.string().trim().max(2000).optional().nullable(),
+  // Digits only (spaces/dashes stripped by the frontend before submit) —
+  // compared against the AI-parsed KYC document's identification code for
+  // auto-verification, see services/businessKycService.ts.
+  taxId: z.string().trim().max(30).optional().nullable(),
 });
 
 export const changePasswordSchema = z.object({

@@ -22,6 +22,7 @@ import { authenticate } from '../middleware/auth';
 import { JWT_SECRET, GOOGLE_CLIENT_ID, SUPER_ADMIN_EMAILS } from '../utils/env';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../services/emailService';
 import { uploadToBunnyStorage, isBunnyStorageConfigured, BunnyStorageUploadError, deleteBunnyStorageUrlIfManaged } from '../services/bunnyStorage';
+import { parseBusinessDocument, isBusinessKycParsingConfigured, taxIdsMatch } from '../services/businessKycService';
 
 const router = Router();
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
@@ -94,6 +95,9 @@ function toUserResponse(user: {
   industry?: string | null;
   websiteUrl?: string | null;
   companyDescription?: string | null;
+  verificationDocUrl?: string | null;
+  isVerified?: boolean;
+  taxId?: string | null;
 }) {
   return {
     id: user.id,
@@ -117,6 +121,9 @@ function toUserResponse(user: {
     industry: user.industry ?? null,
     websiteUrl: user.websiteUrl ?? null,
     companyDescription: user.companyDescription ?? null,
+    taxId: user.taxId ?? null,
+    verificationDocUrl: user.verificationDocUrl ?? null,
+    isVerified: user.isVerified ?? false,
   };
 }
 
@@ -465,6 +472,92 @@ router.post(
       res.status(201).json({ user: toUserResponse(user) });
     } catch (err) {
       const message = err instanceof BunnyStorageUploadError ? err.message : 'Avatar upload failed. Please try again.';
+      res.status(500).json({ message });
+    }
+  }
+);
+
+// Business KYC — self-serve upload of a Public Registry Extract / company
+// registration document. Never sets isVerified (only an admin can, via
+// routes/adminCompanies.ts) — uploading just moves the account into the
+// "Under Review" state, derived on the frontend from doc-present + not-yet-verified.
+const verificationDocUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF, JPG, PNG, or WEBP files are allowed.'));
+    }
+  },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+});
+
+router.post(
+  '/me/verification-doc',
+  authenticate,
+  (req: Request, res: Response, next) => {
+    if (!isBunnyStorageConfigured()) {
+      return res.status(501).json({ message: 'Bunny Storage is not configured (BUNNY_STORAGE_ZONE_NAME / BUNNY_STORAGE_API_KEY / BUNNY_CDN_URL).' });
+    }
+    next();
+  },
+  verificationDocUpload.single('document'),
+  async (req: Request, res: Response) => {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file was selected.' });
+    }
+    const previous = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { verificationDocUrl: true, taxId: true } });
+
+    const filename = `kyc-${req.user!.id}-${Date.now()}${path.extname(req.file.originalname)}`;
+    try {
+      const url = await uploadToBunnyStorage({
+        buffer: req.file.buffer,
+        mimetype: req.file.mimetype,
+        folderName: 'kyc',
+        filename,
+      });
+
+      // Best-effort instant auto-verification: only fires on a clean,
+      // high-confidence match against the business's own self-reported
+      // taxId — anything else (not configured, low confidence, no taxId
+      // on file, a parse error) just leaves isVerified false, which is
+      // already the fallback "needs manual admin review" state, so a
+      // failure here never blocks the upload itself.
+      let autoVerified = false;
+      if (isBusinessKycParsingConfigured() && previous?.taxId) {
+        try {
+          const parsed = await parseBusinessDocument(req.file.buffer, req.file.mimetype);
+          if (
+            parsed.hasOfficialHeaders &&
+            parsed.confidence === 'high' &&
+            parsed.identificationCode &&
+            taxIdsMatch(parsed.identificationCode, previous.taxId)
+          ) {
+            autoVerified = true;
+          }
+        } catch (err) {
+          console.error('[auth] Business KYC document parsing failed (falling back to manual review):', err);
+        }
+      }
+
+      // A resubmission always resets isVerified unless it just auto-passed
+      // — a previously-verified business swapping in a new document needs
+      // a fresh look (automated or manual), not to keep riding on the old
+      // document's approval.
+      const user = await prisma.user.update({
+        where: { id: req.user!.id },
+        data: { verificationDocUrl: url, isVerified: autoVerified },
+      });
+
+      if (previous?.verificationDocUrl && previous.verificationDocUrl !== url) {
+        deleteBunnyStorageUrlIfManaged(previous.verificationDocUrl).catch(() => {});
+      }
+
+      res.status(201).json({ user: toUserResponse(user) });
+    } catch (err) {
+      const message = err instanceof BunnyStorageUploadError ? err.message : 'Document upload failed. Please try again.';
       res.status(500).json({ message });
     }
   }

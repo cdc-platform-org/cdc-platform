@@ -2,6 +2,7 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { AxiosError } from 'axios';
+import { ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../src/context/AuthContext';
 import GuestRoute from '../../src/components/auth/GuestRoute';
 import PasswordInput from '../../src/components/auth/PasswordInput';
@@ -89,8 +90,9 @@ function LoginPage() {
         )}
 
         {redirectingAdmin && (
-          <div className="mb-6 rounded-lg bg-indigo-50 border border-indigo-200 px-4 py-3 text-sm text-indigo-700 text-center">
-            🛡️ Signed in — redirecting to the Admin Workspace…
+          <div className="mb-6 rounded-lg bg-indigo-50 border border-indigo-200 px-4 py-3 text-sm text-indigo-700 text-center flex items-center justify-center gap-2">
+            <ShieldCheck className="w-4 h-4 shrink-0" />
+            Signed in — redirecting to the Admin Workspace…
           </div>
         )}
 

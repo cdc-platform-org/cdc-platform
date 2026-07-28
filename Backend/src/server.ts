@@ -33,6 +33,7 @@ import siteContentRoutes from './routes/siteContent';
 import adminCmsRoutes from './routes/adminCms';
 import studioRoutes from './routes/studio';
 import adminStudioRoutes from './routes/adminStudio';
+import adminCompaniesRoutes from './routes/adminCompanies';
 import aiRoutes from './routes/ai';
 import { errorHandler } from './middleware/errorHandler';
 import { PORT } from './utils/env';
@@ -83,6 +84,7 @@ app.use('/api/site-content', siteContentRoutes);
 app.use('/api/admin/cms', adminCmsRoutes);
 app.use('/api/studio', studioRoutes);
 app.use('/api/admin/studio', adminStudioRoutes);
+app.use('/api/admin/companies', adminCompaniesRoutes);
 app.use('/api/ai', aiRoutes);
 
 const swaggerDocument = {

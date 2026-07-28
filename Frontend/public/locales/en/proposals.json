@@ -3,7 +3,7 @@
   "proposalsCount": "{{count}} proposals",
   "proposalModal": {
     "title": "Send Proposal",
-    "clientBudgetLabel": "Client Budget",
+    "clientBudgetLabel": "Business Budget",
     "proposedBudgetLabel": "Proposed Budget (GEL)",
     "proposedBudgetPlaceholder": "0.00",
     "deliveryLabel": "Delivery Timeframe (days)",

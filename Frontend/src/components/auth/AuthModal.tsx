@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import { GraduationCap, Building2, X, ShieldCheck, Mail } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { User } from '../../types/auth';
 import { useAuthModal } from '../../context/AuthModalContext';
@@ -39,8 +40,8 @@ const STRINGS = {
     switchToLogin: 'შედით',
     forgotPassword: 'დაგავიწყდა პაროლი?',
     roleLabel: 'რეგისტრირდები როგორც',
-    roleStudent: '🎓 სტუდენტი',
-    roleClient: '💼 დამკვეთი',
+    roleStudent: 'სტუდენტი',
+    roleClient: 'ბიზნესი',
     registerSuccessTitle: 'თითქმის მზად ხართ!',
     registerSuccessBody:
       'თქვენი ანგარიში შეიქმნა. გთხოვთ დაადასტუროთ ელ-ფოსტა იმ ბმულით, რომელიც გამოგზავნილია — სანამ ამას გააკეთებთ, ზოგიერთი მოქმედება დაბლოკილი იქნება.',
@@ -72,8 +73,8 @@ const STRINGS = {
     switchToLogin: 'Log in',
     forgotPassword: 'Forgot password?',
     roleLabel: 'Registering as',
-    roleStudent: '🎓 Student',
-    roleClient: '💼 Client',
+    roleStudent: 'Student',
+    roleClient: 'Business',
     registerSuccessTitle: 'Almost there!',
     registerSuccessBody:
       "Your account has been created. Please confirm your email using the link we just sent — some actions stay locked until you do.",
@@ -246,17 +247,17 @@ export default function AuthModal() {
           aria-label={t.close}
           className="absolute top-4 right-4 z-50 p-2 cursor-pointer text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors"
         >
-          ✕
+          <X className="w-4 h-4" />
         </button>
 
         {redirectingAdmin ? (
           <div className="text-center pt-2 pb-4">
-            <div className="text-4xl mb-3">🛡️</div>
+            <ShieldCheck className="w-10 h-10 text-indigo-600 mx-auto mb-3" />
             <p className="text-sm font-semibold text-indigo-600">{t.redirectingToAdmin}</p>
           </div>
         ) : registered ? (
           <div className="text-center pt-2">
-            <div className="text-4xl mb-3">📧</div>
+            <Mail className="w-10 h-10 text-indigo-600 mx-auto mb-3" />
             <h2 className="text-lg font-semibold text-gray-900 mb-2">{t.registerSuccessTitle}</h2>
             <p className="text-sm text-gray-600 leading-relaxed">{t.registerSuccessBody}</p>
             <button
@@ -367,24 +368,26 @@ export default function AuthModal() {
                       type="button"
                       onClick={() => setRole('Student')}
                       aria-pressed={role === 'Student'}
-                      className={`rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
+                      className={`flex items-center justify-center gap-1.5 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
                         role === 'Student'
                           ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
                           : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
                       }`}
                     >
+                      <GraduationCap className="w-4 h-4" />
                       {t.roleStudent}
                     </button>
                     <button
                       type="button"
                       onClick={() => setRole('Client')}
                       aria-pressed={role === 'Client'}
-                      className={`rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
+                      className={`flex items-center justify-center gap-1.5 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
                         role === 'Client'
                           ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
                           : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
                       }`}
                     >
+                      <Building2 className="w-4 h-4" />
                       {t.roleClient}
                     </button>
                   </div>

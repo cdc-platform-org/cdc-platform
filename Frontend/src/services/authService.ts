@@ -86,3 +86,12 @@ export async function uploadAvatar(file: File): Promise<User> {
   });
   return response.data.user;
 }
+
+export async function uploadVerificationDoc(file: File): Promise<User> {
+  const formData = new FormData();
+  formData.append('document', file);
+  const response = await apiClient.post<{ user: User }>('/auth/me/verification-doc', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data.user;
+}

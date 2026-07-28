@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { AxiosError } from 'axios';
+import { CheckCircle2 } from 'lucide-react';
 import GuestRoute from '../../src/components/auth/GuestRoute';
 import LanguageSwitcher from '../../src/components/layout/LanguageSwitcher';
 import Toast from '../../src/components/shared/Toast';
@@ -65,8 +66,9 @@ function ForgotPasswordPage() {
         )}
 
         {sent ? (
-          <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700 text-center">
-            ✅ {t('forgotPassword.successMessage')}
+          <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700 text-center flex items-center justify-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            {t('forgotPassword.successMessage')}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">

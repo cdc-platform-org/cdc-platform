@@ -33,6 +33,22 @@ export interface User {
   industry: string | null;
   websiteUrl: string | null;
   companyDescription: string | null;
+  // Self-reported identification code (ს/კ) — compared against the AI-
+  // parsed KYC document for auto-verification.
+  taxId: string | null;
+  // Business KYC — set only via POST /auth/me/verification-doc. Derive the
+  // three-state badge from these two: no doc = Unverified, doc present but
+  // not isVerified = Under Review, isVerified = Verified.
+  verificationDocUrl: string | null;
+  isVerified: boolean;
+}
+
+export type VerificationStatus = 'unverified' | 'under_review' | 'verified';
+
+export function getVerificationStatus(user: Pick<User, 'verificationDocUrl' | 'isVerified'>): VerificationStatus {
+  if (user.isVerified) return 'verified';
+  if (user.verificationDocUrl) return 'under_review';
+  return 'unverified';
 }
 
 export interface UpdateProfilePayload {
@@ -49,6 +65,7 @@ export interface UpdateProfilePayload {
   industry?: string | null;
   websiteUrl?: string | null;
   companyDescription?: string | null;
+  taxId?: string | null;
 }
 
 export interface ChangePasswordPayload {

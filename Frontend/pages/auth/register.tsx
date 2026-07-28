@@ -2,6 +2,7 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { AxiosError } from 'axios';
+import { GraduationCap, Building2 } from 'lucide-react';
 import { useAuth } from '../../src/context/AuthContext';
 import GuestRoute from '../../src/components/auth/GuestRoute';
 import PasswordInput from '../../src/components/auth/PasswordInput';
@@ -144,7 +145,7 @@ function RegisterPage() {
                     : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
                 }`}
               >
-                <span className="text-xl">🎓</span>
+                <GraduationCap className="w-5 h-5" />
                 {t('register.roleStudent')}
               </button>
               <button
@@ -157,7 +158,7 @@ function RegisterPage() {
                     : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
                 }`}
               >
-                <span className="text-xl">💼</span>
+                <Building2 className="w-5 h-5" />
                 {t('register.roleClient')}
               </button>
             </div>

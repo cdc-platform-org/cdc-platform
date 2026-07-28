@@ -20,13 +20,18 @@ import {
   Star,
   Upload,
   X,
+  FileText,
+  ShieldCheck,
+  ShieldAlert,
+  ShieldQuestion,
 } from 'lucide-react';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import { useAuth } from '../../src/context/AuthContext';
 import { useEscapeToClose } from '../../src/hooks/useEscapeToClose';
-import { updateProfile, uploadAvatar } from '../../src/services/authService';
+import { updateProfile, uploadAvatar, uploadVerificationDoc } from '../../src/services/authService';
+import { getVerificationStatus, VerificationStatus } from '../../src/types/auth';
 import { MyGig } from '../../src/types/community';
 import { getMyGigs, approveGigWork, openGigDispute } from '../../src/services/gigService';
 import { createReview } from '../../src/services/reviewService';
@@ -68,6 +73,18 @@ const dict = {
     save: 'შენახვა',
     saving: 'ინახება…',
     saved: 'შენახულია ✓',
+    // KYC verification
+    kycTitle: 'ბიზნესის ვერიფიკაცია',
+    kycHint: 'ატვირთეთ საჯარო რეესტრის ამონაწერი ან კომპანიის რეგისტრაციის დოკუმენტი (PDF, JPG, PNG ან WEBP, მაქს. 10MB).',
+    taxId: 'საიდენტიფიკაციო კოდი (ს/კ)',
+    kycUpload: 'დოკუმენტის ატვირთვა',
+    kycReplace: 'დოკუმენტის შეცვლა',
+    kycUploading: 'იტვირთება…',
+    docUploadError: 'დოკუმენტის ატვირთვა ვერ მოხერხდა.',
+    kycViewDoc: 'ატვირთული დოკუმენტის ნახვა',
+    statusUnverified: 'მოითხოვს ვერიფიკაციას',
+    statusUnderReview: 'განხილვის პროცესშია',
+    statusVerified: 'დადასტურებული ბიზნესი',
     // Vacancies
     postVacancy: '+ ვაკანსიის გამოქვეყნება',
     noVacancies: 'ვაკანსიები ჯერ არ არის.',
@@ -129,6 +146,18 @@ const dict = {
     save: 'Save Changes',
     saving: 'Saving…',
     saved: 'Saved ✓',
+    // KYC verification
+    kycTitle: 'Business Verification',
+    kycHint: 'Upload a Public Registry Extract or company registration document (PDF, JPG, PNG, or WEBP, max 10MB).',
+    taxId: 'Identification Code (ს/კ)',
+    kycUpload: 'Upload Document',
+    kycReplace: 'Replace Document',
+    kycUploading: 'Uploading…',
+    docUploadError: 'Unable to upload the document.',
+    kycViewDoc: 'View Uploaded Document',
+    statusUnverified: 'Unverified',
+    statusUnderReview: 'Under Review',
+    statusVerified: 'Verified Business',
     postVacancy: '+ Post a Vacancy',
     noVacancies: "You haven't posted any vacancies yet.",
     statusAll: 'All',
@@ -183,6 +212,21 @@ function formatMoney(minorUnits: number, currency: string): string {
 const inputClass =
   'w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500';
 const labelClass = 'block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5';
+
+function VerificationBadge({ status, t }: { status: VerificationStatus; t: typeof dict.ka }) {
+  const config = {
+    verified: { icon: ShieldCheck, label: t.statusVerified, className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' },
+    under_review: { icon: ShieldQuestion, label: t.statusUnderReview, className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30' },
+    unverified: { icon: ShieldAlert, label: t.statusUnverified, className: 'bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-500/30' },
+  }[status];
+  const Icon = config.icon;
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border ${config.className}`}>
+      <Icon className="w-3.5 h-3.5" />
+      {config.label}
+    </span>
+  );
+}
 
 interface VacancyEditModalProps {
   vacancy: MyVacancy;
@@ -397,12 +441,17 @@ function BusinessDashboardContent() {
     companyDescription: '',
     name: '',
     phone: '',
+    taxId: '',
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [docError, setDocError] = useState<string | null>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Business routes are strictly for the Client role (mirrors the
@@ -422,6 +471,7 @@ function BusinessDashboardContent() {
       companyDescription: user.companyDescription ?? '',
       name: user.name ?? '',
       phone: user.phone ?? '',
+      taxId: user.taxId ?? '',
     });
   }, [user]);
 
@@ -456,6 +506,22 @@ function BusinessDashboardContent() {
     }
   };
 
+  const handleDocChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingDoc(true);
+    setDocError(null);
+    try {
+      await uploadVerificationDoc(file);
+      await refreshUser();
+    } catch (err: any) {
+      setDocError(err?.response?.data?.message ?? t.docUploadError);
+    } finally {
+      setUploadingDoc(false);
+      if (docInputRef.current) docInputRef.current.value = '';
+    }
+  };
+
   const handleProfileSave = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -468,6 +534,7 @@ function BusinessDashboardContent() {
         industry: form.industry || null,
         websiteUrl: form.websiteUrl || null,
         companyDescription: form.companyDescription || null,
+        taxId: form.taxId || null,
       });
       await refreshUser();
       setSaved(true);
@@ -556,10 +623,13 @@ function BusinessDashboardContent() {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-12 flex-1 w-full">
         <div className="mb-8">
-          <h1 className="text-2xl font-black flex items-center gap-2">
-            <Building2 className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
-            {t.title}
-          </h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-black flex items-center gap-2">
+              <Building2 className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
+              {t.title}
+            </h1>
+            {user && <VerificationBadge status={getVerificationStatus(user)} t={t} />}
+          </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t.subtitle}</p>
         </div>
 
@@ -668,6 +738,40 @@ function BusinessDashboardContent() {
                         <label className={labelClass}>{t.contactEmail}</label>
                         <input className={`${inputClass} opacity-60 cursor-not-allowed`} value={user?.email ?? ''} disabled />
                       </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 space-y-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <h2 className="text-sm font-bold">{t.kycTitle}</h2>
+                        {user && <VerificationBadge status={getVerificationStatus(user)} t={t} />}
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">{t.kycHint}</p>
+
+                      <div>
+                        <label className={labelClass}>{t.taxId}</label>
+                        <input className={inputClass} value={form.taxId} onChange={(e) => setForm({ ...form, taxId: e.target.value })} placeholder="123456789" />
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-300 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800">
+                          <FileText className="w-4 h-4" />
+                          {uploadingDoc ? t.kycUploading : user?.verificationDocUrl ? t.kycReplace : t.kycUpload}
+                          <input
+                            ref={docInputRef}
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,image/webp"
+                            onChange={handleDocChange}
+                            className="hidden"
+                            disabled={uploadingDoc}
+                          />
+                        </label>
+                        {user?.verificationDocUrl && (
+                          <a href={user.verificationDocUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline">
+                            {t.kycViewDoc}
+                          </a>
+                        )}
+                      </div>
+                      {docError && <p className="text-xs text-red-600">{docError}</p>}
                     </div>
 
                     <button type="submit" disabled={saving} className="rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-3 text-sm font-bold text-white disabled:opacity-60">

@@ -3,7 +3,7 @@
   "proposalsCount": "{{count}} შეთავაზება",
   "proposalModal": {
     "title": "შეთავაზების გაგზავნა",
-    "clientBudgetLabel": "დამკვეთის ბიუჯეტი",
+    "clientBudgetLabel": "ბიზნესის ბიუჯეტი",
     "proposedBudgetLabel": "შემოთავაზებული ბიუჯეტი (GEL)",
     "proposedBudgetPlaceholder": "0.00",
     "deliveryLabel": "შესრულების ვადა (დღეები)",

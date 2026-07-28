@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import { useRouter } from 'next/router';
+import { CheckCircle2, AlertTriangle, Search, Sun, Moon, User, X, Menu, Link as LinkIcon, Rocket, Palette, Code, Clock } from 'lucide-react';
 import { useAuthModal } from '../src/context/AuthModalContext';
 import { useAuth } from '../src/context/AuthContext';
 import SiteFooter from '../src/components/layout/SiteFooter';
@@ -264,17 +265,19 @@ export default function Home() {
         `}</style>
       </Head>
 
-      {/* ✅ POST-ACTION TOAST */}
+      {/* POST-ACTION TOAST */}
       {toastMessage && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] px-5 py-3 rounded-xl shadow-2xl bg-emerald-600 text-white text-sm font-medium flex items-center gap-2 transition-opacity duration-300">
-          ✅ {toastMessage}
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          {toastMessage}
         </div>
       )}
 
-      {/* ⚠️ CHECKOUT ERROR TOAST */}
+      {/* CHECKOUT ERROR TOAST */}
       {checkoutError && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] px-5 py-3 rounded-xl shadow-2xl bg-red-600 text-white text-sm font-medium flex items-center gap-2 transition-opacity duration-300">
-          ⚠️ {checkoutError}
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          {checkoutError}
         </div>
       )}
 
@@ -352,9 +355,10 @@ export default function Home() {
                         key={s}
                         type="button"
                         onMouseDown={() => router.push(`/search?q=${encodeURIComponent(s)}`)}
-                        className={`w-full text-left px-4 py-2.5 text-sm border-none bg-transparent cursor-pointer ${darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-50'}`}
+                        className={`w-full text-left px-4 py-2.5 text-sm border-none bg-transparent cursor-pointer flex items-center gap-2 ${darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-50'}`}
                       >
-                        🔍 {s}
+                        <Search className="w-3.5 h-3.5 shrink-0" />
+                        {s}
                       </button>
                     ))
                 )}
@@ -394,23 +398,23 @@ export default function Home() {
             >
               {lang}
             </button>
-            <button type="button" onClick={toggleDarkMode} aria-label="Toggle dark mode" className="p-2 rounded-xl transition text-xl border-none bg-transparent cursor-pointer hover:rotate-12 duration-200">{darkMode ? '☀️' : '🌙'}</button>
-            <button type="button" onClick={() => openAuthModal()} className={`hidden sm:inline-flex border font-black text-xs md:text-sm px-4 py-2.5 rounded-xl transition bg-transparent cursor-pointer ${darkMode ? 'text-white border-slate-700 hover:bg-slate-800' : 'text-slate-700 border-slate-200 hover:bg-slate-100'}`}>👤 {translate('შესვლა', 'Login')}</button>
+            <button type="button" onClick={toggleDarkMode} aria-label="Toggle dark mode" className="p-2 rounded-xl transition border-none bg-transparent cursor-pointer hover:rotate-12 duration-200">{darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}</button>
+            <button type="button" onClick={() => openAuthModal()} className={`hidden sm:inline-flex items-center gap-1.5 border font-black text-xs md:text-sm px-4 py-2.5 rounded-xl transition bg-transparent cursor-pointer ${darkMode ? 'text-white border-slate-700 hover:bg-slate-800' : 'text-slate-700 border-slate-200 hover:bg-slate-100'}`}><User className="w-4 h-4" />{translate('შესვლა', 'Login')}</button>
 
-            {/* 🍔 MOBILE MENU TOGGLE */}
+            {/* MOBILE MENU TOGGLE */}
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen((open) => !open)}
               aria-label="Toggle menu"
               aria-expanded={isMobileMenuOpen}
-              className={`lg:hidden p-2 rounded-xl border-none bg-transparent cursor-pointer text-2xl leading-none transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}
+              className={`lg:hidden p-2 rounded-xl border-none bg-transparent cursor-pointer transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}
             >
-              {isMobileMenuOpen ? '✕' : '☰'}
+              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
         </div>
 
-        {/* 📱 MOBILE MENU PANEL */}
+        {/* MOBILE MENU PANEL */}
         {isMobileMenuOpen && (
           <div className={`lg:hidden max-w-full overflow-x-hidden mt-4 pt-4 border-t flex flex-col gap-1 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
             <span className={`px-2 pt-3 pb-1 font-black text-xs uppercase tracking-widest ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{translate('ჩვენ შესახებ', 'About Us')}</span>
@@ -423,9 +427,10 @@ export default function Home() {
             <button
               type="button"
               onClick={() => { setIsMobileMenuOpen(false); openAuthModal(); }}
-              className={`sm:hidden mt-2 border font-black text-sm px-4 py-3 rounded-xl transition bg-transparent cursor-pointer text-left ${darkMode ? 'text-white border-slate-700 hover:bg-slate-800' : 'text-slate-700 border-slate-200 hover:bg-slate-100'}`}
+              className={`sm:hidden mt-2 border font-black text-sm px-4 py-3 rounded-xl transition bg-transparent cursor-pointer text-left flex items-center gap-1.5 ${darkMode ? 'text-white border-slate-700 hover:bg-slate-800' : 'text-slate-700 border-slate-200 hover:bg-slate-100'}`}
             >
-              👤 {translate('შესვლა', 'Login')}
+              <User className="w-4 h-4" />
+              {translate('შესვლა', 'Login')}
             </button>
           </div>
         )}
@@ -545,7 +550,8 @@ export default function Home() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 self-start text-xs font-bold uppercase tracking-wider text-cyan-500 hover:text-cyan-400 no-underline transition-colors"
               >
-                {translate('პროექტის შესახებ', 'About the Project')} 🔗
+                {translate('პროექტის შესახებ', 'About the Project')}
+                <LinkIcon className="w-3 h-3" />
               </a>
             </div>
           </div>
@@ -633,7 +639,12 @@ export default function Home() {
                     )}
                   </div>
                   <div>
-                    {countdown && <p className="text-[11px] font-bold text-rose-400 mb-3">⏳ {countdown}</p>}
+                    {countdown && (
+                      <p className="text-[11px] font-bold text-rose-400 mb-3 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {countdown}
+                      </p>
+                    )}
                     <div className="flex items-baseline gap-2 mb-4">
                       {course.saleActive && <s className="text-sm text-slate-500">{formatPrice(course.originalPrice)}</s>}
                       <span className="text-xl font-black">{formatPrice(course.currentPrice)}</span>
@@ -742,7 +753,7 @@ export default function Home() {
           <div className="w-[calc(100vw-2rem)] sm:w-96 border rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[380px] md:h-[420px] bg-white dark:bg-[#0e1422] text-slate-900 dark:text-white border-slate-200 dark:border-slate-800">
             <div className="bg-slate-900 text-white p-4 flex justify-between items-center">
               <span className="text-xs font-bold">{translate('CDC კარიერული ასისტენტი', 'CDC Career Assistant')}</span>
-              <button type="button" onClick={() => setIsChatOpen(false)} className="text-white font-bold border-none bg-transparent cursor-pointer">✕</button>
+              <button type="button" onClick={() => setIsChatOpen(false)} className="text-white font-bold border-none bg-transparent cursor-pointer"><X className="w-4 h-4" /></button>
             </div>
             
             <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs bg-slate-50 dark:bg-[#0b0f17]">
@@ -762,13 +773,13 @@ export default function Home() {
             {/* QUICK REPLY BUTTONS */}
             {testStep === 0 && (
               <div className="flex gap-2 p-2 justify-center bg-slate-50 dark:bg-[#0b0f17]">
-                <button type="button" onClick={() => { setUserInput(lang === 'GEO' ? 'კი' : 'Yes'); const mockEvent = { preventDefault: () => {} } as React.FormEvent; setTimeout(() => handleSendMessage(mockEvent), 50); }} className="bg-cyan-500 text-white px-4 py-1.5 rounded-full text-[11px] font-black cursor-pointer hover:bg-cyan-600 transition border-none shadow">{translate('დავიწყოთ ტესტი 🚀', 'Start Test 🚀')}</button>
+                <button type="button" onClick={() => { setUserInput(lang === 'GEO' ? 'კი' : 'Yes'); const mockEvent = { preventDefault: () => {} } as React.FormEvent; setTimeout(() => handleSendMessage(mockEvent), 50); }} className="flex items-center gap-1.5 bg-cyan-500 text-white px-4 py-1.5 rounded-full text-[11px] font-black cursor-pointer hover:bg-cyan-600 transition border-none shadow"><Rocket className="w-3.5 h-3.5" />{translate('დავიწყოთ ტესტი', 'Start Test')}</button>
               </div>
             )}
             {testStep === 1 && (
               <div className="flex flex-col gap-1.5 p-2 bg-slate-50 dark:bg-[#0b0f17]">
-                <button type="button" onClick={() => { setUserInput(lang === 'GEO' ? 'კრეატიული ვიზუალები' : 'Creative Visuals'); const mockEvent = { preventDefault: () => {} } as React.FormEvent; setTimeout(() => handleSendMessage(mockEvent), 50); }} className="bg-purple-600 text-white px-3 py-2 rounded-xl text-[11px] font-bold cursor-pointer text-left hover:bg-purple-700 border-none shadow">{translate('🎨 კრეატივი და ვიზუალები', '🎨 Creative & Visuals')}</button>
-                <button type="button" onClick={() => { setUserInput(lang === 'GEO' ? 'კოდირება და ლოგიკა' : 'Coding and Logic'); const mockEvent = { preventDefault: () => {} } as React.FormEvent; setTimeout(() => handleSendMessage(mockEvent), 50); }} className="bg-slate-900 text-white px-3 py-2 rounded-xl text-[11px] font-bold cursor-pointer text-left hover:bg-slate-800 dark:bg-slate-800 border-none shadow">{translate('💻 კოდირება და ლოგიკა', '💻 Coding and Logic')}</button>
+                <button type="button" onClick={() => { setUserInput(lang === 'GEO' ? 'კრეატიული ვიზუალები' : 'Creative Visuals'); const mockEvent = { preventDefault: () => {} } as React.FormEvent; setTimeout(() => handleSendMessage(mockEvent), 50); }} className="flex items-center gap-1.5 bg-purple-600 text-white px-3 py-2 rounded-xl text-[11px] font-bold cursor-pointer text-left hover:bg-purple-700 border-none shadow"><Palette className="w-3.5 h-3.5 shrink-0" />{translate('კრეატივი და ვიზუალები', 'Creative & Visuals')}</button>
+                <button type="button" onClick={() => { setUserInput(lang === 'GEO' ? 'კოდირება და ლოგიკა' : 'Coding and Logic'); const mockEvent = { preventDefault: () => {} } as React.FormEvent; setTimeout(() => handleSendMessage(mockEvent), 50); }} className="flex items-center gap-1.5 bg-slate-900 text-white px-3 py-2 rounded-xl text-[11px] font-bold cursor-pointer text-left hover:bg-slate-800 dark:bg-slate-800 border-none shadow"><Code className="w-3.5 h-3.5 shrink-0" />{translate('კოდირება და ლოგიკა', 'Coding and Logic')}</button>
               </div>
             )}
 

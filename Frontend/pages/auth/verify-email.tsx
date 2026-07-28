@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { GetStaticProps } from 'next';
+import { Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../src/context/AuthContext';
 import { verifyEmail, resendVerificationEmail } from '../../src/services/authService';
 
@@ -53,14 +54,14 @@ export default function VerifyEmailPage() {
       <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
         {status === 'verifying' && (
           <>
-            <div className="text-4xl mb-3">⏳</div>
+            <Loader2 className="w-10 h-10 text-indigo-600 mx-auto mb-3 animate-spin" />
             <p className="text-sm text-gray-600">{t('verifyEmail.verifying')}</p>
           </>
         )}
 
         {status === 'success' && (
           <>
-            <div className="text-4xl mb-3">✅</div>
+            <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto mb-3" />
             <h1 className="text-xl font-semibold text-gray-900 mb-2">{t('verifyEmail.successTitle')}</h1>
             <p className="text-sm text-gray-600 mb-6">{t('verifyEmail.successMessage')}</p>
             <button
@@ -75,7 +76,7 @@ export default function VerifyEmailPage() {
 
         {status === 'error' && (
           <>
-            <div className="text-4xl mb-3">⚠️</div>
+            <AlertTriangle className="w-10 h-10 text-amber-600 mx-auto mb-3" />
             <h1 className="text-xl font-semibold text-gray-900 mb-2">{t('verifyEmail.errorTitle')}</h1>
             {errorMessage && <p className="text-sm text-red-600 mb-4">{errorMessage}</p>}
 
