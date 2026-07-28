@@ -1,6 +1,25 @@
 import { ReactNode } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import {
+  LayoutDashboard,
+  Users,
+  Briefcase,
+  Scale,
+  GraduationCap,
+  ShieldAlert,
+  MessageSquare,
+  PenTool,
+  Image as ImageIcon,
+  Building2,
+  ClipboardList,
+  FileText,
+  BarChart3,
+  CreditCard,
+  Landmark,
+  Wallet,
+  Lock,
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AdminLangProvider, useAdminLang } from '../../context/AdminLangContext';
 import { adminDict } from '../../data/adminDict';
@@ -8,29 +27,29 @@ import { adminDict } from '../../data/adminDict';
 interface NavItem {
   href: string;
   labelKey: keyof typeof adminDict.en.nav;
-  icon: string;
+  icon: typeof LayoutDashboard;
   tiers?: ('SUPER_ADMIN' | 'MANAGER' | 'MODERATOR')[]; // omit = visible to any admin-team member
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/admin', labelKey: 'dashboard', icon: '📊' },
-  { href: '/admin/users', labelKey: 'users', icon: '👥' },
-  { href: '/admin/gigs', labelKey: 'gigs', icon: '💼' },
-  { href: '/admin/disputes', labelKey: 'disputes', icon: '⚖️', tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/mentorship', labelKey: 'mentorship', icon: '🧑‍🏫' },
-  { href: '/admin/messages', labelKey: 'messages', icon: '🛡️' },
-  { href: '/admin/forum', labelKey: 'forum', icon: '💬' },
-  { href: '/admin/cms/homepage', labelKey: 'cms', icon: '🖋️', tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/cms/gallery', labelKey: 'gallery', icon: '🖼️', tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/cms/agency', labelKey: 'agencyCms', icon: '🏢', tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/studio', labelKey: 'studio', icon: '📋', tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/blog', labelKey: 'blog', icon: '📝', tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/courses', labelKey: 'courses', icon: '🎓', tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/analytics', labelKey: 'analytics', icon: '📈', tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/finance', labelKey: 'finance', icon: '💳', tiers: ['SUPER_ADMIN'] },
-  { href: '/admin/finance/payouts', labelKey: 'payouts', icon: '🏦', tiers: ['SUPER_ADMIN'] },
-  { href: '/admin/financials', labelKey: 'financials', icon: '💰', tiers: ['SUPER_ADMIN'] },
-  { href: '/admin/team', labelKey: 'team', icon: '🔐', tiers: ['SUPER_ADMIN'] },
+  { href: '/admin', labelKey: 'dashboard', icon: LayoutDashboard },
+  { href: '/admin/users', labelKey: 'users', icon: Users },
+  { href: '/admin/gigs', labelKey: 'gigs', icon: Briefcase },
+  { href: '/admin/disputes', labelKey: 'disputes', icon: Scale, tiers: ['SUPER_ADMIN', 'MANAGER'] },
+  { href: '/admin/mentorship', labelKey: 'mentorship', icon: GraduationCap },
+  { href: '/admin/messages', labelKey: 'messages', icon: ShieldAlert },
+  { href: '/admin/forum', labelKey: 'forum', icon: MessageSquare },
+  { href: '/admin/cms/homepage', labelKey: 'cms', icon: PenTool, tiers: ['SUPER_ADMIN', 'MANAGER'] },
+  { href: '/admin/cms/gallery', labelKey: 'gallery', icon: ImageIcon, tiers: ['SUPER_ADMIN', 'MANAGER'] },
+  { href: '/admin/cms/agency', labelKey: 'agencyCms', icon: Building2, tiers: ['SUPER_ADMIN', 'MANAGER'] },
+  { href: '/admin/studio', labelKey: 'studio', icon: ClipboardList, tiers: ['SUPER_ADMIN', 'MANAGER'] },
+  { href: '/admin/blog', labelKey: 'blog', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'] },
+  { href: '/admin/courses', labelKey: 'courses', icon: GraduationCap, tiers: ['SUPER_ADMIN', 'MANAGER'] },
+  { href: '/admin/analytics', labelKey: 'analytics', icon: BarChart3, tiers: ['SUPER_ADMIN', 'MANAGER'] },
+  { href: '/admin/finance', labelKey: 'finance', icon: CreditCard, tiers: ['SUPER_ADMIN'] },
+  { href: '/admin/finance/payouts', labelKey: 'payouts', icon: Landmark, tiers: ['SUPER_ADMIN'] },
+  { href: '/admin/financials', labelKey: 'financials', icon: Wallet, tiers: ['SUPER_ADMIN'] },
+  { href: '/admin/team', labelKey: 'team', icon: Lock, tiers: ['SUPER_ADMIN'] },
 ];
 
 const TIER_BADGE: Record<string, string> = {
@@ -70,6 +89,7 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
         <nav className="flex-1 px-3 py-4 space-y-1">
           {visibleNav.map((item) => {
             const isActive = router.pathname === item.href;
+            const Icon = item.icon;
             return (
               <Link
                 key={item.href}
@@ -80,7 +100,7 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
                     : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
                 }`}
               >
-                <span className="text-base">{item.icon}</span>
+                <Icon className="w-4 h-4 shrink-0" />
                 {t.nav[item.labelKey]}
               </Link>
             );

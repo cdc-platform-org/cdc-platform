@@ -65,6 +65,21 @@ export const updateProfileSchema = z.object({
     .union([z.string().trim().toUpperCase().regex(/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/, 'Enter a valid IBAN.'), z.literal('')])
     .optional()
     .nullable(),
+  // Business/employer profile — only meaningful for role Client, but not
+  // schema-restricted to it (same posture as the legal-identity fields).
+  companyName: z.string().trim().max(200).optional().nullable(),
+  industry: z.string().trim().max(100).optional().nullable(),
+  // Scheme restricted to http(s) — this gets rendered as a clickable link
+  // on the company's public-facing surfaces, so a javascript:/data: URI
+  // must never be storable here.
+  websiteUrl: z
+    .union([
+      z.string().trim().url('Enter a valid URL.').regex(/^https?:\/\//, 'Website URL must start with http:// or https://'),
+      z.literal(''),
+    ])
+    .optional()
+    .nullable(),
+  companyDescription: z.string().trim().max(2000).optional().nullable(),
 });
 
 export const changePasswordSchema = z.object({

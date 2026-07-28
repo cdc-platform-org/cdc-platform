@@ -1,6 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/router';
-import { postVacancy, PostVacancyPayload } from '../../services/vacancyService';
+import { postVacancy, VacancyFormPayload } from '../../services/vacancyService';
 import { postGig, PostGigPayload } from '../../services/gigService';
 import { EmploymentType, GigBudgetType } from '../../types/community';
 
@@ -84,7 +84,7 @@ export default function PostingForm({ initialType, allowTypeToggle = false }: Po
 
     try {
       if (postType === 'vacancy') {
-        const payload: PostVacancyPayload = {
+        const payload: VacancyFormPayload = {
           title: vacancyForm.title.trim(),
           description: vacancyForm.description.trim(),
           employmentType: vacancyForm.employmentType,

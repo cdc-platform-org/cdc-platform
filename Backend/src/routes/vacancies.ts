@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireRole, requireApproved } from '../middleware/auth';
-import { postVacancySchema, applyToVacancySchema, reviewVacancyApplicationSchema } from '../schemas/vacancySchemas';
+import { postVacancySchema, updateVacancySchema, applyToVacancySchema, reviewVacancyApplicationSchema } from '../schemas/vacancySchemas';
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
 import { sendVacancyApplicationEmail } from '../services/emailService';
 const router = Router();
@@ -26,10 +26,22 @@ function requireVacancyOwnerOrAdmin(req: Request, res: Response, next: Function)
   if (!isOwner && !isAdmin) return res.status(404).json({ message: 'Vacancy not found.' });
   next();
 }
-// Public — guests can browse vacancy listings without logging in.
+// Client Portal — vacancies the caller posted, including drafts (the public
+// routes below always exclude drafts). Must be registered before GET /:id,
+// or a request to /mine would match :id="mine".
+router.get('/mine', authenticate, requireApproved, async (req: Request, res: Response) => {
+  const vacancies = await prisma.vacancy.findMany({
+    where: { postedById: req.user!.id },
+    include: { postedBy: posterSelect, _count: { select: { applications: true } } },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json(vacancies);
+});
+// Public — guests can browse vacancy listings without logging in. Drafts
+// never appear here regardless of moderation status.
 router.get('/', async (req: Request, res: Response) => {
   const { skills, employmentType, location } = req.query;
-  const where: Record<string, unknown> = { moderationStatus: 'approved' };
+  const where: Record<string, unknown> = { moderationStatus: 'approved', status: { not: 'draft' } };
   if (employmentType) where.employmentType = employmentType;
   if (location) where.location = { contains: String(location), mode: 'insensitive' };
   if (skills) where.skillsRequired = { hasSome: String(skills).split(',').map((s) => s.trim()) };
@@ -45,7 +57,11 @@ router.get('/:id', async (req: Request, res: Response) => {
     where: { id: req.params.id },
     include: { postedBy: posterSelect },
   });
-  if (!vacancy) return res.status(404).json({ message: 'Vacancy not found.' });
+  // A draft is only ever visible through the owner-scoped GET /mine above —
+  // this route has no authentication, so there's no way to check ownership
+  // here; treating a draft as 404 (rather than relaxing auth) keeps it
+  // simple and keeps this route fully public/cacheable for everything else.
+  if (!vacancy || vacancy.status === 'draft') return res.status(404).json({ message: 'Vacancy not found.' });
   res.json(vacancy);
 });
 router.post(
@@ -56,19 +72,42 @@ router.post(
   async (req: Request, res: Response) => {
     const result = postVacancySchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ errors: result.error.errors });
+    const { status, ...fields } = result.data;
     const vacancy = await prisma.vacancy.create({
       data: {
-        ...result.data,
+        ...fields,
         salaryMin: result.data.salaryMin ?? null,
         salaryMax: result.data.salaryMax ?? null,
         currency: result.data.currency ?? null,
         applicationDeadline: result.data.applicationDeadline ?? null,
         postedById: req.user!.id,
-        status: 'open',
+        status: status ?? 'open',
       },
       include: { postedBy: posterSelect },
     });
     res.status(201).json(vacancy);
+  }
+);
+router.put(
+  '/:id',
+  authenticate,
+  loadVacancy,
+  requireVacancyOwnerOrAdmin,
+  async (req: Request, res: Response) => {
+    const result = updateVacancySchema.safeParse(req.body);
+    if (!result.success) return res.status(400).json({ errors: result.error.errors });
+    const { salaryMin, salaryMax, applicationDeadline, ...rest } = result.data;
+    const vacancy = await prisma.vacancy.update({
+      where: { id: req.vacancy!.id },
+      data: {
+        ...rest,
+        ...(salaryMin !== undefined && { salaryMin: salaryMin ?? null }),
+        ...(salaryMax !== undefined && { salaryMax: salaryMax ?? null }),
+        ...(applicationDeadline !== undefined && { applicationDeadline: applicationDeadline ?? null }),
+      },
+      include: { postedBy: posterSelect },
+    });
+    res.json(vacancy);
   }
 );
 router.post(

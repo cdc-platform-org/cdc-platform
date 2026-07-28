@@ -2,6 +2,16 @@ import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import {
+  LayoutDashboard,
+  GraduationCap,
+  Wallet,
+  Briefcase,
+  Settings,
+  LogOut,
+  LifeBuoy,
+  CheckCircle2,
+} from 'lucide-react';
 import ProtectedRoute from '../src/components/auth/ProtectedRoute';
 import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
@@ -25,11 +35,11 @@ type Tab = 'overview' | 'courses' | 'wallet' | 'gigs';
 const dict = {
   ka: {
     title: 'პირადი კაბინეტი',
-    tabOverview: '📊 მიმოხილვა',
-    tabCourses: '🎓 კურსები & სერტიფიკატები',
-    tabWallet: '💰 საფულე & გადახდები',
-    tabGigs: '💼 ჩემი გიგები',
-    tabSettings: '⚙️ პარამეტრები',
+    tabOverview: 'მიმოხილვა',
+    tabCourses: 'კურსები & სერტიფიკატები',
+    tabWallet: 'საფულე & გადახდები',
+    tabGigs: 'ჩემი გიგები',
+    tabSettings: 'პარამეტრები',
     logout: 'გასვლა',
     loading: 'იტვირთება…',
     // Overview
@@ -44,7 +54,7 @@ const dict = {
     coursesTitle: 'ჩემი კურსები & სერტიფიკატები',
     progress: 'პროგრესი',
     continue: 'გაგრძელება',
-    downloadCert: '🎓 სერტიფიკატის ჩამოტვირთვა',
+    downloadCert: 'სერტიფიკატის ჩამოტვირთვა',
     generating: 'გენერირდება…',
     certLocked: 'სერტიფიკატი ხელმისაწვდომი იქნება კურსის დასრულების შემდეგ',
     // Wallet tab
@@ -68,8 +78,8 @@ const dict = {
     browseGigs: 'გიგების დათვალიერება',
     budget: 'ბიუჯეტი',
     chat: 'ჩატი დამკვეთთან',
-    mentorHelp: '🆘 CDC მენტორის დახმარების მოთხოვნა',
-    mentorRequested: '✅ მენტორის დახმარება მოთხოვნილია',
+    mentorHelp: 'CDC მენტორის დახმარების მოთხოვნა',
+    mentorRequested: 'მენტორის დახმარება მოთხოვნილია',
     firstOrderBadge: 'პირველი შეკვეთა',
     // Confirm modal (shared with learn.tsx)
     confirmTitle: 'გთხოვთ შეამოწმოთ!',
@@ -81,11 +91,11 @@ const dict = {
   },
   en: {
     title: 'Dashboard',
-    tabOverview: '📊 Overview',
-    tabCourses: '🎓 My Courses & Certificates',
-    tabWallet: '💰 Wallet & Payouts',
-    tabGigs: '💼 My Gigs / Workspace',
-    tabSettings: '⚙️ Account Settings',
+    tabOverview: 'Overview',
+    tabCourses: 'My Courses & Certificates',
+    tabWallet: 'Wallet & Payouts',
+    tabGigs: 'My Gigs / Workspace',
+    tabSettings: 'Account Settings',
     logout: 'Log Out',
     loading: 'Loading…',
     statCourses: 'Enrolled Courses',
@@ -98,7 +108,7 @@ const dict = {
     coursesTitle: 'My Courses & Certificates',
     progress: 'Progress',
     continue: 'Continue',
-    downloadCert: '🎓 Download Certificate',
+    downloadCert: 'Download Certificate',
     generating: 'Generating…',
     certLocked: 'The certificate unlocks once the course is complete.',
     walletTitle: 'Wallet & Payouts',
@@ -120,8 +130,8 @@ const dict = {
     browseGigs: 'Browse Gigs',
     budget: 'Budget',
     chat: 'Chat with client',
-    mentorHelp: '🆘 Request CDC Mentor Help',
-    mentorRequested: '✅ Mentor help requested',
+    mentorHelp: 'Request CDC Mentor Help',
+    mentorRequested: 'Mentor help requested',
     firstOrderBadge: 'First Order',
     confirmTitle: 'Please double-check!',
     confirmBody: 'This name will be printed on your certificate:',
@@ -300,11 +310,11 @@ function DashboardContent() {
 
   const confirmCourse = courses.find((c) => c.course.id === confirmCourseId)?.course ?? null;
 
-  const NAV: { key: Tab; label: string }[] = [
-    { key: 'overview', label: t.tabOverview },
-    { key: 'courses', label: t.tabCourses },
-    { key: 'wallet', label: t.tabWallet },
-    { key: 'gigs', label: t.tabGigs },
+  const NAV: { key: Tab; label: string; icon: typeof LayoutDashboard }[] = [
+    { key: 'overview', label: t.tabOverview, icon: LayoutDashboard },
+    { key: 'courses', label: t.tabCourses, icon: GraduationCap },
+    { key: 'wallet', label: t.tabWallet, icon: Wallet },
+    { key: 'gigs', label: t.tabGigs, icon: Briefcase },
   ];
 
   return (
@@ -318,31 +328,37 @@ function DashboardContent() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-12 grid md:grid-cols-4 gap-6 md:gap-8 flex-1 w-full">
         {/* SIDE MENU */}
         <div className="space-y-2 md:sticky md:top-24 self-start">
-          {NAV.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => setActiveTab(item.key)}
-              className={`w-full text-left p-3.5 rounded-xl text-xs font-bold transition border ${
-                activeTab === item.key
-                  ? 'bg-slate-900 dark:bg-cyan-600 text-white border-transparent shadow-sm'
-                  : 'bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
+          {NAV.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setActiveTab(item.key)}
+                className={`w-full flex items-center gap-2.5 text-left p-3.5 rounded-xl text-xs font-bold transition border ${
+                  activeTab === item.key
+                    ? 'bg-slate-900 dark:bg-cyan-600 text-white border-transparent shadow-sm'
+                    : 'bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                {item.label}
+              </button>
+            );
+          })}
           <Link
             href="/dashboard/settings"
-            className="block w-full text-left p-3.5 rounded-xl text-xs font-bold transition border bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 no-underline"
+            className="flex items-center gap-2.5 w-full text-left p-3.5 rounded-xl text-xs font-bold transition border bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 no-underline"
           >
+            <Settings className="w-4 h-4 shrink-0" />
             {t.tabSettings}
           </Link>
           <button
             type="button"
             onClick={logout}
-            className="w-full text-left p-3.5 rounded-xl text-xs font-bold transition border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 bg-transparent"
+            className="w-full flex items-center gap-2.5 text-left p-3.5 rounded-xl text-xs font-bold transition border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 bg-transparent"
           >
+            <LogOut className="w-4 h-4 shrink-0" />
             {t.logout}
           </button>
         </div>
@@ -443,8 +459,9 @@ function DashboardContent() {
                               type="button"
                               onClick={() => setConfirmCourseId(course.id)}
                               disabled={downloadingCourseId === course.id}
-                              className="bg-slate-950 hover:bg-slate-800 dark:bg-cyan-600 dark:hover:bg-cyan-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition disabled:opacity-60"
+                              className="flex items-center gap-1.5 bg-slate-950 hover:bg-slate-800 dark:bg-cyan-600 dark:hover:bg-cyan-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition disabled:opacity-60"
                             >
+                              <GraduationCap className="w-3.5 h-3.5" />
                               {downloadingCourseId === course.id ? t.generating : t.downloadCert}
                             </button>
                           ) : (
@@ -608,7 +625,8 @@ function DashboardContent() {
                           </Link>
                           {gig.isFirstOrder &&
                             (gig.mentorHelpRequestedAt ? (
-                              <span className="text-xs font-bold px-4 py-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                              <span className="flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
                                 {t.mentorRequested}
                               </span>
                             ) : (
@@ -616,8 +634,9 @@ function DashboardContent() {
                                 type="button"
                                 onClick={() => handleRequestMentorHelp(gig.id)}
                                 disabled={requestingMentorFor === gig.id}
-                                className="text-xs font-bold px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white transition disabled:opacity-60"
+                                className="flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white transition disabled:opacity-60"
                               >
+                                <LifeBuoy className="w-3.5 h-3.5" />
                                 {t.mentorHelp}
                               </button>
                             ))}

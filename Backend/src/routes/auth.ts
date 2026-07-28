@@ -90,6 +90,10 @@ function toUserResponse(user: {
   payoutIban?: string | null;
   avatarUrl?: string | null;
   bio?: string | null;
+  companyName?: string | null;
+  industry?: string | null;
+  websiteUrl?: string | null;
+  companyDescription?: string | null;
 }) {
   return {
     id: user.id,
@@ -109,6 +113,10 @@ function toUserResponse(user: {
     payoutIban: user.payoutIban ?? null,
     avatarUrl: user.avatarUrl ?? null,
     bio: user.bio ?? null,
+    companyName: user.companyName ?? null,
+    industry: user.industry ?? null,
+    websiteUrl: user.websiteUrl ?? null,
+    companyDescription: user.companyDescription ?? null,
   };
 }
 
@@ -466,10 +474,10 @@ router.put('/me', authenticate, async (req, res) => {
   const result = updateProfileSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
-  const { payoutIban, ...rest } = result.data;
+  const { payoutIban, websiteUrl, ...rest } = result.data;
   const user = await prisma.user.update({
     where: { id: req.user!.id },
-    data: { ...rest, payoutIban: payoutIban || null },
+    data: { ...rest, payoutIban: payoutIban || null, websiteUrl: websiteUrl || null },
   });
   res.json({ user: toUserResponse(user) });
 });

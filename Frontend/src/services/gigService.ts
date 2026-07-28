@@ -45,7 +45,7 @@ export type PostGigPayload = Omit<
   | 'deliveryComment'
   | 'deliveryFiles'
   | 'deliveryLinks'
-  | 'postedAt'
+  | 'createdAt'
 >;
 
 export async function postGig(payload: PostGigPayload): Promise<Gig> {
@@ -112,4 +112,10 @@ export async function rejectGigApplication(
     `/gigs/${gigId}/applications/${applicationId}/reject`
   );
   return response.data;
+}
+
+// Either participant (client or freelancer) can open a dispute once work
+// has been submitted — see routes/gigs.ts's POST /:id/dispute.
+export async function openGigDispute(gigId: string, reason: string): Promise<void> {
+  await apiClient.post(`/gigs/${gigId}/dispute`, { reason });
 }

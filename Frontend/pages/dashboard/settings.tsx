@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { Upload } from 'lucide-react';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
@@ -13,7 +14,7 @@ const dict = {
     title: 'ანგარიშის პარამეტრები',
     back: '← პირად კაბინეტში დაბრუნება',
     profileTitle: 'პროფილი',
-    avatarChange: '📁 სურათის შეცვლა',
+    avatarChange: 'სურათის შეცვლა',
     avatarUploading: 'იტვირთება…',
     avatarError: 'სურათის ატვირთვა ვერ მოხერხდა.',
     displayName: 'სახელი (საჯარო)',
@@ -48,7 +49,7 @@ const dict = {
     title: 'Account Settings',
     back: '← Back to Dashboard',
     profileTitle: 'Profile',
-    avatarChange: '📁 Change Photo',
+    avatarChange: 'Change Photo',
     avatarUploading: 'Uploading…',
     avatarError: 'Unable to upload the image.',
     displayName: 'Display Name',
@@ -230,7 +231,8 @@ function SettingsContent() {
                 )}
               </div>
               <div>
-                <label className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-gray-300 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800">
+                <label className="inline-flex items-center gap-2 justify-center px-4 py-2.5 rounded-lg border border-gray-300 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800">
+                  <Upload className="w-4 h-4" />
                   {uploadingAvatar ? t.avatarUploading : t.avatarChange}
                   <input
                     ref={avatarFileInputRef}

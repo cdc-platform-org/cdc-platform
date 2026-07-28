@@ -70,6 +70,12 @@ enum VacancyStatus {
   open
   closed
   filled
+  // Not yet published to the public listing (GET /vacancies filters to
+  // moderationStatus 'approved' only, but a draft is additionally excluded
+  // by status so a half-finished posting never leaks even if moderation
+  // logic changes later) — lets an employer save a job posting before
+  // it's ready to accept applications.
+  draft
 }
 
 enum OrderStatus {
@@ -211,6 +217,18 @@ model User {
   avatarUrl        String?
   // Short bio/headline shown on the profile — self-reported, plain text.
   bio              String?
+  // Business/employer profile fields — only meaningful for role Client, but
+  // not schema-restricted to it (same posture as the legal-identity fields
+  // above, which are equally open to every role). `avatarUrl` doubles as
+  // the company logo for Client accounts rather than a separate field —
+  // it's already just "this account's picture," and a second logo-specific
+  // upload endpoint would be pure duplication. Contact person name/email/
+  // phone reuse the existing `name`/email/`phone` fields for the same
+  // reason — a Client account IS the contact person's login.
+  companyName        String?
+  industry           String?
+  websiteUrl         String?
+  companyDescription String?
   createdAt       DateTime   @default(now())
 
   postedGigs             Gig[]                @relation("PostedGigs")

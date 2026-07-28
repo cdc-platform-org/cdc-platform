@@ -16,7 +16,7 @@ interface AssignedFreelancer {
 // ============================================================
 
 export type EmploymentType = 'full_time' | 'part_time' | 'contract' | 'internship';
-export type VacancyStatus = 'open' | 'closed' | 'filled';
+export type VacancyStatus = 'open' | 'closed' | 'filled' | 'draft';
 
 export interface Vacancy {
   id: string;
@@ -31,7 +31,13 @@ export interface Vacancy {
   currency: string | null;
   applicationDeadline: string | null;
   status: VacancyStatus;
-  postedAt: string;
+  createdAt: string;
+}
+
+// Client Portal — vacancies the caller posted (GET /vacancies/mine),
+// includes drafts and an application count for the "My Vacancies" list.
+export interface MyVacancy extends Vacancy {
+  _count: { applications: number };
 }
 
 export type ApplicationStatus = 'submitted' | 'reviewed' | 'accepted' | 'rejected';
@@ -40,10 +46,10 @@ export interface VacancyApplication {
   id: string;
   vacancyId: string;
   applicantId: string;
-  applicantName: string; // needed for the poster's review list — display only
+  applicant: { name: string }; // matches the API's actual include shape
   coverNote: string;
   status: ApplicationStatus;
-  submittedAt: string;
+  createdAt: string;
 }
 
 // ============================================================
@@ -77,7 +83,7 @@ export interface Gig {
   deliveryComment: string | null;
   deliveryFiles: string[];
   deliveryLinks: string[];
-  postedAt: string;
+  createdAt: string;
 }
 
 // --- Client Portal: gigs the caller posted (GET /gigs/mine) ---

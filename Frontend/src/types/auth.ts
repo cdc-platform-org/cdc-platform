@@ -24,9 +24,15 @@ export interface User {
   phone: string | null;
   payoutIban: string | null;
   // Set only via POST /auth/me/avatar (uploads to Bunny Storage) — never a
-  // freely-settable URL, see Backend's routes/auth.ts.
+  // freely-settable URL, see Backend's routes/auth.ts. Doubles as the
+  // company logo for Client accounts.
   avatarUrl: string | null;
   bio: string | null;
+  // Business/employer profile — only meaningful for role Client.
+  companyName: string | null;
+  industry: string | null;
+  websiteUrl: string | null;
+  companyDescription: string | null;
 }
 
 export interface UpdateProfilePayload {
@@ -39,6 +45,10 @@ export interface UpdateProfilePayload {
   nationalId?: string | null;
   phone?: string | null;
   payoutIban?: string | null;
+  companyName?: string | null;
+  industry?: string | null;
+  websiteUrl?: string | null;
+  companyDescription?: string | null;
 }
 
 export interface ChangePasswordPayload {

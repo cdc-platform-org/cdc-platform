@@ -83,12 +83,12 @@ export default function ApplicationsReviewList({
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold text-gray-900">
-                      {hasBid(app) ? app.applicant.name : app.applicantName}
+                      {app.applicant.name}
                     </p>
                     {hasBid(app) && app.applicant.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
                   </div>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    Applied {new Date(hasBid(app) ? app.createdAt : app.submittedAt).toLocaleDateString()}
+                    Applied {new Date(app.createdAt).toLocaleDateString()}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">

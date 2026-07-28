@@ -1,6 +1,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
+import { Briefcase, Sparkles, FileEdit, Sun, Moon } from 'lucide-react';
 import SiteFooter from '../src/components/layout/SiteFooter';
 import Toast from '../src/components/shared/Toast';
 import { AgencyContent, AgencyPortfolioItem } from '../src/types/siteContent';
@@ -194,7 +195,9 @@ export default function Agency() {
               {lang}
             </button>
 
-            <button type="button" onClick={toggleDarkMode} className="p-2 rounded-xl transition text-xl border-none bg-transparent cursor-pointer duration-200">{darkMode ? '☀️' : '🌙'}</button>
+            <button type="button" onClick={toggleDarkMode} className="p-2 rounded-xl transition border-none bg-transparent cursor-pointer duration-200">
+              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
           </div>
         </div>
       </nav>
@@ -204,7 +207,8 @@ export default function Agency() {
         <div className="max-w-4xl mx-auto px-6">
           <div className="flex justify-center mb-4">
             <span className="text-xs font-black uppercase tracking-widest px-4 py-2 bg-purple-500/10 text-purple-500 rounded-full border border-purple-500/20 flex items-center gap-2">
-              💼 {translate('სოციალური მეწარმეობა & ციფრული სააგენტო', 'Social Entrepreneurship & Digital Agency')}
+              <Briefcase className="w-3.5 h-3.5" />
+              {translate('სოციალური მეწარმეობა & ციფრული სააგენტო', 'Social Entrepreneurship & Digital Agency')}
             </span>
           </div>
 
@@ -233,7 +237,8 @@ export default function Agency() {
       {/* 📊 PORTFOLIO PROJECTS FEED */}
       <main className="max-w-7xl mx-auto px-6 py-16">
         <h2 className="text-xl md:text-2xl font-black mb-10 tracking-wide flex items-center gap-2">
-          ✨ {translate('ჩვენი შესრულებული სამუშაოები', 'Our Portfolio')}
+          <Sparkles className="w-5 h-5 text-cyan-500" />
+          {translate('ჩვენი შესრულებული სამუშაოები', 'Our Portfolio')}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {portfolio.map((p, i) => (
@@ -271,11 +276,12 @@ export default function Agency() {
         </div>
       </main>
 
-      {/* 📝 REQUEST A PROJECT */}
+      {/* REQUEST A PROJECT */}
       <section id="request-project" className={`border-t py-20 ${darkMode ? 'border-slate-800 bg-[#0e1422]/40' : 'border-slate-200 bg-slate-100/40'}`}>
         <div className="max-w-2xl mx-auto px-6">
           <h2 className="text-xl md:text-2xl font-black mb-3 tracking-wide flex items-center gap-2">
-            📝 {translate('შეუკვეთე პროექტი', 'Request a Project')}
+            <FileEdit className="w-5 h-5 text-cyan-500" />
+            {translate('შეუკვეთე პროექტი', 'Request a Project')}
           </h2>
           <p className="text-sm text-slate-400 mb-10 leading-relaxed">
             {translate(
