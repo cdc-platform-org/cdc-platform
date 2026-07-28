@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -125,6 +125,18 @@ export default function Home() {
   }, [router, router.query.assistant]);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  // Checkout failures (e.g. the payment gateway rejecting the request) used
+  // to be swallowed silently here — the button would show "Loading…" then
+  // just revert with zero feedback, which looks exactly like "the button
+  // isn't reacting" from a user's perspective. courses/index.tsx already
+  // surfaces this correctly; this mirrors that pattern.
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const checkoutErrorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (checkoutErrorTimeoutRef.current) clearTimeout(checkoutErrorTimeoutRef.current);
+    };
+  }, []);
   useEffect(() => {
     if (router.query.toast === 'account_deleted') {
       const toastLang = router.query.toastLang === 'en' ? 'en' : 'ka';
@@ -170,10 +182,17 @@ export default function Home() {
 
   const startCheckout = async (course: Course) => {
     setEnrollingId(course.id);
+    setCheckoutError(null);
     try {
       const { redirectUrl } = await checkoutCourse(course.id);
       window.location.href = redirectUrl;
-    } catch {
+    } catch (err: any) {
+      const apiMessage = err?.response?.data?.message;
+      setCheckoutError(
+        apiMessage || (lang === 'ENG' ? 'Unable to start checkout. Please try again.' : 'გადახდის დაწყება ვერ მოხერხდა. სცადეთ თავიდან.')
+      );
+      if (checkoutErrorTimeoutRef.current) clearTimeout(checkoutErrorTimeoutRef.current);
+      checkoutErrorTimeoutRef.current = setTimeout(() => setCheckoutError(null), 6000);
       setEnrollingId(null);
     }
   };
@@ -249,6 +268,13 @@ export default function Home() {
       {toastMessage && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] px-5 py-3 rounded-xl shadow-2xl bg-emerald-600 text-white text-sm font-medium flex items-center gap-2 transition-opacity duration-300">
           ✅ {toastMessage}
+        </div>
+      )}
+
+      {/* ⚠️ CHECKOUT ERROR TOAST */}
+      {checkoutError && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] px-5 py-3 rounded-xl shadow-2xl bg-red-600 text-white text-sm font-medium flex items-center gap-2 transition-opacity duration-300">
+          ⚠️ {checkoutError}
         </div>
       )}
 
