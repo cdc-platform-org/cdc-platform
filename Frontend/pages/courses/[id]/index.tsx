@@ -12,6 +12,7 @@ import { courseLanguageBadge } from '../../../src/utils/courseLanguage';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useAuthModal } from '../../../src/context/AuthModalContext';
 import SocialShareButtons from '../../../src/components/shared/SocialShareButtons';
+import SuccessStoriesCarousel from '../../../src/components/shared/SuccessStoriesCarousel';
 
 const dict = {
   ka: {
@@ -268,6 +269,9 @@ export default function CourseDetailPage() {
           )}
         </div>
       </div>
+
+      <SuccessStoriesCarousel lang={lang} />
+
       <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
     </div>
   );

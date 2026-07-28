@@ -13,6 +13,7 @@ import { HomepageContent, HomepageStat, GalleryImage } from '../src/types/siteCo
 import { getCourses } from '../src/services/courseService';
 import { getBlogPosts, blogTitle, blogDescription } from '../src/services/blogService';
 import { BlogPost } from '../src/types/blog';
+import SuccessStoriesCarousel from '../src/components/shared/SuccessStoriesCarousel';
 import { checkoutCourse } from '../src/services/paymentService';
 import { getSiteContent } from '../src/services/siteContentService';
 import { resolveBlogImageUrl } from '../src/services/blogService';
@@ -722,6 +723,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <SuccessStoriesCarousel lang={lang === 'GEO' ? 'ka' : 'en'} darkMode={darkMode} />
 
       {/* 👥 OFFICIAL TEAM SECTION */}
       <section className={`py-28 border-t ${darkMode ? 'bg-[#0e1422]/20 border-slate-800' : 'bg-slate-100/40 border-slate-200'}`}>
