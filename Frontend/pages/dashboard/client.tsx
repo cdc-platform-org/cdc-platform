@@ -38,6 +38,7 @@ import { createReview } from '../../src/services/reviewService';
 import { checkoutGigEscrow } from '../../src/services/paymentService';
 import { MyVacancy, EmploymentType, VacancyStatus } from '../../src/types/community';
 import { getMyVacancies, updateVacancy, UpdateVacancyPayload } from '../../src/services/vacancyService';
+import BusinessAiTab from '../../src/components/dashboard/BusinessAiTab';
 
 type Tab = 'overview' | 'profile' | 'vacancies' | 'orders' | 'agent';
 
@@ -996,12 +997,7 @@ function BusinessDashboardContent() {
                   </div>
                 )}
 
-                {activeTab === 'agent' && (
-                  <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/60 p-12 text-center">
-                    <Bot className="w-10 h-10 text-cyan-500 mx-auto mb-4" />
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{t.agentComingSoon}</p>
-                  </div>
-                )}
+                {activeTab === 'agent' && <BusinessAiTab lang={lang} />}
               </>
             )}
           </div>

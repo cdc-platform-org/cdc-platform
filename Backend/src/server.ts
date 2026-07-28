@@ -35,10 +35,14 @@ import studioRoutes from './routes/studio';
 import adminStudioRoutes from './routes/adminStudio';
 import adminCompaniesRoutes from './routes/adminCompanies';
 import aiRoutes from './routes/ai';
+import agentsRoutes from './routes/agents';
+import chatApiRoutes from './routes/chatApi';
+import adminPromosRoutes from './routes/adminPromos';
 import { errorHandler } from './middleware/errorHandler';
 import { PORT } from './utils/env';
 import { autoApproveOverdueGigs } from './services/gigApprovalService';
 import { cleanupExpiredDeletedAccounts } from './services/accountCleanupService';
+import { pauseExpiredTrialAgents } from './services/agentBillingService';
 
 declare global {
   namespace Express {
@@ -86,6 +90,14 @@ app.use('/api/studio', studioRoutes);
 app.use('/api/admin/studio', adminStudioRoutes);
 app.use('/api/admin/companies', adminCompaniesRoutes);
 app.use('/api/ai', aiRoutes);
+// CDC Business AI — /api/agents is the authenticated dashboard-facing CRUD
+// (config, knowledge base, analytics); /api/v1/chat is the public,
+// unauthenticated endpoint the embeddable widget calls directly from
+// third-party sites (see routes/chatApi.ts for its own CORS/rate-limit
+// posture — deliberately outside the app's normal auth model).
+app.use('/api/agents', agentsRoutes);
+app.use('/api/v1', chatApiRoutes);
+app.use('/api/admin/promos', adminPromosRoutes);
 
 const swaggerDocument = {
   openapi: '3.0.3',
@@ -171,3 +183,18 @@ setInterval(() => {
     })
     .catch((err) => console.error('[account-cleanup] run failed:', err));
 }, ACCOUNT_CLEANUP_POLL_INTERVAL_MS);
+
+// Same in-process-fallback caveat as above — production should prefer a
+// single external scheduler hitting POST /api/cron/pause-expired-trial-agents.
+// pauseExpiredTrialAgents() only ever sets status to PAUSED, never charges
+// anything, so a redundant run across instances is harmless.
+const AGENT_TRIAL_POLL_INTERVAL_MS = 60 * 60 * 1000; // hourly
+setInterval(() => {
+  pauseExpiredTrialAgents()
+    .then(({ pausedAgentIds }) => {
+      if (pausedAgentIds.length > 0) {
+        console.log(`[agent-trial-sweep] paused=${pausedAgentIds.length}`);
+      }
+    })
+    .catch((err) => console.error('[agent-trial-sweep] run failed:', err));
+}, AGENT_TRIAL_POLL_INTERVAL_MS);

@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { CRON_SECRET } from '../utils/env';
 import { autoApproveOverdueGigs } from '../services/gigApprovalService';
 import { cleanupExpiredDeletedAccounts } from '../services/accountCleanupService';
+import { pauseExpiredTrialAgents } from '../services/agentBillingService';
 
 const router = Router();
 const expectedSecretBuffer = Buffer.from(CRON_SECRET);
@@ -39,6 +40,14 @@ router.post('/cleanup-deleted-accounts', requireCronSecret, async (_req: Request
   const result = await cleanupExpiredDeletedAccounts();
   res.json({
     message: `Cleaned up ${result.hardDeletedUserIds.length + result.anonymizedUserIds.length} account(s) deleted more than 60 days ago (${result.hardDeletedUserIds.length} hard-deleted, ${result.anonymizedUserIds.length} anonymized).`,
+    ...result,
+  });
+});
+
+router.post('/pause-expired-trial-agents', requireCronSecret, async (_req: Request, res: Response) => {
+  const result = await pauseExpiredTrialAgents();
+  res.json({
+    message: `Paused ${result.pausedAgentIds.length} CDC Business AI agent(s) past their trial end date.`,
     ...result,
   });
 });

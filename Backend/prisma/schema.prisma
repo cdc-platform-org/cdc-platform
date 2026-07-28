@@ -279,6 +279,10 @@ model User {
   auditLogs              AuditLog[]
   siteContentUpdates     SiteContent[]
   studioInquiriesReviewed StudioInquiry[]
+  // CDC Business AI — a Business (Client) account's chat agents. See the
+  // Agent model's own comment for why billing fields live there instead of
+  // a separate Subscription model for now.
+  agents                 Agent[]
 
   @@map("users")
 }
@@ -1102,4 +1106,126 @@ model StudioInquiry {
 
   @@index([status])
   @@map("studio_inquiries")
+}
+
+// ============================================================
+// CDC BUSINESS AI — embeddable AI chat agents that Business (Client)
+// accounts configure and embed on their own external site via the public
+// widget (see /public/widget.js and POST /api/v1/chat).
+//
+// Billing/subscription fields (trialEndsAt, status) live directly on Agent
+// rather than a separate Subscription model for now: there's no BOG card
+// tokenization wired up yet to populate a real Subscription's card-token
+// fields, and a model that's mostly empty until that's built would just be
+// premature structure. `status` only ever gets flipped to PAUSED by the
+// trial-expiry cron (services/agentBillingService.ts) or an explicit user
+// action — nothing here ever auto-charges a card.
+// ============================================================
+
+enum AgentStatus {
+  TRIAL
+  ACTIVE
+  PAUSED
+}
+
+model Agent {
+  id             String      @id @default(uuid())
+  businessId     String
+  business       User        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name           String
+  primaryColor   String      @default("#06b6d4")
+  // Injected as the model's system instructions on every chat turn —
+  // defines the agent's persona/scope. Kept server-side only, never sent
+  // to the widget.
+  systemPrompt   String
+  // Origins the widget is allowed to call POST /api/v1/chat from (exact
+  // match against the request's Origin header) — the core of the public
+  // endpoint's abuse defense, since anyone can otherwise embed someone
+  // else's agent ID on their own page and burn that business's AI usage.
+  allowedOrigins String[]    @default([])
+  // Shown by the widget when the agent can't help — an escape hatch to a
+  // real human, not itself dialed by anything server-side.
+  fallbackPhone  String?
+  status         AgentStatus @default(TRIAL)
+  // 60-day free trial, set at creation (now() + 60 days). See the status
+  // enum's comment — nothing here auto-charges when this passes.
+  trialEndsAt    DateTime
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  knowledgeDocuments KnowledgeDocument[]
+  conversations      AgentConversation[]
+
+  @@index([businessId])
+  @@map("agents")
+}
+
+// A single piece of injected context — either a Q&A pair (question set) or
+// a freeform context passage (question null). Both just become part of
+// the RAG context assembled for each chat request.
+model KnowledgeDocument {
+  id        String   @id @default(uuid())
+  agentId   String
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  question  String?
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([agentId])
+  @@map("knowledge_documents")
+}
+
+// Deliberately separate from the platform's own User-to-User `Message`
+// model above — a widget visitor is an anonymous third party, not
+// necessarily (or usually) a CDC platform account.
+model AgentConversation {
+  id         String   @id @default(uuid())
+  agentId    String
+  agent      Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  // Client-generated (widget.js) and persisted in the visitor's browser, so
+  // a returning visitor's messages thread into the same conversation
+  // instead of starting a new one every page load.
+  visitorRef String
+  createdAt  DateTime @default(now())
+
+  messages AgentMessage[]
+
+  @@index([agentId])
+  @@index([visitorRef])
+  @@map("agent_conversations")
+}
+
+enum AgentMessageRole {
+  USER
+  ASSISTANT
+}
+
+model AgentMessage {
+  id             String            @id @default(uuid())
+  conversationId String
+  conversation   AgentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           AgentMessageRole
+  content        String
+  createdAt      DateTime          @default(now())
+
+  @@index([conversationId])
+  @@map("agent_messages")
+}
+
+// Structural for now — validated and its discount computed at redemption
+// time, but not yet wired into a real checkout flow (see Agent's own
+// comment on why billing is deferred). currentUses is incremented
+// atomically by the redemption route once that exists.
+model PromoCode {
+  id              String    @id @default(uuid())
+  code            String    @unique
+  discountPercent Int?
+  discountAmount  Int?
+  expiresAt       DateTime?
+  maxUses         Int?
+  currentUses     Int       @default(0)
+  createdAt       DateTime  @default(now())
+
+  @@map("promo_codes")
 }

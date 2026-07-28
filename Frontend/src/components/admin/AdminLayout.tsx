@@ -20,6 +20,7 @@ import {
   Wallet,
   Lock,
   ShieldCheck,
+  Tag,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AdminLangProvider, useAdminLang } from '../../context/AdminLangContext';
@@ -51,6 +52,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/finance', labelKey: 'finance', icon: CreditCard, tiers: ['SUPER_ADMIN'] },
   { href: '/admin/finance/payouts', labelKey: 'payouts', icon: Landmark, tiers: ['SUPER_ADMIN'] },
   { href: '/admin/financials', labelKey: 'financials', icon: Wallet, tiers: ['SUPER_ADMIN'] },
+  { href: '/admin/promos', labelKey: 'promos', icon: Tag, tiers: ['SUPER_ADMIN', 'MANAGER'] },
   { href: '/admin/team', labelKey: 'team', icon: Lock, tiers: ['SUPER_ADMIN'] },
 ];
 

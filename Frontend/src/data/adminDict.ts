@@ -25,6 +25,7 @@ export const adminDict = {
       finance: 'კურსის ფინანსები',
       payouts: 'სტუდენტების გადახდები',
       financials: 'ესქროუ & BOG',
+      promos: 'პრომო კოდები',
       team: 'გუნდი & უფლებები',
     },
     chrome: {
@@ -77,6 +78,7 @@ export const adminDict = {
       finance: 'Course Finance',
       payouts: 'Student Payouts',
       financials: 'Gig Escrow & BOG',
+      promos: 'Promo Codes',
       team: 'Team & Permissions',
     },
     chrome: {
