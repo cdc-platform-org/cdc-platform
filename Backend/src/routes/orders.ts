@@ -1,8 +1,15 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { orderCreateSchema, orderUpdateSchema } from '../schemas/orderSchemas';
+import { authenticate, requireAdminRole } from '../middleware/auth';
 
 const router = Router();
+
+// Enterprise/B2B bulk-course orders — contains business contact PII
+// (enterprise name + contactEmail) and lets a caller flip an order's
+// status, so this is admin-team-only, same tier as blog/CMS content
+// management (SUPER_ADMIN + MANAGER). Previously had no auth at all.
+router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
 
 router.get('/', async (req, res) => {
   const orders = await prisma.order.findMany({

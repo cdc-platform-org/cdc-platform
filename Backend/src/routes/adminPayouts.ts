@@ -8,6 +8,12 @@ const router = Router();
 // Payout approvals are SUPER_ADMIN only per the RBAC hierarchy.
 router.use(authenticate, requireAdminRole('SUPER_ADMIN'));
 
+// Thrown when the atomic claim below finds the request was already
+// resolved (approved/rejected) by a concurrent request between our
+// advisory read and the transaction — the safe, expected loser path for
+// the race this route used to be vulnerable to, not a real server error.
+class PayoutAlreadyResolvedError extends Error {}
+
 const userSelect = { select: { id: true, name: true, email: true, earningsBalance: true } };
 
 router.get('/', async (req: Request, res: Response) => {
@@ -33,17 +39,37 @@ router.post('/:id/approve', async (req: Request, res: Response) => {
     return res.status(400).json({ message: "The student's balance no longer covers this request." });
   }
 
-  const newBalance = user.earningsBalance - request.amount;
-  const [updatedRequest] = await prisma.$transaction([
-    prisma.payoutRequest.update({
-      where: { id: request.id },
-      data: { status: 'APPROVED', adminNote: result.data.adminNote, reviewedById: req.user!.id, resolvedAt: new Date() },
-    }),
-    prisma.user.update({ where: { id: request.userId }, data: { earningsBalance: newBalance } }),
-    prisma.walletEntry.create({
-      data: { userId: request.userId, type: 'PAYOUT_DEBIT', amount: -request.amount, balanceAfter: newBalance },
-    }),
-  ]);
+  let updatedRequest;
+  try {
+    updatedRequest = await prisma.$transaction(async (tx) => {
+      // Atomically claim the request — if a concurrent approve/reject for
+      // this same request already landed between our PENDING read above and
+      // here, claim.count is 0 and we abort instead of double-debiting.
+      const claim = await tx.payoutRequest.updateMany({
+        where: { id: request.id, status: 'PENDING' },
+        data: { status: 'APPROVED', adminNote: result.data.adminNote, reviewedById: req.user!.id, resolvedAt: new Date() },
+      });
+      if (claim.count === 0) {
+        throw new PayoutAlreadyResolvedError();
+      }
+      // Atomic decrement — was previously a read-then-write
+      // (earningsBalance - amount), a lost-update race if two different
+      // pending requests for the same student were approved concurrently.
+      const updatedUser = await tx.user.update({
+        where: { id: request.userId },
+        data: { earningsBalance: { decrement: request.amount } },
+      });
+      await tx.walletEntry.create({
+        data: { userId: request.userId, type: 'PAYOUT_DEBIT', amount: -request.amount, balanceAfter: updatedUser.earningsBalance },
+      });
+      return tx.payoutRequest.findUniqueOrThrow({ where: { id: request.id } });
+    });
+  } catch (err) {
+    if (err instanceof PayoutAlreadyResolvedError) {
+      return res.status(400).json({ message: 'This request has already been reviewed.' });
+    }
+    throw err;
+  }
 
   await logAdminAction({
     action: 'payout.approve',

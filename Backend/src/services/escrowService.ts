@@ -50,19 +50,25 @@ export async function releaseEscrow(gigId: string) {
   return prisma.$transaction(async (tx) => {
     const transaction = await tx.gigTransaction.findUnique({ where: { gigId } });
     if (!transaction) throw new Error('No escrow transaction found for this gig.');
-    if (transaction.status !== 'HELD_IN_ESCROW') {
-      throw new Error('Funds are not currently held in escrow.');
-    }
-    const updatedTransaction = await tx.gigTransaction.update({
-      where: { id: transaction.id },
+
+    // Atomically claim — if this gig's escrow was already released by a
+    // concurrent call (e.g. a manual client approval racing the hourly
+    // auto-approve cron on the same gig), claim.count is 0 and we abort
+    // instead of double-crediting the freelancer.
+    const claim = await tx.gigTransaction.updateMany({
+      where: { id: transaction.id, status: 'HELD_IN_ESCROW' },
       data: { status: 'RELEASED', releasedAt: new Date() },
     });
-    const freelancer = await tx.user.findUnique({ where: { id: transaction.freelancerId } });
-    if (!freelancer) throw new Error('Freelancer account not found.');
-    const newBalance = freelancer.earningsBalance + transaction.netAmount;
-    await tx.user.update({
-      where: { id: freelancer.id },
-      data: { earningsBalance: newBalance },
+    if (claim.count === 0) {
+      throw new Error('Funds are not currently held in escrow.');
+    }
+
+    // Atomic increment — was previously a read-then-write
+    // (earningsBalance + netAmount), a lost-update race if two different
+    // gigs for the same freelancer were approved at nearly the same time.
+    const freelancer = await tx.user.update({
+      where: { id: transaction.freelancerId },
+      data: { earningsBalance: { increment: transaction.netAmount } },
     });
     await tx.walletEntry.create({
       data: {
@@ -70,13 +76,13 @@ export async function releaseEscrow(gigId: string) {
         type: 'ESCROW_RELEASE_CREDIT',
         amount: transaction.netAmount,
         relatedGigTransactionId: transaction.id,
-        balanceAfter: newBalance,
+        balanceAfter: freelancer.earningsBalance,
       },
     });
     await tx.gig.update({
       where: { id: gigId },
       data: { status: 'completed' },
     });
-    return updatedTransaction;
+    return tx.gigTransaction.findUniqueOrThrow({ where: { id: transaction.id } });
   });
 }
