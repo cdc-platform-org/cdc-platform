@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
+import BackButton from '../src/components/common/BackButton';
 import { GalleryContent } from '../src/types/siteContent';
 import { getSiteContent } from '../src/services/siteContentService';
 import { resolveBlogImageUrl } from '../src/services/blogService';
@@ -55,6 +56,9 @@ export default function GalleryPage() {
       <SiteHeader />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 md:py-16 flex-1 w-full">
+        <div className="mb-4">
+          <BackButton fallbackHref="/" className="dark:text-slate-400 dark:hover:text-slate-100" />
+        </div>
         <h1 className="text-3xl font-black mb-2">{t.title}</h1>
         <p className="text-slate-500 dark:text-slate-400 mb-10">{t.subtitle}</p>
 

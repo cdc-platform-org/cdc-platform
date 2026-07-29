@@ -3,10 +3,14 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import RoleGate from '../../src/components/auth/RoleGate';
 import PostingForm from '../../src/components/community/PostingForm';
+import BackButton from '../../src/components/common/BackButton';
 
 function PostGigPageContent() {
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10">
+      <div className="max-w-2xl mx-auto mb-4">
+        <BackButton fallbackHref="/gigs" />
+      </div>
       <h1 className="text-2xl font-semibold text-gray-900 text-center mb-8">Post a Gig</h1>
       <RoleGate
         allowedRoles={['Client', 'SuperAdmin']}

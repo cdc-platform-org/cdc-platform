@@ -5,6 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import VacancyCard from '../../src/components/community/VacancyCard';
 import FilterBar from '../../src/components/community/FilterBar';
+import BackButton from '../../src/components/common/BackButton';
 import ApplicationModal from '../../src/components/community/ApplicationModal';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
@@ -70,6 +71,9 @@ function VacanciesPageContent() {
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10">
       <div className="max-w-4xl mx-auto">
+        <div className="mb-4">
+          <BackButton fallbackHref="/" />
+        </div>
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold text-gray-900">{t('marketplace.vacanciesTitle')}</h1>
           {!isAuthenticated ? (

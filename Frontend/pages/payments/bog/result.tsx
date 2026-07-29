@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
+import BackButton from '../../../src/components/common/BackButton';
 import { getBogPaymentStatus, BogPaymentStatusData } from '../../../src/services/paymentService';
 
 const dict = {
@@ -97,6 +98,9 @@ function BogResultContent() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center">
+        <div className="mb-4 text-left">
+          <BackButton fallbackHref="/" />
+        </div>
         <h1 className="text-xl font-semibold text-gray-900 mb-4">{t.title}</h1>
 
         {typeof paymentId !== 'string' ? (

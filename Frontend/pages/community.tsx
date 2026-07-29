@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import SiteFooter from '../src/components/layout/SiteFooter';
+import BackButton from '../src/components/common/BackButton';
 
 interface Post {
   id: number;
@@ -122,8 +123,11 @@ export default function Community() {
       </nav>
 
       {/* 🏙️ MAIN CONTAINER */}
+      <div className="max-w-7xl mx-auto px-4 md:px-8 pt-6">
+        <BackButton fallbackHref="/" className={darkMode ? 'text-slate-400 hover:text-slate-100' : ''} />
+      </div>
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         {/* 📝 LEFT COLUMN: PREMIUM POST FORM */}
         <div className="lg:col-span-1">
           <div className={`rounded-3xl p-6 border backdrop-blur-xl sticky top-28 ${darkMode ? 'bg-[#0e1422]/60 border-slate-800 shadow-2xl' : 'bg-white border-slate-200/80 shadow-md'}`}>

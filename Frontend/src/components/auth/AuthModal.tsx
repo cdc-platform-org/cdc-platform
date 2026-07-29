@@ -134,6 +134,16 @@ export default function AuthModal() {
     return () => window.removeEventListener('google-gsi-ready', handleReady);
   }, [googleReady]);
 
+  useEffect(() => {
+    if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.warn(
+        'NEXT_PUBLIC_GOOGLE_CLIENT_ID is not set — the "Continue with Google" button will render disabled. ' +
+          'Set it in Frontend/.env.local (see .env.example) and restart the dev server to pick it up.'
+      );
+    }
+  }, []);
+
   useEscapeToClose(isOpen, closeAuthModal);
 
   // Runs once login (email/password or Google) succeeds. A pending onSuccess

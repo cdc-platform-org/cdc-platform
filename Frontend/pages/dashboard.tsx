@@ -15,6 +15,7 @@ import {
 import ProtectedRoute from '../src/components/auth/ProtectedRoute';
 import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
+import BackButton from '../src/components/common/BackButton';
 import { useAuth } from '../src/context/AuthContext';
 import { MyCourseWithProgress } from '../src/types/lms';
 import { getMyCourses, downloadCertificate } from '../src/services/courseService';
@@ -324,6 +325,10 @@ function DashboardContent() {
       </Head>
 
       <SiteHeader />
+
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
+        <BackButton fallbackHref="/" className="dark:text-slate-400 dark:hover:text-slate-100" />
+      </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-12 grid md:grid-cols-4 gap-6 md:gap-8 flex-1 w-full">
         {/* SIDE MENU */}

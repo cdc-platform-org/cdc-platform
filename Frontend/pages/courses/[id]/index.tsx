@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Head from 'next/head';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
+import BackButton from '../../../src/components/common/BackButton';
 import { Course, SyllabusSection } from '../../../src/types/lms';
 import { getCourse, getProgressSummary, getSyllabus } from '../../../src/services/courseService';
 import { checkoutCourse } from '../../../src/services/paymentService';
@@ -145,7 +146,10 @@ export default function CourseDetailPage() {
     return (
       <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
         <SiteHeader />
-        <div className="flex-1 flex items-center justify-center text-sm text-slate-600 dark:text-slate-300">{t.notFound}</div>
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-sm text-slate-600 dark:text-slate-300">
+          <p>{t.notFound}</p>
+          <BackButton fallbackHref="/courses" className="dark:text-slate-400 dark:hover:text-slate-100" />
+        </div>
         <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
       </div>
     );

@@ -5,6 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import StarRating from '../../src/components/community/StarRating';
 import DirectHireModal from '../../src/components/community/DirectHireModal';
+import BackButton from '../../src/components/common/BackButton';
 import VerifiedGraduateBadge from '../../src/components/community/VerifiedGraduateBadge';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
@@ -91,6 +92,9 @@ function ProfileContent() {
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10">
       <div className="max-w-2xl mx-auto">
+        <div className="mb-4">
+          <BackButton fallbackHref="/" />
+        </div>
         {offerSent && (
           <div className="mb-6 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
             {t('directHireModal.success')}

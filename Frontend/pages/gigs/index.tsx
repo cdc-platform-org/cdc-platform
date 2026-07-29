@@ -5,6 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import GigCard from '../../src/components/community/GigCard';
 import FilterBar from '../../src/components/community/FilterBar';
+import BackButton from '../../src/components/common/BackButton';
 import ProposalModal from '../../src/components/community/ProposalModal';
 import ReviewModal from '../../src/components/community/ReviewModal';
 import GraduateOnlyModal from '../../src/components/community/GraduateOnlyModal';
@@ -98,6 +99,9 @@ function GigsPageContent() {
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10">
       <div className="max-w-4xl mx-auto">
+        <div className="mb-4">
+          <BackButton fallbackHref="/" />
+        </div>
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold text-gray-900">{t('marketplace.gigsTitle')}</h1>
           {!isAuthenticated ? (

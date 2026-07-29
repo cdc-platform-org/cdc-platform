@@ -4,6 +4,7 @@ import { GetServerSideProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import ApplicationsReviewList from '../../../src/components/community/ApplicationsReviewList';
+import BackButton from '../../../src/components/common/BackButton';
 import { useAuth } from '../../../src/context/AuthContext';
 import { Vacancy, VacancyApplication } from '../../../src/types/community';
 import {
@@ -74,15 +75,21 @@ function VacancyApplicationsContent() {
 
   if (notFoundOrForbidden || !vacancy) {
     return (
-      <p className="text-center text-sm text-gray-500 py-10">
-        This vacancy doesn't exist or you don't have permission to view its applications.
-      </p>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-50 py-10">
+        <p className="text-center text-sm text-gray-500">
+          This vacancy doesn't exist or you don't have permission to view its applications.
+        </p>
+        <BackButton fallbackHref="/vacancies" />
+      </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10">
       <div className="max-w-2xl mx-auto">
+        <div className="mb-4">
+          <BackButton fallbackHref="/vacancies" />
+        </div>
         <h1 className="text-2xl font-semibold text-gray-900">{vacancy.title}</h1>
         <p className="text-sm text-gray-500 mt-1 mb-8">
           {applications.length} application{applications.length !== 1 ? 's' : ''} · {vacancy.location}

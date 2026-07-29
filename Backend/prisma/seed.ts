@@ -12,6 +12,44 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+// Default forum categories — the forum has no self-serve way to create a
+// category (that's admin-only, see routes/adminForum.ts), so a fresh DB
+// would otherwise show an empty /forum page forever. Upserted by slug so
+// re-running the seed is safe and never clobbers admin edits to name/description.
+const DEFAULT_FORUM_CATEGORIES = [
+  {
+    slug: 'general',
+    name: 'ზოგადი დისკუსია',
+    description: 'ზოგადი თემები და საუბრები საზოგადოებისთვის.',
+  },
+  {
+    slug: 'courses',
+    name: 'კურსები და სწავლება',
+    description: 'კითხვები და გამოცდილება კურსების შესახებ.',
+  },
+  {
+    slug: 'freelance',
+    name: 'ფრილანსი და პროექტები',
+    description: 'გიგების, ვაკანსიების და პროექტების განხილვა.',
+  },
+  {
+    slug: 'help',
+    name: 'დახმარება და მხარდაჭერა',
+    description: 'ტექნიკური თუ ორგანიზაციული საკითხები პლატფორმაზე.',
+  },
+];
+
+async function seedForumCategories() {
+  for (const category of DEFAULT_FORUM_CATEGORIES) {
+    await prisma.forumCategory.upsert({
+      where: { slug: category.slug },
+      update: { name: category.name, description: category.description },
+      create: category,
+    });
+  }
+  console.log(`Forum categories ready: ${DEFAULT_FORUM_CATEGORIES.length} default categories seeded.`);
+}
+
 function requireEnv(key: string): string {
   const value = process.env[key];
   if (!value) {
@@ -21,6 +59,8 @@ function requireEnv(key: string): string {
 }
 
 async function main() {
+  await seedForumCategories();
+
   const superAdminEmail = requireEnv('SEED_SUPERADMIN_EMAIL').toLowerCase();
   const superAdminPassword = requireEnv('SEED_SUPERADMIN_PASSWORD');
   if (superAdminPassword.length < 8) {

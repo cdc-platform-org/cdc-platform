@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { Briefcase, Sparkles, FileEdit, Sun, Moon } from 'lucide-react';
 import SiteFooter from '../src/components/layout/SiteFooter';
+import BackButton from '../src/components/common/BackButton';
 import Toast from '../src/components/shared/Toast';
 import { AgencyContent, AgencyPortfolioItem } from '../src/types/siteContent';
 import { getSiteContent } from '../src/services/siteContentService';
@@ -201,6 +202,9 @@ export default function Agency() {
       {/* 🏙️ HERO BANNER */}
       <div className={`border-b text-center py-20 backdrop-blur-md ${darkMode ? 'bg-[#0e1422]/40 border-slate-800' : 'bg-slate-100/40 border-slate-200'}`}>
         <div className="max-w-4xl mx-auto px-6">
+          <div className="flex justify-start mb-6">
+            <BackButton fallbackHref="/" className={darkMode ? 'text-slate-400 hover:text-slate-100' : ''} />
+          </div>
           <div className="flex justify-center mb-4">
             <span className="text-xs font-black uppercase tracking-widest px-4 py-2 bg-purple-500/10 text-purple-500 rounded-full border border-purple-500/20 flex items-center gap-2">
               <Briefcase className="w-3.5 h-3.5" />

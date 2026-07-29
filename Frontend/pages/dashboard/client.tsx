@@ -28,6 +28,7 @@ import {
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
+import BackButton from '../../src/components/common/BackButton';
 import { useAuth } from '../../src/context/AuthContext';
 import { useEscapeToClose } from '../../src/hooks/useEscapeToClose';
 import { updateProfile, uploadAvatar, uploadVerificationDoc } from '../../src/services/authService';
@@ -623,6 +624,9 @@ function BusinessDashboardContent() {
       <SiteHeader />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-12 flex-1 w-full">
+        <div className="mb-4">
+          <BackButton fallbackHref="/" className="dark:text-slate-400 dark:hover:text-slate-100" />
+        </div>
         <div className="mb-8">
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-black flex items-center gap-2">

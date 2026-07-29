@@ -3,6 +3,7 @@ import { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
+import BackButton from '../../src/components/common/BackButton';
 import { PaymentMethod, Invoice } from '../../src/types/billing';
 import {
   getPaymentMethods,
@@ -80,6 +81,9 @@ function PaymentsPageContent() {
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10">
       <div className="max-w-3xl mx-auto">
+        <div className="mb-4">
+          <BackButton fallbackHref="/dashboard" />
+        </div>
         <h1 className="text-2xl font-semibold text-gray-900 mb-8">{t('pageTitle')}</h1>
 
         {error && (

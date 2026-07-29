@@ -5,7 +5,6 @@ import { createThreadSchema, createCommentSchema } from '../schemas/forumSchemas
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
 
 const router = Router();
-router.use(authenticate);
 
 const authorSelect = { select: { id: true, name: true, role: true } };
 
@@ -59,6 +58,9 @@ const threadInclude = (currentUserId: string) => ({
 // ============================================================
 // CATEGORIES
 // ============================================================
+// Public — the /forum index page lists categories for signed-out visitors
+// too (only posting/replying requires an approved account), so this must
+// not sit behind authenticate().
 router.get('/categories', async (_req: Request, res: Response) => {
   const categories = await prisma.forumCategory.findMany({
     orderBy: { createdAt: 'asc' },
@@ -75,6 +77,10 @@ router.get('/categories', async (_req: Request, res: Response) => {
     }))
   );
 });
+
+// Everything below (threads, comments, moderation) still requires a
+// signed-in account.
+router.use(authenticate);
 
 // ============================================================
 // THREADS

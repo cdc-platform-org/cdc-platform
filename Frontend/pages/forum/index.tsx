@@ -3,6 +3,7 @@ import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import CategoryCard from '../../src/components/forum/CategoryCard';
+import BackButton from '../../src/components/common/BackButton';
 import { ForumCategory } from '../../src/types/forum';
 import { getCategories } from '../../src/services/forumService';
 
@@ -22,6 +23,9 @@ function ForumIndexContent() {
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10">
       <div className="max-w-3xl mx-auto">
+        <div className="mb-4">
+          <BackButton fallbackHref="/" />
+        </div>
         <h1 className="text-2xl font-semibold text-gray-900 mb-8">{t('title')}</h1>
         {error && (
           <div className="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">

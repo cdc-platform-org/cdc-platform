@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
+import BackButton from '../../../src/components/common/BackButton';
 import CourseVideoPlayer from '../../../src/components/courses/CourseVideoPlayer';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useEscapeToClose } from '../../../src/hooks/useEscapeToClose';
@@ -185,8 +186,9 @@ function LearnContent() {
 
   if (error || !course) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-300 text-sm">
-        {error ?? t.notEnrolled}
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-950 text-slate-300 text-sm">
+        <p>{error ?? t.notEnrolled}</p>
+        <BackButton fallbackHref="/courses" className="text-slate-400 hover:text-slate-100" />
       </div>
     );
   }
@@ -200,6 +202,9 @@ function LearnContent() {
       <div className="flex flex-col lg:flex-row">
         {/* MAIN CONTENT — ~70% */}
         <div className="flex-1 lg:w-[70%] p-4 md:p-8">
+          <div className="mb-4">
+            <BackButton fallbackHref={`/courses/${courseId}`} className="text-slate-400 hover:text-slate-100" />
+          </div>
           <CourseVideoPlayer embedUrl={activeLesson?.embedUrl ?? null} title={activeLesson?.title ?? course.title} />
 
           <h1 className="text-xl font-bold mt-6">{activeLesson?.title ?? course.title}</h1>

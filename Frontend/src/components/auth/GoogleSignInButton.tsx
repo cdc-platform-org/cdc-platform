@@ -36,6 +36,17 @@ export default function GoogleSignInButton({ mode, role, lang, onCredential, dis
   }, [googleReady]);
 
   useEffect(() => {
+    if (!clientId && process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.warn(
+        'NEXT_PUBLIC_GOOGLE_CLIENT_ID is not set — the "Continue with Google" button will render disabled. ' +
+          'Set it in Frontend/.env.local (see .env.example) and restart the dev server to pick it up.'
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     if (!clientId || typeof window === 'undefined' || !window.google?.accounts?.id || !buttonRef.current) {
       return;
     }

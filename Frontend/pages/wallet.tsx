@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import ProtectedRoute from '../src/components/auth/ProtectedRoute';
+import BackButton from '../src/components/common/BackButton';
 import { getWalletSummary, createPayoutRequest, getMyPayoutRequests, WalletSummary, PayoutRequestRow } from '../src/services/walletService';
 
 function formatGel(minorUnits: number): string {
@@ -65,6 +66,9 @@ function WalletContent() {
         <title>Wallet | CDC</title>
       </Head>
       <div className="max-w-2xl mx-auto">
+        <div className="mb-4">
+          <BackButton fallbackHref="/dashboard" className="text-slate-400 hover:text-slate-100" />
+        </div>
         <h1 className="text-2xl font-black mb-6">💰 Wallet</h1>
 
         {loading || !summary ? (

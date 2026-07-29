@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import SiteFooter from './SiteFooter';
+import BackButton from '../common/BackButton';
 
 interface SimpleSiteLayoutProps {
   titleKa: string;
@@ -61,7 +62,12 @@ export default function SimpleSiteLayout({ titleKa, titleEn, children }: SimpleS
         </div>
       </nav>
 
-      <main className="flex-1 max-w-3xl mx-auto px-6 py-16 w-full">{children(lang)}</main>
+      <main className="flex-1 max-w-3xl mx-auto px-6 py-16 w-full">
+        <div className="mb-6">
+          <BackButton fallbackHref="/" className="text-slate-400 hover:text-slate-100" />
+        </div>
+        {children(lang)}
+      </main>
 
       <SiteFooter lang={lang} />
     </div>
