@@ -2,7 +2,12 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Server-side only (Next.js API routes run in Node, never shipped to the
 // browser bundle) — do not read this from a React component.
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+// Trimmed and stripped of accidental wrapping quotes: a local .env file goes
+// through dotenv, which strips quotes automatically, but hosting dashboards
+// (Vercel/Netlify/etc.) store whatever string you paste verbatim — a value
+// copied as `"AIza..."` (quotes included) becomes part of the literal key
+// and Google's API rejects it as invalid with no indication why.
+const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || '').trim().replace(/^['"]|['"]$/g, '');
 
 export function isGeminiConfigured(): boolean {
   return !!GEMINI_API_KEY;
