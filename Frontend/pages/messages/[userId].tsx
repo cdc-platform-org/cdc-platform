@@ -56,7 +56,7 @@ function MessagesThreadContent() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-16">
       <Head>
-        <title>{t.title} | CDC</title>
+        <title>{`${t.title} | CDC`}</title>
       </Head>
       <div className="max-w-2xl mx-auto">
         <Link href="/" className="text-sm text-slate-400 hover:text-white no-underline">

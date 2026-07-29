@@ -1,9 +1,10 @@
-import { PDFDocument, StandardFonts, rgb, PDFFont } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb, PDFFont, PDFName, PDFArray, PDFRawStream, decodePDFRawStream } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import QRCode from 'qrcode';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { CERTIFICATE_DIRECTOR_NAME } from '../utils/env';
 
 const TEMPLATE_PATH = path.join(__dirname, '..', '..', 'public', 'templates', 'certificate-template.pdf');
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -32,13 +33,34 @@ export class CertificateTemplateMissingError extends Error {
 
 export interface CertificateData {
   studentName: string;
-  // English transliteration, shown as a smaller second line under the main
-  // name when the student has set one under /dashboard/settings.
+  // English transliteration of the student's legal name, set under
+  // /dashboard/settings. Drawn on the same line as the Georgian name as
+  // "ია თავდიშვილი / Ia Tavdishvili" — see displayName in
+  // generateCertificatePdf. Never guessed when unset.
   studentNameSecondary?: string | null;
   courseTitle: string;
   instructorName: string;
+  // Signatory for the left-hand signature rule. Falls back to
+  // CERTIFICATE_DIRECTOR_NAME, and when that is unset too the rule is left
+  // blank (with its role label still printed) rather than filled with a
+  // fabricated name.
+  directorName?: string | null;
   issueDate: Date;
   verificationCode: string;
+}
+
+// Students can (and often do) type their English legal name in whatever
+// case they like under /dashboard/settings — capitalize each word for the
+// certificate specifically, without touching the stored value or any other
+// place that name is displayed.
+//
+// Splits on hyphens as well as spaces: double-barrelled surnames are common
+// here, and splitting on spaces alone printed "javakhishvili-maisuradze" as
+// "Javakhishvili-maisuradze". Each part keeps its own capital, and the
+// separators are preserved exactly as typed (so spacing/hyphenation is not
+// normalised behind the student's back).
+function toTitleCase(text: string): string {
+  return text.replace(/[^\s-]+/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
 }
 
 // CDC-CERT-YYYYMMDD-XXXXXXXX — short enough to print/read, random enough not
@@ -111,16 +133,34 @@ interface MixedFontPair {
   latin: PDFFont;
 }
 
-function widthOfMixedText(runs: ScriptRun[], size: number, fonts: MixedFontPair): number {
-  return runs.reduce((sum, run) => sum + (run.georgian ? fonts.georgian : fonts.latin).widthOfTextAtSize(run.text, size), 0);
+function countChars(runs: ScriptRun[]): number {
+  return runs.reduce((n, run) => n + Array.from(run.text).length, 0);
+}
+
+// `letterSpacing` is extra tracking in points inserted after every glyph but
+// the last — pdf-lib's drawText has no tracking option, so the drawing side
+// below emits one glyph at a time when it's non-zero. Used for the small
+// upper-case label lines ("PRESENTED TO", role captions), where tracking is
+// what makes them read as captions rather than body text. Georgian is not a
+// connected script, so per-glyph drawing is safe for both fonts.
+function widthOfMixedText(runs: ScriptRun[], size: number, fonts: MixedFontPair, letterSpacing = 0): number {
+  const base = runs.reduce((sum, run) => sum + (run.georgian ? fonts.georgian : fonts.latin).widthOfTextAtSize(run.text, size), 0);
+  return letterSpacing ? base + letterSpacing * Math.max(0, countChars(runs) - 1) : base;
 }
 
 // Shrinks `size` down to `minSize` until the mixed-script text fits maxWidth
 // — the same role fitText() played for single-font text before.
-function fitMixedText(text: string, maxWidth: number, startSize: number, minSize: number, fonts: MixedFontPair): { size: number; runs: ScriptRun[] } {
+function fitMixedText(
+  text: string,
+  maxWidth: number,
+  startSize: number,
+  minSize: number,
+  fonts: MixedFontPair,
+  letterSpacing = 0
+): { size: number; runs: ScriptRun[] } {
   const runs = splitScriptRuns(text);
   let size = startSize;
-  while (size > minSize && widthOfMixedText(runs, size, fonts) > maxWidth) {
+  while (size > minSize && widthOfMixedText(runs, size, fonts, letterSpacing) > maxWidth) {
     size -= 1;
   }
   return { size, runs };
@@ -129,15 +169,50 @@ function fitMixedText(text: string, maxWidth: number, startSize: number, minSize
 function drawMixedScriptText(
   page: import('pdf-lib').PDFPage,
   runs: ScriptRun[],
-  opts: { centerX: number; y: number; size: number; color: ReturnType<typeof rgb>; fonts: MixedFontPair }
+  opts: { centerX: number; y: number; size: number; color: ReturnType<typeof rgb>; fonts: MixedFontPair; letterSpacing?: number }
 ) {
-  const totalWidth = widthOfMixedText(runs, opts.size, opts.fonts);
+  const letterSpacing = opts.letterSpacing ?? 0;
+  const totalWidth = widthOfMixedText(runs, opts.size, opts.fonts, letterSpacing);
   let x = opts.centerX - totalWidth / 2;
   for (const run of runs) {
     const font = run.georgian ? opts.fonts.georgian : opts.fonts.latin;
-    page.drawText(run.text, { x, y: opts.y, size: opts.size, font, color: opts.color });
-    x += font.widthOfTextAtSize(run.text, opts.size);
+    if (!letterSpacing) {
+      page.drawText(run.text, { x, y: opts.y, size: opts.size, font, color: opts.color });
+      x += font.widthOfTextAtSize(run.text, opts.size);
+      continue;
+    }
+    for (const ch of Array.from(run.text)) {
+      page.drawText(ch, { x, y: opts.y, size: opts.size, font, color: opts.color });
+      x += font.widthOfTextAtSize(ch, opts.size) + letterSpacing;
+    }
   }
+}
+
+// Convenience wrapper for the one-off centered lines (heading, captions, the
+// completion sentence) — fits the string to `maxWidth` and draws it in one go.
+function drawFittedLine(
+  page: import('pdf-lib').PDFPage,
+  text: string,
+  opts: {
+    centerX: number;
+    y: number;
+    maxWidth: number;
+    startSize: number;
+    minSize: number;
+    color: ReturnType<typeof rgb>;
+    fonts: MixedFontPair;
+    letterSpacing?: number;
+  }
+) {
+  const { size, runs } = fitMixedText(text, opts.maxWidth, opts.startSize, opts.minSize, opts.fonts, opts.letterSpacing);
+  drawMixedScriptText(page, runs, {
+    centerX: opts.centerX,
+    y: opts.y,
+    size,
+    color: opts.color,
+    fonts: opts.fonts,
+    letterSpacing: opts.letterSpacing,
+  });
 }
 
 // Greedy word-wrap, mixed-script aware (splits each candidate line into
@@ -200,6 +275,134 @@ function drawMixedScriptBlock(
   });
 }
 
+// ============================================================
+// Template geometry
+//
+// public/templates/certificate-template.pdf has a MediaBox of exactly
+// 1491x1055pt and is built from three layers:
+//   1. a flattened 1491x1055 artwork image (frame, CDC logo, laurel seal, and
+//      all the gold rules / the navy QR box referenced below) — since the
+//      MediaBox matches its pixel size, one artwork pixel is one PDF point;
+//   2. the Director's scanned signature, a separate masked image sitting above
+//      the left signature rule;
+//   3. a TEXT layer holding the heading, the two body sentences and the four
+//      footer captions.
+//
+// Layer 3 is stripped at load time (see stripTextLayer) and re-drawn from
+// LABELS below instead of being drawn around. Three reasons it can't just be
+// kept: it misspells "professional" as "professioal" in the English body line;
+// its footer captions sit on mismatched baselines (Director at y=54 but
+// Instructor at y=75.4), so the two signature columns can never line up; and
+// it hard-codes one student's name, which every certificate would then print.
+// Its fonts are subset CFF/TrueType with no usable ToUnicode, so editing the
+// strings in place is not realistically maintainable — owning the text in code
+// is. Layers 1 and 2 are untouched, so the design is unchanged.
+//
+// Landmarks are stored as fractions of the page box so a re-export at another
+// DPI still lines up. Artwork pixel rows are noted as `px` for
+// re-verification (image y runs from the TOP, pdf y from the BOTTOM, so
+// pdfY = 1055 - imgY):
+//
+//   pdfY 576  px y479  a pair of short gold rules (x 359..489 and 1017..1147)
+//                      flanking the heading slot — the heading goes in the
+//                      489..1017 gap between them.
+//   pdfY 394  px y661  full-width gold divider with a centre diamond
+//                      (x 270..1220), separating the "presented to / student
+//                      name" band above from the "completed / course" band below.
+//   pdfY 62..163       footer row, split into four zones by gold vertical
+//                      separators at x 427, 706 and 1094:
+//                        zone A  x    0..427   left signature rule  (x   62..387, pdfY 113)
+//                                              + Director signature image (pdfY 106..189)
+//                        zone B  x  427..706   calendar icon        (x  547..588, pdfY 130..173)
+//                        zone C  x  706..1094  navy QR frame        (x  738..862, pdfY 52..181)
+//                                              + verification-code slot (x 862..1094)
+//                        zone D  x 1094..1491  right signature rule (x 1125..1424, pdfY 113)
+//
+// The signature rules are part of the artwork, so nothing here draws its own
+// underline (an earlier revision did, double-ruling the instructor slot).
+// ============================================================
+// Exported so scripts/verifyCertificateLayout.ts can assert these landmarks
+// against the artwork measured off a rasterised render, instead of against the
+// comment above that describes them.
+export const G = {
+  // Heading, on the baseline the artwork's two short gold rules flank.
+  headingY: 565 / 1055,
+  headingGapLeft: 489 / 1491,
+  headingGapRight: 1017 / 1491,
+  // "presented to" line and the student name, above the gold divider.
+  presentedToY: 525.5 / 1055,
+  nameY: 455 / 1055,
+  // "completed the course" line and the course title, below the divider.
+  completedY: 345.6 / 1055,
+  courseCenterY: 285 / 1055,
+  // Closing two-line statement, above the footer separators.
+  closingKaY: 227 / 1055,
+  closingEnY: 205 / 1055,
+  // Footer: every zone puts its value on one shared baseline and its caption
+  // on another, which is what makes the four columns read as one balanced row.
+  footerValueY: 85.5 / 1055,
+  footerCaptionY: 58 / 1055,
+  signatureLeftX: 224.5 / 1491,
+  dateCenterX: 567.5 / 1491,
+  codeCenterX: 978 / 1491,
+  signatureRightX: 1274.5 / 1491,
+  // Navy QR frame — the QR is centered inside these bounds, never at the page corner.
+  qrFrameLeft: 738 / 1491,
+  qrFrameRight: 862 / 1491,
+  qrFrameBottom: 52 / 1055,
+  qrFrameTop: 181 / 1055,
+  // Per-slot text widths, each the usable width of the artwork region it sits in.
+  courseMaxWidth: 950 / 1491,
+  bodyMaxWidth: 1000 / 1491,
+  nameMaxWidth: 1150 / 1491,
+  signatureMaxWidth: 320 / 1491,
+  dateMaxWidth: 250 / 1491,
+  codeMaxWidth: 215 / 1491,
+};
+
+// Every fixed string on the certificate. The Georgian is the wording the
+// template's own (stripped) text layer used; the English is its counterpart on
+// the same line, which is where the template's "professioal" typo lived.
+const LABELS = {
+  heading: 'კურსის დასრულების სერტიფიკატი',
+  presentedTo: 'ეს სერტიფიკატი გადაეცემა / This certificate is presented to',
+  completed: 'წარმატებით დაასრულა კურსი / for successfully completing the course',
+  closingKa: 'სერტიფიკატი ადასტურებს მიღებულ ცოდნას და პროფესიულ განვითარებას',
+  closingEn: 'This certificate confirms the knowledge acquired and professional development',
+  director: 'დირექტორი / Director',
+  issueDate: 'გაცემის თარიღი / Issue Date',
+  certificateId: 'სერტიფიკატის ID / Certificate ID',
+  instructor: 'ლექტორი / Instructor',
+};
+
+// Drops every text-showing block from the page's content stream, keeping all
+// image and vector operators (so the artwork and the Director's signature
+// survive untouched) — see the layer notes above for why the template's own
+// text is not reused. A template that ships without a text layer makes this a
+// no-op, so this stays safe if the artwork is ever re-exported clean.
+function stripTextLayer(doc: PDFDocument, page: import('pdf-lib').PDFPage): void {
+  const decodeStream = (obj: unknown): string | null =>
+    obj instanceof PDFRawStream ? Buffer.from(decodePDFRawStream(obj).decode()).toString('latin1') : null;
+
+  const contents = doc.context.lookup(page.node.get(PDFName.of('Contents')));
+  const parts: string[] = [];
+  if (contents instanceof PDFArray) {
+    for (let i = 0; i < contents.size(); i += 1) {
+      const part = decodeStream(doc.context.lookup(contents.get(i)));
+      if (part === null) return; // unexpected shape — leave the page as-is
+      parts.push(part);
+    }
+  } else {
+    const part = decodeStream(contents);
+    if (part === null) return;
+    parts.push(part);
+  }
+
+  const stripped = parts.join('\n').replace(/\bBT\b[\s\S]*?\bET\b/g, '');
+  const ref = doc.context.register(doc.context.flateStream(stripped));
+  page.node.set(PDFName.of('Contents'), ref);
+}
+
 export async function generateCertificatePdf(data: CertificateData): Promise<Buffer> {
   if (!fs.existsSync(TEMPLATE_PATH)) {
     throw new CertificateTemplateMissingError();
@@ -208,6 +411,7 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Buf
   const doc = await PDFDocument.load(templateBytes);
   doc.registerFontkit(fontkit);
   const page = doc.getPages()[0];
+  stripTextLayer(doc, page);
   const { width, height } = page.getSize();
 
   const latinBold = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -218,109 +422,193 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Buf
   const regularFonts: MixedFontPair = { georgian: georgianRegular, latin: latinRegular };
 
   const navy = rgb(0.06, 0.09, 0.16);
-  const maxTextWidth = width - 160;
+  // Muted slate for the caption/body lines, so they sit clearly behind the
+  // student name and course title in the page's visual hierarchy instead of
+  // competing with them for attention.
+  const slate = rgb(0.42, 0.45, 0.52);
+  const centerX = width / 2;
 
-  // Real branded template (public/templates/certificate-template.pdf) —
-  // coordinates below are fractions of the page box, matched by eye against
-  // its blank reserved regions: name band above the gold divider, course
-  // title band below "for successfully completing…", and a footer row with
-  // a static baked-in Director signature (left), an Issue Date box, a
-  // Certificate ID box, and a blank Instructor slot (right). If the template
-  // is ever redesigned at a different aspect ratio, re-check these against a
-  // rendered test certificate rather than assuming they still line up.
+  // Heading — centered in the gap between the artwork's two short gold rules,
+  // on the baseline they flank.
+  drawFittedLine(page, LABELS.heading, {
+    centerX,
+    y: height * G.headingY,
+    maxWidth: width * (G.headingGapRight - G.headingGapLeft) - 32,
+    startSize: 26,
+    minSize: 16,
+    color: navy,
+    fonts: boldFonts,
+  });
 
-  // Student name — large, centered, sitting exactly on the "PRESENTED TO"
-  // baseline. If the student has set an English transliteration under
-  // /dashboard/settings, it's drawn as a smaller second line directly below
-  // — the primary baseline position never moves, so it stays exactly where
-  // the template art expects it regardless of whether the second line exists.
-  const { size: nameSize, runs: nameRuns } = fitMixedText(data.studentName, maxTextWidth, 34, 18, boldFonts);
-  const nameBaselineY = height * 0.393;
-  drawMixedScriptText(page, nameRuns, { centerX: width / 2, y: nameBaselineY, size: nameSize, color: navy, fonts: boldFonts });
+  // "This certificate is presented to" — the lead-in above the student name.
+  drawFittedLine(page, LABELS.presentedTo, {
+    centerX,
+    y: height * G.presentedToY,
+    maxWidth: width * G.bodyMaxWidth,
+    startSize: 16,
+    minSize: 10,
+    color: slate,
+    fonts: regularFonts,
+  });
 
-  if (data.studentNameSecondary) {
-    const secondarySize = Math.max(12, Math.round(nameSize * 0.45));
-    const { size: fittedSecondarySize, runs: secondaryRuns } = fitMixedText(
-      data.studentNameSecondary,
-      maxTextWidth,
-      secondarySize,
-      10,
-      regularFonts
-    );
-    drawMixedScriptText(page, secondaryRuns, {
-      centerX: width / 2,
-      y: nameBaselineY - nameSize * 0.85,
-      size: fittedSecondarySize,
-      color: navy,
-      fonts: regularFonts,
-    });
-  }
+  // Student name — the largest text in the upper band, between the lead-in
+  // above and the gold divider below. When the student has set an English
+  // transliteration under /dashboard/settings, both names are drawn together
+  // on this SAME line as "ია თავდიშვილი / Ia Tavdishvili" (a single
+  // fitMixedText run) rather than a stacked second line, which previously
+  // collided with the divider. Falls back to the Georgian name alone when no
+  // transliteration is set (never guessed/fabricated).
+  const displayName = data.studentNameSecondary
+    ? `${data.studentName} / ${toTitleCase(data.studentNameSecondary)}`
+    : data.studentName;
+  drawFittedLine(page, displayName, {
+    centerX,
+    y: height * G.nameY,
+    maxWidth: width * G.nameMaxWidth,
+    startSize: 44,
+    minSize: 18,
+    color: navy,
+    fonts: boldFonts,
+  });
 
-  // Course title — the centerpiece of the certificate. Starts large (30pt),
-  // drops to a smaller starting size for long titles (>35 chars), and wraps
-  // to up to 2 centered lines rather than clipping or overlapping — the
-  // block's vertical midpoint is pinned to the template's title band so
-  // extra lines grow evenly above/below it instead of drifting off-band.
-  const { size: courseSize, lines: courseLines } = fitMixedTextMultiline(data.courseTitle, maxTextWidth, {
-    baseSize: 30,
-    longTitleThreshold: 35,
-    longTitleSize: 22,
-    minSize: 14,
+  // "for successfully completing the course" — the lead-in above the title.
+  drawFittedLine(page, LABELS.completed, {
+    centerX,
+    y: height * G.completedY,
+    maxWidth: width * G.bodyMaxWidth,
+    startSize: 16,
+    minSize: 10,
+    color: slate,
+    fonts: regularFonts,
+  });
+
+  // Course title — the centerpiece of the certificate and, after the student
+  // name, the most prominent text on the page. Starts at 44pt bold, steps down
+  // to 34pt for long titles (>32 chars), and wraps to up to 2 centered lines
+  // rather than clipping; the block's vertical midpoint is pinned inside the
+  // band the divider opens, so a second line grows evenly above and below
+  // instead of pushing into the closing lines beneath it.
+  const { size: courseSize, lines: courseLines } = fitMixedTextMultiline(data.courseTitle, width * G.courseMaxWidth, {
+    baseSize: 44,
+    longTitleThreshold: 32,
+    longTitleSize: 34,
+    minSize: 16,
     maxLines: 2,
     fonts: boldFonts,
   });
   drawMixedScriptBlock(page, courseLines, {
-    centerX: width / 2,
-    centerY: height * 0.24,
+    centerX,
+    centerY: height * G.courseCenterY,
     size: courseSize,
-    lineHeight: courseSize * 1.25,
+    lineHeight: courseSize * 1.2,
     color: navy,
     fonts: boldFonts,
   });
 
-  // Issue date — inside the calendar-icon box in the footer row (pure digits/dashes, plain Latin font is enough).
-  const dateText = data.issueDate.toISOString().slice(0, 10);
-  const dateWidth = latinRegular.widthOfTextAtSize(dateText, 11);
-  page.drawText(dateText, {
-    x: width * 0.383 - dateWidth / 2,
-    y: height * 0.105,
-    size: 11,
-    font: latinRegular,
-    color: navy,
+  // Closing statement, Georgian then English. "professional" is spelled out in
+  // full here — the template's own text layer had it as "professioal".
+  drawFittedLine(page, LABELS.closingKa, {
+    centerX,
+    y: height * G.closingKaY,
+    maxWidth: width * G.bodyMaxWidth,
+    startSize: 15,
+    minSize: 10,
+    color: slate,
+    fonts: regularFonts,
+  });
+  drawFittedLine(page, LABELS.closingEn, {
+    centerX,
+    y: height * G.closingEnY,
+    maxWidth: width * G.bodyMaxWidth,
+    startSize: 15,
+    minSize: 10,
+    color: slate,
+    fonts: regularFonts,
   });
 
-  // Certificate ID (verification code) — inside the ID box in the footer row
-  // (always plain Latin/digits — see generateVerificationCode above).
-  let codeSize = 10;
-  while (codeSize > 6 && latinRegular.widthOfTextAtSize(data.verificationCode, codeSize) > width * 0.11) {
-    codeSize -= 1;
+  // Footer row — four zones, every value on one shared baseline and every
+  // caption on another, each centered on its own artwork landmark (the two
+  // signature rules, the calendar icon, the code slot beside the QR frame).
+  // That shared rhythm is what makes the Director and Instructor columns
+  // symmetric; the template's own captions sat on mismatched baselines.
+  //
+  // The Director name is blank when neither the caller nor
+  // CERTIFICATE_DIRECTOR_NAME supplies one — the caption still prints, rather
+  // than inventing a name to sit above the scanned signature.
+  const footerSlots: Array<{ centerX: number; value: string; caption: string; maxWidth: number; bold: boolean }> = [
+    {
+      centerX: width * G.signatureLeftX,
+      value: (data.directorName || CERTIFICATE_DIRECTOR_NAME || '').trim(),
+      caption: LABELS.director,
+      maxWidth: width * G.signatureMaxWidth,
+      bold: true,
+    },
+    {
+      centerX: width * G.dateCenterX,
+      value: data.issueDate.toISOString().slice(0, 10),
+      caption: LABELS.issueDate,
+      maxWidth: width * G.dateMaxWidth,
+      bold: false,
+    },
+    {
+      centerX: width * G.codeCenterX,
+      value: data.verificationCode,
+      caption: LABELS.certificateId,
+      maxWidth: width * G.codeMaxWidth,
+      bold: false,
+    },
+    {
+      centerX: width * G.signatureRightX,
+      value: data.instructorName.trim(),
+      caption: LABELS.instructor,
+      maxWidth: width * G.signatureMaxWidth,
+      bold: true,
+    },
+  ];
+  for (const slot of footerSlots) {
+    if (slot.value) {
+      drawFittedLine(page, slot.value, {
+        centerX: slot.centerX,
+        y: height * G.footerValueY,
+        maxWidth: slot.maxWidth,
+        startSize: 15,
+        minSize: 8,
+        color: navy,
+        fonts: slot.bold ? boldFonts : regularFonts,
+      });
+    }
+    drawFittedLine(page, slot.caption, {
+      centerX: slot.centerX,
+      y: height * G.footerCaptionY,
+      maxWidth: slot.maxWidth,
+      startSize: 13,
+      minSize: 8,
+      color: slate,
+      fonts: regularFonts,
+    });
   }
-  const codeWidth = latinRegular.widthOfTextAtSize(data.verificationCode, codeSize);
-  page.drawText(data.verificationCode, {
-    x: width * 0.524 - codeWidth / 2,
-    y: height * 0.105,
-    size: codeSize,
-    font: latinRegular,
-    color: navy,
-  });
 
-  // Instructor name — the template's Director signature is baked into the
-  // artwork; this is the separate, blank "ლექტორი / Instructor" slot, filled
-  // in per-course from Course.mentorName.
-  const instructorRuns = splitScriptRuns(data.instructorName);
-  drawMixedScriptText(page, instructorRuns, { centerX: width * 0.865, y: height * 0.135, size: 12, color: navy, fonts: regularFonts });
-
-  // QR code, bottom-right corner — encodes the public /verify/[code] page so
-  // the certificate can be authenticity-checked by scanning, without typing
-  // the code in by hand.
+  // QR code — encodes the public /verify/[code] page so a certificate can be
+  // authenticity-checked by scanning instead of typing the code in by hand.
+  // Centered inside the template's navy QR frame and inset from it on all
+  // four sides, so it is fully bounded by the frame rather than overlapping
+  // its border (an earlier revision pinned it to the bottom-right page
+  // corner, well outside the frame). Rendered at 512px and scaled down so it
+  // stays crisp at print resolution; QRCode's own `margin: 1` keeps the
+  // scanner quiet zone, which lands on the frame's white interior.
   const verificationUrl = getVerificationUrl(data.verificationCode);
-  const qrPngDataUrl = await QRCode.toDataURL(verificationUrl, { margin: 1, width: 200 });
+  const qrPngDataUrl = await QRCode.toDataURL(verificationUrl, { margin: 1, width: 512 });
   const qrPngBytes = Buffer.from(qrPngDataUrl.split(',')[1], 'base64');
   const qrImage = await doc.embedPng(qrPngBytes);
-  const qrSize = width * 0.032;
+  const frameLeft = width * G.qrFrameLeft;
+  const frameRight = width * G.qrFrameRight;
+  const frameBottom = height * G.qrFrameBottom;
+  const frameTop = height * G.qrFrameTop;
+  const frameInset = 8;
+  const qrSize = Math.min(frameRight - frameLeft, frameTop - frameBottom) - frameInset * 2;
   page.drawImage(qrImage, {
-    x: width - width * 0.012 - qrSize,
-    y: height * 0.012,
+    x: (frameLeft + frameRight) / 2 - qrSize / 2,
+    y: (frameBottom + frameTop) / 2 - qrSize / 2,
     width: qrSize,
     height: qrSize,
   });

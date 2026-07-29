@@ -89,8 +89,7 @@ export default function CDCCart() {
   return (
     <div className={`min-h-screen font-sans antialiased transition-colors duration-300 relative ${darkMode ? 'bg-[#0b0f17] text-slate-200' : 'bg-slate-50 text-slate-800'}`}>
       <Head>
-        <title>{lang === 'ka' ? 'ჩემი კალათა' : 'My Cart'} | CDC Platform</title>
-        <link href="https://fonts.googleapis.com/css2?family=Fira+GO:wght@400;700&display=swap" rel="stylesheet" />
+        <title>{`${lang === 'ka' ? 'ჩემი კალათა' : 'My Cart'} | CDC Platform`}</title>
         <style>{`
           @font-face {
             font-family: 'Dachi The Lynx';
@@ -99,8 +98,7 @@ export default function CDCCart() {
             font-weight: normal;
             font-style: normal;
           }
-          body { font-family: 'Fira GO', sans-serif; }
-          .custom-title { 
+          .custom-title {
             font-family: 'Dachi The Lynx', sans-serif !important; 
             text-transform: uppercase;
             letter-spacing: 0.05em;

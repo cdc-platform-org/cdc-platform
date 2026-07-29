@@ -76,3 +76,15 @@ export const BUNNY_STORAGE_HOST = process.env.BUNNY_STORAGE_HOST || 'storage.bun
 // Public pull-zone base URL for reading back what was uploaded, e.g.
 // "https://cdc-storage.b-cdn.net" — no trailing slash.
 export const BUNNY_CDN_URL = process.env.BUNNY_CDN_URL || '';
+// Name printed on the left-hand ("დირექტორი / Director") signature rule of
+// every course certificate — see services/certificateService.ts. Deliberately
+// NOT requireEnv() and deliberately not defaulted to a placeholder person:
+// when it's unset the rule is left blank with only its role caption printed,
+// rather than signing certificates with a fabricated name.
+//
+// This must be the person whose SCANNED SIGNATURE is baked into
+// public/templates/certificate-template.pdf (the signature image sits directly
+// above this rule and is part of the artwork, so it cannot follow the env var).
+// Setting a different name here prints one person's name under another's
+// signature. Re-export the template if the signatory changes.
+export const CERTIFICATE_DIRECTOR_NAME = process.env.CERTIFICATE_DIRECTOR_NAME || '';

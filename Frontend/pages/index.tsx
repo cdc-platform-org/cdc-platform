@@ -271,10 +271,6 @@ export default function Home() {
     <div className={`min-h-screen font-sans antialiased transition-colors duration-300 relative overflow-hidden ${darkMode ? 'text-slate-200 bg-[#0b0f19]' : 'text-slate-800 bg-[#f8fafc]'}`}>
       <Head>
         <title>CDC | ციფრული პროფესიების ცენტრი</title>
-        <link href="https://fonts.googleapis.com/css2?family=Fira+GO:wght@400;500;700&display=swap" rel="stylesheet" />
-        <style>{`
-          body { font-family: 'Fira GO', sans-serif; }
-        `}</style>
       </Head>
 
       {/* POST-ACTION TOAST */}
@@ -298,7 +294,19 @@ export default function Home() {
       <div className="absolute top-[50%] right-[-10%] w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[150px] pointer-events-none dark:bg-purple-500/5" />
 
       {/* 🧭 NAVIGATION */}
-      <nav className={`sticky top-0 z-50 w-full max-w-full overflow-x-hidden border-b px-4 sm:px-6 md:px-12 py-4 sm:py-5 ${darkMode ? 'border-slate-800 bg-[#0e1422]/90 backdrop-blur-md' : 'border-slate-200/60 bg-white/90 backdrop-blur-md'}`}>
+      {/* NO overflow clipping on this element, deliberately. Per the CSS
+          overflow spec, when one axis is a non-visible value the OTHER axis's
+          'visible' computes to 'auto' — so the previous
+          `overflow-x-hidden overflow-y-visible` pair did NOT keep the vertical
+          axis visible, it made the nav a scroll container on both axes. That
+          clipped the "About Us" dropdown (an absolutely positioned child
+          hanging below the nav via top-full) at the nav's bottom edge, which
+          read as the hero covering it, and it also cut off the last nav
+          link(s) at the right edge. Horizontal scroll is already guarded by
+          the page wrapper's own overflow-hidden (see the root div above), so
+          nothing is needed here. The row is sized to FIT at every breakpoint
+          (see the link/search sizing below) rather than relying on clipping. */}
+      <nav className={`sticky top-0 z-50 w-full max-w-full border-b px-4 sm:px-6 md:px-12 py-4 sm:py-5 ${darkMode ? 'border-slate-800 bg-[#0e1422]/90 backdrop-blur-md' : 'border-slate-200/60 bg-white/90 backdrop-blur-md'}`}>
         <div className="max-w-7xl mx-auto flex justify-between items-center gap-3 sm:gap-6">
           <Link href="/" className="flex items-center space-x-3 shrink-0 no-underline text-current">
             <Image
@@ -315,8 +323,13 @@ export default function Home() {
             </div>
           </Link>
 
-          {/* 🔍 SEARCH BAR */}
-          <div className="relative flex-1 max-w-sm md:max-w-md hidden sm:block">
+          {/* 🔍 SEARCH BAR — capped tight right at the `lg` breakpoint
+              (1024px), where it, the 5-item nav-links row and the auth buttons
+              all have to share 1024px; opens back up at `xl`. This is the only
+              flex-shrinkable item in the row (everything else is shrink-0), so
+              it is what gives the nav links room instead of them being cut
+              off. */}
+          <div className="relative flex-1 max-w-sm lg:max-w-[150px] xl:max-w-md hidden sm:block">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -378,11 +391,17 @@ export default function Home() {
             )}
           </div>
 
-          <div className={`hidden lg:flex items-center space-x-8 text-base font-bold tracking-wide shrink-0 ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
+          {/* Nav links step down to text-sm at `lg` and only reach text-base at
+              `xl`. At 1024px the five Georgian labels at text-base overflowed
+              the row, so the last one ("ბლოგი") rendered clipped to "ბლ" —
+              sizing the row to fit is the fix; the nav no longer clips. */}
+          <div className={`hidden lg:flex items-center space-x-4 xl:space-x-8 text-sm xl:text-base font-bold tracking-wide shrink-0 whitespace-nowrap ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
             <div className="relative group py-2 -my-2">
               <span className="hover:text-cyan-500 transition cursor-pointer">{translate('ჩვენ შესახებ', 'About Us')} ▾</span>
+              {/* z-[60] outranks the hero's own layers and the nav's z-50 base,
+                  so the panel always paints above the hero below it. */}
               <div
-                className={`absolute left-0 top-full pt-2 w-52 opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150`}
+                className={`absolute left-0 top-full pt-2 w-52 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150`}
               >
                 <div className={`rounded-xl border shadow-lg overflow-hidden text-sm ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}>
                   <Link href="/about" className={`block px-4 py-3 no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
@@ -449,7 +468,13 @@ export default function Home() {
       </nav>
 
       {/* 🎬 HERO SECTION — left-aligned content on lg+, full-bleed ambient video background below lg */}
-      <div className="relative w-full overflow-hidden min-h-[60vh] sm:min-h-[75vh] lg:min-h-[92vh] flex items-center bg-slate-950">
+      {/* `z-0` is load-bearing: it makes this section its own stacking context
+          so the z-10 scrim and z-20 header INSIDE it are ranked against each
+          other only, not hoisted into the root stacking context where they'd
+          compete with the nav's z-50 and the About Us dropdown's z-[60].
+          Without it (position:relative + z-index:auto forms no stacking
+          context) any future hero layer above z-50 would cover the dropdown. */}
+      <div className="relative z-0 w-full overflow-hidden min-h-[60vh] sm:min-h-[75vh] lg:min-h-[92vh] flex items-center bg-slate-950">
         {/* Background video — purely ambient (no controls, no pointer events, not
             focusable), always fills the full hero without letterboxing. On lg+ the
             scrim below only darkens the left text column, revealing it crisply on

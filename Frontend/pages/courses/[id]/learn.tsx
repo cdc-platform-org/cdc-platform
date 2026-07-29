@@ -194,7 +194,7 @@ function LearnContent() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <Head>
-        <title>{course.title} | CDC Learn</title>
+        <title>{`${course.title} | CDC Learn`}</title>
       </Head>
 
       <div className="flex flex-col lg:flex-row">

@@ -90,7 +90,7 @@ export default function BlogIndexPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-16">
       <Head>
-        <title>{t.title} | CDC</title>
+        <title>{`${t.title} | CDC`}</title>
       </Head>
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-black mb-2">{t.title}</h1>

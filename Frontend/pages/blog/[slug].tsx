@@ -458,7 +458,7 @@ export default function BlogPostPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-16">
       <Head>
-        <title>{title} | CDC Blog</title>
+        <title>{`${title} | CDC Blog`}</title>
         <meta name="description" content={description} />
         <meta property="og:type" content="article" />
         <meta property="og:title" content={title} />

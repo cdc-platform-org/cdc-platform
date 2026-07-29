@@ -86,7 +86,7 @@ export default function CoursesPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       <Head>
-        <title>{t.title} | CDC</title>
+        <title>{`${t.title} | CDC`}</title>
       </Head>
       <SiteHeader />
       <div className="max-w-6xl mx-auto px-6 py-16 flex-1 w-full">

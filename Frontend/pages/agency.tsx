@@ -164,10 +164,6 @@ export default function Agency() {
     <div className={`min-h-screen font-sans antialiased transition-colors duration-300 relative overflow-hidden ${darkMode ? 'text-slate-200 bg-[#0b0f19]' : 'text-slate-800 bg-[#f8fafc]'}`}>
       <Head>
         <title>CDC Studio | ციფრული სააგენტო</title>
-        <link href="https://fonts.googleapis.com/css2?family=Fira+GO:wght@400;500;700&display=swap" rel="stylesheet" />
-        <style>{`
-          body { font-family: 'Fira GO', sans-serif; }
-        `}</style>
       </Head>
 
       {/* 🧭 NAVIGATION */}

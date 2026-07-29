@@ -211,7 +211,7 @@ function ExamContent() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 px-4 py-8 md:py-12">
       <Head>
-        <title>{course ? `${t.startTitle} — ${course.title}` : t.startTitle} | CDC Learn</title>
+        <title>{`${course ? `${t.startTitle} — ${course.title}` : t.startTitle} | CDC Learn`}</title>
       </Head>
 
       <div className="max-w-3xl mx-auto">
