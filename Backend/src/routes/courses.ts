@@ -25,6 +25,7 @@ import { generateCertificatePdf, generateVerificationCode, CertificateTemplateMi
 import { withCurrentPrice } from '../services/coursePricing';
 import { generateExamQuestions, isAiExamConfigured, AiExamGenerationError, GeneratedQuestion } from '../services/aiExamService';
 import { createExamSessionToken, verifyExamSessionToken, ExamSessionError } from '../services/examSessionService';
+import { logAdminAction } from '../services/auditLogService';
 
 const router = Router();
 
@@ -69,6 +70,8 @@ router.get('/mine', authenticate, async (req: Request, res: Response) => {
         progress: { totalLessons, completedLessons, percent },
         hasCertificate: !!certificate,
         grantedAt: enrollment.grantedAt,
+        verificationCode: certificate?.verificationCode ?? null,
+        certificateIssuedAt: certificate?.issuedAt ?? null,
       };
     })
   );
@@ -290,6 +293,20 @@ async function getCourseCompletion(courseId: string, userId: string) {
   return totalLessons > 0 && completedLessons >= totalLessons;
 }
 
+// Find-or-create — repeated calls (a re-download, or the auto-grant on exam
+// pass followed later by an explicit download) always return the same
+// verificationCode/issuedAt rather than minting a new "unique" certificate
+// every time.
+async function getOrCreateCertificate(userId: string, courseId: string) {
+  const existing = await prisma.courseCertificate.findUnique({ where: { userId_courseId: { userId, courseId } } });
+  return (
+    existing ??
+    (await prisma.courseCertificate.create({
+      data: { userId, courseId, verificationCode: generateVerificationCode(new Date()) },
+    }))
+  );
+}
+
 // Admin: view a course's exam settings (null if none configured yet).
 router.get('/:id/exam', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   const exam = await prisma.exam.findUnique({ where: { courseId: req.params.id } });
@@ -456,7 +473,42 @@ router.post('/:id/exam/submit', authenticate, requireCourseAccess, async (req: R
 
   const cooldownEndsAt = passed ? null : new Date(Date.now() + exam.cooldownHours * 60 * 60 * 1000);
 
-  res.json({ data: { score, passed, correctCount, total, passingScore: exam.passingScore, weakTopics, cooldownEndsAt, review } });
+  // Passing a certification exam is the automatic CDC Alumni gate — instantly
+  // grants isVerifiedGraduate (unlimited forum posts/applications, the
+  // glowing badge, the mentorship button) and mints the certificate record
+  // right away, rather than waiting for the student to click "Download".
+  let verificationCode: string | null = null;
+  if (passed) {
+    const certificate = await getOrCreateCertificate(req.user!.id, courseId);
+    verificationCode = certificate.verificationCode;
+
+    const student = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { isVerifiedGraduate: true } });
+    if (!student?.isVerifiedGraduate) {
+      await prisma.user.update({ where: { id: req.user!.id }, data: { isVerifiedGraduate: true } });
+      await logAdminAction({
+        action: 'user.auto_verify_graduate',
+        targetType: 'User',
+        targetId: req.user!.id,
+        performedById: req.user!.id,
+        metadata: { trigger: 'exam_pass', courseId, examId: exam.id, score },
+      });
+    }
+  }
+
+  res.json({
+    data: {
+      score,
+      passed,
+      correctCount,
+      total,
+      passingScore: exam.passingScore,
+      weakTopics,
+      cooldownEndsAt,
+      review,
+      certificateIssued: passed,
+      verificationCode,
+    },
+  });
 });
 
 // ---- Certificate ----
@@ -492,18 +544,7 @@ router.get('/:id/certificate', authenticate, requireCourseAccess, async (req: Re
   const legalNameEn =
     student.legalFirstNameEn && student.legalLastNameEn ? `${student.legalFirstNameEn} ${student.legalLastNameEn}` : null;
 
-  const existing = await prisma.courseCertificate.findUnique({
-    where: { userId_courseId: { userId: req.user!.id, courseId } },
-  });
-  const certificate =
-    existing ??
-    (await prisma.courseCertificate.create({
-      data: {
-        userId: req.user!.id,
-        courseId,
-        verificationCode: generateVerificationCode(new Date()),
-      },
-    }));
+  const certificate = await getOrCreateCertificate(req.user!.id, courseId);
 
   try {
     const pdfBuffer = await generateCertificatePdf({

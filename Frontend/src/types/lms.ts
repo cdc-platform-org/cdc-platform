@@ -90,6 +90,8 @@ export interface MyCourseWithProgress {
   progress: CourseProgressSummary;
   hasCertificate: boolean;
   grantedAt: string;
+  verificationCode: string | null;
+  certificateIssuedAt: string | null;
 }
 
 export interface CertificateVerification {
@@ -209,4 +211,8 @@ export interface ExamSubmitResult {
   weakTopics: string[];
   cooldownEndsAt: string | null;
   review: ExamReviewQuestion[];
+  // Set when passed: true — the CDC Alumni grant + certificate record are
+  // created instantly server-side, see Backend's POST /:id/exam/submit.
+  certificateIssued: boolean;
+  verificationCode: string | null;
 }

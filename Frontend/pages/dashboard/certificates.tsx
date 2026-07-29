@@ -1,0 +1,240 @@
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/router';
+import Head from 'next/head';
+import Link from 'next/link';
+import { GraduationCap, ExternalLink } from 'lucide-react';
+import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
+import SiteHeader from '../../src/components/layout/SiteHeader';
+import SiteFooter from '../../src/components/layout/SiteFooter';
+import BackButton from '../../src/components/common/BackButton';
+import { useAuth } from '../../src/context/AuthContext';
+import { useEscapeToClose } from '../../src/hooks/useEscapeToClose';
+import { MyCourseWithProgress } from '../../src/types/lms';
+import { getMyCourses, downloadCertificate } from '../../src/services/courseService';
+
+const dict = {
+  ka: {
+    title: 'ჩემი სერტიფიკატები',
+    subtitle: 'ყველა კურსი, რომლისთვისაც სერტიფიკატი გაცემულია.',
+    loading: 'იტვირთება…',
+    empty: 'თქვენ ჯერ არცერთი სერტიფიკატი არ მიგიღიათ.',
+    browseCourses: 'კურსების დათვალიერება',
+    issued: 'გაცემის თარიღი',
+    code: 'ვერიფიკაციის კოდი',
+    download: 'ჩამოტვირთვა',
+    generating: 'გენერირდება…',
+    verify: 'საჯარო ვერიფიკაცია',
+    confirmTitle: 'გთხოვთ შეამოწმოთ!',
+    confirmBody: 'სერტიფიკატზე დაიბეჭდება სახელი და გვარი:',
+    confirmChangeHint: 'თუ გსურთ სახელის შეცვლა, გადადით პროფილის პარამეტრებში.',
+    confirmDownload: 'დადასტურება და ჩამოტვირთვა',
+    confirmChangeName: 'სახელის შეცვლა (პროფილში გადასვლა)',
+    confirmCancel: 'გაუქმება',
+  },
+  en: {
+    title: 'My Certificates',
+    subtitle: 'Every course you have an issued certificate for.',
+    loading: 'Loading…',
+    empty: "You haven't earned any certificates yet.",
+    browseCourses: 'Browse Courses',
+    issued: 'Issue Date',
+    code: 'Verification Code',
+    download: 'Download',
+    generating: 'Generating…',
+    verify: 'Public verification',
+    confirmTitle: 'Please double-check!',
+    confirmBody: 'This name will be printed on your certificate:',
+    confirmChangeHint: 'To change it, go to your account settings.',
+    confirmDownload: 'Confirm & Download',
+    confirmChangeName: 'Change Name (Go to Settings)',
+    confirmCancel: 'Cancel',
+  },
+};
+
+function CertificatesContent() {
+  const router = useRouter();
+  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const t = dict[lang];
+  const { user } = useAuth();
+
+  const [courses, setCourses] = useState<MyCourseWithProgress[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [downloadingCourseId, setDownloadingCourseId] = useState<string | null>(null);
+  const [confirmCourseId, setConfirmCourseId] = useState<string | null>(null);
+
+  useEscapeToClose(confirmCourseId !== null, () => setConfirmCourseId(null));
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      setCourses(await getMyCourses());
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const certificateNameKa =
+    user?.legalFirstNameKa && user?.legalLastNameKa ? `${user.legalFirstNameKa} ${user.legalLastNameKa}` : user?.name ?? '';
+  const certificateNameEn =
+    user?.legalFirstNameEn && user?.legalLastNameEn ? `${user.legalFirstNameEn} ${user.legalLastNameEn}` : null;
+
+  const handleDownloadCertificate = async (courseId: string, courseTitle: string) => {
+    setDownloadingCourseId(courseId);
+    try {
+      const blob = await downloadCertificate(courseId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `certificate-${courseTitle}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloadingCourseId(null);
+      setConfirmCourseId(null);
+    }
+  };
+
+  const certified = courses.filter((c) => c.hasCertificate);
+  const confirmEntry = certified.find((c) => c.course.id === confirmCourseId) ?? null;
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
+      <Head>
+        <title>{`${t.title} | CDC Platform`}</title>
+      </Head>
+
+      <SiteHeader />
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 w-full">
+        <BackButton fallbackHref="/dashboard" className="dark:text-slate-400 dark:hover:text-slate-100" />
+      </div>
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 md:py-12 flex-1 w-full">
+        <div className="mb-8">
+          <h1 className="text-2xl font-black tracking-wide flex items-center gap-2">
+            <GraduationCap className="w-6 h-6 text-amber-500" />
+            {t.title}
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t.subtitle}</p>
+        </div>
+
+        {loading ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t.loading}</p>
+        ) : certified.length === 0 ? (
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-10 text-center">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t.empty}</p>
+            <Link
+              href="/courses"
+              className="inline-block text-xs font-bold text-white bg-slate-900 dark:bg-cyan-600 px-4 py-2.5 rounded-xl no-underline"
+            >
+              {t.browseCourses}
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {certified.map(({ course, certificateIssuedAt, verificationCode }) => (
+              <div
+                key={course.id}
+                className="bg-white dark:bg-slate-900/60 border border-amber-300/60 dark:border-amber-500/30 rounded-2xl p-6 shadow-sm"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h3 className="font-bold text-base text-slate-900 dark:text-white tracking-wide">{course.title}</h3>
+                    {certificateIssuedAt && (
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-1">
+                        {t.issued}: {new Date(certificateIssuedAt).toLocaleDateString()}
+                      </p>
+                    )}
+                    {verificationCode && (
+                      <p className="text-[11px] font-mono text-slate-400 dark:text-slate-500 mt-1 break-all">
+                        {t.code}: {verificationCode}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2 shrink-0">
+                    {verificationCode && (
+                      <Link
+                        href={`/verify/${verificationCode}`}
+                        target="_blank"
+                        className="flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 no-underline hover:bg-slate-100 dark:hover:bg-slate-800"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        {t.verify}
+                      </Link>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setConfirmCourseId(course.id)}
+                      disabled={downloadingCourseId === course.id}
+                      className="flex items-center gap-1.5 bg-slate-950 hover:bg-slate-800 dark:bg-cyan-600 dark:hover:bg-cyan-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition disabled:opacity-60"
+                    >
+                      <GraduationCap className="w-3.5 h-3.5" />
+                      {downloadingCourseId === course.id ? t.generating : t.download}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {confirmEntry && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setConfirmCourseId(null)}
+        >
+          <div
+            className="max-w-md w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-extrabold text-slate-900 dark:text-white mb-2">{t.confirmTitle}</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{t.confirmBody}</p>
+            <p className="text-lg font-bold text-cyan-600 dark:text-cyan-300 mb-1">{certificateNameKa}</p>
+            {certificateNameEn && <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">{certificateNameEn}</p>}
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-6">{t.confirmChangeHint}</p>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => handleDownloadCertificate(confirmEntry.course.id, confirmEntry.course.title)}
+                disabled={downloadingCourseId === confirmEntry.course.id}
+                className="w-full text-sm font-bold px-4 py-3 rounded-xl bg-slate-950 dark:bg-cyan-600 text-white hover:bg-slate-800 dark:hover:bg-cyan-500 transition disabled:opacity-60"
+              >
+                {downloadingCourseId === confirmEntry.course.id ? t.generating : t.confirmDownload}
+              </button>
+              <Link
+                href="/dashboard/settings"
+                className="w-full text-center text-sm font-bold px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 no-underline hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                {t.confirmChangeName}
+              </Link>
+              <button
+                type="button"
+                onClick={() => setConfirmCourseId(null)}
+                className="w-full text-sm font-bold px-4 py-3 rounded-xl text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 bg-transparent"
+              >
+                {t.confirmCancel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+    </div>
+  );
+}
+
+export default function CertificatesPage() {
+  return (
+    <ProtectedRoute>
+      <CertificatesContent />
+    </ProtectedRoute>
+  );
+}

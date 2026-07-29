@@ -4,6 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import confetti from 'canvas-confetti';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
+import { useAuth } from '../../../src/context/AuthContext';
 import { Course, ExamStatus, ExamQuestion, ExamSubmitResult, ExamAnswerLetter } from '../../../src/types/lms';
 import { getCourse, getExamStatus, startExam, submitExam } from '../../../src/services/courseService';
 
@@ -103,6 +104,7 @@ function ExamContent() {
   const lang = router.locale === 'en' ? 'en' : 'ka';
   const t = dict[lang];
   const courseId = typeof router.query.id === 'string' ? router.query.id : null;
+  const { refreshUser } = useAuth();
 
   const [course, setCourse] = useState<Course | null>(null);
   const [status, setStatus] = useState<ExamStatus | null>(null);
@@ -150,7 +152,13 @@ function ExamContent() {
       const res = await submitExam(courseId, sessionTokenRef.current, answersRef.current);
       setResult(res);
       setPhase('result');
-      if (res.passed) fireConfetti();
+      if (res.passed) {
+        fireConfetti();
+        // Passing instantly grants isVerifiedGraduate server-side (glowing
+        // badge, unlimited posts, mentorship button) — refresh the cached
+        // user so those show up immediately without a re-login.
+        refreshUser().catch(() => {});
+      }
     } catch {
       setError(t.error);
     } finally {
@@ -231,7 +239,7 @@ function ExamContent() {
               <>
                 <p className="text-xl font-bold text-emerald-400 mb-4">{t.alreadyPassed}</p>
                 <Link
-                  href={`/courses/${courseId}/learn`}
+                  href="/dashboard/certificates"
                   className="inline-block rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold text-sm px-6 py-3 shadow-lg hover:shadow-xl transition-all"
                 >
                   {t.downloadCert}
@@ -358,7 +366,7 @@ function ExamContent() {
 
               {result.passed ? (
                 <Link
-                  href={`/courses/${courseId}/learn`}
+                  href="/dashboard/certificates"
                   className="inline-block rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold text-sm px-6 py-3 shadow-lg hover:shadow-xl transition-all"
                 >
                   {t.downloadCert}

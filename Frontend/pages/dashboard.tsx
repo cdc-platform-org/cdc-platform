@@ -56,6 +56,7 @@ const dict = {
     browseCourses: 'კურსების დათვალიერება',
     // Courses tab
     coursesTitle: 'ჩემი კურსები & სერტიფიკატები',
+    viewAllCertificates: 'ყველა სერტიფიკატი',
     progress: 'პროგრესი',
     continue: 'გაგრძელება',
     downloadCert: 'სერტიფიკატის ჩამოტვირთვა',
@@ -124,6 +125,7 @@ const dict = {
     noCourses: "You're not enrolled in any courses yet.",
     browseCourses: 'Browse Courses',
     coursesTitle: 'My Courses & Certificates',
+    viewAllCertificates: 'View all certificates',
     progress: 'Progress',
     continue: 'Continue',
     downloadCert: 'Download Certificate',
@@ -510,7 +512,17 @@ function DashboardContent() {
 
               {activeTab === 'courses' && (
                 <div className="space-y-4">
-                  <h2 className="text-lg font-extrabold tracking-wide mb-2">{t.coursesTitle}</h2>
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <h2 className="text-lg font-extrabold tracking-wide">{t.coursesTitle}</h2>
+                    {certificatesEarned > 0 && (
+                      <Link
+                        href="/dashboard/certificates"
+                        className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline no-underline whitespace-nowrap"
+                      >
+                        {t.viewAllCertificates} →
+                      </Link>
+                    )}
+                  </div>
                   {courses.length === 0 ? (
                     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-10 text-center">
                       <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t.noCourses}</p>
