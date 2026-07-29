@@ -361,7 +361,12 @@ router.post('/google', async (req, res) => {
   try {
     const ticket = await googleClient.verifyIdToken({ idToken: result.data.idToken, audience: GOOGLE_CLIENT_ID });
     payload = ticket.getPayload();
-  } catch {
+  } catch (err) {
+    // Logged server-side only — the client-facing message stays generic so
+    // it can't be used to probe why a specific token was rejected, but an
+    // operator debugging a wave of failed sign-ins (e.g. a misconfigured
+    // GOOGLE_CLIENT_ID) needs the real cause, not just "it failed."
+    console.error('[auth] Google ID token verification failed:', err instanceof Error ? err.message : err);
     return res.status(401).json({ message: 'Invalid or expired Google credential.' });
   }
   if (!payload?.email || !payload.email_verified) {

@@ -203,7 +203,7 @@ export default function AuthModal() {
         // account — ignored for an existing one (see Backend's /google route).
         loginWithGoogle(response.credential, mode === 'register' ? role : undefined)
           .then((loggedInUser) => handlePostLogin(loggedInUser))
-          .catch(() => setError(t.genericError))
+          .catch((err: any) => setError(err?.response?.data?.message || t.genericError))
           .finally(() => setSubmitting(false));
       },
     });
