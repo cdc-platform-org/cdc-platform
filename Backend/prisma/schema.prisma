@@ -284,6 +284,8 @@ model User {
   // a separate Subscription model for now.
   agents                 Agent[]
   blogComments           BlogComment[]
+  mentorshipRequestsMade     MentorshipRequest[] @relation("MentorshipRequestsMade")
+  mentorshipRequestsResolved MentorshipRequest[] @relation("MentorshipRequestsResolved")
 
   @@map("users")
 }
@@ -1264,6 +1266,37 @@ model PromoCode {
   createdAt       DateTime  @default(now())
 
   @@map("promo_codes")
+}
+
+// ============================================================
+// MENTORSHIP REQUEST — the Dashboard's "დახმარება / მენტორობა" button
+// (CDC Verified Graduates only). Deliberately separate from Gig's
+// `mentorHelpRequestedAt` (which is scoped to one specific first-order gig,
+// surfaced in adminMentorship's existing gig queue) — this is a general,
+// not-tied-to-any-gig ask for order/gig help, so a graduate can reach out
+// even when they don't have an active first-order gig to attach it to.
+// ============================================================
+enum MentorshipRequestStatus {
+  OPEN
+  RESOLVED
+}
+
+model MentorshipRequest {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("MentorshipRequestsMade", fields: [userId], references: [id], onDelete: Cascade)
+
+  message String
+
+  status       MentorshipRequestStatus @default(OPEN)
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolvedBy   User?                   @relation("MentorshipRequestsResolved", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([status])
+  @@map("mentorship_requests")
 }
 
 // ============================================================

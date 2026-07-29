@@ -11,6 +11,7 @@ import {
   LogOut,
   LifeBuoy,
   CheckCircle2,
+  Wifi,
 } from 'lucide-react';
 import ProtectedRoute from '../src/components/auth/ProtectedRoute';
 import SiteHeader from '../src/components/layout/SiteHeader';
@@ -30,6 +31,8 @@ import {
   PayoutRequestRow,
 } from '../src/services/walletService';
 import { getMyPayments, MyPaymentRow } from '../src/services/paymentService';
+import { getForumQuota, ForumPostQuota } from '../src/services/forumService';
+import { createMentorshipRequest } from '../src/services/mentorshipService';
 
 type Tab = 'overview' | 'courses' | 'wallet' | 'gigs';
 
@@ -89,6 +92,20 @@ const dict = {
     confirmDownload: 'დადასტურება და ჩამოტვირთვა',
     confirmChangeName: 'სახელის შეცვლა (პროფილში გადასვლა)',
     confirmCancel: 'გაუქმება',
+    // Post quota (non-graduates)
+    statPostsLeft: 'დარჩენილი პოსტები (ამ თვეში)',
+    postsLeftValue: 'დარჩენილი გაქვთ 3-დან {{remaining}} პოსტი ამ თვეში',
+    // Mentorship request (graduates only)
+    mentorshipButton: 'დახმარება / მენტორობა',
+    mentorshipModalTitle: 'დახმარების მოთხოვნა',
+    mentorshipModalHint: 'აღწერეთ რაში გჭირდებათ დახმარება (შეკვეთა, გიგი, ან სხვა) — CDC მენტორი მალე დაგიკავშირდებათ.',
+    mentorshipPlaceholder: 'მაგ: დახმარება მჭირდება მიმდინარე გიგის ტექნიკურ ნაწილში...',
+    mentorshipSubmit: 'გაგზავნა',
+    mentorshipSubmitting: 'იგზავნება…',
+    mentorshipSentTitle: 'მოთხოვნა გაგზავნილია!',
+    mentorshipSentBody: 'CDC მენტორი მალე დაგიკავშირდებათ.',
+    mentorshipClose: 'დახურვა',
+    mentorshipError: 'მოთხოვნის გაგზავნა ვერ მოხერხდა.',
   },
   en: {
     title: 'Dashboard',
@@ -140,6 +157,18 @@ const dict = {
     confirmDownload: 'Confirm & Download',
     confirmChangeName: 'Change Name (Go to Settings)',
     confirmCancel: 'Cancel',
+    statPostsLeft: 'Forum posts left (this month)',
+    postsLeftValue: 'You have {{remaining}} of 3 posts left this month',
+    mentorshipButton: 'Help / Mentorship',
+    mentorshipModalTitle: 'Request Help',
+    mentorshipModalHint: 'Describe what you need help with (an order, a gig, or anything else) — a CDC mentor will reach out soon.',
+    mentorshipPlaceholder: 'e.g. I need help with the technical side of my current gig...',
+    mentorshipSubmit: 'Send',
+    mentorshipSubmitting: 'Sending…',
+    mentorshipSentTitle: 'Request sent!',
+    mentorshipSentBody: 'A CDC mentor will reach out to you soon.',
+    mentorshipClose: 'Close',
+    mentorshipError: 'Unable to send the request.',
   },
 };
 
@@ -210,6 +239,15 @@ function DashboardContent() {
   const [payoutSubmitting, setPayoutSubmitting] = useState(false);
   const [payoutError, setPayoutError] = useState<string | null>(null);
 
+  const [postQuota, setPostQuota] = useState<ForumPostQuota | null>(null);
+  const [showMentorshipModal, setShowMentorshipModal] = useState(false);
+  const [mentorshipMessage, setMentorshipMessage] = useState('');
+  const [mentorshipSubmitting, setMentorshipSubmitting] = useState(false);
+  const [mentorshipError, setMentorshipError] = useState<string | null>(null);
+  const [mentorshipSent, setMentorshipSent] = useState(false);
+
+  useEscapeToClose(showMentorshipModal, () => setShowMentorshipModal(false));
+
   useEffect(() => {
     // Clients get their own dedicated dashboard — this one is student-focused.
     if (user?.role === 'Client') {
@@ -220,18 +258,20 @@ function DashboardContent() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [coursesData, gigsData, walletData, payoutData, paymentsData] = await Promise.all([
+      const [coursesData, gigsData, walletData, payoutData, paymentsData, quotaData] = await Promise.all([
         getMyCourses(),
         getAssignedGigs(),
         getWalletSummary(),
         getMyPayoutRequests(),
         getMyPayments(),
+        getForumQuota(),
       ]);
       setCourses(coursesData);
       setGigs(gigsData);
       setWallet(walletData);
       setPayoutRequests(payoutData);
       setPayments(paymentsData);
+      setPostQuota(quotaData);
     } finally {
       setLoading(false);
     }
@@ -278,6 +318,31 @@ function DashboardContent() {
       setGigs((prev) => prev.map((g) => (g.id === gigId ? updated : g)));
     } finally {
       setRequestingMentorFor(null);
+    }
+  };
+
+  const closeMentorshipModal = () => {
+    setShowMentorshipModal(false);
+    setMentorshipMessage('');
+    setMentorshipError(null);
+    setMentorshipSent(false);
+  };
+
+  const handleMentorshipSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMentorshipError(null);
+    if (mentorshipMessage.trim().length < 5) {
+      setMentorshipError(lang === 'ka' ? 'გთხოვთ დაწეროთ მეტი დეტალი.' : 'Please add a bit more detail.');
+      return;
+    }
+    setMentorshipSubmitting(true);
+    try {
+      await createMentorshipRequest(mentorshipMessage.trim());
+      setMentorshipSent(true);
+    } catch {
+      setMentorshipError(t.mentorshipError);
+    } finally {
+      setMentorshipSubmitting(false);
     }
   };
 
@@ -351,6 +416,16 @@ function DashboardContent() {
               </button>
             );
           })}
+          {user?.isVerifiedGraduate && (
+            <button
+              type="button"
+              onClick={() => setShowMentorshipModal(true)}
+              className="w-full flex items-center gap-2.5 text-left p-3.5 rounded-xl text-xs font-bold transition border border-cyan-400/60 bg-gradient-to-r from-slate-900 via-cyan-950 to-slate-900 text-cyan-300 shadow-[0_0_10px_1px_rgba(34,211,238,0.5)] hover:shadow-[0_0_14px_2px_rgba(34,211,238,0.7)]"
+            >
+              <Wifi className="w-4 h-4 shrink-0 drop-shadow-[0_0_4px_rgba(34,211,238,0.9)]" />
+              {t.mentorshipButton}
+            </button>
+          )}
           <Link
             href="/dashboard/settings"
             className="flex items-center gap-2.5 w-full text-left p-3.5 rounded-xl text-xs font-bold transition border bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 no-underline"
@@ -382,6 +457,9 @@ function DashboardContent() {
                       { label: t.statWallet, value: wallet ? formatGel(wallet.earningsBalance) : '—', color: 'text-emerald-600 dark:text-emerald-400' },
                       { label: t.statGigs, value: String(activeGigsCount), color: 'text-purple-600 dark:text-purple-400' },
                       { label: t.statCerts, value: String(certificatesEarned), color: 'text-amber-600 dark:text-amber-400' },
+                      ...(postQuota && !postQuota.isGraduate
+                        ? [{ label: t.statPostsLeft, value: String(postQuota.remaining), color: 'text-pink-600 dark:text-pink-400' }]
+                        : []),
                     ].map((stat) => (
                       <div
                         key={stat.label}
@@ -392,6 +470,11 @@ function DashboardContent() {
                       </div>
                     ))}
                   </div>
+                  {postQuota && !postQuota.isGraduate && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 -mt-4">
+                      {t.postsLeftValue.replace('{{remaining}}', String(postQuota.remaining))}
+                    </p>
+                  )}
 
                   <div>
                     <h2 className="text-sm font-extrabold tracking-wide mb-3">{t.progressTitle}</h2>
@@ -693,6 +776,68 @@ function DashboardContent() {
                 {t.confirmCancel}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showMentorshipModal && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={closeMentorshipModal}
+        >
+          <div
+            className="max-w-md w-full bg-white dark:bg-slate-900 border border-cyan-400/40 rounded-2xl p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {mentorshipSent ? (
+              <>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white mb-2">{t.mentorshipSentTitle}</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{t.mentorshipSentBody}</p>
+                <button
+                  type="button"
+                  onClick={closeMentorshipModal}
+                  className="w-full text-sm font-bold px-4 py-3 rounded-xl bg-slate-950 dark:bg-cyan-600 text-white hover:bg-slate-800 dark:hover:bg-cyan-500 transition"
+                >
+                  {t.mentorshipClose}
+                </button>
+              </>
+            ) : (
+              <form onSubmit={handleMentorshipSubmit}>
+                <h3 className="flex items-center gap-2 text-base font-extrabold text-slate-900 dark:text-white mb-2">
+                  <Wifi className="w-4 h-4 text-cyan-500" />
+                  {t.mentorshipModalTitle}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t.mentorshipModalHint}</p>
+                {mentorshipError && (
+                  <div className="mb-3 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-xs text-red-600 dark:text-red-300">
+                    {mentorshipError}
+                  </div>
+                )}
+                <textarea
+                  rows={4}
+                  value={mentorshipMessage}
+                  onChange={(e) => setMentorshipMessage(e.target.value)}
+                  placeholder={t.mentorshipPlaceholder}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                />
+                <div className="flex flex-col gap-2 mt-4">
+                  <button
+                    type="submit"
+                    disabled={mentorshipSubmitting}
+                    className="w-full text-sm font-bold px-4 py-3 rounded-xl bg-slate-950 dark:bg-cyan-600 text-white hover:bg-slate-800 dark:hover:bg-cyan-500 transition disabled:opacity-60"
+                  >
+                    {mentorshipSubmitting ? t.mentorshipSubmitting : t.mentorshipSubmit}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={closeMentorshipModal}
+                    className="w-full text-sm font-bold px-4 py-3 rounded-xl text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 bg-transparent"
+                  >
+                    {t.confirmCancel}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

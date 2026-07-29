@@ -33,7 +33,9 @@ function ThreadListingContent() {
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canModerate = user?.role === 'Mentor' || user?.role === 'SuperAdmin';
+  // Matches the backend's canModerateForum(): marketplace Mentor/SuperAdmin,
+  // OR any admin-team member (adminRole set), not just marketplace role.
+  const canModerate = user?.role === 'Mentor' || user?.role === 'SuperAdmin' || !!user?.adminRole;
 
   const loadThreads = useCallback(async () => {
     if (typeof categorySlug !== 'string') return;

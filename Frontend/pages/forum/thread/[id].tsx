@@ -6,6 +6,7 @@ import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useAuthModal } from '../../../src/context/AuthModalContext';
+import VerifiedGraduateBadge from '../../../src/components/community/VerifiedGraduateBadge';
 import { ForumThread, ForumComment } from '../../../src/types/forum';
 import {
   getThreadById,
@@ -148,8 +149,11 @@ function ThreadDetailContent() {
             )}
           </div>
           <h1 className="text-xl font-semibold text-gray-900">{thread.title}</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {thread.author.name} · {new Date(thread.createdAt).toLocaleDateString()}
+          <p className="text-sm text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
+            <span>
+              {thread.author.name} · {new Date(thread.createdAt).toLocaleDateString()}
+            </span>
+            {thread.author.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
           </p>
           <p className="text-sm text-gray-700 mt-4 whitespace-pre-wrap">{thread.content}</p>
           <div className="flex items-center gap-4 mt-6 pt-4 border-t border-gray-100">
@@ -204,13 +208,14 @@ function ThreadDetailContent() {
           ) : (
             comments.map((comment) => (
               <div key={comment.id} className="bg-white rounded-xl border border-gray-200 p-4">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-medium text-gray-900">{comment.author.name}</p>
                   {comment.author.role !== 'Student' && (
                     <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
                       {comment.author.role}
                     </span>
                   )}
+                  {comment.author.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
                   <span className="text-xs text-gray-400">
                     {new Date(comment.createdAt).toLocaleDateString()}
                   </span>

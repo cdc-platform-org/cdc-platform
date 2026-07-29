@@ -7,6 +7,19 @@ export async function getCategories(): Promise<ForumCategory[]> {
   return response.data;
 }
 
+// --- Post quota (non-graduates are capped at N threads/month) ---
+export interface ForumPostQuota {
+  isGraduate: boolean;
+  limit: number | null;
+  used: number | null;
+  remaining: number | null;
+}
+
+export async function getForumQuota(): Promise<ForumPostQuota> {
+  const response = await apiClient.get<ForumPostQuota>('/forum/quota');
+  return response.data;
+}
+
 // --- Threads ---
 export interface ThreadFilters {
   categoryId?: string;

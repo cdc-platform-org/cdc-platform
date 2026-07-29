@@ -33,3 +33,22 @@ export async function getMentorshipGig(gigId: string): Promise<MentorshipGig> {
 export async function dismissMentorshipRequest(gigId: string): Promise<void> {
   await apiClient.post(`/admin/mentorship/gigs/${gigId}/dismiss`);
 }
+
+// General "დახმარება / მენტორობა" requests from the Dashboard button — not
+// tied to any specific gig.
+export interface MentorshipHelpRequest {
+  id: string;
+  message: string;
+  status: 'OPEN' | 'RESOLVED';
+  createdAt: string;
+  user: MentorshipUser;
+}
+
+export async function getMentorshipRequests(): Promise<MentorshipHelpRequest[]> {
+  const response = await apiClient.get<{ data: MentorshipHelpRequest[] }>('/admin/mentorship/requests');
+  return response.data.data;
+}
+
+export async function resolveMentorshipRequest(requestId: string): Promise<void> {
+  await apiClient.post(`/admin/mentorship/requests/${requestId}/resolve`);
+}

@@ -1,12 +1,24 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
-import { authenticate, requireApproved } from '../middleware/auth';
+import { authenticate, optionalAuthenticate, requireApproved } from '../middleware/auth';
 import { createThreadSchema, createCommentSchema } from '../schemas/forumSchemas';
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
 
 const router = Router();
 
-const authorSelect = { select: { id: true, name: true, role: true } };
+// Non-graduates may publish at most this many forum threads per calendar
+// month (service offers / announcements share the same thread creation path,
+// so one counter covers both) — CDC Verified Graduates are exempt entirely.
+const NON_GRADUATE_MONTHLY_POST_LIMIT = 3;
+
+function startOfCurrentMonth(): Date {
+  const d = new Date();
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+const authorSelect = { select: { id: true, name: true, role: true, isVerifiedGraduate: true } };
 
 // Marketplace-role moderators (Mentor/SuperAdmin, the original community
 // moderation capability) OR any admin-team member (adminRole set, the newer
@@ -23,7 +35,7 @@ function toThreadDTO(
     categoryId: string;
     title: string;
     content: string;
-    author: { id: string; name: string; role: string };
+    author: { id: string; name: string; role: string; isVerifiedGraduate: boolean };
     isPinned: boolean;
     isLocked: boolean;
     createdAt: Date;
@@ -31,7 +43,7 @@ function toThreadDTO(
     _count: { comments: number; likes: number };
     likes: { userId: string }[];
   },
-  currentUserId: string
+  currentUserId?: string
 ) {
   return {
     id: thread.id,
@@ -41,7 +53,7 @@ function toThreadDTO(
     author: thread.author,
     likeCount: thread._count.likes,
     commentCount: thread._count.comments,
-    isLikedByCurrentUser: thread.likes.some((l) => l.userId === currentUserId),
+    isLikedByCurrentUser: !!currentUserId && thread.likes.some((l) => l.userId === currentUserId),
     isPinned: thread.isPinned,
     isLocked: thread.isLocked,
     createdAt: thread.createdAt,
@@ -49,19 +61,44 @@ function toThreadDTO(
   };
 }
 
-const threadInclude = (currentUserId: string) => ({
+// currentUserId is undefined for a guest — the likes filter then uses a
+// sentinel that can never match a real user id, so the query still returns
+// cheaply (no likes rows) instead of accidentally fetching every like.
+const threadInclude = (currentUserId?: string) => ({
   author: authorSelect,
   _count: { select: { comments: true, likes: true } },
-  likes: { where: { userId: currentUserId }, select: { userId: true } },
+  likes: { where: { userId: currentUserId ?? '__guest__' }, select: { userId: true } },
 });
 
 // ============================================================
 // CATEGORIES
 // ============================================================
+// Default categories, kept in sync with prisma/seed.ts's DEFAULT_FORUM_CATEGORIES
+// by hand — duplicated (rather than imported) because seed.ts runs standalone
+// via ts-node outside this project's rootDir and can't cleanly import from src.
+const DEFAULT_FORUM_CATEGORIES = [
+  { slug: 'general', name: 'ზოგადი დისკუსია', description: 'ზოგადი თემები და საუბრები საზოგადოებისთვის.' },
+  { slug: 'courses', name: 'კურსები და სწავლება', description: 'კითხვები და გამოცდილება კურსების შესახებ.' },
+  { slug: 'freelance', name: 'ფრილანსი და პროექტები', description: 'გიგების, ვაკანსიების და პროექტების განხილვა.' },
+  { slug: 'help', name: 'დახმარება და მხარდაჭერა', description: 'ტექნიკური თუ ორგანიზაციული საკითხები პლატფორმაზე.' },
+];
+
 // Public — the /forum index page lists categories for signed-out visitors
 // too (only posting/replying requires an approved account), so this must
 // not sit behind authenticate().
 router.get('/categories', async (_req: Request, res: Response) => {
+  const existingCount = await prisma.forumCategory.count();
+  if (existingCount === 0) {
+    // A production DB that never had `prisma db seed` run against it would
+    // otherwise show an empty/broken /forum page forever — self-heal here
+    // instead of depending on a manual seed step.
+    await Promise.all(
+      DEFAULT_FORUM_CATEGORIES.map((c) =>
+        prisma.forumCategory.upsert({ where: { slug: c.slug }, update: {}, create: c }).catch(() => null)
+      )
+    );
+  }
+
   const categories = await prisma.forumCategory.findMany({
     orderBy: { createdAt: 'asc' },
     include: { _count: { select: { threads: { where: { moderationStatus: 'APPROVED' } } } } },
@@ -78,9 +115,10 @@ router.get('/categories', async (_req: Request, res: Response) => {
   );
 });
 
-// Everything below (threads, comments, moderation) still requires a
-// signed-in account.
-router.use(authenticate);
+// Everything below is readable by anyone (guests included) — only
+// mutations (post/comment/like/moderate) require a signed-in account, each
+// enforced at the individual route via requireApproved/authenticate.
+router.use(optionalAuthenticate);
 
 // ============================================================
 // THREADS
@@ -88,7 +126,8 @@ router.use(authenticate);
 
 // A guest-visible thread is APPROVED; a signed-in user also sees their own
 // PENDING/REJECTED threads; an admin-team member sees everything.
-async function visibleThreadWhere(userId: string) {
+async function visibleThreadWhere(userId?: string) {
+  if (!userId) return { moderationStatus: 'APPROVED' as const };
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { adminRole: true } });
   if (user?.adminRole) return {};
   return { OR: [{ moderationStatus: 'APPROVED' as const }, { authorId: userId }] };
@@ -99,13 +138,13 @@ router.get('/threads', async (req: Request, res: Response) => {
   const pageSize = Math.min(50, Math.max(1, Number(req.query.pageSize) || 20));
   const categoryId = typeof req.query.categoryId === 'string' ? req.query.categoryId : undefined;
 
-  const visibility = await visibleThreadWhere(req.user!.id);
+  const visibility = await visibleThreadWhere(req.user?.id);
   const where = { ...visibility, ...(categoryId ? { categoryId } : {}) };
 
   const [threads, totalCount] = await Promise.all([
     prisma.forumThread.findMany({
       where,
-      include: threadInclude(req.user!.id),
+      include: threadInclude(req.user?.id),
       orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -113,21 +152,40 @@ router.get('/threads', async (req: Request, res: Response) => {
     prisma.forumThread.count({ where }),
   ]);
 
-  res.json({ items: threads.map((t) => toThreadDTO(t, req.user!.id)), totalCount, page, pageSize });
+  res.json({ items: threads.map((t) => toThreadDTO(t, req.user?.id)), totalCount, page, pageSize });
 });
 
 router.get('/threads/:id', async (req: Request, res: Response) => {
   const thread = await prisma.forumThread.findUnique({
     where: { id: req.params.id },
-    include: threadInclude(req.user!.id),
+    include: threadInclude(req.user?.id),
   });
   if (!thread) return res.status(404).json({ message: 'Thread not found.' });
 
-  if (thread.moderationStatus !== 'APPROVED' && thread.authorId !== req.user!.id) {
-    const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } });
+  if (thread.moderationStatus !== 'APPROVED' && thread.authorId !== req.user?.id) {
+    const user = req.user ? await prisma.user.findUnique({ where: { id: req.user.id }, select: { adminRole: true } }) : null;
     if (!user?.adminRole) return res.status(404).json({ message: 'Thread not found.' });
   }
-  res.json(toThreadDTO(thread, req.user!.id));
+  res.json(toThreadDTO(thread, req.user?.id));
+});
+
+// Remaining monthly post quota for the caller — CDC Verified Graduates have
+// no limit; everyone else is capped at NON_GRADUATE_MONTHLY_POST_LIMIT new
+// threads per calendar month (used/shown by the dashboard's post counter).
+router.get('/quota', authenticate, async (req: Request, res: Response) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { isVerifiedGraduate: true } });
+  if (user?.isVerifiedGraduate) {
+    return res.json({ isGraduate: true, limit: null, used: null, remaining: null });
+  }
+  const used = await prisma.forumThread.count({
+    where: { authorId: req.user!.id, createdAt: { gte: startOfCurrentMonth() } },
+  });
+  res.json({
+    isGraduate: false,
+    limit: NON_GRADUATE_MONTHLY_POST_LIMIT,
+    used,
+    remaining: Math.max(0, NON_GRADUATE_MONTHLY_POST_LIMIT - used),
+  });
 });
 
 router.post('/threads', requireApproved, async (req: Request, res: Response) => {
@@ -136,6 +194,18 @@ router.post('/threads', requireApproved, async (req: Request, res: Response) => 
 
   const category = await prisma.forumCategory.findUnique({ where: { id: result.data.categoryId } });
   if (!category) return res.status(404).json({ message: 'Category not found.' });
+
+  const author = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { isVerifiedGraduate: true } });
+  if (!author?.isVerifiedGraduate) {
+    const postsThisMonth = await prisma.forumThread.count({
+      where: { authorId: req.user!.id, createdAt: { gte: startOfCurrentMonth() } },
+    });
+    if (postsThisMonth >= NON_GRADUATE_MONTHLY_POST_LIMIT) {
+      return res.status(403).json({
+        message: `ამ თვეს პოსტების ლიმიტს (${NON_GRADUATE_MONTHLY_POST_LIMIT}) მიაღწიეთ. CDC-ის კურსდამთავრებულებს პოსტების ლიმიტი არ აქვთ.`,
+      });
+    }
+  }
 
   const { sanitized: content } = sanitizeChatMessage(result.data.content);
 
@@ -234,26 +304,26 @@ function toCommentDTO(comment: {
   id: string;
   threadId: string;
   content: string;
-  author: { id: string; name: string; role: string };
+  author: { id: string; name: string; role: string; isVerifiedGraduate: boolean };
   createdAt: Date;
   _count: { likes: number };
   likes: { userId: string }[];
-}, currentUserId: string) {
+}, currentUserId?: string) {
   return {
     id: comment.id,
     threadId: comment.threadId,
     content: comment.content,
     author: comment.author,
     likeCount: comment._count.likes,
-    isLikedByCurrentUser: comment.likes.some((l) => l.userId === currentUserId),
+    isLikedByCurrentUser: !!currentUserId && comment.likes.some((l) => l.userId === currentUserId),
     createdAt: comment.createdAt,
   };
 }
 
-const commentInclude = (currentUserId: string) => ({
+const commentInclude = (currentUserId?: string) => ({
   author: authorSelect,
   _count: { select: { likes: true } },
-  likes: { where: { userId: currentUserId }, select: { userId: true } },
+  likes: { where: { userId: currentUserId ?? '__guest__' }, select: { userId: true } },
 });
 
 router.get('/threads/:id/comments', async (req: Request, res: Response) => {
@@ -263,14 +333,14 @@ router.get('/threads/:id/comments', async (req: Request, res: Response) => {
   const [comments, totalCount] = await Promise.all([
     prisma.forumComment.findMany({
       where: { threadId: req.params.id },
-      include: commentInclude(req.user!.id),
+      include: commentInclude(req.user?.id),
       orderBy: { createdAt: 'asc' },
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
     prisma.forumComment.count({ where: { threadId: req.params.id } }),
   ]);
-  res.json({ items: comments.map((c) => toCommentDTO(c, req.user!.id)), totalCount, page, pageSize });
+  res.json({ items: comments.map((c) => toCommentDTO(c, req.user?.id)), totalCount, page, pageSize });
 });
 
 router.post('/threads/:id/comments', requireApproved, async (req: Request, res: Response) => {
@@ -318,7 +388,7 @@ router.delete('/comments/:id/like', requireApproved, async (req: Request, res: R
   res.json(toCommentDTO(updated, req.user!.id));
 });
 
-router.delete('/comments/:id', async (req: Request, res: Response) => {
+router.delete('/comments/:id', authenticate, async (req: Request, res: Response) => {
   const comment = await prisma.forumComment.findUnique({ where: { id: req.params.id } });
   if (!comment) return res.status(404).json({ message: 'Comment not found.' });
   const isOwner = comment.authorId === req.user!.id;

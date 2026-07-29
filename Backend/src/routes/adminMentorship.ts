@@ -50,4 +50,26 @@ router.post('/gigs/:id/dismiss', async (req: Request, res: Response) => {
   res.json({ data: gig });
 });
 
+// General "დახმარება / მენტორობა" requests from the Dashboard button — not
+// tied to any specific gig, see MentorshipRequest's schema comment.
+router.get('/requests', async (_req: Request, res: Response) => {
+  const requests = await prisma.mentorshipRequest.findMany({
+    where: { status: 'OPEN' },
+    include: { user: userSelect },
+    orderBy: { createdAt: 'asc' },
+  });
+  res.json({ data: requests });
+});
+
+router.post('/requests/:id/resolve', async (req: Request, res: Response) => {
+  const request = await prisma.mentorshipRequest
+    .update({
+      where: { id: req.params.id },
+      data: { status: 'RESOLVED', resolvedAt: new Date(), resolvedById: req.user!.id },
+    })
+    .catch(() => null);
+  if (!request) return res.status(404).json({ message: 'Request not found.' });
+  res.json({ data: request });
+});
+
 export default router;

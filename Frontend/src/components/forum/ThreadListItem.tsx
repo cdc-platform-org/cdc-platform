@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { useTranslation } from 'next-i18next';
 import { ForumThread } from '../../types/forum';
+import VerifiedGraduateBadge from '../community/VerifiedGraduateBadge';
 
 interface ThreadListItemProps {
   thread: ForumThread;
@@ -53,8 +54,11 @@ export default function ThreadListItem({
           >
             {thread.title}
           </Link>
-          <p className="text-sm text-gray-500 mt-1">
-            {thread.author.name} · {new Date(thread.createdAt).toLocaleDateString()}
+          <p className="text-sm text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
+            <span>
+              {thread.author.name} · {new Date(thread.createdAt).toLocaleDateString()}
+            </span>
+            {thread.author.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
           </p>
         </div>
         <div className="flex flex-col items-end gap-1 text-xs text-gray-400 whitespace-nowrap">

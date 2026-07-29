@@ -120,6 +120,16 @@ router.post(
     if (req.vacancy!.status !== 'open') {
       return res.status(400).json({ message: 'This vacancy is no longer accepting applications.' });
     }
+    // Client-side also checks this, but that's UX only — the real gate has
+    // to live here, since anyone can otherwise call this endpoint directly.
+    // Matches the same isVerifiedGraduate gate gigs.ts's apply route enforces.
+    const applicant = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { isVerifiedGraduate: true },
+    });
+    if (!applicant?.isVerifiedGraduate) {
+      return res.status(403).json({ message: 'ვაკანსიაზე განაცხადის გაგზავნა მხოლოდ CDC-ის კურსდამთავრებულებს შეუძლიათ.' });
+    }
     const result = applyToVacancySchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ errors: result.error.errors });
     try {

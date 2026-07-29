@@ -2,7 +2,80 @@ import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
-import { getMentorshipQueue, dismissMentorshipRequest, MentorshipGig } from '../../src/services/adminMentorshipService';
+import {
+  getMentorshipQueue,
+  dismissMentorshipRequest,
+  getMentorshipRequests,
+  resolveMentorshipRequest,
+  MentorshipGig,
+  MentorshipHelpRequest,
+} from '../../src/services/adminMentorshipService';
+
+function GeneralHelpRequests() {
+  const [requests, setRequests] = useState<MentorshipHelpRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      setRequests(await getMentorshipRequests());
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const handleResolve = async (id: string) => {
+    setBusyId(id);
+    try {
+      await resolveMentorshipRequest(id);
+      setRequests((prev) => prev.filter((r) => r.id !== id));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="mb-10">
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-gray-900">General Help / Mentorship Requests</h2>
+        <p className="text-sm text-gray-500 mt-1">
+          Submitted via the graduate-only &quot;დახმარება / მენტორობა&quot; button on the student Dashboard.
+        </p>
+      </div>
+      {loading ? (
+        <p className="text-sm text-gray-400">Loading…</p>
+      ) : requests.length === 0 ? (
+        <p className="text-sm text-gray-500">No open general help requests.</p>
+      ) : (
+        <div className="space-y-3">
+          {requests.map((r) => (
+            <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-5">
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <span className="font-semibold text-gray-900">{r.user.name}</span>
+                <span className="text-xs text-gray-400">{new Date(r.createdAt).toLocaleString()}</span>
+              </div>
+              <p className="text-xs text-gray-500 mb-3">{r.user.email}</p>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap mb-3">{r.message}</p>
+              <button
+                type="button"
+                disabled={busyId === r.id}
+                onClick={() => handleResolve(r.id)}
+                className="text-xs font-medium text-emerald-600 hover:text-emerald-800 disabled:opacity-60"
+              >
+                Mark as resolved
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function AdminMentorshipDashboard() {
   const [queue, setQueue] = useState<MentorshipGig[]>([]);
@@ -39,6 +112,8 @@ function AdminMentorshipDashboard() {
         <title>Mentorship Queue | Admin</title>
       </Head>
       <div className="max-w-4xl">
+        <GeneralHelpRequests />
+
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-gray-900">Mentorship Queue</h1>
           <p className="text-sm text-gray-500 mt-1">Students who requested help, and first-time freelancers flagged for extra support.</p>

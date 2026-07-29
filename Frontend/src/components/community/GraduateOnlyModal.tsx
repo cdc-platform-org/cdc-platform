@@ -3,9 +3,15 @@ import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 
 interface GraduateOnlyModalProps {
   onClose: () => void;
+  message?: { ka: string; en: string };
 }
 
-export default function GraduateOnlyModal({ onClose }: GraduateOnlyModalProps) {
+const DEFAULT_MESSAGE = {
+  ka: 'შეკვეთების აღება ხელმისაწვდომია მხოლოდ CDC-ის სერტიფიცირებული კურსდამთავრებულებისთვის.',
+  en: 'Taking on paid work is only available to verified CDC graduates.',
+};
+
+export default function GraduateOnlyModal({ onClose, message = DEFAULT_MESSAGE }: GraduateOnlyModalProps) {
   useEscapeToClose(true, onClose);
 
   return (
@@ -14,10 +20,10 @@ export default function GraduateOnlyModal({ onClose }: GraduateOnlyModalProps) {
         <div className="text-4xl mb-3">🎓</div>
         <h2 className="text-lg font-semibold text-gray-900 mb-2">CDC Verified Graduates Only</h2>
         <p className="text-sm text-gray-600 leading-relaxed">
-          შეკვეთების აღება ხელმისაწვდომია მხოლოდ CDC-ის სერტიფიცირებული კურსდამთავრებულებისთვის.
+          {message.ka}
         </p>
         <p className="text-xs text-gray-400 mt-2 leading-relaxed">
-          Taking on paid work is only available to verified CDC graduates.
+          {message.en}
         </p>
 
         <div className="flex flex-col gap-2 mt-6">

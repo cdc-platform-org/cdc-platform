@@ -2,6 +2,7 @@ interface Author {
   id: string;
   name: string;
   role: 'Student' | 'Mentor' | 'SuperAdmin' | 'Client';
+  isVerifiedGraduate: boolean;
 }
 
 // ============================================================

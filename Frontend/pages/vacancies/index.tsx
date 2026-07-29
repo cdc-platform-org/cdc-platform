@@ -7,6 +7,7 @@ import VacancyCard from '../../src/components/community/VacancyCard';
 import FilterBar from '../../src/components/community/FilterBar';
 import BackButton from '../../src/components/common/BackButton';
 import ApplicationModal from '../../src/components/community/ApplicationModal';
+import GraduateOnlyModal from '../../src/components/community/GraduateOnlyModal';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
 import { Vacancy } from '../../src/types/community';
@@ -20,6 +21,10 @@ const SIGN_IN_TO_POST = {
   ka: 'გთხოვთ გაიაროთ ავტორიზაცია ვაკანსიის გამოსაქვეყნებლად',
   en: 'Please sign in to post a job',
 };
+const GRADUATES_ONLY_MESSAGE = {
+  ka: 'ვაკანსიაზე განაცხადის გაგზავნა მხოლოდ CDC-ის კურსდამთავრებულებს შეუძლიათ.',
+  en: 'Only verified CDC graduates can apply to job vacancies.',
+};
 
 function VacanciesPageContent() {
   const { t } = useTranslation('proposals');
@@ -30,16 +35,27 @@ function VacanciesPageContent() {
   const [skillsFilter, setSkillsFilter] = useState('');
   const [employmentTypeFilter, setEmploymentTypeFilter] = useState('');
   const [applyingTo, setApplyingTo] = useState<Vacancy | null>(null);
+  const [showGraduateGate, setShowGraduateGate] = useState(false);
 
   const handleApplyClick = (vacancy: Vacancy) => {
     if (!isAuthenticated) {
       // Preserve intent — reopen the application modal for this exact
       // vacancy right after the guest signs in, instead of leaving them
       // logged in with nothing happening.
-      openAuthModal({ message: SIGN_IN_TO_APPLY, onSuccess: () => setApplyingTo(vacancy) });
+      openAuthModal({
+        message: SIGN_IN_TO_APPLY,
+        onSuccess: (loggedInUser) => {
+          if (loggedInUser?.isVerifiedGraduate) setApplyingTo(vacancy);
+          else setShowGraduateGate(true);
+        },
+      });
       return;
     }
-    setApplyingTo(vacancy);
+    if (user?.isVerifiedGraduate) {
+      setApplyingTo(vacancy);
+    } else {
+      setShowGraduateGate(true);
+    }
   };
 
   const handlePostVacancyClick = () => {
@@ -142,6 +158,9 @@ function VacanciesPageContent() {
             await applyToVacancy(applyingTo.id, { coverNote: note });
           }}
         />
+      )}
+      {showGraduateGate && (
+        <GraduateOnlyModal message={GRADUATES_ONLY_MESSAGE} onClose={() => setShowGraduateGate(false)} />
       )}
     </div>
   );
