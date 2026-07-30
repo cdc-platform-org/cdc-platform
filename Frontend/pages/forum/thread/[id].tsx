@@ -265,5 +265,5 @@ export default function ThreadDetailPage() {
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'ka', ['common'])) },
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['forum'])) },
 });

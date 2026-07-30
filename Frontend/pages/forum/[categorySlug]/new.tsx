@@ -2,12 +2,14 @@ import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { GetServerSideProps } from 'next';
+import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import { ForumCategory } from '../../../src/types/forum';
 import { getCategories, createThread } from '../../../src/services/forumService';
 
 function NewThreadContent() {
+  const { t } = useTranslation('forum');
   const router = useRouter();
   const { categorySlug } = router.query;
   const [category, setCategory] = useState<ForumCategory | null>(null);
@@ -36,8 +38,8 @@ function NewThreadContent() {
 
   const validate = () => {
     const e: { title?: string; content?: string } = {};
-    if (title.trim().length < 5) e.title = 'Title must be at least 5 characters.';
-    if (content.trim().length < 10) e.content = 'Post content must be at least 10 characters.';
+    if (title.trim().length < 5) e.title = t('titleTooShort');
+    if (content.trim().length < 10) e.content = t('contentTooShort');
     return e;
   };
 
@@ -58,7 +60,7 @@ function NewThreadContent() {
       });
       router.push(`/forum/thread/${thread.id}`);
     } catch {
-      setSubmitError('Unable to post your thread. Please try again.');
+      setSubmitError(t('submitThreadError'));
     } finally {
       setSubmitting(false);
     }
@@ -70,20 +72,20 @@ function NewThreadContent() {
     }`;
 
   if (resolvingCategory) {
-    return <p className="text-center text-sm text-gray-400 py-10">Loading…</p>;
+    return <p className="text-center text-sm text-gray-400 py-10">{t('loading')}</p>;
   }
 
   if (notFound || !category) {
-    return <p className="text-center text-sm text-gray-500 py-10">This category doesn't exist.</p>;
+    return <p className="text-center text-sm text-gray-500 py-10">{t('categoryNotFound')}</p>;
   }
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10">
       <div className="max-w-2xl mx-auto">
         <Link href={`/forum/${categorySlug}`} className="text-sm text-gray-500 hover:text-gray-700">
-          ← Back to {category.name}
+          {t('backToCategory', { category: category.name })}
         </Link>
-        <h1 className="text-2xl font-semibold text-gray-900 mt-2 mb-8">New Thread</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 mt-2 mb-8">{t('newThread')}</h1>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
           {submitError && (
             <div className="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
@@ -92,24 +94,24 @@ function NewThreadContent() {
           )}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Title</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('titleLabel')}</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className={inputClass(!!errors.title)}
-                placeholder="What's your question or topic?"
+                placeholder={t('titlePlaceholder')}
               />
               {errors.title && <p className="mt-1 text-xs text-red-600">{errors.title}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Content</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('contentLabel')}</label>
               <textarea
                 rows={8}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 className={inputClass(!!errors.content)}
-                placeholder="Share the details…"
+                placeholder={t('contentPlaceholder')}
               />
               {errors.content && <p className="mt-1 text-xs text-red-600">{errors.content}</p>}
             </div>
@@ -118,7 +120,7 @@ function NewThreadContent() {
               disabled={submitting}
               className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
             >
-              {submitting ? 'Posting…' : 'Post Thread'}
+              {submitting ? t('posting') : t('postThread')}
             </button>
           </form>
         </div>
@@ -136,5 +138,5 @@ export default function NewThreadPage() {
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'ka', ['common'])) },
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['forum'])) },
 });

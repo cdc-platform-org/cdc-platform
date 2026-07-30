@@ -294,13 +294,21 @@ function ExamContent() {
 
         {phase === 'in-progress' && (
           <div>
-            <div className="sticky top-0 z-10 -mx-4 px-4 py-3 mb-6 bg-slate-950/95 backdrop-blur border-b border-slate-800 flex items-center justify-between">
-              <span className="text-xs text-slate-400">
-                {answeredCount}/{questions.length} {t.of === '/' ? '' : ''}
-              </span>
-              <span className={`text-sm font-mono font-bold ${secondsLeft <= 60 ? 'text-red-400' : 'text-cyan-400'}`}>
-                {t.timeLeft}: {formatCountdown(secondsLeft)}
-              </span>
+            <div className="sticky top-0 z-10 -mx-4 px-4 py-3 mb-6 bg-slate-950/95 backdrop-blur border-b border-slate-800">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-slate-400">
+                  {answeredCount}/{questions.length}
+                </span>
+                <span className={`text-sm font-mono font-bold ${secondsLeft <= 60 ? 'text-red-400' : 'text-cyan-400'}`}>
+                  {t.timeLeft}: {formatCountdown(secondsLeft)}
+                </span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-300"
+                  style={{ width: `${questions.length ? (answeredCount / questions.length) * 100 : 0}%` }}
+                />
+              </div>
             </div>
 
             <div className="space-y-6">
