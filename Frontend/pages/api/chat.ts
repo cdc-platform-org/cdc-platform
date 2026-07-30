@@ -1,12 +1,31 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { askCdcAssistant, isGeminiConfigured } from '../../lib/gemini';
+import { askCdcAssistant, isGeminiConfigured, ChatTurn } from '../../lib/gemini';
+
+// `history` comes straight from the browser — untrusted input. Only well-
+// formed {role, text} turns are kept; anything else is silently dropped
+// rather than passed through to the Gemini SDK.
+function sanitizeHistory(raw: unknown): ChatTurn[] {
+  if (!Array.isArray(raw)) return [];
+  const turns: ChatTurn[] = [];
+  for (const entry of raw) {
+    if (
+      entry &&
+      typeof entry === 'object' &&
+      (entry.role === 'user' || entry.role === 'model') &&
+      typeof entry.text === 'string'
+    ) {
+      turns.push({ role: entry.role, text: entry.text });
+    }
+  }
+  return turns;
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { message, lang } = req.body as { message?: string; lang?: 'GEO' | 'ENG' };
+  const { message, lang, history } = req.body as { message?: string; lang?: 'GEO' | 'ENG'; history?: unknown };
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ reply: 'Missing message.' });
   }
@@ -22,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const reply = await askCdcAssistant(message, effectiveLang);
+    const reply = await askCdcAssistant(message, effectiveLang, sanitizeHistory(history));
     return res.status(200).json({ reply });
   } catch (error) {
     console.error('Gemini chat error:', error);

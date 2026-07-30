@@ -395,20 +395,38 @@ router.post('/google', async (req, res) => {
     }
   } else {
     const randomPassword = await bcrypt.hash(crypto.randomUUID(), 12);
-    user = await prisma.user.create({
-      data: {
-        name: payload.name || normalizedEmail.split('@')[0],
-        email: normalizedEmail,
-        password: randomPassword, // unusable for password login — this account signs in via Google only
-        role: result.data.role ?? 'Student',
-        // Same reasoning as POST /register — googleAuthSchema only ever
-        // grants Student or Client, both self-serve roles that don't need
-        // manual admin vetting.
-        status: 'APPROVED',
-        googleId: payload.sub,
-        emailVerifiedAt: new Date(), // Google already verified this email
-      },
-    });
+    try {
+      user = await prisma.user.create({
+        data: {
+          name: payload.name || normalizedEmail.split('@')[0],
+          email: normalizedEmail,
+          password: randomPassword, // unusable for password login — this account signs in via Google only
+          role: result.data.role ?? 'Student',
+          // Same reasoning as POST /register — googleAuthSchema only ever
+          // grants Student or Client, both self-serve roles that don't need
+          // manual admin vetting.
+          status: 'APPROVED',
+          googleId: payload.sub,
+          emailVerifiedAt: new Date(), // Google already verified this email
+        },
+      });
+    } catch (err: any) {
+      // The One Tap prompt / button can fire twice in quick succession (e.g.
+      // a re-render right as the user clicks), sending two concurrent
+      // requests for the same brand-new email — the findFirst above ran
+      // before either had committed, so both took this branch. Whichever
+      // commits second hits the unique email/googleId constraint here
+      // instead of crashing into a raw 500.
+      if (err.code === 'P2002') {
+        console.error('[auth] Google sign-up race on', normalizedEmail, '— retrying as existing user.');
+        user = await prisma.user.findFirst({
+          where: { OR: [{ googleId: payload.sub }, { email: normalizedEmail }] },
+        });
+        if (!user) throw err;
+      } else {
+        throw err;
+      }
+    }
   }
 
   user = await maybePromoteSuperAdmin(user);

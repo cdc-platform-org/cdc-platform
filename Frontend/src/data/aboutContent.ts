@@ -51,7 +51,7 @@ export const aboutContent = {
       ka: 'იხილეთ ვრცლად',
       en: 'Read Announcement',
     },
-    url: 'https://socialinnovation.ge/%e1%83%aa%e1%83%98%e1%83%a4%e1%83%a0%e1%83%a3%e1%83%9a%e1%83%98-%e1%83%9e%e1%83%a0%e1%83%9d%e1%83%a4%e1%83%94%e1%83%a1%e1%83%98%e1%83%91%e1%83%98%e1%83%a1-%e1%83%aa%e1%83%94%e1%83%9c%e1%83%a2/',
+    url: 'https://www.facebook.com/share/v/1C3y6w2BKM/',
   },
   descriptionParagraphs: [
     {

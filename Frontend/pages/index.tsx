@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import { useRouter } from 'next/router';
-import { CheckCircle2, AlertTriangle, Search, Sun, Moon, User, X, Menu, Link as LinkIcon, Rocket, Palette, Code, Clock } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Search, Sun, Moon, User, X, Menu, Link as LinkIcon, Rocket, Clock } from 'lucide-react';
 import { useAuthModal } from '../src/context/AuthModalContext';
 import { useAuth } from '../src/context/AuthContext';
 import SiteFooter from '../src/components/layout/SiteFooter';
@@ -238,6 +238,12 @@ export default function Home() {
     if (!userInput.trim()) return;
 
     const userText = userInput.trim();
+    // The widget's opening message (chatMessages[0]) is a hardcoded UI
+    // greeting, not a real assistant turn — the Gemini SDK requires chat
+    // history to start with a 'user' turn, so it's excluded here.
+    const history = chatMessages
+      .slice(1)
+      .map((m) => ({ role: m.sender === 'user' ? ('user' as const) : ('model' as const), text: m.text }));
     const updatedMessages = [...chatMessages, { sender: 'user' as const, text: userText }];
     setChatMessages(updatedMessages);
     setUserInput('');
@@ -248,19 +254,15 @@ export default function Home() {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userText, lang }),
+        body: JSON.stringify({ message: userText, lang, history }),
       });
 
       const data = await response.json();
-      
+
       setChatMessages([
         ...updatedMessages,
         { sender: 'bot', text: data.reply }
       ]);
-      
-      if (userText.includes('ვიზუალ') || userText.includes('კოდ')) {
-        setTestStep(2);
-      }
     } catch (error) {
       setChatMessages([
         ...updatedMessages,
@@ -804,16 +806,21 @@ export default function Home() {
               ))}
             </div>
 
-            {/* QUICK REPLY BUTTONS */}
+            {/* QUICK REPLY: kicks off the interactive career quiz (hidden once used) */}
             {testStep === 0 && (
               <div className="flex gap-2 p-2 justify-center bg-slate-50 dark:bg-[#0b0f17]">
-                <button type="button" onClick={() => { setUserInput(lang === 'GEO' ? 'კი' : 'Yes'); const mockEvent = { preventDefault: () => {} } as React.FormEvent; setTimeout(() => handleSendMessage(mockEvent), 50); }} className="flex items-center gap-1.5 bg-cyan-500 text-white px-4 py-1.5 rounded-full text-[11px] font-black cursor-pointer hover:bg-cyan-600 transition border-none shadow"><Rocket className="w-3.5 h-3.5" />{translate('დავიწყოთ ტესტი', 'Start Test')}</button>
-              </div>
-            )}
-            {testStep === 1 && (
-              <div className="flex flex-col gap-1.5 p-2 bg-slate-50 dark:bg-[#0b0f17]">
-                <button type="button" onClick={() => { setUserInput(lang === 'GEO' ? 'კრეატიული ვიზუალები' : 'Creative Visuals'); const mockEvent = { preventDefault: () => {} } as React.FormEvent; setTimeout(() => handleSendMessage(mockEvent), 50); }} className="flex items-center gap-1.5 bg-purple-600 text-white px-3 py-2 rounded-xl text-[11px] font-bold cursor-pointer text-left hover:bg-purple-700 border-none shadow"><Palette className="w-3.5 h-3.5 shrink-0" />{translate('კრეატივი და ვიზუალები', 'Creative & Visuals')}</button>
-                <button type="button" onClick={() => { setUserInput(lang === 'GEO' ? 'კოდირება და ლოგიკა' : 'Coding and Logic'); const mockEvent = { preventDefault: () => {} } as React.FormEvent; setTimeout(() => handleSendMessage(mockEvent), 50); }} className="flex items-center gap-1.5 bg-slate-900 text-white px-3 py-2 rounded-xl text-[11px] font-bold cursor-pointer text-left hover:bg-slate-800 dark:bg-slate-800 border-none shadow"><Code className="w-3.5 h-3.5 shrink-0" />{translate('კოდირება და ლოგიკა', 'Coding and Logic')}</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTestStep(1);
+                    setUserInput(lang === 'GEO' ? 'დავიწყოთ ტესტი' : 'Start the test');
+                    const mockEvent = { preventDefault: () => {} } as React.FormEvent;
+                    setTimeout(() => handleSendMessage(mockEvent), 50);
+                  }}
+                  className="flex items-center gap-1.5 bg-cyan-500 text-white px-4 py-1.5 rounded-full text-[11px] font-black cursor-pointer hover:bg-cyan-600 transition border-none shadow"
+                >
+                  <Rocket className="w-3.5 h-3.5" />{translate('დავიწყოთ ტესტი', 'Start Test')}
+                </button>
               </div>
             )}
 
