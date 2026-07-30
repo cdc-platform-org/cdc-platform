@@ -28,6 +28,8 @@ export const adminDict = {
       financials: 'ესქროუ & BOG',
       promos: 'პრომო კოდები',
       team: 'გუნდი & უფლებები',
+      teamTrainers: 'გუნდი და ტრენერები',
+      studioCases: 'CDC Studio ქეისები',
     },
     chrome: {
       adminPanel: 'ადმინ პანელი',
@@ -82,6 +84,8 @@ export const adminDict = {
       financials: 'Gig Escrow & BOG',
       promos: 'Promo Codes',
       team: 'Team & Permissions',
+      teamTrainers: 'Team & Trainers',
+      studioCases: 'CDC Studio Case Studies',
     },
     chrome: {
       adminPanel: 'Admin Panel',

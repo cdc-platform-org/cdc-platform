@@ -14,6 +14,8 @@ import { getCourses } from '../src/services/courseService';
 import { getBlogPosts, blogTitle, blogDescription } from '../src/services/blogService';
 import { BlogPost } from '../src/types/blog';
 import SuccessStoriesCarousel from '../src/components/shared/SuccessStoriesCarousel';
+import TeamSection from '../src/components/shared/TeamSection';
+import FeaturedCaseStudies from '../src/components/shared/FeaturedCaseStudies';
 import { checkoutCourse } from '../src/services/paymentService';
 import { getSiteContent } from '../src/services/siteContentService';
 import { resolveBlogImageUrl } from '../src/services/blogService';
@@ -751,32 +753,10 @@ export default function Home() {
 
       <SuccessStoriesCarousel lang={lang === 'GEO' ? 'ka' : 'en'} darkMode={darkMode} />
 
-      {/* 👥 OFFICIAL TEAM SECTION */}
-      <section className={`py-28 border-t ${darkMode ? 'bg-[#0e1422]/20 border-slate-800' : 'bg-slate-100/40 border-slate-200'}`}>
-        <div className="max-w-7xl mx-auto text-center px-6">
-          <h2 className="mb-16 text-2xl md:text-3xl font-black tracking-wide">{translate('ჩვენი გუნდი', 'Our Team')}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className={`p-8 rounded-3xl border transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}>
-              <div className="w-20 h-20 rounded-full mx-auto mb-5 bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white font-black text-xl">IT</div>
-              <h3 className="font-black text-lg mb-1">{translate('ია თავდიშვილი', 'Ia Tavdishvili')}</h3>
-              <span className="text-[11px] text-cyan-500 font-bold block mb-4 uppercase tracking-wider">{translate('დირექტორი', 'Director')}</span>
-              <p className="text-sm text-slate-400 leading-relaxed font-medium">{translate('ციფრული პროფესიების ცენტრის სტრატეგიული მართვა, პარტნიორობები და განვითარება.', 'Strategic management, partnerships, and core center development.')}</p>
-            </div>
-            <div className={`p-8 rounded-3xl border transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}>
-              <div className="w-20 h-20 rounded-full mx-auto mb-5 bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white font-black text-xl">MG</div>
-              <h3 className="font-black text-lg mb-1">{translate('მარიკა გაგუა', 'Marika Gagua')}</h3>
-              <span className="text-[11px] text-cyan-500 font-bold block mb-4 uppercase tracking-wider">{translate('სასწავლო მიმართულებების კოორდინატორი', 'Academic Coordinator')}</span>
-              <p className="text-sm text-slate-400 leading-relaxed font-medium">{translate('სასწავლო პროცესების მართვა, სილაბუსების ოპტიმიზაცია და სტუდენტების მონიტორინგი.', 'Academic path coordination, syllabus optimization and student tracking.')}</p>
-            </div>
-            <div className={`p-8 rounded-3xl border transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}>
-              <div className="w-20 h-20 rounded-full mx-auto mb-5 bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white font-black text-xl">IM</div>
-              <h3 className="font-black text-lg mb-1">{translate('იმედო მარტიკოვი', 'Imedo Martikovi')}</h3>
-              <span className="text-[11px] text-cyan-500 font-bold block mb-4 uppercase tracking-wider">{translate('პროექტების მენეჯერი', 'Project Manager')}</span>
-              <p className="text-sm text-slate-400 leading-relaxed font-medium">{translate('პლატფორმის ციფრული ინფრასტრუქტურის, სააგენტოს და ინოვაციური პროექტების მართვა.', 'Digital infrastructure management, studio agency and innovation engineering.')}</p>
-            </div>
-          </div>
-        </div>
-      </section>
+      <FeaturedCaseStudies lang={lang === 'GEO' ? 'ka' : 'en'} darkMode={darkMode} />
+
+      {/* 👥 OFFICIAL TEAM SECTION — real, admin-managed data from GET /api/team */}
+      <TeamSection lang={lang === 'GEO' ? 'ka' : 'en'} darkMode={darkMode} />
 
       {/* ❓ FAQ SECTION — CMS-managed, hidden entirely with no questions set */}
       {!!cms?.faq?.length && (

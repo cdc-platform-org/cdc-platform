@@ -1324,3 +1324,62 @@ model SuccessStory {
   @@index([isFeatured])
   @@map("success_stories")
 }
+
+// ============================================================
+// TEAM MEMBER — admin-managed staff/trainer directory shown on the
+// homepage "ჩვენი გუნდი" section and the public /trainers page. Deliberately
+// NOT tied to a real User row, same posture as SuccessStory above: this is
+// admin-curated marketing content, not an account.
+// ============================================================
+
+enum TeamMemberType {
+  MANAGEMENT
+  TRAINER
+}
+
+model TeamMember {
+  id        String         @id @default(uuid())
+  name      String
+  role      String
+  bio       String?
+  // Uploaded via the same Bunny Storage pipeline as SuccessStory.avatarUrl —
+  // never a freely-settable external URL.
+  imageUrl  String?
+  type      TeamMemberType @default(MANAGEMENT)
+  order     Int            @default(0)
+  active    Boolean        @default(true)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([type, active])
+  @@map("team_members")
+}
+
+// ============================================================
+// STUDIO CASE STUDY — CDC Studio portfolio entries shown on the public
+// /cases showcase and the homepage "Featured Case Studies" block. Distinct
+// from StudioInquiry above (inbound leads) — this is outbound portfolio
+// content, admin-authored, not submitted by anyone.
+// ============================================================
+
+model StudioCaseStudy {
+  id            String   @id @default(uuid())
+  title         String
+  // URL-friendly identifier for /cases/[slug], auto-generated from title at
+  // creation (see routes/adminStudioCases.ts) — same posture as BlogPost.slug.
+  slug          String   @unique
+  clientName    String
+  category      String
+  description   String
+  fullStory     String?
+  coverImageUrl String?
+  galleryImages String[] @default([])
+  projectUrl    String?
+  isFeatured    Boolean  @default(false)
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isFeatured])
+  @@map("studio_case_studies")
+}
