@@ -19,67 +19,26 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Node.js version
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v3
         with:
           node-version: '22.x'
-
-      # Backend is its own pnpm workspace (Backend/pnpm-lock.yaml,
-      # Backend/pnpm-workspace.yaml) — same setup the Dockerfile / azure-pipelines.yml
-      # already use for this service, so we mirror it here instead of the root lockfile.
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.0
-
-      - name: Install dependencies
-        working-directory: Backend
-        run: pnpm install --frozen-lockfile
-
-      - name: Generate Prisma client
-        working-directory: Backend
-        # prisma generate validates the datasource url in schema.prisma even though
-        # it doesn't connect to a DB, so a placeholder is enough at build time.
-        env:
-          DATABASE_URL: 'postgresql://placeholder:placeholder@localhost:5432/placeholder'
-        run: pnpm exec prisma generate
-
-      - name: Build backend
-        working-directory: Backend
-        run: pnpm run build
-
-      - name: Remove dev dependencies
-        working-directory: Backend
-        run: pnpm prune --prod
-
-      # node_modules/dist/prisma/package.json are collected into a flat deploy/
-      # folder (mirrors the Dockerfile's runtime stage) so the zipped artifact is
-      # exactly what `node dist/server.js` needs to run — pnpm's node_modules
-      # symlinks are relative, so they stay valid as long as the whole folder
-      # moves together.
-      - name: Package for deployment
-        run: |
-          mkdir -p deploy
-          cp -r Backend/dist deploy/dist
-          cp -r Backend/node_modules deploy/node_modules
-          cp -r Backend/prisma deploy/prisma
-          cp Backend/package.json deploy/package.json
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: deploy
+          path: .
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
-
+    
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: node-app
-
+      
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
@@ -87,4 +46,4 @@ jobs:
           app-name: 'cdc-api-prod'
           slot-name: 'Production'
           package: .
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_27426FCC6AF34C80B5091DEFF3D68451 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_8F766A504D1F45FD9CE362EC6B224203 }}
