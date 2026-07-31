@@ -56,11 +56,19 @@ jobs:
         working-directory: Backend
         run: pnpm prune --prod
 
+      # prune re-materializes the hoisted node_modules from the lockfile, which
+      # wipes node_modules/.prisma/client since it's generated output rather than
+      # a locked package — regenerate it here so it's the last thing written
+      # before packaging.
+      - name: Regenerate Prisma client after prune
+        working-directory: Backend
+        env:
+          DATABASE_URL: 'postgresql://placeholder:placeholder@localhost:5432/placeholder'
+        run: pnpm exec prisma generate
+
       # node_modules/dist/prisma/package.json are collected into a flat deploy/
       # folder (mirrors the Dockerfile's runtime stage) so the zipped artifact is
-      # exactly what `node dist/server.js` needs to run — pnpm's node_modules
-      # symlinks are relative, so they stay valid as long as the whole folder
-      # moves together.
+      # exactly what `node dist/server.js` needs to run.
       - name: Package for deployment
         run: |
           mkdir -p deploy
