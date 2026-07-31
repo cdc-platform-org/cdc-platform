@@ -1,7 +1,6 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
+# Docs: https://github.com/Azure/login (OIDC), https://github.com/Azure/acr-build (az acr build)
 
-name: Build and deploy Node.js app to Azure Web App - cdc-api-prod
+name: Build and deploy container to Azure Web App - cdc-api-prod
 
 on:
   push:
@@ -9,77 +8,52 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  ACR_NAME: cdcplatformacr
+  ACR_LOGIN_SERVER: cdcplatformacr.azurecr.io
+  IMAGE_NAME: cdc-platform-backend
+  WEBAPP_NAME: cdc-api-prod
+  RESOURCE_GROUP: CDC-Prod-RG
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: read #This is required for actions/checkout
+      contents: read # required for actions/checkout
+      id-token: write # required for Azure OIDC login
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node.js version
-        uses: actions/setup-node@v4
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
         with:
-          node-version: '22.x'
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # Backend is its own pnpm workspace (Backend/pnpm-lock.yaml,
-      # Backend/pnpm-workspace.yaml) — same setup the Dockerfile / azure-pipelines.yml
-      # already use for this service, so we mirror it here instead of the root lockfile.
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.0
-
-      - name: Install dependencies
+      # Builds inside ACR (no local docker daemon/login needed) and pushes the
+      # resulting image tagged with the commit SHA plus a floating `latest` tag.
+      - name: Build and push image via ACR Tasks
         working-directory: Backend
-        run: pnpm install --frozen-lockfile
-
-      - name: Generate Prisma client
-        working-directory: Backend
-        # prisma generate validates the datasource url in schema.prisma even though
-        # it doesn't connect to a DB, so a placeholder is enough at build time.
-        env:
-          DATABASE_URL: 'postgresql://placeholder:placeholder@localhost:5432/placeholder'
-        run: pnpm exec prisma generate
-
-      - name: Build backend
-        working-directory: Backend
-        run: pnpm run build
-
-      - name: Remove dev dependencies
-        working-directory: Backend
-        run: pnpm prune --prod
-
-      # Belt-and-suspenders: regenerate right after pruning too, immediately
-      # before packaging, so the generated client is the last thing written
-      # regardless of how prune reconciles node_modules.
-      - name: Regenerate Prisma client after prune
-        working-directory: Backend
-        env:
-          DATABASE_URL: 'postgresql://placeholder:placeholder@localhost:5432/placeholder'
-        run: pnpm exec prisma generate
-
-      # node_modules/dist/prisma/package.json are collected into a flat deploy/
-      # folder (mirrors the Dockerfile's runtime stage) so the zipped artifact is
-      # exactly what `node dist/server.js` needs to run. Build and deploy stay in
-      # the same job (no upload-artifact/download-artifact round trip) because
-      # that round trip does not reliably preserve pnpm's symlinked node_modules
-      # (files pointing into a .pnpm store) — it previously left the deployed app
-      # unable to resolve some of its own transitive dependencies at runtime.
-      - name: Package for deployment
         run: |
-          mkdir -p deploy
-          cp -r Backend/dist deploy/dist
-          cp -r Backend/node_modules deploy/node_modules
-          cp -r Backend/prisma deploy/prisma
-          cp Backend/package.json deploy/package.json
+          az acr build \
+            --registry ${{ env.ACR_NAME }} \
+            --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --image ${{ env.IMAGE_NAME }}:latest \
+            .
 
-      - name: 'Deploy to Azure Web App'
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: 'cdc-api-prod'
-          slot-name: 'Production'
-          package: deploy
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_8F766A504D1F45FD9CE362EC6B224203 }}
+      - name: Point Web App at the new image
+        run: |
+          az webapp config container set \
+            --name ${{ env.WEBAPP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --container-image-name ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --container-registry-url https://${{ env.ACR_LOGIN_SERVER }}
+
+      - name: Restart Web App to pull new image
+        run: az webapp restart --name ${{ env.WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}
+
+      - name: Azure logout
+        if: always()
+        run: az logout
