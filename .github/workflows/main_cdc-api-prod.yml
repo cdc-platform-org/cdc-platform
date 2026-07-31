@@ -33,7 +33,12 @@ jobs:
 
       - name: Install dependencies
         working-directory: Backend
-        run: pnpm install --frozen-lockfile
+        # node-linker=hoisted produces a flat, symlink-free node_modules.
+        # pnpm's default symlinked layout (files pointing into a .pnpm store)
+        # doesn't reliably survive the actions/upload-artifact -> download-artifact
+        # -> azure/webapps-deploy zip round trip, which previously left the
+        # deployed app with broken module resolution at runtime.
+        run: pnpm install --frozen-lockfile --config.node-linker=hoisted
 
       - name: Generate Prisma client
         working-directory: Backend
