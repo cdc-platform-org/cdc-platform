@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: read #This is required for actions/checkout
@@ -33,12 +33,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: Backend
-        # node-linker=hoisted produces a flat, symlink-free node_modules.
-        # pnpm's default symlinked layout (files pointing into a .pnpm store)
-        # doesn't reliably survive the actions/upload-artifact -> download-artifact
-        # -> azure/webapps-deploy zip round trip, which previously left the
-        # deployed app with broken module resolution at runtime.
-        run: pnpm install --frozen-lockfile --config.node-linker=hoisted
+        run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma client
         working-directory: Backend
@@ -56,10 +51,9 @@ jobs:
         working-directory: Backend
         run: pnpm prune --prod
 
-      # prune re-materializes the hoisted node_modules from the lockfile, which
-      # wipes node_modules/.prisma/client since it's generated output rather than
-      # a locked package — regenerate it here so it's the last thing written
-      # before packaging.
+      # Belt-and-suspenders: regenerate right after pruning too, immediately
+      # before packaging, so the generated client is the last thing written
+      # regardless of how prune reconciles node_modules.
       - name: Regenerate Prisma client after prune
         working-directory: Backend
         env:
@@ -68,7 +62,11 @@ jobs:
 
       # node_modules/dist/prisma/package.json are collected into a flat deploy/
       # folder (mirrors the Dockerfile's runtime stage) so the zipped artifact is
-      # exactly what `node dist/server.js` needs to run.
+      # exactly what `node dist/server.js` needs to run. Build and deploy stay in
+      # the same job (no upload-artifact/download-artifact round trip) because
+      # that round trip does not reliably preserve pnpm's symlinked node_modules
+      # (files pointing into a .pnpm store) — it previously left the deployed app
+      # unable to resolve some of its own transitive dependencies at runtime.
       - name: Package for deployment
         run: |
           mkdir -p deploy
@@ -77,27 +75,11 @@ jobs:
           cp -r Backend/prisma deploy/prisma
           cp Backend/package.json deploy/package.json
 
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
-        with:
-          name: node-app
-          path: deploy
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: node-app
-
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'cdc-api-prod'
           slot-name: 'Production'
-          package: .
+          package: deploy
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_8F766A504D1F45FD9CE362EC6B224203 }}
