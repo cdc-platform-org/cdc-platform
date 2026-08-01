@@ -70,8 +70,21 @@ export type ChatTurn = { role: 'user' | 'model'; text: string };
 // widget's GEO/ENG toggle. `history` carries prior turns so multi-step
 // flows (like the career quiz) have the context to know which question
 // comes next instead of treating every message as a fresh conversation.
-export async function askCdcAssistant(message: string, lang: 'GEO' | 'ENG', history: ChatTurn[] = []): Promise<string> {
+export async function askCdcAssistant(
+  message: string,
+  lang: 'GEO' | 'ENG',
+  history: ChatTurn[] = [],
+  knowledgeContext?: string
+): Promise<string> {
   if (!client) throw new GeminiNotConfiguredError();
+
+  // Admin-uploaded knowledge (routes/adminKnowledge.ts, converted to
+  // Markdown from PDF/DOCX on upload) — appended rather than woven into
+  // SYSTEM_PROMPT itself so the quiz-flow/persona instructions above stay
+  // stable regardless of what's currently in the knowledge base.
+  const knowledgeBlock = knowledgeContext?.trim()
+    ? `\n\n### Additional reference material (uploaded by CDC admins — use this to answer questions accurately, but don't mention that it was "uploaded" or read it out verbatim; speak naturally as if you already knew it)\n${knowledgeContext.trim()}`
+    : '';
 
   const model = client.getGenerativeModel({
     // "gemini-2.5-pro" / "gemini-pro-latest" both return a hard 0 free-tier
@@ -79,7 +92,7 @@ export async function askCdcAssistant(message: string, lang: 'GEO' | 'ENG', hist
     // Flash family has real free-tier headroom, so that's what's wired up
     // until the Google Cloud project has billing enabled for Pro models.
     model: 'gemini-flash-latest',
-    systemInstruction: `${SYSTEM_PROMPT}\n\nAlways respond in the language requested by the user. Current language: ${lang === 'GEO' ? 'Georgian' : 'English'}.`,
+    systemInstruction: `${SYSTEM_PROMPT}${knowledgeBlock}\n\nAlways respond in the language requested by the user. Current language: ${lang === 'GEO' ? 'Georgian' : 'English'}.`,
   });
 
   // The Gemini SDK requires chat history (if any) to start with a 'user'

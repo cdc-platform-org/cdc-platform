@@ -24,6 +24,7 @@ import {
   Award,
   UsersRound,
   Layers,
+  BrainCircuit,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AdminLangProvider, useAdminLang } from '../../context/AdminLangContext';
@@ -44,6 +45,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/mentorship', labelKey: 'mentorship', icon: GraduationCap },
   { href: '/admin/messages', labelKey: 'messages', icon: ShieldAlert },
   { href: '/admin/forum', labelKey: 'forum', icon: MessageSquare },
+  { href: '/admin/bot-knowledge', labelKey: 'botKnowledge', icon: BrainCircuit, tiers: ['SUPER_ADMIN', 'MANAGER'] },
   { href: '/admin/cms/homepage', labelKey: 'cms', icon: PenTool, tiers: ['SUPER_ADMIN', 'MANAGER'] },
   { href: '/admin/cms/gallery', labelKey: 'gallery', icon: ImageIcon, tiers: ['SUPER_ADMIN', 'MANAGER'] },
   { href: '/admin/cms/agency', labelKey: 'agencyCms', icon: Building2, tiers: ['SUPER_ADMIN', 'MANAGER'] },

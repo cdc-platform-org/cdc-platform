@@ -1,7 +1,9 @@
 import { Router, Request, Response } from 'express';
+import multer from 'multer';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved, requireRole } from '../middleware/auth';
 import { createAgentSchema, updateAgentSchema, knowledgeDocumentSchema } from '../schemas/agentSchemas';
+import { parseDocumentToMarkdown, chunkMarkdown, DocumentParseError } from '../services/documentParserService';
 
 const router = Router();
 // CDC Business AI is a Business (Client) feature — every route here is
@@ -104,6 +106,61 @@ router.delete('/:id/knowledge/:docId', loadOwnedAgent, async (req: Request, res:
   await prisma.knowledgeDocument.delete({ where: { id: doc.id } });
   res.status(204).send();
 });
+
+// File-based knowledge upload — parses PDF/DOCX/MD to Markdown (same
+// services/documentParserService.ts used by the platform's own CDC
+// assistant knowledge base) and chunks it into one KnowledgeDocument row
+// per chunk, tagged via `question` with the source filename + part number
+// so the existing text-only knowledge list (question/content) can display
+// where each chunk came from without a schema change.
+const knowledgeUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    const allowedExt = /\.(pdf|docx|md|txt)$/i;
+    if (allowedExt.test(file.originalname)) cb(null, true);
+    else cb(new Error('Only PDF, DOCX, or Markdown (.md) files are allowed.'));
+  },
+  limits: { fileSize: 20 * 1024 * 1024 },
+});
+
+router.post(
+  '/:id/knowledge/upload',
+  loadOwnedAgent,
+  (req: Request, res: Response, next) => {
+    knowledgeUpload.single('file')(req, res, (err: any) => {
+      if (!err) return next();
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ message: 'File exceeds the 20MB limit.' });
+      }
+      return res.status(400).json({ message: err.message || 'Only PDF, DOCX, or Markdown (.md) files are allowed.' });
+    });
+  },
+  async (req: Request, res: Response) => {
+    if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
+
+    let markdown: string;
+    try {
+      markdown = await parseDocumentToMarkdown(req.file.buffer, req.file.mimetype, req.file.originalname);
+    } catch (err) {
+      const message = err instanceof DocumentParseError ? err.message : 'Failed to parse this document.';
+      return res.status(400).json({ message });
+    }
+
+    const chunks = chunkMarkdown(markdown);
+    const docs = await Promise.all(
+      chunks.map((content, i) =>
+        prisma.knowledgeDocument.create({
+          data: {
+            agentId: req.agent!.id,
+            question: chunks.length > 1 ? `📄 ${req.file!.originalname} (${i + 1}/${chunks.length})` : `📄 ${req.file!.originalname}`,
+            content,
+          },
+        })
+      )
+    );
+    res.status(201).json({ data: docs });
+  }
+);
 
 // --- Analytics preview: recent conversations ---
 

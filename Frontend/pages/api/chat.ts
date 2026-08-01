@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { askCdcAssistant, isGeminiConfigured, ChatTurn } from '../../lib/gemini';
+import { getCdcKnowledgeContext } from '../../lib/cdcKnowledgeBase';
 
 // `history` comes straight from the browser — untrusted input. Only well-
 // formed {role, text} turns are kept; anything else is silently dropped
@@ -41,7 +42,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const reply = await askCdcAssistant(message, effectiveLang, sanitizeHistory(history));
+    const knowledgeContext = await getCdcKnowledgeContext();
+    const reply = await askCdcAssistant(message, effectiveLang, sanitizeHistory(history), knowledgeContext);
     return res.status(200).json({ reply });
   } catch (error) {
     console.error('Gemini chat error:', error);

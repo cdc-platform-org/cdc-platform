@@ -63,6 +63,16 @@ export async function deleteKnowledgeDocument(agentId: string, docId: string): P
   await apiClient.delete(`/agents/${agentId}/knowledge/${docId}`);
 }
 
+// Parses PDF/DOCX/MD into Markdown server-side and creates one (or more,
+// for a large source) KnowledgeDocument rows — an alternative to manually
+// typing Q&A pairs via createKnowledgeDocument above.
+export async function uploadKnowledgeFile(agentId: string, file: File): Promise<KnowledgeDocument[]> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await apiClient.post<{ data: KnowledgeDocument[] }>(`/agents/${agentId}/knowledge/upload`, formData);
+  return response.data.data;
+}
+
 export async function getAgentConversations(agentId: string): Promise<AgentConversation[]> {
   const response = await apiClient.get<{ data: AgentConversation[] }>(`/agents/${agentId}/conversations`);
   return response.data.data;

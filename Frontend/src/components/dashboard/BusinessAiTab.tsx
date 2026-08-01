@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, FormEvent } from 'react';
+import { useState, useEffect, useCallback, useRef, ChangeEvent, FormEvent } from 'react';
 import {
   Bot,
   Plus,
@@ -11,6 +11,7 @@ import {
   Check,
   Pause,
   Play,
+  UploadCloud,
 } from 'lucide-react';
 import {
   getMyAgents,
@@ -20,6 +21,7 @@ import {
   getKnowledgeDocuments,
   createKnowledgeDocument,
   deleteKnowledgeDocument,
+  uploadKnowledgeFile,
   getAgentConversations,
   AgentFormPayload,
 } from '../../services/agentService';
@@ -63,6 +65,10 @@ const dict = {
     content: 'პასუხი / კონტექსტი',
     addKnowledge: '+ დამატება',
     noKnowledge: 'ცოდნის ბაზა ცარიელია.',
+    uploadFileHint: 'ან ატვირთეთ დოკუმენტი (PDF, DOCX, Markdown) — ავტომატურად გარდაიქმნება და დაემატება.',
+    uploadFile: 'ფაილის ატვირთვა',
+    uploadingFile: 'მუშავდება…',
+    uploadFileError: 'ფაილის ატვირთვა ვერ მოხერხდა.',
     embedHint: 'ჩასვით ეს კოდი თქვენი საიტის </body> ტეგამდე.',
     copyCode: 'კოდის კოპირება',
     copied: 'დაკოპირდა ✓',
@@ -107,6 +113,10 @@ const dict = {
     content: 'Answer / Context',
     addKnowledge: '+ Add',
     noKnowledge: 'The knowledge base is empty.',
+    uploadFileHint: 'Or upload a document (PDF, DOCX, Markdown) — it will be converted and added automatically.',
+    uploadFile: 'Upload File',
+    uploadingFile: 'Processing…',
+    uploadFileError: 'Unable to upload the file.',
     embedHint: 'Paste this snippet before the closing </body> tag on your site.',
     copyCode: 'Copy Code',
     copied: 'Copied ✓',
@@ -153,6 +163,9 @@ export default function BusinessAiTab({ lang }: { lang: 'ka' | 'en' }) {
   const [newQuestion, setNewQuestion] = useState('');
   const [newContent, setNewContent] = useState('');
   const [addingKnowledge, setAddingKnowledge] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadFileError, setUploadFileError] = useState<string | null>(null);
+  const knowledgeFileInputRef = useRef<HTMLInputElement>(null);
 
   const [conversations, setConversations] = useState<AgentConversation[]>([]);
   const [copied, setCopied] = useState(false);
@@ -275,6 +288,22 @@ export default function BusinessAiTab({ lang }: { lang: 'ka' | 'en' }) {
       setActionError(t.genericError);
     } finally {
       setAddingKnowledge(false);
+    }
+  };
+
+  const handleUploadKnowledgeFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedAgentId) return;
+    setUploadingFile(true);
+    setUploadFileError(null);
+    try {
+      const docs = await uploadKnowledgeFile(selectedAgentId, file);
+      setKnowledge((prev) => [...docs, ...prev]);
+    } catch (err: any) {
+      setUploadFileError(err?.response?.data?.message ?? t.uploadFileError);
+    } finally {
+      setUploadingFile(false);
+      if (knowledgeFileInputRef.current) knowledgeFileInputRef.current.value = '';
     }
   };
 
@@ -503,6 +532,26 @@ export default function BusinessAiTab({ lang }: { lang: 'ka' | 'en' }) {
                   {t.addKnowledge}
                 </button>
               </div>
+
+              <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-4 flex items-center gap-3">
+                <UploadCloud className="w-5 h-5 text-slate-400 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t.uploadFileHint}</p>
+                  {uploadFileError && <p className="text-xs text-red-600 mt-1">{uploadFileError}</p>}
+                </div>
+                <label className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 shrink-0">
+                  {uploadingFile ? t.uploadingFile : t.uploadFile}
+                  <input
+                    ref={knowledgeFileInputRef}
+                    type="file"
+                    accept=".pdf,.docx,.md,.txt"
+                    onChange={handleUploadKnowledgeFile}
+                    className="hidden"
+                    disabled={uploadingFile}
+                  />
+                </label>
+              </div>
+
               {knowledge.length === 0 ? (
                 <p className="text-sm text-slate-500 dark:text-slate-400">{t.noKnowledge}</p>
               ) : (

@@ -1228,6 +1228,27 @@ model KnowledgeDocument {
   @@map("knowledge_documents")
 }
 
+// Platform-wide knowledge base for the CDC homepage assistant (Frontend's
+// pages/api/chat.ts / lib/gemini.ts) — distinct from the per-business Agent/
+// KnowledgeDocument pair above, since this isn't scoped to any Agent, just
+// the single global "CDC AI Assistant". Admin-managed via
+// routes/adminKnowledge.ts, uploaded as PDF/DOCX/MD and converted to
+// Markdown (services/documentParserService.ts) before being split into
+// chunks here. Grouped by sourceFilename so the admin UI can list/delete/
+// re-sync a whole uploaded document at once instead of per-chunk.
+model CdcKnowledgeDocument {
+  id             String   @id @default(uuid())
+  sourceFilename String
+  chunkIndex     Int
+  totalChunks    Int
+  content        String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([sourceFilename])
+  @@map("cdc_knowledge_documents")
+}
+
 // Deliberately separate from the platform's own User-to-User `Message`
 // model above — a widget visitor is an anonymous third party, not
 // necessarily (or usually) a CDC platform account.
