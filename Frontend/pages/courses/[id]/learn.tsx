@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
+import SiteHeader from '../../../src/components/layout/SiteHeader';
 import BackButton from '../../../src/components/common/BackButton';
 import CourseVideoPlayer from '../../../src/components/courses/CourseVideoPlayer';
 import { useAuth } from '../../../src/context/AuthContext';
@@ -187,6 +188,7 @@ function LearnContent() {
   if (error || !course) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-950 text-slate-300 text-sm">
+        <SiteHeader />
         <p>{error ?? t.notEnrolled}</p>
         <BackButton fallbackHref="/courses" className="text-slate-400 hover:text-slate-100" />
       </div>
@@ -198,6 +200,7 @@ function LearnContent() {
       <Head>
         <title>{`${course.title} | CDC Learn`}</title>
       </Head>
+      <SiteHeader />
 
       <div className="flex flex-col lg:flex-row">
         {/* MAIN CONTENT — ~70% */}

@@ -25,6 +25,16 @@ export function useAuthState() {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
       }
+      // The cached user can go stale (e.g. role/adminRole/status changed
+      // server-side since last login) — silently revalidate against the
+      // server so permission checks (like AdminGuard) never act on outdated
+      // data without requiring a manual re-login.
+      getMeRequest()
+        .then((freshUser) => {
+          localStorage.setItem(USER_KEY, JSON.stringify(freshUser));
+          setUser(freshUser);
+        })
+        .catch(() => {});
     }
     setLoading(false);
   }, []);

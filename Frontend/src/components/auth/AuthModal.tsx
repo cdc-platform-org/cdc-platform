@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { GraduationCap, Building2, X, ShieldCheck, Mail } from 'lucide-react';
+import { GraduationCap, Building2, X, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { User } from '../../types/auth';
 import { useAuthModal } from '../../context/AuthModalContext';
 import PasswordInput from './PasswordInput';
-import Toast from '../shared/Toast';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 
 type Mode = 'login' | 'register';
@@ -42,11 +41,6 @@ const STRINGS = {
     roleLabel: 'რეგისტრირდები როგორც',
     roleStudent: 'სტუდენტი',
     roleClient: 'ბიზნესი',
-    registerSuccessTitle: 'თითქმის მზად ხართ!',
-    registerSuccessBody:
-      'თქვენი ანგარიში შეიქმნა. გთხოვთ დაადასტუროთ ელ-ფოსტა იმ ბმულით, რომელიც გამოგზავნილია — სანამ ამას გააკეთებთ, ზოგიერთი მოქმედება დაბლოკილი იქნება.',
-    registerSuccessToast: 'რეგისტრაცია წარმატებით დასრულდა!',
-    continueButton: 'გაგრძელება',
     genericError: 'დაფიქსირდა შეცდომა. სცადეთ თავიდან.',
     close: 'დახურვა',
     redirectingToAdmin: '✓ შესვლა წარმატებულია — გადამისამართება Admin სამუშაო სივრცეში…',
@@ -75,11 +69,6 @@ const STRINGS = {
     roleLabel: 'Registering as',
     roleStudent: 'Student',
     roleClient: 'Business',
-    registerSuccessTitle: 'Almost there!',
-    registerSuccessBody:
-      "Your account has been created. Please confirm your email using the link we just sent — some actions stay locked until you do.",
-    registerSuccessToast: 'Registration successful!',
-    continueButton: 'Continue',
     genericError: 'Something went wrong. Please try again.',
     close: 'Close',
     redirectingToAdmin: '✓ Signed in — redirecting to the Admin Workspace…',
@@ -100,17 +89,13 @@ export default function AuthModal() {
   const [role, setRole] = useState<'Student' | 'Client'>('Student');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [registered, setRegistered] = useState(false);
-  const [showRegisterToast, setShowRegisterToast] = useState(false);
   const [redirectingAdmin, setRedirectingAdmin] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement>(null);
   // AuthModal is mounted once globally (pages/_app.tsx) and never unmounts,
-  // but these timers can still race each other if the modal is closed and
-  // reopened (e.g. a second registration) before the first one fires —
-  // tracking them lets a new open cancel any stale pending timer instead of
-  // it firing later and clobbering fresh state.
+  // but this timer can still race itself if the modal is closed and reopened
+  // before it fires — tracking it lets a new open cancel any stale pending
+  // timer instead of it firing later and clobbering fresh state.
   const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Google's GSI script (pages/_app.tsx) loads asynchronously — if the
   // modal opens before it's ready, window.google is still undefined and
   // there'd be nothing to make the button-render effect below try again.
@@ -123,7 +108,6 @@ export default function AuthModal() {
   useEffect(() => {
     return () => {
       if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
-      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     };
   }, []);
 
@@ -146,11 +130,11 @@ export default function AuthModal() {
 
   useEscapeToClose(isOpen, closeAuthModal);
 
-  // Runs once login (email/password or Google) succeeds. A pending onSuccess
-  // (e.g. "resume checkout for the course I was trying to buy") always wins
-  // over the default admin-workspace redirect — the user had a specific
+  // Runs once login/registration (email/password or Google) succeeds. A
+  // pending onSuccess (e.g. "resume checkout for the course I was trying to
+  // buy") always wins over the default redirect — the user had a specific
   // intent, don't bounce them somewhere else.
-  const handlePostLogin = (loggedInUser: User) => {
+  const handlePostLogin = (loggedInUser: User, isRegister = false) => {
     if (onSuccess) {
       closeAuthModal();
       onSuccess(loggedInUser);
@@ -166,16 +150,14 @@ export default function AuthModal() {
       return;
     }
     closeAuthModal();
+    if (isRegister) router.push('/dashboard');
   };
 
   useEffect(() => {
     if (isOpen) {
       if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
-      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
       setMode(initialMode);
       setError(null);
-      setRegistered(false);
-      setShowRegisterToast(false);
       setRedirectingAdmin(false);
       setName('');
       setEmail('');
@@ -185,7 +167,7 @@ export default function AuthModal() {
   }, [isOpen, initialMode]);
 
   useEffect(() => {
-    if (!isOpen || registered) return;
+    if (!isOpen) return;
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
     if (!clientId || typeof window === 'undefined' || !window.google?.accounts?.id || !googleButtonRef.current) {
       return;
@@ -202,7 +184,7 @@ export default function AuthModal() {
         // role only matters if this Google identity is creating a brand-new
         // account — ignored for an existing one (see Backend's /google route).
         loginWithGoogle(response.credential, mode === 'register' ? role : undefined)
-          .then((loggedInUser) => handlePostLogin(loggedInUser))
+          .then((loggedInUser) => handlePostLogin(loggedInUser, mode === 'register'))
           .catch((err: any) => setError(err?.response?.data?.message || t.genericError))
           .finally(() => setSubmitting(false));
       },
@@ -214,7 +196,7 @@ export default function AuthModal() {
       text: mode === 'register' ? 'signup_with' : 'signin_with',
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, mode, registered, role, googleReady, lang]);
+  }, [isOpen, mode, role, googleReady, lang]);
 
   if (!isOpen) return null;
 
@@ -227,11 +209,8 @@ export default function AuthModal() {
         const loggedInUser = await login({ email, password });
         handlePostLogin(loggedInUser);
       } else {
-        await register({ name, email, password, role });
-        setRegistered(true);
-        setShowRegisterToast(true);
-        if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-        toastTimeoutRef.current = setTimeout(() => setShowRegisterToast(false), 4000);
+        const newUser = await register({ name, email, password, role });
+        handlePostLogin(newUser, true);
       }
     } catch (err: any) {
       const apiErrors = err?.response?.data?.errors;
@@ -264,19 +243,6 @@ export default function AuthModal() {
           <div className="text-center pt-2 pb-4">
             <ShieldCheck className="w-10 h-10 text-indigo-600 mx-auto mb-3" />
             <p className="text-sm font-semibold text-indigo-600">{t.redirectingToAdmin}</p>
-          </div>
-        ) : registered ? (
-          <div className="text-center pt-2">
-            <Mail className="w-10 h-10 text-indigo-600 mx-auto mb-3" />
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">{t.registerSuccessTitle}</h2>
-            <p className="text-sm text-gray-600 leading-relaxed">{t.registerSuccessBody}</p>
-            <button
-              type="button"
-              onClick={closeAuthModal}
-              className="mt-6 w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700"
-            >
-              {t.continueButton}
-            </button>
           </div>
         ) : (
           <>
@@ -450,7 +416,6 @@ export default function AuthModal() {
           </>
         )}
       </div>
-      {showRegisterToast && <Toast message={t.registerSuccessToast} />}
     </div>
   );
 }

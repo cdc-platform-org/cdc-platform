@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Head from 'next/head';
 import { Search, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import SiteHeader from '../../src/components/layout/SiteHeader';
 import BackButton from '../../src/components/common/BackButton';
 import { BlogPost } from '../../src/types/blog';
 import { getBlogPosts, resolveBlogImageUrl, blogTitle, blogDescription, blogContent, estimateReadingMinutes, isSuccessStory } from '../../src/services/blogService';
@@ -93,6 +94,7 @@ export default function BlogIndexPage() {
       <Head>
         <title>{`${t.title} | CDC`}</title>
       </Head>
+      <SiteHeader />
       <div className="max-w-6xl mx-auto">
         <div className="mb-4">
           <BackButton fallbackHref="/" className="text-slate-400 hover:text-slate-100" />

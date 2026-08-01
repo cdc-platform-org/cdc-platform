@@ -5,6 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import StarRating from '../../src/components/community/StarRating';
 import DirectHireModal from '../../src/components/community/DirectHireModal';
+import SiteHeader from '../../src/components/layout/SiteHeader';
 import BackButton from '../../src/components/common/BackButton';
 import VerifiedGraduateBadge from '../../src/components/community/VerifiedGraduateBadge';
 import { useAuth } from '../../src/context/AuthContext';
@@ -91,6 +92,7 @@ function ProfileContent() {
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10">
+      <SiteHeader />
       <div className="max-w-2xl mx-auto">
         <div className="mb-4">
           <BackButton fallbackHref="/" />

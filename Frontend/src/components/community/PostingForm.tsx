@@ -13,6 +13,10 @@ interface FieldErrors {
 interface PostingFormProps {
   initialType: PostType;
   allowTypeToggle?: boolean;
+  // Lets embedding contexts (e.g. the community page's sidebar) replace the
+  // default centered-page card styling with something that fits a narrower
+  // column, without duplicating the whole form.
+  className?: string;
 }
 
 const emptyVacancyForm = {
@@ -37,7 +41,9 @@ const emptyGigForm = {
   deadline: '',
 };
 
-export default function PostingForm({ initialType, allowTypeToggle = false }: PostingFormProps) {
+const DEFAULT_CLASS_NAME = 'max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-200 p-8';
+
+export default function PostingForm({ initialType, allowTypeToggle = false, className }: PostingFormProps) {
   const router = useRouter();
   const [postType, setPostType] = useState<PostType>(initialType);
   const [vacancyForm, setVacancyForm] = useState(emptyVacancyForm);
@@ -48,6 +54,12 @@ export default function PostingForm({ initialType, allowTypeToggle = false }: Po
 
   const parseSkills = (raw: string) =>
     raw.split(',').map((s) => s.trim()).filter(Boolean);
+
+  // <input type="date"> gives "YYYY-MM-DD"; the backend requires full ISO
+  // 8601 datetime. Anchoring to UTC midnight (rather than `new Date(raw)`,
+  // which parses as *local* midnight) avoids shifting the calendar date the
+  // user picked when their timezone is behind UTC.
+  const toIsoDatetime = (dateOnly: string) => (dateOnly ? `${dateOnly}T00:00:00.000Z` : null);
 
   const validateVacancy = (): FieldErrors => {
     const e: FieldErrors = {};
@@ -93,7 +105,7 @@ export default function PostingForm({ initialType, allowTypeToggle = false }: Po
           salaryMin: vacancyForm.salaryMin ? Math.round(parseFloat(vacancyForm.salaryMin) * 100) : null,
           salaryMax: vacancyForm.salaryMax ? Math.round(parseFloat(vacancyForm.salaryMax) * 100) : null,
           currency: vacancyForm.salaryMin || vacancyForm.salaryMax ? vacancyForm.currency : null,
-          applicationDeadline: vacancyForm.applicationDeadline || null,
+          applicationDeadline: toIsoDatetime(vacancyForm.applicationDeadline),
         };
         await postVacancy(payload);
         router.push('/vacancies');
@@ -105,7 +117,7 @@ export default function PostingForm({ initialType, allowTypeToggle = false }: Po
           budgetAmount: Math.round(parseFloat(gigForm.budgetAmount) * 100),
           currency: gigForm.currency,
           skillsRequired: parseSkills(gigForm.skillsRequired),
-          deadline: gigForm.deadline || null,
+          deadline: toIsoDatetime(gigForm.deadline),
         };
         await postGig(payload);
         router.push('/gigs');
@@ -123,7 +135,7 @@ export default function PostingForm({ initialType, allowTypeToggle = false }: Po
     }`;
 
   return (
-    <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+    <div className={className ?? DEFAULT_CLASS_NAME}>
       {allowTypeToggle && (
         <div className="flex gap-2 mb-8 bg-gray-100 rounded-lg p-1 w-fit">
           <button

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { GetStaticProps } from 'next';
@@ -56,6 +57,9 @@ export default function VerifyEmailPage() {
           <>
             <Loader2 className="w-10 h-10 text-indigo-600 mx-auto mb-3 animate-spin" />
             <p className="text-sm text-gray-600">{t('verifyEmail.verifying')}</p>
+            <Link href="/" className="mt-4 inline-block text-xs font-medium text-indigo-600 hover:text-indigo-500">
+              {t('verifyEmail.returnHomeLink')}
+            </Link>
           </>
         )}
 
@@ -99,6 +103,9 @@ export default function VerifyEmailPage() {
                 )}
               </>
             )}
+            <Link href="/" className="mt-4 inline-block text-xs font-medium text-indigo-600 hover:text-indigo-500">
+              {t('verifyEmail.returnHomeLink')}
+            </Link>
           </>
         )}
       </div>

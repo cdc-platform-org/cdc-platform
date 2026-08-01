@@ -23,6 +23,7 @@ import {
 import SocialShareButtons from '../../src/components/shared/SocialShareButtons';
 import Lightbox, { LightboxImage } from '../../src/components/shared/Lightbox';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
+import SiteHeader from '../../src/components/layout/SiteHeader';
 
 const dict = {
   ka: {
@@ -437,15 +438,23 @@ export default function BlogPostPage() {
   }, [comments]);
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400 text-sm">{t.loading}</div>;
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-400 text-sm flex flex-col">
+        <SiteHeader />
+        <div className="flex-1 flex items-center justify-center">{t.loading}</div>
+      </div>
+    );
   }
   if (notFound || !post) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-950 text-slate-300 text-sm">
-        <p>{t.notFound}</p>
-        <Link href="/blog" className="text-cyan-400 hover:underline">
-          {t.back}
-        </Link>
+      <div className="min-h-screen bg-slate-950 text-slate-300 text-sm flex flex-col">
+        <SiteHeader />
+        <div className="flex-1 flex flex-col items-center justify-center gap-4">
+          <p>{t.notFound}</p>
+          <Link href="/blog" className="text-cyan-400 hover:underline">
+            {t.back}
+          </Link>
+        </div>
       </div>
     );
   }
@@ -456,7 +465,7 @@ export default function BlogPostPage() {
   const readingMinutes = estimateReadingMinutes(content);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-16">
+    <div className="min-h-screen bg-slate-950 text-slate-100">
       <Head>
         <title>{`${title} | CDC Blog`}</title>
         <meta name="description" content={description} />
@@ -469,7 +478,8 @@ export default function BlogPostPage() {
         <meta name="twitter:description" content={description} />
         {ogImage && <meta name="twitter:image" content={ogImage} />}
       </Head>
-      <div className="max-w-6xl mx-auto">
+      <SiteHeader />
+      <div className="max-w-6xl mx-auto px-6 py-16">
         <Link href="/blog" className="text-sm text-slate-400 hover:text-white no-underline">
           {t.back}
         </Link>

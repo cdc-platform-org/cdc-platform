@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
+import BackButton from '../src/components/common/BackButton';
 
 export default function CDCCart() {
   const [lang, setLang] = useState<'ka' | 'en'>('ka');
@@ -123,6 +124,10 @@ export default function CDCCart() {
           </div>
         </div>
       </nav>
+
+      <div className="max-w-6xl mx-auto px-6 pt-6">
+        <BackButton fallbackHref="/" className={darkMode ? 'text-slate-400 hover:text-slate-100' : ''} />
+      </div>
 
       <div className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-3 gap-10">
         <div className="md:col-span-2 space-y-6">

@@ -20,6 +20,12 @@ const chatRateLimit = rateLimit({
 // that actually matters (the last few exchanges).
 const HISTORY_TURN_LIMIT = 12;
 
+// Caps how many knowledge-base documents get concatenated into the system
+// instruction on every single chat turn — without this, a business that
+// keeps adding KB entries makes every request larger (and more expensive)
+// forever, unbounded by conversation length the way history is above.
+const KNOWLEDGE_DOC_LIMIT = 40;
+
 // Public — widget.js calls this before the visitor sends a first message,
 // to render the bubble with the agent's own name/color. Deliberately
 // returns only cosmetic fields — systemPrompt/knowledgeDocuments/
@@ -92,7 +98,11 @@ router.post('/chat', chatRateLimit, async (req: Request, res: Response) => {
   });
   const history: ChatTurn[] = priorMessages.reverse().map((m) => ({ role: m.role, content: m.content }));
 
-  const knowledgeDocs = await prisma.knowledgeDocument.findMany({ where: { agentId: agent.id } });
+  const knowledgeDocs = await prisma.knowledgeDocument.findMany({
+    where: { agentId: agent.id },
+    orderBy: { createdAt: 'desc' },
+    take: KNOWLEDGE_DOC_LIMIT,
+  });
   const knowledgeContext = knowledgeDocs
     .map((doc) => (doc.question ? `Q: ${doc.question}\nA: ${doc.content}` : doc.content))
     .join('\n\n');

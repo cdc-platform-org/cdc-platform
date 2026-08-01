@@ -7,6 +7,7 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useAuthModal } from '../../../src/context/AuthModalContext';
 import VerifiedGraduateBadge from '../../../src/components/community/VerifiedGraduateBadge';
+import SiteHeader from '../../../src/components/layout/SiteHeader';
 import { ForumThread, ForumComment } from '../../../src/types/forum';
 import {
   getThreadById,
@@ -261,7 +262,12 @@ function ThreadDetailContent() {
 }
 
 export default function ThreadDetailPage() {
-  return <ThreadDetailContent />;
+  return (
+    <>
+      <SiteHeader />
+      <ThreadDetailContent />
+    </>
+  );
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({

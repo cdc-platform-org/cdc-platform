@@ -35,6 +35,24 @@ function resultRedirects(paymentId: string) {
 // actually reports). 501 for "not configured" (matches the pattern used by
 // Bunny/Gemini elsewhere in this codebase), 502 for BOG rejecting or being
 // unreachable — both with BOG's own message surfaced, not swallowed.
+// Reuses a still-fresh PENDING order for the same user+purpose+reference
+// instead of creating a new one, so a double-click or an accidental form
+// resubmit doesn't create two BOG orders (and risk the buyer being charged
+// twice if they complete both). 15 minutes comfortably covers a duplicate
+// click without indefinitely blocking a genuinely abandoned/expired attempt.
+const PENDING_ORDER_REUSE_WINDOW_MS = 15 * 60 * 1000;
+
+async function findReusablePendingOrder(userId: string, purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING', referenceId: string) {
+  const existing = await prisma.bogPayment.findFirst({
+    where: { userId, purpose, referenceId, status: 'PENDING' },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (existing && existing.redirectUrl && Date.now() - existing.createdAt.getTime() < PENDING_ORDER_REUSE_WINDOW_MS) {
+    return existing;
+  }
+  return null;
+}
+
 async function createBogOrderOrRespond(res: Response, params: CreateBogOrderParams): Promise<CreateBogOrderResult | null> {
   try {
     return await createBogOrder(params);
@@ -65,6 +83,10 @@ router.post(
     });
     if (existingEnrollment) {
       return res.status(400).json({ message: 'You are already enrolled in this course.' });
+    }
+    const reusable = await findReusablePendingOrder(req.user!.id, 'COURSE', course.id);
+    if (reusable) {
+      return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.redirectUrl });
     }
 
     // Charges whatever the course actually costs right now — if it's on an
@@ -118,6 +140,10 @@ router.post(
     const mentor = await prisma.user.findUnique({ where: { id: result.data.mentorId } });
     if (!mentor || mentor.role !== 'Mentor') {
       return res.status(404).json({ message: 'Mentor not found.' });
+    }
+    const reusableMentorship = await findReusablePendingOrder(req.user!.id, 'MENTORSHIP', mentor.id);
+    if (reusableMentorship) {
+      return res.status(200).json({ paymentId: reusableMentorship.id, redirectUrl: reusableMentorship.redirectUrl });
     }
 
     const bogPayment = await prisma.bogPayment.create({
@@ -178,6 +204,10 @@ router.post(
     });
     if (!application) {
       return res.status(400).json({ message: 'No accepted application found for this gig.' });
+    }
+    const reusableEscrow = await findReusablePendingOrder(req.user!.id, 'GIG_ESCROW_FUNDING', gig.id);
+    if (reusableEscrow) {
+      return res.status(200).json({ paymentId: reusableEscrow.id, redirectUrl: reusableEscrow.redirectUrl });
     }
 
     const bogPayment = await prisma.bogPayment.create({

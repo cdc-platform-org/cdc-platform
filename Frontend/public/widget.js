@@ -166,9 +166,19 @@
       }),
     })
       .then(function (res) {
-        return res.json();
+        return res.json().then(function (data) {
+          return { ok: res.ok, status: res.status, data: data };
+        });
       })
-      .then(function (data) {
+      .then(function (result) {
+        var data = result.data;
+        if (!result.ok) {
+          // Backend error responses are {message: '...'}, not {reply: '...'} —
+          // surface the real reason (rate-limited, agent paused, etc.) instead
+          // of always showing the generic fallback.
+          appendMessage('ASSISTANT', data.message || 'Sorry, something went wrong.');
+          return;
+        }
         if (data.conversationId) {
           conversationId = data.conversationId;
           storeConversationId(conversationId);

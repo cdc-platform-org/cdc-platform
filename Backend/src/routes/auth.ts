@@ -142,7 +142,6 @@ router.post('/register', async (req, res) => {
   }
 
   const hashed = await bcrypt.hash(password, 12);
-  const emailVerificationToken = crypto.randomBytes(32).toString('hex');
   let user = await prisma.user.create({
     data: {
       name,
@@ -155,12 +154,12 @@ router.post('/register', async (req, res) => {
       // roles like Mentor that DO need vetting) would just be a pointless
       // wall between a normal signup and their dashboard.
       status: 'APPROVED',
-      emailVerificationToken,
-      emailVerificationTokenExpires: new Date(Date.now() + EMAIL_VERIFICATION_TOKEN_TTL_MS),
+      // Email verification is not required — see requireApproved in
+      // middleware/auth.ts.
+      emailVerifiedAt: new Date(),
     },
   });
 
-  sendVerificationEmail(user.email, emailVerificationToken);
   user = await maybePromoteSuperAdmin(user);
 
   const token = signToken(user);

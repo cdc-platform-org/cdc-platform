@@ -5,6 +5,7 @@ import { GetServerSideProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
+import SiteHeader from '../../../src/components/layout/SiteHeader';
 import { ForumCategory } from '../../../src/types/forum';
 import { getCategories, createThread } from '../../../src/services/forumService';
 
@@ -131,9 +132,12 @@ function NewThreadContent() {
 
 export default function NewThreadPage() {
   return (
-    <ProtectedRoute>
-      <NewThreadContent />
-    </ProtectedRoute>
+    <>
+      <SiteHeader />
+      <ProtectedRoute>
+        <NewThreadContent />
+      </ProtectedRoute>
+    </>
   );
 }
 

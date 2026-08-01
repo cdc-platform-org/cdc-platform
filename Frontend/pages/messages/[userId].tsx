@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
+import BackButton from '../../src/components/common/BackButton';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import ChatBox from '../../src/components/community/ChatBox';
 import { useAuth } from '../../src/context/AuthContext';
@@ -10,13 +11,13 @@ import { getMessages } from '../../src/services/messageService';
 const dict = {
   ka: {
     title: 'შეტყობინებები',
-    back: '← უკან',
+    home: 'მთავარი გვერდი',
     loading: 'იტვირთება…',
     fallbackName: 'მომხმარებელი',
   },
   en: {
     title: 'Messages',
-    back: '← Back',
+    home: 'Home',
     loading: 'Loading…',
     fallbackName: 'User',
   },
@@ -59,9 +60,12 @@ function MessagesThreadContent() {
         <title>{`${t.title} | CDC`}</title>
       </Head>
       <div className="max-w-2xl mx-auto">
-        <Link href="/" className="text-sm text-slate-400 hover:text-white no-underline">
-          {t.back}
-        </Link>
+        <div className="flex items-center justify-between">
+          <BackButton fallbackHref="/dashboard" className="text-slate-400 hover:text-slate-100" />
+          <Link href="/" className="text-sm text-slate-400 hover:text-white no-underline">
+            {t.home}
+          </Link>
+        </div>
         <h1 className="text-2xl font-black mt-4 mb-6">
           {loading ? t.loading : `💬 ${otherUserName ?? t.fallbackName}`}
         </h1>

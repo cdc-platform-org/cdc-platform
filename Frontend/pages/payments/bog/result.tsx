@@ -10,7 +10,9 @@ const dict = {
     title: 'გადახდის სტატუსი',
     waiting: 'ველოდებით ბანკისგან დადასტურებას…',
     completed: 'გადახდა წარმატებით დასრულდა!',
-    failed: 'გადახდა ვერ განხორციელდა ან გაუქმდა.',
+    failed: 'გადახდა ვერ განხორციელდა.',
+    cancelled: 'გადახდა გაუქმებულია.',
+    checkFailed: 'სტატუსის შემოწმება ვერ მოხერხდა. შეამოწმეთ ინტერნეტ კავშირი და სცადეთ თავიდან.',
     pendingLong:
       'გადახდა ჯერ კიდევ მუშავდება. თუ ეს გვერდი დიდხანს არ განახლდება, დაუკავშირდით მხარდაჭერას.',
     redirectingToCourse: 'გადამისამართება კურსზე…',
@@ -26,7 +28,9 @@ const dict = {
     title: 'Payment Status',
     waiting: 'Waiting for confirmation from the bank…',
     completed: 'Payment completed successfully!',
-    failed: 'Payment failed or was cancelled.',
+    failed: 'Payment failed.',
+    cancelled: 'Payment was cancelled.',
+    checkFailed: 'Unable to check payment status. Check your connection and try again.',
     pendingLong:
       'Your payment is still being processed. If this page doesn’t update soon, please contact support.',
     redirectingToCourse: 'Redirecting to your course…',
@@ -106,7 +110,19 @@ function BogResultContent() {
         {typeof paymentId !== 'string' ? (
           <p className="text-sm text-red-600">{t.missingId}</p>
         ) : error ? (
-          <p className="text-sm text-red-600">{t.failed}</p>
+          <div className="space-y-3">
+            <p className="text-sm text-red-600">{t.checkFailed}</p>
+            <button
+              onClick={() => {
+                setError(false);
+                setPolling(true);
+                poll();
+              }}
+              className="text-sm text-indigo-600 hover:underline"
+            >
+              {t.checkAgain}
+            </button>
+          </div>
         ) : !status ? (
           <p className="text-sm text-gray-400">{t.waiting}</p>
         ) : (
@@ -123,7 +139,13 @@ function BogResultContent() {
               {status.status === 'COMPLETED' ? '✓' : status.status === 'PENDING' ? '…' : '✕'}
             </div>
             <p className="text-sm font-medium text-gray-900">
-              {status.status === 'COMPLETED' ? t.completed : status.status === 'PENDING' ? t.waiting : t.failed}
+              {status.status === 'COMPLETED'
+                ? t.completed
+                : status.status === 'PENDING'
+                ? t.waiting
+                : status.status === 'CANCELLED'
+                ? t.cancelled
+                : t.failed}
             </p>
             {status.status === 'COMPLETED' && status.purpose === 'COURSE' && (
               <p className="text-xs text-gray-400">{t.redirectingToCourse}</p>

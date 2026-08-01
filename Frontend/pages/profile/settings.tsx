@@ -4,6 +4,7 @@ import { GetServerSideProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
+import BackButton from '../../src/components/common/BackButton';
 import RemoveCardModal from '../../src/components/settings/RemoveCardModal';
 import DeleteAccountModal from '../../src/components/settings/DeleteAccountModal';
 import { useAuth } from '../../src/context/AuthContext';
@@ -53,6 +54,7 @@ function SettingsContent() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0b0f19] px-4 py-10">
       <div className="max-w-2xl mx-auto">
+        <BackButton fallbackHref="/" className="mb-4 dark:text-slate-400 dark:hover:text-slate-100" />
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{t('pageTitle')}</h1>
           <a href="/" className="text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200">

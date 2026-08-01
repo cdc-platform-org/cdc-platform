@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { AxiosError } from 'axios';
 import { CheckCircle2 } from 'lucide-react';
@@ -53,7 +54,12 @@ function ForgotPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-        <div className="flex justify-end mb-4"><LanguageSwitcher/></div>
+        <div className="flex items-center justify-between mb-4">
+          <Link href="/" aria-label="CDC Home" className="inline-flex no-underline">
+            <Image src="/images/cdc-logo.png" alt="CDC" width={28} height={28} className="h-7 w-auto rounded-lg object-cover" />
+          </Link>
+          <LanguageSwitcher/>
+        </div>
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-semibold text-gray-900">{t('forgotPassword.title')}</h1>
           <p className="mt-1 text-sm text-gray-500">{t('forgotPassword.subtitle')}</p>

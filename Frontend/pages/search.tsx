@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Head from 'next/head';
 import { Course } from '../src/types/lms';
 import { BlogPost } from '../src/types/blog';
+import SiteHeader from '../src/components/layout/SiteHeader';
 import BackButton from '../src/components/common/BackButton';
 import { getCourses } from '../src/services/courseService';
 import { getBlogPosts, blogTitle, blogDescription } from '../src/services/blogService';
@@ -89,6 +90,7 @@ export default function SearchPage() {
       <Head>
         <title>{`${t.title} | CDC`}</title>
       </Head>
+      <SiteHeader />
       <div className="max-w-5xl mx-auto">
         <div className="mb-4">
           <BackButton fallbackHref="/" className="text-slate-400 hover:text-slate-100" />

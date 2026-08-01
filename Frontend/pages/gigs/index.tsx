@@ -9,6 +9,7 @@ import BackButton from '../../src/components/common/BackButton';
 import ProposalModal from '../../src/components/community/ProposalModal';
 import ReviewModal from '../../src/components/community/ReviewModal';
 import GraduateOnlyModal from '../../src/components/community/GraduateOnlyModal';
+import SiteHeader from '../../src/components/layout/SiteHeader';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
 import { Gig } from '../../src/types/community';
@@ -97,33 +98,42 @@ function GigsPageContent() {
   const canPost = user?.role === 'Client' || user?.role === 'SuperAdmin';
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-10">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-4">
-          <BackButton fallbackHref="/" />
-        </div>
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">{t('marketplace.gigsTitle')}</h1>
-          {!isAuthenticated ? (
-            <button
-              type="button"
-              onClick={handlePostGigClick}
-              className="text-sm font-medium text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700"
-            >
-              {t('marketplace.postGig')}
-            </button>
-          ) : (
-            canPost && (
-              <Link
-                href="/gigs/post"
-                className="text-sm font-medium text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700"
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100">
+      <SiteHeader />
+      <div className="relative overflow-hidden border-b border-slate-200/60 dark:border-slate-800">
+        <div className="absolute -top-24 -right-24 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-16 w-72 h-72 bg-cyan-400/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 pt-6 pb-10">
+          <BackButton fallbackHref="/" className="text-slate-500 dark:text-slate-400 dark:hover:text-slate-100" />
+          <div className="flex items-center justify-between gap-4 mt-8">
+            <h1 className="text-3xl sm:text-4xl font-black tracking-tight">
+              <span className="bg-gradient-to-r from-purple-500 via-fuchsia-600 to-cyan-500 bg-clip-text text-transparent">
+                {t('marketplace.gigsTitle')}
+              </span>
+            </h1>
+            {!isAuthenticated ? (
+              <button
+                type="button"
+                onClick={handlePostGigClick}
+                className="shrink-0 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-purple-500 to-cyan-500 px-4 sm:px-5 py-2.5 rounded-xl hover:opacity-90 shadow-lg shadow-purple-500/20 transition"
               >
                 {t('marketplace.postGig')}
-              </Link>
-            )
-          )}
+              </button>
+            ) : (
+              canPost && (
+                <Link
+                  href="/gigs/post"
+                  className="shrink-0 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-purple-500 to-cyan-500 px-4 sm:px-5 py-2.5 rounded-xl hover:opacity-90 shadow-lg shadow-purple-500/20 transition no-underline"
+                >
+                  {t('marketplace.postGig')}
+                </Link>
+              )
+            )}
+          </div>
         </div>
+      </div>
 
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
         <FilterBar
           skills={skillsFilter}
           onSkillsChange={setSkillsFilter}

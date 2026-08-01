@@ -4,6 +4,7 @@ export interface CoursePaymentRow {
   id: string;
   bogOrderId: string;
   user: { id: string; name: string; email: string };
+  purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING';
   courseId: string;
   courseTitle: string;
   amount: number;
@@ -13,7 +14,7 @@ export interface CoursePaymentRow {
   completedAt: string | null;
 }
 
-export async function getCoursePayments(params?: { page?: number; pageSize?: number; status?: string }): Promise<{
+export async function getCoursePayments(params?: { page?: number; pageSize?: number; status?: string; purpose?: string }): Promise<{
   data: CoursePaymentRow[];
   totalCount: number;
   page: number;

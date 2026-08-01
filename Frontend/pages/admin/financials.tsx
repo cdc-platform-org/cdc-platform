@@ -217,8 +217,13 @@ function BogSettingsSection() {
               onChange={(e) => setIsLiveMode(e.target.checked)}
               className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
             />
-            Live mode (real transactions)
+            Live mode (record-keeping only)
           </label>
+          <p className="text-xs text-gray-400 -mt-2">
+            This does not switch the API endpoint — BOG requests always go to their production API regardless of this
+            flag, using whichever Client ID/Secret is configured above. It only labels transactions for your own
+            records.
+          </p>
 
           <button
             type="submit"

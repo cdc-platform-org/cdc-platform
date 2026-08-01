@@ -14,16 +14,20 @@ router.use(authenticate, requireAdminRole('SUPER_ADMIN'));
 const userSelect = { select: { id: true, name: true, email: true } };
 
 // ============================================================
-// COURSE-SALES LEDGER — BogPayment rows where purpose = COURSE. Distinct
-// from adminPanel.ts's /financials/transactions, which is the GigTransaction
-// (freelance-marketplace escrow) ledger.
+// BOG PAYMENT LEDGER — all BogPayment rows (COURSE/MENTORSHIP/
+// GIG_ESCROW_FUNDING), optionally filtered to one purpose. Distinct from
+// adminPanel.ts's /financials/transactions, which is the GigTransaction
+// (freelance-marketplace escrow payout) ledger downstream of this one.
+// Endpoint path kept as /course-payments for backward compatibility with
+// existing callers/bookmarks; it now covers every payment purpose by default.
 // ============================================================
 router.get('/course-payments', async (req: Request, res: Response) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || 25));
   const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+  const purpose = typeof req.query.purpose === 'string' ? req.query.purpose : undefined;
 
-  const where = { purpose: 'COURSE' as const, ...(status ? { status: status as any } : {}) };
+  const where = { ...(purpose ? { purpose: purpose as any } : {}), ...(status ? { status: status as any } : {}) };
 
   const [payments, totalCount] = await Promise.all([
     prisma.bogPayment.findMany({
@@ -36,17 +40,32 @@ router.get('/course-payments', async (req: Request, res: Response) => {
     prisma.bogPayment.count({ where }),
   ]);
 
-  const courseIds = [...new Set(payments.map((p) => p.referenceId))];
-  const courses = await prisma.course.findMany({ where: { id: { in: courseIds } }, select: { id: true, title: true } });
+  const courseIds = [...new Set(payments.filter((p) => p.purpose === 'COURSE').map((p) => p.referenceId))];
+  const mentorIds = [...new Set(payments.filter((p) => p.purpose === 'MENTORSHIP').map((p) => p.referenceId))];
+  const gigIds = [...new Set(payments.filter((p) => p.purpose === 'GIG_ESCROW_FUNDING').map((p) => p.referenceId))];
+  const [courses, mentors, gigs] = await Promise.all([
+    prisma.course.findMany({ where: { id: { in: courseIds } }, select: { id: true, title: true } }),
+    prisma.user.findMany({ where: { id: { in: mentorIds } }, select: { id: true, name: true } }),
+    prisma.gig.findMany({ where: { id: { in: gigIds } }, select: { id: true, title: true } }),
+  ]);
   const courseTitleById = new Map(courses.map((c) => [c.id, c.title]));
+  const mentorNameById = new Map(mentors.map((m) => [m.id, m.name]));
+  const gigTitleById = new Map(gigs.map((g) => [g.id, g.title]));
+
+  function referenceLabel(p: (typeof payments)[number]): string {
+    if (p.purpose === 'COURSE') return courseTitleById.get(p.referenceId) ?? '(deleted course)';
+    if (p.purpose === 'MENTORSHIP') return mentorNameById.get(p.referenceId) ?? '(deleted mentor)';
+    return gigTitleById.get(p.referenceId) ?? '(deleted gig)';
+  }
 
   res.json({
     data: payments.map((p) => ({
       id: p.id,
       bogOrderId: p.bogOrderId,
       user: p.user,
+      purpose: p.purpose,
       courseId: p.referenceId,
-      courseTitle: courseTitleById.get(p.referenceId) ?? '(deleted course)',
+      courseTitle: referenceLabel(p),
       amount: p.amount,
       currency: p.currency,
       status: p.status,

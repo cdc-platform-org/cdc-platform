@@ -1,4 +1,5 @@
 import { GetStaticProps } from 'next';
+import { useRouter } from 'next/router';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
 import { useAuth } from '../../src/context/AuthContext';
@@ -6,6 +7,12 @@ import { useAuth } from '../../src/context/AuthContext';
 export default function PendingApprovalPage() {
   const { t } = useTranslation('auth');
   const { logout } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    logout();
+    router.replace('/auth/login');
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -13,7 +20,7 @@ export default function PendingApprovalPage() {
         <h1 className="text-xl font-semibold text-gray-900">{t('pendingApproval.title')}</h1>
         <p className="mt-2 text-sm text-gray-500">{t('pendingApproval.message')}</p>
         <button
-          onClick={logout}
+          onClick={handleLogout}
           className="mt-6 text-sm font-medium text-indigo-600 hover:text-indigo-500"
         >
           {t('pendingApproval.logout')}

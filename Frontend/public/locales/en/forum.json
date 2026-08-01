@@ -1,5 +1,9 @@
 {
   "title": "Community Forum",
+  "subtitle": "Ask questions, share experience, and connect with the CDC community.",
+  "searchPlaceholder": "Search categories...",
+  "allCategories": "All",
+  "noSearchResults": "No categories match your search.",
   "loading": "Loading…",
   "noCategories": "No categories have been set up yet.",
   "loadCategoriesError": "Unable to load forum categories. Please try again.",

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import ProtectedRoute from '../src/components/auth/ProtectedRoute';
+import SiteHeader from '../src/components/layout/SiteHeader';
 import BackButton from '../src/components/common/BackButton';
 import { getWalletSummary, createPayoutRequest, getMyPayoutRequests, WalletSummary, PayoutRequestRow } from '../src/services/walletService';
 
@@ -65,6 +66,7 @@ function WalletContent() {
       <Head>
         <title>Wallet | CDC</title>
       </Head>
+      <SiteHeader />
       <div className="max-w-2xl mx-auto">
         <div className="mb-4">
           <BackButton fallbackHref="/dashboard" className="text-slate-400 hover:text-slate-100" />

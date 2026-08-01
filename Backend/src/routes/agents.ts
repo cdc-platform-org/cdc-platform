@@ -110,11 +110,15 @@ router.delete('/:id/knowledge/:docId', loadOwnedAgent, async (req: Request, res:
 router.get('/:id/conversations', loadOwnedAgent, async (req: Request, res: Response) => {
   const conversations = await prisma.agentConversation.findMany({
     where: { agentId: req.agent!.id },
-    include: { messages: { orderBy: { createdAt: 'asc' } } },
+    // Most recent 200 messages per conversation, not the oldest — Prisma's
+    // nested include has no "last N" ordering, so fetch newest-first/take
+    // then flip back to chronological order for display.
+    include: { messages: { orderBy: { createdAt: 'desc' }, take: 200 } },
     orderBy: { createdAt: 'desc' },
     take: 50,
   });
-  res.json({ data: conversations });
+  const data = conversations.map((c) => ({ ...c, messages: [...c.messages].reverse() }));
+  res.json({ data });
 });
 
 export default router;

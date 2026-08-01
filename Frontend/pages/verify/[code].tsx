@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Head from 'next/head';
+import BackButton from '../../src/components/common/BackButton';
 import { CertificateVerification } from '../../src/types/lms';
 import { verifyCertificate } from '../../src/services/courseService';
 
@@ -69,6 +70,7 @@ export default function VerifyCertificatePage() {
         <title>{`${t.title} | CDC`}</title>
       </Head>
       <div className="max-w-lg w-full">
+        <BackButton fallbackHref="/" className="mb-4 text-slate-400 hover:text-slate-100" />
         {loading ? (
           <p className="text-center text-sm text-slate-400">{t.loading}</p>
         ) : notFound || !data ? (

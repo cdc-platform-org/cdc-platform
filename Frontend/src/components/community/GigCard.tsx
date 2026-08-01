@@ -29,51 +29,58 @@ export default function GigCard({
   const lang = router.locale === 'en' ? 'en' : 'ka';
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 hover:border-indigo-300 transition-colors">
-      <div className="flex items-start justify-between">
+    <div className="group relative rounded-3xl p-6 overflow-hidden border border-slate-200/70 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/40 backdrop-blur-xl shadow-sm hover:shadow-xl hover:shadow-purple-500/10 dark:hover:shadow-purple-500/20 hover:-translate-y-1 hover:border-purple-300 dark:hover:border-purple-500/50 transition-all duration-300">
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-purple-500/5 to-cyan-500/5 pointer-events-none" />
+
+      <div className="relative flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">{gig.title}</h3>
-          <Link href={`/profile/${gig.postedBy.id}`} className="text-sm text-gray-500 hover:text-indigo-600 mt-0.5 inline-block">
+          <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+            {gig.title}
+          </h3>
+          <Link
+            href={`/profile/${gig.postedBy.id}`}
+            className="text-sm text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 mt-0.5 inline-block"
+          >
             {gig.postedBy.name}
           </Link>
         </div>
-        <span className="text-sm font-medium text-gray-900 whitespace-nowrap">
+        <span className="text-sm font-black text-slate-900 dark:text-white whitespace-nowrap">
           {gig.budgetAmount / 100} {gig.currency}
-          <span className="text-gray-400 font-normal"> {gig.budgetType === 'hourly' ? '/hr' : ''}</span>
+          <span className="text-slate-400 font-normal"> {gig.budgetType === 'hourly' ? '/hr' : ''}</span>
         </span>
       </div>
       {gig.assignedFreelancer && (
-        <div className="flex items-center gap-2 mt-2">
+        <div className="relative flex items-center gap-2 mt-2">
           <Link
             href={`/profile/${gig.assignedFreelancer.id}`}
-            className="text-xs font-medium text-gray-500 hover:text-indigo-600"
+            className="text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400"
           >
             👤 {gig.assignedFreelancer.name}
           </Link>
           {gig.assignedFreelancer.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
         </div>
       )}
-      <p className="text-sm text-gray-600 mt-3 line-clamp-2">{gig.description}</p>
-      <div className="flex flex-wrap gap-1.5 mt-3">
+      <p className="relative text-sm text-slate-600 dark:text-slate-400 mt-3 line-clamp-2">{gig.description}</p>
+      <div className="relative flex flex-wrap gap-1.5 mt-3">
         {gig.skillsRequired.map((skill) => (
           <span
             key={skill}
-            className="text-xs font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full"
+            className="text-xs font-medium text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/10 border border-purple-200/60 dark:border-purple-500/20 px-2 py-0.5 rounded-full"
           >
             {skill}
           </span>
         ))}
       </div>
-      <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-        <span className="text-xs text-gray-400">
+      <div className="relative flex items-center justify-between mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 gap-3">
+        <span className="text-xs text-slate-400 min-w-0 truncate">
           {gig.deadline ? t('marketplace.dueDate', { date: new Date(gig.deadline).toLocaleDateString() }) : t('marketplace.noDeadline')}
           {gig.applicationsCount > 0 && ` · ${t('proposalsCount', { count: gig.applicationsCount })}`}
         </span>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 shrink-0">
           {isOwnerOrAdmin && (
             <Link
               href={`/gigs/${gig.id}/applications`}
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+              className="text-sm font-bold text-purple-600 dark:text-purple-400 hover:underline"
             >
               {t('marketplace.viewApplications')}
             </Link>
@@ -81,7 +88,7 @@ export default function GigCard({
           {canApply && gig.status === 'open' && (
             <button
               onClick={() => onApply(gig)}
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+              className="text-xs font-bold px-4 py-2 rounded-xl text-white bg-gradient-to-r from-purple-500 to-fuchsia-600 hover:opacity-90 shadow-sm shadow-purple-500/20 transition"
             >
               {t('applyButton')}
             </button>
@@ -89,22 +96,22 @@ export default function GigCard({
           {canReview &&
             gig.status === 'completed' &&
             (alreadyReviewed ? (
-              <span className="text-xs font-medium text-emerald-600">✓ {t('marketplace.reviewed')}</span>
+              <span className="text-xs font-medium text-emerald-500">✓ {t('marketplace.reviewed')}</span>
             ) : (
               <button
                 onClick={() => onReview?.(gig)}
-                className="text-sm font-medium text-amber-600 hover:text-amber-700"
+                className="text-xs font-bold text-amber-500 hover:underline"
               >
                 ⭐ {t('marketplace.leaveReview')}
               </button>
             ))}
           {!isOwnerOrAdmin && !canReview && gig.status !== 'open' && (
-            <span className="text-xs font-medium text-gray-400 capitalize">{gig.status}</span>
+            <span className="text-xs font-medium text-slate-400 capitalize">{gig.status}</span>
           )}
         </div>
       </div>
       {gig.status === 'open' && (
-        <div className="mt-3 pt-3 border-t border-gray-100">
+        <div className="relative mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
           <SocialShareButtons title={gig.title} lang={lang} />
         </div>
       )}

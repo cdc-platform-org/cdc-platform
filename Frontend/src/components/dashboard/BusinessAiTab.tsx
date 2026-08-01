@@ -70,6 +70,7 @@ const dict = {
     noConversations: 'საუბრები ჯერ არ არის.',
     messages: 'შეტყობინება',
     cancel: 'გაუქმება',
+    genericError: 'დაფიქსირდა შეცდომა. სცადეთ თავიდან.',
   },
   en: {
     title: 'CDC Business AI',
@@ -113,6 +114,7 @@ const dict = {
     noConversations: 'No conversations yet.',
     messages: 'messages',
     cancel: 'Cancel',
+    genericError: 'Something went wrong. Please try again.',
   },
 };
 
@@ -154,6 +156,7 @@ export default function BusinessAiTab({ lang }: { lang: 'ka' | 'en' }) {
 
   const [conversations, setConversations] = useState<AgentConversation[]>([]);
   const [copied, setCopied] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const selectedAgent = agents.find((a) => a.id === selectedAgentId) ?? null;
 
@@ -163,6 +166,8 @@ export default function BusinessAiTab({ lang }: { lang: 'ka' | 'en' }) {
       const data = await getMyAgents();
       setAgents(data);
       if (data.length > 0 && !selectedAgentId) setSelectedAgentId(data[0].id);
+    } catch {
+      setActionError(t.genericError);
     } finally {
       setLoading(false);
     }
@@ -188,11 +193,11 @@ export default function BusinessAiTab({ lang }: { lang: 'ka' | 'en' }) {
   useEffect(() => {
     if (!selectedAgentId) return;
     if (subTab === 'knowledge') {
-      getKnowledgeDocuments(selectedAgentId).then(setKnowledge);
+      getKnowledgeDocuments(selectedAgentId).then(setKnowledge).catch(() => setActionError(t.genericError));
     } else if (subTab === 'analytics') {
-      getAgentConversations(selectedAgentId).then(setConversations);
+      getAgentConversations(selectedAgentId).then(setConversations).catch(() => setActionError(t.genericError));
     }
-  }, [selectedAgentId, subTab]);
+  }, [selectedAgentId, subTab, t.genericError]);
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault();
@@ -234,27 +239,40 @@ export default function BusinessAiTab({ lang }: { lang: 'ka' | 'en' }) {
 
   const handleToggleStatus = async () => {
     if (!selectedAgent) return;
-    const nextStatus = selectedAgent.status === 'PAUSED' ? 'ACTIVE' : 'PAUSED';
-    const updated = await updateAgent(selectedAgent.id, { status: nextStatus });
-    setAgents((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+    setActionError(null);
+    try {
+      const nextStatus = selectedAgent.status === 'PAUSED' ? 'ACTIVE' : 'PAUSED';
+      const updated = await updateAgent(selectedAgent.id, { status: nextStatus });
+      setAgents((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+    } catch {
+      setActionError(t.genericError);
+    }
   };
 
   const handleDelete = async () => {
     if (!selectedAgent) return;
     if (!window.confirm(t.deleteConfirm)) return;
-    await deleteAgent(selectedAgent.id);
-    setAgents((prev) => prev.filter((a) => a.id !== selectedAgent.id));
-    setSelectedAgentId(null);
+    setActionError(null);
+    try {
+      await deleteAgent(selectedAgent.id);
+      setAgents((prev) => prev.filter((a) => a.id !== selectedAgent.id));
+      setSelectedAgentId(null);
+    } catch {
+      setActionError(t.genericError);
+    }
   };
 
   const handleAddKnowledge = async () => {
     if (!selectedAgentId || !newContent.trim()) return;
     setAddingKnowledge(true);
+    setActionError(null);
     try {
       const doc = await createKnowledgeDocument(selectedAgentId, { question: newQuestion || null, content: newContent });
       setKnowledge((prev) => [doc, ...prev]);
       setNewQuestion('');
       setNewContent('');
+    } catch {
+      setActionError(t.genericError);
     } finally {
       setAddingKnowledge(false);
     }
@@ -262,8 +280,13 @@ export default function BusinessAiTab({ lang }: { lang: 'ka' | 'en' }) {
 
   const handleDeleteKnowledge = async (docId: string) => {
     if (!selectedAgentId) return;
-    await deleteKnowledgeDocument(selectedAgentId, docId);
-    setKnowledge((prev) => prev.filter((d) => d.id !== docId));
+    setActionError(null);
+    try {
+      await deleteKnowledgeDocument(selectedAgentId, docId);
+      setKnowledge((prev) => prev.filter((d) => d.id !== docId));
+    } catch {
+      setActionError(t.genericError);
+    }
   };
 
   const embedSnippet = selectedAgent
@@ -348,6 +371,14 @@ export default function BusinessAiTab({ lang }: { lang: 'ka' | 'en' }) {
 
   return (
     <div className="space-y-4">
+      {actionError && (
+        <div className="rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-medium px-4 py-2.5 flex items-center justify-between gap-3">
+          {actionError}
+          <button type="button" onClick={() => setActionError(null)} className="text-red-500/70 hover:text-red-500 font-bold">
+            ×
+          </button>
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           {agents.map((a) => (

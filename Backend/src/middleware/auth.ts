@@ -75,7 +75,7 @@ export async function requireApproved(req: Request, res: Response, next: NextFun
   }
   const user = await prisma.user.findUnique({
     where: { id: req.user.id },
-    select: { status: true, deletionRequestedAt: true, emailVerifiedAt: true, isBanned: true },
+    select: { status: true, deletionRequestedAt: true, isBanned: true },
   });
   if (!user) {
     return res.status(401).json({ message: 'Account no longer exists.' });
@@ -85,9 +85,6 @@ export async function requireApproved(req: Request, res: Response, next: NextFun
   }
   if (user.deletionRequestedAt) {
     return res.status(403).json({ message: 'This account has been deactivated.' });
-  }
-  if (!user.emailVerifiedAt) {
-    return res.status(403).json({ message: 'Please verify your email before continuing.' });
   }
   if (user.status !== 'APPROVED') {
     return res.status(403).json({ message: 'Your account is pending administrator approval.' });

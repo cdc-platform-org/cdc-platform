@@ -81,21 +81,53 @@ function GrantAccessForm({ onGranted }: { onGranted: () => void }) {
   );
 }
 
+const PURPOSE_LABEL: Record<CoursePaymentRow['purpose'], string> = {
+  COURSE: 'Course',
+  MENTORSHIP: 'Mentorship',
+  GIG_ESCROW_FUNDING: 'Gig Escrow',
+};
+
+function exportPaymentsCsv(payments: CoursePaymentRow[]) {
+  const header = ['Order ID', 'User', 'Email', 'Purpose', 'Reference', 'Amount', 'Currency', 'Status', 'Created At', 'Completed At'];
+  const rows = payments.map((p) => [
+    p.bogOrderId,
+    p.user.name,
+    p.user.email,
+    PURPOSE_LABEL[p.purpose] ?? p.purpose,
+    p.courseTitle,
+    (p.amount / 100).toFixed(2),
+    p.currency,
+    p.status,
+    p.createdAt,
+    p.completedAt ?? '',
+  ]);
+  const escapeCsv = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  const csv = [header, ...rows].map((r) => r.map((v) => escapeCsv(String(v))).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `bog-transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function AdminFinanceDashboard() {
   const [payments, setPayments] = useState<CoursePaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('');
+  const [purposeFilter, setPurposeFilter] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await getCoursePayments({ status: statusFilter || undefined, pageSize: 50 });
+      const result = await getCoursePayments({ status: statusFilter || undefined, purpose: purposeFilter || undefined, pageSize: 50 });
       setPayments(result.data);
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, purposeFilter]);
 
   useEffect(() => {
     load();
@@ -130,14 +162,24 @@ function AdminFinanceDashboard() {
         <title>Course Finance | Admin</title>
       </Head>
       <div className="max-w-6xl">
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Course Finance</h1>
-          <p className="text-sm text-gray-500 mt-1">BOG Pay transaction ledger for course sales.</p>
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">Payment Finance</h1>
+            <p className="text-sm text-gray-500 mt-1">BOG Pay transaction ledger — course sales, mentorship, and gig escrow funding.</p>
+          </div>
+          <button
+            type="button"
+            disabled={payments.length === 0}
+            onClick={() => exportPaymentsCsv(payments)}
+            className="text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap"
+          >
+            Export CSV
+          </button>
         </div>
 
         <GrantAccessForm onGranted={load} />
 
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
           {['', 'PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'].map((s) => (
             <button
               key={s}
@@ -145,7 +187,18 @@ function AdminFinanceDashboard() {
               onClick={() => setStatusFilter(s)}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${statusFilter === s ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200'}`}
             >
-              {s || 'All'}
+              {s || 'All statuses'}
+            </button>
+          ))}
+          <span className="w-px h-5 bg-gray-200 mx-1" />
+          {(['', 'COURSE', 'MENTORSHIP', 'GIG_ESCROW_FUNDING'] as const).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPurposeFilter(p)}
+              className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${purposeFilter === p ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200'}`}
+            >
+              {p ? PURPOSE_LABEL[p] : 'All purposes'}
             </button>
           ))}
         </div>
@@ -161,7 +214,8 @@ function AdminFinanceDashboard() {
                 <tr className="text-left text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200">
                   <th className="px-4 py-3">Order ID</th>
                   <th className="px-4 py-3">User</th>
-                  <th className="px-4 py-3">Course</th>
+                  <th className="px-4 py-3">Purpose</th>
+                  <th className="px-4 py-3">Reference</th>
                   <th className="px-4 py-3">Amount</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Date</th>
@@ -176,6 +230,7 @@ function AdminFinanceDashboard() {
                       <div className="text-gray-900">{p.user.name}</div>
                       <div className="text-xs text-gray-400">{p.user.email}</div>
                     </td>
+                    <td className="px-4 py-3 text-xs text-gray-600">{PURPOSE_LABEL[p.purpose] ?? p.purpose}</td>
                     <td className="px-4 py-3 max-w-[180px] truncate">{p.courseTitle}</td>
                     <td className="px-4 py-3 font-semibold">{formatGel(p.amount, p.currency)}</td>
                     <td className="px-4 py-3">
@@ -194,7 +249,7 @@ function AdminFinanceDashboard() {
                             Re-verify
                           </button>
                         )}
-                        {p.status === 'COMPLETED' && (
+                        {p.status === 'COMPLETED' && p.purpose === 'COURSE' && (
                           <button
                             type="button"
                             disabled={busyId === p.id}
