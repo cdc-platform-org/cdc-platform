@@ -2,6 +2,7 @@ interface Poster {
   id: string;
   name: string;
   role: 'Client' | 'SuperAdmin';
+  isVerifiedGraduate: boolean;
 }
 
 interface AssignedFreelancer {

@@ -5,6 +5,7 @@ import { postGigSchema, applyToGigSchema, submitGigWorkSchema } from '../schemas
 import { openDisputeSchema } from '../schemas/disputeSchemas';
 import { captureEscrow } from '../services/escrowService';
 import { approveGigWork, GigApprovalError } from '../services/gigApprovalService';
+import { hasReachedMonthlyPostLimit, MONTHLY_POST_LIMIT } from '../services/postingLimitService';
 import { z } from 'zod';
 
 const router = Router();
@@ -146,6 +147,9 @@ router.post(
   requireApproved,
   requireRole('Client', 'SuperAdmin'),
   async (req: Request, res: Response) => {
+    if (req.user!.role !== 'SuperAdmin' && (await hasReachedMonthlyPostLimit(req.user!.id))) {
+      return res.status(429).json({ message: `You've reached your monthly posting limit (${MONTHLY_POST_LIMIT}). Try again next month.` });
+    }
     const result = postGigSchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ errors: result.error.errors });
     const gig = await prisma.gig.create({

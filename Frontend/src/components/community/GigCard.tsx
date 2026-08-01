@@ -37,12 +37,15 @@ export default function GigCard({
           <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
             {gig.title}
           </h3>
-          <Link
-            href={`/profile/${gig.postedBy.id}`}
-            className="text-sm text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 mt-0.5 inline-block"
-          >
-            {gig.postedBy.name}
-          </Link>
+          <span className="flex items-center gap-1.5 mt-0.5">
+            <Link
+              href={`/profile/${gig.postedBy.id}`}
+              className="text-sm text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400"
+            >
+              {gig.postedBy.name}
+            </Link>
+            {gig.postedBy.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
+          </span>
         </div>
         <span className="text-sm font-black text-slate-900 dark:text-white whitespace-nowrap">
           {gig.budgetAmount / 100} {gig.currency}

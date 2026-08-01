@@ -122,8 +122,8 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
         await postGig(payload);
         router.push('/gigs');
       }
-    } catch {
-      setSubmitError(`Unable to post this ${postType}. Please try again.`);
+    } catch (err: any) {
+      setSubmitError(err?.response?.data?.message || `Unable to post this ${postType}. Please try again.`);
     } finally {
       setSubmitting(false);
     }

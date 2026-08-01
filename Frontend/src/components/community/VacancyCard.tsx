@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { Vacancy } from '../../types/community';
 import SocialShareButtons from '../shared/SocialShareButtons';
+import VerifiedGraduateBadge from './VerifiedGraduateBadge';
 
 interface VacancyCardProps {
   vacancy: Vacancy;
@@ -32,7 +33,10 @@ export default function VacancyCard({ vacancy, onApply, canApply, isOwnerOrAdmin
           <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
             {vacancy.title}
           </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{vacancy.postedBy.name}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
+            {vacancy.postedBy.name}
+            {vacancy.postedBy.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
+          </p>
         </div>
         <span className="text-[11px] font-black uppercase tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-500/20">
           {employmentTypeLabels[vacancy.employmentType]}

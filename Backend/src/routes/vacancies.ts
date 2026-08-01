@@ -4,8 +4,9 @@ import { authenticate, requireRole, requireApproved } from '../middleware/auth';
 import { postVacancySchema, updateVacancySchema, applyToVacancySchema, reviewVacancyApplicationSchema } from '../schemas/vacancySchemas';
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
 import { sendVacancyApplicationEmail } from '../services/emailService';
+import { hasReachedMonthlyPostLimit, MONTHLY_POST_LIMIT } from '../services/postingLimitService';
 const router = Router();
-const posterSelect = { select: { id: true, name: true, role: true } };
+const posterSelect = { select: { id: true, name: true, role: true, isVerifiedGraduate: true } };
 declare global {
   namespace Express {
     interface Request {
@@ -70,6 +71,9 @@ router.post(
   requireApproved,
   requireRole('Client', 'SuperAdmin'),
   async (req: Request, res: Response) => {
+    if (req.user!.role !== 'SuperAdmin' && (await hasReachedMonthlyPostLimit(req.user!.id))) {
+      return res.status(429).json({ message: `You've reached your monthly posting limit (${MONTHLY_POST_LIMIT}). Try again next month.` });
+    }
     const result = postVacancySchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ errors: result.error.errors });
     const { status, ...fields } = result.data;

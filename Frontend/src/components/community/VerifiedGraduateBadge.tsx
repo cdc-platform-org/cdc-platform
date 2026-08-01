@@ -24,7 +24,7 @@ export default function VerifiedGraduateBadge({ size = 'md', iconOnly = false }:
         strokeWidth={2.5}
         className="text-cyan-300 drop-shadow-[0_0_4px_rgba(34,211,238,0.95)] shrink-0"
       />
-      {!iconOnly && 'CDC Verified Graduate'}
+      {!iconOnly && 'CDC კურსდამთავრებული'}
     </span>
   );
 }
