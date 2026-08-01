@@ -16,6 +16,7 @@ const dict = {
     about: 'ჩვენ შესახებ',
     gallery: 'გალერეა',
     community: 'ვაკანსიები',
+    tools: 'ციფრული ხელსაწყოები',
   },
   en: {
     login: 'Log In',
@@ -26,6 +27,7 @@ const dict = {
     about: 'About',
     gallery: 'Gallery',
     community: 'Jobs',
+    tools: 'Digital Tools',
   },
 };
 
@@ -84,12 +86,19 @@ export default function SiteHeader() {
             <Link href="/community" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
               {t.community}
             </Link>
-            <Link href="/about" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
-              {t.about}
+            <Link href="/tools" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
+              {t.tools}
             </Link>
-            <Link href="/gallery" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
-              {t.gallery}
-            </Link>
+            {!(isAuthenticated && user) && (
+              <>
+                <Link href="/about" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
+                  {t.about}
+                </Link>
+                <Link href="/gallery" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
+                  {t.gallery}
+                </Link>
+              </>
+            )}
           </div>
           <LanguageSwitcher />
           <button

@@ -6,7 +6,6 @@ import {
   Building2,
   Briefcase,
   ClipboardList,
-  Bot,
   LayoutDashboard,
   Plus,
   Pencil,
@@ -41,9 +40,8 @@ import { createReview } from '../../src/services/reviewService';
 import { checkoutGigEscrow } from '../../src/services/paymentService';
 import { MyVacancy, EmploymentType, VacancyStatus } from '../../src/types/community';
 import { getMyVacancies, updateVacancy, UpdateVacancyPayload } from '../../src/services/vacancyService';
-import BusinessAiTab from '../../src/components/dashboard/BusinessAiTab';
 
-type Tab = 'overview' | 'profile' | 'vacancies' | 'orders' | 'agent';
+type Tab = 'overview' | 'profile' | 'vacancies' | 'orders';
 
 const dict = {
   ka: {
@@ -628,7 +626,6 @@ function BusinessDashboardContent() {
     { key: 'profile', label: t.tabProfile, icon: Building2 },
     { key: 'vacancies', label: t.tabVacancies, icon: Briefcase },
     { key: 'orders', label: t.tabOrders, icon: ClipboardList },
-    { key: 'agent', label: t.tabAgent, icon: Bot },
   ];
 
   return (
@@ -1017,8 +1014,6 @@ function BusinessDashboardContent() {
                     )}
                   </div>
                 )}
-
-                {activeTab === 'agent' && <BusinessAiTab lang={lang} />}
               </>
             )}
           </div>
