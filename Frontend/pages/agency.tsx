@@ -1,5 +1,6 @@
 import { useState, useEffect, FormEvent } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { Briefcase, Sparkles, FileEdit, Sun, Moon } from 'lucide-react';
 import SiteFooter from '../src/components/layout/SiteFooter';
@@ -179,7 +180,7 @@ export default function Agency() {
           </div>
 
           <div className="flex items-center space-x-6 text-base font-bold tracking-wide">
-            <a href="/" className="hover:text-cyan-500 transition no-underline text-current">{translate('მთავარზე დაბრუნება', 'Return Home')}</a>
+            <Link href="/" className="hover:text-cyan-500 transition no-underline text-current">{translate('მთავარზე დაბრუნება', 'Return Home')}</Link>
 
             {/* 🌐 ენის გადამრთველი სააგენტოს გვერდზეც! */}
             <button

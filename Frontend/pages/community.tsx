@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
@@ -194,9 +195,9 @@ function CommunityPageContent() {
           </div>
 
           <div className={`hidden lg:flex items-center space-x-8 text-sm font-bold tracking-wide ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
-            <a href="/" className="hover:text-cyan-500 transition no-underline text-current">
+            <Link href="/" className="hover:text-cyan-500 transition no-underline text-current">
               მთავარზე დაბრუნება
-            </a>
+            </Link>
           </div>
 
           <div className="flex items-center space-x-4">
