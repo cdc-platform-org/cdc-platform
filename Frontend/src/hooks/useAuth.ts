@@ -28,13 +28,21 @@ export function useAuthState() {
       // The cached user can go stale (e.g. role/adminRole/status changed
       // server-side since last login) — silently revalidate against the
       // server so permission checks (like AdminGuard) never act on outdated
-      // data without requiring a manual re-login.
-      getMeRequest()
+      // data without requiring a manual re-login. `silent401: true` keeps a
+      // rejected/expired token from triggering apiClient's hard
+      // window.location redirect — that behavior is for a genuinely
+      // in-session action failing auth, not a background check on every
+      // single page load; here we just clear the stale local session instead.
+      getMeRequest({ silent401: true })
         .then((freshUser) => {
           localStorage.setItem(USER_KEY, JSON.stringify(freshUser));
           setUser(freshUser);
         })
-        .catch(() => {});
+        .catch(() => {
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(USER_KEY);
+          setUser(null);
+        });
     }
     setLoading(false);
   }, []);

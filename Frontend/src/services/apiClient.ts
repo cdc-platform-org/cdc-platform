@@ -9,6 +9,19 @@ const apiClient = axios.create({
   },
 });
 
+// Set on a request's config (see authService.getMe's `silent401` option) to
+// opt that call out of the hard-redirect-on-401 behavior below — used by
+// useAuth's mount-time session check, which already handles a failed/expired
+// token silently on its own (it just leaves the user logged out) and
+// shouldn't have every page load yanked into a jarring full-page reload to
+// /auth/login just because a stale token from a past session failed to
+// revalidate.
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    silent401?: boolean;
+  }
+}
+
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (typeof window !== 'undefined') {
@@ -28,7 +41,8 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('cdc_access_token');
-        if (!window.location.pathname.startsWith('/auth')) {
+        localStorage.removeItem('cdc_user');
+        if (!error.config?.silent401 && !window.location.pathname.startsWith('/auth')) {
           window.location.href = '/auth/login';
         }
       }

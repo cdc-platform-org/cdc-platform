@@ -63,8 +63,8 @@ export async function resetPassword(payload: ResetPasswordPayload): Promise<{ me
   return response.data;
 }
 
-export async function getMe(): Promise<User> {
-  const response = await apiClient.get<{ user: User }>('/auth/me');
+export async function getMe(options?: { silent401?: boolean }): Promise<User> {
+  const response = await apiClient.get<{ user: User }>('/auth/me', { silent401: options?.silent401 });
   return response.data.user;
 }
 
