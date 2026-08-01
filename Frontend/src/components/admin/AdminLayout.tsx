@@ -78,8 +78,9 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex bg-gray-50">
-      {/* SIDEBAR */}
-      <aside className="w-64 shrink-0 bg-gradient-to-b from-slate-950 to-slate-900 text-slate-200 flex flex-col">
+      {/* SIDEBAR — sticky + independently scrolling so navigating (or a long
+          nav list) never yanks the whole page's scroll position back to top. */}
+      <aside className="w-64 shrink-0 h-screen sticky top-0 overflow-y-auto bg-gradient-to-b from-slate-950 to-slate-900 text-slate-200 flex flex-col">
         <div className="px-6 py-6 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
             <div className="bg-gradient-to-tr from-cyan-500 to-purple-600 text-white px-3 py-1.5 rounded-lg font-black text-sm tracking-wider">
@@ -104,6 +105,7 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
+                scroll={false}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium no-underline transition-colors ${
                   isActive
                     ? 'bg-gradient-to-r from-cyan-500/20 to-purple-600/20 text-white border border-cyan-500/30'
