@@ -22,6 +22,8 @@ const STRINGS = {
     registerTab: 'რეგისტრაცია',
     nameLabel: 'სახელი',
     namePlaceholder: 'თქვენი სახელი',
+    nameLabelBusiness: 'კომპანიის დასახელება',
+    namePlaceholderBusiness: 'კომპანიის / ორგანიზაციის დასახელება',
     emailLabel: 'ელ-ფოსტა',
     emailPlaceholder: 'you@example.com',
     passwordLabel: 'პაროლი',
@@ -50,6 +52,8 @@ const STRINGS = {
     registerTab: 'Register',
     nameLabel: 'Name',
     namePlaceholder: 'Your name',
+    nameLabelBusiness: 'Company Name',
+    namePlaceholderBusiness: 'Company / Organization Name',
     emailLabel: 'Email',
     emailPlaceholder: 'you@example.com',
     passwordLabel: 'Password',
@@ -174,9 +178,10 @@ export default function AuthModal() {
     }
     window.google.accounts.id.initialize({
       client_id: clientId,
-      // Without this, Google's own button/popup text follows the browser's
-      // locale instead of this site's — the one piece of the modal that
-      // wasn't actually driven by our STRINGS dict.
+      // Not an actual documented IdConfiguration field (harmless to pass,
+      // but Google ignores it) — the real language control is the `hl`
+      // query param on the GSI script URL itself, see pages/_app.tsx.
+      // Left here in case a future GSI version does honor it.
       locale: lang,
       callback: (response) => {
         setSubmitting(true);
@@ -297,13 +302,15 @@ export default function AuthModal() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {mode === 'register' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.nameLabel}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    {role === 'Client' ? t.nameLabelBusiness : t.nameLabel}
+                  </label>
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder={t.namePlaceholder}
+                    placeholder={role === 'Client' ? t.namePlaceholderBusiness : t.namePlaceholder}
                     className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>

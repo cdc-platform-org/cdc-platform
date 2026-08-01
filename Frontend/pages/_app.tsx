@@ -90,7 +90,14 @@ function App({ Component, pageProps }: AppProps) {
         `}</style>
       </Head>
       <Script
-        src="https://accounts.google.com/gsi/client"
+        // Google's IdConfiguration has no `locale` field — despite
+        // AuthModal.tsx passing one to initialize(), the actual documented
+        // way to control the "Sign in/up with Google" button and One Tap
+        // prompt's language is the `hl` query param on this script URL
+        // itself. Without it the button falls back to the browser/OS
+        // locale, which is why it was rendering in Russian for some users
+        // regardless of the site's own ka/en language switcher.
+        src={`https://accounts.google.com/gsi/client?hl=${router.locale === 'en' ? 'en' : 'ka'}`}
         strategy="afterInteractive"
         // Google's script loads async — if AuthModal.tsx opens before this
         // fires, window.google is still undefined and its render-button
