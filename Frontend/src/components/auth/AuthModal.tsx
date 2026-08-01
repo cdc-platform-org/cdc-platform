@@ -189,6 +189,12 @@ export default function AuthModal() {
           .finally(() => setSubmitting(false));
       },
     });
+    // Google's GSI renders by appending an iframe into the target node
+    // rather than replacing its contents — without this, switching between
+    // the Login/Register tabs (which re-runs this effect) stacks a new
+    // button on top of the old one instead of swapping it, leaving a stale
+    // button (bound to the previous mode/role) overlapping the current one.
+    googleButtonRef.current.innerHTML = '';
     window.google.accounts.id.renderButton(googleButtonRef.current, {
       theme: 'outline',
       size: 'large',
