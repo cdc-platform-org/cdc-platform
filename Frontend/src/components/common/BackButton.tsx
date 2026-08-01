@@ -30,9 +30,9 @@ export default function BackButton({ fallbackHref = '/', label, className = '' }
     <button
       type="button"
       onClick={handleClick}
-      className={`inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors bg-transparent border-none cursor-pointer p-0 ${className}`}
+      className={`group inline-flex items-center gap-1.5 bg-transparent p-0 border-none shadow-none rounded-none cursor-pointer text-sm font-medium text-slate-600 dark:text-slate-400 transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 ${className}`}
     >
-      <ChevronLeft className="w-4 h-4" />
+      <ChevronLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
       {resolvedLabel}
     </button>
   );
