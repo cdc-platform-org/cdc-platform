@@ -43,8 +43,13 @@ function App({ Component, pageProps }: AppProps) {
             line-height: 1.65 !important;
           }
 
-          /* ბლოკების (ქარდების) გაცოცხლება და ნეონის ცისფერი ნათება */
-          .grid > div, 
+          /* ბლოკების (ქარდების) გაცოცხლება და ნეონის ცისფერი ნათება —
+             შემოსაზღვრულია მხოლოდ მთავარი გვერდის ამ სექციებით. (Deliberately
+             scoped to just these homepage sections — an earlier, unscoped
+             ".grid > div" version of this rule matched every Tailwind
+             "grid" class on the entire site, including Wallet/Payouts/
+             Dashboard/admin pages never designed for a card hover-lift,
+             causing the glow/scale to overlap neighboring text there.) */
           section#about .grid > div,
           section#courses .grid > div,
           section#blog .grid > div,
@@ -52,7 +57,6 @@ function App({ Component, pageProps }: AppProps) {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
           }
 
-          .grid > div:hover,
           section#about .grid > div:hover,
           section#courses .grid > div:hover,
           section#blog .grid > div:hover {
