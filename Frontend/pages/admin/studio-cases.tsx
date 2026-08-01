@@ -5,6 +5,7 @@ import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
 import { StudioCaseStudy } from '../../src/types/studioCaseStudy';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
+import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../src/utils/imageUpload';
 import {
   adminGetStudioCases,
   createStudioCase,
@@ -83,13 +84,17 @@ function AdminStudioCasesDashboard() {
   const handleCoverChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (isImageTooLarge(file)) {
+      setFormError(IMAGE_SIZE_ERROR.ka);
+      return;
+    }
     setUploadingCover(true);
     setFormError(null);
     try {
       const url = await uploadStudioCaseImage(file);
       setForm((f) => ({ ...f, coverImageUrl: url }));
-    } catch {
-      setFormError('ფოტოს ატვირთვა ვერ მოხერხდა.');
+    } catch (err: any) {
+      setFormError(err?.response?.data?.message ?? 'ფოტოს ატვირთვა ვერ მოხერხდა.');
     } finally {
       setUploadingCover(false);
     }
@@ -98,13 +103,18 @@ function AdminStudioCasesDashboard() {
   const handleGalleryChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+    if (Array.from(files).some(isImageTooLarge)) {
+      setFormError(IMAGE_SIZE_ERROR.ka);
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
+      return;
+    }
     setUploadingGallery(true);
     setFormError(null);
     try {
       const urls = await Promise.all(Array.from(files).map((file) => uploadStudioCaseImage(file)));
       setForm((f) => ({ ...f, galleryImages: [...(f.galleryImages ?? []), ...urls] }));
-    } catch {
-      setFormError('გალერეის ატვირთვა ვერ მოხერხდა.');
+    } catch (err: any) {
+      setFormError(err?.response?.data?.message ?? 'გალერეის ატვირთვა ვერ მოხერხდა.');
     } finally {
       setUploadingGallery(false);
       if (galleryInputRef.current) galleryInputRef.current.value = '';

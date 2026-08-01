@@ -227,7 +227,7 @@ const imageFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFil
 const imageUpload = multer({
   storage: multer.memoryStorage(),
   fileFilter: imageFilter,
-  limits: { fileSize: 8 * 1024 * 1024 }, // 8MB
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
 router.post(
@@ -240,7 +240,15 @@ router.post(
     }
     next();
   },
-  imageUpload.single('image'),
+  (req: Request, res: Response, next) => {
+    imageUpload.single('image')(req, res, (err: any) => {
+      if (!err) return next();
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ message: 'ფოტოს ზომა აჭარბებს 10MB-ს. გთხოვთ, აირჩიოთ უფრო მცირე ზომის ფაილი.' });
+      }
+      return res.status(400).json({ message: err.message || 'მხოლოდ სურათის ატვირთვაა ნებადართული!' });
+    });
+  },
   async (req: Request, res: Response) => {
     if (!req.file) {
       return res.status(400).json({ message: 'ფაილი არ არის არჩეული' });

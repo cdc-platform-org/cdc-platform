@@ -8,6 +8,8 @@ import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import { useAuth } from '../../src/context/AuthContext';
 import { updateProfile, changePassword, uploadAvatar } from '../../src/services/authService';
+import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../src/utils/imageUpload';
+import Toast from '../../src/components/shared/Toast';
 
 const dict = {
   ka: {
@@ -17,6 +19,7 @@ const dict = {
     avatarChange: 'სურათის შეცვლა',
     avatarUploading: 'იტვირთება…',
     avatarError: 'სურათის ატვირთვა ვერ მოხერხდა.',
+    avatarHint: 'მაქსიმუმ 10 MB (JPG, PNG, WEBP)',
     displayName: 'სახელი (საჯარო)',
     bio: 'ბიო / სათაური',
     bioPlaceholder: 'მოკლედ მოგვიყევით საკუთარ თავზე...',
@@ -52,6 +55,7 @@ const dict = {
     avatarChange: 'Change Photo',
     avatarUploading: 'Uploading…',
     avatarError: 'Unable to upload the image.',
+    avatarHint: 'Max 10 MB (JPG, PNG, WEBP)',
     displayName: 'Display Name',
     bio: 'Bio / Headline',
     bioPlaceholder: 'Tell us a bit about yourself...',
@@ -108,7 +112,14 @@ function SettingsContent() {
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [sizeToast, setSizeToast] = useState<string | null>(null);
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!sizeToast) return;
+    const timer = setTimeout(() => setSizeToast(null), 5000);
+    return () => clearTimeout(timer);
+  }, [sizeToast]);
 
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [updatingPassword, setUpdatingPassword] = useState(false);
@@ -132,13 +143,18 @@ function SettingsContent() {
   const handleAvatarFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (isImageTooLarge(file)) {
+      setSizeToast(IMAGE_SIZE_ERROR[lang]);
+      if (avatarFileInputRef.current) avatarFileInputRef.current.value = '';
+      return;
+    }
     setUploadingAvatar(true);
     setAvatarError(null);
     try {
       await uploadAvatar(file);
       await refreshUser();
-    } catch {
-      setAvatarError(t.avatarError);
+    } catch (err: any) {
+      setAvatarError(err?.response?.data?.message ?? t.avatarError);
     } finally {
       setUploadingAvatar(false);
       if (avatarFileInputRef.current) avatarFileInputRef.current.value = '';
@@ -243,6 +259,7 @@ function SettingsContent() {
                     disabled={uploadingAvatar}
                   />
                 </label>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">{t.avatarHint}</p>
                 {avatarError && <p className="text-xs text-red-600 mt-1.5">{avatarError}</p>}
               </div>
             </div>
@@ -381,6 +398,7 @@ function SettingsContent() {
       </div>
 
       <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+      {sizeToast && <Toast message={sizeToast} icon="⚠️" />}
     </div>
   );
 }

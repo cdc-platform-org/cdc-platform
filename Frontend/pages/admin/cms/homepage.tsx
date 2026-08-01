@@ -4,6 +4,7 @@ import AdminGuard from '../../../src/components/admin/AdminGuard';
 import AdminLayout from '../../../src/components/admin/AdminLayout';
 import { HomepageContent, HomepageStat, HomepageFaqItem } from '../../../src/types/siteContent';
 import { getAdminSiteContent, updateSiteContent, uploadCmsImage } from '../../../src/services/siteContentService';
+import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../../src/utils/imageUpload';
 import { resolveBlogImageUrl } from '../../../src/services/blogService';
 
 const emptyStat: HomepageStat = { valueKa: '', labelKa: '', valueEn: '', labelEn: '' };
@@ -64,13 +65,17 @@ function HomepageCmsDashboard() {
   const handleHeksFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (isImageTooLarge(file)) {
+      setHeksUploadError(IMAGE_SIZE_ERROR.ka);
+      return;
+    }
     setUploadingHeksImage(true);
     setHeksUploadError(null);
     try {
       const url = await uploadCmsImage(file);
       updateHeksCard({ imageUrl: url });
-    } catch {
-      setHeksUploadError('სურათის ატვირთვა ვერ მოხერხდა.');
+    } catch (err: any) {
+      setHeksUploadError(err?.response?.data?.message ?? 'სურათის ატვირთვა ვერ მოხერხდა.');
     } finally {
       setUploadingHeksImage(false);
     }

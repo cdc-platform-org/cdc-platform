@@ -5,6 +5,7 @@ import AdminLayout from '../../../src/components/admin/AdminLayout';
 import { GalleryContent, GalleryImage } from '../../../src/types/siteContent';
 import { getAdminSiteContent, updateSiteContent, uploadCmsImage } from '../../../src/services/siteContentService';
 import { resolveBlogImageUrl } from '../../../src/services/blogService';
+import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../../src/utils/imageUpload';
 
 const inputClass = 'w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
 
@@ -62,13 +63,18 @@ function GalleryCmsDashboard() {
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (isImageTooLarge(file)) {
+      setUploadError(IMAGE_SIZE_ERROR.ka);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
     setUploading(true);
     setUploadError(null);
     try {
       const url = await uploadCmsImage(file);
       setContent({ ...content, images: [...images, { url }] });
-    } catch {
-      setUploadError('სურათის ატვირთვა ვერ მოხერხდა.');
+    } catch (err: any) {
+      setUploadError(err?.response?.data?.message ?? 'სურათის ატვირთვა ვერ მოხერხდა.');
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

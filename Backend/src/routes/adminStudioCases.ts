@@ -113,7 +113,7 @@ const imageUpload = multer({
     if (file.mimetype.startsWith('image/')) cb(null, true);
     else cb(new Error('Only image uploads are allowed.'));
   },
-  limits: { fileSize: 8 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
 router.post(
@@ -124,7 +124,15 @@ router.post(
     }
     next();
   },
-  imageUpload.single('image'),
+  (req: Request, res: Response, next) => {
+    imageUpload.single('image')(req, res, (err: any) => {
+      if (!err) return next();
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ message: 'The photo exceeds 10MB. Please choose a smaller file.' });
+      }
+      return res.status(400).json({ message: err.message || 'Only image uploads are allowed.' });
+    });
+  },
   async (req: Request, res: Response) => {
     if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
     const filename = `studio-case-${Date.now()}-${crypto.randomUUID()}${path.extname(req.file.originalname)}`;

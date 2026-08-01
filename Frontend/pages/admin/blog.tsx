@@ -19,6 +19,7 @@ import {
   deleteBlogComment,
 } from '../../src/services/blogService';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
+import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../src/utils/imageUpload';
 
 const emptyForm: BlogPostPayload = {
   title: '',
@@ -119,13 +120,17 @@ function AdminBlogDashboard() {
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (isImageTooLarge(file)) {
+      setFormError(IMAGE_SIZE_ERROR.ka);
+      return;
+    }
     setUploading(true);
     setFormError(null);
     try {
       const url = await uploadBlogImage(file);
       setForm((f) => ({ ...f, imageUrl: url }));
-    } catch {
-      setFormError('სურათის ატვირთვა ვერ მოხერხდა.');
+    } catch (err: any) {
+      setFormError(err?.response?.data?.message ?? 'სურათის ატვირთვა ვერ მოხერხდა.');
     } finally {
       setUploading(false);
     }

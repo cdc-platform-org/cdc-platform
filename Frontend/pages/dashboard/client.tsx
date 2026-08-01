@@ -32,6 +32,8 @@ import BackButton from '../../src/components/common/BackButton';
 import { useAuth } from '../../src/context/AuthContext';
 import { useEscapeToClose } from '../../src/hooks/useEscapeToClose';
 import { updateProfile, uploadAvatar, uploadVerificationDoc } from '../../src/services/authService';
+import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../src/utils/imageUpload';
+import Toast from '../../src/components/shared/Toast';
 import { getVerificationStatus, VerificationStatus } from '../../src/types/auth';
 import { MyGig } from '../../src/types/community';
 import { getMyGigs, approveGigWork, openGigDispute } from '../../src/services/gigService';
@@ -63,6 +65,7 @@ const dict = {
     logoChange: 'ლოგოს შეცვლა',
     uploading: 'იტვირთება…',
     uploadError: 'ატვირთვა ვერ მოხერხდა.',
+    uploadHint: 'მაქსიმუმ 10 MB (JPG, PNG, WEBP)',
     companyName: 'კომპანიის დასახელება',
     industry: 'ინდუსტრია',
     website: 'ვებსაიტი',
@@ -136,6 +139,7 @@ const dict = {
     logoChange: 'Change Logo',
     uploading: 'Uploading…',
     uploadError: 'Unable to upload the image.',
+    uploadHint: 'Max 10 MB (JPG, PNG, WEBP)',
     companyName: 'Company Name',
     industry: 'Industry',
     website: 'Website',
@@ -449,7 +453,14 @@ function BusinessDashboardContent() {
   const [saved, setSaved] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
+  const [sizeToast, setSizeToast] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!sizeToast) return;
+    const timer = setTimeout(() => setSizeToast(null), 5000);
+    return () => clearTimeout(timer);
+  }, [sizeToast]);
 
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [docError, setDocError] = useState<string | null>(null);
@@ -495,13 +506,18 @@ function BusinessDashboardContent() {
   const handleLogoChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (isImageTooLarge(file)) {
+      setSizeToast(IMAGE_SIZE_ERROR[lang]);
+      if (logoInputRef.current) logoInputRef.current.value = '';
+      return;
+    }
     setUploadingLogo(true);
     setLogoError(null);
     try {
       await uploadAvatar(file);
       await refreshUser();
-    } catch {
-      setLogoError(t.uploadError);
+    } catch (err: any) {
+      setLogoError(err?.response?.data?.message ?? t.uploadError);
     } finally {
       setUploadingLogo(false);
       if (logoInputRef.current) logoInputRef.current.value = '';
@@ -701,6 +717,7 @@ function BusinessDashboardContent() {
                             {uploadingLogo ? t.uploading : t.logoChange}
                             <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoChange} className="hidden" disabled={uploadingLogo} />
                           </label>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">{t.uploadHint}</p>
                           {logoError && <p className="text-xs text-red-600 mt-1.5">{logoError}</p>}
                         </div>
                       </div>
@@ -1029,6 +1046,7 @@ function BusinessDashboardContent() {
       )}
 
       <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+      {sizeToast && <Toast message={sizeToast} icon="⚠️" />}
     </div>
   );
 }
