@@ -1,4 +1,6 @@
+import { MapPin } from 'lucide-react';
 import SimpleSiteLayout from '@/src/components/layout/SimpleSiteLayout';
+import TeamTrainersSection from '@/src/components/shared/TeamTrainersSection';
 import { aboutContent } from '@/src/data/aboutContent';
 
 export default function AboutPage() {
@@ -65,22 +67,11 @@ export default function AboutPage() {
               ))}
             </div>
 
-            <h2 className="text-xl font-black mb-8">{lang === 'GEO' ? 'ჩვენი გუნდი' : 'Our Team'}</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-14">
-              {aboutContent.team.map((member, i) => (
-                <div key={i} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 text-center">
-                  <div className="w-16 h-16 rounded-full mx-auto mb-4 bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white font-black text-lg">
-                    {member.initials}
-                  </div>
-                  <h3 className="font-black text-sm mb-1">{member.name[l]}</h3>
-                  <span className="text-[11px] text-cyan-400 font-bold block mb-3 uppercase tracking-wider">{member.role[l]}</span>
-                  <p className="text-xs text-slate-500 leading-relaxed">{member.bio[l]}</p>
-                </div>
-              ))}
-            </div>
+            <TeamTrainersSection lang={l} />
 
-            <p className="text-xs text-slate-500 border-t border-slate-800 pt-6">
-              📍 {aboutContent.physicalAddress[l]}
+            <p className="text-xs text-slate-500 border-t border-slate-800 pt-6 flex items-center">
+              <MapPin className="w-4 h-4 text-cyan-400 opacity-80 inline-block mr-2 shrink-0" />
+              {aboutContent.physicalAddress[l]}
             </p>
           </>
         );

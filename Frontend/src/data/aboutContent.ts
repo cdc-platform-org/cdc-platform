@@ -3,13 +3,6 @@
 // center's description/team/mission can be updated here directly without
 // touching page layout code.
 
-export interface AboutTeamMember {
-  initials: string;
-  name: { ka: string; en: string };
-  role: { ka: string; en: string };
-  bio: { ka: string; en: string };
-}
-
 export interface AboutStat {
   value: string;
   label: { ka: string; en: string };
@@ -114,33 +107,4 @@ export const aboutContent = {
       },
     },
   ] as AboutAchievement[],
-  team: [
-    {
-      initials: 'IT',
-      name: { ka: 'ია თავდიშვილი', en: 'Ia Tavdishvili' },
-      role: { ka: 'დირექტორი', en: 'Director' },
-      bio: {
-        ka: 'ციფრული პროფესიების ცენტრის სტრატეგიული მართვა, პარტნიორობები და განვითარება.',
-        en: 'Strategic management, partnerships, and core center development.',
-      },
-    },
-    {
-      initials: 'MG',
-      name: { ka: 'მარიკა გაგუა', en: 'Marika Gagua' },
-      role: { ka: 'სასწავლო მიმართულებების კოორდინატორი', en: 'Academic Coordinator' },
-      bio: {
-        ka: 'სასწავლო პროცესების მართვა, სილაბუსების ოპტიმიზაცია და სტუდენტების მონიტორინგი.',
-        en: 'Academic path coordination, syllabus optimization and student tracking.',
-      },
-    },
-    {
-      initials: 'IM',
-      name: { ka: 'იმედო მარტიკოვი', en: 'Imedo Martikovi' },
-      role: { ka: 'პროექტების მენეჯერი', en: 'Project Manager' },
-      bio: {
-        ka: 'პლატფორმის ციფრული ინფრასტრუქტურის, სააგენტოს და ინოვაციური პროექტების მართვა.',
-        en: 'Digital infrastructure management, studio agency and innovation engineering.',
-      },
-    },
-  ] as AboutTeamMember[],
 };
