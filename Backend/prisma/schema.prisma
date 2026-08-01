@@ -280,6 +280,7 @@ model User {
   lessonProgress         LessonProgress[]
   courseCertificates     CourseCertificate[]
   examAttempts           ExamAttempt[]
+  freelancerSkillExamAttempts FreelancerSkillExamAttempt[]
   forumThreads           ForumThread[]
   forumComments          ForumComment[]
   forumThreadLikes       ForumThreadLike[]
@@ -656,6 +657,30 @@ model ExamAttempt {
   @@index([userId, examId])
   @@index([examId])
   @@map("exam_attempts")
+}
+
+// Category-based skill-verification exam for the freelance marketplace —
+// distinct from the course-completion ExamAttempt above (no Exam/course
+// behind it, just a JobCategory). Passing (score >= 80) sets the same
+// isVerifiedGraduate flag/badge used across the marketplace, rather than
+// introducing a second parallel "verified" concept.
+model FreelancerSkillExamAttempt {
+  id       String      @id @default(uuid())
+  userId   String
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category JobCategory
+  // Snapshot including correct answers/explanations, same reasoning as
+  // ExamAttempt.questions — graded server-side against this, never trusts
+  // the client's copy.
+  questions Json
+  answers   Json?
+  score     Float?
+  passed    Boolean     @default(false)
+  createdAt DateTime    @default(now())
+  completedAt DateTime?
+
+  @@index([userId])
+  @@map("freelancer_skill_exam_attempts")
 }
 
 // ============================================================

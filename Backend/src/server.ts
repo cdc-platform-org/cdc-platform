@@ -47,6 +47,7 @@ import adminTeamRoutes from './routes/adminTeam';
 import studioCasesRoutes from './routes/studioCases';
 import adminStudioCasesRoutes from './routes/adminStudioCases';
 import adminKnowledgeRoutes from './routes/adminKnowledge';
+import freelancerExamRoutes from './routes/freelancerExam';
 import { errorHandler } from './middleware/errorHandler';
 import { PORT } from './utils/env';
 import { autoApproveOverdueGigs } from './services/gigApprovalService';
@@ -116,6 +117,7 @@ app.use('/api/admin/team', adminTeamRoutes);
 app.use('/api/studio/cases', studioCasesRoutes);
 app.use('/api/admin/studio/cases', adminStudioCasesRoutes);
 app.use('/api/admin/knowledge', adminKnowledgeRoutes);
+app.use('/api/freelancer-exam', freelancerExamRoutes);
 
 const swaggerDocument = {
   openapi: '3.0.3',
