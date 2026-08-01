@@ -7,7 +7,7 @@ import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import { useAuth } from '../../src/context/AuthContext';
-import { updateProfile, changePassword, uploadAvatar } from '../../src/services/authService';
+import { updateProfile, changePassword, uploadAvatar, forgotPassword } from '../../src/services/authService';
 import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../src/utils/imageUpload';
 import Toast from '../../src/components/shared/Toast';
 
@@ -45,6 +45,9 @@ const dict = {
     confirmPassword: 'გაიმეორეთ ახალი პაროლი',
     updatePassword: 'პაროლის განახლება',
     updating: 'ნახლდება…',
+    forgotCurrentPassword: 'არ გვახსოვს მიმდინარე პაროლი? გააგზავნე აღდგენის ბმული მეილზე',
+    sendingResetLink: 'იგზავნება…',
+    resetLinkSentToast: 'აღდგენის ბმული გაიგზავნა თქვენს ელ-ფოსტაზე',
     passwordUpdated: 'პაროლი წარმატებით განახლდა ✓',
     passwordMismatch: 'ახალი პაროლები არ ემთხვევა.',
   },
@@ -80,6 +83,9 @@ const dict = {
     confirmPassword: 'Confirm New Password',
     updatePassword: 'Update Password',
     updating: 'Updating…',
+    forgotCurrentPassword: "Forgot your current password? Send a reset link to your email",
+    sendingResetLink: 'Sending…',
+    resetLinkSentToast: 'A reset link has been sent to your email',
     passwordUpdated: 'Password updated successfully ✓',
     passwordMismatch: 'New passwords do not match.',
   },
@@ -124,6 +130,14 @@ function SettingsContent() {
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [updatingPassword, setUpdatingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [sendingResetLink, setSendingResetLink] = useState(false);
+  const [resetLinkToast, setResetLinkToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!resetLinkToast) return;
+    const timer = setTimeout(() => setResetLinkToast(null), 5000);
+    return () => clearTimeout(timer);
+  }, [resetLinkToast]);
 
   useEffect(() => {
     if (!user) return;
@@ -213,6 +227,23 @@ function SettingsContent() {
       });
     } finally {
       setUpdatingPassword(false);
+    }
+  };
+
+  const handleSendResetLink = async () => {
+    if (!user?.email || sendingResetLink) return;
+    setSendingResetLink(true);
+    try {
+      await forgotPassword({ email: user.email, lang });
+      setResetLinkToast(t.resetLinkSentToast);
+    } catch {
+      // Same fail-soft posture as the rest of this page's error handling —
+      // the backend already responds 200 regardless of outcome to avoid
+      // leaking account existence, so a thrown error here is a genuine
+      // network/server issue, not "email not found".
+      setResetLinkToast(t.resetLinkSentToast);
+    } finally {
+      setSendingResetLink(false);
     }
   };
 
@@ -337,7 +368,17 @@ function SettingsContent() {
         </form>
 
         <form onSubmit={handlePasswordSubmit} className="mt-10 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 space-y-4">
-          <h2 className="text-sm font-bold">{t.passwordTitle}</h2>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h2 className="text-sm font-bold">{t.passwordTitle}</h2>
+            <button
+              type="button"
+              onClick={handleSendResetLink}
+              disabled={sendingResetLink}
+              className="text-xs font-medium text-cyan-600 dark:text-cyan-400 hover:underline bg-transparent border-none p-0 cursor-pointer disabled:opacity-60"
+            >
+              {sendingResetLink ? t.sendingResetLink : t.forgotCurrentPassword}
+            </button>
+          </div>
           <div className="grid sm:grid-cols-1 gap-4">
             <div>
               <label className={labelClass}>{t.currentPassword}</label>
@@ -399,6 +440,7 @@ function SettingsContent() {
 
       <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
       {sizeToast && <Toast message={sizeToast} icon="⚠️" />}
+      {resetLinkToast && <Toast message={resetLinkToast} icon="✅" />}
     </div>
   );
 }

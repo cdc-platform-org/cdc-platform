@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/router';
-import Link from 'next/link';
-import { GraduationCap, Building2, X, ShieldCheck } from 'lucide-react';
+import { GraduationCap, Building2, X, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { User } from '../../types/auth';
 import { useAuthModal } from '../../context/AuthModalContext';
 import PasswordInput from './PasswordInput';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
+import { forgotPassword } from '../../services/authService';
 
-type Mode = 'login' | 'register';
+type Mode = 'login' | 'register' | 'forgot';
 
 // Self-contained bilingual strings, keyed off next/router's `locale` directly
 // — deliberately NOT next-i18next's useTranslation('auth') here. This modal
@@ -40,6 +40,12 @@ const STRINGS = {
     switchToRegister: 'დარეგისტრირდით',
     switchToLogin: 'შედით',
     forgotPassword: 'დაგავიწყდა პაროლი?',
+    forgotTitle: 'პაროლის აღდგენა',
+    forgotSubtitle: 'შეიყვანეთ თქვენი ანგარიშის ელ-ფოსტა და გამოგიგზავნით აღდგენის ბმულს.',
+    sendResetLink: 'ბმულის გაგზავნა',
+    sendingResetLink: 'იგზავნება…',
+    resetLinkSent: 'თუ ეს ელ-ფოსტა რეგისტრირებულია, აღდგენის ბმული გამოგზავნილია. შეამოწმეთ თქვენი ინბოქსი.',
+    backToLogin: '← შესვლაში დაბრუნება',
     roleLabel: 'რეგისტრირდები როგორც',
     roleStudent: 'სტუდენტი / ფრილანსერი',
     roleClient: 'ბიზნესი',
@@ -70,6 +76,12 @@ const STRINGS = {
     switchToRegister: 'Register',
     switchToLogin: 'Log in',
     forgotPassword: 'Forgot password?',
+    forgotTitle: 'Reset Password',
+    forgotSubtitle: "Enter your account's email and we'll send you a reset link.",
+    sendResetLink: 'Send Reset Link',
+    sendingResetLink: 'Sending…',
+    resetLinkSent: "If that email is registered, a reset link has been sent. Check your inbox.",
+    backToLogin: '← Back to login',
     roleLabel: 'Registering as',
     roleStudent: 'Student / Freelancer',
     roleClient: 'Business',
@@ -94,6 +106,10 @@ export default function AuthModal() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [redirectingAdmin, setRedirectingAdmin] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSubmitting, setForgotSubmitting] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
   const googleButtonRef = useRef<HTMLDivElement>(null);
   // AuthModal is mounted once globally (pages/_app.tsx) and never unmounts,
   // but this timer can still race itself if the modal is closed and reopened
@@ -167,6 +183,10 @@ export default function AuthModal() {
       setEmail('');
       setPassword('');
       setRole('Student');
+      setForgotEmail('');
+      setForgotSubmitting(false);
+      setForgotSent(false);
+      setForgotError(null);
     }
   }, [isOpen, initialMode]);
 
@@ -234,6 +254,20 @@ export default function AuthModal() {
     }
   };
 
+  const handleForgotSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setForgotError(null);
+    setForgotSubmitting(true);
+    try {
+      await forgotPassword({ email: forgotEmail, lang });
+      setForgotSent(true);
+    } catch (err: any) {
+      setForgotError(err?.response?.data?.message ?? t.genericError);
+    } finally {
+      setForgotSubmitting(false);
+    }
+  };
+
   const googleClientConfigured = !!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   return (
@@ -254,6 +288,49 @@ export default function AuthModal() {
           <div className="text-center pt-2 pb-4">
             <ShieldCheck className="w-10 h-10 text-indigo-600 mx-auto mb-3" />
             <p className="text-sm font-semibold text-indigo-600">{t.redirectingToAdmin}</p>
+          </div>
+        ) : mode === 'forgot' ? (
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => setMode('login')}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 bg-transparent border-none p-0 cursor-pointer mb-4"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              {t.backToLogin}
+            </button>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1.5">{t.forgotTitle}</h2>
+            <p className="text-sm text-gray-500 mb-5">{t.forgotSubtitle}</p>
+
+            {forgotSent ? (
+              <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700 text-center">
+                ✅ {t.resetLinkSent}
+              </div>
+            ) : (
+              <form onSubmit={handleForgotSubmit} className="space-y-4">
+                {forgotError && (
+                  <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{forgotError}</div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.emailLabel}</label>
+                  <input
+                    type="email"
+                    required
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder={t.emailPlaceholder}
+                    className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={forgotSubmitting}
+                  className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+                >
+                  {forgotSubmitting ? t.sendingResetLink : t.sendResetLink}
+                </button>
+              </form>
+            )}
           </div>
         ) : (
           <>
@@ -330,13 +407,13 @@ export default function AuthModal() {
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-sm font-medium text-gray-700">{t.passwordLabel}</label>
                   {mode === 'login' && (
-                    <Link
-                      href="/auth/forgot-password"
-                      onClick={closeAuthModal}
-                      className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                    <button
+                      type="button"
+                      onClick={() => setMode('forgot')}
+                      className="text-xs font-medium text-indigo-600 hover:text-indigo-700 bg-transparent border-none p-0 cursor-pointer"
                     >
                       {t.forgotPassword}
-                    </Link>
+                    </button>
                   )}
                 </div>
                 <PasswordInput
