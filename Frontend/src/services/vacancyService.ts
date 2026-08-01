@@ -5,6 +5,7 @@ export interface VacancyFilters {
   skills?: string[];
   employmentType?: string;
   location?: string;
+  category?: string;
 }
 
 export async function getVacancies(filters?: VacancyFilters): Promise<Vacancy[]> {

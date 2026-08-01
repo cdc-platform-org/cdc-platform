@@ -4,6 +4,8 @@ import { useTranslation } from 'next-i18next';
 import { Vacancy, Gig } from '../../types/community';
 import VerifiedGraduateBadge from './VerifiedGraduateBadge';
 import SocialShareButtons from '../shared/SocialShareButtons';
+import StarRating from './StarRating';
+import { jobCategoryLabel } from '../../utils/jobCategory';
 
 export type CommunityListing = { kind: 'vacancy'; data: Vacancy } | { kind: 'gig'; data: Gig };
 
@@ -82,10 +84,16 @@ export default function CommunityListingCard({
             <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md border inline-block ${badgeColor}`}>
               {badgeLabel}
             </span>
-            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 pt-1">
+            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 pt-1 flex items-center gap-1.5 flex-wrap">
               <Link href={`/profile/${data.postedBy.id}`} className="hover:underline text-current no-underline">
                 {data.postedBy.name}
               </Link>
+              {data.postedBy.averageRating !== null && (
+                <span className="inline-flex items-center gap-1 font-normal">
+                  <StarRating value={data.postedBy.averageRating} size="sm" />
+                  <span className="text-[10px] text-slate-400">({data.postedBy.reviewCount})</span>
+                </span>
+              )}
               {assignedFreelancer && (
                 <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-normal opacity-70">
                   → {assignedFreelancer.name}
@@ -109,6 +117,15 @@ export default function CommunityListingCard({
 
       <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/60">
         <div className="flex flex-wrap gap-2">
+          {data.category && (
+            <span
+              className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border font-sans ${
+                darkMode ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-300' : 'bg-cyan-50 border-cyan-100 text-cyan-700'
+              }`}
+            >
+              {jobCategoryLabel(data.category, lang)}
+            </span>
+          )}
           {data.skillsRequired.map((skill) => (
             <span
               key={skill}

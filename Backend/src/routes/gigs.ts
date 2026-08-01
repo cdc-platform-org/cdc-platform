@@ -9,8 +9,8 @@ import { hasReachedMonthlyPostLimit, MONTHLY_POST_LIMIT } from '../services/post
 import { z } from 'zod';
 
 const router = Router();
-const posterSelect = { select: { id: true, name: true, role: true, isVerifiedGraduate: true } };
-const applicantSelect = { select: { id: true, name: true, isVerifiedGraduate: true } };
+const posterSelect = { select: { id: true, name: true, role: true, isVerifiedGraduate: true, averageRating: true, reviewCount: true } };
+const applicantSelect = { select: { id: true, name: true, isVerifiedGraduate: true, averageRating: true, reviewCount: true } };
 
 declare global {
   namespace Express {
@@ -38,7 +38,7 @@ function requireGigOwnerOrAdmin(req: Request, res: Response, next: Function) {
 // Public — guests can browse the job board without logging in. Only
 // action routes below (apply, post, approve, etc.) require authentication.
 router.get('/', async (req: Request, res: Response) => {
-  const { skills, budgetType, status } = req.query;
+  const { skills, budgetType, status, category } = req.query;
   // Moderators can take down a listing after the fact (moderationStatus ->
   // removed) — this is the public browse route, so removed listings never
   // show up here regardless of who's asking. The admin panel's own
@@ -46,6 +46,7 @@ router.get('/', async (req: Request, res: Response) => {
   const where: Record<string, unknown> = { moderationStatus: 'approved' };
   if (status) where.status = status;
   if (budgetType) where.budgetType = budgetType;
+  if (category) where.category = category;
   if (skills) where.skillsRequired = { hasSome: String(skills).split(',').map((s) => s.trim()) };
   const gigs = await prisma.gig.findMany({
     where,

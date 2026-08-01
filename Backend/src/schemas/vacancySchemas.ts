@@ -1,10 +1,13 @@
 import { z } from 'zod';
+import { jobCategorySchema } from './gigSchemas';
+
 const vacancyFieldsSchema = z.object({
   title: z.string().trim().min(5, 'Title must be at least 5 characters.').max(150),
   description: z.string().trim().min(20, 'Description must be at least 20 characters.').max(5000),
   employmentType: z.enum(['full_time', 'part_time', 'contract', 'internship']),
   location: z.string().trim().min(1, 'Location is required.'),
   skillsRequired: z.array(z.string().trim().min(1)).min(1, 'At least one skill is required.'),
+  category: jobCategorySchema.nullable().optional(),
   salaryMin: z.number().int().positive().nullable().optional(),
   salaryMax: z.number().int().positive().nullable().optional(),
   currency: z.string().length(3).toUpperCase().nullable().optional(),

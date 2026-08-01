@@ -3,7 +3,11 @@ interface Poster {
   name: string;
   role: 'Client' | 'SuperAdmin';
   isVerifiedGraduate: boolean;
+  averageRating: number | null;
+  reviewCount: number;
 }
+
+export type JobCategory = 'ui_ux_design' | 'web_development' | 'graphic_design' | 'digital_marketing' | 'other';
 
 interface AssignedFreelancer {
   id: string;
@@ -27,6 +31,7 @@ export interface Vacancy {
   employmentType: EmploymentType;
   location: string;
   skillsRequired: string[];
+  category: JobCategory | null;
   salaryMin: number | null;
   salaryMax: number | null;
   currency: string | null;
@@ -47,7 +52,7 @@ export interface VacancyApplication {
   id: string;
   vacancyId: string;
   applicantId: string;
-  applicant: { name: string }; // matches the API's actual include shape
+  applicant: { name: string; isVerifiedGraduate: boolean; averageRating: number | null; reviewCount: number }; // matches the API's actual include shape
   coverNote: string;
   status: ApplicationStatus;
   createdAt: string;
@@ -74,6 +79,7 @@ export interface Gig {
   budgetAmount: number;   // the poster's stated budget, minor units
   currency: string;
   skillsRequired: string[];
+  category: JobCategory | null;
   deadline: string | null;
   status: GigStatus;
   assignedFreelancerId: string | null; // set only once an application is approved
@@ -108,6 +114,7 @@ export interface MyGig {
   budgetAmount: number;
   currency: string;
   skillsRequired: string[];
+  category: JobCategory | null;
   deadline: string | null;
   status: GigStatus;
   assignedFreelancerId: string | null;
@@ -150,7 +157,7 @@ export interface GigApplication {
   id: string;
   gigId: string;
   applicantId: string;
-  applicant: { id: string; name: string; isVerifiedGraduate: boolean };
+  applicant: { id: string; name: string; isVerifiedGraduate: boolean; averageRating: number | null; reviewCount: number };
   proposalNote: string;
   bidAmount: number;      // the freelancer's proposed price, minor units — may differ from budgetAmount
   deliveryDays: number;

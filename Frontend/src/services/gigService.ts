@@ -5,6 +5,7 @@ export interface GigFilters {
   skills?: string[];
   budgetType?: string;
   status?: string;
+  category?: string;
 }
 
 export async function getGigs(filters?: GigFilters): Promise<Gig[]> {

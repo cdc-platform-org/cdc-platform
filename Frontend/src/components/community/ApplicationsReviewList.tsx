@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { VacancyApplication, GigApplication, ApplicationStatus } from '../../types/community';
 import VerifiedGraduateBadge from './VerifiedGraduateBadge';
+import StarRating from './StarRating';
 
 type ReviewableApplication = VacancyApplication | GigApplication;
 
@@ -81,11 +82,17 @@ export default function ApplicationsReviewList({
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-semibold text-gray-900">
                       {app.applicant.name}
                     </p>
-                    {hasBid(app) && app.applicant.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
+                    {app.applicant.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
+                    {app.applicant.averageRating !== null && (
+                      <span className="inline-flex items-center gap-1">
+                        <StarRating value={app.applicant.averageRating} size="sm" />
+                        <span className="text-xs text-gray-400">({app.applicant.reviewCount})</span>
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-gray-400 mt-0.5">
                     Applied {new Date(app.createdAt).toLocaleDateString()}

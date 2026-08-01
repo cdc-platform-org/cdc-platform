@@ -6,7 +6,8 @@ import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
 import { sendVacancyApplicationEmail } from '../services/emailService';
 import { hasReachedMonthlyPostLimit, MONTHLY_POST_LIMIT } from '../services/postingLimitService';
 const router = Router();
-const posterSelect = { select: { id: true, name: true, role: true, isVerifiedGraduate: true } };
+const posterSelect = { select: { id: true, name: true, role: true, isVerifiedGraduate: true, averageRating: true, reviewCount: true } };
+const applicantSelect = { select: { name: true, isVerifiedGraduate: true, averageRating: true, reviewCount: true } };
 declare global {
   namespace Express {
     interface Request {
@@ -41,10 +42,11 @@ router.get('/mine', authenticate, requireApproved, async (req: Request, res: Res
 // Public — guests can browse vacancy listings without logging in. Drafts
 // never appear here regardless of moderation status.
 router.get('/', async (req: Request, res: Response) => {
-  const { skills, employmentType, location } = req.query;
+  const { skills, employmentType, location, category } = req.query;
   const where: Record<string, unknown> = { moderationStatus: 'approved', status: { not: 'draft' } };
   if (employmentType) where.employmentType = employmentType;
   if (location) where.location = { contains: String(location), mode: 'insensitive' };
+  if (category) where.category = category;
   if (skills) where.skillsRequired = { hasSome: String(skills).split(',').map((s) => s.trim()) };
   const vacancies = await prisma.vacancy.findMany({
     where,
@@ -144,7 +146,7 @@ router.post(
           coverNote: result.data.coverNote,
           status: 'submitted',
         },
-        include: { applicant: { select: { name: true } } },
+        include: { applicant: applicantSelect },
       });
 
       // Kick off a real message thread with the employer + notify them by
@@ -178,7 +180,7 @@ router.get(
   async (req: Request, res: Response) => {
     const applications = await prisma.vacancyApplication.findMany({
       where: { vacancyId: req.vacancy!.id },
-      include: { applicant: { select: { name: true } } },
+      include: { applicant: applicantSelect },
       orderBy: { createdAt: 'desc' },
     });
     res.json(applications);
@@ -199,7 +201,7 @@ router.post(
     const updated = await prisma.vacancyApplication.update({
       where: { id: application.id },
       data: { status: result.data.decision },
-      include: { applicant: { select: { name: true } } },
+      include: { applicant: applicantSelect },
     });
     res.json(updated);
   }

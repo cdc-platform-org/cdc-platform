@@ -4,6 +4,8 @@ import { useTranslation } from 'next-i18next';
 import { Gig } from '../../types/community';
 import VerifiedGraduateBadge from './VerifiedGraduateBadge';
 import SocialShareButtons from '../shared/SocialShareButtons';
+import StarRating from './StarRating';
+import { jobCategoryLabel } from '../../utils/jobCategory';
 
 interface GigCardProps {
   gig: Gig;
@@ -37,7 +39,7 @@ export default function GigCard({
           <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
             {gig.title}
           </h3>
-          <span className="flex items-center gap-1.5 mt-0.5">
+          <span className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             <Link
               href={`/profile/${gig.postedBy.id}`}
               className="text-sm text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400"
@@ -45,6 +47,12 @@ export default function GigCard({
               {gig.postedBy.name}
             </Link>
             {gig.postedBy.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
+            {gig.postedBy.averageRating !== null && (
+              <span className="inline-flex items-center gap-1">
+                <StarRating value={gig.postedBy.averageRating} size="sm" />
+                <span className="text-xs text-slate-400">({gig.postedBy.reviewCount})</span>
+              </span>
+            )}
           </span>
         </div>
         <span className="text-sm font-black text-slate-900 dark:text-white whitespace-nowrap">
@@ -65,6 +73,11 @@ export default function GigCard({
       )}
       <p className="relative text-sm text-slate-600 dark:text-slate-400 mt-3 line-clamp-2">{gig.description}</p>
       <div className="relative flex flex-wrap gap-1.5 mt-3">
+        {gig.category && (
+          <span className="text-xs font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-200/60 dark:border-cyan-500/20 px-2 py-0.5 rounded-full">
+            {jobCategoryLabel(gig.category, lang)}
+          </span>
+        )}
         {gig.skillsRequired.map((skill) => (
           <span
             key={skill}

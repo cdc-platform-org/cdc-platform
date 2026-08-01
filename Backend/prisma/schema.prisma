@@ -31,6 +31,18 @@ enum GigBudgetType {
   hourly
 }
 
+// Professional job/project category — optional (nullable) so existing
+// gigs/vacancies posted before this field existed don't need backfilling.
+// Shown as a filter/badge on the marketplace; `other` is the deliberate
+// escape hatch for anything that doesn't fit the four named categories.
+enum JobCategory {
+  ui_ux_design
+  web_development
+  graphic_design
+  digital_marketing
+  other
+}
+
 enum GigStatus {
   open
   assigned
@@ -304,6 +316,7 @@ model Gig {
   budgetAmount         Int
   currency             String        @db.Char(3)
   skillsRequired       String[]
+  category             JobCategory?
   deadline             DateTime?
   status               GigStatus     @default(open)
   assignedFreelancerId String?
@@ -432,6 +445,7 @@ model Vacancy {
   employmentType      EmploymentType
   location            String
   skillsRequired      String[]
+  category            JobCategory?
   salaryMin           Int?
   salaryMax           Int?
   currency            String?        @db.Char(3)

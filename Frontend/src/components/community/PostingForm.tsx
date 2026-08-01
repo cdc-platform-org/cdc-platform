@@ -2,7 +2,8 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/router';
 import { postVacancy, VacancyFormPayload } from '../../services/vacancyService';
 import { postGig, PostGigPayload } from '../../services/gigService';
-import { EmploymentType, GigBudgetType } from '../../types/community';
+import { EmploymentType, GigBudgetType, JobCategory } from '../../types/community';
+import { JOB_CATEGORIES, JOB_CATEGORY_LABEL } from '../../utils/jobCategory';
 
 type PostType = 'vacancy' | 'gig';
 
@@ -25,6 +26,7 @@ const emptyVacancyForm = {
   employmentType: 'full_time' as EmploymentType,
   location: '',
   skillsRequired: '',
+  category: '' as JobCategory | '',
   salaryMin: '',
   salaryMax: '',
   currency: 'GEL',
@@ -38,6 +40,7 @@ const emptyGigForm = {
   budgetAmount: '',
   currency: 'GEL',
   skillsRequired: '',
+  category: '' as JobCategory | '',
   deadline: '',
 };
 
@@ -102,6 +105,7 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
           employmentType: vacancyForm.employmentType,
           location: vacancyForm.location.trim(),
           skillsRequired: parseSkills(vacancyForm.skillsRequired),
+          category: vacancyForm.category || null,
           salaryMin: vacancyForm.salaryMin ? Math.round(parseFloat(vacancyForm.salaryMin) * 100) : null,
           salaryMax: vacancyForm.salaryMax ? Math.round(parseFloat(vacancyForm.salaryMax) * 100) : null,
           currency: vacancyForm.salaryMin || vacancyForm.salaryMax ? vacancyForm.currency : null,
@@ -117,6 +121,7 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
           budgetAmount: Math.round(parseFloat(gigForm.budgetAmount) * 100),
           currency: gigForm.currency,
           skillsRequired: parseSkills(gigForm.skillsRequired),
+          category: gigForm.category || null,
           deadline: toIsoDatetime(gigForm.deadline),
         };
         await postGig(payload);
@@ -214,6 +219,28 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
             placeholder="React, TypeScript, Figma"
           />
           {errors.skillsRequired && <p className="mt-1 text-xs text-red-600">{errors.skillsRequired}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Category <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <select
+            value={postType === 'vacancy' ? vacancyForm.category : gigForm.category}
+            onChange={(e) =>
+              postType === 'vacancy'
+                ? setVacancyForm({ ...vacancyForm, category: e.target.value as JobCategory | '' })
+                : setGigForm({ ...gigForm, category: e.target.value as JobCategory | '' })
+            }
+            className={inputClass(false)}
+          >
+            <option value="">—</option>
+            {JOB_CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>
+                {JOB_CATEGORY_LABEL[cat].en}
+              </option>
+            ))}
+          </select>
         </div>
 
         {postType === 'vacancy' && (

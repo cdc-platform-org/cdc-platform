@@ -4,6 +4,8 @@ import { useTranslation } from 'next-i18next';
 import { Vacancy } from '../../types/community';
 import SocialShareButtons from '../shared/SocialShareButtons';
 import VerifiedGraduateBadge from './VerifiedGraduateBadge';
+import StarRating from './StarRating';
+import { jobCategoryLabel } from '../../utils/jobCategory';
 
 interface VacancyCardProps {
   vacancy: Vacancy;
@@ -33,9 +35,15 @@ export default function VacancyCard({ vacancy, onApply, canApply, isOwnerOrAdmin
           <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
             {vacancy.title}
           </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
             {vacancy.postedBy.name}
             {vacancy.postedBy.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
+            {vacancy.postedBy.averageRating !== null && (
+              <span className="inline-flex items-center gap-1">
+                <StarRating value={vacancy.postedBy.averageRating} size="sm" />
+                <span className="text-xs text-slate-400">({vacancy.postedBy.reviewCount})</span>
+              </span>
+            )}
           </p>
         </div>
         <span className="text-[11px] font-black uppercase tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-500/20">
@@ -44,6 +52,11 @@ export default function VacancyCard({ vacancy, onApply, canApply, isOwnerOrAdmin
       </div>
       <p className="relative text-sm text-slate-600 dark:text-slate-400 mt-3 line-clamp-2">{vacancy.description}</p>
       <div className="relative flex flex-wrap gap-1.5 mt-3">
+        {vacancy.category && (
+          <span className="text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-500/10 border border-purple-200/60 dark:border-purple-500/20 px-2 py-0.5 rounded-full">
+            {jobCategoryLabel(vacancy.category, lang)}
+          </span>
+        )}
         {vacancy.skillsRequired.map((skill) => (
           <span
             key={skill}

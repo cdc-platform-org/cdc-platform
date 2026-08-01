@@ -18,6 +18,7 @@ import { Vacancy, Gig } from '../../types/community';
 import { getVacancies, applyToVacancy } from '../../services/vacancyService';
 import { getGigs, applyToGig } from '../../services/gigService';
 import { createReview } from '../../services/reviewService';
+import { JOB_CATEGORIES, JOB_CATEGORY_LABEL } from '../../utils/jobCategory';
 
 const SIGN_IN_TO_APPLY = {
   ka: 'გთხოვთ გაიაროთ ავტორიზაცია შეკვეთის გასაგზავნად',
@@ -48,12 +49,14 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
   const [vacanciesLoading, setVacanciesLoading] = useState(true);
   const [vacancySkills, setVacancySkills] = useState('');
   const [employmentTypeFilter, setEmploymentTypeFilter] = useState('');
+  const [vacancyCategoryFilter, setVacancyCategoryFilter] = useState('');
   const [applyingToVacancy, setApplyingToVacancy] = useState<Vacancy | null>(null);
 
   const [gigs, setGigs] = useState<Gig[]>([]);
   const [gigsLoading, setGigsLoading] = useState(true);
   const [gigSkills, setGigSkills] = useState('');
   const [budgetTypeFilter, setBudgetTypeFilter] = useState('');
+  const [gigCategoryFilter, setGigCategoryFilter] = useState('');
   const [applyingToGig, setApplyingToGig] = useState<Gig | null>(null);
   const [reviewingGig, setReviewingGig] = useState<Gig | null>(null);
   const [reviewedGigIds, setReviewedGigIds] = useState<Set<string>>(new Set());
@@ -66,6 +69,7 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
       const data = await getVacancies({
         skills: vacancySkills ? vacancySkills.split(',').map((s) => s.trim()) : undefined,
         employmentType: employmentTypeFilter || undefined,
+        category: vacancyCategoryFilter || undefined,
       });
       setVacancies(data);
     } catch (error) {
@@ -73,7 +77,7 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
     } finally {
       setVacanciesLoading(false);
     }
-  }, [vacancySkills, employmentTypeFilter]);
+  }, [vacancySkills, employmentTypeFilter, vacancyCategoryFilter]);
 
   const loadGigs = useCallback(async () => {
     setGigsLoading(true);
@@ -81,6 +85,7 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
       const data = await getGigs({
         skills: gigSkills ? gigSkills.split(',').map((s) => s.trim()) : undefined,
         budgetType: budgetTypeFilter || undefined,
+        category: gigCategoryFilter || undefined,
       });
       setGigs(data);
     } catch (error) {
@@ -88,7 +93,7 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
     } finally {
       setGigsLoading(false);
     }
-  }, [gigSkills, budgetTypeFilter]);
+  }, [gigSkills, budgetTypeFilter, gigCategoryFilter]);
 
   useEffect(() => {
     loadVacancies();
@@ -219,6 +224,12 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
                 skills={vacancySkills}
                 onSkillsChange={setVacancySkills}
                 skillsPlaceholder={t('marketplace.skillsFilterPlaceholder')}
+                categoryFilter={{
+                  label: 'კატეგორია',
+                  value: vacancyCategoryFilter,
+                  onChange: setVacancyCategoryFilter,
+                  options: JOB_CATEGORIES.map((cat) => ({ value: cat, label: JOB_CATEGORY_LABEL[cat].ka })),
+                }}
                 extraFilter={{
                   label: t('marketplace.employmentTypeLabel'),
                   value: employmentTypeFilter,
@@ -255,6 +266,12 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
                 skills={gigSkills}
                 onSkillsChange={setGigSkills}
                 skillsPlaceholder={t('marketplace.skillsFilterPlaceholder')}
+                categoryFilter={{
+                  label: 'კატეგორია',
+                  value: gigCategoryFilter,
+                  onChange: setGigCategoryFilter,
+                  options: JOB_CATEGORIES.map((cat) => ({ value: cat, label: JOB_CATEGORY_LABEL[cat].ka })),
+                }}
                 extraFilter={{
                   label: t('marketplace.budgetTypeLabel'),
                   value: budgetTypeFilter,

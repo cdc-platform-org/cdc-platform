@@ -15,10 +15,11 @@ import GraduateOnlyModal from '../src/components/community/GraduateOnlyModal';
 import RoleGate from '../src/components/auth/RoleGate';
 import { useAuth } from '../src/context/AuthContext';
 import { useAuthModal } from '../src/context/AuthModalContext';
-import { Vacancy, Gig } from '../src/types/community';
+import { Vacancy, Gig, JobCategory } from '../src/types/community';
 import { getVacancies, applyToVacancy } from '../src/services/vacancyService';
 import { getGigs, applyToGig } from '../src/services/gigService';
 import { createReview } from '../src/services/reviewService';
+import { JOB_CATEGORIES, JOB_CATEGORY_LABEL } from '../src/utils/jobCategory';
 
 const SIGN_IN_TO_APPLY = {
   ka: 'გთხოვთ გაიაროთ ავტორიზაცია შეკვეთის გასაგზავნად',
@@ -37,34 +38,19 @@ const GRADUATES_ONLY_MESSAGE = {
   en: 'Only verified CDC graduates can apply.',
 };
 
-type Category = 'all' | 'web' | 'smm' | 'freelance' | 'full_time';
+type Category = 'all' | JobCategory;
 
 const CATEGORIES: { value: Category; label: string }[] = [
   { value: 'all', label: 'ყველა' },
-  { value: 'web', label: 'ვები' },
-  { value: 'smm', label: 'SMM' },
-  { value: 'freelance', label: 'ფრილანსი' },
-  { value: 'full_time', label: 'სრული განაკვეთი' },
+  ...JOB_CATEGORIES.map((cat) => ({ value: cat as Category, label: JOB_CATEGORY_LABEL[cat].ka })),
 ];
 
-// Best-effort keyword classification — the data model has no dedicated
-// "category" field (skillsRequired is free text), so Web/SMM are approximated
-// by matching common tags. "Freelance" maps to gigs, "Full-time" to vacancies
-// with that employmentType. See community redesign discussion for context.
-const WEB_KEYWORDS = [
-  'web', 'react', 'next', 'vue', 'angular', 'javascript', 'typescript', 'html', 'css',
-  'frontend', 'front-end', 'backend', 'back-end', 'node', 'php', 'wordpress', 'fullstack', 'full-stack',
-];
-const SMM_KEYWORDS = [
-  'smm', 'marketing', 'social', 'seo', 'ads', 'instagram', 'facebook', 'tiktok', 'content', 'branding', 'copywriting',
-];
-
+// Filters on the real, poster-selected category field (Gig/Vacancy.category)
+// rather than guessing from free-text skills — replaces the old keyword-
+// matching heuristic now that postings can actually be tagged with one.
 function matchesCategory(item: CommunityListing, category: Category): boolean {
   if (category === 'all') return true;
-  if (category === 'full_time') return item.kind === 'vacancy' && item.data.employmentType === 'full_time';
-  if (category === 'freelance') return item.kind === 'gig';
-  const keywords = category === 'web' ? WEB_KEYWORDS : SMM_KEYWORDS;
-  return item.data.skillsRequired.some((skill) => keywords.some((k) => skill.toLowerCase().includes(k)));
+  return item.data.category === category;
 }
 
 function matchesSearch(item: CommunityListing, query: string): boolean {
