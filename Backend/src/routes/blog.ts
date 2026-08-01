@@ -5,7 +5,8 @@ import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole, optionalAuthenticate } from '../middleware/auth';
 import { blogPostCreateSchema, blogPostUpdateSchema, blogCommentSchema } from '../schemas/blogSchemas';
-import { uploadToBunnyStorage, isBunnyStorageConfigured, BunnyStorageUploadError, deleteBunnyStorageUrlIfManaged } from '../services/bunnyStorage';
+import { BunnyStorageUploadError } from '../services/bunnyStorage';
+import { uploadImage, deleteManagedImage } from '../services/imageStorage';
 import { slugify, randomSlugSuffix } from '../utils/slugify';
 
 // Migrated from requireRole('SuperAdmin') to the admin-team adminRole system
@@ -116,7 +117,7 @@ router.put('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), asy
     if (previous && previous.imageUrl && previous.imageUrl !== nextImageUrl) {
       // Fire-and-forget — the response shouldn't wait on Bunny, and a
       // failed cleanup just leaves harmless orphaned storage debris.
-      deleteBunnyStorageUrlIfManaged(previous.imageUrl).catch(() => {});
+      deleteManagedImage(previous.imageUrl).catch(() => {});
     }
 
     res.json({ data: post });
@@ -132,7 +133,7 @@ router.delete('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), 
   try {
     const deleted = await prisma.blogPost.delete({ where: { id: req.params.id }, select: { imageUrl: true } });
     if (deleted.imageUrl) {
-      deleteBunnyStorageUrlIfManaged(deleted.imageUrl).catch(() => {});
+      deleteManagedImage(deleted.imageUrl).catch(() => {});
     }
     res.status(204).send();
   } catch (err: any) {
@@ -235,12 +236,6 @@ router.post(
   authenticate,
   requireAdminRole('SUPER_ADMIN', 'MANAGER'),
   (req: Request, res: Response, next) => {
-    if (!isBunnyStorageConfigured()) {
-      return res.status(501).json({ message: 'Bunny Storage is not configured (BUNNY_STORAGE_ZONE_NAME / BUNNY_STORAGE_API_KEY / BUNNY_CDN_URL).' });
-    }
-    next();
-  },
-  (req: Request, res: Response, next) => {
     imageUpload.single('image')(req, res, (err: any) => {
       if (!err) return next();
       if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
@@ -255,7 +250,7 @@ router.post(
     }
     const filename = `blog-${Date.now()}-${crypto.randomUUID()}${path.extname(req.file.originalname)}`;
     try {
-      const url = await uploadToBunnyStorage({
+      const url = await uploadImage({
         buffer: req.file.buffer,
         mimetype: req.file.mimetype,
         folderName: 'blog',

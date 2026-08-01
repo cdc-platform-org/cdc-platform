@@ -82,6 +82,11 @@ export const BUNNY_STORAGE_HOST = process.env.BUNNY_STORAGE_HOST || 'storage.bun
 // Public pull-zone base URL for reading back what was uploaded, e.g.
 // "https://cdc-storage.b-cdn.net" — no trailing slash.
 export const BUNNY_CDN_URL = process.env.BUNNY_CDN_URL || '';
+// This server's own public origin, e.g. "https://api.cdc.org.ge" — no
+// trailing slash. Used only to build a URL for the local-disk image-upload
+// fallback (services/imageStorage.ts) when Bunny Storage isn't configured;
+// same pattern/fallback as routes/payments.ts's BACKEND_URL.
+export const BACKEND_URL = (process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 4000}`).replace(/\/$/, '');
 // Name printed on the left-hand ("დირექტორი / Director") signature rule of
 // every course certificate — see services/certificateService.ts. Deliberately
 // NOT requireEnv() and deliberately not defaulted to a placeholder person:

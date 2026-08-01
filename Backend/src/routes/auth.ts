@@ -22,6 +22,7 @@ import { authenticate } from '../middleware/auth';
 import { JWT_SECRET, GOOGLE_CLIENT_ID, SUPER_ADMIN_EMAILS } from '../utils/env';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../services/emailService';
 import { uploadToBunnyStorage, isBunnyStorageConfigured, BunnyStorageUploadError, deleteBunnyStorageUrlIfManaged } from '../services/bunnyStorage';
+import { uploadImage, deleteManagedImage } from '../services/imageStorage';
 import { parseBusinessDocument, isBusinessKycParsingConfigured, taxIdsMatch } from '../services/businessKycService';
 
 const router = Router();
@@ -465,12 +466,6 @@ router.post(
   '/me/avatar',
   authenticate,
   (req: Request, res: Response, next) => {
-    if (!isBunnyStorageConfigured()) {
-      return res.status(501).json({ message: 'Bunny Storage is not configured (BUNNY_STORAGE_ZONE_NAME / BUNNY_STORAGE_API_KEY / BUNNY_CDN_URL).' });
-    }
-    next();
-  },
-  (req: Request, res: Response, next) => {
     avatarUpload.single('avatar')(req, res, (err: any) => {
       if (!err) return next();
       if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
@@ -487,7 +482,7 @@ router.post(
 
     const filename = `avatar-${req.user!.id}-${Date.now()}${path.extname(req.file.originalname)}`;
     try {
-      const url = await uploadToBunnyStorage({
+      const url = await uploadImage({
         buffer: req.file.buffer,
         mimetype: req.file.mimetype,
         folderName: 'avatars',
@@ -496,7 +491,7 @@ router.post(
       const user = await prisma.user.update({ where: { id: req.user!.id }, data: { avatarUrl: url } });
 
       if (previous?.avatarUrl && previous.avatarUrl !== url) {
-        deleteBunnyStorageUrlIfManaged(previous.avatarUrl).catch(() => {});
+        deleteManagedImage(previous.avatarUrl).catch(() => {});
       }
 
       res.status(201).json({ user: toUserResponse(user) });

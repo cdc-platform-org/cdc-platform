@@ -4,3 +4,7 @@ dist
 .env.local
 .env.*.local
 *.log
+
+# Local-disk fallback for image uploads when Bunny Storage isn't
+# configured (services/imageStorage.ts) — runtime output, not source.
+public/uploads/*

@@ -5,7 +5,8 @@ import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { studioCaseCreateSchema, studioCaseUpdateSchema } from '../schemas/studioCaseSchemas';
-import { uploadToBunnyStorage, isBunnyStorageConfigured, BunnyStorageUploadError, deleteBunnyStorageUrlIfManaged } from '../services/bunnyStorage';
+import { BunnyStorageUploadError } from '../services/bunnyStorage';
+import { uploadImage, deleteManagedImage } from '../services/imageStorage';
 import { logAdminAction } from '../services/auditLogService';
 import { slugify, randomSlugSuffix } from '../utils/slugify';
 
@@ -74,11 +75,11 @@ router.put('/:id', async (req: Request, res: Response) => {
     });
 
     if (previous?.coverImageUrl && previous.coverImageUrl !== (coverImageUrl || null)) {
-      deleteBunnyStorageUrlIfManaged(previous.coverImageUrl).catch(() => {});
+      deleteManagedImage(previous.coverImageUrl).catch(() => {});
     }
     if (previous?.galleryImages && galleryImages !== undefined) {
       const removed = previous.galleryImages.filter((url) => !galleryImages.includes(url));
-      removed.forEach((url) => deleteBunnyStorageUrlIfManaged(url).catch(() => {}));
+      removed.forEach((url) => deleteManagedImage(url).catch(() => {}));
     }
 
     await logAdminAction({ action: 'studio-case.update', targetType: 'StudioCaseStudy', targetId: caseStudy.id, performedById: req.user!.id });
@@ -92,8 +93,8 @@ router.put('/:id', async (req: Request, res: Response) => {
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const caseStudy = await prisma.studioCaseStudy.delete({ where: { id: req.params.id } });
-    if (caseStudy.coverImageUrl) deleteBunnyStorageUrlIfManaged(caseStudy.coverImageUrl).catch(() => {});
-    caseStudy.galleryImages.forEach((url) => deleteBunnyStorageUrlIfManaged(url).catch(() => {}));
+    if (caseStudy.coverImageUrl) deleteManagedImage(caseStudy.coverImageUrl).catch(() => {});
+    caseStudy.galleryImages.forEach((url) => deleteManagedImage(url).catch(() => {}));
 
     await logAdminAction({ action: 'studio-case.delete', targetType: 'StudioCaseStudy', targetId: caseStudy.id, performedById: req.user!.id });
     res.status(204).send();
@@ -119,12 +120,6 @@ const imageUpload = multer({
 router.post(
   '/upload-image',
   (req: Request, res: Response, next) => {
-    if (!isBunnyStorageConfigured()) {
-      return res.status(501).json({ message: 'Bunny Storage is not configured (BUNNY_STORAGE_ZONE_NAME / BUNNY_STORAGE_API_KEY / BUNNY_CDN_URL).' });
-    }
-    next();
-  },
-  (req: Request, res: Response, next) => {
     imageUpload.single('image')(req, res, (err: any) => {
       if (!err) return next();
       if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
@@ -137,7 +132,7 @@ router.post(
     if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
     const filename = `studio-case-${Date.now()}-${crypto.randomUUID()}${path.extname(req.file.originalname)}`;
     try {
-      const url = await uploadToBunnyStorage({
+      const url = await uploadImage({
         buffer: req.file.buffer,
         mimetype: req.file.mimetype,
         folderName: 'studio-cases',
