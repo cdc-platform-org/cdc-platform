@@ -153,14 +153,18 @@ export default function AuthModal() {
   // Runs once login/registration (email/password or Google) succeeds. A
   // pending onSuccess (e.g. "resume checkout for the course I was trying to
   // buy") always wins over the default redirect — the user had a specific
-  // intent, don't bounce them somewhere else.
-  const handlePostLogin = (loggedInUser: User, isRegister = false) => {
+  // intent, don't bounce them somewhere else. Otherwise an explicit
+  // ?redirect= (set by ProtectedRoute when it bounced a guest into the
+  // modal) wins next, same precedence as pages/auth/login.tsx; admin-team
+  // members land in the Admin Workspace, everyone else in the dashboard.
+  const handlePostLogin = (loggedInUser: User) => {
     if (onSuccess) {
       closeAuthModal();
       onSuccess(loggedInUser);
       return;
     }
-    if (loggedInUser.adminRole) {
+    const explicitRedirect = typeof router.query.redirect === 'string' ? router.query.redirect : undefined;
+    if (loggedInUser.adminRole && !explicitRedirect) {
       setRedirectingAdmin(true);
       if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
       redirectTimeoutRef.current = setTimeout(() => {
@@ -170,7 +174,7 @@ export default function AuthModal() {
       return;
     }
     closeAuthModal();
-    if (isRegister) router.push('/dashboard');
+    router.push(explicitRedirect || '/dashboard');
   };
 
   useEffect(() => {
@@ -209,7 +213,7 @@ export default function AuthModal() {
         // role only matters if this Google identity is creating a brand-new
         // account — ignored for an existing one (see Backend's /google route).
         loginWithGoogle(response.credential, mode === 'register' ? role : undefined)
-          .then((loggedInUser) => handlePostLogin(loggedInUser, mode === 'register'))
+          .then((loggedInUser) => handlePostLogin(loggedInUser))
           .catch((err: any) => setError(err?.response?.data?.message || t.genericError))
           .finally(() => setSubmitting(false));
       },
@@ -241,7 +245,7 @@ export default function AuthModal() {
         handlePostLogin(loggedInUser);
       } else {
         const newUser = await register({ name, email, password, role });
-        handlePostLogin(newUser, true);
+        handlePostLogin(newUser);
       }
     } catch (err: any) {
       const apiErrors = err?.response?.data?.errors;

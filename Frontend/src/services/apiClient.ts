@@ -1,4 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { removeCookie } from '../utils/cookies';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
@@ -42,6 +43,7 @@ apiClient.interceptors.response.use(
       if (typeof window !== 'undefined') {
         localStorage.removeItem('cdc_access_token');
         localStorage.removeItem('cdc_user');
+        removeCookie('token');
         if (!error.config?.silent401 && !window.location.pathname.startsWith('/auth')) {
           window.location.href = '/auth/login';
         }

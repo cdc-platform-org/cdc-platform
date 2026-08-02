@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
 import BackButton from '../src/components/common/BackButton';
 import CommunityListingCard, { CommunityListing } from '../src/components/community/CommunityListingCard';
@@ -162,41 +163,7 @@ function CommunityPageContent() {
         <title>CDC | Community & Freelance</title>
       </Head>
 
-      <nav
-        className={`sticky top-0 z-50 border-b px-4 md:px-12 py-4 md:py-5 ${
-          darkMode ? 'border-slate-800 bg-[#0e1422]/90 backdrop-blur-md' : 'border-slate-200/60 bg-white/90 backdrop-blur-md'
-        }`}
-      >
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center space-x-3">
-            <div className="bg-gradient-to-tr from-cyan-500 to-purple-600 text-white px-3 md:px-4 py-1.5 rounded-xl font-black text-xs md:text-sm tracking-wider">
-              CDC
-            </div>
-            <div>
-              <span className={`font-bold text-sm md:text-base block leading-none tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                CDC Studio
-              </span>
-              <span className="text-[9px] md:text-[10px] text-slate-400 font-medium block mt-1">Community & Freelance</span>
-            </div>
-          </div>
-
-          <div className={`hidden lg:flex items-center space-x-8 text-sm font-bold tracking-wide ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
-            <Link href="/" className="hover:text-cyan-500 transition no-underline text-current">
-              მთავარზე დაბრუნება
-            </Link>
-          </div>
-
-          <div className="flex items-center space-x-4">
-            <button
-              type="button"
-              onClick={toggleDarkMode}
-              className="p-2 rounded-xl transition text-base md:text-lg border-none bg-transparent cursor-pointer hover:rotate-12 duration-200"
-            >
-              {darkMode ? '☀️' : '🌙'}
-            </button>
-          </div>
-        </div>
-      </nav>
+      <SiteHeader />
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 pt-6">
         <BackButton fallbackHref="/" className={darkMode ? 'text-slate-400 hover:text-slate-100' : ''} />

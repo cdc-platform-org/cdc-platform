@@ -6,9 +6,14 @@ import {
   getMe as getMeRequest,
 } from '../services/authService';
 import { User, LoginPayload, RegisterPayload } from '../types/auth';
+import { setCookie, removeCookie } from '../utils/cookies';
 
 const TOKEN_KEY = 'cdc_access_token';
 const USER_KEY = 'cdc_user';
+// Mirrors the same token into a 'token' cookie (localStorage stays the
+// source of truth for apiClient's Authorization header) so it's also
+// readable by future server-side/middleware code.
+const TOKEN_COOKIE = 'token';
 
 export function useAuthState() {
   const [user, setUser] = useState<User | null>(null);
@@ -41,6 +46,7 @@ export function useAuthState() {
         .catch(() => {
           localStorage.removeItem(TOKEN_KEY);
           localStorage.removeItem(USER_KEY);
+          removeCookie(TOKEN_COOKIE);
           setUser(null);
         });
     }
@@ -51,6 +57,7 @@ export function useAuthState() {
     const { user: loggedInUser, token } = await loginRequest(payload);
     localStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem(USER_KEY, JSON.stringify(loggedInUser));
+    setCookie(TOKEN_COOKIE, token, 7);
     setUser(loggedInUser);
     return loggedInUser;
   }, []);
@@ -59,6 +66,7 @@ export function useAuthState() {
     const { user: newUser, token } = await registerRequest(payload);
     localStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem(USER_KEY, JSON.stringify(newUser));
+    setCookie(TOKEN_COOKIE, token, 7);
     setUser(newUser);
     return newUser;
   }, []);
@@ -67,6 +75,7 @@ export function useAuthState() {
     const { user: loggedInUser, token } = await loginWithGoogleRequest(idToken, role);
     localStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem(USER_KEY, JSON.stringify(loggedInUser));
+    setCookie(TOKEN_COOKIE, token, 7);
     setUser(loggedInUser);
     return loggedInUser;
   }, []);
@@ -74,6 +83,7 @@ export function useAuthState() {
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    removeCookie(TOKEN_COOKIE);
     setUser(null);
   }, []);
 

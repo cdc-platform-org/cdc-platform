@@ -257,6 +257,17 @@ function DashboardContent() {
     }
   }, [user?.role, router]);
 
+  // Deep-link support for SiteHeader's "My Courses" menu item
+  // (/dashboard?tab=courses) — only reads the query on the initial mount so
+  // it doesn't fight the tab buttons' own setActiveTab afterwards.
+  useEffect(() => {
+    const queryTab = router.query.tab;
+    if (queryTab === 'courses' || queryTab === 'wallet' || queryTab === 'gigs') {
+      setActiveTab(queryTab);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {

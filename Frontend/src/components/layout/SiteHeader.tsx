@@ -10,7 +10,8 @@ const dict = {
   ka: {
     login: 'შესვლა',
     logout: 'გამოსვლა',
-    dashboard: 'პირადი კაბინეტი',
+    dashboard: 'ჩემი დაშბორდი',
+    myCourses: 'ჩემი კურსები',
     admin: 'ადმინ პანელი',
     settings: 'პარამეტრები',
     about: 'ჩვენ შესახებ',
@@ -21,7 +22,8 @@ const dict = {
   en: {
     login: 'Log In',
     logout: 'Log Out',
-    dashboard: 'Dashboard',
+    dashboard: 'My Dashboard',
+    myCourses: 'My Courses',
     admin: 'Admin Panel',
     settings: 'Settings',
     about: 'About',
@@ -141,6 +143,13 @@ export default function SiteHeader() {
                     className="block px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 no-underline hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
                     {t.dashboard}
+                  </Link>
+                  <Link
+                    href="/dashboard?tab=courses"
+                    onClick={() => setMenuOpen(false)}
+                    className="block px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 no-underline hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    {t.myCourses}
                   </Link>
                   {user.adminRole && (
                     <Link
