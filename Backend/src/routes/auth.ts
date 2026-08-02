@@ -299,26 +299,36 @@ router.post('/forgot-password', async (req, res) => {
     return res.status(400).json({ errors: result.error.errors });
   }
 
-  const user = await prisma.user.findUnique({ where: { email: result.data.email.toLowerCase() } });
-  // Deliberately always 200, whether or not the account exists — a
-  // different response here would let anyone enumerate registered emails.
-  if (!user || user.isBanned || user.deletionRequestedAt) {
-    return res.json({ message: 'If an account exists for that email, a reset link has been sent.' });
+  try {
+    const user = await prisma.user.findUnique({ where: { email: result.data.email.toLowerCase() } });
+    // Deliberately always 200, whether or not the account exists — a
+    // different response here would let anyone enumerate registered emails.
+    if (!user || user.isBanned || user.deletionRequestedAt) {
+      return res.json({ message: 'If an account exists for that email, a reset link has been sent.' });
+    }
+
+    const passwordResetToken = crypto.randomBytes(32).toString('hex');
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordResetToken: hashResetToken(passwordResetToken),
+        passwordResetTokenExpires: new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS),
+      },
+    });
+    // The raw (unhashed) token is what goes in the email link — only its hash
+    // is ever stored, see hashResetToken() above. sendPasswordResetEmail is
+    // fire-and-forget: it already catches its own Resend/network failures
+    // internally and falls back to a console-logged link (see emailService.ts),
+    // so it deliberately isn't awaited or wrapped here.
+    sendPasswordResetEmail(user.email, passwordResetToken, result.data.lang ?? 'ka');
+
+    res.json({ message: 'If an account exists for that email, a reset link has been sent.' });
+  } catch (err) {
+    // Never let a DB-layer failure surface as a bare unstyled 500 — log for
+    // diagnostics and return a clean, user-facing message instead.
+    console.error('[auth] forgot-password failed:', err);
+    res.status(500).json({ message: 'პაროლის აღდგენის მოთხოვნა ვერ დამუშავდა. გთხოვთ სცადოთ მოგვიანებით.' });
   }
-
-  const passwordResetToken = crypto.randomBytes(32).toString('hex');
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      passwordResetToken: hashResetToken(passwordResetToken),
-      passwordResetTokenExpires: new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS),
-    },
-  });
-  // The raw (unhashed) token is what goes in the email link — only its hash
-  // is ever stored, see hashResetToken() above.
-  sendPasswordResetEmail(user.email, passwordResetToken, result.data.lang ?? 'ka');
-
-  res.json({ message: 'If an account exists for that email, a reset link has been sent.' });
 });
 
 router.post('/reset-password', async (req, res) => {
