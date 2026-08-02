@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
 import { RESEND_API_KEY, EMAIL_FROM, SUPER_ADMIN_EMAILS } from '../utils/env';
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://cdc.org.ge';
 
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 

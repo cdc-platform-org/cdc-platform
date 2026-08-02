@@ -17,7 +17,7 @@ import { getCurrentPrice } from '../services/coursePricing';
 
 const router = Router();
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://cdc.org.ge';
 const BACKEND_URL = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 4000}`;
 const CALLBACK_URL = `${BACKEND_URL}/api/payments/bog/callback`;
 

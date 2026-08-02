@@ -7,6 +7,10 @@ interface BackButtonProps {
   fallbackHref?: string;
   label?: string;
   className?: string;
+  // Skip router.back() entirely and always navigate to fallbackHref — for
+  // pages (e.g. /dashboard) that want this button to be an explicit "go
+  // home" action regardless of where the user came from.
+  forceFallback?: boolean;
 }
 
 const DEFAULT_LABEL: Record<string, string> = {
@@ -14,12 +18,12 @@ const DEFAULT_LABEL: Record<string, string> = {
   en: 'Back',
 };
 
-export default function BackButton({ fallbackHref = '/', label, className = '' }: BackButtonProps) {
+export default function BackButton({ fallbackHref = '/', label, className = '', forceFallback = false }: BackButtonProps) {
   const router = useRouter();
   const resolvedLabel = label ?? DEFAULT_LABEL[router.locale === 'en' ? 'en' : 'ka'];
 
   const handleClick = () => {
-    if (typeof window !== 'undefined' && window.history.length > 1) {
+    if (!forceFallback && typeof window !== 'undefined' && window.history.length > 1) {
       router.back();
     } else {
       router.push(fallbackHref);

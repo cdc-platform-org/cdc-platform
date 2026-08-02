@@ -405,7 +405,7 @@ function DashboardContent() {
       <SiteHeader />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
-        <BackButton fallbackHref="/" className="dark:text-slate-400 dark:hover:text-slate-100" />
+        <BackButton fallbackHref="/" forceFallback className="dark:text-slate-400 dark:hover:text-slate-100" />
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-12 grid md:grid-cols-4 gap-6 md:gap-8 flex-1 w-full">

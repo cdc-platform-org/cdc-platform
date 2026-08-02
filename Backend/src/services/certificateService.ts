@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import { CERTIFICATE_DIRECTOR_NAME } from '../utils/env';
 
 const TEMPLATE_PATH = path.join(__dirname, '..', '..', 'public', 'templates', 'certificate-template.pdf');
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://cdc.org.ge';
 
 // pdf-lib's built-in 14 standard fonts (Helvetica etc.) only support WinAnsi
 // encoding — they cannot render Georgian text at all (throws at draw time).
