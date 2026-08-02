@@ -31,6 +31,7 @@ export const adminDict = {
       teamTrainers: 'გუნდი და ტრენერები',
       studioCases: 'CDC Studio ქეისები',
       botKnowledge: 'AI ასისტენტის ცოდნის ბაზა',
+      notifications: 'შეტყობინებების გაგზავნა',
     },
     chrome: {
       adminPanel: 'ადმინ პანელი',
@@ -88,6 +89,7 @@ export const adminDict = {
       teamTrainers: 'Team & Trainers',
       studioCases: 'CDC Studio Case Studies',
       botKnowledge: 'AI Assistant Knowledge Base',
+      notifications: 'Send Notifications',
     },
     chrome: {
       adminPanel: 'Admin Panel',

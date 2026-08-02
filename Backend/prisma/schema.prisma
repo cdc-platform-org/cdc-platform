@@ -304,6 +304,7 @@ model User {
   blogComments           BlogComment[]
   mentorshipRequestsMade     MentorshipRequest[] @relation("MentorshipRequestsMade")
   mentorshipRequestsResolved MentorshipRequest[] @relation("MentorshipRequestsResolved")
+  notifications              Notification[]
 
   @@map("users")
 }
@@ -1362,6 +1363,27 @@ model MentorshipRequest {
 
   @@index([status])
   @@map("mentorship_requests")
+}
+
+// One-way admin-to-user notifications (Send Notification tool in the admin
+// panel, surfaced via the header bell) — deliberately no reply/thread
+// concept, unlike MessageThread.
+model Notification {
+  id      String @id @default(uuid())
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title   String
+  message String
+  // Free-form category tag ("MODERATION" | "ADMIN_DIRECT" | "SYSTEM", etc.)
+  // — not a Prisma enum since admin-authored notification types may grow
+  // without needing a migration each time.
+  type      String   @default("ADMIN_DIRECT")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@map("notifications")
 }
 
 // ============================================================

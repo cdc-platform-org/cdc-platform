@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/router';
 import LanguageSwitcher from './LanguageSwitcher';
 import UserMenu from './UserMenu';
+import NotificationBell from './NotificationBell';
 import { useAuth } from '../../context/AuthContext';
 import { useAuthModal } from '../../context/AuthModalContext';
 
@@ -83,6 +84,7 @@ export default function SiteHeader() {
           >
             {darkMode ? '☀️' : '🌙'}
           </button>
+          <NotificationBell />
           <UserMenu
             loginFallback={
               <button

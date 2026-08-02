@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { useTranslation } from 'next-i18next';
 import VacancyCard from './VacancyCard';
 import GigCard from './GigCard';
@@ -8,7 +9,6 @@ import ApplicationModal from './ApplicationModal';
 import ProposalModal from './ProposalModal';
 import ReviewModal from './ReviewModal';
 import GraduateOnlyModal from './GraduateOnlyModal';
-import RoleGate from '../auth/RoleGate';
 import SiteHeader from '../layout/SiteHeader';
 import SiteFooter from '../layout/SiteFooter';
 import BackButton from '../common/BackButton';
@@ -104,6 +104,9 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
   }, [loadGigs]);
 
   const canApply = !isAuthenticated || user?.role === 'Student';
+  const isAdmin = !!user?.adminRole || user?.role === 'SuperAdmin';
+  const isVerifiedBusiness = user?.role === 'Client' && !!user?.isVerified;
+  const isVerifiedGraduate = !!user?.isVerifiedGraduate;
 
   const handleApplyVacancy = (vacancy: Vacancy) => {
     if (!isAuthenticated) {
@@ -177,44 +180,55 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* LEFT — employer post form. Hidden entirely for authenticated
-            Students (they can't post regardless), not just gated to an
-            empty-form fallback — a Student never has a reason to see this
-            card. Guests still see the sign-in prompt since their eventual
-            role is unknown. */}
-        {!(isAuthenticated && user?.role === 'Student') && (
-          <div className="lg:col-span-1">
-            <div className="rounded-3xl p-6 border border-slate-200/70 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/40 backdrop-blur-xl shadow-sm sticky top-24">
-              <h2 className="text-lg font-bold tracking-tight mb-6 leading-snug">დამსაქმებლის განცხადების დამატება</h2>
-              {!isAuthenticated ? (
-                <div className="text-center py-6">
-                  <p className="text-xs text-slate-400 mb-4">{SIGN_IN_TO_POST.ka}</p>
-                  <button
-                    type="button"
-                    onClick={() => openAuthModal({ message: SIGN_IN_TO_POST })}
-                    className="w-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold py-3 rounded-xl text-xs uppercase transition-all shadow-lg shadow-cyan-500/10 tracking-wider"
-                  >
-                    ავტორიზაცია
-                  </button>
-                </div>
-              ) : (
-                <RoleGate
-                  allowedRoles={['Client', 'SuperAdmin']}
-                  fallback={
-                    <p className="text-xs text-slate-400 text-center py-6">
-                      ვაკანსიის ან პროექტის გამოქვეყნება შეუძლიათ მხოლოდ დამკვეთებსა და ადმინისტრატორებს.
-                    </p>
-                  }
+        {/* LEFT — employer post form. Eligibility: verified business
+            (Client + KYC isVerified), verified graduate (isVerifiedGraduate,
+            typically Students who passed the freelancer exam), or any admin
+            — everyone else authenticated sees why they can't post yet and a
+            link to go get verified, rather than a bare RoleGate block. */}
+        <div className="lg:col-span-1">
+          <div className="rounded-3xl p-6 border border-slate-200/70 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/40 backdrop-blur-xl shadow-sm sticky top-24">
+            <h2 className="text-lg font-bold tracking-tight mb-6 leading-snug">დამსაქმებლის განცხადების დამატება</h2>
+            {!isAuthenticated ? (
+              <div className="text-center py-6">
+                <p className="text-xs text-slate-400 mb-4">{SIGN_IN_TO_POST.ka}</p>
+                <button
+                  type="button"
+                  onClick={() => openAuthModal({ message: SIGN_IN_TO_POST })}
+                  className="w-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold py-3 rounded-xl text-xs uppercase transition-all shadow-lg shadow-cyan-500/10 tracking-wider"
                 >
-                  <PostingForm initialType={tab === 'vacancies' ? 'vacancy' : 'gig'} allowTypeToggle />
-                </RoleGate>
-              )}
-            </div>
+                  ავტორიზაცია
+                </button>
+              </div>
+            ) : isAdmin || isVerifiedBusiness || isVerifiedGraduate ? (
+              <PostingForm initialType={tab === 'vacancies' ? 'vacancy' : 'gig'} allowTypeToggle />
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-xs text-slate-400 mb-4">
+                  განცხადების გამოქვეყნება შეუძლიათ მხოლოდ ვერიფიცირებულ დამსაქმებლებსა და ვერიფიცირებულ (გამოცდაგავლილ)
+                  ფრილანსერებს.
+                </p>
+                {user?.role === 'Client' ? (
+                  <Link
+                    href="/dashboard/settings"
+                    className="inline-block w-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold py-3 rounded-xl text-xs uppercase transition-all no-underline tracking-wider"
+                  >
+                    ბიზნეს ვერიფიკაციის გავლა
+                  </Link>
+                ) : (
+                  <Link
+                    href="/freelancer/exam"
+                    className="inline-block w-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold py-3 rounded-xl text-xs uppercase transition-all no-underline tracking-wider"
+                  >
+                    უნარების ვერიფიკაციის გავლა
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
         {/* RIGHT — tabbed listings */}
-        <div className={`space-y-6 ${isAuthenticated && user?.role === 'Student' ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
+        <div className="lg:col-span-2 space-y-6">
           <div className="flex gap-2 p-1.5 rounded-2xl border border-slate-200/70 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/40 backdrop-blur-xl">
             <button type="button" onClick={() => setTab('vacancies')} className={tabButtonClass(tab === 'vacancies')}>
               დამსაქმებლის ვაკანსიები

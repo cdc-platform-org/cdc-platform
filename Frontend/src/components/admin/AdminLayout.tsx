@@ -25,6 +25,7 @@ import {
   UsersRound,
   Layers,
   BrainCircuit,
+  Bell,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AdminLangProvider, useAdminLang } from '../../context/AdminLangContext';
@@ -44,6 +45,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/disputes', labelKey: 'disputes', icon: Scale, tiers: ['SUPER_ADMIN', 'MANAGER'] },
   { href: '/admin/mentorship', labelKey: 'mentorship', icon: GraduationCap },
   { href: '/admin/messages', labelKey: 'messages', icon: ShieldAlert },
+  { href: '/admin/notifications', labelKey: 'notifications', icon: Bell },
   { href: '/admin/forum', labelKey: 'forum', icon: MessageSquare },
   { href: '/admin/bot-knowledge', labelKey: 'botKnowledge', icon: BrainCircuit, tiers: ['SUPER_ADMIN', 'MANAGER'] },
   { href: '/admin/cms/homepage', labelKey: 'cms', icon: PenTool, tiers: ['SUPER_ADMIN', 'MANAGER'] },
