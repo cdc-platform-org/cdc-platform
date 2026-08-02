@@ -38,6 +38,9 @@ export interface GenerateExamParams {
   // Set on a retake after a failed attempt — steers the new question set
   // toward the topics the student got wrong last time.
   focusTopics?: string[];
+  // UI locale to write the generated text in — omit to default to English
+  // (existing course-certification exam behavior, unchanged).
+  lang?: 'ka' | 'en';
 }
 
 export class AiExamGenerationError extends Error {
@@ -56,10 +59,14 @@ export async function generateExamQuestions(params: GenerateExamParams): Promise
     ? `\nThe student failed a previous attempt with weak understanding of: ${params.focusTopics.join(', ')}. Weight the new questions toward these topics.`
     : '';
   const contextLine = params.aiPromptContext ? `\nAdditional instructions from the course admin: ${params.aiPromptContext}` : '';
+  const languageLine =
+    params.lang === 'ka'
+      ? '\nWrite the "topic", "question", "options", and "explanation" fields in Georgian (ქართული). Keep standard IT/design terminology that is normally used in English even in Georgian technical speech in English (e.g. "Checkout flow", "Wireframe", "API", "SEO").'
+      : '\nWrite the "topic", "question", "options", and "explanation" fields entirely in English.';
 
   const prompt = `You are generating a certification exam for the online course "${params.courseTitle}".
 Course description: ${params.courseDescription}
-Lesson topics covered: ${params.lessonTitles.join(', ') || '(no lessons listed)'}${focusLine}${contextLine}
+Lesson topics covered: ${params.lessonTitles.join(', ') || '(no lessons listed)'}${focusLine}${contextLine}${languageLine}
 
 Generate exactly ${params.questionCount} multiple-choice questions that test real understanding of the course material (not trivia). Each question must have exactly 4 options (A, B, C, D), one correct answer, and a short explanation of why it's correct. Vary the topics across the course's lessons. Respond with strict JSON matching this shape:
 {"questions": [{"topic": string, "question": string, "options": {"A": string, "B": string, "C": string, "D": string}, "correctAnswer": "A"|"B"|"C"|"D", "explanation": string}]}`;

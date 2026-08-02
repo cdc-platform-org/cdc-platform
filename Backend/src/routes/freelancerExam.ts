@@ -9,7 +9,7 @@ const router = Router();
 router.use(authenticate, requireApproved, requireRole('Student'));
 
 const PASS_THRESHOLD = 80;
-const QUESTION_COUNT = 5;
+const QUESTION_COUNT = 15;
 
 const CATEGORY_BRIEF: Record<string, { title: string; description: string; topics: string[] }> = {
   ui_ux_design: {
@@ -41,6 +41,7 @@ const CATEGORY_BRIEF: Record<string, { title: string; description: string; topic
 
 const categorySchema = z.object({
   category: z.enum(['ui_ux_design', 'web_development', 'graphic_design', 'digital_marketing', 'other']),
+  lang: z.enum(['ka', 'en']).optional(),
 });
 
 type ClientQuestion = Omit<GeneratedQuestion, 'correctAnswer' | 'explanation'>;
@@ -116,6 +117,7 @@ router.post('/generate', async (req: Request, res: Response) => {
       courseDescription: brief.description,
       lessonTitles: brief.topics,
       questionCount: QUESTION_COUNT,
+      lang: result.data.lang ?? 'ka',
     });
   } catch (err) {
     // AI generator unavailable/misconfigured/erroring — fall back to the

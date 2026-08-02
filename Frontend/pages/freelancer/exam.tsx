@@ -16,10 +16,10 @@ const MAX_STRIKES = 3;
 // — there is no server-side time limit on the exam itself, only the
 // tab-switch/fullscreen-exit strike system below.
 const PASS_THRESHOLD = 80;
-const QUESTION_COUNT = 5;
+const QUESTION_COUNT = 15;
 // generateExam calls out to an AI question generator — bound how long we
 // wait so a slow/stuck request surfaces a retry instead of spinning forever.
-const GENERATE_TIMEOUT_MS = 25000;
+const GENERATE_TIMEOUT_MS = 45000;
 
 type Phase = 'select' | 'rules' | 'starting' | 'in-progress' | 'result';
 
@@ -164,7 +164,7 @@ function FreelancerExamContent() {
       const timeout = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('timeout')), GENERATE_TIMEOUT_MS);
       });
-      const exam = await Promise.race([generateExam(category), timeout]);
+      const exam = await Promise.race([generateExam(category, lang), timeout]);
       setAttemptId(exam.attemptId);
       setQuestions(exam.questions);
       setCurrentIndex(0);

@@ -23,10 +23,13 @@ export interface ExamAttemptResult {
   }[];
 }
 
-export async function generateExam(category: JobCategory): Promise<{ attemptId: string; category: JobCategory; questions: ExamQuestion[] }> {
+export async function generateExam(
+  category: JobCategory,
+  lang: 'ka' | 'en' = 'ka'
+): Promise<{ attemptId: string; category: JobCategory; questions: ExamQuestion[] }> {
   const response = await apiClient.post<{ data: { attemptId: string; category: JobCategory; questions: ExamQuestion[] } }>(
     '/freelancer-exam/generate',
-    { category }
+    { category, lang }
   );
   return response.data.data;
 }
