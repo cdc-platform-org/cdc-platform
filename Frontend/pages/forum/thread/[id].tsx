@@ -8,6 +8,7 @@ import { useAuth } from '../../../src/context/AuthContext';
 import { useAuthModal } from '../../../src/context/AuthModalContext';
 import VerifiedGraduateBadge from '../../../src/components/community/VerifiedGraduateBadge';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
+import SocialShareButtons from '../../../src/components/shared/SocialShareButtons';
 import { ForumThread, ForumComment } from '../../../src/types/forum';
 import {
   getThreadById,
@@ -27,6 +28,7 @@ function ThreadDetailContent() {
   const { id } = router.query;
   const { user, isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
+  const lang = router.locale === 'en' ? 'en' : 'ka';
   const SIGN_IN_TO_ENGAGE = { ka: 'გთხოვთ გაიაროთ ავტორიზაცია ფორუმზე დასაწერად', en: 'Please sign in to post on the forum' };
   const [thread, setThread] = useState<ForumThread | null>(null);
   const [comments, setComments] = useState<ForumComment[]>([]);
@@ -167,6 +169,7 @@ function ThreadDetailContent() {
               {thread.isLikedByCurrentUser ? '♥' : '♡'} {thread.likeCount}
             </button>
             <span className="text-sm text-gray-400">{t('repliesCount', { count: thread.commentCount })}</span>
+            <SocialShareButtons title={thread.title} lang={lang} className="ml-auto" />
           </div>
         </div>
 
@@ -182,6 +185,12 @@ function ThreadDetailContent() {
                 rows={3}
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    e.currentTarget.form?.requestSubmit();
+                  }
+                }}
                 placeholder={t('replyPlaceholder')}
                 className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
