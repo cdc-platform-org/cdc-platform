@@ -129,7 +129,7 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
             </Link>
             <button
               type="button"
-              onClick={logout}
+              onClick={() => { logout(); router.push('/'); }}
               className="text-xs font-medium text-red-400 hover:text-red-300 bg-transparent border-none cursor-pointer"
             >
               {t.chrome.logout}

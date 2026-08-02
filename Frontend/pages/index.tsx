@@ -8,6 +8,7 @@ import { CheckCircle2, AlertTriangle, Search, Sun, Moon, User, X, Menu, Link as 
 import { useAuthModal } from '../src/context/AuthModalContext';
 import { useAuth } from '../src/context/AuthContext';
 import SiteFooter from '../src/components/layout/SiteFooter';
+import UserMenu from '../src/components/layout/UserMenu';
 import { Course } from '../src/types/lms';
 import { HomepageContent, HomepageStat, GalleryImage } from '../src/types/siteContent';
 import { getCourses } from '../src/services/courseService';
@@ -435,7 +436,12 @@ export default function Home() {
               {lang}
             </button>
             <button type="button" onClick={toggleDarkMode} aria-label="Toggle dark mode" className="p-2 rounded-xl transition border-none bg-transparent cursor-pointer hover:rotate-12 duration-200">{darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}</button>
-            <button type="button" onClick={() => openAuthModal()} className={`hidden sm:inline-flex items-center gap-1.5 border font-black text-xs md:text-sm px-4 py-2.5 rounded-xl transition bg-transparent cursor-pointer ${darkMode ? 'text-white border-slate-700 hover:bg-slate-800' : 'text-slate-700 border-slate-200 hover:bg-slate-100'}`}><User className="w-4 h-4" />{translate('შესვლა', 'Login')}</button>
+            <UserMenu
+              className="hidden sm:block"
+              loginFallback={
+                <button type="button" onClick={() => openAuthModal()} className={`hidden sm:inline-flex items-center gap-1.5 border font-black text-xs md:text-sm px-4 py-2.5 rounded-xl transition bg-transparent cursor-pointer ${darkMode ? 'text-white border-slate-700 hover:bg-slate-800' : 'text-slate-700 border-slate-200 hover:bg-slate-100'}`}><User className="w-4 h-4" />{translate('შესვლა', 'Login')}</button>
+              }
+            />
 
             {/* MOBILE MENU TOGGLE */}
             <button
@@ -461,14 +467,19 @@ export default function Home() {
             <a href="/agency" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{safeText('CDC Studio')}</a>
             <a href="/community" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('ვაკანსიები', 'Jobs')}</a>
             <a href="/forum" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('ფორუმი', 'Forum')}</a>
-            <button
-              type="button"
-              onClick={() => { setIsMobileMenuOpen(false); openAuthModal(); }}
-              className={`sm:hidden mt-2 border font-black text-sm px-4 py-3 rounded-xl transition bg-transparent cursor-pointer text-left flex items-center gap-1.5 ${darkMode ? 'text-white border-slate-700 hover:bg-slate-800' : 'text-slate-700 border-slate-200 hover:bg-slate-100'}`}
-            >
-              <User className="w-4 h-4" />
-              {translate('შესვლა', 'Login')}
-            </button>
+            <UserMenu
+              className="sm:hidden mt-2"
+              loginFallback={
+                <button
+                  type="button"
+                  onClick={() => { setIsMobileMenuOpen(false); openAuthModal(); }}
+                  className={`sm:hidden mt-2 border font-black text-sm px-4 py-3 rounded-xl transition bg-transparent cursor-pointer text-left flex items-center gap-1.5 ${darkMode ? 'text-white border-slate-700 hover:bg-slate-800' : 'text-slate-700 border-slate-200 hover:bg-slate-100'}`}
+                >
+                  <User className="w-4 h-4" />
+                  {translate('შესვლა', 'Login')}
+                </button>
+              }
+            />
           </div>
         )}
       </nav>

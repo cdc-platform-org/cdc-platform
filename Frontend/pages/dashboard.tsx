@@ -42,7 +42,7 @@ const dict = {
     tabOverview: 'მიმოხილვა',
     tabCourses: 'კურსები & სერტიფიკატები',
     tabWallet: 'საფულე & გადახდები',
-    tabGigs: 'ჩემი გიგები',
+    tabGigs: 'ჩემი პროექტები',
     tabSettings: 'პარამეტრები',
     logout: 'გასვლა',
     loading: 'იტვირთება…',
@@ -113,7 +113,7 @@ const dict = {
     tabOverview: 'Overview',
     tabCourses: 'My Courses & Certificates',
     tabWallet: 'Wallet & Payouts',
-    tabGigs: 'My Gigs / Workspace',
+    tabGigs: 'My Projects / Workspace',
     tabSettings: 'Account Settings',
     logout: 'Log Out',
     loading: 'Loading…',
@@ -448,7 +448,7 @@ function DashboardContent() {
           </Link>
           <button
             type="button"
-            onClick={logout}
+            onClick={() => { logout(); router.push('/'); }}
             className="w-full flex items-center gap-2.5 text-left p-3.5 rounded-xl text-xs font-bold transition border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 bg-transparent"
           >
             <LogOut className="w-4 h-4 shrink-0" />
