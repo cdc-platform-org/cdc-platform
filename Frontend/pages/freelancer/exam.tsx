@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
-import { ShieldAlert, CheckCircle2, XCircle } from 'lucide-react';
+import { ShieldAlert, CheckCircle2, XCircle, Loader2, RefreshCw, Clock, HelpCircle, Target, AlertTriangle, Play } from 'lucide-react';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import RoleGate from '../../src/components/auth/RoleGate';
 import SiteHeader from '../../src/components/layout/SiteHeader';
@@ -12,8 +12,16 @@ import { JobCategory } from '../../src/types/community';
 import { generateExam, submitExam, ExamQuestion, ExamAttemptResult } from '../../src/services/freelancerExamService';
 
 const MAX_STRIKES = 3;
+// Mirrors Backend's routes/freelancerExam.ts (PASS_THRESHOLD, QUESTION_COUNT)
+// — there is no server-side time limit on the exam itself, only the
+// tab-switch/fullscreen-exit strike system below.
+const PASS_THRESHOLD = 80;
+const QUESTION_COUNT = 5;
+// generateExam calls out to an AI question generator — bound how long we
+// wait so a slow/stuck request surfaces a retry instead of spinning forever.
+const GENERATE_TIMEOUT_MS = 25000;
 
-type Phase = 'select' | 'starting' | 'in-progress' | 'result';
+type Phase = 'select' | 'rules' | 'starting' | 'in-progress' | 'result';
 
 function FreelancerExamContent() {
   const router = useRouter();
@@ -110,8 +118,17 @@ function FreelancerExamContent() {
     return () => clearTimeout(timer);
   }, [warningToast]);
 
-  const handleStart = async (cat: JobCategory) => {
+  // Clicking a category no longer jumps straight into the (fullscreen,
+  // timed-strike) exam — it opens the rules screen first so the user
+  // explicitly opts in via "ტესტირების დაწყება" before anything starts.
+  const handleSelectCategory = (cat: JobCategory) => {
     setCategory(cat);
+    setError(null);
+    setPhase('rules');
+  };
+
+  const confirmStart = async () => {
+    if (!category) return;
     setPhase('starting');
     setError(null);
     try {
@@ -122,7 +139,10 @@ function FreelancerExamContent() {
       // still catch tab/focus switches regardless of fullscreen support.
     }
     try {
-      const exam = await generateExam(cat);
+      const timeout = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('timeout')), GENERATE_TIMEOUT_MS);
+      });
+      const exam = await Promise.race([generateExam(category), timeout]);
       setAttemptId(exam.attemptId);
       setQuestions(exam.questions);
       setCurrentIndex(0);
@@ -130,8 +150,15 @@ function FreelancerExamContent() {
       setStrikes(0);
       setPhase('in-progress');
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'გამოცდის გენერაცია ვერ მოხერხდა.');
-      setPhase('select');
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      setError(
+        err?.message === 'timeout'
+          ? lang === 'ka'
+            ? 'გამოცდის ჩატვირთვას დიდი დრო სჭირდება — შეამოწმეთ ინტერნეტ კავშირი და სცადეთ ხელახლა.'
+            : 'Loading the exam is taking too long — check your connection and try again.'
+          : err?.response?.data?.message ?? 'გამოცდის გენერაცია ვერ მოხერხდა.'
+      );
+      setPhase('rules');
     }
   };
 
@@ -145,23 +172,21 @@ function FreelancerExamContent() {
         {phase !== 'in-progress' && <BackButton fallbackHref="/dashboard" className="mb-6" />}
         <h1 className="text-2xl font-black mb-2">CDC Verified Freelancer — უნარების შემოწმება</h1>
 
-        {error && (
+        {error && phase !== 'rules' && (
           <div className="mb-6 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-600 dark:text-red-300">{error}</div>
         )}
 
         {phase === 'select' && (
           <>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-              აირჩიეთ კატეგორია — გენერირდება 5 კითხვა AI-ს მიერ. წარმატებით ჩაბარება (80%+) განიჭებთ CDC-ის დამოწმებული
-              ფრილანსერის სტატუსს. გამოცდის დროს საჭიროა სრულეკრანიანი რეჟიმი — ტაბის შეცვლა ან ფოკუსის დაკარგვა
-              აღირიცხება დარღვევად ({MAX_STRIKES} დარღვევის შემდეგ ავტომატურად დასრულდება).
+              აირჩიეთ კატეგორია — შემდეგ გაეცნობით წესებს და დაიწყებთ ტესტირებას.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {JOB_CATEGORIES.filter((c) => c !== 'other').map((cat) => (
                 <button
                   key={cat}
                   type="button"
-                  onClick={() => handleStart(cat)}
+                  onClick={() => handleSelectCategory(cat)}
                   className="text-left rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 hover:border-cyan-400 dark:hover:border-cyan-500 transition-colors"
                 >
                   <p className="font-bold text-sm">{JOB_CATEGORY_LABEL[cat][lang]}</p>
@@ -171,7 +196,67 @@ function FreelancerExamContent() {
           </>
         )}
 
-        {phase === 'starting' && <p className="text-sm text-slate-400">იტვირთება…</p>}
+        {phase === 'rules' && category && (
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 overflow-hidden">
+            <div className="bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-4">
+              <p className="text-xs font-bold uppercase tracking-widest text-cyan-100">{JOB_CATEGORY_LABEL[category][lang]}</p>
+              <h2 className="text-lg font-black text-white">ტესტირების წესები და პირობები</h2>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex items-start gap-3">
+                <Clock className="w-5 h-5 text-cyan-500 shrink-0 mt-0.5" />
+                <p className="text-sm"><span className="font-bold">დროის ლიმიტი:</span> შეზღუდვის გარეშე — საკუთარი ტემპით</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <HelpCircle className="w-5 h-5 text-cyan-500 shrink-0 mt-0.5" />
+                <p className="text-sm"><span className="font-bold">კითხვების რაოდენობა:</span> {QUESTION_COUNT}</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <Target className="w-5 h-5 text-cyan-500 shrink-0 mt-0.5" />
+                <p className="text-sm"><span className="font-bold">გადალახვის ბარიერი:</span> {PASS_THRESHOLD}%</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-sm">
+                  <span className="font-bold">წესები:</span> ტესტირების მიმდინარეობისას ბრაუზერის ტაბის გადართვა ან
+                  გვერდის დახურვა აკრძალულია ({MAX_STRIKES} დარღვევის შემდეგ ავტომატურად დასრულდება).
+                </p>
+              </div>
+
+              {error && (
+                <div className="flex items-start gap-3 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3">
+                  <ShieldAlert className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setPhase('select'); setCategory(null); setError(null); }}
+                  className="rounded-lg border border-slate-300 dark:border-slate-700 px-5 py-2.5 text-sm font-bold"
+                >
+                  ← უკან
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmStart}
+                  className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-2.5 text-sm font-bold text-white"
+                >
+                  {error ? <RefreshCw className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                  {error ? 'ხელახლა ცდა' : 'ტესტირების დაწყება'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {phase === 'starting' && (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Loader2 className="w-8 h-8 text-cyan-500 animate-spin mb-4" />
+            <p className="text-sm text-slate-500 dark:text-slate-400">ტესტები იტვირთება, გთხოვთ დაელოდოთ...</p>
+          </div>
+        )}
 
         {phase === 'in-progress' && currentQuestion && (
           <div>
