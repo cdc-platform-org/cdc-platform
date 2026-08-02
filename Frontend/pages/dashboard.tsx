@@ -33,6 +33,7 @@ import {
 import { getMyPayments, MyPaymentRow } from '../src/services/paymentService';
 import { getForumQuota, ForumPostQuota } from '../src/services/forumService';
 import { createMentorshipRequest } from '../src/services/mentorshipService';
+import { User } from '../src/types/auth';
 
 type Tab = 'overview' | 'courses' | 'wallet' | 'gigs';
 
@@ -96,6 +97,11 @@ const dict = {
     // Post quota (non-graduates)
     statPostsLeft: 'დარჩენილი პოსტები (ამ თვეში)',
     postsLeftValue: 'დარჩენილი გაქვთ 3-დან {{remaining}} პოსტი ამ თვეში',
+    // Freelancer skill verification exam
+    examTitle: 'უნარების ვერიფიკაცია / გამოცდა',
+    examPendingBody: 'გაიარეთ ტესტირება ფრილანსერის სტატუსის გასააქტიურებლად',
+    examStart: 'ტესტირების დაწყება',
+    examVerifiedBadge: 'ვერიფიცირებული ფრილანსერი ✅',
     // Mentorship request (graduates only)
     mentorshipButton: 'დახმარება / მენტორობა',
     mentorshipModalTitle: 'დახმარების მოთხოვნა',
@@ -161,6 +167,10 @@ const dict = {
     confirmCancel: 'Cancel',
     statPostsLeft: 'Forum posts left (this month)',
     postsLeftValue: 'You have {{remaining}} of 3 posts left this month',
+    examTitle: 'Skill Verification / Exam',
+    examPendingBody: 'Take the exam to activate your freelancer status',
+    examStart: 'Start Exam',
+    examVerifiedBadge: 'Verified Freelancer ✅',
     mentorshipButton: 'Help / Mentorship',
     mentorshipModalTitle: 'Request Help',
     mentorshipModalHint: 'Describe what you need help with (an order, a gig, or anything else) — a CDC mentor will reach out soon.',
@@ -212,6 +222,35 @@ function ProgressBar({ percent }: { percent: number }) {
         className="bg-gradient-to-r from-cyan-500 to-purple-500 h-full transition-all duration-300"
         style={{ width: `${percent}%` }}
       />
+    </div>
+  );
+}
+
+// isVerifiedGraduate is the app-wide "verified freelancer" flag — set by
+// either graduating a course or passing the freelancer skill exam (see
+// Backend's routes/freelancerExam.ts and routes/courses.ts) — and gates gig/
+// vacancy applications, uncapped forum posting, and mentorship access.
+function FreelancerExamCard({ user, t }: { user: User; t: typeof dict['ka']; }) {
+  if (user.isVerifiedGraduate) {
+    return (
+      <div className="rounded-2xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-5 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-extrabold tracking-wide text-slate-800 dark:text-slate-100">{t.examTitle}</h2>
+        <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 whitespace-nowrap">{t.examVerifiedBadge}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-2xl border border-cyan-300 dark:border-cyan-800 bg-cyan-50 dark:bg-cyan-950/30 p-5 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 className="text-sm font-extrabold tracking-wide text-slate-800 dark:text-slate-100">{t.examTitle}</h2>
+        <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">{t.examPendingBody}</p>
+      </div>
+      <Link
+        href="/freelancer/exam"
+        className="inline-block text-xs font-bold text-white bg-slate-900 dark:bg-cyan-600 px-4 py-2.5 rounded-xl no-underline shrink-0"
+      >
+        {t.examStart}
+      </Link>
     </div>
   );
 }
@@ -489,6 +528,8 @@ function DashboardContent() {
                     </p>
                   )}
 
+                  {user?.role === 'Student' && <FreelancerExamCard user={user} t={t} />}
+
                   <div>
                     <h2 className="text-sm font-extrabold tracking-wide mb-3">{t.progressTitle}</h2>
                     {courses.length === 0 ? (
@@ -523,6 +564,7 @@ function DashboardContent() {
 
               {activeTab === 'courses' && (
                 <div className="space-y-4">
+                  {user?.role === 'Student' && <FreelancerExamCard user={user} t={t} />}
                   <div className="flex items-center justify-between gap-3 mb-2">
                     <h2 className="text-lg font-extrabold tracking-wide">{t.coursesTitle}</h2>
                     {certificatesEarned > 0 && (
