@@ -172,6 +172,11 @@ model User {
   // they've confirmed the user actually completed a CDC course — there is no
   // automated course-completion pipeline yet, so this is a manual gate.
   isVerifiedGraduate Boolean @default(false)
+  // Set when a freelancer skill exam attempt is force-submitted for
+  // repeated anti-cheat violations (tab switch/fullscreen exit, see
+  // routes/freelancerExam.ts) — blocks starting a new attempt until this
+  // timestamp passes. null means not locked.
+  examLockedUntil DateTime?
   // Soft-delete: set the moment the user confirms account deletion. The
   // account is deactivated immediately (blocked from logging in or taking
   // marketplace actions). 60 days later, the cleanup cron either hard-deletes

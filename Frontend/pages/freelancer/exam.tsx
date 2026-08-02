@@ -9,7 +9,7 @@ import BackButton from '../../src/components/common/BackButton';
 import Toast from '../../src/components/shared/Toast';
 import { JOB_CATEGORIES, JOB_CATEGORY_LABEL } from '../../src/utils/jobCategory';
 import { JobCategory } from '../../src/types/community';
-import { generateExam, submitExam, ExamQuestion, ExamAttemptResult } from '../../src/services/freelancerExamService';
+import { generateExam, submitExam, getExamStatus, ExamQuestion, ExamAttemptResult } from '../../src/services/freelancerExamService';
 
 const MAX_STRIKES = 3;
 // Mirrors Backend's routes/freelancerExam.ts (PASS_THRESHOLD, QUESTION_COUNT)
@@ -38,25 +38,47 @@ function FreelancerExamContent() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<ExamAttemptResult | null>(null);
+  const [lockedUntil, setLockedUntil] = useState<string | null>(null);
+  const [nowTick, setNowTick] = useState(() => Date.now());
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
   const strikeGuardRef = useRef(false);
 
-  const handleSubmit = useCallback(async () => {
-    if (!attemptId || submitting) return;
-    setSubmitting(true);
-    try {
-      const res = await submitExam(attemptId, answers);
-      setResult(res);
-      setPhase('result');
-      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'შეფასების გაგზავნა ვერ მოხერხდა.');
-    } finally {
-      setSubmitting(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attemptId, answers, submitting]);
+  useEffect(() => {
+    getExamStatus()
+      .then((res) => setLockedUntil(res.examLockedUntil))
+      .catch(() => {});
+  }, []);
+
+  // Live countdown for the lockout screen — re-renders every 30s so the
+  // remaining time stays roughly accurate without a per-second timer.
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const timer = setInterval(() => setNowTick(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, [lockedUntil]);
+
+  const isLocked = !!lockedUntil && new Date(lockedUntil).getTime() > nowTick;
+
+  const handleSubmit = useCallback(
+    async (disqualified = false) => {
+      if (!attemptId || submitting) return;
+      setSubmitting(true);
+      try {
+        const res = await submitExam(attemptId, answers, disqualified);
+        setResult(res);
+        setPhase('result');
+        if (res.examLockedUntil) setLockedUntil(res.examLockedUntil);
+        if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      } catch (err: any) {
+        setError(err?.response?.data?.message ?? 'შეფასების გაგზავნა ვერ მოხერხდა.');
+      } finally {
+        setSubmitting(false);
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [attemptId, answers, submitting]
+  );
 
   const registerStrike = useCallback(
     (reason: string) => {
@@ -69,7 +91,7 @@ function FreelancerExamContent() {
         const next = prev + 1;
         if (next >= MAX_STRIKES) {
           setWarningToast(lang === 'ka' ? 'გამოვლენილია განმეორებითი დარღვევა — გამოცდა ავტომატურად იგზავნება.' : 'Repeated violation detected — auto-submitting the exam.');
-          handleSubmit();
+          handleSubmit(true);
         } else {
           setWarningToast(
             lang === 'ka'
@@ -176,7 +198,26 @@ function FreelancerExamContent() {
           <div className="mb-6 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-600 dark:text-red-300">{error}</div>
         )}
 
-        {phase === 'select' && (
+        {isLocked && (phase === 'select' || phase === 'rules') && lockedUntil && (
+          <div className="rounded-2xl border border-red-300 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 p-6 flex items-start gap-4">
+            <ShieldAlert className="w-8 h-8 text-red-500 shrink-0" />
+            <div>
+              <h2 className="text-sm font-black text-red-700 dark:text-red-300 mb-1">ტესტირება დაბლოკილია</h2>
+              <p className="text-sm text-red-600 dark:text-red-300">
+                ტესტირება დაბლოკილია 3 დარღვევის გამო. დარჩენილი დრო:{' '}
+                {(() => {
+                  const remainingMs = Math.max(0, new Date(lockedUntil).getTime() - nowTick);
+                  const hours = Math.floor(remainingMs / 3_600_000);
+                  const minutes = Math.floor((remainingMs % 3_600_000) / 60_000);
+                  return `${hours} საათი და ${minutes} წუთი`;
+                })()}
+                .
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!isLocked && phase === 'select' && (
           <>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
               აირჩიეთ კატეგორია — შემდეგ გაეცნობით წესებს და დაიწყებთ ტესტირებას.
@@ -196,7 +237,7 @@ function FreelancerExamContent() {
           </>
         )}
 
-        {phase === 'rules' && category && (
+        {!isLocked && phase === 'rules' && category && (
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 overflow-hidden">
             <div className="bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-4">
               <p className="text-xs font-bold uppercase tracking-widest text-cyan-100">{JOB_CATEGORY_LABEL[category][lang]}</p>
@@ -219,7 +260,8 @@ function FreelancerExamContent() {
                 <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                 <p className="text-sm">
                   <span className="font-bold">წესები:</span> ტესტირების მიმდინარეობისას ბრაუზერის ტაბის გადართვა ან
-                  გვერდის დახურვა აკრძალულია ({MAX_STRIKES} დარღვევის შემდეგ ავტომატურად დასრულდება).
+                  გვერდის დახურვა აკრძალულია (3 დარღვევის შემთხვევაში ტესტირების გავლის შესაძლებლობა ავტომატურად
+                  დაიბლოკება 24 საათით).
                 </p>
               </div>
 
@@ -304,7 +346,7 @@ function FreelancerExamContent() {
                 <button
                   type="button"
                   disabled={!answers[currentQuestion.id] || submitting}
-                  onClick={handleSubmit}
+                  onClick={() => handleSubmit()}
                   className="rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50"
                 >
                   {submitting ? 'იგზავნება…' : 'დასრულება'}
