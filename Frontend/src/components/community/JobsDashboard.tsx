@@ -177,38 +177,44 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* LEFT — employer post form */}
-        <div className="lg:col-span-1">
-          <div className="rounded-3xl p-6 border border-slate-200/70 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/40 backdrop-blur-xl shadow-sm sticky top-24">
-            <h2 className="text-lg font-bold tracking-tight mb-6 leading-snug">დამსაქმებლის განცხადების დამატება</h2>
-            {!isAuthenticated ? (
-              <div className="text-center py-6">
-                <p className="text-xs text-slate-400 mb-4">{SIGN_IN_TO_POST.ka}</p>
-                <button
-                  type="button"
-                  onClick={() => openAuthModal({ message: SIGN_IN_TO_POST })}
-                  className="w-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold py-3 rounded-xl text-xs uppercase transition-all shadow-lg shadow-cyan-500/10 tracking-wider"
+        {/* LEFT — employer post form. Hidden entirely for authenticated
+            Students (they can't post regardless), not just gated to an
+            empty-form fallback — a Student never has a reason to see this
+            card. Guests still see the sign-in prompt since their eventual
+            role is unknown. */}
+        {!(isAuthenticated && user?.role === 'Student') && (
+          <div className="lg:col-span-1">
+            <div className="rounded-3xl p-6 border border-slate-200/70 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/40 backdrop-blur-xl shadow-sm sticky top-24">
+              <h2 className="text-lg font-bold tracking-tight mb-6 leading-snug">დამსაქმებლის განცხადების დამატება</h2>
+              {!isAuthenticated ? (
+                <div className="text-center py-6">
+                  <p className="text-xs text-slate-400 mb-4">{SIGN_IN_TO_POST.ka}</p>
+                  <button
+                    type="button"
+                    onClick={() => openAuthModal({ message: SIGN_IN_TO_POST })}
+                    className="w-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold py-3 rounded-xl text-xs uppercase transition-all shadow-lg shadow-cyan-500/10 tracking-wider"
+                  >
+                    ავტორიზაცია
+                  </button>
+                </div>
+              ) : (
+                <RoleGate
+                  allowedRoles={['Client', 'SuperAdmin']}
+                  fallback={
+                    <p className="text-xs text-slate-400 text-center py-6">
+                      ვაკანსიის ან პროექტის გამოქვეყნება შეუძლიათ მხოლოდ დამკვეთებსა და ადმინისტრატორებს.
+                    </p>
+                  }
                 >
-                  ავტორიზაცია
-                </button>
-              </div>
-            ) : (
-              <RoleGate
-                allowedRoles={['Client', 'SuperAdmin']}
-                fallback={
-                  <p className="text-xs text-slate-400 text-center py-6">
-                    ვაკანსიის ან პროექტის გამოქვეყნება შეუძლიათ მხოლოდ დამკვეთებსა და ადმინისტრატორებს.
-                  </p>
-                }
-              >
-                <PostingForm initialType={tab === 'vacancies' ? 'vacancy' : 'gig'} allowTypeToggle />
-              </RoleGate>
-            )}
+                  <PostingForm initialType={tab === 'vacancies' ? 'vacancy' : 'gig'} allowTypeToggle />
+                </RoleGate>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* RIGHT — tabbed listings */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className={`space-y-6 ${isAuthenticated && user?.role === 'Student' ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
           <div className="flex gap-2 p-1.5 rounded-2xl border border-slate-200/70 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/40 backdrop-blur-xl">
             <button type="button" onClick={() => setTab('vacancies')} className={tabButtonClass(tab === 'vacancies')}>
               დამსაქმებლის ვაკანსიები

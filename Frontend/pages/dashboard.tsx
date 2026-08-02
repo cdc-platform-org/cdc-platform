@@ -433,9 +433,9 @@ function DashboardContent() {
             <button
               type="button"
               onClick={() => setShowMentorshipModal(true)}
-              className="w-full flex items-center gap-2.5 text-left p-3.5 rounded-xl text-xs font-bold transition border border-cyan-400/60 bg-gradient-to-r from-slate-900 via-cyan-950 to-slate-900 text-cyan-300 shadow-[0_0_10px_1px_rgba(34,211,238,0.5)] hover:shadow-[0_0_14px_2px_rgba(34,211,238,0.7)]"
+              className="w-full flex items-center gap-2.5 text-left p-3.5 rounded-xl text-xs font-bold transition border border-slate-200 dark:border-cyan-900/50 bg-white dark:bg-slate-900/60 text-cyan-600 dark:text-cyan-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:shadow-[0_0_14px_2px_rgba(34,211,238,0.4)]"
             >
-              <Wifi className="w-4 h-4 shrink-0 drop-shadow-[0_0_4px_rgba(34,211,238,0.9)]" />
+              <Wifi className="w-4 h-4 shrink-0" />
               {t.mentorshipButton}
             </button>
           )}
@@ -587,13 +587,13 @@ function DashboardContent() {
                 </div>
               )}
 
-              {activeTab === 'wallet' && wallet && (
+              {activeTab === 'wallet' && (
                 <div className="space-y-8">
                   <h2 className="text-lg font-extrabold tracking-wide">{t.walletTitle}</h2>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
                       <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.availableBalance}</p>
-                      <p className="text-3xl font-black text-cyan-600 dark:text-cyan-300">{formatGel(wallet.earningsBalance)}</p>
+                      <p className="text-3xl font-black text-cyan-600 dark:text-cyan-300">{formatGel(wallet?.earningsBalance ?? 0)}</p>
                     </div>
                     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
                       <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.escrowBalance}</p>
@@ -638,7 +638,9 @@ function DashboardContent() {
                   <div>
                     <h3 className="text-sm font-bold mb-4">{t.payoutHistory}</h3>
                     {payoutRequests.length === 0 ? (
-                      <p className="text-xs text-slate-500 dark:text-slate-500">{t.noPayouts}</p>
+                      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-8 text-center">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{t.noPayouts}</p>
+                      </div>
                     ) : (
                       <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
                         <table className="w-full text-xs">
@@ -664,7 +666,9 @@ function DashboardContent() {
                   <div>
                     <h3 className="text-sm font-bold mb-4">{t.paymentHistory}</h3>
                     {payments.length === 0 ? (
-                      <p className="text-xs text-slate-500 dark:text-slate-500">{t.noPayments}</p>
+                      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-8 text-center">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{t.noPayments}</p>
+                      </div>
                     ) : (
                       <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
                         <table className="w-full text-xs">
