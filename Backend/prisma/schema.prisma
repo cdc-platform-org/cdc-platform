@@ -288,6 +288,7 @@ model User {
   examAttempts           ExamAttempt[]
   freelancerSkillExamAttempts FreelancerSkillExamAttempt[]
   productPurchases       ProductPurchase[]
+  submittedProducts      DigitalProduct[]     @relation("SubmittedProducts")
   forumThreads           ForumThread[]
   forumComments          ForumComment[]
   forumThreadLikes       ForumThreadLike[]
@@ -709,6 +710,14 @@ model DigitalProduct {
   downloadsCount Int               @default(0)
   createdAt      DateTime          @default(now())
   purchases      ProductPurchase[]
+  // "PENDING" | "APPROVED" | "REJECTED" — admin-created products (see
+  // adminProducts.ts) are inserted as APPROVED directly; graduate/verified-
+  // freelancer submissions (products.ts's POST /) start PENDING and only
+  // show up in the public catalog once an admin approves them.
+  status           String   @default("PENDING")
+  rejectionReason  String?
+  submittedById    String?
+  submittedBy      User?    @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
 
   @@map("digital_products")
 }

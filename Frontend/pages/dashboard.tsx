@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, FormEvent } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -35,7 +35,7 @@ import {
 import { getMyPayments, MyPaymentRow } from '../src/services/paymentService';
 import { getForumQuota, ForumPostQuota } from '../src/services/forumService';
 import { createMentorshipRequest } from '../src/services/mentorshipService';
-import { getProducts, getProductDownloadUrl, DigitalProduct } from '../src/services/productService';
+import { getProducts, getProductDownloadUrl, submitProduct, getMySubmissions, DigitalProduct } from '../src/services/productService';
 import { User } from '../src/types/auth';
 
 type Tab = 'overview' | 'courses' | 'wallet' | 'gigs' | 'products';
@@ -97,6 +97,23 @@ const dict = {
     browseProducts: 'მაღაზიის დათვალიერება',
     downloadProduct: 'ჩამოტვირთვა',
     downloadFailed: 'ჩამოტვირთვა ვერ მოხერხდა.',
+    submitProductFailed: 'გაგზავნა ვერ მოხერხდა.',
+    addProduct: 'ციფრული პროდუქტის დამატება',
+    submitProductTitle: 'ახალი პროდუქტის გაგზავნა (განსახილველად)',
+    formTitle: 'სათაური',
+    formDescription: 'აღწერა',
+    formPrice: 'ფასი (GEL, 0 = უფასო)',
+    formCategory: 'კატეგორია',
+    formImageUrl: 'სურათის URL',
+    formFileUrl: 'ფაილის URL',
+    formSubmit: 'გაგზავნა',
+    formSubmitting: 'იგზავნება…',
+    formCancel: 'გაუქმება',
+    mySubmissionsTitle: 'ჩემი გაგზავნილი პროდუქტები',
+    statusPending: 'განხილვაშია',
+    statusApproved: 'დამტკიცებული',
+    statusRejected: 'უარყოფილი',
+    rejectionReasonLabel: 'მიზეზი',
     // Confirm modal (shared with learn.tsx)
     confirmTitle: 'გთხოვთ შეამოწმოთ!',
     confirmBody: 'სერტიფიკატზე დაიბეჭდება სახელი და გვარი:',
@@ -175,6 +192,23 @@ const dict = {
     browseProducts: 'Browse Store',
     downloadProduct: 'Download',
     downloadFailed: 'Download failed.',
+    submitProductFailed: 'Submission failed.',
+    addProduct: 'Add Digital Product',
+    submitProductTitle: 'Submit New Product (for review)',
+    formTitle: 'Title',
+    formDescription: 'Description',
+    formPrice: 'Price (GEL, 0 = free)',
+    formCategory: 'Category',
+    formImageUrl: 'Image URL',
+    formFileUrl: 'File URL',
+    formSubmit: 'Submit',
+    formSubmitting: 'Submitting…',
+    formCancel: 'Cancel',
+    mySubmissionsTitle: 'My Submissions',
+    statusPending: 'Pending Review',
+    statusApproved: 'Approved',
+    statusRejected: 'Rejected',
+    rejectionReasonLabel: 'Reason',
     confirmTitle: 'Please double-check!',
     confirmBody: 'This name will be printed on your certificate:',
     confirmChangeHint: 'To change it, go to your account settings.',
@@ -287,6 +321,21 @@ function DashboardContent() {
   const [purchasedProducts, setPurchasedProducts] = useState<DigitalProduct[]>([]);
   const [downloadingProductId, setDownloadingProductId] = useState<string | null>(null);
   const [productDownloadError, setProductDownloadError] = useState<string | null>(null);
+  const [mySubmissions, setMySubmissions] = useState<DigitalProduct[]>([]);
+  const [showSubmitForm, setShowSubmitForm] = useState(false);
+  const [submitTitle, setSubmitTitle] = useState('');
+  const [submitDescription, setSubmitDescription] = useState('');
+  const [submitPrice, setSubmitPrice] = useState('');
+  const [submitCategory, setSubmitCategory] = useState('');
+  const [submitImageUrl, setSubmitImageUrl] = useState('');
+  const [submitFileUrl, setSubmitFileUrl] = useState('');
+  const [submittingProduct, setSubmittingProduct] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // isVerifiedGraduate covers both "passed the freelancer exam" and "CDC
+  // course graduate" (see Backend's freelancerExam.ts/courses.ts — same
+  // flag, not two separate booleans); admin-team members can submit too.
+  const canSubmitProduct = !!user && (user.isVerifiedGraduate || !!user.adminRole);
 
   const [downloadingCourseId, setDownloadingCourseId] = useState<string | null>(null);
   const [confirmCourseId, setConfirmCourseId] = useState<string | null>(null);
@@ -357,6 +406,42 @@ function DashboardContent() {
   useEffect(() => {
     if (user?.payoutIban) setPayoutIban(user.payoutIban);
   }, [user?.payoutIban]);
+
+  useEffect(() => {
+    if (activeTab === 'products' && canSubmitProduct) {
+      getMySubmissions()
+        .then(setMySubmissions)
+        .catch(() => {});
+    }
+  }, [activeTab, canSubmitProduct]);
+
+  const handleSubmitProduct = async (e: FormEvent) => {
+    e.preventDefault();
+    setSubmitError(null);
+    setSubmittingProduct(true);
+    try {
+      await submitProduct({
+        title: submitTitle,
+        description: submitDescription,
+        price: Number(submitPrice) || 0,
+        category: submitCategory,
+        imageUrl: submitImageUrl,
+        fileUrl: submitFileUrl,
+      });
+      setSubmitTitle('');
+      setSubmitDescription('');
+      setSubmitPrice('');
+      setSubmitCategory('');
+      setSubmitImageUrl('');
+      setSubmitFileUrl('');
+      setShowSubmitForm(false);
+      setMySubmissions(await getMySubmissions());
+    } catch (err: any) {
+      setSubmitError(err?.response?.data?.message ?? t.submitProductFailed);
+    } finally {
+      setSubmittingProduct(false);
+    }
+  };
 
   // Same legal-name precedence as the certificate generator and learn.tsx's
   // confirmation modal — keeps every "what name prints on the cert" surface
@@ -841,7 +926,131 @@ function DashboardContent() {
 
               {activeTab === 'products' && (
                 <div className="space-y-4">
-                  <h2 className="text-lg font-extrabold tracking-wide mb-2">{t.productsTitle}</h2>
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <h2 className="text-lg font-extrabold tracking-wide">{t.productsTitle}</h2>
+                    {canSubmitProduct && (
+                      <button
+                        type="button"
+                        onClick={() => setShowSubmitForm((open) => !open)}
+                        className="text-xs font-bold px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-cyan-600 text-white border-none cursor-pointer"
+                      >
+                        {t.addProduct}
+                      </button>
+                    )}
+                  </div>
+
+                  {showSubmitForm && (
+                    <form
+                      onSubmit={handleSubmitProduct}
+                      className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 space-y-3"
+                    >
+                      <h3 className="text-sm font-bold">{t.submitProductTitle}</h3>
+                      {submitError && (
+                        <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-xs text-red-600 dark:text-red-300">
+                          {submitError}
+                        </div>
+                      )}
+                      <input
+                        required
+                        placeholder={t.formTitle}
+                        value={submitTitle}
+                        onChange={(e) => setSubmitTitle(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                      />
+                      <textarea
+                        required
+                        rows={3}
+                        placeholder={t.formDescription}
+                        value={submitDescription}
+                        onChange={(e) => setSubmitDescription(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                      />
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        <input
+                          required
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder={t.formPrice}
+                          value={submitPrice}
+                          onChange={(e) => setSubmitPrice(e.target.value)}
+                          className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                        />
+                        <input
+                          required
+                          placeholder={t.formCategory}
+                          value={submitCategory}
+                          onChange={(e) => setSubmitCategory(e.target.value)}
+                          className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <input
+                        required
+                        type="url"
+                        placeholder={t.formImageUrl}
+                        value={submitImageUrl}
+                        onChange={(e) => setSubmitImageUrl(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                      />
+                      <input
+                        required
+                        type="url"
+                        placeholder={t.formFileUrl}
+                        value={submitFileUrl}
+                        onChange={(e) => setSubmitFileUrl(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="submit"
+                          disabled={submittingProduct}
+                          className="text-xs font-bold px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-cyan-600 text-white disabled:opacity-60"
+                        >
+                          {submittingProduct ? t.formSubmitting : t.formSubmit}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowSubmitForm(false)}
+                          className="text-xs font-bold px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
+                        >
+                          {t.formCancel}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {mySubmissions.length > 0 && (
+                    <div className="space-y-2">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">{t.mySubmissionsTitle}</h3>
+                      {mySubmissions.map((s) => (
+                        <div
+                          key={s.id}
+                          className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-4 flex items-center justify-between gap-3 flex-wrap"
+                        >
+                          <div>
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">{s.title}</p>
+                            {s.status === 'REJECTED' && s.rejectionReason && (
+                              <p className="text-xs text-red-500 mt-0.5">
+                                {t.rejectionReasonLabel}: {s.rejectionReason}
+                              </p>
+                            )}
+                          </div>
+                          <span
+                            className={`text-[10px] font-bold uppercase px-2 py-1 rounded border ${
+                              s.status === 'APPROVED'
+                                ? 'text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30'
+                                : s.status === 'REJECTED'
+                                ? 'text-red-600 border-red-300 bg-red-50 dark:bg-red-950/30'
+                                : 'text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30'
+                            }`}
+                          >
+                            {s.status === 'APPROVED' ? t.statusApproved : s.status === 'REJECTED' ? t.statusRejected : t.statusPending}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {productDownloadError && (
                     <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-xs text-red-600 dark:text-red-300">
                       {productDownloadError}

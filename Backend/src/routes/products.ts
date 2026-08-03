@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticate, optionalAuthenticate, requireApproved } from '../middleware/auth';
 
@@ -7,11 +8,13 @@ const router = Router();
 // ============================================================
 // CATALOG — public, but attaches `purchased` per item when a valid token
 // is present (optionalAuthenticate) so the store can show "შენი ნაყიდი".
+// Only ever shows APPROVED products — PENDING/REJECTED submissions are
+// only visible to their submitter (GET /:id below) or admins (adminProducts.ts).
 // ============================================================
 router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
   const category = typeof req.query.category === 'string' ? req.query.category : undefined;
   const products = await prisma.digitalProduct.findMany({
-    where: category ? { category } : undefined,
+    where: { status: 'APPROVED', ...(category ? { category } : {}) },
     orderBy: { createdAt: 'desc' },
   });
 
@@ -44,6 +47,12 @@ router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
 router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => {
   const product = await prisma.digitalProduct.findUnique({ where: { id: req.params.id } });
   if (!product) return res.status(404).json({ message: 'Product not found.' });
+  // Not-yet-approved products are only visible to whoever submitted them —
+  // everyone else (including other logged-in users) gets a 404, same as if
+  // it didn't exist. Admins review these via GET /admin/products instead.
+  if (product.status !== 'APPROVED' && product.submittedById !== req.user?.id) {
+    return res.status(404).json({ message: 'Product not found.' });
+  }
 
   let purchased = false;
   if (req.user) {
@@ -64,8 +73,60 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
       downloadsCount: product.downloadsCount,
       createdAt: product.createdAt,
       purchased,
+      status: product.status,
+      rejectionReason: product.rejectionReason,
     },
   });
+});
+
+const submitSchema = z.object({
+  title: z.string().min(1).max(200),
+  description: z.string().min(1).max(5000),
+  price: z.number().min(0),
+  category: z.string().min(1).max(100),
+  imageUrl: z.string().url(),
+  fileUrl: z.string().url(),
+});
+
+// ============================================================
+// SUBMIT — verified freelancers/graduates (isVerifiedGraduate — the same
+// flag set by either passing the freelancer skill exam or completing a
+// CDC course, see freelancerExam.ts/courses.ts) and admin-team members can
+// submit a product for review. Always lands as PENDING here regardless of
+// who submits — only adminProducts.ts's admin-authored POST / inserts as
+// APPROVED directly.
+// ============================================================
+router.post('/', authenticate, requireApproved, async (req: Request, res: Response) => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { isVerifiedGraduate: true, adminRole: true },
+  });
+  if (!user?.isVerifiedGraduate && !user?.adminRole) {
+    return res.status(403).json({
+      message: 'Only verified graduates/freelancers or admins can submit products for review.',
+    });
+  }
+
+  const result = submitSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const product = await prisma.digitalProduct.create({
+    data: {
+      ...result.data,
+      price: Math.round(result.data.price * 100),
+      status: 'PENDING',
+      submittedById: req.user!.id,
+    },
+  });
+  res.status(201).json({ data: product });
+});
+
+router.get('/mine/submissions', authenticate, requireApproved, async (req: Request, res: Response) => {
+  const products = await prisma.digitalProduct.findMany({
+    where: { submittedById: req.user!.id },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json({ data: products });
 });
 
 // ============================================================
