@@ -61,12 +61,17 @@ export default function SiteHeader() {
             <Link href="/community" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
               {t.community}
             </Link>
-            <Link href="/tools" className="relative no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-1.5">
-              {t.tools}
-              <span className="inline-flex items-center rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-white shadow-[0_0_8px_rgba(34,211,238,0.6)] animate-pulse">
-                HOT
-              </span>
-            </Link>
+            {/* Public/guest promo item — restricted to Client (business)
+                accounts once logged in, since it's a B2B product line
+                (see tools.tsx). Not shown to Student/Mentor dashboards. */}
+            {(!isAuthenticated || user?.role === 'Client') && (
+              <Link href="/tools" className="relative no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-1.5">
+                {t.tools}
+                <span className="inline-flex items-center rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-white shadow-[0_0_8px_rgba(34,211,238,0.6)] animate-pulse">
+                  HOT
+                </span>
+              </Link>
+            )}
             {!(isAuthenticated && user) && (
               <>
                 <Link href="/about" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
