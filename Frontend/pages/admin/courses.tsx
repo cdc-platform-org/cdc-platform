@@ -71,7 +71,7 @@ function CourseForm({
         title: editingCourse.title,
         description: editingCourse.description,
         category: editingCourse.category,
-        originalPrice: editingCourse.originalPrice,
+        originalPrice: editingCourse.originalPrice / 100,
         published: editingCourse.published,
         mentorName: editingCourse.mentorName ?? '',
         mentorTitle: editingCourse.mentorTitle ?? '',
@@ -107,7 +107,7 @@ function CourseForm({
         title: form.title.trim(),
         description: form.description.trim(),
         category: form.category.trim(),
-        originalPrice: Number(form.originalPrice) || 0,
+        originalPrice: Math.round((Number(form.originalPrice) || 0) * 100),
         published: form.published,
         mentorName: form.mentorName.trim() || undefined,
         mentorTitle: form.mentorTitle.trim() || undefined,
@@ -167,15 +167,16 @@ function CourseForm({
       </div>
       <div className="grid md:grid-cols-3 gap-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Original Price (minor units)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Original Price (GEL / ₾)</label>
           <input
             type="number"
             min={0}
+            step="0.01"
             value={form.originalPrice}
             onChange={(e) => setForm({ ...form, originalPrice: Number(e.target.value) })}
             className={inputClass}
           />
-          <p className="text-xs text-gray-400 mt-1">{formatGel(form.originalPrice)}</p>
+          <p className="text-xs text-gray-400 mt-1">{formatGel(form.originalPrice * 100)}</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Mentor Name</label>
@@ -282,8 +283,8 @@ function CourseForm({
             </div>
 
             <div className="rounded-lg bg-rose-50 border border-rose-200 px-4 py-3 text-sm">
-              <span className="text-gray-500 line-through mr-2">{formatGel(form.originalPrice)}</span>
-              <span className="font-black text-rose-600">{formatGel(previewPrice)}</span>
+              <span className="text-gray-500 line-through mr-2">{formatGel(form.originalPrice * 100)}</span>
+              <span className="font-black text-rose-600">{formatGel(previewPrice * 100)}</span>
               <span className="text-rose-500 font-bold ml-2">-{effectiveDiscountPercent}%</span>
             </div>
           </div>
