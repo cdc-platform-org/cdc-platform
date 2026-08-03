@@ -51,8 +51,10 @@ const STRINGS = {
     terms: 'წესები და პირობები',
     refund: 'თანხის დაბრუნების პოლიტიკა',
     contactHeading: 'კონტაქტი',
+    contactPage: 'დაგვიკავშირდით',
     rights: 'ყველა უფლება დაცულია.',
     followUs: 'გამოგვყევით',
+    weAccept: 'მიიღება გადახდა',
   },
   ENG: {
     tagline: 'Teaching digital professions in Guria — supported by HEKS/EPER Georgia.',
@@ -67,8 +69,10 @@ const STRINGS = {
     terms: 'Terms & Conditions',
     refund: 'Refund Policy',
     contactHeading: 'Contact',
+    contactPage: 'Get in Touch',
     rights: 'All rights reserved.',
     followUs: 'Follow Us',
+    weAccept: 'We Accept',
   },
 } as const;
 
@@ -144,7 +148,25 @@ export default function SiteFooter({ lang }: SiteFooterProps) {
                 {merchantInfo.phone}
               </a>
             </li>
+            <li>
+              <Link href="/contact" className="hover:text-cyan-400 transition-colors no-underline text-current">
+                {t.contactPage}
+              </Link>
+            </li>
           </ul>
+        </div>
+      </div>
+
+      {/* Payment method badges — Bank of Georgia merchant compliance:
+          accepted card networks must be visibly listed on the site. */}
+      <div className={`border-t border-slate-800 ${noHoverFx}`}>
+        <div className="max-w-7xl mx-auto px-6 pt-6 flex items-center gap-3 flex-wrap">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{t.weAccept}</span>
+          {['VISA', 'Mastercard', 'BOG Pay'].map((method) => (
+            <span key={method} className="text-[11px] font-bold text-slate-300 bg-slate-800/80 border border-slate-700 rounded px-2.5 py-1">
+              {method}
+            </span>
+          ))}
         </div>
       </div>
 

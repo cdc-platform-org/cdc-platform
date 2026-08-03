@@ -11,7 +11,7 @@ import CourseVideoPlayer from '../../../src/components/courses/CourseVideoPlayer
 import { useEscapeToClose } from '../../../src/hooks/useEscapeToClose';
 import { Course, SyllabusSection, SyllabusLesson } from '../../../src/types/lms';
 import { getCourse, getProgressSummary, getSyllabus } from '../../../src/services/courseService';
-import { checkoutCourse } from '../../../src/services/paymentService';
+import { checkoutCourse, validatePromoCode, PromoValidationResult } from '../../../src/services/paymentService';
 import { formatPrice, getSaleCountdownLabel } from '../../../src/utils/coursePricing';
 import { courseLanguageBadge } from '../../../src/utils/courseLanguage';
 import { useAuth } from '../../../src/context/AuthContext';
@@ -38,6 +38,12 @@ const dict = {
     paywallTitle: 'ეს გაკვეთილი დაბლოკილია',
     paywallBody: 'შეიძინეთ სრული კურსი, რომ მიიღოთ დაუყოვნებელი წვდომა ყველა ვიდეოზე, ჩამოსატვირთ მასალებზე და დავალებების ჩაბარებაზე.',
     buyCourse: 'კურსის შეძენა',
+    promoPlaceholder: 'პრომო კოდი',
+    promoApply: 'გააქტიურება',
+    promoApplying: 'მოწმდება…',
+    promoApplied: 'პრომო კოდი გააქტიურდა',
+    promoRemove: 'წაშლა',
+    promoInvalid: 'პრომო კოდი არასწორია.',
   },
   en: {
     loading: 'Loading…',
@@ -57,6 +63,12 @@ const dict = {
     paywallTitle: 'This lesson is locked',
     paywallBody: 'Purchase the full course to get instant access to all videos, downloadable resources, and assignment submissions.',
     buyCourse: 'Buy Course',
+    promoPlaceholder: 'Promo code',
+    promoApply: 'Apply',
+    promoApplying: 'Checking…',
+    promoApplied: 'Promo code applied',
+    promoRemove: 'Remove',
+    promoInvalid: 'Invalid promo code.',
   },
 };
 
@@ -92,6 +104,10 @@ export default function CourseDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [previewLesson, setPreviewLesson] = useState<SyllabusLesson | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [applyingPromo, setApplyingPromo] = useState(false);
 
   useEscapeToClose(!!previewLesson, () => setPreviewLesson(null));
   useEscapeToClose(showPaywall, () => setShowPaywall(false));
@@ -130,12 +146,30 @@ export default function CourseDetailPage() {
     setError(null);
     setProcessing(true);
     try {
-      const { redirectUrl } = await checkoutCourse(courseId);
+      const { redirectUrl } = await checkoutCourse(courseId, appliedPromo?.code);
       window.location.href = redirectUrl;
     } catch (err: any) {
       const serverMessage = err?.response?.data?.message;
       setError(serverMessage || (lang === 'en' ? 'Unable to start checkout. Please try again.' : 'გადახდის დაწყება ვერ მოხერხდა.'));
       setProcessing(false);
+    }
+  };
+
+  const handleApplyPromo = async () => {
+    if (!courseId || !promoInput.trim()) return;
+    if (!isAuthenticated) {
+      openAuthModal({ message: t.signInToEnroll });
+      return;
+    }
+    setPromoError(null);
+    setApplyingPromo(true);
+    try {
+      const result = await validatePromoCode(promoInput.trim(), courseId);
+      setAppliedPromo(result);
+    } catch (err: any) {
+      setPromoError(err?.response?.data?.message ?? t.promoInvalid);
+    } finally {
+      setApplyingPromo(false);
     }
   };
 
@@ -241,27 +275,71 @@ export default function CourseDetailPage() {
         {course.saleActive && getSaleCountdownLabel(course.discountEndDate, lang) && (
           <p className="text-xs font-bold text-rose-500 dark:text-rose-400 mb-3">⏳ {getSaleCountdownLabel(course.discountEndDate, lang)}</p>
         )}
-        <div className="flex items-center justify-between p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60">
-          <div className="flex items-baseline gap-3">
-            {course.saleActive && <s className="text-lg text-slate-500">{formatPrice(course.originalPrice)}</s>}
-            <span className="text-3xl font-black text-slate-900 dark:text-white">{formatPrice(course.currentPrice)}</span>
+        <div className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-baseline gap-3">
+              {(course.saleActive || appliedPromo) && <s className="text-lg text-slate-500">{formatPrice(course.originalPrice)}</s>}
+              <span className="text-3xl font-black text-slate-900 dark:text-white">
+                {formatPrice(appliedPromo ? appliedPromo.discountedAmount : course.currentPrice)}
+              </span>
+            </div>
+            {enrolled ? (
+              <Link
+                href={`/courses/${course.id}/learn`}
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black px-6 py-3.5 rounded-xl text-sm uppercase tracking-widest no-underline shadow-lg hover:shadow-xl transition-all"
+              >
+                {t.continueLearning}
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={handleEnroll}
+                disabled={processing}
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black px-6 py-3.5 rounded-xl text-sm uppercase tracking-widest shadow-lg hover:shadow-xl transition-all disabled:opacity-60"
+              >
+                {processing ? t.enrolling : t.enroll}
+              </button>
+            )}
           </div>
-          {enrolled ? (
-            <Link
-              href={`/courses/${course.id}/learn`}
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black px-6 py-3.5 rounded-xl text-sm uppercase tracking-widest no-underline shadow-lg hover:shadow-xl transition-all"
-            >
-              {t.continueLearning}
-            </Link>
-          ) : (
-            <button
-              type="button"
-              onClick={handleEnroll}
-              disabled={processing}
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black px-6 py-3.5 rounded-xl text-sm uppercase tracking-widest shadow-lg hover:shadow-xl transition-all disabled:opacity-60"
-            >
-              {processing ? t.enrolling : t.enroll}
-            </button>
+
+          {!enrolled && (
+            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+              {appliedPromo ? (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                    ✓ {t.promoApplied}: {appliedPromo.code}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAppliedPromo(null);
+                      setPromoInput('');
+                    }}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-transparent border-none cursor-pointer underline"
+                  >
+                    {t.promoRemove}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    value={promoInput}
+                    onChange={(e) => setPromoInput(e.target.value)}
+                    placeholder={t.promoPlaceholder}
+                    className="flex-1 max-w-[200px] rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyPromo}
+                    disabled={applyingPromo || !promoInput.trim()}
+                    className="text-xs font-bold text-cyan-600 dark:text-cyan-400 bg-transparent border border-cyan-500/30 rounded-lg px-3 py-2 cursor-pointer hover:bg-cyan-500/10 disabled:opacity-50"
+                  >
+                    {applyingPromo ? t.promoApplying : t.promoApply}
+                  </button>
+                </div>
+              )}
+              {promoError && <p className="text-xs text-red-500 mt-1.5">{promoError}</p>}
+            </div>
           )}
         </div>
 

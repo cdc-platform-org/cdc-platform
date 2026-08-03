@@ -13,7 +13,7 @@ import {
   CreateBogOrderResult,
 } from '../services/bogPaymentService';
 import { captureEscrow } from '../services/escrowService';
-import { getCurrentPrice } from '../services/coursePricing';
+import { getCurrentPrice, computeDiscount } from '../services/coursePricing';
 
 const router = Router();
 
@@ -99,7 +99,27 @@ router.post(
 
     // Charges whatever the course actually costs right now — if it's on an
     // active sale, that's the discounted price, not originalPrice.
-    const chargeAmount = getCurrentPrice(course);
+    let chargeAmount = getCurrentPrice(course);
+
+    // Optional promo code — re-validated here rather than trusting whatever
+    // discountedAmount the client saw from POST /promos/validate, so a
+    // tampered/stale client value can never under-charge. currentUses is
+    // only incremented once the BOG order is actually created below (not
+    // just because a code was typed in), and only ever here — there's no
+    // per-BogPayment record of which code was used, so an abandoned
+    // checkout still "spends" a use; acceptable for a soft usage cap, not
+    // a hard security boundary.
+    const rawPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode.trim().toUpperCase() : null;
+    let appliedPromo: { id: string } | null = null;
+    if (rawPromoCode) {
+      const promo = await prisma.promoCode.findUnique({ where: { code: rawPromoCode } });
+      if (!promo) return res.status(400).json({ message: 'Invalid promo code.' });
+      if (promo.expiresAt && promo.expiresAt < new Date()) return res.status(400).json({ message: 'This promo code has expired.' });
+      if (promo.maxUses && promo.currentUses >= promo.maxUses) return res.status(400).json({ message: 'This promo code has reached its usage limit.' });
+      chargeAmount = computeDiscount(promo, chargeAmount);
+      appliedPromo = promo;
+    }
+
     const bogPayment = await prisma.bogPayment.create({
       data: {
         bogOrderId: `pending-${crypto.randomUUID()}`,
@@ -122,6 +142,9 @@ router.post(
       failRedirectUrl,
     });
     if (!order) return;
+    if (appliedPromo) {
+      await prisma.promoCode.update({ where: { id: appliedPromo.id }, data: { currentUses: { increment: 1 } } });
+    }
     const updated = await prisma.bogPayment.update({
       where: { id: bogPayment.id },
       data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },

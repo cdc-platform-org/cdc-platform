@@ -17,9 +17,22 @@ export interface BogPaymentStatusData {
   currency: string;
 }
 
-export async function checkoutCourse(courseId: string): Promise<BogCheckoutResult> {
-  const response = await apiClient.post<BogCheckoutResult>(`/payments/checkout/course/${courseId}`);
+export async function checkoutCourse(courseId: string, promoCode?: string): Promise<BogCheckoutResult> {
+  const response = await apiClient.post<BogCheckoutResult>(`/payments/checkout/course/${courseId}`, promoCode ? { promoCode } : undefined);
   return response.data;
+}
+
+export interface PromoValidationResult {
+  code: string;
+  discountPercent: number | null;
+  discountAmount: number | null;
+  originalAmount: number;
+  discountedAmount: number;
+}
+
+export async function validatePromoCode(code: string, courseId: string): Promise<PromoValidationResult> {
+  const response = await apiClient.post<{ data: PromoValidationResult }>('/promos/validate', { code, courseId });
+  return response.data.data;
 }
 
 export async function checkoutMentorship(params: {
