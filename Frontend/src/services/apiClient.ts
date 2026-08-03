@@ -31,6 +31,18 @@ apiClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
+    // The instance-level default Content-Type: application/json (set above)
+    // otherwise survives even when the body is a FormData upload, since
+    // axios only auto-clears a Content-Type it set itself — not one baked
+    // into the instance defaults. Left in place, this sends multipart
+    // uploads with the wrong Content-Type (no boundary), so the backend's
+    // multer/busboy parser never sees a file at all. Deleting it here lets
+    // the browser generate the correct `multipart/form-data; boundary=...`
+    // header for every FormData request (avatar, verification doc,
+    // knowledge-base uploads, etc.) without each call site overriding it.
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData && config.headers) {
+      delete config.headers['Content-Type'];
+    }
     return config;
   },
   (error) => Promise.reject(error)
