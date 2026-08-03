@@ -25,6 +25,8 @@ export const courseCreateSchema = z
     mentorName: z.string().trim().max(200).optional(),
     mentorTitle: z.string().trim().max(200).optional(),
     thumbnailUrl: z.string().trim().max(2000).optional(),
+    coverImageUrl: z.string().trim().max(2000).optional(),
+    mentorAvatarUrl: z.string().trim().max(2000).optional(),
     language: z.enum(['GEORGIAN', 'ENGLISH', 'BOTH']).optional(),
     ...coursePricingFields,
   })
@@ -43,6 +45,8 @@ export const courseUpdateSchema = z
     mentorName: z.string().trim().max(200).optional(),
     mentorTitle: z.string().trim().max(200).optional(),
     thumbnailUrl: z.string().trim().max(2000).optional(),
+    coverImageUrl: z.string().trim().max(2000).optional(),
+    mentorAvatarUrl: z.string().trim().max(2000).optional(),
     language: z.enum(['GEORGIAN', 'ENGLISH', 'BOTH']).optional(),
     ...coursePricingFields,
     originalPrice: coursePricingFields.originalPrice.optional(),

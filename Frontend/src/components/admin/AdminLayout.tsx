@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useLayoutEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import {
@@ -83,11 +83,30 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
 
   const visibleNav = NAV_ITEMS.filter((item) => !item.tiers || (user?.adminRole && item.tiers.includes(user.adminRole)));
 
+  // Each admin page mounts its own <AdminLayout>, so this <aside> is torn
+  // down and rebuilt on every route change — losing its scrollTop even
+  // though `scroll={false}` on the nav links already stops the outer page
+  // from jumping. Persist scrollTop to sessionStorage (survives the
+  // unmount/remount) and restore it before paint on the next mount.
+  const sidebarRef = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    const el = sidebarRef.current;
+    if (!el) return;
+    const saved = sessionStorage.getItem('cdc-admin-sidebar-scroll');
+    if (saved) el.scrollTop = parseInt(saved, 10);
+    const onScroll = () => sessionStorage.setItem('cdc-admin-sidebar-scroll', String(el.scrollTop));
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* SIDEBAR — sticky + independently scrolling so navigating (or a long
           nav list) never yanks the whole page's scroll position back to top. */}
-      <aside className="w-64 shrink-0 h-screen sticky top-0 overflow-y-auto bg-gradient-to-b from-slate-950 to-slate-900 text-slate-200 flex flex-col">
+      <aside
+        ref={sidebarRef}
+        className="w-64 shrink-0 h-screen sticky top-0 overflow-y-auto bg-gradient-to-b from-slate-950 to-slate-900 text-slate-200 flex flex-col"
+      >
         <div className="px-6 py-6 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
             <div className="bg-gradient-to-tr from-cyan-500 to-purple-600 text-white px-3 py-1.5 rounded-lg font-black text-sm tracking-wider">

@@ -20,6 +20,8 @@ export interface Course {
   mentorName: string | null;
   mentorTitle: string | null;
   thumbnailUrl: string | null;
+  coverImageUrl: string | null;
+  mentorAvatarUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,6 +42,8 @@ export interface CoursePayload {
   mentorName?: string;
   mentorTitle?: string;
   thumbnailUrl?: string;
+  coverImageUrl?: string;
+  mentorAvatarUrl?: string;
   language?: CourseLanguage;
 }
 

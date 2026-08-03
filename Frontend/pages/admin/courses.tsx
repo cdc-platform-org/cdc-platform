@@ -17,6 +17,8 @@ import {
   deleteLesson,
   uploadLessonVideo,
   uploadCourseThumbnail,
+  uploadCourseCoverImage,
+  uploadCourseMentorAvatar,
   getExamSettings,
   updateExamSettings,
 } from '../../src/services/courseService';
@@ -32,6 +34,8 @@ const emptyForm = {
   mentorName: '',
   mentorTitle: '',
   thumbnailUrl: '',
+  coverImageUrl: '',
+  mentorAvatarUrl: '',
   language: 'GEORGIAN' as CourseLanguage,
   isOnSale: false,
   discountPercent: 20,
@@ -64,6 +68,12 @@ function CourseForm({
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [thumbnailError, setThumbnailError] = useState<string | null>(null);
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
+  const [coverImageUploading, setCoverImageUploading] = useState(false);
+  const [coverImageError, setCoverImageError] = useState<string | null>(null);
+  const coverImageInputRef = useRef<HTMLInputElement>(null);
+  const [mentorAvatarUploading, setMentorAvatarUploading] = useState(false);
+  const [mentorAvatarError, setMentorAvatarError] = useState<string | null>(null);
+  const mentorAvatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (editingCourse) {
@@ -77,6 +87,8 @@ function CourseForm({
         mentorName: editingCourse.mentorName ?? '',
         mentorTitle: editingCourse.mentorTitle ?? '',
         thumbnailUrl: editingCourse.thumbnailUrl ?? '',
+        coverImageUrl: editingCourse.coverImageUrl ?? '',
+        mentorAvatarUrl: editingCourse.mentorAvatarUrl ?? '',
         language: editingCourse.language ?? 'GEORGIAN',
         isOnSale: editingCourse.isOnSale,
         discountPercent: presetMatch ? editingCourse.discountPercent! : DISCOUNT_PRESETS[1],
@@ -113,6 +125,8 @@ function CourseForm({
         mentorName: form.mentorName.trim() || undefined,
         mentorTitle: form.mentorTitle.trim() || undefined,
         thumbnailUrl: form.thumbnailUrl.trim() || undefined,
+        coverImageUrl: form.coverImageUrl.trim() || undefined,
+        mentorAvatarUrl: form.mentorAvatarUrl.trim() || undefined,
         language: form.language,
         isOnSale: form.isOnSale,
         discountPercent: form.isOnSale ? effectiveDiscountPercent : null,
@@ -146,6 +160,40 @@ function CourseForm({
     } finally {
       setThumbnailUploading(false);
       if (thumbnailInputRef.current) thumbnailInputRef.current.value = '';
+    }
+  };
+
+  const handleCoverImageFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingCourse) return;
+    setCoverImageError(null);
+    setCoverImageUploading(true);
+    try {
+      const updated = await uploadCourseCoverImage(editingCourse.id, file);
+      setForm((prev) => ({ ...prev, coverImageUrl: updated.coverImageUrl ?? '' }));
+      onSaved(updated);
+    } catch {
+      setCoverImageError('Upload failed. Please try again.');
+    } finally {
+      setCoverImageUploading(false);
+      if (coverImageInputRef.current) coverImageInputRef.current.value = '';
+    }
+  };
+
+  const handleMentorAvatarFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingCourse) return;
+    setMentorAvatarError(null);
+    setMentorAvatarUploading(true);
+    try {
+      const updated = await uploadCourseMentorAvatar(editingCourse.id, file);
+      setForm((prev) => ({ ...prev, mentorAvatarUrl: updated.mentorAvatarUrl ?? '' }));
+      onSaved(updated);
+    } catch {
+      setMentorAvatarError('Upload failed. Please try again.');
+    } finally {
+      setMentorAvatarUploading(false);
+      if (mentorAvatarInputRef.current) mentorAvatarInputRef.current.value = '';
     }
   };
 
@@ -210,6 +258,54 @@ function CourseForm({
             </div>
           ) : (
             <p className="text-xs text-gray-400 mt-1">Save the course first, then you can upload a thumbnail image directly.</p>
+          )}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Cover Image (Hero Banner)</label>
+          {editingCourse ? (
+            <div className="flex items-center gap-3">
+              {form.coverImageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={form.coverImageUrl} alt="" className="w-24 h-14 rounded-lg object-cover border border-gray-200 shrink-0" />
+              )}
+              <div>
+                <input ref={coverImageInputRef} type="file" accept="image/*" onChange={handleCoverImageFile} disabled={coverImageUploading} className="hidden" id="cover-image-file-input" />
+                <label
+                  htmlFor="cover-image-file-input"
+                  className="inline-block text-sm font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-2 rounded-lg cursor-pointer hover:bg-indigo-100"
+                >
+                  {coverImageUploading ? 'Uploading…' : form.coverImageUrl ? 'Replace image' : 'Upload image'}
+                </label>
+                {coverImageError && <p className="text-xs text-red-600 mt-1">{coverImageError}</p>}
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400 mt-1">Save the course first, then you can upload a cover image directly.</p>
+          )}
+        </div>
+      </div>
+      <div className="grid md:grid-cols-2 gap-5">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Mentor Avatar</label>
+          {editingCourse ? (
+            <div className="flex items-center gap-3">
+              {form.mentorAvatarUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={form.mentorAvatarUrl} alt="" className="w-12 h-16 rounded-lg object-cover border border-gray-200 shrink-0" />
+              )}
+              <div>
+                <input ref={mentorAvatarInputRef} type="file" accept="image/*" onChange={handleMentorAvatarFile} disabled={mentorAvatarUploading} className="hidden" id="mentor-avatar-file-input" />
+                <label
+                  htmlFor="mentor-avatar-file-input"
+                  className="inline-block text-sm font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-2 rounded-lg cursor-pointer hover:bg-indigo-100"
+                >
+                  {mentorAvatarUploading ? 'Uploading…' : form.mentorAvatarUrl ? 'Replace image' : 'Upload image'}
+                </label>
+                {mentorAvatarError && <p className="text-xs text-red-600 mt-1">{mentorAvatarError}</p>}
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400 mt-1">Save the course first, then you can upload a mentor avatar directly.</p>
           )}
         </div>
         <div>

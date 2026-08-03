@@ -216,6 +216,86 @@ router.post(
   }
 );
 
+router.post(
+  '/:id/cover-image',
+  authenticate,
+  requireAdminRole('SUPER_ADMIN', 'MANAGER'),
+  (req: Request, res: Response, next: NextFunction) => {
+    thumbnailUpload.single('coverImage')(req, res, (err: any) => {
+      if (!err) return next();
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ message: 'The image exceeds 10MB. Please choose a smaller file.' });
+      }
+      return res.status(400).json({ message: err.message || 'Only image uploads are allowed.' });
+    });
+  },
+  async (req: Request, res: Response) => {
+    if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
+    const course = await prisma.course.findUnique({ where: { id: req.params.id }, select: { coverImageUrl: true } });
+    if (!course) return res.status(404).json({ message: 'Course not found.' });
+
+    const filename = `course-cover-${req.params.id}-${Date.now()}${path.extname(req.file.originalname)}`;
+    try {
+      const url = await uploadImage({
+        buffer: req.file.buffer,
+        mimetype: req.file.mimetype,
+        folderName: 'course-covers',
+        filename,
+      });
+      const updated = await prisma.course.update({ where: { id: req.params.id }, data: { coverImageUrl: url } });
+
+      if (course.coverImageUrl && course.coverImageUrl !== url) {
+        deleteManagedImage(course.coverImageUrl).catch(() => {});
+      }
+
+      res.status(201).json({ data: withCurrentPrice(updated) });
+    } catch (err) {
+      const message = err instanceof BunnyStorageUploadError ? err.message : 'Cover image upload failed. Please try again.';
+      res.status(500).json({ message });
+    }
+  }
+);
+
+router.post(
+  '/:id/mentor-avatar',
+  authenticate,
+  requireAdminRole('SUPER_ADMIN', 'MANAGER'),
+  (req: Request, res: Response, next: NextFunction) => {
+    thumbnailUpload.single('mentorAvatar')(req, res, (err: any) => {
+      if (!err) return next();
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ message: 'The image exceeds 10MB. Please choose a smaller file.' });
+      }
+      return res.status(400).json({ message: err.message || 'Only image uploads are allowed.' });
+    });
+  },
+  async (req: Request, res: Response) => {
+    if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
+    const course = await prisma.course.findUnique({ where: { id: req.params.id }, select: { mentorAvatarUrl: true } });
+    if (!course) return res.status(404).json({ message: 'Course not found.' });
+
+    const filename = `course-mentor-${req.params.id}-${Date.now()}${path.extname(req.file.originalname)}`;
+    try {
+      const url = await uploadImage({
+        buffer: req.file.buffer,
+        mimetype: req.file.mimetype,
+        folderName: 'course-mentors',
+        filename,
+      });
+      const updated = await prisma.course.update({ where: { id: req.params.id }, data: { mentorAvatarUrl: url } });
+
+      if (course.mentorAvatarUrl && course.mentorAvatarUrl !== url) {
+        deleteManagedImage(course.mentorAvatarUrl).catch(() => {});
+      }
+
+      res.status(201).json({ data: withCurrentPrice(updated) });
+    } catch (err) {
+      const message = err instanceof BunnyStorageUploadError ? err.message : 'Mentor avatar upload failed. Please try again.';
+      res.status(500).json({ message });
+    }
+  }
+);
+
 // ============================================================
 // LMS — relational curriculum (sections/lessons), progress, certificates.
 // ============================================================

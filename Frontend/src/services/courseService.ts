@@ -55,6 +55,20 @@ export async function uploadCourseThumbnail(courseId: string, file: File): Promi
   return response.data.data;
 }
 
+export async function uploadCourseCoverImage(courseId: string, file: File): Promise<Course> {
+  const formData = new FormData();
+  formData.append('coverImage', file);
+  const response = await apiClient.post<{ data: Course }>(`/courses/${courseId}/cover-image`, formData);
+  return response.data.data;
+}
+
+export async function uploadCourseMentorAvatar(courseId: string, file: File): Promise<Course> {
+  const formData = new FormData();
+  formData.append('mentorAvatar', file);
+  const response = await apiClient.post<{ data: Course }>(`/courses/${courseId}/mentor-avatar`, formData);
+  return response.data.data;
+}
+
 export async function getSyllabus(courseId: string): Promise<SyllabusSection[]> {
   const response = await apiClient.get<{ data: SyllabusSection[] }>(`/courses/${courseId}/syllabus`);
   return response.data.data;

@@ -528,6 +528,13 @@ model Course {
   mentorName   String?
   mentorTitle  String?
   thumbnailUrl String?
+  // Full-width hero banner on the course landing page — distinct from
+  // thumbnailUrl (card/list thumbnail). Optional; falls back to no hero
+  // image when unset.
+  coverImageUrl String?
+  // Rendered as a vertical portrait next to mentorName/mentorTitle on the
+  // landing page — falls back to initials when unset.
+  mentorAvatarUrl String?
   // Instruction language, shown as a badge on course cards. Defaults to
   // GEORGIAN since every pre-existing course is Georgian-taught.
   language     CourseLanguage @default(GEORGIAN)

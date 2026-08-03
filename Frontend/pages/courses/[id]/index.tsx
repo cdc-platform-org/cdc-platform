@@ -215,6 +215,13 @@ export default function CourseDetailPage() {
         <title>{`${course.title} | CDC`}</title>
       </Head>
       <SiteHeader />
+      {course.coverImageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <div className="w-full h-56 md:h-80 relative">
+          <img src={course.coverImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+        </div>
+      )}
       <div className="max-w-3xl mx-auto px-6 py-16 flex-1 w-full">
         <Link href="/courses" className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white no-underline">
           {t.backToCourses}
@@ -248,9 +255,18 @@ export default function CourseDetailPage() {
         <div className="flex flex-wrap gap-4 mb-8">
           {course.mentorName && (
             <div className="flex-1 min-w-[220px] flex items-center gap-4 p-4 rounded-xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white text-sm font-black shrink-0">
-                {course.mentorName.slice(0, 2)}
-              </div>
+              {course.mentorAvatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={course.mentorAvatarUrl}
+                  alt={course.mentorName}
+                  className="w-12 h-16 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white text-sm font-black shrink-0">
+                  {course.mentorName.slice(0, 2)}
+                </div>
+              )}
               <div>
                 <p className="text-[11px] uppercase tracking-widest text-slate-500 font-bold">{t.mentor}</p>
                 <p className="text-sm font-bold text-slate-900 dark:text-white">{course.mentorName}</p>

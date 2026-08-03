@@ -18,8 +18,21 @@ import { getCurrentPrice, computeDiscount } from '../services/coursePricing';
 const router = Router();
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://cdc.org.ge';
-const BACKEND_URL = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 4000}`;
-const CALLBACK_URL = `${BACKEND_URL}/api/payments/bog/callback`;
+
+// BOG's create-order API rejects (or silently fails to reach) a callback_url
+// that isn't a real public https:// endpoint — a plain http:// URL, or the
+// http://localhost:PORT fallback this resolves to when BACKEND_URL isn't
+// set as an env var, both do exactly that. Root cause of that exact
+// failure was BACKEND_URL never being set as an Azure App Setting (fixed
+// there directly); this coercion is the defensive backstop so a future
+// missing/malformed BACKEND_URL degrades to "still a valid https:// URL
+// for this backend" instead of silently breaking every payment.
+function resolveHttpsCallbackUrl(): string {
+  const raw = (process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 4000}`).replace(/\/$/, '');
+  const httpsBase = raw.startsWith('https://') ? raw : `https://${raw.replace(/^https?:\/\//, '')}`;
+  return `${httpsBase}/api/payments/bog/callback`;
+}
+const CALLBACK_URL = resolveHttpsCallbackUrl();
 
 function resultRedirects(paymentId: string) {
   return {
