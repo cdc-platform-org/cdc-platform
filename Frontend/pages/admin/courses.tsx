@@ -15,6 +15,7 @@ import {
   updateLesson,
   deleteLesson,
   uploadLessonVideo,
+  uploadCourseThumbnail,
   getExamSettings,
   updateExamSettings,
 } from '../../src/services/courseService';
@@ -59,6 +60,9 @@ function CourseForm({
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [thumbnailUploading, setThumbnailUploading] = useState(false);
+  const [thumbnailError, setThumbnailError] = useState<string | null>(null);
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (editingCourse) {
@@ -127,6 +131,23 @@ function CourseForm({
     }
   };
 
+  const handleThumbnailFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingCourse) return;
+    setThumbnailError(null);
+    setThumbnailUploading(true);
+    try {
+      const updated = await uploadCourseThumbnail(editingCourse.id, file);
+      setForm((prev) => ({ ...prev, thumbnailUrl: updated.thumbnailUrl ?? '' }));
+      onSaved(updated);
+    } catch {
+      setThumbnailError('Upload failed. Please try again.');
+    } finally {
+      setThumbnailUploading(false);
+      if (thumbnailInputRef.current) thumbnailInputRef.current.value = '';
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {error && <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -167,8 +188,27 @@ function CourseForm({
       </div>
       <div className="grid md:grid-cols-2 gap-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Thumbnail URL</label>
-          <input value={form.thumbnailUrl} onChange={(e) => setForm({ ...form, thumbnailUrl: e.target.value })} className={inputClass} placeholder="https://..." />
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Thumbnail</label>
+          {editingCourse ? (
+            <div className="flex items-center gap-3">
+              {form.thumbnailUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={form.thumbnailUrl} alt="" className="w-16 h-16 rounded-lg object-cover border border-gray-200 shrink-0" />
+              )}
+              <div>
+                <input ref={thumbnailInputRef} type="file" accept="image/*" onChange={handleThumbnailFile} disabled={thumbnailUploading} className="hidden" id="thumbnail-file-input" />
+                <label
+                  htmlFor="thumbnail-file-input"
+                  className="inline-block text-sm font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-2 rounded-lg cursor-pointer hover:bg-indigo-100"
+                >
+                  {thumbnailUploading ? 'Uploading…' : form.thumbnailUrl ? 'Replace image' : 'Upload image'}
+                </label>
+                {thumbnailError && <p className="text-xs text-red-600 mt-1">{thumbnailError}</p>}
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400 mt-1">Save the course first, then you can upload a thumbnail image directly.</p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Instruction Language</label>

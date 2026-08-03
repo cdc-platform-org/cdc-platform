@@ -45,6 +45,13 @@ export async function deleteCourse(courseId: string): Promise<void> {
   await apiClient.delete(`/courses/${courseId}`);
 }
 
+export async function uploadCourseThumbnail(courseId: string, file: File): Promise<Course> {
+  const formData = new FormData();
+  formData.append('thumbnail', file);
+  const response = await apiClient.post<{ data: Course }>(`/courses/${courseId}/thumbnail`, formData);
+  return response.data.data;
+}
+
 export async function getSyllabus(courseId: string): Promise<SyllabusSection[]> {
   const response = await apiClient.get<{ data: SyllabusSection[] }>(`/courses/${courseId}/syllabus`);
   return response.data.data;

@@ -1,7 +1,10 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
+import path from 'path';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
+import { uploadImage, deleteManagedImage } from '../services/imageStorage';
+import { BunnyStorageUploadError } from '../services/bunnyStorage';
 import {
   courseCreateSchema,
   courseUpdateSchema,
@@ -150,6 +153,55 @@ router.delete('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), 
     throw err;
   }
 });
+
+const thumbnailUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Only image uploads are allowed.'));
+  },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+});
+
+router.post(
+  '/:id/thumbnail',
+  authenticate,
+  requireAdminRole('SUPER_ADMIN', 'MANAGER'),
+  (req: Request, res: Response, next: NextFunction) => {
+    thumbnailUpload.single('thumbnail')(req, res, (err: any) => {
+      if (!err) return next();
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ message: 'The image exceeds 10MB. Please choose a smaller file.' });
+      }
+      return res.status(400).json({ message: err.message || 'Only image uploads are allowed.' });
+    });
+  },
+  async (req: Request, res: Response) => {
+    if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
+    const course = await prisma.course.findUnique({ where: { id: req.params.id }, select: { thumbnailUrl: true } });
+    if (!course) return res.status(404).json({ message: 'Course not found.' });
+
+    const filename = `course-${req.params.id}-${Date.now()}${path.extname(req.file.originalname)}`;
+    try {
+      const url = await uploadImage({
+        buffer: req.file.buffer,
+        mimetype: req.file.mimetype,
+        folderName: 'course-thumbnails',
+        filename,
+      });
+      const updated = await prisma.course.update({ where: { id: req.params.id }, data: { thumbnailUrl: url } });
+
+      if (course.thumbnailUrl && course.thumbnailUrl !== url) {
+        deleteManagedImage(course.thumbnailUrl).catch(() => {});
+      }
+
+      res.status(201).json({ data: withCurrentPrice(updated) });
+    } catch (err) {
+      const message = err instanceof BunnyStorageUploadError ? err.message : 'Thumbnail upload failed. Please try again.';
+      res.status(500).json({ message });
+    }
+  }
+);
 
 // ============================================================
 // LMS — relational curriculum (sections/lessons), progress, certificates.
