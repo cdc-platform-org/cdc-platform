@@ -756,7 +756,15 @@ router.post(
     }
     next();
   },
-  videoUpload.single('video'),
+  (req: Request, res: Response, next: NextFunction) => {
+    videoUpload.single('video')(req, res, (err: any) => {
+      if (!err) return next();
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ message: 'The video exceeds the 2GB limit.' });
+      }
+      return res.status(400).json({ message: err.message || 'Only video files are allowed.' });
+    });
+  },
   async (req: Request, res: Response) => {
     if (!req.file) return res.status(400).json({ message: 'No video file was provided.' });
     const lesson = await prisma.lesson.findUnique({ where: { id: req.params.lessonId } });
@@ -772,7 +780,11 @@ router.post(
       const updated = await prisma.lesson.update({ where: { id: lesson.id }, data: { bunnyVideoId: videoId } });
       res.status(201).json({ data: { ...updated, ...lessonWithPlayback(updated) } });
     } catch (err) {
-      res.status(502).json({ message: 'Video upload to Bunny Stream failed. Please try again.' });
+      // Surface Bunny's actual error (invalid credentials, quota, network,
+      // etc.) instead of a generic message — this is exactly the kind of
+      // failure that's otherwise silent/unclear to whoever's uploading.
+      const message = err instanceof Error ? `Video upload to Bunny Stream failed: ${err.message}` : 'Video upload to Bunny Stream failed. Please try again.';
+      res.status(502).json({ message });
     }
   }
 );

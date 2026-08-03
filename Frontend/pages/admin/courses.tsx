@@ -329,8 +329,13 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
     try {
       await uploadLessonVideo(lesson.id, file, setUploadPct);
       onChanged();
-    } catch {
-      alert('Direct upload failed — you can paste a Bunny Stream Video ID or embed URL instead using "Set Bunny Video ID" below.');
+    } catch (err: any) {
+      const serverMessage = err?.response?.data?.message;
+      alert(
+        serverMessage
+          ? `Direct upload failed: ${serverMessage}\n\nYou can paste a Bunny Stream Video ID or embed URL instead using "Set Bunny Video ID" below.`
+          : 'Direct upload failed — you can paste a Bunny Stream Video ID or embed URL instead using "Set Bunny Video ID" below.'
+      );
       setShowManualInput(true);
     } finally {
       setUploading(false);
@@ -648,6 +653,8 @@ function AdminCoursesDashboard() {
   const [loading, setLoading] = useState(true);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [managingCourse, setManagingCourse] = useState<Course | null>(null);
+  const [togglingPublishId, setTogglingPublishId] = useState<string | null>(null);
+  const formCardRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -678,6 +685,24 @@ function AdminCoursesDashboard() {
     if (managingCourse?.id === id) setManagingCourse(null);
   };
 
+  const handleEdit = (course: Course) => {
+    setEditingCourse(course);
+    formCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleTogglePublish = async (course: Course) => {
+    setTogglingPublishId(course.id);
+    try {
+      const updated = await updateCourse(course.id, { published: !course.published });
+      setCourses((prev) => prev.map((c) => (c.id === course.id ? updated : c)));
+      if (editingCourse?.id === course.id) setEditingCourse(updated);
+    } catch {
+      alert('Unable to change publish status. Please try again.');
+    } finally {
+      setTogglingPublishId(null);
+    }
+  };
+
   return (
     <>
       <Head>
@@ -689,7 +714,7 @@ function AdminCoursesDashboard() {
           <p className="text-sm text-gray-500 mt-1">Create courses, then manage their sections, lessons, and lesson videos.</p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 md:p-8 mb-10">
+        <div ref={formCardRef} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 md:p-8 mb-10">
           <h2 className="text-base font-semibold text-gray-900 mb-6">{editingCourse ? 'Edit Course' : 'New Course'}</h2>
           <CourseForm editingCourse={editingCourse} onSaved={handleSaved} onCancel={() => setEditingCourse(null)} />
           {managingCourse && <CurriculumEditor course={managingCourse} />}
@@ -726,7 +751,19 @@ function AdminCoursesDashboard() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setEditingCourse(course)}
+                      onClick={() => handleTogglePublish(course)}
+                      disabled={togglingPublishId === course.id}
+                      className={`text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-60 ${
+                        course.published
+                          ? 'text-amber-600 hover:text-amber-800 hover:bg-amber-50'
+                          : 'text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50'
+                      }`}
+                    >
+                      {togglingPublishId === course.id ? '…' : course.published ? 'Unpublish' : 'Publish'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleEdit(course)}
                       className="text-xs font-medium text-indigo-600 hover:text-indigo-800 px-3 py-1.5 rounded-lg hover:bg-indigo-50"
                     >
                       Edit

@@ -3,7 +3,15 @@ import Head from 'next/head';
 import Image from 'next/image';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
-import { getAdminProducts, createProduct, approveProduct, rejectProduct, DigitalProduct } from '../../src/services/productService';
+import {
+  getAdminProducts,
+  createProduct,
+  approveProduct,
+  rejectProduct,
+  uploadProductImage,
+  uploadProductFile,
+  DigitalProduct,
+} from '../../src/services/productService';
 import { formatPrice } from '../../src/utils/coursePricing';
 
 type AdminProduct = DigitalProduct & { submittedBy: { id: string; name: string; email: string } | null };
@@ -29,6 +37,10 @@ function AdminProductsDashboard() {
   const [fileUrl, setFileUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+  const [fileUploading, setFileUploading] = useState(false);
+  const [fileUploadError, setFileUploadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -66,6 +78,32 @@ function AdminProductsDashboard() {
       setError(err?.response?.data?.message ?? 'Failed to create product.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleImageFile = async (file: File | undefined) => {
+    if (!file) return;
+    setImageUploadError(null);
+    setImageUploading(true);
+    try {
+      setImageUrl(await uploadProductImage(file));
+    } catch (err: any) {
+      setImageUploadError(err?.response?.data?.message ?? 'Image upload failed.');
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
+  const handleAssetFile = async (file: File | undefined) => {
+    if (!file) return;
+    setFileUploadError(null);
+    setFileUploading(true);
+    try {
+      setFileUrl(await uploadProductFile(file));
+    } catch (err: any) {
+      setFileUploadError(err?.response?.data?.message ?? 'File upload failed.');
+    } finally {
+      setFileUploading(false);
     }
   };
 
@@ -139,15 +177,44 @@ function AdminProductsDashboard() {
               <input required type="number" min="0" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Image URL</label>
-              <input required type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+              <label className="block text-xs font-medium text-gray-700 mb-1">Product Preview Image</label>
+              <div className="flex items-center gap-2">
+                {imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover border border-gray-200 shrink-0" />
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={imageUploading}
+                  onChange={(e) => handleImageFile(e.target.files?.[0])}
+                  className="w-full text-xs"
+                />
+              </div>
+              {imageUploading && <p className="text-xs text-gray-400 mt-1">Uploading…</p>}
+              {imageUploadError && <p className="text-xs text-red-600 mt-1">{imageUploadError}</p>}
+              {!imageUrl && !imageUploading && <p className="text-xs text-amber-600 mt-1">Required</p>}
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">File URL (secured, only shown to buyers)</label>
-              <input required type="url" value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+              <label className="block text-xs font-medium text-gray-700 mb-1">Downloadable Product File (Zip/PDF/Asset)</label>
+              <input
+                type="file"
+                accept=".zip,.pdf,.epub,.rar,.7z,.fig,.sketch"
+                disabled={fileUploading}
+                onChange={(e) => handleAssetFile(e.target.files?.[0])}
+                className="w-full text-xs"
+              />
+              {fileUploading && <p className="text-xs text-gray-400 mt-1">Uploading…</p>}
+              {fileUploadError && <p className="text-xs text-red-600 mt-1">{fileUploadError}</p>}
+              {fileUrl && !fileUploading && <p className="text-xs text-emerald-600 mt-1 truncate">Uploaded ✓</p>}
+              {!fileUrl && !fileUploading && <p className="text-xs text-amber-600 mt-1">Required — only revealed to buyers after purchase</p>}
             </div>
           </div>
-          <button type="submit" disabled={submitting} className="text-sm font-medium text-white bg-indigo-600 px-5 py-2.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60">
+          <button
+            type="submit"
+            disabled={submitting || !imageUrl || !fileUrl || imageUploading || fileUploading}
+            className="text-sm font-medium text-white bg-indigo-600 px-5 py-2.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60"
+          >
             {submitting ? 'Saving…' : 'Add Product'}
           </button>
         </form>

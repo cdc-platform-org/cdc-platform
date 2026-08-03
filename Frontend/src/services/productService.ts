@@ -77,3 +77,17 @@ export async function rejectProduct(id: string, reason: string): Promise<Digital
   const response = await apiClient.post<{ data: DigitalProduct }>(`/admin/products/${id}/reject`, { reason });
   return response.data.data;
 }
+
+export async function uploadProductImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('image', file);
+  const response = await apiClient.post<{ data: { url: string } }>('/admin/products/upload-image', formData);
+  return response.data.data.url;
+}
+
+export async function uploadProductFile(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await apiClient.post<{ data: { url: string } }>('/admin/products/upload-file', formData);
+  return response.data.data.url;
+}
