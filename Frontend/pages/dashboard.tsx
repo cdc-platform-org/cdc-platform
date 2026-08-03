@@ -12,6 +12,8 @@ import {
   LifeBuoy,
   CheckCircle2,
   Wifi,
+  ShoppingBag,
+  Download,
 } from 'lucide-react';
 import ProtectedRoute from '../src/components/auth/ProtectedRoute';
 import SiteHeader from '../src/components/layout/SiteHeader';
@@ -33,9 +35,10 @@ import {
 import { getMyPayments, MyPaymentRow } from '../src/services/paymentService';
 import { getForumQuota, ForumPostQuota } from '../src/services/forumService';
 import { createMentorshipRequest } from '../src/services/mentorshipService';
+import { getProducts, getProductDownloadUrl, DigitalProduct } from '../src/services/productService';
 import { User } from '../src/types/auth';
 
-type Tab = 'overview' | 'courses' | 'wallet' | 'gigs';
+type Tab = 'overview' | 'courses' | 'wallet' | 'gigs' | 'products';
 
 const dict = {
   ka: {
@@ -44,6 +47,7 @@ const dict = {
     tabCourses: 'კურსები & სერტიფიკატები',
     tabWallet: 'საფულე & გადახდები',
     tabGigs: 'ჩემი პროექტები',
+    tabProducts: 'ჩემი ციფრული ინსტრუმენტები',
     tabSettings: 'პარამეტრები',
     logout: 'გასვლა',
     loading: 'იტვირთება…',
@@ -77,7 +81,7 @@ const dict = {
     noPayouts: 'გატანის მოთხოვნები ჯერ არ არის.',
     paymentHistory: 'გადახდების ისტორია',
     noPayments: 'გადახდები ჯერ არ არის.',
-    paymentPurpose: { COURSE: 'კურსი', MENTORSHIP: 'მენტორობა', GIG_ESCROW_FUNDING: 'გიგის დაფინანსება' } as Record<string, string>,
+    paymentPurpose: { COURSE: 'კურსი', MENTORSHIP: 'მენტორობა', GIG_ESCROW_FUNDING: 'გიგის დაფინანსება', PRODUCT: 'ციფრული პროდუქტი' } as Record<string, string>,
     // Gigs tab
     gigsTitle: 'ჩემი გიგები / სამუშაო სივრცე',
     noGigs: 'თქვენ ჯერ არცერთ გიგზე არ ხართ დანიშნული.',
@@ -87,6 +91,12 @@ const dict = {
     mentorHelp: 'CDC მენტორის დახმარების მოთხოვნა',
     mentorRequested: 'მენტორის დახმარება მოთხოვნილია',
     firstOrderBadge: 'პირველი შეკვეთა',
+    // Products tab
+    productsTitle: 'ჩემი ციფრული ინსტრუმენტები',
+    noProducts: 'თქვენ ჯერ არცერთი ციფრული პროდუქტი არ გაქვთ შეძენილი.',
+    browseProducts: 'მაღაზიის დათვალიერება',
+    downloadProduct: 'ჩამოტვირთვა',
+    downloadFailed: 'ჩამოტვირთვა ვერ მოხერხდა.',
     // Confirm modal (shared with learn.tsx)
     confirmTitle: 'გთხოვთ შეამოწმოთ!',
     confirmBody: 'სერტიფიკატზე დაიბეჭდება სახელი და გვარი:',
@@ -120,6 +130,7 @@ const dict = {
     tabCourses: 'My Courses & Certificates',
     tabWallet: 'Wallet & Payouts',
     tabGigs: 'My Projects / Workspace',
+    tabProducts: 'My Digital Tools',
     tabSettings: 'Account Settings',
     logout: 'Log Out',
     loading: 'Loading…',
@@ -150,7 +161,7 @@ const dict = {
     noPayouts: 'No payout requests yet.',
     paymentHistory: 'Payment History',
     noPayments: 'No payments yet.',
-    paymentPurpose: { COURSE: 'Course', MENTORSHIP: 'Mentorship', GIG_ESCROW_FUNDING: 'Gig Funding' } as Record<string, string>,
+    paymentPurpose: { COURSE: 'Course', MENTORSHIP: 'Mentorship', GIG_ESCROW_FUNDING: 'Gig Funding', PRODUCT: 'Digital Product' } as Record<string, string>,
     gigsTitle: 'My Gigs / Workspace',
     noGigs: "You're not assigned to any gigs yet.",
     browseGigs: 'Browse Gigs',
@@ -159,6 +170,11 @@ const dict = {
     mentorHelp: 'Request CDC Mentor Help',
     mentorRequested: 'Mentor help requested',
     firstOrderBadge: 'First Order',
+    productsTitle: 'My Digital Tools',
+    noProducts: "You haven't purchased any digital products yet.",
+    browseProducts: 'Browse Store',
+    downloadProduct: 'Download',
+    downloadFailed: 'Download failed.',
     confirmTitle: 'Please double-check!',
     confirmBody: 'This name will be printed on your certificate:',
     confirmChangeHint: 'To change it, go to your account settings.',
@@ -268,6 +284,9 @@ function DashboardContent() {
   const [wallet, setWallet] = useState<WalletSummary | null>(null);
   const [payoutRequests, setPayoutRequests] = useState<PayoutRequestRow[]>([]);
   const [payments, setPayments] = useState<MyPaymentRow[]>([]);
+  const [purchasedProducts, setPurchasedProducts] = useState<DigitalProduct[]>([]);
+  const [downloadingProductId, setDownloadingProductId] = useState<string | null>(null);
+  const [productDownloadError, setProductDownloadError] = useState<string | null>(null);
 
   const [downloadingCourseId, setDownloadingCourseId] = useState<string | null>(null);
   const [confirmCourseId, setConfirmCourseId] = useState<string | null>(null);
@@ -301,7 +320,7 @@ function DashboardContent() {
   // it doesn't fight the tab buttons' own setActiveTab afterwards.
   useEffect(() => {
     const queryTab = router.query.tab;
-    if (queryTab === 'courses' || queryTab === 'wallet' || queryTab === 'gigs') {
+    if (queryTab === 'courses' || queryTab === 'wallet' || queryTab === 'gigs' || queryTab === 'products') {
       setActiveTab(queryTab);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -310,13 +329,14 @@ function DashboardContent() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [coursesData, gigsData, walletData, payoutData, paymentsData, quotaData] = await Promise.all([
+      const [coursesData, gigsData, walletData, payoutData, paymentsData, quotaData, productsData] = await Promise.all([
         getMyCourses(),
         getAssignedGigs(),
         getWalletSummary(),
         getMyPayoutRequests(),
         getMyPayments(),
         getForumQuota(),
+        getProducts(),
       ]);
       setCourses(coursesData);
       setGigs(gigsData);
@@ -324,6 +344,7 @@ function DashboardContent() {
       setPayoutRequests(payoutData);
       setPayments(paymentsData);
       setPostQuota(quotaData);
+      setPurchasedProducts(productsData.filter((p) => p.purchased));
     } finally {
       setLoading(false);
     }
@@ -360,6 +381,19 @@ function DashboardContent() {
     } finally {
       setDownloadingCourseId(null);
       setConfirmCourseId(null);
+    }
+  };
+
+  const handleDownloadProduct = async (productId: string) => {
+    setProductDownloadError(null);
+    setDownloadingProductId(productId);
+    try {
+      const fileUrl = await getProductDownloadUrl(productId);
+      window.open(fileUrl, '_blank', 'noopener,noreferrer');
+    } catch {
+      setProductDownloadError(t.downloadFailed);
+    } finally {
+      setDownloadingProductId(null);
     }
   };
 
@@ -433,6 +467,7 @@ function DashboardContent() {
     { key: 'courses', label: t.tabCourses, icon: GraduationCap },
     { key: 'wallet', label: t.tabWallet, icon: Wallet },
     { key: 'gigs', label: t.tabGigs, icon: Briefcase },
+    { key: 'products', label: t.tabProducts, icon: ShoppingBag },
   ];
 
   return (
@@ -798,6 +833,49 @@ function DashboardContent() {
                               </button>
                             ))}
                         </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'products' && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-extrabold tracking-wide mb-2">{t.productsTitle}</h2>
+                  {productDownloadError && (
+                    <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-xs text-red-600 dark:text-red-300">
+                      {productDownloadError}
+                    </div>
+                  )}
+                  {purchasedProducts.length === 0 ? (
+                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-10 text-center">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t.noProducts}</p>
+                      <Link
+                        href="/store"
+                        className="inline-block text-xs font-bold text-white bg-slate-900 dark:bg-cyan-600 px-4 py-2.5 rounded-xl no-underline"
+                      >
+                        {t.browseProducts}
+                      </Link>
+                    </div>
+                  ) : (
+                    purchasedProducts.map((product) => (
+                      <div
+                        key={product.id}
+                        className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex items-center justify-between gap-4 flex-wrap"
+                      >
+                        <div>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-cyan-600 dark:text-cyan-400">{product.category}</span>
+                          <h3 className="font-bold text-base text-slate-900 dark:text-white tracking-wide">{product.title}</h3>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadProduct(product.id)}
+                          disabled={downloadingProductId === product.id}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white disabled:opacity-60"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          {downloadingProductId === product.id ? t.loading : t.downloadProduct}
+                        </button>
                       </div>
                     ))
                   )}

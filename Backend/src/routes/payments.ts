@@ -42,7 +42,7 @@ function resultRedirects(paymentId: string) {
 // click without indefinitely blocking a genuinely abandoned/expired attempt.
 const PENDING_ORDER_REUSE_WINDOW_MS = 15 * 60 * 1000;
 
-async function findReusablePendingOrder(userId: string, purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING', referenceId: string) {
+async function findReusablePendingOrder(userId: string, purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT', referenceId: string) {
   const existing = await prisma.bogPayment.findFirst({
     where: { userId, purpose, referenceId, status: 'PENDING' },
     orderBy: { createdAt: 'desc' },
@@ -241,6 +241,60 @@ router.post(
 );
 
 // ============================================================
+// CHECKOUT — DIGITAL PRODUCT
+// ============================================================
+router.post(
+  '/checkout/product/:productId',
+  authenticate,
+  requireApproved,
+  async (req: Request, res: Response) => {
+    const product = await prisma.digitalProduct.findUnique({ where: { id: req.params.productId } });
+    if (!product) return res.status(404).json({ message: 'Product not found.' });
+    if (product.price <= 0) {
+      return res.status(400).json({ message: 'This product is free — claim it directly instead of checking out.' });
+    }
+    const existingPurchase = await prisma.productPurchase.findUnique({
+      where: { userId_productId: { userId: req.user!.id, productId: product.id } },
+    });
+    if (existingPurchase?.paymentStatus === 'COMPLETED') {
+      return res.status(400).json({ message: 'You already own this product.' });
+    }
+    const reusable = await findReusablePendingOrder(req.user!.id, 'PRODUCT', product.id);
+    if (reusable) {
+      return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.redirectUrl });
+    }
+
+    const bogPayment = await prisma.bogPayment.create({
+      data: {
+        bogOrderId: `pending-${crypto.randomUUID()}`,
+        userId: req.user!.id,
+        purpose: 'PRODUCT',
+        referenceId: product.id,
+        amount: product.price,
+        currency: 'GEL',
+        status: 'PENDING',
+      },
+    });
+    const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
+    const order = await createBogOrderOrRespond(res, {
+      externalOrderId: bogPayment.id,
+      amount: product.price,
+      currency: 'GEL',
+      basketItemName: product.title,
+      callbackUrl: CALLBACK_URL,
+      successRedirectUrl,
+      failRedirectUrl,
+    });
+    if (!order) return;
+    const updated = await prisma.bogPayment.update({
+      where: { id: bogPayment.id },
+      data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },
+    });
+    res.status(201).json({ paymentId: updated.id, redirectUrl: order.redirectUrl });
+  }
+);
+
+// ============================================================
 // CALLBACK / WEBHOOK — public, no auth. Authenticity comes entirely from
 // the RSA signature (see bogPaymentService.verifyBogCallbackSignature),
 // verified against the raw request body captured by server.ts's
@@ -334,6 +388,18 @@ export async function applyBogPaymentResult(
   }
   // MENTORSHIP: the completed BogPayment record IS the grant — no further
   // side effect (no booking system exists yet, see checkout route above).
+  else if (bogPayment.purpose === 'PRODUCT') {
+    await prisma.productPurchase.upsert({
+      where: { userId_productId: { userId: bogPayment.userId, productId: bogPayment.referenceId } },
+      update: { paymentStatus: 'COMPLETED', amount: bogPayment.amount },
+      create: {
+        userId: bogPayment.userId,
+        productId: bogPayment.referenceId,
+        amount: bogPayment.amount,
+        paymentStatus: 'COMPLETED',
+      },
+    });
+  }
 }
 
 // ============================================================
@@ -390,12 +456,23 @@ router.get('/my', authenticate, async (req: Request, res: Response) => {
     : [];
   const courseTitleById = new Map(courses.map((c) => [c.id, c.title]));
 
+  const productIds = payments.filter((p) => p.purpose === 'PRODUCT').map((p) => p.referenceId);
+  const products = productIds.length
+    ? await prisma.digitalProduct.findMany({ where: { id: { in: productIds } }, select: { id: true, title: true } })
+    : [];
+  const productTitleById = new Map(products.map((p) => [p.id, p.title]));
+
   res.json({
     data: payments.map((p) => ({
       id: p.id,
       purpose: p.purpose,
       referenceId: p.referenceId,
-      referenceTitle: p.purpose === 'COURSE' ? courseTitleById.get(p.referenceId) ?? null : null,
+      referenceTitle:
+        p.purpose === 'COURSE'
+          ? courseTitleById.get(p.referenceId) ?? null
+          : p.purpose === 'PRODUCT'
+          ? productTitleById.get(p.referenceId) ?? null
+          : null,
       amount: p.amount,
       currency: p.currency,
       status: p.status,

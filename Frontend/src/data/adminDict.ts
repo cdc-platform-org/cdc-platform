@@ -32,6 +32,7 @@ export const adminDict = {
       studioCases: 'CDC Studio ქეისები',
       botKnowledge: 'AI ასისტენტის ცოდნის ბაზა',
       notifications: 'შეტყობინებების გაგზავნა',
+      products: 'ციფრული მაღაზია',
     },
     chrome: {
       adminPanel: 'ადმინ პანელი',
@@ -90,6 +91,7 @@ export const adminDict = {
       studioCases: 'CDC Studio Case Studies',
       botKnowledge: 'AI Assistant Knowledge Base',
       notifications: 'Send Notifications',
+      products: 'Digital Store',
     },
     chrome: {
       adminPanel: 'Admin Panel',

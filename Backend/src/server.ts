@@ -50,6 +50,8 @@ import adminKnowledgeRoutes from './routes/adminKnowledge';
 import freelancerExamRoutes from './routes/freelancerExam';
 import notificationRoutes from './routes/notifications';
 import adminNotificationRoutes from './routes/adminNotifications';
+import productRoutes from './routes/products';
+import adminProductRoutes from './routes/adminProducts';
 import { errorHandler } from './middleware/errorHandler';
 import { PORT } from './utils/env';
 import { autoApproveOverdueGigs } from './services/gigApprovalService';
@@ -122,6 +124,8 @@ app.use('/api/admin/knowledge', adminKnowledgeRoutes);
 app.use('/api/freelancer-exam', freelancerExamRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin/notifications', adminNotificationRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/admin/products', adminProductRoutes);
 
 const swaggerDocument = {
   openapi: '3.0.3',

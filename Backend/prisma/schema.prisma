@@ -132,6 +132,7 @@ enum BogPaymentPurpose {
   COURSE
   MENTORSHIP
   GIG_ESCROW_FUNDING
+  PRODUCT
 }
 
 // Mirrors BOG's own order_status.key values (see GET /payments/v1/receipt/:id)
@@ -286,6 +287,7 @@ model User {
   courseCertificates     CourseCertificate[]
   examAttempts           ExamAttempt[]
   freelancerSkillExamAttempts FreelancerSkillExamAttempt[]
+  productPurchases       ProductPurchase[]
   forumThreads           ForumThread[]
   forumComments          ForumComment[]
   forumThreadLikes       ForumThreadLike[]
@@ -687,6 +689,45 @@ model FreelancerSkillExamAttempt {
 
   @@index([userId])
   @@map("freelancer_skill_exam_attempts")
+}
+
+// Digital Store — downloadable products CDC sells directly (UI kits, AI
+// prompt packs, templates, e-books), separate from Course/Gig commerce.
+// price/ProductPurchase.amount are Int minor units (tetri), matching
+// Course.originalPrice/BogPayment.amount elsewhere — not Float, to avoid
+// floating-point rounding on money.
+model DigitalProduct {
+  id             String            @id @default(uuid())
+  title          String
+  description    String
+  price          Int
+  category       String
+  imageUrl       String
+  // Never exposed directly to the client until a completed purchase is
+  // verified server-side — see routes/products.ts's /:id/download.
+  fileUrl        String
+  downloadsCount Int               @default(0)
+  createdAt      DateTime          @default(now())
+  purchases      ProductPurchase[]
+
+  @@map("digital_products")
+}
+
+model ProductPurchase {
+  id            String         @id @default(uuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId     String
+  product       DigitalProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  amount        Int
+  // "PENDING" | "COMPLETED" — mirrors BogPayment.status naming for the
+  // paid path; free (price=0) products are inserted directly as COMPLETED.
+  paymentStatus String         @default("PENDING")
+  createdAt     DateTime       @default(now())
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@map("product_purchases")
 }
 
 // ============================================================

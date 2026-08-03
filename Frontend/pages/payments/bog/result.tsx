@@ -16,9 +16,11 @@ const dict = {
     pendingLong:
       'გადახდა ჯერ კიდევ მუშავდება. თუ ეს გვერდი დიდხანს არ განახლდება, დაუკავშირდით მხარდაჭერას.',
     redirectingToCourse: 'გადამისამართება კურსზე…',
+    redirectingToProduct: 'გადამისამართება პროდუქტზე…',
     course: 'კურსზე წვდომა',
     mentorship: 'მენტორის სესია',
     gig: 'გარიგების ესქროუ დაფინანსება',
+    product: 'ციფრული პროდუქტი',
     backHome: 'მთავარ გვერდზე დაბრუნება',
     amount: 'თანხა',
     checkAgain: 'ხელახლა შემოწმება',
@@ -34,9 +36,11 @@ const dict = {
     pendingLong:
       'Your payment is still being processed. If this page doesn’t update soon, please contact support.',
     redirectingToCourse: 'Redirecting to your course…',
+    redirectingToProduct: 'Redirecting to your product…',
     course: 'Course access',
     mentorship: 'Mentorship session',
     gig: 'Gig escrow funding',
+    product: 'Digital product',
     backHome: 'Back to home',
     amount: 'Amount',
     checkAgain: 'Check again',
@@ -48,6 +52,7 @@ const purposeKey: Record<string, keyof typeof dict.en> = {
   COURSE: 'course',
   MENTORSHIP: 'mentorship',
   GIG_ESCROW_FUNDING: 'gig',
+  PRODUCT: 'product',
 };
 
 function BogResultContent() {
@@ -89,11 +94,18 @@ function BogResultContent() {
   }, [paymentId, poll]);
 
   // Course purchases go straight to the learn page once payment clears —
-  // no separate "continue" click needed.
+  // no separate "continue" click needed. Product purchases go to the
+  // product detail page, which now shows the download button.
   useEffect(() => {
     if (status?.status === 'COMPLETED' && status.purpose === 'COURSE') {
       const redirect = setTimeout(() => {
         router.push(`/courses/${status.referenceId}/learn`);
+      }, 1800);
+      return () => clearTimeout(redirect);
+    }
+    if (status?.status === 'COMPLETED' && status.purpose === 'PRODUCT') {
+      const redirect = setTimeout(() => {
+        router.push(`/store/${status.referenceId}`);
       }, 1800);
       return () => clearTimeout(redirect);
     }
@@ -149,6 +161,9 @@ function BogResultContent() {
             </p>
             {status.status === 'COMPLETED' && status.purpose === 'COURSE' && (
               <p className="text-xs text-gray-400">{t.redirectingToCourse}</p>
+            )}
+            {status.status === 'COMPLETED' && status.purpose === 'PRODUCT' && (
+              <p className="text-xs text-gray-400">{t.redirectingToProduct}</p>
             )}
             {status.status === 'PENDING' && !polling && <p className="text-xs text-gray-400">{t.pendingLong}</p>}
             <div className="text-xs text-gray-500 border-t border-gray-100 pt-4 space-y-1">

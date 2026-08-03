@@ -1,6 +1,6 @@
 import apiClient from './apiClient';
 
-export type BogPaymentPurpose = 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING';
+export type BogPaymentPurpose = 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT';
 export type BogPaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
 export interface BogCheckoutResult {
@@ -34,6 +34,11 @@ export async function checkoutMentorship(params: {
 
 export async function checkoutGigEscrow(gigId: string): Promise<BogCheckoutResult> {
   const response = await apiClient.post<BogCheckoutResult>(`/payments/checkout/gig/${gigId}`);
+  return response.data;
+}
+
+export async function checkoutProduct(productId: string): Promise<BogCheckoutResult> {
+  const response = await apiClient.post<BogCheckoutResult>(`/payments/checkout/product/${productId}`);
   return response.data;
 }
 

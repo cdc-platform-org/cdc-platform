@@ -29,6 +29,9 @@ const dict = {
     screenerTitle: 'AI Candidate Screener & HR Assistant',
     screenerDesc: 'AI ასისტენტი, რომელიც დამსაქმებლებს ეხმარება კანდიდატების პირველად გადარჩევასა და HR პროცესების ავტომატიზაციაში.',
     comingSoon: 'მალე',
+    storeCta: 'ციფრული პროდუქტების მაღაზია',
+    storeCtaDesc: 'UI Kits, AI Prompts, შაბლონები და ელექტრონული წიგნები.',
+    storeCtaButton: 'მაღაზიის ნახვა',
   },
   en: {
     title: 'Digital AI Tools',
@@ -47,6 +50,9 @@ const dict = {
     screenerTitle: 'AI Candidate Screener & HR Assistant',
     screenerDesc: 'An AI assistant that helps employers pre-screen candidates and automate HR workflows.',
     comingSoon: 'Coming Soon',
+    storeCta: 'Digital Product Store',
+    storeCtaDesc: 'UI Kits, AI Prompts, templates, and e-books.',
+    storeCtaButton: 'Browse Store',
   },
 };
 
@@ -165,6 +171,19 @@ export default function ToolsPage() {
             <h3 className="text-base font-black tracking-wide mb-2">{t.screenerTitle}</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{t.screenerDesc}</p>
           </div>
+
+          {/* Store — downloadable products (UI kits, prompts, templates), a
+              separate concept from CDC's own SaaS products above. */}
+          <Link
+            href="/store"
+            className="lg:col-span-3 rounded-3xl border border-purple-500/30 bg-gradient-to-r from-purple-500/5 to-cyan-500/5 p-7 flex items-center justify-between gap-4 no-underline text-current hover:border-purple-400 transition-colors"
+          >
+            <div>
+              <h3 className="text-base font-black tracking-wide mb-1">{t.storeCta}</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t.storeCtaDesc}</p>
+            </div>
+            <span className="text-xs font-bold text-purple-600 dark:text-purple-400 whitespace-nowrap">{t.storeCtaButton} →</span>
+          </Link>
         </div>
       </div>
 
