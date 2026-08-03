@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
+import { useState, useEffect, useCallback, useRef, ChangeEvent, DragEvent } from 'react';
 import Head from 'next/head';
 import AdminGuard from '../../../src/components/admin/AdminGuard';
 import AdminLayout from '../../../src/components/admin/AdminLayout';
@@ -15,7 +15,9 @@ function GalleryCmsDashboard() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -60,25 +62,47 @@ function GalleryCmsDashboard() {
     setContent({ ...content, images: images.filter((_, idx) => idx !== i) });
   };
 
-  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (isImageTooLarge(file)) {
-      setUploadError(IMAGE_SIZE_ERROR.ka);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
-    }
+  const handleFiles = async (fileList: FileList | File[]) => {
+    const files = Array.from(fileList).filter((f) => f.type.startsWith('image/'));
+    if (files.length === 0) return;
+
+    const oversized = files.filter(isImageTooLarge);
+    const toUpload = files.filter((f) => !isImageTooLarge(f));
+    setUploadError(oversized.length > 0 ? IMAGE_SIZE_ERROR.ka : null);
+    if (toUpload.length === 0) return;
+
     setUploading(true);
-    setUploadError(null);
-    try {
-      const url = await uploadCmsImage(file);
-      setContent({ ...content, images: [...images, { url }] });
-    } catch (err: any) {
-      setUploadError(err?.response?.data?.message ?? 'სურათის ატვირთვა ვერ მოხერხდა.');
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+    setUploadProgress({ done: 0, total: toUpload.length });
+    let failures = 0;
+    for (const file of toUpload) {
+      try {
+        const url = await uploadCmsImage(file);
+        // Functional update — each upload appends to whatever content is
+        // current at that moment, so a prior upload's result in this same
+        // batch is never clobbered by a stale closure over `images`.
+        setContent((prev) => ({ ...prev, images: [...(prev.images ?? []), { url }] }));
+      } catch {
+        failures += 1;
+      } finally {
+        setUploadProgress((prev) => (prev ? { done: prev.done + 1, total: prev.total } : prev));
+      }
     }
+    if (failures > 0) {
+      setUploadError(`${failures} სურათის ატვირთვა ვერ მოხერხდა.`);
+    }
+    setUploading(false);
+    setUploadProgress(null);
+  };
+
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) await handleFiles(e.target.files);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleDrop = async (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragActive(false);
+    if (e.dataTransfer.files?.length) await handleFiles(e.dataTransfer.files);
   };
 
   if (loading) {
@@ -116,11 +140,12 @@ function GalleryCmsDashboard() {
             <h2 className="font-semibold text-sm text-gray-900">Images ({images.length})</h2>
             <div className="flex items-center gap-3">
               <label className="text-xs font-medium text-indigo-600 hover:text-indigo-800 cursor-pointer">
-                {uploading ? 'იტვირთება…' : '📁 Upload image'}
+                {uploading && uploadProgress ? `იტვირთება ${uploadProgress.done}/${uploadProgress.total}…` : '📁 Upload images'}
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
+                  multiple
                   onChange={handleFileChange}
                   className="hidden"
                   disabled={uploading}
@@ -137,11 +162,22 @@ function GalleryCmsDashboard() {
           </div>
           {uploadError && <p className="text-xs text-red-600 mb-3">{uploadError}</p>}
 
-          {images.length === 0 ? (
-            <p className="text-xs text-gray-400">No images yet — upload one or add by URL.</p>
-          ) : (
-            <div className="grid md:grid-cols-2 gap-4">
-              {images.map((img, i) => (
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragActive(true);
+            }}
+            onDragLeave={() => setDragActive(false)}
+            onDrop={handleDrop}
+            className={`rounded-lg transition-colors ${dragActive ? 'ring-2 ring-indigo-400 bg-indigo-50/50' : ''}`}
+          >
+            {images.length === 0 ? (
+              <p className="text-xs text-gray-400 border-2 border-dashed border-gray-200 rounded-lg p-8 text-center">
+                No images yet — drag & drop images here, upload, or add by URL.
+              </p>
+            ) : (
+              <div className="grid md:grid-cols-2 gap-4">
+                {images.map((img, i) => (
                 <div key={i} className="border border-gray-100 rounded-lg p-3 flex gap-3">
                   <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0">
                     {img.url && (
@@ -178,6 +214,7 @@ function GalleryCmsDashboard() {
               ))}
             </div>
           )}
+          </div>
         </div>
       </div>
     </>

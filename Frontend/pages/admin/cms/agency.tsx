@@ -1,9 +1,26 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, ChangeEvent } from 'react';
 import Head from 'next/head';
 import AdminGuard from '../../../src/components/admin/AdminGuard';
 import AdminLayout from '../../../src/components/admin/AdminLayout';
 import { AgencyContent, AgencyPortfolioItem } from '../../../src/types/siteContent';
-import { getAdminSiteContent, updateSiteContent } from '../../../src/services/siteContentService';
+import { getAdminSiteContent, updateSiteContent, uploadCmsImage } from '../../../src/services/siteContentService';
+import { resolveBlogImageUrl } from '../../../src/services/blogService';
+import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../../src/utils/imageUpload';
+
+const OBJECT_POSITION: Record<string, string> = {
+  top: 'center top',
+  center: 'center center',
+  bottom: 'center bottom',
+  left: 'left center',
+  right: 'right center',
+};
+const POSITION_OPTIONS: { value: NonNullable<AgencyPortfolioItem['imagePosition']>; label: string }[] = [
+  { value: 'top', label: 'Top' },
+  { value: 'center', label: 'Center' },
+  { value: 'bottom', label: 'Bottom' },
+  { value: 'left', label: 'Left' },
+  { value: 'right', label: 'Right' },
+];
 
 const emptyItem: AgencyPortfolioItem = {
   badgeKa: '',
@@ -19,6 +36,134 @@ const emptyItem: AgencyPortfolioItem = {
 };
 
 const inputClass = 'w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
+
+function PortfolioItemEditor({
+  item,
+  onChange,
+  onRemove,
+}: {
+  item: AgencyPortfolioItem;
+  onChange: (patch: Partial<AgencyPortfolioItem>) => void;
+  onRemove: () => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (isImageTooLarge(file)) {
+      setUploadError(IMAGE_SIZE_ERROR.ka);
+      e.target.value = '';
+      return;
+    }
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const imageUrl = await uploadCmsImage(file);
+      onChange({ imageUrl });
+    } catch (err: any) {
+      setUploadError(err?.response?.data?.message ?? 'სურათის ატვირთვა ვერ მოხერხდა.');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  return (
+    <div className="border border-gray-100 rounded-lg p-4 space-y-3">
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Live preview — mirrors the exact object-fit/object-position/zoom
+            math the public /agency card uses, so what admins see here is
+            what actually ships. */}
+        <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
+          {item.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={resolveBlogImageUrl(item.imageUrl)}
+              alt=""
+              className="w-full h-full object-cover"
+              style={{
+                objectPosition: OBJECT_POSITION[item.imagePosition ?? 'center'],
+                transform: `scale(${(item.imageZoom ?? 100) / 100})`,
+              }}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">No image</div>
+          )}
+        </div>
+        <div className="space-y-2">
+          <label className="inline-block text-xs font-medium text-indigo-600 hover:text-indigo-800 cursor-pointer">
+            {uploading ? 'იტვირთება…' : item.imageUrl ? '📁 Replace image' : '📁 Upload image'}
+            <input type="file" accept="image/*" onChange={handleFile} className="hidden" disabled={uploading} />
+          </label>
+          {item.imageUrl && (
+            <button type="button" onClick={() => onChange({ imageUrl: undefined })} className="block text-xs text-red-500 hover:text-red-700">
+              Remove image
+            </button>
+          )}
+          {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
+
+          <div>
+            <p className="text-[11px] font-medium text-gray-500 mb-1">Position</p>
+            <div className="flex flex-wrap gap-1.5">
+              {POSITION_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => onChange({ imagePosition: opt.value })}
+                  className={`text-[11px] font-medium px-2.5 py-1 rounded border ${
+                    (item.imagePosition ?? 'center') === opt.value
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-white text-gray-600 border-gray-200'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-[11px] font-medium text-gray-500 mb-1">Zoom ({item.imageZoom ?? 100}%)</p>
+            <input
+              type="range"
+              min={100}
+              max={200}
+              value={item.imageZoom ?? 100}
+              onChange={(e) => onChange({ imageZoom: Number(e.target.value) })}
+              className="w-full"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-2">
+        <input placeholder="Badge (KA)" value={item.badgeKa} onChange={(e) => onChange({ badgeKa: e.target.value })} className={inputClass} />
+        <input placeholder="Badge (EN)" value={item.badgeEn} onChange={(e) => onChange({ badgeEn: e.target.value })} className={inputClass} />
+      </div>
+      <div className="grid md:grid-cols-2 gap-2">
+        <input placeholder="Title (KA)" value={item.titleKa} onChange={(e) => onChange({ titleKa: e.target.value })} className={inputClass} />
+        <input placeholder="Title (EN)" value={item.titleEn} onChange={(e) => onChange({ titleEn: e.target.value })} className={inputClass} />
+      </div>
+      <div className="grid md:grid-cols-2 gap-2">
+        <input placeholder="Subtitle (KA)" value={item.subtitleKa} onChange={(e) => onChange({ subtitleKa: e.target.value })} className={inputClass} />
+        <input placeholder="Subtitle (EN)" value={item.subtitleEn} onChange={(e) => onChange({ subtitleEn: e.target.value })} className={inputClass} />
+      </div>
+      <div className="grid md:grid-cols-2 gap-2">
+        <textarea rows={2} placeholder="Description (KA)" value={item.descKa} onChange={(e) => onChange({ descKa: e.target.value })} className={inputClass} />
+        <textarea rows={2} placeholder="Description (EN)" value={item.descEn} onChange={(e) => onChange({ descEn: e.target.value })} className={inputClass} />
+      </div>
+      <div className="grid md:grid-cols-2 gap-2">
+        <input placeholder="Status (KA)" value={item.statusKa} onChange={(e) => onChange({ statusKa: e.target.value })} className={inputClass} />
+        <input placeholder="Status (EN)" value={item.statusEn} onChange={(e) => onChange({ statusEn: e.target.value })} className={inputClass} />
+      </div>
+      <button type="button" onClick={onRemove} className="text-xs text-red-500 hover:text-red-700">
+        Remove project
+      </button>
+    </div>
+  );
+}
 
 function AgencyCmsDashboard() {
   const [content, setContent] = useState<AgencyContent>({});
@@ -103,35 +248,12 @@ function AgencyCmsDashboard() {
           )}
           <div className="space-y-6">
             {(content.portfolio ?? []).map((item, i) => (
-              <div key={i} className="border border-gray-100 rounded-lg p-4 space-y-3">
-                <div className="grid md:grid-cols-2 gap-2">
-                  <input placeholder="Badge (KA)" value={item.badgeKa} onChange={(e) => updateItem(i, { badgeKa: e.target.value })} className={inputClass} />
-                  <input placeholder="Badge (EN)" value={item.badgeEn} onChange={(e) => updateItem(i, { badgeEn: e.target.value })} className={inputClass} />
-                </div>
-                <div className="grid md:grid-cols-2 gap-2">
-                  <input placeholder="Title (KA)" value={item.titleKa} onChange={(e) => updateItem(i, { titleKa: e.target.value })} className={inputClass} />
-                  <input placeholder="Title (EN)" value={item.titleEn} onChange={(e) => updateItem(i, { titleEn: e.target.value })} className={inputClass} />
-                </div>
-                <div className="grid md:grid-cols-2 gap-2">
-                  <input placeholder="Subtitle (KA)" value={item.subtitleKa} onChange={(e) => updateItem(i, { subtitleKa: e.target.value })} className={inputClass} />
-                  <input placeholder="Subtitle (EN)" value={item.subtitleEn} onChange={(e) => updateItem(i, { subtitleEn: e.target.value })} className={inputClass} />
-                </div>
-                <div className="grid md:grid-cols-2 gap-2">
-                  <textarea rows={2} placeholder="Description (KA)" value={item.descKa} onChange={(e) => updateItem(i, { descKa: e.target.value })} className={inputClass} />
-                  <textarea rows={2} placeholder="Description (EN)" value={item.descEn} onChange={(e) => updateItem(i, { descEn: e.target.value })} className={inputClass} />
-                </div>
-                <div className="grid md:grid-cols-2 gap-2">
-                  <input placeholder="Status (KA)" value={item.statusKa} onChange={(e) => updateItem(i, { statusKa: e.target.value })} className={inputClass} />
-                  <input placeholder="Status (EN)" value={item.statusEn} onChange={(e) => updateItem(i, { statusEn: e.target.value })} className={inputClass} />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setContent({ ...content, portfolio: (content.portfolio ?? []).filter((_, idx) => idx !== i) })}
-                  className="text-xs text-red-500 hover:text-red-700"
-                >
-                  Remove project
-                </button>
-              </div>
+              <PortfolioItemEditor
+                key={i}
+                item={item}
+                onChange={(patch) => updateItem(i, patch)}
+                onRemove={() => setContent({ ...content, portfolio: (content.portfolio ?? []).filter((_, idx) => idx !== i) })}
+              />
             ))}
           </div>
         </div>

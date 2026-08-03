@@ -8,6 +8,15 @@ import BackButton from '../src/components/common/BackButton';
 import Toast from '../src/components/shared/Toast';
 import { AgencyContent, AgencyPortfolioItem } from '../src/types/siteContent';
 import { getSiteContent } from '../src/services/siteContentService';
+import { resolveBlogImageUrl } from '../src/services/blogService';
+
+const OBJECT_POSITION: Record<string, string> = {
+  top: 'center top',
+  center: 'center center',
+  bottom: 'center bottom',
+  left: 'left center',
+  right: 'right center',
+};
 import { submitStudioInquiry } from '../src/services/studioService';
 
 // Bundled fallback shown until (or unless) an admin adds portfolio items via
@@ -245,8 +254,23 @@ export default function Agency() {
           {portfolio.map((p, i) => (
             <div
               key={i}
-              className={`border rounded-3xl p-8 transition-all duration-300 transform hover:scale-[1.03] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] flex flex-col justify-between min-h-[300px] ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}
+              className={`border rounded-3xl overflow-hidden transition-all duration-300 transform hover:scale-[1.03] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] flex flex-col justify-between min-h-[300px] ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}
             >
+              {p.imageUrl && (
+                <div className="relative w-full aspect-video overflow-hidden bg-slate-100 dark:bg-slate-800">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={resolveBlogImageUrl(p.imageUrl)}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    style={{
+                      objectPosition: OBJECT_POSITION[p.imagePosition ?? 'center'],
+                      transform: `scale(${(p.imageZoom ?? 100) / 100})`,
+                    }}
+                  />
+                </div>
+              )}
+              <div className="p-8">
               <div>
                 <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border ${
                   darkMode ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' : 'text-cyan-700 bg-cyan-50 border-cyan-100'
@@ -271,6 +295,7 @@ export default function Agency() {
                 <span className="text-xs font-bold text-emerald-500">
                   {translate(p.statusKa, p.statusEn)}
                 </span>
+              </div>
               </div>
             </div>
           ))}

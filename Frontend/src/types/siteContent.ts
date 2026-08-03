@@ -55,6 +55,12 @@ export interface AgencyPortfolioItem {
   descEn: string;
   statusKa: string;
   statusEn: string;
+  // Optional card cover image — CSS object-fit: cover, object-position
+  // keyword, and a 100-200% zoom applied via transform: scale(). Cards
+  // without an imageUrl render exactly as before (text-only).
+  imageUrl?: string;
+  imagePosition?: 'top' | 'center' | 'bottom' | 'left' | 'right';
+  imageZoom?: number;
 }
 
 export interface AgencyContent {
