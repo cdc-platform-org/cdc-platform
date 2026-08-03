@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import { useRouter } from 'next/router';
-import { CheckCircle2, AlertTriangle, Search, Sun, Moon, User, X, Menu, Link as LinkIcon, Rocket, Clock } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Search, Sun, Moon, User, X, Menu, Link as LinkIcon, Rocket, Clock, Bot, ShieldCheck, Users, Sparkles, Lock, MessageSquareText, BookOpen, Code2, BarChart3 } from 'lucide-react';
 import { useAuthModal } from '../src/context/AuthModalContext';
 import { useAuth } from '../src/context/AuthContext';
 import SiteFooter from '../src/components/layout/SiteFooter';
@@ -55,7 +55,7 @@ const chatMarkdownComponents = {
 export default function Home() {
   const router = useRouter();
   const { openAuthModal } = useAuthModal();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [darkMode, setDarkMode] = useState<boolean>(false);
 
   // 📚 რეალური კურსები (ბექენდიდან) — homepage-ის კურსების სექციისთვის
@@ -725,6 +725,107 @@ export default function Home() {
             })}
           </div>
         )}
+      </section>
+
+      {/* 🛠️ DIGITAL TOOLS SHOWCASE — promotes /tools; the AI Assistant is the
+          only currently purchasable/available product (subscription-style
+          free trial, not a one-off sale), the other two are genuinely
+          "coming soon" there too — mirrored here rather than inventing
+          prices/buy buttons for products that don't have them yet. */}
+      <section className={`py-28 border-t ${darkMode ? 'bg-[#0e1422]/40 border-slate-800' : 'bg-slate-50/60 border-slate-200'}`}>
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <span className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-widest px-4 py-2 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-full border border-purple-500/20 mb-4">
+              <Sparkles className="w-3.5 h-3.5" />
+              CDC AI
+            </span>
+            <h2 className="text-2xl md:text-3xl font-black tracking-wide mb-3">{translate('ციფრული ხელსაწყოები', 'Digital Tools')}</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+              {translate('AI-ზე დაფუძნებული პროდუქტები, რომლებიც CDC-მ შექმნა ბიზნესებისა და დამსაქმებლებისთვის.', 'AI-powered products built by CDC for businesses and employers.')}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-3 rounded-3xl border border-cyan-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-cyan-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
+              <div className="shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
+                <Bot className="w-7 h-7 text-white" />
+              </div>
+              <div className="flex-1">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <h3 className="text-xl font-black tracking-wide">{translate('Enterprise AI ასისტენტი & ცოდნის ბაზა', 'Enterprise AI Assistant & Knowledge Base')}</h3>
+                  <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                    {translate('ხელმისაწვდომია', 'Available now')}
+                  </span>
+                </div>
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">
+                  {translate(
+                    'შექმენით საკუთარი AI ჩატბოტი თქვენი კომპანიისთვის — ის სწავლობს თქვენს ბიზნესზე და პასუხობს ვიზიტორებს თქვენი საიტიდან პირდაპირ.',
+                    'Build your own AI chatbot for your company — it learns your business and answers visitors directly from your website.'
+                  )}
+                </p>
+                <ul className="grid sm:grid-cols-2 gap-3 mb-6">
+                  {[
+                    { icon: MessageSquareText, ka: 'პერსონალიზებული AI ჩატბოტი თქვენი საიტისთვის', en: 'A custom AI chatbot for your website' },
+                    { icon: BookOpen, ka: 'საკუთარი ცოდნის ბაზა კითხვა-პასუხის ფორმატში', en: 'Your own Q&A-style knowledge base' },
+                    { icon: Code2, ka: 'ჩასაშენებელი ვიჯეტი — ერთი კოდი და მზადაა', en: 'An embeddable widget — one snippet and it is live' },
+                    { icon: BarChart3, ka: 'ვიზიტორთა საუბრების ანალიტიკა', en: 'Visitor conversation analytics' },
+                  ].map(({ icon: Icon, ka, en }) => (
+                    <li key={en} className="flex items-center gap-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                      <Icon className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
+                      {translate(ka, en)}
+                    </li>
+                  ))}
+                </ul>
+                {isAuthenticated && (user?.role === 'Client' || user?.role === 'SuperAdmin') ? (
+                  <Link
+                    href="/dashboard/ai-tools"
+                    className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {translate('7 დღე უფასოდ', '7 Days Free')}
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => openAuthModal({ mode: 'register' })}
+                    className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {translate('7 დღე უფასოდ', '7 Days Free')}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {[
+              { icon: ShieldCheck, ka: 'AI Proctored Exam & Skill Assessment System', en: 'AI Proctored Exam & Skill Assessment System', descKa: 'AI-ზე დაფუძნებული ონლაინ გამოცდები რეალურ დროში მონიტორინგით და კანდიდატების უნარების ავტომატური შეფასებით.', descEn: 'AI-powered online exams with real-time proctoring and automated candidate skill assessment.' },
+              { icon: Users, ka: 'AI Candidate Screener & HR Assistant', en: 'AI Candidate Screener & HR Assistant', descKa: 'AI ასისტენტი, რომელიც დამსაქმებლებს ეხმარება კანდიდატების პირველად გადარჩევასა და HR პროცესების ავტომატიზაციაში.', descEn: 'An AI assistant that helps employers pre-screen candidates and automate HR workflows.' },
+            ].map(({ icon: Icon, ka, en, descKa, descEn }) => (
+              <div key={en} className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-7 flex flex-col opacity-90">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    <Icon className="w-6 h-6 text-slate-400 dark:text-slate-500" />
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                    <Lock className="w-3 h-3" />
+                    {translate('მალე', 'Coming Soon')}
+                  </span>
+                </div>
+                <h3 className="text-base font-black tracking-wide mb-2">{translate(ka, en)}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{translate(descKa, descEn)}</p>
+              </div>
+            ))}
+
+            <div className="lg:col-span-3 text-center">
+              <Link
+                href="/tools"
+                className={`inline-flex items-center gap-2 font-black text-sm px-6 py-3 rounded-xl no-underline transition-colors ${darkMode ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-slate-100 text-slate-900 hover:bg-slate-200'}`}
+              >
+                {translate('ყველა ხელსაწყოს ნახვა →', 'View All Tools →')}
+              </Link>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* 📰 NEWS & BLOG SECTION — real published posts from GET /api/v1/blog */}
