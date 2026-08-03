@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, FormEvent, ChangeEvent } from
 import Head from 'next/head';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
+import RichTextEditor from '../../src/components/shared/RichTextEditor';
 import { Course, CoursePayload, CourseLanguage, AdminSection, AdminLesson, Exam } from '../../src/types/lms';
 import {
   getCourses,
@@ -163,7 +164,7 @@ function CourseForm({
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
-        <textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={inputClass} />
+        <RichTextEditor rows={3} value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
       </div>
       <div className="grid md:grid-cols-3 gap-5">
         <div>

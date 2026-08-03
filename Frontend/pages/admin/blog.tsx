@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ExternalLink, MessageSquare, Trash2 } from 'lucide-react';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
+import RichTextEditor from '../../src/components/shared/RichTextEditor';
 import { BlogPost, BlogComment } from '../../src/types/blog';
 import {
   getBlogPosts,
@@ -314,13 +315,7 @@ function AdminBlogDashboard() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">კონტენტი (KA)</label>
-                  <textarea
-                    rows={8}
-                    value={form.content}
-                    onChange={(e) => setForm({ ...form, content: e.target.value })}
-                    className={inputClass}
-                    placeholder="სტატიის სრული ტექსტი..."
-                  />
+                  <RichTextEditor rows={8} value={form.content} onChange={(v) => setForm({ ...form, content: v })} placeholder="სტატიის სრული ტექსტი..." />
                 </div>
               </>
             ) : (
@@ -347,11 +342,10 @@ function AdminBlogDashboard() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Content (EN)</label>
-                  <textarea
+                  <RichTextEditor
                     rows={8}
                     value={form.contentEn ?? ''}
-                    onChange={(e) => setForm({ ...form, contentEn: e.target.value })}
-                    className={inputClass}
+                    onChange={(v) => setForm({ ...form, contentEn: v })}
                     placeholder="Full article body — falls back to Georgian if left blank"
                   />
                 </div>

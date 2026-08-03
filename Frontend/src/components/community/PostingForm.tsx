@@ -4,6 +4,7 @@ import { postVacancy, VacancyFormPayload } from '../../services/vacancyService';
 import { postGig, PostGigPayload } from '../../services/gigService';
 import { EmploymentType, GigBudgetType, JobCategory } from '../../types/community';
 import { JOB_CATEGORIES, JOB_CATEGORY_LABEL } from '../../utils/jobCategory';
+import RichTextEditor from '../shared/RichTextEditor';
 
 type PostType = 'vacancy' | 'gig';
 
@@ -189,15 +190,15 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
-          <textarea
+          <RichTextEditor
             rows={5}
             value={postType === 'vacancy' ? vacancyForm.description : gigForm.description}
-            onChange={(e) =>
+            onChange={(v) =>
               postType === 'vacancy'
-                ? setVacancyForm({ ...vacancyForm, description: e.target.value })
-                : setGigForm({ ...gigForm, description: e.target.value })
+                ? setVacancyForm({ ...vacancyForm, description: v })
+                : setGigForm({ ...gigForm, description: v })
             }
-            className={inputClass(!!errors.description)}
+            className={errors.description ? 'border-red-300' : ''}
             placeholder="Describe the role or project in detail…"
           />
           {errors.description && <p className="mt-1 text-xs text-red-600">{errors.description}</p>}

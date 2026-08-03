@@ -6,6 +6,7 @@ import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag } from 'lucide
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
+import MarkdownContent from '../../src/components/shared/MarkdownContent';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
 import { getProduct, claimFreeProduct, getProductDownloadUrl, DigitalProduct } from '../../src/services/productService';
@@ -161,7 +162,7 @@ function StoreProductContent() {
               {product.category}
             </span>
             <h1 className="text-2xl md:text-3xl font-black tracking-wide mb-3">{product.title}</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6 flex-1">{product.description}</p>
+            <MarkdownContent content={product.description} className="mb-6 flex-1" />
 
             {actionError && (
               <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-xs text-red-600 dark:text-red-300">{actionError}</div>

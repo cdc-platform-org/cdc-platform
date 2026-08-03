@@ -36,6 +36,7 @@ import { getMyPayments, MyPaymentRow } from '../src/services/paymentService';
 import { getForumQuota, ForumPostQuota } from '../src/services/forumService';
 import { createMentorshipRequest } from '../src/services/mentorshipService';
 import { getProducts, getProductDownloadUrl, submitProduct, getMySubmissions, DigitalProduct } from '../src/services/productService';
+import RichTextEditor from '../src/components/shared/RichTextEditor';
 import { User } from '../src/types/auth';
 
 type Tab = 'overview' | 'courses' | 'wallet' | 'gigs' | 'products';
@@ -957,14 +958,7 @@ function DashboardContent() {
                         onChange={(e) => setSubmitTitle(e.target.value)}
                         className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
                       />
-                      <textarea
-                        required
-                        rows={3}
-                        placeholder={t.formDescription}
-                        value={submitDescription}
-                        onChange={(e) => setSubmitDescription(e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
-                      />
+                      <RichTextEditor required rows={3} placeholder={t.formDescription} value={submitDescription} onChange={setSubmitDescription} />
                       <div className="grid sm:grid-cols-2 gap-3">
                         <input
                           required

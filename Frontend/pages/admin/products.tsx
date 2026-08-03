@@ -3,11 +3,14 @@ import Head from 'next/head';
 import Image from 'next/image';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
+import RichTextEditor from '../../src/components/shared/RichTextEditor';
+import MarkdownContent from '../../src/components/shared/MarkdownContent';
 import {
   getAdminProducts,
   createProduct,
   approveProduct,
   rejectProduct,
+  updateProductAdmin,
   uploadProductImage,
   uploadProductFile,
   DigitalProduct,
@@ -21,6 +24,115 @@ const STATUS_BADGE: Record<string, string> = {
   APPROVED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   REJECTED: 'bg-red-50 text-red-700 border-red-200',
 };
+
+function ModerationProductCard({
+  product: p,
+  acting,
+  onApprove,
+  onReject,
+  onSave,
+}: {
+  product: AdminProduct;
+  acting: boolean;
+  onApprove: () => void;
+  onReject: () => void;
+  onSave: (patch: { title: string; description: string }) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(p.title);
+  const [description, setDescription] = useState(p.description);
+  const [saving, setSaving] = useState(false);
+
+  const startEdit = () => {
+    setTitle(p.title);
+    setDescription(p.description);
+    setEditing(true);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave({ title, description });
+      setEditing(false);
+    } catch {
+      // error already surfaced via the parent's actionError state
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex gap-4 bg-white border border-gray-200 rounded-xl p-4">
+      <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+        <Image src={p.imageUrl} alt={p.title} fill className="object-cover" unoptimized />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap mb-1">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-600">{p.category}</span>
+          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${STATUS_BADGE[p.status ?? 'PENDING']}`}>{p.status}</span>
+        </div>
+
+        {editing ? (
+          <div className="space-y-2 mb-2">
+            <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold" />
+            <RichTextEditor rows={3} value={description} onChange={setDescription} />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="text-xs font-medium text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+              <button type="button" onClick={() => setEditing(false)} className="text-xs font-medium text-gray-600 px-3 py-1.5 rounded-lg border border-gray-200">
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <h3 className="font-semibold text-gray-900 truncate">{p.title}</h3>
+            <MarkdownContent content={p.description} className="!text-xs text-gray-500 mb-1 line-clamp-2" />
+          </>
+        )}
+
+        <p className="text-xs text-gray-500">
+          {p.price === 0 ? 'Free' : formatPrice(p.price)} · {p.downloadsCount} downloads
+          {p.submittedBy && <> · Submitted by {p.submittedBy.name} ({p.submittedBy.email})</>}
+        </p>
+        {p.status === 'REJECTED' && p.rejectionReason && <p className="text-xs text-red-500 mt-1">Reason: {p.rejectionReason}</p>}
+      </div>
+      {!editing && (
+        <div className="flex flex-col gap-2 shrink-0 justify-center">
+          <button type="button" onClick={startEdit} disabled={acting} className="text-xs font-medium text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 disabled:opacity-60">
+            Edit
+          </button>
+          {p.status === 'PENDING' && (
+            <>
+              <button
+                type="button"
+                onClick={onApprove}
+                disabled={acting}
+                className="text-xs font-medium text-white bg-emerald-600 px-3 py-1.5 rounded-lg hover:bg-emerald-700 disabled:opacity-60"
+              >
+                Approve
+              </button>
+              <button
+                type="button"
+                onClick={onReject}
+                disabled={acting}
+                className="text-xs font-medium text-white bg-red-600 px-3 py-1.5 rounded-lg hover:bg-red-700 disabled:opacity-60"
+              >
+                Reject
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function AdminProductsDashboard() {
   const [products, setProducts] = useState<AdminProduct[]>([]);
@@ -135,6 +247,20 @@ function AdminProductsDashboard() {
     }
   };
 
+  const handleUpdate = async (id: string, patch: { title: string; description: string }) => {
+    setActionError(null);
+    setActingId(id);
+    try {
+      const updated = await updateProductAdmin(id, patch);
+      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
+    } catch (err: any) {
+      setActionError(err?.response?.data?.message ?? 'Failed to save changes.');
+      throw err;
+    } finally {
+      setActingId(null);
+    }
+  };
+
   return (
     <>
       <Head>
@@ -169,7 +295,7 @@ function AdminProductsDashboard() {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-            <textarea required rows={3} value={description} onChange={(e) => setDescription(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+            <RichTextEditor required rows={3} value={description} onChange={setDescription} />
           </div>
           <div className="grid sm:grid-cols-3 gap-4">
             <div>
@@ -242,45 +368,14 @@ function AdminProductsDashboard() {
         ) : (
           <div className="space-y-3">
             {visible.map((p) => (
-              <div key={p.id} className="flex gap-4 bg-white border border-gray-200 rounded-xl p-4">
-                <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0">
-                  <Image src={p.imageUrl} alt={p.title} fill className="object-cover" unoptimized />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-600">{p.category}</span>
-                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${STATUS_BADGE[p.status ?? 'PENDING']}`}>{p.status}</span>
-                  </div>
-                  <h3 className="font-semibold text-gray-900 truncate">{p.title}</h3>
-                  <p className="text-xs text-gray-500">
-                    {p.price === 0 ? 'Free' : formatPrice(p.price)} · {p.downloadsCount} downloads
-                    {p.submittedBy && <> · Submitted by {p.submittedBy.name} ({p.submittedBy.email})</>}
-                  </p>
-                  {p.status === 'REJECTED' && p.rejectionReason && (
-                    <p className="text-xs text-red-500 mt-1">Reason: {p.rejectionReason}</p>
-                  )}
-                </div>
-                {p.status === 'PENDING' && (
-                  <div className="flex flex-col gap-2 shrink-0 justify-center">
-                    <button
-                      type="button"
-                      onClick={() => handleApprove(p.id)}
-                      disabled={actingId === p.id}
-                      className="text-xs font-medium text-white bg-emerald-600 px-3 py-1.5 rounded-lg hover:bg-emerald-700 disabled:opacity-60"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleReject(p.id)}
-                      disabled={actingId === p.id}
-                      className="text-xs font-medium text-white bg-red-600 px-3 py-1.5 rounded-lg hover:bg-red-700 disabled:opacity-60"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                )}
-              </div>
+              <ModerationProductCard
+                key={p.id}
+                product={p}
+                acting={actingId === p.id}
+                onApprove={() => handleApprove(p.id)}
+                onReject={() => handleReject(p.id)}
+                onSave={(patch) => handleUpdate(p.id, patch)}
+              />
             ))}
           </div>
         )}

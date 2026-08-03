@@ -5,6 +5,7 @@ import Head from 'next/head';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
 import BackButton from '../../../src/components/common/BackButton';
+import MarkdownContent from '../../../src/components/shared/MarkdownContent';
 import { Course, SyllabusSection } from '../../../src/types/lms';
 import { getCourse, getProgressSummary, getSyllabus } from '../../../src/services/courseService';
 import { checkoutCourse } from '../../../src/services/paymentService';
@@ -189,7 +190,7 @@ export default function CourseDetailPage() {
         <div className="mb-6">
           <SocialShareButtons title={course.title} lang={lang} />
         </div>
-        <p className="text-slate-600 dark:text-slate-300 leading-relaxed mb-8">{course.description}</p>
+        <MarkdownContent content={course.description} className="mb-8" />
 
         <div className="flex flex-wrap gap-4 mb-8">
           {course.mentorName && (

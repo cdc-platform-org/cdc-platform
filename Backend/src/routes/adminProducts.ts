@@ -124,6 +124,35 @@ router.get('/', async (_req: Request, res: Response) => {
   res.json({ data: products });
 });
 
+const updateSchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().min(1).max(5000).optional(),
+  category: z.string().min(1).max(100).optional(),
+  // Major-unit GEL, same conversion as createSchema — omit to leave price unchanged.
+  price: z.number().min(0).optional(),
+});
+
+// Lets an admin fix typos/formatting on a graduate/freelancer submission
+// (or an admin-authored product) before approving it — separate from
+// approve/reject so an admin can save edits without also deciding the
+// status in the same request.
+router.put('/:id', async (req: Request, res: Response) => {
+  const result = updateSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  try {
+    const { price, ...rest } = result.data;
+    const updated = await prisma.digitalProduct.update({
+      where: { id: req.params.id },
+      data: { ...rest, ...(price !== undefined ? { price: Math.round(price * 100) } : {}) },
+    });
+    res.json({ data: updated });
+  } catch (err: any) {
+    if (err.code === 'P2025') return res.status(404).json({ message: 'Product not found.' });
+    throw err;
+  }
+});
+
 router.post('/:id/approve', async (req: Request, res: Response) => {
   const product = await prisma.digitalProduct.findUnique({ where: { id: req.params.id } });
   if (!product) return res.status(404).json({ message: 'Product not found.' });

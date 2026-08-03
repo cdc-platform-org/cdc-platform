@@ -68,6 +68,18 @@ export async function getAdminProducts(): Promise<(DigitalProduct & { submittedB
   return response.data.data;
 }
 
+export interface UpdateProductPayload {
+  title?: string;
+  description?: string;
+  category?: string;
+  price?: number; // major-unit GEL
+}
+
+export async function updateProductAdmin(id: string, payload: UpdateProductPayload): Promise<DigitalProduct> {
+  const response = await apiClient.put<{ data: DigitalProduct }>(`/admin/products/${id}`, payload);
+  return response.data.data;
+}
+
 export async function approveProduct(id: string): Promise<DigitalProduct> {
   const response = await apiClient.post<{ data: DigitalProduct }>(`/admin/products/${id}/approve`);
   return response.data.data;
