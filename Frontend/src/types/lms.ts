@@ -51,6 +51,7 @@ export interface LmsLesson {
   durationSeconds: number;
   order: number;
   resources: string[];
+  assignmentPrompt: string | null;
   completed: boolean;
   embedUrl: string | null;
   thumbnailUrl: string | null;
@@ -69,6 +70,10 @@ export interface SyllabusLesson {
   id: string;
   title: string;
   durationSeconds: number;
+  isFreePreview: boolean;
+  // Only populated (non-null) when isFreePreview is true — see Backend's
+  // GET /:id/syllabus.
+  embedUrl: string | null;
 }
 
 export interface SyllabusSection {
@@ -115,8 +120,30 @@ export interface AdminLesson {
   bunnyVideoId: string | null;
   embedUrl: string | null;
   thumbnailUrl: string | null;
+  isFreePreview: boolean;
+  assignmentPrompt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export type AssignmentStatus = 'PENDING' | 'APPROVED' | 'NEEDS_REVISION';
+
+export interface AssignmentSubmission {
+  id: string;
+  lessonId: string;
+  userId: string;
+  fileUrl: string | null;
+  linkUrl: string | null;
+  comment: string | null;
+  status: AssignmentStatus;
+  feedback: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminAssignmentSubmission extends AssignmentSubmission {
+  user: { id: string; name: string; email: string };
+  lesson: { id: string; title: string; section: { title: string; course: { id: string; title: string } } };
 }
 
 export interface AdminSection {
@@ -142,6 +169,8 @@ export interface LessonPayload {
   // Manual fallback for when direct upload-to-Bunny fails — a raw Bunny
   // Stream video GUID or a full embed URL (parsed server-side).
   bunnyVideoId?: string | null;
+  isFreePreview?: boolean;
+  assignmentPrompt?: string | null;
 }
 
 // --- AI Exam & Certification Gate ---

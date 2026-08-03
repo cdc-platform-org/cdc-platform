@@ -8,7 +8,7 @@ import BackButton from '../../../src/components/common/BackButton';
 import CourseVideoPlayer from '../../../src/components/courses/CourseVideoPlayer';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useEscapeToClose } from '../../../src/hooks/useEscapeToClose';
-import { LmsSection, LmsLesson, CourseProgressSummary, Course, ExamStatus } from '../../../src/types/lms';
+import { LmsSection, LmsLesson, CourseProgressSummary, Course, ExamStatus, AssignmentSubmission } from '../../../src/types/lms';
 import {
   getCourse,
   getCurriculum,
@@ -16,6 +16,9 @@ import {
   setLessonProgress,
   downloadCertificate,
   getExamStatus,
+  getMySubmission,
+  submitAssignment,
+  uploadSubmissionFile,
 } from '../../../src/services/courseService';
 
 const dict = {
@@ -24,7 +27,17 @@ const dict = {
     resources: 'რესურსები',
     assignment: 'დავალება',
     noResources: 'ამ გაკვეთილს დამატებითი მასალა არ აქვს.',
-    noAssignment: 'ამ კურსს ჯერ არ აქვს ფორმალური დავალების ჩაბარების სისტემა — გაკვეთილების დასრულებით მიაღწევთ 100%-იან პროგრესს.',
+    noAssignment: 'ამ გაკვეთილს დავალება არ აქვს — გაკვეთილების დასრულებით მიაღწევთ 100%-იან პროგრესს.',
+    assignmentLinkPlaceholder: 'ბმული (მაგ: Figma, Google Drive)…',
+    assignmentCommentPlaceholder: 'კომენტარი (არასავალდებულო)…',
+    assignmentUpload: 'ფაილის ატვირთვა',
+    assignmentSubmit: 'გაგზავნა',
+    assignmentSubmitting: 'იგზავნება…',
+    assignmentSubmitted: 'თქვენი დავალება გაგზავნილია და ელოდება განხილვას.',
+    assignmentApproved: 'დავალება დამტკიცებულია ✅',
+    assignmentNeedsRevision: 'საჭიროა შესწორება',
+    assignmentFeedback: 'უკუკავშირი',
+    assignmentResubmit: 'ხელახლა გაგზავნა',
     curriculum: 'სილაბუსი',
     completed: 'დასრულებულია',
     certificate: '🎓 სერტიფიკატის ჩამოტვირთვა (PDF)',
@@ -47,7 +60,17 @@ const dict = {
     resources: 'Resources',
     assignment: 'Assignment',
     noResources: 'This lesson has no attached resources.',
-    noAssignment: "This course doesn't have a formal assignment submission system yet — complete every lesson to reach 100%.",
+    noAssignment: 'This lesson has no assignment — complete every lesson to reach 100%.',
+    assignmentLinkPlaceholder: 'Link (e.g. Figma, Google Drive)…',
+    assignmentCommentPlaceholder: 'Comment (optional)…',
+    assignmentUpload: 'Upload file',
+    assignmentSubmit: 'Submit',
+    assignmentSubmitting: 'Submitting…',
+    assignmentSubmitted: 'Your submission is in and waiting for review.',
+    assignmentApproved: 'Assignment approved ✅',
+    assignmentNeedsRevision: 'Needs revision',
+    assignmentFeedback: 'Feedback',
+    assignmentResubmit: 'Resubmit',
     curriculum: 'Curriculum',
     completed: 'Completed',
     certificate: '🎓 Download Certificate (PDF)',
@@ -71,6 +94,126 @@ function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+const STATUS_BADGE: Record<string, string> = {
+  PENDING: 'text-amber-400',
+  APPROVED: 'text-emerald-400',
+  NEEDS_REVISION: 'text-red-400',
+};
+
+// Self-contained: fetches/manages its own submission for the active lesson
+// so switching lessons doesn't leak stale state between them.
+function AssignmentPanel({ lessonId, t }: { lessonId: string; t: (typeof dict)['ka']; }) {
+  const [submission, setSubmission] = useState<AssignmentSubmission | null | undefined>(undefined);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [comment, setComment] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadedFileUrl, setUploadedFileUrl] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSubmission(undefined);
+    setLinkUrl('');
+    setComment('');
+    setUploadedFileUrl(null);
+    setError(null);
+    getMySubmission(lessonId)
+      .then(setSubmission)
+      .catch(() => setSubmission(null));
+  }, [lessonId]);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      setUploadedFileUrl(await uploadSubmissionFile(lessonId, file));
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? 'Upload failed.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      const updated = await submitAssignment(lessonId, {
+        fileUrl: uploadedFileUrl || undefined,
+        linkUrl: linkUrl.trim() || undefined,
+        comment: comment.trim() || undefined,
+      });
+      setSubmission(updated);
+      setLinkUrl('');
+      setComment('');
+      setUploadedFileUrl(null);
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? 'Submission failed.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (submission === undefined) return null;
+
+  if (submission && submission.status !== 'NEEDS_REVISION') {
+    return (
+      <div className="space-y-2">
+        <p className={submission.status === 'APPROVED' ? 'text-emerald-400 font-bold' : 'text-slate-300'}>
+          {submission.status === 'APPROVED' ? t.assignmentApproved : t.assignmentSubmitted}
+        </p>
+        {submission.feedback && (
+          <p className="text-xs text-slate-400">
+            {t.assignmentFeedback}: {submission.feedback}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {submission?.status === 'NEEDS_REVISION' && (
+        <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3">
+          <p className={`text-xs font-bold ${STATUS_BADGE.NEEDS_REVISION}`}>{t.assignmentNeedsRevision}</p>
+          {submission.feedback && <p className="text-xs text-slate-400 mt-1">{submission.feedback}</p>}
+        </div>
+      )}
+      {error && <p className="text-xs text-red-400">{error}</p>}
+      <form onSubmit={handleSubmit} className="space-y-2">
+        <input
+          type="url"
+          value={linkUrl}
+          onChange={(e) => setLinkUrl(e.target.value)}
+          placeholder={t.assignmentLinkPlaceholder}
+          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200"
+        />
+        <textarea
+          rows={2}
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder={t.assignmentCommentPlaceholder}
+          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200"
+        />
+        <label className="inline-block text-xs font-bold text-cyan-400 hover:text-cyan-300 cursor-pointer">
+          {uploading ? '…' : uploadedFileUrl ? '✓ ' + t.assignmentUpload : t.assignmentUpload}
+          <input type="file" onChange={handleFile} disabled={uploading} className="hidden" />
+        </label>
+        <button
+          type="submit"
+          disabled={submitting || uploading || (!linkUrl.trim() && !uploadedFileUrl)}
+          className="block rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+        >
+          {submitting ? t.assignmentSubmitting : submission ? t.assignmentResubmit : t.assignmentSubmit}
+        </button>
+      </form>
+    </div>
+  );
 }
 
 function LearnContent() {
@@ -243,7 +386,15 @@ function LearnContent() {
               ) : (
                 <p className="text-slate-500">{t.noResources}</p>
               ))}
-            {activeTab === 'assignment' && <p className="text-slate-500">{t.noAssignment}</p>}
+            {activeTab === 'assignment' &&
+              (activeLesson?.assignmentPrompt ? (
+                <div className="space-y-4">
+                  <p className="text-slate-200">{activeLesson.assignmentPrompt}</p>
+                  <AssignmentPanel lessonId={activeLesson.id} t={t} />
+                </div>
+              ) : (
+                <p className="text-slate-500">{t.noAssignment}</p>
+              ))}
           </div>
         </div>
 

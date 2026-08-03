@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { prisma } from '../lib/prisma';
-import { authenticate, requireAdminRole } from '../middleware/auth';
+import { authenticate, requireAdminRole, requireApproved } from '../middleware/auth';
 import { uploadImage, deleteManagedImage } from '../services/imageStorage';
 import { BunnyStorageUploadError } from '../services/bunnyStorage';
 import {
@@ -15,6 +15,8 @@ import {
   lessonProgressUpdateSchema,
   examSettingsSchema,
   examSubmitSchema,
+  submitAssignmentSchema,
+  gradeAssignmentSchema,
 } from '../schemas/courseSchemas';
 import {
   createBunnyVideo,
@@ -99,13 +101,24 @@ router.get('/:id/syllabus', async (req, res) => {
   const sections = await prisma.courseSection.findMany({
     where: { courseId: req.params.id },
     orderBy: { order: 'asc' },
-    include: { lessons: { orderBy: { order: 'asc' }, select: { id: true, title: true, durationSeconds: true } } },
+    include: {
+      lessons: {
+        orderBy: { order: 'asc' },
+        select: { id: true, title: true, durationSeconds: true, isFreePreview: true, bunnyVideoId: true },
+      },
+    },
   });
   res.json({
     data: sections.map((section) => ({
       id: section.id,
       title: section.title,
-      lessons: section.lessons,
+      // embedUrl is only ever populated for isFreePreview lessons — this
+      // route is public (no `authenticate`), so a non-preview lesson's
+      // video must never be reachable through it regardless of bunnyVideoId.
+      lessons: section.lessons.map(({ bunnyVideoId, ...lesson }) => ({
+        ...lesson,
+        embedUrl: lesson.isFreePreview && bunnyVideoId ? getBunnyEmbedUrl(bunnyVideoId) : null,
+      })),
     })),
   });
 });
@@ -272,6 +285,7 @@ router.get('/:id/curriculum', authenticate, requireCourseAccess, async (req: Req
         durationSeconds: lesson.durationSeconds,
         order: lesson.order,
         resources: lesson.resources,
+        assignmentPrompt: lesson.assignmentPrompt,
         completed: lesson.progress[0]?.completed ?? false,
         ...lessonWithPlayback(lesson),
       })),
@@ -788,5 +802,107 @@ router.post(
     }
   }
 );
+
+// ============================================================
+// HOMEWORK ASSIGNMENTS — one submission per student per lesson (resubmit
+// overwrites, see the schema's unique constraint), reviewed by admins.
+// ============================================================
+
+// Student: submit/resubmit for a lesson they're enrolled in.
+const assignmentFileUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB — homework files, not lesson videos
+});
+
+// Student: upload a homework file, get back a URL to pass as fileUrl in the
+// actual POST /submissions call below (kept separate so a slow upload
+// doesn't block/duplicate the submission record itself).
+router.post(
+  '/lessons/:lessonId/submissions/upload',
+  authenticate,
+  requireApproved,
+  (req: Request, res: Response, next: NextFunction) => {
+    assignmentFileUpload.single('file')(req, res, (err: any) => {
+      if (!err) return next();
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ message: 'File is too large (50MB max).' });
+      }
+      return res.status(400).json({ message: err.message || 'Upload rejected.' });
+    });
+  },
+  async (req: Request, res: Response) => {
+    if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
+    const filename = `submission-${req.user!.id}-${Date.now()}${path.extname(req.file.originalname)}`;
+    try {
+      const url = await uploadImage({ buffer: req.file.buffer, mimetype: req.file.mimetype, folderName: 'assignment-submissions', filename });
+      res.status(201).json({ data: { url } });
+    } catch (err) {
+      const message = err instanceof BunnyStorageUploadError ? err.message : 'File upload failed. Please try again.';
+      res.status(500).json({ message });
+    }
+  }
+);
+
+router.post('/lessons/:lessonId/submissions', authenticate, requireApproved, async (req: Request, res: Response) => {
+  const result = submitAssignmentSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const lesson = await prisma.lesson.findUnique({ where: { id: req.params.lessonId }, include: { section: true } });
+  if (!lesson) return res.status(404).json({ message: 'Lesson not found.' });
+
+  const enrollment = await prisma.courseEnrollment.findUnique({
+    where: { userId_courseId: { userId: req.user!.id, courseId: lesson.section.courseId } },
+  });
+  if (!enrollment) return res.status(403).json({ message: 'You are not enrolled in this course.' });
+
+  const submission = await prisma.assignmentSubmission.upsert({
+    where: { lessonId_userId: { lessonId: lesson.id, userId: req.user!.id } },
+    // A resubmission clears any prior grading — it's a new attempt, not an
+    // edit of the graded one.
+    update: { ...result.data, status: 'PENDING', feedback: null },
+    create: { ...result.data, lessonId: lesson.id, userId: req.user!.id },
+  });
+  res.status(201).json({ data: submission });
+});
+
+// Student: their own submission for a lesson (to show status/feedback on
+// the player's Assignment tab).
+router.get('/lessons/:lessonId/submissions/mine', authenticate, async (req: Request, res: Response) => {
+  const submission = await prisma.assignmentSubmission.findUnique({
+    where: { lessonId_userId: { lessonId: req.params.lessonId, userId: req.user!.id } },
+  });
+  res.json({ data: submission });
+});
+
+// Admin: every submission across every course, most recent first — the
+// review queue backing /admin/assignments.
+router.get('/admin/submissions', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
+  const statusFilter = typeof req.query.status === 'string' ? req.query.status : undefined;
+  const submissions = await prisma.assignmentSubmission.findMany({
+    where: statusFilter ? { status: statusFilter } : undefined,
+    orderBy: { createdAt: 'desc' },
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      lesson: { select: { id: true, title: true, section: { select: { title: true, course: { select: { id: true, title: true } } } } } },
+    },
+  });
+  res.json({ data: submissions });
+});
+
+router.post('/admin/submissions/:id/grade', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
+  const result = gradeAssignmentSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  try {
+    const updated = await prisma.assignmentSubmission.update({
+      where: { id: req.params.id },
+      data: result.data,
+    });
+    res.json({ data: updated });
+  } catch (err: any) {
+    if (err.code === 'P2025') return res.status(404).json({ message: 'Submission not found.' });
+    throw err;
+  }
+});
 
 export default router;

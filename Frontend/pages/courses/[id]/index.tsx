@@ -2,11 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Head from 'next/head';
+import { Play, Lock, X } from 'lucide-react';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
 import BackButton from '../../../src/components/common/BackButton';
 import MarkdownContent from '../../../src/components/shared/MarkdownContent';
-import { Course, SyllabusSection } from '../../../src/types/lms';
+import CourseVideoPlayer from '../../../src/components/courses/CourseVideoPlayer';
+import { useEscapeToClose } from '../../../src/hooks/useEscapeToClose';
+import { Course, SyllabusSection, SyllabusLesson } from '../../../src/types/lms';
 import { getCourse, getProgressSummary, getSyllabus } from '../../../src/services/courseService';
 import { checkoutCourse } from '../../../src/services/paymentService';
 import { formatPrice, getSaleCountdownLabel } from '../../../src/utils/coursePricing';
@@ -30,6 +33,11 @@ const dict = {
     syllabus: 'სილაბუსი',
     noSyllabus: 'სილაბუსი მალე დაემატება.',
     signInToEnroll: { ka: 'გთხოვთ გაიაროთ ავტორიზაცია კურსზე ჩასარიცხად', en: 'Please sign in to enroll in a course' },
+    preview: 'გადახედვა',
+    locked: 'დაბლოკილია',
+    paywallTitle: 'ეს გაკვეთილი დაბლოკილია',
+    paywallBody: 'შეიძინეთ სრული კურსი, რომ მიიღოთ დაუყოვნებელი წვდომა ყველა ვიდეოზე, ჩამოსატვირთ მასალებზე და დავალებების ჩაბარებაზე.',
+    buyCourse: 'კურსის შეძენა',
   },
   en: {
     loading: 'Loading…',
@@ -44,6 +52,11 @@ const dict = {
     syllabus: 'Syllabus',
     noSyllabus: 'Syllabus coming soon.',
     signInToEnroll: { ka: 'გთხოვთ გაიაროთ ავტორიზაცია კურსზე ჩასარიცხად', en: 'Please sign in to enroll in a course' },
+    preview: 'Preview',
+    locked: 'Locked',
+    paywallTitle: 'This lesson is locked',
+    paywallBody: 'Purchase the full course to get instant access to all videos, downloadable resources, and assignment submissions.',
+    buyCourse: 'Buy Course',
   },
 };
 
@@ -77,6 +90,11 @@ export default function CourseDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewLesson, setPreviewLesson] = useState<SyllabusLesson | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
+
+  useEscapeToClose(!!previewLesson, () => setPreviewLesson(null));
+  useEscapeToClose(showPaywall, () => setShowPaywall(false));
 
   const load = useCallback(async () => {
     if (!courseId) return;
@@ -114,8 +132,9 @@ export default function CourseDetailPage() {
     try {
       const { redirectUrl } = await checkoutCourse(courseId);
       window.location.href = redirectUrl;
-    } catch {
-      setError(lang === 'en' ? 'Unable to start checkout. Please try again.' : 'გადახდის დაწყება ვერ მოხერხდა.');
+    } catch (err: any) {
+      const serverMessage = err?.response?.data?.message;
+      setError(serverMessage || (lang === 'en' ? 'Unable to start checkout. Please try again.' : 'გადახდის დაწყება ვერ მოხერხდა.'));
       setProcessing(false);
     }
   };
@@ -263,6 +282,26 @@ export default function CourseDetailPage() {
                       {section.lessons.map((lesson) => (
                         <div key={lesson.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-xs text-slate-600 dark:text-slate-300">
                           <span className="flex-1">{lesson.title}</span>
+                          {!enrolled &&
+                            (lesson.isFreePreview && lesson.embedUrl ? (
+                              <button
+                                type="button"
+                                onClick={() => setPreviewLesson(lesson)}
+                                className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-cyan-600 dark:text-cyan-400 bg-transparent border border-cyan-500/30 rounded-full px-2 py-0.5 cursor-pointer hover:bg-cyan-500/10"
+                              >
+                                <Play className="w-2.5 h-2.5" />
+                                {t.preview}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setShowPaywall(true)}
+                                title={t.locked}
+                                className="inline-flex items-center text-slate-400 bg-transparent border-none cursor-pointer p-0.5"
+                              >
+                                <Lock className="w-3 h-3" />
+                              </button>
+                            ))}
                           <span className="text-slate-500 shrink-0">{formatLessonDuration(lesson.durationSeconds)}</span>
                         </div>
                       ))}
@@ -274,6 +313,44 @@ export default function CourseDetailPage() {
           )}
         </div>
       </div>
+
+      {previewLesson && (
+        <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setPreviewLesson(null)}>
+          <div className="max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-bold text-white">{previewLesson.title}</p>
+              <button type="button" onClick={() => setPreviewLesson(null)} aria-label={t.locked} className="text-white/70 hover:text-white bg-transparent border-none cursor-pointer p-1">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <CourseVideoPlayer embedUrl={previewLesson.embedUrl} title={previewLesson.title} />
+          </div>
+        </div>
+      )}
+
+      {showPaywall && (
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowPaywall(false)}>
+          <div
+            className="max-w-md w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Lock className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+            <h3 className="text-base font-black text-slate-900 dark:text-white mb-2">{t.paywallTitle}</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{t.paywallBody}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setShowPaywall(false);
+                handleEnroll();
+              }}
+              disabled={processing}
+              className="w-full rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-3 text-sm font-black text-white disabled:opacity-60"
+            >
+              {processing ? t.enrolling : t.buyCourse}
+            </button>
+          </div>
+        </div>
+      )}
 
       <SuccessStoriesCarousel lang={lang} />
 

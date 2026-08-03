@@ -82,8 +82,8 @@ function GigApplicationsContent() {
     try {
       const { redirectUrl } = await checkoutGigEscrow(id);
       window.location.href = redirectUrl;
-    } catch {
-      setFundingError('Unable to start payment. Please try again.');
+    } catch (err: any) {
+      setFundingError(err?.response?.data?.message || 'Unable to start payment. Please try again.');
       setFunding(false);
     }
   };

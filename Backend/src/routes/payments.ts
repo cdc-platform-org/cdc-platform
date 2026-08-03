@@ -57,6 +57,14 @@ async function createBogOrderOrRespond(res: Response, params: CreateBogOrderPara
   try {
     return await createBogOrder(params);
   } catch (err) {
+    // Logged here explicitly — this catch responds directly rather than
+    // re-throwing, so it never reaches the global errorHandler's own
+    // console.error. The response message (BOG's exact status/body, from
+    // bogPaymentService's error text — e.g. invalid client_id/secret,
+    // non-HTTPS callback_url, bad merchant config) is safe to show an
+    // admin/developer since this only ever fires for BOG API failures,
+    // never end-user input.
+    console.error('[bog] createBogOrder failed:', err instanceof Error ? err.message : err);
     if (err instanceof BogNotConfiguredError) {
       res.status(501).json({ message: err.message });
     } else {

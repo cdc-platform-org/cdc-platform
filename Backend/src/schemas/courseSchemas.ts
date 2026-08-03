@@ -67,6 +67,8 @@ export const lessonCreateSchema = z.object({
   durationSeconds: z.number().int().min(0).optional().default(0),
   resources: z.array(z.string().trim().max(2000)).optional().default([]),
   order: z.number().int().min(0),
+  isFreePreview: z.boolean().optional().default(false),
+  assignmentPrompt: z.string().trim().max(5000).optional().nullable(),
 });
 
 export const lessonUpdateSchema = lessonCreateSchema.partial().extend({
@@ -78,6 +80,24 @@ export const lessonUpdateSchema = lessonCreateSchema.partial().extend({
 
 export const lessonProgressUpdateSchema = z.object({
   completed: z.boolean(),
+});
+
+// --- Homework assignments ---
+
+export const submitAssignmentSchema = z
+  .object({
+    fileUrl: z.string().url().optional(),
+    linkUrl: z.string().url().optional(),
+    comment: z.string().trim().max(3000).optional(),
+  })
+  .refine((data) => !!data.fileUrl || !!data.linkUrl, {
+    message: 'Provide a file or a link.',
+    path: ['fileUrl'],
+  });
+
+export const gradeAssignmentSchema = z.object({
+  status: z.enum(['APPROVED', 'NEEDS_REVISION']),
+  feedback: z.string().trim().max(3000).optional().nullable(),
 });
 
 // --- AI Exam & Certification Gate ---

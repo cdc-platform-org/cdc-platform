@@ -33,6 +33,7 @@ export const adminDict = {
       botKnowledge: 'AI ასისტენტის ცოდნის ბაზა',
       notifications: 'შეტყობინებების გაგზავნა',
       products: 'ციფრული მაღაზია',
+      assignments: 'საშინაო დავალებები',
     },
     chrome: {
       adminPanel: 'ადმინ პანელი',
@@ -92,6 +93,7 @@ export const adminDict = {
       botKnowledge: 'AI Assistant Knowledge Base',
       notifications: 'Send Notifications',
       products: 'Digital Store',
+      assignments: 'Assignments',
     },
     chrome: {
       adminPanel: 'Admin Panel',

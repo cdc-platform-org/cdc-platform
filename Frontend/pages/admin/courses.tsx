@@ -321,7 +321,61 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
   const [showManualInput, setShowManualInput] = useState(false);
   const [manualVideoId, setManualVideoId] = useState('');
   const [savingManual, setSavingManual] = useState(false);
+  const [showMore, setShowMore] = useState(false);
+  const [togglingPreview, setTogglingPreview] = useState(false);
+  const [newResourceUrl, setNewResourceUrl] = useState('');
+  const [savingResources, setSavingResources] = useState(false);
+  const [assignmentPrompt, setAssignmentPrompt] = useState(lesson.assignmentPrompt ?? '');
+  const [savingPrompt, setSavingPrompt] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleTogglePreview = async () => {
+    setTogglingPreview(true);
+    try {
+      await updateLesson(lesson.id, { isFreePreview: !lesson.isFreePreview });
+      onChanged();
+    } catch {
+      alert('Unable to update free-preview status.');
+    } finally {
+      setTogglingPreview(false);
+    }
+  };
+
+  const handleAddResource = async () => {
+    if (!newResourceUrl.trim()) return;
+    setSavingResources(true);
+    try {
+      await updateLesson(lesson.id, { resources: [...lesson.resources, newResourceUrl.trim()] });
+      setNewResourceUrl('');
+      onChanged();
+    } catch {
+      alert('Unable to add resource — make sure it is a valid URL.');
+    } finally {
+      setSavingResources(false);
+    }
+  };
+
+  const handleRemoveResource = async (url: string) => {
+    setSavingResources(true);
+    try {
+      await updateLesson(lesson.id, { resources: lesson.resources.filter((r) => r !== url) });
+      onChanged();
+    } finally {
+      setSavingResources(false);
+    }
+  };
+
+  const handleSavePrompt = async () => {
+    setSavingPrompt(true);
+    try {
+      await updateLesson(lesson.id, { assignmentPrompt: assignmentPrompt.trim() || null });
+      onChanged();
+    } catch {
+      alert('Unable to save the assignment prompt.');
+    } finally {
+      setSavingPrompt(false);
+    }
+  };
 
   const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -382,10 +436,66 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
         >
           Set Bunny Video ID
         </button>
+        <button
+          type="button"
+          onClick={() => setShowMore((v) => !v)}
+          className={`shrink-0 text-xs font-medium px-2 py-1 rounded ${lesson.isFreePreview ? 'text-emerald-600 hover:bg-emerald-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+        >
+          {lesson.isFreePreview ? '✓ Preview' : 'More'}
+        </button>
         <button type="button" onClick={handleDelete} className="shrink-0 text-xs font-medium text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50">
           Delete
         </button>
       </div>
+      {showMore && (
+        <div className="px-4 pb-3 space-y-3 bg-gray-50/60">
+          <label className="flex items-center gap-2 text-xs font-medium text-gray-700 pt-2">
+            <input type="checkbox" checked={lesson.isFreePreview} disabled={togglingPreview} onChange={handleTogglePreview} className="w-3.5 h-3.5" />
+            Free preview (watchable without purchasing, on the course landing page)
+          </label>
+
+          <div>
+            <p className="text-xs font-medium text-gray-700 mb-1">Resources</p>
+            <div className="space-y-1 mb-1.5">
+              {lesson.resources.map((url) => (
+                <div key={url} className="flex items-center gap-2">
+                  <span className="flex-1 text-xs text-gray-600 truncate">{url}</span>
+                  <button type="button" onClick={() => handleRemoveResource(url)} disabled={savingResources} className="text-xs text-red-500 hover:text-red-700">
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                value={newResourceUrl}
+                onChange={(e) => setNewResourceUrl(e.target.value)}
+                placeholder="https://... (PDF, ZIP, image, external link)"
+                className="flex-1 text-xs rounded-lg border border-gray-300 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <button type="button" onClick={handleAddResource} disabled={savingResources} className="text-xs font-medium text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60">
+                Add
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-medium text-gray-700 mb-1">Assignment prompt (optional)</p>
+            <div className="flex items-start gap-2">
+              <textarea
+                rows={2}
+                value={assignmentPrompt}
+                onChange={(e) => setAssignmentPrompt(e.target.value)}
+                placeholder="e.g. Upload your Figma link or design export"
+                className="flex-1 text-xs rounded-lg border border-gray-300 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <button type="button" onClick={handleSavePrompt} disabled={savingPrompt} className="text-xs font-medium text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60 shrink-0">
+                {savingPrompt ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showManualInput && (
         <div className="flex items-center gap-2 px-4 pb-3">
           <input

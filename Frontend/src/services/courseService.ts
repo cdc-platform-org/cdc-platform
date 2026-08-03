@@ -17,6 +17,9 @@ import {
   ExamAnswerLetter,
   SyllabusSection,
   MyCourseWithProgress,
+  AssignmentSubmission,
+  AdminAssignmentSubmission,
+  AssignmentStatus,
 } from '../types/lms';
 
 // --- Course CRUD (admin) / listing (public) ---
@@ -176,5 +179,42 @@ export async function updateExamSettings(courseId: string, payload: ExamSettings
 
 export async function verifyCertificate(code: string): Promise<CertificateVerification> {
   const response = await apiClient.get<{ data: CertificateVerification }>(`/courses/verify/${code}`);
+  return response.data.data;
+}
+
+// --- Homework assignments ---
+
+export interface SubmitAssignmentPayload {
+  fileUrl?: string;
+  linkUrl?: string;
+  comment?: string;
+}
+
+export async function uploadSubmissionFile(lessonId: string, file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await apiClient.post<{ data: { url: string } }>(`/courses/lessons/${lessonId}/submissions/upload`, formData);
+  return response.data.data.url;
+}
+
+export async function submitAssignment(lessonId: string, payload: SubmitAssignmentPayload): Promise<AssignmentSubmission> {
+  const response = await apiClient.post<{ data: AssignmentSubmission }>(`/courses/lessons/${lessonId}/submissions`, payload);
+  return response.data.data;
+}
+
+export async function getMySubmission(lessonId: string): Promise<AssignmentSubmission | null> {
+  const response = await apiClient.get<{ data: AssignmentSubmission | null }>(`/courses/lessons/${lessonId}/submissions/mine`);
+  return response.data.data;
+}
+
+export async function getAdminSubmissions(status?: AssignmentStatus): Promise<AdminAssignmentSubmission[]> {
+  const response = await apiClient.get<{ data: AdminAssignmentSubmission[] }>('/courses/admin/submissions', {
+    params: status ? { status } : undefined,
+  });
+  return response.data.data;
+}
+
+export async function gradeSubmission(id: string, status: 'APPROVED' | 'NEEDS_REVISION', feedback?: string): Promise<AssignmentSubmission> {
+  const response = await apiClient.post<{ data: AssignmentSubmission }>(`/courses/admin/submissions/${id}/grade`, { status, feedback });
   return response.data.data;
 }

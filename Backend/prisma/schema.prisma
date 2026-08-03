@@ -288,6 +288,7 @@ model User {
   examAttempts           ExamAttempt[]
   freelancerSkillExamAttempts FreelancerSkillExamAttempt[]
   productPurchases       ProductPurchase[]
+  assignmentSubmissions  AssignmentSubmission[]
   submittedProducts      DigitalProduct[]     @relation("SubmittedProducts")
   forumThreads           ForumThread[]
   forumComments          ForumComment[]
@@ -577,13 +578,44 @@ model Lesson {
   bunnyVideoId    String?
   resources       String[] @default([])
   order           Int
+  // Watchable by anyone on the public course landing page without
+  // enrolling — see routes/courses.ts's GET /:id/syllabus, which only
+  // includes embedUrl for these lessons.
+  isFreePreview     Boolean @default(false)
+  // Optional homework prompt shown on the student player's Assignment tab
+  // — null means the lesson has no assignment (existing behavior).
+  assignmentPrompt  String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  progress LessonProgress[]
+  progress    LessonProgress[]
+  submissions AssignmentSubmission[]
 
   @@index([sectionId])
   @@map("lessons")
+}
+
+// One row per student per lesson — resubmission overwrites the same row
+// (see the unique constraint) rather than piling up duplicates, so a
+// "needs revision" -> resubmit cycle stays a single record with fresh status.
+model AssignmentSubmission {
+  id        String   @id @default(uuid())
+  lessonId  String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileUrl   String?
+  linkUrl   String?
+  comment   String?
+  // "PENDING" | "APPROVED" | "NEEDS_REVISION"
+  status    String   @default("PENDING")
+  feedback  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([lessonId, userId])
+  @@index([userId])
+  @@map("assignment_submissions")
 }
 
 model LessonProgress {

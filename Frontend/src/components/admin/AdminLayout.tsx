@@ -60,6 +60,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/team-trainers', labelKey: 'teamTrainers', icon: UsersRound, tiers: ['SUPER_ADMIN', 'MANAGER'] },
   { href: '/admin/studio-cases', labelKey: 'studioCases', icon: Layers, tiers: ['SUPER_ADMIN', 'MANAGER'] },
   { href: '/admin/courses', labelKey: 'courses', icon: GraduationCap, tiers: ['SUPER_ADMIN', 'MANAGER'] },
+  { href: '/admin/assignments', labelKey: 'assignments', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'] },
   { href: '/admin/analytics', labelKey: 'analytics', icon: BarChart3, tiers: ['SUPER_ADMIN', 'MANAGER'] },
   { href: '/admin/finance', labelKey: 'finance', icon: CreditCard, tiers: ['SUPER_ADMIN'] },
   { href: '/admin/finance/payouts', labelKey: 'payouts', icon: Landmark, tiers: ['SUPER_ADMIN'] },

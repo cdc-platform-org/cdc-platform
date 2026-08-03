@@ -588,8 +588,9 @@ function BusinessDashboardContent() {
     try {
       const { redirectUrl } = await checkoutGigEscrow(gigId);
       window.location.href = redirectUrl;
-    } catch {
-      setGigActionError(lang === 'ka' ? 'გადახდის დაწყება ვერ მოხერხდა.' : 'Unable to start payment.');
+    } catch (err: any) {
+      const serverMessage = err?.response?.data?.message;
+      setGigActionError(serverMessage || (lang === 'ka' ? 'გადახდის დაწყება ვერ მოხერხდა.' : 'Unable to start payment.'));
       setGigBusyId(null);
     }
   };
