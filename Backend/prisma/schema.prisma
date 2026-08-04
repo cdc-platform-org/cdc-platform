@@ -235,6 +235,13 @@ model User {
   avatarUrl        String?
   // Short bio/headline shown on the profile — self-reported, plain text.
   bio              String?
+  // Public mentor-directory fields — only meaningful for role Mentor (same
+  // not-schema-restricted posture as the business fields below), edited by
+  // an admin on /admin/mentorship. mentorHourlyRate is minor units (tetri),
+  // same convention as Course.originalPrice.
+  mentorTitle      String?
+  mentorHourlyRate Int?
+  mentorSkills     String[] @default([])
   // Business KYC — self-uploaded Public Registry Extract / company
   // registration document, reviewed manually by an admin (see
   // routes/adminCompanies.ts). No separate status enum: the three states

@@ -26,6 +26,67 @@ function tbilisiDayOfWeekAndMinutes(date: Date): { dayOfWeek: number; minutes: n
   return { dayOfWeek, minutes: hour * 60 + minute };
 }
 
+// Concrete, real bookable datetimes over the next `days` days — combines the
+// mentor's recurring weekly rules with already-booked sessions (excluded)
+// and a 1-hour minimum lead time (excludes slots too soon to realistically
+// book). Georgia has used a fixed UTC+4 offset with no DST since 2017, so
+// constructing a Tbilisi wall-clock time as an explicit "+04:00" ISO string
+// is safe and avoids needing a timezone-math library.
+export async function generateAvailableSlots(
+  mentorId: string,
+  days = 14,
+  durationMinutes = DEFAULT_SESSION_MINUTES
+): Promise<Date[]> {
+  const rules = await prisma.mentorAvailabilityRule.findMany({ where: { mentorId } });
+  if (rules.length === 0) return [];
+
+  const rulesByDay = new Map<number, typeof rules>();
+  for (const rule of rules) {
+    if (!rulesByDay.has(rule.dayOfWeek)) rulesByDay.set(rule.dayOfWeek, []);
+    rulesByDay.get(rule.dayOfWeek)!.push(rule);
+  }
+
+  const now = new Date();
+  const minLeadTime = new Date(now.getTime() + 60 * 60_000);
+  const candidates: Date[] = [];
+  for (let dayOffset = 0; dayOffset < days; dayOffset += 1) {
+    const probe = new Date(now.getTime() + dayOffset * 86_400_000);
+    // The Tbilisi calendar date for this offset — not the UTC one, which can
+    // differ by a day near midnight depending on the server's own timezone.
+    const tbilisiDateStr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: REFERENCE_TIMEZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(probe);
+    const dayOfWeek = new Date(`${tbilisiDateStr}T12:00:00Z`).getUTCDay();
+    const rulesForDay = rulesByDay.get(dayOfWeek);
+    if (!rulesForDay) continue;
+    for (const rule of rulesForDay) {
+      for (let minute = rule.startMinute; minute + durationMinutes <= rule.endMinute; minute += durationMinutes) {
+        const hh = String(Math.floor(minute / 60)).padStart(2, '0');
+        const mm = String(minute % 60).padStart(2, '0');
+        const slot = new Date(`${tbilisiDateStr}T${hh}:${mm}:00+04:00`);
+        if (slot.getTime() >= minLeadTime.getTime()) candidates.push(slot);
+      }
+    }
+  }
+  if (candidates.length === 0) return [];
+
+  const existingBookings = await prisma.mentorshipBooking.findMany({
+    where: {
+      mentorId,
+      scheduledAt: { gte: now, lte: new Date(now.getTime() + (days + 1) * 86_400_000) },
+    },
+    select: { scheduledAt: true },
+  });
+  const free = candidates.filter(
+    (slot) => !existingBookings.some((b) => Math.abs(b.scheduledAt.getTime() - slot.getTime()) < durationMinutes * 60_000)
+  );
+  free.sort((a, b) => a.getTime() - b.getTime());
+  return free;
+}
+
 export class SlotUnavailableError extends Error {
   constructor(message: string) {
     super(message);

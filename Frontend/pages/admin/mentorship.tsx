@@ -11,9 +11,10 @@ import {
   getMentorAvailability,
   createMentorAvailabilityRule,
   deleteMentorAvailabilityRule,
+  updateMentorProfile,
   MentorshipGig,
   MentorshipHelpRequest,
-  MentorshipUser,
+  MentorProfile,
   MentorAvailabilityRule,
 } from '../../src/services/adminMentorshipService';
 
@@ -33,7 +34,7 @@ function timeToMinutes(time: string): number {
 }
 
 function MentorAvailabilitySection() {
-  const [mentors, setMentors] = useState<MentorshipUser[]>([]);
+  const [mentors, setMentors] = useState<MentorProfile[]>([]);
   const [selectedMentorId, setSelectedMentorId] = useState('');
   const [rules, setRules] = useState<MentorAvailabilityRule[]>([]);
   const [loading, setLoading] = useState(false);
@@ -41,12 +42,53 @@ function MentorAvailabilitySection() {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ dayOfWeek: 1, startTime: '18:00', endTime: '22:00' });
 
-  useEffect(() => {
-    getMentors().then((data) => {
-      setMentors(data);
-      if (data.length > 0) setSelectedMentorId(data[0].id);
-    });
+  const [profileForm, setProfileForm] = useState({ mentorTitle: '', mentorHourlyRateGel: '', mentorSkills: '', bio: '' });
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+
+  const loadMentors = useCallback(async () => {
+    const data = await getMentors();
+    setMentors(data);
+    setSelectedMentorId((prev) => prev || (data.length > 0 ? data[0].id : ''));
   }, []);
+
+  useEffect(() => {
+    loadMentors();
+  }, [loadMentors]);
+
+  useEffect(() => {
+    const mentor = mentors.find((m) => m.id === selectedMentorId);
+    if (!mentor) return;
+    setProfileForm({
+      mentorTitle: mentor.mentorTitle ?? '',
+      mentorHourlyRateGel: mentor.mentorHourlyRate != null ? String(mentor.mentorHourlyRate / 100) : '',
+      mentorSkills: mentor.mentorSkills.join(', '),
+      bio: mentor.bio ?? '',
+    });
+    setProfileSaved(false);
+  }, [selectedMentorId, mentors]);
+
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    setProfileSaved(false);
+    try {
+      const updated = await updateMentorProfile(selectedMentorId, {
+        mentorTitle: profileForm.mentorTitle.trim() || undefined,
+        mentorHourlyRate: profileForm.mentorHourlyRateGel
+          ? Math.round(Number(profileForm.mentorHourlyRateGel) * 100)
+          : undefined,
+        mentorSkills: profileForm.mentorSkills
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+        bio: profileForm.bio.trim() || undefined,
+      });
+      setMentors((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      setProfileSaved(true);
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   const loadRules = useCallback(async () => {
     if (!selectedMentorId) return;
@@ -106,6 +148,58 @@ function MentorAvailabilitySection() {
             </option>
           ))}
         </select>
+
+        <div className="grid sm:grid-cols-2 gap-4 mb-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Title / Position</label>
+            <input
+              value={profileForm.mentorTitle}
+              onChange={(e) => setProfileForm({ ...profileForm, mentorTitle: e.target.value })}
+              placeholder="e.g. Senior Product Designer"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Hourly Rate (GEL / ₾)</label>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={profileForm.mentorHourlyRateGel}
+              onChange={(e) => setProfileForm({ ...profileForm, mentorHourlyRateGel: e.target.value })}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-gray-700 mb-1">Core Skills (comma-separated)</label>
+          <input
+            value={profileForm.mentorSkills}
+            onChange={(e) => setProfileForm({ ...profileForm, mentorSkills: e.target.value })}
+            placeholder="Figma, UX Research, Design Systems"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
+        </div>
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-gray-700 mb-1">Bio</label>
+          <textarea
+            value={profileForm.bio}
+            onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
+            rows={2}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
+        </div>
+        <div className="flex items-center gap-3 mb-5">
+          <button
+            type="button"
+            onClick={handleSaveProfile}
+            disabled={savingProfile || !selectedMentorId}
+            className="rounded-lg bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-900 disabled:opacity-60"
+          >
+            {savingProfile ? 'Saving…' : 'Save Profile'}
+          </button>
+          {profileSaved && <span className="text-xs text-emerald-600">Saved.</span>}
+        </div>
 
         {error && <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
 

@@ -20,6 +20,13 @@ export const updateBogSettingsSchema = z.object({
   secretKey: z.string().trim().max(500).optional(),
   isLiveMode: z.boolean().optional(),
 });
+export const mentorProfileSchema = z.object({
+  mentorTitle: z.string().trim().max(200).optional(),
+  // Minor units (tetri) — same convention as Course.originalPrice.
+  mentorHourlyRate: z.number().int().min(0).optional(),
+  mentorSkills: z.array(z.string().trim().min(1).max(60)).max(20).optional(),
+  bio: z.string().trim().max(1000).optional(),
+});
 export const mentorAvailabilityRuleSchema = z
   .object({
     dayOfWeek: z.number().int().min(0).max(6),

@@ -64,8 +64,24 @@ export interface MentorAvailabilityRule {
   endMinute: number;
 }
 
-export async function getMentors(): Promise<MentorshipUser[]> {
-  const response = await apiClient.get<{ data: MentorshipUser[] }>('/admin/mentorship/mentors');
+export interface MentorProfile extends MentorshipUser {
+  avatarUrl: string | null;
+  bio: string | null;
+  mentorTitle: string | null;
+  mentorHourlyRate: number | null;
+  mentorSkills: string[];
+}
+
+export async function getMentors(): Promise<MentorProfile[]> {
+  const response = await apiClient.get<{ data: MentorProfile[] }>('/admin/mentorship/mentors');
+  return response.data.data;
+}
+
+export async function updateMentorProfile(
+  mentorId: string,
+  payload: { mentorTitle?: string; mentorHourlyRate?: number; mentorSkills?: string[]; bio?: string }
+): Promise<MentorProfile> {
+  const response = await apiClient.put<{ data: MentorProfile }>(`/admin/mentorship/mentors/${mentorId}/profile`, payload);
   return response.data.data;
 }
 

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
-import { mentorAvailabilityRuleSchema } from '../schemas/adminSchemas';
+import { mentorAvailabilityRuleSchema, mentorProfileSchema } from '../schemas/adminSchemas';
 
 const router = Router();
 router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'));
@@ -82,10 +82,43 @@ router.post('/requests/:id/resolve', async (req: Request, res: Response) => {
 router.get('/mentors', async (_req: Request, res: Response) => {
   const mentors = await prisma.user.findMany({
     where: { role: 'Mentor' },
-    select: { id: true, name: true, email: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      avatarUrl: true,
+      bio: true,
+      mentorTitle: true,
+      mentorHourlyRate: true,
+      mentorSkills: true,
+    },
     orderBy: { name: 'asc' },
   });
   res.json({ data: mentors });
+});
+
+router.put('/mentors/:mentorId/profile', async (req: Request, res: Response) => {
+  const mentor = await prisma.user.findUnique({ where: { id: req.params.mentorId } });
+  if (!mentor || mentor.role !== 'Mentor') return res.status(404).json({ message: 'Mentor not found.' });
+
+  const result = mentorProfileSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const updated = await prisma.user.update({
+    where: { id: mentor.id },
+    data: result.data,
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      avatarUrl: true,
+      bio: true,
+      mentorTitle: true,
+      mentorHourlyRate: true,
+      mentorSkills: true,
+    },
+  });
+  res.json({ data: updated });
 });
 
 router.get('/mentors/:mentorId/availability', async (req: Request, res: Response) => {
