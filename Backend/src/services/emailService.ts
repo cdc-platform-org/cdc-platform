@@ -1,7 +1,15 @@
 import { Resend } from 'resend';
-import { RESEND_API_KEY, EMAIL_FROM, SUPER_ADMIN_EMAILS } from '../utils/env';
+import { RESEND_API_KEY, EMAIL_FROM, SUPER_ADMIN_EMAILS, BACKEND_URL } from '../utils/env';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://cdc.org.ge';
+
+// BACKEND_URL isn't guaranteed https:// (see its own comment in utils/env.ts)
+// — same class of bug as payments.ts's callback URL, coerced the same way,
+// so a certificate download link never gets printed into an email as
+// http://localhost:4000/... in production.
+function httpsBackendUrl(): string {
+  return BACKEND_URL.startsWith('https://') ? BACKEND_URL : `https://${BACKEND_URL.replace(/^https?:\/\//, '')}`;
+}
 
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
@@ -125,16 +133,20 @@ export async function sendCertificateEmail(
   courseTitle: string,
   pdfBuffer: Buffer,
   filename: string,
+  verificationCode: string,
   lang: 'ka' | 'en' = 'ka'
 ): Promise<void> {
   const subject = lang === 'en' ? 'Your Certificate - CDC' : 'თქვენი სერტიფიკატი - CDC';
+  // Public, no-login download of the exact same PDF that's attached — see
+  // GET /api/courses/certificates/download/:code (routes/courses.ts).
+  const downloadUrl = `${httpsBackendUrl()}/api/courses/certificates/download/${verificationCode}`;
   const html = wrapTemplate(
     lang === 'en' ? 'Your Certificate is Ready' : 'თქვენი სერტიფიკატი მზადაა',
     lang === 'en'
-      ? `Congratulations, ${studentName}! Your certificate for completing <strong>${courseTitle}</strong> is attached to this email.`
-      : `გილოცავთ, ${studentName}! თქვენი სერტიფიკატი კურსის „<strong>${courseTitle}</strong>“ დასრულებისთვის თანდართულია ამ წერილს.`,
-    lang === 'en' ? 'Verify Certificate' : 'სერტიფიკატის ვერიფიკაცია',
-    FRONTEND_URL
+      ? `Congratulations, ${studentName}! Your certificate for completing <strong>${courseTitle}</strong> is attached to this email — you can also download it anytime using the button below.`
+      : `გილოცავთ, ${studentName}! თქვენი სერტიფიკატი კურსის „<strong>${courseTitle}</strong>“ დასრულებისთვის თანდართულია ამ წერილს — ასევე შეგიძლიათ ჩამოტვირთოთ ქვემოთ მოცემული ღილაკით ნებისმიერ დროს.`,
+    lang === 'en' ? 'Download Certificate' : 'სერტიფიკატის ჩამოტვირთვა',
+    downloadUrl
   );
   if (!resend) {
     console.log(`[DEV EMAIL] To: ${to} | Subject: ${subject} | Certificate PDF attached (${pdfBuffer.length} bytes, not actually sent)`);

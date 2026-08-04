@@ -485,7 +485,8 @@ router.post('/certificates/issue-manual', requireAdminRole('SUPER_ADMIN', 'MANAG
       data.studentNameKa,
       data.courseTitleKa,
       pdfBuffer,
-      `CDC-Certificate-${verificationCode}.pdf`
+      `CDC-Certificate-${verificationCode}.pdf`,
+      verificationCode
     );
     emailSent = true;
     await prisma.manualCertificate.update({ where: { id: certificate.id }, data: { emailSentAt: new Date() } });

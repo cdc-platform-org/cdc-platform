@@ -756,6 +756,72 @@ router.get('/verify/:code', async (req: Request, res: Response) => {
   });
 });
 
+// ---- Public certificate PDF download by verification code (no auth) — the
+// link in the "your certificate is ready" email and the /verify/:code page's
+// download button both point here. Regenerates the PDF on demand (nothing is
+// persisted) using the exact same renderer as the authenticated
+// GET /:id/certificate route, so anyone holding the code/link can fetch it
+// without ever needing to log in. ----
+
+router.get('/certificates/download/:code', async (req: Request, res: Response) => {
+  const code = req.params.code;
+
+  const certificate = await prisma.courseCertificate.findUnique({
+    where: { verificationCode: code },
+    include: {
+      user: { select: { name: true, legalFirstNameKa: true, legalLastNameKa: true, legalFirstNameEn: true, legalLastNameEn: true } },
+      course: { select: { title: true, titleEn: true, mentorName: true, mentorTitle: true } },
+    },
+  });
+
+  let pdfPromise: Promise<Buffer>;
+  if (certificate) {
+    const legalNameKa =
+      certificate.user.legalFirstNameKa && certificate.user.legalLastNameKa
+        ? `${certificate.user.legalFirstNameKa} ${certificate.user.legalLastNameKa}`
+        : null;
+    const legalNameEn =
+      certificate.user.legalFirstNameEn && certificate.user.legalLastNameEn
+        ? `${certificate.user.legalFirstNameEn} ${certificate.user.legalLastNameEn}`
+        : null;
+    pdfPromise = generateCertificatePdf({
+      studentName: legalNameKa || certificate.user.name,
+      studentNameSecondary: legalNameEn,
+      courseTitle: certificate.course.title,
+      courseTitleEn: certificate.course.titleEn,
+      instructorName: certificate.course.mentorName || 'CDC Faculty',
+      issueDate: certificate.issuedAt,
+      verificationCode: certificate.verificationCode,
+    });
+  } else {
+    const manual = await prisma.manualCertificate.findUnique({ where: { verificationCode: code } });
+    if (!manual) {
+      return res.status(404).json({ message: 'No certificate found for this verification code.' });
+    }
+    pdfPromise = generateCertificatePdf({
+      studentName: manual.studentNameKa,
+      studentNameSecondary: manual.studentNameEn,
+      courseTitle: manual.courseTitleKa,
+      courseTitleEn: manual.courseTitleEn,
+      instructorName: manual.instructorName,
+      issueDate: manual.issueDate,
+      verificationCode: manual.verificationCode,
+    });
+  }
+
+  try {
+    const pdfBuffer = await pdfPromise;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="CDC-Certificate-${code}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (err) {
+    if (err instanceof CertificateTemplateMissingError) {
+      return res.status(503).json({ message: 'Certificate template is not configured yet.' });
+    }
+    throw err;
+  }
+});
+
 // ---- Admin: sections & lessons ----
 
 router.post('/:courseId/sections', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {

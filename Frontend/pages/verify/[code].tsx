@@ -19,6 +19,7 @@ const dict = {
     instructor: 'ლექტორი',
     issued: 'გაცემის თარიღი',
     code: 'ვერიფიკაციის კოდი',
+    download: 'PDF-ის ჩამოტვირთვა',
     backHome: '← მთავარ გვერდზე',
   },
   en: {
@@ -33,9 +34,12 @@ const dict = {
     instructor: 'Instructor',
     issued: 'Issue Date',
     code: 'Verification Code',
+    download: 'Download PDF',
     backHome: '← Back to home',
   },
 };
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 export default function VerifyCertificatePage() {
   const router = useRouter();
@@ -113,6 +117,12 @@ export default function VerifyCertificatePage() {
                 <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">{t.code}</p>
                 <p className="text-xs font-mono text-slate-400 mt-1 break-all">{data.verificationCode}</p>
               </div>
+              <a
+                href={`${API_BASE_URL}/courses/certificates/download/${data.verificationCode}`}
+                className="block text-center rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-500 text-slate-950 font-bold text-sm px-6 py-3 no-underline hover:opacity-90 transition-opacity"
+              >
+                {t.download}
+              </a>
             </div>
           </div>
         )}

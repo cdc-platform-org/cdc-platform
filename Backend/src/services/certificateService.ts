@@ -329,12 +329,17 @@ function drawMixedScriptBlock(
 // against the artwork measured off a rasterised render, instead of against the
 // comment above that describes them.
 export const G = {
-  // Heading, on the baseline the artwork's two short gold rules flank.
-  headingY: 565 / 1055,
-  headingGapLeft: 489 / 1491,
-  headingGapRight: 1017 / 1491,
+  // The artwork's two short gold rules sit at this baseline (flanking an
+  // empty gap, x 489..1017) purely as a decorative divider now — the
+  // bilingual heading below got too long to sit flanked between them
+  // without crowding/touching their ends, so it was moved to its own row.
+  headingRuleY: 565 / 1055,
+  // Bilingual heading — clear of the rules above (headingRuleY) and the
+  // "presented to" line below (presentedToY), centered independently of
+  // the rules' narrow x 489..1017 gap since it no longer sits inside it.
+  headingY: 548 / 1055,
   // "presented to" line and the student name, above the gold divider.
-  presentedToY: 525.5 / 1055,
+  presentedToY: 521 / 1055,
   nameY: 455 / 1055,
   // "completed the course" line and the course title, below the divider.
   completedY: 345.6 / 1055,
@@ -438,14 +443,15 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Buf
   const slate = rgb(0.42, 0.45, 0.52);
   const centerX = width / 2;
 
-  // Heading — centered in the gap between the artwork's two short gold rules,
-  // on the baseline they flank.
+  // Bilingual heading — its own row below the artwork's gold rules (which
+  // stay a plain decorative divider above it), full body width so it never
+  // has to crowd/touch the rules' ends.
   drawFittedLine(page, LABELS.heading, {
     centerX,
     y: height * G.headingY,
-    maxWidth: width * (G.headingGapRight - G.headingGapLeft) - 32,
-    startSize: 26,
-    minSize: 16,
+    maxWidth: width * G.bodyMaxWidth,
+    startSize: 15,
+    minSize: 10,
     color: navy,
     fonts: boldFonts,
   });
