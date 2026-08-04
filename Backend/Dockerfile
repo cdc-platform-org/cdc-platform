@@ -33,6 +33,11 @@ RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
+# certificateService.ts reads public/templates/certificate-template.pdf at
+# runtime (path.join(__dirname, '..', '..', 'public', ...)) — this was
+# missing from the runtime image entirely, so every certificate download
+# 503'd with CertificateTemplateMissingError in production.
+COPY public ./public
 COPY package.json ./
 COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh

@@ -160,8 +160,8 @@ export async function getExamStatus(courseId: string): Promise<ExamStatus> {
   return response.data.data;
 }
 
-export async function startExam(courseId: string): Promise<ExamStartResult> {
-  const response = await apiClient.post<{ data: ExamStartResult }>(`/courses/${courseId}/exam/start`);
+export async function startExam(courseId: string, lang?: 'ka' | 'en'): Promise<ExamStartResult> {
+  const response = await apiClient.post<{ data: ExamStartResult }>(`/courses/${courseId}/exam/start`, { lang });
   return response.data.data;
 }
 

@@ -22,6 +22,9 @@ const dict = {
     weakTopics: 'გაამყარეთ ცოდნა შემდეგ თემებში:',
     startTitle: '🎓 სერტიფიცირების გამოცდა',
     startBody: (n: number, p: number) => `გამოცდა შედგება ${n} კითხვისგან. გასავლელად საჭიროა მინიმუმ ${p}% სისწორე.`,
+    chooseLang: 'აირჩიეთ ტესტირების ენა',
+    langKa: '🇬🇪 ქართული',
+    langEn: '🇬🇧 English',
     startButton: 'გამოცდის დაწყება',
     starting: 'გენერირდება…',
     timeLeft: 'დარჩენილი დრო',
@@ -55,6 +58,9 @@ const dict = {
     weakTopics: 'Brush up on these topics:',
     startTitle: '🎓 Certification Exam',
     startBody: (n: number, p: number) => `This exam has ${n} questions. You need at least ${p}% correct to pass.`,
+    chooseLang: 'Choose Exam Language',
+    langKa: '🇬🇪 ქართული',
+    langEn: '🇬🇧 English',
     startButton: 'Start Exam',
     starting: 'Generating…',
     timeLeft: 'Time left',
@@ -112,6 +118,7 @@ function ExamContent() {
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
 
+  const [examLang, setExamLang] = useState<'ka' | 'en'>(lang);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [questions, setQuestions] = useState<ExamQuestion[]>([]);
   const [passingScore, setPassingScore] = useState(0);
@@ -189,7 +196,7 @@ function ExamContent() {
     setStarting(true);
     setError(null);
     try {
-      const res = await startExam(courseId);
+      const res = await startExam(courseId, examLang);
       setSessionToken(res.sessionToken);
       setQuestions(res.questions);
       setPassingScore(res.passingScore);
@@ -281,6 +288,25 @@ function ExamContent() {
                 {t.weakTopics} {status.weakTopics.join(', ')}
               </p>
             )}
+
+            <p className="text-xs font-semibold text-slate-400 mb-3">{t.chooseLang}</p>
+            <div className="flex items-center justify-center gap-3 mb-8">
+              {(['ka', 'en'] as const).map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => setExamLang(code)}
+                  className={`rounded-xl border px-5 py-2.5 text-sm font-bold transition-colors ${
+                    examLang === code
+                      ? 'border-cyan-400 bg-cyan-400/10 text-white'
+                      : 'border-slate-700 text-slate-400 hover:border-slate-500'
+                  }`}
+                >
+                  {code === 'ka' ? t.langKa : t.langEn}
+                </button>
+              ))}
+            </div>
+
             <button
               type="button"
               onClick={handleStart}

@@ -544,6 +544,8 @@ router.post('/:id/exam/start', authenticate, requireCourseAccess, async (req: Re
     (l) => l.title
   );
 
+  const requestedLang = req.body?.lang === 'ka' ? 'ka' : req.body?.lang === 'en' ? 'en' : undefined;
+
   let questions: GeneratedQuestion[];
   try {
     questions = await generateExamQuestions({
@@ -553,6 +555,7 @@ router.post('/:id/exam/start', authenticate, requireCourseAccess, async (req: Re
       questionCount: exam.questionCount,
       aiPromptContext: exam.aiPromptContext,
       focusTopics: lastAttempt?.weakTopics.length ? lastAttempt.weakTopics : undefined,
+      lang: requestedLang,
     });
   } catch (err) {
     if (err instanceof AiExamGenerationError) {

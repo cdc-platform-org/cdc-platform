@@ -30,6 +30,7 @@ const dict = {
     confirmDownload: 'დადასტურება და ჩამოტვირთვა',
     confirmChangeName: 'სახელის შეცვლა (პროფილში გადასვლა)',
     confirmCancel: 'გაუქმება',
+    downloadFailed: 'სერტიფიკატის გენერირება ვერ მოხერხდა. სცადეთ თავიდან.',
   },
   en: {
     title: 'My Certificates',
@@ -48,6 +49,7 @@ const dict = {
     confirmDownload: 'Confirm & Download',
     confirmChangeName: 'Change Name (Go to Settings)',
     confirmCancel: 'Cancel',
+    downloadFailed: 'Unable to generate the certificate. Please try again.',
   },
 };
 
@@ -61,6 +63,7 @@ function CertificatesContent() {
   const [loading, setLoading] = useState(true);
   const [downloadingCourseId, setDownloadingCourseId] = useState<string | null>(null);
   const [confirmCourseId, setConfirmCourseId] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   useEscapeToClose(confirmCourseId !== null, () => setConfirmCourseId(null));
 
@@ -82,21 +85,36 @@ function CertificatesContent() {
   const certificateNameEn =
     user?.legalFirstNameEn && user?.legalLastNameEn ? `${user.legalFirstNameEn} ${user.legalLastNameEn}` : null;
 
-  const handleDownloadCertificate = async (courseId: string, courseTitle: string) => {
+  const handleDownloadCertificate = async (courseId: string, verificationCode: string | null) => {
     setDownloadingCourseId(courseId);
+    setDownloadError(null);
     try {
       const blob = await downloadCertificate(courseId);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `certificate-${courseTitle}.pdf`;
+      a.download = `CDC-Certificate-${verificationCode ?? courseId}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      setConfirmCourseId(null);
+    } catch (err: any) {
+      // responseType: 'blob' means an error response's JSON body arrives as
+      // a Blob too, not parsed data — err.response.data.message would be
+      // undefined even when the server sent a real error message.
+      const errorBlob = err?.response?.data;
+      let serverMessage: string | undefined;
+      if (errorBlob instanceof Blob) {
+        try {
+          serverMessage = JSON.parse(await errorBlob.text())?.message;
+        } catch {
+          // not JSON — ignore, fall back to the generic message below
+        }
+      }
+      setDownloadError(serverMessage || t.downloadFailed);
     } finally {
       setDownloadingCourseId(null);
-      setConfirmCourseId(null);
     }
   };
 
@@ -170,7 +188,10 @@ function CertificatesContent() {
                     )}
                     <button
                       type="button"
-                      onClick={() => setConfirmCourseId(course.id)}
+                      onClick={() => {
+                        setDownloadError(null);
+                        setConfirmCourseId(course.id);
+                      }}
                       disabled={downloadingCourseId === course.id}
                       className="flex items-center gap-1.5 bg-slate-950 hover:bg-slate-800 dark:bg-cyan-600 dark:hover:bg-cyan-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition disabled:opacity-60"
                     >
@@ -199,10 +220,13 @@ function CertificatesContent() {
             <p className="text-lg font-bold text-cyan-600 dark:text-cyan-300 mb-1">{certificateNameKa}</p>
             {certificateNameEn && <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">{certificateNameEn}</p>}
             <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-6">{t.confirmChangeHint}</p>
+            {downloadError && (
+              <p className="text-xs font-medium text-rose-600 dark:text-rose-400 mb-3">{downloadError}</p>
+            )}
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => handleDownloadCertificate(confirmEntry.course.id, confirmEntry.course.title)}
+                onClick={() => handleDownloadCertificate(confirmEntry.course.id, confirmEntry.verificationCode)}
                 disabled={downloadingCourseId === confirmEntry.course.id}
                 className="w-full text-sm font-bold px-4 py-3 rounded-xl bg-slate-950 dark:bg-cyan-600 text-white hover:bg-slate-800 dark:hover:bg-cyan-500 transition disabled:opacity-60"
               >
