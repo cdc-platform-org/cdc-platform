@@ -309,6 +309,9 @@ model User {
   mentorshipRequestsMade     MentorshipRequest[] @relation("MentorshipRequestsMade")
   mentorshipRequestsResolved MentorshipRequest[] @relation("MentorshipRequestsResolved")
   notifications              Notification[]
+  mentorAvailabilityRules    MentorAvailabilityRule[]
+  mentorshipBookingsAsMentor  MentorshipBooking[] @relation("MentorshipBookingsAsMentor")
+  mentorshipBookingsAsStudent MentorshipBooking[] @relation("MentorshipBookingsAsStudent")
 
   @@map("users")
 }
@@ -1046,8 +1049,8 @@ model BogPayment {
   userId      String
   user        User              @relation(fields: [userId], references: [id], onDelete: Restrict)
   purpose     BogPaymentPurpose
-  // COURSE -> Course.id, MENTORSHIP -> free-text package label (no
-  // mentorship/booking model exists yet), GIG_ESCROW_FUNDING -> Gig.id
+  // COURSE -> Course.id, MENTORSHIP -> Mentor's User.id (see
+  // MentorshipBooking for the actual scheduling details), GIG_ESCROW_FUNDING -> Gig.id
   referenceId String
   amount      Int               // minor units
   currency    String            @db.Char(3)
@@ -1058,10 +1061,56 @@ model BogPayment {
   rawCallback Json?
   createdAt   DateTime          @default(now())
   completedAt DateTime?
+  mentorshipBooking MentorshipBooking?
 
   @@index([userId])
   @@index([purpose, referenceId])
   @@map("bog_payments")
+}
+
+// A mentor's recurring weekly availability — e.g. "Tuesdays 18:00-22:00".
+// Times are in the platform's fixed reference timezone (Asia/Tbilisi,
+// matching CDC's actual operating hours) as minutes-since-midnight, not a
+// specific date, so one rule covers every week going forward.
+model MentorAvailabilityRule {
+  id          String   @id @default(uuid())
+  mentorId    String
+  mentor      User     @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  dayOfWeek   Int      // 0 = Sunday .. 6 = Saturday
+  startMinute Int      // minutes since midnight, e.g. 18:00 = 1080
+  endMinute   Int
+  createdAt   DateTime @default(now())
+
+  @@index([mentorId])
+  @@map("mentor_availability_rules")
+}
+
+// One row per paid mentorship session — created at checkout time (before
+// payment completes) so the chosen slot/phone/description survive the BOG
+// redirect round-trip; the Google Calendar fields are filled in once
+// applyBogPaymentResult() confirms payment and calls googleCalendarService.
+model MentorshipBooking {
+  id                      String     @id @default(uuid())
+  bogPaymentId            String     @unique
+  bogPayment              BogPayment @relation(fields: [bogPaymentId], references: [id], onDelete: Cascade)
+  mentorId                String
+  mentor                  User       @relation("MentorshipBookingsAsMentor", fields: [mentorId], references: [id], onDelete: Restrict)
+  studentId               String
+  student                 User       @relation("MentorshipBookingsAsStudent", fields: [studentId], references: [id], onDelete: Restrict)
+  scheduledAt             DateTime
+  studentPhone            String
+  consultationDescription String?
+  googleEventId           String?
+  googleMeetLink          String?
+  // Set when the Calendar API call fails/isn't configured — the booking and
+  // payment are still valid either way, this is purely diagnostic so an
+  // admin can see which sessions need a manual calendar invite.
+  calendarSyncError       String?
+  createdAt               DateTime   @default(now())
+
+  @@index([mentorId])
+  @@index([studentId])
+  @@map("mentorship_bookings")
 }
 
 // ============================================================

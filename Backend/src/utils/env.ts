@@ -99,3 +99,21 @@ export const BACKEND_URL = (process.env.BACKEND_URL || `http://localhost:${proce
 // Setting a different name here prints one person's name under another's
 // signature. Re-export the template if the signatory changes.
 export const CERTIFICATE_DIRECTOR_NAME = process.env.CERTIFICATE_DIRECTOR_NAME || '';
+// Google Calendar — creates a real event (with Google Meet link, both
+// student and mentor invited) on the Center's own calendar once a
+// mentorship BogPayment completes. Deliberately NOT requireEnv() — the app
+// (and mentorship checkout) must still boot without this configured;
+// services/googleCalendarService.ts just records calendarSyncError on the
+// MentorshipBooking and never blocks payment/enrollment on it.
+//
+// Requires a Google Cloud service account with domain-wide delegation
+// impersonating GOOGLE_CALENDAR_ID (Workspace Admin Console → Security →
+// API Controls → Domain-wide Delegation, authorized for the
+// https://www.googleapis.com/auth/calendar scope) — a plain OAuth client
+// (like GOOGLE_CLIENT_ID above) cannot create events as another mailbox.
+export const GOOGLE_CALENDAR_CLIENT_EMAIL = (process.env.GOOGLE_CALENDAR_CLIENT_EMAIL || '').trim();
+// Service account private keys are typically pasted into hosting dashboards
+// with literal "\n" sequences instead of real newlines — un-escape them,
+// same failure mode as GEMINI_API_KEY/GOOGLE_CLIENT_ID above.
+export const GOOGLE_CALENDAR_PRIVATE_KEY = (process.env.GOOGLE_CALENDAR_PRIVATE_KEY || '').trim().replace(/\\n/g, '\n');
+export const GOOGLE_CALENDAR_ID = (process.env.GOOGLE_CALENDAR_ID || 'contact@cdc.org.ge').trim();

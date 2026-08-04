@@ -7,9 +7,173 @@ import {
   dismissMentorshipRequest,
   getMentorshipRequests,
   resolveMentorshipRequest,
+  getMentors,
+  getMentorAvailability,
+  createMentorAvailabilityRule,
+  deleteMentorAvailabilityRule,
   MentorshipGig,
   MentorshipHelpRequest,
+  MentorshipUser,
+  MentorAvailabilityRule,
 } from '../../src/services/adminMentorshipService';
+
+const DAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function minutesToTime(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+    .toString()
+    .padStart(2, '0');
+  const m = (minutes % 60).toString().padStart(2, '0');
+  return `${h}:${m}`;
+}
+
+function timeToMinutes(time: string): number {
+  const [h, m] = time.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function MentorAvailabilitySection() {
+  const [mentors, setMentors] = useState<MentorshipUser[]>([]);
+  const [selectedMentorId, setSelectedMentorId] = useState('');
+  const [rules, setRules] = useState<MentorAvailabilityRule[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({ dayOfWeek: 1, startTime: '18:00', endTime: '22:00' });
+
+  useEffect(() => {
+    getMentors().then((data) => {
+      setMentors(data);
+      if (data.length > 0) setSelectedMentorId(data[0].id);
+    });
+  }, []);
+
+  const loadRules = useCallback(async () => {
+    if (!selectedMentorId) return;
+    setLoading(true);
+    try {
+      setRules(await getMentorAvailability(selectedMentorId));
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedMentorId]);
+
+  useEffect(() => {
+    loadRules();
+  }, [loadRules]);
+
+  const handleAddRule = async () => {
+    setError(null);
+    const startMinute = timeToMinutes(form.startTime);
+    const endMinute = timeToMinutes(form.endTime);
+    if (endMinute <= startMinute) return setError('End time must be after start time.');
+    setSaving(true);
+    try {
+      await createMentorAvailabilityRule(selectedMentorId, { dayOfWeek: form.dayOfWeek, startMinute, endMinute });
+      await loadRules();
+    } catch {
+      setError('Unable to add the rule. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteRule = async (ruleId: string) => {
+    await deleteMentorAvailabilityRule(ruleId);
+    setRules((prev) => prev.filter((r) => r.id !== ruleId));
+  };
+
+  return (
+    <div className="mb-10">
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-gray-900">Mentor Availability (Google Calendar bookings)</h2>
+        <p className="text-sm text-gray-500 mt-1">
+          Recurring weekly slots (Asia/Tbilisi time) a mentor can be booked for a paid session. Enforced server-side
+          at checkout, and used to create the Google Calendar invite once payment completes.
+        </p>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-xl p-5 max-w-2xl">
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">Mentor</label>
+        <select
+          value={selectedMentorId}
+          onChange={(e) => setSelectedMentorId(e.target.value)}
+          className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm mb-5"
+        >
+          {mentors.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name} ({m.email})
+            </option>
+          ))}
+        </select>
+
+        {error && <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
+
+        {loading ? (
+          <p className="text-sm text-gray-400">Loading…</p>
+        ) : rules.length === 0 ? (
+          <p className="text-sm text-gray-500 mb-4">No availability set yet for this mentor.</p>
+        ) : (
+          <div className="space-y-1.5 mb-4">
+            {rules.map((rule) => (
+              <div key={rule.id} className="flex items-center justify-between text-sm bg-gray-50 rounded-lg px-3 py-2">
+                <span className="text-gray-800">
+                  {DAY_LABELS[rule.dayOfWeek]}, {minutesToTime(rule.startMinute)}–{minutesToTime(rule.endMinute)}
+                </span>
+                <button type="button" onClick={() => handleDeleteRule(rule.id)} className="text-xs text-red-500 hover:text-red-700">
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-end gap-3 pt-3 border-t border-gray-100">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Day</label>
+            <select
+              value={form.dayOfWeek}
+              onChange={(e) => setForm({ ...form, dayOfWeek: Number(e.target.value) })}
+              className="rounded-lg border border-gray-300 px-2.5 py-2 text-sm"
+            >
+              {DAY_LABELS.map((label, idx) => (
+                <option key={idx} value={idx}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Start</label>
+            <input
+              type="time"
+              value={form.startTime}
+              onChange={(e) => setForm({ ...form, startTime: e.target.value })}
+              className="rounded-lg border border-gray-300 px-2.5 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">End</label>
+            <input
+              type="time"
+              value={form.endTime}
+              onChange={(e) => setForm({ ...form, endTime: e.target.value })}
+              className="rounded-lg border border-gray-300 px-2.5 py-2 text-sm"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleAddRule}
+            disabled={saving || !selectedMentorId}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+          >
+            {saving ? 'Adding…' : 'Add slot'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function GeneralHelpRequests() {
   const [requests, setRequests] = useState<MentorshipHelpRequest[]>([]);
@@ -112,6 +276,7 @@ function AdminMentorshipDashboard() {
         <title>Mentorship Queue | Admin</title>
       </Head>
       <div className="max-w-4xl">
+        <MentorAvailabilitySection />
         <GeneralHelpRequests />
 
         <div className="mb-8">

@@ -35,4 +35,17 @@ router.get('/mine', async (req: Request, res: Response) => {
   res.json({ data: requests });
 });
 
+// Read-only weekly rules for a paid-session booking UI to render as
+// selectable slots. The actual availability check at checkout time
+// (mentorAvailabilityService.assertSlotAvailable) is authoritative — this is
+// just what a client renders as "available" before submitting.
+router.get('/mentors/:mentorId/availability', async (req: Request, res: Response) => {
+  const rules = await prisma.mentorAvailabilityRule.findMany({
+    where: { mentorId: req.params.mentorId },
+    orderBy: [{ dayOfWeek: 'asc' }, { startMinute: 'asc' }],
+    select: { dayOfWeek: true, startMinute: true, endMinute: true },
+  });
+  res.json({ data: rules });
+});
+
 export default router;

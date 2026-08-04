@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
+import { mentorAvailabilityRuleSchema } from '../schemas/adminSchemas';
 
 const router = Router();
 router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'));
@@ -70,6 +71,47 @@ router.post('/requests/:id/resolve', async (req: Request, res: Response) => {
     .catch(() => null);
   if (!request) return res.status(404).json({ message: 'Request not found.' });
   res.json({ data: request });
+});
+
+// ============================================================
+// MENTOR AVAILABILITY & CALENDAR BOOKINGS — recurring weekly rules an admin
+// sets per mentor (e.g. "Tuesdays 18:00-22:00"), enforced server-side at
+// checkout by mentorAvailabilityService.assertSlotAvailable(). Distinct from
+// the free-help-request queue above.
+// ============================================================
+router.get('/mentors', async (_req: Request, res: Response) => {
+  const mentors = await prisma.user.findMany({
+    where: { role: 'Mentor' },
+    select: { id: true, name: true, email: true },
+    orderBy: { name: 'asc' },
+  });
+  res.json({ data: mentors });
+});
+
+router.get('/mentors/:mentorId/availability', async (req: Request, res: Response) => {
+  const rules = await prisma.mentorAvailabilityRule.findMany({
+    where: { mentorId: req.params.mentorId },
+    orderBy: [{ dayOfWeek: 'asc' }, { startMinute: 'asc' }],
+  });
+  res.json({ data: rules });
+});
+
+router.post('/mentors/:mentorId/availability', async (req: Request, res: Response) => {
+  const mentor = await prisma.user.findUnique({ where: { id: req.params.mentorId } });
+  if (!mentor || mentor.role !== 'Mentor') return res.status(404).json({ message: 'Mentor not found.' });
+
+  const result = mentorAvailabilityRuleSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const rule = await prisma.mentorAvailabilityRule.create({
+    data: { mentorId: mentor.id, ...result.data },
+  });
+  res.status(201).json({ data: rule });
+});
+
+router.delete('/availability/:ruleId', async (req: Request, res: Response) => {
+  await prisma.mentorAvailabilityRule.delete({ where: { id: req.params.ruleId } }).catch(() => null);
+  res.status(204).send();
 });
 
 export default router;

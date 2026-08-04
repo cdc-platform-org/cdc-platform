@@ -20,6 +20,16 @@ export const updateBogSettingsSchema = z.object({
   secretKey: z.string().trim().max(500).optional(),
   isLiveMode: z.boolean().optional(),
 });
+export const mentorAvailabilityRuleSchema = z
+  .object({
+    dayOfWeek: z.number().int().min(0).max(6),
+    startMinute: z.number().int().min(0).max(1439),
+    endMinute: z.number().int().min(1).max(1440),
+  })
+  .refine((data) => data.endMinute > data.startMinute, {
+    message: 'endMinute must be after startMinute.',
+    path: ['endMinute'],
+  });
 export const manualCertificateSchema = z.object({
   studentNameKa: z.string().trim().min(2).max(200),
   studentNameEn: z.string().trim().max(200).optional(),

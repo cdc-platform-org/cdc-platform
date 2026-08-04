@@ -41,6 +41,12 @@ export async function checkoutMentorship(params: {
   currency?: 'GEL' | 'USD' | 'EUR' | 'GBP';
   note?: string;
   lang?: 'ka' | 'en';
+  // ISO datetime string — must fall within one of the mentor's
+  // MentorAvailabilityRule slots (see /admin/mentorship), re-checked
+  // server-side regardless of what a booking UI displayed as available.
+  scheduledAt: string;
+  studentPhone: string;
+  consultationDescription?: string;
 }): Promise<BogCheckoutResult> {
   const response = await apiClient.post<BogCheckoutResult>('/payments/checkout/mentorship', params);
   return response.data;

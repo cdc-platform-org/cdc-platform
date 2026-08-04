@@ -1,6 +1,6 @@
 import apiClient from './apiClient';
 
-interface MentorshipUser {
+export interface MentorshipUser {
   id: string;
   name: string;
   email: string;
@@ -51,4 +51,37 @@ export async function getMentorshipRequests(): Promise<MentorshipHelpRequest[]> 
 
 export async function resolveMentorshipRequest(requestId: string): Promise<void> {
   await apiClient.post(`/admin/mentorship/requests/${requestId}/resolve`);
+}
+
+// --- Mentor availability rules (recurring weekly slots, feeds the paid-
+// session booking flow + Google Calendar event creation on checkout) ---
+
+export interface MentorAvailabilityRule {
+  id: string;
+  mentorId: string;
+  dayOfWeek: number; // 0 = Sunday .. 6 = Saturday
+  startMinute: number;
+  endMinute: number;
+}
+
+export async function getMentors(): Promise<MentorshipUser[]> {
+  const response = await apiClient.get<{ data: MentorshipUser[] }>('/admin/mentorship/mentors');
+  return response.data.data;
+}
+
+export async function getMentorAvailability(mentorId: string): Promise<MentorAvailabilityRule[]> {
+  const response = await apiClient.get<{ data: MentorAvailabilityRule[] }>(`/admin/mentorship/mentors/${mentorId}/availability`);
+  return response.data.data;
+}
+
+export async function createMentorAvailabilityRule(
+  mentorId: string,
+  rule: { dayOfWeek: number; startMinute: number; endMinute: number }
+): Promise<MentorAvailabilityRule> {
+  const response = await apiClient.post<{ data: MentorAvailabilityRule }>(`/admin/mentorship/mentors/${mentorId}/availability`, rule);
+  return response.data.data;
+}
+
+export async function deleteMentorAvailabilityRule(ruleId: string): Promise<void> {
+  await apiClient.delete(`/admin/mentorship/availability/${ruleId}`);
 }

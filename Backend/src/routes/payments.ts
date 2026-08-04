@@ -14,6 +14,8 @@ import {
 } from '../services/bogPaymentService';
 import { captureEscrow } from '../services/escrowService';
 import { getCurrentPrice, computeDiscount } from '../services/coursePricing';
+import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
+import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
 
 const router = Router();
 
@@ -177,11 +179,10 @@ router.post(
 
 // ============================================================
 // CHECKOUT — MENTORSHIP SESSION
-// Scope note: there is no session booking/scheduling system in this
-// codebase yet. This endpoint is payment infrastructure only — it records
-// a completed BogPayment (purpose=MENTORSHIP) that proves the buyer paid a
-// given mentor; wiring that up to an actual scheduled session is a separate,
-// not-yet-built feature.
+// Creates a MentorshipBooking alongside the BogPayment so the chosen
+// slot/phone/description survive the BOG redirect round-trip; the actual
+// Google Calendar event is created once applyBogPaymentResult() below
+// confirms payment (see services/googleCalendarService.ts).
 // ============================================================
 router.post(
   '/checkout/mentorship',
@@ -194,11 +195,18 @@ router.post(
     if (!mentor || mentor.role !== 'Mentor') {
       return res.status(404).json({ message: 'Mentor not found.' });
     }
-    const reusableMentorship = await findReusablePendingOrder(req.user!.id, 'MENTORSHIP', mentor.id);
-    if (reusableMentorship) {
-      return res.status(200).json({ paymentId: reusableMentorship.id, redirectUrl: reusableMentorship.redirectUrl });
+
+    const scheduledAt = new Date(result.data.scheduledAt);
+    try {
+      await assertSlotAvailable(mentor.id, scheduledAt);
+    } catch (err) {
+      if (err instanceof SlotUnavailableError) return res.status(400).json({ message: err.message });
+      throw err;
     }
 
+    // No reusable-pending-order shortcut here (unlike course/product/gig-escrow
+    // above) — a prior PENDING order may have been for a different
+    // scheduledAt, and reusing it would silently book the wrong time.
     const bogPayment = await prisma.bogPayment.create({
       data: {
         bogOrderId: `pending-${crypto.randomUUID()}`,
@@ -208,6 +216,16 @@ router.post(
         amount: result.data.amount,
         currency: result.data.currency,
         status: 'PENDING',
+      },
+    });
+    await prisma.mentorshipBooking.create({
+      data: {
+        bogPaymentId: bogPayment.id,
+        mentorId: mentor.id,
+        studentId: req.user!.id,
+        scheduledAt,
+        studentPhone: result.data.studentPhone,
+        consultationDescription: result.data.consultationDescription || null,
       },
     });
     const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
@@ -442,9 +460,38 @@ export async function applyBogPaymentResult(
       providerRef: bogPayment.bogOrderId,
     });
   }
-  // MENTORSHIP: the completed BogPayment record IS the grant — no further
-  // side effect (no booking system exists yet, see checkout route above).
-  else if (bogPayment.purpose === 'PRODUCT') {
+  else if (bogPayment.purpose === 'MENTORSHIP') {
+    const booking = await prisma.mentorshipBooking.findUnique({
+      where: { bogPaymentId: bogPayment.id },
+      include: { mentor: { select: { name: true, email: true } }, student: { select: { name: true, email: true } } },
+    });
+    // Should always exist (created alongside the BogPayment at checkout) —
+    // if genuinely missing there's nothing to put on a calendar.
+    if (!booking) return;
+    try {
+      const event = await createMentorshipCalendarEvent({
+        studentEmail: booking.student.email,
+        studentName: booking.student.name,
+        studentPhone: booking.studentPhone,
+        mentorEmail: booking.mentor.email,
+        mentorName: booking.mentor.name,
+        scheduledAt: booking.scheduledAt,
+        durationMinutes: DEFAULT_SESSION_MINUTES,
+        consultationDescription: booking.consultationDescription,
+      });
+      await prisma.mentorshipBooking.update({
+        where: { id: booking.id },
+        data: { googleEventId: event.eventId, googleMeetLink: event.meetLink, calendarSyncError: null },
+      });
+    } catch (err) {
+      // Payment already succeeded and the booking record exists either way —
+      // a calendar failure (not configured, API error) is recorded for an
+      // admin to follow up on, never rolled back into a failed payment.
+      const message = err instanceof Error ? err.message : 'Calendar event creation failed.';
+      console.error('[bog-callback] Google Calendar event creation failed:', message);
+      await prisma.mentorshipBooking.update({ where: { id: booking.id }, data: { calendarSyncError: message } });
+    }
+  } else if (bogPayment.purpose === 'PRODUCT') {
     await prisma.productPurchase.upsert({
       where: { userId_productId: { userId: bogPayment.userId, productId: bogPayment.referenceId } },
       update: { paymentStatus: 'COMPLETED', amount: bogPayment.amount },
