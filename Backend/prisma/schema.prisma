@@ -661,6 +661,29 @@ model CourseCertificate {
   @@map("course_certificates")
 }
 
+// Retroactive/manual certificates — issued by an admin for a graduate/course
+// that doesn't (or no longer does) exist as a real User/Course row, so unlike
+// CourseCertificate this stores the student/course/instructor as plain text
+// rather than FKs. GET /verify/:code checks this table as a fallback after
+// CourseCertificate. issuedByAdminId is a plain audit field, not a relation —
+// deliberately not touching the User model's relation list for this.
+model ManualCertificate {
+  id               String    @id @default(uuid())
+  verificationCode String    @unique
+  studentNameKa    String
+  studentNameEn    String?
+  studentEmail     String
+  courseTitleKa    String
+  courseTitleEn    String?
+  instructorName   String
+  issueDate        DateTime
+  issuedByAdminId  String
+  emailSentAt      DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@map("manual_certificates")
+}
+
 // ============================================================
 // AI EXAM & CERTIFICATION GATE — one Exam per course (admin-configured);
 // questions are generated on demand by services/aiExamService.ts, not

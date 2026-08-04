@@ -8,6 +8,8 @@ import {
   BogSettings,
   UpdateBogSettingsPayload,
   TeamMember,
+  ManualCertificatePayload,
+  ManualCertificate,
 } from '../types/adminPanel';
 
 export async function getDashboardStats(): Promise<DashboardStats> {
@@ -55,6 +57,16 @@ export async function getBogPayments(
 ): Promise<{ data: AdminBogPayment[]; totalCount: number }> {
   const response = await apiClient.get('/admin-panel/bog-payments', { params: { page, pageSize } });
   return response.data;
+}
+
+export async function previewManualCertificate(payload: ManualCertificatePayload): Promise<Blob> {
+  const response = await apiClient.post('/admin-panel/certificates/preview', payload, { responseType: 'blob' });
+  return response.data;
+}
+
+export async function issueManualCertificate(payload: ManualCertificatePayload): Promise<ManualCertificate> {
+  const response = await apiClient.post<{ data: ManualCertificate }>('/admin-panel/certificates/issue-manual', payload);
+  return response.data.data;
 }
 
 export async function getBogSettings(): Promise<BogSettings | null> {

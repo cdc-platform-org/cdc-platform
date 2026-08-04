@@ -115,6 +115,45 @@ export async function sendStudioInquiryEmail(
   );
 }
 
+// Certificates are sent as a real attachment, not a link — bypasses
+// sendEmail()'s HTML-only helper since Resend's attachments param needs the
+// PDF buffer passed alongside the message. Same log-only fallback when
+// Resend isn't configured, so the flow stays testable without a real key.
+export async function sendCertificateEmail(
+  to: string,
+  studentName: string,
+  courseTitle: string,
+  pdfBuffer: Buffer,
+  filename: string,
+  lang: 'ka' | 'en' = 'ka'
+): Promise<void> {
+  const subject = lang === 'en' ? 'Your Certificate - CDC' : 'თქვენი სერტიფიკატი - CDC';
+  const html = wrapTemplate(
+    lang === 'en' ? 'Your Certificate is Ready' : 'თქვენი სერტიფიკატი მზადაა',
+    lang === 'en'
+      ? `Congratulations, ${studentName}! Your certificate for completing <strong>${courseTitle}</strong> is attached to this email.`
+      : `გილოცავთ, ${studentName}! თქვენი სერტიფიკატი კურსის „<strong>${courseTitle}</strong>“ დასრულებისთვის თანდართულია ამ წერილს.`,
+    lang === 'en' ? 'Verify Certificate' : 'სერტიფიკატის ვერიფიკაცია',
+    FRONTEND_URL
+  );
+  if (!resend) {
+    console.log(`[DEV EMAIL] To: ${to} | Subject: ${subject} | Certificate PDF attached (${pdfBuffer.length} bytes, not actually sent)`);
+    return;
+  }
+  try {
+    await resend.emails.send({
+      from: EMAIL_FROM,
+      to,
+      subject,
+      html,
+      attachments: [{ filename, content: pdfBuffer }],
+    });
+  } catch (err) {
+    console.error(`[emailService] Certificate email failed for ${to}:`, err);
+    throw err;
+  }
+}
+
 export async function sendPasswordResetEmail(email: string, token: string, lang: 'ka' | 'en' = 'ka'): Promise<void> {
   const link = `${FRONTEND_URL}/reset-password?token=${token}`;
   const html =

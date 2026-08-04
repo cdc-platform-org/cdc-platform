@@ -34,6 +34,7 @@ export const adminDict = {
       notifications: 'შეტყობინებების გაგზავნა',
       products: 'ციფრული მაღაზია',
       assignments: 'საშინაო დავალებები',
+      certificates: 'სერტიფიკატის გაცემა',
     },
     chrome: {
       adminPanel: 'ადმინ პანელი',
@@ -94,6 +95,7 @@ export const adminDict = {
       notifications: 'Send Notifications',
       products: 'Digital Store',
       assignments: 'Assignments',
+      certificates: 'Issue Certificate',
     },
     chrome: {
       adminPanel: 'Admin Panel',

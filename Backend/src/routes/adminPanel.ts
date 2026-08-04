@@ -6,7 +6,10 @@ import {
   addTeamMemberSchema,
   moderateListingSchema,
   updateBogSettingsSchema,
+  manualCertificateSchema,
 } from '../schemas/adminSchemas';
+import { generateCertificatePdf, generateVerificationCode, CertificateTemplateMissingError } from '../services/certificateService';
+import { sendCertificateEmail } from '../services/emailService';
 
 const router = Router();
 const participantSelect = { select: { id: true, name: true, email: true, role: true, adminRole: true } };
@@ -397,6 +400,103 @@ router.delete('/team/:userId', requireAdminRole('SUPER_ADMIN'), async (req: Requ
 
   await prisma.user.update({ where: { id: user.id }, data: { adminRole: null } });
   res.status(204).send();
+});
+
+// ============================================================
+// MANUAL CERTIFICATE ISSUANCE — for graduates/courses that predate the LMS
+// or otherwise don't exist as real User/Course rows (see ManualCertificate
+// in schema.prisma). Reuses the exact same PDF renderer as the automatic
+// CourseCertificate flow (services/certificateService.ts), so layout/
+// bilingual formatting is guaranteed identical either way.
+// ============================================================
+router.post('/certificates/preview', requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
+  const result = manualCertificateSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+  const data = result.data;
+
+  try {
+    const issueDate = new Date(data.issueDate);
+    const pdfBuffer = await generateCertificatePdf({
+      studentName: data.studentNameKa,
+      studentNameSecondary: data.studentNameEn || null,
+      courseTitle: data.courseTitleKa,
+      courseTitleEn: data.courseTitleEn || null,
+      instructorName: data.instructorName,
+      issueDate,
+      // Preview only — a real, unique code is minted (and persisted) in
+      // /certificates/issue-manual below, never here.
+      verificationCode: generateVerificationCode(issueDate),
+    });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename="certificate-preview.pdf"');
+    res.send(pdfBuffer);
+  } catch (err) {
+    if (err instanceof CertificateTemplateMissingError) {
+      return res.status(503).json({ message: 'Certificate template is not configured yet.' });
+    }
+    throw err;
+  }
+});
+
+router.post('/certificates/issue-manual', requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
+  const result = manualCertificateSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+  const data = result.data;
+  const issueDate = new Date(data.issueDate);
+  const verificationCode = generateVerificationCode(issueDate);
+
+  let pdfBuffer: Buffer;
+  try {
+    pdfBuffer = await generateCertificatePdf({
+      studentName: data.studentNameKa,
+      studentNameSecondary: data.studentNameEn || null,
+      courseTitle: data.courseTitleKa,
+      courseTitleEn: data.courseTitleEn || null,
+      instructorName: data.instructorName,
+      issueDate,
+      verificationCode,
+    });
+  } catch (err) {
+    if (err instanceof CertificateTemplateMissingError) {
+      return res.status(503).json({ message: 'Certificate template is not configured yet.' });
+    }
+    throw err;
+  }
+
+  const certificate = await prisma.manualCertificate.create({
+    data: {
+      verificationCode,
+      studentNameKa: data.studentNameKa,
+      studentNameEn: data.studentNameEn || null,
+      studentEmail: data.studentEmail,
+      courseTitleKa: data.courseTitleKa,
+      courseTitleEn: data.courseTitleEn || null,
+      instructorName: data.instructorName,
+      issueDate,
+      issuedByAdminId: req.user!.id,
+    },
+  });
+
+  let emailSent = false;
+  let emailError: string | null = null;
+  try {
+    await sendCertificateEmail(
+      data.studentEmail,
+      data.studentNameKa,
+      data.courseTitleKa,
+      pdfBuffer,
+      `CDC-Certificate-${verificationCode}.pdf`
+    );
+    emailSent = true;
+    await prisma.manualCertificate.update({ where: { id: certificate.id }, data: { emailSentAt: new Date() } });
+  } catch (err) {
+    // The certificate record + PDF are already created — a failed send is
+    // reported back so the admin can retry/resend rather than silently
+    // losing the fact that the student never got their email.
+    emailError = err instanceof Error ? err.message : 'Email send failed.';
+  }
+
+  res.status(201).json({ data: { ...certificate, emailSent, emailError } });
 });
 
 export default router;

@@ -66,6 +66,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/finance/payouts', labelKey: 'payouts', icon: Landmark, tiers: ['SUPER_ADMIN'] },
   { href: '/admin/financials', labelKey: 'financials', icon: Wallet, tiers: ['SUPER_ADMIN'] },
   { href: '/admin/promos', labelKey: 'promos', icon: Tag, tiers: ['SUPER_ADMIN', 'MANAGER'] },
+  { href: '/admin/certificates/issue', labelKey: 'certificates', icon: Award, tiers: ['SUPER_ADMIN', 'MANAGER'] },
   { href: '/admin/team', labelKey: 'team', icon: Lock, tiers: ['SUPER_ADMIN'] },
 ];
 

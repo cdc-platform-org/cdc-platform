@@ -75,6 +75,34 @@ export interface AdminBogPayment {
   completedAt: string | null;
 }
 
+export interface ManualCertificatePayload {
+  studentNameKa: string;
+  studentNameEn?: string;
+  studentEmail: string;
+  courseTitleKa: string;
+  courseTitleEn?: string;
+  instructorName: string;
+  // ISO datetime string.
+  issueDate: string;
+}
+
+export interface ManualCertificate {
+  id: string;
+  verificationCode: string;
+  studentNameKa: string;
+  studentNameEn: string | null;
+  studentEmail: string;
+  courseTitleKa: string;
+  courseTitleEn: string | null;
+  instructorName: string;
+  issueDate: string;
+  issuedByAdminId: string;
+  emailSentAt: string | null;
+  createdAt: string;
+  emailSent: boolean;
+  emailError: string | null;
+}
+
 export interface BogSettings {
   clientId: string | null;
   secretKey: string | null; // masked once set — e.g. "••••1234"

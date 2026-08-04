@@ -20,3 +20,14 @@ export const updateBogSettingsSchema = z.object({
   secretKey: z.string().trim().max(500).optional(),
   isLiveMode: z.boolean().optional(),
 });
+export const manualCertificateSchema = z.object({
+  studentNameKa: z.string().trim().min(2).max(200),
+  studentNameEn: z.string().trim().max(200).optional(),
+  studentEmail: z.string().trim().email(),
+  courseTitleKa: z.string().trim().min(2).max(300),
+  courseTitleEn: z.string().trim().max(300).optional(),
+  instructorName: z.string().trim().min(2).max(200),
+  // ISO date string — deliberately z.string().datetime() with no minimum, so
+  // past dates (retroactive issuance) are always valid.
+  issueDate: z.string().datetime(),
+});

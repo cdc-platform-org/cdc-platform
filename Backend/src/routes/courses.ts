@@ -727,7 +727,22 @@ router.get('/verify/:code', async (req: Request, res: Response) => {
     include: { user: { select: { name: true } }, course: { select: { title: true, mentorName: true, mentorTitle: true } } },
   });
   if (!certificate) {
-    return res.status(404).json({ message: 'No certificate found for this verification code.' });
+    // Not a real CourseCertificate — fall back to a manually-issued one
+    // (retroactive certs for graduates/courses with no User/Course row).
+    const manual = await prisma.manualCertificate.findUnique({ where: { verificationCode: req.params.code } });
+    if (!manual) {
+      return res.status(404).json({ message: 'No certificate found for this verification code.' });
+    }
+    return res.json({
+      data: {
+        verificationCode: manual.verificationCode,
+        studentName: manual.studentNameEn ? `${manual.studentNameKa} / ${manual.studentNameEn}` : manual.studentNameKa,
+        courseTitle: manual.courseTitleEn ? `${manual.courseTitleKa} / ${manual.courseTitleEn}` : manual.courseTitleKa,
+        instructorName: manual.instructorName,
+        instructorTitle: null,
+        issuedAt: manual.issueDate,
+      },
+    });
   }
   res.json({
     data: {
