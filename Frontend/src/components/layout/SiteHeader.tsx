@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
+import { Menu, X, LayoutDashboard, GraduationCap, LogOut, ShieldCheck } from 'lucide-react';
 import LanguageSwitcher from './LanguageSwitcher';
 import UserMenu from './UserMenu';
 import NotificationBell from './NotificationBell';
@@ -15,6 +16,10 @@ const dict = {
     gallery: 'გალერეა',
     community: 'ვაკანსიები',
     tools: 'ციფრული ხელსაწყოები',
+    dashboard: 'ჩემი დაშბორდი',
+    myCourses: 'ჩემი კურსები',
+    admin: 'ადმინ პანელი',
+    logout: 'გამოსვლა',
   },
   en: {
     login: 'Log In',
@@ -22,6 +27,10 @@ const dict = {
     gallery: 'Gallery',
     community: 'Jobs',
     tools: 'Digital Tools',
+    dashboard: 'My Dashboard',
+    myCourses: 'My Courses',
+    admin: 'Admin Panel',
+    logout: 'Log Out',
   },
 };
 
@@ -32,14 +41,19 @@ export default function SiteHeader() {
   const router = useRouter();
   const lang = router.locale === 'en' ? 'en' : 'ka';
   const t = dict[lang];
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const { openAuthModal } = useAuthModal();
   const [darkMode, setDarkMode] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const isDark = localStorage.getItem('darkMode') === 'true' || document.documentElement.classList.contains('dark');
     setDarkMode(isDark);
   }, []);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [router.asPath]);
 
   const toggleDarkMode = () => {
     const next = !darkMode;
@@ -47,6 +61,14 @@ export default function SiteHeader() {
     localStorage.setItem('darkMode', String(next));
     document.documentElement.classList.toggle('dark', next);
   };
+
+  const handleMobileLogout = () => {
+    setMobileMenuOpen(false);
+    logout();
+    router.push('/');
+  };
+
+  const dashboardHref = user?.adminRole ? '/admin' : '/dashboard';
 
   return (
     <nav className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-[#0e1422]/90 backdrop-blur-md px-4 sm:px-6 py-4">
@@ -93,19 +115,107 @@ export default function SiteHeader() {
             {darkMode ? '☀️' : '🌙'}
           </button>
           <NotificationBell />
-          <UserMenu
-            loginFallback={
-              <button
-                type="button"
-                onClick={() => openAuthModal()}
-                className="text-xs font-bold px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-transparent cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                👤 {t.login}
-              </button>
-            }
-          />
+          <div className="hidden md:block">
+            <UserMenu
+              loginFallback={
+                <button
+                  type="button"
+                  onClick={() => openAuthModal()}
+                  className="text-xs font-bold px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-transparent cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  👤 {t.login}
+                </button>
+              }
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            aria-label="Toggle menu"
+            aria-expanded={mobileMenuOpen}
+            className="md:hidden p-2 rounded-xl border-none bg-transparent cursor-pointer text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
       </div>
+
+      {mobileMenuOpen && (
+        <div className="md:hidden mt-4 border-t border-slate-200 dark:border-slate-800 pt-4">
+          {isAuthenticated && user ? (
+            <Link
+              href={dashboardHref}
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-3 px-2 pb-4 no-underline text-current"
+            >
+              <div className="w-11 h-11 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shrink-0 flex items-center justify-center">
+                {user.avatarUrl ? (
+                  <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-sm font-black text-slate-400">{(user.name ?? '?').charAt(0).toUpperCase()}</span>
+                )}
+              </div>
+              <span className="text-sm font-bold text-slate-900 dark:text-white">{user.name}</span>
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                openAuthModal();
+              }}
+              className="w-full mb-4 text-sm font-bold px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-transparent cursor-pointer"
+            >
+              👤 {t.login}
+            </button>
+          )}
+
+          <div className="flex flex-col gap-1 text-sm font-bold text-slate-700 dark:text-slate-300">
+            <Link href="/community" onClick={() => setMobileMenuOpen(false)} className="no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+              {t.community}
+            </Link>
+            {(!isAuthenticated || user?.role === 'Client') && (
+              <Link href="/tools" onClick={() => setMobileMenuOpen(false)} className="no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                {t.tools}
+              </Link>
+            )}
+            {!(isAuthenticated && user) && (
+              <>
+                <Link href="/about" onClick={() => setMobileMenuOpen(false)} className="no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                  {t.about}
+                </Link>
+                <Link href="/gallery" onClick={() => setMobileMenuOpen(false)} className="no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                  {t.gallery}
+                </Link>
+              </>
+            )}
+
+            {isAuthenticated && user && (
+              <>
+                <div className="border-t border-slate-200 dark:border-slate-800 my-1" />
+                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5 no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                  <LayoutDashboard className="w-4 h-4" /> {t.dashboard}
+                </Link>
+                <Link href="/dashboard?tab=courses" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5 no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                  <GraduationCap className="w-4 h-4" /> {t.myCourses}
+                </Link>
+                {user.adminRole && (
+                  <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5 no-underline px-2 py-2.5 rounded-lg text-cyan-600 dark:text-cyan-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <ShieldCheck className="w-4 h-4" /> {t.admin}
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  onClick={handleMobileLogout}
+                  className="flex items-center gap-2.5 text-left px-2 py-2.5 rounded-lg border-none bg-transparent cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <LogOut className="w-4 h-4" /> {t.logout}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
