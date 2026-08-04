@@ -19,7 +19,8 @@ async function main() {
   const pdf = await generateCertificatePdf({
     studentName: 'ია თავდიშვილი',
     studentNameSecondary: 'ia tavdishvili',
-    courseTitle: 'Vibe Coding - ვებ-დეველოპმენტი AI-ით',
+    courseTitle: 'გრაფიკული დიზაინი და AI ხელსაწყოები',
+    courseTitleEn: 'Graphic Design & AI Tools',
     instructorName: 'ლევან ბერიძე',
     directorName: 'ნინო ქავთარაძე',
     issueDate,

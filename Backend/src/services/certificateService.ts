@@ -39,6 +39,10 @@ export interface CertificateData {
   // generateCertificatePdf. Never guessed when unset.
   studentNameSecondary?: string | null;
   courseTitle: string;
+  // Optional English translation of courseTitle (Course.titleEn) — never
+  // guessed. When set, the certificate prints "courseTitle / courseTitleEn"
+  // on the same auto-scaling title block; otherwise just courseTitle alone.
+  courseTitleEn?: string | null;
   instructorName: string;
   // Signatory for the left-hand signature rule. Falls back to
   // CERTIFICATE_DIRECTOR_NAME, and when that is unset too the rule is left
@@ -335,13 +339,20 @@ export const G = {
   // "completed the course" line and the course title, below the divider.
   completedY: 345.6 / 1055,
   courseCenterY: 285 / 1055,
-  // Closing two-line statement, above the footer separators.
-  closingKaY: 227 / 1055,
-  closingEnY: 205 / 1055,
+  // Closing statement — one bilingual line, centered between the template's
+  // former two-line Georgian/English slots (was 227 and 205; every other
+  // certificate label is a single "ka / en" line, so this one now matches).
+  closingY: 216 / 1055,
   // Footer: every zone puts its value on one shared baseline and its caption
   // on another, which is what makes the four columns read as one balanced row.
   footerValueY: 85.5 / 1055,
   footerCaptionY: 58 / 1055,
+  // Instructor "signature" line: unlike Director (which has an actual scanned
+  // signature image sitting above its rule, pdfY 106..189), Instructor has no
+  // scan — the printed name itself stands in for a signature, so it's drawn
+  // ABOVE the signature rule (pdfY 113) like ink on the line, with only the
+  // "Instructor" role caption below it at the shared footerCaptionY.
+  instructorSignatureY: 140 / 1055,
   signatureLeftX: 224.5 / 1491,
   dateCenterX: 567.5 / 1491,
   codeCenterX: 978 / 1491,
@@ -364,11 +375,10 @@ export const G = {
 // template's own (stripped) text layer used; the English is its counterpart on
 // the same line, which is where the template's "professioal" typo lived.
 const LABELS = {
-  heading: 'კურსის დასრულების სერტიფიკატი',
+  heading: 'კურსის დასრულების სერტიფიკატი / CERTIFICATE OF COMPLETION',
   presentedTo: 'ეს სერტიფიკატი გადაეცემა / This certificate is presented to',
   completed: 'წარმატებით დაასრულა კურსი / for successfully completing the course',
-  closingKa: 'სერტიფიკატი ადასტურებს მიღებულ ცოდნას და პროფესიულ განვითარებას',
-  closingEn: 'This certificate confirms the knowledge acquired and professional development',
+  closing: 'სერტიფიკატი ადასტურებს მიღებულ ცოდნას და პროფესიულ განვითარებას / This certificate confirms the acquired knowledge and professional development',
   director: 'დირექტორი / Director',
   issueDate: 'გაცემის თარიღი / Issue Date',
   certificateId: 'სერტიფიკატის ID / Certificate ID',
@@ -488,7 +498,8 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Buf
   // rather than clipping; the block's vertical midpoint is pinned inside the
   // band the divider opens, so a second line grows evenly above and below
   // instead of pushing into the closing lines beneath it.
-  const { size: courseSize, lines: courseLines } = fitMixedTextMultiline(data.courseTitle, width * G.courseMaxWidth, {
+  const displayCourseTitle = data.courseTitleEn ? `${data.courseTitle} / ${data.courseTitleEn}` : data.courseTitle;
+  const { size: courseSize, lines: courseLines } = fitMixedTextMultiline(displayCourseTitle, width * G.courseMaxWidth, {
     baseSize: 44,
     longTitleThreshold: 32,
     longTitleSize: 34,
@@ -505,23 +516,14 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Buf
     fonts: boldFonts,
   });
 
-  // Closing statement, Georgian then English. "professional" is spelled out in
-  // full here — the template's own text layer had it as "professioal".
-  drawFittedLine(page, LABELS.closingKa, {
+  // Closing statement — one bilingual line. "professional" is spelled out in
+  // full here — the template's own (stripped) text layer had it as "professioal".
+  drawFittedLine(page, LABELS.closing, {
     centerX,
-    y: height * G.closingKaY,
+    y: height * G.closingY,
     maxWidth: width * G.bodyMaxWidth,
     startSize: 15,
-    minSize: 10,
-    color: slate,
-    fonts: regularFonts,
-  });
-  drawFittedLine(page, LABELS.closingEn, {
-    centerX,
-    y: height * G.closingEnY,
-    maxWidth: width * G.bodyMaxWidth,
-    startSize: 15,
-    minSize: 10,
+    minSize: 9,
     color: slate,
     fonts: regularFonts,
   });
@@ -535,7 +537,7 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Buf
   // The Director name is blank when neither the caller nor
   // CERTIFICATE_DIRECTOR_NAME supplies one — the caption still prints, rather
   // than inventing a name to sit above the scanned signature.
-  const footerSlots: Array<{ centerX: number; value: string; caption: string; maxWidth: number; bold: boolean }> = [
+  const footerSlots: Array<{ centerX: number; value: string; caption: string; maxWidth: number; bold: boolean; valueY?: number }> = [
     {
       centerX: width * G.signatureLeftX,
       value: (data.directorName || CERTIFICATE_DIRECTOR_NAME || '').trim(),
@@ -563,13 +565,15 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Buf
       caption: LABELS.instructor,
       maxWidth: width * G.signatureMaxWidth,
       bold: true,
+      // Above the rule, standing in for a signature — see G.instructorSignatureY.
+      valueY: height * G.instructorSignatureY,
     },
   ];
   for (const slot of footerSlots) {
     if (slot.value) {
       drawFittedLine(page, slot.value, {
         centerX: slot.centerX,
-        y: height * G.footerValueY,
+        y: slot.valueY ?? height * G.footerValueY,
         maxWidth: slot.maxWidth,
         startSize: 15,
         minSize: 8,

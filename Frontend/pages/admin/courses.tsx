@@ -27,6 +27,7 @@ const DISCOUNT_PRESETS = [10, 20, 30, 40, 50, 60];
 
 const emptyForm = {
   title: '',
+  titleEn: '',
   description: '',
   category: '',
   originalPrice: 0,
@@ -80,6 +81,7 @@ function CourseForm({
       const presetMatch = editingCourse.discountPercent != null && DISCOUNT_PRESETS.includes(editingCourse.discountPercent);
       setForm({
         title: editingCourse.title,
+        titleEn: editingCourse.titleEn ?? '',
         description: editingCourse.description,
         category: editingCourse.category,
         originalPrice: editingCourse.originalPrice / 100,
@@ -118,6 +120,7 @@ function CourseForm({
     try {
       const payload: CoursePayload = {
         title: form.title.trim(),
+        titleEn: form.titleEn.trim() || undefined,
         description: form.description.trim(),
         category: form.category.trim(),
         originalPrice: Math.round((Number(form.originalPrice) || 0) * 100),
@@ -209,6 +212,12 @@ function CourseForm({
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
           <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={inputClass} />
         </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          Title (English) <span className="text-gray-400 font-normal">— optional, prints as "Title / Title (English)" on the certificate</span>
+        </label>
+        <input value={form.titleEn} onChange={(e) => setForm({ ...form, titleEn: e.target.value })} className={inputClass} />
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>

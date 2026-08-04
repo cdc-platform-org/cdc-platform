@@ -508,6 +508,11 @@ enum CourseLanguage {
 model Course {
   id          String   @id @default(uuid())
   title       String
+  // Optional English translation of `title` — never guessed/auto-translated.
+  // When set, the certificate PDF prints "title / titleEn"; course pages
+  // otherwise always display the plain `title` (single-language courses are
+  // the common case, so nothing else reads this field).
+  titleEn     String?
   description String
   category    String
   // Legacy flat lesson blob — predates CourseSection/Lesson below and is left

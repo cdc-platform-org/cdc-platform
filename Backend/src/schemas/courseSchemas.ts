@@ -18,6 +18,7 @@ const coursePricingFields = {
 export const courseCreateSchema = z
   .object({
     title: z.string().min(3).max(200),
+    titleEn: z.string().trim().max(200).optional(),
     description: z.string().min(20),
     category: z.string().min(2).max(100),
     lessons: z.array(lessonSchema).min(1),
@@ -38,6 +39,7 @@ export const courseCreateSchema = z
 export const courseUpdateSchema = z
   .object({
     title: z.string().min(3).max(200).optional(),
+    titleEn: z.string().trim().max(200).optional(),
     description: z.string().min(20).optional(),
     category: z.string().min(2).max(100).optional(),
     lessons: z.array(lessonSchema).min(1).optional(),

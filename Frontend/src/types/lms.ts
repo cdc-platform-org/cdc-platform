@@ -3,6 +3,9 @@ export type CourseLanguage = 'GEORGIAN' | 'ENGLISH' | 'BOTH';
 export interface Course {
   id: string;
   title: string;
+  // Optional English translation — when set, printed as "title / titleEn" on
+  // the certificate PDF's auto-scaling title block. Never auto-translated.
+  titleEn: string | null;
   description: string;
   category: string;
   language: CourseLanguage;
@@ -28,6 +31,7 @@ export interface Course {
 
 export interface CoursePayload {
   title: string;
+  titleEn?: string;
   description: string;
   category: string;
   // Legacy flat lessons blob — kept required by the backend's create schema,

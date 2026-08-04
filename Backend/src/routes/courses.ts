@@ -700,6 +700,7 @@ router.get('/:id/certificate', authenticate, requireCourseAccess, async (req: Re
       studentName: legalNameKa || student.name,
       studentNameSecondary: legalNameEn,
       courseTitle: course.title,
+      courseTitleEn: course.titleEn,
       instructorName: course.mentorName || 'CDC Faculty',
       issueDate: certificate.issuedAt,
       verificationCode: certificate.verificationCode,
