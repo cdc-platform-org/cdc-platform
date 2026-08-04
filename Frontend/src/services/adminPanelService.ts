@@ -4,6 +4,7 @@ import {
   DashboardStats,
   ModeratedListing,
   AdminTransaction,
+  AdminBogPayment,
   BogSettings,
   UpdateBogSettingsPayload,
   TeamMember,
@@ -45,6 +46,14 @@ export async function getTransactions(
   pageSize = 25
 ): Promise<{ data: AdminTransaction[]; totalCount: number }> {
   const response = await apiClient.get('/admin-panel/financials/transactions', { params: { page, pageSize } });
+  return response.data;
+}
+
+export async function getBogPayments(
+  page = 1,
+  pageSize = 25
+): Promise<{ data: AdminBogPayment[]; totalCount: number }> {
+  const response = await apiClient.get('/admin-panel/bog-payments', { params: { page, pageSize } });
   return response.data;
 }
 

@@ -27,6 +27,7 @@ router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODER
     gigsByStatus,
     vacanciesByStatus,
     volumeAgg,
+    salesVolumeAgg,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { status: 'PENDING_APPROVAL' } }),
@@ -37,6 +38,14 @@ router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODER
     prisma.vacancy.groupBy({ by: ['status'], _count: { _all: true } }),
     prisma.gigTransaction.aggregate({
       _sum: { grossAmount: true, commissionAmount: true, netAmount: true },
+      _count: { _all: true },
+    }),
+    // Course/product/mentorship sales — GIG_ESCROW_FUNDING is deliberately
+    // excluded here since funding a gig's escrow creates a GigTransaction
+    // (captured above), so including it too would double-count that volume.
+    prisma.bogPayment.aggregate({
+      where: { status: 'COMPLETED', purpose: { in: ['COURSE', 'MENTORSHIP', 'PRODUCT'] } },
+      _sum: { amount: true },
       _count: { _all: true },
     }),
   ]);
@@ -63,10 +72,13 @@ router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODER
       byStatus: vacancyStatusCounts,
     },
     volume: {
-      totalGrossAmount: volumeAgg._sum.grossAmount ?? 0,
+      // Commission/net splits are freelancer-marketplace-specific (no
+      // equivalent for a straight course/product sale), so those two stay
+      // gig-transaction-only — only the gross total blends both sources.
+      totalGrossAmount: (volumeAgg._sum.grossAmount ?? 0) + (salesVolumeAgg._sum.amount ?? 0),
       totalCommissionAmount: volumeAgg._sum.commissionAmount ?? 0,
       totalNetAmount: volumeAgg._sum.netAmount ?? 0,
-      transactionCount: volumeAgg._count._all,
+      transactionCount: volumeAgg._count._all + salesVolumeAgg._count._all,
     },
   });
 });
@@ -197,6 +209,62 @@ router.get('/financials/transactions', requireAdminRole('SUPER_ADMIN'), async (r
   ]);
 
   res.json({ data: transactions, totalCount, page, pageSize });
+});
+
+// Raw BOG payment ledger — every BogPayment row across all four checkout
+// purposes (course/mentorship/gig-escrow-funding/product), any status
+// (PENDING/COMPLETED/FAILED/CANCELLED), not just gig escrow. This is what
+// GigTransaction-only /financials/transactions above doesn't cover — course
+// and product sales otherwise had no admin-visible ledger at all.
+router.get('/bog-payments', requireAdminRole('SUPER_ADMIN'), async (req, res) => {
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || 25));
+
+  const [payments, totalCount] = await Promise.all([
+    prisma.bogPayment.findMany({
+      include: { user: participantSelect },
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.bogPayment.count(),
+  ]);
+
+  const courseIds = payments.filter((p) => p.purpose === 'COURSE').map((p) => p.referenceId);
+  const courses = courseIds.length
+    ? await prisma.course.findMany({ where: { id: { in: courseIds } }, select: { id: true, title: true } })
+    : [];
+  const courseTitleById = new Map(courses.map((c) => [c.id, c.title]));
+
+  const productIds = payments.filter((p) => p.purpose === 'PRODUCT').map((p) => p.referenceId);
+  const products = productIds.length
+    ? await prisma.digitalProduct.findMany({ where: { id: { in: productIds } }, select: { id: true, title: true } })
+    : [];
+  const productTitleById = new Map(products.map((p) => [p.id, p.title]));
+
+  res.json({
+    data: payments.map((p) => ({
+      id: p.id,
+      bogOrderId: p.bogOrderId,
+      user: p.user,
+      purpose: p.purpose,
+      referenceId: p.referenceId,
+      referenceTitle:
+        p.purpose === 'COURSE'
+          ? courseTitleById.get(p.referenceId) ?? null
+          : p.purpose === 'PRODUCT'
+          ? productTitleById.get(p.referenceId) ?? null
+          : null,
+      amount: p.amount,
+      currency: p.currency,
+      status: p.status,
+      createdAt: p.createdAt,
+      completedAt: p.completedAt,
+    })),
+    totalCount,
+    page,
+    pageSize,
+  });
 });
 
 // BOG (Bank of Georgia) payment gateway config — real integration lives in

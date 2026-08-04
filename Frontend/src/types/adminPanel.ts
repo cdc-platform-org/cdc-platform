@@ -61,6 +61,20 @@ export interface AdminTransaction {
   createdAt: string;
 }
 
+export interface AdminBogPayment {
+  id: string;
+  bogOrderId: string;
+  user: ListingParticipant;
+  purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT';
+  referenceId: string;
+  referenceTitle: string | null;
+  amount: number;
+  currency: string;
+  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  createdAt: string;
+  completedAt: string | null;
+}
+
 export interface BogSettings {
   clientId: string | null;
   secretKey: string | null; // masked once set — e.g. "••••1234"

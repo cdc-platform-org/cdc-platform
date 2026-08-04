@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, FormEvent } from 'react';
 import Head from 'next/head';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
-import { AdminTransaction, BogSettings } from '../../src/types/adminPanel';
-import { getTransactions, getBogSettings, updateBogSettings } from '../../src/services/adminPanelService';
+import { AdminTransaction, AdminBogPayment, BogSettings } from '../../src/types/adminPanel';
+import { getTransactions, getBogPayments, getBogSettings, updateBogSettings } from '../../src/services/adminPanelService';
 
 function formatMoney(minorUnits: number, currency: string): string {
   return `${(minorUnits / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
@@ -15,6 +15,129 @@ const STATUS_BADGE: Record<string, string> = {
   REFUNDED: 'bg-gray-100 text-gray-600 border-gray-200',
   DISPUTED: 'bg-rose-50 text-rose-700 border-rose-200',
 };
+
+const BOG_STATUS_BADGE: Record<string, string> = {
+  PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
+  COMPLETED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  FAILED: 'bg-rose-50 text-rose-700 border-rose-200',
+  CANCELLED: 'bg-gray-100 text-gray-600 border-gray-200',
+};
+
+const PURPOSE_LABEL: Record<string, string> = {
+  COURSE: 'Course',
+  MENTORSHIP: 'Mentorship',
+  GIG_ESCROW_FUNDING: 'Gig Escrow',
+  PRODUCT: 'Digital Product',
+};
+
+function BogPaymentsSection() {
+  const [payments, setPayments] = useState<AdminBogPayment[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const pageSize = 25;
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getBogPayments(page, pageSize);
+      setPayments(result.data);
+      setTotalCount(result.totalCount);
+    } catch {
+      setError('Unable to load BOG payments.');
+    } finally {
+      setLoading(false);
+    }
+  }, [page]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const totalPages = Math.ceil(totalCount / pageSize) || 1;
+
+  return (
+    <section>
+      <h2 className="text-base font-semibold text-gray-900 mb-1">Course & BOG Sales ({totalCount})</h2>
+      <p className="text-xs text-gray-500 mb-4">
+        Every raw BOG payment order — course, mentorship, gig-escrow-funding, and digital-product checkouts —
+        regardless of status.
+      </p>
+      {error && (
+        <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>
+      )}
+      {loading ? (
+        <p className="text-sm text-gray-400">Loading…</p>
+      ) : payments.length === 0 ? (
+        <p className="text-sm text-gray-500">No BOG payments yet.</p>
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-500 border-b border-gray-100 bg-gray-50">
+                  <th className="px-4 py-3 font-medium">User</th>
+                  <th className="px-4 py-3 font-medium">Purpose</th>
+                  <th className="px-4 py-3 font-medium">Item</th>
+                  <th className="px-4 py-3 font-medium text-right">Amount</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">BOG Order ID</th>
+                  <th className="px-4 py-3 font-medium">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {payments.map((p) => (
+                  <tr key={p.id}>
+                    <td className="px-4 py-3 text-gray-900 text-xs">{p.user.name}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{PURPOSE_LABEL[p.purpose] ?? p.purpose}</td>
+                    <td className="px-4 py-3 text-gray-900 max-w-[220px] truncate">
+                      {p.referenceTitle ?? <span className="text-gray-400">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-900">{formatMoney(p.amount, p.currency)}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`text-xs font-medium px-2 py-0.5 rounded-full border ${BOG_STATUS_BADGE[p.status] ?? ''}`}
+                      >
+                        {p.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-400 text-xs font-mono max-w-[160px] truncate">{p.bogOrderId}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                      {new Date(p.createdAt).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4 py-4 border-t border-gray-100">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="text-xs font-medium text-gray-600 disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <span className="text-xs text-gray-400">
+                Page {page} of {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="text-xs font-medium text-gray-600 disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
 
 function TransactionsSection() {
   const [transactions, setTransactions] = useState<AdminTransaction[]>([]);
@@ -251,6 +374,7 @@ export default function AdminFinancialsPage() {
         </div>
         <div className="space-y-10">
           <TransactionsSection />
+          <BogPaymentsSection />
           <BogSettingsSection />
         </div>
       </AdminLayout>
