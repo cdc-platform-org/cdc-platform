@@ -84,7 +84,7 @@ function StoreProductContent() {
     setActionError(null);
     setSubmitting(true);
     try {
-      const { redirectUrl } = await checkoutProduct(product.id);
+      const { redirectUrl } = await checkoutProduct(product.id, lang);
       window.location.href = redirectUrl;
     } catch (err: any) {
       setActionError(err?.response?.data?.message ?? t.checkoutFailed);

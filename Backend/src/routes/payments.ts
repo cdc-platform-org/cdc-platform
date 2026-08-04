@@ -34,6 +34,14 @@ function resolveHttpsCallbackUrl(): string {
 }
 const CALLBACK_URL = resolveHttpsCallbackUrl();
 
+// Optional UI-language hint from the client (courses/[id], store/[id], etc.
+// all read Next.js's router.locale and send it here) — sanitized down to
+// "ka"/"en" inside bogPaymentService.createBogOrder() before it ever reaches
+// BOG's API, so a missing/malformed value here is never a security issue.
+function checkoutLang(req: Request): string | undefined {
+  return typeof req.body?.lang === 'string' ? req.body.lang : undefined;
+}
+
 function resultRedirects(paymentId: string) {
   return {
     successRedirectUrl: `${FRONTEND_URL}/payments/bog/result?paymentId=${paymentId}`,
@@ -153,6 +161,7 @@ router.post(
       callbackUrl: CALLBACK_URL,
       successRedirectUrl,
       failRedirectUrl,
+      lang: checkoutLang(req),
     });
     if (!order) return;
     if (appliedPromo) {
@@ -210,6 +219,7 @@ router.post(
       callbackUrl: CALLBACK_URL,
       successRedirectUrl,
       failRedirectUrl,
+      lang: checkoutLang(req),
     });
     if (!order) return;
     const updated = await prisma.bogPayment.update({
@@ -274,6 +284,7 @@ router.post(
       callbackUrl: CALLBACK_URL,
       successRedirectUrl,
       failRedirectUrl,
+      lang: checkoutLang(req),
     });
     if (!order) return;
     const updated = await prisma.bogPayment.update({
@@ -328,6 +339,7 @@ router.post(
       callbackUrl: CALLBACK_URL,
       successRedirectUrl,
       failRedirectUrl,
+      lang: checkoutLang(req),
     });
     if (!order) return;
     const updated = await prisma.bogPayment.update({

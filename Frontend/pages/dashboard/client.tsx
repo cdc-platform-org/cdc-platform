@@ -586,7 +586,7 @@ function BusinessDashboardContent() {
     setGigBusyId(gigId);
     setGigActionError(null);
     try {
-      const { redirectUrl } = await checkoutGigEscrow(gigId);
+      const { redirectUrl } = await checkoutGigEscrow(gigId, lang);
       window.location.href = redirectUrl;
     } catch (err: any) {
       const serverMessage = err?.response?.data?.message;

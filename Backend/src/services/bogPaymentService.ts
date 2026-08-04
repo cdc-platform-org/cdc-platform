@@ -121,6 +121,21 @@ export interface CreateBogOrderParams {
   callbackUrl: string;
   successRedirectUrl: string;
   failRedirectUrl: string;
+  // Checkout page UI language — raw, unsanitized (may come straight from a
+  // client-controlled request body). Sanitized down to exactly "ka"/"en"
+  // by sanitizeBogLang() before it ever reaches BOG's API, since BOG's
+  // Accept-Language header only accepts those two values.
+  lang?: string;
+}
+
+// BOG's docs (api.bog.ge/docs/en/payments/standard-process/create-order)
+// only accept "ka" (default) or "en" on the Accept-Language header — any
+// other value risks BOG rejecting the request outright. Recognizes common
+// Georgian-locale spellings ("ge", "ka", "GE", "Georgian", ...) as "ka";
+// everything else (including unset) falls back to "en".
+export function sanitizeBogLang(raw?: string | null): 'ka' | 'en' {
+  const normalized = (raw ?? '').trim().toLowerCase();
+  return /^(ka|ge|ge-ge|ka-ge|georgian|geo)$/.test(normalized) ? 'ka' : 'en';
 }
 
 export interface CreateBogOrderResult {
@@ -136,6 +151,7 @@ export async function createBogOrder(params: CreateBogOrderParams): Promise<Crea
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
+      'Accept-Language': sanitizeBogLang(params.lang),
     },
     body: JSON.stringify({
       callback_url: params.callbackUrl,

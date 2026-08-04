@@ -80,7 +80,7 @@ function GigApplicationsContent() {
     setFunding(true);
     setFundingError(null);
     try {
-      const { redirectUrl } = await checkoutGigEscrow(id);
+      const { redirectUrl } = await checkoutGigEscrow(id, router.locale === 'en' ? 'en' : 'ka');
       window.location.href = redirectUrl;
     } catch (err: any) {
       setFundingError(err?.response?.data?.message || 'Unable to start payment. Please try again.');

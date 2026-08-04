@@ -17,8 +17,8 @@ export interface BogPaymentStatusData {
   currency: string;
 }
 
-export async function checkoutCourse(courseId: string, promoCode?: string): Promise<BogCheckoutResult> {
-  const response = await apiClient.post<BogCheckoutResult>(`/payments/checkout/course/${courseId}`, promoCode ? { promoCode } : undefined);
+export async function checkoutCourse(courseId: string, promoCode?: string, lang?: 'ka' | 'en'): Promise<BogCheckoutResult> {
+  const response = await apiClient.post<BogCheckoutResult>(`/payments/checkout/course/${courseId}`, { promoCode, lang });
   return response.data;
 }
 
@@ -40,18 +40,19 @@ export async function checkoutMentorship(params: {
   amount: number;
   currency?: 'GEL' | 'USD' | 'EUR' | 'GBP';
   note?: string;
+  lang?: 'ka' | 'en';
 }): Promise<BogCheckoutResult> {
   const response = await apiClient.post<BogCheckoutResult>('/payments/checkout/mentorship', params);
   return response.data;
 }
 
-export async function checkoutGigEscrow(gigId: string): Promise<BogCheckoutResult> {
-  const response = await apiClient.post<BogCheckoutResult>(`/payments/checkout/gig/${gigId}`);
+export async function checkoutGigEscrow(gigId: string, lang?: 'ka' | 'en'): Promise<BogCheckoutResult> {
+  const response = await apiClient.post<BogCheckoutResult>(`/payments/checkout/gig/${gigId}`, { lang });
   return response.data;
 }
 
-export async function checkoutProduct(productId: string): Promise<BogCheckoutResult> {
-  const response = await apiClient.post<BogCheckoutResult>(`/payments/checkout/product/${productId}`);
+export async function checkoutProduct(productId: string, lang?: 'ka' | 'en'): Promise<BogCheckoutResult> {
+  const response = await apiClient.post<BogCheckoutResult>(`/payments/checkout/product/${productId}`, { lang });
   return response.data;
 }
 

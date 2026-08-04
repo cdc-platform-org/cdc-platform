@@ -146,7 +146,7 @@ export default function CourseDetailPage() {
     setError(null);
     setProcessing(true);
     try {
-      const { redirectUrl } = await checkoutCourse(courseId, appliedPromo?.code);
+      const { redirectUrl } = await checkoutCourse(courseId, appliedPromo?.code, lang);
       window.location.href = redirectUrl;
     } catch (err: any) {
       const serverMessage = err?.response?.data?.message;

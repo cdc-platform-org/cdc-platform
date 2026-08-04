@@ -66,7 +66,7 @@ export default function CoursesPage() {
     setError(null);
     setEnrollingId(course.id);
     try {
-      const { redirectUrl } = await checkoutCourse(course.id);
+      const { redirectUrl } = await checkoutCourse(course.id, undefined, lang);
       window.location.href = redirectUrl;
     } catch {
       setError(lang === 'en' ? 'Unable to start checkout. Please try again.' : 'გადახდის დაწყება ვერ მოხერხდა.');

@@ -534,10 +534,23 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
         </button>
         <button
           type="button"
-          onClick={() => setShowMore((v) => !v)}
-          className={`shrink-0 text-xs font-medium px-2 py-1 rounded ${lesson.isFreePreview ? 'text-emerald-600 hover:bg-emerald-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+          onClick={handleTogglePreview}
+          disabled={togglingPreview}
+          title="Toggle whether this lesson is watchable without purchasing"
+          className={`shrink-0 text-xs font-semibold px-2 py-1 rounded border ${
+            lesson.isFreePreview
+              ? 'text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100'
+              : 'text-gray-500 bg-gray-50 border-gray-200 hover:bg-gray-100'
+          } disabled:opacity-50`}
         >
-          {lesson.isFreePreview ? '✓ Preview' : 'More'}
+          {togglingPreview ? '…' : lesson.isFreePreview ? '🔓 Free Preview' : '🔒 Paid Only'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowMore((v) => !v)}
+          className="shrink-0 text-xs font-medium px-2 py-1 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+        >
+          More
         </button>
         <button type="button" onClick={handleDelete} className="shrink-0 text-xs font-medium text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50">
           Delete
