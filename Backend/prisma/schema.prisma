@@ -128,6 +128,16 @@ enum ListingModerationStatus {
   removed
 }
 
+// Background 3-language (ka/en/ru) subtitle generation for a lesson video
+// (see services/subtitleService.ts) — null means no video has ever
+// triggered the pipeline yet.
+enum SubtitlesStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 enum BogPaymentPurpose {
   COURSE
   MENTORSHIP
@@ -607,6 +617,11 @@ model Lesson {
   // Optional homework prompt shown on the student player's Assignment tab
   // — null means the lesson has no assignment (existing behavior).
   assignmentPrompt  String?
+  // Auto-generated ka/en/ru captions (services/subtitleService.ts), fired
+  // fire-and-forget right after a successful video upload — see
+  // POST /lessons/:lessonId/video. null until a video has ever triggered it.
+  subtitlesStatus SubtitlesStatus?
+  subtitlesError  String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

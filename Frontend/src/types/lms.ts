@@ -130,9 +130,13 @@ export interface AdminLesson {
   thumbnailUrl: string | null;
   isFreePreview: boolean;
   assignmentPrompt: string | null;
+  subtitlesStatus: SubtitlesStatus | null;
+  subtitlesError: string | null;
   createdAt: string;
   updatedAt: string;
 }
+
+export type SubtitlesStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
 export type AssignmentStatus = 'PENDING' | 'APPROVED' | 'NEEDS_REVISION';
 

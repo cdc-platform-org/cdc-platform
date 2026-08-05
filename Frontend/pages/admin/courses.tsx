@@ -554,6 +554,27 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
         >
           {togglingPreview ? '…' : lesson.isFreePreview ? '🔓 Free Preview' : '🔒 Paid Only'}
         </button>
+        {lesson.subtitlesStatus && (
+          <span
+            title={lesson.subtitlesStatus === 'FAILED' ? lesson.subtitlesError ?? undefined : 'Auto-generated ka/en/ru captions'}
+            className={`shrink-0 text-[11px] font-semibold px-2 py-1 rounded border ${
+              lesson.subtitlesStatus === 'COMPLETED'
+                ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                : lesson.subtitlesStatus === 'FAILED'
+                ? 'text-red-600 bg-red-50 border-red-200'
+                : 'text-amber-600 bg-amber-50 border-amber-200'
+            }`}
+          >
+            CC{' '}
+            {lesson.subtitlesStatus === 'COMPLETED'
+              ? '✓'
+              : lesson.subtitlesStatus === 'FAILED'
+              ? '✕'
+              : lesson.subtitlesStatus === 'PROCESSING'
+              ? '…'
+              : '⏳'}
+          </span>
+        )}
         <button
           type="button"
           onClick={() => setShowMore((v) => !v)}

@@ -85,6 +85,31 @@ export async function deleteBunnyVideo(videoId: string): Promise<void> {
   }
 }
 
+// Docs: https://docs.bunny.net/api-reference/stream/manage-videos/add-caption
+// Bunny's own iframe embed player (getBunnyEmbedUrl below) automatically
+// shows a CC toggle listing every uploaded language once this succeeds — no
+// custom player work needed on our side.
+export async function uploadBunnyCaption(videoId: string, srclang: string, label: string, vttContent: string): Promise<void> {
+  assertConfigured();
+  const response = await fetch(`${BASE_URL}/${BUNNY_STREAM_LIBRARY_ID}/videos/${videoId}/captions/${srclang}`, {
+    method: 'POST',
+    headers: {
+      AccessKey: BUNNY_STREAM_API_KEY,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      srclang,
+      label,
+      captionsFile: Buffer.from(vttContent, 'utf-8').toString('base64'),
+    }),
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`Bunny add-caption request failed (${response.status}): ${body}`);
+  }
+}
+
 export function getBunnyEmbedUrl(videoId: string): string {
   return `${PLAYER_EMBED_HOST}/embed/${BUNNY_STREAM_LIBRARY_ID}/${videoId}`;
 }

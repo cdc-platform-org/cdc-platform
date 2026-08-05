@@ -31,6 +31,7 @@ import { withCurrentPrice } from '../services/coursePricing';
 import { generateExamQuestions, isAiExamConfigured, AiExamGenerationError, GeneratedQuestion } from '../services/aiExamService';
 import { createExamSessionToken, verifyExamSessionToken, ExamSessionError } from '../services/examSessionService';
 import { logAdminAction } from '../services/auditLogService';
+import { processLessonSubtitles, isSubtitlePipelineConfigured } from '../services/subtitleService';
 
 const router = Router();
 
@@ -956,8 +957,18 @@ router.post(
     try {
       const videoId = await createBunnyVideo(lesson.title);
       await uploadBunnyVideoBinary(videoId, req.file.buffer);
-      const updated = await prisma.lesson.update({ where: { id: lesson.id }, data: { bunnyVideoId: videoId } });
+      const updated = await prisma.lesson.update({
+        where: { id: lesson.id },
+        data: { bunnyVideoId: videoId, subtitlesStatus: isSubtitlePipelineConfigured() ? 'PENDING' : null, subtitlesError: null },
+      });
       res.status(201).json({ data: { ...updated, ...lessonWithPlayback(updated) } });
+      // Fire-and-forget — never blocks/breaks the upload response above; see
+      // subtitleService.ts's own top-of-file note on why there's no queue.
+      if (isSubtitlePipelineConfigured()) {
+        processLessonSubtitles(lesson.id, videoId, req.file.buffer).catch((err) => {
+          console.error(`[courses] subtitle pipeline threw unexpectedly for lesson ${lesson.id}:`, err);
+        });
+      }
     } catch (err) {
       // Surface Bunny's actual error (invalid credentials, quota, network,
       // etc.) instead of a generic message — this is exactly the kind of
