@@ -78,6 +78,7 @@ router.get('/mine', authenticate, async (req: Request, res: Response) => {
         grantedAt: enrollment.grantedAt,
         verificationCode: certificate?.verificationCode ?? null,
         certificateIssuedAt: certificate?.issuedAt ?? null,
+        certificateDownloadCount: certificate?.downloadCount ?? 0,
       };
     })
   );
@@ -702,7 +703,7 @@ router.get('/:id/certificate', authenticate, requireCourseAccess, async (req: Re
   // being freely re-downloaded/re-issued with edited legal-name fields).
   if (certificate.downloadCount >= 1) {
     return res.status(403).json({
-      code: 'CERTIFICATE_ALREADY_DOWNLOADED',
+      error: 'DOWNLOAD_LIMIT_REACHED',
       message:
         'სერტიფიკატის განმეორებით ჩამოტვირთვისთვის ან მონაცემების შესაცვლელად, გთხოვთ დაუკავშირდეთ მხარდაჭერის გუნდს ელფოსტაზე: contact@cdc.org.ge',
     });

@@ -32,6 +32,8 @@ const dict = {
     confirmCancel: 'გაუქმება',
     downloadFailed: 'სერტიფიკატის გენერირება ვერ მოხერხდა. სცადეთ თავიდან.',
     limitTitle: 'სერტიფიკატი უკვე ჩამოტვირთულია',
+    limitMessage:
+      'სერტიფიკატის განმეორებით ჩამოტვირთვისთვის ან მონაცემების შესაცვლელად, გთხოვთ დაუკავშირდეთ მხარდაჭერის გუნდს ელფოსტაზე: contact@cdc.org.ge',
     limitClose: 'დახურვა',
     limitContactEmail: 'contact@cdc.org.ge',
   },
@@ -54,6 +56,8 @@ const dict = {
     confirmCancel: 'Cancel',
     downloadFailed: 'Unable to generate the certificate. Please try again.',
     limitTitle: 'Certificate Already Downloaded',
+    limitMessage:
+      'To re-download your certificate or update its details, please contact our support team at: contact@cdc.org.ge',
     limitClose: 'Close',
     limitContactEmail: 'contact@cdc.org.ge',
   },
@@ -113,19 +117,19 @@ function CertificatesContent() {
       // undefined even when the server sent a real error message.
       const errorBlob = err?.response?.data;
       let serverMessage: string | undefined;
-      let serverCode: string | undefined;
+      let serverErrorKey: string | undefined;
       if (errorBlob instanceof Blob) {
         try {
           const parsed = JSON.parse(await errorBlob.text());
           serverMessage = parsed?.message;
-          serverCode = parsed?.code;
+          serverErrorKey = parsed?.error;
         } catch {
           // not JSON — ignore, fall back to the generic message below
         }
       }
-      if (serverCode === 'CERTIFICATE_ALREADY_DOWNLOADED') {
+      if (serverErrorKey === 'DOWNLOAD_LIMIT_REACHED') {
         setConfirmCourseId(null);
-        setLimitReachedMessage(serverMessage ?? t.downloadFailed);
+        setLimitReachedMessage(serverMessage ?? t.limitMessage);
       } else {
         setDownloadError(serverMessage || t.downloadFailed);
       }
@@ -172,7 +176,7 @@ function CertificatesContent() {
           </div>
         ) : (
           <div className="space-y-4">
-            {certified.map(({ course, certificateIssuedAt, verificationCode }) => (
+            {certified.map(({ course, certificateIssuedAt, verificationCode, certificateDownloadCount }) => (
               <div
                 key={course.id}
                 className="bg-white dark:bg-slate-900/60 border border-amber-300/60 dark:border-amber-500/30 rounded-2xl p-6 shadow-sm"
@@ -205,6 +209,10 @@ function CertificatesContent() {
                     <button
                       type="button"
                       onClick={() => {
+                        if (certificateDownloadCount >= 1) {
+                          setLimitReachedMessage(t.limitMessage);
+                          return;
+                        }
                         setDownloadError(null);
                         setConfirmCourseId(course.id);
                       }}

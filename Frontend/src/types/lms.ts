@@ -105,6 +105,7 @@ export interface MyCourseWithProgress {
   grantedAt: string;
   verificationCode: string | null;
   certificateIssuedAt: string | null;
+  certificateDownloadCount: number;
 }
 
 export interface CertificateVerification {
