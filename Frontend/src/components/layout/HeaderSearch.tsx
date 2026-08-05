@@ -131,14 +131,12 @@ export default function HeaderSearch({ darkMode, lang }: { darkMode: boolean; la
         type="button"
         onClick={() => setOpen(true)}
         aria-label={lang === 'GEO' ? 'ძებნა' : 'Search'}
-        className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-colors cursor-pointer ${
+        title={lang === 'GEO' ? 'ძებნა (Ctrl+K)' : 'Search (Ctrl+K)'}
+        className={`flex items-center justify-center rounded-xl border p-2.5 transition-colors cursor-pointer ${
           darkMode ? 'border-slate-700 bg-[#161f30] text-slate-300 hover:bg-slate-800' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
         }`}
       >
         <Search className="w-4 h-4" />
-        <span className={`hidden md:inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded border ${darkMode ? 'border-slate-700 text-slate-500' : 'border-slate-300 text-slate-400'}`}>
-          Ctrl K
-        </span>
       </button>
 
       {open && (
