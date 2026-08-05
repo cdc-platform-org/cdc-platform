@@ -71,6 +71,7 @@ export interface AdminBogPayment {
   amount: number;
   currency: string;
   status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  promoCode: string | null;
   createdAt: string;
   completedAt: string | null;
 }

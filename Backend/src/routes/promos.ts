@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticate } from '../middleware/auth';
-import { getCurrentPrice, computeDiscount } from '../services/coursePricing';
+import { getCurrentPrice, computeCoursePriceWithPromo } from '../services/coursePricing';
 
 const router = Router();
 
@@ -23,8 +23,13 @@ router.post('/validate', authenticate, async (req: Request, res: Response) => {
   const course = await prisma.course.findUnique({ where: { id: result.data.courseId } });
   if (!course) return res.status(404).json({ message: 'Course not found.' });
 
+  // "originalAmount" here is what the frontend shows struck through — the
+  // price the customer would pay WITHOUT this promo (i.e. any active sale
+  // price), not Course.originalPrice itself. The promo discount is computed
+  // against the true originalPrice and never stacks with an active sale —
+  // see computeCoursePriceWithPromo's own comment.
   const originalAmount = getCurrentPrice(course);
-  const discountedAmount = computeDiscount(promo, originalAmount);
+  const discountedAmount = computeCoursePriceWithPromo(course, promo);
 
   res.json({
     data: {

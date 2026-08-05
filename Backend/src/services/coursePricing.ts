@@ -32,12 +32,28 @@ export function withCurrentPrice<T extends CoursePricingInput>(course: T): T & {
   };
 }
 
-// Applies a PromoCode on top of whatever price getCurrentPrice already
-// computed (e.g. an active course sale) — shared by routes/promos.ts's
-// preview/validate endpoint and routes/payments.ts's actual checkout, so
-// the two can never disagree about the math.
+// Applies a PromoCode's discount to a given amount — a plain arithmetic
+// helper, not the checkout pricing rule itself (see
+// computeCoursePriceWithPromo below for that).
 export function computeDiscount(promo: { discountPercent: number | null; discountAmount: number | null }, amount: number): number {
   if (promo.discountPercent) return Math.round(amount * (1 - promo.discountPercent / 100));
   if (promo.discountAmount) return Math.max(0, amount - promo.discountAmount);
   return amount;
+}
+
+// The actual checkout pricing rule when a promo code is applied — shared by
+// routes/promos.ts's validate endpoint and routes/payments.ts's checkout, so
+// the two can never disagree about the math:
+//   1. The promo discount is always computed against originalPrice, never
+//      against an already-discounted sale price (no stacking).
+//   2. The customer is charged whichever is LOWER: the promo price, or
+//      whatever the course's own active sale price already is — a promo
+//      code can never make a course cost MORE than its current sale price.
+export function computeCoursePriceWithPromo(
+  course: CoursePricingInput,
+  promo: { discountPercent: number | null; discountAmount: number | null }
+): number {
+  const promoPrice = computeDiscount(promo, course.originalPrice);
+  const currentSalePrice = getCurrentPrice(course);
+  return Math.min(promoPrice, currentSalePrice);
 }

@@ -82,6 +82,7 @@ function BogPaymentsSection() {
                   <th className="px-4 py-3 font-medium">Purpose</th>
                   <th className="px-4 py-3 font-medium">Item</th>
                   <th className="px-4 py-3 font-medium text-right">Amount</th>
+                  <th className="px-4 py-3 font-medium">Promo</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium">BOG Order ID</th>
                   <th className="px-4 py-3 font-medium">Date</th>
@@ -96,6 +97,9 @@ function BogPaymentsSection() {
                       {p.referenceTitle ?? <span className="text-gray-400">—</span>}
                     </td>
                     <td className="px-4 py-3 text-right text-gray-900">{formatMoney(p.amount, p.currency)}</td>
+                    <td className="px-4 py-3 text-xs font-mono text-indigo-600">
+                      {p.promoCode ?? <span className="text-gray-300">—</span>}
+                    </td>
                     <td className="px-4 py-3">
                       <span
                         className={`text-xs font-medium px-2 py-0.5 rounded-full border ${BOG_STATUS_BADGE[p.status] ?? ''}`}

@@ -1084,6 +1084,12 @@ model BogPayment {
   createdAt   DateTime          @default(now())
   completedAt DateTime?
   mentorshipBooking MentorshipBooking?
+  // Promo code applied at checkout (COURSE purpose only, currently) — kept
+  // for order-history/referral-commission tracking. SetNull rather than
+  // Restrict/Cascade: deleting a PromoCode later must never block deleting
+  // (or block existing) BogPayment rows that used it.
+  promoCodeId String?
+  promoCode   PromoCode?        @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([purpose, referenceId])
@@ -1518,6 +1524,7 @@ model PromoCode {
   maxUses         Int?
   currentUses     Int       @default(0)
   createdAt       DateTime  @default(now())
+  bogPayments     BogPayment[]
 
   @@map("promo_codes")
 }

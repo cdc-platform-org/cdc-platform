@@ -13,7 +13,7 @@ import {
   CreateBogOrderResult,
 } from '../services/bogPaymentService';
 import { captureEscrow } from '../services/escrowService';
-import { getCurrentPrice, computeDiscount } from '../services/coursePricing';
+import { getCurrentPrice, computeCoursePriceWithPromo } from '../services/coursePricing';
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
 import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
 
@@ -126,12 +126,13 @@ router.post(
 
     // Optional promo code — re-validated here rather than trusting whatever
     // discountedAmount the client saw from POST /promos/validate, so a
-    // tampered/stale client value can never under-charge. currentUses is
-    // only incremented once the BOG order is actually created below (not
-    // just because a code was typed in), and only ever here — there's no
-    // per-BogPayment record of which code was used, so an abandoned
-    // checkout still "spends" a use; acceptable for a soft usage cap, not
-    // a hard security boundary.
+    // tampered/stale client value can never under-charge. Discount is
+    // computed against originalPrice and never stacks with an active course
+    // sale — see computeCoursePriceWithPromo. currentUses is only
+    // incremented once the BOG order is actually created below (not just
+    // because a code was typed in); promoCodeId is recorded on the
+    // BogPayment itself now, so an abandoned checkout still "spends" a use
+    // but is at least traceable to the specific attempt.
     const rawPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode.trim().toUpperCase() : null;
     let appliedPromo: { id: string } | null = null;
     if (rawPromoCode) {
@@ -139,7 +140,7 @@ router.post(
       if (!promo) return res.status(400).json({ message: 'Invalid promo code.' });
       if (promo.expiresAt && promo.expiresAt < new Date()) return res.status(400).json({ message: 'This promo code has expired.' });
       if (promo.maxUses && promo.currentUses >= promo.maxUses) return res.status(400).json({ message: 'This promo code has reached its usage limit.' });
-      chargeAmount = computeDiscount(promo, chargeAmount);
+      chargeAmount = computeCoursePriceWithPromo(course, promo);
       appliedPromo = promo;
     }
 
@@ -152,6 +153,7 @@ router.post(
         amount: chargeAmount,
         currency: 'GEL',
         status: 'PENDING',
+        promoCodeId: appliedPromo?.id ?? null,
       },
     });
     const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
@@ -550,6 +552,7 @@ router.get('/bog/status/:paymentId', authenticate, async (req: Request, res: Res
 router.get('/my', authenticate, async (req: Request, res: Response) => {
   const payments = await prisma.bogPayment.findMany({
     where: { userId: req.user!.id },
+    include: { promoCode: { select: { code: true } } },
     orderBy: { createdAt: 'desc' },
   });
 
@@ -579,6 +582,7 @@ router.get('/my', authenticate, async (req: Request, res: Response) => {
       amount: p.amount,
       currency: p.currency,
       status: p.status,
+      promoCode: p.promoCode?.code ?? null,
       createdAt: p.createdAt,
       completedAt: p.completedAt,
     })),

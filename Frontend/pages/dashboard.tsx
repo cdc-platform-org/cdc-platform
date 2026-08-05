@@ -839,7 +839,14 @@ function DashboardContent() {
                             {payments.map((p) => (
                               <tr key={p.id} className="border-b last:border-0 border-slate-200 dark:border-slate-800">
                                 <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{t.paymentPurpose[p.purpose] ?? p.purpose}</td>
-                                <td className="px-4 py-3 text-slate-800 dark:text-slate-200">{p.referenceTitle ?? '—'}</td>
+                                <td className="px-4 py-3 text-slate-800 dark:text-slate-200">
+                                  {p.referenceTitle ?? '—'}
+                                  {p.promoCode && (
+                                    <span className="ml-2 inline-block text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                      {p.promoCode}
+                                    </span>
+                                  )}
+                                </td>
                                 <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">{formatMoney(p.amount, p.currency)}</td>
                                 <td className="px-4 py-3 text-slate-500 dark:text-slate-500">{new Date(p.createdAt).toLocaleDateString()}</td>
                                 <td className="px-4 py-3 text-right">

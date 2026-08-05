@@ -78,6 +78,7 @@ export interface MyPaymentRow {
   amount: number;
   currency: string;
   status: BogPaymentStatus | 'REFUNDED';
+  promoCode: string | null;
   createdAt: string;
   completedAt: string | null;
 }

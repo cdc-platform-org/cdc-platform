@@ -225,7 +225,7 @@ router.get('/bog-payments', requireAdminRole('SUPER_ADMIN'), async (req, res) =>
 
   const [payments, totalCount] = await Promise.all([
     prisma.bogPayment.findMany({
-      include: { user: participantSelect },
+      include: { user: participantSelect, promoCode: { select: { code: true } } },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -261,6 +261,7 @@ router.get('/bog-payments', requireAdminRole('SUPER_ADMIN'), async (req, res) =>
       amount: p.amount,
       currency: p.currency,
       status: p.status,
+      promoCode: p.promoCode?.code ?? null,
       createdAt: p.createdAt,
       completedAt: p.completedAt,
     })),
