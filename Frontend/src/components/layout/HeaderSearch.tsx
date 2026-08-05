@@ -17,7 +17,7 @@ const dict = {
     shortcutHint: 'სწრაფი ძებნისთვის',
     courses: 'კურსები',
     articles: 'სტატიები',
-    marketplace: 'მარკეტფლეისი',
+    marketplace: 'ციფრული მაღაზია',
     viewAll: (q: string) => `ყველა შედეგი "${q}"-სთვის →`,
     empty: 'ვერაფერი მოიძებნა.',
     startTyping: 'დაიწყეთ წერა ძებნისთვის…',

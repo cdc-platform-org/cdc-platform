@@ -13,7 +13,7 @@ import { MARKETPLACE_CATEGORIES } from '../../src/data/marketplaceCategories';
 
 const dict = {
   ka: {
-    title: 'მარკეტფლეისი',
+    title: 'ციფრული მაღაზია',
     subtitle: 'UI Kits, AI Prompts, შაბლონები და ელექტრონული წიგნები — მზად გამოსაყენებლად.',
     all: 'ყველა',
     free: 'უფასო',

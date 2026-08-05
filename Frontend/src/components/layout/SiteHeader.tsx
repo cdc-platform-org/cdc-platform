@@ -17,7 +17,7 @@ const dict = {
     gallery: 'გალერეა',
     community: 'ვაკანსიები',
     mentors: 'მენტორები',
-    marketplace: 'მარკეტფლეისი',
+    marketplace: 'ციფრული მაღაზია',
     categories: 'კატეგორიები',
     viewAllProducts: 'ყველა პროდუქტი',
     tools: 'ციფრული ხელსაწყოები',
