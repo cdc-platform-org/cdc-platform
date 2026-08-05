@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
-import { GraduationCap, ExternalLink } from 'lucide-react';
+import { GraduationCap, ExternalLink, Mail } from 'lucide-react';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
@@ -31,6 +31,9 @@ const dict = {
     confirmChangeName: 'სახელის შეცვლა (პროფილში გადასვლა)',
     confirmCancel: 'გაუქმება',
     downloadFailed: 'სერტიფიკატის გენერირება ვერ მოხერხდა. სცადეთ თავიდან.',
+    limitTitle: 'სერტიფიკატი უკვე ჩამოტვირთულია',
+    limitClose: 'დახურვა',
+    limitContactEmail: 'contact@cdc.org.ge',
   },
   en: {
     title: 'My Certificates',
@@ -50,6 +53,9 @@ const dict = {
     confirmChangeName: 'Change Name (Go to Settings)',
     confirmCancel: 'Cancel',
     downloadFailed: 'Unable to generate the certificate. Please try again.',
+    limitTitle: 'Certificate Already Downloaded',
+    limitClose: 'Close',
+    limitContactEmail: 'contact@cdc.org.ge',
   },
 };
 
@@ -64,8 +70,10 @@ function CertificatesContent() {
   const [downloadingCourseId, setDownloadingCourseId] = useState<string | null>(null);
   const [confirmCourseId, setConfirmCourseId] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [limitReachedMessage, setLimitReachedMessage] = useState<string | null>(null);
 
   useEscapeToClose(confirmCourseId !== null, () => setConfirmCourseId(null));
+  useEscapeToClose(limitReachedMessage !== null, () => setLimitReachedMessage(null));
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -105,14 +113,22 @@ function CertificatesContent() {
       // undefined even when the server sent a real error message.
       const errorBlob = err?.response?.data;
       let serverMessage: string | undefined;
+      let serverCode: string | undefined;
       if (errorBlob instanceof Blob) {
         try {
-          serverMessage = JSON.parse(await errorBlob.text())?.message;
+          const parsed = JSON.parse(await errorBlob.text());
+          serverMessage = parsed?.message;
+          serverCode = parsed?.code;
         } catch {
           // not JSON — ignore, fall back to the generic message below
         }
       }
-      setDownloadError(serverMessage || t.downloadFailed);
+      if (serverCode === 'CERTIFICATE_ALREADY_DOWNLOADED') {
+        setConfirmCourseId(null);
+        setLimitReachedMessage(serverMessage ?? t.downloadFailed);
+      } else {
+        setDownloadError(serverMessage || t.downloadFailed);
+      }
     } finally {
       setDownloadingCourseId(null);
     }
@@ -244,6 +260,37 @@ function CertificatesContent() {
                 className="w-full text-sm font-bold px-4 py-3 rounded-xl text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 bg-transparent"
               >
                 {t.confirmCancel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {limitReachedMessage && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setLimitReachedMessage(null)}
+        >
+          <div
+            className="max-w-md w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-extrabold text-slate-900 dark:text-white mb-3">{t.limitTitle}</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-5">{limitReachedMessage}</p>
+            <div className="flex flex-col gap-2">
+              <a
+                href={`mailto:${t.limitContactEmail}`}
+                className="flex items-center justify-center gap-2 w-full text-sm font-bold px-4 py-3 rounded-xl bg-slate-950 dark:bg-cyan-600 text-white hover:bg-slate-800 dark:hover:bg-cyan-500 transition no-underline"
+              >
+                <Mail className="w-4 h-4" />
+                {t.limitContactEmail}
+              </a>
+              <button
+                type="button"
+                onClick={() => setLimitReachedMessage(null)}
+                className="w-full text-sm font-bold px-4 py-3 rounded-xl text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 bg-transparent"
+              >
+                {t.limitClose}
               </button>
             </div>
           </div>

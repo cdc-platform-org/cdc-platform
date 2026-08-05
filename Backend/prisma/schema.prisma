@@ -681,6 +681,14 @@ model CourseCertificate {
   course           Course   @relation(fields: [courseId], references: [id], onDelete: Restrict)
   verificationCode String   @unique
   issuedAt         DateTime @default(now())
+  // One-download-per-student-per-course limit (see GET /:id/certificate) —
+  // 0 means never downloaded via the student dashboard's authenticated
+  // download button; further attempts are turned away with a "contact
+  // support" message instead of a fresh PDF. Deliberately does not apply to
+  // the public code-based /certificates/download/:code route, which serves
+  // a different purpose (sharing/re-verifying an already-issued credential).
+  downloadCount     Int       @default(0)
+  firstDownloadedAt DateTime?
 
   @@unique([userId, courseId])
   @@map("course_certificates")

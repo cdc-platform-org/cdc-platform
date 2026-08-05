@@ -696,6 +696,18 @@ router.get('/:id/certificate', authenticate, requireCourseAccess, async (req: Re
 
   const certificate = await getOrCreateCertificate(req.user!.id, courseId);
 
+  // One download per student per course via this authenticated button —
+  // further attempts are turned away with a support-contact message instead
+  // of silently regenerating the PDF (fraud-prevention: stops a certificate
+  // being freely re-downloaded/re-issued with edited legal-name fields).
+  if (certificate.downloadCount >= 1) {
+    return res.status(403).json({
+      code: 'CERTIFICATE_ALREADY_DOWNLOADED',
+      message:
+        'სერტიფიკატის განმეორებით ჩამოტვირთვისთვის ან მონაცემების შესაცვლელად, გთხოვთ დაუკავშირდეთ მხარდაჭერის გუნდს ელფოსტაზე: contact@cdc.org.ge',
+    });
+  }
+
   try {
     const pdfBuffer = await generateCertificatePdf({
       studentName: legalNameKa || student.name,
@@ -705,6 +717,10 @@ router.get('/:id/certificate', authenticate, requireCourseAccess, async (req: Re
       instructorName: course.mentorName || 'CDC Faculty',
       issueDate: certificate.issuedAt,
       verificationCode: certificate.verificationCode,
+    });
+    await prisma.courseCertificate.update({
+      where: { id: certificate.id },
+      data: { downloadCount: { increment: 1 }, firstDownloadedAt: certificate.firstDownloadedAt ?? new Date() },
     });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="certificate-${course.title.replace(/[^a-z0-9]+/gi, '-')}.pdf"`);
