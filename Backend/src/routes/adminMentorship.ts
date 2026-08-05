@@ -142,6 +142,17 @@ router.post('/mentors/:mentorId/availability', async (req: Request, res: Respons
   res.status(201).json({ data: rule });
 });
 
+router.put('/availability/:ruleId', async (req: Request, res: Response) => {
+  const result = mentorAvailabilityRuleSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const rule = await prisma.mentorAvailabilityRule
+    .update({ where: { id: req.params.ruleId }, data: result.data })
+    .catch(() => null);
+  if (!rule) return res.status(404).json({ message: 'Availability rule not found.' });
+  res.json({ data: rule });
+});
+
 router.delete('/availability/:ruleId', async (req: Request, res: Response) => {
   await prisma.mentorAvailabilityRule.delete({ where: { id: req.params.ruleId } }).catch(() => null);
   res.status(204).send();

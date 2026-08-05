@@ -10,6 +10,7 @@ import {
   getMentors,
   getMentorAvailability,
   createMentorAvailabilityRule,
+  updateMentorAvailabilityRule,
   deleteMentorAvailabilityRule,
   updateMentorProfile,
   MentorshipGig,
@@ -19,6 +20,11 @@ import {
 } from '../../src/services/adminMentorshipService';
 
 const DAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+// Display/grouping order — Monday first, matching how the admin thinks
+// about a work week — while dayOfWeek values themselves stay 0=Sunday..
+// 6=Saturday to match the DB/backend convention unchanged.
+const DAY_DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 function minutesToTime(minutes: number): string {
   const h = Math.floor(minutes / 60)
@@ -40,7 +46,9 @@ function MentorAvailabilitySection() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState({ dayOfWeek: 1, startTime: '18:00', endTime: '22:00' });
+  const [selectedDays, setSelectedDays] = useState<number[]>([1]);
+  const [timeForm, setTimeForm] = useState({ startTime: '18:00', endTime: '22:00' });
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
 
   const [profileForm, setProfileForm] = useState({ mentorTitle: '', mentorHourlyRateGel: '', mentorSkills: '', bio: '' });
   const [savingProfile, setSavingProfile] = useState(false);
@@ -101,20 +109,64 @@ function MentorAvailabilitySection() {
   }, [selectedMentorId]);
 
   useEffect(() => {
+    setEditingRuleId(null);
+    setSelectedDays([1]);
+    setError(null);
+  }, [selectedMentorId]);
+
+  useEffect(() => {
     loadRules();
   }, [loadRules]);
 
-  const handleAddRule = async () => {
+  const toggleDay = (day: number) => {
+    if (editingRuleId) {
+      // Editing one specific rule — a single day, not a bulk fan-out.
+      setSelectedDays([day]);
+      return;
+    }
+    setSelectedDays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]));
+  };
+
+  const resetForm = () => {
+    setEditingRuleId(null);
+    setSelectedDays([1]);
+    setTimeForm({ startTime: '18:00', endTime: '22:00' });
     setError(null);
-    const startMinute = timeToMinutes(form.startTime);
-    const endMinute = timeToMinutes(form.endTime);
-    if (endMinute <= startMinute) return setError('End time must be after start time.');
+  };
+
+  const handleEditRule = (rule: MentorAvailabilityRule) => {
+    setEditingRuleId(rule.id);
+    setSelectedDays([rule.dayOfWeek]);
+    setTimeForm({ startTime: minutesToTime(rule.startMinute), endTime: minutesToTime(rule.endMinute) });
+    setError(null);
+  };
+
+  const handleSubmit = async () => {
+    setError(null);
+    const startMinute = timeToMinutes(timeForm.startTime);
+    const endMinute = timeToMinutes(timeForm.endTime);
+    if (!timeForm.startTime || !timeForm.endTime) return setError('Please set both a start and end time.');
+    if (endMinute <= startMinute) {
+      return setError(
+        `End time (${timeForm.endTime}) must be after start time (${timeForm.startTime}). Overnight ranges spanning midnight aren't supported — split them into two slots instead.`
+      );
+    }
+    if (selectedDays.length === 0) return setError('Select at least one day.');
+
     setSaving(true);
     try {
-      await createMentorAvailabilityRule(selectedMentorId, { dayOfWeek: form.dayOfWeek, startMinute, endMinute });
+      if (editingRuleId) {
+        await updateMentorAvailabilityRule(editingRuleId, { dayOfWeek: selectedDays[0], startMinute, endMinute });
+      } else {
+        // Bulk-create: one rule per checked day, same time range on each.
+        await Promise.all(
+          selectedDays.map((dayOfWeek) => createMentorAvailabilityRule(selectedMentorId, { dayOfWeek, startMinute, endMinute }))
+        );
+      }
       await loadRules();
+      resetForm();
     } catch {
-      setError('Unable to add the rule. Please try again.');
+      setError(editingRuleId ? 'Unable to update the slot. Please try again.' : 'Unable to add the slot(s). Please try again.');
     } finally {
       setSaving(false);
     }
@@ -123,6 +175,7 @@ function MentorAvailabilitySection() {
   const handleDeleteRule = async (ruleId: string) => {
     await deleteMentorAvailabilityRule(ruleId);
     setRules((prev) => prev.filter((r) => r.id !== ruleId));
+    if (editingRuleId === ruleId) resetForm();
   };
 
   return (
@@ -201,68 +254,116 @@ function MentorAvailabilitySection() {
           {profileSaved && <span className="text-xs text-emerald-600">Saved.</span>}
         </div>
 
-        {error && <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
-
         {loading ? (
           <p className="text-sm text-gray-400">Loading…</p>
         ) : rules.length === 0 ? (
           <p className="text-sm text-gray-500 mb-4">No availability set yet for this mentor.</p>
         ) : (
-          <div className="space-y-1.5 mb-4">
-            {rules.map((rule) => (
-              <div key={rule.id} className="flex items-center justify-between text-sm bg-gray-50 rounded-lg px-3 py-2">
-                <span className="text-gray-800">
-                  {DAY_LABELS[rule.dayOfWeek]}, {minutesToTime(rule.startMinute)}–{minutesToTime(rule.endMinute)}
-                </span>
-                <button type="button" onClick={() => handleDeleteRule(rule.id)} className="text-xs text-red-500 hover:text-red-700">
-                  Remove
-                </button>
+          <div className="space-y-4 mb-5">
+            {DAY_DISPLAY_ORDER.filter((day) => rules.some((r) => r.dayOfWeek === day)).map((day) => (
+              <div key={day}>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">{DAY_LABELS[day]}</p>
+                <div className="space-y-1.5">
+                  {rules
+                    .filter((r) => r.dayOfWeek === day)
+                    .sort((a, b) => a.startMinute - b.startMinute)
+                    .map((rule) => (
+                      <div
+                        key={rule.id}
+                        className={`flex items-center justify-between text-sm rounded-lg px-3 py-2 border ${
+                          editingRuleId === rule.id ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50 border-transparent'
+                        }`}
+                      >
+                        <span className="text-gray-800 font-medium">
+                          {minutesToTime(rule.startMinute)} – {minutesToTime(rule.endMinute)}
+                        </span>
+                        <div className="flex items-center gap-3">
+                          <button type="button" onClick={() => handleEditRule(rule)} className="text-xs font-medium text-indigo-600 hover:text-indigo-800">
+                            შეცვლა
+                          </button>
+                          <button type="button" onClick={() => handleDeleteRule(rule.id)} className="text-xs font-medium text-red-500 hover:text-red-700">
+                            წაშლა
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
               </div>
             ))}
           </div>
         )}
 
-        <div className="flex items-end gap-3 pt-3 border-t border-gray-100">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Day</label>
-            <select
-              value={form.dayOfWeek}
-              onChange={(e) => setForm({ ...form, dayOfWeek: Number(e.target.value) })}
-              className="rounded-lg border border-gray-300 px-2.5 py-2 text-sm"
+        <div className="pt-4 border-t border-gray-100">
+          <p className="text-sm font-semibold text-gray-800 mb-3">
+            {editingRuleId ? 'Edit slot' : 'Add slot(s)'}
+          </p>
+
+          {error && <div className="mb-3 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
+
+          <label className="block text-xs font-medium text-gray-700 mb-1.5">
+            {editingRuleId ? 'Day' : 'Days (select one or more)'}
+          </label>
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {DAY_DISPLAY_ORDER.map((day) => (
+              <button
+                key={day}
+                type="button"
+                onClick={() => toggleDay(day)}
+                className={`text-xs font-bold px-3 py-2 rounded-full border transition-colors ${
+                  selectedDays.includes(day)
+                    ? 'bg-indigo-600 border-indigo-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {DAY_SHORT[day]}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Start</label>
+              <input
+                type="time"
+                value={timeForm.startTime}
+                onChange={(e) => setTimeForm({ ...timeForm, startTime: e.target.value })}
+                className="rounded-lg border border-gray-300 px-2.5 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">End</label>
+              <input
+                type="time"
+                value={timeForm.endTime}
+                onChange={(e) => setTimeForm({ ...timeForm, endTime: e.target.value })}
+                className="rounded-lg border border-gray-300 px-2.5 py-2 text-sm"
+              />
+            </div>
+            {timeForm.startTime && timeForm.endTime && (
+              <p className="text-xs text-gray-400 pb-2.5">
+                {timeForm.startTime} – {timeForm.endTime}
+                {selectedDays.length > 1 && !editingRuleId ? ` on ${selectedDays.length} days` : ''}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={saving || !selectedMentorId}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
             >
-              {DAY_LABELS.map((label, idx) => (
-                <option key={idx} value={idx}>
-                  {label}
-                </option>
-              ))}
-            </select>
+              {saving ? 'Saving…' : editingRuleId ? 'Update slot' : 'Add slot(s)'}
+            </button>
+            {editingRuleId && (
+              <button
+                type="button"
+                onClick={resetForm}
+                disabled={saving}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+              >
+                Cancel
+              </button>
+            )}
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Start</label>
-            <input
-              type="time"
-              value={form.startTime}
-              onChange={(e) => setForm({ ...form, startTime: e.target.value })}
-              className="rounded-lg border border-gray-300 px-2.5 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">End</label>
-            <input
-              type="time"
-              value={form.endTime}
-              onChange={(e) => setForm({ ...form, endTime: e.target.value })}
-              className="rounded-lg border border-gray-300 px-2.5 py-2 text-sm"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={handleAddRule}
-            disabled={saving || !selectedMentorId}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
-          >
-            {saving ? 'Adding…' : 'Add slot'}
-          </button>
         </div>
       </div>
     </div>

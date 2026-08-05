@@ -98,6 +98,14 @@ export async function createMentorAvailabilityRule(
   return response.data.data;
 }
 
+export async function updateMentorAvailabilityRule(
+  ruleId: string,
+  rule: { dayOfWeek: number; startMinute: number; endMinute: number }
+): Promise<MentorAvailabilityRule> {
+  const response = await apiClient.put<{ data: MentorAvailabilityRule }>(`/admin/mentorship/availability/${ruleId}`, rule);
+  return response.data.data;
+}
+
 export async function deleteMentorAvailabilityRule(ruleId: string): Promise<void> {
   await apiClient.delete(`/admin/mentorship/availability/${ruleId}`);
 }
