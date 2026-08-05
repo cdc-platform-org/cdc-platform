@@ -4,34 +4,49 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import crypto from 'crypto';
-import { OPENAI_API_KEY } from '../utils/env';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
+import { GEMINI_API_KEY } from '../utils/env';
 import { isFfmpegAvailable } from './videoCompressionService';
 import { prisma } from '../lib/prisma';
 import { uploadBunnyCaption } from './bunnyStreamService';
 
 // ============================================================
-// Automated 3-language (ka/en/ru) lesson subtitles.
+// Automated 3-language (ka/en/ru) lesson subtitles — Gemini-powered.
 //
 // Pipeline: extract audio from the just-uploaded video buffer (ffmpeg,
-// already a dependency — see videoCompressionService.ts) -> transcribe with
-// OpenAI Whisper (chunked if the compressed audio would exceed Whisper's
-// 25MB request limit) -> build a WebVTT from the returned segments ->
-// translate that base VTT into whichever of ka/en/ru wasn't the detected
-// spoken language, with GPT-4o-mini -> upload each language to Bunny Stream
-// via its Captions API (uploadBunnyCaption). Bunny's own embed player shows
-// the CC toggle automatically once captions exist for a video — no custom
-// player work needed.
+// already a dependency — see videoCompressionService.ts) -> upload it to
+// Gemini's File API (handles audio far larger than would fit inline in a
+// single request, so no chunking is needed for anything in the realistic
+// range of a course lesson) -> gemini-1.5-flash transcribes it directly into
+// a WebVTT with timing cues and reports the detected spoken language ->
+// gemini-1.5-flash translates that base VTT into whichever of ka/en/ru
+// wasn't the detected language, with the timing cues preserved -> each
+// language is uploaded to Bunny Stream via its Captions API. Bunny's own
+// embed player shows the CC toggle automatically once captions exist — no
+// custom player work needed.
 //
 // Fire-and-forget, no queue (same posture as videoCompressionService.ts) —
 // triggered right after a successful lesson video upload, never blocks that
 // request. A hard concurrency cap of 1 keeps a burst of uploads from running
-// several ffmpeg extractions + paid OpenAI calls in parallel.
+// several ffmpeg extractions + paid Gemini calls in parallel.
 // ============================================================
 
 if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath as string);
 
+const client = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+const fileManager = GEMINI_API_KEY ? new GoogleAIFileManager(GEMINI_API_KEY) : null;
+
+// "gemini-1.5-flash" (the model this pipeline was originally specced with)
+// no longer exists on this Google Cloud project's API — confirmed via a
+// live ListModels call and a direct generateContent 404. "gemini-2.5-pro"/
+// "gemini-pro-latest" also return a hard 0 free-tier quota here (see
+// aiExamService.ts). gemini-flash-latest is the same model already proven
+// working (and multimodal — accepts audio input) for exam generation.
+const MODEL_NAME = 'gemini-flash-latest';
+
 export function isSubtitlePipelineConfigured(): boolean {
-  return !!OPENAI_API_KEY && isFfmpegAvailable;
+  return !!GEMINI_API_KEY && isFfmpegAvailable;
 }
 
 const TARGET_LANGUAGES: { code: 'ka' | 'en' | 'ru'; label: string }[] = [
@@ -40,13 +55,11 @@ const TARGET_LANGUAGES: { code: 'ka' | 'en' | 'ru'; label: string }[] = [
   { code: 'ru', label: 'Русский' },
 ];
 
-// Whisper API's hard cap is 25MB per request — stay comfortably under it so
-// container/encoding overhead never tips a chunk over the line.
-const WHISPER_MAX_BYTES = 24 * 1024 * 1024;
-// 64kbps mono is plenty for speech-recognition accuracy and keeps file size
-// low: ~480KB/minute, so a chunk can safely run ~45 minutes before nearing
-// the cap above.
-const AUDIO_BITRATE_KBPS = 64;
+const LANGUAGE_NAMES: Record<'ka' | 'en' | 'ru', string> = {
+  ka: 'Georgian',
+  en: 'English',
+  ru: 'Russian',
+};
 
 const MAX_CONCURRENT_JOBS = 1;
 let activeJobs = 0;
@@ -69,17 +82,9 @@ async function unlinkSafe(filePath: string): Promise<void> {
   await fs.promises.unlink(filePath).catch(() => {});
 }
 
-function getAudioDurationSeconds(filePath: string): Promise<number> {
-  return new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(filePath, (err, data) => {
-      if (err) return reject(err);
-      resolve(data.format.duration ?? 0);
-    });
-  });
-}
-
-// Extracts the video's audio track as a single low-bitrate mono MP3 — the
-// starting point before deciding whether it needs splitting into chunks.
+// Extracts the video's audio track as a single low-bitrate mono MP3 — small
+// enough to upload quickly, and speech-recognition accuracy doesn't need
+// more than this.
 async function extractAudio(videoBuffer: Buffer, jobId: string): Promise<string> {
   const inputPath = path.join(os.tmpdir(), `subtitle-in-${jobId}`);
   const outputPath = path.join(os.tmpdir(), `subtitle-audio-${jobId}.mp3`);
@@ -90,7 +95,7 @@ async function extractAudio(videoBuffer: Buffer, jobId: string): Promise<string>
         .noVideo()
         .audioCodec('libmp3lame')
         .audioChannels(1)
-        .audioBitrate(AUDIO_BITRATE_KBPS)
+        .audioBitrate(64)
         .format('mp3')
         .on('error', reject)
         .on('end', () => resolve())
@@ -102,151 +107,102 @@ async function extractAudio(videoBuffer: Buffer, jobId: string): Promise<string>
   }
 }
 
-// Cuts one audio file into N roughly-equal chunks, each safely under
-// WHISPER_MAX_BYTES, re-encoding at the same fixed bitrate so each chunk's
-// size is predictable from its duration alone.
-async function splitAudioIntoChunks(audioPath: string, jobId: string): Promise<{ path: string; startOffsetSeconds: number }[]> {
-  const stat = await fs.promises.stat(audioPath);
-  if (stat.size <= WHISPER_MAX_BYTES) {
-    return [{ path: audioPath, startOffsetSeconds: 0 }];
+// Uploads the audio to Gemini's File API and waits for it to leave
+// PROCESSING state — files are typically ready within a few seconds for
+// audio this size, but the API is async so this can't be assumed.
+async function uploadAudioAndWaitActive(audioPath: string): Promise<{ uri: string; name: string }> {
+  const uploaded = await fileManager!.uploadFile(audioPath, { mimeType: 'audio/mpeg' });
+  let file = uploaded.file;
+  const deadline = Date.now() + 60_000;
+  while (file.state === FileState.PROCESSING && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    file = await fileManager!.getFile(file.name);
   }
-
-  const totalDuration = await getAudioDurationSeconds(audioPath);
-  const chunkCount = Math.ceil(stat.size / WHISPER_MAX_BYTES);
-  const chunkDuration = totalDuration / chunkCount;
-
-  const chunks: { path: string; startOffsetSeconds: number }[] = [];
-  for (let i = 0; i < chunkCount; i++) {
-    const startOffsetSeconds = i * chunkDuration;
-    const chunkPath = path.join(os.tmpdir(), `subtitle-chunk-${jobId}-${i}.mp3`);
-    await new Promise<void>((resolve, reject) => {
-      ffmpeg(audioPath)
-        .setStartTime(startOffsetSeconds)
-        .setDuration(chunkDuration)
-        .audioCodec('libmp3lame')
-        .audioChannels(1)
-        .audioBitrate(AUDIO_BITRATE_KBPS)
-        .format('mp3')
-        .on('error', reject)
-        .on('end', () => resolve())
-        .save(chunkPath);
-    });
-    chunks.push({ path: chunkPath, startOffsetSeconds });
+  if (file.state === FileState.FAILED) {
+    throw new Error('Gemini failed to process the uploaded audio file.');
   }
-  return chunks;
-}
-
-interface WhisperSegment {
-  start: number;
-  end: number;
-  text: string;
-}
-
-interface WhisperResult {
-  language: string;
-  segments: WhisperSegment[];
-}
-
-async function transcribeChunk(chunkPath: string): Promise<WhisperResult> {
-  const buffer = await fs.promises.readFile(chunkPath);
-  const form = new FormData();
-  form.append('file', new Blob([buffer], { type: 'audio/mpeg' }), 'audio.mp3');
-  form.append('model', 'whisper-1');
-  form.append('response_format', 'verbose_json');
-
-  const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
-    body: form,
-  });
-  if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    throw new Error(`OpenAI Whisper request failed (${response.status}): ${body}`);
+  if (file.state !== FileState.ACTIVE) {
+    throw new Error('Timed out waiting for Gemini to finish processing the uploaded audio file.');
   }
-  const data = (await response.json()) as {
-    language: string;
-    segments: { start: number; end: number; text: string }[];
-  };
-  return {
-    language: data.language,
-    segments: data.segments.map((s) => ({ start: s.start, end: s.end, text: s.text.trim() })),
-  };
-}
-
-function formatVttTimestamp(totalSeconds: number): string {
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = Math.floor(totalSeconds % 60);
-  const ms = Math.round((totalSeconds - Math.floor(totalSeconds)) * 1000);
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
-}
-
-function buildVtt(segments: WhisperSegment[]): string {
-  const cues = segments
-    .filter((s) => s.text.length > 0)
-    .map((s) => `${formatVttTimestamp(s.start)} --> ${formatVttTimestamp(s.end)}\n${s.text}`)
-    .join('\n\n');
-  return `WEBVTT\n\n${cues}\n`;
+  return { uri: file.uri, name: file.name };
 }
 
 function countCues(vtt: string): number {
   return (vtt.match(/-->/g) || []).length;
 }
 
-// OpenAI's detected-language field is a full name ("georgian"/"english"/
-// "russian"), not an ISO code — mapped so the pipeline can skip re-
-// translating into the language that was actually spoken. Unrecognized
-// values fall through to "translate into all three", the safe default.
-function detectedLanguageToCode(language: string): 'ka' | 'en' | 'ru' | null {
-  const normalized = language.trim().toLowerCase();
-  if (normalized === 'georgian') return 'ka';
-  if (normalized === 'english') return 'en';
-  if (normalized === 'russian') return 'ru';
-  return null;
+// Whichever of ka/en/ru was actually spoken doesn't need a translation
+// pass — this parses the "LANGUAGE: xx" line the transcription prompt
+// requires as its first line of output.
+function parseLanguageCode(line: string): 'ka' | 'en' | 'ru' | null {
+  const match = line.trim().match(/^LANGUAGE:\s*([a-zA-Z]{2,3})/i);
+  if (!match) return null;
+  const code = match[1].toLowerCase();
+  return code === 'ka' || code === 'en' || code === 'ru' ? code : null;
 }
 
-const LANGUAGE_NAMES: Record<'ka' | 'en' | 'ru', string> = {
-  ka: 'Georgian',
-  en: 'English',
-  ru: 'Russian',
-};
+interface TranscriptionResult {
+  vtt: string;
+  detectedCode: 'ka' | 'en' | 'ru' | null;
+}
+
+// Transcribes the uploaded audio directly into a timed WebVTT — a single
+// multimodal call rather than a dedicated ASR API, so cue boundaries are
+// Gemini's own segmentation rather than a purpose-built speech model's; the
+// structural checks below (real WEBVTT header, at least one cue) are the
+// safety net against a malformed response, not against imprecise timing.
+async function transcribeAudioToVtt(fileUri: string): Promise<TranscriptionResult> {
+  const model = client!.getGenerativeModel({ model: MODEL_NAME, generationConfig: { temperature: 0.2 } });
+  const prompt =
+    `Listen to this audio and produce a complete, accurate transcript formatted as a valid WebVTT file. ` +
+    `Break the transcript into natural speech-based cues (roughly 3-10 seconds each) with accurate timestamps ` +
+    `matching the audio. Use the exact WebVTT cue format "HH:MM:SS.mmm --> HH:MM:SS.mmm" followed by the cue ` +
+    `text, with a blank line between cues.\n\n` +
+    `Respond with EXACTLY this shape and nothing else (no markdown code fences, no explanation):\n` +
+    `LANGUAGE: <two-letter ISO 639-1 code of the spoken language>\n` +
+    `WEBVTT\n\n` +
+    `<cues>`;
+
+  let raw: string;
+  try {
+    const result = await model.generateContent([{ fileData: { mimeType: 'audio/mpeg', fileUri } }, { text: prompt }]);
+    raw = result.response.text().trim();
+  } catch (err) {
+    throw new Error(err instanceof Error ? `Gemini transcription request failed: ${err.message}` : 'Gemini transcription request failed.');
+  }
+
+  const lines = raw.split('\n');
+  const detectedCode = parseLanguageCode(lines[0] ?? '');
+  const vtt = lines.slice(1).join('\n').trim().replace(/^```(?:vtt)?|```$/g, '').trim();
+
+  if (!vtt.startsWith('WEBVTT') || countCues(vtt) === 0) {
+    throw new Error('Gemini returned an unexpected transcription format (missing WEBVTT header or no cues).');
+  }
+  return { vtt, detectedCode };
+}
 
 // Translates cue TEXT only — timing lines, cue count, and the WEBVTT header
-// must come back byte-for-byte structurally identical, verified by
-// countCues() below before this is trusted. A model that reformats/merges/
-// drops cues would otherwise silently desync the captions from the audio.
+// must come back structurally identical, verified by countCues() below
+// before this is trusted. A model that reformats/merges/drops cues would
+// otherwise silently desync the captions from the audio.
 async function translateVtt(baseVtt: string, targetCode: 'ka' | 'en' | 'ru'): Promise<string> {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      temperature: 0.2,
-      messages: [
-        {
-          role: 'system',
-          content:
-            `You are a professional subtitle translator. You will receive a complete WebVTT file. ` +
-            `Translate ONLY the spoken caption text into ${LANGUAGE_NAMES[targetCode]}. ` +
-            `Do not change the "WEBVTT" header line. Do not change, merge, split, add, or remove any timestamp lines ` +
-            `(lines containing "-->") — copy them exactly as given. Keep the exact same number of cues in the exact ` +
-            `same order. Keep standard technical/IT terms that are normally used in English even in translated ` +
-            `speech in English (e.g. "API", "SEO", "component"). Return ONLY the resulting VTT file content — no ` +
-            `markdown code fences, no explanation, no extra text before or after.`,
-        },
-        { role: 'user', content: baseVtt },
-      ],
-    }),
-  });
-  if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    throw new Error(`OpenAI translation request failed (${response.status}): ${body}`);
+  const model = client!.getGenerativeModel({ model: MODEL_NAME, generationConfig: { temperature: 0.2 } });
+  const prompt =
+    `You are a professional subtitle translator. Below is a complete WebVTT file. Translate ONLY the spoken ` +
+    `caption text into ${LANGUAGE_NAMES[targetCode]}. Do not change the "WEBVTT" header line. Do not change, ` +
+    `merge, split, add, or remove any timestamp lines (lines containing "-->") — copy them exactly as given. ` +
+    `Keep the exact same number of cues in the exact same order. Keep standard technical/IT terms that are ` +
+    `normally used in English even in translated speech in English (e.g. "API", "SEO", "component"). Respond ` +
+    `with ONLY the resulting VTT file content — no markdown code fences, no explanation, no extra text before ` +
+    `or after.\n\n${baseVtt}`;
+
+  let translated: string;
+  try {
+    const result = await model.generateContent(prompt);
+    translated = result.response.text().trim().replace(/^```(?:vtt)?|```$/g, '').trim();
+  } catch (err) {
+    throw new Error(err instanceof Error ? `Gemini translation request failed: ${err.message}` : 'Gemini translation request failed.');
   }
-  const data = (await response.json()) as { choices: { message: { content: string } }[] };
-  const translated = data.choices[0]?.message?.content?.trim() ?? '';
   if (!translated.startsWith('WEBVTT') || countCues(translated) !== countCues(baseVtt)) {
     throw new Error(`Translated VTT for "${targetCode}" failed structural validation (cue count mismatch).`);
   }
@@ -265,7 +221,7 @@ export async function processLessonSubtitles(lessonId: string, videoId: string, 
         where: { id: lessonId },
         data: {
           subtitlesStatus: 'FAILED',
-          subtitlesError: 'Subtitle pipeline is not configured (OPENAI_API_KEY missing, or ffmpeg unavailable).',
+          subtitlesError: 'Subtitle pipeline is not configured (GEMINI_API_KEY missing, or ffmpeg unavailable).',
         },
       })
       .catch(() => {});
@@ -274,38 +230,22 @@ export async function processLessonSubtitles(lessonId: string, videoId: string, 
 
   await acquireSlot();
   const jobId = crypto.randomUUID();
-  const tempFiles: string[] = [];
+  let audioPath: string | null = null;
+  let geminiFileName: string | null = null;
   try {
     await prisma.lesson.update({ where: { id: lessonId }, data: { subtitlesStatus: 'PROCESSING', subtitlesError: null } });
 
-    const audioPath = await extractAudio(videoBuffer, jobId);
-    tempFiles.push(audioPath);
-    const chunks = await splitAudioIntoChunks(audioPath, jobId);
-    chunks.forEach((c) => {
-      if (c.path !== audioPath) tempFiles.push(c.path);
-    });
+    audioPath = await extractAudio(videoBuffer, jobId);
+    const uploadedFile = await uploadAudioAndWaitActive(audioPath);
+    geminiFileName = uploadedFile.name;
 
-    const allSegments: WhisperSegment[] = [];
-    let detectedLanguage = '';
-    for (const chunk of chunks) {
-      const result = await transcribeChunk(chunk.path);
-      if (!detectedLanguage) detectedLanguage = result.language;
-      for (const seg of result.segments) {
-        allSegments.push({ start: seg.start + chunk.startOffsetSeconds, end: seg.end + chunk.startOffsetSeconds, text: seg.text });
-      }
-    }
-
-    const baseVtt = buildVtt(allSegments);
-    if (countCues(baseVtt) === 0) {
-      throw new Error('Transcription produced no speech segments (silent or unsupported audio track).');
-    }
-    const spokenCode = detectedLanguageToCode(detectedLanguage);
+    const { vtt: baseVtt, detectedCode } = await transcribeAudioToVtt(uploadedFile.uri);
 
     const failures: string[] = [];
     let succeeded = 0;
     for (const { code, label } of TARGET_LANGUAGES) {
       try {
-        const vtt = code === spokenCode ? baseVtt : await translateVtt(baseVtt, code);
+        const vtt = code === detectedCode ? baseVtt : await translateVtt(baseVtt, code);
         await uploadBunnyCaption(videoId, code, label, vtt);
         succeeded += 1;
       } catch (err) {
@@ -331,6 +271,7 @@ export async function processLessonSubtitles(lessonId: string, videoId: string, 
       .catch(() => {});
   } finally {
     releaseSlot();
-    await Promise.all(tempFiles.map(unlinkSafe));
+    if (audioPath) await unlinkSafe(audioPath);
+    if (geminiFileName) await fileManager!.deleteFile(geminiFileName).catch(() => {});
   }
 }

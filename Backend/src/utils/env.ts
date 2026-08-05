@@ -69,6 +69,7 @@ export const EMAIL_FROM = process.env.EMAIL_FROM || 'CDC Platform <no-reply@cdc.
 // Deliberately NOT requireEnv() — the app must still boot without a Gemini
 // account configured; exam question generation just responds 501 until this
 // is set (see services/aiExamService.ts), same pattern as Bunny/BOG above.
+// Also powers the automated lesson subtitle pipeline (services/subtitleService.ts).
 // Same key as Frontend's GEMINI_API_KEY (used server-side there too, in
 // pages/api/chat.ts — never exposed to the browser).
 export const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
@@ -117,9 +118,3 @@ export const GOOGLE_CALENDAR_CLIENT_EMAIL = (process.env.GOOGLE_CALENDAR_CLIENT_
 // same failure mode as GEMINI_API_KEY/GOOGLE_CLIENT_ID above.
 export const GOOGLE_CALENDAR_PRIVATE_KEY = (process.env.GOOGLE_CALENDAR_PRIVATE_KEY || '').trim().replace(/\\n/g, '\n');
 export const GOOGLE_CALENDAR_ID = (process.env.GOOGLE_CALENDAR_ID || 'contact@cdc.org.ge').trim();
-// OpenAI — Whisper (audio transcription) + GPT-4o-mini (translation) power
-// the automated ka/en/ru lesson subtitle pipeline (services/subtitleService.ts).
-// Deliberately NOT requireEnv() — video upload must still succeed without
-// this configured; the subtitle job just records subtitlesStatus FAILED with
-// a clear error instead of blocking/breaking the upload itself.
-export const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || '').trim();
