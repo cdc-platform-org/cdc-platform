@@ -368,12 +368,19 @@ export default function Home() {
               </button>
             </form>
             {showSuggestions && searchQuery.length > 0 && (
-              <div className={`absolute top-full left-0 right-0 mt-2 rounded-xl border shadow-xl z-50 overflow-hidden ${darkMode ? 'bg-[#161f30] border-slate-700' : 'bg-white border-slate-200'}`}>
+              // Anchored to the search box's right edge with its own fixed
+              // width, rather than stretching left-0/right-0 across the
+              // parent — the parent shrinks to max-w-[150px] at the `lg`
+              // breakpoint (see the comment above), which used to squeeze
+              // this dropdown down to that same 150px and clip every result.
+              <div
+                className={`absolute top-full right-0 mt-2 w-[320px] max-w-[90vw] min-w-[280px] rounded-xl border shadow-lg z-50 overflow-hidden ${darkMode ? 'bg-[#161f30] border-slate-700' : 'bg-white border-slate-200'}`}
+              >
                 {suggestions.filter((s) => s.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 ? (
                   <button
                     type="button"
                     onMouseDown={() => router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)}
-                    className={`w-full text-left px-4 py-3 text-sm border-none bg-transparent cursor-pointer ${darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-50'}`}
+                    className={`w-full text-left px-4 py-3 text-sm whitespace-normal break-words border-none bg-transparent cursor-pointer ${darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-50'}`}
                   >
                     {translate(`ძებნა: "${searchQuery}"`, `Search for: "${searchQuery}"`)}
                   </button>
@@ -385,9 +392,9 @@ export default function Home() {
                         key={s}
                         type="button"
                         onMouseDown={() => router.push(`/search?q=${encodeURIComponent(s)}`)}
-                        className={`w-full text-left px-4 py-2.5 text-sm border-none bg-transparent cursor-pointer flex items-center gap-2 ${darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-50'}`}
+                        className={`w-full text-left px-4 py-2.5 text-sm whitespace-normal break-words border-none bg-transparent cursor-pointer flex items-start gap-2 ${darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-50'}`}
                       >
-                        <Search className="w-3.5 h-3.5 shrink-0" />
+                        <Search className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                         {s}
                       </button>
                     ))
