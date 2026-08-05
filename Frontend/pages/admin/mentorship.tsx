@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, ChangeEvent } from 'react';
 import Head from 'next/head';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
@@ -13,6 +13,7 @@ import {
   updateMentorAvailabilityRule,
   deleteMentorAvailabilityRule,
   updateMentorProfile,
+  uploadMentorCv,
   MentorshipGig,
   MentorshipHelpRequest,
   MentorProfile,
@@ -53,6 +54,10 @@ function MentorAvailabilitySection() {
   const [profileForm, setProfileForm] = useState({ mentorTitle: '', mentorHourlyRateGel: '', mentorSkills: '', bio: '' });
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
+  const [uploadingCv, setUploadingCv] = useState(false);
+  const [cvError, setCvError] = useState<string | null>(null);
+
+  const selectedMentor = mentors.find((m) => m.id === selectedMentorId);
 
   const loadMentors = useCallback(async () => {
     const data = await getMentors();
@@ -95,6 +100,22 @@ function MentorAvailabilitySection() {
       setProfileSaved(true);
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  const handleUploadCv = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedMentorId) return;
+    setCvError(null);
+    setUploadingCv(true);
+    try {
+      const updated = await uploadMentorCv(selectedMentorId, file);
+      setMentors((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+    } catch (err: any) {
+      setCvError(err?.response?.data?.message || 'CV upload failed. Please try again.');
+    } finally {
+      setUploadingCv(false);
+      e.target.value = '';
     }
   };
 
@@ -241,6 +262,26 @@ function MentorAvailabilitySection() {
             rows={2}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
           />
+        </div>
+        <div className="mb-5">
+          <label className="block text-xs font-medium text-gray-700 mb-1">CV / Resume (PDF or DOCX)</label>
+          <div className="flex items-center gap-3">
+            {selectedMentor?.cvUrl && (
+              <a
+                href={selectedMentor.cvUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline"
+              >
+                View current CV
+              </a>
+            )}
+            <label className="inline-block text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-2 rounded-lg cursor-pointer hover:bg-indigo-100">
+              <input type="file" accept=".pdf,.doc,.docx" onChange={handleUploadCv} disabled={uploadingCv || !selectedMentorId} className="hidden" />
+              {uploadingCv ? 'Uploading…' : selectedMentor?.cvUrl ? 'Replace CV' : 'Upload CV'}
+            </label>
+          </div>
+          {cvError && <p className="text-xs text-red-600 mt-1.5">{cvError}</p>}
         </div>
         <div className="flex items-center gap-3 mb-5">
           <button

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import { FileText } from 'lucide-react';
 import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
 import { useEscapeToClose } from '../src/hooks/useEscapeToClose';
@@ -160,10 +161,21 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: '
               </p>
             )}
           </div>
+          {mentor.cvUrl && (
+            <a
+              href={mentor.cvUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-auto inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 no-underline hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              {'რეზიუმე / CV'}
+            </a>
+          )}
           <button
             type="button"
             onClick={onClose}
-            className="ml-auto text-xs font-bold text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-transparent border-none cursor-pointer"
+            className={`${mentor.cvUrl ? '' : 'ml-auto'} text-xs font-bold text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-transparent border-none cursor-pointer`}
           >
             {t.close}
           </button>
@@ -319,10 +331,21 @@ function MentorCard({ mentor, lang, onBook }: { mentor: PublicMentor; lang: 'ka'
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 flex flex-col">
       <div className="flex items-center gap-3 mb-3">
         <MentorAvatar mentor={mentor} />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-black text-slate-900 dark:text-white truncate">{mentor.name}</p>
           {mentor.mentorTitle && <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{mentor.mentorTitle}</p>}
         </div>
+        {mentor.cvUrl && (
+          <a
+            href={mentor.cvUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 no-underline hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            {'რეზიუმე / CV'}
+          </a>
+        )}
       </div>
       {mentor.bio && <p className="text-xs text-slate-600 dark:text-slate-300 mb-3 line-clamp-3">{mentor.bio}</p>}
       {mentor.mentorSkills.length > 0 && (

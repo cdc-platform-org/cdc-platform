@@ -70,6 +70,7 @@ export interface MentorProfile extends MentorshipUser {
   mentorTitle: string | null;
   mentorHourlyRate: number | null;
   mentorSkills: string[];
+  cvUrl: string | null;
 }
 
 export async function getMentors(): Promise<MentorProfile[]> {
@@ -82,6 +83,13 @@ export async function updateMentorProfile(
   payload: { mentorTitle?: string; mentorHourlyRate?: number; mentorSkills?: string[]; bio?: string }
 ): Promise<MentorProfile> {
   const response = await apiClient.put<{ data: MentorProfile }>(`/admin/mentorship/mentors/${mentorId}/profile`, payload);
+  return response.data.data;
+}
+
+export async function uploadMentorCv(mentorId: string, file: File): Promise<MentorProfile> {
+  const formData = new FormData();
+  formData.append('cv', file);
+  const response = await apiClient.post<{ data: MentorProfile }>(`/admin/mentorship/mentors/${mentorId}/cv`, formData);
   return response.data.data;
 }
 

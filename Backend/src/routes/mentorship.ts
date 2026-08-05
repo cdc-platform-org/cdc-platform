@@ -52,6 +52,7 @@ router.get('/mentors', async (_req: Request, res: Response) => {
       mentorTitle: true,
       mentorHourlyRate: true,
       mentorSkills: true,
+      cvUrl: true,
     },
     orderBy: { name: 'asc' },
   });

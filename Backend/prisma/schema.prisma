@@ -252,6 +252,10 @@ model User {
   mentorTitle      String?
   mentorHourlyRate Int?
   mentorSkills     String[] @default([])
+  // CV/résumé (PDF/DOCX), uploaded via POST /admin/mentorship/mentors/:id/cv
+  // — a public CDN URL like the other Bunny-Storage-backed uploads in this
+  // codebase; there's nothing sensitive in a mentor's own public CV.
+  cvUrl            String?
   // Business KYC — self-uploaded Public Registry Extract / company
   // registration document, reviewed manually by an admin (see
   // routes/adminCompanies.ts). No separate status enum: the three states

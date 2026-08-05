@@ -40,6 +40,7 @@ export interface PublicMentor {
   mentorTitle: string | null;
   mentorHourlyRate: number | null; // minor units (tetri)
   mentorSkills: string[];
+  cvUrl: string | null;
 }
 
 export async function getMentors(): Promise<PublicMentor[]> {

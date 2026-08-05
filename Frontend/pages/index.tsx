@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import { useRouter } from 'next/router';
-import { CheckCircle2, AlertTriangle, Search, Sun, Moon, User, X, Menu, Link as LinkIcon, Rocket, Clock, Bot, ShieldCheck, Users, Sparkles, Lock, MessageSquareText, BookOpen, Code2, BarChart3 } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Sun, Moon, User, X, Menu, Link as LinkIcon, Rocket, Clock, Bot, ShieldCheck, Users, Sparkles, Lock, MessageSquareText, BookOpen, Code2, BarChart3 } from 'lucide-react';
 import { useAuthModal } from '../src/context/AuthModalContext';
 import { useAuth } from '../src/context/AuthContext';
 import SiteFooter from '../src/components/layout/SiteFooter';
@@ -14,6 +14,7 @@ import { HomepageContent, HomepageStat, GalleryImage } from '../src/types/siteCo
 import { getCourses } from '../src/services/courseService';
 import { getBlogPosts, blogTitle, blogDescription } from '../src/services/blogService';
 import { MARKETPLACE_CATEGORIES } from '../src/data/marketplaceCategories';
+import HeaderSearch from '../src/components/layout/HeaderSearch';
 import { BlogPost } from '../src/types/blog';
 import SuccessStoriesCarousel from '../src/components/shared/SuccessStoriesCarousel';
 import TeamSection from '../src/components/shared/TeamSection';
@@ -92,18 +93,6 @@ export default function Home() {
       shallow: true,
     });
   };
-
-  // 🔍 საძიებო ველის სთეითები
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
-  const suggestions = [
-    'Vibe Coding კურსი',
-    'სოციალური მედიის მარკეტინგი',
-    'ხელოვნური ინტელექტი (AI)',
-    'CDC Studio სააგენტო',
-    'ფრილანსერების ფორუმი',
-    'ბლოგი სტატიები'
-  ];
 
   // 📱 მობილური მენიუს სთეითი
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
@@ -329,79 +318,12 @@ export default function Home() {
             </div>
           </Link>
 
-          {/* 🔍 SEARCH BAR — capped tight right at the `lg` breakpoint
-              (1024px), where it, the 5-item nav-links row and the auth buttons
-              all have to share 1024px; opens back up at `xl`. This is the only
-              flex-shrinkable item in the row (everything else is shrink-0), so
-              it is what gives the nav links room instead of them being cut
-              off. */}
-          <div className="relative flex-1 max-w-sm lg:max-w-[150px] xl:max-w-md hidden sm:block">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setShowSuggestions(false);
-                if (searchQuery.trim()) router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-              }}
-              className="relative"
-            >
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setShowSuggestions(e.target.value.length > 0);
-                }}
-                onFocus={() => searchQuery.length > 0 && setShowSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                placeholder={translate('მოძებნე კურსი, ბლოგი...', 'Search courses, blog...') as string}
-                className={`w-full text-sm pl-10 pr-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all ${
-                  darkMode ? 'bg-[#161f30] border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                }`}
-              />
-              <button
-                type="submit"
-                aria-label={translate('ძებნა', 'Search') as string}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 border-none bg-transparent cursor-pointer p-0"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </button>
-            </form>
-            {showSuggestions && searchQuery.length > 0 && (
-              // Anchored to the search box's right edge with its own fixed
-              // width, rather than stretching left-0/right-0 across the
-              // parent — the parent shrinks to max-w-[150px] at the `lg`
-              // breakpoint (see the comment above), which used to squeeze
-              // this dropdown down to that same 150px and clip every result.
-              <div
-                className={`absolute top-full right-0 mt-2 w-[320px] max-w-[90vw] min-w-[280px] rounded-xl border shadow-lg z-50 overflow-hidden ${darkMode ? 'bg-[#161f30] border-slate-700' : 'bg-white border-slate-200'}`}
-              >
-                {suggestions.filter((s) => s.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 ? (
-                  <button
-                    type="button"
-                    onMouseDown={() => router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)}
-                    className={`w-full text-left px-4 py-3 text-sm whitespace-normal break-words border-none bg-transparent cursor-pointer ${darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-50'}`}
-                  >
-                    {translate(`ძებნა: "${searchQuery}"`, `Search for: "${searchQuery}"`)}
-                  </button>
-                ) : (
-                  suggestions
-                    .filter((s) => s.toLowerCase().includes(searchQuery.toLowerCase()))
-                    .map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onMouseDown={() => router.push(`/search?q=${encodeURIComponent(s)}`)}
-                        className={`w-full text-left px-4 py-2.5 text-sm whitespace-normal break-words border-none bg-transparent cursor-pointer flex items-start gap-2 ${darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-50'}`}
-                      >
-                        <Search className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                        {s}
-                      </button>
-                    ))
-                )}
-              </div>
-            )}
+          {/* 🔍 SEARCH — compact icon button that opens a centered command-
+              palette-style modal (HeaderSearch.tsx) instead of an inline
+              expanding input, so it no longer needs to shrink/fight the nav
+              links row for space at the `lg` breakpoint. */}
+          <div className="hidden sm:block">
+            <HeaderSearch darkMode={darkMode} lang={lang} />
           </div>
 
           {/* Nav links step down to text-sm at `lg` and only reach text-base at
@@ -427,9 +349,6 @@ export default function Home() {
               </div>
             </div>
             <a href="#courses" className="hover:text-cyan-500 transition no-underline text-current">{translate('კურსები', 'Courses')}</a>
-            <a href="#blog" className="hover:text-cyan-500 transition no-underline text-current">{translate('ბლოგი', 'Blog')}</a>
-            <a href="/agency" className="hover:text-cyan-500 transition no-underline text-current">{safeText('CDC Studio')}</a>
-            <a href="/community" className="hover:text-cyan-500 transition no-underline text-current">{translate('ვაკანსიები', 'Jobs')}</a>
             <div className="relative group py-2 -my-2">
               <Link href="/marketplace" className="hover:text-cyan-500 transition no-underline text-current">
                 {translate('მარკეტფლეისი', 'CDC Store')} ▾
@@ -457,6 +376,9 @@ export default function Home() {
                 </div>
               </div>
             </div>
+            <a href="#blog" className="hover:text-cyan-500 transition no-underline text-current">{translate('ბლოგი', 'Blog')}</a>
+            <a href="/agency" className="hover:text-cyan-500 transition no-underline text-current">{safeText('CDC Studio')}</a>
+            <a href="/community" className="hover:text-cyan-500 transition no-underline text-current">{translate('ვაკანსიები', 'Jobs')}</a>
             <a href="/forum" className="hover:text-cyan-500 transition no-underline text-current">{translate('ფორუმი', 'Forum')}</a>
           </div>
 
@@ -494,13 +416,13 @@ export default function Home() {
         {/* MOBILE MENU PANEL */}
         {isMobileMenuOpen && (
           <div className={`lg:hidden max-w-full overflow-x-hidden mt-4 pt-4 border-t flex flex-col gap-1 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+            <div className="px-2 pb-2">
+              <HeaderSearch darkMode={darkMode} lang={lang} />
+            </div>
             <span className={`px-2 pt-3 pb-1 font-black text-xs uppercase tracking-widest ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{translate('ჩვენ შესახებ', 'About Us')}</span>
             <Link href="/about" onClick={() => setIsMobileMenuOpen(false)} className={`px-4 py-2.5 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('› ცენტრის შესახებ', '› About Center')}</Link>
             <Link href="/gallery" onClick={() => setIsMobileMenuOpen(false)} className={`px-4 py-2.5 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition mb-1 ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('› ფოტოგალერეა', '› Photo Gallery')}</Link>
             <a href="#courses" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('კურსები', 'Courses')}</a>
-            <a href="#blog" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('ბლოგი', 'Blog')}</a>
-            <a href="/agency" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{safeText('CDC Studio')}</a>
-            <a href="/community" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('ვაკანსიები', 'Jobs')}</a>
             <Link href="/marketplace" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('მარკეტფლეისი', 'CDC Store')}</Link>
             {MARKETPLACE_CATEGORIES.map((cat) => (
               <Link
@@ -512,6 +434,9 @@ export default function Home() {
                 {lang === 'ENG' ? cat.value.en : cat.value.ka}
               </Link>
             ))}
+            <a href="#blog" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('ბლოგი', 'Blog')}</a>
+            <a href="/agency" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{safeText('CDC Studio')}</a>
+            <a href="/community" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('ვაკანსიები', 'Jobs')}</a>
             <a href="/forum" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('ფორუმი', 'Forum')}</a>
             <UserMenu
               className="sm:hidden mt-2"

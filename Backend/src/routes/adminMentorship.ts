@@ -1,7 +1,12 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
+import multer from 'multer';
+import path from 'path';
+import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { mentorAvailabilityRuleSchema, mentorProfileSchema } from '../schemas/adminSchemas';
+import { uploadImage } from '../services/imageStorage';
+import { BunnyStorageUploadError } from '../services/bunnyStorage';
 
 const router = Router();
 router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'));
@@ -91,6 +96,7 @@ router.get('/mentors', async (_req: Request, res: Response) => {
       mentorTitle: true,
       mentorHourlyRate: true,
       mentorSkills: true,
+      cvUrl: true,
     },
     orderBy: { name: 'asc' },
   });
@@ -116,10 +122,75 @@ router.put('/mentors/:mentorId/profile', async (req: Request, res: Response) => 
       mentorTitle: true,
       mentorHourlyRate: true,
       mentorSkills: true,
+      cvUrl: true,
     },
   });
   res.json({ data: updated });
 });
+
+// CV/résumé — PDF or DOCX only, uploaded to Bunny Storage via the same
+// generic uploadImage() wrapper the digital-store product files use
+// (despite the name, it's not image-specific — see imageStorage.ts).
+const CV_MIME_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+];
+const cvUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    if (CV_MIME_TYPES.includes(file.mimetype) || /\.(pdf|docx?)$/i.test(file.originalname)) cb(null, true);
+    else cb(new Error('Only PDF or DOCX files are allowed.'));
+  },
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB — plenty for a CV
+});
+
+router.post(
+  '/mentors/:mentorId/cv',
+  (req: Request, res: Response, next: NextFunction) => {
+    cvUpload.single('cv')(req, res, (err: any) => {
+      if (!err) return next();
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ message: 'The file exceeds 15MB.' });
+      }
+      return res.status(400).json({ message: err.message || 'Only PDF or DOCX files are allowed.' });
+    });
+  },
+  async (req: Request, res: Response) => {
+    if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
+    const mentor = await prisma.user.findUnique({ where: { id: req.params.mentorId } });
+    if (!mentor || mentor.role !== 'Mentor') return res.status(404).json({ message: 'Mentor not found.' });
+
+    const filename = `cv-${mentor.id}-${Date.now()}${path.extname(req.file.originalname) || '.pdf'}`;
+    try {
+      const url = await uploadImage({
+        buffer: req.file.buffer,
+        mimetype: req.file.mimetype,
+        folderName: 'mentor-cvs',
+        filename,
+      });
+      const updated = await prisma.user.update({
+        where: { id: mentor.id },
+        data: { cvUrl: url },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatarUrl: true,
+          bio: true,
+          mentorTitle: true,
+          mentorHourlyRate: true,
+          mentorSkills: true,
+          cvUrl: true,
+        },
+      });
+      res.status(201).json({ data: updated });
+    } catch (err) {
+      const message = err instanceof BunnyStorageUploadError ? err.message : 'CV upload failed. Please try again.';
+      res.status(500).json({ message });
+    }
+  }
+);
 
 router.get('/mentors/:mentorId/availability', async (req: Request, res: Response) => {
   const rules = await prisma.mentorAvailabilityRule.findMany({
