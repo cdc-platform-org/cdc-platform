@@ -33,7 +33,7 @@ export default function CourseVideoPlayer({ embedUrl, title }: CourseVideoPlayer
 
       {watermarkText && (
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden">
-          <div className="grid grid-cols-2 gap-16 -rotate-[20deg] opacity-[0.14] select-none">
+          <div className="grid grid-cols-2 gap-16 -rotate-[20deg] opacity-[0.12] select-none">
             {Array.from({ length: 6 }).map((_, i) => (
               <span key={i} className="text-white text-sm font-bold tracking-wide whitespace-nowrap">
                 {watermarkText}
