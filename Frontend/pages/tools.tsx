@@ -175,7 +175,7 @@ export default function ToolsPage() {
           {/* Store — downloadable products (UI kits, prompts, templates), a
               separate concept from CDC's own SaaS products above. */}
           <Link
-            href="/store"
+            href="/marketplace"
             className="lg:col-span-3 rounded-3xl border border-purple-500/30 bg-gradient-to-r from-purple-500/5 to-cyan-500/5 p-7 flex items-center justify-between gap-4 no-underline text-current hover:border-purple-400 transition-colors"
           >
             <div>

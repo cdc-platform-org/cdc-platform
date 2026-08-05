@@ -7,6 +7,7 @@ import { AuthModalProvider } from '@/src/context/AuthModalContext';
 import AuthModal from '@/src/components/auth/AuthModal';
 import ScrollToTop from '@/src/components/layout/ScrollToTop';
 import FloatingButtons from '@/src/components/layout/FloatingButtons';
+import CookieConsentBanner from '@/src/components/layout/CookieConsentBanner';
 import type { AppProps } from 'next/app';
 import '@/styles/globals.css';
 
@@ -111,6 +112,7 @@ function App({ Component, pageProps }: AppProps) {
           <ScrollToTop positionClassName={scrollToTopPosition} />
           <FloatingButtons />
           <AuthModal />
+          <CookieConsentBanner />
         </AuthModalProvider>
       </AuthProvider>
     </>

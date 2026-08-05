@@ -1054,7 +1054,7 @@ function DashboardContent() {
                     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-10 text-center">
                       <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t.noProducts}</p>
                       <Link
-                        href="/store"
+                        href="/marketplace"
                         className="inline-block text-xs font-bold text-white bg-slate-900 dark:bg-cyan-600 px-4 py-2.5 rounded-xl no-underline"
                       >
                         {t.browseProducts}

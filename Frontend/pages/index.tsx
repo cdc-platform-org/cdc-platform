@@ -908,9 +908,15 @@ export default function Home() {
       <div className="fixed bottom-56 sm:bottom-60 right-4 md:right-6 z-50 flex flex-col gap-3 items-end">
         {isChatOpen && (
           <div className="w-[calc(100vw-2rem)] sm:w-96 border rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[380px] md:h-[420px] bg-white dark:bg-[#0e1422] text-slate-900 dark:text-white border-slate-200 dark:border-slate-800">
-            <div className="bg-slate-900 text-white p-4 flex justify-between items-center">
-              <span className="text-xs font-bold">{translate('CDC კარიერული ასისტენტი', 'CDC Career Assistant')}</span>
-              <button type="button" onClick={() => setIsChatOpen(false)} className="text-white font-bold border-none bg-transparent cursor-pointer"><X className="w-4 h-4" /></button>
+            <div className="bg-slate-900 text-white p-4 flex flex-col gap-2">
+              <div className="flex justify-between items-center gap-2">
+                <span className="text-xs font-bold truncate">{translate('CDC კარიერული ასისტენტი', 'CDC Career Assistant')}</span>
+                <button type="button" onClick={() => setIsChatOpen(false)} className="shrink-0 text-white font-bold border-none bg-transparent cursor-pointer"><X className="w-4 h-4" /></button>
+              </div>
+              <div className="inline-flex items-center gap-1.5 self-start px-2.5 py-1 rounded-full bg-white/10 border border-white/15">
+                <Image src="/images/cdc-logo.png" alt="CDC" width={14} height={14} className="w-3.5 h-3.5 rounded-full object-cover shrink-0" />
+                <span className="text-[10px] font-bold text-white/70 whitespace-nowrap">{translate('Powered by CDC Studio', 'Powered by CDC Studio')}</span>
+              </div>
             </div>
             
             <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs bg-slate-50 dark:bg-[#0b0f17]">
