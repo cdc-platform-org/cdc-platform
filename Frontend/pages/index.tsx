@@ -13,6 +13,7 @@ import { Course } from '../src/types/lms';
 import { HomepageContent, HomepageStat, GalleryImage } from '../src/types/siteContent';
 import { getCourses } from '../src/services/courseService';
 import { getBlogPosts, blogTitle, blogDescription } from '../src/services/blogService';
+import { MARKETPLACE_CATEGORIES } from '../src/data/marketplaceCategories';
 import { BlogPost } from '../src/types/blog';
 import SuccessStoriesCarousel from '../src/components/shared/SuccessStoriesCarousel';
 import TeamSection from '../src/components/shared/TeamSection';
@@ -429,6 +430,33 @@ export default function Home() {
             <a href="#blog" className="hover:text-cyan-500 transition no-underline text-current">{translate('ბლოგი', 'Blog')}</a>
             <a href="/agency" className="hover:text-cyan-500 transition no-underline text-current">{safeText('CDC Studio')}</a>
             <a href="/community" className="hover:text-cyan-500 transition no-underline text-current">{translate('ვაკანსიები', 'Jobs')}</a>
+            <div className="relative group py-2 -my-2">
+              <Link href="/marketplace" className="hover:text-cyan-500 transition no-underline text-current">
+                {translate('მარკეტფლეისი', 'CDC Store')} ▾
+              </Link>
+              <div className="absolute left-0 top-full pt-2 w-64 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150">
+                <div className={`rounded-xl border shadow-lg overflow-hidden text-sm ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}>
+                  <p className={`px-4 pt-3 pb-1.5 text-[10px] font-black uppercase tracking-widest ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                    {translate('კატეგორიები', 'Categories')}
+                  </p>
+                  {MARKETPLACE_CATEGORIES.map((cat) => (
+                    <Link
+                      key={cat.value.en}
+                      href={`/marketplace?category=${encodeURIComponent(lang === 'ENG' ? cat.value.en : cat.value.ka)}`}
+                      className={`block px-4 py-2.5 no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}
+                    >
+                      {lang === 'ENG' ? cat.value.en : cat.value.ka}
+                    </Link>
+                  ))}
+                  <Link
+                    href="/marketplace"
+                    className={`block px-4 py-2.5 no-underline font-bold text-cyan-600 dark:text-cyan-400 border-t transition ${darkMode ? 'border-slate-800' : 'border-slate-100'}`}
+                  >
+                    {translate('ყველა პროდუქტი', 'View All Products')}
+                  </Link>
+                </div>
+              </div>
+            </div>
             <a href="/forum" className="hover:text-cyan-500 transition no-underline text-current">{translate('ფორუმი', 'Forum')}</a>
           </div>
 
@@ -473,6 +501,17 @@ export default function Home() {
             <a href="#blog" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('ბლოგი', 'Blog')}</a>
             <a href="/agency" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{safeText('CDC Studio')}</a>
             <a href="/community" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('ვაკანსიები', 'Jobs')}</a>
+            <Link href="/marketplace" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('მარკეტფლეისი', 'CDC Store')}</Link>
+            {MARKETPLACE_CATEGORIES.map((cat) => (
+              <Link
+                key={cat.value.en}
+                href={`/marketplace?category=${encodeURIComponent(lang === 'ENG' ? cat.value.en : cat.value.ka)}`}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`px-4 py-2 rounded-lg font-semibold text-xs no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}
+              >
+                {lang === 'ENG' ? cat.value.en : cat.value.ka}
+              </Link>
+            ))}
             <a href="/forum" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('ფორუმი', 'Forum')}</a>
             <UserMenu
               className="sm:hidden mt-2"
