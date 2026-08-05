@@ -31,7 +31,7 @@ import { withCurrentPrice } from '../services/coursePricing';
 import { generateExamQuestions, isAiExamConfigured, AiExamGenerationError, GeneratedQuestion } from '../services/aiExamService';
 import { createExamSessionToken, verifyExamSessionToken, ExamSessionError } from '../services/examSessionService';
 import { logAdminAction } from '../services/auditLogService';
-import { processLessonSubtitles, isSubtitlePipelineConfigured } from '../services/subtitleService';
+import { processLessonSubtitles, isSubtitlePipelineConfigured, regenerateLessonSubtitles } from '../services/subtitleService';
 
 const router = Router();
 
@@ -993,6 +993,36 @@ router.post(
       const message = err instanceof Error ? `Video upload to Bunny Stream failed: ${err.message}` : 'Video upload to Bunny Stream failed. Please try again.';
       res.status(502).json({ message });
     }
+  }
+);
+
+// Admin: re-run the ka/en/ru subtitle pipeline for a lesson whose video is
+// already uploaded — for videos that predate this feature, or where a
+// previous run partially failed (e.g. only "ka" succeeded). Re-fetches the
+// video from Bunny's CDN since the original upload buffer was never kept on
+// our side (see subtitleService.regenerateLessonSubtitles's own comment).
+router.post(
+  '/lessons/:lessonId/subtitles/regenerate',
+  authenticate,
+  requireAdminRole('SUPER_ADMIN', 'MANAGER'),
+  async (req: Request, res: Response) => {
+    if (!isSubtitlePipelineConfigured()) {
+      return res.status(501).json({ message: 'Subtitle pipeline is not configured (GEMINI_API_KEY missing, or ffmpeg unavailable).' });
+    }
+    const lesson = await prisma.lesson.findUnique({ where: { id: req.params.lessonId } });
+    if (!lesson) return res.status(404).json({ message: 'Lesson not found.' });
+    if (!lesson.bunnyVideoId) return res.status(400).json({ message: 'This lesson has no video uploaded yet.' });
+
+    const updated = await prisma.lesson.update({
+      where: { id: lesson.id },
+      data: { subtitlesStatus: 'PENDING', subtitlesError: null },
+    });
+    res.status(202).json({ data: { ...updated, ...lessonWithPlayback(updated) } });
+
+    // Fire-and-forget, same posture as the upload route above.
+    regenerateLessonSubtitles(lesson.id, lesson.bunnyVideoId).catch((err) => {
+      console.error(`[courses] subtitle regeneration threw unexpectedly for lesson ${lesson.id}:`, err);
+    });
   }
 );
 

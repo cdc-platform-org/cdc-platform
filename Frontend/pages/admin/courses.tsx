@@ -16,6 +16,7 @@ import {
   updateLesson,
   deleteLesson,
   uploadLessonVideo,
+  regenerateLessonSubtitles,
   uploadCourseThumbnail,
   uploadCourseCoverImage,
   uploadCourseMentorAvatar,
@@ -428,6 +429,7 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
   const [savingManual, setSavingManual] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [togglingPreview, setTogglingPreview] = useState(false);
+  const [regeneratingSubtitles, setRegeneratingSubtitles] = useState(false);
   const [newResourceUrl, setNewResourceUrl] = useState('');
   const [savingResources, setSavingResources] = useState(false);
   const [assignmentPrompt, setAssignmentPrompt] = useState(lesson.assignmentPrompt ?? '');
@@ -443,6 +445,18 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
       alert('Unable to update free-preview status.');
     } finally {
       setTogglingPreview(false);
+    }
+  };
+
+  const handleRegenerateSubtitles = async () => {
+    setRegeneratingSubtitles(true);
+    try {
+      await regenerateLessonSubtitles(lesson.id);
+      onChanged();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Unable to start subtitle regeneration.');
+    } finally {
+      setRegeneratingSubtitles(false);
     }
   };
 
@@ -574,6 +588,17 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
               ? '…'
               : '⏳'}
           </span>
+        )}
+        {lesson.bunnyVideoId && (
+          <button
+            type="button"
+            onClick={handleRegenerateSubtitles}
+            disabled={regeneratingSubtitles || lesson.subtitlesStatus === 'PROCESSING'}
+            title="Re-run ka/en/ru subtitle generation for this lesson's video"
+            className="shrink-0 text-xs font-medium text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-50 disabled:opacity-50"
+          >
+            {regeneratingSubtitles ? '…' : '🔁 CC'}
+          </button>
         )}
         <button
           type="button"

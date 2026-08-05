@@ -153,6 +153,11 @@ export async function uploadLessonVideo(
   return response.data.data;
 }
 
+export async function regenerateLessonSubtitles(lessonId: string): Promise<AdminLesson> {
+  const response = await apiClient.post<{ data: AdminLesson }>(`/courses/lessons/${lessonId}/subtitles/regenerate`);
+  return response.data.data;
+}
+
 // --- AI Exam & Certification Gate ---
 
 export async function getExamStatus(courseId: string): Promise<ExamStatus> {

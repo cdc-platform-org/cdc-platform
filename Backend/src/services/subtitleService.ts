@@ -6,7 +6,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
-import { GEMINI_API_KEY } from '../utils/env';
+import { GEMINI_API_KEY, BUNNY_CDN_HOSTNAME } from '../utils/env';
 import { isFfmpegAvailable } from './videoCompressionService';
 import { prisma } from '../lib/prisma';
 import { uploadBunnyCaption } from './bunnyStreamService';
@@ -240,6 +240,7 @@ export async function processLessonSubtitles(lessonId: string, videoId: string, 
     geminiFileName = uploadedFile.name;
 
     const { vtt: baseVtt, detectedCode } = await transcribeAudioToVtt(uploadedFile.uri);
+    console.log(`[subtitleService] lesson ${lessonId}: transcribed ${countCues(baseVtt)} cues, detected language "${detectedCode ?? 'unknown'}".`);
 
     const failures: string[] = [];
     let succeeded = 0;
@@ -248,8 +249,15 @@ export async function processLessonSubtitles(lessonId: string, videoId: string, 
         const vtt = code === detectedCode ? baseVtt : await translateVtt(baseVtt, code);
         await uploadBunnyCaption(videoId, code, label, vtt);
         succeeded += 1;
+        console.log(`[subtitleService] lesson ${lessonId}: "${code}" caption uploaded to Bunny (${label}).`);
       } catch (err) {
-        failures.push(`${code}: ${err instanceof Error ? err.message : 'unknown error'}`);
+        const message = err instanceof Error ? err.message : 'unknown error';
+        // Logged individually and immediately — previously only surfaced via
+        // the aggregated subtitlesError DB field, so an en/ru-only failure
+        // (course still marked COMPLETED, since ka succeeded) never showed
+        // up in server logs at all until someone thought to check the DB.
+        console.error(`[subtitleService] lesson ${lessonId}: "${code}" caption FAILED —`, message);
+        failures.push(`${code}: ${message}`);
       }
     }
 
@@ -274,4 +282,34 @@ export async function processLessonSubtitles(lessonId: string, videoId: string, 
     if (audioPath) await unlinkSafe(audioPath);
     if (geminiFileName) await fileManager!.deleteFile(geminiFileName).catch(() => {});
   }
+}
+
+export class SourceVideoUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SourceVideoUnavailableError';
+  }
+}
+
+// Re-runs the pipeline for a lesson whose video was already uploaded to
+// Bunny (the original upload buffer only ever existed in-memory for that
+// one request — never persisted on our side — so this re-downloads the
+// video from Bunny's own CDN instead). Requires BUNNY_CDN_HOSTNAME and the
+// library's "MP4 Fallback" storage option to be enabled — that's what
+// actually generates the play_720p.mp4 file this fetches; 720p is plenty
+// for extracting an audio track and keeps the download small.
+export async function regenerateLessonSubtitles(lessonId: string, videoId: string): Promise<void> {
+  if (!BUNNY_CDN_HOSTNAME) {
+    throw new SourceVideoUnavailableError('BUNNY_CDN_HOSTNAME is not configured — cannot fetch the source video back from Bunny.');
+  }
+  const url = `https://${BUNNY_CDN_HOSTNAME}/${videoId}/play_720p.mp4`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new SourceVideoUnavailableError(
+      `Could not fetch the source video from Bunny (${response.status}) at ${url} — MP4 Fallback may not be enabled on this Stream library.`
+    );
+  }
+  const videoBuffer = Buffer.from(await response.arrayBuffer());
+  console.log(`[subtitleService] lesson ${lessonId}: re-fetched ${videoBuffer.length} bytes from Bunny for subtitle regeneration.`);
+  await processLessonSubtitles(lessonId, videoId, videoBuffer);
 }
