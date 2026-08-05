@@ -13,5 +13,5 @@ export interface MarketplaceCategory {
 export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
   { value: { ka: 'ბიზნეს ინსტრუმენტები', en: 'Business Tools' }, labelEn: 'B2B Tools & AI Automation' },
   { value: { ka: 'ელექტრონული წიგნები', en: 'E-books' }, labelEn: 'E-books' },
-  { value: { ka: 'ბანერები და საბეჭდი მასალები', en: 'Banners & Print Assets' }, labelEn: 'Banners & Print Assets' },
+  { value: { ka: 'ლოგოები, ბანერები და საბეჭდი მასალები', en: 'Logos, Banners & Print Assets' }, labelEn: 'Logos, Banners & Print Assets' },
 ];
