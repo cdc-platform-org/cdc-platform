@@ -14,6 +14,7 @@ import {
   uploadBlogImage,
   resolveBlogImageUrl,
   translateBlogPost,
+  generateBlogPostWithAi,
   SUCCESS_STORIES_CATEGORY_KA,
   BlogPostPayload,
   getBlogComments,
@@ -45,6 +46,8 @@ function AdminBlogDashboard() {
   const [formError, setFormError] = useState<string | null>(null);
   const [activeLangTab, setActiveLangTab] = useState<'ka' | 'en'>('ka');
   const [translating, setTranslating] = useState(false);
+  const [aiTopic, setAiTopic] = useState('');
+  const [generatingWithAi, setGeneratingWithAi] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Comment moderation — fetched on demand per post (no dedicated "all
@@ -115,6 +118,31 @@ function AdminBlogDashboard() {
       setFormError(err?.response?.data?.message ?? 'თარგმნა ვერ მოხერხდა.');
     } finally {
       setTranslating(false);
+    }
+  };
+
+  const handleGenerateWithAi = async () => {
+    setFormError(null);
+    setGeneratingWithAi(true);
+    try {
+      const draft = await generateBlogPostWithAi(aiTopic.trim() || undefined);
+      setForm((f) => ({
+        ...f,
+        title: draft.title,
+        description: draft.description,
+        content: draft.content,
+        category: draft.category,
+        titleEn: draft.titleEn,
+        descriptionEn: draft.descriptionEn,
+        contentEn: draft.contentEn,
+        imageUrl: draft.imageUrl || f.imageUrl,
+      }));
+      setEditingId(null);
+      setActiveLangTab('ka');
+    } catch (err: any) {
+      setFormError(err?.response?.data?.message ?? 'AI გენერაცია ვერ მოხერხდა.');
+    } finally {
+      setGeneratingWithAi(false);
     }
   };
 
@@ -236,6 +264,30 @@ function AdminBlogDashboard() {
           <h2 className="text-base font-semibold text-gray-900 mb-6">
             {editingId ? 'სტატიის რედაქტირება' : 'ახალი სტატია'}
           </h2>
+
+          <div className="mb-6 rounded-xl border border-cyan-200 bg-cyan-50/60 p-4">
+            <p className="text-xs font-semibold text-cyan-900 mb-2">
+              CDC AI აგენტი — ავტომატურად შექმნის ორენოვან (KA/EN) სტატიას სათაურით, კატეგორიით, მოკლე აღწერით,
+              სრული ტექსტით და ყდის სურათით. გადახედეთ და გამოაქვეყნეთ.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                value={aiTopic}
+                onChange={(e) => setAiTopic(e.target.value)}
+                placeholder="თემა (არასავალდებულო) — ცარიელი დატოვების შემთხვევაში AI თავად აირჩევს AI/ტექ თემას"
+                className="flex-1 rounded-lg border border-cyan-300 bg-white px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              />
+              <button
+                type="button"
+                onClick={handleGenerateWithAi}
+                disabled={generatingWithAi}
+                className="shrink-0 whitespace-nowrap text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 px-4 py-2.5 rounded-lg disabled:opacity-60"
+              >
+                {generatingWithAi ? 'გენერირდება…' : '✨ სტატიის გენერირება AI-ით'}
+              </button>
+            </div>
+          </div>
 
           {formError && (
             <div className="mb-5 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">

@@ -7,7 +7,7 @@ import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import Lightbox from '../../src/components/shared/Lightbox';
 import { StudioCaseStudy } from '../../src/types/studioCaseStudy';
-import { getStudioCaseBySlug } from '../../src/services/studioCaseService';
+import { getStudioCaseBySlug, studioCaseTitle, studioCaseDescription, studioCaseFullStory } from '../../src/services/studioCaseService';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
 
 const dict = {
@@ -58,12 +58,13 @@ export default function StudioCaseDetailPage() {
     if (slug) load(slug);
   }, [slug, load]);
 
-  const galleryImages = (caseStudy?.galleryImages ?? []).map((url) => ({ url, alt: caseStudy?.title }));
+  const displayTitle = caseStudy ? studioCaseTitle(caseStudy, lang) : undefined;
+  const galleryImages = (caseStudy?.galleryImages ?? []).map((url) => ({ url, alt: displayTitle }));
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       <Head>
-        <title>{`${caseStudy?.title ?? t.loading} | CDC Studio`}</title>
+        <title>{`${displayTitle ?? t.loading} | CDC Studio`}</title>
       </Head>
       <SiteHeader />
       <div className="max-w-4xl mx-auto px-6 py-16 flex-1 w-full">
@@ -81,14 +82,14 @@ export default function StudioCaseDetailPage() {
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={caseStudy.coverImageUrl}
-                alt={caseStudy.title}
+                alt={displayTitle}
                 onError={onImageErrorFallback}
                 className="w-full aspect-video object-cover rounded-2xl mb-8 border border-slate-200 dark:border-slate-800"
               />
             )}
 
             <span className="text-[11px] font-black uppercase tracking-widest block mb-3 text-cyan-500">{caseStudy.category}</span>
-            <h1 className="text-3xl font-black mb-6">{caseStudy.title}</h1>
+            <h1 className="text-3xl font-black mb-6">{displayTitle}</h1>
 
             <div className="flex flex-wrap gap-6 mb-8 text-sm">
               <div>
@@ -108,10 +109,10 @@ export default function StudioCaseDetailPage() {
               )}
             </div>
 
-            <p className="text-base text-slate-600 dark:text-slate-300 leading-relaxed font-medium mb-6">{caseStudy.description}</p>
+            <p className="text-base text-slate-600 dark:text-slate-300 leading-relaxed font-medium mb-6">{studioCaseDescription(caseStudy, lang)}</p>
 
-            {caseStudy.fullStory && (
-              <div className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed whitespace-pre-line mb-10">{caseStudy.fullStory}</div>
+            {studioCaseFullStory(caseStudy, lang) && (
+              <div className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed whitespace-pre-line mb-10">{studioCaseFullStory(caseStudy, lang)}</div>
             )}
 
             {galleryImages.length > 0 && (

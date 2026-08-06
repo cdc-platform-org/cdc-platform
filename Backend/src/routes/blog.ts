@@ -7,7 +7,7 @@ import { authenticate, requireAdminRole, optionalAuthenticate } from '../middlew
 import { blogPostCreateSchema, blogPostUpdateSchema, blogCommentSchema } from '../schemas/blogSchemas';
 import { BunnyStorageUploadError } from '../services/bunnyStorage';
 import { uploadImage, deleteManagedImage } from '../services/imageStorage';
-import { slugify, randomSlugSuffix } from '../utils/slugify';
+import { createUniqueBlogSlug } from '../services/blogSlugService';
 
 // Migrated from requireRole('SuperAdmin') to the admin-team adminRole system
 // (SUPER_ADMIN + ADMIN) — content management is explicitly ADMIN's domain
@@ -59,26 +59,12 @@ router.get('/:idOrSlug', optionalAuthenticate, async (req: Request, res: Respons
   res.json({ data: post });
 });
 
-// Loops on a real unique-constraint collision (P2002) rather than
-// pre-checking existence — the pre-check-then-insert shape has a race
-// window two concurrent creates could both slip through; retrying on the
-// DB's own rejection doesn't.
-async function createUniqueSlug(title: string): Promise<string> {
-  const base = slugify(title) || 'post';
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const candidate = attempt === 0 ? base : `${base}-${randomSlugSuffix()}`;
-    const existing = await prisma.blogPost.findUnique({ where: { slug: candidate }, select: { id: true } });
-    if (!existing) return candidate;
-  }
-  return `${base}-${randomSlugSuffix()}`;
-}
-
 router.post('/', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   const result = blogPostCreateSchema.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({ errors: result.error.errors });
   }
-  const slug = await createUniqueSlug(result.data.title);
+  const slug = await createUniqueBlogSlug(result.data.title);
   const post = await prisma.blogPost.create({
     data: {
       ...result.data,

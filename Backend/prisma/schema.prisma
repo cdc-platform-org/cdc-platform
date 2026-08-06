@@ -911,6 +911,11 @@ model BlogPost {
   authorId    String
   author      User     @relation(fields: [authorId], references: [id], onDelete: Restrict)
   published   Boolean  @default(true)
+  // Set by the AI agent (manual "✨ Generate" button or the twice-weekly
+  // cron draft) — never by a human-authored post. Lets the admin UI badge
+  // agent-drafted posts and filter them separately. See services/aiAgentService.ts.
+  generatedByAgent   Boolean @default(false)
+  agentPromptContext String?
   // URL-friendly identifier for /blog/[slug], auto-generated from the
   // Georgian title at creation (see routes/blog.ts's slugify) and never
   // regenerated on a later title edit — a live post's URL must stay
@@ -1351,6 +1356,33 @@ model AuditLog {
 }
 
 // ============================================================
+// AI AGENT LOG — one row per CDC Autonomous Operations Agent run (blog
+// draft generation, weekly admin digest, onboarding email), success or
+// failure. No performedById FK like AuditLog above — an autonomous cron
+// run has no human actor, so this is a separate table rather than
+// overloading AuditLog's required performedById. Written by
+// services/aiGenerationLogService.ts.
+// ============================================================
+
+model AiGenerationLog {
+  id String @id @default(uuid())
+
+  // e.g. "blog_manual" (admin clicked Generate), "blog_cron" (scheduled
+  // draft), "weekly_digest", "onboarding_email".
+  module        String
+  status        String // "success" | "failed"
+  inputContext  Json?
+  outputSummary String?
+  errorMessage  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([module])
+  @@index([createdAt])
+  @@map("ai_generation_logs")
+}
+
+// ============================================================
 // SITE CONTENT — simple per-page CMS store. One row per editable page
 // ("homepage", "about", ...), content shape is page-specific and owned by
 // the frontend (see pages/admin/cms/[page].tsx) — the backend just stores
@@ -1676,6 +1708,14 @@ model StudioCaseStudy {
   category      String
   description   String
   fullStory     String?
+  // English twins — optional, same "public pages fall back to Georgian when
+  // unset" posture as BlogPost's titleEn/descriptionEn/contentEn. clientName
+  // and category are deliberately NOT twinned: clientName is a proper noun
+  // (a company's name doesn't change per locale) and category mirrors
+  // BlogPost's own category field, which is likewise single-language.
+  titleEn       String?
+  descriptionEn String?
+  fullStoryEn   String?
   coverImageUrl String?
   galleryImages String[] @default([])
   projectUrl    String?

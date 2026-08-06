@@ -4,6 +4,7 @@ import { CRON_SECRET } from '../utils/env';
 import { autoApproveOverdueGigs } from '../services/gigApprovalService';
 import { cleanupExpiredDeletedAccounts } from '../services/accountCleanupService';
 import { pauseExpiredTrialAgents } from '../services/agentBillingService';
+import { generateAndSaveBlogDraft, BlogAgentError } from '../services/blogAgentService';
 
 const router = Router();
 const expectedSecretBuffer = Buffer.from(CRON_SECRET);
@@ -50,6 +51,20 @@ router.post('/pause-expired-trial-agents', requireCronSecret, async (_req: Reque
     message: `Paused ${result.pausedAgentIds.length} CDC Business AI agent(s) past their trial end date.`,
     ...result,
   });
+});
+
+// Scheduled twice a week (Mon & Thu) by Frontend's Vercel Cron
+// (pages/api/cron/generate-blog.ts) — autonomously drafts one bilingual
+// tech/AI blog post as an UNPUBLISHED BlogPost for admin review, never
+// auto-publishes. See services/blogAgentService.ts.
+router.post('/generate-blog-draft', requireCronSecret, async (_req: Request, res: Response) => {
+  try {
+    const result = await generateAndSaveBlogDraft();
+    res.json({ message: `Drafted blog post "${result.title}" for review.`, ...result });
+  } catch (err) {
+    if (err instanceof BlogAgentError) return res.status(502).json({ message: err.message });
+    throw err;
+  }
 });
 
 export default router;

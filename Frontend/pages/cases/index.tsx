@@ -7,7 +7,7 @@ import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import { StudioCaseStudy } from '../../src/types/studioCaseStudy';
-import { getStudioCases } from '../../src/services/studioCaseService';
+import { getStudioCases, studioCaseTitle, studioCaseDescription } from '../../src/services/studioCaseService';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
 
 const dict = {
@@ -115,7 +115,7 @@ export default function StudioCasesPage() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={item.coverImageUrl}
-                      alt={item.title}
+                      alt={studioCaseTitle(item, lang)}
                       onError={onImageErrorFallback}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
@@ -124,10 +124,10 @@ export default function StudioCasesPage() {
                 <div className="p-6">
                   <span className="text-[11px] font-black uppercase tracking-widest block mb-2 text-cyan-500">{item.category}</span>
                   <h3 className="text-lg font-black mb-2 flex items-center gap-1.5">
-                    {item.title}
+                    {studioCaseTitle(item, lang)}
                     <ArrowUpRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                   </h3>
-                  <p className="text-sm text-slate-400 leading-relaxed font-medium line-clamp-2">{item.description}</p>
+                  <p className="text-sm text-slate-400 leading-relaxed font-medium line-clamp-2">{studioCaseDescription(item, lang)}</p>
                 </div>
               </Link>
             ))}

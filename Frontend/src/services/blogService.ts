@@ -101,6 +101,26 @@ export async function translateBlogPost(payload: {
   return response.data.data;
 }
 
+export interface GeneratedBlogDraft {
+  title: string;
+  description: string;
+  content: string;
+  category: string;
+  titleEn: string;
+  descriptionEn: string;
+  contentEn: string;
+  imageUrl: string;
+}
+
+// CDC Autonomous Operations Agent — Gemini-backed, see Backend's
+// POST /api/admin/blog/generate-ai. Admin-only. Returns generated fields
+// for the admin to review/edit; does not create a post by itself. `topic`
+// is optional — omit to let the agent pick a current AI/tech topic itself.
+export async function generateBlogPostWithAi(topic?: string): Promise<GeneratedBlogDraft> {
+  const response = await apiClient.post<{ data: GeneratedBlogDraft }>('/admin/blog/generate-ai', { topic });
+  return response.data.data;
+}
+
 export async function uploadBlogImage(file: File): Promise<string> {
   const formData = new FormData();
   formData.append('image', file);

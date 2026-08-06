@@ -6,6 +6,12 @@ export const studioCaseCreateSchema = z.object({
   category: z.string().trim().min(1).max(100),
   description: z.string().trim().min(5).max(2000),
   fullStory: z.string().trim().max(20000).optional().nullable(),
+  // English twins — optional, nullable to allow clearing a previously
+  // auto-translated value. Public pages fall back to the Georgian fields
+  // when these are unset (see routes/studioCases.ts and pages/cases).
+  titleEn: z.string().trim().min(2).max(200).optional().nullable(),
+  descriptionEn: z.string().trim().min(5).max(2000).optional().nullable(),
+  fullStoryEn: z.string().trim().max(20000).optional().nullable(),
   // Set via POST /upload-image, then submitted back on the create/update call.
   coverImageUrl: z.union([z.string().trim().url('Enter a valid URL.'), z.literal('')]).optional().nullable(),
   galleryImages: z.array(z.string().trim().url('Enter a valid URL.')).optional().default([]),

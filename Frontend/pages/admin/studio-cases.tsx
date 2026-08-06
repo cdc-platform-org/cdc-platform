@@ -12,6 +12,7 @@ import {
   updateStudioCase,
   deleteStudioCase,
   uploadStudioCaseImage,
+  translateStudioCase,
   StudioCasePayload,
 } from '../../src/services/studioCaseService';
 
@@ -21,6 +22,9 @@ const emptyForm: StudioCasePayload = {
   category: '',
   description: '',
   fullStory: '',
+  titleEn: '',
+  descriptionEn: '',
+  fullStoryEn: '',
   coverImageUrl: '',
   galleryImages: [],
   projectUrl: '',
@@ -37,6 +41,8 @@ function AdminStudioCasesDashboard() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingGallery, setUploadingGallery] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [activeLangTab, setActiveLangTab] = useState<'ka' | 'en'>('ka');
+  const [translating, setTranslating] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -60,6 +66,7 @@ function AdminStudioCasesDashboard() {
     setForm(emptyForm);
     setEditingId(null);
     setFormError(null);
+    setActiveLangTab('ka');
     if (coverInputRef.current) coverInputRef.current.value = '';
     if (galleryInputRef.current) galleryInputRef.current.value = '';
   };
@@ -72,13 +79,39 @@ function AdminStudioCasesDashboard() {
       category: item.category,
       description: item.description,
       fullStory: item.fullStory ?? '',
+      titleEn: item.titleEn ?? '',
+      descriptionEn: item.descriptionEn ?? '',
+      fullStoryEn: item.fullStoryEn ?? '',
       coverImageUrl: item.coverImageUrl ?? '',
       galleryImages: item.galleryImages,
       projectUrl: item.projectUrl ?? '',
       isFeatured: item.isFeatured,
     });
+    setActiveLangTab('ka');
     setFormError(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleAutoTranslate = async () => {
+    setFormError(null);
+    if (form.title.trim().length < 2 || form.description.trim().length < 5 || !form.fullStory?.trim()) {
+      setFormError('თარგმნამდე შეავსეთ ქართული სათაური, აღწერა და სრული ისტორია.');
+      return;
+    }
+    setTranslating(true);
+    try {
+      const translated = await translateStudioCase({
+        title: form.title.trim(),
+        description: form.description.trim(),
+        fullStory: form.fullStory.trim(),
+      });
+      setForm((f) => ({ ...f, ...translated }));
+      setActiveLangTab('en');
+    } catch (err: any) {
+      setFormError(err?.response?.data?.message ?? 'თარგმნა ვერ მოხერხდა.');
+    } finally {
+      setTranslating(false);
+    }
   };
 
   const handleCoverChange = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -141,6 +174,9 @@ function AdminStudioCasesDashboard() {
         category: form.category.trim(),
         description: form.description.trim(),
         fullStory: form.fullStory?.trim() || null,
+        titleEn: form.titleEn?.trim() || null,
+        descriptionEn: form.descriptionEn?.trim() || null,
+        fullStoryEn: form.fullStoryEn?.trim() || null,
         coverImageUrl: form.coverImageUrl?.trim() || null,
         galleryImages: form.galleryImages ?? [],
         projectUrl: form.projectUrl?.trim() || null,
@@ -285,17 +321,7 @@ function AdminStudioCasesDashboard() {
               </label>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">სათაური</label>
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className={inputClass}
-                  placeholder="ონლაინ მაღაზიის დიზაინი"
-                />
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">კლიენტი</label>
                 <input
@@ -318,27 +344,104 @@ function AdminStudioCasesDashboard() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">მოკლე აღწერა</label>
-              <textarea
-                rows={2}
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                className={inputClass}
-                placeholder="მოკლე აღწერა, რომელიც ჩანს ბარათზე..."
-              />
+            <div className="flex items-center justify-between border-b border-gray-200">
+              <div className="flex gap-1">
+                {(['ka', 'en'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveLangTab(tab)}
+                    className={`px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors bg-transparent cursor-pointer ${
+                      activeLangTab === tab
+                        ? 'border-indigo-600 text-indigo-700'
+                        : 'border-transparent text-gray-400 hover:text-gray-600'
+                    }`}
+                  >
+                    {tab === 'ka' ? '🇬🇪 ქართული' : '🇬🇧 English'}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={handleAutoTranslate}
+                disabled={translating}
+                className="mb-1.5 text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg disabled:opacity-60"
+              >
+                {translating ? 'ითარგმნება…' : '✨ Auto-Translate to English'}
+              </button>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">სრული ისტორია <span className="text-gray-400 font-normal">(არასავალდებულო)</span></label>
-              <textarea
-                rows={5}
-                value={form.fullStory ?? ''}
-                onChange={(e) => setForm({ ...form, fullStory: e.target.value })}
-                className={inputClass}
-                placeholder="დეტალური აღწერა პროექტზე, გამოწვევებზე და შედეგებზე..."
-              />
-            </div>
+            {activeLangTab === 'ka' ? (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">სათაური (KA)</label>
+                  <input
+                    type="text"
+                    value={form.title}
+                    onChange={(e) => setForm({ ...form, title: e.target.value })}
+                    className={inputClass}
+                    placeholder="ონლაინ მაღაზიის დიზაინი"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">მოკლე აღწერა (KA)</label>
+                  <textarea
+                    rows={2}
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    className={inputClass}
+                    placeholder="მოკლე აღწერა, რომელიც ჩანს ბარათზე..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    სრული ისტორია (KA) <span className="text-gray-400 font-normal">(არასავალდებულო)</span>
+                  </label>
+                  <textarea
+                    rows={5}
+                    value={form.fullStory ?? ''}
+                    onChange={(e) => setForm({ ...form, fullStory: e.target.value })}
+                    className={inputClass}
+                    placeholder="დეტალური აღწერა პროექტზე, გამოწვევებზე და შედეგებზე..."
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Title (EN)</label>
+                  <input
+                    type="text"
+                    value={form.titleEn ?? ''}
+                    onChange={(e) => setForm({ ...form, titleEn: e.target.value })}
+                    className={inputClass}
+                    placeholder="Online Store Design"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Short Description (EN)</label>
+                  <textarea
+                    rows={2}
+                    value={form.descriptionEn ?? ''}
+                    onChange={(e) => setForm({ ...form, descriptionEn: e.target.value })}
+                    className={inputClass}
+                    placeholder="Short description shown on the card..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Full Story (EN) <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <textarea
+                    rows={5}
+                    value={form.fullStoryEn ?? ''}
+                    onChange={(e) => setForm({ ...form, fullStoryEn: e.target.value })}
+                    className={inputClass}
+                    placeholder="Detailed description of the project, challenges, and results..."
+                  />
+                </div>
+              </>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">პროექტის ბმული <span className="text-gray-400 font-normal">(არასავალდებულო)</span></label>
