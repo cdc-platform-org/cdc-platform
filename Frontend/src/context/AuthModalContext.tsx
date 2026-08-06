@@ -11,6 +11,10 @@ type AuthModalSuccessHandler = (user: User) => void;
 interface OpenAuthModalOptions {
   message?: AuthModalContextMessage;
   mode?: 'login' | 'register';
+  // Pre-selects the Student/Client toggle in register mode — e.g. a
+  // business-only CTA (like the Enterprise AI Tools trial) opens the modal
+  // with 'Client' pre-selected instead of the default 'Student'.
+  initialRole?: 'Student' | 'Client';
   // Fires once login succeeds (email/password or Google) instead of the
   // default role-based redirect — used to resume an interrupted action, e.g.
   // "sign in to enroll" continuing straight into BOG checkout for the exact
@@ -24,6 +28,7 @@ interface AuthModalContextValue {
   isOpen: boolean;
   contextMessage: AuthModalContextMessage | null;
   initialMode: 'login' | 'register';
+  initialRole: 'Student' | 'Client';
   onSuccess: AuthModalSuccessHandler | null;
   openAuthModal: (options?: OpenAuthModalOptions) => void;
   closeAuthModal: () => void;
@@ -35,11 +40,13 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [contextMessage, setContextMessage] = useState<AuthModalContextMessage | null>(null);
   const [initialMode, setInitialMode] = useState<'login' | 'register'>('login');
+  const [initialRole, setInitialRole] = useState<'Student' | 'Client'>('Student');
   const [onSuccess, setOnSuccess] = useState<AuthModalSuccessHandler | null>(null);
 
   const openAuthModal = (options?: OpenAuthModalOptions) => {
     setContextMessage(options?.message ?? null);
     setInitialMode(options?.mode ?? 'login');
+    setInitialRole(options?.initialRole ?? 'Student');
     // Wrapped in an arrow function — useState's setter treats a bare function
     // value as an updater, not a value to store.
     setOnSuccess(options?.onSuccess ? () => options.onSuccess! : null);
@@ -53,7 +60,9 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthModalContext.Provider value={{ isOpen, contextMessage, initialMode, onSuccess, openAuthModal, closeAuthModal }}>
+    <AuthModalContext.Provider
+      value={{ isOpen, contextMessage, initialMode, initialRole, onSuccess, openAuthModal, closeAuthModal }}
+    >
       {children}
     </AuthModalContext.Provider>
   );

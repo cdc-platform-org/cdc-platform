@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
-import { Bot, MessageSquareText, BookOpen, Code2, BarChart3, ShieldCheck, Users, Sparkles, Lock } from 'lucide-react';
+import { Bot, MessageSquareText, BookOpen, Code2, BarChart3, ShieldCheck, Users, Sparkles, Lock, Building2, X } from 'lucide-react';
 import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
 import BackButton from '../src/components/common/BackButton';
@@ -32,6 +33,14 @@ const dict = {
     storeCta: 'ციფრული პროდუქტების მაღაზია',
     storeCtaDesc: 'UI Kits, AI Prompts, შაბლონები და ელექტრონული წიგნები.',
     storeCtaButton: 'მაღაზიის ნახვა',
+    // Business-only gate modals for the AI Assistant trial CTA
+    studentBlockedTitle: 'ხელმისაწვდომია მხოლოდ ბიზნეს ანგარიშებისთვის',
+    studentBlockedDesc: 'ეს ინსტრუმენტები განკუთვნილია მხოლოდ ბიზნეს ანგარიშებისთვის. სტუდენტის/ფრილანსერის ანგარიშით მათი გამოყენება შეუძლებელია.',
+    studentBlockedCta: 'გაიგეთ მეტი ბიზნეს ანგარიშის შესახებ',
+    verificationRequiredTitle: 'საჭიროა ბიზნესის ვერიფიკაცია',
+    verificationRequiredDesc: 'AI ხელსაწყოების გამოსაყენებლად საჭიროა თქვენი ბიზნეს ანგარიშის ვერიფიკაცია. გაიარეთ ვერიფიკაცია პირად კაბინეტში და სცადეთ ხელახლა.',
+    verificationRequiredCta: 'ვერიფიკაციის გავლა',
+    modalClose: 'დახურვა',
   },
   en: {
     title: 'Digital AI Tools',
@@ -53,6 +62,13 @@ const dict = {
     storeCta: 'Digital Product Store',
     storeCtaDesc: 'UI Kits, AI Prompts, templates, and e-books.',
     storeCtaButton: 'Browse Store',
+    studentBlockedTitle: 'Available for Business Accounts Only',
+    studentBlockedDesc: 'These tools are exclusively available for Business accounts. They cannot be used with a Student/Freelancer account.',
+    studentBlockedCta: 'Learn more about Business accounts',
+    verificationRequiredTitle: 'Business Verification Required',
+    verificationRequiredDesc: 'Using the AI tools requires your Business account to be verified. Complete verification in your dashboard and try again.',
+    verificationRequiredCta: 'Complete verification',
+    modalClose: 'Close',
   },
 };
 
@@ -62,13 +78,24 @@ export default function ToolsPage() {
   const t = dict[lang];
   const { isAuthenticated, user } = useAuth();
   const { openAuthModal } = useAuthModal();
+  const [infoModal, setInfoModal] = useState<'studentBlocked' | 'verificationRequired' | null>(null);
 
-  const canUseAiAssistant = isAuthenticated && (user?.role === 'Client' || user?.role === 'SuperAdmin');
+  // Enterprise AI tools are Business-only, and only for a *verified* Business
+  // account — SuperAdmin (internal staff) bypasses the verification check.
+  const canUseAiAssistant =
+    isAuthenticated && (user?.role === 'SuperAdmin' || (user?.role === 'Client' && user.isVerified));
 
   const handleAiCtaClick = () => {
-    if (!canUseAiAssistant) {
-      openAuthModal({ mode: 'register' });
+    if (canUseAiAssistant) return;
+    if (!isAuthenticated) {
+      openAuthModal({ mode: 'register', initialRole: 'Client' });
+      return;
     }
+    if (user?.role !== 'Client') {
+      setInfoModal('studentBlocked');
+      return;
+    }
+    setInfoModal('verificationRequired');
   };
 
   return (
@@ -188,6 +215,54 @@ export default function ToolsPage() {
       </div>
 
       <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+
+      {infoModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={() => setInfoModal(null)}>
+          <div
+            className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setInfoModal(null)}
+              aria-label={t.modalClose}
+              className="absolute top-4 right-4 p-2 cursor-pointer text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center mx-auto mb-4">
+              <Building2 className="w-7 h-7 text-white" />
+            </div>
+
+            {infoModal === 'studentBlocked' ? (
+              <>
+                <h3 className="text-base font-black tracking-wide mb-2">{t.studentBlockedTitle}</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{t.studentBlockedDesc}</p>
+                <Link
+                  href="/contact"
+                  onClick={() => setInfoModal(null)}
+                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+                >
+                  {t.studentBlockedCta}
+                </Link>
+              </>
+            ) : (
+              <>
+                <h3 className="text-base font-black tracking-wide mb-2">{t.verificationRequiredTitle}</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{t.verificationRequiredDesc}</p>
+                <Link
+                  href="/dashboard/client"
+                  onClick={() => setInfoModal(null)}
+                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+                >
+                  {t.verificationRequiredCta}
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

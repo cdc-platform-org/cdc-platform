@@ -17,6 +17,8 @@ const MAX_STRIKES = 3;
 // tab-switch/fullscreen-exit strike system below.
 const PASS_THRESHOLD = 80;
 const QUESTION_COUNT = 15;
+// Mirrors Backend's routes/freelancerExam.ts EXAM_LOCK_HOURS.
+const EXAM_LOCK_HOURS = 24;
 // generateExam calls out to an AI question generator — bound how long we
 // wait so a slow/stuck request surfaces a retry instead of spinning forever.
 const GENERATE_TIMEOUT_MS = 45000;
@@ -40,6 +42,7 @@ function FreelancerExamContent() {
   const [result, setResult] = useState<ExamAttemptResult | null>(null);
   const [lockedUntil, setLockedUntil] = useState<string | null>(null);
   const [nowTick, setNowTick] = useState(() => Date.now());
+  const [violationReason, setViolationReason] = useState<string | null>(null);
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
   const strikeGuardRef = useRef(false);
@@ -90,6 +93,7 @@ function FreelancerExamContent() {
       setStrikes((prev) => {
         const next = prev + 1;
         if (next >= MAX_STRIKES) {
+          setViolationReason(reason);
           setWarningToast(lang === 'ka' ? 'გამოვლენილია განმეორებითი დარღვევა — გამოცდა ავტომატურად იგზავნება.' : 'Repeated violation detected — auto-submitting the exam.');
           handleSubmit(true);
         } else {
@@ -170,6 +174,7 @@ function FreelancerExamContent() {
       setCurrentIndex(0);
       setAnswers({});
       setStrikes(0);
+      setViolationReason(null);
       setPhase('in-progress');
     } catch (err: any) {
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
@@ -369,9 +374,60 @@ function FreelancerExamContent() {
                 <h2 className="text-xl font-black mb-1">ამჯერად ვერ ჩააბარეთ</h2>
               </>
             )}
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+
+            {!result.passed && result.examLockedUntil && (
+              <div className="mt-4 mb-2 text-left rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3 flex items-start gap-3">
+                <ShieldAlert className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                <p className="text-sm text-red-600 dark:text-red-300">
+                  {lang === 'ka'
+                    ? `ტესტირება შეწყდა დარღვევის გამო${violationReason ? `: ${violationReason}` : ''}.`
+                    : `Exam terminated due to violation${violationReason ? `: ${violationReason}` : ''}.`}
+                </p>
+              </div>
+            )}
+
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 mt-4">
               შედეგი: {result.score}% ({result.correctCount}/{result.totalQuestions})
             </p>
+
+            {!result.passed && (
+              <div className="text-left rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 overflow-hidden mb-6">
+                <div className="bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-800/60 px-5 py-3">
+                  <h3 className="text-sm font-black">{lang === 'ka' ? 'ტესტირების წესები და პირობები' : 'Exam Rules & Policy'}</h3>
+                </div>
+                <div className="p-5 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <ShieldAlert className="w-4 h-4 text-cyan-500 shrink-0 mt-0.5" />
+                    <p className="text-xs text-slate-600 dark:text-slate-300">
+                      {lang === 'ka'
+                        ? 'ტესტირების მიმდინარეობისას საჭიროა სრულეკრანიან რეჟიმში ყოფნა და ბრაუზერის ტაბზე/ფანჯარაზე ფოკუსის შენარჩუნება.'
+                        : 'The exam requires staying in fullscreen mode and keeping focus on the browser tab/window at all times.'}
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-xs text-slate-600 dark:text-slate-300">
+                      {lang === 'ka'
+                        ? `ტაბის გადართვა, ფოკუსის დაკარგვა ან სრულეკრანიანი რეჟიმიდან გამოსვლა ითვლება დარღვევად — ${MAX_STRIKES} დარღვევის შემთხვევაში ტესტი ავტომატურად წყდება.`
+                        : `Tab switching, losing window focus, or exiting fullscreen counts as a violation — ${MAX_STRIKES} violations auto-submit and terminate the exam.`}
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Clock className="w-4 h-4 text-cyan-500 shrink-0 mt-0.5" />
+                    <p className="text-xs text-slate-600 dark:text-slate-300">
+                      {result.examLockedUntil
+                        ? lang === 'ka'
+                          ? `დარღვევით შეწყვეტილი ტესტირების ხელახლა ცდა შესაძლებელია ${EXAM_LOCK_HOURS} საათის შემდეგ.`
+                          : `A violation-terminated exam can be retaken after ${EXAM_LOCK_HOURS} hours.`
+                        : lang === 'ka'
+                        ? 'დაბალი ქულით ჩაჭრის შემთხვევაში ტესტის ხელახლა ცდა შესაძლებელია დაუყოვნებლივ.'
+                        : "If you failed on score alone (no violation), you can retake the exam immediately."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <button
               type="button"
               onClick={() => router.push('/dashboard')}

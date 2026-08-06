@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import { useRouter } from 'next/router';
-import { CheckCircle2, AlertTriangle, Sun, Moon, User, X, Menu, Link as LinkIcon, Rocket, Clock, Bot, ShieldCheck, Users, Sparkles, Lock, MessageSquareText, BookOpen, Code2, BarChart3 } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Sun, Moon, User, X, Menu, Link as LinkIcon, Rocket, Clock, Bot, ShieldCheck, Users, Sparkles, Lock, MessageSquareText, BookOpen, Code2, BarChart3, Building2 } from 'lucide-react';
 import { useAuthModal } from '../src/context/AuthModalContext';
 import { useAuth } from '../src/context/AuthContext';
 import SiteFooter from '../src/components/layout/SiteFooter';
@@ -96,6 +96,7 @@ export default function Home() {
 
   // 📱 მობილური მენიუს სთეითი
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [aiInfoModal, setAiInfoModal] = useState<'studentBlocked' | 'verificationRequired' | null>(null);
 
   // 🤖 ჩატბოტის ინტერაქტიული სთეითები
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
@@ -219,6 +220,24 @@ export default function Home() {
     return lang === 'GEO' ? geo : eng;
   };
 
+  // Enterprise AI tools are Business-only, and only for a *verified*
+  // Business account — SuperAdmin (internal staff) bypasses verification.
+  const canUseAiAssistant =
+    isAuthenticated && (user?.role === 'SuperAdmin' || (user?.role === 'Client' && user.isVerified));
+
+  const handleAiCtaClick = () => {
+    if (canUseAiAssistant) return;
+    if (!isAuthenticated) {
+      openAuthModal({ mode: 'register', initialRole: 'Client' });
+      return;
+    }
+    if (user?.role !== 'Client') {
+      setAiInfoModal('studentBlocked');
+      return;
+    }
+    setAiInfoModal('verificationRequired');
+  };
+
   // 🛡️ დამცავი მექანიზმი ლათინური ასოებისთვის
   const safeText = (text: string) => {
     return <span className="font-sans inline-block font-bold tracking-normal">{text}</span>;
@@ -267,6 +286,72 @@ export default function Home() {
       <Head>
         <title>CDC | ციფრული პროფესიების ცენტრი</title>
       </Head>
+
+      {/* Business-only gate modals for the Enterprise AI Assistant trial CTA */}
+      {aiInfoModal && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] px-4"
+          onClick={() => setAiInfoModal(null)}
+        >
+          <div
+            className={`relative rounded-2xl shadow-xl w-full max-w-sm p-6 text-center ${darkMode ? 'bg-slate-900' : 'bg-white'}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setAiInfoModal(null)}
+              aria-label={lang === 'GEO' ? 'დახურვა' : 'Close'}
+              className={`absolute top-4 right-4 p-2 cursor-pointer rounded-full transition-colors ${darkMode ? 'text-gray-400 hover:text-gray-200 hover:bg-slate-800' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center mx-auto mb-4">
+              <Building2 className="w-7 h-7 text-white" />
+            </div>
+
+            {aiInfoModal === 'studentBlocked' ? (
+              <>
+                <h3 className="text-base font-black tracking-wide mb-2">
+                  {translate('ხელმისაწვდომია მხოლოდ ბიზნეს ანგარიშებისთვის', 'Available for Business Accounts Only')}
+                </h3>
+                <p className={`text-sm leading-relaxed mb-5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {translate(
+                    'ეს ინსტრუმენტები განკუთვნილია მხოლოდ ბიზნეს ანგარიშებისთვის. სტუდენტის/ფრილანსერის ანგარიშით მათი გამოყენება შეუძლებელია.',
+                    'These tools are exclusively available for Business accounts. They cannot be used with a Student/Freelancer account.'
+                  )}
+                </p>
+                <Link
+                  href="/contact"
+                  onClick={() => setAiInfoModal(null)}
+                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+                >
+                  {translate('გაიგეთ მეტი ბიზნეს ანგარიშის შესახებ', 'Learn more about Business accounts')}
+                </Link>
+              </>
+            ) : (
+              <>
+                <h3 className="text-base font-black tracking-wide mb-2">
+                  {translate('საჭიროა ბიზნესის ვერიფიკაცია', 'Business Verification Required')}
+                </h3>
+                <p className={`text-sm leading-relaxed mb-5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {translate(
+                    'AI ხელსაწყოების გამოსაყენებლად საჭიროა თქვენი ბიზნეს ანგარიშის ვერიფიკაცია. გაიარეთ ვერიფიკაცია პირად კაბინეტში და სცადეთ ხელახლა.',
+                    'Using the AI tools requires your Business account to be verified. Complete verification in your dashboard and try again.'
+                  )}
+                </p>
+                <Link
+                  href="/dashboard/client"
+                  onClick={() => setAiInfoModal(null)}
+                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+                >
+                  {translate('ვერიფიკაციის გავლა', 'Complete verification')}
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* POST-ACTION TOAST */}
       {toastMessage && (
@@ -747,7 +832,7 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                {isAuthenticated && (user?.role === 'Client' || user?.role === 'SuperAdmin') ? (
+                {canUseAiAssistant ? (
                   <Link
                     href="/dashboard/ai-tools"
                     className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
@@ -758,7 +843,7 @@ export default function Home() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => openAuthModal({ mode: 'register' })}
+                    onClick={handleAiCtaClick}
                     className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
                   >
                     <Sparkles className="w-4 h-4" />

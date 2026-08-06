@@ -99,7 +99,7 @@ const STRINGS = {
 export default function AuthModal() {
   const router = useRouter();
   const { login, register, loginWithGoogle } = useAuth();
-  const { isOpen, contextMessage, initialMode, onSuccess, closeAuthModal } = useAuthModal();
+  const { isOpen, contextMessage, initialMode, initialRole, onSuccess, closeAuthModal } = useAuthModal();
   const lang = router.locale === 'en' ? 'en' : 'ka';
   const t = STRINGS[lang];
 
@@ -192,13 +192,13 @@ export default function AuthModal() {
       setName('');
       setEmail('');
       setPassword('');
-      setRole('Student');
+      setRole(initialRole);
       setForgotEmail('');
       setForgotSubmitting(false);
       setForgotSent(false);
       setForgotError(null);
     }
-  }, [isOpen, initialMode]);
+  }, [isOpen, initialMode, initialRole]);
 
   useEffect(() => {
     if (!isOpen) return;
