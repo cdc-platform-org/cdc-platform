@@ -80,4 +80,39 @@ router.get('/mentors/:mentorId/slots', async (req: Request, res: Response) => {
   res.json({ data: slots.map((d) => d.toISOString()) });
 });
 
+// ============================================================
+// MY BOOKINGS — every paid mentorship session the current user is part of,
+// as either the student who booked it or the mentor being booked (a Mentor
+// account is still just a User, so both roles can land here). Distinct
+// endpoint from GET /mine above (that one is the free help-request queue).
+// ============================================================
+router.get('/bookings/mine', authenticate, async (req: Request, res: Response) => {
+  const bookings = await prisma.mentorshipBooking.findMany({
+    where: { OR: [{ studentId: req.user!.id }, { mentorId: req.user!.id }] },
+    include: {
+      mentor: { select: { id: true, name: true, email: true, avatarUrl: true } },
+      student: { select: { id: true, name: true, email: true, avatarUrl: true } },
+      bogPayment: { select: { status: true } },
+    },
+    orderBy: { scheduledAt: 'desc' },
+  });
+  // Only surface bookings whose payment actually completed — a booking row
+  // is created at checkout time (before payment), so a PENDING/FAILED one
+  // was never a real confirmed session.
+  const confirmed = bookings.filter((b) => b.bogPayment.status === 'COMPLETED');
+  res.json({
+    data: confirmed.map((b) => ({
+      id: b.id,
+      role: b.studentId === req.user!.id ? 'student' : 'mentor',
+      mentor: b.mentor,
+      student: b.student,
+      scheduledAt: b.scheduledAt,
+      studentPhone: b.studentPhone,
+      consultationDescription: b.consultationDescription,
+      googleMeetLink: b.googleMeetLink,
+      calendarSyncError: b.calendarSyncError,
+    })),
+  });
+});
+
 export default router;

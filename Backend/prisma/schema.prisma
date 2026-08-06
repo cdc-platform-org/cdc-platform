@@ -284,6 +284,16 @@ model User {
   industry           String?
   websiteUrl         String?
   companyDescription String?
+  // Terms & Conditions consent — set explicitly (POST /api/auth/accept-terms)
+  // the moment a user agrees, never implied. New email/password registrations
+  // set this immediately (the checkbox is required to submit that form); new
+  // Google sign-ups do NOT set it at account-creation time, since there's no
+  // separate consent step before the account is created there — the frontend
+  // shows a blocking first-login modal for any authenticated user where this
+  // is still null (covers both that case and every account that predates
+  // this field, which is why existing rows are deliberately NOT backfilled
+  // to createdAt the way emailVerifiedAt was).
+  termsAcceptedAt DateTime?
   createdAt       DateTime   @default(now())
 
   postedGigs             Gig[]                @relation("PostedGigs")

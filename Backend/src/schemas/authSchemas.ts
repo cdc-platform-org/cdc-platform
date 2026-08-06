@@ -8,6 +8,10 @@ export const registerSchema = z.object({
   // SuperAdmin have no self-serve path (Mentor has no registration flow at
   // all yet; SuperAdmin only via SUPER_ADMIN_EMAILS or the seed script).
   role: z.enum(['Student', 'Client']).optional().default('Student'),
+  // Server-side re-check, not just a UI-disabled-submit-button gate — the
+  // frontend checkbox is required to submit, but this must still reject a
+  // direct API call that skips it. z.literal(true) rejects false/missing.
+  acceptedTerms: z.literal(true, { errorMap: () => ({ message: 'You must accept the Terms & Conditions to register.' }) }),
 });
 
 export const loginSchema = z.object({

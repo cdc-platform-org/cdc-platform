@@ -8,6 +8,12 @@ export interface BogCheckoutResult {
   redirectUrl: string;
 }
 
+export interface BogPaymentBookingInfo {
+  scheduledAt: string;
+  googleMeetLink: string | null;
+  calendarSyncError: string | null;
+}
+
 export interface BogPaymentStatusData {
   id: string;
   status: BogPaymentStatus;
@@ -15,6 +21,8 @@ export interface BogPaymentStatusData {
   referenceId: string;
   amount: number;
   currency: string;
+  // Only present when purpose === 'MENTORSHIP'.
+  booking: BogPaymentBookingInfo | null;
 }
 
 export async function checkoutCourse(courseId: string, promoCode?: string, lang?: 'ka' | 'en'): Promise<BogCheckoutResult> {

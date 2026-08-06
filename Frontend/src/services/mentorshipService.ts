@@ -54,3 +54,30 @@ export async function getMentorSlots(mentorId: string, days = 14): Promise<strin
   const response = await apiClient.get<{ data: string[] }>(`/mentorship/mentors/${mentorId}/slots`, { params: { days } });
   return response.data.data;
 }
+
+interface BookingParticipant {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+}
+
+// Every paid session the current user is part of — as the student who
+// booked it, or as the mentor being booked (a Mentor account is still just
+// a User). Only includes bookings whose payment actually completed.
+export interface MyMentorshipBooking {
+  id: string;
+  role: 'student' | 'mentor';
+  mentor: BookingParticipant;
+  student: BookingParticipant;
+  scheduledAt: string;
+  studentPhone: string;
+  consultationDescription: string | null;
+  googleMeetLink: string | null;
+  calendarSyncError: string | null;
+}
+
+export async function getMyMentorshipBookings(): Promise<MyMentorshipBooking[]> {
+  const response = await apiClient.get<{ data: MyMentorshipBooking[] }>('/mentorship/bookings/mine');
+  return response.data.data;
+}

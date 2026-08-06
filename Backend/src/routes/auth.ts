@@ -99,6 +99,7 @@ function toUserResponse(user: {
   verificationDocUrl?: string | null;
   isVerified?: boolean;
   taxId?: string | null;
+  termsAcceptedAt?: Date | null;
 }) {
   return {
     id: user.id,
@@ -125,6 +126,7 @@ function toUserResponse(user: {
     taxId: user.taxId ?? null,
     verificationDocUrl: user.verificationDocUrl ?? null,
     isVerified: user.isVerified ?? false,
+    termsAcceptedAt: user.termsAcceptedAt ?? null,
   };
 }
 
@@ -158,6 +160,9 @@ router.post('/register', async (req, res) => {
       // Email verification is not required — see requireApproved in
       // middleware/auth.ts.
       emailVerifiedAt: new Date(),
+      // registerSchema.acceptedTerms is z.literal(true) — reaching this line
+      // already guarantees explicit consent, so it's safe to timestamp now.
+      termsAcceptedAt: new Date(),
     },
   });
 
@@ -452,6 +457,19 @@ router.post('/google', async (req, res) => {
 router.get('/me', authenticate, async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
   if (!user) return res.status(404).json({ message: 'Account no longer exists.' });
+  res.json({ user: toUserResponse(user) });
+});
+
+// Explicit consent action — the frontend's blocking first-login modal (shown
+// to any authenticated user with termsAcceptedAt still null: pre-existing
+// accounts and every Google sign-up, which has no separate consent step
+// before account creation) calls this once the user clicks "I agree".
+// Idempotent: a second call just re-confirms rather than erroring.
+router.post('/accept-terms', authenticate, async (req, res) => {
+  const user = await prisma.user.update({
+    where: { id: req.user!.id },
+    data: { termsAcceptedAt: new Date() },
+  });
   res.json({ user: toUserResponse(user) });
 });
 

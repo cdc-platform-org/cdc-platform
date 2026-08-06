@@ -8,6 +8,7 @@ import AuthModal from '@/src/components/auth/AuthModal';
 import ScrollToTop from '@/src/components/layout/ScrollToTop';
 import FloatingButtons from '@/src/components/layout/FloatingButtons';
 import CookieConsentBanner from '@/src/components/layout/CookieConsentBanner';
+import TermsConsentModal from '@/src/components/auth/TermsConsentModal';
 import type { AppProps } from 'next/app';
 import '@/styles/globals.css';
 
@@ -113,6 +114,7 @@ function App({ Component, pageProps }: AppProps) {
           <FloatingButtons />
           <AuthModal />
           <CookieConsentBanner />
+          <TermsConsentModal />
         </AuthModalProvider>
       </AuthProvider>
     </>

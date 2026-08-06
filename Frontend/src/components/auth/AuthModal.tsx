@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { GraduationCap, Building2, X, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { User } from '../../types/auth';
@@ -49,6 +50,8 @@ const STRINGS = {
     roleLabel: 'რეგისტრირდები როგორც',
     roleStudent: 'სტუდენტი / ფრილანსერი',
     roleClient: 'ბიზნესი',
+    termsPrefix: 'ვეთანხმები',
+    termsLink: 'წესებსა და პირობებს',
     genericError: 'დაფიქსირდა შეცდომა. სცადეთ თავიდან.',
     close: 'დახურვა',
     redirectingToAdmin: '✓ შესვლა წარმატებულია — გადამისამართება Admin სამუშაო სივრცეში…',
@@ -85,6 +88,8 @@ const STRINGS = {
     roleLabel: 'Registering as',
     roleStudent: 'Student / Freelancer',
     roleClient: 'Business',
+    termsPrefix: 'I agree to the',
+    termsLink: 'Terms & Conditions',
     genericError: 'Something went wrong. Please try again.',
     close: 'Close',
     redirectingToAdmin: '✓ Signed in — redirecting to the Admin Workspace…',
@@ -103,6 +108,7 @@ export default function AuthModal() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'Student' | 'Client'>('Student');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [redirectingAdmin, setRedirectingAdmin] = useState(false);
@@ -244,7 +250,7 @@ export default function AuthModal() {
         const loggedInUser = await login({ email, password });
         handlePostLogin(loggedInUser);
       } else {
-        const newUser = await register({ name, email, password, role });
+        const newUser = await register({ name, email, password, role, acceptedTerms });
         handlePostLogin(newUser);
       }
     } catch (err: any) {
@@ -464,9 +470,27 @@ export default function AuthModal() {
                 </div>
               )}
 
+              {mode === 'register' && (
+                <label className="flex items-start gap-2.5 text-sm text-gray-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    required
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 shrink-0"
+                  />
+                  <span>
+                    {t.termsPrefix}{' '}
+                    <Link href="/terms" target="_blank" className="font-medium text-indigo-600 hover:text-indigo-500">
+                      {t.termsLink}
+                    </Link>
+                  </span>
+                </label>
+              )}
+
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || (mode === 'register' && !acceptedTerms)}
                 className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
               >
                 {submitting

@@ -41,6 +41,10 @@ export interface User {
   // not isVerified = Under Review, isVerified = Verified.
   verificationDocUrl: string | null;
   isVerified: boolean;
+  // null means not yet accepted — pre-existing accounts and every Google
+  // sign-up (no separate consent step before account creation there) start
+  // null; set via POST /auth/accept-terms. See TermsConsentModal.tsx.
+  termsAcceptedAt: string | null;
 }
 
 export type VerificationStatus = 'unverified' | 'under_review' | 'verified';
@@ -86,6 +90,8 @@ export interface RegisterPayload {
   // Public registration only ever grants Student or Client — see
   // Backend's schemas/authSchemas.ts. Omit to default to Student.
   role?: 'Student' | 'Client';
+  // Must be true — the backend rejects anything else (z.literal(true)).
+  acceptedTerms: boolean;
 }
 
 export interface ForgotPasswordPayload {

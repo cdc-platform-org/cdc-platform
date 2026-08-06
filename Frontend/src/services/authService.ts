@@ -68,6 +68,11 @@ export async function getMe(options?: { silent401?: boolean }): Promise<User> {
   return response.data.user;
 }
 
+export async function acceptTerms(): Promise<User> {
+  const response = await apiClient.post<{ user: User }>('/auth/accept-terms');
+  return response.data.user;
+}
+
 export async function updateProfile(payload: UpdateProfilePayload): Promise<User> {
   const response = await apiClient.put<{ user: User }>('/auth/me', payload);
   return response.data.user;

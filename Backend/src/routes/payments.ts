@@ -527,6 +527,19 @@ router.get('/bog/status/:paymentId', authenticate, async (req: Request, res: Res
   }
 
   const fresh = await prisma.bogPayment.findUnique({ where: { id: bogPayment.id } });
+
+  // Mentorship purchases: surface the booking's scheduled time + Meet link
+  // once the callback (or this poll's own reconciliation above) has created
+  // the calendar event, so the result page can show a real confirmation
+  // instead of just a generic "payment completed".
+  let booking: { scheduledAt: Date; googleMeetLink: string | null; calendarSyncError: string | null } | null = null;
+  if (fresh!.purpose === 'MENTORSHIP') {
+    booking = await prisma.mentorshipBooking.findUnique({
+      where: { bogPaymentId: fresh!.id },
+      select: { scheduledAt: true, googleMeetLink: true, calendarSyncError: true },
+    });
+  }
+
   res.json({
     data: {
       id: fresh!.id,
@@ -535,6 +548,7 @@ router.get('/bog/status/:paymentId', authenticate, async (req: Request, res: Res
       referenceId: fresh!.referenceId,
       amount: fresh!.amount,
       currency: fresh!.currency,
+      booking,
     },
   });
 });

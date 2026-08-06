@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import { Video, CalendarClock } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import BackButton from '../../../src/components/common/BackButton';
 import { getBogPaymentStatus, BogPaymentStatusData } from '../../../src/services/paymentService';
@@ -25,6 +26,9 @@ const dict = {
     amount: 'თანხა',
     checkAgain: 'ხელახლა შემოწმება',
     missingId: 'გადახდის ID ვერ მოიძებნა.',
+    sessionScheduledFor: 'სესია დაგეგმილია',
+    joinMeet: 'Google Meet-ზე გადასვლა',
+    calendarPending: 'კალენდარში დამატება მიმდინარეობს — მალე მიიღებთ მოწვევას ელფოსტაზე.',
   },
   en: {
     title: 'Payment Status',
@@ -45,6 +49,9 @@ const dict = {
     amount: 'Amount',
     checkAgain: 'Check again',
     missingId: 'No payment ID was found.',
+    sessionScheduledFor: 'Your session is scheduled for',
+    joinMeet: 'Join Google Meet',
+    calendarPending: 'Adding it to your calendar — you\'ll get an email invite shortly.',
   },
 };
 
@@ -172,6 +179,33 @@ function BogResultContent() {
                 {t.amount}: {(status.amount / 100).toFixed(2)} {status.currency}
               </p>
             </div>
+
+            {status.status === 'COMPLETED' && status.purpose === 'MENTORSHIP' && status.booking && (
+              <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-4 text-left space-y-2.5">
+                <div className="flex items-center gap-2 text-xs font-bold text-indigo-900">
+                  <CalendarClock className="w-4 h-4 shrink-0" />
+                  <span>
+                    {t.sessionScheduledFor}:{' '}
+                    {new Date(status.booking.scheduledAt).toLocaleString(lang === 'en' ? 'en-GB' : 'ka-GE', {
+                      timeZone: 'Asia/Tbilisi',
+                    })}
+                  </span>
+                </div>
+                {status.booking.googleMeetLink ? (
+                  <a
+                    href={status.booking.googleMeetLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full text-sm font-bold px-4 py-2.5 rounded-lg bg-indigo-600 text-white no-underline hover:bg-indigo-700"
+                  >
+                    <Video className="w-4 h-4" />
+                    {t.joinMeet}
+                  </a>
+                ) : (
+                  <p className="text-xs text-indigo-700">{t.calendarPending}</p>
+                )}
+              </div>
+            )}
             {status.status === 'PENDING' && !polling && (
               <button
                 onClick={() => {

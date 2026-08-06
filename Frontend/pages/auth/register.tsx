@@ -23,6 +23,7 @@ function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'Student' | 'Client'>('Student');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,7 +46,7 @@ function RegisterPage() {
     setSubmitting(true);
 
     try {
-      const newUser = await register({ name, email, password, role });
+      const newUser = await register({ name, email, password, role, acceptedTerms });
       // Self-serve Student/Client signups are auto-approved (see backend's
       // POST /register) — pending-approval is now only reachable for a
       // future role that still needs manual vetting.
@@ -170,9 +171,25 @@ function RegisterPage() {
             </div>
           </div>
 
+          <label className="flex items-start gap-2.5 text-sm text-gray-600 cursor-pointer">
+            <input
+              type="checkbox"
+              required
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              className="mt-0.5 w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 shrink-0"
+            />
+            <span>
+              {t('register.termsPrefix')}{' '}
+              <Link href="/terms" target="_blank" className="font-medium text-indigo-600 hover:text-indigo-500">
+                {t('register.termsLink')}
+              </Link>
+            </span>
+          </label>
+
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !acceptedTerms}
             className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
             {submitting ? t('register.submittingButton') : t('register.submitButton')}

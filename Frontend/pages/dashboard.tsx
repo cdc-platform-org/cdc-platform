@@ -14,6 +14,7 @@ import {
   Wifi,
   ShoppingBag,
   Download,
+  CalendarClock,
 } from 'lucide-react';
 import ProtectedRoute from '../src/components/auth/ProtectedRoute';
 import SiteHeader from '../src/components/layout/SiteHeader';
@@ -50,6 +51,7 @@ const dict = {
     tabGigs: 'ჩემი პროექტები',
     tabProducts: 'ჩემი ციფრული ინსტრუმენტები',
     tabSettings: 'პარამეტრები',
+    tabMentorshipSessions: 'მენტორის სესიები',
     logout: 'გასვლა',
     loading: 'იტვირთება…',
     // Overview
@@ -150,6 +152,7 @@ const dict = {
     tabGigs: 'My Projects / Workspace',
     tabProducts: 'My Digital Tools',
     tabSettings: 'Account Settings',
+    tabMentorshipSessions: 'Mentorship Sessions',
     logout: 'Log Out',
     loading: 'Loading…',
     statCourses: 'Enrolled Courses',
@@ -599,6 +602,13 @@ function DashboardContent() {
               {t.mentorshipButton}
             </button>
           )}
+          <Link
+            href="/dashboard/mentorship-sessions"
+            className="flex items-center gap-2.5 w-full text-left p-3.5 rounded-xl text-xs font-bold transition border bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 no-underline"
+          >
+            <CalendarClock className="w-4 h-4 shrink-0" />
+            {t.tabMentorshipSessions}
+          </Link>
           <Link
             href="/dashboard/settings"
             className="flex items-center gap-2.5 w-full text-left p-3.5 rounded-xl text-xs font-bold transition border bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 no-underline"

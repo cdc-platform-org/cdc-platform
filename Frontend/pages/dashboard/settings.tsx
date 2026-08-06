@@ -50,6 +50,10 @@ const dict = {
     resetLinkSentToast: 'აღდგენის ბმული გაიგზავნა თქვენს ელ-ფოსტაზე',
     passwordUpdated: 'პაროლი წარმატებით განახლდა ✓',
     passwordMismatch: 'ახალი პაროლები არ ემთხვევა.',
+    termsTitle: 'წესები და პირობები',
+    termsAccepted: (date: string) => `თქვენ დაეთანხმეთ წესებსა და პირობებს — ${date}`,
+    termsNotAccepted: 'თქვენ ჯერ არ დაგიდასტურებიათ წესები და პირობები.',
+    termsViewLink: 'წესებისა და პირობების სრულად ნახვა',
   },
   en: {
     title: 'Account Settings',
@@ -88,6 +92,10 @@ const dict = {
     resetLinkSentToast: 'A reset link has been sent to your email',
     passwordUpdated: 'Password updated successfully ✓',
     passwordMismatch: 'New passwords do not match.',
+    termsTitle: 'Terms & Conditions',
+    termsAccepted: (date: string) => `You accepted our Terms & Conditions on ${date}`,
+    termsNotAccepted: "You haven't accepted our Terms & Conditions yet.",
+    termsViewLink: 'View the full Terms & Conditions',
   },
 };
 
@@ -436,6 +444,16 @@ function SettingsContent() {
             {updatingPassword ? t.updating : t.updatePassword}
           </button>
         </form>
+
+        <div className="mt-10 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 space-y-3">
+          <h2 className="text-sm font-bold">{t.termsTitle}</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {user?.termsAcceptedAt ? t.termsAccepted(new Date(user.termsAcceptedAt).toLocaleDateString()) : t.termsNotAccepted}
+          </p>
+          <Link href="/terms" target="_blank" className="inline-block text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline">
+            {t.termsViewLink} →
+          </Link>
+        </div>
       </div>
 
       <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
