@@ -5,14 +5,17 @@ import { GEMINI_API_KEY } from '../utils/env';
 import { uploadImage } from './imageStorage';
 
 // ============================================================
-// CDC AUTONOMOUS OPERATIONS AGENT — central Gemini wrapper.
+// CDC AUTONOMOUS OPERATIONS AGENT — central AI service wrapper.
 //
 // Every operational module (blog drafting today; the weekly admin digest
 // and onboarding emails scaffolded below) goes through this file rather
-// than constructing its own GoogleGenerativeAI client, so the model
-// names/config live in exactly one place. Same "flash only, 501 until
-// configured" shape as the existing services/aiExamService.ts,
-// services/aiTranslateService.ts and services/subtitleService.ts.
+// than constructing its own client, so the model names/config live in
+// exactly one place. Text generation is Gemini (same "flash only, 501
+// until configured" shape as services/aiExamService.ts,
+// services/aiTranslateService.ts and services/subtitleService.ts). Cover
+// images are Pollinations.ai (see generateCoverImage()) — unauthenticated
+// and free, deliberately NOT Gemini/Imagen, which needs Cloud Billing
+// enabled for any image model on this Google Cloud project.
 // ============================================================
 
 export function isAiAgentConfigured(): boolean {
@@ -26,19 +29,20 @@ const client = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 // text generation stays on the Flash family.
 const TEXT_MODEL = 'gemini-flash-latest';
 
-// Gemini-native image output ("Nano Banana Pro"), called via generateContent
-// — NOT the separate Imagen `:predict` endpoint. Imagen (3 or 4) was
-// evaluated first and rejected: Imagen 3 no longer appears in this project's
-// ListModels response at all (superseded), and imagen-4.0-generate-001
-// returns a hard 404 "no longer available to new users" regardless of which
-// API key is used (confirmed live against two separate keys on 2026-08-06).
-// gemini-3-pro-image is reachable but IS currently gated by this Google Cloud
-// project's free tier (confirmed 429 RESOURCE_EXHAUSTED, limit: 0, on both
-// keys) — generateCoverImage() below degrades gracefully (returns null) when
-// that happens rather than failing the whole blog draft. Enable billing on
-// the project behind GEMINI_API_KEY to unlock real image output; no code
-// change needed once that's done.
-const IMAGE_MODEL = 'gemini-3-pro-image';
+// Cover images go through Pollinations.ai instead of Gemini/Imagen — Imagen
+// (3 or 4) was evaluated first and rejected: Imagen 3 no longer appears in
+// this Google Cloud project's ListModels response at all (superseded),
+// imagen-4.0-generate-001 returns a hard 404 "no longer available to new
+// users" regardless of API key, and the Gemini-native image models
+// (gemini-3-pro-image etc.) are gated behind a 0-quota free tier that
+// requires enabling Cloud Billing (confirmed live on 2026-08-06). Pollinations
+// needs no API key/billing at all — image.pollinations.ai/prompt/<prompt> is
+// a plain unauthenticated GET that returns image bytes directly.
+const POLLINATIONS_IMAGE_ENDPOINT = 'https://image.pollinations.ai/prompt';
+// Pollinations can take a while to render — generous but bounded so a slow/
+// stuck request surfaces as a null cover (never blocks the text draft)
+// instead of hanging the request indefinitely.
+const IMAGE_GENERATION_TIMEOUT_MS = 60_000;
 
 export class AiAgentError extends Error {
   constructor(message: string) {
@@ -148,56 +152,45 @@ Respond with strict JSON matching this shape:
 // constraint rules are applied exactly once, centrally, rather than being
 // copy-pasted (and potentially drifting) at every call site.
 function buildImagePrompt(concept: string): string {
-  return `${concept}
-
-Style: Clean, modern, aesthetic cover artwork matching the blog topic. High quality, professional illustration, uncluttered composition, no clutter of unrelated objects. Widescreen 16:9 format.
-
-STRICTLY NO text, NO words, NO letters, NO typography, NO logos, NO watermarks, NO icons, NO branding, and NO UI elements anywhere on the image, especially in the bottom right corner.`;
+  return `${concept}, modern minimalist tech digital art background 16:9 widescreen, highly detailed, strictly no text, no letters, no typography, no logos, no watermarks`;
 }
 
-// Generates a cover image from a short visual concept and uploads it to
-// Bunny Storage (via the shared imageStorage.uploadImage — same helper the
-// admin's manual blog-cover upload uses), returning the public URL.
+// Generates a cover image from a short visual concept via Pollinations.ai
+// (image.pollinations.ai/prompt/<prompt> — unauthenticated, no API
+// key/billing) and uploads it to Bunny Storage (via the shared
+// imageStorage.uploadImage — same helper the admin's manual blog-cover
+// upload uses), returning the public URL.
 //
-// Returns null (never throws) on any failure — including the Google Cloud
-// project not having billing enabled for image models, which as of
-// 2026-08-06 is the actual state of this deployment's GEMINI_API_KEY (see
-// IMAGE_MODEL's comment above). A missing cover image must never block or
-// fail an otherwise-good text draft; the admin can always attach one
-// manually via the existing upload button.
+// Returns null (never throws) on any failure — a missing cover image must
+// never block or fail an otherwise-good text draft; the admin can always
+// attach one manually via the existing upload button.
 export async function generateCoverImage(concept: string, folderName = 'blog'): Promise<string | null> {
-  if (!GEMINI_API_KEY) return null;
-
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${IMAGE_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: buildImagePrompt(concept) }] }],
-          generationConfig: {
-            responseModalities: ['IMAGE'],
-            imageConfig: { aspectRatio: '16:9' },
-          },
-        }),
-      }
-    );
+    // A fresh random seed per call — reusing a seed (or issuing a HEAD
+    // request first) can return a cached empty body from Pollinations' edge
+    // cache, confirmed live on 2026-08-06.
+    const seed = Math.floor(Math.random() * 1_000_000_000);
+    const url = `${POLLINATIONS_IMAGE_ENDPOINT}/${encodeURIComponent(buildImagePrompt(concept))}?width=1280&height=720&seed=${seed}&nologo=true`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), IMAGE_GENERATION_TIMEOUT_MS);
+    let response: Response;
+    try {
+      response = await fetch(url, { signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
-      const errBody = await response.text().catch(() => '');
-      console.warn(`[aiAgentService] Cover image generation failed (${response.status}): ${errBody.slice(0, 300)}`);
+      console.warn(`[aiAgentService] Cover image generation failed (${response.status}).`);
       return null;
     }
 
-    const json: any = await response.json();
-    const parts: any[] = json?.candidates?.[0]?.content?.parts ?? [];
-    const imagePart = parts.find((p) => p?.inlineData?.data);
-    if (!imagePart) return null;
+    const mimeType = response.headers.get('content-type') || 'image/jpeg';
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length === 0) return null;
 
-    const mimeType: string = imagePart.inlineData.mimeType || 'image/png';
-    const buffer = Buffer.from(imagePart.inlineData.data, 'base64');
-    const ext = mimeType.split('/')[1]?.replace(/[^a-z0-9]/gi, '') || 'png';
+    const ext = mimeType.split('/')[1]?.replace(/[^a-z0-9]/gi, '') || 'jpg';
     const filename = `ai-cover-${Date.now()}-${crypto.randomUUID()}.${ext}`;
 
     return await uploadImage({ buffer, mimetype: mimeType, folderName, filename });
