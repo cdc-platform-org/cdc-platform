@@ -115,6 +115,7 @@ Requirements:
 - Write BOTH a Georgian (ქართული) version and an English version of the same article — not a literal translation of each other, but both should cover the same content, facts, and structure. Keep standard IT/tech terminology in English even in the Georgian text where that's natural (e.g. "API", "SEO", "framework").
 - "category" is a single short Georgian category label (2-4 words), e.g. "ტექნოლოგიები" or "ხელოვნური ინტელექტი".
 - "contentKa"/"contentEn" are the full article body as HTML (use <p>, <h2>, <h3>, <ul>/<li>, <strong> — no <html>/<body> wrapper), at least 4-6 paragraphs, genuinely informative, not filler.
+- Every article MUST end with a sources section as its final <h2>: use exactly "<h2>წყაროები</h2>" in contentKa and "<h2>Sources</h2>" in contentEn, immediately followed by a <ul> of 2-4 <li><a href="..." target="_blank" rel="noopener noreferrer">...</a></li> entries. Only cite well-known, stable, real URLs you are highly confident exist (official documentation, an official product/GitHub page, a well-established technical reference) — never invent or guess a URL. If you cannot recall a specific real source confidently, link to the general official docs/homepage of the technology discussed instead of fabricating a deep link.
 - "descriptionKa"/"descriptionEn" are a 1-2 sentence excerpt (under 200 characters) suitable for a blog list preview.
 - "imageConcept" is a short (1-2 sentence) description of a concrete visual scene for the cover image — describe objects/composition/mood, not style keywords (style is handled separately).
 
@@ -152,7 +153,7 @@ Respond with strict JSON matching this shape:
 // constraint rules are applied exactly once, centrally, rather than being
 // copy-pasted (and potentially drifting) at every call site.
 function buildImagePrompt(concept: string): string {
-  return `${concept}, modern minimalist tech digital art background 16:9 widescreen, highly detailed, strictly no text, no letters, no typography, no logos, no watermarks`;
+  return `${concept}, modern 3D vector illustration, vibrant tech artwork, clean digital vector aesthetic, isometric or abstract technology concept, 16:9 widescreen, highly detailed, stunning visual art, strictly no text, no typography, no watermarks, no logos`;
 }
 
 // Generates a cover image from a short visual concept via Pollinations.ai

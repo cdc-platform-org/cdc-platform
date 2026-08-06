@@ -40,8 +40,11 @@ export async function getBlogPostById(idOrSlug: string): Promise<BlogPost> {
 
 // Estimate only — no separate stored field, computed the same way every
 // time it's needed (~200 words/minute, matches common blog conventions).
+// Strips HTML tags first — content can be either Markdown (human-authored,
+// via RichTextEditor) or HTML (AI-generated, via aiAgentService.ts), and
+// raw tags/attributes would otherwise inflate the word count for the latter.
 export function estimateReadingMinutes(content: string): number {
-  const words = content.trim().split(/\s+/).filter(Boolean).length;
+  const words = content.replace(/<[^>]+>/g, ' ').trim().split(/\s+/).filter(Boolean).length;
   return Math.max(1, Math.round(words / 200));
 }
 
