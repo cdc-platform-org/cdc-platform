@@ -98,6 +98,17 @@ export interface BlogDraft {
   imageConcept: string;
 }
 
+// Gemini returns contentKa/contentEn as one continuous HTML string with no
+// whitespace between tags (e.g. "<h2>Foo</h2><p>Bar</p>") — valid HTML, but
+// unreadable as a single run-on line in the admin's RichTextEditor (a plain
+// <textarea>, no HTML awareness). Inserting a newline at every tag boundary
+// puts each element on its own line for editing; the extra whitespace
+// between block-level tags has no visual effect once actually rendered as
+// HTML (browsers collapse it), so this only affects the raw-source view.
+function prettyPrintHtml(html: string): string {
+  return html.replace(/></g, '>\n<').trim();
+}
+
 // Bilingual (KA primary / EN twin) blog draft — title, category, short
 // excerpt, and a full article body, focused on current AI & tech trends
 // unless `topic` narrows it. Used by both the manual "✨ Generate" button
@@ -139,11 +150,11 @@ Respond with strict JSON matching this shape:
   return {
     title: result.data.titleKa,
     description: result.data.descriptionKa,
-    content: result.data.contentKa,
+    content: prettyPrintHtml(result.data.contentKa),
     category: result.data.category,
     titleEn: result.data.titleEn,
     descriptionEn: result.data.descriptionEn,
-    contentEn: result.data.contentEn,
+    contentEn: prettyPrintHtml(result.data.contentEn),
     imageConcept: result.data.imageConcept,
   };
 }
@@ -153,7 +164,7 @@ Respond with strict JSON matching this shape:
 // constraint rules are applied exactly once, centrally, rather than being
 // copy-pasted (and potentially drifting) at every call site.
 function buildImagePrompt(concept: string): string {
-  return `${concept}, modern 3D vector illustration, vibrant tech artwork, clean digital vector aesthetic, isometric or abstract technology concept, 16:9 widescreen, highly detailed, stunning visual art, strictly no text, no typography, no watermarks, no logos`;
+  return `${concept}, ULTRA-HIGH DEFINITION 3D vector illustration, vibrant modern tech artwork, isometric technology concept, clean professional digital vector aesthetic, sharp detailed rendering, brilliant composition, studio lighting, strictly 16:9 widescreen, no typography, no watermarks, no logos, visually stunning`;
 }
 
 // Generates a cover image from a short visual concept via Pollinations.ai

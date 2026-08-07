@@ -1,8 +1,18 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { ScrollText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { acceptTerms } from '../../services/authService';
+
+// Scoped to the accepting user's id (not a flat boolean) — localStorage is
+// per-browser, not per-account, so a flat flag would incorrectly skip the
+// modal for a second user logging into the same browser/device after a
+// first user already accepted. Set only AFTER the DB write succeeds (see
+// handleAgree) — a fast, synchronous fallback so the modal never has to
+// wait on a full user-object refresh/hydration cycle to know it should stay
+// closed, without ever trusting local state the server hasn't confirmed.
+const LOCAL_ACCEPTED_KEY = 'cdc_terms_accepted';
 
 const dict = {
   ka: {
@@ -34,15 +44,36 @@ export default function TermsConsentModal() {
   const { user, isAuthenticated, refreshUser } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Read synchronously on first render (not via a useEffect) so there's no
+  // extra render where this is still "unaccepted" while the real user
+  // object is hydrating — that gap was the repeated-popup-on-refresh bug.
+  const [locallyAcceptedUserId] = useState<string | null>(() =>
+    typeof window !== 'undefined' ? localStorage.getItem(LOCAL_ACCEPTED_KEY) : null
+  );
+  // Flips true the instant the DB write succeeds — the modal closes on this
+  // alone, without waiting on the (separate, best-effort) full user-object
+  // refresh below to complete.
+  const [justAccepted, setJustAccepted] = useState(false);
 
-  if (!isAuthenticated || !user || user.termsAcceptedAt) return null;
+  const hasAccepted = !!user?.termsAcceptedAt || (!!user && locallyAcceptedUserId === user.id) || justAccepted;
+  // The full Terms page must be freely readable — never cover it with this
+  // blocking overlay, even for a user who still hasn't accepted yet.
+  const onTermsPage = router.pathname === '/terms';
+
+  if (!isAuthenticated || !user || hasAccepted || onTermsPage) return null;
 
   const handleAgree = async () => {
     setSubmitting(true);
     setError(null);
     try {
       await acceptTerms();
-      await refreshUser();
+      // DB write succeeded — persist the fallback flag and close immediately.
+      // refreshUser() re-syncs the full user object for every other consumer
+      // (settings page, etc.) but is best-effort from here on: the modal is
+      // already correctly closed regardless of whether that call succeeds.
+      localStorage.setItem(LOCAL_ACCEPTED_KEY, user.id);
+      setJustAccepted(true);
+      refreshUser().catch(() => {});
     } catch {
       setError(lang === 'ka' ? 'დაფიქსირდა შეცდომა. სცადეთ თავიდან.' : 'Something went wrong. Please try again.');
     } finally {
@@ -58,14 +89,13 @@ export default function TermsConsentModal() {
         </div>
         <h3 className="text-base font-extrabold text-slate-900 dark:text-white mb-2">{t.title}</h3>
         <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-4">{t.body}</p>
-        <a
-          href="/terms"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-block text-sm font-bold text-cyan-600 dark:text-cyan-400 hover:underline mb-5"
-        >
+        {/* Same-tab navigation (not target="_blank") — the modal itself
+            checks router.pathname === '/terms' and hides on that route, so
+            clicking through actually reveals the full page underneath
+            instead of leaving this overlay covering a background tab. */}
+        <Link href="/terms" className="inline-block text-sm font-bold text-cyan-600 dark:text-cyan-400 hover:underline mb-5">
           {t.linkText} →
-        </a>
+        </Link>
         {error && <p className="text-xs font-medium text-rose-600 dark:text-rose-400 mb-3">{error}</p>}
         <button
           type="button"

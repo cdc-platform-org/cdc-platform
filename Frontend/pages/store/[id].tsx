@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag } from 'lucide-react';
+import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag, Building2, X } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
@@ -12,6 +13,17 @@ import { useAuthModal } from '../../src/context/AuthModalContext';
 import { getProduct, claimFreeProduct, getProductDownloadUrl, DigitalProduct } from '../../src/services/productService';
 import { checkoutProduct } from '../../src/services/paymentService';
 import { formatPrice } from '../../src/utils/coursePricing';
+import { MARKETPLACE_CATEGORIES } from '../../src/data/marketplaceCategories';
+
+// Canonical Business Tools category (see marketplaceCategories.ts) — matched
+// against either language's value since `category` is free text set at
+// product-creation time and may have been saved in either locale. Looked up
+// by value rather than array position so a future reorder of the taxonomy
+// can't silently break this check.
+const BUSINESS_TOOLS_CATEGORY = MARKETPLACE_CATEGORIES.find((c) => c.value.en === 'Business Tools');
+function isBusinessToolsCategory(category: string): boolean {
+  return !!BUSINESS_TOOLS_CATEGORY && (category === BUSINESS_TOOLS_CATEGORY.value.ka || category === BUSINESS_TOOLS_CATEGORY.value.en);
+}
 
 const dict = {
   ka: {
@@ -31,6 +43,10 @@ const dict = {
     step3Body: 'აკოპირეთ მზა AI ბრძანებები (Prompts) ChatGPT/Claude-ში ან გახსენით UI Kit ფაილი Figma-ში და დაიწყეთ მუშაობა!',
     downloadFailed: 'ჩამოტვირთვა ვერ მოხერხდა.',
     checkoutFailed: 'გადახდის დაწყება ვერ მოხერხდა.',
+    businessGateTitle: 'ხელმისაწვდომია მხოლოდ ვერიფიცირებული ბიზნესებისთვის',
+    businessGateBody: 'ეს ინსტრუმენტი ხელმისაწვდომია მხოლოდ ვერიფიცირებული ბიზნეს ანგარიშებისთვის.',
+    businessGateCta: 'ბიზნესის ვერიფიკაცია',
+    modalClose: 'დახურვა',
   },
   en: {
     free: 'Free',
@@ -49,6 +65,10 @@ const dict = {
     step3Body: 'Copy the ready-made AI prompts into ChatGPT/Claude, or open the UI Kit file in Figma and start working!',
     downloadFailed: 'Download failed.',
     checkoutFailed: 'Could not start checkout.',
+    businessGateTitle: 'Available for Verified Businesses Only',
+    businessGateBody: 'This tool is available exclusively to verified Business accounts.',
+    businessGateCta: 'Verify Your Business',
+    modalClose: 'Close',
   },
 };
 
@@ -57,7 +77,7 @@ function StoreProductContent() {
   const { id } = router.query;
   const lang = router.locale === 'en' ? 'en' : 'ka';
   const t = dict[lang];
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
 
   const [product, setProduct] = useState<DigitalProduct | null>(null);
@@ -66,6 +86,7 @@ function StoreProductContent() {
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [guideOpen, setGuideOpen] = useState(true);
+  const [showBusinessGate, setShowBusinessGate] = useState(false);
 
   useEffect(() => {
     if (typeof id !== 'string') return;
@@ -75,8 +96,20 @@ function StoreProductContent() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  // Business Tools purchases are restricted to verified Business accounts —
+  // checked ahead of the normal auth prompt so a guest/individual/unverified
+  // user sees the "verified businesses only" explainer instead of a plain
+  // login modal that would otherwise let them log in only to hit the same
+  // wall immediately after.
+  const isBusinessTool = !!product && isBusinessToolsCategory(product.category);
+  const canPurchaseBusinessTool = isAuthenticated && user?.role === 'Client' && !!user.isVerified;
+
   const handleBuy = async () => {
     if (!product) return;
+    if (isBusinessTool && !canPurchaseBusinessTool) {
+      setShowBusinessGate(true);
+      return;
+    }
     if (!isAuthenticated) {
       openAuthModal();
       return;
@@ -94,6 +127,10 @@ function StoreProductContent() {
 
   const handleClaim = async () => {
     if (!product) return;
+    if (isBusinessTool && !canPurchaseBusinessTool) {
+      setShowBusinessGate(true);
+      return;
+    }
     if (!isAuthenticated) {
       openAuthModal();
       return;
@@ -229,6 +266,38 @@ function StoreProductContent() {
       </div>
 
       <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+
+      {showBusinessGate && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={() => setShowBusinessGate(false)}>
+          <div
+            className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setShowBusinessGate(false)}
+              aria-label={t.modalClose}
+              className="absolute top-4 right-4 p-2 cursor-pointer text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center mx-auto mb-4">
+              <Building2 className="w-7 h-7 text-white" />
+            </div>
+
+            <h3 className="text-base font-black tracking-wide mb-2">{t.businessGateTitle}</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{t.businessGateBody}</p>
+            <Link
+              href="/dashboard/client"
+              onClick={() => setShowBusinessGate(false)}
+              className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+            >
+              {t.businessGateCta}
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
