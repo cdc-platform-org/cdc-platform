@@ -1,3 +1,18 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Custom Georgian typeface. NOTE: the actual file on disk is spelled
+   "gl-kirovi" (with a v), not "kirobi" — using the wrong spelling here
+   would 404 the font file and silently fall back to sans-serif. */
+@font-face {
+  font-family: 'GL-Kirovi';
+  src: url('/fonts/gl-kirovi-bold-39756223608.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: 'GL-Kirovi', 'Fira GO', sans-serif !important;
+}

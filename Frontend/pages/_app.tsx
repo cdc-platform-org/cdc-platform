@@ -27,27 +27,18 @@ function App({ Component, pageProps }: AppProps) {
     <>
       <Head>
         <style>{`
-          @font-face {
-            font-family: 'GL-Kirovi';
-            src: url('/fonts/gl-kirovi-bold-39756223608.ttf') format('truetype');
-            font-weight: bold;
-            font-style: normal;
-            font-display: swap;
-          }
-          
+          /* Font-family itself (GL-Kirovi @font-face + the forced rule on
+             html/body/inputs/headings) now lives in styles/globals.css —
+             one canonical declaration instead of two copies drifting apart.
+             This block keeps only the letter-spacing/line-height tuning. */
           /* ორიგინალური ფონტის პარამეტრები */
           html, body, button, input, select, textarea {
-            font-family: 'GL-Kirovi', 'Fira GO', sans-serif !important;
             letter-spacing: 0.05em !important;
             line-height: 1.6 !important;
           }
 
-          /* სათაურის ხაზებს შორის დაშორება — heading font-family is set
-             explicitly here too (not just inherited from the html/body
-             rule above) so no per-element Tailwind font utility can ever
-             silently override the intended Georgian heading typeface. */
+          /* სათაურის ხაზებს შორის დაშორება */
           h1, h2, h3 {
-            font-family: 'GL-Kirovi', 'Fira GO', sans-serif !important;
             letter-spacing: 0.05em !important;
             line-height: 1.65 !important;
           }
