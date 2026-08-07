@@ -9,6 +9,9 @@ interface SiteFooterProps {
   lang: 'GEO' | 'ENG';
 }
 
+// No verified LinkedIn URL exists anywhere in the codebase (checked
+// src/data/merchantInfo.ts) — only these three are real, live accounts,
+// so only these three are rendered. Never fabricate a social link.
 const SOCIAL_LINKS = [
   {
     name: 'Facebook',
@@ -78,6 +81,12 @@ const STRINGS = {
   },
 } as const;
 
+// Shared hover-animated link style used across every column — slides
+// right and shifts to cyan on hover so it reads as a single deliberate
+// interaction language rather than a plain color change.
+const navLink =
+  'inline-block text-slate-400 hover:text-cyan-400 hover:translate-x-1 transition-all duration-200 no-underline';
+
 export default function SiteFooter({ lang }: SiteFooterProps) {
   const t = STRINGS[lang];
   const year = new Date().getFullYear();
@@ -85,117 +94,139 @@ export default function SiteFooter({ lang }: SiteFooterProps) {
   const noHoverFx = 'outline-none hover:outline-none focus:outline-none border-none hover:border-none hover:shadow-none hover:ring-0';
 
   return (
-    <footer className={`border-t bg-slate-900 border-slate-800 text-slate-400 text-sm ${noHoverFx}`}>
-      <div className={`max-w-7xl mx-auto px-6 py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 ${noHoverFx}`}>
-        {/* Brand */}
-        <div className={noHoverFx}>
-          <div className={`flex items-center gap-2.5 mb-3 ${noHoverFx}`}>
-            <div className={`bg-gradient-to-tr from-cyan-500 to-purple-600 text-white px-3 py-1.5 rounded-lg font-black text-sm tracking-wider ${noHoverFx}`}>
-              CDC
+    <footer className={`relative text-sm ${noHoverFx}`}>
+      {/* SVG WAVE DIVIDER — sits on whatever page background precedes the
+          footer (light or dark mode), so the curve reads correctly either
+          way; the solid footer body below carries its own fixed gradient.
+          `leading-none` + `block` on the svg removes the default inline
+          baseline gap that would otherwise leave a hairline seam. */}
+      <div className="w-full overflow-hidden leading-none" aria-hidden="true">
+        <svg
+          className="block w-full h-12 md:h-20 text-indigo-950 fill-current"
+          viewBox="0 0 1440 120"
+          preserveAspectRatio="none"
+        >
+          <path d="M0,32L60,42.7C120,53,240,75,360,80C480,85,600,75,720,64C840,53,960,43,1080,48C1200,53,1320,75,1380,85.3L1440,96L1440,120L1380,120C1320,120,1200,120,1080,120C960,120,840,120,720,120C600,120,480,120,360,120C240,120,120,120,60,120L0,120Z" />
+        </svg>
+      </div>
+
+      <div className={`bg-gradient-to-b from-indigo-950 via-slate-900 to-black text-slate-300 -mt-px ${noHoverFx}`}>
+        <div className={`max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 ${noHoverFx}`}>
+          {/* Brand — glassmorphism card with a soft glow behind the logo badge */}
+          <div className={`relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5 ${noHoverFx}`}>
+            <div className={`flex items-center gap-2.5 mb-3 ${noHoverFx}`}>
+              <div className="relative">
+                <div className="absolute inset-0 bg-cyan-500/40 blur-xl rounded-lg" aria-hidden="true" />
+                <div className="relative bg-gradient-to-tr from-cyan-500 to-purple-600 text-white px-3 py-1.5 rounded-lg font-black text-sm tracking-wider shadow-lg">
+                  CDC
+                </div>
+              </div>
+            </div>
+            <p className="text-xs leading-relaxed text-slate-400 mb-4">{t.tagline}</p>
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-300 mb-3">{t.followUs}</h3>
+            <div className="flex items-center gap-2.5">
+              {SOCIAL_LINKS.map((social) => (
+                <a
+                  key={social.name}
+                  href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={social.name}
+                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-white hover:text-indigo-900 transition-all shadow-lg flex items-center justify-center text-slate-300 no-underline"
+                >
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+                    {social.icon}
+                  </svg>
+                </a>
+              ))}
             </div>
           </div>
-          <p className="text-xs leading-relaxed text-slate-500 mb-4">{t.tagline}</p>
-          <h3 className="text-xs font-black uppercase tracking-widest text-slate-300 mb-3">{t.followUs}</h3>
-          <div className="flex items-center gap-2.5">
-            {SOCIAL_LINKS.map((social) => (
-              <a
-                key={social.name}
-                href={social.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={social.name}
-                className="flex items-center justify-center w-9 h-9 rounded-lg border border-slate-800 text-slate-400 hover:text-cyan-400 hover:border-cyan-400 transition-colors no-underline"
-              >
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
-                  {social.icon}
-                </svg>
-              </a>
-            ))}
+
+          {/* Quick links */}
+          <div className={noHoverFx}>
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.linksHeading}</h3>
+            <ul className="space-y-2.5 text-xs">
+              <li><Link href="/about" className={navLink}>{t.about}</Link></li>
+              <li><Link href="/courses" className={navLink}>{t.courses}</Link></li>
+              <li><Link href="/marketplace" className={navLink}>{t.marketplace}</Link></li>
+              <li><Link href="/community" className={navLink}>{t.community}</Link></li>
+              <li><Link href="/forum" className={navLink}>{t.forum}</Link></li>
+              <li><Link href="/agency" className={navLink}>{t.studio}</Link></li>
+            </ul>
+          </div>
+
+          {/* Legal links */}
+          <div className={noHoverFx}>
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.legalHeading}</h3>
+            <ul className="space-y-2.5 text-xs">
+              <li><Link href="/privacy" className={navLink}>{t.privacy}</Link></li>
+              <li><Link href="/terms" className={navLink}>{t.terms}</Link></li>
+              <li><Link href="/refund-policy" className={navLink}>{t.refund}</Link></li>
+            </ul>
+          </div>
+
+          {/* Contact */}
+          <div className={noHoverFx}>
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.contactHeading}</h3>
+            <ul className="space-y-2.5 text-xs">
+              <li>
+                <a href={`mailto:${merchantInfo.email}`} className={navLink}>
+                  {merchantInfo.email}
+                </a>
+              </li>
+              <li>
+                <a href={`tel:${merchantInfo.phone.replace(/\s+/g, '')}`} className={navLink}>
+                  {merchantInfo.phone}
+                </a>
+              </li>
+              <li>
+                <Link href="/contact" className={navLink}>
+                  {t.contactPage}
+                </Link>
+              </li>
+            </ul>
           </div>
         </div>
 
-        {/* Quick links */}
-        <div className={noHoverFx}>
-          <h3 className="text-xs font-black uppercase tracking-widest text-slate-300 mb-4">{t.linksHeading}</h3>
-          <ul className="space-y-2.5 text-xs">
-            <li><Link href="/about" className="hover:text-cyan-400 transition-colors no-underline text-current">{t.about}</Link></li>
-            <li><Link href="/courses" className="hover:text-cyan-400 transition-colors no-underline text-current">{t.courses}</Link></li>
-            <li><Link href="/marketplace" className="hover:text-cyan-400 transition-colors no-underline text-current">{t.marketplace}</Link></li>
-            <li><Link href="/community" className="hover:text-cyan-400 transition-colors no-underline text-current">{t.community}</Link></li>
-            <li><Link href="/forum" className="hover:text-cyan-400 transition-colors no-underline text-current">{t.forum}</Link></li>
-            <li><Link href="/agency" className="hover:text-cyan-400 transition-colors no-underline text-current">{t.studio}</Link></li>
-          </ul>
-        </div>
-
-        {/* Legal links */}
-        <div className={noHoverFx}>
-          <h3 className="text-xs font-black uppercase tracking-widest text-slate-300 mb-4">{t.legalHeading}</h3>
-          <ul className="space-y-2.5 text-xs">
-            <li><Link href="/privacy" className="hover:text-cyan-400 transition-colors no-underline text-current">{t.privacy}</Link></li>
-            <li><Link href="/terms" className="hover:text-cyan-400 transition-colors no-underline text-current">{t.terms}</Link></li>
-            <li><Link href="/refund-policy" className="hover:text-cyan-400 transition-colors no-underline text-current">{t.refund}</Link></li>
-          </ul>
-        </div>
-
-        {/* Contact */}
-        <div className={noHoverFx}>
-          <h3 className="text-xs font-black uppercase tracking-widest text-slate-300 mb-4">{t.contactHeading}</h3>
-          <ul className="space-y-2.5 text-xs">
-            <li>
-              <a href={`mailto:${merchantInfo.email}`} className="hover:text-cyan-400 transition-colors no-underline text-current">
-                {merchantInfo.email}
-              </a>
-            </li>
-            <li>
-              <a href={`tel:${merchantInfo.phone.replace(/\s+/g, '')}`} className="hover:text-cyan-400 transition-colors no-underline text-current">
-                {merchantInfo.phone}
-              </a>
-            </li>
-            <li>
-              <Link href="/contact" className="hover:text-cyan-400 transition-colors no-underline text-current">
-                {t.contactPage}
-              </Link>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      {/* Payment method badges — Bank of Georgia merchant compliance:
-          accepted card networks must be visibly listed on the site. */}
-      <div className={`border-t border-slate-800 ${noHoverFx}`}>
-        {/* Badges grouped in their own flex-wrap container so they wrap as a
-            unit onto the next line together (below the label) on narrow
-            screens, instead of each badge wrapping independently and
-            leaving e.g. "BOG Pay" stranded alone on its own row. */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 flex flex-wrap items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 shrink-0">{t.weAccept}</span>
-          <div className="flex flex-wrap items-center gap-2">
-            {['VISA', 'Mastercard', 'BOG Pay'].map((method) => (
-              <span key={method} className="text-[11px] font-bold text-slate-300 bg-slate-800/80 border border-slate-700 rounded px-2.5 py-1 whitespace-nowrap">
-                {method}
-              </span>
-            ))}
+        {/* Payment method badges — Bank of Georgia merchant compliance:
+            accepted card networks must be visibly listed on the site.
+            Grouped in their own flex-wrap container so they wrap as a unit
+            onto the next line together (below the label) on narrow
+            screens, instead of each badge wrapping independently. */}
+        <div className={`border-t border-white/10 ${noHoverFx}`}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 shrink-0">{t.weAccept}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              {['VISA', 'Mastercard', 'BOG Pay'].map((method) => (
+                <span
+                  key={method}
+                  className="text-[11px] font-bold text-slate-200 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 whitespace-nowrap"
+                >
+                  {method}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Merchant / legal-entity compliance block — always bilingual regardless
-          of the page's language toggle, since this is compliance identity
-          information (Bank of Georgia merchant requirement), not UI copy. */}
-      <div className={`border-t border-slate-800 ${noHoverFx}`}>
-        <div className={`max-w-7xl mx-auto px-6 py-6 text-[11px] leading-relaxed text-slate-500 space-y-1 ${noHoverFx}`}>
-          <p className="text-slate-400 font-semibold">
-            {merchantInfo.orgNameKa} / {merchantInfo.orgNameEn}
-          </p>
-          <p>
-            ს/კ / ID Code: {merchantInfo.identificationCode}
-          </p>
-          <p>
-            {merchantInfo.addressKa} / {merchantInfo.addressEn}
-          </p>
-          <p className="pt-2 text-slate-600">
-            © {year} {lang === 'GEO' ? merchantInfo.orgNameKa : merchantInfo.orgNameEn}. {t.rights}
-          </p>
+        {/* Merchant / legal-entity compliance block — always bilingual regardless
+            of the page's language toggle, since this is compliance identity
+            information (Bank of Georgia merchant requirement), not UI copy. */}
+        <div className={`border-t border-white/10 ${noHoverFx}`}>
+          <div className={`max-w-7xl mx-auto px-6 py-6 text-[11px] leading-relaxed text-slate-500 space-y-1 ${noHoverFx}`}>
+            <p className="text-slate-400 font-semibold">
+              {merchantInfo.orgNameKa} / {merchantInfo.orgNameEn}
+            </p>
+            <p>
+              ს/კ / ID Code: {merchantInfo.identificationCode}
+            </p>
+            <p>
+              {merchantInfo.addressKa} / {merchantInfo.addressEn}
+            </p>
+            <p className="pt-2 text-slate-600">
+              © {year} {lang === 'GEO' ? merchantInfo.orgNameKa : merchantInfo.orgNameEn}. {t.rights}
+            </p>
+          </div>
         </div>
       </div>
     </footer>
