@@ -15,6 +15,19 @@ export const addTeamMemberSchema = z.object({
 export const moderateListingSchema = z.object({
   reason: z.string().trim().max(500).optional(),
 });
+// AI Agents Suite trial extension (PATCH /api/admin/users/:id/ai-trial) —
+// discriminated on `mode` so each shape only carries the field it needs:
+// "extend" adds N days on top of whichever is later (now, or the current
+// expiry — so extending an already-active trial stacks, but extending an
+// expired one starts fresh from today, not from a stale past date);
+// "set" pins an exact expiry (the admin's date picker); "unlimited" flips
+// the account to aiSubscriptionActive instead of a fake far-future date.
+export const updateAiTrialSchema = z.discriminatedUnion('mode', [
+  z.object({ mode: z.literal('extend'), days: z.number().int().positive().max(3650) }),
+  z.object({ mode: z.literal('set'), date: z.string().datetime() }),
+  z.object({ mode: z.literal('unlimited') }),
+]);
+
 export const updateBogSettingsSchema = z.object({
   clientId: z.string().trim().max(200).optional(),
   secretKey: z.string().trim().max(500).optional(),

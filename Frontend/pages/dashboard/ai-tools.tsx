@@ -7,6 +7,7 @@ import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import BusinessAiTab from '../../src/components/dashboard/BusinessAiTab';
+import BusinessAiAgentsSuite from '../../src/components/dashboard/BusinessAiAgentsSuite';
 
 const dict = {
   ka: {
@@ -50,6 +51,7 @@ function AiToolsContent() {
           allowedRoles={['Client', 'SuperAdmin']}
           fallback={<p className="text-sm text-slate-500 dark:text-slate-400">{t.fallback}</p>}
         >
+          <BusinessAiAgentsSuite lang={lang} />
           <BusinessAiTab lang={lang} />
         </RoleGate>
       </div>

@@ -13,6 +13,8 @@ export interface CompanyRow {
   taxId: string | null;
   verificationDocUrl: string | null;
   isVerified: boolean;
+  aiTrialEndsAt: string | null;
+  aiSubscriptionActive: boolean;
   createdAt: string;
 }
 
@@ -28,5 +30,21 @@ export async function verifyCompany(id: string): Promise<CompanyRow> {
 
 export async function unverifyCompany(id: string): Promise<CompanyRow> {
   const response = await apiClient.post<{ data: CompanyRow }>(`/admin/companies/${id}/unverify`);
+  return response.data.data;
+}
+
+export type AiTrialUpdatePayload =
+  | { mode: 'extend'; days: number }
+  | { mode: 'set'; date: string }
+  | { mode: 'unlimited' };
+
+export async function updateAiTrial(
+  userId: string,
+  payload: AiTrialUpdatePayload
+): Promise<{ id: string; aiTrialEndsAt: string | null; aiSubscriptionActive: boolean }> {
+  const response = await apiClient.patch<{ data: { id: string; aiTrialEndsAt: string | null; aiSubscriptionActive: boolean } }>(
+    `/admin/users/${userId}/ai-trial`,
+    payload
+  );
   return response.data.data;
 }

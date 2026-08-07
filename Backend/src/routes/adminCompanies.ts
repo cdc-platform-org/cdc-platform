@@ -19,8 +19,12 @@ const companySelect = {
   taxId: true,
   verificationDocUrl: true,
   isVerified: true,
+  aiTrialEndsAt: true,
+  aiSubscriptionActive: true,
   createdAt: true,
 };
+
+const AI_TRIAL_DAYS_ON_FIRST_VERIFY = 7;
 
 // Every Client (Business) account — the frontend derives the three-state
 // badge (Unverified / Under Review / Verified) from verificationDocUrl +
@@ -41,11 +45,22 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 async function setVerified(req: Request, res: Response, isVerified: boolean, action: string) {
-  const existing = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true, role: true } });
+  const existing = await prisma.user.findUnique({
+    where: { id: req.params.id },
+    select: { id: true, role: true, aiTrialEndsAt: true },
+  });
   if (!existing || existing.role !== 'Client') {
     return res.status(404).json({ message: 'Business account not found.' });
   }
-  const user = await prisma.user.update({ where: { id: existing.id }, data: { isVerified }, select: companySelect });
+  // First-time verification starts the AI Agents Suite's 7-day trial —
+  // idempotent (a later re-verify never resets/extends it) and never
+  // touched on an unverify, so toggling verification off and back on
+  // doesn't hand out a second trial.
+  const data: { isVerified: boolean; aiTrialEndsAt?: Date } = { isVerified };
+  if (isVerified && !existing.aiTrialEndsAt) {
+    data.aiTrialEndsAt = new Date(Date.now() + AI_TRIAL_DAYS_ON_FIRST_VERIFY * 24 * 60 * 60 * 1000);
+  }
+  const user = await prisma.user.update({ where: { id: existing.id }, data, select: companySelect });
   await logAdminAction({ action, targetType: 'User', targetId: user.id, performedById: req.user!.id });
   res.json({ data: user });
 }

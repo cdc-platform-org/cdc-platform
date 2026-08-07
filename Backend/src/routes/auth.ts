@@ -100,6 +100,8 @@ function toUserResponse(user: {
   isVerified?: boolean;
   taxId?: string | null;
   termsAcceptedAt?: Date | null;
+  aiTrialEndsAt?: Date | null;
+  aiSubscriptionActive?: boolean;
 }) {
   return {
     id: user.id,
@@ -127,6 +129,8 @@ function toUserResponse(user: {
     verificationDocUrl: user.verificationDocUrl ?? null,
     isVerified: user.isVerified ?? false,
     termsAcceptedAt: user.termsAcceptedAt ?? null,
+    aiTrialEndsAt: user.aiTrialEndsAt ?? null,
+    aiSubscriptionActive: user.aiSubscriptionActive ?? false,
   };
 }
 

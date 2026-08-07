@@ -45,6 +45,12 @@ export interface User {
   // sign-up (no separate consent step before account creation there) start
   // null; set via POST /auth/accept-terms. See TermsConsentModal.tsx.
   termsAcceptedAt: string | null;
+  // AI Agents Suite (/dashboard/ai-tools) — a 7-day trial set the moment a
+  // Business account is first verified, never reset by a later re-verify.
+  // Distinct from the embeddable-chatbot Agent's own 60-day trial (a
+  // separate product). See src/services/aiAgentsSuiteService.ts.
+  aiTrialEndsAt: string | null;
+  aiSubscriptionActive: boolean;
 }
 
 export type VerificationStatus = 'unverified' | 'under_review' | 'verified';

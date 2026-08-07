@@ -54,6 +54,7 @@ import adminNotificationRoutes from './routes/adminNotifications';
 import productRoutes from './routes/products';
 import adminProductRoutes from './routes/adminProducts';
 import promoRoutes from './routes/promos';
+import aiAgentsSuiteRoutes from './routes/aiAgentsSuite';
 import { errorHandler } from './middleware/errorHandler';
 import { PORT } from './utils/env';
 import { autoApproveOverdueGigs } from './services/gigApprovalService';
@@ -130,6 +131,7 @@ app.use('/api/admin/notifications', adminNotificationRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/admin/products', adminProductRoutes);
 app.use('/api/promos', promoRoutes);
+app.use('/api/ai-agents', aiAgentsSuiteRoutes);
 
 const swaggerDocument = {
   openapi: '3.0.3',

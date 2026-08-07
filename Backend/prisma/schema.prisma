@@ -294,6 +294,16 @@ model User {
   // this field, which is why existing rows are deliberately NOT backfilled
   // to createdAt the way emailVerifiedAt was).
   termsAcceptedAt DateTime?
+  // AI Agents Suite (Frontend's /dashboard/ai-tools "content generator /
+  // market analytics / business assistant" tools) — a 7-day trial set the
+  // moment a Business account is FIRST verified (routes/adminCompanies.ts's
+  // setVerified), never reset by a later re-verify. Distinct from the
+  // pre-existing Agent.trialEndsAt, which is the 60-day trial for a
+  // business's own embeddable customer-facing chatbot — a separate product.
+  // See utils/aiAgentsSuiteAccess.ts for how these two fields combine with
+  // role === SuperAdmin to decide access.
+  aiTrialEndsAt        DateTime?
+  aiSubscriptionActive Boolean    @default(false)
   createdAt       DateTime   @default(now())
 
   postedGigs             Gig[]                @relation("PostedGigs")

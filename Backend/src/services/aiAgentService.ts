@@ -329,3 +329,48 @@ Write a short, friendly subject line and an HTML email body (<p>, <strong> only 
   if (!result.success) throw new AiAgentError('Gemini returned an unexpected onboarding email format.');
   return result.data;
 }
+
+// ============================================================
+// MODULE 4 — Business AI Agents Suite (Frontend's /dashboard/ai-tools).
+// Three prompt-in/response-out tools gated behind the account's AI trial/
+// subscription — see utils/aiAgentsSuiteAccess.ts and
+// routes/aiAgentsSuite.ts. Distinct from the pre-existing embeddable
+// customer-facing chatbot (the Agent Prisma model, services/... none —
+// see routes/agents.ts): these are internal tools the business owner uses
+// directly, not something they embed on their own external site.
+// ============================================================
+
+export type AiAgentSuiteTool = 'content' | 'analytics' | 'assistant';
+
+const AI_AGENT_SUITE_SYSTEM_PROMPT: Record<AiAgentSuiteTool, string> = {
+  content:
+    'You are a B2B marketing/content generation assistant for a business account on CDC (cdc.org.ge), a Georgian digital-careers platform. Help the business write marketing copy, social media posts, product descriptions, or outreach messages based on their request. Output should be concise, professional, and copy-paste-ready content — not advice about how to write it.',
+  analytics:
+    "You are a market/industry research and analysis assistant for a business account on CDC. Given the business's question, provide a well-reasoned analysis of market trends, competitive positioning, industry context, or business strategy. You do NOT have access to the business's real sales/analytics data — clearly note when you're giving general industry reasoning rather than citing specific real-time data, and never fabricate specific statistics, sources, or company names you aren't confident about.",
+  assistant:
+    'You are a general business assistant for a business account on CDC — help with day-to-day business questions: drafting emails, summarizing ideas, brainstorming, and general business/management/HR/operations questions. Be practical and actionable.',
+};
+
+const aiAgentSuiteResponseSchema = z.object({ response: z.string().min(1) });
+
+export async function generateAiAgentSuiteResponse(tool: AiAgentSuiteTool, userPrompt: string, lang: 'ka' | 'en'): Promise<string> {
+  const languageLine = lang === 'ka' ? 'Respond in Georgian (ქართული).' : 'Respond in English.';
+  const prompt = `${AI_AGENT_SUITE_SYSTEM_PROMPT[tool]}
+${languageLine}
+
+User request: ${userPrompt}
+
+Respond with well-formatted plain text (short paragraphs and bullet points where useful — no markdown headers, no code fences). Respond with strict JSON matching this shape:
+{"response": string}`;
+
+  const raw = await callTextModel(prompt, 0.7);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new AiAgentError('Gemini returned malformed JSON.');
+  }
+  const result = aiAgentSuiteResponseSchema.safeParse(parsed);
+  if (!result.success) throw new AiAgentError('Gemini returned an unexpected response format.');
+  return result.data.response;
+}

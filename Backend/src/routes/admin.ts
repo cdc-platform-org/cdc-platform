@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
-import { rejectUserSchema, banUserSchema } from '../schemas/adminSchemas';
+import { rejectUserSchema, banUserSchema, updateAiTrialSchema } from '../schemas/adminSchemas';
 const router = Router();
 
 // Baseline: any admin-team member can at least read. Mutating routes below
@@ -125,6 +125,38 @@ router.post('/users/:id/unban', async (req: Request, res: Response) => {
     omit: { password: true },
   });
   res.json(updated);
+});
+
+// AI Agents Suite trial management — SuperAdmin-only (stricter than the
+// router-wide baseline), Business (Client) accounts only. See
+// utils/aiAgentsSuiteAccess.ts for how aiTrialEndsAt/aiSubscriptionActive
+// combine to gate actual access.
+router.patch('/users/:id/ai-trial', requireAdminRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  const result = updateAiTrialSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const user = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true, role: true, aiTrialEndsAt: true } });
+  if (!user) return res.status(404).json({ message: 'User not found.' });
+  if (user.role !== 'Client') {
+    return res.status(400).json({ message: 'The AI Agents Suite trial only applies to Business accounts.' });
+  }
+
+  let data: { aiTrialEndsAt?: Date | null; aiSubscriptionActive?: boolean };
+  if (result.data.mode === 'extend') {
+    const base = Math.max(Date.now(), user.aiTrialEndsAt?.getTime() ?? 0);
+    data = { aiTrialEndsAt: new Date(base + result.data.days * 24 * 60 * 60 * 1000) };
+  } else if (result.data.mode === 'set') {
+    data = { aiTrialEndsAt: new Date(result.data.date) };
+  } else {
+    data = { aiSubscriptionActive: true };
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: req.params.id },
+    data,
+    select: { id: true, aiTrialEndsAt: true, aiSubscriptionActive: true },
+  });
+  res.json({ data: updated });
 });
 
 export default router;
