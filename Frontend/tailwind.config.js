@@ -16,10 +16,11 @@ module.exports = {
           darkBg: '#0b0f19',
         }
       },
-      // Custom Georgian typeface (see the @font-face + heading rule in
-      // styles/globals.css, applied site-wide via !important).
+      // `heading`: temporary Noto Sans Georgian stand-in (next/font/google
+      // CSS variable, see pages/_app.tsx) until GL-Kirovi is replaced.
+      // `sans` (body text/inputs): still the original @font-face.
       fontFamily: {
-        heading: ['GL-Kirovi', 'Fira GO', 'sans-serif'],
+        heading: ['var(--font-heading)', 'Fira GO', 'sans-serif'],
         sans: ['GL-Kirovi', 'Fira GO', 'sans-serif'],
       },
     },

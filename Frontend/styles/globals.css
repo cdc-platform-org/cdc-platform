@@ -14,6 +14,10 @@
   font-display: swap;
 }
 
+/* Headings: temporary Noto Sans Georgian stand-in (next/font/google,
+   --font-heading variable set on the wrapper div in pages/_app.tsx) —
+   see the comment there for why. Body text/inputs above still use the
+   (currently also-corrupted) GL-Kirovi @font-face, unchanged. */
 h1, h2, h3, h4, h5, h6, .font-heading {
-  font-family: 'GL-Kirovi', 'Fira GO', sans-serif !important;
+  font-family: var(--font-heading), 'Fira GO', sans-serif !important;
 }
