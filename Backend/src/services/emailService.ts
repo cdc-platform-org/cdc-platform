@@ -271,6 +271,31 @@ export async function sendMentorshipBookingEmails(params: MentorshipBookingEmail
   }
 }
 
+// Fired once, the first time a booking's recordingUrl is set (see
+// services/mentorshipRecordingService.ts) — never re-sent on a later edit
+// of an already-attached link. The CTA button links straight to the
+// external recording URL itself (Google Drive / Bunny / direct MP4 —
+// whatever the admin/mentor pasted), not back into the CDC dashboard.
+export async function sendRecordingReadyEmail(params: {
+  studentEmail: string;
+  studentName: string;
+  mentorName: string;
+  scheduledAt: Date;
+  recordingUrl: string;
+  consultationDescription: string | null;
+}): Promise<void> {
+  const { studentEmail, studentName, mentorName, scheduledAt, recordingUrl, consultationDescription } = params;
+  const whenStr = scheduledAt.toLocaleString('ka-GE', { timeZone: 'Asia/Tbilisi', dateStyle: 'full', timeStyle: 'short' });
+  const topicLine = consultationDescription ? `<p><strong>თემა:</strong> ${consultationDescription}</p>` : '';
+  const html = wrapTemplate(
+    'თქვენი მენტორობის სესიის ჩანაწერი მზადაა! 🎥',
+    `გამარჯობა, ${studentName}! თქვენი სესია მენტორთან <strong>${mentorName}</strong> — <strong>${whenStr}</strong> — ჩაწერილია და უკვე ხელმისაწვდომია ყურებისთვის.${topicLine}`,
+    'ჩანაწერის ყურება',
+    recordingUrl
+  );
+  await sendEmail(studentEmail, 'თქვენი მენტორობის სესიის ჩანაწერი მზადაა! 🎥', html, recordingUrl);
+}
+
 export async function sendPasswordResetEmail(email: string, token: string, lang: 'ka' | 'en' = 'ka'): Promise<void> {
   const link = `${FRONTEND_URL}/reset-password?token=${token}`;
   const html =

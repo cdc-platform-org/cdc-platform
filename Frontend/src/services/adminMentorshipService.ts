@@ -129,10 +129,22 @@ export interface AdminMentorshipBooking {
   consultationDescription: string | null;
   googleMeetLink: string | null;
   calendarSyncError: string | null;
+  recordingUrl: string | null;
+  recordingUploadedAt: string | null;
   createdAt: string;
   mentor: MentorshipUser;
   student: MentorshipUser;
   bogPayment: { status: string; amount: number; currency: string };
+}
+
+// Attaches/replaces a pasted recording link (Google Drive, Bunny CDN,
+// direct MP4, etc.) — emails the student once, the first time a link is
+// set for a given booking (see Backend's mentorshipRecordingService.ts).
+export async function attachBookingRecording(bookingId: string, recordingUrl: string): Promise<AdminMentorshipBooking> {
+  const response = await apiClient.patch<{ data: AdminMentorshipBooking }>(`/admin/mentorship/bookings/${bookingId}/recording`, {
+    recordingUrl,
+  });
+  return response.data.data;
 }
 
 export async function getAdminMentorshipBookings(): Promise<AdminMentorshipBooking[]> {

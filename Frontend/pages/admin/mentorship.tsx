@@ -15,6 +15,7 @@ import {
   updateMentorProfile,
   uploadMentorCv,
   getAdminMentorshipBookings,
+  attachBookingRecording,
   MentorshipGig,
   MentorshipHelpRequest,
   MentorProfile,
@@ -492,6 +493,87 @@ const BOOKING_STATUS_LABEL: Record<string, string> = {
   CANCELLED: 'Cancelled',
 };
 
+function RecordingCell({ booking, onUpdated }: { booking: AdminMentorshipBooking; onUpdated: (b: AdminMentorshipBooking) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(booking.recordingUrl ?? '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    if (!value.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await attachBookingRecording(booking.id, value.trim());
+      onUpdated(updated);
+      setEditing(false);
+    } catch {
+      setError('Invalid URL or save failed.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div className="flex flex-col gap-1 min-w-[200px]">
+        <div className="flex gap-1">
+          <input
+            type="url"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="https://drive.google.com/... or Bunny CDN URL"
+            className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs"
+            autoFocus
+          />
+          <button
+            type="button"
+            disabled={saving || !value.trim()}
+            onClick={handleSave}
+            className="text-xs font-medium px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
+          >
+            {saving ? '…' : 'Save'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing(false)}
+            className="text-xs font-medium px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+        </div>
+        {error && <span className="text-[10px] text-red-500">{error}</span>}
+      </div>
+    );
+  }
+
+  if (booking.recordingUrl) {
+    return (
+      <div className="flex items-center gap-2">
+        <a href={booking.recordingUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+          Watch
+        </a>
+        <button
+          type="button"
+          onClick={() => {
+            setValue(booking.recordingUrl ?? '');
+            setEditing(true);
+          }}
+          className="text-[11px] text-gray-400 hover:text-gray-600"
+        >
+          Edit
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button type="button" onClick={() => setEditing(true)} className="text-xs font-medium text-indigo-600 hover:text-indigo-800">
+      + Attach recording
+    </button>
+  );
+}
+
 // Every paid session across the platform — loads current data on mount and
 // via manual refresh (no push/websocket infrastructure exists anywhere in
 // this codebase; adding one would be new architecture, not a small
@@ -550,6 +632,7 @@ function BookingsSection() {
                 <th className="px-4 py-3 font-medium">Student</th>
                 <th className="px-4 py-3 font-medium">Scheduled</th>
                 <th className="px-4 py-3 font-medium">Meet Link</th>
+                <th className="px-4 py-3 font-medium">Recording</th>
               </tr>
             </thead>
             <tbody>
@@ -588,6 +671,12 @@ function BookingsSection() {
                     ) : (
                       <span className="text-gray-400">—</span>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <RecordingCell
+                      booking={b}
+                      onUpdated={(updated) => setBookings((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))}
+                    />
                   </td>
                 </tr>
               ))}

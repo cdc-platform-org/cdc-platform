@@ -28,6 +28,23 @@ export const updateAiTrialSchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('unlimited') }),
 ]);
 
+// Recording links are pasted, not uploaded through us — Google Drive,
+// Bunny CDN, a direct MP4, an "Awesome Screen Recorder" share link, etc.
+// — so this only validates it's a well-formed URL, nothing provider-specific.
+export const attachRecordingSchema = z.object({
+  // z.string().url() alone accepts any syntactically valid URL scheme,
+  // including "javascript:" — harmless as stored data, but this value gets
+  // rendered straight into an <a href> on both the admin panel and the
+  // student/mentor dashboard, so the scheme itself must be constrained to
+  // what a link is ever legitimately allowed to be.
+  recordingUrl: z
+    .string()
+    .trim()
+    .url()
+    .max(2000)
+    .refine((url) => /^https?:\/\//i.test(url), { message: 'Recording URL must start with http:// or https://.' }),
+});
+
 export const updateBogSettingsSchema = z.object({
   clientId: z.string().trim().max(200).optional(),
   secretKey: z.string().trim().max(500).optional(),

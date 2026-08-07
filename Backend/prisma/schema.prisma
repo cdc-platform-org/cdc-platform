@@ -1171,6 +1171,14 @@ model MentorshipBooking {
   // payment are still valid either way, this is purely diagnostic so an
   // admin can see which sessions need a manual calendar invite.
   calendarSyncError       String?
+  // Pasted link (Google Drive, Bunny CDN, direct MP4, etc.) to the session
+  // recording — not a file we host ourselves, just an external URL an
+  // admin or the mentor attaches after the session. recordingUploadedAt is
+  // set alongside it (see services/mentorshipRecordingService.ts) and
+  // drives the "recording ready" email to the student — never re-sent on
+  // a later edit of an already-set URL, only on the first attach.
+  recordingUrl            String?
+  recordingUploadedAt     DateTime?
   createdAt               DateTime   @default(now())
 
   @@index([mentorId])

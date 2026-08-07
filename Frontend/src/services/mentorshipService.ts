@@ -75,9 +75,18 @@ export interface MyMentorshipBooking {
   consultationDescription: string | null;
   googleMeetLink: string | null;
   calendarSyncError: string | null;
+  recordingUrl: string | null;
 }
 
 export async function getMyMentorshipBookings(): Promise<MyMentorshipBooking[]> {
   const response = await apiClient.get<{ data: MyMentorshipBooking[] }>('/mentorship/bookings/mine');
   return response.data.data;
+}
+
+// Mentor-only: attach/replace a recording link on one of their own
+// bookings (backend scopes this to mentorId === the caller, see
+// routes/mentorship.ts). Emails the student once, the first time a link
+// is set for a given booking.
+export async function attachMyBookingRecording(bookingId: string, recordingUrl: string): Promise<void> {
+  await apiClient.patch(`/mentorship/bookings/${bookingId}/recording`, { recordingUrl });
 }

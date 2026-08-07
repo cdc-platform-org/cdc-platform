@@ -2,12 +2,12 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
-import { CalendarClock, Video, Users, UserPlus, List, CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { CalendarClock, Video, Users, UserPlus, List, CalendarDays, ChevronLeft, ChevronRight, X, PlayCircle, Link2 } from 'lucide-react';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
-import { getMyMentorshipBookings, MyMentorshipBooking } from '../../src/services/mentorshipService';
+import { getMyMentorshipBookings, attachMyBookingRecording, MyMentorshipBooking } from '../../src/services/mentorshipService';
 
 const dict = {
   ka: {
@@ -31,6 +31,12 @@ const dict = {
     completed: 'დასრულებული',
     close: 'დახურვა',
     noSessionsOnDay: 'ამ დღეს სესიები არ არის.',
+    watchRecording: 'ვიდეო ჩანაწერის ყურება',
+    attachRecording: 'ჩანაწერის ბმულის დამატება',
+    recordingPlaceholder: 'ჩასვით ბმული (Google Drive, Bunny CDN, MP4...)',
+    save: 'შენახვა',
+    cancel: 'გაუქმება',
+    recordingSaveFailed: 'ჩანაწერის შენახვა ვერ მოხერხდა.',
   },
   en: {
     title: 'My Mentorship Sessions',
@@ -53,6 +59,12 @@ const dict = {
     completed: 'Completed',
     close: 'Close',
     noSessionsOnDay: 'No sessions on this day.',
+    watchRecording: 'Watch Recording',
+    attachRecording: 'Attach recording link',
+    recordingPlaceholder: 'Paste a link (Google Drive, Bunny CDN, MP4...)',
+    save: 'Save',
+    cancel: 'Cancel',
+    recordingSaveFailed: 'Could not save the recording link.',
   },
 };
 
@@ -75,6 +87,28 @@ function SessionCard({ booking, lang }: { booking: MyMentorshipBooking; lang: 'k
   const t = dict[lang];
   const otherParty = booking.role === 'student' ? booking.mentor : booking.student;
   const otherPartyLabel = booking.role === 'student' ? t.withMentor : t.withStudent;
+  const isPast = new Date(booking.scheduledAt).getTime() < Date.now();
+
+  const [recordingUrl, setRecordingUrl] = useState(booking.recordingUrl);
+  const [attaching, setAttaching] = useState(false);
+  const [recordingInput, setRecordingInput] = useState('');
+  const [savingRecording, setSavingRecording] = useState(false);
+  const [recordingError, setRecordingError] = useState<string | null>(null);
+
+  const handleSaveRecording = async () => {
+    if (!recordingInput.trim()) return;
+    setSavingRecording(true);
+    setRecordingError(null);
+    try {
+      await attachMyBookingRecording(booking.id, recordingInput.trim());
+      setRecordingUrl(recordingInput.trim());
+      setAttaching(false);
+    } catch {
+      setRecordingError(t.recordingSaveFailed);
+    } finally {
+      setSavingRecording(false);
+    }
+  };
 
   return (
     <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
@@ -106,6 +140,17 @@ function SessionCard({ booking, lang }: { booking: MyMentorshipBooking; lang: 'k
           ) : (
             <p className="text-[11px] text-slate-400 max-w-[160px] text-right">{t.calendarPending}</p>
           )}
+          {recordingUrl && (
+            <a
+              href={recordingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-emerald-600 text-white no-underline hover:bg-emerald-700"
+            >
+              <PlayCircle className="w-3.5 h-3.5" />
+              {t.watchRecording}
+            </a>
+          )}
           <a
             href={googleCalendarAddUrl(booking, otherParty.name)}
             target="_blank"
@@ -115,8 +160,49 @@ function SessionCard({ booking, lang }: { booking: MyMentorshipBooking; lang: 'k
             <CalendarClock className="w-3.5 h-3.5" />
             {t.addToCalendar}
           </a>
+          {booking.role === 'mentor' && isPast && !recordingUrl && !attaching && (
+            <button
+              type="button"
+              onClick={() => setAttaching(true)}
+              className="flex items-center justify-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 bg-transparent cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              <Link2 className="w-3.5 h-3.5" />
+              {t.attachRecording}
+            </button>
+          )}
         </div>
       </div>
+
+      {attaching && (
+        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="url"
+              value={recordingInput}
+              onChange={(e) => setRecordingInput(e.target.value)}
+              placeholder={t.recordingPlaceholder}
+              className="flex-1 min-w-[220px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950/60 px-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-cyan-500/60"
+              autoFocus
+            />
+            <button
+              type="button"
+              disabled={savingRecording || !recordingInput.trim()}
+              onClick={handleSaveRecording}
+              className="text-xs font-bold text-white bg-indigo-600 px-3.5 py-2 rounded-lg border-none cursor-pointer hover:bg-indigo-700 disabled:opacity-60"
+            >
+              {savingRecording ? '…' : t.save}
+            </button>
+            <button
+              type="button"
+              onClick={() => setAttaching(false)}
+              className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-transparent border-none cursor-pointer hover:text-slate-700 dark:hover:text-slate-200"
+            >
+              {t.cancel}
+            </button>
+          </div>
+          {recordingError && <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1.5">{recordingError}</p>}
+        </div>
+      )}
     </div>
   );
 }
@@ -173,19 +259,32 @@ function SessionDetailsModal({
           </p>
         )}
 
-        {booking.googleMeetLink ? (
-          <a
-            href={booking.googleMeetLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-1.5 text-sm font-bold px-4 py-2.5 rounded-xl bg-indigo-600 text-white no-underline hover:bg-indigo-700"
-          >
-            <Video className="w-4 h-4" />
-            {t.joinMeet}
-          </a>
-        ) : (
-          <p className="text-xs text-slate-400 text-center">{t.calendarPending}</p>
-        )}
+        <div className="space-y-2">
+          {booking.googleMeetLink ? (
+            <a
+              href={booking.googleMeetLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1.5 text-sm font-bold px-4 py-2.5 rounded-xl bg-indigo-600 text-white no-underline hover:bg-indigo-700"
+            >
+              <Video className="w-4 h-4" />
+              {t.joinMeet}
+            </a>
+          ) : (
+            <p className="text-xs text-slate-400 text-center">{t.calendarPending}</p>
+          )}
+          {booking.recordingUrl && (
+            <a
+              href={booking.recordingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1.5 text-sm font-bold px-4 py-2.5 rounded-xl bg-emerald-600 text-white no-underline hover:bg-emerald-700"
+            >
+              <PlayCircle className="w-4 h-4" />
+              {t.watchRecording}
+            </a>
+          )}
+        </div>
       </div>
     </div>
   );

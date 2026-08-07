@@ -2,8 +2,10 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved } from '../middleware/auth';
 import { createMentorshipRequestSchema } from '../schemas/mentorshipSchemas';
+import { attachRecordingSchema } from '../schemas/adminSchemas';
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
 import { generateAvailableSlots } from '../services/mentorAvailabilityService';
+import { attachMentorshipRecording, MentorshipRecordingError } from '../services/mentorshipRecordingService';
 
 const router = Router();
 
@@ -111,8 +113,31 @@ router.get('/bookings/mine', authenticate, async (req: Request, res: Response) =
       consultationDescription: b.consultationDescription,
       googleMeetLink: b.googleMeetLink,
       calendarSyncError: b.calendarSyncError,
+      recordingUrl: b.recordingUrl,
     })),
   });
+});
+
+// Mentor self-serve: attach/replace a recording link on their OWN booking
+// — scoped by mentorId so a mentor can't touch anyone else's session.
+// Same underlying attach-and-email-once logic as the admin route
+// (routes/adminMentorship.ts's PATCH /bookings/:id/recording).
+router.patch('/bookings/:id/recording', authenticate, requireApproved, async (req: Request, res: Response) => {
+  const result = attachRecordingSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const booking = await prisma.mentorshipBooking.findUnique({ where: { id: req.params.id }, select: { mentorId: true } });
+  if (!booking || booking.mentorId !== req.user!.id) {
+    return res.status(404).json({ message: 'Booking not found.' });
+  }
+
+  try {
+    const updated = await attachMentorshipRecording(req.params.id, result.data.recordingUrl);
+    res.json({ data: updated });
+  } catch (err) {
+    if (err instanceof MentorshipRecordingError) return res.status(404).json({ message: err.message });
+    throw err;
+  }
 });
 
 export default router;

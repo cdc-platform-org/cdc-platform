@@ -4,9 +4,10 @@ import path from 'path';
 import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
-import { mentorAvailabilityRuleSchema, mentorProfileSchema } from '../schemas/adminSchemas';
+import { mentorAvailabilityRuleSchema, mentorProfileSchema, attachRecordingSchema } from '../schemas/adminSchemas';
 import { uploadImage } from '../services/imageStorage';
 import { BunnyStorageUploadError } from '../services/bunnyStorage';
+import { attachMentorshipRecording, MentorshipRecordingError } from '../services/mentorshipRecordingService';
 
 const router = Router();
 router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'));
@@ -246,6 +247,21 @@ router.get('/bookings', async (_req: Request, res: Response) => {
     orderBy: { scheduledAt: 'desc' },
   });
   res.json({ data: bookings });
+});
+
+// Attach/replace a pasted recording link — emails the student once, the
+// first time a link is set (see mentorshipRecordingService.ts).
+router.patch('/bookings/:id/recording', async (req: Request, res: Response) => {
+  const result = attachRecordingSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  try {
+    const updated = await attachMentorshipRecording(req.params.id, result.data.recordingUrl);
+    res.json({ data: updated });
+  } catch (err) {
+    if (err instanceof MentorshipRecordingError) return res.status(404).json({ message: err.message });
+    throw err;
+  }
 });
 
 export default router;
