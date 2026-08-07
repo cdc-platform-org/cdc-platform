@@ -102,7 +102,11 @@ function StoreProductContent() {
   // login modal that would otherwise let them log in only to hit the same
   // wall immediately after.
   const isBusinessTool = !!product && isBusinessToolsCategory(product.category);
-  const canPurchaseBusinessTool = isAuthenticated && user?.role === 'Client' && !!user.isVerified;
+  // SuperAdmin bypasses the verification requirement (testing/support
+  // access) — same convention as the Enterprise AI Tools gate on /tools
+  // and the homepage (see pages/tools.tsx's canUseAiAssistant).
+  const canPurchaseBusinessTool =
+    isAuthenticated && (user?.role === 'SuperAdmin' || (user?.role === 'Client' && !!user.isVerified));
 
   const handleBuy = async () => {
     if (!product) return;
