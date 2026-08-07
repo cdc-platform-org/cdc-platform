@@ -15,10 +15,13 @@ import '@/styles/globals.css';
 function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   // FloatingButtons only renders on the homepage (see FloatingButtons.tsx) —
-  // a fixed bottom-6 right-6 stack of two 48px circles (96px + 12px gap =
+  // a fixed bottom-6 right-6 stack of two 48px pills (96px + 12px gap =
   // 132px tall from the viewport edge) there. ScrollToTop is pushed above it
-  // only on that same page; everywhere else it can sit at the normal corner.
-  const scrollToTopPosition = router.pathname === '/' ? 'bottom-40 sm:bottom-44 right-6' : 'bottom-6 right-6';
+  // only on that same page, with extra clearance (44px gap, not just enough
+  // to technically not touch) so it reads as clearly separate rather than
+  // crowded on narrow mobile widths; everywhere else it sits at the normal
+  // corner.
+  const scrollToTopPosition = router.pathname === '/' ? 'bottom-44 right-6' : 'bottom-6 right-6';
 
   return (
     <>
