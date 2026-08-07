@@ -8,7 +8,7 @@ import BackButton from '../../src/components/common/BackButton';
 
 function PostGigPageContent() {
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-10">
+    <div className="min-h-screen bg-gray-100 px-4 py-10">
       <SiteHeader />
       <div className="max-w-2xl mx-auto mb-4">
         <BackButton fallbackHref="/gigs" />

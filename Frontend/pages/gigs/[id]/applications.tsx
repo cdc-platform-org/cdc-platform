@@ -94,7 +94,7 @@ function GigApplicationsContent() {
 
   if (notFoundOrForbidden || !gig) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-50 py-10">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-100 py-10">
         <SiteHeader />
         <p className="text-center text-sm text-gray-500">
           This gig doesn't exist or you don't have permission to view its applications.
@@ -105,7 +105,7 @@ function GigApplicationsContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-10">
+    <div className="min-h-screen bg-gray-100 px-4 py-10">
       <SiteHeader />
       <div className="max-w-2xl mx-auto">
         <div className="mb-4">

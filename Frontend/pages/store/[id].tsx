@@ -167,7 +167,7 @@ function StoreProductContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950">
         <p className="text-sm text-slate-400">…</p>
       </div>
     );
@@ -175,14 +175,14 @@ function StoreProductContent() {
 
   if (notFound || !product) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950">
         <p className="text-sm text-slate-500 dark:text-slate-400">{t.loadFailed}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       <Head>
         <title>{`${product.title} | CDC Store`}</title>
       </Head>

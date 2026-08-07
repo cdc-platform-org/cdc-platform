@@ -142,7 +142,7 @@ function CertificatesContent() {
   const confirmEntry = certified.find((c) => c.course.id === confirmCourseId) ?? null;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       <Head>
         <title>{`${t.title} | CDC Platform`}</title>
       </Head>

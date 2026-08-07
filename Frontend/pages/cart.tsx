@@ -88,7 +88,7 @@ export default function CDCCart() {
   const t = trans[lang] || trans.ka;
 
   return (
-    <div className={`min-h-screen font-sans antialiased transition-colors duration-300 relative ${darkMode ? 'bg-[#0b0f17] text-slate-200' : 'bg-slate-50 text-slate-800'}`}>
+    <div className={`min-h-screen font-sans antialiased transition-colors duration-300 relative ${darkMode ? 'bg-[#0b0f17] text-slate-200' : 'bg-slate-100 text-slate-800'}`}>
       <Head>
         <title>{`${lang === 'ka' ? 'ჩემი კალათა' : 'My Cart'} | CDC Platform`}</title>
         <style>{`

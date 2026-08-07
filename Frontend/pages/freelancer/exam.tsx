@@ -193,7 +193,7 @@ function FreelancerExamContent() {
   const isLastQuestion = currentIndex === questions.length - 1;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-100 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 flex flex-col">
       <SiteHeader />
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 flex-1 w-full">
         {phase !== 'in-progress' && <BackButton fallbackHref="/dashboard" className="mb-6" />}

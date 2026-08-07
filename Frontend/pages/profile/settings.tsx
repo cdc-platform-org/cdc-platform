@@ -52,7 +52,7 @@ function SettingsContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0b0f19] px-4 py-10">
+    <div className="min-h-screen bg-gray-100 dark:bg-[#0b0f19] px-4 py-10">
       <div className="max-w-2xl mx-auto">
         <BackButton fallbackHref="/" className="mb-4 dark:text-slate-400 dark:hover:text-slate-100" />
         <div className="flex items-center justify-between mb-8">

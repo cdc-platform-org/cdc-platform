@@ -80,15 +80,20 @@ export default function SiteHeader() {
   const dashboardHref = user?.adminRole ? '/admin' : '/dashboard';
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-[#0e1422]/90 backdrop-blur-md px-4 sm:px-6 py-4">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+    <nav className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-[#0e1422]/90 backdrop-blur-md px-4 sm:px-6 py-4 overflow-x-hidden">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
         <Link href="/" className="flex items-center gap-2.5 shrink-0 no-underline text-current">
           <Image src="/images/cdc-logo.png" alt="CDC" width={40} height={40} className="h-9 w-auto rounded-xl object-cover" />
           <span className="hidden sm:inline font-bold text-sm tracking-wide text-slate-900 dark:text-white">CDC</span>
         </Link>
 
-        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-          <div className="hidden md:flex items-center gap-4 text-xs font-bold text-slate-600 dark:text-slate-300">
+        {/* min-w-0 (not shrink-0) lets this whole cluster actually shrink
+            under pressure — the nav-links block below is the one allowed to
+            clip (overflow-hidden), never the actions group at the end
+            (lang/theme/login/burger), which stays shrink-0 so it's always
+            fully visible regardless of how long the KA nav labels get. */}
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="hidden md:flex items-center gap-3 text-xs font-bold text-slate-600 dark:text-slate-300 min-w-0 overflow-hidden">
             <Link href="/community" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
               {t.community}
             </Link>
@@ -137,48 +142,78 @@ export default function SiteHeader() {
               </Link>
             )}
             {!(isAuthenticated && user) && (
-              <>
-                <Link href="/about" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
+              <div className="relative group py-2 -my-2">
+                <Link
+                  href="/about"
+                  className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-1"
+                >
                   {t.about}
+                  <ChevronDown className="w-3 h-3" />
                 </Link>
-                <Link href="/gallery" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
-                  {t.gallery}
-                </Link>
-              </>
+                <div className="absolute left-0 top-full pt-2 w-48 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150">
+                  <div className="rounded-xl border shadow-lg overflow-hidden text-sm bg-white dark:bg-[#0e1422] border-slate-200 dark:border-slate-800">
+                    <Link
+                      href="/gallery"
+                      className="block px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                    >
+                      {t.gallery}
+                    </Link>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
-          <LanguageSwitcher />
-          <button
-            type="button"
-            onClick={toggleDarkMode}
-            aria-label="Toggle dark mode"
-            className="p-2 rounded-xl transition text-lg border-none bg-transparent cursor-pointer hover:rotate-12 duration-200"
-          >
-            {darkMode ? '☀️' : '🌙'}
-          </button>
-          <NotificationBell />
-          <div className="hidden md:block">
-            <UserMenu
-              loginFallback={
-                <button
-                  type="button"
-                  onClick={() => openAuthModal()}
-                  className="text-xs font-bold px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-transparent cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"
-                >
-                  👤 {t.login}
-                </button>
-              }
-            />
+
+          {/* Actions cluster — deliberately shrink-0 (see the comment on
+              this row's parent) so language/theme/login/burger are always
+              fully rendered, never the thing that gets clipped when the KA
+              nav labels above run long. Order left-to-right: Language,
+              Theme, Bell (authenticated only), Login (mobile-only compact
+              pill, guests only — desktop guests get the same login button
+              via UserMenu's loginFallback below), Burger. */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <LanguageSwitcher />
+            <button
+              type="button"
+              onClick={toggleDarkMode}
+              aria-label="Toggle dark mode"
+              className="p-2 rounded-xl transition text-lg border-none bg-transparent cursor-pointer hover:rotate-12 duration-200"
+            >
+              {darkMode ? '☀️' : '🌙'}
+            </button>
+            <NotificationBell />
+            <div className="hidden md:block">
+              <UserMenu
+                loginFallback={
+                  <button
+                    type="button"
+                    onClick={() => openAuthModal()}
+                    className="text-xs font-bold px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-transparent cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    👤 {t.login}
+                  </button>
+                }
+              />
+            </div>
+            {!isAuthenticated && (
+              <button
+                type="button"
+                onClick={() => openAuthModal()}
+                className="md:hidden text-xs font-bold px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-transparent cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap"
+              >
+                {t.login}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((open) => !open)}
+              aria-label="Toggle menu"
+              aria-expanded={mobileMenuOpen}
+              className="md:hidden p-2 rounded-xl border-none bg-transparent cursor-pointer text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen((open) => !open)}
-            aria-label="Toggle menu"
-            aria-expanded={mobileMenuOpen}
-            className="md:hidden p-2 rounded-xl border-none bg-transparent cursor-pointer text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
         </div>
       </div>
 
@@ -244,7 +279,11 @@ export default function SiteHeader() {
                 <Link href="/about" onClick={() => setMobileMenuOpen(false)} className="no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
                   {t.about}
                 </Link>
-                <Link href="/gallery" onClick={() => setMobileMenuOpen(false)} className="no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                <Link
+                  href="/gallery"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="no-underline pl-6 pr-2 py-2 rounded-lg text-xs font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
                   {t.gallery}
                 </Link>
               </>

@@ -22,7 +22,7 @@ export default function PendingApprovalPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
         <h1 className="text-xl font-semibold text-gray-900">{t('pendingApproval.title')}</h1>
         <p className="mt-2 text-sm text-gray-500">{t('pendingApproval.message')}</p>
