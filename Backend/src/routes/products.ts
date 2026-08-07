@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticate, optionalAuthenticate, requireApproved } from '../middleware/auth';
+import { isBusinessToolsCategory, canPurchaseBusinessTools } from '../utils/marketplaceCategories';
 
 const router = Router();
 
@@ -138,6 +139,16 @@ router.post('/:id/claim', authenticate, requireApproved, async (req: Request, re
   if (!product) return res.status(404).json({ message: 'Product not found.' });
   if (product.price > 0) {
     return res.status(400).json({ message: 'This product is not free — use the checkout flow instead.' });
+  }
+
+  // The real enforcement boundary for the Business Tools purchase
+  // restriction — the frontend's identical check (pages/store/[id].tsx) is
+  // UX only and does not stop a direct API call.
+  if (isBusinessToolsCategory(product.category)) {
+    const requester = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { role: true, isVerified: true } });
+    if (!canPurchaseBusinessTools(requester)) {
+      return res.status(403).json({ message: 'This tool is available exclusively to verified Business accounts.' });
+    }
   }
 
   await prisma.productPurchase.upsert({

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useReducer } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { ScrollText } from 'lucide-react';
@@ -12,7 +12,16 @@ import { acceptTerms } from '../../services/authService';
 // handleAgree) — a fast, synchronous fallback so the modal never has to
 // wait on a full user-object refresh/hydration cycle to know it should stay
 // closed, without ever trusting local state the server hasn't confirmed.
+//
+// Read directly from localStorage on every render rather than cached in
+// useState — this component is mounted once in _app.tsx and never
+// unmounts, including across a same-tab logout → different-account login
+// (a shared-computer scenario), so a cached value from the first account
+// would otherwise leak into a second account's session and skip its modal.
 const LOCAL_ACCEPTED_KEY = 'cdc_terms_accepted';
+function hasAcceptedLocally(userId: string): boolean {
+  return typeof window !== 'undefined' && localStorage.getItem(LOCAL_ACCEPTED_KEY) === userId;
+}
 
 const dict = {
   ka: {
@@ -44,18 +53,11 @@ export default function TermsConsentModal() {
   const { user, isAuthenticated, refreshUser } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Read synchronously on first render (not via a useEffect) so there's no
-  // extra render where this is still "unaccepted" while the real user
-  // object is hydrating — that gap was the repeated-popup-on-refresh bug.
-  const [locallyAcceptedUserId] = useState<string | null>(() =>
-    typeof window !== 'undefined' ? localStorage.getItem(LOCAL_ACCEPTED_KEY) : null
-  );
-  // Flips true the instant the DB write succeeds — the modal closes on this
-  // alone, without waiting on the (separate, best-effort) full user-object
-  // refresh below to complete.
-  const [justAccepted, setJustAccepted] = useState(false);
+  // No state to trigger with — writing to localStorage doesn't itself cause
+  // a re-render, so handleAgree calls this to force one after the write.
+  const [, forceRerender] = useReducer((c: number) => c + 1, 0);
 
-  const hasAccepted = !!user?.termsAcceptedAt || (!!user && locallyAcceptedUserId === user.id) || justAccepted;
+  const hasAccepted = !!user?.termsAcceptedAt || (!!user && hasAcceptedLocally(user.id));
   // The full Terms page must be freely readable — never cover it with this
   // blocking overlay, even for a user who still hasn't accepted yet.
   const onTermsPage = router.pathname === '/terms';
@@ -67,12 +69,12 @@ export default function TermsConsentModal() {
     setError(null);
     try {
       await acceptTerms();
-      // DB write succeeded — persist the fallback flag and close immediately.
-      // refreshUser() re-syncs the full user object for every other consumer
-      // (settings page, etc.) but is best-effort from here on: the modal is
-      // already correctly closed regardless of whether that call succeeds.
+      // DB write succeeded — persist the fallback flag and force a
+      // re-render so hasAccepted picks it up immediately, closing the
+      // modal without waiting on the (separate, best-effort) full
+      // user-object refresh below.
       localStorage.setItem(LOCAL_ACCEPTED_KEY, user.id);
-      setJustAccepted(true);
+      forceRerender();
       refreshUser().catch(() => {});
     } catch {
       setError(lang === 'ka' ? 'დაფიქსირდა შეცდომა. სცადეთ თავიდან.' : 'Something went wrong. Please try again.');
