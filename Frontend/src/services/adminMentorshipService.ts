@@ -117,3 +117,25 @@ export async function updateMentorAvailabilityRule(
 export async function deleteMentorAvailabilityRule(ruleId: string): Promise<void> {
   await apiClient.delete(`/admin/mentorship/availability/${ruleId}`);
 }
+
+// --- Bookings — every paid session, for the admin panel's own visibility
+// into who booked whom (separate from mentorship-sessions.tsx, which is
+// each participant's own self-serve view of just their sessions). ---
+
+export interface AdminMentorshipBooking {
+  id: string;
+  scheduledAt: string;
+  studentPhone: string;
+  consultationDescription: string | null;
+  googleMeetLink: string | null;
+  calendarSyncError: string | null;
+  createdAt: string;
+  mentor: MentorshipUser;
+  student: MentorshipUser;
+  bogPayment: { status: string; amount: number; currency: string };
+}
+
+export async function getAdminMentorshipBookings(): Promise<AdminMentorshipBooking[]> {
+  const response = await apiClient.get<{ data: AdminMentorshipBooking[] }>('/admin/mentorship/bookings');
+  return response.data.data;
+}

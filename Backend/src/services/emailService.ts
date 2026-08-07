@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { RESEND_API_KEY, EMAIL_FROM, SUPER_ADMIN_EMAILS, BACKEND_URL } from '../utils/env';
+import { buildMentorshipIcs } from './icsService';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://cdc.org.ge';
 
@@ -163,6 +164,110 @@ export async function sendCertificateEmail(
   } catch (err) {
     console.error(`[emailService] Certificate email failed for ${to}:`, err);
     throw err;
+  }
+}
+
+// Fired once per completed mentorship booking (routes/payments.ts's BOG
+// callback, MENTORSHIP branch) — after the Google Calendar event has been
+// attempted, success or failure. `meetLink` is null when calendar sync
+// failed/isn't configured; every email still sends, just without a Meet
+// link line, per the "never let a calendar hiccup silently drop the
+// confirmation" requirement. Each recipient's send is independently
+// try/caught so one bad address can't suppress the other two.
+export interface MentorshipBookingEmailParams {
+  bookingId: string;
+  mentorName: string;
+  mentorEmail: string;
+  studentName: string;
+  studentEmail: string;
+  studentPhone: string;
+  scheduledAt: Date;
+  durationMinutes: number;
+  meetLink: string | null;
+  consultationDescription: string | null;
+}
+
+export async function sendMentorshipBookingEmails(params: MentorshipBookingEmailParams): Promise<void> {
+  const {
+    bookingId,
+    mentorName,
+    mentorEmail,
+    studentName,
+    studentEmail,
+    studentPhone,
+    scheduledAt,
+    durationMinutes,
+    meetLink,
+    consultationDescription,
+  } = params;
+
+  const whenStr = scheduledAt.toLocaleString('ka-GE', { timeZone: 'Asia/Tbilisi', dateStyle: 'full', timeStyle: 'short' });
+  const topicLine = consultationDescription ? `<p><strong>თემა:</strong> ${consultationDescription}</p>` : '';
+  const meetLine = meetLink
+    ? `<p><strong>Google Meet:</strong> <a href="${meetLink}">${meetLink}</a></p>`
+    : '<p>Google Meet ბმული ავტომატურად დაემატება მალე — შეამოწმეთ პირადი კაბინეტი.</p>';
+  const sessionsUrl = `${FRONTEND_URL}/dashboard/mentorship-sessions`;
+
+  // Mentor — plain HTML, no attachment.
+  const mentorHtml = wrapTemplate(
+    'ახალი მენტორის სესია დაჯავშნილია',
+    `<strong>${studentName}</strong>-მა დაჯავშნა სესია — <strong>${whenStr}</strong>.${topicLine}<p><strong>ტელეფონი:</strong> ${studentPhone}</p>${meetLine}`,
+    'პირადი კაბინეტის ნახვა',
+    sessionsUrl
+  );
+  await sendEmail(mentorEmail, `ახალი დაჯავშნა: ${studentName}`, mentorHtml, sessionsUrl);
+
+  // CDC Center/admin — reuses the same "notify the team" recipient list as
+  // sendStudioInquiryEmail, no-op (logged) if none configured.
+  if (SUPER_ADMIN_EMAILS.length > 0) {
+    const adminHtml = wrapTemplate(
+      'ახალი მენტორის დაჯავშნა (გადახდილი)',
+      `<strong>${studentName}</strong> ↔ <strong>${mentorName}</strong> — <strong>${whenStr}</strong>.${topicLine}${meetLine}`,
+      'ადმინ პანელის ნახვა',
+      `${FRONTEND_URL}/admin/mentorship`
+    );
+    await Promise.all(
+      SUPER_ADMIN_EMAILS.map((adminEmail) =>
+        sendEmail(adminEmail, `ახალი მენტორის სესია: ${studentName} ↔ ${mentorName}`, adminHtml, sessionsUrl)
+      )
+    );
+  } else {
+    console.log(`[emailService] No SUPER_ADMIN_EMAILS configured — mentorship booking ${bookingId} not emailed to admin.`);
+  }
+
+  // Student — with an .ics calendar invite attached, same
+  // attachments-bypass-sendEmail() shape as sendCertificateEmail, but never
+  // throws (a booking confirmation must never fail the payment callback
+  // that triggers it).
+  const studentHtml = wrapTemplate(
+    'თქვენი მენტორის სესია დადასტურებულია',
+    `თქვენი სესია მენტორთან <strong>${mentorName}</strong> დაჯავშნილია — <strong>${whenStr}</strong>.${topicLine}${meetLine}<p>კალენდარში დასამატებლად გახსენით თანდართული ფაილი.</p>`,
+    'პირადი კაბინეტის ნახვა',
+    sessionsUrl
+  );
+  if (!resend) {
+    console.log(`[DEV EMAIL] To: ${studentEmail} | Subject: მენტორის სესია დადასტურებულია | Meet: ${meetLink ?? '(pending)'}`);
+    return;
+  }
+  try {
+    const ics = buildMentorshipIcs({
+      bookingId,
+      mentorName,
+      studentName,
+      scheduledAt,
+      durationMinutes,
+      meetLink,
+      consultationDescription,
+    });
+    await resend.emails.send({
+      from: EMAIL_FROM,
+      to: studentEmail,
+      subject: 'თქვენი მენტორის სესია დადასტურებულია',
+      html: studentHtml,
+      attachments: [{ filename: 'mentorship-session.ics', content: Buffer.from(ics, 'utf-8') }],
+    });
+  } catch (err) {
+    console.error(`[emailService] Mentorship confirmation email failed for ${studentEmail}:`, err);
   }
 }
 

@@ -40,7 +40,7 @@ const dict = {
     step2Title: 'გახსნა & ამოარქივება',
     step2Body: 'გახსენით ჩამოტვირთული ფაილი (ორჯერ დაწკაპუნებით) და წაიკითხეთ თანდართული README ინსტრუქცია.',
     step3Title: 'გამოყენება',
-    step3Body: 'აკოპირეთ მზა AI ბრძანებები (Prompts) ChatGPT/Claude-ში ან გახსენით UI Kit ფაილი Figma-ში და დაიწყეთ მუშაობა!',
+    step3Body: 'დააკოპირეთ მზა AI ბრძანებები (Prompts) ChatGPT/Claude-ში ან გახსენით UI Kit ფაილი Figma-ში და დაიწყეთ მუშაობა!',
     downloadFailed: 'ჩამოტვირთვა ვერ მოხერხდა.',
     checkoutFailed: 'გადახდის დაწყება ვერ მოხერხდა.',
     businessGateTitle: 'ხელმისაწვდომია მხოლოდ ვერიფიცირებული ბიზნესებისთვის',

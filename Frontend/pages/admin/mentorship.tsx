@@ -14,10 +14,12 @@ import {
   deleteMentorAvailabilityRule,
   updateMentorProfile,
   uploadMentorCv,
+  getAdminMentorshipBookings,
   MentorshipGig,
   MentorshipHelpRequest,
   MentorProfile,
   MentorAvailabilityRule,
+  AdminMentorshipBooking,
 } from '../../src/services/adminMentorshipService';
 
 const DAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -477,6 +479,126 @@ function GeneralHelpRequests() {
   );
 }
 
+const BOOKING_STATUS_BADGE: Record<string, string> = {
+  COMPLETED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
+  FAILED: 'bg-red-50 text-red-700 border-red-200',
+  CANCELLED: 'bg-gray-100 text-gray-500 border-gray-200',
+};
+const BOOKING_STATUS_LABEL: Record<string, string> = {
+  COMPLETED: 'Confirmed',
+  PENDING: 'Pending',
+  FAILED: 'Failed',
+  CANCELLED: 'Cancelled',
+};
+
+// Every paid session across the platform — loads current data on mount and
+// via manual refresh (no push/websocket infrastructure exists anywhere in
+// this codebase; adding one would be new architecture, not a small
+// addition to this one page).
+function BookingsSection() {
+  const [bookings, setBookings] = useState<AdminMentorshipBooking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      setBookings(await getAdminMentorshipBookings());
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return (
+    <div className="mb-10">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Mentorship Bookings</h2>
+          <p className="text-sm text-gray-500 mt-1">Every paid session — mentor, student, time, and Google Meet sync status.</p>
+        </div>
+        <button
+          type="button"
+          onClick={load}
+          disabled={loading}
+          className="shrink-0 rounded-lg border border-gray-300 px-3.5 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+        >
+          {loading ? 'Refreshing…' : 'Refresh'}
+        </button>
+      </div>
+
+      {error ? (
+        <p className="text-sm text-red-600">Could not load bookings.</p>
+      ) : loading && bookings.length === 0 ? (
+        <p className="text-sm text-gray-400">Loading…</p>
+      ) : bookings.length === 0 ? (
+        <p className="text-sm text-gray-500">No mentorship bookings yet.</p>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 text-left text-[11px] uppercase tracking-wide text-gray-400">
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Mentor</th>
+                <th className="px-4 py-3 font-medium">Student</th>
+                <th className="px-4 py-3 font-medium">Scheduled</th>
+                <th className="px-4 py-3 font-medium">Meet Link</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bookings.map((b) => (
+                <tr key={b.id} className="border-b border-gray-100 last:border-0">
+                  <td className="px-4 py-3">
+                    <span
+                      className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${
+                        BOOKING_STATUS_BADGE[b.bogPayment.status] ?? BOOKING_STATUS_BADGE.PENDING
+                      }`}
+                    >
+                      {BOOKING_STATUS_LABEL[b.bogPayment.status] ?? b.bogPayment.status}
+                    </span>
+                    {b.calendarSyncError && (
+                      <span className="block mt-1 text-[10px] text-red-500" title={b.calendarSyncError}>
+                        Calendar sync failed
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-gray-800">
+                    {b.mentor.name}
+                    <span className="block text-[11px] text-gray-400">{b.mentor.email}</span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-800">
+                    {b.student.name}
+                    <span className="block text-[11px] text-gray-400">{b.student.email}</span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    {new Date(b.scheduledAt).toLocaleString('en-GB', { timeZone: 'Asia/Tbilisi' })}
+                  </td>
+                  <td className="px-4 py-3">
+                    {b.googleMeetLink ? (
+                      <a href={b.googleMeetLink} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+                        Join link
+                      </a>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdminMentorshipDashboard() {
   const [queue, setQueue] = useState<MentorshipGig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -512,6 +634,7 @@ function AdminMentorshipDashboard() {
         <title>Mentorship Queue | Admin</title>
       </Head>
       <div className="max-w-4xl">
+        <BookingsSection />
         <MentorAvailabilitySection />
         <GeneralHelpRequests />
 

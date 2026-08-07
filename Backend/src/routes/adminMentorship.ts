@@ -229,4 +229,23 @@ router.delete('/availability/:ruleId', async (req: Request, res: Response) => {
   res.status(204).send();
 });
 
+// ============================================================
+// BOOKINGS — every paid mentorship session, for the admin panel's
+// "ბუკინგები" tab. Loads current data on each visit (this codebase has no
+// websocket/push infrastructure anywhere; a real-time push feed would be
+// new architecture, not a small addition — the frontend just refetches on
+// mount/manual refresh, same pattern as every other admin list page).
+// ============================================================
+router.get('/bookings', async (_req: Request, res: Response) => {
+  const bookings = await prisma.mentorshipBooking.findMany({
+    include: {
+      mentor: userSelect,
+      student: userSelect,
+      bogPayment: { select: { status: true, amount: true, currency: true } },
+    },
+    orderBy: { scheduledAt: 'desc' },
+  });
+  res.json({ data: bookings });
+});
+
 export default router;

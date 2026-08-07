@@ -17,6 +17,7 @@ import { getCurrentPrice, computeCoursePriceWithPromo } from '../services/course
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
 import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
 import { isBusinessToolsCategory, canPurchaseBusinessTools } from '../utils/marketplaceCategories';
+import { sendMentorshipBookingEmails } from '../services/emailService';
 
 const router = Router();
 
@@ -480,6 +481,7 @@ export async function applyBogPaymentResult(
     // Should always exist (created alongside the BogPayment at checkout) —
     // if genuinely missing there's nothing to put on a calendar.
     if (!booking) return;
+    let meetLink: string | null = null;
     try {
       const event = await createMentorshipCalendarEvent({
         studentEmail: booking.student.email,
@@ -491,6 +493,7 @@ export async function applyBogPaymentResult(
         durationMinutes: DEFAULT_SESSION_MINUTES,
         consultationDescription: booking.consultationDescription,
       });
+      meetLink = event.meetLink;
       await prisma.mentorshipBooking.update({
         where: { id: booking.id },
         data: { googleEventId: event.eventId, googleMeetLink: event.meetLink, calendarSyncError: null },
@@ -502,6 +505,26 @@ export async function applyBogPaymentResult(
       const message = err instanceof Error ? err.message : 'Calendar event creation failed.';
       console.error('[bog-callback] Google Calendar event creation failed:', message);
       await prisma.mentorshipBooking.update({ where: { id: booking.id }, data: { calendarSyncError: message } });
+    }
+
+    // Mentor/student/admin confirmation emails fire regardless of whether
+    // the calendar sync above succeeded — meetLink is just null in the
+    // email if it didn't, never a reason to drop the confirmation entirely.
+    try {
+      await sendMentorshipBookingEmails({
+        bookingId: booking.id,
+        mentorName: booking.mentor.name,
+        mentorEmail: booking.mentor.email,
+        studentName: booking.student.name,
+        studentEmail: booking.student.email,
+        studentPhone: booking.studentPhone,
+        scheduledAt: booking.scheduledAt,
+        durationMinutes: DEFAULT_SESSION_MINUTES,
+        meetLink,
+        consultationDescription: booking.consultationDescription,
+      });
+    } catch (err) {
+      console.error('[bog-callback] Mentorship booking emails failed:', err);
     }
   } else if (bogPayment.purpose === 'PRODUCT') {
     await prisma.productPurchase.upsert({
