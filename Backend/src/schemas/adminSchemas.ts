@@ -52,10 +52,16 @@ export const updateBogSettingsSchema = z.object({
 });
 export const mentorProfileSchema = z.object({
   mentorTitle: z.string().trim().max(200).optional(),
+  mentorTitleEn: z.string().trim().max(200).optional(),
   // Minor units (tetri) — same convention as Course.originalPrice.
   mentorHourlyRate: z.number().int().min(0).optional(),
   mentorSkills: z.array(z.string().trim().min(1).max(60)).max(20).optional(),
+  // Picked from a curated checklist in the admin UI, not a DB enum — same
+  // posture as mentorSkills, so this just validates shape/length, not
+  // membership in a specific language list.
+  mentorLanguages: z.array(z.string().trim().min(1).max(40)).max(15).optional(),
   bio: z.string().trim().max(1000).optional(),
+  bioEn: z.string().trim().max(1000).optional(),
 });
 export const mentorAvailabilityRuleSchema = z
   .object({

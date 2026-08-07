@@ -67,9 +67,12 @@ export interface MentorAvailabilityRule {
 export interface MentorProfile extends MentorshipUser {
   avatarUrl: string | null;
   bio: string | null;
+  bioEn: string | null;
   mentorTitle: string | null;
+  mentorTitleEn: string | null;
   mentorHourlyRate: number | null;
   mentorSkills: string[];
+  mentorLanguages: string[];
   cvUrl: string | null;
 }
 
@@ -80,7 +83,15 @@ export async function getMentors(): Promise<MentorProfile[]> {
 
 export async function updateMentorProfile(
   mentorId: string,
-  payload: { mentorTitle?: string; mentorHourlyRate?: number; mentorSkills?: string[]; bio?: string }
+  payload: {
+    mentorTitle?: string;
+    mentorTitleEn?: string;
+    mentorHourlyRate?: number;
+    mentorSkills?: string[];
+    mentorLanguages?: string[];
+    bio?: string;
+    bioEn?: string;
+  }
 ): Promise<MentorProfile> {
   const response = await apiClient.put<{ data: MentorProfile }>(`/admin/mentorship/mentors/${mentorId}/profile`, payload);
   return response.data.data;
@@ -90,6 +101,23 @@ export async function uploadMentorCv(mentorId: string, file: File): Promise<Ment
   const formData = new FormData();
   formData.append('cv', file);
   const response = await apiClient.post<{ data: MentorProfile }>(`/admin/mentorship/mentors/${mentorId}/cv`, formData);
+  return response.data.data;
+}
+
+export async function uploadMentorAvatar(mentorId: string, file: File): Promise<MentorProfile> {
+  const formData = new FormData();
+  formData.append('avatar', file);
+  const response = await apiClient.post<{ data: MentorProfile }>(`/admin/mentorship/mentors/${mentorId}/avatar`, formData);
+  return response.data.data;
+}
+
+export interface TranslateMentorProfileResult {
+  titleEn: string;
+  bioEn: string;
+}
+
+export async function translateMentorProfile(payload: { title: string; bio: string }): Promise<TranslateMentorProfileResult> {
+  const response = await apiClient.post<{ data: TranslateMentorProfileResult }>('/ai/translate-mentor', payload);
   return response.data.data;
 }
 

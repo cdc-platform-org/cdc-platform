@@ -31,16 +31,28 @@ export async function getMentorAvailability(mentorId: string): Promise<MentorAva
   return response.data.data;
 }
 
-// Public mentor directory — no auth required to browse.
+// Public mentor directory — no auth required to browse. titleEn/bioEn are
+// optional twins that fall back to the Georgian fields when unset — same
+// convention as blog posts (see blogTitle/blogDescription helpers).
 export interface PublicMentor {
   id: string;
   name: string;
   avatarUrl: string | null;
   bio: string | null;
+  bioEn: string | null;
   mentorTitle: string | null;
+  mentorTitleEn: string | null;
   mentorHourlyRate: number | null; // minor units (tetri)
   mentorSkills: string[];
+  mentorLanguages: string[];
   cvUrl: string | null;
+}
+
+export function mentorTitle(mentor: PublicMentor, lang: 'ka' | 'en'): string | null {
+  return (lang === 'en' && mentor.mentorTitleEn) || mentor.mentorTitle;
+}
+export function mentorBio(mentor: PublicMentor, lang: 'ka' | 'en'): string | null {
+  return (lang === 'en' && mentor.bioEn) || mentor.bio;
 }
 
 export async function getMentors(): Promise<PublicMentor[]> {

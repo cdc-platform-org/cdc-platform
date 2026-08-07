@@ -244,14 +244,23 @@ model User {
   // at an arbitrary external image.
   avatarUrl        String?
   // Short bio/headline shown on the profile — self-reported, plain text.
+  // Georgian primary; bioEn is optional and falls back to bio when unset,
+  // same twin-field convention as BlogPost.title/titleEn etc.
   bio              String?
+  bioEn            String?
   // Public mentor-directory fields — only meaningful for role Mentor (same
   // not-schema-restricted posture as the business fields below), edited by
   // an admin on /admin/mentorship. mentorHourlyRate is minor units (tetri),
-  // same convention as Course.originalPrice.
+  // same convention as Course.originalPrice. mentorTitleEn follows the same
+  // optional-twin-falls-back-to-Georgian convention as bioEn above.
   mentorTitle      String?
+  mentorTitleEn    String?
   mentorHourlyRate Int?
   mentorSkills     String[] @default([])
+  // Spoken languages, e.g. ["ქართული", "English"] — free-text tags picked
+  // from a curated checklist in the admin UI, not a DB enum (same posture
+  // as mentorSkills).
+  mentorLanguages  String[] @default([])
   // CV/résumé (PDF/DOCX), uploaded via POST /admin/mentorship/mentors/:id/cv
   // — a public CDN URL like the other Bunny-Storage-backed uploads in this
   // codebase; there's nothing sensitive in a mentor's own public CV.

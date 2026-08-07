@@ -142,3 +142,61 @@ fullStory: ${params.fullStory}`;
 
   return result.data;
 }
+
+const mentorProfileTranslationResponseSchema = z.object({
+  titleEn: z.string(),
+  bioEn: z.string(),
+});
+
+export interface TranslateMentorProfileParams {
+  title: string;
+  bio: string;
+}
+
+export interface TranslateMentorProfileResult {
+  titleEn: string;
+  bioEn: string;
+}
+
+// Same shape/reasoning as translateBlogPost/translateStudioCase above —
+// used by the "✨ Auto-Translate to English" button on a mentor's profile
+// in /admin/mentorship.
+export async function translateMentorProfile(params: TranslateMentorProfileParams): Promise<TranslateMentorProfileResult> {
+  if (!client) {
+    throw new AiTranslateError('Gemini is not configured (GEMINI_API_KEY missing).');
+  }
+
+  const prompt = `Translate the following Georgian mentor profile fields into natural, fluent English, suitable for a public mentor-directory listing. Preserve meaning and tone; do not summarize or shorten. Respond with strict JSON matching this shape:
+{"titleEn": string, "bioEn": string}
+
+title: ${params.title}
+bio: ${params.bio}`;
+
+  const model = client.getGenerativeModel({
+    model: 'gemini-flash-latest',
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.3 },
+  });
+
+  let raw: string;
+  try {
+    const result = await model.generateContent(prompt);
+    raw = result.response.text();
+  } catch (err) {
+    throw new AiTranslateError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');
+  }
+  if (!raw) throw new AiTranslateError('Gemini returned an empty response.');
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new AiTranslateError('Gemini returned malformed JSON.');
+  }
+
+  const result = mentorProfileTranslationResponseSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new AiTranslateError('Gemini returned an unexpected translation format.');
+  }
+
+  return result.data;
+}

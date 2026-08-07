@@ -85,20 +85,25 @@ router.post('/requests/:id/resolve', async (req: Request, res: Response) => {
 // checkout by mentorAvailabilityService.assertSlotAvailable(). Distinct from
 // the free-help-request queue above.
 // ============================================================
+const mentorProfileSelect = {
+  id: true,
+  name: true,
+  email: true,
+  avatarUrl: true,
+  bio: true,
+  bioEn: true,
+  mentorTitle: true,
+  mentorTitleEn: true,
+  mentorHourlyRate: true,
+  mentorSkills: true,
+  mentorLanguages: true,
+  cvUrl: true,
+} as const;
+
 router.get('/mentors', async (_req: Request, res: Response) => {
   const mentors = await prisma.user.findMany({
     where: { role: 'Mentor' },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      avatarUrl: true,
-      bio: true,
-      mentorTitle: true,
-      mentorHourlyRate: true,
-      mentorSkills: true,
-      cvUrl: true,
-    },
+    select: mentorProfileSelect,
     orderBy: { name: 'asc' },
   });
   res.json({ data: mentors });
@@ -114,17 +119,7 @@ router.put('/mentors/:mentorId/profile', async (req: Request, res: Response) => 
   const updated = await prisma.user.update({
     where: { id: mentor.id },
     data: result.data,
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      avatarUrl: true,
-      bio: true,
-      mentorTitle: true,
-      mentorHourlyRate: true,
-      mentorSkills: true,
-      cvUrl: true,
-    },
+    select: mentorProfileSelect,
   });
   res.json({ data: updated });
 });
@@ -173,21 +168,63 @@ router.post(
       const updated = await prisma.user.update({
         where: { id: mentor.id },
         data: { cvUrl: url },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          avatarUrl: true,
-          bio: true,
-          mentorTitle: true,
-          mentorHourlyRate: true,
-          mentorSkills: true,
-          cvUrl: true,
-        },
+        select: mentorProfileSelect,
       });
       res.status(201).json({ data: updated });
     } catch (err) {
       const message = err instanceof BunnyStorageUploadError ? err.message : 'CV upload failed. Please try again.';
+      res.status(500).json({ message });
+    }
+  }
+);
+
+// Avatar/profile photo — PNG or JPG only, same Bunny Storage flow as the
+// CV upload above and the digital-store product cover images
+// (services/imageStorage.ts). Same field the mentor's own self-service
+// /dashboard/settings avatar upload writes to (User.avatarUrl) — an admin
+// setting it here just overwrites whatever's already there.
+const AVATAR_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    if (AVATAR_MIME_TYPES.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Only PNG or JPG images are allowed.'));
+  },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB, same ceiling as other image uploads
+});
+
+router.post(
+  '/mentors/:mentorId/avatar',
+  (req: Request, res: Response, next: NextFunction) => {
+    avatarUpload.single('avatar')(req, res, (err: any) => {
+      if (!err) return next();
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ message: 'The image exceeds 10MB.' });
+      }
+      return res.status(400).json({ message: err.message || 'Only PNG or JPG images are allowed.' });
+    });
+  },
+  async (req: Request, res: Response) => {
+    if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
+    const mentor = await prisma.user.findUnique({ where: { id: req.params.mentorId } });
+    if (!mentor || mentor.role !== 'Mentor') return res.status(404).json({ message: 'Mentor not found.' });
+
+    const filename = `avatar-${mentor.id}-${Date.now()}${path.extname(req.file.originalname) || '.jpg'}`;
+    try {
+      const url = await uploadImage({
+        buffer: req.file.buffer,
+        mimetype: req.file.mimetype,
+        folderName: 'mentor-avatars',
+        filename,
+      });
+      const updated = await prisma.user.update({
+        where: { id: mentor.id },
+        data: { avatarUrl: url },
+        select: mentorProfileSelect,
+      });
+      res.status(201).json({ data: updated });
+    } catch (err) {
+      const message = err instanceof BunnyStorageUploadError ? err.message : 'Avatar upload failed. Please try again.';
       res.status(500).json({ message });
     }
   }

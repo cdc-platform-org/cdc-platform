@@ -14,6 +14,8 @@ import {
   deleteMentorAvailabilityRule,
   updateMentorProfile,
   uploadMentorCv,
+  uploadMentorAvatar,
+  translateMentorProfile,
   getAdminMentorshipBookings,
   attachBookingRecording,
   MentorshipGig,
@@ -22,6 +24,11 @@ import {
   MentorAvailabilityRule,
   AdminMentorshipBooking,
 } from '../../src/services/adminMentorshipService';
+
+// Curated checklist, not a DB enum (see mentorLanguages' schema comment) —
+// values are stored/displayed exactly as written here (mixed-script by
+// design, matching how each language names itself).
+const LANGUAGE_OPTIONS = ['ქართული', 'English', 'Русский', 'Deutsch'];
 
 const DAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -54,11 +61,24 @@ function MentorAvailabilitySection() {
   const [timeForm, setTimeForm] = useState({ startTime: '18:00', endTime: '22:00' });
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
 
-  const [profileForm, setProfileForm] = useState({ mentorTitle: '', mentorHourlyRateGel: '', mentorSkills: '', bio: '' });
+  const [profileForm, setProfileForm] = useState({
+    mentorTitle: '',
+    mentorTitleEn: '',
+    mentorHourlyRateGel: '',
+    mentorSkills: '',
+    mentorLanguages: [] as string[],
+    bio: '',
+    bioEn: '',
+  });
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [uploadingCv, setUploadingCv] = useState(false);
   const [cvError, setCvError] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [activeLangTab, setActiveLangTab] = useState<'ka' | 'en'>('ka');
+  const [translating, setTranslating] = useState(false);
+  const [translateError, setTranslateError] = useState<string | null>(null);
 
   const selectedMentor = mentors.find((m) => m.id === selectedMentorId);
 
@@ -77,12 +97,26 @@ function MentorAvailabilitySection() {
     if (!mentor) return;
     setProfileForm({
       mentorTitle: mentor.mentorTitle ?? '',
+      mentorTitleEn: mentor.mentorTitleEn ?? '',
       mentorHourlyRateGel: mentor.mentorHourlyRate != null ? String(mentor.mentorHourlyRate / 100) : '',
       mentorSkills: mentor.mentorSkills.join(', '),
+      mentorLanguages: mentor.mentorLanguages,
       bio: mentor.bio ?? '',
+      bioEn: mentor.bioEn ?? '',
     });
     setProfileSaved(false);
+    setActiveLangTab('ka');
+    setTranslateError(null);
   }, [selectedMentorId, mentors]);
+
+  const toggleLanguage = (lang: string) => {
+    setProfileForm((f) => ({
+      ...f,
+      mentorLanguages: f.mentorLanguages.includes(lang)
+        ? f.mentorLanguages.filter((l) => l !== lang)
+        : [...f.mentorLanguages, lang],
+    }));
+  };
 
   const handleSaveProfile = async () => {
     setSavingProfile(true);
@@ -90,6 +124,7 @@ function MentorAvailabilitySection() {
     try {
       const updated = await updateMentorProfile(selectedMentorId, {
         mentorTitle: profileForm.mentorTitle.trim() || undefined,
+        mentorTitleEn: profileForm.mentorTitleEn.trim() || undefined,
         mentorHourlyRate: profileForm.mentorHourlyRateGel
           ? Math.round(Number(profileForm.mentorHourlyRateGel) * 100)
           : undefined,
@@ -97,12 +132,32 @@ function MentorAvailabilitySection() {
           .split(',')
           .map((s) => s.trim())
           .filter(Boolean),
+        mentorLanguages: profileForm.mentorLanguages,
         bio: profileForm.bio.trim() || undefined,
+        bioEn: profileForm.bioEn.trim() || undefined,
       });
       setMentors((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
       setProfileSaved(true);
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  const handleAutoTranslate = async () => {
+    setTranslateError(null);
+    if (profileForm.mentorTitle.trim().length < 2 || profileForm.bio.trim().length < 5) {
+      setTranslateError('Fill in the Georgian Title and Bio before translating.');
+      return;
+    }
+    setTranslating(true);
+    try {
+      const translated = await translateMentorProfile({ title: profileForm.mentorTitle.trim(), bio: profileForm.bio.trim() });
+      setProfileForm((f) => ({ ...f, mentorTitleEn: translated.titleEn, bioEn: translated.bioEn }));
+      setActiveLangTab('en');
+    } catch (err: any) {
+      setTranslateError(err?.response?.data?.message ?? 'Translation failed. Please try again.');
+    } finally {
+      setTranslating(false);
     }
   };
 
@@ -118,6 +173,22 @@ function MentorAvailabilitySection() {
       setCvError(err?.response?.data?.message || 'CV upload failed. Please try again.');
     } finally {
       setUploadingCv(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleUploadAvatar = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedMentorId) return;
+    setAvatarError(null);
+    setUploadingAvatar(true);
+    try {
+      const updated = await uploadMentorAvatar(selectedMentorId, file);
+      setMentors((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+    } catch (err: any) {
+      setAvatarError(err?.response?.data?.message || 'Avatar upload failed. Please try again.');
+    } finally {
+      setUploadingAvatar(false);
       e.target.value = '';
     }
   };
@@ -226,27 +297,87 @@ function MentorAvailabilitySection() {
           ))}
         </select>
 
-        <div className="grid sm:grid-cols-2 gap-4 mb-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Title / Position</label>
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-gray-700 mb-1">Avatar / Profile Photo (PNG or JPG)</label>
+          <div className="flex items-center gap-3">
+            {selectedMentor?.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={selectedMentor.avatarUrl}
+                alt={selectedMentor.name}
+                className="w-14 h-14 rounded-full object-cover border border-gray-200"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white font-black text-lg">
+                {selectedMentor?.name.charAt(0).toUpperCase() ?? '?'}
+              </div>
+            )}
+            <label className="inline-block text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-2 rounded-lg cursor-pointer hover:bg-indigo-100">
+              <input type="file" accept="image/png,image/jpeg" onChange={handleUploadAvatar} disabled={uploadingAvatar || !selectedMentorId} className="hidden" />
+              {uploadingAvatar ? 'Uploading…' : selectedMentor?.avatarUrl ? 'Replace Photo' : 'Upload Photo'}
+            </label>
+          </div>
+          {avatarError && <p className="text-xs text-red-600 mt-1.5">{avatarError}</p>}
+        </div>
+
+        <div className="flex items-center justify-between border-b border-gray-200 mb-3">
+          <div className="flex gap-1">
+            {(['ka', 'en'] as const).map((tabLang) => (
+              <button
+                key={tabLang}
+                type="button"
+                onClick={() => setActiveLangTab(tabLang)}
+                className={`px-3.5 py-2 text-xs font-semibold border-b-2 -mb-px transition-colors bg-transparent cursor-pointer ${
+                  activeLangTab === tabLang ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                {tabLang === 'ka' ? '🇬🇪 ქართული' : '🇬🇧 English'}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={handleAutoTranslate}
+            disabled={translating}
+            className="mb-1.5 text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg disabled:opacity-60"
+          >
+            {translating ? 'Translating…' : '✨ Auto-Translate to English'}
+          </button>
+        </div>
+        {translateError && <p className="text-xs text-red-600 mb-3">{translateError}</p>}
+
+        {activeLangTab === 'ka' ? (
+          <div className="mb-3">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Title / Position (KA)</label>
             <input
               value={profileForm.mentorTitle}
               onChange={(e) => setProfileForm({ ...profileForm, mentorTitle: e.target.value })}
+              placeholder="e.g. უფროსი პროდუქტის დიზაინერი"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+        ) : (
+          <div className="mb-3">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Title / Position (EN)</label>
+            <input
+              value={profileForm.mentorTitleEn}
+              onChange={(e) => setProfileForm({ ...profileForm, mentorTitleEn: e.target.value })}
               placeholder="e.g. Senior Product Designer"
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Hourly Rate (GEL / ₾)</label>
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              value={profileForm.mentorHourlyRateGel}
-              onChange={(e) => setProfileForm({ ...profileForm, mentorHourlyRateGel: e.target.value })}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-            />
-          </div>
+        )}
+
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-gray-700 mb-1">Hourly Rate (GEL / ₾)</label>
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            value={profileForm.mentorHourlyRateGel}
+            onChange={(e) => setProfileForm({ ...profileForm, mentorHourlyRateGel: e.target.value })}
+            className="w-full sm:w-1/2 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
         </div>
         <div className="mb-3">
           <label className="block text-xs font-medium text-gray-700 mb-1">Core Skills (comma-separated)</label>
@@ -257,15 +388,46 @@ function MentorAvailabilitySection() {
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
           />
         </div>
-        <div className="mb-4">
-          <label className="block text-xs font-medium text-gray-700 mb-1">Bio</label>
-          <textarea
-            value={profileForm.bio}
-            onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
-            rows={2}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-          />
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-gray-700 mb-1">Spoken Languages / საუბრის ენები</label>
+          <div className="flex flex-wrap gap-1.5">
+            {LANGUAGE_OPTIONS.map((langOption) => (
+              <button
+                key={langOption}
+                type="button"
+                onClick={() => toggleLanguage(langOption)}
+                className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors ${
+                  profileForm.mentorLanguages.includes(langOption)
+                    ? 'bg-indigo-600 border-indigo-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {langOption}
+              </button>
+            ))}
+          </div>
         </div>
+        {activeLangTab === 'ka' ? (
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Bio (KA)</label>
+            <textarea
+              value={profileForm.bio}
+              onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
+              rows={2}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+        ) : (
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Bio (EN)</label>
+            <textarea
+              value={profileForm.bioEn}
+              onChange={(e) => setProfileForm({ ...profileForm, bioEn: e.target.value })}
+              rows={2}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+        )}
         <div className="mb-5">
           <label className="block text-xs font-medium text-gray-700 mb-1">CV / Resume (PDF or DOCX)</label>
           <div className="flex items-center gap-3">
