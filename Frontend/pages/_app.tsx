@@ -12,6 +12,13 @@ import TermsConsentModal from '@/src/components/auth/TermsConsentModal';
 import type { AppProps } from 'next/app';
 import '@/styles/globals.css';
 
+// next/font/local was tried here and reverted: the current
+// public/fonts/gl-kirovi-bold-39756223608.ttf is a corrupted TTF (valid
+// sfnt header, but a garbled/out-of-bounds table directory — see the
+// commit message for the diagnostic). next/font's own parser throws a
+// hard build error on it, and for the same reason no browser can render
+// it either via plain @font-face. Needs a valid replacement file before
+// any loading method will work — reintroduce next/font/local then.
 function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   // FloatingButtons only renders on the homepage (see FloatingButtons.tsx) —

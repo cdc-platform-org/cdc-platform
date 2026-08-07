@@ -2,9 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom Georgian typeface. NOTE: the actual file on disk is spelled
-   "gl-kirovi" (with a v), not "kirobi" — using the wrong spelling here
-   would 404 the font file and silently fall back to sans-serif. */
+/* Custom Georgian typeface, body/form-element path. NOTE: the actual file
+   on disk is spelled "gl-kirovi" (with a v), not "kirobi" — using the
+   wrong spelling here would 404 the font file and silently fall back to
+   sans-serif. */
 @font-face {
   font-family: 'GL-Kirovi';
   src: url('/fonts/gl-kirovi-bold-39756223608.ttf') format('truetype');

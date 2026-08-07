@@ -16,10 +16,8 @@ module.exports = {
           darkBg: '#0b0f19',
         }
       },
-      // Custom Georgian typeface (see the @font-face + h1/h2/h3 rule in
-      // pages/_app.tsx, which already applies it site-wide via !important).
-      // Exposed here too as an explicit `font-heading` utility for any
-      // element that wants the heading typeface without being an h1-h3.
+      // Custom Georgian typeface (see the @font-face + heading rule in
+      // styles/globals.css, applied site-wide via !important).
       fontFamily: {
         heading: ['GL-Kirovi', 'Fira GO', 'sans-serif'],
         sans: ['GL-Kirovi', 'Fira GO', 'sans-serif'],
