@@ -80,20 +80,22 @@ export default function SiteHeader() {
   const dashboardHref = user?.adminRole ? '/admin' : '/dashboard';
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-[#0e1422]/90 backdrop-blur-md px-4 sm:px-6 py-4 overflow-x-hidden">
+    <nav className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-[#0e1422]/90 backdrop-blur-md px-4 sm:px-6 py-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
         <Link href="/" className="flex items-center gap-2.5 shrink-0 no-underline text-current">
           <Image src="/images/cdc-logo.png" alt="CDC" width={40} height={40} className="h-9 w-auto rounded-xl object-cover" />
           <span className="hidden sm:inline font-bold text-sm tracking-wide text-slate-900 dark:text-white">CDC</span>
         </Link>
 
-        {/* min-w-0 (not shrink-0) lets this whole cluster actually shrink
-            under pressure — the nav-links block below is the one allowed to
-            clip (overflow-hidden), never the actions group at the end
-            (lang/theme/login/burger), which stays shrink-0 so it's always
+        {/* The nav-links block below is sized to genuinely fit (tight gap +
+            text-xs) rather than relying on overflow-hidden to clip it —
+            overflow-hidden here previously also clipped the About/
+            Marketplace dropdown panels, which are absolutely-positioned
+            descendants that extend below the row. The actions group at the
+            end (lang/theme/login/burger) stays shrink-0 so it's always
             fully visible regardless of how long the KA nav labels get. */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <div className="hidden md:flex items-center gap-3 text-xs font-bold text-slate-600 dark:text-slate-300 min-w-0 overflow-hidden">
+          <div className="hidden md:flex items-center gap-2 lg:gap-3 text-xs font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
             <Link href="/community" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
               {t.community}
             </Link>

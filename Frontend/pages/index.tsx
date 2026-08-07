@@ -386,7 +386,7 @@ export default function Home() {
           the page wrapper's own overflow-hidden (see the root div above), so
           nothing is needed here. The row is sized to FIT at every breakpoint
           (see the link/search sizing below) rather than relying on clipping. */}
-      <nav className={`sticky top-0 z-50 w-full max-w-full overflow-x-hidden border-b px-4 sm:px-6 md:px-12 py-4 sm:py-5 ${darkMode ? 'border-slate-800 bg-[#0e1422]/90 backdrop-blur-md' : 'border-slate-200/60 bg-white/90 backdrop-blur-md'}`}>
+      <nav className={`sticky top-0 z-50 w-full max-w-full border-b px-4 sm:px-6 md:px-12 py-4 sm:py-5 ${darkMode ? 'border-slate-800 bg-[#0e1422]/90 backdrop-blur-md' : 'border-slate-200/60 bg-white/90 backdrop-blur-md'}`}>
         <div className="max-w-7xl mx-auto flex justify-between items-center gap-2 sm:gap-4">
           <Link href="/" className="flex items-center space-x-3 shrink-0 no-underline text-current">
             <Image
@@ -415,9 +415,9 @@ export default function Home() {
               `xl`. At 1024px the five Georgian labels at text-base overflowed
               the row, so the last one ("ბლოგი") rendered clipped to "ბლ" —
               sizing the row to fit is the fix; the nav no longer clips. */}
-          <div className={`hidden lg:flex items-center space-x-3 xl:space-x-8 text-sm xl:text-base font-bold tracking-wide min-w-0 overflow-hidden whitespace-nowrap ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
+          <div className={`hidden lg:flex items-center gap-2 lg:gap-3 xl:gap-6 text-[13px] xl:text-base font-bold tracking-wide whitespace-nowrap ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
             <div className="relative group py-2 -my-2">
-              <span className="hover:text-cyan-500 transition cursor-pointer">{translate('ჩვენ შესახებ', 'About Us')} ▾</span>
+              <Link href="/about" className="hover:text-cyan-500 transition no-underline text-current">{translate('ჩვენ შესახებ', 'About Us')} ▾</Link>
               {/* z-[60] outranks the hero's own layers and the nav's z-50 base,
                   so the panel always paints above the hero below it. */}
               <div

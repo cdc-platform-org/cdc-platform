@@ -9,9 +9,9 @@ interface SiteFooterProps {
   lang: 'GEO' | 'ENG';
 }
 
-// No verified LinkedIn URL exists anywhere in the codebase (checked
-// src/data/merchantInfo.ts) — only these three are real, live accounts,
-// so only these three are rendered. Never fabricate a social link.
+// LinkedIn intentionally omitted: no verified LinkedIn URL exists anywhere
+// in the codebase (checked src/data/merchantInfo.ts) — only these three
+// are real, live accounts. Never fabricate a social link.
 const SOCIAL_LINKS = [
   {
     name: 'Facebook',
@@ -43,38 +43,48 @@ const SOCIAL_LINKS = [
 const STRINGS = {
   GEO: {
     tagline: 'ვასწავლით ციფრულ პროფესიებს გურიაში — HEKS/EPER Georgia-ს მხარდაჭერით.',
-    linksHeading: 'გვერდები',
-    about: 'ჩვენ შესახებ',
+    coursesHeading: 'კურსები',
     courses: 'კურსები',
-    marketplace: 'ციფრული მაღაზია',
-    community: 'ვაკანსიები და პროექტები',
+    cases: 'სტუდენტების ნამუშევრები',
+    trainers: 'ტრენერები',
+    gallery: 'ფოტოგალერეა',
+    communityHeading: 'საზოგადოება',
+    jobs: 'ვაკანსიები და პროექტები',
+    mentors: 'მენტორები',
     forum: 'ფორუმი',
+    marketplace: 'ციფრული მაღაზია',
     studio: 'CDC Studio',
+    helpHeading: 'დახმარება',
+    about: 'ჩვენ შესახებ',
+    contactPage: 'დაგვიკავშირდით',
     legalHeading: 'სამართლებრივი',
     privacy: 'კონფიდენციალურობის პოლიტიკა',
     terms: 'წესები და პირობები',
     refund: 'თანხის დაბრუნების პოლიტიკა',
-    contactHeading: 'კონტაქტი',
-    contactPage: 'დაგვიკავშირდით',
     rights: 'ყველა უფლება დაცულია.',
     followUs: 'გამოგვყევით',
     weAccept: 'მიიღება გადახდა',
   },
   ENG: {
     tagline: 'Teaching digital professions in Guria — supported by HEKS/EPER Georgia.',
-    linksHeading: 'Pages',
-    about: 'About Us',
-    courses: 'Courses',
-    marketplace: 'Marketplace',
-    community: 'Jobs & Projects',
+    coursesHeading: 'Courses',
+    courses: 'All Courses',
+    cases: 'Student Cases',
+    trainers: 'Trainers',
+    gallery: 'Photo Gallery',
+    communityHeading: 'Community',
+    jobs: 'Jobs & Projects',
+    mentors: 'Mentors',
     forum: 'Forum',
+    marketplace: 'Marketplace',
     studio: 'CDC Studio',
+    helpHeading: 'Help',
+    about: 'About Us',
+    contactPage: 'Get in Touch',
     legalHeading: 'Legal',
     privacy: 'Privacy Policy',
     terms: 'Terms & Conditions',
     refund: 'Refund Policy',
-    contactHeading: 'Contact',
-    contactPage: 'Get in Touch',
     rights: 'All rights reserved.',
     followUs: 'Follow Us',
     weAccept: 'We Accept',
@@ -111,8 +121,8 @@ export default function SiteFooter({ lang }: SiteFooterProps) {
       </div>
 
       <div className={`bg-gradient-to-b from-indigo-950 via-slate-900 to-black text-slate-300 -mt-px ${noHoverFx}`}>
-        <div className={`max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 ${noHoverFx}`}>
-          {/* Brand — glassmorphism card with a soft glow behind the logo badge */}
+        <div className={`max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 ${noHoverFx}`}>
+          {/* Company — glassmorphism card with a soft glow behind the logo badge */}
           <div className={`relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5 ${noHoverFx}`}>
             <div className={`flex items-center gap-2.5 mb-3 ${noHoverFx}`}>
               <div className="relative">
@@ -142,33 +152,35 @@ export default function SiteFooter({ lang }: SiteFooterProps) {
             </div>
           </div>
 
-          {/* Quick links */}
+          {/* Courses */}
           <div className={noHoverFx}>
-            <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.linksHeading}</h3>
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.coursesHeading}</h3>
             <ul className="space-y-2.5 text-xs">
-              <li><Link href="/about" className={navLink}>{t.about}</Link></li>
               <li><Link href="/courses" className={navLink}>{t.courses}</Link></li>
+              <li><Link href="/cases" className={navLink}>{t.cases}</Link></li>
+              <li><Link href="/trainers" className={navLink}>{t.trainers}</Link></li>
+              <li><Link href="/gallery" className={navLink}>{t.gallery}</Link></li>
+            </ul>
+          </div>
+
+          {/* Community */}
+          <div className={noHoverFx}>
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.communityHeading}</h3>
+            <ul className="space-y-2.5 text-xs">
+              <li><Link href="/community" className={navLink}>{t.jobs}</Link></li>
+              <li><Link href="/mentors" className={navLink}>{t.mentors}</Link></li>
               <li><Link href="/marketplace" className={navLink}>{t.marketplace}</Link></li>
-              <li><Link href="/community" className={navLink}>{t.community}</Link></li>
               <li><Link href="/forum" className={navLink}>{t.forum}</Link></li>
               <li><Link href="/agency" className={navLink}>{t.studio}</Link></li>
             </ul>
           </div>
 
-          {/* Legal links */}
+          {/* Help */}
           <div className={noHoverFx}>
-            <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.legalHeading}</h3>
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.helpHeading}</h3>
             <ul className="space-y-2.5 text-xs">
-              <li><Link href="/privacy" className={navLink}>{t.privacy}</Link></li>
-              <li><Link href="/terms" className={navLink}>{t.terms}</Link></li>
-              <li><Link href="/refund-policy" className={navLink}>{t.refund}</Link></li>
-            </ul>
-          </div>
-
-          {/* Contact */}
-          <div className={noHoverFx}>
-            <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.contactHeading}</h3>
-            <ul className="space-y-2.5 text-xs">
+              <li><Link href="/about" className={navLink}>{t.about}</Link></li>
+              <li><Link href="/contact" className={navLink}>{t.contactPage}</Link></li>
               <li>
                 <a href={`mailto:${merchantInfo.email}`} className={navLink}>
                   {merchantInfo.email}
@@ -179,11 +191,16 @@ export default function SiteFooter({ lang }: SiteFooterProps) {
                   {merchantInfo.phone}
                 </a>
               </li>
-              <li>
-                <Link href="/contact" className={navLink}>
-                  {t.contactPage}
-                </Link>
-              </li>
+            </ul>
+          </div>
+
+          {/* Legal */}
+          <div className={noHoverFx}>
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.legalHeading}</h3>
+            <ul className="space-y-2.5 text-xs">
+              <li><Link href="/privacy" className={navLink}>{t.privacy}</Link></li>
+              <li><Link href="/terms" className={navLink}>{t.terms}</Link></li>
+              <li><Link href="/refund-policy" className={navLink}>{t.refund}</Link></li>
             </ul>
           </div>
         </div>
@@ -223,10 +240,17 @@ export default function SiteFooter({ lang }: SiteFooterProps) {
             <p>
               {merchantInfo.addressKa} / {merchantInfo.addressEn}
             </p>
-            <p className="pt-2 text-slate-600">
-              © {year} {lang === 'GEO' ? merchantInfo.orgNameKa : merchantInfo.orgNameEn}. {t.rights}
-            </p>
           </div>
+        </div>
+
+        {/* Clean bottom bar — centered copyright, with generous bottom
+            clearance so it never sits under the fixed bottom-right
+            floating buttons (WhatsApp / AI bot / scroll-to-top) on mobile
+            or desktop. */}
+        <div className={`border-t border-white/10 ${noHoverFx}`}>
+          <p className="max-w-7xl mx-auto px-6 pt-6 pb-16 md:pb-20 text-center text-[11px] text-slate-600">
+            © {year} {lang === 'GEO' ? merchantInfo.orgNameKa : merchantInfo.orgNameEn}. {t.rights}
+          </p>
         </div>
       </div>
     </footer>

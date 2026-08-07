@@ -42,8 +42,12 @@ function App({ Component, pageProps }: AppProps) {
             line-height: 1.6 !important;
           }
 
-          /* სათაურის ხაზებს შორის დაშორება */
+          /* სათაურის ხაზებს შორის დაშორება — heading font-family is set
+             explicitly here too (not just inherited from the html/body
+             rule above) so no per-element Tailwind font utility can ever
+             silently override the intended Georgian heading typeface. */
           h1, h2, h3 {
+            font-family: 'GL-Kirovi', 'Fira GO', sans-serif !important;
             letter-spacing: 0.05em !important;
             line-height: 1.65 !important;
           }
