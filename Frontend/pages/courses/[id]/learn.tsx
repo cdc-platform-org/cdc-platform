@@ -7,6 +7,7 @@ import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import BackButton from '../../../src/components/common/BackButton';
 import CourseVideoPlayer from '../../../src/components/courses/CourseVideoPlayer';
+import CourseTutorPanel from '../../../src/components/courses/CourseTutorPanel';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useEscapeToClose } from '../../../src/hooks/useEscapeToClose';
 import { LmsSection, LmsLesson, CourseProgressSummary, Course, ExamStatus, AssignmentSubmission } from '../../../src/types/lms';
@@ -596,6 +597,16 @@ function LearnContent() {
             </div>
           </div>
         </div>
+      )}
+
+      {courseId && activeLesson && (
+        <CourseTutorPanel
+          courseId={courseId}
+          lessonId={activeLesson.id}
+          courseTitle={course.title}
+          lessonTitle={activeLesson.title}
+          lang={lang}
+        />
       )}
     </div>
   );

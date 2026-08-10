@@ -237,3 +237,20 @@ export async function gradeSubmission(id: string, status: 'APPROVED' | 'NEEDS_RE
   const response = await apiClient.post<{ data: AssignmentSubmission }>(`/courses/admin/submissions/${id}/grade`, { status, feedback });
   return response.data.data;
 }
+
+// --- AI Course Tutor ---
+
+export interface TutorChatTurn {
+  role: 'USER' | 'ASSISTANT';
+  content: string;
+}
+
+export async function askCourseTutor(params: {
+  courseId: string;
+  lessonId: string;
+  userMessage: string;
+  chatHistory: TutorChatTurn[];
+}): Promise<string> {
+  const response = await apiClient.post<{ reply: string }>('/ai/course-tutor', params);
+  return response.data.reply;
+}

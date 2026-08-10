@@ -311,27 +311,34 @@ declare global {
 }
 
 // Enrolled students OR any admin-team member (for authoring/preview) may
-// access a course's curriculum/progress/certificate. Attaches req.isAdminTeamMember
-// so handlers can tell the two apart (e.g. certificates only make sense for
-// students who actually completed the course).
+// access a course. Exported so other route files needing the same rule
+// (e.g. the AI course tutor in routes/ai.ts, which checks access on a body
+// field rather than a URL param and so can't use the middleware directly)
+// can reuse this instead of re-implementing the enrollment check.
+export async function checkCourseAccess(
+  userId: string,
+  courseId: string
+): Promise<{ allowed: boolean; isAdminTeamMember: boolean }> {
+  const admin = await prisma.user.findUnique({ where: { id: userId }, select: { adminRole: true } });
+  if (admin?.adminRole) return { allowed: true, isAdminTeamMember: true };
+
+  const enrollment = await prisma.courseEnrollment.findUnique({
+    where: { userId_courseId: { userId, courseId } },
+  });
+  return { allowed: !!enrollment, isAdminTeamMember: false };
+}
+
+// Attaches req.isAdminTeamMember so handlers can tell the two apart (e.g.
+// certificates only make sense for students who actually completed the
+// course).
 async function requireCourseAccess(req: Request, res: Response, next: NextFunction) {
   const courseId = req.params.id ?? req.params.courseId;
   const course = await prisma.course.findUnique({ where: { id: courseId } });
   if (!course) return res.status(404).json({ message: 'Course not found.' });
 
-  const admin = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } });
-  if (admin?.adminRole) {
-    req.isAdminTeamMember = true;
-    return next();
-  }
-
-  const enrollment = await prisma.courseEnrollment.findUnique({
-    where: { userId_courseId: { userId: req.user!.id, courseId } },
-  });
-  if (!enrollment) {
-    return res.status(403).json({ message: 'You are not enrolled in this course.' });
-  }
-  req.isAdminTeamMember = false;
+  const { allowed, isAdminTeamMember } = await checkCourseAccess(req.user!.id, courseId);
+  if (!allowed) return res.status(403).json({ message: 'You are not enrolled in this course.' });
+  req.isAdminTeamMember = isAdminTeamMember;
   next();
 }
 

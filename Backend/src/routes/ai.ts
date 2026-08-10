@@ -1,6 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { authenticate, requireAdminRole } from '../middleware/auth';
+import { rateLimit } from '../middleware/rateLimit';
+import { prisma } from '../lib/prisma';
+import { checkCourseAccess } from './courses';
 import {
   translateBlogPost,
   translateStudioCase,
@@ -8,6 +11,7 @@ import {
   isAiTranslateConfigured,
   AiTranslateError,
 } from '../services/aiTranslateService';
+import { generateTutorReply, isCourseTutorConfigured, CourseTutorError } from '../services/courseTutorService';
 
 const router = Router();
 
@@ -26,6 +30,17 @@ const translateStudioCaseSchema = z.object({
 const translateMentorProfileSchema = z.object({
   title: z.string().min(1),
   bio: z.string().min(1),
+});
+
+const courseTutorSchema = z.object({
+  courseId: z.string().min(1),
+  lessonId: z.string().min(1),
+  userMessage: z.string().min(1).max(4000),
+  chatHistory: z
+    .array(z.object({ role: z.enum(['USER', 'ASSISTANT']), content: z.string() }))
+    .max(30)
+    .optional()
+    .default([]),
 });
 
 // Admin-only — used by the "✨ Auto-Translate to English" button in
@@ -92,6 +107,56 @@ router.post('/translate-mentor', authenticate, requireAdminRole('SUPER_ADMIN', '
     res.json({ data: translated });
   } catch (err) {
     if (err instanceof AiTranslateError) {
+      return res.status(502).json({ message: err.message });
+    }
+    throw err;
+  }
+});
+
+// Every logged-in enrolled student (not admin-only, unlike the routes
+// above) — this is the student-facing in-course AI Tutor. IP-keyed rate
+// limit since a chat endpoint is the obvious abuse target for burning
+// Gemini quota; 20 messages/5min is generous for a real study session.
+const courseTutorRateLimit = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 20,
+  message: 'Too many tutor messages. Please wait a moment before sending more.',
+});
+
+router.post('/course-tutor', authenticate, courseTutorRateLimit, async (req: Request, res: Response) => {
+  if (!isCourseTutorConfigured()) {
+    return res.status(501).json({ message: 'AI Course Tutor is not configured yet (GEMINI_API_KEY).' });
+  }
+
+  const result = courseTutorSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+  const { courseId, lessonId, userMessage, chatHistory } = result.data;
+
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    include: { section: { include: { course: true } } },
+  });
+  if (!lesson || lesson.section.courseId !== courseId) {
+    return res.status(404).json({ message: 'Lesson not found.' });
+  }
+
+  const { allowed } = await checkCourseAccess(req.user!.id, courseId);
+  if (!allowed) return res.status(403).json({ message: 'You are not enrolled in this course.' });
+
+  try {
+    const reply = await generateTutorReply({
+      courseTitle: lesson.section.course.title,
+      courseDescription: lesson.section.course.description,
+      sectionTitle: lesson.section.title,
+      lessonTitle: lesson.title,
+      assignmentPrompt: lesson.assignmentPrompt,
+      resources: lesson.resources,
+      history: chatHistory,
+      message: userMessage,
+    });
+    res.json({ reply });
+  } catch (err) {
+    if (err instanceof CourseTutorError) {
       return res.status(502).json({ message: err.message });
     }
     throw err;
