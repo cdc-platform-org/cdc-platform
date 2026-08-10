@@ -335,7 +335,7 @@ function SessionsCalendarView({
   const today = new Date();
 
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-4 sm:p-6">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-4 sm:p-6">
       <div className="flex items-center justify-between mb-5">
         <button
           type="button"
@@ -502,7 +502,7 @@ function MentorshipSessionsContent() {
         {loading ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">{t.loading}</p>
         ) : bookings.length === 0 ? (
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-10 text-center">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-10 text-center">
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t.empty}</p>
             <Link
               href="/mentors"

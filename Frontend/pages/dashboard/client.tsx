@@ -689,7 +689,7 @@ function BusinessDashboardContent() {
                       { label: t.statGigs, value: String(activeGigCount), color: 'text-emerald-600 dark:text-emerald-400' },
                       { label: t.statPending, value: String(pendingReviewCount), color: 'text-amber-600 dark:text-amber-400' },
                     ].map((stat) => (
-                      <div key={stat.label} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5">
+                      <div key={stat.label} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-5">
                         <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
                         <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1">{stat.label}</p>
                       </div>
@@ -699,7 +699,7 @@ function BusinessDashboardContent() {
 
                 {activeTab === 'profile' && (
                   <form onSubmit={handleProfileSave} className="space-y-6">
-                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 space-y-4">
+                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4">
                       <div className="flex items-center gap-5">
                         <div className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shrink-0 flex items-center justify-center">
                           {user?.avatarUrl ? (
@@ -742,7 +742,7 @@ function BusinessDashboardContent() {
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 space-y-4">
+                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4">
                       <h2 className="text-sm font-bold">{t.contactTitle}</h2>
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div>
@@ -760,7 +760,7 @@ function BusinessDashboardContent() {
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 space-y-4">
+                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4">
                       <div className="flex items-center justify-between gap-3">
                         <h2 className="text-sm font-bold">{t.kycTitle}</h2>
                         {user && <VerificationBadge status={getVerificationStatus(user)} t={t} />}

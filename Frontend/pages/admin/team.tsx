@@ -99,7 +99,7 @@ function TeamManagement() {
           <p className="text-sm text-gray-500 mt-1">Restricted to SuperAdmin.</p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-8 max-w-xl">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 p-6 mb-8 max-w-xl">
           <h2 className="text-base font-semibold text-gray-900 mb-4">Add Team Member</h2>
           <p className="text-xs text-gray-500 mb-4">
             The user must already have a platform account — this promotes an existing account to an admin tier.
@@ -148,7 +148,7 @@ function TeamManagement() {
         ) : team.length === 0 ? (
           <p className="text-sm text-gray-500">No admin team members yet.</p>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-gray-500 border-b border-gray-100 bg-gray-50">

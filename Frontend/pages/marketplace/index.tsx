@@ -134,7 +134,7 @@ export default function MarketplacePage() {
         ) : error ? (
           <p className="text-sm text-red-500 text-center py-16">{t.loadFailed}</p>
         ) : products.length === 0 ? (
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-16 text-center">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-16 text-center">
             <p className="text-sm text-slate-500 dark:text-slate-400">{t.empty}</p>
           </div>
         ) : (
@@ -143,7 +143,7 @@ export default function MarketplacePage() {
               <Link
                 key={product.id}
                 href={`/store/${product.id}`}
-                className="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 overflow-hidden no-underline text-current hover:border-cyan-400 dark:hover:border-cyan-500 transition-colors flex flex-col"
+                className="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden no-underline text-current hover:border-cyan-400 dark:hover:border-cyan-500 transition-colors flex flex-col"
               >
                 <div className="relative w-full aspect-video bg-slate-100 dark:bg-slate-800">
                   <Image src={product.imageUrl} alt={product.title} fill className="object-cover" unoptimized />

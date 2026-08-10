@@ -252,7 +252,7 @@ function AdminStudioCasesDashboard() {
           <p className="text-sm text-gray-500 mt-1">მართეთ პორტფოლიოს პროექტები, რომლებიც ჩანან /cases გვერდსა და მთავარ გვერდზე.</p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 md:p-8 mb-10">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 p-6 md:p-8 mb-10">
           <h2 className="text-base font-semibold text-gray-900 mb-6">
             {editingId ? 'ქეისის რედაქტირება' : 'ახალი ქეისი'}
           </h2>

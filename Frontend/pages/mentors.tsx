@@ -338,7 +338,7 @@ function MentorCard({ mentor, lang, onBook }: { mentor: PublicMentor; lang: 'ka'
   const title = mentorTitle(mentor, lang);
   const bio = mentorBio(mentor, lang);
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 flex flex-col">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-5 flex flex-col">
       <div className="flex items-center gap-3 mb-3">
         <MentorAvatar mentor={mentor} />
         <div className="min-w-0 flex-1">

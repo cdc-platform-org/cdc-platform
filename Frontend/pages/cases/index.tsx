@@ -108,7 +108,7 @@ export default function StudioCasesPage() {
               <Link
                 key={item.id}
                 href={`/cases/${item.slug}`}
-                className="group block rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 overflow-hidden transition-all duration-300 hover:border-cyan-400/50 hover:shadow-[0_0_25px_rgba(34,211,238,0.15)] no-underline text-current"
+                className="group block rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden transition-all duration-300 hover:border-cyan-400/50 hover:shadow-[0_0_25px_rgba(34,211,238,0.15)] no-underline text-current"
               >
                 <div className="aspect-video overflow-hidden bg-slate-100 dark:bg-slate-800">
                   {item.coverImageUrl && (

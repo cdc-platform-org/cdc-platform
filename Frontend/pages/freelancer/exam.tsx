@@ -233,7 +233,7 @@ function FreelancerExamContent() {
                   key={cat}
                   type="button"
                   onClick={() => handleSelectCategory(cat)}
-                  className="text-left rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 hover:border-cyan-400 dark:hover:border-cyan-500 transition-colors"
+                  className="text-left rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-5 hover:border-cyan-400 dark:hover:border-cyan-500 transition-colors"
                 >
                   <p className="font-bold text-sm">{JOB_CATEGORY_LABEL[cat][lang]}</p>
                 </button>
@@ -243,7 +243,7 @@ function FreelancerExamContent() {
         )}
 
         {!isLocked && phase === 'rules' && category && (
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 overflow-hidden">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden">
             <div className="bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-4">
               <p className="text-xs font-bold uppercase tracking-widest text-cyan-100">{JOB_CATEGORY_LABEL[category][lang]}</p>
               <h2 className="text-lg font-black text-white">ტესტირების წესები და პირობები</h2>
@@ -317,7 +317,7 @@ function FreelancerExamContent() {
                 </span>
               )}
             </div>
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6">
               <p className="text-sm font-bold mb-5">{currentQuestion.question}</p>
               <div className="space-y-2">
                 {(['A', 'B', 'C', 'D'] as const).map((key) => (
@@ -391,7 +391,7 @@ function FreelancerExamContent() {
             </p>
 
             {!result.passed && (
-              <div className="text-left rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 overflow-hidden mb-6">
+              <div className="text-left rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden mb-6">
                 <div className="bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-800/60 px-5 py-3">
                   <h3 className="text-sm font-black">{lang === 'ka' ? 'ტესტირების წესები და პირობები' : 'Exam Rules & Policy'}</h3>
                 </div>

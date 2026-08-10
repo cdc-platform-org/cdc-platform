@@ -351,7 +351,7 @@ export default function BusinessAiTab({ lang }: { lang: 'ka' | 'en' }) {
 
   if (showCreateForm) {
     return (
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 space-y-4 max-w-lg">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4 max-w-lg">
         <h2 className="text-sm font-bold flex items-center gap-2">
           <Bot className="w-4 h-4" />
           {t.newAgent}
@@ -483,7 +483,7 @@ export default function BusinessAiTab({ lang }: { lang: 'ka' | 'en' }) {
           </div>
 
           {subTab === 'config' && (
-            <form onSubmit={handleConfigSave} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 space-y-4 max-w-lg">
+            <form onSubmit={handleConfigSave} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4 max-w-lg">
               {saveError && <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-xs text-red-600 dark:text-red-300">{saveError}</div>}
               <div>
                 <label className={labelClass}>{t.name}</label>
@@ -519,7 +519,7 @@ export default function BusinessAiTab({ lang }: { lang: 'ka' | 'en' }) {
           {subTab === 'knowledge' && (
             <div className="space-y-4">
               <p className="text-xs text-slate-500 dark:text-slate-400">{t.knowledgeHint}</p>
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-4 space-y-3">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-4 space-y-3">
                 <input className={inputClass} placeholder={t.question} value={newQuestion} onChange={(e) => setNewQuestion(e.target.value)} />
                 <textarea rows={2} className={inputClass} placeholder={t.content} value={newContent} onChange={(e) => setNewContent(e.target.value)} />
                 <button
@@ -573,7 +573,7 @@ export default function BusinessAiTab({ lang }: { lang: 'ka' | 'en' }) {
           )}
 
           {subTab === 'embed' && (
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 space-y-3 max-w-2xl">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-3 max-w-2xl">
               <p className="text-xs text-slate-500 dark:text-slate-400">{t.embedHint}</p>
               <pre className="rounded-lg bg-slate-950 text-slate-100 p-4 text-xs overflow-x-auto"><code>{embedSnippet}</code></pre>
               <button
