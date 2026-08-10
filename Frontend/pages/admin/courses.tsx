@@ -53,7 +53,7 @@ function formatGel(minorUnits: number): string {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent';
+  'w-full rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-500 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent';
 
 function CourseForm({
   editingCourse,
@@ -206,27 +206,27 @@ function CourseForm({
       {error && <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
       <div className="grid md:grid-cols-2 gap-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Title</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Title</label>
           <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inputClass} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Category</label>
           <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={inputClass} />
         </div>
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
           Title (English) <span className="text-gray-400 font-normal">— optional, prints as "Title / Title (English)" on the certificate</span>
         </label>
         <input value={form.titleEn} onChange={(e) => setForm({ ...form, titleEn: e.target.value })} className={inputClass} />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Description</label>
         <RichTextEditor rows={3} value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
       </div>
       <div className="grid md:grid-cols-3 gap-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Original Price (GEL / ₾)</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Original Price (GEL / ₾)</label>
           <input
             type="number"
             min={0}
@@ -235,25 +235,25 @@ function CourseForm({
             onChange={(e) => setForm({ ...form, originalPrice: Number(e.target.value) })}
             className={inputClass}
           />
-          <p className="text-xs text-gray-400 mt-1">{formatGel(form.originalPrice * 100)}</p>
+          <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{formatGel(form.originalPrice * 100)}</p>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Mentor Name</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Mentor Name</label>
           <input value={form.mentorName} onChange={(e) => setForm({ ...form, mentorName: e.target.value })} className={inputClass} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Mentor Title</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Mentor Title</label>
           <input value={form.mentorTitle} onChange={(e) => setForm({ ...form, mentorTitle: e.target.value })} className={inputClass} />
         </div>
       </div>
       <div className="grid md:grid-cols-2 gap-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Thumbnail</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Thumbnail</label>
           {editingCourse ? (
             <div className="flex items-center gap-3">
               {form.thumbnailUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={form.thumbnailUrl} alt="" className="w-16 h-16 rounded-lg object-cover border border-gray-200 shrink-0" />
+                <img src={form.thumbnailUrl} alt="" className="w-16 h-16 rounded-lg object-cover border border-gray-200 dark:border-slate-700 shrink-0" />
               )}
               <div>
                 <input ref={thumbnailInputRef} type="file" accept="image/*" onChange={handleThumbnailFile} disabled={thumbnailUploading} className="hidden" id="thumbnail-file-input" />
@@ -267,16 +267,16 @@ function CourseForm({
               </div>
             </div>
           ) : (
-            <p className="text-xs text-gray-400 mt-1">Save the course first, then you can upload a thumbnail image directly.</p>
+            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Save the course first, then you can upload a thumbnail image directly.</p>
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Cover Image (Hero Banner)</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Cover Image (Hero Banner)</label>
           {editingCourse ? (
             <div className="flex items-center gap-3">
               {form.coverImageUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={form.coverImageUrl} alt="" className="w-24 h-14 rounded-lg object-cover border border-gray-200 shrink-0" />
+                <img src={form.coverImageUrl} alt="" className="w-24 h-14 rounded-lg object-cover border border-gray-200 dark:border-slate-700 shrink-0" />
               )}
               <div>
                 <input ref={coverImageInputRef} type="file" accept="image/*" onChange={handleCoverImageFile} disabled={coverImageUploading} className="hidden" id="cover-image-file-input" />
@@ -290,13 +290,13 @@ function CourseForm({
               </div>
             </div>
           ) : (
-            <p className="text-xs text-gray-400 mt-1">Save the course first, then you can upload a cover image directly.</p>
+            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Save the course first, then you can upload a cover image directly.</p>
           )}
         </div>
       </div>
       <div className="grid md:grid-cols-2 gap-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Mentor Avatar</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Mentor Avatar</label>
           {editingCourse ? (
             <div className="flex items-center gap-3">
               {form.mentorAvatarUrl && (
@@ -315,11 +315,11 @@ function CourseForm({
               </div>
             </div>
           ) : (
-            <p className="text-xs text-gray-400 mt-1">Save the course first, then you can upload a mentor avatar directly.</p>
+            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Save the course first, then you can upload a mentor avatar directly.</p>
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Instruction Language</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Instruction Language</label>
           <select
             value={form.language}
             onChange={(e) => setForm({ ...form, language: e.target.value as CourseLanguage })}
@@ -332,8 +332,8 @@ function CourseForm({
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 p-4">
-        <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 cursor-pointer">
+      <div className="rounded-xl border border-gray-200 dark:border-slate-800 p-4">
+        <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-slate-200 cursor-pointer">
           <input
             type="checkbox"
             checked={form.isOnSale}
@@ -347,7 +347,7 @@ function CourseForm({
           <div className="mt-4 space-y-4">
             <div className="grid md:grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Discount</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Discount</label>
                 <select
                   value={form.useCustomDiscount ? 'custom' : String(form.discountPercent)}
                   onChange={(e) => {
@@ -379,7 +379,7 @@ function CourseForm({
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Sale Ends (optional)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Sale Ends (optional)</label>
                 <input
                   type="datetime-local"
                   value={form.discountEndDate}
@@ -398,12 +398,12 @@ function CourseForm({
         )}
       </div>
 
-      <label className="flex items-center gap-2 text-sm text-gray-600">
+      <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300">
         <input
           type="checkbox"
           checked={form.published}
           onChange={(e) => setForm({ ...form, published: e.target.checked })}
-          className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+          className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
         />
         Published
       </label>
@@ -412,7 +412,7 @@ function CourseForm({
           {submitting ? 'Saving…' : editingCourse ? 'Update Course' : 'Create Course'}
         </button>
         {editingCourse && (
-          <button type="button" onClick={onCancel} className="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50">
+          <button type="button" onClick={onCancel} className="rounded-lg border border-gray-300 dark:border-slate-700 px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800">
             Cancel
           </button>
         )}
@@ -543,7 +543,7 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
     <div className="border-t border-gray-100">
       <div className="flex items-center gap-3 px-4 py-2.5 text-sm">
         <span className={`w-2 h-2 rounded-full shrink-0 ${lesson.bunnyVideoId ? 'bg-emerald-500' : 'bg-gray-300'}`} title={lesson.bunnyVideoId ? 'Video set' : 'No video yet'} />
-        <span className="flex-1 truncate text-gray-800">{lesson.title}</span>
+        <span className="flex-1 truncate text-gray-800 dark:text-slate-200">{lesson.title}</span>
         <label className="shrink-0 text-xs font-medium text-indigo-600 hover:text-indigo-800 cursor-pointer px-2 py-1 rounded hover:bg-indigo-50">
           {uploading ? `Uploading ${uploadPct}%…` : lesson.bunnyVideoId ? 'Replace video' : 'Upload video'}
           <input ref={fileInputRef} type="file" accept="video/*" onChange={handleFile} disabled={uploading} className="hidden" />
@@ -551,7 +551,7 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
         <button
           type="button"
           onClick={() => setShowManualInput((v) => !v)}
-          className="shrink-0 text-xs font-medium text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-50"
+          className="shrink-0 text-xs font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 py-1 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
         >
           Set Bunny Video ID
         </button>
@@ -595,7 +595,7 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
             onClick={handleRegenerateSubtitles}
             disabled={regeneratingSubtitles || lesson.subtitlesStatus === 'PROCESSING'}
             title="Re-run ka/en/ru subtitle generation for this lesson's video"
-            className="shrink-0 text-xs font-medium text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-50 disabled:opacity-50"
+            className="shrink-0 text-xs font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 py-1 rounded hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50"
           >
             {regeneratingSubtitles ? '…' : '🔁 CC'}
           </button>
@@ -603,7 +603,7 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
         <button
           type="button"
           onClick={() => setShowMore((v) => !v)}
-          className="shrink-0 text-xs font-medium px-2 py-1 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+          className="shrink-0 text-xs font-medium px-2 py-1 rounded text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800"
         >
           More
         </button>
@@ -612,8 +612,8 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
         </button>
       </div>
       {showMore && (
-        <div className="px-4 pb-3 space-y-3 bg-gray-50/60">
-          <label className="flex items-center gap-2 text-xs font-medium text-gray-700 pt-2">
+        <div className="px-4 pb-3 space-y-3 bg-gray-50/60 dark:bg-slate-900/40">
+          <label className="flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-slate-300 pt-2">
             <input type="checkbox" checked={lesson.isFreePreview} disabled={togglingPreview} onChange={handleTogglePreview} className="w-3.5 h-3.5" />
             Free preview (watchable without purchasing, on the course landing page)
           </label>
@@ -623,7 +623,7 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
             <div className="space-y-1 mb-1.5">
               {lesson.resources.map((url) => (
                 <div key={url} className="flex items-center gap-2">
-                  <span className="flex-1 text-xs text-gray-600 truncate">{url}</span>
+                  <span className="flex-1 text-xs text-gray-600 dark:text-slate-400 truncate">{url}</span>
                   <button type="button" onClick={() => handleRemoveResource(url)} disabled={savingResources} className="text-xs text-red-500 hover:text-red-700">
                     Remove
                   </button>
@@ -635,7 +635,7 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
                 value={newResourceUrl}
                 onChange={(e) => setNewResourceUrl(e.target.value)}
                 placeholder="https://... (PDF, ZIP, image, external link)"
-                className="flex-1 text-xs rounded-lg border border-gray-300 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex-1 text-xs rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-500"
               />
               <button type="button" onClick={handleAddResource} disabled={savingResources} className="text-xs font-medium text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60">
                 Add
@@ -651,7 +651,7 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
                 value={assignmentPrompt}
                 onChange={(e) => setAssignmentPrompt(e.target.value)}
                 placeholder="e.g. Upload your Figma link or design export"
-                className="flex-1 text-xs rounded-lg border border-gray-300 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex-1 text-xs rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-500"
               />
               <button type="button" onClick={handleSavePrompt} disabled={savingPrompt} className="text-xs font-medium text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60 shrink-0">
                 {savingPrompt ? 'Saving…' : 'Save'}
@@ -666,7 +666,7 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
             value={manualVideoId}
             onChange={(e) => setManualVideoId(e.target.value)}
             placeholder="Enter Bunny Stream Video ID or Embed URL…"
-            className="flex-1 text-xs rounded-lg border border-gray-300 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="flex-1 text-xs rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-500"
           />
           <button
             type="button"
@@ -702,8 +702,8 @@ function SectionCard({ section, onChanged }: { section: AdminSection; onChanged:
   };
 
   return (
-    <div className="rounded-xl border border-gray-200 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-50">
+    <div className="rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-slate-900/60">
         <span className="text-sm font-semibold text-gray-900">{section.title}</span>
         <button type="button" onClick={handleDeleteSection} className="text-xs font-medium text-red-500 hover:text-red-700">
           Delete section
@@ -713,13 +713,13 @@ function SectionCard({ section, onChanged }: { section: AdminSection; onChanged:
         <LessonRow key={lesson.id} lesson={lesson} onChanged={onChanged} />
       ))}
       {addingLesson ? (
-        <form onSubmit={handleAddLesson} className="flex items-center gap-2 px-4 py-2.5 border-t border-gray-100">
+        <form onSubmit={handleAddLesson} className="flex items-center gap-2 px-4 py-2.5 border-t border-gray-100 dark:border-slate-800">
           <input
             autoFocus
             value={lessonTitle}
             onChange={(e) => setLessonTitle(e.target.value)}
             placeholder="Lesson title"
-            className="flex-1 text-sm rounded-lg border border-gray-300 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="flex-1 text-sm rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-500"
           />
           <button type="submit" className="text-xs font-medium text-indigo-600 hover:text-indigo-800">Add</button>
           <button type="button" onClick={() => setAddingLesson(false)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
@@ -794,7 +794,7 @@ function ExamSettingsPanel({ course }: { course: Course }) {
   };
 
   return (
-    <div className="mt-6 pt-6 border-t border-gray-100">
+    <div className="mt-6 pt-6 border-t border-gray-100 dark:border-slate-800">
       <h3 className="text-sm font-semibold text-gray-900 mb-1">🎓 AI Certification Exam — {course.title}</h3>
       <p className="text-xs text-gray-500 mb-4">
         {exam ? 'Configured — students must pass this exam (after 100% lesson completion) to unlock their certificate.' : 'Not configured yet — students fall back to the old 100%-lessons certificate gate.'}
@@ -805,7 +805,7 @@ function ExamSettingsPanel({ course }: { course: Course }) {
         <form onSubmit={handleSave} className="space-y-4">
           <div className="grid md:grid-cols-3 gap-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Passing Score (%)</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Passing Score (%)</label>
               <input
                 type="number"
                 min={1}
@@ -816,7 +816,7 @@ function ExamSettingsPanel({ course }: { course: Course }) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Retake Cooldown (hours)</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Retake Cooldown (hours)</label>
               <input
                 type="number"
                 min={0}
@@ -826,7 +826,7 @@ function ExamSettingsPanel({ course }: { course: Course }) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Question Count</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Question Count</label>
               <input
                 type="number"
                 min={3}
@@ -838,7 +838,7 @@ function ExamSettingsPanel({ course }: { course: Course }) {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">AI Prompt Context (optional)</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">AI Prompt Context (optional)</label>
             <textarea
               rows={2}
               value={form.aiPromptContext}
@@ -888,7 +888,7 @@ function CurriculumEditor({ course }: { course: Course }) {
   };
 
   return (
-    <div className="mt-6 pt-6 border-t border-gray-100">
+    <div className="mt-6 pt-6 border-t border-gray-100 dark:border-slate-800">
       <h3 className="text-sm font-semibold text-gray-900 mb-4">Curriculum — {course.title}</h3>
       {loading ? (
         <p className="text-sm text-gray-400">Loading…</p>
@@ -907,7 +907,7 @@ function CurriculumEditor({ course }: { course: Course }) {
                 className={inputClass}
               />
               <button type="submit" className="shrink-0 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700">Add</button>
-              <button type="button" onClick={() => setAddingSection(false)} className="shrink-0 text-sm text-gray-400 hover:text-gray-600">Cancel</button>
+              <button type="button" onClick={() => setAddingSection(false)} className="shrink-0 text-sm text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300">Cancel</button>
             </form>
           ) : (
             <button
@@ -986,7 +986,7 @@ function AdminCoursesDashboard() {
       </Head>
       <div className="max-w-5xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Course Management</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Course Management</h1>
           <p className="text-sm text-gray-500 mt-1">Create courses, then manage their sections, lessons, and lesson videos.</p>
         </div>
 
@@ -1004,7 +1004,7 @@ function AdminCoursesDashboard() {
           ) : (
             <div className="space-y-3">
               {courses.map((course) => (
-                <div key={course.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4">
+                <div key={course.id} className="bg-white/90 dark:bg-slate-900/70 backdrop-blur-sm border border-gray-200 dark:border-slate-800 rounded-xl p-4 flex items-center gap-4 transition-colors">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
@@ -1014,7 +1014,7 @@ function AdminCoursesDashboard() {
                         <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded">Draft</span>
                       )}
                     </div>
-                    <h3 className="font-semibold text-sm text-gray-900 truncate mt-1">{course.title}</h3>
+                    <h3 className="font-semibold text-sm text-gray-900 dark:text-white truncate mt-1">{course.title}</h3>
                     {course.mentorName && <p className="text-xs text-gray-500">{course.mentorName} · {course.mentorTitle}</p>}
                   </div>
                   <div className="flex gap-2 shrink-0">

@@ -60,8 +60,8 @@ function BogPaymentsSection() {
 
   return (
     <section>
-      <h2 className="text-base font-semibold text-gray-900 mb-1">Course & BOG Sales ({totalCount})</h2>
-      <p className="text-xs text-gray-500 mb-4">
+      <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-1">Course & BOG Sales ({totalCount})</h2>
+      <p className="text-xs text-gray-500 dark:text-slate-400 mb-4">
         Every raw BOG payment order — course, mentorship, gig-escrow-funding, and digital-product checkouts —
         regardless of status.
       </p>
@@ -69,15 +69,15 @@ function BogPaymentsSection() {
         <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
       {loading ? (
-        <p className="text-sm text-gray-400">Loading…</p>
+        <p className="text-sm text-gray-400 dark:text-slate-500 dark:text-slate-500">Loading…</p>
       ) : payments.length === 0 ? (
-        <p className="text-sm text-gray-500">No BOG payments yet.</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400">No BOG payments yet.</p>
       ) : (
         <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200/80 shadow-md shadow-slate-200/40 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-gray-500 border-b border-gray-100 bg-gray-50">
+                <tr className="text-left text-gray-500 dark:text-slate-400 border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/60">
                   <th className="px-4 py-3 font-medium">User</th>
                   <th className="px-4 py-3 font-medium">Purpose</th>
                   <th className="px-4 py-3 font-medium">Item</th>
@@ -91,14 +91,14 @@ function BogPaymentsSection() {
               <tbody className="divide-y divide-gray-50">
                 {payments.map((p) => (
                   <tr key={p.id}>
-                    <td className="px-4 py-3 text-gray-900 text-xs">{p.user.name}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{PURPOSE_LABEL[p.purpose] ?? p.purpose}</td>
-                    <td className="px-4 py-3 text-gray-900 max-w-[220px] truncate">
-                      {p.referenceTitle ?? <span className="text-gray-400">—</span>}
+                    <td className="px-4 py-3 text-gray-900 dark:text-white text-xs">{p.user.name}</td>
+                    <td className="px-4 py-3 text-gray-500 dark:text-slate-400 text-xs">{PURPOSE_LABEL[p.purpose] ?? p.purpose}</td>
+                    <td className="px-4 py-3 text-gray-900 dark:text-white max-w-[220px] truncate">
+                      {p.referenceTitle ?? <span className="text-gray-400 dark:text-slate-500">—</span>}
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-900">{formatMoney(p.amount, p.currency)}</td>
+                    <td className="px-4 py-3 text-right text-gray-900 dark:text-white">{formatMoney(p.amount, p.currency)}</td>
                     <td className="px-4 py-3 text-xs font-mono text-indigo-600">
-                      {p.promoCode ?? <span className="text-gray-300">—</span>}
+                      {p.promoCode ?? <span className="text-gray-300 dark:text-slate-600">—</span>}
                     </td>
                     <td className="px-4 py-3">
                       <span
@@ -107,8 +107,8 @@ function BogPaymentsSection() {
                         {p.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-400 text-xs font-mono max-w-[160px] truncate">{p.bogOrderId}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                    <td className="px-4 py-3 text-gray-400 dark:text-slate-500 dark:text-slate-500 text-xs font-mono max-w-[160px] truncate">{p.bogOrderId}</td>
+                    <td className="px-4 py-3 text-gray-500 dark:text-slate-400 text-xs whitespace-nowrap">
                       {new Date(p.createdAt).toLocaleString()}
                     </td>
                   </tr>
@@ -117,21 +117,21 @@ function BogPaymentsSection() {
             </table>
           </div>
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-4 py-4 border-t border-gray-100">
+            <div className="flex items-center justify-center gap-4 py-4 border-t border-gray-100 dark:border-slate-800">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="text-xs font-medium text-gray-600 disabled:opacity-40"
+                className="text-xs font-medium text-gray-600 dark:text-slate-400 disabled:opacity-40"
               >
                 Previous
               </button>
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-gray-400 dark:text-slate-500 dark:text-slate-500">
                 Page {page} of {totalPages}
               </span>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="text-xs font-medium text-gray-600 disabled:opacity-40"
+                className="text-xs font-medium text-gray-600 dark:text-slate-400 disabled:opacity-40"
               >
                 Next
               </button>
@@ -173,20 +173,20 @@ function TransactionsSection() {
 
   return (
     <section>
-      <h2 className="text-base font-semibold text-gray-900 mb-4">Transactions ({totalCount})</h2>
+      <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Transactions ({totalCount})</h2>
       {error && (
         <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
       {loading ? (
-        <p className="text-sm text-gray-400">Loading…</p>
+        <p className="text-sm text-gray-400 dark:text-slate-500 dark:text-slate-500">Loading…</p>
       ) : transactions.length === 0 ? (
-        <p className="text-sm text-gray-500">No transactions yet.</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400">No transactions yet.</p>
       ) : (
         <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200/80 shadow-md shadow-slate-200/40 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-gray-500 border-b border-gray-100 bg-gray-50">
+                <tr className="text-left text-gray-500 dark:text-slate-400 border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/60">
                   <th className="px-4 py-3 font-medium">Gig</th>
                   <th className="px-4 py-3 font-medium">Client → Freelancer</th>
                   <th className="px-4 py-3 font-medium text-right">Gross</th>
@@ -198,12 +198,12 @@ function TransactionsSection() {
               <tbody className="divide-y divide-gray-50">
                 {transactions.map((tx) => (
                   <tr key={tx.id}>
-                    <td className="px-4 py-3 text-gray-900 max-w-[200px] truncate">{tx.gig.title}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">
+                    <td className="px-4 py-3 text-gray-900 dark:text-white max-w-[200px] truncate">{tx.gig.title}</td>
+                    <td className="px-4 py-3 text-gray-500 dark:text-slate-400 text-xs">
                       {tx.client.name} → {tx.freelancer.name}
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-900">{formatMoney(tx.grossAmount, tx.currency)}</td>
-                    <td className="px-4 py-3 text-right text-gray-500">
+                    <td className="px-4 py-3 text-right text-gray-900 dark:text-white">{formatMoney(tx.grossAmount, tx.currency)}</td>
+                    <td className="px-4 py-3 text-right text-gray-500 dark:text-slate-400">
                       {formatMoney(tx.commissionAmount, tx.currency)}
                     </td>
                     <td className="px-4 py-3 text-right font-medium text-emerald-700">
@@ -222,21 +222,21 @@ function TransactionsSection() {
             </table>
           </div>
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-4 py-4 border-t border-gray-100">
+            <div className="flex items-center justify-center gap-4 py-4 border-t border-gray-100 dark:border-slate-800">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="text-xs font-medium text-gray-600 disabled:opacity-40"
+                className="text-xs font-medium text-gray-600 dark:text-slate-400 disabled:opacity-40"
               >
                 Previous
               </button>
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-gray-400 dark:text-slate-500 dark:text-slate-500">
                 Page {page} of {totalPages}
               </span>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="text-xs font-medium text-gray-600 disabled:opacity-40"
+                className="text-xs font-medium text-gray-600 dark:text-slate-400 disabled:opacity-40"
               >
                 Next
               </button>
@@ -295,15 +295,15 @@ function BogSettingsSection() {
 
   return (
     <section>
-      <h2 className="text-base font-semibold text-gray-900 mb-1">BOG (Bank of Georgia) Settings</h2>
-      <p className="text-xs text-gray-500 mb-4">
+      <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-1">BOG (Bank of Georgia) Settings</h2>
+      <p className="text-xs text-gray-500 dark:text-slate-400 mb-4">
         OAuth2 Client ID / Secret Key used to authenticate with the live BOG Payment API. These are a fallback —
         if BOG_CLIENT_ID / BOG_SECRET_KEY environment variables are set on the server, those take priority. Secrets
         are masked once saved and never shown in full again.
       </p>
 
       {loading ? (
-        <p className="text-sm text-gray-400">Loading…</p>
+        <p className="text-sm text-gray-400 dark:text-slate-500 dark:text-slate-500">Loading…</p>
       ) : (
         <form onSubmit={handleSubmit} className="bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200/80 shadow-md shadow-slate-200/40 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4 max-w-xl">
           {error && (
@@ -316,7 +316,7 @@ function BogSettingsSection() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Client ID</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Client ID</label>
             <input
               type="text"
               value={clientId}
@@ -326,8 +326,8 @@ function BogSettingsSection() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Secret Key {settings?.secretKey && <span className="text-gray-400 font-normal">(current: {settings.secretKey})</span>}
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
+              Secret Key {settings?.secretKey && <span className="text-gray-400 dark:text-slate-500 dark:text-slate-500 font-normal">(current: {settings.secretKey})</span>}
             </label>
             <input
               type="password"
@@ -337,16 +337,16 @@ function BogSettingsSection() {
               placeholder="Leave blank to keep current"
             />
           </div>
-          <label className="flex items-center gap-2 text-sm text-gray-700">
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
             <input
               type="checkbox"
               checked={isLiveMode}
               onChange={(e) => setIsLiveMode(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
             />
             Live mode (record-keeping only)
           </label>
-          <p className="text-xs text-gray-400 -mt-2">
+          <p className="text-xs text-gray-400 dark:text-slate-500 dark:text-slate-500 dark:text-slate-500 -mt-2">
             This does not switch the API endpoint — BOG requests always go to their production API regardless of this
             flag, using whichever Client ID/Secret is configured above. It only labels transactions for your own
             records.
@@ -373,8 +373,8 @@ export default function AdminFinancialsPage() {
           <title>Financials & BOG | Admin</title>
         </Head>
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Financials & BOG Transactions</h1>
-          <p className="text-sm text-gray-500 mt-1">Restricted to SuperAdmin.</p>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Financials & BOG Transactions</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400 dark:text-slate-400 mt-1">Restricted to SuperAdmin.</p>
         </div>
         <div className="space-y-10">
           <TransactionsSection />
