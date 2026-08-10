@@ -119,12 +119,12 @@ function BogResultContent() {
   }, [status, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="max-w-md w-full bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center">
+    <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-[#0b0f19] px-4">
+      <div className="max-w-md w-full bg-white/90 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-lg shadow-slate-200/40 dark:shadow-none p-8 text-center transition-colors">
         <div className="mb-4 text-left">
           <BackButton fallbackHref="/" />
         </div>
-        <h1 className="text-xl font-semibold text-gray-900 mb-4">{t.title}</h1>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">{t.title}</h1>
 
         {typeof paymentId !== 'string' ? (
           <p className="text-sm text-red-600">{t.missingId}</p>
@@ -143,7 +143,7 @@ function BogResultContent() {
             </button>
           </div>
         ) : !status ? (
-          <p className="text-sm text-gray-400">{t.waiting}</p>
+          <p className="text-sm text-gray-400 dark:text-slate-500">{t.waiting}</p>
         ) : (
           <div className="space-y-4">
             <div
@@ -157,7 +157,7 @@ function BogResultContent() {
             >
               {status.status === 'COMPLETED' ? '✓' : status.status === 'PENDING' ? '…' : '✕'}
             </div>
-            <p className="text-sm font-medium text-gray-900">
+            <p className="text-sm font-medium text-gray-900 dark:text-white">
               {status.status === 'COMPLETED'
                 ? t.completed
                 : status.status === 'PENDING'
@@ -167,13 +167,13 @@ function BogResultContent() {
                 : t.failed}
             </p>
             {status.status === 'COMPLETED' && status.purpose === 'COURSE' && (
-              <p className="text-xs text-gray-400">{t.redirectingToCourse}</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500">{t.redirectingToCourse}</p>
             )}
             {status.status === 'COMPLETED' && status.purpose === 'PRODUCT' && (
-              <p className="text-xs text-gray-400">{t.redirectingToProduct}</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500">{t.redirectingToProduct}</p>
             )}
-            {status.status === 'PENDING' && !polling && <p className="text-xs text-gray-400">{t.pendingLong}</p>}
-            <div className="text-xs text-gray-500 border-t border-gray-100 pt-4 space-y-1">
+            {status.status === 'PENDING' && !polling && <p className="text-xs text-gray-400 dark:text-slate-500">{t.pendingLong}</p>}
+            <div className="text-xs text-gray-500 dark:text-slate-400 border-t border-gray-100 dark:border-slate-800 pt-4 space-y-1">
               <p>{purposeKey[status.purpose] ? t[purposeKey[status.purpose]] : status.purpose}</p>
               <p>
                 {t.amount}: {(status.amount / 100).toFixed(2)} {status.currency}
@@ -181,7 +181,7 @@ function BogResultContent() {
             </div>
 
             {status.status === 'COMPLETED' && status.purpose === 'MENTORSHIP' && status.booking && (
-              <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-4 text-left space-y-2.5">
+              <div className="rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 p-4 text-left space-y-2.5">
                 <div className="flex items-center gap-2 text-xs font-bold text-indigo-900">
                   <CalendarClock className="w-4 h-4 shrink-0" />
                   <span>

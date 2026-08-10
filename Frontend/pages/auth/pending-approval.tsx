@@ -22,10 +22,10 @@ export default function PendingApprovalPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
-        <h1 className="text-xl font-semibold text-gray-900">{t('pendingApproval.title')}</h1>
-        <p className="mt-2 text-sm text-gray-500">{t('pendingApproval.message')}</p>
+    <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-[#0b0f19] px-4">
+      <div className="w-full max-w-md bg-white/90 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl shadow-lg shadow-slate-200/40 dark:shadow-none border border-slate-200/80 dark:border-white/10 p-8 text-center transition-colors">
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">{t('pendingApproval.title')}</h1>
+        <p className="mt-2 text-sm text-gray-500 dark:text-slate-400">{t('pendingApproval.message')}</p>
         <Link
           href="/"
           className="mt-6 inline-block w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white no-underline hover:bg-indigo-700"

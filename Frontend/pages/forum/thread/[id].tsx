@@ -119,21 +119,21 @@ function ThreadDetailContent() {
   const totalPages = Math.ceil(totalComments / COMMENTS_PAGE_SIZE);
 
   if (loading) {
-    return <p className="text-center text-sm text-gray-400 py-10">{t('loading')}</p>;
+    return <p className="text-center text-sm text-gray-400 dark:text-slate-500 dark:text-slate-500 py-10">{t('loading')}</p>;
   }
 
   if (notFound || !thread) {
-    return <p className="text-center text-sm text-gray-500 py-10">{t('threadNotFound')}</p>;
+    return <p className="text-center text-sm text-gray-500 dark:text-slate-400 dark:text-slate-400 py-10">{t('threadNotFound')}</p>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 px-4 py-10">
+    <div className="min-h-screen bg-slate-100 dark:bg-[#0b0f19] px-4 py-10">
       <div className="max-w-2xl mx-auto">
-        <Link href="/forum" className="text-sm text-gray-500 hover:text-gray-700">
+        <Link href="/forum" className="text-sm text-gray-500 dark:text-slate-400 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200">
           {t('backToCategories')}
         </Link>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mt-4">
+        <div className="bg-white/90 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl shadow-lg shadow-slate-200/40 dark:shadow-none border border-slate-200/80 dark:border-white/10 p-8 mt-4 transition-colors">
           <div className="flex items-center gap-2 flex-wrap mb-2">
             {thread.isPinned && (
               <span className="text-xs font-medium text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full">
@@ -141,25 +141,25 @@ function ThreadDetailContent() {
               </span>
             )}
             {thread.isLocked && (
-              <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+              <span className="text-xs font-medium text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800/60 px-2 py-0.5 rounded-full">
                 🔒 {t('locked')}
               </span>
             )}
             {thread.author.role !== 'Student' && (
-              <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+              <span className="text-xs font-medium text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800/60 px-2 py-0.5 rounded-full">
                 {thread.author.role}
               </span>
             )}
           </div>
-          <h1 className="text-xl font-semibold text-gray-900">{thread.title}</h1>
-          <p className="text-sm text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">{thread.title}</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400 dark:text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
             <span>
               {thread.author.name} · {new Date(thread.createdAt).toLocaleDateString()}
             </span>
             {thread.author.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
           </p>
-          <p className="text-sm text-gray-700 mt-4 whitespace-pre-wrap">{thread.content}</p>
-          <div className="flex items-center gap-4 mt-6 pt-4 border-t border-gray-100">
+          <p className="text-sm text-gray-700 dark:text-slate-300 mt-4 whitespace-pre-wrap">{thread.content}</p>
+          <div className="flex items-center gap-4 mt-6 pt-4 border-t border-gray-100 dark:border-slate-800">
             <button
               onClick={handleThreadLikeToggle}
               className={`text-sm font-medium ${
@@ -168,16 +168,16 @@ function ThreadDetailContent() {
             >
               {thread.isLikedByCurrentUser ? '♥' : '♡'} {thread.likeCount}
             </button>
-            <span className="text-sm text-gray-400">{t('repliesCount', { count: thread.commentCount })}</span>
+            <span className="text-sm text-gray-400 dark:text-slate-500">{t('repliesCount', { count: thread.commentCount })}</span>
             <SocialShareButtons title={thread.title} lang={lang} className="ml-auto" />
           </div>
         </div>
 
         <div className="mt-6">
           {thread.isLocked ? (
-            <p className="text-sm text-gray-500 bg-gray-100 rounded-lg px-4 py-3">{t('threadLockedNotice')}</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400 dark:text-slate-400 bg-gray-100 dark:bg-slate-800/60 rounded-lg px-4 py-3">{t('threadLockedNotice')}</p>
           ) : (
-            <form onSubmit={handleSubmitComment} className="bg-white rounded-xl border border-gray-200 p-4">
+            <form onSubmit={handleSubmitComment} className="bg-white/90 dark:bg-slate-900/70 backdrop-blur-md rounded-xl border border-slate-200/80 dark:border-white/10 p-4 transition-colors">
               {commentError && (
                 <p className="text-xs text-red-600 mb-2">{commentError}</p>
               )}
@@ -192,7 +192,7 @@ function ThreadDetailContent() {
                   }
                 }}
                 placeholder={t('replyPlaceholder')}
-                className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-800/60 dark:text-white px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
               <div className="flex justify-end mt-2">
                 <button
@@ -214,23 +214,23 @@ function ThreadDetailContent() {
             </div>
           )}
           {comments.length === 0 ? (
-            <p className="text-sm text-gray-500">{t('noReplies')}</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400">{t('noReplies')}</p>
           ) : (
             comments.map((comment) => (
-              <div key={comment.id} className="bg-white rounded-xl border border-gray-200 p-4">
+              <div key={comment.id} className="bg-white/90 dark:bg-slate-900/70 backdrop-blur-md rounded-xl border border-slate-200/80 dark:border-white/10 p-4 transition-colors">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-medium text-gray-900">{comment.author.name}</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{comment.author.name}</p>
                   {comment.author.role !== 'Student' && (
-                    <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                    <span className="text-xs font-medium text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800/60 px-2 py-0.5 rounded-full">
                       {comment.author.role}
                     </span>
                   )}
                   {comment.author.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-gray-400 dark:text-slate-500">
                     {new Date(comment.createdAt).toLocaleDateString()}
                   </span>
                 </div>
-                <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">{comment.content}</p>
+                <p className="text-sm text-gray-700 dark:text-slate-300 mt-2 whitespace-pre-wrap">{comment.content}</p>
                 <button
                   onClick={() => handleCommentLikeToggle(comment)}
                   className={`text-xs font-medium mt-3 ${
@@ -249,17 +249,17 @@ function ThreadDetailContent() {
             <button
               onClick={() => setCommentsPage((p) => Math.max(1, p - 1))}
               disabled={commentsPage === 1}
-              className="text-sm font-medium text-gray-600 disabled:opacity-40"
+              className="text-sm font-medium text-gray-600 dark:text-slate-400 disabled:opacity-40"
             >
               Previous
             </button>
-            <span className="text-sm text-gray-400">
+            <span className="text-sm text-gray-400 dark:text-slate-500">
               Page {commentsPage} of {totalPages}
             </span>
             <button
               onClick={() => setCommentsPage((p) => Math.min(totalPages, p + 1))}
               disabled={commentsPage === totalPages}
-              className="text-sm font-medium text-gray-600 disabled:opacity-40"
+              className="text-sm font-medium text-gray-600 dark:text-slate-400 disabled:opacity-40"
             >
               Next
             </button>

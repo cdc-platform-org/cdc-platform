@@ -71,14 +71,14 @@ function VacancyApplicationsContent() {
   };
 
   if (loading) {
-    return <p className="text-center text-sm text-gray-400 py-10">Loading…</p>;
+    return <p className="text-center text-sm text-gray-400 dark:text-slate-500 py-10">Loading…</p>;
   }
 
   if (notFoundOrForbidden || !vacancy) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-100 py-10">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-100 dark:bg-[#0b0f19] py-10">
         <SiteHeader />
-        <p className="text-center text-sm text-gray-500">
+        <p className="text-center text-sm text-gray-500 dark:text-slate-400">
           This vacancy doesn't exist or you don't have permission to view its applications.
         </p>
         <BackButton fallbackHref="/vacancies" />
@@ -87,14 +87,14 @@ function VacancyApplicationsContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 px-4 py-10">
+    <div className="min-h-screen bg-slate-100 dark:bg-[#0b0f19] px-4 py-10">
       <SiteHeader />
       <div className="max-w-2xl mx-auto">
         <div className="mb-4">
           <BackButton fallbackHref="/vacancies" />
         </div>
-        <h1 className="text-2xl font-semibold text-gray-900">{vacancy.title}</h1>
-        <p className="text-sm text-gray-500 mt-1 mb-8">
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{vacancy.title}</h1>
+        <p className="text-sm text-gray-500 dark:text-slate-400 mt-1 mb-8">
           {applications.length} application{applications.length !== 1 ? 's' : ''} · {vacancy.location}
         </p>
         <ApplicationsReviewList

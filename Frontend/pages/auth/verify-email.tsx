@@ -51,12 +51,12 @@ export default function VerifyEmailPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
+    <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-[#0b0f19] px-4">
+      <div className="w-full max-w-md bg-white/90 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl shadow-lg shadow-slate-200/40 dark:shadow-none border border-slate-200/80 dark:border-white/10 p-8 text-center transition-colors">
         {status === 'verifying' && (
           <>
             <Loader2 className="w-10 h-10 text-indigo-600 mx-auto mb-3 animate-spin" />
-            <p className="text-sm text-gray-600">{t('verifyEmail.verifying')}</p>
+            <p className="text-sm text-gray-600 dark:text-slate-400">{t('verifyEmail.verifying')}</p>
             <Link href="/" className="mt-4 inline-block text-xs font-medium text-indigo-600 hover:text-indigo-500">
               {t('verifyEmail.returnHomeLink')}
             </Link>
@@ -66,8 +66,8 @@ export default function VerifyEmailPage() {
         {status === 'success' && (
           <>
             <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto mb-3" />
-            <h1 className="text-xl font-semibold text-gray-900 mb-2">{t('verifyEmail.successTitle')}</h1>
-            <p className="text-sm text-gray-600 mb-6">{t('verifyEmail.successMessage')}</p>
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{t('verifyEmail.successTitle')}</h1>
+            <p className="text-sm text-gray-600 dark:text-slate-400 mb-6">{t('verifyEmail.successMessage')}</p>
             <button
               type="button"
               onClick={() => router.push('/')}
@@ -81,8 +81,8 @@ export default function VerifyEmailPage() {
         {status === 'error' && (
           <>
             <AlertTriangle className="w-10 h-10 text-amber-600 mx-auto mb-3" />
-            <h1 className="text-xl font-semibold text-gray-900 mb-2">{t('verifyEmail.errorTitle')}</h1>
-            {errorMessage && <p className="text-sm text-red-600 mb-4">{errorMessage}</p>}
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{t('verifyEmail.errorTitle')}</h1>
+            {errorMessage && <p className="text-sm text-red-600 dark:text-red-400 mb-4">{errorMessage}</p>}
 
             {isAuthenticated && (
               <>
@@ -99,7 +99,7 @@ export default function VerifyEmailPage() {
                   </button>
                 )}
                 {resendState === 'error' && (
-                  <p className="text-sm text-red-600 mt-2">{t('verifyEmail.resendError')}</p>
+                  <p className="text-sm text-red-600 dark:text-red-400 mt-2">{t('verifyEmail.resendError')}</p>
                 )}
               </>
             )}

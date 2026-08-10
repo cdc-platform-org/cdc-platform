@@ -259,7 +259,7 @@ function CommentThread({
   submitting,
 }: CommentThreadProps) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+    <div className="rounded-xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm p-4 transition-colors hover:border-cyan-400/30">
       <CommentHeader comment={comment} lang={lang} t={t} canModerate={canModerate} onDelete={onDelete} />
       <p className="text-sm text-slate-300 mt-2 whitespace-pre-wrap break-words">{comment.content}</p>
       <button
@@ -616,7 +616,7 @@ export default function BlogPostPage() {
             )}
 
             {headings.length > 0 && (
-              <div className="lg:hidden rounded-xl border border-slate-800 bg-slate-900/60 p-4 mb-8">
+              <div className="lg:hidden rounded-xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm p-4 transition-colors hover:border-cyan-400/30 mb-8">
                 <p className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400 mb-3">
                   <List size={14} /> {t.toc}
                 </p>
@@ -743,7 +743,7 @@ export default function BlogPostPage() {
                     <Link
                       key={related.id}
                       href={`/blog/${related.slug}`}
-                      className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 no-underline text-current transition-colors hover:border-cyan-400/50"
+                      className="rounded-xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm p-4 no-underline text-current transition-colors hover:border-cyan-400/50"
                     >
                       <p className="text-sm font-bold text-white line-clamp-2 mb-1">{blogTitle(related, lang)}</p>
                       <p className="text-xs text-slate-500 line-clamp-2">{blogDescription(related, lang)}</p>
@@ -809,7 +809,7 @@ export default function BlogPostPage() {
 
           {headings.length > 0 && (
             <aside className="hidden lg:block">
-              <div className="sticky top-8 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+              <div className="sticky top-8 rounded-xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm p-4 transition-colors hover:border-cyan-400/30">
                 <p className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400 mb-3">
                   <List size={14} /> {t.toc}
                 </p>

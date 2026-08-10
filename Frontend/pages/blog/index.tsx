@@ -156,7 +156,7 @@ export default function BlogIndexPage() {
                 <Link
                   key={post.id}
                   href={`/blog/${post.slug}`}
-                  className="rounded-2xl border border-slate-800 bg-slate-900/60 overflow-hidden flex flex-col transition-all duration-300 hover:border-cyan-400/50 hover:shadow-[0_0_25px_rgba(34,211,238,0.15)] no-underline text-current"
+                  className="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm overflow-hidden flex flex-col transition-all duration-300 hover:border-cyan-400/50 hover:shadow-[0_0_25px_rgba(34,211,238,0.15)] no-underline text-current"
                 >
                   {post.imageUrl && (
                     // eslint-disable-next-line @next/next/no-img-element

@@ -89,14 +89,14 @@ function GigApplicationsContent() {
   };
 
   if (loading) {
-    return <p className="text-center text-sm text-gray-400 py-10">Loading…</p>;
+    return <p className="text-center text-sm text-gray-400 dark:text-slate-500 py-10">Loading…</p>;
   }
 
   if (notFoundOrForbidden || !gig) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-100 py-10">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-100 dark:bg-[#0b0f19] py-10">
         <SiteHeader />
-        <p className="text-center text-sm text-gray-500">
+        <p className="text-center text-sm text-gray-500 dark:text-slate-400">
           This gig doesn't exist or you don't have permission to view its applications.
         </p>
         <BackButton fallbackHref="/gigs" />
@@ -105,20 +105,20 @@ function GigApplicationsContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 px-4 py-10">
+    <div className="min-h-screen bg-slate-100 dark:bg-[#0b0f19] px-4 py-10">
       <SiteHeader />
       <div className="max-w-2xl mx-auto">
         <div className="mb-4">
           <BackButton fallbackHref="/gigs" />
         </div>
-        <h1 className="text-2xl font-semibold text-gray-900">{gig.title}</h1>
-        <p className="text-sm text-gray-500 mt-1 mb-8">
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{gig.title}</h1>
+        <p className="text-sm text-gray-500 dark:text-slate-400 mt-1 mb-8">
           {applications.length} application{applications.length !== 1 ? 's' : ''} · Budget:{' '}
           {(gig.budgetAmount / 100).toFixed(2)} {gig.currency}
           {gig.budgetType === 'hourly' ? '/hr' : ''}
         </p>
         {gig.status === 'assigned' && gig.assignedFreelancerId && (
-          <div className="mb-8 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+          <div className="mb-8 rounded-xl border border-indigo-200 dark:border-indigo-500/20 bg-indigo-50 dark:bg-indigo-500/10 p-4">
             <p className="text-sm text-indigo-900 mb-3">
               This gig is assigned. Fund escrow via Bank of Georgia to let work begin — funds are held until you
               approve the delivered work.
