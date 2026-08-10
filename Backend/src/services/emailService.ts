@@ -296,6 +296,22 @@ export async function sendRecordingReadyEmail(params: {
   await sendEmail(studentEmail, 'თქვენი მენტორობის სესიის ჩანაწერი მზადაა! 🎥', html, recordingUrl);
 }
 
+// Fired once, the moment a Business account's public registry extract is
+// approved (routes/adminCompanies.ts's setVerified) — the same trigger
+// point that starts the 7-day AI Agents Suite trial, so this email is what
+// tells the business that trial is now live.
+export async function sendBusinessVerifiedEmail(email: string, companyName: string): Promise<void> {
+  const link = `${FRONTEND_URL}/dashboard/ai-tools`;
+  const html = wrapTemplate(
+    'თქვენი ბიზნეს ანგარიში დადასტურდა! ✅',
+    `გილოცავთ! <strong>${companyName || 'თქვენი კომპანია'}</strong>-ს საჯარო რეესტრის ამონაწერი დადასტურდა ადმინისტრაციის მიერ. ` +
+      `AI ინსტრუმენტები და 7-დღიანი უფასო საცდელი პერიოდი უკვე გააქტიურებულია თქვენი ანგარიშისთვის.`,
+    'AI ინსტრუმენტების გახსნა',
+    link
+  );
+  await sendEmail(email, 'თქვენი ბიზნეს ანგარიში დადასტურდა! ✅', html, link);
+}
+
 export async function sendPasswordResetEmail(email: string, token: string, lang: 'ka' | 'en' = 'ka'): Promise<void> {
   const link = `${FRONTEND_URL}/reset-password?token=${token}`;
   const html =

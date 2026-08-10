@@ -41,6 +41,13 @@ export interface User {
   // not isVerified = Under Review, isVerified = Verified.
   verificationDocUrl: string | null;
   isVerified: boolean;
+  // Richer than isVerified alone (adds PENDING vs REJECTED) — always kept
+  // in sync with isVerified server-side, see Backend's adminCompanies.ts.
+  verificationStatus: 'UNSUBMITTED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
+  // Which onboarding path this account picked at registration — null for
+  // accounts created before this field existed, or via Google/GitHub/
+  // Facebook sign-up (those skip the 2-step onboarding flow).
+  primaryIntent: 'TALENT' | 'EMPLOYER' | null;
   // null means not yet accepted — pre-existing accounts and every Google
   // sign-up (no separate consent step before account creation there) start
   // null; set via POST /auth/accept-terms. See TermsConsentModal.tsx.
@@ -49,6 +56,7 @@ export interface User {
   // Business account is first verified, never reset by a later re-verify.
   // Distinct from the embeddable-chatbot Agent's own 60-day trial (a
   // separate product). See src/services/aiAgentsSuiteService.ts.
+  trialStartDate: string | null;
   aiTrialEndsAt: string | null;
   aiSubscriptionActive: boolean;
 }
@@ -96,6 +104,9 @@ export interface RegisterPayload {
   // Public registration only ever grants Student or Client — see
   // Backend's schemas/authSchemas.ts. Omit to default to Student.
   role?: 'Student' | 'Client';
+  // Which onboarding path was picked in register.tsx's Step 1 — purely
+  // descriptive, doesn't change `role`'s validation.
+  primaryIntent?: 'TALENT' | 'EMPLOYER';
   // Must be true — the backend rejects anything else (z.literal(true)).
   acceptedTerms: boolean;
 }

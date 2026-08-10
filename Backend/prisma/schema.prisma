@@ -20,6 +20,32 @@ enum Role {
   Client
 }
 
+// Which of the two onboarding paths the student picked at registration
+// (`register.tsx`'s Step 1) — purely descriptive/analytics; it does not
+// replace `Role` (still Student/Client) since "Freelancer" and "Business"
+// aren't distinct roles in this schema, just labels for what a Student or
+// verified Client account can already do.
+enum PrimaryIntent {
+  TALENT
+  EMPLOYER
+}
+
+// Richer verification state for a Client (Business) account than the
+// existing `isVerified` boolean alone can express (specifically: a
+// distinct PENDING state between "never submitted" and "verified", plus a
+// REJECTED terminal state) — see User.verificationStatus. `isVerified`
+// stays as the single source every existing access-check (business tools
+// gate, AI Agents Suite, admin dashboards) already reads; the two are
+// always written together at the one place that changes verification
+// (routes/adminCompanies.ts's setVerified()) rather than one being
+// computed from the other, since Prisma has no computed-field support.
+enum BusinessVerificationStatus {
+  UNSUBMITTED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
 enum UserStatus {
   PENDING_APPROVAL
   APPROVED
@@ -268,16 +294,22 @@ model User {
   // — a public CDN URL like the other Bunny-Storage-backed uploads in this
   // codebase; there's nothing sensitive in a mentor's own public CV.
   cvUrl            String?
+  // Which onboarding path this account picked at registration (Step 1 of
+  // register.tsx) — Student/Client role is unchanged by this, see
+  // PrimaryIntent's own comment. Null for every account created before
+  // this field existed.
+  primaryIntent PrimaryIntent?
   // Business KYC — self-uploaded Public Registry Extract / company
   // registration document, reviewed manually by an admin (see
-  // routes/adminCompanies.ts). No separate status enum: the three states
-  // shown in the dashboard are derived (no doc = Unverified, doc present
-  // but isVerified false = Under Review, isVerified true = Verified) —
-  // one less place for the two fields to drift out of sync with a status.
-  // Uploading a new doc after rejection resets isVerified to false so a
-  // resubmission always lands back in the review queue.
+  // routes/adminCompanies.ts). `isVerified` remains the single field every
+  // existing access-check reads; `verificationStatus` adds the PENDING/
+  // REJECTED distinction a plain boolean can't express, kept in sync with
+  // it at the one place both ever change. Uploading a new doc after
+  // rejection resets both back to Under Review/PENDING so a resubmission
+  // always lands back in the review queue.
   verificationDocUrl String?
-  isVerified         Boolean @default(false)
+  isVerified         Boolean                     @default(false)
+  verificationStatus BusinessVerificationStatus? @default(UNSUBMITTED)
   // Self-reported identification code (ს/კ) — compared against whatever
   // ID the AI parser extracts from the uploaded document (see
   // services/businessKycService.ts) to auto-verify on an exact match.
@@ -314,6 +346,13 @@ model User {
   // business's own embeddable customer-facing chatbot — a separate product.
   // See utils/aiAgentsSuiteAccess.ts for how these two fields combine with
   // role === SuperAdmin to decide access.
+  // When the trial above actually started — aiTrialEndsAt alone only ever
+  // recorded the end date, not the start, which existing code never needed
+  // (isTrialActive is deliberately NOT a stored column — trivially derived
+  // as aiTrialEndsAt > now(), and a boolean copy of that would be exactly
+  // the kind of two-fields-can-drift redundancy avoided everywhere else in
+  // this model).
+  trialStartDate       DateTime?
   aiTrialEndsAt        DateTime?
   aiSubscriptionActive Boolean    @default(false)
   createdAt       DateTime   @default(now())

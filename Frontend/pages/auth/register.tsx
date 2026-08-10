@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Image from 'next/image';
 import { AxiosError } from 'axios';
-import { GraduationCap, Building2, Sun, Moon } from 'lucide-react';
+import { GraduationCap, Building2, Sun, Moon, Briefcase, Sparkles, ChevronLeft } from 'lucide-react';
 import { useAuth } from '../../src/context/AuthContext';
 import GuestRoute from '../../src/components/auth/GuestRoute';
 import PasswordInput from '../../src/components/auth/PasswordInput';
@@ -24,6 +24,12 @@ function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'Student' | 'Client'>('Student');
+  // Step 1: broad intent. Step 2: the specific sub-choice within it — both
+  // map onto the existing Student/Client role (no separate Freelancer/
+  // Business role exists), "Business" additionally means /onboarding
+  // collects company KYC fields right after this form succeeds.
+  const [intent, setIntent] = useState<'TALENT' | 'EMPLOYER' | null>(null);
+  const [subRole, setSubRole] = useState<'Student' | 'Freelancer' | 'Client' | 'Business' | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,12 +46,20 @@ function RegisterPage() {
     document.documentElement.classList.toggle('dark', next);
   };
 
+  const postSignupRedirect = (status: string) => {
+    if (status === 'PENDING_APPROVAL') return '/auth/pending-approval';
+    // Business intent (not just "Client") means they'll want to submit
+    // company KYC — send them straight there instead of the course catalog.
+    if (subRole === 'Business') return '/onboarding';
+    return '/courses';
+  };
+
   const handleGoogleCredential = async (idToken: string) => {
     setError(null);
     setSubmitting(true);
     try {
       const loggedInUser = await loginWithGoogle(idToken, role);
-      router.push(loggedInUser.status === 'PENDING_APPROVAL' ? '/auth/pending-approval' : '/courses');
+      router.push(postSignupRedirect(loggedInUser.status));
     } catch {
       setError('Unable to sign in with Google. Please try again.');
     } finally {
@@ -59,11 +73,11 @@ function RegisterPage() {
     setSubmitting(true);
 
     try {
-      const newUser = await register({ name, email, password, role, acceptedTerms });
+      const newUser = await register({ name, email, password, role, acceptedTerms, primaryIntent: intent ?? undefined });
       // Self-serve Student/Client signups are auto-approved (see backend's
       // POST /register) — pending-approval is now only reachable for a
       // future role that still needs manual vetting.
-      router.push(newUser.status === 'PENDING_APPROVAL' ? '/auth/pending-approval' : '/courses');
+      router.push(postSignupRedirect(newUser.status));
     } catch (err) {
       const axiosErr = err as AxiosError<{ message?: string; errors?: Array<{ message: string }> }>;
       const zodErrors = axiosErr.response?.data?.errors;
@@ -111,6 +125,106 @@ function RegisterPage() {
           </div>
         )}
 
+        {!intent ? (
+          // STEP 1 — broad intent. Nothing else on the page (form, social
+          // buttons) renders until this is picked, since it decides `role`.
+          <div className="grid grid-cols-1 gap-3">
+            <button
+              type="button"
+              onClick={() => setIntent('TALENT')}
+              className="flex items-center gap-3 rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-4 text-left cursor-pointer hover:border-cyan-400/50 dark:hover:border-cyan-400/50 transition-colors"
+            >
+              <span className="shrink-0 w-10 h-10 rounded-lg bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-white" />
+              </span>
+              <span>
+                <span className="block text-sm font-bold text-gray-900 dark:text-white">
+                  {lang === 'ka' ? 'სწავლა & კარიერა' : 'Learning & Career'}
+                </span>
+                <span className="block text-xs text-gray-500 dark:text-slate-400">
+                  {lang === 'ka' ? 'კურსები, სერტიფიკატები, ფრილანს პროექტები' : 'Courses, certificates, freelance projects'}
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIntent('EMPLOYER')}
+              className="flex items-center gap-3 rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-4 text-left cursor-pointer hover:border-cyan-400/50 dark:hover:border-cyan-400/50 transition-colors"
+            >
+              <span className="shrink-0 w-10 h-10 rounded-lg bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
+                <Briefcase className="w-5 h-5 text-white" />
+              </span>
+              <span>
+                <span className="block text-sm font-bold text-gray-900 dark:text-white">
+                  {lang === 'ka' ? 'დაქირავება & B2B' : 'Hiring & B2B'}
+                </span>
+                <span className="block text-xs text-gray-500 dark:text-slate-400">
+                  {lang === 'ka' ? 'გიგების განთავსება, ბიზნეს ხელსაწყოები' : 'Post gigs, business tools'}
+                </span>
+              </span>
+            </button>
+          </div>
+        ) : !subRole ? (
+          // STEP 2 — the specific sub-choice within the chosen intent.
+          <div className="space-y-4">
+            <button
+              type="button"
+              onClick={() => setIntent(null)}
+              className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-white bg-transparent border-none cursor-pointer p-0"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" /> {lang === 'ka' ? 'უკან' : 'Back'}
+            </button>
+            <div className="grid grid-cols-2 gap-3">
+              {intent === 'TALENT' ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => { setSubRole('Student'); setRole('Student'); }}
+                    className="flex flex-col items-center gap-1 rounded-lg border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-3 text-sm font-medium text-gray-600 dark:text-slate-400 cursor-pointer hover:border-cyan-400/50 transition-colors"
+                  >
+                    <GraduationCap className="w-5 h-5" />
+                    {lang === 'ka' ? 'სტუდენტი' : 'Student'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setSubRole('Freelancer'); setRole('Student'); }}
+                    className="flex flex-col items-center gap-1 rounded-lg border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-3 text-sm font-medium text-gray-600 dark:text-slate-400 cursor-pointer hover:border-cyan-400/50 transition-colors"
+                  >
+                    <Briefcase className="w-5 h-5" />
+                    {lang === 'ka' ? 'ფრილანსერი' : 'Freelancer'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => { setSubRole('Client'); setRole('Client'); }}
+                    className="flex flex-col items-center gap-1 rounded-lg border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-3 text-sm font-medium text-gray-600 dark:text-slate-400 cursor-pointer hover:border-cyan-400/50 transition-colors"
+                  >
+                    <Building2 className="w-5 h-5" />
+                    {lang === 'ka' ? 'კლიენტი' : 'Client'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setSubRole('Business'); setRole('Client'); }}
+                    className="flex flex-col items-center gap-1 rounded-lg border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-3 text-sm font-medium text-gray-600 dark:text-slate-400 cursor-pointer hover:border-cyan-400/50 transition-colors"
+                  >
+                    <Building2 className="w-5 h-5" />
+                    {lang === 'ka' ? 'ბიზნესი' : 'Business'}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        ) : (
+        <>
+        <button
+          type="button"
+          onClick={() => setSubRole(null)}
+          className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-white bg-transparent border-none cursor-pointer p-0"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" /> {lang === 'ka' ? 'უკან' : 'Back'}
+        </button>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
@@ -160,40 +274,6 @@ function RegisterPage() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
-              {t('register.roleLabel')}
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setRole('Student')}
-                aria-pressed={role === 'Student'}
-                className={`flex flex-col items-center gap-1 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
-                  role === 'Student'
-                    ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300'
-                    : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 text-gray-600 dark:text-slate-400 hover:border-gray-300 dark:hover:border-slate-600'
-                }`}
-              >
-                <GraduationCap className="w-5 h-5" />
-                {t('register.roleStudent')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole('Client')}
-                aria-pressed={role === 'Client'}
-                className={`flex flex-col items-center gap-1 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
-                  role === 'Client'
-                    ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300'
-                    : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 text-gray-600 dark:text-slate-400 hover:border-gray-300 dark:hover:border-slate-600'
-                }`}
-              >
-                <Building2 className="w-5 h-5" />
-                {t('register.roleClient')}
-              </button>
-            </div>
-          </div>
-
           <label className="flex items-start gap-2.5 text-sm text-gray-600 dark:text-slate-400 cursor-pointer">
             <input
               type="checkbox"
@@ -236,6 +316,8 @@ function RegisterPage() {
           />
           <SocialLoginButtons lang={lang} role={role} />
         </div>
+        </>
+        )}
 
         <p className="mt-6 text-center text-sm text-gray-500 dark:text-slate-400">
           {t('register.hasAccount')}{' '}

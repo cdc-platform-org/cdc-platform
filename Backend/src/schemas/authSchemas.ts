@@ -8,6 +8,10 @@ export const registerSchema = z.object({
   // SuperAdmin have no self-serve path (Mentor has no registration flow at
   // all yet; SuperAdmin only via SUPER_ADMIN_EMAILS or the seed script).
   role: z.enum(['Student', 'Client']).optional().default('Student'),
+  // Which onboarding path the student picked in register.tsx's Step 1 —
+  // purely descriptive (see PrimaryIntent's schema comment), doesn't
+  // affect `role` validation/derivation above.
+  primaryIntent: z.enum(['TALENT', 'EMPLOYER']).optional(),
   // Server-side re-check, not just a UI-disabled-submit-button gate — the
   // frontend checkbox is required to submit, but this must still reject a
   // direct API call that skips it. z.literal(true) rejects false/missing.

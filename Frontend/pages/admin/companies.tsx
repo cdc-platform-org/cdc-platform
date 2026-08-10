@@ -3,7 +3,7 @@ import Head from 'next/head';
 import { FileText, ShieldCheck, ShieldAlert, ShieldQuestion, Globe, Sparkles, X } from 'lucide-react';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
-import { getCompanies, verifyCompany, unverifyCompany, updateAiTrial, CompanyRow } from '../../src/services/adminCompaniesService';
+import { getCompanies, verifyCompany, unverifyCompany, rejectCompany, updateAiTrial, CompanyRow } from '../../src/services/adminCompaniesService';
 import { useAuth } from '../../src/context/AuthContext';
 
 function formatAiTrialStatus(company: CompanyRow): string {
@@ -102,8 +102,9 @@ function AiTrialModal({ company, onClose, onUpdated }: { company: CompanyRow; on
   );
 }
 
-function deriveStatus(company: CompanyRow): 'unverified' | 'under_review' | 'verified' {
+function deriveStatus(company: CompanyRow): 'unverified' | 'under_review' | 'verified' | 'rejected' {
   if (company.isVerified) return 'verified';
+  if (company.verificationStatus === 'REJECTED') return 'rejected';
   if (company.verificationDocUrl) return 'under_review';
   return 'unverified';
 }
@@ -112,15 +113,16 @@ const STATUS_BADGE: Record<string, string> = {
   verified: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   under_review: 'bg-amber-50 text-amber-700 border-amber-200',
   unverified: 'bg-gray-100 text-gray-500 border-gray-200',
+  rejected: 'bg-red-50 text-red-700 border-red-200',
 };
 
-const STATUS_ICON = { verified: ShieldCheck, under_review: ShieldQuestion, unverified: ShieldAlert };
+const STATUS_ICON = { verified: ShieldCheck, under_review: ShieldQuestion, unverified: ShieldAlert, rejected: X };
 
 function AdminCompaniesDashboard() {
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'' | 'unverified' | 'under_review' | 'verified'>('under_review');
+  const [statusFilter, setStatusFilter] = useState<'' | 'unverified' | 'under_review' | 'verified' | 'rejected'>('under_review');
   const [aiTrialCompanyId, setAiTrialCompanyId] = useState<string | null>(null);
   const { user } = useAuth();
   // Matches the backend's requireAdminRole('SUPER_ADMIN') on PATCH
@@ -161,6 +163,16 @@ function AdminCompaniesDashboard() {
     }
   };
 
+  const handleReject = async (id: string) => {
+    setBusyId(id);
+    try {
+      await rejectCompany(id);
+      load();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <>
       <Head>
@@ -175,14 +187,14 @@ function AdminCompaniesDashboard() {
         </div>
 
         <div className="flex items-center gap-2 mb-4">
-          {(['under_review', 'unverified', 'verified', ''] as const).map((s) => (
+          {(['under_review', 'unverified', 'verified', 'rejected', ''] as const).map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => setStatusFilter(s)}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${statusFilter === s ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200'}`}
             >
-              {s === '' ? 'All' : s === 'under_review' ? 'Under Review' : s === 'unverified' ? 'Unverified' : 'Verified'}
+              {s === '' ? 'All' : s === 'under_review' ? 'Under Review' : s === 'unverified' ? 'Unverified' : s === 'rejected' ? 'Rejected' : 'Verified'}
             </button>
           ))}
         </div>
@@ -244,14 +256,24 @@ function AdminCompaniesDashboard() {
                           Revoke Verification
                         </button>
                       ) : (
-                        <button
-                          type="button"
-                          disabled={busyId === c.id || !c.verificationDocUrl}
-                          onClick={() => handleVerify(c.id)}
-                          className="text-xs font-medium px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
-                        >
-                          Approve
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            disabled={busyId === c.id || !c.verificationDocUrl}
+                            onClick={() => handleVerify(c.id)}
+                            className="text-xs font-medium px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busyId === c.id || !c.verificationDocUrl}
+                            onClick={() => handleReject(c.id)}
+                            className="text-xs font-medium px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-60"
+                          >
+                            Reject
+                          </button>
+                        </div>
                       )}
                       {canManageAiTrial && (
                         <button

@@ -28,7 +28,7 @@ import {
   FACEBOOK_CLIENT_SECRET,
   SUPER_ADMIN_EMAILS,
 } from '../utils/env';
-import { sendVerificationEmail, sendPasswordResetEmail } from '../services/emailService';
+import { sendVerificationEmail, sendPasswordResetEmail, sendBusinessVerifiedEmail } from '../services/emailService';
 import { uploadToBunnyStorage, isBunnyStorageConfigured, BunnyStorageUploadError, deleteBunnyStorageUrlIfManaged } from '../services/bunnyStorage';
 import { uploadImage, deleteManagedImage } from '../services/imageStorage';
 import { parseBusinessDocument, isBusinessKycParsingConfigured, taxIdsMatch } from '../services/businessKycService';
@@ -134,8 +134,11 @@ function toUserResponse(user: {
   companyDescription?: string | null;
   verificationDocUrl?: string | null;
   isVerified?: boolean;
+  verificationStatus?: string | null;
+  primaryIntent?: string | null;
   taxId?: string | null;
   termsAcceptedAt?: Date | null;
+  trialStartDate?: Date | null;
   aiTrialEndsAt?: Date | null;
   aiSubscriptionActive?: boolean;
 }) {
@@ -164,7 +167,10 @@ function toUserResponse(user: {
     taxId: user.taxId ?? null,
     verificationDocUrl: user.verificationDocUrl ?? null,
     isVerified: user.isVerified ?? false,
+    verificationStatus: user.verificationStatus ?? 'UNSUBMITTED',
+    primaryIntent: user.primaryIntent ?? null,
     termsAcceptedAt: user.termsAcceptedAt ?? null,
+    trialStartDate: user.trialStartDate ?? null,
     aiTrialEndsAt: user.aiTrialEndsAt ?? null,
     aiSubscriptionActive: user.aiSubscriptionActive ?? false,
   };
@@ -176,7 +182,7 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ errors: result.error.errors });
   }
 
-  const { name, email, password, role } = result.data;
+  const { name, email, password, role, primaryIntent } = result.data;
   const normalizedEmail = email.toLowerCase();
 
   const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
@@ -191,6 +197,7 @@ router.post('/register', async (req, res) => {
       email: normalizedEmail,
       password: hashed,
       role,
+      primaryIntent,
       // registerSchema only ever grants Student or Client (see its comment) —
       // both are self-serve roles with no vetting step, so manual admin
       // approval (UserStatus's PENDING_APPROVAL default, reserved for
@@ -826,7 +833,10 @@ router.post(
     if (!req.file) {
       return res.status(400).json({ message: 'No file was selected.' });
     }
-    const previous = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { verificationDocUrl: true, taxId: true } });
+    const previous = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { verificationDocUrl: true, taxId: true, aiTrialEndsAt: true, companyName: true },
+    });
 
     const filename = `kyc-${req.user!.id}-${Date.now()}${path.extname(req.file.originalname)}`;
     try {
@@ -864,13 +874,31 @@ router.post(
       // — a previously-verified business swapping in a new document needs
       // a fresh look (automated or manual), not to keep riding on the old
       // document's approval.
+      // Same first-time-only trial grant as routes/adminCompanies.ts's
+      // setVerified() — this auto-verify path used to bypass it entirely,
+      // meaning a business whose document auto-matched never got the AI
+      // Agents Suite trial an admin-approved business gets.
+      const isFirstTrialGrant = autoVerified && !previous?.aiTrialEndsAt;
       const user = await prisma.user.update({
         where: { id: req.user!.id },
-        data: { verificationDocUrl: url, isVerified: autoVerified },
+        data: {
+          verificationDocUrl: url,
+          isVerified: autoVerified,
+          verificationStatus: autoVerified ? 'VERIFIED' : 'PENDING',
+          ...(isFirstTrialGrant
+            ? { trialStartDate: new Date(), aiTrialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }
+            : {}),
+        },
       });
 
       if (previous?.verificationDocUrl && previous.verificationDocUrl !== url) {
         deleteBunnyStorageUrlIfManaged(previous.verificationDocUrl).catch(() => {});
+      }
+
+      if (autoVerified) {
+        sendBusinessVerifiedEmail(user.email, previous?.companyName ?? '').catch((err) =>
+          console.error('[auth] sendBusinessVerifiedEmail failed:', err instanceof Error ? err.message : err)
+        );
       }
 
       res.status(201).json({ user: toUserResponse(user) });

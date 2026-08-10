@@ -13,12 +13,14 @@ export interface CompanyRow {
   taxId: string | null;
   verificationDocUrl: string | null;
   isVerified: boolean;
+  verificationStatus: 'UNSUBMITTED' | 'PENDING' | 'VERIFIED' | 'REJECTED' | null;
+  trialStartDate: string | null;
   aiTrialEndsAt: string | null;
   aiSubscriptionActive: boolean;
   createdAt: string;
 }
 
-export async function getCompanies(status?: 'unverified' | 'under_review' | 'verified'): Promise<CompanyRow[]> {
+export async function getCompanies(status?: 'unverified' | 'under_review' | 'verified' | 'pending' | 'rejected'): Promise<CompanyRow[]> {
   const response = await apiClient.get<{ data: CompanyRow[] }>('/admin/companies', { params: { status } });
   return response.data.data;
 }
@@ -30,6 +32,11 @@ export async function verifyCompany(id: string): Promise<CompanyRow> {
 
 export async function unverifyCompany(id: string): Promise<CompanyRow> {
   const response = await apiClient.post<{ data: CompanyRow }>(`/admin/companies/${id}/unverify`);
+  return response.data.data;
+}
+
+export async function rejectCompany(id: string): Promise<CompanyRow> {
+  const response = await apiClient.post<{ data: CompanyRow }>(`/admin/companies/${id}/reject`);
   return response.data.data;
 }
 

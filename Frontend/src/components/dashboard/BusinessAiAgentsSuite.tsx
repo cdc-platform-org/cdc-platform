@@ -9,6 +9,8 @@ const dict = {
     subtitle: 'მზა AI ინსტრუმენტები თქვენი ბიზნესისთვის — კონტენტი, ბაზრის ანალიზი და ზოგადი დახმარება.',
     trialActive: (days: number) => `თქვენი უფასო 7-დღიანი საცდელი პერიოდი აქტიურია (დარჩენილია ${days} დღე)`,
     trialExpired: 'თქვენი საცდელი პერიოდი ამოიწურა — დაუკავშირდით CDC-ს გასაგრძელებლად.',
+    verificationPending:
+      'საჯარო რეესტრის ამონაწერი განხილვის პროცესშია. AI ინსტრუმენტები და 7-დღიანი საცდელი ვადა გააქტიურდება ადმინისტრაციის დადასტურებისთანავე.',
     unlimited: 'შეუზღუდავი წვდომა აქტიურია',
     contactUs: 'დაგვიკავშირდით',
     contentTitle: 'B2B კონტენტ გენერატორი',
@@ -30,6 +32,8 @@ const dict = {
     subtitle: 'Ready-made AI tools for your business — content, market analysis, and general assistance.',
     trialActive: (days: number) => `Your free 7-day trial is active (${days} day${days === 1 ? '' : 's'} remaining)`,
     trialExpired: 'Your trial has expired — contact CDC to continue.',
+    verificationPending:
+      'Your public registry extract is under review. AI tools and the 7-day trial will activate as soon as our team approves it.',
     unlimited: 'Unlimited access active',
     contactUs: 'Contact Us',
     contentTitle: 'B2B Content Generator',
@@ -135,6 +139,11 @@ export default function BusinessAiAgentsSuite({ lang }: { lang: 'ka' | 'en' }) {
   const hasAccess = hasAiAgentsSuiteAccess(user);
   const daysRemaining = user ? aiTrialDaysRemaining(user.aiTrialEndsAt) : 0;
   const unlimited = !!user?.aiSubscriptionActive || user?.role === 'SuperAdmin';
+  // A Client who's never been verified (or is under review) hasn't "expired"
+  // a trial — they've never had one yet. Distinct messaging + no false
+  // "contact us to renew" CTA for that case.
+  const verificationPending =
+    !hasAccess && user?.role === 'Client' && user.verificationStatus !== 'VERIFIED' && user.verificationStatus !== 'REJECTED';
 
   return (
     <div className="mb-10">
@@ -152,9 +161,9 @@ export default function BusinessAiAgentsSuite({ lang }: { lang: 'ka' | 'en' }) {
       >
         <p className={`flex items-center gap-2 text-sm font-bold ${hasAccess ? 'text-cyan-700 dark:text-cyan-400' : 'text-amber-700 dark:text-amber-400'}`}>
           <Clock className="w-4 h-4 shrink-0" />
-          {unlimited ? t.unlimited : hasAccess ? t.trialActive(daysRemaining) : t.trialExpired}
+          {unlimited ? t.unlimited : hasAccess ? t.trialActive(daysRemaining) : verificationPending ? t.verificationPending : t.trialExpired}
         </p>
-        {!hasAccess && (
+        {!hasAccess && !verificationPending && (
           <a
             href="mailto:contact@cdc.org.ge"
             className="text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 px-4 py-2 rounded-lg no-underline"

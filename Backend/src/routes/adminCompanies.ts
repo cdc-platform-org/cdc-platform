@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { logAdminAction } from '../services/auditLogService';
+import { sendBusinessVerifiedEmail } from '../services/emailService';
 
 const router = Router();
 router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
@@ -19,6 +20,8 @@ const companySelect = {
   taxId: true,
   verificationDocUrl: true,
   isVerified: true,
+  verificationStatus: true,
+  trialStartDate: true,
   aiTrialEndsAt: true,
   aiSubscriptionActive: true,
   createdAt: true,
@@ -28,13 +31,17 @@ const AI_TRIAL_DAYS_ON_FIRST_VERIFY = 7;
 
 // Every Client (Business) account — the frontend derives the three-state
 // badge (Unverified / Under Review / Verified) from verificationDocUrl +
-// isVerified, same as the dashboard does for its own account.
+// isVerified, same as the dashboard does for its own account. `status`
+// also accepts 'pending'/'rejected' against the newer verificationStatus
+// column for the admin verifications queue.
 router.get('/', async (req: Request, res: Response) => {
   const { status } = req.query;
   const where: Record<string, unknown> = { role: 'Client' };
   if (status === 'verified') where.isVerified = true;
   else if (status === 'unverified') where.verificationDocUrl = null;
-  else if (status === 'under_review') where.AND = [{ verificationDocUrl: { not: null } }, { isVerified: false }];
+  else if (status === 'under_review' || status === 'pending') {
+    where.AND = [{ verificationDocUrl: { not: null } }, { isVerified: false }];
+  } else if (status === 'rejected') where.verificationStatus = 'REJECTED';
 
   const companies = await prisma.user.findMany({
     where,
@@ -47,7 +54,7 @@ router.get('/', async (req: Request, res: Response) => {
 async function setVerified(req: Request, res: Response, isVerified: boolean, action: string) {
   const existing = await prisma.user.findUnique({
     where: { id: req.params.id },
-    select: { id: true, role: true, aiTrialEndsAt: true },
+    select: { id: true, role: true, email: true, companyName: true, aiTrialEndsAt: true },
   });
   if (!existing || existing.role !== 'Client') {
     return res.status(404).json({ message: 'Business account not found.' });
@@ -56,16 +63,46 @@ async function setVerified(req: Request, res: Response, isVerified: boolean, act
   // idempotent (a later re-verify never resets/extends it) and never
   // touched on an unverify, so toggling verification off and back on
   // doesn't hand out a second trial.
-  const data: { isVerified: boolean; aiTrialEndsAt?: Date } = { isVerified };
-  if (isVerified && !existing.aiTrialEndsAt) {
+  const data: { isVerified: boolean; verificationStatus: 'VERIFIED' | 'UNSUBMITTED'; aiTrialEndsAt?: Date; trialStartDate?: Date } = {
+    isVerified,
+    verificationStatus: isVerified ? 'VERIFIED' : 'UNSUBMITTED',
+  };
+  const isFirstTrialGrant = isVerified && !existing.aiTrialEndsAt;
+  if (isFirstTrialGrant) {
+    data.trialStartDate = new Date();
     data.aiTrialEndsAt = new Date(Date.now() + AI_TRIAL_DAYS_ON_FIRST_VERIFY * 24 * 60 * 60 * 1000);
   }
   const user = await prisma.user.update({ where: { id: existing.id }, data, select: companySelect });
   await logAdminAction({ action, targetType: 'User', targetId: user.id, performedById: req.user!.id });
+  if (isVerified) {
+    // Best-effort — a delivery failure shouldn't undo the verification
+    // that already committed above.
+    sendBusinessVerifiedEmail(existing.email, existing.companyName ?? '').catch((err) =>
+      console.error('[adminCompanies] sendBusinessVerifiedEmail failed:', err instanceof Error ? err.message : err)
+    );
+  }
   res.json({ data: user });
 }
 
 router.post('/:id/verify', (req: Request, res: Response) => setVerified(req, res, true, 'company.verify'));
 router.post('/:id/unverify', (req: Request, res: Response) => setVerified(req, res, false, 'company.unverify'));
+
+// Distinct from unverify: rejection is a terminal state shown back to the
+// business (verificationStatus REJECTED) with an optional reason, whereas
+// unverify is an admin-initiated toggle-off with no such messaging. Doesn't
+// touch isVerified (already false for anything reject-able) or the trial.
+router.post('/:id/reject', async (req: Request, res: Response) => {
+  const existing = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true, role: true } });
+  if (!existing || existing.role !== 'Client') {
+    return res.status(404).json({ message: 'Business account not found.' });
+  }
+  const user = await prisma.user.update({
+    where: { id: existing.id },
+    data: { verificationStatus: 'REJECTED' },
+    select: companySelect,
+  });
+  await logAdminAction({ action: 'company.reject', targetType: 'User', targetId: user.id, performedById: req.user!.id });
+  res.json({ data: user });
+});
 
 export default router;
