@@ -126,8 +126,11 @@ export default function SiteFooter({ lang }: SiteFooterProps) {
 
       <div className={`bg-gradient-to-b from-indigo-950 via-slate-900 to-black text-slate-300 -mt-px ${noHoverFx}`}>
         <div className={`max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 ${noHoverFx}`}>
-          {/* Company — glassmorphism card with a soft glow behind the logo badge */}
-          <div className={`relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5 ${noHoverFx}`}>
+          {/* Company — glassmorphism card with a soft glow behind the logo badge.
+              Deliberately excluded from noHoverFx: this is the one footer
+              element meant to react on hover (glowing border), unlike the
+              plain text/link blocks around it. */}
+          <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5 transition-colors duration-300 hover:border-cyan-400/50">
             <div className={`flex items-center gap-2.5 mb-3 ${noHoverFx}`}>
               <div className="relative">
                 <div className="absolute inset-0 bg-cyan-500/40 blur-xl rounded-lg" aria-hidden="true" />

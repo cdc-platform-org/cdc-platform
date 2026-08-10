@@ -21,3 +21,68 @@
 h1, h2, h3, h4, h5, h6, .font-heading {
   font-family: var(--font-heading), 'Fira GO', sans-serif !important;
 }
+
+/* ============================================================
+   VIP DESIGN SYSTEM — global foundation
+   Applied once here so every page/component gets it automatically,
+   rather than hand-editing every button/link/input across the site.
+   ============================================================ */
+
+/* Keyboard-only focus rings (WCAG 2.4.7) — visible on Tab navigation,
+   silent on mouse click, for every interactive element site-wide. */
+button, a, input, select, textarea, [role="button"], [tabindex]:not([tabindex="-1"]) {
+  outline: none;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 2px solid #22d3ee;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Horizontal-overflow guard, 320px and up. */
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+@layer components {
+  /* Glass card — the VIP surface used for cards/panels across the redesign. */
+  .vip-card {
+    @apply relative rounded-2xl border backdrop-blur-md transition-all duration-300;
+    @apply border-slate-200 bg-white/80;
+  }
+  .vip-card:hover {
+    @apply -translate-y-0.5 border-cyan-400/50 shadow-lg shadow-cyan-500/10;
+  }
+  :is(.dark) .vip-card {
+    @apply border-white/10 bg-white/5;
+  }
+
+  /* Primary CTA — brand gradient, glow + lift on hover, tactile press. */
+  .vip-btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border-none px-5 py-2.5 text-sm font-black text-white transition-all duration-200;
+    @apply bg-gradient-to-r from-cyan-500 to-purple-600;
+    @apply hover:-translate-y-0.5 hover:shadow-lg hover:shadow-cyan-500/30 active:translate-y-0;
+  }
+
+  /* Secondary/outline — glass, glowing border on hover. */
+  .vip-btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-black transition-all duration-200;
+    @apply border-slate-200 text-slate-700 hover:bg-slate-100;
+  }
+  :is(.dark) .vip-btn-secondary {
+    @apply border-white/10 bg-white/5 text-slate-200 hover:border-cyan-400/50 hover:bg-white/10;
+  }
+
+  /* Destructive action. */
+  .vip-btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-black text-red-500 transition-all duration-200;
+    @apply border-red-500/20 bg-red-500/5 hover:border-red-500/50 hover:bg-red-500/10;
+  }
+}

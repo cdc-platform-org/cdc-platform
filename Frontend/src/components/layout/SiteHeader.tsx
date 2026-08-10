@@ -111,7 +111,7 @@ export default function SiteHeader() {
                 <ChevronDown className="w-3 h-3" />
               </Link>
               <div className="absolute left-0 top-full pt-2 w-64 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150">
-                <div className="rounded-xl border shadow-lg overflow-hidden text-sm bg-white dark:bg-[#0e1422] border-slate-200 dark:border-slate-800">
+                <div className="rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-sm bg-white/95 backdrop-blur-md border-slate-200 dark:bg-[#0e1422]/95 dark:border-white/10">
                   <p className="px-4 pt-3 pb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">{t.categories}</p>
                   {MARKETPLACE_CATEGORIES.map((cat) => (
                     <Link
@@ -153,7 +153,7 @@ export default function SiteHeader() {
                   <ChevronDown className="w-3 h-3" />
                 </Link>
                 <div className="absolute left-0 top-full pt-2 w-48 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150">
-                  <div className="rounded-xl border shadow-lg overflow-hidden text-sm bg-white dark:bg-[#0e1422] border-slate-200 dark:border-slate-800">
+                  <div className="rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-sm bg-white/95 backdrop-blur-md border-slate-200 dark:bg-[#0e1422]/95 dark:border-white/10">
                     <Link
                       href="/gallery"
                       className="block px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
@@ -187,22 +187,14 @@ export default function SiteHeader() {
             <div className="hidden md:block">
               <UserMenu
                 loginFallback={
-                  <button
-                    type="button"
-                    onClick={() => openAuthModal()}
-                    className="text-xs font-bold px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-transparent cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"
-                  >
+                  <button type="button" onClick={() => openAuthModal()} className="vip-btn-secondary !px-4 !py-2">
                     👤 {t.login}
                   </button>
                 }
               />
             </div>
             {!isAuthenticated && (
-              <button
-                type="button"
-                onClick={() => openAuthModal()}
-                className="md:hidden text-xs font-bold px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-transparent cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap"
-              >
+              <button type="button" onClick={() => openAuthModal()} className="vip-btn-secondary md:hidden !px-3 !py-2 whitespace-nowrap">
                 {t.login}
               </button>
             )}

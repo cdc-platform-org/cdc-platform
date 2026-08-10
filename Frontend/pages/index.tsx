@@ -324,7 +324,7 @@ export default function Home() {
                 <Link
                   href="/contact"
                   onClick={() => setAiInfoModal(null)}
-                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all"
                 >
                   {translate('გაიგეთ მეტი ბიზნეს ანგარიშის შესახებ', 'Learn more about Business accounts')}
                 </Link>
@@ -343,7 +343,7 @@ export default function Home() {
                 <Link
                   href="/dashboard/client"
                   onClick={() => setAiInfoModal(null)}
-                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all"
                 >
                   {translate('ვერიფიკაციის გავლა', 'Complete verification')}
                 </Link>
@@ -423,7 +423,7 @@ export default function Home() {
               <div
                 className={`absolute left-0 top-full pt-2 w-52 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150`}
               >
-                <div className={`rounded-xl border shadow-lg overflow-hidden text-sm ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}>
+                <div className={`rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-sm backdrop-blur-md ${darkMode ? 'bg-[#0e1422]/95 border-white/10' : 'bg-white/95 border-slate-200'}`}>
                   <Link href="/about" className={`block px-4 py-3 no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
                     {translate('ცენტრის შესახებ', 'About Center')}
                   </Link>
@@ -439,7 +439,7 @@ export default function Home() {
                 {translate('ციფრული მაღაზია', 'CDC Store')} ▾
               </Link>
               <div className="absolute left-0 top-full pt-2 w-64 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150">
-                <div className={`rounded-xl border shadow-lg overflow-hidden text-sm ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}>
+                <div className={`rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-sm backdrop-blur-md ${darkMode ? 'bg-[#0e1422]/95 border-white/10' : 'bg-white/95 border-slate-200'}`}>
                   <p className={`px-4 pt-3 pb-1.5 text-[10px] font-black uppercase tracking-widest ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
                     {translate('კატეგორიები', 'Categories')}
                   </p>
@@ -850,7 +850,7 @@ export default function Home() {
                 {canUseAiAssistant ? (
                   <Link
                     href="/dashboard/ai-tools"
-                    className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+                    className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all"
                   >
                     <Sparkles className="w-4 h-4" />
                     {translate('7 დღე უფასოდ', '7 Days Free')}
@@ -859,7 +859,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={handleAiCtaClick}
-                    className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+                    className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all"
                   >
                     <Sparkles className="w-4 h-4" />
                     {translate('7 დღე უფასოდ', '7 Days Free')}
