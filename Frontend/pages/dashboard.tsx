@@ -646,7 +646,7 @@ function DashboardContent() {
                     ].map((stat) => (
                       <div
                         key={stat.label}
-                        className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-5"
+                        className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-5"
                       >
                         <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
                         <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1">{stat.label}</p>
@@ -664,7 +664,7 @@ function DashboardContent() {
                   <div>
                     <h2 className="text-sm font-extrabold tracking-wide mb-3">{t.progressTitle}</h2>
                     {courses.length === 0 ? (
-                      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-10 text-center">
+                      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-10 text-center">
                         <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t.noCourses}</p>
                         <Link
                           href="/courses"
@@ -708,7 +708,7 @@ function DashboardContent() {
                     )}
                   </div>
                   {courses.length === 0 ? (
-                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-10 text-center">
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-10 text-center">
                       <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t.noCourses}</p>
                       <Link
                         href="/courses"
@@ -764,17 +764,17 @@ function DashboardContent() {
                 <div className="space-y-8">
                   <h2 className="text-lg font-extrabold tracking-wide">{t.walletTitle}</h2>
                   <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6">
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6">
                       <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.availableBalance}</p>
                       <p className="text-3xl font-black text-cyan-600 dark:text-cyan-300">{formatGel(wallet?.earningsBalance ?? 0)}</p>
                     </div>
-                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6">
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6">
                       <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.escrowBalance}</p>
                       <p className="text-3xl font-black text-amber-600 dark:text-amber-300">{formatGel(escrowBalance)}</p>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6">
+                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6">
                     <h3 className="text-sm font-bold mb-1">{t.requestPayout}</h3>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-4">{t.ibanHint}</p>
                     {payoutError && (
@@ -811,7 +811,7 @@ function DashboardContent() {
                   <div>
                     <h3 className="text-sm font-bold mb-4">{t.payoutHistory}</h3>
                     {payoutRequests.length === 0 ? (
-                      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-8 text-center">
+                      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-8 text-center">
                         <p className="text-xs text-slate-500 dark:text-slate-400">{t.noPayouts}</p>
                       </div>
                     ) : (
@@ -839,7 +839,7 @@ function DashboardContent() {
                   <div>
                     <h3 className="text-sm font-bold mb-4">{t.paymentHistory}</h3>
                     {payments.length === 0 ? (
-                      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-8 text-center">
+                      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-8 text-center">
                         <p className="text-xs text-slate-500 dark:text-slate-400">{t.noPayments}</p>
                       </div>
                     ) : (
@@ -878,7 +878,7 @@ function DashboardContent() {
                 <div className="space-y-4">
                   <h2 className="text-lg font-extrabold tracking-wide mb-2">{t.gigsTitle}</h2>
                   {gigs.length === 0 ? (
-                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-10 text-center">
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-10 text-center">
                       <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t.noGigs}</p>
                       <Link
                         href="/gigs"
@@ -960,7 +960,7 @@ function DashboardContent() {
                   {showSubmitForm && (
                     <form
                       onSubmit={handleSubmitProduct}
-                      className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-3"
+                      className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-3"
                     >
                       <h3 className="text-sm font-bold">{t.submitProductTitle}</h3>
                       {submitError && (
@@ -1068,7 +1068,7 @@ function DashboardContent() {
                     </div>
                   )}
                   {purchasedProducts.length === 0 ? (
-                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-10 text-center">
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-10 text-center">
                       <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t.noProducts}</p>
                       <Link
                         href="/marketplace"

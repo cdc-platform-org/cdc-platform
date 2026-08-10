@@ -273,7 +273,7 @@ function SettingsContent() {
         <h1 className="text-2xl font-black mb-8">{t.title}</h1>
 
         <form onSubmit={handleSave} className="space-y-8">
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4">
+          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4">
             <h2 className="text-sm font-bold">{t.profileTitle}</h2>
 
             <div className="flex items-center gap-5">
@@ -314,7 +314,7 @@ function SettingsContent() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4">
+          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4">
             <div>
               <h2 className="text-sm font-bold mb-1">{t.identityTitle}</h2>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">{t.identityHint}</p>
@@ -354,7 +354,7 @@ function SettingsContent() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4">
+          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4">
             <h2 className="text-sm font-bold">{t.payoutTitle}</h2>
             <div>
               <label className={labelClass}>{t.payoutIban}</label>
@@ -375,7 +375,7 @@ function SettingsContent() {
           </button>
         </form>
 
-        <form onSubmit={handlePasswordSubmit} className="mt-10 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4">
+        <form onSubmit={handlePasswordSubmit} className="mt-10 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h2 className="text-sm font-bold">{t.passwordTitle}</h2>
             <button
@@ -445,7 +445,7 @@ function SettingsContent() {
           </button>
         </form>
 
-        <div className="mt-10 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-3">
+        <div className="mt-10 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-3">
           <h2 className="text-sm font-bold">{t.termsTitle}</h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             {user?.termsAcceptedAt ? t.termsAccepted(new Date(user.termsAcceptedAt).toLocaleDateString()) : t.termsNotAccepted}

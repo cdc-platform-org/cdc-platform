@@ -73,7 +73,7 @@ function BogPaymentsSection() {
       ) : payments.length === 0 ? (
         <p className="text-sm text-gray-500">No BOG payments yet.</p>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden">
+        <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200/80 shadow-md shadow-slate-200/40 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -182,7 +182,7 @@ function TransactionsSection() {
       ) : transactions.length === 0 ? (
         <p className="text-sm text-gray-500">No transactions yet.</p>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden">
+        <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200/80 shadow-md shadow-slate-200/40 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -305,7 +305,7 @@ function BogSettingsSection() {
       {loading ? (
         <p className="text-sm text-gray-400">Loading…</p>
       ) : (
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-200 shadow-sm transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4 max-w-xl">
+        <form onSubmit={handleSubmit} className="bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200/80 shadow-md shadow-slate-200/40 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4 max-w-xl">
           {error && (
             <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{error}</div>
           )}

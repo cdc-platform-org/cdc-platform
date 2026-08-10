@@ -98,7 +98,7 @@ function AdminIssueCertificateDashboard() {
         </p>
       </div>
 
-      <form onSubmit={handleIssue} className="bg-white rounded-2xl border border-gray-200 shadow-sm transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 p-6 max-w-2xl space-y-5">
+      <form onSubmit={handleIssue} className="bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200/80 shadow-md shadow-slate-200/40 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 p-6 max-w-2xl space-y-5">
         {error && <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
         {issued && (
           <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
