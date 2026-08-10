@@ -208,10 +208,13 @@ model User {
   // Self-service password reset (POST /api/auth/forgot-password + /reset-password).
   passwordResetToken             String?   @unique
   passwordResetTokenExpires      DateTime?
-  // Set for accounts created (or later linked) via Google Sign-In. Such
-  // accounts get a random unusable password hash — there is no password-based
-  // login path for them (see routes/auth.ts).
+  // Set for accounts created (or later linked) via Google/GitHub/Facebook
+  // Sign-In. Such accounts get a random unusable password hash — there is
+  // no password-based login path for them unless they later set one (see
+  // routes/auth.ts).
   googleId                       String?   @unique
+  githubId                       String?   @unique
+  facebookId                     String?   @unique
   // Internal admin-team tier (see AdminRole) — null means "not on the admin
   // team." Independent of `role`; set only via the admin Team Management
   // panel (SUPER_ADMIN-only) or the one-off seed utility.

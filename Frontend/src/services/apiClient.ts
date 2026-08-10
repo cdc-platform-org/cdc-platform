@@ -1,7 +1,10 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { removeCookie } from '../utils/cookies';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+// Exported so the GitHub/Facebook social-login buttons (plain <a> links to
+// the backend's redirect-based OAuth routes, not axios calls) can build
+// their href from the same base URL instead of duplicating the fallback.
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

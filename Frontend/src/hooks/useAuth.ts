@@ -53,11 +53,18 @@ export function useAuthState() {
     setLoading(false);
   }, []);
 
-  const login = useCallback(async (payload: LoginPayload) => {
+  // `remember` only affects the mirrored `token` cookie's lifetime (7 days
+  // vs a browser-session cookie) — the primary auth mechanism (the
+  // TOKEN_KEY localStorage entry apiClient's interceptor reads on every
+  // request) stays persistent either way, since threading a "don't persist"
+  // mode through apiClient's Authorization header logic touches far more
+  // than this one form. An honest partial implementation, not a full
+  // session-vs-persistent auth model.
+  const login = useCallback(async (payload: LoginPayload, remember: boolean = true) => {
     const { user: loggedInUser, token } = await loginRequest(payload);
     localStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem(USER_KEY, JSON.stringify(loggedInUser));
-    setCookie(TOKEN_COOKIE, token, 7);
+    setCookie(TOKEN_COOKIE, token, remember ? 7 : undefined);
     setUser(loggedInUser);
     return loggedInUser;
   }, []);
@@ -78,6 +85,20 @@ export function useAuthState() {
     setCookie(TOKEN_COOKIE, token, 7);
     setUser(loggedInUser);
     return loggedInUser;
+  }, []);
+
+  // GitHub/Facebook's redirect-based OAuth flow ends with the backend
+  // redirecting to /auth/oauth-callback?token=<jwt> — that page calls this
+  // to finish the same localStorage+cookie+state setup as login()/register()
+  // above, just starting from a bare token instead of a {user,token} bundle
+  // (the backend redirect can't hand back the parsed user object too).
+  const loginWithToken = useCallback(async (token: string) => {
+    localStorage.setItem(TOKEN_KEY, token);
+    setCookie(TOKEN_COOKIE, token, 7);
+    const freshUser = await getMeRequest();
+    localStorage.setItem(USER_KEY, JSON.stringify(freshUser));
+    setUser(freshUser);
+    return freshUser;
   }, []);
 
   const logout = useCallback(() => {
@@ -104,6 +125,7 @@ export function useAuthState() {
     login,
     register,
     loginWithGoogle,
+    loginWithToken,
     logout,
     refreshUser,
   };

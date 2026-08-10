@@ -1,10 +1,12 @@
 // Minimal document.cookie helpers — the app's actual auth check is the
 // Bearer token in localStorage (see apiClient.ts); this cookie mirror exists
 // only so the token is also readable by future server-side/middleware code.
-export function setCookie(name: string, value: string, days: number): void {
+// Omitting `days` creates a true browser-session cookie (no `expires`
+// attribute at all) — used for "Remember Me" unchecked on /auth/login.
+export function setCookie(name: string, value: string, days?: number): void {
   if (typeof document === 'undefined') return;
-  const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+  const expiresAttr = days !== undefined ? `; expires=${new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString()}` : '';
+  document.cookie = `${name}=${encodeURIComponent(value)}${expiresAttr}; path=/; SameSite=Lax`;
 }
 
 export function removeCookie(name: string): void {

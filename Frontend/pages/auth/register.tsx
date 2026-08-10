@@ -1,13 +1,14 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Image from 'next/image';
 import { AxiosError } from 'axios';
-import { GraduationCap, Building2 } from 'lucide-react';
+import { GraduationCap, Building2, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../src/context/AuthContext';
 import GuestRoute from '../../src/components/auth/GuestRoute';
 import PasswordInput from '../../src/components/auth/PasswordInput';
 import GoogleSignInButton from '../../src/components/auth/GoogleSignInButton';
+import SocialLoginButtons from '../../src/components/auth/SocialLoginButtons';
 import LanguageSwitcher from '../../src/components/layout/LanguageSwitcher';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
@@ -26,6 +27,18 @@ function RegisterPage() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [darkMode, setDarkMode] = useState(false);
+
+  useEffect(() => {
+    setDarkMode(document.documentElement.classList.contains('dark'));
+  }, []);
+
+  const toggleDarkMode = () => {
+    const next = !darkMode;
+    setDarkMode(next);
+    localStorage.setItem('darkMode', String(next));
+    document.documentElement.classList.toggle('dark', next);
+  };
 
   const handleGoogleCredential = async (idToken: string) => {
     setError(null);
@@ -75,7 +88,17 @@ function RegisterPage() {
           <Link href="/" aria-label="CDC Home" className="inline-flex no-underline">
             <Image src="/images/cdc-logo.png" alt="CDC" width={28} height={28} className="h-7 w-auto rounded-lg object-cover" />
           </Link>
-          <LanguageSwitcher/>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleDarkMode}
+              aria-label="Toggle dark mode"
+              className="p-1.5 rounded-lg border-none bg-transparent cursor-pointer text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-white transition-colors"
+            >
+              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+            <LanguageSwitcher/>
+          </div>
         </div>
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{t('register.title')}</h1>
@@ -202,14 +225,17 @@ function RegisterPage() {
           <div className="flex-1 h-px bg-gray-200 dark:bg-slate-700" />
         </div>
 
-        <GoogleSignInButton
-          mode="register"
-          role={role}
-          lang={lang}
-          onCredential={handleGoogleCredential}
-          disabledLabel={t('googleButton')}
-          disabledTitle={t('googleNotConfigured')}
-        />
+        <div className="space-y-2.5">
+          <GoogleSignInButton
+            mode="register"
+            role={role}
+            lang={lang}
+            onCredential={handleGoogleCredential}
+            disabledLabel={t('googleButton')}
+            disabledTitle={t('googleNotConfigured')}
+          />
+          <SocialLoginButtons lang={lang} role={role} />
+        </div>
 
         <p className="mt-6 text-center text-sm text-gray-500 dark:text-slate-400">
           {t('register.hasAccount')}{' '}

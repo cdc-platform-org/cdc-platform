@@ -19,7 +19,15 @@ import {
   changePasswordSchema,
 } from '../schemas/authSchemas';
 import { authenticate } from '../middleware/auth';
-import { JWT_SECRET, GOOGLE_CLIENT_ID, SUPER_ADMIN_EMAILS } from '../utils/env';
+import {
+  JWT_SECRET,
+  GOOGLE_CLIENT_ID,
+  GITHUB_CLIENT_ID,
+  GITHUB_CLIENT_SECRET,
+  FACEBOOK_CLIENT_ID,
+  FACEBOOK_CLIENT_SECRET,
+  SUPER_ADMIN_EMAILS,
+} from '../utils/env';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../services/emailService';
 import { uploadToBunnyStorage, isBunnyStorageConfigured, BunnyStorageUploadError, deleteBunnyStorageUrlIfManaged } from '../services/bunnyStorage';
 import { uploadImage, deleteManagedImage } from '../services/imageStorage';
@@ -27,6 +35,34 @@ import { parseBusinessDocument, isBusinessKycParsingConfigured, taxIdsMatch } fr
 
 const router = Router();
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+
+// Same fallback pattern as payments.ts/emailService.ts/certificateService.ts.
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://cdc.org.ge';
+// This backend's own public base URL — needed to build the GitHub/Facebook
+// OAuth redirect_uri, which must exactly match what's registered in each
+// provider's app settings (GitHub OAuth App / Facebook App dashboard).
+// Same fallback convention as .env.example already documents for this var
+// (added for BOG webhooks, unused until now): default to localhost for dev
+// safety, and require it to be explicitly set to a real HTTPS URL in
+// production rather than baking a specific domain into source.
+const BACKEND_URL = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 4000}`;
+
+// GitHub/Facebook's redirect-based OAuth flow round-trips through the
+// provider, so the CSRF "state" param can't be verified against anything
+// held in server memory across that gap without a session store. Instead
+// it's a short-lived, self-verifying signed token (reusing JWT_SECRET) —
+// forging one requires the same secret that protects every session token,
+// and it expires in 10 minutes. Also carries the student/business role
+// choice through the round trip, since GitHub/Facebook have no equivalent
+// of the request-body `role` field Google's client-side flow gets to use.
+function signOauthState(role?: 'Student' | 'Client'): string {
+  return jwt.sign({ role, purpose: 'oauth-state' }, JWT_SECRET, { expiresIn: '10m' });
+}
+function verifyOauthState(state: string): { role?: 'Student' | 'Client' } {
+  const payload = jwt.verify(state, JWT_SECRET) as { role?: 'Student' | 'Client'; purpose?: string };
+  if (payload.purpose !== 'oauth-state') throw new Error('Invalid state token.');
+  return { role: payload.role };
+}
 
 // Only the SHA-256 hash of a password-reset token is ever persisted — the
 // raw token exists only in the emailed link and the requester's browser.
@@ -451,6 +487,231 @@ router.post('/google', async (req, res) => {
   user = await maybePromoteSuperAdmin(user);
   const token = signToken(user);
   res.json({ token, user: toUserResponse(user) });
+});
+
+// ============================================================
+// GITHUB / FACEBOOK SIGN-IN — unlike Google above (client-side ID token,
+// verified server-side with no redirect), GitHub and Facebook only support
+// the traditional server-side flow: the browser is redirected to the
+// provider, the provider redirects back here with a `code`, this backend
+// exchanges that code for an access token and fetches the profile itself.
+// The frontend buttons are therefore plain links to GET /github or
+// /facebook, not a JS SDK popup — see AuthModal.tsx.
+// ============================================================
+
+router.get('/github', (req: Request, res: Response) => {
+  if (!GITHUB_CLIENT_ID) {
+    return res.status(501).json({ message: 'GitHub Sign-In is not configured on this server.' });
+  }
+  const role = req.query.role === 'Client' ? 'Client' : req.query.role === 'Student' ? 'Student' : undefined;
+  const authorizeUrl = new URL('https://github.com/login/oauth/authorize');
+  authorizeUrl.searchParams.set('client_id', GITHUB_CLIENT_ID);
+  authorizeUrl.searchParams.set('redirect_uri', `${BACKEND_URL}/api/auth/github/callback`);
+  authorizeUrl.searchParams.set('scope', 'read:user user:email');
+  authorizeUrl.searchParams.set('state', signOauthState(role));
+  res.redirect(authorizeUrl.toString());
+});
+
+router.get('/github/callback', async (req: Request, res: Response) => {
+  const failRedirect = `${FRONTEND_URL}/auth/login?error=github`;
+  if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET) return res.redirect(failRedirect);
+
+  const { code, state } = req.query;
+  if (typeof code !== 'string' || typeof state !== 'string') return res.redirect(failRedirect);
+
+  let role: 'Student' | 'Client' | undefined;
+  try {
+    role = verifyOauthState(state).role;
+  } catch {
+    return res.redirect(failRedirect);
+  }
+
+  try {
+    const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        client_id: GITHUB_CLIENT_ID,
+        client_secret: GITHUB_CLIENT_SECRET,
+        code,
+        redirect_uri: `${BACKEND_URL}/api/auth/github/callback`,
+      }),
+    });
+    const tokenData = (await tokenRes.json()) as { access_token?: string; error?: string };
+    if (!tokenData.access_token) {
+      console.error('[auth] GitHub token exchange failed:', tokenData.error ?? tokenData);
+      return res.redirect(failRedirect);
+    }
+
+    const profileRes = await fetch('https://api.github.com/user', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}`, Accept: 'application/vnd.github+json' },
+    });
+    const profile = (await profileRes.json()) as {
+      id: number; login: string; name: string | null; email: string | null; avatar_url: string | null;
+    };
+
+    // GitHub's /user endpoint omits `email` when the user has it set to
+    // private (common) — the verified primary address needs a second call.
+    let email = profile.email;
+    if (!email) {
+      const emailsRes = await fetch('https://api.github.com/user/emails', {
+        headers: { Authorization: `Bearer ${tokenData.access_token}`, Accept: 'application/vnd.github+json' },
+      });
+      const emails = (await emailsRes.json()) as Array<{ email: string; primary: boolean; verified: boolean }>;
+      email = (emails.find((e) => e.primary && e.verified) ?? emails.find((e) => e.verified))?.email ?? null;
+    }
+    if (!email) {
+      return res.redirect(`${FRONTEND_URL}/auth/login?error=github_no_email`);
+    }
+
+    const githubId = String(profile.id);
+    const normalizedEmail = email.toLowerCase();
+    let user = await prisma.user.findFirst({ where: { OR: [{ githubId }, { email: normalizedEmail }] } });
+
+    if (user) {
+      if (user.isBanned) return res.redirect(`${FRONTEND_URL}/auth/login?error=banned`);
+      if (user.deletionRequestedAt) return res.redirect(`${FRONTEND_URL}/auth/login?error=deactivated`);
+      if (!user.githubId) {
+        // Existing email/password (or Google) account signing in with
+        // GitHub for the first time — link it rather than creating a
+        // second account for the same email.
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { githubId, emailVerifiedAt: user.emailVerifiedAt ?? new Date() },
+        });
+      }
+    } else {
+      const randomPassword = await bcrypt.hash(crypto.randomUUID(), 12);
+      try {
+        user = await prisma.user.create({
+          data: {
+            name: profile.name || profile.login || normalizedEmail.split('@')[0],
+            email: normalizedEmail,
+            password: randomPassword, // unusable — this account signs in via GitHub only
+            role: role ?? 'Student',
+            status: 'APPROVED',
+            githubId,
+            avatarUrl: profile.avatar_url || null,
+            emailVerifiedAt: new Date(),
+          },
+        });
+      } catch (err: any) {
+        if (err.code === 'P2002') {
+          user = await prisma.user.findFirst({ where: { OR: [{ githubId }, { email: normalizedEmail }] } });
+          if (!user) throw err;
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    user = await maybePromoteSuperAdmin(user);
+    const token = signToken(user);
+    res.redirect(`${FRONTEND_URL}/auth/oauth-callback?token=${encodeURIComponent(token)}`);
+  } catch (err) {
+    console.error('[auth] GitHub OAuth callback failed:', err instanceof Error ? err.message : err);
+    res.redirect(failRedirect);
+  }
+});
+
+router.get('/facebook', (req: Request, res: Response) => {
+  if (!FACEBOOK_CLIENT_ID) {
+    return res.status(501).json({ message: 'Facebook Sign-In is not configured on this server.' });
+  }
+  const role = req.query.role === 'Client' ? 'Client' : req.query.role === 'Student' ? 'Student' : undefined;
+  const authorizeUrl = new URL('https://www.facebook.com/v19.0/dialog/oauth');
+  authorizeUrl.searchParams.set('client_id', FACEBOOK_CLIENT_ID);
+  authorizeUrl.searchParams.set('redirect_uri', `${BACKEND_URL}/api/auth/facebook/callback`);
+  authorizeUrl.searchParams.set('scope', 'email,public_profile');
+  authorizeUrl.searchParams.set('state', signOauthState(role));
+  res.redirect(authorizeUrl.toString());
+});
+
+router.get('/facebook/callback', async (req: Request, res: Response) => {
+  const failRedirect = `${FRONTEND_URL}/auth/login?error=facebook`;
+  if (!FACEBOOK_CLIENT_ID || !FACEBOOK_CLIENT_SECRET) return res.redirect(failRedirect);
+
+  const { code, state } = req.query;
+  if (typeof code !== 'string' || typeof state !== 'string') return res.redirect(failRedirect);
+
+  let role: 'Student' | 'Client' | undefined;
+  try {
+    role = verifyOauthState(state).role;
+  } catch {
+    return res.redirect(failRedirect);
+  }
+
+  try {
+    const redirectUri = `${BACKEND_URL}/api/auth/facebook/callback`;
+    const tokenUrl = new URL('https://graph.facebook.com/v19.0/oauth/access_token');
+    tokenUrl.searchParams.set('client_id', FACEBOOK_CLIENT_ID);
+    tokenUrl.searchParams.set('client_secret', FACEBOOK_CLIENT_SECRET);
+    tokenUrl.searchParams.set('redirect_uri', redirectUri);
+    tokenUrl.searchParams.set('code', code);
+    const tokenRes = await fetch(tokenUrl.toString());
+    const tokenData = (await tokenRes.json()) as { access_token?: string; error?: unknown };
+    if (!tokenData.access_token) {
+      console.error('[auth] Facebook token exchange failed:', tokenData.error ?? tokenData);
+      return res.redirect(failRedirect);
+    }
+
+    const profileUrl = new URL('https://graph.facebook.com/me');
+    profileUrl.searchParams.set('fields', 'id,name,email,picture');
+    profileUrl.searchParams.set('access_token', tokenData.access_token);
+    const profileRes = await fetch(profileUrl.toString());
+    const profile = (await profileRes.json()) as {
+      id: string; name?: string; email?: string; picture?: { data?: { url?: string } };
+    };
+
+    if (!profile.email) {
+      return res.redirect(`${FRONTEND_URL}/auth/login?error=facebook_no_email`);
+    }
+
+    const facebookId = String(profile.id);
+    const normalizedEmail = profile.email.toLowerCase();
+    let user = await prisma.user.findFirst({ where: { OR: [{ facebookId }, { email: normalizedEmail }] } });
+
+    if (user) {
+      if (user.isBanned) return res.redirect(`${FRONTEND_URL}/auth/login?error=banned`);
+      if (user.deletionRequestedAt) return res.redirect(`${FRONTEND_URL}/auth/login?error=deactivated`);
+      if (!user.facebookId) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { facebookId, emailVerifiedAt: user.emailVerifiedAt ?? new Date() },
+        });
+      }
+    } else {
+      const randomPassword = await bcrypt.hash(crypto.randomUUID(), 12);
+      try {
+        user = await prisma.user.create({
+          data: {
+            name: profile.name || normalizedEmail.split('@')[0],
+            email: normalizedEmail,
+            password: randomPassword, // unusable — this account signs in via Facebook only
+            role: role ?? 'Student',
+            status: 'APPROVED',
+            facebookId,
+            avatarUrl: profile.picture?.data?.url || null,
+            emailVerifiedAt: new Date(),
+          },
+        });
+      } catch (err: any) {
+        if (err.code === 'P2002') {
+          user = await prisma.user.findFirst({ where: { OR: [{ facebookId }, { email: normalizedEmail }] } });
+          if (!user) throw err;
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    user = await maybePromoteSuperAdmin(user);
+    const token = signToken(user);
+    res.redirect(`${FRONTEND_URL}/auth/oauth-callback?token=${encodeURIComponent(token)}`);
+  } catch (err) {
+    console.error('[auth] Facebook OAuth callback failed:', err instanceof Error ? err.message : err);
+    res.redirect(failRedirect);
+  }
 });
 
 // ============================================================

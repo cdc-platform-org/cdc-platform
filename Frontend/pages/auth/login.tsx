@@ -1,13 +1,14 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Image from 'next/image';
 import { AxiosError } from 'axios';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../src/context/AuthContext';
 import GuestRoute from '../../src/components/auth/GuestRoute';
 import PasswordInput from '../../src/components/auth/PasswordInput';
 import GoogleSignInButton from '../../src/components/auth/GoogleSignInButton';
+import SocialLoginButtons from '../../src/components/auth/SocialLoginButtons';
 import LanguageSwitcher from '../../src/components/layout/LanguageSwitcher';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
@@ -21,9 +22,22 @@ function LoginPage() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [redirectingAdmin, setRedirectingAdmin] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+
+  useEffect(() => {
+    setDarkMode(document.documentElement.classList.contains('dark'));
+  }, []);
+
+  const toggleDarkMode = () => {
+    const next = !darkMode;
+    setDarkMode(next);
+    localStorage.setItem('darkMode', String(next));
+    document.documentElement.classList.toggle('dark', next);
+  };
 
   const handlePostLogin = (loggedInUser: Awaited<ReturnType<typeof login>>) => {
     const explicitRedirect = router.query.redirect as string | undefined;
@@ -57,7 +71,7 @@ function LoginPage() {
     let redirectingToAdmin = false;
 
     try {
-      const loggedInUser = await login({ email, password });
+      const loggedInUser = await login({ email, password }, rememberMe);
       // An explicit ?redirect= (set by ProtectedRoute when it bounced a
       // guest here) always wins — the user was already headed somewhere
       // specific. Otherwise route by role: admin-team members land in the
@@ -82,7 +96,17 @@ function LoginPage() {
           <Link href="/" aria-label="CDC Home" className="inline-flex no-underline">
             <Image src="/images/cdc-logo.png" alt="CDC" width={28} height={28} className="h-7 w-auto rounded-lg object-cover" />
           </Link>
-          <LanguageSwitcher/>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleDarkMode}
+              aria-label="Toggle dark mode"
+              className="p-1.5 rounded-lg border-none bg-transparent cursor-pointer text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-white transition-colors"
+            >
+              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+            <LanguageSwitcher/>
+          </div>
         </div>
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{t('login.title')}</h1>
@@ -139,6 +163,16 @@ function LoginPage() {
             />
           </div>
 
+          <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 text-cyan-600 focus:ring-cyan-500"
+            />
+            {lang === 'ka' ? 'დამიმახსოვრე' : 'Remember me'}
+          </label>
+
           <button
             type="submit"
             disabled={submitting}
@@ -154,13 +188,16 @@ function LoginPage() {
           <div className="flex-1 h-px bg-gray-200 dark:bg-slate-700" />
         </div>
 
-        <GoogleSignInButton
-          mode="login"
-          lang={lang}
-          onCredential={handleGoogleCredential}
-          disabledLabel={t('googleButton')}
-          disabledTitle={t('googleNotConfigured')}
-        />
+        <div className="space-y-2.5">
+          <GoogleSignInButton
+            mode="login"
+            lang={lang}
+            onCredential={handleGoogleCredential}
+            disabledLabel={t('googleButton')}
+            disabledTitle={t('googleNotConfigured')}
+          />
+          <SocialLoginButtons lang={lang} />
+        </div>
 
         <p className="mt-6 text-center text-sm text-gray-500 dark:text-slate-400">
           {t('login.noAccount')}{' '}

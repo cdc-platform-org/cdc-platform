@@ -6,9 +6,10 @@ interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
   loading: boolean;
-  login: (payload: LoginPayload) => Promise<User>;
+  login: (payload: LoginPayload, remember?: boolean) => Promise<User>;
   register: (payload: RegisterPayload) => Promise<User>;
   loginWithGoogle: (idToken: string, role?: 'Student' | 'Client') => Promise<User>;
+  loginWithToken: (token: string) => Promise<User>;
   logout: () => void;
   refreshUser: () => Promise<User>;
 }

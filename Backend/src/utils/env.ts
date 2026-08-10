@@ -38,6 +38,18 @@ export const CRON_SECRET = requireEnv('CRON_SECRET');
 // `aud` claim on the ID token and every Google sign-in fails verification
 // with no indication why (same failure mode as the GEMINI_API_KEY fix).
 export const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || '').trim().replace(/^['"]|['"]$/g, '');
+
+// GitHub/Facebook use the traditional server-side redirect + code-exchange
+// OAuth flow (unlike Google above, which verifies a client-side ID token
+// and never needs a secret for that) — see routes/auth.ts's /github and
+// /facebook routes. Same defensive trim/quote-strip as GOOGLE_CLIENT_ID.
+function cleanEnv(value: string | undefined): string {
+  return (value || '').trim().replace(/^['"]|['"]$/g, '');
+}
+export const GITHUB_CLIENT_ID = cleanEnv(process.env.GITHUB_CLIENT_ID);
+export const GITHUB_CLIENT_SECRET = cleanEnv(process.env.GITHUB_CLIENT_SECRET);
+export const FACEBOOK_CLIENT_ID = cleanEnv(process.env.FACEBOOK_CLIENT_ID);
+export const FACEBOOK_CLIENT_SECRET = cleanEnv(process.env.FACEBOOK_CLIENT_SECRET);
 // Deliberately NOT requireEnv() — Bank of Georgia payment routes fall back to
 // the Admin Panel's BogSettings DB record (see services/bogPaymentService.ts)
 // when these are unset, so the app must still boot without them.
