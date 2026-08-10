@@ -666,15 +666,21 @@ router.post('/:id/exam/submit', authenticate, requireCourseAccess, async (req: R
 
 router.get('/:id/certificate', authenticate, requireCourseAccess, async (req: Request, res: Response) => {
   const courseId = req.params.id;
+  const isSuperAdmin = req.user!.role === 'SuperAdmin';
   const exam = await prisma.exam.findUnique({ where: { courseId } });
 
-  if (exam) {
-    const passedAttempt = await prisma.examAttempt.findFirst({ where: { userId: req.user!.id, examId: exam.id, passed: true } });
-    if (!passedAttempt) {
-      return res.status(400).json({ message: 'You must pass the certification exam to generate a certificate.' });
+  // SuperAdmins skip the exam-passed / 100%-complete gates entirely — they
+  // need to generate certificates for any course on demand for testing and
+  // support, not just ones they've actually completed as a student would.
+  if (!isSuperAdmin) {
+    if (exam) {
+      const passedAttempt = await prisma.examAttempt.findFirst({ where: { userId: req.user!.id, examId: exam.id, passed: true } });
+      if (!passedAttempt) {
+        return res.status(400).json({ message: 'You must pass the certification exam to generate a certificate.' });
+      }
+    } else if (!(await getCourseCompletion(courseId, req.user!.id))) {
+      return res.status(400).json({ message: 'Course must be 100% complete to generate a certificate.' });
     }
-  } else if (!(await getCourseCompletion(courseId, req.user!.id))) {
-    return res.status(400).json({ message: 'Course must be 100% complete to generate a certificate.' });
   }
 
   const [course, student] = await Promise.all([
@@ -701,7 +707,10 @@ router.get('/:id/certificate', authenticate, requireCourseAccess, async (req: Re
   // further attempts are turned away with a support-contact message instead
   // of silently regenerating the PDF (fraud-prevention: stops a certificate
   // being freely re-downloaded/re-issued with edited legal-name fields).
-  if (certificate.downloadCount >= 1) {
+  // SuperAdmins bypass this entirely — they need to be able to re-generate
+  // certificates on demand for testing/support, and the fraud concern this
+  // limit exists for doesn't apply to platform staff.
+  if (certificate.downloadCount >= 1 && !isSuperAdmin) {
     return res.status(403).json({
       error: 'DOWNLOAD_LIMIT_REACHED',
       message:

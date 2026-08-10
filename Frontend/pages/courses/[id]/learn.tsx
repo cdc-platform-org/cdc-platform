@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
+import { ShieldAlert } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import BackButton from '../../../src/components/common/BackButton';
@@ -54,6 +55,10 @@ const dict = {
     confirmDownload: 'დადასტურება და ჩამოტვირთვა',
     confirmChangeName: 'სახელის შეცვლა (პროფილში გადასვლა)',
     confirmCancel: 'გაუქმება',
+    certLimitTitle: 'სერტიფიკატის ჩამოტვირთვის ლიმიტი ამოწურულია',
+    certLimitSubtitle:
+      'უსაფრთხოების მიზნით, სერტიფიკატის ჩამოტვირთვის მაქსიმალური რაოდენობა ამოწურულია. თუ გჭირდებათ დამატებითი ასლი ან გაქვთ შეკითხვა, მოგვწერეთ მხარდაჭერის ჩატში.',
+    certLimitContactSupport: 'მხარდაჭერასთან დაკავშირება',
   },
   en: {
     overview: 'Overview',
@@ -87,6 +92,10 @@ const dict = {
     confirmDownload: 'Confirm & Download',
     confirmChangeName: 'Change Name (Go to Settings)',
     confirmCancel: 'Cancel',
+    certLimitTitle: 'Certificate Download Limit Reached',
+    certLimitSubtitle:
+      'For security reasons, the maximum number of certificate downloads has been reached. If you need an extra copy or have a question, message our support chat.',
+    certLimitContactSupport: 'Contact Support',
   },
 };
 
@@ -234,8 +243,10 @@ function LearnContent() {
   const [error, setError] = useState<string | null>(null);
   const [downloadingCert, setDownloadingCert] = useState(false);
   const [showDownloadConfirm, setShowDownloadConfirm] = useState(false);
+  const [certLimitReached, setCertLimitReached] = useState(false);
 
   useEscapeToClose(showDownloadConfirm, () => setShowDownloadConfirm(false));
+  useEscapeToClose(certLimitReached, () => setCertLimitReached(false));
 
   const allLessons = useMemo(() => sections.flatMap((s) => s.lessons), [sections]);
   const activeLesson: LmsLesson | undefined = allLessons.find((l) => l.id === activeLessonId);
@@ -317,8 +328,30 @@ function LearnContent() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-    } catch {
-      setError('Unable to generate certificate.');
+    } catch (err) {
+      // downloadCertificate() requests responseType: 'blob' so a successful
+      // PDF streams straight through — but that also means an error JSON
+      // body (e.g. { error: 'DOWNLOAD_LIMIT_REACHED' }) arrives as a Blob
+      // too, not a parsed object; axios doesn't re-parse it for us. Read it
+      // back out as text before we can tell which error this actually is.
+      const status = (err as { response?: { status?: number; data?: unknown } })?.response?.status;
+      const data = (err as { response?: { data?: unknown } })?.response?.data;
+      let code: string | undefined;
+      if (data instanceof Blob) {
+        try {
+          code = JSON.parse(await data.text())?.error;
+        } catch {
+          code = undefined;
+        }
+      } else if (data && typeof data === 'object') {
+        code = (data as { error?: string }).error;
+      }
+
+      if (status === 403 && code === 'DOWNLOAD_LIMIT_REACHED') {
+        setCertLimitReached(true);
+      } else {
+        setError('Unable to generate certificate.');
+      }
     } finally {
       setDownloadingCert(false);
     }
@@ -526,6 +559,39 @@ function LearnContent() {
                 className="w-full text-center text-xs text-slate-500 hover:text-slate-300 bg-transparent border-none cursor-pointer py-1"
               >
                 {t.confirmCancel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {certLimitReached && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-sm px-4"
+          onClick={() => setCertLimitReached(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900/90 backdrop-blur-md p-8 shadow-2xl text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/10 border border-amber-500/30">
+              <ShieldAlert className="h-7 w-7 text-amber-400" />
+            </div>
+            <h2 className="text-lg font-black text-white mb-3">{t.certLimitTitle}</h2>
+            <p className="text-sm text-slate-300 leading-relaxed mb-8">{t.certLimitSubtitle}</p>
+            <div className="flex flex-col gap-2.5">
+              <Link
+                href="/contact"
+                className="w-full rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm py-3 no-underline shadow-lg hover:shadow-xl hover:shadow-cyan-500/30 transition-all"
+              >
+                {t.certLimitContactSupport}
+              </Link>
+              <button
+                type="button"
+                onClick={() => setCertLimitReached(false)}
+                className="w-full text-center rounded-xl border border-white/10 text-slate-300 font-bold text-sm py-3 bg-transparent cursor-pointer hover:bg-white/5 hover:border-cyan-400/50 transition-all"
+              >
+                {t.back}
               </button>
             </div>
           </div>
