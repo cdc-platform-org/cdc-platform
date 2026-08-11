@@ -61,6 +61,10 @@ export interface AgencyPortfolioItem {
   imageUrl?: string;
   imagePosition?: 'top' | 'center' | 'bottom' | 'left' | 'right';
   imageZoom?: number;
+  // Optional outbound link to the live project/client site. When set, the
+  // whole card becomes a clickable link (target="_blank") with an
+  // ExternalLink affordance; cards without one stay non-interactive.
+  externalLink?: string;
 }
 
 export interface AgencyContent {

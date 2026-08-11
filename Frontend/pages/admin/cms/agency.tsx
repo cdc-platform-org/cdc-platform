@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, ChangeEvent } from 'react';
 import Head from 'next/head';
+import { ExternalLink } from 'lucide-react';
 import AdminGuard from '../../../src/components/admin/AdminGuard';
 import AdminLayout from '../../../src/components/admin/AdminLayout';
 import { AgencyContent, AgencyPortfolioItem } from '../../../src/types/siteContent';
@@ -157,6 +158,19 @@ function PortfolioItemEditor({
       <div className="grid md:grid-cols-2 gap-2">
         <input placeholder="Status (KA)" value={item.statusKa} onChange={(e) => onChange({ statusKa: e.target.value })} className={inputClass} />
         <input placeholder="Status (EN)" value={item.statusEn} onChange={(e) => onChange({ statusEn: e.target.value })} className={inputClass} />
+      </div>
+      <div>
+        <label className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 mb-1">
+          <ExternalLink className="w-3 h-3" />
+          Outbound project link (optional — makes the whole card clickable)
+        </label>
+        <input
+          type="url"
+          placeholder="https://client-site.com"
+          value={item.externalLink ?? ''}
+          onChange={(e) => onChange({ externalLink: e.target.value || undefined })}
+          className={inputClass}
+        />
       </div>
       <button type="button" onClick={onRemove} className="text-xs text-red-500 hover:text-red-700">
         Remove project

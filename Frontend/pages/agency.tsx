@@ -2,13 +2,14 @@ import { useState, useEffect, FormEvent } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Briefcase, Sparkles, FileEdit, Sun, Moon } from 'lucide-react';
+import { Briefcase, Sparkles, FileEdit, Sun, Moon, ArrowUpRight } from 'lucide-react';
 import SiteFooter from '../src/components/layout/SiteFooter';
 import BackButton from '../src/components/common/BackButton';
 import Toast from '../src/components/shared/Toast';
 import { AgencyContent, AgencyPortfolioItem } from '../src/types/siteContent';
 import { getSiteContent } from '../src/services/siteContentService';
 import { resolveBlogImageUrl } from '../src/services/blogService';
+import { onImageErrorFallback } from '../src/utils/imageFallback';
 
 const OBJECT_POSITION: Record<string, string> = {
   top: 'center top',
@@ -22,6 +23,13 @@ import { submitStudioInquiry } from '../src/services/studioService';
 // Bundled fallback shown until (or unless) an admin adds portfolio items via
 // /admin/cms/agency — keeps the page populated on a fresh install with no
 // CMS rows yet, same fallback pattern as the homepage's DEFAULT stats/FAQ.
+// imageUrl below points at Pollinations.ai (the same unauthenticated,
+// no-key image generator services/aiAgentService.ts uses for blog covers)
+// as an illustrative placeholder cover — replace with a real project
+// screenshot via the CMS once available. externalLink is only set for
+// Taylor.ge since that's the one project whose live domain is already
+// named in its own title/description; the others are left unset (the card
+// simply renders non-interactive) rather than guessing a URL.
 const DEFAULT_PORTFOLIO: AgencyPortfolioItem[] = [
   {
     badgeKa: 'GITA მხარდაჭერა',
@@ -34,6 +42,8 @@ const DEFAULT_PORTFOLIO: AgencyPortfolioItem[] = [
     descEn: 'Full web support and social media management for a digital sewing patterns platform.',
     statusKa: '✓ წარმატებული ქეისი',
     statusEn: '✓ Success Case',
+    imageUrl: 'https://image.pollinations.ai/prompt/modern%20e-commerce%20website%20mockup%20on%20laptop%20screen%2C%20sewing%20and%20fashion%20patterns%20platform%2C%20isometric%203D%20vector%20illustration%2C%20vibrant%20tech%20colors%2C%20clean%20professional%20design%2C%20studio%20lighting%2C%2016%3A9?width=1280&height=720&seed=101&nologo=true',
+    externalLink: 'https://taylor.ge',
   },
   {
     badgeKa: 'ტურიზმი',
@@ -46,6 +56,7 @@ const DEFAULT_PORTFOLIO: AgencyPortfolioItem[] = [
     descEn: 'Digital platform and informational QR plates design for 10 hidden locations of Guria.',
     statusKa: '✓ წარმატებული ქეისი',
     statusEn: '✓ Success Case',
+    imageUrl: 'https://image.pollinations.ai/prompt/eco%20tourism%20digital%20platform%20with%20map%20pins%20over%20green%20hills%2C%20QR%20code%20signage%2C%20isometric%203D%20vector%20illustration%2C%20vibrant%20nature%20tech%20colors%2C%20clean%20professional%20design%2C%20studio%20lighting%2C%2016%3A9?width=1280&height=720&seed=102&nologo=true',
   },
   {
     badgeKa: 'SMM',
@@ -58,6 +69,7 @@ const DEFAULT_PORTFOLIO: AgencyPortfolioItem[] = [
     descEn: 'Providing social media advertising content, animations, and branding for regional businesses.',
     statusKa: '✓ წარმატებული ქეისი',
     statusEn: '✓ Success Case',
+    imageUrl: 'https://image.pollinations.ai/prompt/social%20media%20content%20calendar%20and%20animated%20posts%20floating%20around%20a%20smartphone%2C%20isometric%203D%20vector%20illustration%2C%20vibrant%20marketing%20colors%2C%20clean%20professional%20design%2C%20studio%20lighting%2C%2016%3A9?width=1280&height=720&seed=103&nologo=true',
   },
 ];
 
@@ -251,54 +263,78 @@ export default function Agency() {
           {translate('ჩვენი შესრულებული სამუშაოები', 'Our Portfolio')}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {portfolio.map((p, i) => (
-            <div
-              key={i}
-              className={`border rounded-3xl overflow-hidden transition-all duration-300 transform hover:scale-[1.03] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] flex flex-col justify-between min-h-[300px] ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}
-            >
-              {p.imageUrl && (
+          {portfolio.map((p, i) => {
+            return (
+              <a
+                key={i}
+                href={p.externalLink || undefined}
+                target={p.externalLink ? '_blank' : undefined}
+                rel={p.externalLink ? 'noopener noreferrer' : undefined}
+                className={`group border rounded-3xl overflow-hidden backdrop-blur-md no-underline text-current transition-all duration-300 transform hover:scale-[1.03] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] flex flex-col justify-between min-h-[300px] ${
+                  darkMode ? 'bg-[#0e1422]/80 border-slate-800' : 'bg-white/90 border-slate-200'
+                } ${p.externalLink ? 'cursor-pointer' : 'cursor-default'}`}
+              >
                 <div className="relative w-full aspect-video overflow-hidden bg-slate-100 dark:bg-slate-800">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={resolveBlogImageUrl(p.imageUrl)}
-                    alt=""
-                    className="w-full h-full object-cover"
-                    style={{
-                      objectPosition: OBJECT_POSITION[p.imagePosition ?? 'center'],
-                      transform: `scale(${(p.imageZoom ?? 100) / 100})`,
-                    }}
-                  />
+                  {p.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={resolveBlogImageUrl(p.imageUrl)}
+                      alt=""
+                      onError={onImageErrorFallback}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      style={{
+                        objectPosition: OBJECT_POSITION[p.imagePosition ?? 'center'],
+                        transform: `scale(${(p.imageZoom ?? 100) / 100})`,
+                      }}
+                    />
+                  ) : (
+                    <div className={`w-full h-full flex items-center justify-center ${darkMode ? 'bg-gradient-to-br from-[#0e1422] to-slate-900' : 'bg-gradient-to-br from-slate-100 to-slate-200'}`}>
+                      <Briefcase className="w-8 h-8 text-cyan-500/40" />
+                    </div>
+                  )}
+                  {p.externalLink && (
+                    <span className="absolute top-3 right-3 inline-flex items-center justify-center w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm text-white transition-transform duration-300 group-hover:scale-110">
+                      <ArrowUpRight className="w-4 h-4" />
+                    </span>
+                  )}
                 </div>
-              )}
-              <div className="p-8">
-              <div>
-                <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border ${
-                  darkMode ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' : 'text-cyan-700 bg-cyan-50 border-cyan-100'
-                }`}>
-                  {translate(p.badgeKa, p.badgeEn)}
-                </span>
+                <div className="p-8">
+                <div>
+                  <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border ${
+                    darkMode ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' : 'text-cyan-700 bg-cyan-50 border-cyan-100'
+                  }`}>
+                    {translate(p.badgeKa, p.badgeEn)}
+                  </span>
 
-                <h3 className="text-lg font-black mt-5 mb-2 tracking-wide leading-snug">
-                  {translate(p.titleKa, p.titleEn)}
-                </h3>
+                  <h3 className="text-lg font-black mt-5 mb-2 tracking-wide leading-snug flex items-center gap-1.5">
+                    {translate(p.titleKa, p.titleEn)}
+                    {p.externalLink && <ArrowUpRight className="w-4 h-4 text-cyan-500 shrink-0 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />}
+                  </h3>
 
-                <h4 className="text-xs font-bold text-slate-400 mb-5 uppercase tracking-wide">
-                  {translate(p.subtitleKa, p.subtitleEn)}
-                </h4>
+                  <h4 className="text-xs font-bold text-slate-400 mb-5 uppercase tracking-wide">
+                    {translate(p.subtitleKa, p.subtitleEn)}
+                  </h4>
 
-                <p className="text-xs md:text-sm text-slate-400 leading-relaxed font-medium">
-                  {translate(p.descKa, p.descEn)}
-                </p>
-              </div>
+                  <p className="text-xs md:text-sm text-slate-400 leading-relaxed font-medium">
+                    {translate(p.descKa, p.descEn)}
+                  </p>
+                </div>
 
-              <div className="pt-6 mt-6 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-500">
-                  {translate(p.statusKa, p.statusEn)}
-                </span>
-              </div>
-              </div>
-            </div>
-          ))}
+                <div className="pt-6 mt-6 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-500">
+                    {translate(p.statusKa, p.statusEn)}
+                  </span>
+                  {p.externalLink && (
+                    <span className="text-[11px] font-bold text-cyan-500 flex items-center gap-1">
+                      {translate('ნახე პროექტი', 'View Project')}
+                      <ArrowUpRight className="w-3 h-3" />
+                    </span>
+                  )}
+                </div>
+                </div>
+              </a>
+            );
+          })}
         </div>
       </main>
 
