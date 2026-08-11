@@ -16,15 +16,13 @@ module.exports = {
           darkBg: '#0b0f19',
         }
       },
-      // `heading`: BPG Banner (next/font/local, --font-heading), with a
-      // real self-hosted Inter (next/font/google, --font-fallback) — not
-      // just the bare string 'Inter' — as the fallback before generic
-      // sans-serif. Both CSS vars are set on the wrapper div in
-      // pages/_app.tsx; see the comment there for why the fallback exists.
-      // `sans` (body text/inputs): still the original @font-face —
-      // unrelated to this, unchanged.
+      // `heading`: Noto Sans Georgian (next/font/google CSS variable, see
+      // pages/_app.tsx) — one consistent typeface across Georgian+Latin,
+      // chosen after three custom local faces (BPG Banner, MS Ring,
+      // GL-Kirovi) each ran into a real production problem. `sans` (body
+      // text/inputs): still the original @font-face — unrelated, unchanged.
       fontFamily: {
-        heading: ['var(--font-heading)', 'var(--font-fallback)', 'sans-serif'],
+        heading: ['var(--font-heading)', 'Fira GO', 'sans-serif'],
         sans: ['GL-Kirovi', 'Fira GO', 'sans-serif'],
       },
     },

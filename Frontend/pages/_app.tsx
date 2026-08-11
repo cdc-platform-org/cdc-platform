@@ -1,8 +1,7 @@
 import { appWithTranslation } from 'next-i18next';
 import Head from 'next/head';
 import Script from 'next/script';
-import localFont from 'next/font/local';
-import { Inter } from 'next/font/google';
+import { Noto_Sans_Georgian } from 'next/font/google';
 import { useRouter } from 'next/router';
 import { AuthProvider } from '@/src/context/AuthContext';
 import { AuthModalProvider } from '@/src/context/AuthModalContext';
@@ -14,35 +13,27 @@ import TermsConsentModal from '@/src/components/auth/TermsConsentModal';
 import type { AppProps } from 'next/app';
 import '@/styles/globals.css';
 
-// Heading font — BPG Banner ExtraSquare Caps (public/fonts/), a Georgian
-// display face from BPG-InfoTech. Verified before wiring in — not just its
-// cmap (MS Ring's cmap technically mapped Latin codepoints too, but those
-// glyphs rendered blank/broken in production) but the actual glyf outline
-// byte length behind each mapped glyph ID: Latin A/a/Z and Georgian ა/ბ/ჰ
-// all resolve to real, non-empty outlines here, so this file itself is
-// sound for both scripts.
-//
-// Still, given the last two local faces (MS Ring, GL-Kirovi) each broke
-// one script or the other despite pre-flight checks, --font-heading is
-// deliberately NOT the only font in the chain: Inter is self-hosted
-// alongside it as --font-fallback (a real webfont, not just the bare
-// string 'Inter' hoping the visitor's OS has it installed), and both
-// tailwind.config.js's `heading` family and globals.css's h1-h6 rule
-// reference var(--font-heading), var(--font-fallback), sans-serif in that
-// order — so if BPG Banner is ever missing a glyph (or turns out to have
-// the same silent-blank-glyph problem MS Ring did for some character this
-// spot-check didn't cover), the browser falls through to a real rendered
-// Inter glyph, never blank/missing text.
-const headingFont = localFont({
-  src: '../public/fonts/bpg_banner_extrasquare_caps-42837457509.ttf',
-  weight: '400',
+// Heading font — Noto Sans Georgian (next/font/google). Every local custom
+// face tried here (BPG Banner, MS Ring, GL-Kirovi) ran into a real problem
+// in production despite passing structural/cmap validation beforehand:
+// MS Ring's Latin glyphs mapped but rendered blank; BPG Banner's Latin
+// glyphs render fine on their own but visually clash against Georgian
+// glyphs within the same mixed-script heading (e.g. "HEKS/EPER Georgia-ს
+// მხარდაჭერა") even with a same-script Inter fallback wired in, because a
+// single heading string ends up rendered in two different typefaces
+// side by side. Noto Sans Georgian ships one consistent, battle-tested
+// design across both Mkhedruli and Latin — the only option so far where
+// mixed-script headings actually look like one font, not two stitched
+// together. Self-hosted at build time (no runtime request to Google).
+// Multiple weights are loaded so bold hero titles and lighter card headers
+// both have a real weight to draw from, not a synthesized one. Exposed as
+// the same --font-heading CSS variable that styles/globals.css (h1-h6,
+// .font-heading) and tailwind.config.js's `heading` family already key
+// off, so nothing else needed to change to pick this up.
+const headingFont = Noto_Sans_Georgian({
+  subsets: ['georgian', 'latin'],
+  weight: ['500', '600', '700', '800'],
   variable: '--font-heading',
-  display: 'swap',
-});
-
-const fallbackFont = Inter({
-  subsets: ['latin'],
-  variable: '--font-fallback',
   display: 'swap',
 });
 
@@ -139,7 +130,7 @@ function App({ Component, pageProps }: AppProps) {
         // script actually becomes available instead of silently giving up.
         onLoad={() => window.dispatchEvent(new Event('google-gsi-ready'))}
       />
-      <div className={`${headingFont.variable} ${fallbackFont.variable}`}>
+      <div className={headingFont.variable}>
         <AuthProvider>
           <AuthModalProvider>
             <Component {...pageProps} />
