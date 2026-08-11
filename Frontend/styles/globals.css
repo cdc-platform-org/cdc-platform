@@ -14,7 +14,7 @@
   font-display: swap;
 }
 
-/* Headings: Dachi the Lynx (next/font/local, --font-heading variable set on
+/* Headings: MS Ring (next/font/local, --font-heading variable set on
    the wrapper div in pages/_app.tsx). Body text/inputs above still use the
    (currently also-corrupted) GL-Kirovi @font-face, unchanged. */
 h1, h2, h3, h4, h5, h6, .font-heading {

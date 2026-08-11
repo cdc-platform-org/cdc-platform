@@ -13,17 +13,17 @@ import TermsConsentModal from '@/src/components/auth/TermsConsentModal';
 import type { AppProps } from 'next/app';
 import '@/styles/globals.css';
 
-// Heading font — Dachi the Lynx (public/fonts/), a custom display OTF with
-// full Latin + Georgian (Mkhedruli) glyph coverage, verified via its cmap
-// table before wiring in (the previous GL-Kirovi TTF here was silently
-// corrupted at the binary level, which is why this used to stand in with
-// Noto Sans Georgian — see git history). Exposed as the same --font-heading
-// CSS variable that styles/globals.css (h1-h6, .font-heading) and
-// tailwind.config.js's `heading` family already key off, so nothing else
-// needed to change to pick this up.
+// Heading font — MS Ring (public/fonts/), a custom display TTF with full
+// Latin + Georgian (Mkhedruli) glyph coverage, verified via its cmap table
+// before wiring in (the file's own name/OS2 metadata both say "bold" —
+// usWeightClass 700 — so weight is set to match; declaring '400' against a
+// 700-weight file risks the browser synthesizing a faux-bold on top of it).
+// Exposed as the same --font-heading CSS variable that styles/globals.css
+// (h1-h6, .font-heading) and tailwind.config.js's `heading` family already
+// key off, so nothing else needed to change to pick this up.
 const headingFont = localFont({
-  src: '../public/fonts/Dachi the Lynx-46841546889.otf',
-  weight: '400',
+  src: '../public/fonts/MS RING-44480510007.ttf',
+  weight: '700',
   variable: '--font-heading',
   display: 'swap',
 });

@@ -16,7 +16,7 @@ module.exports = {
           darkBg: '#0b0f19',
         }
       },
-      // `heading`: Dachi the Lynx (next/font/local CSS variable, see
+      // `heading`: MS Ring (next/font/local CSS variable, see
       // pages/_app.tsx). `sans` (body text/inputs): still the original
       // @font-face — unrelated to this, unchanged.
       fontFamily: {
