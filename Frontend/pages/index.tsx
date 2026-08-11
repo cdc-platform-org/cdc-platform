@@ -630,14 +630,23 @@ export default function Home() {
                 )}
               </p>
 
-              {/* CTA */}
-              <a
-                href="#courses"
-                className="group inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl text-sm uppercase tracking-widest no-underline shadow-xl shadow-cyan-500/20 hover:shadow-2xl hover:shadow-cyan-500/40 hover:scale-105 transition-all duration-300 whitespace-nowrap"
-              >
-                {translate('კურსების ნახვა ციფრულ კოლეჯში', 'Explore Digital College Courses')}
-                <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
-              </a>
+              {/* CTA — primary (browse courses) + secondary (register), matching
+                  the two-button hero pattern from the Stitch design reference. */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <a
+                  href="#courses"
+                  className="group inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl text-sm uppercase tracking-widest no-underline shadow-xl shadow-cyan-500/20 hover:shadow-2xl hover:shadow-cyan-500/40 hover:scale-105 transition-all duration-300 whitespace-nowrap"
+                >
+                  {translate('კურსების ნახვა ციფრულ კოლეჯში', 'Explore Digital College Courses')}
+                  <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+                </a>
+                <Link
+                  href="/auth/register"
+                  className="inline-flex items-center justify-center gap-2 bg-white/10 border border-white/20 backdrop-blur-md text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl text-sm uppercase tracking-widest no-underline hover:bg-white/20 hover:border-white/30 transition-all duration-300 whitespace-nowrap"
+                >
+                  {translate('შემოგვიერთდი', 'Join the Platform')}
+                </Link>
+              </div>
             </div>
             {/* lg:col-span-5 intentionally left empty — this is where the video reads clearly */}
           </div>
