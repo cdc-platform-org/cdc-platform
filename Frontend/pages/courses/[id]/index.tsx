@@ -38,12 +38,13 @@ const dict = {
     paywallTitle: 'ეს გაკვეთილი დაბლოკილია',
     paywallBody: 'შეიძინეთ სრული კურსი, რომ მიიღოთ დაუყოვნებელი წვდომა ყველა ვიდეოზე, ჩამოსატვირთ მასალებზე და დავალებების ჩაბარებაზე.',
     buyCourse: 'კურსის შეძენა',
+    promoLabel: 'გაქვთ პრომო კოდი?',
     promoPlaceholder: 'პრომო კოდი',
     promoApply: 'გააქტიურება',
     promoApplying: 'მოწმდება…',
     promoApplied: 'პრომო კოდი გააქტიურდა',
     promoRemove: 'წაშლა',
-    promoInvalid: 'პრომო კოდი არასწორია.',
+    promoInvalid: 'არასწორი ან ვადაგასული კოდი',
   },
   en: {
     loading: 'Loading…',
@@ -63,12 +64,13 @@ const dict = {
     paywallTitle: 'This lesson is locked',
     paywallBody: 'Purchase the full course to get instant access to all videos, downloadable resources, and assignment submissions.',
     buyCourse: 'Buy Course',
+    promoLabel: 'Have a promo code?',
     promoPlaceholder: 'Promo code',
     promoApply: 'Apply',
     promoApplying: 'Checking…',
     promoApplied: 'Promo code applied',
     promoRemove: 'Remove',
-    promoInvalid: 'Invalid promo code.',
+    promoInvalid: 'Invalid or expired code',
   },
 };
 
@@ -79,6 +81,12 @@ function formatTotalDuration(totalSeconds: number, lang: 'ka' | 'en'): string {
   if (hours === 0) return lang === 'ka' ? `${minutes} წუთი` : `${minutes} min`;
   if (minutes === 0) return lang === 'ka' ? `${hours} სთ` : `${hours}h`;
   return lang === 'ka' ? `${hours} სთ ${minutes} წთ` : `${hours}h ${minutes}m`;
+}
+
+function formatDiscount(promo: PromoValidationResult): string {
+  if (promo.discountPercent) return `-${promo.discountPercent}%`;
+  if (promo.discountAmount) return `-${formatPrice(promo.discountAmount)}`;
+  return '';
 }
 
 function formatLessonDuration(seconds: number): string {
@@ -321,37 +329,45 @@ export default function CourseDetailPage() {
           {!enrolled && (
             <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
               {appliedPromo ? (
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                <div className="flex items-center gap-2 flex-wrap text-xs bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl px-3 py-2.5">
+                  <span className="font-bold text-emerald-700 dark:text-emerald-400">
                     ✓ {t.promoApplied}: {appliedPromo.code}
                   </span>
+                  {formatDiscount(appliedPromo) && (
+                    <span className="font-black text-[11px] text-white bg-emerald-600 px-2 py-0.5 rounded-full">
+                      {formatDiscount(appliedPromo)}
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={() => {
                       setAppliedPromo(null);
                       setPromoInput('');
                     }}
-                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-transparent border-none cursor-pointer underline"
+                    className="ml-auto text-emerald-700/70 dark:text-emerald-400/70 hover:text-emerald-800 dark:hover:text-emerald-300 bg-transparent border-none cursor-pointer underline"
                   >
                     {t.promoRemove}
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
-                  <input
-                    value={promoInput}
-                    onChange={(e) => setPromoInput(e.target.value)}
-                    placeholder={t.promoPlaceholder}
-                    className="flex-1 max-w-[200px] rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-xs"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleApplyPromo}
-                    disabled={applyingPromo || !promoInput.trim()}
-                    className="text-xs font-bold text-cyan-600 dark:text-cyan-400 bg-transparent border border-cyan-500/30 rounded-lg px-3 py-2 cursor-pointer hover:bg-cyan-500/10 disabled:opacity-50"
-                  >
-                    {applyingPromo ? t.promoApplying : t.promoApply}
-                  </button>
+                <div>
+                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">{t.promoLabel}</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={promoInput}
+                      onChange={(e) => setPromoInput(e.target.value)}
+                      placeholder={t.promoPlaceholder}
+                      className="flex-1 max-w-[220px] rounded-lg border border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyPromo}
+                      disabled={applyingPromo || !promoInput.trim()}
+                      className="text-xs font-bold text-cyan-700 dark:text-cyan-400 bg-cyan-50/80 dark:bg-cyan-500/10 backdrop-blur-md border border-cyan-500/30 rounded-lg px-3.5 py-2.5 cursor-pointer hover:bg-cyan-100 dark:hover:bg-cyan-500/20 disabled:opacity-50 transition-colors"
+                    >
+                      {applyingPromo ? t.promoApplying : t.promoApply}
+                    </button>
+                  </div>
                 </div>
               )}
               {promoError && <p className="text-xs text-red-500 mt-1.5">{promoError}</p>}
