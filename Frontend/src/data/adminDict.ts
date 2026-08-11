@@ -36,6 +36,14 @@ export const adminDict = {
       assignments: 'საშინაო დავალებები',
       certificates: 'სერტიფიკატის გაცემა',
     },
+    navSections: {
+      core: 'ძირითადი მართვა',
+      content: 'კონტენტი & CMS',
+      business: 'ბიზნესი & პარტნიორები',
+      academic: 'სასწავლო პროცესი',
+      financial: 'ფინანსები',
+      admin: 'ადმინისტრირება',
+    },
     chrome: {
       adminPanel: 'ადმინ პანელი',
       backToSite: '← საიტზე დაბრუნება',
@@ -96,6 +104,14 @@ export const adminDict = {
       products: 'Digital Store',
       assignments: 'Assignments',
       certificates: 'Issue Certificate',
+    },
+    navSections: {
+      core: 'Core Management',
+      content: 'Content & CMS Hub',
+      business: 'Business & Partners',
+      academic: 'Academic',
+      financial: 'Financial',
+      admin: 'Administration',
     },
     chrome: {
       adminPanel: 'Admin Panel',

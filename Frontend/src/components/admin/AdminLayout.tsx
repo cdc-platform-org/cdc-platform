@@ -37,38 +37,41 @@ interface NavItem {
   labelKey: keyof typeof adminDict.en.nav;
   icon: typeof LayoutDashboard;
   tiers?: ('SUPER_ADMIN' | 'MANAGER' | 'MODERATOR')[]; // omit = visible to any admin-team member
+  section: keyof typeof adminDict.en.navSections;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/admin', labelKey: 'dashboard', icon: LayoutDashboard },
-  { href: '/admin/users', labelKey: 'users', icon: Users },
-  { href: '/admin/gigs', labelKey: 'gigs', icon: Briefcase },
-  { href: '/admin/disputes', labelKey: 'disputes', icon: Scale, tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/mentorship', labelKey: 'mentorship', icon: GraduationCap },
-  { href: '/admin/messages', labelKey: 'messages', icon: ShieldAlert },
-  { href: '/admin/notifications', labelKey: 'notifications', icon: Bell },
-  { href: '/admin/products', labelKey: 'products', icon: ShoppingBag, tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/forum', labelKey: 'forum', icon: MessageSquare },
-  { href: '/admin/bot-knowledge', labelKey: 'botKnowledge', icon: BrainCircuit, tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/cms/homepage', labelKey: 'cms', icon: PenTool, tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/cms/gallery', labelKey: 'gallery', icon: ImageIcon, tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/cms/agency', labelKey: 'agencyCms', icon: Building2, tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/studio', labelKey: 'studio', icon: ClipboardList, tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/companies', labelKey: 'companies', icon: ShieldCheck, tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/blog', labelKey: 'blog', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/success-stories', labelKey: 'successStories', icon: Award, tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/team-trainers', labelKey: 'teamTrainers', icon: UsersRound, tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/studio-cases', labelKey: 'studioCases', icon: Layers, tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/courses', labelKey: 'courses', icon: GraduationCap, tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/assignments', labelKey: 'assignments', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/analytics', labelKey: 'analytics', icon: BarChart3, tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/finance', labelKey: 'finance', icon: CreditCard, tiers: ['SUPER_ADMIN'] },
-  { href: '/admin/finance/payouts', labelKey: 'payouts', icon: Landmark, tiers: ['SUPER_ADMIN'] },
-  { href: '/admin/financials', labelKey: 'financials', icon: Wallet, tiers: ['SUPER_ADMIN'] },
-  { href: '/admin/promos', labelKey: 'promos', icon: Tag, tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/certificates/issue', labelKey: 'certificates', icon: Award, tiers: ['SUPER_ADMIN', 'MANAGER'] },
-  { href: '/admin/team', labelKey: 'team', icon: Lock, tiers: ['SUPER_ADMIN'] },
+  { href: '/admin', labelKey: 'dashboard', icon: LayoutDashboard, section: 'core' },
+  { href: '/admin/users', labelKey: 'users', icon: Users, section: 'core' },
+  { href: '/admin/gigs', labelKey: 'gigs', icon: Briefcase, section: 'core' },
+  { href: '/admin/disputes', labelKey: 'disputes', icon: Scale, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'core' },
+  { href: '/admin/mentorship', labelKey: 'mentorship', icon: GraduationCap, section: 'core' },
+  { href: '/admin/messages', labelKey: 'messages', icon: ShieldAlert, section: 'core' },
+  { href: '/admin/notifications', labelKey: 'notifications', icon: Bell, section: 'core' },
+  { href: '/admin/products', labelKey: 'products', icon: ShoppingBag, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  { href: '/admin/forum', labelKey: 'forum', icon: MessageSquare, section: 'content' },
+  { href: '/admin/bot-knowledge', labelKey: 'botKnowledge', icon: BrainCircuit, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  { href: '/admin/cms/homepage', labelKey: 'cms', icon: PenTool, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  { href: '/admin/cms/gallery', labelKey: 'gallery', icon: ImageIcon, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  { href: '/admin/cms/agency', labelKey: 'agencyCms', icon: Building2, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  { href: '/admin/studio', labelKey: 'studio', icon: ClipboardList, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  { href: '/admin/companies', labelKey: 'companies', icon: ShieldCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
+  { href: '/admin/blog', labelKey: 'blog', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
+  { href: '/admin/success-stories', labelKey: 'successStories', icon: Award, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
+  { href: '/admin/team-trainers', labelKey: 'teamTrainers', icon: UsersRound, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
+  { href: '/admin/studio-cases', labelKey: 'studioCases', icon: Layers, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
+  { href: '/admin/courses', labelKey: 'courses', icon: GraduationCap, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },
+  { href: '/admin/assignments', labelKey: 'assignments', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },
+  { href: '/admin/analytics', labelKey: 'analytics', icon: BarChart3, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },
+  { href: '/admin/finance', labelKey: 'finance', icon: CreditCard, tiers: ['SUPER_ADMIN'], section: 'financial' },
+  { href: '/admin/finance/payouts', labelKey: 'payouts', icon: Landmark, tiers: ['SUPER_ADMIN'], section: 'financial' },
+  { href: '/admin/financials', labelKey: 'financials', icon: Wallet, tiers: ['SUPER_ADMIN'], section: 'financial' },
+  { href: '/admin/promos', labelKey: 'promos', icon: Tag, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'financial' },
+  { href: '/admin/certificates/issue', labelKey: 'certificates', icon: Award, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'financial' },
+  { href: '/admin/team', labelKey: 'team', icon: Lock, tiers: ['SUPER_ADMIN'], section: 'admin' },
 ];
+
+const SECTION_ORDER: (keyof typeof adminDict.en.navSections)[] = ['core', 'content', 'business', 'academic', 'financial', 'admin'];
 
 const TIER_BADGE: Record<string, string> = {
   SUPER_ADMIN: 'bg-gradient-to-r from-amber-400 to-orange-500 text-white',
@@ -83,6 +86,10 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
   const t = adminDict[lang];
 
   const visibleNav = NAV_ITEMS.filter((item) => !item.tiers || (user?.adminRole && item.tiers.includes(user.adminRole)));
+  const groupedNav = SECTION_ORDER.map((section) => ({
+    section,
+    items: visibleNav.filter((item) => item.section === section),
+  })).filter((group) => group.items.length > 0);
 
   // Each admin page mounts its own <AdminLayout>, so this <aside> is torn
   // down and rebuilt on every route change — losing its scrollTop even
@@ -110,8 +117,11 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
       >
         <div className="px-6 py-6 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
-            <div className="bg-gradient-to-tr from-cyan-500 to-purple-600 text-white px-3 py-1.5 rounded-lg font-black text-sm tracking-wider">
-              CDC
+            <div className="relative">
+              <div className="absolute inset-0 bg-cyan-500/40 blur-lg rounded-lg" aria-hidden="true" />
+              <div className="relative bg-gradient-to-tr from-cyan-500 to-purple-600 text-white px-3 py-1.5 rounded-lg font-black text-sm tracking-wider shadow-lg">
+                CDC
+              </div>
             </div>
             <span className="font-bold text-sm tracking-wide">{t.chrome.adminPanel}</span>
           </div>
@@ -124,30 +134,44 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
           )}
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          {visibleNav.map((item) => {
-            const isActive = router.pathname === item.href;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                scroll={false}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium no-underline transition-colors ${
-                  isActive
-                    ? 'bg-gradient-to-r from-cyan-500/20 to-purple-600/20 text-white border border-cyan-500/30'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                }`}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                {t.nav[item.labelKey]}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 px-3 py-4 space-y-5">
+          {groupedNav.map(({ section, items }) => (
+            <div key={section}>
+              <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                {t.navSections[section]}
+              </p>
+              <div className="space-y-1">
+                {items.map((item) => {
+                  const isActive = router.pathname === item.href;
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      scroll={false}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium no-underline transition-colors ${
+                        isActive
+                          ? 'bg-gradient-to-r from-cyan-500/20 to-purple-600/20 text-white border border-cyan-500/30 shadow-[0_0_16px_rgba(34,211,238,0.15)]'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4 shrink-0" />
+                      {t.nav[item.labelKey]}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="px-4 py-5 border-t border-slate-800 space-y-3">
-          <div className="text-xs text-slate-400 truncate">{user?.email}</div>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="shrink-0 w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-xs font-black text-white">
+              {(user?.name ?? user?.email ?? '?').charAt(0).toUpperCase()}
+            </div>
+            <div className="text-xs text-slate-400 truncate">{user?.email}</div>
+          </div>
           <div className="flex items-center gap-3">
             <Link href="/" className="text-xs font-medium text-slate-400 hover:text-white no-underline">
               {t.chrome.backToSite}
