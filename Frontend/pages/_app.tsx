@@ -1,7 +1,7 @@
 import { appWithTranslation } from 'next-i18next';
 import Head from 'next/head';
 import Script from 'next/script';
-import { Noto_Sans_Georgian } from 'next/font/google';
+import localFont from 'next/font/local';
 import { useRouter } from 'next/router';
 import { AuthProvider } from '@/src/context/AuthContext';
 import { AuthModalProvider } from '@/src/context/AuthModalContext';
@@ -13,21 +13,17 @@ import TermsConsentModal from '@/src/components/auth/TermsConsentModal';
 import type { AppProps } from 'next/app';
 import '@/styles/globals.css';
 
-// TEMPORARY heading font: the real GL-Kirovi TTF
-// (public/fonts/gl-kirovi-bold-39756223608.ttf) is corrupted at the
-// binary level — valid sfnt header, but a garbled/out-of-bounds table
-// directory with every table a renderer needs (glyf/cmap/head/etc.)
-// missing. next/font/local's own parser threw a hard build error on it;
-// browsers hit the same corruption and silently fall back. Standing in
-// with Noto Sans Georgian (full Mkhedruli coverage, OFL-licensed,
-// self-hosted at build time — no runtime request to Google) until a
-// valid replacement file is provided, at which point swap this back to
-// next/font/local({ src: '../public/fonts/<new-file>.ttf', ... }) —
-// styles/globals.css and tailwind.config.js both key off the same
-// --font-heading variable name, so nothing else needs to change.
-const headingFont = Noto_Sans_Georgian({
-  subsets: ['georgian', 'latin'],
-  weight: '700',
+// Heading font — Dachi the Lynx (public/fonts/), a custom display OTF with
+// full Latin + Georgian (Mkhedruli) glyph coverage, verified via its cmap
+// table before wiring in (the previous GL-Kirovi TTF here was silently
+// corrupted at the binary level, which is why this used to stand in with
+// Noto Sans Georgian — see git history). Exposed as the same --font-heading
+// CSS variable that styles/globals.css (h1-h6, .font-heading) and
+// tailwind.config.js's `heading` family already key off, so nothing else
+// needed to change to pick this up.
+const headingFont = localFont({
+  src: '../public/fonts/Dachi the Lynx-46841546889.otf',
+  weight: '400',
   variable: '--font-heading',
   display: 'swap',
 });

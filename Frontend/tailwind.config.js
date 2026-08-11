@@ -16,9 +16,9 @@ module.exports = {
           darkBg: '#0b0f19',
         }
       },
-      // `heading`: temporary Noto Sans Georgian stand-in (next/font/google
-      // CSS variable, see pages/_app.tsx) until GL-Kirovi is replaced.
-      // `sans` (body text/inputs): still the original @font-face.
+      // `heading`: Dachi the Lynx (next/font/local CSS variable, see
+      // pages/_app.tsx). `sans` (body text/inputs): still the original
+      // @font-face — unrelated to this, unchanged.
       fontFamily: {
         heading: ['var(--font-heading)', 'Fira GO', 'sans-serif'],
         sans: ['GL-Kirovi', 'Fira GO', 'sans-serif'],
