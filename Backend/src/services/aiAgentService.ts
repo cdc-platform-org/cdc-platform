@@ -125,7 +125,14 @@ ${topicLine}
 Requirements:
 - Write BOTH a Georgian (ქართული) version and an English version of the same article — not a literal translation of each other, but both should cover the same content, facts, and structure. Keep standard IT/tech terminology in English even in the Georgian text where that's natural (e.g. "API", "SEO", "framework").
 - "category" is a single short Georgian category label (2-4 words), e.g. "ტექნოლოგიები" or "ხელოვნური ინტელექტი".
-- "contentKa"/"contentEn" are the full article body as HTML (use <p>, <h2>, <h3>, <ul>/<li>, <strong> — no <html>/<body> wrapper), at least 4-6 paragraphs, genuinely informative, not filler.
+- "contentKa"/"contentEn" are the full article body as clean, structured HTML — no <html>/<body> wrapper, ready to be inserted directly into a page and rendered as-is. Follow this structure strictly:
+  * Open with 1-2 short <p> paragraphs (2-4 sentences each) that hook the reader — no heading before this intro.
+  * Break the rest of the body into 3-5 sections, each starting with an <h2> (use <h3> for a sub-point inside a section only if genuinely needed). Section headings must be specific and scannable, never generic ("Introduction", "Conclusion").
+  * Keep every <p> short and well-spaced — 2-4 sentences, one idea each. Never write a wall-of-text paragraph.
+  * Use <strong> to bold crucial terms, numbers, and key phrases inline within paragraphs — enough that a reader skimming only the bolded words gets the gist, but never bold entire sentences.
+  * Include at least one <ul> of 3-5 <li> bullet points somewhere in the body for a scannable "key takeaways" or list-style moment (e.g. steps, benefits, comparison points) — do not force it if the topic has no natural list, but most topics do.
+  * Include exactly one <blockquote> containing a single punchy, quotable sentence — a key takeaway, a striking stat, or the article's core insight — placed after the section it summarizes, not at the very top or bottom.
+  * Overall length: at least 4-6 substantial sections' worth of content, genuinely informative and specific to the topic, never generic filler.
 - Every article MUST end with a sources section as its final <h2>: use exactly "<h2>წყაროები</h2>" in contentKa and "<h2>Sources</h2>" in contentEn, immediately followed by a <ul> of 2-4 <li><a href="..." target="_blank" rel="noopener noreferrer">...</a></li> entries. Only cite well-known, stable, real URLs you are highly confident exist (official documentation, an official product/GitHub page, a well-established technical reference) — never invent or guess a URL. If you cannot recall a specific real source confidently, link to the general official docs/homepage of the technology discussed instead of fabricating a deep link.
 - "descriptionKa"/"descriptionEn" are a 1-2 sentence excerpt (under 200 characters) suitable for a blog list preview.
 - "imageConcept" is a short (1-2 sentence) description of a concrete visual scene for the cover image — describe objects/composition/mood, not style keywords (style is handled separately).
