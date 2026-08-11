@@ -15,6 +15,10 @@ import {
   ShoppingBag,
   Download,
   CalendarClock,
+  Award,
+  MessageSquare,
+  Bot,
+  Sparkles,
 } from 'lucide-react';
 import ProtectedRoute from '../src/components/auth/ProtectedRoute';
 import SiteHeader from '../src/components/layout/SiteHeader';
@@ -59,6 +63,9 @@ const dict = {
     statWallet: 'საფულის ბალანსი',
     statGigs: 'აქტიური გიგები',
     statCerts: 'მიღებული სერტიფიკატები',
+    aiTutorTitle: 'AI კურსის რეპეტიტორი',
+    aiTutorDesc: 'გაქვთ შეკითხვა გაკვეთილთან დაკავშირებით? AI რეპეტიტორი ხელმისაწვდომია პირდაპირ გაკვეთილის გვერდზე.',
+    aiTutorCta: 'გაგრძელება რეპეტიტორთან ერთად',
     progressTitle: 'კურსის პროგრესი',
     noCourses: 'თქვენ ჯერ არცერთ კურსზე არ ხართ ჩარიცხული.',
     browseCourses: 'კურსების დათვალიერება',
@@ -159,6 +166,9 @@ const dict = {
     statWallet: 'Wallet Balance',
     statGigs: 'Active Gigs',
     statCerts: 'Certificates Earned',
+    aiTutorTitle: 'AI Course Tutor',
+    aiTutorDesc: 'Have a question about a lesson? Your AI Tutor is available right on the lesson page.',
+    aiTutorCta: 'Continue with your Tutor',
     progressTitle: 'Course Progress',
     noCourses: "You're not enrolled in any courses yet.",
     browseCourses: 'Browse Courses',
@@ -545,6 +555,10 @@ function DashboardContent() {
 
   const certificatesEarned = courses.filter((c) => c.hasCertificate).length;
   const activeGigsCount = gigs.filter((g) => g.status === 'assigned' || g.status === 'submitted').length;
+  // Points the AI Tutor promo card at whichever enrolled course still has
+  // work left — falls back to the first enrolled course if everything's
+  // already complete, so the card still links somewhere valid.
+  const inProgressCourse = courses.find((c) => c.progress.percent < 100) ?? courses[0];
   const escrowBalance = gigs
     .filter((g) => g.transaction?.status === 'HELD_IN_ESCROW')
     .reduce((sum, g) => sum + (g.transaction?.netAmount ?? 0), 0);
@@ -636,18 +650,21 @@ function DashboardContent() {
                 <div className="space-y-8">
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
-                      { label: t.statCourses, value: String(courses.length), color: 'text-cyan-600 dark:text-cyan-400' },
-                      { label: t.statWallet, value: wallet ? formatGel(wallet.earningsBalance) : '—', color: 'text-emerald-600 dark:text-emerald-400' },
-                      { label: t.statGigs, value: String(activeGigsCount), color: 'text-purple-600 dark:text-purple-400' },
-                      { label: t.statCerts, value: String(certificatesEarned), color: 'text-amber-600 dark:text-amber-400' },
+                      { label: t.statCourses, value: String(courses.length), color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-500/10', icon: GraduationCap },
+                      { label: t.statWallet, value: wallet ? formatGel(wallet.earningsBalance) : '—', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10', icon: Wallet },
+                      { label: t.statGigs, value: String(activeGigsCount), color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-500/10', icon: Briefcase },
+                      { label: t.statCerts, value: String(certificatesEarned), color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/10', icon: Award },
                       ...(postQuota && !postQuota.isGraduate
-                        ? [{ label: t.statPostsLeft, value: String(postQuota.remaining), color: 'text-pink-600 dark:text-pink-400' }]
+                        ? [{ label: t.statPostsLeft, value: String(postQuota.remaining), color: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-500/10', icon: MessageSquare }]
                         : []),
                     ].map((stat) => (
                       <div
                         key={stat.label}
                         className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-5"
                       >
+                        <div className={`w-9 h-9 rounded-xl ${stat.bg} flex items-center justify-center mb-3`}>
+                          <stat.icon className={`w-4 h-4 ${stat.color}`} />
+                        </div>
                         <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
                         <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1">{stat.label}</p>
                       </div>
@@ -660,6 +677,27 @@ function DashboardContent() {
                   )}
 
                   {user?.role === 'Student' && <FreelancerExamCard user={user} t={t} />}
+
+                  {inProgressCourse && (
+                    <Link
+                      href={`/courses/${inProgressCourse.course.id}/learn`}
+                      className="flex items-center gap-4 rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-cyan-500/5 to-purple-600/5 backdrop-blur-md p-5 no-underline text-current transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10"
+                    >
+                      <div className="shrink-0 w-11 h-11 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
+                        <Bot className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="flex items-center gap-1.5 text-sm font-black text-slate-900 dark:text-white">
+                          <Sparkles className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+                          {t.aiTutorTitle}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.aiTutorDesc}</p>
+                      </div>
+                      <span className="shrink-0 text-xs font-bold text-cyan-600 dark:text-cyan-400 whitespace-nowrap hidden sm:inline">
+                        {t.aiTutorCta} →
+                      </span>
+                    </Link>
+                  )}
 
                   <div>
                     <h2 className="text-sm font-extrabold tracking-wide mb-3">{t.progressTitle}</h2>
