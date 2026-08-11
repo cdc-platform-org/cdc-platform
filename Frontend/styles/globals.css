@@ -14,12 +14,13 @@
   font-display: swap;
 }
 
-/* Headings: Noto Sans Georgian (next/font/google, --font-heading variable
-   set on the wrapper div in pages/_app.tsx) — see the comment there for
-   why. Body text/inputs above still use the (currently also-corrupted)
-   GL-Kirovi @font-face, unchanged. */
+/* Headings: BPG ExtraSquare Mtavruli (next/font/local, --font-heading)
+   with a self-hosted Inter (next/font/google, --font-fallback) as the
+   fallback — both variables set on the wrapper div in pages/_app.tsx, see
+   the comment there for why. Body text/inputs above still use the
+   (currently also-corrupted) GL-Kirovi @font-face, unchanged. */
 h1, h2, h3, h4, h5, h6, .font-heading {
-  font-family: var(--font-heading), 'Fira GO', sans-serif !important;
+  font-family: var(--font-heading), var(--font-fallback), sans-serif !important;
 }
 
 /* ============================================================
