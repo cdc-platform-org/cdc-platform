@@ -207,11 +207,12 @@ export default function Agency() {
             <button
               type="button"
               onClick={handleLangToggle}
+              title={lang === 'GEO' ? 'Switch to English' : 'ქართულ ენაზე გადართვა'}
               className={`font-sans font-black text-xs px-2.5 py-1.5 rounded-lg border transition duration-200 cursor-pointer ${
                 darkMode ? 'border-slate-800 bg-slate-900/60 text-cyan-400' : 'border-slate-200 bg-slate-50 text-slate-600'
               }`}
             >
-              {lang}
+              {lang === 'GEO' ? 'ENG' : 'GEO'}
             </button>
 
             <button type="button" onClick={toggleDarkMode} className="p-2 rounded-xl transition border-none bg-transparent cursor-pointer duration-200">

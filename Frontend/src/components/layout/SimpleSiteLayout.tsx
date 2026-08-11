@@ -55,9 +55,10 @@ export default function SimpleSiteLayout({ titleKa, titleEn, children }: SimpleS
           <button
             type="button"
             onClick={handleLangToggle}
+            title={lang === 'GEO' ? 'Switch to English' : 'ქართულ ენაზე გადართვა'}
             className="font-black text-xs px-2.5 py-1.5 rounded-lg border border-slate-800 bg-slate-900/60 text-cyan-400 cursor-pointer"
           >
-            {lang}
+            {lang === 'GEO' ? 'ENG' : 'GEO'}
           </button>
         </div>
       </nav>
