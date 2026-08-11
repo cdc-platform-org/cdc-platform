@@ -78,8 +78,8 @@ function GigsVacanciesModeration() {
       </Head>
       <div>
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">Gigs & Vacancies Moderation</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Gigs & Vacancies Moderation</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
             Listings go live immediately when posted — remove one here to take it down from public browsing, or
             restore it.
           </p>
@@ -90,8 +90,8 @@ function GigsVacanciesModeration() {
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${
-                filter === f ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+              className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
+                filter === f ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-gray-300 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'
               }`}
             >
               {f === '' ? 'All' : f === 'approved' ? 'Live' : 'Removed'}
@@ -100,44 +100,46 @@ function GigsVacanciesModeration() {
         </div>
 
         {error && (
-          <div className="mb-5 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>
+          <div className="mb-5 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 px-4 py-3 text-sm text-red-700 dark:text-red-400">{error}</div>
         )}
 
         {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <p className="text-sm text-gray-400 dark:text-slate-500">Loading…</p>
         ) : listings.length === 0 ? (
-          <p className="text-sm text-gray-500">No listings match this filter.</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">No listings match this filter.</p>
         ) : (
           <div className="space-y-3">
             {listings.map((listing) => {
               const isActioning = actioningId === listing.id;
               const isRemoved = listing.moderationStatus === 'removed';
               return (
-                <div key={listing.id} className="bg-white border border-gray-200 rounded-xl p-5">
+                <div key={listing.id} className="bg-white/90 dark:bg-slate-900/70 backdrop-blur-md border border-gray-200/80 dark:border-white/10 shadow-md shadow-slate-200/40 dark:shadow-none rounded-xl p-5 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded bg-gray-100 text-gray-600">
+                        <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300">
                           {listing.listingType}
                         </span>
                         <span
-                          className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded ${
-                            isRemoved ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'
+                          className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border shadow-[0_0_10px_-3px] ${
+                            isRemoved
+                              ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20 shadow-rose-400/30 dark:shadow-rose-500/20'
+                              : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20 shadow-emerald-400/30 dark:shadow-emerald-500/20'
                           }`}
                         >
                           {listing.moderationStatus}
                         </span>
-                        <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded bg-gray-50 text-gray-500">
+                        <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded bg-gray-50 dark:bg-slate-800/60 text-gray-500 dark:text-slate-400">
                           {listing.status}
                         </span>
                       </div>
-                      <h3 className="font-semibold text-sm text-gray-900 mt-1.5 truncate">{listing.title}</h3>
-                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">{listing.description}</p>
-                      <p className="text-xs text-gray-400 mt-2">
+                      <h3 className="font-semibold text-sm text-gray-900 dark:text-white mt-1.5 truncate">{listing.title}</h3>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 line-clamp-2">{listing.description}</p>
+                      <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">
                         Posted by {listing.postedBy.name} ({listing.postedBy.email})
                       </p>
                       {isRemoved && listing.moderationReason && (
-                        <p className="text-xs text-rose-600 mt-1">Reason: {listing.moderationReason}</p>
+                        <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">Reason: {listing.moderationReason}</p>
                       )}
                     </div>
 
@@ -146,7 +148,7 @@ function GigsVacanciesModeration() {
                         <button
                           disabled={isActioning}
                           onClick={() => handleRestore(listing)}
-                          className="text-xs font-medium text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg disabled:opacity-50"
+                          className="text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 px-3 py-1.5 rounded-lg disabled:opacity-50"
                         >
                           Restore
                         </button>
@@ -157,12 +159,12 @@ function GigsVacanciesModeration() {
                             value={reasonDraft[listing.id] ?? ''}
                             onChange={(e) => setReasonDraft((prev) => ({ ...prev, [listing.id]: e.target.value }))}
                             placeholder="Reason (optional)"
-                            className="w-full text-xs rounded-lg border border-gray-300 px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                            className="w-full text-xs rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-500 px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-rose-400"
                           />
                           <button
                             disabled={isActioning}
                             onClick={() => handleRemove(listing)}
-                            className="text-xs font-medium text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg disabled:opacity-50"
+                            className="text-xs font-medium text-rose-700 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 px-3 py-1.5 rounded-lg disabled:opacity-50"
                           >
                             Remove
                           </button>

@@ -10,17 +10,17 @@ function formatMoney(minorUnits: number, currency: string): string {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  HELD_IN_ESCROW: 'bg-amber-50 text-amber-700 border-amber-200',
-  RELEASED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  REFUNDED: 'bg-gray-100 text-gray-600 border-gray-200',
-  DISPUTED: 'bg-rose-50 text-rose-700 border-rose-200',
+  HELD_IN_ESCROW: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20 shadow-amber-400/30 dark:shadow-amber-500/20',
+  RELEASED: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20 shadow-emerald-400/30 dark:shadow-emerald-500/20',
+  REFUNDED: 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 border-gray-200 dark:border-slate-700 shadow-transparent',
+  DISPUTED: 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20 shadow-rose-400/30 dark:shadow-rose-500/20',
 };
 
 const BOG_STATUS_BADGE: Record<string, string> = {
-  PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
-  COMPLETED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  FAILED: 'bg-rose-50 text-rose-700 border-rose-200',
-  CANCELLED: 'bg-gray-100 text-gray-600 border-gray-200',
+  PENDING: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20 shadow-amber-400/30 dark:shadow-amber-500/20',
+  COMPLETED: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20 shadow-emerald-400/30 dark:shadow-emerald-500/20',
+  FAILED: 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20 shadow-rose-400/30 dark:shadow-rose-500/20',
+  CANCELLED: 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 border-gray-200 dark:border-slate-700 shadow-transparent',
 };
 
 const PURPOSE_LABEL: Record<string, string> = {
@@ -69,11 +69,11 @@ function BogPaymentsSection() {
         <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
       {loading ? (
-        <p className="text-sm text-gray-400 dark:text-slate-500 dark:text-slate-500">Loading…</p>
+        <p className="text-sm text-gray-400 dark:text-slate-500">Loading…</p>
       ) : payments.length === 0 ? (
         <p className="text-sm text-gray-500 dark:text-slate-400">No BOG payments yet.</p>
       ) : (
-        <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200/80 shadow-md shadow-slate-200/40 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden">
+        <div className="bg-white/90 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl border border-gray-200/80 dark:border-white/10 shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -88,26 +88,26 @@ function BogPaymentsSection() {
                   <th className="px-4 py-3 font-medium">Date</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
                 {payments.map((p) => (
-                  <tr key={p.id}>
+                  <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/40 transition-colors">
                     <td className="px-4 py-3 text-gray-900 dark:text-white text-xs">{p.user.name}</td>
                     <td className="px-4 py-3 text-gray-500 dark:text-slate-400 text-xs">{PURPOSE_LABEL[p.purpose] ?? p.purpose}</td>
                     <td className="px-4 py-3 text-gray-900 dark:text-white max-w-[220px] truncate">
                       {p.referenceTitle ?? <span className="text-gray-400 dark:text-slate-500">—</span>}
                     </td>
                     <td className="px-4 py-3 text-right text-gray-900 dark:text-white">{formatMoney(p.amount, p.currency)}</td>
-                    <td className="px-4 py-3 text-xs font-mono text-indigo-600">
+                    <td className="px-4 py-3 text-xs font-mono text-indigo-600 dark:text-indigo-400">
                       {p.promoCode ?? <span className="text-gray-300 dark:text-slate-600">—</span>}
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`text-xs font-medium px-2 py-0.5 rounded-full border ${BOG_STATUS_BADGE[p.status] ?? ''}`}
+                        className={`text-xs font-medium px-2 py-0.5 rounded-full border shadow-[0_0_10px_-3px] ${BOG_STATUS_BADGE[p.status] ?? ''}`}
                       >
                         {p.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-400 dark:text-slate-500 dark:text-slate-500 text-xs font-mono max-w-[160px] truncate">{p.bogOrderId}</td>
+                    <td className="px-4 py-3 text-gray-400 dark:text-slate-500 text-xs font-mono max-w-[160px] truncate">{p.bogOrderId}</td>
                     <td className="px-4 py-3 text-gray-500 dark:text-slate-400 text-xs whitespace-nowrap">
                       {new Date(p.createdAt).toLocaleString()}
                     </td>
@@ -125,7 +125,7 @@ function BogPaymentsSection() {
               >
                 Previous
               </button>
-              <span className="text-xs text-gray-400 dark:text-slate-500 dark:text-slate-500">
+              <span className="text-xs text-gray-400 dark:text-slate-500">
                 Page {page} of {totalPages}
               </span>
               <button
@@ -178,11 +178,11 @@ function TransactionsSection() {
         <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
       {loading ? (
-        <p className="text-sm text-gray-400 dark:text-slate-500 dark:text-slate-500">Loading…</p>
+        <p className="text-sm text-gray-400 dark:text-slate-500">Loading…</p>
       ) : transactions.length === 0 ? (
         <p className="text-sm text-gray-500 dark:text-slate-400">No transactions yet.</p>
       ) : (
-        <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200/80 shadow-md shadow-slate-200/40 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden">
+        <div className="bg-white/90 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl border border-gray-200/80 dark:border-white/10 shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -195,9 +195,9 @@ function TransactionsSection() {
                   <th className="px-4 py-3 font-medium">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
                 {transactions.map((tx) => (
-                  <tr key={tx.id}>
+                  <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/40 transition-colors">
                     <td className="px-4 py-3 text-gray-900 dark:text-white max-w-[200px] truncate">{tx.gig.title}</td>
                     <td className="px-4 py-3 text-gray-500 dark:text-slate-400 text-xs">
                       {tx.client.name} → {tx.freelancer.name}
@@ -206,12 +206,12 @@ function TransactionsSection() {
                     <td className="px-4 py-3 text-right text-gray-500 dark:text-slate-400">
                       {formatMoney(tx.commissionAmount, tx.currency)}
                     </td>
-                    <td className="px-4 py-3 text-right font-medium text-emerald-700">
+                    <td className="px-4 py-3 text-right font-medium text-emerald-700 dark:text-emerald-400">
                       {formatMoney(tx.netAmount, tx.currency)}
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`text-xs font-medium px-2 py-0.5 rounded-full border ${STATUS_BADGE[tx.status] ?? ''}`}
+                        className={`text-xs font-medium px-2 py-0.5 rounded-full border shadow-[0_0_10px_-3px] ${STATUS_BADGE[tx.status] ?? ''}`}
                       >
                         {tx.status.replace(/_/g, ' ')}
                       </span>
@@ -230,7 +230,7 @@ function TransactionsSection() {
               >
                 Previous
               </button>
-              <span className="text-xs text-gray-400 dark:text-slate-500 dark:text-slate-500">
+              <span className="text-xs text-gray-400 dark:text-slate-500">
                 Page {page} of {totalPages}
               </span>
               <button
@@ -291,7 +291,7 @@ function BogSettingsSection() {
   };
 
   const inputClass =
-    'w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono';
+    'w-full rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono';
 
   return (
     <section>
@@ -303,9 +303,9 @@ function BogSettingsSection() {
       </p>
 
       {loading ? (
-        <p className="text-sm text-gray-400 dark:text-slate-500 dark:text-slate-500">Loading…</p>
+        <p className="text-sm text-gray-400 dark:text-slate-500">Loading…</p>
       ) : (
-        <form onSubmit={handleSubmit} className="bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200/80 shadow-md shadow-slate-200/40 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4 max-w-xl">
+        <form onSubmit={handleSubmit} className="bg-white/90 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl border border-gray-200/80 dark:border-white/10 shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4 max-w-xl">
           {error && (
             <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{error}</div>
           )}
@@ -327,7 +327,7 @@ function BogSettingsSection() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
-              Secret Key {settings?.secretKey && <span className="text-gray-400 dark:text-slate-500 dark:text-slate-500 font-normal">(current: {settings.secretKey})</span>}
+              Secret Key {settings?.secretKey && <span className="text-gray-400 dark:text-slate-500 font-normal">(current: {settings.secretKey})</span>}
             </label>
             <input
               type="password"
@@ -346,7 +346,7 @@ function BogSettingsSection() {
             />
             Live mode (record-keeping only)
           </label>
-          <p className="text-xs text-gray-400 dark:text-slate-500 dark:text-slate-500 dark:text-slate-500 -mt-2">
+          <p className="text-xs text-gray-400 dark:text-slate-500 -mt-2">
             This does not switch the API endpoint — BOG requests always go to their production API regardless of this
             flag, using whichever Client ID/Secret is configured above. It only labels transactions for your own
             records.
@@ -374,7 +374,7 @@ export default function AdminFinancialsPage() {
         </Head>
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Financials & BOG Transactions</h1>
-          <p className="text-sm text-gray-500 dark:text-slate-400 dark:text-slate-400 mt-1">Restricted to SuperAdmin.</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Restricted to SuperAdmin.</p>
         </div>
         <div className="space-y-10">
           <TransactionsSection />

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Head from 'next/head';
+import { Users as UsersIcon, Clock, GraduationCap, Ban } from 'lucide-react';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
 import { useAuth } from '../../src/context/AuthContext';
@@ -17,15 +18,31 @@ import {
 } from '../../src/services/adminService';
 
 const STATUS_BADGE: Record<AdminUser['status'], string> = {
-  PENDING_APPROVAL: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
-  APPROVED: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
-  REJECTED: 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 border-gray-200 dark:border-slate-700',
+  PENDING_APPROVAL: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20 shadow-amber-400/30 dark:shadow-amber-500/20',
+  APPROVED: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20 shadow-emerald-400/30 dark:shadow-emerald-500/20',
+  REJECTED: 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 border-gray-200 dark:border-slate-700 shadow-transparent',
 };
+
+function StatCard({ label, value, icon: Icon, tint }: { label: string; value: number; icon: any; tint: string }) {
+  return (
+    <div className="bg-white/90 dark:bg-slate-900/70 backdrop-blur-md border border-gray-200/80 dark:border-white/10 shadow-md shadow-slate-200/40 dark:shadow-none rounded-xl p-5 flex items-center gap-4 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10">
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${tint}`}>
+        <Icon className="w-5 h-5" />
+      </div>
+      <div>
+        <p className="text-xs font-medium text-gray-500 dark:text-slate-400">{label}</p>
+        <p className="text-xl font-black text-gray-900 dark:text-white">{value.toLocaleString()}</p>
+      </div>
+    </div>
+  );
+}
 
 const PAGE_DICT = {
   ka: {
     title: 'მომხმარებლების მართვა',
     subtitle: 'მოძებნეთ მომხმარებლები, მიანიჭეთ CDC კურსდამთავრებულის სტატუსი და დაბლოკეთ/გახსენით ანგარიშები.',
+    totalUsers: 'სულ მომხმარებელი',
+    bannedAccounts: 'დაბლოკილი ანგარიშები',
     tabAll: 'ყველა',
     tabStudents: 'სტუდენტები',
     tabClients: 'კლიენტები',
@@ -49,6 +66,8 @@ const PAGE_DICT = {
   en: {
     title: 'User Management',
     subtitle: 'Search users, assign CDC Graduate badges, and ban/unban accounts.',
+    totalUsers: 'Total Users',
+    bannedAccounts: 'Banned Accounts',
     tabAll: 'All',
     tabStudents: 'Students',
     tabClients: 'Clients',
@@ -105,6 +124,16 @@ function UserManagement() {
     loadUsers();
   }, [loadUsers]);
 
+  const overviewStats = useMemo(
+    () => ({
+      total: users.length,
+      pending: users.filter((u) => u.status === 'PENDING_APPROVAL').length,
+      graduates: users.filter((u) => u.isVerifiedGraduate).length,
+      banned: users.filter((u) => u.isBanned).length,
+    }),
+    [users]
+  );
+
   const tabCounts = useMemo(
     () => ({
       all: users.length,
@@ -148,6 +177,13 @@ function UserManagement() {
         <div className="mb-6">
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{p.title}</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{p.subtitle}</p>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <StatCard label={p.totalUsers} value={overviewStats.total} icon={UsersIcon} tint="bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400" />
+          <StatCard label={p.statusPending} value={overviewStats.pending} icon={Clock} tint="bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400" />
+          <StatCard label={p.graduate} value={overviewStats.graduates} icon={GraduationCap} tint="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" />
+          <StatCard label={p.bannedAccounts} value={overviewStats.banned} icon={Ban} tint="bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400" />
         </div>
 
         <div className="flex gap-1.5 mb-5 border-b border-gray-200 dark:border-slate-800">
@@ -225,7 +261,7 @@ function UserManagement() {
                         <td className="px-4 py-3 text-gray-600 dark:text-slate-300">{u.role}</td>
                         <td className="px-4 py-3">
                           <span
-                            className={`text-xs font-medium px-2 py-0.5 rounded-full border ${STATUS_BADGE[u.status]}`}
+                            className={`text-xs font-medium px-2 py-0.5 rounded-full border shadow-[0_0_10px_-3px] ${STATUS_BADGE[u.status]}`}
                           >
                             {u.status === 'PENDING_APPROVAL' ? p.statusPending : u.status === 'APPROVED' ? p.statusApproved : p.statusRejected}
                           </span>

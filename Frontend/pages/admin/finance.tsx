@@ -15,11 +15,11 @@ function formatGel(minorUnits: number, currency: string): string {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  PENDING: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
-  COMPLETED: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
-  FAILED: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/20',
-  CANCELLED: 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 border-gray-200 dark:border-slate-700',
-  REFUNDED: 'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-500/20',
+  PENDING: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20 shadow-amber-400/30 dark:shadow-amber-500/20',
+  COMPLETED: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20 shadow-emerald-400/30 dark:shadow-emerald-500/20',
+  FAILED: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/20 shadow-red-400/30 dark:shadow-red-500/20',
+  CANCELLED: 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 border-gray-200 dark:border-slate-700 shadow-transparent',
+  REFUNDED: 'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-500/20 shadow-purple-400/30 dark:shadow-purple-500/20',
 };
 
 function GrantAccessForm({ onGranted }: { onGranted: () => void }) {
@@ -165,7 +165,7 @@ function AdminFinanceDashboard() {
         <div className="mb-8 flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Payment Finance</h1>
-            <p className="text-sm text-gray-500 dark:text-slate-400 dark:text-slate-400 mt-1">BOG Pay transaction ledger — course sales, mentorship, and gig escrow funding.</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">BOG Pay transaction ledger — course sales, mentorship, and gig escrow funding.</p>
           </div>
           <button
             type="button"
@@ -234,7 +234,7 @@ function AdminFinanceDashboard() {
                     <td className="px-4 py-3 max-w-[180px] truncate">{p.courseTitle}</td>
                     <td className="px-4 py-3 font-semibold">{formatGel(p.amount, p.currency)}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded border ${STATUS_BADGE[p.status]}`}>{p.status}</span>
+                      <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded border shadow-[0_0_10px_-3px] ${STATUS_BADGE[p.status]}`}>{p.status}</span>
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-500 dark:text-slate-400">{new Date(p.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
