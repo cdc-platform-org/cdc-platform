@@ -73,6 +73,15 @@ declare global {
 }
 
 const app = express();
+// Azure App Service terminates TLS and proxies every request through its own
+// front-end — without this, req.ip resolves to that proxy's address for
+// every single client, not the real caller. That silently breaks every
+// IP-keyed rate limiter in this app (routes/ai.ts course tutor, chatApi.ts,
+// studio.ts) into one shared bucket across all users instead of a per-user
+// one, so a handful of concurrent users can exhaust it and start seeing
+// legitimate first-time requests rejected. `1` trusts exactly one hop
+// (Azure's own front-end), matching the actual deployment topology.
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json({ verify: (req, _res, buf) => { (req as express.Request).rawBody = buf; } }));
 app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));

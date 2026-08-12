@@ -82,7 +82,7 @@ export default function CourseTutorPanel({ courseId, lessonId, courseTitle, less
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Reset the conversation whenever the student moves to a different lesson
@@ -91,7 +91,7 @@ export default function CourseTutorPanel({ courseId, lessonId, courseTitle, less
   // actively misleading to keep around.
   useEffect(() => {
     setMessages([]);
-    setError(false);
+    setError(null);
   }, [lessonId]);
 
   useEffect(() => {
@@ -106,12 +106,12 @@ export default function CourseTutorPanel({ courseId, lessonId, courseTitle, less
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setSending(true);
-    setError(false);
+    setError(null);
     try {
       const reply = await askCourseTutor({ courseId, lessonId, userMessage: trimmed, chatHistory: history });
       setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: 'ASSISTANT', content: reply }]);
-    } catch {
-      setError(true);
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? t.error);
     } finally {
       setSending(false);
     }
@@ -213,7 +213,7 @@ export default function CourseTutorPanel({ courseId, lessonId, courseTitle, less
           </div>
         )}
 
-        {error && <p className="text-xs text-red-400 text-center">{t.error}</p>}
+        {error && <p className="text-xs text-red-400 text-center">{error}</p>}
       </div>
 
       {/* QUICK PROMPT CHIPS */}
