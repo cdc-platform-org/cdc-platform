@@ -131,8 +131,6 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: '
     try {
       const { redirectUrl } = await checkoutMentorship({
         mentorId: mentor.id,
-        amount: mentor.mentorHourlyRate ?? 0,
-        currency: 'GEL',
         scheduledAt: selectedSlot,
         studentPhone: phone.trim(),
         consultationDescription: topic.trim() || undefined,

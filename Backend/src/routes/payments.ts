@@ -13,6 +13,7 @@ import {
   CreateBogOrderResult,
 } from '../services/bogPaymentService';
 import { captureEscrow } from '../services/escrowService';
+import { completeProductPurchase } from '../services/productSaleService';
 import { getCurrentPrice, computeCoursePriceWithPromo } from '../services/coursePricing';
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
 import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
@@ -199,6 +200,16 @@ router.post(
     if (!mentor || mentor.role !== 'Mentor') {
       return res.status(404).json({ message: 'Mentor not found.' });
     }
+    // The price is never trusted from the client — same posture as course
+    // checkout's getCurrentPrice(course) above. mentorHourlyRate is the one
+    // authoritative rate (minor units/GEL, same convention as Course prices)
+    // an admin sets on /admin/mentorship; a mentor with no rate configured
+    // isn't bookable rather than falling back to whatever a client sends.
+    if (!mentor.mentorHourlyRate || mentor.mentorHourlyRate <= 0) {
+      return res.status(400).json({ message: 'This mentor does not have a session rate configured yet.' });
+    }
+    const chargeAmount = mentor.mentorHourlyRate;
+    const currency = 'GEL';
 
     const scheduledAt = new Date(result.data.scheduledAt);
     try {
@@ -217,8 +228,8 @@ router.post(
         userId: req.user!.id,
         purpose: 'MENTORSHIP',
         referenceId: mentor.id,
-        amount: result.data.amount,
-        currency: result.data.currency,
+        amount: chargeAmount,
+        currency,
         status: 'PENDING',
       },
     });
@@ -235,8 +246,8 @@ router.post(
     const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
     const order = await createBogOrderOrRespond(res, {
       externalOrderId: bogPayment.id,
-      amount: result.data.amount,
-      currency: result.data.currency,
+      amount: chargeAmount,
+      currency,
       basketItemName: `Mentorship session with ${mentor.name}`,
       callbackUrl: CALLBACK_URL,
       successRedirectUrl,
@@ -527,15 +538,12 @@ export async function applyBogPaymentResult(
       console.error('[bog-callback] Mentorship booking emails failed:', err);
     }
   } else if (bogPayment.purpose === 'PRODUCT') {
-    await prisma.productPurchase.upsert({
-      where: { userId_productId: { userId: bogPayment.userId, productId: bogPayment.referenceId } },
-      update: { paymentStatus: 'COMPLETED', amount: bogPayment.amount },
-      create: {
-        userId: bogPayment.userId,
-        productId: bogPayment.referenceId,
-        amount: bogPayment.amount,
-        paymentStatus: 'COMPLETED',
-      },
+    // Completes the purchase and, for a product with a real external
+    // creator, credits their 90% net share — see productSaleService.ts.
+    await completeProductPurchase({
+      userId: bogPayment.userId,
+      productId: bogPayment.referenceId,
+      amount: bogPayment.amount,
     });
   }
 }

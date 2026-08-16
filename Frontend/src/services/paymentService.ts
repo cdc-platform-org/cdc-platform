@@ -45,8 +45,8 @@ export async function validatePromoCode(code: string, courseId: string): Promise
 
 export async function checkoutMentorship(params: {
   mentorId: string;
-  amount: number;
-  currency?: 'GEL' | 'USD' | 'EUR' | 'GBP';
+  // No amount/currency — the backend always charges the mentor's own
+  // mentorHourlyRate, looked up server-side (see routes/payments.ts).
   note?: string;
   lang?: 'ka' | 'en';
   // ISO datetime string — must fall within one of the mentor's

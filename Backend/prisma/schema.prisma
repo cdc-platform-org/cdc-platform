@@ -93,6 +93,7 @@ enum EscrowStatus {
 
 enum WalletEntryType {
   ESCROW_RELEASE_CREDIT
+  PRODUCT_SALE_CREDIT
   PAYOUT_DEBIT
   ADJUSTMENT
 }
@@ -907,6 +908,13 @@ model ProductPurchase {
   // "PENDING" | "COMPLETED" — mirrors BogPayment.status naming for the
   // paid path; free (price=0) products are inserted directly as COMPLETED.
   paymentStatus String         @default("PENDING")
+  // Creator payout split — set only when the product has a real external
+  // creator (DigitalProduct.submittedById; admin-catalog products have
+  // none and keep the full amount with the platform). Null on free claims
+  // and on admin-catalog purchases. See services/productSaleService.ts.
+  commissionRate   Float?
+  commissionAmount Int?
+  netAmount        Int?
   createdAt     DateTime       @default(now())
 
   @@unique([userId, productId])
