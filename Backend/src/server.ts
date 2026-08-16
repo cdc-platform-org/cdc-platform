@@ -48,6 +48,7 @@ import adminTeamRoutes from './routes/adminTeam';
 import studioCasesRoutes from './routes/studioCases';
 import adminStudioCasesRoutes from './routes/adminStudioCases';
 import adminKnowledgeRoutes from './routes/adminKnowledge';
+import adminAiAgentsRoutes from './routes/adminAiAgents';
 import freelancerExamRoutes from './routes/freelancerExam';
 import skillTestsRoutes from './routes/skillTests';
 import invoicesRoutes from './routes/invoices';
@@ -94,7 +95,6 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/gigs', gigsRoutes);
 app.use('/api/vacancies', vacanciesRoutes);
-app.use('/api/admin', adminRoutes);
 app.use('/api/admin-panel', adminPanelRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/blog', blogRoutes);
@@ -136,6 +136,7 @@ app.use('/api/admin/team', adminTeamRoutes);
 app.use('/api/studio/cases', studioCasesRoutes);
 app.use('/api/admin/studio/cases', adminStudioCasesRoutes);
 app.use('/api/admin/knowledge', adminKnowledgeRoutes);
+app.use('/api/admin/ai-agents', adminAiAgentsRoutes);
 app.use('/api/freelancer-exam', freelancerExamRoutes);
 app.use('/api/skill-tests', skillTestsRoutes);
 app.use('/api/invoices', invoicesRoutes);
@@ -143,6 +144,16 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin/notifications', adminNotificationRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/admin/products', adminProductRoutes);
+// Deliberately last among the /api/admin/* mounts — this is the ONLY
+// generically-prefixed one (all its siblings above are specific sub-paths
+// like /api/admin/knowledge). Express tries mounted routers in registration
+// order and this one's own router.use(authenticate, requireAdminRole(...))
+// runs unconditionally for anything starting with /api/admin, so mounting
+// it first would intercept every request to the more specific routers
+// above — including their public, no-auth-required routes (adminKnowledge's
+// GET / and adminAiAgents' GET /homepage-config, both fetched by anonymous
+// homepage visitors) — before Express ever got to try them.
+app.use('/api/admin', adminRoutes);
 app.use('/api/promos', promoRoutes);
 app.use('/api/ai-agents', aiAgentsSuiteRoutes);
 

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { askCdcAssistant, isGeminiConfigured, ChatTurn } from '../../lib/gemini';
 import { getCdcKnowledgeContext } from '../../lib/cdcKnowledgeBase';
+import { getHomepageAgentConfig } from '../../lib/platformAgentConfig';
 
 // `history` comes straight from the browser — untrusted input. Only well-
 // formed {role, text} turns are kept; anything else is silently dropped
@@ -42,8 +43,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const knowledgeContext = await getCdcKnowledgeContext();
-    const reply = await askCdcAssistant(message, effectiveLang, sanitizeHistory(history), knowledgeContext);
+    // A PlatformAgent set as the homepage default (Admin Panel's "AI Agents"
+    // tab) replaces both the persona and the knowledge scope; when none is
+    // set (the common case) this is null and behavior is exactly what it
+    // was before this feature existed — full knowledge base, hardcoded
+    // SYSTEM_PROMPT.
+    const homepageAgent = await getHomepageAgentConfig();
+    const knowledgeContext = await getCdcKnowledgeContext(homepageAgent?.knowledgeSourceFilenames);
+    const reply = await askCdcAssistant(message, effectiveLang, sanitizeHistory(history), knowledgeContext, homepageAgent?.systemPrompt);
     return res.status(200).json({ reply });
   } catch (error) {
     console.error('Gemini chat error:', error);

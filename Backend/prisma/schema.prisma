@@ -1734,6 +1734,61 @@ model AgentMessage {
   @@map("agent_messages")
 }
 
+// ============================================================
+// PLATFORM AI AGENTS — internal, CDC-owned assistant personas managed from
+// the Admin Panel (routes/adminAiAgents.ts, admin/bot-knowledge.tsx's
+// "AI Agents" tab). Deliberately a SEPARATE model from `Agent` above: that
+// one is a per-BUSINESS embeddable widget a paying Client account owns and
+// configures for their own external site (billing/trial, allowedOrigins,
+// etc.) — these are CDC's own assistants, not something a customer creates.
+//
+// Only one PlatformAgent can be `isDefault` at a time — that's the one
+// actually driving the CDC homepage assistant (pages/api/chat.ts calls
+// getActiveHomepageAgent(), see lib/platformAgents.ts), falling back to the
+// existing hardcoded SYSTEM_PROMPT/full-knowledge-base behavior unchanged
+// when none is set. The other agents (e.g. Career Advisor, Resume Reviewer)
+// are fully configurable — name, system prompt, active flag, assigned
+// knowledge sources — but have no dedicated chat surface of their own yet;
+// they exist as ready-to-use personas for whenever such a surface is built,
+// not as inert placeholders with no real behavior at all (the default-agent
+// switch on the homepage IS real, exercised behavior).
+// ============================================================
+model PlatformAgent {
+  id           String   @id @default(uuid())
+  name         String
+  nameEn       String?
+  // Stable identifier for future non-homepage integrations — not currently
+  // used to route anything itself (isDefault is what the homepage reads).
+  slug         String   @unique
+  systemPrompt String
+  isActive     Boolean  @default(true)
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  knowledgeSources PlatformAgentKnowledgeSource[]
+
+  @@map("platform_agents")
+}
+
+// Assigns a whole uploaded CdcKnowledgeDocument (grouped by sourceFilename,
+// same grouping adminKnowledge.ts's /sources endpoint already uses — a
+// document is many chunk rows, not a single id) to a PlatformAgent. No FK to
+// CdcKnowledgeDocument itself since that model has no single-row-per-document
+// identity to reference; sourceFilename is the shared key both sides already
+// group on.
+model PlatformAgentKnowledgeSource {
+  id              String        @id @default(uuid())
+  platformAgentId String
+  platformAgent   PlatformAgent @relation(fields: [platformAgentId], references: [id], onDelete: Cascade)
+  sourceFilename  String
+  createdAt       DateTime      @default(now())
+
+  @@unique([platformAgentId, sourceFilename])
+  @@index([platformAgentId])
+  @@map("platform_agent_knowledge_sources")
+}
+
 // Structural for now — validated and its discount computed at redemption
 // time, but not yet wired into a real checkout flow (see Agent's own
 // comment on why billing is deferred). currentUses is incremented

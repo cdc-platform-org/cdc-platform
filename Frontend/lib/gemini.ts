@@ -75,7 +75,14 @@ export async function askCdcAssistant(
   message: string,
   lang: 'GEO' | 'ENG',
   history: ChatTurn[] = [],
-  knowledgeContext?: string
+  knowledgeContext?: string,
+  // Replaces SYSTEM_PROMPT wholesale rather than being appended like
+  // knowledgeContext — this is a PlatformAgent's own persona (see
+  // lib/platformAgentConfig.ts), set by an admin precisely to change who
+  // the homepage assistant IS, not just what it additionally knows.
+  // Undefined (the common case, no homepage default agent configured)
+  // keeps today's behavior exactly as it was before this parameter existed.
+  systemPromptOverride?: string
 ): Promise<string> {
   if (!client) throw new GeminiNotConfiguredError();
 
@@ -93,7 +100,7 @@ export async function askCdcAssistant(
     // Flash family has real free-tier headroom, so that's what's wired up
     // until the Google Cloud project has billing enabled for Pro models.
     model: 'gemini-flash-latest',
-    systemInstruction: `${SYSTEM_PROMPT}${knowledgeBlock}\n\nAlways respond in the language requested by the user. Current language: ${lang === 'GEO' ? 'Georgian' : 'English'}.`,
+    systemInstruction: `${systemPromptOverride?.trim() || SYSTEM_PROMPT}${knowledgeBlock}\n\nAlways respond in the language requested by the user. Current language: ${lang === 'GEO' ? 'Georgian' : 'English'}.`,
   });
 
   // The Gemini SDK requires chat history (if any) to start with a 'user'
