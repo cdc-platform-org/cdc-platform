@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Head from 'next/head';
 import { Users as UsersIcon, Clock, GraduationCap, Ban } from 'lucide-react';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
+import Toast from '../../src/components/shared/Toast';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAdminLang } from '../../src/context/AdminLangContext';
 import { adminDict } from '../../src/data/adminDict';
@@ -64,6 +65,7 @@ const PAGE_DICT = {
     resetPassword: 'პაროლის აღდგენა',
     promoteToMentor: 'მენტორის სტატუსის მინიჭება',
     promoteConfirm: (name: string) => `დაუმატოთ „${name}“ მენტორის სტატუსი? ისინი საჯაროდ გამოჩნდებიან /mentors გვერდზე.`,
+    resetPasswordSuccess: 'პაროლის აღდგენის ბმული გაიგზავნა მომხმარებლის ელფოსტაზე',
     noUsers: 'მომხმარებელი ვერ მოიძებნა.',
     loadError: 'მომხმარებლების ჩატვირთვა ვერ მოხერხდა. სცადეთ ხელახლა.',
     actionError: 'მოქმედება ვერ შესრულდა. სცადეთ ხელახლა.',
@@ -92,6 +94,7 @@ const PAGE_DICT = {
     resetPassword: 'Reset Password',
     promoteToMentor: 'Promote to Mentor',
     promoteConfirm: (name: string) => `Promote "${name}" to Mentor? They will become publicly visible on /mentors.`,
+    resetPasswordSuccess: 'Password reset link sent to the user\'s email',
     noUsers: 'No users match your search.',
     loadError: 'Unable to load users. Please try again.',
     actionError: 'Action failed. Please try again.',
@@ -110,6 +113,14 @@ function UserManagement() {
   const [statusFilter, setStatusFilter] = useState<AdminUser['status'] | ''>('');
   const [roleTab, setRoleTab] = useState<'all' | 'Student' | 'Client' | 'Admin'>('all');
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const [showResetToast, setShowResetToast] = useState(false);
+  const resetToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (resetToastTimeoutRef.current) clearTimeout(resetToastTimeoutRef.current);
+    };
+  }, []);
 
   // Only ADMIN/SUPER_ADMIN can approve/reject/badge — mirrors the backend's
   // requireAdminRole('SUPER_ADMIN','MANAGER') on those specific routes.
@@ -191,6 +202,28 @@ function UserManagement() {
       await promoteToMentor(u.id);
       setUsers((prev) => prev.map((row) => (row.id === u.id ? { ...row, role: 'Mentor' } : row)));
     } catch (err: any) {
+      setError(err?.response?.data?.message ?? p.actionError);
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  // Also separate from runAction — this endpoint returns no user data (it
+  // only ever sends a reset-link email, see adminService.sendAdminPasswordReset),
+  // so there's nothing to merge back into the row; success is a toast, not a
+  // row update. On failure the full response is logged to the console so a
+  // misconfigured RESEND_API_KEY (or any other backend-side cause) is visible
+  // without needing separate access to server logs.
+  const handleResetPassword = async (u: AdminUser) => {
+    setActioningId(u.id);
+    setError(null);
+    try {
+      await sendAdminPasswordReset(u.id);
+      setShowResetToast(true);
+      if (resetToastTimeoutRef.current) clearTimeout(resetToastTimeoutRef.current);
+      resetToastTimeoutRef.current = setTimeout(() => setShowResetToast(false), 4000);
+    } catch (err: any) {
+      console.error('[admin] password reset failed for', u.id, '—', err?.response?.status, err?.response?.data ?? err);
       setError(err?.response?.data?.message ?? p.actionError);
     } finally {
       setActioningId(null);
@@ -373,7 +406,7 @@ function UserManagement() {
                             )}
                             <button
                               disabled={isActioning}
-                              onClick={() => runAction(u.id, () => sendAdminPasswordReset(u.id).then(() => u))}
+                              onClick={() => handleResetPassword(u)}
                               className="text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2.5 py-1 rounded-lg disabled:opacity-50"
                             >
                               {p.resetPassword}
@@ -389,6 +422,7 @@ function UserManagement() {
           </div>
         )}
       </div>
+      {showResetToast && <Toast message={p.resetPasswordSuccess} />}
     </>
   );
 }
