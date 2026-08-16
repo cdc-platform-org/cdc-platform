@@ -148,6 +148,33 @@ router.post(
       appliedPromo = promo;
     }
 
+    // A 100% discount promo code can bring the charge to 0 — BOG's gateway
+    // isn't a real payment at that point (some gateways reject a 0-amount
+    // order outright, others behave unpredictably), so this bypasses it
+    // entirely: the enrollment is granted immediately and the BogPayment
+    // row is recorded already COMPLETED for a consistent payment-history/
+    // invoice trail, same shape as a real paid enrollment just at 0 GEL.
+    if (chargeAmount <= 0) {
+      const freePayment = await prisma.bogPayment.create({
+        data: {
+          bogOrderId: `promo-${crypto.randomUUID()}`,
+          userId: req.user!.id,
+          purpose: 'COURSE',
+          referenceId: course.id,
+          amount: 0,
+          currency: 'GEL',
+          status: 'COMPLETED',
+          completedAt: new Date(),
+          promoCodeId: appliedPromo?.id ?? null,
+        },
+      });
+      await prisma.courseEnrollment.create({ data: { userId: req.user!.id, courseId: course.id } });
+      if (appliedPromo) {
+        await prisma.promoCode.update({ where: { id: appliedPromo.id }, data: { currentUses: { increment: 1 } } });
+      }
+      return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
+    }
+
     const bogPayment = await prisma.bogPayment.create({
       data: {
         bogOrderId: `pending-${crypto.randomUUID()}`,

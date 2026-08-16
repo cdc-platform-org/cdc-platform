@@ -154,8 +154,12 @@ export default function CourseDetailPage() {
     setError(null);
     setProcessing(true);
     try {
-      const { redirectUrl } = await checkoutCourse(courseId, appliedPromo?.code, lang);
-      window.location.href = redirectUrl;
+      const result = await checkoutCourse(courseId, appliedPromo?.code, lang);
+      if (result.enrolled) {
+        router.push(`/courses/${courseId}/learn`);
+        return;
+      }
+      window.location.href = result.redirectUrl!;
     } catch (err: any) {
       const serverMessage = err?.response?.data?.message;
       setError(serverMessage || (lang === 'en' ? 'Unable to start checkout. Please try again.' : 'გადახდის დაწყება ვერ მოხერხდა.'));

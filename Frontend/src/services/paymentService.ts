@@ -5,7 +5,11 @@ export type BogPaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
 export interface BogCheckoutResult {
   paymentId: string;
-  redirectUrl: string;
+  // null when a 100% discount promo code brought the charge to 0 GEL — BOG
+  // is bypassed entirely server-side and `enrolled` is true instead, see
+  // routes/payments.ts's checkout/course route.
+  redirectUrl: string | null;
+  enrolled?: boolean;
 }
 
 export interface BogPaymentBookingInfo {

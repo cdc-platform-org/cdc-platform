@@ -81,6 +81,14 @@ export async function getMentors(): Promise<MentorProfile[]> {
   return response.data.data;
 }
 
+// Promotes an existing Student/Client account to Mentor — SUPER_ADMIN-only
+// on the backend (see adminMentorship.ts's /mentors/promote), so callers
+// must gate this behind the same check on the frontend too.
+export async function promoteToMentor(userId: string): Promise<MentorProfile> {
+  const response = await apiClient.post<{ data: MentorProfile }>('/admin/mentorship/mentors/promote', { userId });
+  return response.data.data;
+}
+
 export async function updateMentorProfile(
   mentorId: string,
   payload: {
