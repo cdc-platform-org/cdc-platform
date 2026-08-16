@@ -138,7 +138,8 @@ export const termsAndConditions: { ka: LegalSection[]; en: LegalSection[] } = {
     {
       heading: '2. სერვისის აღწერა',
       paragraphs: [
-        'CDC Platform აერთიანებს: ონლაინ სასწავლო კურსებს (ვიდეო გაკვეთილები, სერტიფიცირება), ფრილანს/სამუშაო ბირჟას (გარიგებები, ესქროუ ანგარიშსწორება), ვაკანსიების დაფას და კომუნიკაციის ფორუმს.',
+        'CDC Platform აერთიანებს: ონლაინ სასწავლო კურსებს (ვიდეო გაკვეთილები, სერტიფიცირება), ფრილანს/სამუშაო ბირჟას (გარიგებები, ესქროუ ანგარიშსწორება), მენტორობის სესიებს, ციფრულ მაღაზიას, ვაკანსიების დაფას და კომუნიკაციის ფორუმს.',
+        'CDC ცენტრი მოქმედებს როგორც შუამავალი პლატფორმა და, ფრილანს გარიგებებში, ესქროუ აგენტი — უზრუნველყოფს მომხმარებლებს შორის ტრანზაქციების უსაფრთხო ჩატარებას, მაგრამ არ წარმოადგენს მხარეს კონკრეტულ მომსახურების ხელშეკრულებაში დამკვეთსა და შემსრულებელს/მენტორს შორის.',
       ],
     },
     {
@@ -168,37 +169,54 @@ export const termsAndConditions: { ka: LegalSection[]; en: LegalSection[] } = {
       ],
     },
     {
-      heading: '7. მომხმარებლის ქცევა',
+      heading: '7. მენტორობის სესიები — გაუქმება და არდასწრება',
+      paragraphs: [
+        'სესიის უფასო გაუქმება შესაძლებელია დაგეგმილ დროამდე მინიმუმ 12 საათით ადრე — ამ შემთხვევაში თანხა ბრუნდება სრულად, საბანკო ტრანზაქციის საკომისიოს გამოკლებით (იხ. მე-10 პუნქტი).',
+        'თუ სესია გაუქმდება დაგეგმილ დროამდე 12 საათზე ნაკლებ დროში, გადახდილი თანხის 50% რჩება პლატფორმასთან, როგორც მენტორის დაჯავშნილი დროის კომპენსაცია; დარჩენილი 50% უბრუნდება სტუდენტს.',
+        'თუ მენტორი არ გამოცხადდება დაგეგმილ სესიაზე (No-Show) და სესია არ ჩატარდება, სტუდენტს უბრუნდება გადახდილი თანხის 100%.',
+      ],
+    },
+    {
+      heading: '8. მომხმარებლის ქცევა',
       paragraphs: [
         'აკრძალულია: სხვისი ანგარიშის გამოყენება, პლატფორმის გვერდის ავლით პირდაპირი კონტაქტის დამყარება გადახდის თავიდან ასაცილებლად, თაღლითობა, საავტორო უფლებების დარღვევა.',
       ],
     },
     {
-      heading: '8. ინტელექტუალური საკუთრება',
+      heading: '9. ინტელექტუალური საკუთრება',
       paragraphs: [
         'კურსის მასალები, ვიდეოები და სერტიფიკატის შაბლონები წარმოადგენს CDC-ის საკუთრებას. სერტიფიკატის მფლობელს აქვს უფლება გამოიყენოს იგი პირადი პორტფოლიოსთვის.',
       ],
     },
     {
-      heading: '9. გადახდები',
+      heading: '10. გადახდები, საბანკო საკომისიო და ინვოისები',
       paragraphs: [
         'გადახდები მუშავდება საქართველოს ბანკის (BOG) მეშვეობით, ლარში (₾). ფასები მითითებულია პლატფორმაზე შესყიდვის მომენტში.',
+        'მომხმარებლის ნებაყოფლობითი მოთხოვნით განხორციელებული თანხის დაბრუნების შემთხვევაში (მათ შორის კურსის ან მენტორობის სესიის დაბრუნება), დაბრუნებული თანხიდან დაიქვითება საბანკო ტრანზაქციის საკომისიო (დაახლოებით 1.5%–2%), რომელიც უკვე დაერიცხა თანხის თავდაპირველი დამუშავებისას. CDC ცენტრი არ არის პასუხისმგებელი მომხმარებლის მიერ დაშვებული შეცდომით გამოწვეულ დამატებით საბანკო ხარჯებზე.',
+        'ყოველ დასრულებულ შესყიდვაზე, ესქროუს ტრანზაქციაზე და მენტორობის ჯავშანზე ავტომატურად გენერირდება ოფიციალური PDF ინვოისი — შესყიდვისას/პროფილში მითითებული მყიდველის მონაცემების (სახელი/კომპანია, ელფოსტა, საიდენტიფიკაციო/საგადასახადო კოდი) საფუძველზე, ბუღალტრული აღრიცხვის მიზნებისთვის.',
       ],
     },
     {
-      heading: '10. პასუხისმგებლობის შეზღუდვა',
+      heading: '11. ესქროუს დავების გადაწყვეტა და არბიტრაჟი',
+      paragraphs: [
+        'ესქროუში დაფინანსებულ გარიგებებთან დაკავშირებული დავის შემთხვევაში (მაგ. შესრულებული სამუშაოს ხარისხთან ან მოცულობასთან დაკავშირებით), მხარეები წარადგენენ შესაბამის მტკიცებულებებს პლატფორმის დავების გადაწყვეტის პროცედურის ფარგლებში.',
+        'CDC ცენტრი იტოვებს საბოლოო გადაწყვეტილების მიღების უფლებას წარმოდგენილი მტკიცებულებების საფუძველზე და განსაზღვრავს ესქროუში დაბლოკილი თანხის განაწილებას მხარეებს შორის. ეს გადაწყვეტილება არ ზღუდავს მხარეთა უფლებას, დავა განიხილონ სასამართლოში საქართველოს კანონმდებლობის შესაბამისად.',
+      ],
+    },
+    {
+      heading: '12. პასუხისმგებლობის შეზღუდვა',
       paragraphs: [
         'პლატფორმა მოწოდებულია „როგორც არის" პრინციპით. CDC არ არის პასუხისმგებელი მომხმარებლებს შორის დადებული გარიგებების შედეგებზე ფრილანს ბირჟაზე, გარდა კანონმდებლობით გათვალისწინებული შემთხვევებისა.',
       ],
     },
     {
-      heading: '11. მარეგულირებელი კანონმდებლობა',
+      heading: '13. მარეგულირებელი კანონმდებლობა',
       paragraphs: [
         'წინამდებარე პირობები რეგულირდება საქართველოს კანონმდებლობით. დავები განიხილება საქართველოს კომპეტენტურ სასამართლოებში.',
       ],
     },
     {
-      heading: '12. კონტაქტი',
+      heading: '14. კონტაქტი',
       paragraphs: [`${entityLineKa} · ${merchantInfo.email} · ${merchantInfo.phone}`],
     },
   ],
@@ -212,7 +230,8 @@ export const termsAndConditions: { ka: LegalSection[]; en: LegalSection[] } = {
     {
       heading: '2. Description of Service',
       paragraphs: [
-        'The CDC Platform combines: online courses (video lessons, certification), a freelance/work marketplace (deals, escrow settlement), a job board, and a community forum.',
+        'The CDC Platform combines: online courses (video lessons, certification), a freelance/work marketplace (deals, escrow settlement), mentorship sessions, a Digital Store, a job board, and a community forum.',
+        'CDC Center acts as an intermediary platform and, in freelance deals, an escrow agent — it facilitates secure transactions between users, but is not a party to the specific service agreement between a client and a freelancer/mentor.',
       ],
     },
     {
@@ -242,37 +261,54 @@ export const termsAndConditions: { ka: LegalSection[]; en: LegalSection[] } = {
       ],
     },
     {
-      heading: '7. User Conduct',
+      heading: '7. Mentorship Sessions — Cancellation & No-Show Policy',
+      paragraphs: [
+        "Free cancellation is available up to 12 hours before the scheduled session — in this case the full amount is refunded, minus the bank transaction fee (see Section 10).",
+        "If a session is cancelled less than 12 hours before the scheduled time, 50% of the amount paid is retained by the platform as compensation for the mentor's reserved time; the remaining 50% is refunded to the student.",
+        'If the mentor fails to attend the scheduled session (No-Show) and the session does not take place, the student receives a 100% refund of the amount paid.',
+      ],
+    },
+    {
+      heading: '8. User Conduct',
       paragraphs: [
         'Prohibited: using another\'s account, circumventing the platform to make direct contact in order to avoid payment, fraud, and copyright infringement.',
       ],
     },
     {
-      heading: '8. Intellectual Property',
+      heading: '9. Intellectual Property',
       paragraphs: [
         'Course materials, videos, and certificate templates are the property of CDC. Certificate holders may use their certificate for personal portfolio purposes.',
       ],
     },
     {
-      heading: '9. Payments',
+      heading: '10. Payments, Bank Fees, and Invoices',
       paragraphs: [
         'Payments are processed via Bank of Georgia (BOG), in Georgian Lari (₾). Prices are as displayed on the platform at the time of purchase.',
+        "For refunds issued at the user's voluntary request (including course or mentorship-session refunds), the bank transaction fee already incurred when processing the original payment (approximately 1.5%–2%) is deducted from the refunded amount. CDC Center is not liable for additional banking costs caused by user error.",
+        'An official PDF invoice is automatically generated for every completed purchase, escrow transaction, and mentorship booking, using the buyer details (name/company, email, identification/tax code) provided at checkout or in the profile, for accounting purposes.',
       ],
     },
     {
-      heading: '10. Limitation of Liability',
+      heading: '11. Escrow Dispute Resolution and Arbitration',
+      paragraphs: [
+        "In the event of a dispute relating to an escrow-funded deal (e.g. regarding the quality or scope of delivered work), both parties submit relevant evidence as part of the platform's dispute-resolution process.",
+        "CDC Center reserves the right to make a final determination based on the evidence submitted and to decide how the funds held in escrow are allocated between the parties. This determination does not limit either party's right to pursue the dispute in court under Georgian law.",
+      ],
+    },
+    {
+      heading: '12. Limitation of Liability',
       paragraphs: [
         'The platform is provided "as is". CDC is not liable for the outcomes of deals made between users on the freelance marketplace, except as required by law.',
       ],
     },
     {
-      heading: '11. Governing Law',
+      heading: '13. Governing Law',
       paragraphs: [
         'These terms are governed by the laws of Georgia. Disputes are subject to the competent courts of Georgia.',
       ],
     },
     {
-      heading: '12. Contact',
+      heading: '14. Contact',
       paragraphs: [`${entityLineEn} · ${merchantInfo.email} · ${merchantInfo.phone}`],
     },
   ],
@@ -289,30 +325,50 @@ export const refundPolicy: { ka: LegalSection[]; en: LegalSection[] } = {
     {
       heading: '2. კურსის შესყიდვის თანხის დაბრუნება',
       paragraphs: [
-        'თანხის სრული დაბრუნება შესაძლებელია შესყიდვიდან 3 კალენდარული დღის განმავლობაში, თუ მომხმარებელს გავლილი აქვს არაუმეტეს 2 გაკვეთილისა (ან კურსის კონტენტის 20%-ზე ნაკლები) და არ არის გაცემული სერტიფიკატი.',
-        '3 დღის შემდეგ, ან თუ კონტენტის მნიშვნელოვანი ნაწილი უკვე გახსნილია/ნანახია, თანხა არ ბრუნდება — ვინაიდან სერვისი უკვე მიწოდებულია მომხმარებლის თანხმობით.',
+        'თანხის სრული დაბრუნება შესაძლებელია შესყიდვიდან 24 საათის განმავლობაში, თუ მომხმარებელს ნანახი აქვს კურსის კონტენტის 10%-ზე ნაკლები და არ არის გაცემული სერტიფიკატი.',
+        '24 საათის შემდეგ, ან თუ კონტენტის 10% ან მეტი უკვე ნანახია, თანხა არ ბრუნდება — ვინაიდან სერვისი უკვე მიწოდებულია მომხმარებლის თანხმობით.',
       ],
     },
     {
-      heading: '3. ტექნიკური ხარვეზი',
+      heading: '3. ციფრული მაღაზია — არადაბრუნებადი პროდუქტები',
+      paragraphs: [
+        'ციფრული მაღაზიის (Digital Store) პროდუქტები (შაბლონები, დიზაინის ფაილები, ციფრული ინსტრუმენტები და სხვ.) წარმოადგენს დაუყოვნებლივ მიწოდებად ციფრულ საქონელს. პროდუქტის გადმოწერის შემდეგ თანხა არ ბრუნდება არცერთ შემთხვევაში — შესყიდვის მომენტში მომხმარებელი ეთანხმება დაუყოვნებელ მიწოდებას და გამოხატავს უარს გაუქმების სტანდარტულ უფლებაზე.',
+      ],
+    },
+    {
+      heading: '4. ტექნიკური ხარვეზი',
       paragraphs: [
         'თუ კურსზე წვდომა ვერ ხერხდება ჩვენი ტექნიკური ხარვეზის გამო და პრობლემა არ მოგვარდება გონივრულ ვადაში, თანხა ბრუნდება სრულად, ზემოთ მოცემული ვადის მიუხედავად.',
       ],
     },
     {
-      heading: '4. ფრილანს ბირჟის გარიგებები',
+      heading: '5. ფრილანს ბირჟის გარიგებები',
       paragraphs: [
-        'ესქროუში დაფინანსებული გარიგებები რეგულირდება ცალკე — თანხა თავისუფლდება მხოლოდ დამკვეთის მიერ სამუშაოს დადასტურების შემდეგ, ან დავის შემთხვევაში, პლატფორმის დავების გადაწყვეტის პროცედურით.',
+        'ესქროუში დაფინანსებული გარიგებები რეგულირდება ცალკე — თანხა თავისუფლდება მხოლოდ დამკვეთის მიერ სამუშაოს დადასტურების შემდეგ, ან დავის შემთხვევაში, პლატფორმის დავების გადაწყვეტის პროცედურით (იხ. წესები და პირობები, მე-11 პუნქტი).',
       ],
     },
     {
-      heading: '5. დაბრუნების მოთხოვნის პროცედურა',
+      heading: '6. მენტორობის სესიები — გაუქმება და არდასწრება',
       paragraphs: [
-        `დაბრუნების მოსათხოვად მოგვწერეთ: ${merchantInfo.email}, მიუთითეთ შესყიდვის თარიღი და კურსის დასახელება. მოთხოვნას განვიხილავთ 5 სამუშაო დღის განმავლობაში, დამტკიცების შემთხვევაში თანხა ბრუნდება იმავე გადახდის მეთოდზე (საქართველოს ბანკის მეშვეობით) 14 კალენდარულ დღემდე.`,
+        'სესიის უფასო გაუქმება შესაძლებელია დაგეგმილ დროამდე მინიმუმ 12 საათით ადრე — თანხა ბრუნდება სრულად, საბანკო ტრანზაქციის საკომისიოს გამოკლებით (იხ. მე-7 პუნქტი).',
+        'დაგეგმილ დროამდე 12 საათზე ნაკლებ დროში გაუქმებისას, გადახდილი თანხის 50% რჩება პლატფორმასთან მენტორის დაჯავშნილი დროის კომპენსაციად; დარჩენილი 50% უბრუნდება სტუდენტს.',
+        'თუ მენტორი არ გამოცხადდება დაგეგმილ სესიაზე (No-Show), სტუდენტს უბრუნდება გადახდილი თანხის 100%.',
       ],
     },
     {
-      heading: '6. კონტაქტი',
+      heading: '7. საბანკო ტრანზაქციის საკომისიო',
+      paragraphs: [
+        'მომხმარებლის ნებაყოფლობითი მოთხოვნით განხორციელებულ ნებისმიერ დაბრუნებას (კურსი ან მენტორობის სესია) გამოაკლდება საბანკო ტრანზაქციის საკომისიო (დაახლოებით 1.5%–2%), რომელიც უკვე დაერიცხა თანხის თავდაპირველი დამუშავებისას. CDC ცენტრი არ არის პასუხისმგებელი მომხმარებლის მიერ დაშვებული შეცდომით გამოწვეულ დამატებით საბანკო ხარჯებზე.',
+      ],
+    },
+    {
+      heading: '8. დაბრუნების მოთხოვნის პროცედურა',
+      paragraphs: [
+        `დაბრუნების მოსათხოვად მოგვწერეთ: ${merchantInfo.email}, მიუთითეთ შესყიდვის თარიღი და კურსის/სესიის დასახელება. მოთხოვნას განვიხილავთ 5 სამუშაო დღის განმავლობაში, დამტკიცების შემთხვევაში თანხა ბრუნდება იმავე გადახდის მეთოდზე (საქართველოს ბანკის მეშვეობით) 14 კალენდარულ დღემდე.`,
+      ],
+    },
+    {
+      heading: '9. კონტაქტი',
       paragraphs: [`${entityLineKa} · ${merchantInfo.email} · ${merchantInfo.phone}`],
     },
   ],
@@ -326,30 +382,50 @@ export const refundPolicy: { ka: LegalSection[]; en: LegalSection[] } = {
     {
       heading: '2. Course Purchase Refunds',
       paragraphs: [
-        'A full refund is available within 3 calendar days of purchase, provided the user has completed no more than 2 lessons (or less than 20% of the course content) and no certificate has been issued.',
-        'After 3 days, or if a significant portion of the content has already been accessed/viewed, the purchase is non-refundable — since the service has already been delivered with the user\'s consent.',
+        'A full refund is available within 24 hours of purchase, provided the user has watched less than 10% of the course content and no certificate has been issued.',
+        "After 24 hours, or if 10% or more of the content has already been watched, the purchase is non-refundable — since the service has already been delivered with the user's consent.",
       ],
     },
     {
-      heading: '3. Technical Failure',
+      heading: '3. Digital Store — Non-Refundable Products',
+      paragraphs: [
+        'Digital Store products (templates, design files, digital tools, etc.) are instantly-delivered digital goods. Once a product has been downloaded, it is non-refundable under any circumstances — at the time of purchase the user agrees to immediate delivery and waives the standard right of withdrawal.',
+      ],
+    },
+    {
+      heading: '4. Technical Failure',
       paragraphs: [
         'If course access fails due to a technical fault on our side and the issue is not resolved within a reasonable time, a full refund is issued regardless of the timeframe above.',
       ],
     },
     {
-      heading: '4. Freelance Marketplace Deals',
+      heading: '5. Freelance Marketplace Deals',
       paragraphs: [
-        'Escrow-funded deals are governed separately — funds are released only after the client approves the delivered work, or, in case of a dispute, via the platform\'s dispute-resolution process.',
+        "Escrow-funded deals are governed separately — funds are released only after the client approves the delivered work, or, in case of a dispute, via the platform's dispute-resolution process (see Terms & Conditions, Section 11).",
       ],
     },
     {
-      heading: '5. How to Request a Refund',
+      heading: '6. Mentorship Sessions — Cancellation & No-Show',
       paragraphs: [
-        `To request a refund, email us at ${merchantInfo.email} with your purchase date and course name. Requests are reviewed within 5 business days; if approved, funds are returned to the original payment method (via Bank of Georgia) within up to 14 calendar days.`,
+        'Free cancellation is available up to 12 hours before the scheduled session — the full amount is refunded, minus the bank transaction fee (see Section 7).',
+        "If cancelled less than 12 hours before the scheduled time, 50% of the amount paid is retained by the platform as compensation for the mentor's reserved time; the remaining 50% is refunded to the student.",
+        'If the mentor fails to attend the scheduled session (No-Show), the student receives a 100% refund of the amount paid.',
       ],
     },
     {
-      heading: '6. Contact',
+      heading: '7. Bank Transaction Fees',
+      paragraphs: [
+        "Any refund issued at the user's voluntary request (course or mentorship session) has the bank transaction fee already incurred when processing the original payment (approximately 1.5%–2%) deducted from it. CDC Center is not liable for additional banking costs caused by user error.",
+      ],
+    },
+    {
+      heading: '8. How to Request a Refund',
+      paragraphs: [
+        `To request a refund, email us at ${merchantInfo.email} with your purchase date and course/session name. Requests are reviewed within 5 business days; if approved, funds are returned to the original payment method (via Bank of Georgia) within up to 14 calendar days.`,
+      ],
+    },
+    {
+      heading: '9. Contact',
       paragraphs: [`${entityLineEn} · ${merchantInfo.email} · ${merchantInfo.phone}`],
     },
   ],
