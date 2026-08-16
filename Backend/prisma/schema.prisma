@@ -387,6 +387,7 @@ model User {
   courseEnrollments           CourseEnrollment[]
   lessonProgress              LessonProgress[]
   courseCertificates          CourseCertificate[]
+  courseDiscussionPosts       CourseDiscussionPost[]
   examAttempts                ExamAttempt[]
   freelancerSkillExamAttempts FreelancerSkillExamAttempt[]
   skillTestAttempts           SkillTestAttempt[]
@@ -675,6 +676,7 @@ model Course {
   // admin — courses without one keep the old "100% lessons" certificate gate
   // (see routes/courses.ts's GET /:id/certificate).
   exam         Exam?
+  discussionPosts CourseDiscussionPost[]
 
   @@map("courses")
 }
@@ -1036,6 +1038,33 @@ model CourseEnrollment {
 
   @@unique([userId, courseId])
   @@map("course_enrollments")
+}
+
+// ============================================================
+// COURSE DISCUSSION — per-course Q&A on the /learn player, deliberately
+// separate from the site-wide ForumThread/ForumComment above: different
+// audience (enrolled students only, checked the same way as curriculum
+// access — see routes/courses.ts's checkCourseAccess), and different
+// moderation model (instant AI safety check on submit via
+// contentModerationService, not a human pre-approval queue). One level of
+// replies only (parentId), not deep threading — this is course Q&A, not a
+// general discussion board.
+// ============================================================
+model CourseDiscussionPost {
+  id        String                 @id @default(uuid())
+  courseId  String
+  course    Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User                   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    CourseDiscussionPost?  @relation("CourseDiscussionReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   CourseDiscussionPost[] @relation("CourseDiscussionReplies")
+  content   String
+  createdAt DateTime               @default(now())
+
+  @@index([courseId])
+  @@index([parentId])
+  @@map("course_discussion_posts")
 }
 
 // ============================================================

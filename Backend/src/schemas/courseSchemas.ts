@@ -103,6 +103,17 @@ export const lessonProgressUpdateSchema = z.object({
   completed: z.boolean(),
 });
 
+// --- Course discussion (per-course Q&A on /learn) ---
+
+export const courseDiscussionPostCreateSchema = z.object({
+  content: z.string().trim().min(2).max(4000),
+  // One level of replies only — a reply's own parentId, if it had one,
+  // would make this a nested thread rather than the flat "question + its
+  // answers" shape this feature is meant to be. Enforced in the route
+  // handler (which loads the parent), not expressible in the schema alone.
+  parentId: z.string().uuid().optional(),
+});
+
 // --- Homework assignments ---
 
 export const submitAssignmentSchema = z

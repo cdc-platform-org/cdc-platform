@@ -3,8 +3,10 @@ import multer from 'multer';
 import path from 'path';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole, requireApproved } from '../middleware/auth';
+import { rateLimit } from '../middleware/rateLimit';
 import { uploadImage, deleteManagedImage } from '../services/imageStorage';
 import { BunnyStorageUploadError } from '../services/bunnyStorage';
+import { checkContentSafety } from '../services/contentModerationService';
 import {
   courseCreateSchema,
   courseUpdateSchema,
@@ -17,6 +19,7 @@ import {
   examSubmitSchema,
   submitAssignmentSchema,
   gradeAssignmentSchema,
+  courseDiscussionPostCreateSchema,
 } from '../schemas/courseSchemas';
 import {
   createBunnyVideo,
@@ -1173,6 +1176,176 @@ router.post('/admin/submissions/:id/grade', authenticate, requireAdminRole('SUPE
     res.json({ data: updated });
   } catch (err: any) {
     if (err.code === 'P2025') return res.status(404).json({ message: 'Submission not found.' });
+    throw err;
+  }
+});
+
+// ============================================================
+// LEADERBOARD — public (the course detail page that shows it,
+// /courses/[id], has no auth gate). Names/avatars are already public
+// elsewhere on this platform (GET /reviews/user/:userId has no auth
+// requirement either), so this isn't a new exposure — but only students
+// who've actually made progress are included, not every enrolled student,
+// so simply enrolling-and-never-starting is never shown publicly.
+//
+// XP has no stored column — computed fresh from LessonProgress/
+// AssignmentSubmission on every request, the same "derive at read time"
+// posture as coursePricing.ts's getCurrentPrice(). AssignmentSubmission has
+// no numeric grade field (status is PENDING/APPROVED/NEEDS_REVISION), so
+// "assignment grades" means an APPROVED submission counting as a flat XP
+// bonus, not a weighted score.
+// ============================================================
+const XP_PER_COMPLETED_LESSON = 10;
+const XP_PER_APPROVED_ASSIGNMENT = 25;
+
+router.get('/:id/leaderboard', async (req: Request, res: Response) => {
+  const course = await prisma.course.findUnique({ where: { id: req.params.id }, select: { id: true } });
+  if (!course) return res.status(404).json({ message: 'Course not found.' });
+
+  const enrolledCount = await prisma.courseEnrollment.count({ where: { courseId: course.id } });
+
+  const lessons = await prisma.lesson.findMany({ where: { section: { courseId: course.id } }, select: { id: true } });
+  const lessonIds = lessons.map((l) => l.id);
+  if (lessonIds.length === 0) {
+    return res.json({ data: { enrolledCount, totalLessons: 0, topStudents: [] } });
+  }
+
+  const [completedCounts, approvedCounts] = await Promise.all([
+    prisma.lessonProgress.groupBy({
+      by: ['userId'],
+      where: { lessonId: { in: lessonIds }, completed: true },
+      _count: { lessonId: true },
+    }),
+    prisma.assignmentSubmission.groupBy({
+      by: ['userId'],
+      where: { lessonId: { in: lessonIds }, status: 'APPROVED' },
+      _count: { lessonId: true },
+    }),
+  ]);
+
+  const completedMap = new Map(completedCounts.map((c) => [c.userId, c._count.lessonId]));
+  const approvedMap = new Map(approvedCounts.map((c) => [c.userId, c._count.lessonId]));
+  const activeUserIds = [...new Set([...completedMap.keys(), ...approvedMap.keys()])];
+
+  const enrollments = await prisma.courseEnrollment.findMany({
+    where: { courseId: course.id, userId: { in: activeUserIds } },
+    select: { userId: true },
+  });
+  const enrolledActiveIds = new Set(enrollments.map((e) => e.userId));
+
+  const ranked = activeUserIds
+    .filter((userId) => enrolledActiveIds.has(userId))
+    .map((userId) => {
+      const completedLessons = completedMap.get(userId) ?? 0;
+      const approvedAssignments = approvedMap.get(userId) ?? 0;
+      return {
+        userId,
+        completedLessons,
+        xp: completedLessons * XP_PER_COMPLETED_LESSON + approvedAssignments * XP_PER_APPROVED_ASSIGNMENT,
+      };
+    })
+    .sort((a, b) => b.xp - a.xp)
+    .slice(0, 10);
+
+  const users = await prisma.user.findMany({
+    where: { id: { in: ranked.map((r) => r.userId) } },
+    select: { id: true, name: true, avatarUrl: true },
+  });
+  const userMap = new Map(users.map((u) => [u.id, u]));
+
+  const topStudents = ranked.map((r, i) => ({
+    rank: i + 1,
+    userId: r.userId,
+    name: userMap.get(r.userId)?.name ?? 'Student',
+    avatarUrl: userMap.get(r.userId)?.avatarUrl ?? null,
+    completedLessons: r.completedLessons,
+    completionPercent: Math.round((r.completedLessons / lessonIds.length) * 100),
+    xp: r.xp,
+  }));
+
+  res.json({ data: { enrolledCount, totalLessons: lessonIds.length, topStudents } });
+});
+
+// ============================================================
+// COURSE DISCUSSION — enrolled-only Q&A on the /learn player (same access
+// check as curriculum, requireCourseAccess). One level of replies; every
+// post is AI-safety-checked before it's ever stored — see
+// contentModerationService.checkContentSafety.
+// ============================================================
+router.get('/:courseId/discussion', authenticate, requireCourseAccess, async (req: Request, res: Response) => {
+  const posts = await prisma.courseDiscussionPost.findMany({
+    where: { courseId: req.params.courseId, parentId: null },
+    include: {
+      author: { select: { id: true, name: true, avatarUrl: true } },
+      replies: {
+        include: { author: { select: { id: true, name: true, avatarUrl: true } } },
+        orderBy: { createdAt: 'asc' },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json({ data: posts });
+});
+
+// IP-keyed, same shape/reasoning as ai.ts's courseTutorRateLimit — a
+// Gemini-backed create endpoint is the obvious abuse target for burning
+// quota (or for spamming the discussion itself).
+const discussionPostRateLimit = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 15,
+  message: 'Too many posts. Please wait a moment before posting again.',
+});
+
+router.post(
+  '/:courseId/discussion',
+  authenticate,
+  requireCourseAccess,
+  discussionPostRateLimit,
+  async (req: Request, res: Response) => {
+    const result = courseDiscussionPostCreateSchema.safeParse(req.body);
+    if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+    if (result.data.parentId) {
+      const parent = await prisma.courseDiscussionPost.findUnique({
+        where: { id: result.data.parentId },
+        select: { courseId: true, parentId: true },
+      });
+      if (!parent || parent.courseId !== req.params.courseId) {
+        return res.status(400).json({ message: 'Invalid parent post.' });
+      }
+      if (parent.parentId) {
+        return res.status(400).json({ message: 'Replies can only be one level deep.' });
+      }
+    }
+
+    const { safe } = await checkContentSafety(result.data.content);
+    if (!safe) {
+      return res.status(400).json({ message: 'პოსტი შეიცავს არასათანადო/შეურაცხმყოფელ ენას და ვერ გამოქვეყნდება.' });
+    }
+
+    const post = await prisma.courseDiscussionPost.create({
+      data: {
+        courseId: req.params.courseId,
+        authorId: req.user!.id,
+        content: result.data.content,
+        parentId: result.data.parentId ?? null,
+      },
+      include: { author: { select: { id: true, name: true, avatarUrl: true } } },
+    });
+    res.status(201).json({ data: post });
+  }
+);
+
+// Admin backstop — checkContentSafety fails OPEN when Gemini is unavailable,
+// so this is what actually removes anything that slips through in that
+// window, same role human moderation already plays for the site-wide
+// forum's approved-after-the-fact comments.
+router.delete('/discussion/:postId', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
+  try {
+    await prisma.courseDiscussionPost.delete({ where: { id: req.params.postId } });
+    res.status(204).send();
+  } catch (err: any) {
+    if (err.code === 'P2025') return res.status(404).json({ message: 'Post not found.' });
     throw err;
   }
 });

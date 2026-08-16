@@ -20,6 +20,8 @@ import {
   AssignmentSubmission,
   AdminAssignmentSubmission,
   AssignmentStatus,
+  CourseLeaderboard,
+  CourseDiscussionPost,
 } from '../types/lms';
 
 // --- Course CRUD (admin) / listing (public) ---
@@ -298,4 +300,30 @@ export async function askCourseTutor(params: {
 }): Promise<string> {
   const response = await apiClient.post<{ reply: string }>('/ai/course-tutor', params);
   return response.data.reply;
+}
+
+// --- Leaderboard (public, shown on /courses/[id]) ---
+
+export async function getCourseLeaderboard(courseId: string): Promise<CourseLeaderboard> {
+  const response = await apiClient.get<{ data: CourseLeaderboard }>(`/courses/${courseId}/leaderboard`);
+  return response.data.data;
+}
+
+// --- Course discussion (enrolled-only, shown on /courses/[id]/learn) ---
+
+export async function getCourseDiscussion(courseId: string): Promise<CourseDiscussionPost[]> {
+  const response = await apiClient.get<{ data: CourseDiscussionPost[] }>(`/courses/${courseId}/discussion`);
+  return response.data.data;
+}
+
+export async function createCourseDiscussionPost(
+  courseId: string,
+  payload: { content: string; parentId?: string }
+): Promise<CourseDiscussionPost> {
+  const response = await apiClient.post<{ data: CourseDiscussionPost }>(`/courses/${courseId}/discussion`, payload);
+  return response.data.data;
+}
+
+export async function deleteCourseDiscussionPost(postId: string): Promise<void> {
+  await apiClient.delete(`/courses/discussion/${postId}`);
 }

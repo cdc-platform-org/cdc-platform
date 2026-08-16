@@ -18,6 +18,7 @@ import { useAuth } from '../../../src/context/AuthContext';
 import { useAuthModal } from '../../../src/context/AuthModalContext';
 import SocialShareButtons from '../../../src/components/shared/SocialShareButtons';
 import SuccessStoriesCarousel from '../../../src/components/shared/SuccessStoriesCarousel';
+import CourseLeaderboard from '../../../src/components/shared/CourseLeaderboard';
 
 const dict = {
   ka: {
@@ -435,6 +436,8 @@ export default function CourseDetailPage() {
             </div>
           )}
         </div>
+
+        <CourseLeaderboard courseId={course.id} lang={lang} />
       </div>
 
       {previewLesson && (

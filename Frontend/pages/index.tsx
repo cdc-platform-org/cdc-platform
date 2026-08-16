@@ -767,9 +767,18 @@ export default function Home() {
 
                     {course.mentorName && (
                       <div className={`p-4 rounded-2xl border flex items-center space-x-4 mb-6 ${darkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white text-sm font-black shrink-0">
-                          {course.mentorName.slice(0, 2)}
-                        </div>
+                        {course.mentorAvatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={course.mentorAvatarUrl}
+                            alt={course.mentorName}
+                            className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white text-sm font-black shrink-0">
+                            {course.mentorName.slice(0, 2)}
+                          </div>
+                        )}
                         <div className="min-w-0">
                           <h4 className="text-sm font-black text-slate-800 dark:text-slate-200 truncate">{course.mentorName}</h4>
                           {course.mentorTitle && <p className="text-xs text-slate-400 font-bold truncate">{course.mentorTitle}</p>}

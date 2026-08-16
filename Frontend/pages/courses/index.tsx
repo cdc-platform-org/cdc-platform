@@ -392,9 +392,18 @@ export default function CoursesPage() {
                           <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6 line-clamp-3">{course.description}</p>
                           {course.mentorName && (
                             <div className="flex items-center gap-3 mb-6 p-3 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800">
-                              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white text-xs font-black shrink-0">
-                                {course.mentorName.slice(0, 2)}
-                              </div>
+                              {course.mentorAvatarUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={course.mentorAvatarUrl}
+                                  alt={course.mentorName}
+                                  className="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                                />
+                              ) : (
+                                <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white text-xs font-black shrink-0">
+                                  {course.mentorName.slice(0, 2)}
+                                </div>
+                              )}
                               <div className="min-w-0">
                                 <p className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{course.mentorName}</p>
                                 {course.mentorTitle && <p className="text-[11px] text-slate-500 truncate">{course.mentorTitle}</p>}

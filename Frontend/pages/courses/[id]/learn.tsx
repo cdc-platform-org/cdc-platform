@@ -8,6 +8,7 @@ import SiteHeader from '../../../src/components/layout/SiteHeader';
 import BackButton from '../../../src/components/common/BackButton';
 import CourseVideoPlayer from '../../../src/components/courses/CourseVideoPlayer';
 import CourseTutorPanel from '../../../src/components/courses/CourseTutorPanel';
+import CourseDiscussionPanel from '../../../src/components/shared/CourseDiscussionPanel';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useEscapeToClose } from '../../../src/hooks/useEscapeToClose';
 import { LmsSection, LmsLesson, CourseProgressSummary, Course, ExamStatus, AssignmentSubmission } from '../../../src/types/lms';
@@ -28,6 +29,7 @@ const dict = {
     overview: 'მიმოხილვა',
     resources: 'რესურსები',
     assignment: 'დავალება',
+    discussion: 'დისკუსია',
     noResources: 'ამ გაკვეთილს დამატებითი მასალა არ აქვს.',
     noAssignment: 'ამ გაკვეთილს დავალება არ აქვს — გაკვეთილების დასრულებით მიაღწევთ 100%-იან პროგრესს.',
     assignmentLinkPlaceholder: 'ბმული (მაგ: Figma, Google Drive)…',
@@ -65,6 +67,7 @@ const dict = {
     overview: 'Overview',
     resources: 'Resources',
     assignment: 'Assignment',
+    discussion: 'Discussion',
     noResources: 'This lesson has no attached resources.',
     noAssignment: 'This lesson has no assignment — complete every lesson to reach 100%.',
     assignmentLinkPlaceholder: 'Link (e.g. Figma, Google Drive)…',
@@ -239,7 +242,7 @@ function LearnContent() {
   const [examStatus, setExamStatus] = useState<ExamStatus | null>(null);
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
   const [expandedSectionIds, setExpandedSectionIds] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'overview' | 'resources' | 'assignment'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'resources' | 'assignment' | 'discussion'>('overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloadingCert, setDownloadingCert] = useState(false);
@@ -390,7 +393,7 @@ function LearnContent() {
           <h1 className="text-xl font-bold mt-6">{activeLesson?.title ?? course.title}</h1>
 
           <div className="flex gap-2 mt-6 border-b border-slate-800">
-            {(['overview', 'resources', 'assignment'] as const).map((tab) => (
+            {(['overview', 'resources', 'assignment', 'discussion'] as const).map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -429,6 +432,7 @@ function LearnContent() {
               ) : (
                 <p className="text-slate-500">{t.noAssignment}</p>
               ))}
+            {activeTab === 'discussion' && courseId && <CourseDiscussionPanel courseId={courseId} lang={lang} />}
           </div>
         </div>
 

@@ -1,5 +1,41 @@
 export type CourseLanguage = 'GEORGIAN' | 'ENGLISH' | 'BOTH';
 
+export interface CourseLeaderboardEntry {
+  rank: number;
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  completedLessons: number;
+  completionPercent: number;
+  xp: number;
+}
+
+export interface CourseLeaderboard {
+  enrolledCount: number;
+  totalLessons: number;
+  topStudents: CourseLeaderboardEntry[];
+}
+
+export interface CourseDiscussionAuthor {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+}
+
+export interface CourseDiscussionPost {
+  id: string;
+  courseId: string;
+  authorId: string;
+  author: CourseDiscussionAuthor;
+  parentId: string | null;
+  content: string;
+  createdAt: string;
+  // Only populated on top-level posts (parentId === null) — the backend
+  // only fetches one level of replies, so a reply object never has its own
+  // nested replies array.
+  replies?: CourseDiscussionPost[];
+}
+
 export interface Course {
   id: string;
   title: string;
