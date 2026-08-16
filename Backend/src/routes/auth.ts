@@ -139,6 +139,7 @@ function toUserResponse(user: {
   trialStartDate?: Date | null;
   aiTrialEndsAt?: Date | null;
   aiSubscriptionActive?: boolean;
+  freelancerSkills?: string[];
 }) {
   return {
     id: user.id,
@@ -171,6 +172,7 @@ function toUserResponse(user: {
     trialStartDate: user.trialStartDate ?? null,
     aiTrialEndsAt: user.aiTrialEndsAt ?? null,
     aiSubscriptionActive: user.aiSubscriptionActive ?? false,
+    freelancerSkills: user.freelancerSkills ?? [],
   };
 }
 
@@ -180,7 +182,7 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ errors: result.error.errors });
   }
 
-  const { name, email, password, role, primaryIntent } = result.data;
+  const { name, email, password, role, primaryIntent, freelancerSkills } = result.data;
   const normalizedEmail = email.toLowerCase();
 
   const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
@@ -196,6 +198,7 @@ router.post('/register', async (req, res) => {
       password: hashed,
       role,
       primaryIntent,
+      freelancerSkills: freelancerSkills ?? [],
       // registerSchema only ever grants Student or Client (see its comment) —
       // both are self-serve roles with no vetting step, so manual admin
       // approval (UserStatus's PENDING_APPROVAL default, reserved for

@@ -25,6 +25,10 @@ export interface Course {
   thumbnailUrl: string | null;
   coverImageUrl: string | null;
   mentorAvatarUrl: string | null;
+  // Freelancer skills this course teaches (see
+  // src/data/freelancerSkills.ts) — auto-verifies each on a student's
+  // profile once they earn this course's certificate, no AI test needed.
+  skillsTaught: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -49,6 +53,7 @@ export interface CoursePayload {
   coverImageUrl?: string;
   mentorAvatarUrl?: string;
   language?: CourseLanguage;
+  skillsTaught?: string[];
 }
 
 // --- Student-facing curriculum (learn page) ---

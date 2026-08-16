@@ -113,12 +113,22 @@ router.get('/user/:userId', async (req: Request, res: Response) => {
   if (!user) {
     return res.status(404).json({ message: 'User not found.' });
   }
-  const reviews = await prisma.review.findMany({
-    where: { revieweeId: req.params.userId },
-    include: { reviewer: participantSelect, gig: { select: { id: true, title: true } } },
-    orderBy: { createdAt: 'desc' },
-  });
-  res.json({ data: { user, reviews } });
+  const [reviews, verifiedSkills] = await Promise.all([
+    prisma.review.findMany({
+      where: { revieweeId: req.params.userId },
+      include: { reviewer: participantSelect, gig: { select: { id: true, title: true } } },
+      orderBy: { createdAt: 'desc' },
+    }),
+    // Per-skill "Verified Skill" badges — a separate, additive credential
+    // from the single isVerifiedGraduate flag above (see VerifiedSkill's
+    // schema comment). Public — no auth needed to see someone's earned badges.
+    prisma.verifiedSkill.findMany({
+      where: { userId: req.params.userId },
+      select: { skillName: true, verifiedVia: true },
+      orderBy: { verifiedAt: 'asc' },
+    }),
+  ]);
+  res.json({ data: { user, reviews, verifiedSkills } });
 });
 
 export default router;

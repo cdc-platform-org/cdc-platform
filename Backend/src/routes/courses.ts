@@ -454,12 +454,45 @@ async function getCourseCompletion(courseId: string, userId: string) {
 // every time.
 async function getOrCreateCertificate(userId: string, courseId: string) {
   const existing = await prisma.courseCertificate.findUnique({ where: { userId_courseId: { userId, courseId } } });
-  return (
-    existing ??
-    (await prisma.courseCertificate.create({
-      data: { userId, courseId, verificationCode: generateVerificationCode(new Date()) },
-    }))
-  );
+  if (existing) return existing;
+  const certificate = await prisma.courseCertificate.create({
+    data: { userId, courseId, verificationCode: generateVerificationCode(new Date()) },
+  });
+  // Fires exactly once, on first-ever certificate issuance for this
+  // (userId, courseId) pair — never on a later re-fetch of an already-issued
+  // certificate. Covers both certificate paths: the exam-pass auto-issue
+  // above and the 100%-lessons-complete GET /:id/certificate path below,
+  // since both funnel through this same helper.
+  await autoVerifySkillsForCourse(userId, courseId);
+  return certificate;
+}
+
+// Auto-verifies every skill in Course.skillsTaught for a student who just
+// earned that course's certificate — no AI test needed, per spec. Also adds
+// those skills to the student's own declared freelancerSkills list (deduped)
+// so their profile keeps up with what they've actually earned, even if they
+// never explicitly picked that skill at registration. Never downgrades an
+// existing VerifiedSkill (e.g. one already earned via the AI test, with its
+// own score) — the upsert's `update: {}` is a deliberate no-op, since the
+// skill is verified either way and course-completion carries no score to
+// overwrite it with.
+async function autoVerifySkillsForCourse(userId: string, courseId: string) {
+  const course = await prisma.course.findUnique({ where: { id: courseId }, select: { skillsTaught: true } });
+  if (!course?.skillsTaught.length) return;
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { freelancerSkills: true } });
+  const mergedSkills = Array.from(new Set([...(user?.freelancerSkills ?? []), ...course.skillsTaught]));
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { freelancerSkills: mergedSkills } }),
+    ...course.skillsTaught.map((skillName) =>
+      prisma.verifiedSkill.upsert({
+        where: { userId_skillName: { userId, skillName } },
+        update: {},
+        create: { userId, skillName, verifiedVia: 'COURSE_COMPLETION', courseId },
+      })
+    ),
+  ]);
 }
 
 // Admin: view a course's exam settings (null if none configured yet).

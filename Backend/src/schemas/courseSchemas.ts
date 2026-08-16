@@ -29,6 +29,11 @@ export const courseCreateSchema = z
     coverImageUrl: z.string().trim().max(2000).optional(),
     mentorAvatarUrl: z.string().trim().max(2000).optional(),
     language: z.enum(['GEORGIAN', 'ENGLISH', 'BOTH']).optional(),
+    // Freelancer skills this course teaches (src/data/freelancerSkills.ts
+    // values or free text) — auto-verifies each on a student's profile the
+    // moment they earn this course's certificate, see routes/courses.ts's
+    // autoVerifySkillsForCourse().
+    skillsTaught: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
     ...coursePricingFields,
   })
   .refine((data) => !data.isOnSale || !!data.discountPercent, {
@@ -50,6 +55,7 @@ export const courseUpdateSchema = z
     coverImageUrl: z.string().trim().max(2000).optional(),
     mentorAvatarUrl: z.string().trim().max(2000).optional(),
     language: z.enum(['GEORGIAN', 'ENGLISH', 'BOTH']).optional(),
+    skillsTaught: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
     ...coursePricingFields,
     originalPrice: coursePricingFields.originalPrice.optional(),
     isOnSale: coursePricingFields.isOnSale.optional(),

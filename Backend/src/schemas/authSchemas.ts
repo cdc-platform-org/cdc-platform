@@ -12,6 +12,10 @@ export const registerSchema = z.object({
   // purely descriptive (see PrimaryIntent's schema comment), doesn't
   // affect `role` validation/derivation above.
   primaryIntent: z.enum(['TALENT', 'EMPLOYER']).optional(),
+  // Only meaningful for a Freelancer sub-role signup (register.tsx's Step 2)
+  // — ignored for every other subRole, which just never sends this. Same
+  // storage/validation as PUT /me's freelancerSkills.
+  freelancerSkills: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
   // Server-side re-check, not just a UI-disabled-submit-button gate — the
   // frontend checkbox is required to submit, but this must still reject a
   // direct API call that skips it. z.literal(true) rejects false/missing.
@@ -92,6 +96,12 @@ export const updateProfileSchema = z.object({
   // compared against the AI-parsed KYC document's identification code for
   // auto-verification, see services/businessKycService.ts.
   taxId: z.string().trim().max(30).optional().nullable(),
+  // Freelancer's self-declared skills — curated src/data/freelancerSkills.ts
+  // values and/or free-typed "Other" entries, both stored the same way (see
+  // routes/skillTests.ts for the AI test that turns a declared skill into a
+  // VerifiedSkill badge). Capped generously, not tied to role — same posture
+  // as the business fields above.
+  freelancerSkills: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
 });
 
 export const changePasswordSchema = z.object({

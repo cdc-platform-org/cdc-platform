@@ -10,6 +10,7 @@ import PasswordInput from '../../src/components/auth/PasswordInput';
 import GoogleSignInButton from '../../src/components/auth/GoogleSignInButton';
 import SocialLoginButtons from '../../src/components/auth/SocialLoginButtons';
 import LanguageSwitcher from '../../src/components/layout/LanguageSwitcher';
+import SkillPicker from '../../src/components/shared/SkillPicker';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { GetStaticProps } from 'next';
@@ -30,6 +31,7 @@ function RegisterPage() {
   // collects company KYC fields right after this form succeeds.
   const [intent, setIntent] = useState<'TALENT' | 'EMPLOYER' | null>(null);
   const [subRole, setSubRole] = useState<'Student' | 'Freelancer' | 'Client' | 'Business' | null>(null);
+  const [freelancerSkills, setFreelancerSkills] = useState<string[]>([]);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +83,15 @@ function RegisterPage() {
     setSubmitting(true);
 
     try {
-      const newUser = await register({ name, email, password, role, acceptedTerms, primaryIntent: intent ?? undefined });
+      const newUser = await register({
+        name,
+        email,
+        password,
+        role,
+        acceptedTerms,
+        primaryIntent: intent ?? undefined,
+        freelancerSkills: subRole === 'Freelancer' ? freelancerSkills : undefined,
+      });
       // Self-serve Student/Client signups are auto-approved (see backend's
       // POST /register) — pending-approval is now only reachable for a
       // future role that still needs manual vetting.
@@ -281,6 +291,19 @@ function RegisterPage() {
               placeholder={t('register.passwordPlaceholder')}
             />
           </div>
+
+          {subRole === 'Freelancer' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
+                {lang === 'ka' ? 'თქვენი უნარები' : 'Your skills'}
+                <span className="text-gray-400 font-normal">
+                  {' '}
+                  — {lang === 'ka' ? 'არასავალდებულო, მოგვიანებით პროფილში ჩასწორებადი' : 'optional, editable later in your profile'}
+                </span>
+              </label>
+              <SkillPicker value={freelancerSkills} onChange={setFreelancerSkills} lang={lang} />
+            </div>
+          )}
 
           <label className="flex items-start gap-2.5 text-sm text-gray-600 dark:text-slate-400 cursor-pointer">
             <input

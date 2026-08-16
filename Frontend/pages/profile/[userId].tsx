@@ -8,9 +8,10 @@ import DirectHireModal from '../../src/components/community/DirectHireModal';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import BackButton from '../../src/components/common/BackButton';
 import VerifiedGraduateBadge from '../../src/components/community/VerifiedGraduateBadge';
+import { ShieldCheck, GraduationCap } from 'lucide-react';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
-import { UserRatingSummary, UserReview } from '../../src/types/review';
+import { UserRatingSummary, UserReview, PublicVerifiedSkill } from '../../src/types/review';
 import { Gig } from '../../src/types/community';
 import { getUserReviews } from '../../src/services/reviewService';
 import { getGigs } from '../../src/services/gigService';
@@ -34,6 +35,7 @@ function ProfileContent() {
   const { t } = useTranslation('proposals');
   const [profileUser, setProfileUser] = useState<UserRatingSummary | null>(null);
   const [reviews, setReviews] = useState<UserReview[]>([]);
+  const [verifiedSkills, setVerifiedSkills] = useState<PublicVerifiedSkill[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [showHireModal, setShowHireModal] = useState(false);
@@ -61,9 +63,10 @@ function ProfileContent() {
     setLoading(true);
     setNotFound(false);
     try {
-      const { user, reviews: userReviews } = await getUserReviews(userId);
+      const { user, reviews: userReviews, verifiedSkills: skills } = await getUserReviews(userId);
       setProfileUser(user);
       setReviews(userReviews);
+      setVerifiedSkills(skills);
     } catch {
       setNotFound(true);
     } finally {
@@ -141,6 +144,27 @@ function ProfileContent() {
               <span className="text-sm text-gray-400">No reviews yet.</span>
             )}
           </div>
+
+          {verifiedSkills.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-gray-100">
+              <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2.5">Verified Skills</p>
+              <div className="flex flex-wrap gap-2">
+                {verifiedSkills.map((skill) => (
+                  <span
+                    key={skill.skillName}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  >
+                    {skill.verifiedVia === 'COURSE_COMPLETION' ? (
+                      <GraduationCap className="w-3.5 h-3.5" />
+                    ) : (
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                    )}
+                    {skill.skillName}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <h2 className="text-base font-semibold text-gray-900 mb-4">Reviews</h2>

@@ -26,6 +26,11 @@ export interface UserRatingSummary {
   isVerifiedGraduate: boolean;
 }
 
+export interface PublicVerifiedSkill {
+  skillName: string;
+  verifiedVia: 'AI_TEST' | 'COURSE_COMPLETION';
+}
+
 export interface UserReview {
   id: string;
   rating: number;

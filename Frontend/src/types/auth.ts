@@ -59,6 +59,10 @@ export interface User {
   trialStartDate: string | null;
   aiTrialEndsAt: string | null;
   aiSubscriptionActive: boolean;
+  // Self-declared skills (src/data/freelancerSkills.ts values and/or custom
+  // "Other" entries) — see SkillPicker.tsx. Only some are "Verified" (see
+  // src/services/skillTestService.ts's GET /api/skill-tests/mine).
+  freelancerSkills: string[];
 }
 
 export type VerificationStatus = 'unverified' | 'under_review' | 'verified';
@@ -84,6 +88,7 @@ export interface UpdateProfilePayload {
   websiteUrl?: string | null;
   companyDescription?: string | null;
   taxId?: string | null;
+  freelancerSkills?: string[];
 }
 
 export interface ChangePasswordPayload {
@@ -107,6 +112,8 @@ export interface RegisterPayload {
   // Which onboarding path was picked in register.tsx's Step 1 — purely
   // descriptive, doesn't change `role`'s validation.
   primaryIntent?: 'TALENT' | 'EMPLOYER';
+  // Only meaningful for a Freelancer sub-role signup — see register.tsx.
+  freelancerSkills?: string[];
   // Must be true — the backend rejects anything else (z.literal(true)).
   acceptedTerms: boolean;
 }

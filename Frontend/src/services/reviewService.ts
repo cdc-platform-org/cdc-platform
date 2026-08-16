@@ -1,5 +1,5 @@
 import apiClient from './apiClient';
-import { Review, UserRatingSummary, UserReview } from '../types/review';
+import { Review, UserRatingSummary, UserReview, PublicVerifiedSkill } from '../types/review';
 
 export interface CreateReviewPayload {
   gigId: string;
@@ -19,9 +19,9 @@ export async function getGigReviews(gigId: string): Promise<Review[]> {
 
 export async function getUserReviews(
   userId: string
-): Promise<{ user: UserRatingSummary; reviews: UserReview[] }> {
-  const response = await apiClient.get<{ data: { user: UserRatingSummary; reviews: UserReview[] } }>(
-    `/reviews/user/${userId}`
-  );
+): Promise<{ user: UserRatingSummary; reviews: UserReview[]; verifiedSkills: PublicVerifiedSkill[] }> {
+  const response = await apiClient.get<{
+    data: { user: UserRatingSummary; reviews: UserReview[]; verifiedSkills: PublicVerifiedSkill[] };
+  }>(`/reviews/user/${userId}`);
   return response.data.data;
 }

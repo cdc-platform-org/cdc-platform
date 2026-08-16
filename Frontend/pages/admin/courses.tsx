@@ -4,6 +4,7 @@ import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
 import RichTextEditor from '../../src/components/shared/RichTextEditor';
 import { Course, CoursePayload, CourseLanguage, AdminSection, AdminLesson, Exam } from '../../src/types/lms';
+import SkillPicker from '../../src/components/shared/SkillPicker';
 import {
   getCourses,
   createCourse,
@@ -39,6 +40,7 @@ const emptyForm = {
   coverImageUrl: '',
   mentorAvatarUrl: '',
   language: 'GEORGIAN' as CourseLanguage,
+  skillsTaught: [] as string[],
   isOnSale: false,
   discountPercent: 20,
   discountPercentCustom: '',
@@ -93,6 +95,7 @@ function CourseForm({
         coverImageUrl: editingCourse.coverImageUrl ?? '',
         mentorAvatarUrl: editingCourse.mentorAvatarUrl ?? '',
         language: editingCourse.language ?? 'GEORGIAN',
+        skillsTaught: editingCourse.skillsTaught ?? [],
         isOnSale: editingCourse.isOnSale,
         discountPercent: presetMatch ? editingCourse.discountPercent! : DISCOUNT_PRESETS[1],
         discountPercentCustom: !presetMatch && editingCourse.discountPercent != null ? String(editingCourse.discountPercent) : '',
@@ -132,6 +135,7 @@ function CourseForm({
         coverImageUrl: form.coverImageUrl.trim() || undefined,
         mentorAvatarUrl: form.mentorAvatarUrl.trim() || undefined,
         language: form.language,
+        skillsTaught: form.skillsTaught,
         isOnSale: form.isOnSale,
         discountPercent: form.isOnSale ? effectiveDiscountPercent : null,
         discountEndDate: form.isOnSale && form.discountEndDate ? new Date(form.discountEndDate).toISOString() : null,
@@ -223,6 +227,12 @@ function CourseForm({
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Description</label>
         <RichTextEditor rows={3} value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
+          Skills Taught <span className="text-gray-400 font-normal">— auto-verifies these on a student's profile when they earn this course's certificate</span>
+        </label>
+        <SkillPicker value={form.skillsTaught} onChange={(skills) => setForm({ ...form, skillsTaught: skills })} lang="en" />
       </div>
       <div className="grid md:grid-cols-3 gap-5">
         <div>

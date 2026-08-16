@@ -6,6 +6,7 @@ datasource db {
 generator client {
   provider = "prisma-client-js"
 }
+
 // ============================================================
 // ENUMS
 // ============================================================
@@ -193,113 +194,120 @@ enum BogPaymentStatus {
 // ============================================================
 
 model User {
-  id              String     @id @default(uuid())
-  email           String     @unique
-  password        String
-  name            String
-  role            Role       @default(Student)
-  status          UserStatus @default(PENDING_APPROVAL)
-  rejectionReason String?
-  earningsBalance Int        @default(0)
+  id                            String                      @id @default(uuid())
+  email                         String                      @unique
+  password                      String
+  name                          String
+  role                          Role                        @default(Student)
+  status                        UserStatus                  @default(PENDING_APPROVAL)
+  rejectionReason               String?
+  earningsBalance               Int                         @default(0)
   // Denormalized rollup of `reviewsReceived`, recomputed on every new review —
   // avoids an AVG() aggregate query every time a rating needs to be displayed
   // (profile pages, gig/vacancy cards, etc).
-  averageRating   Float?
-  reviewCount     Int        @default(0)
+  averageRating                 Float?
+  reviewCount                   Int                         @default(0)
   // Set only by a SuperAdmin (POST /api/admin/users/:id/verify-graduate) once
   // they've confirmed the user actually completed a CDC course — there is no
   // automated course-completion pipeline yet, so this is a manual gate.
-  isVerifiedGraduate Boolean @default(false)
+  isVerifiedGraduate            Boolean                     @default(false)
   // Set when a freelancer skill exam attempt is force-submitted for
   // repeated anti-cheat violations (tab switch/fullscreen exit, see
   // routes/freelancerExam.ts) — blocks starting a new attempt until this
   // timestamp passes. null means not locked.
-  examLockedUntil DateTime?
+  examLockedUntil               DateTime?
+  // Freelancer's self-declared skills — a mix of values from the curated
+  // list in src/data/freelancerSkills.ts and free-typed "Other" entries;
+  // both are stored the same way, as plain strings. This is a separate,
+  // per-skill system from isVerifiedGraduate above: a skill here only shows
+  // a "Verified" badge (see VerifiedSkill) once the freelancer passes an
+  // AI-generated test for it, or a completed course auto-verifies it.
+  freelancerSkills              String[]                    @default([])
   // Soft-delete: set the moment the user confirms account deletion. The
   // account is deactivated immediately (blocked from logging in or taking
   // marketplace actions). 60 days later, the cleanup cron either hard-deletes
   // the row (if nothing references it) or anonymizes it in place (see
   // dataPurgedAt) when other users' financial/activity records depend on it.
-  deletionRequestedAt DateTime?
+  deletionRequestedAt           DateTime?
   // Set when the 60-day cleanup cron anonymizes (rather than hard-deletes)
   // this row, so the cron doesn't keep re-processing it on every run.
-  dataPurgedAt        DateTime?
+  dataPurgedAt                  DateTime?
   // Self-service email verification (separate from `status`'s admin-approval
   // gate — both must clear before protected actions, see requireApproved).
   // Set immediately for Google sign-ups (Google already verified the email).
   // Existing rows are backfilled to their createdAt at migration time so this
   // new gate doesn't retroactively lock out accounts that predate it.
-  emailVerifiedAt                DateTime?
-  emailVerificationToken         String?   @unique
-  emailVerificationTokenExpires  DateTime?
+  emailVerifiedAt               DateTime?
+  emailVerificationToken        String?                     @unique
+  emailVerificationTokenExpires DateTime?
   // Self-service password reset (POST /api/auth/forgot-password + /reset-password).
-  passwordResetToken             String?   @unique
-  passwordResetTokenExpires      DateTime?
+  passwordResetToken            String?                     @unique
+  passwordResetTokenExpires     DateTime?
   // Set for accounts created (or later linked) via Google/GitHub/Facebook
   // Sign-In. Such accounts get a random unusable password hash — there is
   // no password-based login path for them unless they later set one (see
   // routes/auth.ts).
-  googleId                       String?   @unique
-  githubId                       String?   @unique
-  facebookId                     String?   @unique
+  googleId                      String?                     @unique
+  githubId                      String?                     @unique
+  facebookId                    String?                     @unique
   // Internal admin-team tier (see AdminRole) — null means "not on the admin
   // team." Independent of `role`; set only via the admin Team Management
   // panel (SUPER_ADMIN-only) or the one-off seed utility.
-  adminRole       AdminRole?
+  adminRole                     AdminRole?
   // Admin-initiated ban (distinct from `deletionRequestedAt`, which is
   // self-service account deletion). A banned user is blocked from logging in
   // and from every requireApproved-gated action, same enforcement points as
   // deletion, but reversible and admin-controlled.
-  isBanned        Boolean    @default(false)
-  bannedAt        DateTime?
-  banReason       String?
+  isBanned                      Boolean                     @default(false)
+  bannedAt                      DateTime?
+  banReason                     String?
   // Legal identity fields — self-reported by the student under
   // /dashboard/settings. Deliberately separate from the display `name`
   // (which can be anything): certificates and payout paperwork use these
   // when set, since they need to match the person's actual ID/bank records.
   // All optional — falls back to `name` for both languages until filled in.
-  legalFirstNameKa String?
-  legalLastNameKa  String?
-  legalFirstNameEn String?
-  legalLastNameEn  String?
-  nationalId       String?
-  phone            String?
+  legalFirstNameKa              String?
+  legalLastNameKa               String?
+  legalFirstNameEn              String?
+  legalLastNameEn               String?
+  nationalId                    String?
+  phone                         String?
   // Default IBAN pre-filled into new payout requests — the request itself
   // still stores its own snapshot, so changing this later doesn't alter
   // past requests.
-  payoutIban       String?
+  payoutIban                    String?
   // Profile picture — set only via POST /api/auth/me/avatar (uploads
   // straight to Bunny Storage, see services/bunnyStorage.ts), never a
   // freely-settable URL, so a user's public-facing avatar can't be pointed
   // at an arbitrary external image.
-  avatarUrl        String?
+  avatarUrl                     String?
   // Short bio/headline shown on the profile — self-reported, plain text.
   // Georgian primary; bioEn is optional and falls back to bio when unset,
   // same twin-field convention as BlogPost.title/titleEn etc.
-  bio              String?
-  bioEn            String?
+  bio                           String?
+  bioEn                         String?
   // Public mentor-directory fields — only meaningful for role Mentor (same
   // not-schema-restricted posture as the business fields below), edited by
   // an admin on /admin/mentorship. mentorHourlyRate is minor units (tetri),
   // same convention as Course.originalPrice. mentorTitleEn follows the same
   // optional-twin-falls-back-to-Georgian convention as bioEn above.
-  mentorTitle      String?
-  mentorTitleEn    String?
-  mentorHourlyRate Int?
-  mentorSkills     String[] @default([])
+  mentorTitle                   String?
+  mentorTitleEn                 String?
+  mentorHourlyRate              Int?
+  mentorSkills                  String[]                    @default([])
   // Spoken languages, e.g. ["ქართული", "English"] — free-text tags picked
   // from a curated checklist in the admin UI, not a DB enum (same posture
   // as mentorSkills).
-  mentorLanguages  String[] @default([])
+  mentorLanguages               String[]                    @default([])
   // CV/résumé (PDF/DOCX), uploaded via POST /admin/mentorship/mentors/:id/cv
   // — a public CDN URL like the other Bunny-Storage-backed uploads in this
   // codebase; there's nothing sensitive in a mentor's own public CV.
-  cvUrl            String?
+  cvUrl                         String?
   // Which onboarding path this account picked at registration (Step 1 of
   // register.tsx) — Student/Client role is unchanged by this, see
   // PrimaryIntent's own comment. Null for every account created before
   // this field existed.
-  primaryIntent PrimaryIntent?
+  primaryIntent                 PrimaryIntent?
   // Business KYC — self-uploaded Public Registry Extract / company
   // registration document, reviewed manually by an admin (see
   // routes/adminCompanies.ts). `isVerified` remains the single field every
@@ -308,15 +316,15 @@ model User {
   // it at the one place both ever change. Uploading a new doc after
   // rejection resets both back to Under Review/PENDING so a resubmission
   // always lands back in the review queue.
-  verificationDocUrl String?
-  isVerified         Boolean                     @default(false)
-  verificationStatus BusinessVerificationStatus? @default(UNSUBMITTED)
+  verificationDocUrl            String?
+  isVerified                    Boolean                     @default(false)
+  verificationStatus            BusinessVerificationStatus? @default(UNSUBMITTED)
   // Self-reported identification code (ს/კ) — compared against whatever
   // ID the AI parser extracts from the uploaded document (see
   // services/businessKycService.ts) to auto-verify on an exact match.
   // Must be filled in by the business before auto-verification can ever
   // fire; blank always falls through to manual admin review.
-  taxId              String?
+  taxId                         String?
   // Business/employer profile fields — only meaningful for role Client, but
   // not schema-restricted to it (same posture as the legal-identity fields
   // above, which are equally open to every role). `avatarUrl` doubles as
@@ -325,10 +333,10 @@ model User {
   // upload endpoint would be pure duplication. Contact person name/email/
   // phone reuse the existing `name`/email/`phone` fields for the same
   // reason — a Client account IS the contact person's login.
-  companyName        String?
-  industry           String?
-  websiteUrl         String?
-  companyDescription String?
+  companyName                   String?
+  industry                      String?
+  websiteUrl                    String?
+  companyDescription            String?
   // Terms & Conditions consent — set explicitly (POST /api/auth/accept-terms)
   // the moment a user agrees, never implied. New email/password registrations
   // set this immediately (the checkbox is required to submit that form); new
@@ -338,7 +346,7 @@ model User {
   // is still null (covers both that case and every account that predates
   // this field, which is why existing rows are deliberately NOT backfilled
   // to createdAt the way emailVerifiedAt was).
-  termsAcceptedAt DateTime?
+  termsAcceptedAt               DateTime?
   // AI Agents Suite (Frontend's /dashboard/ai-tools "content generator /
   // market analytics / business assistant" tools) — a 7-day trial set the
   // moment a Business account is FIRST verified (routes/adminCompanies.ts's
@@ -353,58 +361,60 @@ model User {
   // as aiTrialEndsAt > now(), and a boolean copy of that would be exactly
   // the kind of two-fields-can-drift redundancy avoided everywhere else in
   // this model).
-  trialStartDate       DateTime?
-  aiTrialEndsAt        DateTime?
-  aiSubscriptionActive Boolean    @default(false)
-  createdAt       DateTime   @default(now())
+  trialStartDate                DateTime?
+  aiTrialEndsAt                 DateTime?
+  aiSubscriptionActive          Boolean                     @default(false)
+  createdAt                     DateTime                    @default(now())
 
-  postedGigs             Gig[]                @relation("PostedGigs")
-  assignedGigs           Gig[]                @relation("AssignedGigs")
-  gigApplications        GigApplication[]
-  clientTransactions     GigTransaction[]     @relation("ClientTransactions")
-  freelancerTransactions GigTransaction[]     @relation("FreelancerTransactions")
-  walletEntries          WalletEntry[]
-  postedVacancies        Vacancy[]
-  vacancyApplications    VacancyApplication[]
-  blogPosts              BlogPost[]
-  reviewsGiven           Review[]             @relation("ReviewsGiven")
-  reviewsReceived        Review[]             @relation("ReviewsReceived")
-  sentDirectOffers       DirectOffer[]        @relation("SentDirectOffers")
-  receivedDirectOffers   DirectOffer[]        @relation("ReceivedDirectOffers")
-  sentMessages           Message[]            @relation("SentMessages")
-  receivedMessages       Message[]            @relation("ReceivedMessages")
-  paymentMethods         PaymentMethod[]
-  bogPayments            BogPayment[]
-  courseEnrollments      CourseEnrollment[]
-  lessonProgress         LessonProgress[]
-  courseCertificates     CourseCertificate[]
-  examAttempts           ExamAttempt[]
+  postedGigs                  Gig[]                        @relation("PostedGigs")
+  assignedGigs                Gig[]                        @relation("AssignedGigs")
+  gigApplications             GigApplication[]
+  clientTransactions          GigTransaction[]             @relation("ClientTransactions")
+  freelancerTransactions      GigTransaction[]             @relation("FreelancerTransactions")
+  walletEntries               WalletEntry[]
+  postedVacancies             Vacancy[]
+  vacancyApplications         VacancyApplication[]
+  blogPosts                   BlogPost[]
+  reviewsGiven                Review[]                     @relation("ReviewsGiven")
+  reviewsReceived             Review[]                     @relation("ReviewsReceived")
+  sentDirectOffers            DirectOffer[]                @relation("SentDirectOffers")
+  receivedDirectOffers        DirectOffer[]                @relation("ReceivedDirectOffers")
+  sentMessages                Message[]                    @relation("SentMessages")
+  receivedMessages            Message[]                    @relation("ReceivedMessages")
+  paymentMethods              PaymentMethod[]
+  bogPayments                 BogPayment[]
+  courseEnrollments           CourseEnrollment[]
+  lessonProgress              LessonProgress[]
+  courseCertificates          CourseCertificate[]
+  examAttempts                ExamAttempt[]
   freelancerSkillExamAttempts FreelancerSkillExamAttempt[]
-  productPurchases       ProductPurchase[]
-  assignmentSubmissions  AssignmentSubmission[]
-  submittedProducts      DigitalProduct[]     @relation("SubmittedProducts")
-  forumThreads           ForumThread[]
-  forumComments          ForumComment[]
-  forumThreadLikes       ForumThreadLike[]
-  forumCommentLikes      ForumCommentLike[]
-  disputesRaised         Dispute[]          @relation("DisputesRaised")
-  disputesResolved       Dispute[]          @relation("DisputesResolved")
-  payoutRequests         PayoutRequest[]    @relation("PayoutRequests")
-  payoutRequestsReviewed PayoutRequest[]    @relation("PayoutRequestsReviewed")
-  auditLogs              AuditLog[]
-  siteContentUpdates     SiteContent[]
-  studioInquiriesReviewed StudioInquiry[]
+  skillTestAttempts           SkillTestAttempt[]
+  verifiedSkills              VerifiedSkill[]
+  productPurchases            ProductPurchase[]
+  assignmentSubmissions       AssignmentSubmission[]
+  submittedProducts           DigitalProduct[]             @relation("SubmittedProducts")
+  forumThreads                ForumThread[]
+  forumComments               ForumComment[]
+  forumThreadLikes            ForumThreadLike[]
+  forumCommentLikes           ForumCommentLike[]
+  disputesRaised              Dispute[]                    @relation("DisputesRaised")
+  disputesResolved            Dispute[]                    @relation("DisputesResolved")
+  payoutRequests              PayoutRequest[]              @relation("PayoutRequests")
+  payoutRequestsReviewed      PayoutRequest[]              @relation("PayoutRequestsReviewed")
+  auditLogs                   AuditLog[]
+  siteContentUpdates          SiteContent[]
+  studioInquiriesReviewed     StudioInquiry[]
   // CDC Business AI — a Business (Client) account's chat agents. See the
   // Agent model's own comment for why billing fields live there instead of
   // a separate Subscription model for now.
-  agents                 Agent[]
-  blogComments           BlogComment[]
-  mentorshipRequestsMade     MentorshipRequest[] @relation("MentorshipRequestsMade")
-  mentorshipRequestsResolved MentorshipRequest[] @relation("MentorshipRequestsResolved")
-  notifications              Notification[]
-  mentorAvailabilityRules    MentorAvailabilityRule[]
-  mentorshipBookingsAsMentor  MentorshipBooking[] @relation("MentorshipBookingsAsMentor")
-  mentorshipBookingsAsStudent MentorshipBooking[] @relation("MentorshipBookingsAsStudent")
+  agents                      Agent[]
+  blogComments                BlogComment[]
+  mentorshipRequestsMade      MentorshipRequest[]          @relation("MentorshipRequestsMade")
+  mentorshipRequestsResolved  MentorshipRequest[]          @relation("MentorshipRequestsResolved")
+  notifications               Notification[]
+  mentorAvailabilityRules     MentorAvailabilityRule[]
+  mentorshipBookingsAsMentor  MentorshipBooking[]          @relation("MentorshipBookingsAsMentor")
+  mentorshipBookingsAsStudent MentorshipBooking[]          @relation("MentorshipBookingsAsStudent")
 
   @@map("users")
 }
@@ -414,43 +424,43 @@ model User {
 // ============================================================
 
 model Gig {
-  id                   String        @id @default(uuid())
-  title                String
-  description          String
-  postedById           String
-  postedBy             User          @relation("PostedGigs", fields: [postedById], references: [id], onDelete: Restrict)
-  budgetType           GigBudgetType
-  budgetAmount         Int
-  currency             String        @db.Char(3)
-  skillsRequired       String[]
-  category             JobCategory?
-  deadline             DateTime?
-  status               GigStatus     @default(open)
-  assignedFreelancerId String?
-  assignedFreelancer   User?         @relation("AssignedGigs", fields: [assignedFreelancerId], references: [id], onDelete: SetNull)
+  id                    String                  @id @default(uuid())
+  title                 String
+  description           String
+  postedById            String
+  postedBy              User                    @relation("PostedGigs", fields: [postedById], references: [id], onDelete: Restrict)
+  budgetType            GigBudgetType
+  budgetAmount          Int
+  currency              String                  @db.Char(3)
+  skillsRequired        String[]
+  category              JobCategory?
+  deadline              DateTime?
+  status                GigStatus               @default(open)
+  assignedFreelancerId  String?
+  assignedFreelancer    User?                   @relation("AssignedGigs", fields: [assignedFreelancerId], references: [id], onDelete: SetNull)
   // Denormalized count of `applications`, incremented alongside each new
   // GigApplication — lets job cards show "N proposals" without a join/count
   // query on every listing fetch.
-  applicationsCount    Int           @default(0)
+  applicationsCount     Int                     @default(0)
   // Set when the freelancer submits delivered work (status -> submitted).
   // The 7-day auto-approve cron reads submittedAt to find overdue reviews.
-  submittedAt          DateTime?
-  deliveryComment      String?
-  deliveryFiles        String[]      @default([])
+  submittedAt           DateTime?
+  deliveryComment       String?
+  deliveryFiles         String[]                @default([])
   // Set when the assigned freelancer clicks "Request CDC Mentor Help" —
   // surfaces in the admin mentorship queue. Whether this is the student's
   // first-ever gig is computed at read time (their completed-gig count),
   // not stored, so it can never drift out of sync.
   mentorHelpRequestedAt DateTime?
-  deliveryLinks        String[]      @default([])
+  deliveryLinks         String[]                @default([])
   // Post-hoc moderation (not a pre-publish queue — listings go live
   // immediately on posting, same as before; a moderator can take one down
   // after the fact). Defaults to approved so existing behavior is unchanged.
-  moderationStatus     ListingModerationStatus @default(approved)
-  moderatedAt          DateTime?
-  moderationReason     String?
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
+  moderationStatus      ListingModerationStatus @default(approved)
+  moderatedAt           DateTime?
+  moderationReason      String?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
 
   applications GigApplication[]
   transaction  GigTransaction?
@@ -544,25 +554,25 @@ model WalletEntry {
 // ============================================================
 
 model Vacancy {
-  id                  String         @id @default(uuid())
+  id                  String                  @id @default(uuid())
   title               String
   description         String
   postedById          String
-  postedBy            User           @relation(fields: [postedById], references: [id], onDelete: Restrict)
+  postedBy            User                    @relation(fields: [postedById], references: [id], onDelete: Restrict)
   employmentType      EmploymentType
   location            String
   skillsRequired      String[]
   category            JobCategory?
   salaryMin           Int?
   salaryMax           Int?
-  currency            String?        @db.Char(3)
+  currency            String?                 @db.Char(3)
   applicationDeadline DateTime?
-  status              VacancyStatus  @default(open)
-  moderationStatus     ListingModerationStatus @default(approved)
-  moderatedAt          DateTime?
-  moderationReason     String?
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  status              VacancyStatus           @default(open)
+  moderationStatus    ListingModerationStatus @default(approved)
+  moderatedAt         DateTime?
+  moderationReason    String?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
 
   applications VacancyApplication[]
 
@@ -602,20 +612,27 @@ enum CourseLanguage {
 }
 
 model Course {
-  id          String   @id @default(uuid())
-  title       String
+  id              String         @id @default(uuid())
+  title           String
   // Optional English translation of `title` — never guessed/auto-translated.
   // When set, the certificate PDF prints "title / titleEn"; course pages
   // otherwise always display the plain `title` (single-language courses are
   // the common case, so nothing else reads this field).
-  titleEn     String?
-  description String
-  category    String
+  titleEn         String?
+  description     String
+  category        String
+  // Admin-set (see admin/courses.tsx) list of freelancer skills (curated
+  // src/data/freelancerSkills.ts values, or free text) this course teaches.
+  // When a student earns this course's certificate, every skill listed here
+  // is auto-verified on their profile (VerifiedSkillSource.COURSE_COMPLETION)
+  // without needing the AI skill test — see routes/courses.ts. Independent
+  // of `category` above (a plain, unrelated free-text field).
+  skillsTaught    String[]       @default([])
   // Legacy flat lesson blob — predates CourseSection/Lesson below and is left
   // as-is for backward compat with the existing admin course-create form
   // (lib/api.ts's CoursePayload). The Udemy-style /learn player reads the
   // relational `sections` instead.
-  lessons      Json
+  lessons         Json
   // Minor units (tetri) — matches this codebase's Int-money convention
   // everywhere else (Gig.budgetAmount, BogPayment.amount, etc.). The user-
   // facing "sale price" is never stored — see services/coursePricing.ts's
@@ -624,23 +641,23 @@ model Course {
   originalPrice   Int
   discountPercent Int?
   discountEndDate DateTime?
-  isOnSale        Boolean  @default(false)
-  published    Boolean @default(false)
-  mentorName   String?
-  mentorTitle  String?
-  thumbnailUrl String?
+  isOnSale        Boolean        @default(false)
+  published       Boolean        @default(false)
+  mentorName      String?
+  mentorTitle     String?
+  thumbnailUrl    String?
   // Full-width hero banner on the course landing page — distinct from
   // thumbnailUrl (card/list thumbnail). Optional; falls back to no hero
   // image when unset.
-  coverImageUrl String?
+  coverImageUrl   String?
   // Rendered as a vertical portrait next to mentorName/mentorTitle on the
   // landing page — falls back to initials when unset.
   mentorAvatarUrl String?
   // Instruction language, shown as a badge on course cards. Defaults to
   // GEORGIAN since every pre-existing course is Georgian-taught.
-  language     CourseLanguage @default(GEORGIAN)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  language        CourseLanguage @default(GEORGIAN)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   orders       Order[]             @relation("OrderCourses")
   enrollments  CourseEnrollment[]
@@ -676,30 +693,30 @@ model CourseSection {
 }
 
 model Lesson {
-  id              String   @id @default(uuid())
-  sectionId       String
-  section         CourseSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  title           String
-  durationSeconds Int      @default(0)
+  id               String           @id @default(uuid())
+  sectionId        String
+  section          CourseSection    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  title            String
+  durationSeconds  Int              @default(0)
   // Bunny Stream video GUID (services/bunnyStreamService.ts) — null until an
   // admin uploads a video for this lesson.
-  bunnyVideoId    String?
-  resources       String[] @default([])
-  order           Int
+  bunnyVideoId     String?
+  resources        String[]         @default([])
+  order            Int
   // Watchable by anyone on the public course landing page without
   // enrolling — see routes/courses.ts's GET /:id/syllabus, which only
   // includes embedUrl for these lessons.
-  isFreePreview     Boolean @default(false)
+  isFreePreview    Boolean          @default(false)
   // Optional homework prompt shown on the student player's Assignment tab
   // — null means the lesson has no assignment (existing behavior).
-  assignmentPrompt  String?
+  assignmentPrompt String?
   // Auto-generated ka/en/ru captions (services/subtitleService.ts), fired
   // fire-and-forget right after a successful video upload — see
   // POST /lessons/:lessonId/video. null until a video has ever triggered it.
-  subtitlesStatus SubtitlesStatus?
-  subtitlesError  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  subtitlesStatus  SubtitlesStatus?
+  subtitlesError   String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
   progress    LessonProgress[]
   submissions AssignmentSubmission[]
@@ -750,13 +767,13 @@ model LessonProgress {
 // re-downloads idempotent (same verification code every time) rather than
 // minting a new "unique" code on every click.
 model CourseCertificate {
-  id               String   @id @default(uuid())
-  userId           String
-  user             User     @relation(fields: [userId], references: [id], onDelete: Restrict)
-  courseId         String
-  course           Course   @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  verificationCode String   @unique
-  issuedAt         DateTime @default(now())
+  id                String    @id @default(uuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  courseId          String
+  course            Course    @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  verificationCode  String    @unique
+  issuedAt          DateTime  @default(now())
   // One-download-per-student-per-course limit (see GET /:id/certificate) —
   // 0 means never downloaded via the student dashboard's authenticated
   // download button; further attempts are turned away with a "contact
@@ -807,10 +824,10 @@ model Exam {
   course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   // Percentage (0-100) required to pass, e.g. 95.
-  passingScore Int @default(95)
+  passingScore    Int     @default(95)
   // Minimum wait between a failed attempt and the next one.
-  cooldownHours Int @default(24)
-  questionCount Int @default(10)
+  cooldownHours   Int     @default(24)
+  questionCount   Int     @default(10)
   // Free-text steer for the AI question generator (topics to emphasize,
   // difficulty, tone) — appended to the base prompt in aiExamService.ts.
   aiPromptContext String?
@@ -850,22 +867,79 @@ model ExamAttempt {
 // isVerifiedGraduate flag/badge used across the marketplace, rather than
 // introducing a second parallel "verified" concept.
 model FreelancerSkillExamAttempt {
-  id       String      @id @default(uuid())
-  userId   String
-  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category JobCategory
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    JobCategory
   // Snapshot including correct answers/explanations, same reasoning as
   // ExamAttempt.questions — graded server-side against this, never trusts
   // the client's copy.
-  questions Json
-  answers   Json?
-  score     Float?
-  passed    Boolean     @default(false)
-  createdAt DateTime    @default(now())
+  questions   Json
+  answers     Json?
+  score       Float?
+  passed      Boolean     @default(false)
+  createdAt   DateTime    @default(now())
   completedAt DateTime?
 
   @@index([userId])
   @@map("freelancer_skill_exam_attempts")
+}
+
+// One row per per-skill AI test attempt (distinct from the older, single-
+// category FreelancerSkillExamAttempt above) — 5 multiple-choice questions
+// plus 1 open-ended practical question, both AI-generated for the specific
+// skillName (src/data/freelancerSkills.ts value, or a free-typed "Other"
+// skill — either way just a string, not a JobCategory enum). Passing
+// (totalScore >= 80) creates/updates a VerifiedSkill row for this skill
+// rather than touching the platform-wide isVerifiedGraduate flag — these
+// are separate, additive credentials.
+model SkillTestAttempt {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skillName      String
+  // Full snapshot including correct answers (MCQ) and the grading rubric
+  // (practical) — graded server-side against this, never trusts the
+  // client's copy, same reasoning as ExamAttempt.questions.
+  questions      Json
+  answers        Json?
+  mcqScore       Float?
+  practicalScore Float?
+  totalScore     Float?
+  passed         Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  completedAt    DateTime?
+
+  @@index([userId])
+  @@map("skill_test_attempts")
+}
+
+enum VerifiedSkillSource {
+  AI_TEST
+  COURSE_COMPLETION
+}
+
+// A freelancer's earned "Verified Skill" badge — one row per (userId,
+// skillName), created either by passing a SkillTestAttempt (AI_TEST) or by
+// completing a course whose Course.skillsTaught includes this skill
+// (COURSE_COMPLETION, see routes/courses.ts's certificate-issuance path).
+// Rendered as a badge on the public profile (pages/profile/[userId].tsx).
+model VerifiedSkill {
+  id          String              @id @default(uuid())
+  userId      String
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skillName   String
+  verifiedVia VerifiedSkillSource
+  // Only set for AI_TEST — the passing SkillTestAttempt's totalScore.
+  score       Float?
+  // Only set for COURSE_COMPLETION — which course auto-verified this skill.
+  // No relation/onDelete behavior tied to Course: if the course is later
+  // deleted, the badge the freelancer already earned is still theirs to keep.
+  courseId    String?
+  verifiedAt  DateTime            @default(now())
+
+  @@unique([userId, skillName])
+  @@map("verified_skills")
 }
 
 // Digital Store — downloadable products CDC sells directly (UI kits, AI
@@ -874,40 +948,40 @@ model FreelancerSkillExamAttempt {
 // Course.originalPrice/BogPayment.amount elsewhere — not Float, to avoid
 // floating-point rounding on money.
 model DigitalProduct {
-  id             String            @id @default(uuid())
-  title          String
-  description    String
-  price          Int
-  category       String
-  imageUrl       String
+  id              String            @id @default(uuid())
+  title           String
+  description     String
+  price           Int
+  category        String
+  imageUrl        String
   // Never exposed directly to the client until a completed purchase is
   // verified server-side — see routes/products.ts's /:id/download.
-  fileUrl        String
-  downloadsCount Int               @default(0)
-  createdAt      DateTime          @default(now())
-  purchases      ProductPurchase[]
+  fileUrl         String
+  downloadsCount  Int               @default(0)
+  createdAt       DateTime          @default(now())
+  purchases       ProductPurchase[]
   // "PENDING" | "APPROVED" | "REJECTED" — admin-created products (see
   // adminProducts.ts) are inserted as APPROVED directly; graduate/verified-
   // freelancer submissions (products.ts's POST /) start PENDING and only
   // show up in the public catalog once an admin approves them.
-  status           String   @default("PENDING")
-  rejectionReason  String?
-  submittedById    String?
-  submittedBy      User?    @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
+  status          String            @default("PENDING")
+  rejectionReason String?
+  submittedById   String?
+  submittedBy     User?             @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
 
   @@map("digital_products")
 }
 
 model ProductPurchase {
-  id            String         @id @default(uuid())
-  userId        String
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  productId     String
-  product       DigitalProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
-  amount        Int
+  id               String         @id @default(uuid())
+  userId           String
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId        String
+  product          DigitalProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  amount           Int
   // "PENDING" | "COMPLETED" — mirrors BogPayment.status naming for the
   // paid path; free (price=0) products are inserted directly as COMPLETED.
-  paymentStatus String         @default("PENDING")
+  paymentStatus    String         @default("PENDING")
   // Creator payout split — set only when the product has a real external
   // creator (DigitalProduct.submittedById; admin-catalog products have
   // none and keep the full amount with the platform). Null on free claims
@@ -915,7 +989,7 @@ model ProductPurchase {
   commissionRate   Float?
   commissionAmount Int?
   netAmount        Int?
-  createdAt     DateTime       @default(now())
+  createdAt        DateTime       @default(now())
 
   @@unique([userId, productId])
   @@index([userId])
@@ -929,12 +1003,12 @@ model ProductPurchase {
 // ============================================================
 
 model CourseEnrollment {
-  id         String   @id @default(uuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Restrict)
-  courseId   String
-  course     Course   @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  grantedAt  DateTime @default(now())
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  grantedAt DateTime @default(now())
 
   @@unique([userId, courseId])
   @@map("course_enrollments")
@@ -964,26 +1038,26 @@ model Order {
 // ============================================================
 
 model BlogPost {
-  id          String   @id @default(uuid())
+  id                 String   @id @default(uuid())
   // title/description/content are the Georgian (primary) copy — matches all
   // existing rows. The *En twins are optional; public pages fall back to the
   // Georgian fields when the English ones are unset (see /admin/blog's
   // Auto-Translate button and pages/blog's rendering).
-  title       String
-  description String
-  category    String
-  content     String
-  titleEn       String?
-  descriptionEn String?
-  contentEn     String?
-  imageUrl    String?
-  authorId    String
-  author      User     @relation(fields: [authorId], references: [id], onDelete: Restrict)
-  published   Boolean  @default(true)
+  title              String
+  description        String
+  category           String
+  content            String
+  titleEn            String?
+  descriptionEn      String?
+  contentEn          String?
+  imageUrl           String?
+  authorId           String
+  author             User     @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  published          Boolean  @default(true)
   // Set by the AI agent (manual "✨ Generate" button or the twice-weekly
   // cron draft) — never by a human-authored post. Lets the admin UI badge
   // agent-drafted posts and filter them separately. See services/aiAgentService.ts.
-  generatedByAgent   Boolean @default(false)
+  generatedByAgent   Boolean  @default(false)
   agentPromptContext String?
   // URL-friendly identifier for /blog/[slug], auto-generated from the
   // Georgian title at creation (see routes/blog.ts's slugify) and never
@@ -992,9 +1066,9 @@ model BlogPost {
   // Nullable + not unique-enforced-at-the-DB-level would be simpler, but a
   // real unique constraint is what actually prevents a race from ever
   // creating two posts with the same slug.
-  slug        String   @unique
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  slug               String   @unique
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   comments BlogComment[]
 
@@ -1012,16 +1086,16 @@ model BlogPost {
 // ============================================================
 
 model BlogComment {
-  id        String   @id @default(uuid())
+  id        String        @id @default(uuid())
   postId    String
-  post      BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post      BlogPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
   authorId  String
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
   content   String
   parentId  String?
   parent    BlogComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   replies   BlogComment[] @relation("CommentReplies")
-  createdAt DateTime @default(now())
+  createdAt DateTime      @default(now())
 
   @@index([postId])
   @@index([parentId])
@@ -1162,30 +1236,30 @@ model BogSettings {
 // ============================================================
 
 model BogPayment {
-  id          String            @id @default(uuid())
-  bogOrderId  String            @unique
-  userId      String
-  user        User              @relation(fields: [userId], references: [id], onDelete: Restrict)
-  purpose     BogPaymentPurpose
+  id                String             @id @default(uuid())
+  bogOrderId        String             @unique
+  userId            String
+  user              User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  purpose           BogPaymentPurpose
   // COURSE -> Course.id, MENTORSHIP -> Mentor's User.id (see
   // MentorshipBooking for the actual scheduling details), GIG_ESCROW_FUNDING -> Gig.id
-  referenceId String
-  amount      Int               // minor units
-  currency    String            @db.Char(3)
-  status      BogPaymentStatus  @default(PENDING)
-  redirectUrl String?
+  referenceId       String
+  amount            Int // minor units
+  currency          String             @db.Char(3)
+  status            BogPaymentStatus   @default(PENDING)
+  redirectUrl       String?
   // Last callback payload received from BOG, kept for audit/debugging —
   // never trusted as the source of truth without signature verification.
-  rawCallback Json?
-  createdAt   DateTime          @default(now())
-  completedAt DateTime?
+  rawCallback       Json?
+  createdAt         DateTime           @default(now())
+  completedAt       DateTime?
   mentorshipBooking MentorshipBooking?
   // Promo code applied at checkout (COURSE purpose only, currently) — kept
   // for order-history/referral-commission tracking. SetNull rather than
   // Restrict/Cascade: deleting a PromoCode later must never block deleting
   // (or block existing) BogPayment rows that used it.
-  promoCodeId String?
-  promoCode   PromoCode?        @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  promoCodeId       String?
+  promoCode         PromoCode?         @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([purpose, referenceId])
@@ -1200,8 +1274,8 @@ model MentorAvailabilityRule {
   id          String   @id @default(uuid())
   mentorId    String
   mentor      User     @relation(fields: [mentorId], references: [id], onDelete: Cascade)
-  dayOfWeek   Int      // 0 = Sunday .. 6 = Saturday
-  startMinute Int      // minutes since midnight, e.g. 18:00 = 1080
+  dayOfWeek   Int // 0 = Sunday .. 6 = Saturday
+  startMinute Int // minutes since midnight, e.g. 18:00 = 1080
   endMinute   Int
   createdAt   DateTime @default(now())
 
@@ -1350,9 +1424,9 @@ enum DisputeStatus {
 }
 
 model Dispute {
-  id     String @id @default(uuid())
-  gigId  String
-  gig    Gig    @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  id    String @id @default(uuid())
+  gigId String
+  gig   Gig    @relation(fields: [gigId], references: [id], onDelete: Cascade)
 
   raisedById String
   raisedBy   User   @relation("DisputesRaised", fields: [raisedById], references: [id], onDelete: Restrict)
@@ -1393,7 +1467,7 @@ model PayoutRequest {
   userId String
   user   User   @relation("PayoutRequests", fields: [userId], references: [id], onDelete: Restrict)
 
-  amount Int    // minor units
+  amount Int // minor units
   iban   String
 
   status       PayoutRequestStatus @default(PENDING)
@@ -1468,12 +1542,12 @@ model AiGenerationLog {
 // ============================================================
 
 model SiteContent {
-  id   String @id @default(uuid())
-  page String @unique
+  id      String @id @default(uuid())
+  page    String @unique
   content Json
 
   updatedById String?
-  updatedBy   User?   @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
   updatedAt   DateTime @updatedAt
 
   @@map("site_content")
@@ -1495,7 +1569,7 @@ enum StudioInquiryStatus {
 }
 
 model StudioInquiry {
-  id          String @id @default(uuid())
+  id          String  @id @default(uuid())
   name        String
   email       String
   phone       String?
@@ -1647,14 +1721,14 @@ model AgentMessage {
 // comment on why billing is deferred). currentUses is incremented
 // atomically by the redemption route once that exists.
 model PromoCode {
-  id              String    @id @default(uuid())
-  code            String    @unique
+  id              String       @id @default(uuid())
+  code            String       @unique
   discountPercent Int?
   discountAmount  Int?
   expiresAt       DateTime?
   maxUses         Int?
-  currentUses     Int       @default(0)
-  createdAt       DateTime  @default(now())
+  currentUses     Int          @default(0)
+  createdAt       DateTime     @default(now())
   bogPayments     BogPayment[]
 
   @@map("promo_codes")
@@ -1695,11 +1769,11 @@ model MentorshipRequest {
 // panel, surfaced via the header bell) — deliberately no reply/thread
 // concept, unlike MessageThread.
 model Notification {
-  id      String @id @default(uuid())
-  userId  String
-  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title   String
-  message String
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
   // Free-form category tag ("MODERATION" | "ADMIN_DIRECT" | "SYSTEM", etc.)
   // — not a Prisma enum since admin-authored notification types may grow
   // without needing a migration each time.
@@ -1721,18 +1795,18 @@ model Notification {
 // ============================================================
 
 model SuccessStory {
-  id            String   @id @default(uuid())
-  studentName   String
+  id          String   @id @default(uuid())
+  studentName String
   // Uploaded via the same Bunny Storage pipeline as everything else
   // (POST /api/success-stories/upload-avatar) — never a freely-settable
   // external URL, consistent with avatarUrl/verificationDocUrl elsewhere.
-  avatarUrl     String?
-  roleTitle     String
-  courseName    String
-  testimonial   String
-  linkedinUrl   String?
-  isFeatured    Boolean  @default(true)
-  createdAt     DateTime @default(now())
+  avatarUrl   String?
+  roleTitle   String
+  courseName  String
+  testimonial String
+  linkedinUrl String?
+  isFeatured  Boolean  @default(true)
+  createdAt   DateTime @default(now())
 
   @@index([isFeatured])
   @@map("success_stories")

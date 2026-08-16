@@ -10,6 +10,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import { updateProfile, changePassword, uploadAvatar, forgotPassword } from '../../src/services/authService';
 import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../src/utils/imageUpload';
 import Toast from '../../src/components/shared/Toast';
+import SkillPicker from '../../src/components/shared/SkillPicker';
 
 const dict = {
   ka: {
@@ -34,6 +35,8 @@ const dict = {
     phone: 'ტელეფონის ნომერი',
     email: 'ელ. ფოსტა',
     emailHint: 'ელ. ფოსტის შეცვლა შეუძლებელია.',
+    skillsTitle: 'ჩემი უნარები',
+    skillsHint: 'აირჩიეთ თქვენი უნარები — შეგიძლიათ დაადასტუროთ ისინი AI ტესტით პროფილში „უნარების ვერიფიკაცია"-ს გვერდზე.',
     payoutTitle: 'გადახდის რეკვიზიტები',
     payoutIban: 'IBAN (გატანისთვის)',
     save: 'შენახვა',
@@ -76,6 +79,8 @@ const dict = {
     phone: 'Phone Number',
     email: 'Email',
     emailHint: 'Email cannot be changed.',
+    skillsTitle: 'My Skills',
+    skillsHint: 'Select your skills — you can get them AI-verified on the "Skill Verification" page.',
     payoutTitle: 'Payout Details',
     payoutIban: 'IBAN (for payouts)',
     save: 'Save Changes',
@@ -120,6 +125,7 @@ function SettingsContent() {
     phone: '',
     payoutIban: '',
   });
+  const [skills, setSkills] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -160,6 +166,7 @@ function SettingsContent() {
       phone: user.phone ?? '',
       payoutIban: user.payoutIban ?? '',
     });
+    setSkills(user.freelancerSkills ?? []);
   }, [user]);
 
   const handleAvatarFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -203,6 +210,7 @@ function SettingsContent() {
         nationalId: form.nationalId || null,
         phone: form.phone || null,
         payoutIban: form.payoutIban || null,
+        freelancerSkills: skills,
       });
       // Re-syncs the cached user everywhere it's read from context — the
       // certificate confirm modal and wallet payout form both pick this up
@@ -352,6 +360,14 @@ function SettingsContent() {
               <input className={`${inputClass} opacity-60 cursor-not-allowed`} value={user?.email ?? ''} disabled />
               <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{t.emailHint}</p>
             </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4">
+            <div>
+              <h2 className="text-sm font-bold mb-1">{t.skillsTitle}</h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">{t.skillsHint}</p>
+            </div>
+            <SkillPicker value={skills} onChange={setSkills} lang={lang} />
           </div>
 
           <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4">
