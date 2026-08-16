@@ -5,9 +5,18 @@ export type BogPaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
 export interface BogCheckoutResult {
   paymentId: string;
-  // null when a 100% discount promo code brought the charge to 0 GEL — BOG
-  // is bypassed entirely server-side and `enrolled` is true instead, see
-  // routes/payments.ts's checkout/course route.
+  redirectUrl: string;
+}
+
+// Only routes/payments.ts's checkout/course route can ever bypass BOG (a
+// 100% discount promo code bringing the charge to 0 GEL) — mentorship/gig-
+// escrow/product checkout always return a real redirectUrl, so THEY keep
+// the plain BogCheckoutResult above rather than every caller across the
+// app having to guard against a null that can't actually happen for them.
+export interface CourseCheckoutResult {
+  paymentId: string;
+  // null when the 0-GEL bypass fired — enrollment is already granted
+  // server-side and `enrolled` is true instead of a redirect.
   redirectUrl: string | null;
   enrolled?: boolean;
 }
@@ -29,8 +38,8 @@ export interface BogPaymentStatusData {
   booking: BogPaymentBookingInfo | null;
 }
 
-export async function checkoutCourse(courseId: string, promoCode?: string, lang?: 'ka' | 'en'): Promise<BogCheckoutResult> {
-  const response = await apiClient.post<BogCheckoutResult>(`/payments/checkout/course/${courseId}`, { promoCode, lang });
+export async function checkoutCourse(courseId: string, promoCode?: string, lang?: 'ka' | 'en'): Promise<CourseCheckoutResult> {
+  const response = await apiClient.post<CourseCheckoutResult>(`/payments/checkout/course/${courseId}`, { promoCode, lang });
   return response.data;
 }
 

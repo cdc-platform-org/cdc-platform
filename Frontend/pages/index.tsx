@@ -191,8 +191,12 @@ export default function Home() {
     setEnrollingId(course.id);
     setCheckoutError(null);
     try {
-      const { redirectUrl } = await checkoutCourse(course.id, undefined, lang === 'ENG' ? 'en' : 'ka');
-      window.location.href = redirectUrl;
+      const result = await checkoutCourse(course.id, undefined, lang === 'ENG' ? 'en' : 'ka');
+      if (result.enrolled) {
+        router.push(`/courses/${course.id}/learn`);
+        return;
+      }
+      window.location.href = result.redirectUrl!;
     } catch (err: any) {
       const apiMessage = err?.response?.data?.message;
       setCheckoutError(
