@@ -17,6 +17,7 @@ import { completeProductPurchase } from '../services/productSaleService';
 import { getCurrentPrice, computeCoursePriceWithPromo } from '../services/coursePricing';
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
 import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
+import { creditMentorshipSession } from '../services/mentorshipPayoutService';
 import { isBusinessToolsCategory, canPurchaseBusinessTools } from '../utils/marketplaceCategories';
 import { sendMentorshipBookingEmails } from '../services/emailService';
 
@@ -492,6 +493,21 @@ export async function applyBogPaymentResult(
     // Should always exist (created alongside the BogPayment at checkout) —
     // if genuinely missing there's nothing to put on a calendar.
     if (!booking) return;
+
+    try {
+      await creditMentorshipSession({
+        bookingId: booking.id,
+        mentorId: bogPayment.referenceId,
+        grossAmount: bogPayment.amount,
+        currency: bogPayment.currency,
+      });
+    } catch (err) {
+      // Never silently drop a real crediting failure — the calendar/email
+      // steps below are still best-effort, but the mentor's payout must
+      // not fail silently, so this is logged loudly for follow-up.
+      console.error('[bog-callback] Failed to credit mentor for completed session:', err);
+    }
+
     let meetLink: string | null = null;
     try {
       const event = await createMentorshipCalendarEvent({

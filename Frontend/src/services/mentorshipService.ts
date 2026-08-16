@@ -102,3 +102,69 @@ export async function getMyMentorshipBookings(): Promise<MyMentorshipBooking[]> 
 export async function attachMyBookingRecording(bookingId: string, recordingUrl: string): Promise<void> {
   await apiClient.patch(`/mentorship/bookings/${bookingId}/recording`, { recordingUrl });
 }
+
+// Mentor-only: manually set/replace the Meet/Zoom link on one of their own
+// bookings — overrides googleMeetLink, normally auto-filled by the Calendar
+// integration at payment time, for when that integration failed or the
+// mentor wants to use a different tool.
+export async function setMyBookingMeetingLink(bookingId: string, meetingLink: string): Promise<void> {
+  await apiClient.patch(`/mentorship/bookings/${bookingId}/meeting-link`, { meetingLink });
+}
+
+// ============================================================
+// MENTOR SELF-SERVICE — a Mentor managing their own hourly rate,
+// title/bio/skills, and weekly availability (see routes/mentorship.ts's
+// /me/* routes, scoped server-side to the caller's own id).
+// ============================================================
+
+export interface MentorProfile {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  bioEn: string | null;
+  mentorTitle: string | null;
+  mentorTitleEn: string | null;
+  mentorHourlyRate: number | null; // minor units (tetri)
+  mentorSkills: string[];
+  mentorLanguages: string[];
+  cvUrl: string | null;
+}
+
+export interface MentorProfileUpdatePayload {
+  mentorTitle?: string;
+  mentorTitleEn?: string;
+  mentorHourlyRate?: number; // minor units (tetri)
+  mentorSkills?: string[];
+  mentorLanguages?: string[];
+  bio?: string;
+}
+
+export async function getMyMentorProfile(): Promise<MentorProfile> {
+  const response = await apiClient.get<{ data: MentorProfile }>('/mentorship/me/profile');
+  return response.data.data;
+}
+
+export async function updateMyMentorProfile(payload: MentorProfileUpdatePayload): Promise<MentorProfile> {
+  const response = await apiClient.put<{ data: MentorProfile }>('/mentorship/me/profile', payload);
+  return response.data.data;
+}
+
+export interface MentorAvailabilityRuleRow extends MentorAvailabilityRule {
+  id: string;
+}
+
+export async function getMyAvailability(): Promise<MentorAvailabilityRuleRow[]> {
+  const response = await apiClient.get<{ data: MentorAvailabilityRuleRow[] }>('/mentorship/me/availability');
+  return response.data.data;
+}
+
+export async function createMyAvailabilityRule(rule: MentorAvailabilityRule): Promise<MentorAvailabilityRuleRow> {
+  const response = await apiClient.post<{ data: MentorAvailabilityRuleRow }>('/mentorship/me/availability', rule);
+  return response.data.data;
+}
+
+export async function deleteMyAvailabilityRule(ruleId: string): Promise<void> {
+  await apiClient.delete(`/mentorship/me/availability/${ruleId}`);
+}

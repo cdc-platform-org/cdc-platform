@@ -398,9 +398,12 @@ function DashboardContent() {
   useEscapeToClose(showMentorshipModal, () => setShowMentorshipModal(false));
 
   useEffect(() => {
-    // Clients get their own dedicated dashboard — this one is student-focused.
+    // Clients and Mentors get their own dedicated dashboards — this one is
+    // student-focused.
     if (user?.role === 'Client') {
       router.replace('/dashboard/client');
+    } else if (user?.role === 'Mentor') {
+      router.replace('/dashboard/mentorship');
     }
   }, [user?.role, router]);
 

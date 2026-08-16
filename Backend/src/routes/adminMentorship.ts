@@ -109,6 +109,30 @@ router.get('/mentors', async (_req: Request, res: Response) => {
   res.json({ data: mentors });
 });
 
+// Promotes an existing Student/Client account to Mentor — there was
+// previously no in-app way to do this at all (mentor accounts were only
+// ever set directly in the database), so the Mentor Dashboard and every
+// other mentor-only route in this codebase was unreachable in practice for
+// a newly-recruited mentor. Deliberately SUPER_ADMIN-only (narrower than
+// this router's default SUPER_ADMIN|MANAGER|MODERATOR) since a role change
+// is more consequential than the profile/availability edits below.
+router.post('/mentors/promote', requireAdminRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  const userId = typeof req.body?.userId === 'string' ? req.body.userId : null;
+  if (!userId) return res.status(400).json({ message: 'userId is required.' });
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) return res.status(404).json({ message: 'User not found.' });
+  if (user.role === 'Mentor') return res.status(400).json({ message: 'This user is already a Mentor.' });
+  if (user.role === 'SuperAdmin') return res.status(400).json({ message: 'Cannot change a SuperAdmin\'s role.' });
+
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: { role: 'Mentor' },
+    select: mentorProfileSelect,
+  });
+  res.status(200).json({ data: updated });
+});
+
 router.put('/mentors/:mentorId/profile', async (req: Request, res: Response) => {
   const mentor = await prisma.user.findUnique({ where: { id: req.params.mentorId } });
   if (!mentor || mentor.role !== 'Mentor') return res.status(404).json({ message: 'Mentor not found.' });

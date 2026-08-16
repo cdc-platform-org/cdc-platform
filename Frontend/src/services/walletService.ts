@@ -2,7 +2,7 @@ import apiClient from './apiClient';
 
 export interface WalletEntryRow {
   id: string;
-  type: 'ESCROW_RELEASE_CREDIT' | 'PAYOUT_DEBIT' | 'ADJUSTMENT';
+  type: 'ESCROW_RELEASE_CREDIT' | 'PRODUCT_SALE_CREDIT' | 'MENTORSHIP_SESSION_CREDIT' | 'PAYOUT_DEBIT' | 'ADJUSTMENT';
   amount: number;
   balanceAfter: number;
   createdAt: string;

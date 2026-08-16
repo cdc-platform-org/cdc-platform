@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
-import { authenticate, requireApproved } from '../middleware/auth';
-import { createMentorshipRequestSchema } from '../schemas/mentorshipSchemas';
-import { attachRecordingSchema } from '../schemas/adminSchemas';
+import { authenticate, requireApproved, requireRole } from '../middleware/auth';
+import { createMentorshipRequestSchema, meetingLinkSchema } from '../schemas/mentorshipSchemas';
+import { attachRecordingSchema, mentorProfileSchema, mentorAvailabilityRuleSchema } from '../schemas/adminSchemas';
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
 import { generateAvailableSlots } from '../services/mentorAvailabilityService';
 import { attachMentorshipRecording, MentorshipRecordingError } from '../services/mentorshipRecordingService';
@@ -141,6 +141,107 @@ router.patch('/bookings/:id/recording', authenticate, requireApproved, async (re
     if (err instanceof MentorshipRecordingError) return res.status(404).json({ message: err.message });
     throw err;
   }
+});
+
+// Mentor self-serve: manually set/replace the Meet/Zoom link on their OWN
+// upcoming booking — googleMeetLink is normally auto-filled by the Calendar
+// integration at payment time (routes/payments.ts), but a mentor can
+// override it here if that integration failed/isn't configured, or they
+// want to use a different tool. Scoped by mentorId, same as the recording
+// route above.
+router.patch('/bookings/:id/meeting-link', authenticate, requireApproved, requireRole('Mentor'), async (req: Request, res: Response) => {
+  const result = meetingLinkSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const booking = await prisma.mentorshipBooking.findUnique({ where: { id: req.params.id }, select: { mentorId: true } });
+  if (!booking || booking.mentorId !== req.user!.id) {
+    return res.status(404).json({ message: 'Booking not found.' });
+  }
+
+  const updated = await prisma.mentorshipBooking.update({
+    where: { id: req.params.id },
+    data: { googleMeetLink: result.data.meetingLink, calendarSyncError: null },
+  });
+  res.json({ data: updated });
+});
+
+// ============================================================
+// MENTOR SELF-SERVICE — a Mentor managing their OWN hourly rate and weekly
+// availability, without needing an admin (see routes/adminMentorship.ts,
+// which does the same thing but admin-side for any mentor by id). Every
+// route below is scoped to req.user!.id, never a :mentorId param.
+// ============================================================
+
+const mentorProfileSelect = {
+  id: true,
+  name: true,
+  email: true,
+  avatarUrl: true,
+  bio: true,
+  bioEn: true,
+  mentorTitle: true,
+  mentorTitleEn: true,
+  mentorHourlyRate: true,
+  mentorSkills: true,
+  mentorLanguages: true,
+  cvUrl: true,
+} as const;
+
+router.get('/me/profile', authenticate, requireRole('Mentor'), async (req: Request, res: Response) => {
+  const mentor = await prisma.user.findUnique({ where: { id: req.user!.id }, select: mentorProfileSelect });
+  res.json({ data: mentor });
+});
+
+router.put('/me/profile', authenticate, requireRole('Mentor'), async (req: Request, res: Response) => {
+  const result = mentorProfileSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const updated = await prisma.user.update({
+    where: { id: req.user!.id },
+    data: result.data,
+    select: mentorProfileSelect,
+  });
+  res.json({ data: updated });
+});
+
+router.get('/me/availability', authenticate, requireRole('Mentor'), async (req: Request, res: Response) => {
+  const rules = await prisma.mentorAvailabilityRule.findMany({
+    where: { mentorId: req.user!.id },
+    orderBy: [{ dayOfWeek: 'asc' }, { startMinute: 'asc' }],
+  });
+  res.json({ data: rules });
+});
+
+router.post('/me/availability', authenticate, requireRole('Mentor'), async (req: Request, res: Response) => {
+  const result = mentorAvailabilityRuleSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const rule = await prisma.mentorAvailabilityRule.create({
+    data: { mentorId: req.user!.id, ...result.data },
+  });
+  res.status(201).json({ data: rule });
+});
+
+router.put('/me/availability/:ruleId', authenticate, requireRole('Mentor'), async (req: Request, res: Response) => {
+  const result = mentorAvailabilityRuleSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  // mentorId isn't part of mentorAvailabilityRuleSchema, so the ownership
+  // check has to be an explicit findFirst before the update, not just a
+  // `where: { id, mentorId }` on the update itself failing silently.
+  const owned = await prisma.mentorAvailabilityRule.findFirst({ where: { id: req.params.ruleId, mentorId: req.user!.id } });
+  if (!owned) return res.status(404).json({ message: 'Availability rule not found.' });
+
+  const rule = await prisma.mentorAvailabilityRule.update({ where: { id: req.params.ruleId }, data: result.data });
+  res.json({ data: rule });
+});
+
+router.delete('/me/availability/:ruleId', authenticate, requireRole('Mentor'), async (req: Request, res: Response) => {
+  const owned = await prisma.mentorAvailabilityRule.findFirst({ where: { id: req.params.ruleId, mentorId: req.user!.id } });
+  if (!owned) return res.status(404).json({ message: 'Availability rule not found.' });
+
+  await prisma.mentorAvailabilityRule.delete({ where: { id: req.params.ruleId } });
+  res.status(204).send();
 });
 
 export default router;

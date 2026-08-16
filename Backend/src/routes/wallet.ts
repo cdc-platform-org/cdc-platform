@@ -14,7 +14,7 @@ class PayoutRequestError extends Error {
     super(message);
   }
 }
-router.get('/me', authenticate, requireRole('Student'), async (req: Request, res: Response) => {
+router.get('/me', authenticate, requireRole('Student', 'Mentor'), async (req: Request, res: Response) => {
   const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10));
   const pageSize = Math.min(50, Math.max(1, parseInt(String(req.query.pageSize ?? '20'), 10)));
   const user = await prisma.user.findUnique({
@@ -42,7 +42,7 @@ router.get('/me', authenticate, requireRole('Student'), async (req: Request, res
 // actual bank transfer happens manually (admin executes it via BOG's own
 // dashboard/banking after approving — see routes/adminPayouts.ts).
 // ============================================================
-router.post('/payout-requests', authenticate, requireRole('Student'), async (req: Request, res: Response) => {
+router.post('/payout-requests', authenticate, requireRole('Student', 'Mentor'), async (req: Request, res: Response) => {
   const result = createPayoutRequestSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
@@ -91,7 +91,7 @@ router.post('/payout-requests', authenticate, requireRole('Student'), async (req
   }
 });
 
-router.get('/payout-requests', authenticate, requireRole('Student'), async (req: Request, res: Response) => {
+router.get('/payout-requests', authenticate, requireRole('Student', 'Mentor'), async (req: Request, res: Response) => {
   const requests = await prisma.payoutRequest.findMany({
     where: { userId: req.user!.id },
     orderBy: { createdAt: 'desc' },

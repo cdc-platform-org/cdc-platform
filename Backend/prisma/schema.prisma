@@ -95,6 +95,7 @@ enum EscrowStatus {
 enum WalletEntryType {
   ESCROW_RELEASE_CREDIT
   PRODUCT_SALE_CREDIT
+  MENTORSHIP_SESSION_CREDIT
   PAYOUT_DEBIT
   ADJUSTMENT
 }
@@ -535,15 +536,17 @@ model GigTransaction {
 // ============================================================
 
 model WalletEntry {
-  id                      String          @id @default(uuid())
-  userId                  String
-  user                    User            @relation(fields: [userId], references: [id], onDelete: Restrict)
-  type                    WalletEntryType
-  amount                  Int
-  relatedGigTransactionId String?
-  relatedGigTransaction   GigTransaction? @relation(fields: [relatedGigTransactionId], references: [id], onDelete: SetNull)
-  balanceAfter            Int
-  createdAt               DateTime        @default(now())
+  id                         String             @id @default(uuid())
+  userId                     String
+  user                       User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  type                       WalletEntryType
+  amount                     Int
+  relatedGigTransactionId    String?
+  relatedGigTransaction      GigTransaction?    @relation(fields: [relatedGigTransactionId], references: [id], onDelete: SetNull)
+  relatedMentorshipBookingId String?
+  relatedMentorshipBooking   MentorshipBooking? @relation(fields: [relatedMentorshipBookingId], references: [id], onDelete: SetNull)
+  balanceAfter               Int
+  createdAt                  DateTime           @default(now())
 
   @@index([userId])
   @@map("wallet_entries")
@@ -1312,7 +1315,17 @@ model MentorshipBooking {
   // a later edit of an already-set URL, only on the first attach.
   recordingUrl            String?
   recordingUploadedAt     DateTime?
+  // Set once the session payment is captured and the mentor's 80% net share
+  // is credited to their earningsBalance (see routes/payments.ts's
+  // applyBogPaymentResult MENTORSHIP branch) — same 20%/80% split as every
+  // other revenue stream on the platform (escrowService.ts,
+  // productSaleService.ts). null until that credit actually happens.
+  commissionRate          Float?
+  commissionAmount        Int?
+  netAmount               Int?
   createdAt               DateTime   @default(now())
+
+  walletEntries WalletEntry[]
 
   @@index([mentorId])
   @@index([studentId])

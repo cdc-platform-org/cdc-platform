@@ -7,7 +7,7 @@ import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
-import { getMyMentorshipBookings, attachMyBookingRecording, MyMentorshipBooking } from '../../src/services/mentorshipService';
+import { getMyMentorshipBookings, attachMyBookingRecording, setMyBookingMeetingLink, MyMentorshipBooking } from '../../src/services/mentorshipService';
 
 const dict = {
   ka: {
@@ -37,6 +37,9 @@ const dict = {
     save: 'შენახვა',
     cancel: 'გაუქმება',
     recordingSaveFailed: 'ჩანაწერის შენახვა ვერ მოხერხდა.',
+    editMeetingLink: 'ბმულის რედაქტირება',
+    meetingLinkPlaceholder: 'Google Meet / Zoom ბმული',
+    meetingLinkSaveFailed: 'ბმულის შენახვა ვერ მოხერხდა.',
   },
   en: {
     title: 'My Mentorship Sessions',
@@ -65,6 +68,9 @@ const dict = {
     save: 'Save',
     cancel: 'Cancel',
     recordingSaveFailed: 'Could not save the recording link.',
+    editMeetingLink: 'Edit link',
+    meetingLinkPlaceholder: 'Google Meet / Zoom link',
+    meetingLinkSaveFailed: 'Could not save the meeting link.',
   },
 };
 
@@ -95,6 +101,27 @@ function SessionCard({ booking, lang }: { booking: MyMentorshipBooking; lang: 'k
   const [savingRecording, setSavingRecording] = useState(false);
   const [recordingError, setRecordingError] = useState<string | null>(null);
 
+  const [meetLink, setMeetLink] = useState(booking.googleMeetLink);
+  const [editingLink, setEditingLink] = useState(false);
+  const [meetLinkInput, setMeetLinkInput] = useState(booking.googleMeetLink ?? '');
+  const [savingLink, setSavingLink] = useState(false);
+  const [meetLinkError, setMeetLinkError] = useState<string | null>(null);
+
+  const handleSaveMeetingLink = async () => {
+    if (!meetLinkInput.trim()) return;
+    setSavingLink(true);
+    setMeetLinkError(null);
+    try {
+      await setMyBookingMeetingLink(booking.id, meetLinkInput.trim());
+      setMeetLink(meetLinkInput.trim());
+      setEditingLink(false);
+    } catch {
+      setMeetLinkError(t.meetingLinkSaveFailed);
+    } finally {
+      setSavingLink(false);
+    }
+  };
+
   const handleSaveRecording = async () => {
     if (!recordingInput.trim()) return;
     setSavingRecording(true);
@@ -113,23 +140,33 @@ function SessionCard({ booking, lang }: { booking: MyMentorshipBooking; lang: 'k
   return (
     <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <p className="text-[11px] uppercase tracking-widest font-bold text-slate-400">{otherPartyLabel}</p>
-          <p className="text-sm font-black text-slate-900 dark:text-white">{otherParty.name}</p>
-          <p className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-1">
-            <CalendarClock className="w-3.5 h-3.5" />
-            {new Date(booking.scheduledAt).toLocaleString(lang === 'en' ? 'en-GB' : 'ka-GE', { timeZone: 'Asia/Tbilisi' })}
-          </p>
-          {booking.consultationDescription && (
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              {t.topic}: {booking.consultationDescription}
-            </p>
+        <div className="flex items-start gap-3">
+          {otherParty.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={otherParty.avatarUrl} alt={otherParty.name} className="w-10 h-10 rounded-full object-cover shrink-0" />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white text-sm font-black shrink-0">
+              {otherParty.name.charAt(0).toUpperCase()}
+            </div>
           )}
+          <div>
+            <p className="text-[11px] uppercase tracking-widest font-bold text-slate-400">{otherPartyLabel}</p>
+            <p className="text-sm font-black text-slate-900 dark:text-white">{otherParty.name}</p>
+            <p className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-1">
+              <CalendarClock className="w-3.5 h-3.5" />
+              {new Date(booking.scheduledAt).toLocaleString(lang === 'en' ? 'en-GB' : 'ka-GE', { timeZone: 'Asia/Tbilisi' })}
+            </p>
+            {booking.consultationDescription && (
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {t.topic}: {booking.consultationDescription}
+              </p>
+            )}
+          </div>
         </div>
         <div className="flex flex-col gap-2 shrink-0">
-          {booking.googleMeetLink ? (
+          {meetLink ? (
             <a
-              href={booking.googleMeetLink}
+              href={meetLink}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-indigo-600 text-white no-underline hover:bg-indigo-700"
@@ -139,6 +176,16 @@ function SessionCard({ booking, lang }: { booking: MyMentorshipBooking; lang: 'k
             </a>
           ) : (
             <p className="text-[11px] text-slate-400 max-w-[160px] text-right">{t.calendarPending}</p>
+          )}
+          {booking.role === 'mentor' && !isPast && !editingLink && (
+            <button
+              type="button"
+              onClick={() => { setEditingLink(true); setMeetLinkInput(meetLink ?? ''); }}
+              className="flex items-center justify-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 bg-transparent cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              <Link2 className="w-3.5 h-3.5" />
+              {t.editMeetingLink}
+            </button>
           )}
           {recordingUrl && (
             <a
@@ -172,6 +219,37 @@ function SessionCard({ booking, lang }: { booking: MyMentorshipBooking; lang: 'k
           )}
         </div>
       </div>
+
+      {editingLink && (
+        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="url"
+              value={meetLinkInput}
+              onChange={(e) => setMeetLinkInput(e.target.value)}
+              placeholder={t.meetingLinkPlaceholder}
+              className="flex-1 min-w-[220px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950/60 px-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-cyan-500/60"
+              autoFocus
+            />
+            <button
+              type="button"
+              disabled={savingLink || !meetLinkInput.trim()}
+              onClick={handleSaveMeetingLink}
+              className="text-xs font-bold text-white bg-indigo-600 px-3.5 py-2 rounded-lg border-none cursor-pointer hover:bg-indigo-700 disabled:opacity-60"
+            >
+              {savingLink ? '…' : t.save}
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditingLink(false)}
+              className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-transparent border-none cursor-pointer hover:text-slate-700 dark:hover:text-slate-200"
+            >
+              {t.cancel}
+            </button>
+          </div>
+          {meetLinkError && <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1.5">{meetLinkError}</p>}
+        </div>
+      )}
 
       {attaching && (
         <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
