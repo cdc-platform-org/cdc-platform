@@ -25,6 +25,8 @@ const DICT = {
     open: 'AI რეპეტიტორს ვთხოვ დახმარებას',
     thinking: 'ფიქრობს…',
     error: 'უკაცრავად, პასუხის მიღება ვერ მოხერხდა. სცადეთ ხელახლა.',
+    overloaded: 'AI ასისტენტი დროებით გადატვირთულია. გთხოვთ, სცადოთ ხელახლა 1-2 წუთში.',
+    retry: 'თავიდან ცდა',
     chips: ['ამიხსენი ეს გაკვეთილი მარტივად', 'დამეხმარე დავალების გაგებაში', 'კოდის შემოწმება / Debugging'],
   },
   en: {
@@ -37,6 +39,8 @@ const DICT = {
     open: 'Ask the AI Tutor',
     thinking: 'Thinking…',
     error: "Sorry, I couldn't get a response. Please try again.",
+    overloaded: 'AI Assistant is experiencing high traffic. Please try again in a moment.',
+    retry: 'Retry',
     chips: ['Explain this lesson simply', 'Help me understand the assignment', 'Code review / Debugging'],
   },
 } as const;
@@ -98,6 +102,8 @@ export default function CourseTutorPanel({ courseId, lessonId, courseTitle, less
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, sending]);
 
+  const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
+
   const send = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || sending) return;
@@ -107,11 +113,19 @@ export default function CourseTutorPanel({ courseId, lessonId, courseTitle, less
     setInput('');
     setSending(true);
     setError(null);
+    setLastFailedMessage(null);
     try {
+      // askCourseTutor already retries once itself on a 502 (Gemini-side
+      // failure, most often the "high demand" 503 this model returns) — by
+      // the time an error reaches here, that automatic retry has already
+      // been exhausted. A 502 specifically gets the friendly overload
+      // message + manual Retry button below; anything else keeps the
+      // generic error copy, since a retry can't fix e.g. a real server bug.
       const reply = await askCourseTutor({ courseId, lessonId, userMessage: trimmed, chatHistory: history });
       setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: 'ASSISTANT', content: reply }]);
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? t.error);
+      setError(err?.response?.status === 502 ? t.overloaded : t.error);
+      setLastFailedMessage(trimmed);
     } finally {
       setSending(false);
     }
@@ -213,7 +227,20 @@ export default function CourseTutorPanel({ courseId, lessonId, courseTitle, less
           </div>
         )}
 
-        {error && <p className="text-xs text-red-400 text-center">{error}</p>}
+        {error && (
+          <div className="text-center">
+            <p className="text-xs text-red-400">{error}</p>
+            {lastFailedMessage && (
+              <button
+                type="button"
+                onClick={() => send(lastFailedMessage)}
+                className="mt-2 text-xs font-bold text-cyan-400 hover:text-cyan-300 bg-transparent border-none cursor-pointer underline"
+              >
+                {t.retry}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* QUICK PROMPT CHIPS */}

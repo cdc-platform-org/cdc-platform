@@ -292,14 +292,32 @@ export interface TutorChatTurn {
   content: string;
 }
 
-export async function askCourseTutor(params: {
-  courseId: string;
-  lessonId: string;
-  userMessage: string;
-  chatHistory: TutorChatTurn[];
-}): Promise<string> {
-  const response = await apiClient.post<{ reply: string }>('/ai/course-tutor', params);
-  return response.data.reply;
+export async function askCourseTutor(
+  params: {
+    courseId: string;
+    lessonId: string;
+    userMessage: string;
+    chatHistory: TutorChatTurn[];
+  },
+  _isRetry = false
+): Promise<string> {
+  try {
+    const response = await apiClient.post<{ reply: string }>('/ai/course-tutor', params);
+    return response.data.reply;
+  } catch (err: any) {
+    // 502 is specifically how routes/ai.ts's /course-tutor reports any
+    // Gemini-side failure — including the "503 Service Unavailable / high
+    // demand" overload this model returns fairly often in practice
+    // (observed directly during backend testing). A single automatic retry
+    // after a short delay smooths over exactly that transient case, without
+    // ever retrying a real client error (400 validation, 403 not-enrolled,
+    // 404 lesson) that a retry can't fix.
+    if (err?.response?.status === 502 && !_isRetry) {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      return askCourseTutor(params, true);
+    }
+    throw err;
+  }
 }
 
 // --- Leaderboard (public, shown on /courses/[id]) ---
