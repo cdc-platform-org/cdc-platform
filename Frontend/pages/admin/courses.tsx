@@ -3,6 +3,7 @@ import Head from 'next/head';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
 import RichTextEditor from '../../src/components/shared/RichTextEditor';
+import Toast from '../../src/components/shared/Toast';
 import { Course, CoursePayload, CourseLanguage, AdminSection, AdminLesson, Exam } from '../../src/types/lms';
 import SkillPicker from '../../src/components/shared/SkillPicker';
 import {
@@ -12,6 +13,7 @@ import {
   deleteCourse,
   getAdminCurriculum,
   createSection,
+  updateSection,
   deleteSection,
   createLesson,
   updateLesson,
@@ -23,6 +25,7 @@ import {
   uploadCourseMentorAvatar,
   getExamSettings,
   updateExamSettings,
+  translateCourse,
 } from '../../src/services/courseService';
 
 const DISCOUNT_PRESETS = [10, 20, 30, 40, 50, 60];
@@ -70,6 +73,10 @@ function CourseForm({
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [translating, setTranslating] = useState(false);
+  const [translateError, setTranslateError] = useState<string | null>(null);
+  const [showTranslateToast, setShowTranslateToast] = useState(false);
+  const translateToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [thumbnailError, setThumbnailError] = useState<string | null>(null);
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
@@ -108,6 +115,36 @@ function CourseForm({
       setForm(emptyForm);
     }
   }, [editingCourse]);
+
+  useEffect(() => {
+    return () => {
+      if (translateToastTimeoutRef.current) clearTimeout(translateToastTimeoutRef.current);
+    };
+  }, []);
+
+  const handleAutoTranslate = async () => {
+    setTranslateError(null);
+    if (form.title.trim().length < 3 || form.description.trim().length < 20) {
+      setTranslateError('Fill in the Georgian Title and Description before translating.');
+      return;
+    }
+    setTranslating(true);
+    try {
+      const translated = await translateCourse({ title: form.title.trim(), description: form.description.trim() });
+      setForm((f) => ({
+        ...f,
+        titleEn: translated.titleEn ?? f.titleEn,
+        descriptionEn: translated.descriptionEn ?? f.descriptionEn,
+      }));
+      setShowTranslateToast(true);
+      if (translateToastTimeoutRef.current) clearTimeout(translateToastTimeoutRef.current);
+      translateToastTimeoutRef.current = setTimeout(() => setShowTranslateToast(false), 4000);
+    } catch (err: any) {
+      setTranslateError(err?.response?.data?.message ?? 'Translation failed. Please try again.');
+    } finally {
+      setTranslating(false);
+    }
+  };
 
   const effectiveDiscountPercent = form.useCustomDiscount ? Number(form.discountPercentCustom) || 0 : form.discountPercent;
   const previewPrice = form.isOnSale && effectiveDiscountPercent > 0
@@ -232,11 +269,23 @@ function CourseForm({
         <RichTextEditor rows={3} value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
       </div>
       <div>
+        <button
+          type="button"
+          onClick={handleAutoTranslate}
+          disabled={translating}
+          className="text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg disabled:opacity-60"
+        >
+          {translating ? 'Translating…' : '✨ Auto-Translate to English via Gemini'}
+        </button>
+        {translateError && <p className="text-xs text-red-600 mt-1.5">{translateError}</p>}
+      </div>
+      <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
           Description (English) <span className="text-gray-400 font-normal">— optional, shown instead of Description when the site language is English</span>
         </label>
         <RichTextEditor rows={3} value={form.descriptionEn} onChange={(v) => setForm({ ...form, descriptionEn: v })} />
       </div>
+      {showTranslateToast && <Toast message="✨ Translated to English" />}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
           Skills Taught <span className="text-gray-400 font-normal">— auto-verifies these on a student's profile when they earn this course's certificate</span>
@@ -453,7 +502,20 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
   const [savingResources, setSavingResources] = useState(false);
   const [assignmentPrompt, setAssignmentPrompt] = useState(lesson.assignmentPrompt ?? '');
   const [savingPrompt, setSavingPrompt] = useState(false);
+  const [titleEn, setTitleEn] = useState(lesson.titleEn ?? '');
+  const [assignmentPromptEn, setAssignmentPromptEn] = useState(lesson.assignmentPromptEn ?? '');
+  const [savingTranslations, setSavingTranslations] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Unlike the other local-only form fields above, these two need to pick up
+  // values written by SectionCard's "Translate" action (a sibling/parent
+  // action, not this row's own save) once the curriculum refetches — a
+  // plain useState initializer would go stale after that refetch since this
+  // row never remounts (same lesson.id key).
+  useEffect(() => {
+    setTitleEn(lesson.titleEn ?? '');
+    setAssignmentPromptEn(lesson.assignmentPromptEn ?? '');
+  }, [lesson.titleEn, lesson.assignmentPromptEn]);
 
   const handleTogglePreview = async () => {
     setTogglingPreview(true);
@@ -512,6 +574,21 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
       alert('Unable to save the assignment prompt.');
     } finally {
       setSavingPrompt(false);
+    }
+  };
+
+  const handleSaveTranslations = async () => {
+    setSavingTranslations(true);
+    try {
+      await updateLesson(lesson.id, {
+        titleEn: titleEn.trim() || null,
+        assignmentPromptEn: assignmentPromptEn.trim() || null,
+      });
+      onChanged();
+    } catch {
+      alert('Unable to save the English translation.');
+    } finally {
+      setSavingTranslations(false);
     }
   };
 
@@ -638,6 +715,28 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
           </label>
 
           <div>
+            <p className="text-xs font-medium text-gray-700 mb-1">Title (English) — optional</p>
+            <input
+              value={titleEn}
+              onChange={(e) => setTitleEn(e.target.value)}
+              placeholder="Filled in by the section's Translate action, or type your own"
+              className="w-full text-xs rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-500 mb-2"
+            />
+            <p className="text-xs font-medium text-gray-700 mb-1">Assignment prompt (English) — optional</p>
+            <div className="flex items-start gap-2">
+              <textarea
+                rows={2}
+                value={assignmentPromptEn}
+                onChange={(e) => setAssignmentPromptEn(e.target.value)}
+                className="flex-1 text-xs rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              />
+              <button type="button" onClick={handleSaveTranslations} disabled={savingTranslations} className="text-xs font-medium text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60 shrink-0">
+                {savingTranslations ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+
+          <div>
             <p className="text-xs font-medium text-gray-700 mb-1">Resources</p>
             <div className="space-y-1 mb-1.5">
               {lesson.resources.map((url) => (
@@ -704,6 +803,8 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
 function SectionCard({ section, onChanged }: { section: AdminSection; onChanged: () => void }) {
   const [addingLesson, setAddingLesson] = useState(false);
   const [lessonTitle, setLessonTitle] = useState('');
+  const [translating, setTranslating] = useState(false);
+  const [translateError, setTranslateError] = useState<string | null>(null);
 
   const handleAddLesson = async (e: FormEvent) => {
     e.preventDefault();
@@ -720,14 +821,70 @@ function SectionCard({ section, onChanged }: { section: AdminSection; onChanged:
     onChanged();
   };
 
+  // Translates this section's title plus every one of its lessons' titles
+  // (and assignment prompts, where set) in one Gemini call, then persists
+  // each result individually via the same updateSection/updateLesson calls
+  // the rest of this editor already uses — onChanged() at the end refetches
+  // the curriculum, which is what actually makes the new EN values show up
+  // in this section's header and each LessonRow (see LessonRow's own
+  // useEffect syncing titleEn/assignmentPromptEn from its lesson prop).
+  const handleTranslateSection = async () => {
+    setTranslateError(null);
+    setTranslating(true);
+    try {
+      const translated = await translateCourse({
+        sections: [
+          {
+            title: section.title,
+            lessons: section.lessons.length
+              ? section.lessons.map((l) => ({ title: l.title, assignmentPrompt: l.assignmentPrompt ?? undefined }))
+              : undefined,
+          },
+        ],
+      });
+      const sectionResult = translated.sections?.[0];
+      if (!sectionResult) throw new Error('No translation returned.');
+      await updateSection(section.id, { titleEn: sectionResult.titleEn });
+      await Promise.all(
+        section.lessons.map((lesson, i) => {
+          const lessonResult = sectionResult.lessons?.[i];
+          if (!lessonResult) return Promise.resolve();
+          return updateLesson(lesson.id, {
+            titleEn: lessonResult.titleEn,
+            assignmentPromptEn: lessonResult.assignmentPromptEn ?? null,
+          });
+        })
+      );
+      onChanged();
+    } catch (err: any) {
+      setTranslateError(err?.response?.data?.message ?? 'Translation failed. Please try again.');
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   return (
     <div className="rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-slate-900/60">
-        <span className="text-sm font-semibold text-gray-900">{section.title}</span>
-        <button type="button" onClick={handleDeleteSection} className="text-xs font-medium text-red-500 hover:text-red-700">
-          Delete section
-        </button>
+        <div className="min-w-0">
+          <span className="text-sm font-semibold text-gray-900">{section.title}</span>
+          {section.titleEn && <span className="block text-xs text-gray-400 truncate">{section.titleEn}</span>}
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            type="button"
+            onClick={handleTranslateSection}
+            disabled={translating}
+            className="text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-lg disabled:opacity-60"
+          >
+            {translating ? 'Translating…' : '✨ Translate'}
+          </button>
+          <button type="button" onClick={handleDeleteSection} className="text-xs font-medium text-red-500 hover:text-red-700">
+            Delete section
+          </button>
+        </div>
       </div>
+      {translateError && <p className="px-4 pt-2 text-xs text-red-600">{translateError}</p>}
       {section.lessons.map((lesson) => (
         <LessonRow key={lesson.id} lesson={lesson} onChanged={onChanged} />
       ))}

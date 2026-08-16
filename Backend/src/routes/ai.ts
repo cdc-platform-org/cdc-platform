@@ -8,6 +8,7 @@ import {
   translateBlogPost,
   translateStudioCase,
   translateMentorProfile,
+  translateCourse,
   isAiTranslateConfigured,
   AiTranslateError,
 } from '../services/aiTranslateService';
@@ -31,6 +32,29 @@ const translateMentorProfileSchema = z.object({
   title: z.string().min(1),
   bio: z.string().min(1),
 });
+
+const translateCourseLessonSchema = z.object({
+  title: z.string().min(1),
+  assignmentPrompt: z.string().optional(),
+});
+
+const translateCourseSectionSchema = z.object({
+  title: z.string().min(1),
+  lessons: z.array(translateCourseLessonSchema).optional(),
+});
+
+// All-optional, unlike the schemas above — this endpoint is reused for both
+// a course-level translate (title/description) and a per-section translate
+// (sections, no title/description) — see aiTranslateService.translateCourse.
+const translateCourseSchema = z
+  .object({
+    title: z.string().min(1).optional(),
+    description: z.string().min(1).optional(),
+    sections: z.array(translateCourseSectionSchema).optional(),
+  })
+  .refine((data) => !!data.title || !!data.description || !!data.sections?.length, {
+    message: 'At least one of title, description, or sections is required.',
+  });
 
 const courseTutorSchema = z.object({
   courseId: z.string().min(1),
@@ -104,6 +128,31 @@ router.post('/translate-mentor', authenticate, requireAdminRole('SUPER_ADMIN', '
 
   try {
     const translated = await translateMentorProfile(result.data);
+    res.json({ data: translated });
+  } catch (err) {
+    if (err instanceof AiTranslateError) {
+      return res.status(502).json({ message: err.message });
+    }
+    throw err;
+  }
+});
+
+// Admin-only — used by the "✨ Auto-Translate to English via Gemini" button
+// in /admin/courses, both at the course level (title/description, from
+// CourseForm) and per-section (sections, from CurriculumEditor's
+// SectionCard). Not exposed publicly, same reasoning as /translate.
+router.post('/translate-course', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
+  if (!isAiTranslateConfigured()) {
+    return res.status(501).json({ message: 'AI translation is not configured yet (GEMINI_API_KEY).' });
+  }
+
+  const result = translateCourseSchema.safeParse(req.body);
+  if (!result.success) {
+    return res.status(400).json({ errors: result.error.errors });
+  }
+
+  try {
+    const translated = await translateCourse(result.data);
     res.json({ data: translated });
   } catch (err) {
     if (err instanceof AiTranslateError) {

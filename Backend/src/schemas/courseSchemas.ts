@@ -75,6 +75,7 @@ export const courseUpdateSchema = z
 
 export const sectionCreateSchema = z.object({
   title: z.string().trim().min(1).max(200),
+  titleEn: z.string().trim().max(200).optional().nullable(),
   order: z.number().int().min(0),
 });
 
@@ -82,11 +83,13 @@ export const sectionUpdateSchema = sectionCreateSchema.partial();
 
 export const lessonCreateSchema = z.object({
   title: z.string().trim().min(1).max(200),
+  titleEn: z.string().trim().max(200).optional().nullable(),
   durationSeconds: z.number().int().min(0).optional().default(0),
   resources: z.array(z.string().trim().max(2000)).optional().default([]),
   order: z.number().int().min(0),
   isFreePreview: z.boolean().optional().default(false),
   assignmentPrompt: z.string().trim().max(5000).optional().nullable(),
+  assignmentPromptEn: z.string().trim().max(5000).optional().nullable(),
 });
 
 export const lessonUpdateSchema = lessonCreateSchema.partial().extend({

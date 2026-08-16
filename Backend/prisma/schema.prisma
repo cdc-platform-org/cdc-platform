@@ -690,6 +690,11 @@ model CourseSection {
   courseId  String
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   title     String
+  // Optional English translation of `title` — same never-auto-translated-
+  // by-default posture as Course.titleEn (this one CAN be filled by the
+  // "Auto-Translate to English via Gemini" action, see aiTranslateService's
+  // translateCourse, but is never generated implicitly).
+  titleEn   String?
   order     Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -705,6 +710,9 @@ model Lesson {
   sectionId        String
   section          CourseSection    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   title            String
+  // Optional English translation of `title` — see CourseSection.titleEn's
+  // comment.
+  titleEn          String?
   durationSeconds  Int              @default(0)
   // Bunny Stream video GUID (services/bunnyStreamService.ts) — null until an
   // admin uploads a video for this lesson.
@@ -718,6 +726,9 @@ model Lesson {
   // Optional homework prompt shown on the student player's Assignment tab
   // — null means the lesson has no assignment (existing behavior).
   assignmentPrompt String?
+  // Optional English translation of `assignmentPrompt` — same posture as
+  // titleEn above. Only meaningful when assignmentPrompt is set.
+  assignmentPromptEn String?
   // Auto-generated ka/en/ru captions (services/subtitleService.ts), fired
   // fire-and-forget right after a successful video upload — see
   // POST /lessons/:lessonId/video. null until a video has ever triggered it.

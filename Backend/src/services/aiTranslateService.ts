@@ -200,3 +200,103 @@ bio: ${params.bio}`;
 
   return result.data;
 }
+
+// --- Course / curriculum translation ---
+//
+// Unlike the three functions above (which always translate one fixed set of
+// fields), this one's input is itself all-optional — it's reused by two
+// different callers: the course-level "Auto-Translate to English" button in
+// admin/courses.tsx's CourseForm (sends title/description, no sections), and
+// the per-section "Translate" action in CurriculumEditor's SectionCard
+// (sends one section + its lessons, no top-level title/description). The
+// response mirrors whichever of those was actually provided, so a caller
+// never has to interpret an EN field it didn't ask to translate.
+
+export interface TranslateCourseLessonInput {
+  title: string;
+  assignmentPrompt?: string;
+}
+
+export interface TranslateCourseSectionInput {
+  title: string;
+  lessons?: TranslateCourseLessonInput[];
+}
+
+export interface TranslateCourseParams {
+  title?: string;
+  description?: string;
+  sections?: TranslateCourseSectionInput[];
+}
+
+const courseLessonTranslationSchema = z.object({
+  titleEn: z.string(),
+  assignmentPromptEn: z.string().optional(),
+});
+
+const courseSectionTranslationSchema = z.object({
+  titleEn: z.string(),
+  lessons: z.array(courseLessonTranslationSchema).optional(),
+});
+
+const courseTranslationResponseSchema = z.object({
+  titleEn: z.string().optional(),
+  descriptionEn: z.string().optional(),
+  sections: z.array(courseSectionTranslationSchema).optional(),
+});
+
+export type TranslateCourseResult = z.infer<typeof courseTranslationResponseSchema>;
+
+// The "startup pitching and VC education platform" framing and the specific
+// acronym list (TAM/SAM/SOM/CAC/LTV/MRR/Churn/UVP/Moat/GTM/B2B/SaaS) come
+// straight from how this button was specified — kept close to that wording
+// rather than genericized, since it's a real stylistic choice for how CDC's
+// business-oriented course content should read in English, not an
+// arbitrary detail to simplify away.
+export async function translateCourse(params: TranslateCourseParams): Promise<TranslateCourseResult> {
+  if (!client) {
+    throw new AiTranslateError('Gemini is not configured (GEMINI_API_KEY missing).');
+  }
+  if (!params.title && !params.description && !params.sections?.length) {
+    throw new AiTranslateError('Nothing to translate — provide a title, description, or sections.');
+  }
+
+  const inputParts: string[] = [];
+  if (params.title) inputParts.push(`title: ${params.title}`);
+  if (params.description) inputParts.push(`description: ${params.description}`);
+  if (params.sections?.length) inputParts.push(`sections: ${JSON.stringify(params.sections)}`);
+
+  const prompt = `You are an expert Business English translator for startup pitching and VC education platforms. Translate the input course content from Georgian to fluent, modern Business English. Preserve all Markdown formatting, structure, HTML tags, and domain-specific acronyms (TAM, SAM, SOM, CAC, LTV, MRR, Churn, UVP, Moat, GTM, B2B, SaaS) exactly as written — never translate or expand them. Respond with strict JSON containing ONLY the keys corresponding to what was provided below (omit any key whose source field is absent), using this shape:
+{"titleEn"?: string, "descriptionEn"?: string, "sections"?: [{"titleEn": string, "lessons"?: [{"titleEn": string, "assignmentPromptEn"?: string}]}]}
+
+Preserve the exact order and count of sections and lessons from the input — one output section/lesson per input section/lesson.
+
+${inputParts.join('\n')}`;
+
+  const model = client.getGenerativeModel({
+    model: 'gemini-flash-latest',
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.3 },
+  });
+
+  let raw: string;
+  try {
+    const result = await model.generateContent(prompt);
+    raw = result.response.text();
+  } catch (err) {
+    throw new AiTranslateError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');
+  }
+  if (!raw) throw new AiTranslateError('Gemini returned an empty response.');
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new AiTranslateError('Gemini returned malformed JSON.');
+  }
+
+  const result = courseTranslationResponseSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new AiTranslateError('Gemini returned an unexpected translation format.');
+  }
+
+  return result.data;
+}

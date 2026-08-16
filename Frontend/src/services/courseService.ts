@@ -137,6 +137,51 @@ export async function deleteLesson(lessonId: string): Promise<void> {
   await apiClient.delete(`/courses/lessons/${lessonId}`);
 }
 
+// --- AI translation ("✨ Auto-Translate to English via Gemini") ---
+//
+// All-optional in and out — see Backend's aiTranslateService.translateCourse.
+// CourseForm calls this with {title, description}; SectionCard calls it with
+// {sections: [{title, lessons}]} for just that one section. Both reuse the
+// same endpoint since the response only ever contains the keys that were
+// actually asked for.
+
+export interface TranslateCourseLessonInput {
+  title: string;
+  assignmentPrompt?: string;
+}
+
+export interface TranslateCourseSectionInput {
+  title: string;
+  lessons?: TranslateCourseLessonInput[];
+}
+
+export interface TranslateCourseParams {
+  title?: string;
+  description?: string;
+  sections?: TranslateCourseSectionInput[];
+}
+
+export interface TranslateCourseLessonResult {
+  titleEn: string;
+  assignmentPromptEn?: string;
+}
+
+export interface TranslateCourseSectionResult {
+  titleEn: string;
+  lessons?: TranslateCourseLessonResult[];
+}
+
+export interface TranslateCourseResult {
+  titleEn?: string;
+  descriptionEn?: string;
+  sections?: TranslateCourseSectionResult[];
+}
+
+export async function translateCourse(params: TranslateCourseParams): Promise<TranslateCourseResult> {
+  const response = await apiClient.post<{ data: TranslateCourseResult }>('/ai/translate-course', params);
+  return response.data.data;
+}
+
 export async function uploadLessonVideo(
   lessonId: string,
   file: File,

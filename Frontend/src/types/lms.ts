@@ -133,6 +133,7 @@ export interface AdminLesson {
   id: string;
   sectionId: string;
   title: string;
+  titleEn: string | null;
   durationSeconds: number;
   order: number;
   resources: string[];
@@ -141,6 +142,7 @@ export interface AdminLesson {
   thumbnailUrl: string | null;
   isFreePreview: boolean;
   assignmentPrompt: string | null;
+  assignmentPromptEn: string | null;
   subtitlesStatus: SubtitlesStatus | null;
   subtitlesError: string | null;
   createdAt: string;
@@ -173,6 +175,7 @@ export interface AdminSection {
   id: string;
   courseId: string;
   title: string;
+  titleEn: string | null;
   order: number;
   lessons: AdminLesson[];
   createdAt: string;
@@ -181,11 +184,13 @@ export interface AdminSection {
 
 export interface SectionPayload {
   title: string;
+  titleEn?: string | null;
   order: number;
 }
 
 export interface LessonPayload {
   title: string;
+  titleEn?: string | null;
   durationSeconds?: number;
   resources?: string[];
   order: number;
@@ -194,6 +199,7 @@ export interface LessonPayload {
   bunnyVideoId?: string | null;
   isFreePreview?: boolean;
   assignmentPrompt?: string | null;
+  assignmentPromptEn?: string | null;
 }
 
 // --- AI Exam & Certification Gate ---
