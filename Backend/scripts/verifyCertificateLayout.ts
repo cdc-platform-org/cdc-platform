@@ -152,10 +152,26 @@ async function main() {
     // 1pt at this page size is 0.07% of the width — well under print tolerance,
     // and under the ~0.5pt the frame's own antialiased border can be measured to.
     const dx = Math.abs(insetL - insetR);
-    const dy = Math.abs(insetB - insetT);
-    check('QR centred in the frame on both axes', dx <= 1 && dy <= 1, `off-centre by dx ${dx.toFixed(2)}pt, dy ${dy.toFixed(2)}pt`);
+    check('QR horizontally centred in the frame', dx <= 1, `off-centre by dx ${dx.toFixed(2)}pt`);
+    // The QR is deliberately NOT vertically centred in the full frame — it's
+    // shifted toward the top to leave room for the "Scan to verify" caption
+    // below it (see the caption checks further down), so the bottom inset
+    // should clearly exceed the top inset rather than the two matching.
+    check(
+      'QR shifted toward the top of the frame, leaving room for the caption below',
+      insetB > insetT + 5,
+      `insetB ${insetB.toFixed(2)} vs insetT ${insetT.toFixed(2)}`
+    );
     const codeSlotLeft = G.codeCenterX * width - (G.codeMaxWidth * width) / 2;
     check('QR clears the verification-code slot', qr.x + qr.w <= codeSlotLeft, `QR right ${(qr.x + qr.w).toFixed(1)} vs code slot left ${codeSlotLeft.toFixed(1)}`);
+
+    // --- "Scan to verify" caption: shares the same baseline as the other
+    // three footer captions (checked below) rather than a one-off offset,
+    // sits horizontally within the frame, and its baseline sits below the
+    // QR's own bottom edge so the two never overlap.
+    const captionRuns = runs.filter((r) => Math.abs(r.y - 58) < 1.5 && r.x >= frame.left - 5 && r.x <= frame.right + 5);
+    check('scan-to-verify caption present under the QR frame', captionRuns.length > 0, `${captionRuns.length} run(s) near y=58 in the frame's x-range`);
+    check('scan-to-verify caption clears the QR (sits below it)', captionRuns.every((r) => r.y < qr.y), `caption y(s) [${[...new Set(captionRuns.map((r) => r.y))]}] vs QR bottom ${qr.y.toFixed(1)}`);
   }
 
   // --- Heading must sit in the gap between the artwork's two short gold rules,

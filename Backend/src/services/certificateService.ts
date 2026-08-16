@@ -388,6 +388,7 @@ const LABELS = {
   issueDate: 'გაცემის თარიღი / Issue Date',
   certificateId: 'სერტიფიკატის ID / Certificate ID',
   instructor: 'ლექტორი / Instructor',
+  scanToVerify: 'დაასკანერე შესამოწმებლად / Scan to verify',
 };
 
 // Drops every text-showing block from the page's content stream, keeping all
@@ -606,6 +607,14 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Buf
   // corner, well outside the frame). Rendered at 512px and scaled down so it
   // stays crisp at print resolution; QRCode's own `margin: 1` keeps the
   // scanner quiet zone, which lands on the frame's white interior.
+  //
+  // A "Scan to verify" caption sits below the QR, on the SAME baseline as
+  // the other three footer captions (G.footerCaptionY) — not a one-off
+  // offset — so the whole footer reads as one aligned caption row instead
+  // of a slightly-misaligned fifth line. The QR itself is sized/centered in
+  // the region of the frame ABOVE that baseline (plus clearance for the
+  // caption's own glyph height), so the two never overlap even though the
+  // frame is only 124x129pt.
   const verificationUrl = getVerificationUrl(data.verificationCode);
   const qrPngDataUrl = await QRCode.toDataURL(verificationUrl, { margin: 1, width: 512 });
   const qrPngBytes = Buffer.from(qrPngDataUrl.split(',')[1], 'base64');
@@ -615,12 +624,23 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Buf
   const frameBottom = height * G.qrFrameBottom;
   const frameTop = height * G.qrFrameTop;
   const frameInset = 8;
-  const qrSize = Math.min(frameRight - frameLeft, frameTop - frameBottom) - frameInset * 2;
+  const captionY = height * G.footerCaptionY;
+  const qrRegionBottom = captionY + 10;
+  const qrSize = Math.min(frameRight - frameLeft, frameTop - qrRegionBottom) - frameInset * 2;
   page.drawImage(qrImage, {
     x: (frameLeft + frameRight) / 2 - qrSize / 2,
-    y: (frameBottom + frameTop) / 2 - qrSize / 2,
+    y: (qrRegionBottom + frameTop) / 2 - qrSize / 2,
     width: qrSize,
     height: qrSize,
+  });
+  drawFittedLine(page, LABELS.scanToVerify, {
+    centerX: (frameLeft + frameRight) / 2,
+    y: captionY,
+    maxWidth: frameRight - frameLeft,
+    startSize: 8,
+    minSize: 4,
+    color: slate,
+    fonts: regularFonts,
   });
 
   const bytes = await doc.save();
