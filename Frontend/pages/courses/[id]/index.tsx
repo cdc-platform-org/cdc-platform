@@ -24,7 +24,9 @@ const dict = {
     loading: 'იტვირთება…',
     notFound: 'კურსი ვერ მოიძებნა.',
     enroll: 'ჩარიცხვა →',
+    enrollFree: 'კურსის უფასოდ გააქტიურება →',
     enrolling: 'გადამისამართება…',
+    activating: 'მიმდინარეობს…',
     continueLearning: 'სწავლის გაგრძელება →',
     backToCourses: '← ყველა კურსი',
     mentor: 'ლექტორი',
@@ -50,7 +52,9 @@ const dict = {
     loading: 'Loading…',
     notFound: 'Course not found.',
     enroll: 'Enroll Now →',
+    enrollFree: 'Start Learning For Free →',
     enrolling: 'Redirecting…',
+    activating: 'Activating…',
     continueLearning: 'Continue Learning →',
     backToCourses: '← All Courses',
     mentor: 'Instructor',
@@ -221,6 +225,11 @@ export default function CourseDetailPage() {
     );
   }
 
+  // What the buy button actually charges right now — a 100% discount promo
+  // brings this to 0 just as much as a course that's simply free on its
+  // own, so both cases get the same "activate for free" label/copy below.
+  const effectivePrice = appliedPromo ? appliedPromo.discountedAmount : course.currentPrice;
+
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       <Head>
@@ -308,7 +317,7 @@ export default function CourseDetailPage() {
             <div className="flex items-baseline gap-3">
               {(course.saleActive || appliedPromo) && <s className="text-lg text-slate-500">{formatPrice(course.originalPrice)}</s>}
               <span className="text-3xl font-black text-slate-900 dark:text-white">
-                {formatPrice(appliedPromo ? appliedPromo.discountedAmount : course.currentPrice)}
+                {formatPrice(effectivePrice)}
               </span>
             </div>
             {enrolled ? (
@@ -325,7 +334,7 @@ export default function CourseDetailPage() {
                 disabled={processing}
                 className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black px-6 py-3.5 rounded-xl text-sm uppercase tracking-widest shadow-lg hover:shadow-xl transition-all disabled:opacity-60"
               >
-                {processing ? t.enrolling : t.enroll}
+                {processing ? (effectivePrice === 0 ? t.activating : t.enrolling) : effectivePrice === 0 ? t.enrollFree : t.enroll}
               </button>
             )}
           </div>
