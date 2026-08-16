@@ -95,3 +95,8 @@ export async function getMyPayments(): Promise<MyPaymentRow[]> {
   const response = await apiClient.get<{ data: MyPaymentRow[] }>('/payments/my');
   return response.data.data;
 }
+
+export async function downloadInvoice(bogPaymentId: string): Promise<Blob> {
+  const response = await apiClient.get(`/invoices/payment/${bogPaymentId}/download`, { responseType: 'blob' });
+  return response.data;
+}

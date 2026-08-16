@@ -38,7 +38,7 @@ import {
   WalletSummary,
   PayoutRequestRow,
 } from '../src/services/walletService';
-import { getMyPayments, MyPaymentRow } from '../src/services/paymentService';
+import { getMyPayments, downloadInvoice, MyPaymentRow } from '../src/services/paymentService';
 import { getForumQuota, ForumPostQuota } from '../src/services/forumService';
 import { createMentorshipRequest } from '../src/services/mentorshipService';
 import { getProducts, getProductDownloadUrl, submitProduct, getMySubmissions, DigitalProduct } from '../src/services/productService';
@@ -108,6 +108,8 @@ const dict = {
     browseProducts: 'მაღაზიის დათვალიერება',
     downloadProduct: 'ჩამოტვირთვა',
     downloadFailed: 'ჩამოტვირთვა ვერ მოხერხდა.',
+    invoiceDownloadFailed: 'ინვოისის ჩამოტვირთვა ვერ მოხერხდა.',
+    downloadInvoiceLabel: 'ინვოისი',
     submitProductFailed: 'გაგზავნა ვერ მოხერხდა.',
     addProduct: 'ციფრული პროდუქტის დამატება',
     submitProductTitle: 'ახალი პროდუქტის გაგზავნა (განსახილველად)',
@@ -215,6 +217,8 @@ const dict = {
     browseProducts: 'Browse Store',
     downloadProduct: 'Download',
     downloadFailed: 'Download failed.',
+    invoiceDownloadFailed: 'Unable to download the invoice.',
+    downloadInvoiceLabel: 'Invoice',
     submitProductFailed: 'Submission failed.',
     addProduct: 'Add Digital Product',
     submitProductTitle: 'Submit New Product (for review)',
@@ -349,6 +353,8 @@ function DashboardContent() {
   const [wallet, setWallet] = useState<WalletSummary | null>(null);
   const [payoutRequests, setPayoutRequests] = useState<PayoutRequestRow[]>([]);
   const [payments, setPayments] = useState<MyPaymentRow[]>([]);
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null);
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
   const [purchasedProducts, setPurchasedProducts] = useState<DigitalProduct[]>([]);
   const [downloadingProductId, setDownloadingProductId] = useState<string | null>(null);
   const [productDownloadError, setProductDownloadError] = useState<string | null>(null);
@@ -525,6 +531,26 @@ function DashboardContent() {
       }
     } finally {
       setDownloadingCourseId(null);
+    }
+  };
+
+  const handleDownloadInvoice = async (paymentId: string) => {
+    setInvoiceError(null);
+    setDownloadingInvoiceId(paymentId);
+    try {
+      const blob = await downloadInvoice(paymentId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoice-${paymentId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setInvoiceError(t.invoiceDownloadFailed);
+    } finally {
+      setDownloadingInvoiceId(null);
     }
   };
 
@@ -928,6 +954,9 @@ function DashboardContent() {
 
                   <div>
                     <h3 className="text-sm font-bold mb-4">{t.paymentHistory}</h3>
+                    {invoiceError && (
+                      <p className="text-xs font-medium text-rose-600 dark:text-rose-400 mb-3">{invoiceError}</p>
+                    )}
                     {payments.length === 0 ? (
                       <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-8 text-center">
                         <p className="text-xs text-slate-500 dark:text-slate-400">{t.noPayments}</p>
@@ -950,9 +979,22 @@ function DashboardContent() {
                                 <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">{formatMoney(p.amount, p.currency)}</td>
                                 <td className="px-4 py-3 text-slate-500 dark:text-slate-500">{new Date(p.createdAt).toLocaleDateString()}</td>
                                 <td className="px-4 py-3 text-right">
-                                  <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded border ${PAYMENT_STATUS_BADGE[p.status]}`}>
-                                    {p.status}
-                                  </span>
+                                  <div className="flex items-center justify-end gap-2">
+                                    <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded border ${PAYMENT_STATUS_BADGE[p.status]}`}>
+                                      {p.status}
+                                    </span>
+                                    {p.status === 'COMPLETED' && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDownloadInvoice(p.id)}
+                                        disabled={downloadingInvoiceId === p.id}
+                                        className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-60"
+                                      >
+                                        <Download className="w-3 h-3" />
+                                        {downloadingInvoiceId === p.id ? t.loading : t.downloadInvoiceLabel}
+                                      </button>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             ))}
