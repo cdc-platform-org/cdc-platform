@@ -15,6 +15,7 @@ import { formatPrice, getSaleCountdownLabel } from '../../src/utils/coursePricin
 import { courseLanguageBadge } from '../../src/utils/courseLanguage';
 
 type SortMode = 'recommended' | 'price_asc' | 'price_desc';
+type PriceFilter = 'all' | 'free' | 'paid';
 
 const dict = {
   ka: {
@@ -40,6 +41,13 @@ const dict = {
     sortPriceDesc: 'ფასი: მაღლიდან დაბლა',
     resultsCount: (n: number) => `${n} კურსი`,
     filtersToggle: 'ფილტრები',
+    discountedOnly: 'ფასდაკლებული',
+    priceLabel: 'ფასი',
+    priceAll: 'ყველა',
+    priceFree: 'უფასო',
+    pricePaid: 'ფასიანი',
+    filtersDrawerTitle: 'ფილტრები',
+    showResults: (n: number) => `${n} შედეგის ჩვენება`,
   },
   en: {
     title: 'Courses',
@@ -64,6 +72,13 @@ const dict = {
     sortPriceDesc: 'Price: High to Low',
     resultsCount: (n: number) => `${n} course${n === 1 ? '' : 's'}`,
     filtersToggle: 'Filters',
+    discountedOnly: 'On Sale',
+    priceLabel: 'Price',
+    priceAll: 'All Prices',
+    priceFree: 'Free',
+    pricePaid: 'Paid',
+    filtersDrawerTitle: 'Filter Courses',
+    showResults: (n: number) => `Show ${n} result${n === 1 ? '' : 's'}`,
   },
 };
 
@@ -86,6 +101,8 @@ export default function CoursesPage() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [language, setLanguage] = useState<CourseLanguage | null>(null);
+  const [discountedOnly, setDiscountedOnly] = useState(false);
+  const [priceFilter, setPriceFilter] = useState<PriceFilter>('all');
   const [sort, setSort] = useState<SortMode>('recommended');
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -114,19 +131,30 @@ export default function CoursesPage() {
     let result = courses.filter((c) => {
       if (category && c.category !== category) return false;
       if (language && c.language !== language) return false;
-      if (q && !c.title.toLowerCase().includes(q) && !c.description.toLowerCase().includes(q)) return false;
+      if (discountedOnly && !c.saleActive) return false;
+      if (priceFilter === 'free' && c.currentPrice > 0) return false;
+      if (priceFilter === 'paid' && c.currentPrice === 0) return false;
+      if (
+        q &&
+        !c.title.toLowerCase().includes(q) &&
+        !c.description.toLowerCase().includes(q) &&
+        !(c.mentorName && c.mentorName.toLowerCase().includes(q))
+      )
+        return false;
       return true;
     });
     if (sort === 'price_asc') result = [...result].sort((a, b) => a.currentPrice - b.currentPrice);
     else if (sort === 'price_desc') result = [...result].sort((a, b) => b.currentPrice - a.currentPrice);
     return result;
-  }, [courses, search, category, language, sort]);
+  }, [courses, search, category, language, discountedOnly, priceFilter, sort]);
 
-  const hasActiveFilters = !!search || !!category || !!language;
+  const hasActiveFilters = !!search || !!category || !!language || discountedOnly || priceFilter !== 'all';
   const clearFilters = () => {
     setSearch('');
     setCategory(null);
     setLanguage(null);
+    setDiscountedOnly(false);
+    setPriceFilter('all');
   };
 
   const startCheckout = async (course: Course) => {
@@ -186,9 +214,33 @@ export default function CoursesPage() {
           <p className="text-slate-500 dark:text-slate-400 text-sm">{t.empty}</p>
         ) : (
           <div className="flex flex-col lg:flex-row gap-8">
-            {/* FILTER SIDEBAR */}
-            <aside className={`lg:w-64 shrink-0 ${filtersOpen ? 'block' : 'hidden'} lg:block`}>
-              <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none p-5 space-y-6 lg:sticky lg:top-24">
+            {/* FILTER SIDEBAR — in-flow sticky panel on desktop; a fixed
+                slide-over drawer (with backdrop) on mobile, opened by the
+                "Filters" button above. */}
+            <aside>
+              {filtersOpen && (
+                <div
+                  className="lg:hidden fixed inset-0 bg-black/50 z-40"
+                  onClick={() => setFiltersOpen(false)}
+                />
+              )}
+              <div
+                className={`fixed lg:static inset-y-0 left-0 z-50 lg:z-auto w-80 max-w-[85vw] lg:w-64 shrink-0 flex flex-col lg:block bg-white dark:bg-slate-900 lg:bg-transparent lg:dark:bg-transparent transition-transform duration-300 ease-in-out lg:transition-none ${
+                  filtersOpen ? 'translate-x-0' : '-translate-x-full'
+                } lg:translate-x-0`}
+              >
+                <div className="lg:hidden flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
+                  <span className="text-sm font-black">{t.filtersDrawerTitle}</span>
+                  <button
+                    type="button"
+                    onClick={() => setFiltersOpen(false)}
+                    aria-label="Close"
+                    className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto lg:overflow-visible rounded-none lg:rounded-2xl border-0 lg:border border-slate-200/80 dark:border-slate-800 bg-transparent lg:bg-white/90 lg:dark:bg-slate-900/60 lg:backdrop-blur-md lg:shadow-md lg:shadow-slate-200/40 lg:dark:shadow-none p-5 space-y-6 lg:sticky lg:top-24">
                 <div>
                   <label className="block text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2">
                     {t.searchLabel}
@@ -240,6 +292,34 @@ export default function CoursesPage() {
                 )}
 
                 <div>
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2">{t.priceLabel}</p>
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
+                      <input type="radio" checked={priceFilter === 'all'} onChange={() => setPriceFilter('all')} className="text-cyan-600 focus:ring-cyan-500" />
+                      {t.priceAll}
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
+                      <input type="radio" checked={priceFilter === 'free'} onChange={() => setPriceFilter('free')} className="text-cyan-600 focus:ring-cyan-500" />
+                      {t.priceFree}
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
+                      <input type="radio" checked={priceFilter === 'paid'} onChange={() => setPriceFilter('paid')} className="text-cyan-600 focus:ring-cyan-500" />
+                      {t.pricePaid}
+                    </label>
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={discountedOnly}
+                    onChange={(e) => setDiscountedOnly(e.target.checked)}
+                    className="rounded text-cyan-600 focus:ring-cyan-500"
+                  />
+                  {t.discountedOnly}
+                </label>
+
+                <div>
                   <label className="block text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2">{t.sortLabel}</label>
                   <select
                     value={sort}
@@ -262,6 +342,16 @@ export default function CoursesPage() {
                     {t.clearFilters}
                   </button>
                 )}
+                </div>
+                <div className="lg:hidden shrink-0 p-4 border-t border-slate-200 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setFiltersOpen(false)}
+                    className="w-full text-center text-sm font-black text-white px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600"
+                  >
+                    {t.showResults(filteredCourses.length)}
+                  </button>
+                </div>
               </div>
             </aside>
 
