@@ -159,10 +159,10 @@ export const termsAndConditions: { ka: LegalSection[]; en: LegalSection[] } = {
       ],
     },
     {
-      heading: '6. ციფრული სტორი — შემოსავლის განაწილება',
+      heading: '6. ციფრული მაღაზია — შემოსავლის განაწილება',
       paragraphs: [
-        'ციფრული სტორის (Digital Store) მეშვეობით პროდუქტის გაყიდვისას პლატფორმის საერთო საკომისიო შეადგენს გაყიდვის ღირებულების 20%-ს, რომელიც შედგება ორი ცალკეული 10%-იანი ნაწილისგან: 10% — საბანკო/გადახდის დამმუშავებელი პროვაიდერის (საქართველოს ბანკი) ტრანზაქციის საკომისიო და 10% — CDC ცენტრის პლატფორმის მხარდაჭერის საკომისიო.',
-        'ავტორი (Creator) იღებს წმინდა შემოსავლის 80%-ს, რომელიც ავტომატურად ირიცხება მისი ანგარიშის საბალანსოზე (Earnings Balance) გადახდის წარმატებით დასრულებისთანავე.',
+        'ციფრული მაღაზიის (Digital Store) მეშვეობით პროდუქტის გაყიდვისას პლატფორმის ჯამური მომსახურების საკომისიო შეადგენს 20%-ს. აღნიშნული მოიცავს ორ კომპონენტს: 10% — საბანკო საგადახდო სისტემის (საქართველოს ბანკი) ტრანზაქციის საკომისიო და 10% — CDC ცენტრის პლატფორმული მხარდაჭერის საკომისიო.',
+        'ავტორი (Creator) იღებს სუფთა შემოსავლის 80%-ს, რომელიც გადახდის წარმატებით დასრულებისთანავე ავტომატურად ისახება მისი შიდა პროფილის ბალანსზე (Earnings Balance). შიდა ბალანსიდან თანხის პირად საბანკო ანგარიშზე გადარიცხვა (განაღდება) ხორციელდება განაღდების მოთხოვნის დაფიქსირებიდან 1 სამუშაო დღის ვადაში.',
       ],
     },
     {
@@ -234,8 +234,8 @@ export const termsAndConditions: { ka: LegalSection[]; en: LegalSection[] } = {
     {
       heading: '6. Digital Store — Revenue Split',
       paragraphs: [
-        'When a product is sold through the Digital Store, the total platform service fee is 20% of the sale price, made up of two separate 10% components: a 10% bank / payment-processing gateway fee (Bank of Georgia) and a 10% CDC Center platform support fee.',
-        'The creator receives a net 80% share, which is automatically credited to their earnings balance upon successful payment completion.',
+        'When a product is sold through the Digital Store, the total platform service fee is 20% of the sale price. This is made up of two components: a 10% bank payment-system transaction fee (Bank of Georgia) and a 10% CDC Center platform support fee.',
+        'The creator receives a net 80% share, which is automatically credited to their internal profile balance (Earnings Balance) immediately upon successful payment completion. Withdrawing funds from that internal balance to a personal bank account is processed within 1 business day of the withdrawal request being submitted.',
       ],
     },
     {
