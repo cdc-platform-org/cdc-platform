@@ -23,10 +23,23 @@ const components: Components = {
   hr: () => <hr className="my-4 border-slate-200 dark:border-slate-700" />,
 };
 
+// Some description fields were saved with literal backslash-n escape
+// sequences ("\\n", two characters) instead of real line breaks — e.g.
+// content pasted through a pipeline that JSON-escaped a string without ever
+// un-escaping it before it reached the database. CommonMark only recognizes
+// a "* "/"- " marker as a list item at the start of a line, so with no real
+// newlines every bullet collapses into one dense paragraph and the markers
+// show up as literal, unparsed "*" characters instead of a list. Converting
+// those escape sequences back into real newlines before handing the string
+// to react-markdown is enough to restore normal list/paragraph parsing.
+function normalizeEscapedNewlines(raw: string): string {
+  return raw.replace(/\\r\\n|\\n/g, '\n');
+}
+
 export default function MarkdownContent({ content, className = '' }: { content: string; className?: string }) {
   return (
-    <div className={`text-sm text-slate-600 dark:text-slate-300 ${className}`}>
-      <ReactMarkdown components={components}>{content}</ReactMarkdown>
+    <div className={`text-sm text-slate-600 dark:text-slate-300 leading-relaxed ${className}`}>
+      <ReactMarkdown components={components}>{normalizeEscapedNewlines(content)}</ReactMarkdown>
     </div>
   );
 }
