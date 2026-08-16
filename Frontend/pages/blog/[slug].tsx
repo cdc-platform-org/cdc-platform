@@ -376,6 +376,12 @@ export default function BlogPostPage() {
     [content, isHtml]
   );
   const headings = isHtml ? htmlArticle?.headings ?? [] : markdownHeadings;
+  // Drives whether the [1fr_260px] grid below reserves its right-hand TOC
+  // column at all — without this, a post with no ##/### headings (so no
+  // <aside> ever renders into that column) still had the grid declare it,
+  // leaving the article's max-w-2xl block flush against the left edge of a
+  // much wider 1fr track with a permanent empty gap on the right.
+  const hasToc = headings.length > 0;
   const headingIndexRef = useRef(0);
   headingIndexRef.current = 0;
 
@@ -553,13 +559,13 @@ export default function BlogPostPage() {
         {ogImage && <meta name="twitter:image" content={ogImage} />}
       </Head>
       <SiteHeader />
-      <div className="max-w-6xl mx-auto px-6 py-16">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <Link href="/blog" className="text-sm text-slate-400 hover:text-white no-underline">
           {t.back}
         </Link>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-12 mt-6">
-          <div className="max-w-2xl">
+        <div className={hasToc ? 'grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-12 mt-6' : 'mt-6'}>
+          <div className="max-w-3xl w-full mx-auto">
             <div className="flex flex-wrap gap-2">
               <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-cyan-300 bg-cyan-500/10 border-cyan-500/20">
                 {post.category}
@@ -799,7 +805,7 @@ export default function BlogPostPage() {
             </div>
           </div>
 
-          {headings.length > 0 && (
+          {hasToc && (
             <aside className="hidden lg:block">
               <div className="sticky top-8 rounded-xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm p-4 transition-colors hover:border-cyan-400/30">
                 <p className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400 mb-3">

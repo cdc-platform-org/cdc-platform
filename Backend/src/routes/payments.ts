@@ -539,7 +539,7 @@ export async function applyBogPaymentResult(
     }
   } else if (bogPayment.purpose === 'PRODUCT') {
     // Completes the purchase and, for a product with a real external
-    // creator, credits their 90% net share — see productSaleService.ts.
+    // creator, credits their 80% net share — see productSaleService.ts.
     await completeProductPurchase({
       userId: bogPayment.userId,
       productId: bogPayment.referenceId,

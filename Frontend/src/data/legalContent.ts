@@ -15,7 +15,7 @@ import { merchantInfo } from './merchantInfo';
 const entityLineKa = `${merchantInfo.orgNameKa} (ს/კ ${merchantInfo.identificationCode})`;
 const entityLineEn = `${merchantInfo.orgNameEn} (ID Code ${merchantInfo.identificationCode})`;
 
-export const lastUpdated = '2026-07-22';
+export const lastUpdated = '2026-08-16';
 
 export const privacyPolicy: { ka: LegalSection[]; en: LegalSection[] } = {
   ka: [
@@ -159,37 +159,44 @@ export const termsAndConditions: { ka: LegalSection[]; en: LegalSection[] } = {
       ],
     },
     {
-      heading: '6. მომხმარებლის ქცევა',
+      heading: '6. ციფრული სტორი — შემოსავლის განაწილება',
+      paragraphs: [
+        'ციფრული სტორის (Digital Store) მეშვეობით პროდუქტის გაყიდვისას პლატფორმის საერთო საკომისიო შეადგენს გაყიდვის ღირებულების 20%-ს, რომელიც შედგება ორი ცალკეული 10%-იანი ნაწილისგან: 10% — საბანკო/გადახდის დამმუშავებელი პროვაიდერის (საქართველოს ბანკი) ტრანზაქციის საკომისიო და 10% — CDC ცენტრის პლატფორმის მხარდაჭერის საკომისიო.',
+        'ავტორი (Creator) იღებს წმინდა შემოსავლის 80%-ს, რომელიც ავტომატურად ირიცხება მისი ანგარიშის საბალანსოზე (Earnings Balance) გადახდის წარმატებით დასრულებისთანავე.',
+      ],
+    },
+    {
+      heading: '7. მომხმარებლის ქცევა',
       paragraphs: [
         'აკრძალულია: სხვისი ანგარიშის გამოყენება, პლატფორმის გვერდის ავლით პირდაპირი კონტაქტის დამყარება გადახდის თავიდან ასაცილებლად, თაღლითობა, საავტორო უფლებების დარღვევა.',
       ],
     },
     {
-      heading: '7. ინტელექტუალური საკუთრება',
+      heading: '8. ინტელექტუალური საკუთრება',
       paragraphs: [
         'კურსის მასალები, ვიდეოები და სერტიფიკატის შაბლონები წარმოადგენს CDC-ის საკუთრებას. სერტიფიკატის მფლობელს აქვს უფლება გამოიყენოს იგი პირადი პორტფოლიოსთვის.',
       ],
     },
     {
-      heading: '8. გადახდები',
+      heading: '9. გადახდები',
       paragraphs: [
         'გადახდები მუშავდება საქართველოს ბანკის (BOG) მეშვეობით, ლარში (₾). ფასები მითითებულია პლატფორმაზე შესყიდვის მომენტში.',
       ],
     },
     {
-      heading: '9. პასუხისმგებლობის შეზღუდვა',
+      heading: '10. პასუხისმგებლობის შეზღუდვა',
       paragraphs: [
         'პლატფორმა მოწოდებულია „როგორც არის" პრინციპით. CDC არ არის პასუხისმგებელი მომხმარებლებს შორის დადებული გარიგებების შედეგებზე ფრილანს ბირჟაზე, გარდა კანონმდებლობით გათვალისწინებული შემთხვევებისა.',
       ],
     },
     {
-      heading: '10. მარეგულირებელი კანონმდებლობა',
+      heading: '11. მარეგულირებელი კანონმდებლობა',
       paragraphs: [
         'წინამდებარე პირობები რეგულირდება საქართველოს კანონმდებლობით. დავები განიხილება საქართველოს კომპეტენტურ სასამართლოებში.',
       ],
     },
     {
-      heading: '11. კონტაქტი',
+      heading: '12. კონტაქტი',
       paragraphs: [`${entityLineKa} · ${merchantInfo.email} · ${merchantInfo.phone}`],
     },
   ],
@@ -225,37 +232,44 @@ export const termsAndConditions: { ka: LegalSection[]; en: LegalSection[] } = {
       ],
     },
     {
-      heading: '6. User Conduct',
+      heading: '6. Digital Store — Revenue Split',
+      paragraphs: [
+        'When a product is sold through the Digital Store, the total platform service fee is 20% of the sale price, made up of two separate 10% components: a 10% bank / payment-processing gateway fee (Bank of Georgia) and a 10% CDC Center platform support fee.',
+        'The creator receives a net 80% share, which is automatically credited to their earnings balance upon successful payment completion.',
+      ],
+    },
+    {
+      heading: '7. User Conduct',
       paragraphs: [
         'Prohibited: using another\'s account, circumventing the platform to make direct contact in order to avoid payment, fraud, and copyright infringement.',
       ],
     },
     {
-      heading: '7. Intellectual Property',
+      heading: '8. Intellectual Property',
       paragraphs: [
         'Course materials, videos, and certificate templates are the property of CDC. Certificate holders may use their certificate for personal portfolio purposes.',
       ],
     },
     {
-      heading: '8. Payments',
+      heading: '9. Payments',
       paragraphs: [
         'Payments are processed via Bank of Georgia (BOG), in Georgian Lari (₾). Prices are as displayed on the platform at the time of purchase.',
       ],
     },
     {
-      heading: '9. Limitation of Liability',
+      heading: '10. Limitation of Liability',
       paragraphs: [
         'The platform is provided "as is". CDC is not liable for the outcomes of deals made between users on the freelance marketplace, except as required by law.',
       ],
     },
     {
-      heading: '10. Governing Law',
+      heading: '11. Governing Law',
       paragraphs: [
         'These terms are governed by the laws of Georgia. Disputes are subject to the competent courts of Georgia.',
       ],
     },
     {
-      heading: '11. Contact',
+      heading: '12. Contact',
       paragraphs: [`${entityLineEn} · ${merchantInfo.email} · ${merchantInfo.phone}`],
     },
   ],

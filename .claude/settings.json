@@ -11,7 +11,9 @@
       "Bash(curl -s -X POST http://localhost:4000/api/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@cdc.ge\",\"password\":\"ZO0oPT0Ut1YI\"}')",
       "Bash(curl -s -o /dev/null -w \"existing server status: %{http_code}\\\\n\" http://localhost:4000/api/blog)",
       "Bash(node -e ' *)",
-      "Bash(rm -f \"node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/.prisma/client/query_engine-windows.dll.node.tmp\"*)"
+      "Bash(rm -f \"node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/.prisma/client/query_engine-windows.dll.node.tmp\"*)",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://cdc-api-prod-ffd3e9cma2a4a3f9.westeurope-01.azurewebsites.net/api/auth/me)"
     ]
   }
 }

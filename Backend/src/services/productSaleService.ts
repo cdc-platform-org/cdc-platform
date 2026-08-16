@@ -7,9 +7,14 @@ import { prisma } from '../lib/prisma';
 // as its own constant rather than importing escrow's rate — these are two
 // independent revenue streams that happen to share a value today, not the
 // same policy, and shouldn't be coupled.
+//
+// 20% total service fee = 10% bank/payment-gateway (BOG) processing fee +
+// 10% CDC Center platform support fee — see legalContent.ts's Terms &
+// Conditions "Digital Store — Revenue Split" clause and the upload form's
+// commission banner, both of which must stay in sync with this constant.
 // ============================================================
 
-const PLATFORM_COMMISSION_RATE = 0.1; // CDC keeps 10%, creator gets 90%
+const PLATFORM_COMMISSION_RATE = 0.2; // CDC keeps 20% (10% bank fee + 10% platform fee), creator gets 80%
 
 export interface ProductSaleResult {
   paymentStatus: string;
@@ -21,7 +26,7 @@ export interface ProductSaleResult {
 // Completes a product purchase and, when the product has a real external
 // creator (DigitalProduct.submittedById — admin-catalog products have none
 // and keep the full amount with the platform, same as a course sale),
-// credits that creator's earningsBalance with their 90% net share.
+// credits that creator's earningsBalance with their 80% net share.
 //
 // Safe to call more than once for the same (userId, productId) pair — a BOG
 // webhook retry and the /bog/status status-poll fallback can both route

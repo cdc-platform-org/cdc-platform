@@ -113,6 +113,8 @@ const dict = {
     formTitle: 'სათაური',
     formDescription: 'აღწერა',
     formPrice: 'ფასი (GEL, 0 = უფასო)',
+    commissionBannerText: 'პლატფორმის საკომისიო შეადგენს 20%-ს (10% საბანკო ტრანზაქცია + 10% CDC ცენტრი).',
+    commissionBannerNet: 'თქვენი წილი: {{amount}} GEL',
     formCategory: 'კატეგორია',
     formImageUrl: 'სურათის URL',
     formFileUrl: 'ფაილის URL',
@@ -212,6 +214,8 @@ const dict = {
     formTitle: 'Title',
     formDescription: 'Description',
     formPrice: 'Price (GEL, 0 = free)',
+    commissionBannerText: 'The platform fee is 20% (10% bank transaction + 10% CDC Center).',
+    commissionBannerNet: 'Your share: {{amount}} GEL',
     formCategory: 'Category',
     formImageUrl: 'Image URL',
     formFileUrl: 'File URL',
@@ -1032,6 +1036,12 @@ function DashboardContent() {
                           onChange={(e) => setSubmitCategory(e.target.value)}
                           className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
                         />
+                      </div>
+                      <div className="rounded-lg border border-cyan-400/30 bg-cyan-50/60 dark:bg-cyan-500/10 px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
+                        <p>{t.commissionBannerText}</p>
+                        <p className="font-bold text-cyan-700 dark:text-cyan-400 mt-0.5">
+                          {t.commissionBannerNet.replace('{{amount}}', (Number(submitPrice || 0) * 0.8).toFixed(2))}
+                        </p>
                       </div>
                       <input
                         required
