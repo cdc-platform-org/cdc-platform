@@ -370,13 +370,23 @@ export const G = {
   // "Scan to verify" caption width — deliberately wider than the 124pt frame
   // itself (still centered on the frame's own center, not the widened box's),
   // since the frame alone is too narrow to hold this caption at a readable
-  // size. Capped at 136 rather than the frame's full available neighbors: 32pt
+  // size. Capped at 140 rather than the frame's full available neighbors: 94pt
   // of clearance to the calendar zone's right edge (706) on the left, and only
-  // ~8.5pt of clearance to the verification-code slot's left edge (870.5, from
-  // G.codeCenterX/G.codeMaxWidth) on the right — the tighter right-hand gap is
-  // what actually bounds this number, symmetric growth past it would start
-  // overlapping the code slot's own text.
-  scanToVerifyMaxWidth: 136 / 1491,
+  // ~70.5pt of clearance to the verification-code slot's left edge (870.5,
+  // from G.codeCenterX/G.codeMaxWidth) on the right, symmetric around the
+  // frame's own center (800) — the tighter right-hand gap is what actually
+  // bounds this number (2 * 70.5 = 141, rounded down for a hair of margin).
+  //
+  // An earlier version of this constant (136) was geometrically fine but the
+  // caption still visibly overlapped the certificate-ID text in a real
+  // rendered PDF — the actual bug was drawFittedLine's minSize floor: at
+  // minSize 11 the real bilingual string measures ~256pt, nowhere near 136,
+  // but the shrink loop stops at minSize regardless of whether it actually
+  // fits, so it silently overflowed rather than continuing to shrink. Fixed
+  // by splitting the caption into two single-script lines (see
+  // LABELS.scanToVerifyKa/En) — each fits this same maxWidth on its own at a
+  // size with real margin to spare, verified by direct measurement.
+  scanToVerifyMaxWidth: 140 / 1491,
   // Per-slot text widths, each the usable width of the artwork region it sits in.
   courseMaxWidth: 950 / 1491,
   bodyMaxWidth: 1000 / 1491,
@@ -398,7 +408,12 @@ const LABELS = {
   issueDate: 'გაცემის თარიღი / Issue Date',
   certificateId: 'სერტიფიკატის ID / Certificate ID',
   instructor: 'ლექტორი / Instructor',
-  scanToVerify: 'დაასკანერე შესამოწმებლად / Scan to verify',
+  // Two separate lines, not one bilingual string — see the drawing code's
+  // own comment on why (measured: this phrase needs ~250pt+ at a legible
+  // size, but only ~140pt is available before colliding with the
+  // certificate-ID text to its right).
+  scanToVerifyKa: 'დაასკანერე შესამოწმებლად',
+  scanToVerifyEn: 'Scan to verify',
 };
 
 // Drops every text-showing block from the page's content stream, keeping all
@@ -624,16 +639,23 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Buf
   // stays crisp at print resolution; QRCode's own `margin: 1` keeps the
   // scanner quiet zone, which lands on the frame's white interior.
   //
-  // A "Scan to verify" caption sits below the QR, on the SAME baseline as
-  // the other three footer captions (G.footerCaptionY) — not a one-off
-  // offset — so the whole footer reads as one aligned caption row instead
-  // of a slightly-misaligned fifth line. The QR itself is sized/centered in
-  // the region of the frame ABOVE that baseline (plus clearance for the
-  // caption's own glyph height), so the two never overlap even though the
-  // frame is only 124x129pt. The caption is drawn bold and dark (readability
-  // over quiet hierarchy — see scanCaptionColor) at G.scanToVerifyMaxWidth,
-  // wider than the frame itself but still centered on the frame's own
-  // center, since the frame alone is too narrow to hold it at a legible size.
+  // A "Scan to verify" caption sits below the QR, its FIRST line on the
+  // SAME baseline as the other three footer captions (G.footerCaptionY) —
+  // not a one-off offset — so the whole footer still reads as one aligned
+  // caption row despite this one spilling to a second line underneath. The
+  // QR itself is sized/centered in the region of the frame ABOVE that
+  // baseline (plus clearance for the caption's own glyph height), so the
+  // two never overlap even though the frame is only 124x129pt.
+  //
+  // Two lines (Georgian, then English), not the original single bilingual
+  // string — see LABELS.scanToVerifyKa/En's comment: at any size legible
+  // enough to be worth drawing bold, the combined phrase is wider than the
+  // ~140pt available before it would run into the certificate-ID text to
+  // its right, which is exactly the overlap this two-line layout exists to
+  // avoid. Each line is single-script, so drawFittedLine's own shrink-to-fit
+  // is genuinely sufficient here (no minSize floor trap like the one-line
+  // version had) — startSize 13/minSize 8 matches the other footer
+  // captions' own sizing for visual consistency.
   const verificationUrl = getVerificationUrl(data.verificationCode);
   const qrPngDataUrl = await QRCode.toDataURL(verificationUrl, { margin: 1, width: 512 });
   const qrPngBytes = Buffer.from(qrPngDataUrl.split(',')[1], 'base64');
@@ -644,6 +666,7 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Buf
   const frameTop = height * G.qrFrameTop;
   const frameInset = 8;
   const captionY = height * G.footerCaptionY;
+  const captionLineHeight = 13;
   const qrRegionBottom = captionY + 10;
   const qrSize = Math.min(frameRight - frameLeft, frameTop - qrRegionBottom) - frameInset * 2;
   page.drawImage(qrImage, {
@@ -652,15 +675,16 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Buf
     width: qrSize,
     height: qrSize,
   });
-  drawFittedLine(page, LABELS.scanToVerify, {
+  const scanCaptionOpts = {
     centerX: (frameLeft + frameRight) / 2,
-    y: captionY,
     maxWidth: width * G.scanToVerifyMaxWidth,
-    startSize: 14,
-    minSize: 11,
+    startSize: 13,
+    minSize: 8,
     color: scanCaptionColor,
     fonts: boldFonts,
-  });
+  };
+  drawFittedLine(page, LABELS.scanToVerifyKa, { ...scanCaptionOpts, y: captionY });
+  drawFittedLine(page, LABELS.scanToVerifyEn, { ...scanCaptionOpts, y: captionY - captionLineHeight });
 
   const bytes = await doc.save();
   return Buffer.from(bytes);
