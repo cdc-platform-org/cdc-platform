@@ -15,6 +15,7 @@ import {
   unverifyGraduate,
   banUser,
   unbanUser,
+  sendAdminPasswordReset,
 } from '../../src/services/adminService';
 
 const STATUS_BADGE: Record<AdminUser['status'], string> = {
@@ -59,6 +60,7 @@ const PAGE_DICT = {
     assignBadge: '🎓 ნიშნის მინიჭება',
     unban: 'განბლოკვა',
     ban: 'დაბლოკვა',
+    resetPassword: 'პაროლის აღდგენა',
     noUsers: 'მომხმარებელი ვერ მოიძებნა.',
     loadError: 'მომხმარებლების ჩატვირთვა ვერ მოხერხდა. სცადეთ ხელახლა.',
     actionError: 'მოქმედება ვერ შესრულდა. სცადეთ ხელახლა.',
@@ -84,6 +86,7 @@ const PAGE_DICT = {
     assignBadge: '🎓 Assign Badge',
     unban: 'Unban',
     ban: 'Ban',
+    resetPassword: 'Reset Password',
     noUsers: 'No users match your search.',
     loadError: 'Unable to load users. Please try again.',
     actionError: 'Action failed. Please try again.',
@@ -333,6 +336,13 @@ function UserManagement() {
                                 {u.isBanned ? p.unban : p.ban}
                               </button>
                             )}
+                            <button
+                              disabled={isActioning}
+                              onClick={() => runAction(u.id, () => sendAdminPasswordReset(u.id).then(() => u))}
+                              className="text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2.5 py-1 rounded-lg disabled:opacity-50"
+                            >
+                              {p.resetPassword}
+                            </button>
                           </div>
                         </td>
                       </tr>

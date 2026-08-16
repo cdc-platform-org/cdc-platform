@@ -13,7 +13,9 @@ import {
   updateProductAdmin,
   uploadProductImage,
   uploadProductFile,
+  getProductPurchases,
   DigitalProduct,
+  AdminProductPurchase,
 } from '../../src/services/productService';
 import { formatPrice } from '../../src/utils/coursePricing';
 
@@ -42,6 +44,21 @@ function ModerationProductCard({
   const [title, setTitle] = useState(p.title);
   const [description, setDescription] = useState(p.description);
   const [saving, setSaving] = useState(false);
+  const [showPurchases, setShowPurchases] = useState(false);
+  const [purchases, setPurchases] = useState<AdminProductPurchase[] | null>(null);
+  const [loadingPurchases, setLoadingPurchases] = useState(false);
+
+  const togglePurchases = async () => {
+    if (showPurchases) return setShowPurchases(false);
+    setShowPurchases(true);
+    if (purchases) return;
+    setLoadingPurchases(true);
+    try {
+      setPurchases(await getProductPurchases(p.id));
+    } finally {
+      setLoadingPurchases(false);
+    }
+  };
 
   const startEdit = () => {
     setTitle(p.title);
@@ -102,11 +119,42 @@ function ModerationProductCard({
           {p.submittedBy && <> · Submitted by {p.submittedBy.name} ({p.submittedBy.email})</>}
         </p>
         {p.status === 'REJECTED' && p.rejectionReason && <p className="text-xs text-red-500 mt-1">Reason: {p.rejectionReason}</p>}
+
+        {showPurchases && (
+          <div className="mt-2 rounded-lg border border-gray-200 p-2">
+            {loadingPurchases ? (
+              <p className="text-xs text-gray-400">Loading…</p>
+            ) : !purchases || purchases.length === 0 ? (
+              <p className="text-xs text-gray-400">No purchases yet.</p>
+            ) : (
+              <table className="w-full text-xs">
+                <tbody>
+                  {purchases.map((pu) => (
+                    <tr key={pu.id} className="border-b last:border-0 border-gray-100">
+                      <td className="py-1 pr-2 text-gray-700">{pu.user.name} ({pu.user.email})</td>
+                      <td className="py-1 pr-2 text-gray-500">{pu.paymentStatus}</td>
+                      <td className="py-1 text-right font-medium">
+                        {pu.downloadedAt ? (
+                          <span className="text-emerald-600">Downloaded {new Date(pu.downloadedAt).toLocaleDateString()}</span>
+                        ) : (
+                          <span className="text-gray-400">Not downloaded</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
       </div>
       {!editing && (
         <div className="flex flex-col gap-2 shrink-0 justify-center">
           <button type="button" onClick={startEdit} disabled={acting} className="text-xs font-medium text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 disabled:opacity-60">
             Edit
+          </button>
+          <button type="button" onClick={togglePurchases} className="text-xs font-medium text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50">
+            {showPurchases ? 'Hide Purchases' : 'Purchases'}
           </button>
           {p.status === 'PENDING' && (
             <>

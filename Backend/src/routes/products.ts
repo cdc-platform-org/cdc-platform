@@ -172,10 +172,21 @@ router.get('/:id/download', authenticate, requireApproved, async (req: Request, 
     return res.status(403).json({ message: 'You have not purchased this product.' });
   }
 
-  const product = await prisma.digitalProduct.update({
-    where: { id: req.params.id },
-    data: { downloadsCount: { increment: 1 } },
-  });
+  const [product] = await Promise.all([
+    prisma.digitalProduct.update({
+      where: { id: req.params.id },
+      data: { downloadsCount: { increment: 1 } },
+    }),
+    // Only set on the first download — re-downloads don't move the
+    // timestamp, so it stays a reliable "was this ever opened" marker for
+    // an admin weighing a refund request.
+    purchase.downloadedAt
+      ? Promise.resolve()
+      : prisma.productPurchase.update({
+          where: { userId_productId: { userId: req.user!.id, productId: req.params.id } },
+          data: { downloadedAt: new Date() },
+        }),
+  ]);
 
   res.json({ data: { fileUrl: product.fileUrl } });
 });

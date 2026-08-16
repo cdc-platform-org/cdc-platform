@@ -35,3 +35,9 @@ export async function unbanUser(userId: string): Promise<AdminUser> {
   const response = await apiClient.post<AdminUser>(`/admin/users/${userId}/unban`);
   return response.data;
 }
+
+// Sends the user the same password-reset email their own "Forgot password?"
+// flow would — support-initiated, never sets/reveals an actual password.
+export async function sendAdminPasswordReset(userId: string): Promise<void> {
+  await apiClient.post(`/admin/users/${userId}/reset-password`);
+}

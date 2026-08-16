@@ -124,6 +124,18 @@ router.get('/', async (_req: Request, res: Response) => {
   res.json({ data: products });
 });
 
+// Every purchase of one product, including whether the buyer has ever
+// actually downloaded the file — the deciding fact for a refund request
+// (products.ts's refund policy: non-refundable once downloaded).
+router.get('/:id/purchases', async (req: Request, res: Response) => {
+  const purchases = await prisma.productPurchase.findMany({
+    where: { productId: req.params.id },
+    include: { user: { select: { id: true, name: true, email: true } } },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json({ data: purchases });
+});
+
 const updateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().min(1).max(5000).optional(),

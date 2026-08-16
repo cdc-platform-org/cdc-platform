@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { FileText } from 'lucide-react';
+import { FileText, ShieldCheck } from 'lucide-react';
 import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
 import { useEscapeToClose } from '../src/hooks/useEscapeToClose';
@@ -36,6 +36,10 @@ const dict = {
     close: 'დახურვა',
     signInRequired: 'სესიის დასაჯავშნად გთხოვთ გაიაროთ ავტორიზაცია.',
     error: 'დაფიქსირდა შეცდომა. სცადეთ თავიდან.',
+    policyTitle: '🛡️ გაუქმებისა და თანხის დაბრუნების პოლიტიკა',
+    policyPoint1: 'სესიის გაუქმება შეხვედრამდე 12 საათით ადრე ითვალისწინებს თანხის 100%-ით დაბრუნებას (საბანკო საკომისიოს გამოკლებით).',
+    policyPoint2: '12 საათზე ნაკლებ დროში გაუქმებისას, მენტორის დროის კომპენსაციისთვის უბრუნდება ღირებულების 50%.',
+    policyPoint3: 'თუ მენტორი არ გამოცხადდა შეხვედრაზე, თანხა უბრუნდება სტუდენტს სრულად (100%).',
   },
   en: {
     title: 'Mentors',
@@ -61,6 +65,10 @@ const dict = {
     close: 'Close',
     signInRequired: 'Please sign in to book a session.',
     error: 'Something went wrong. Please try again.',
+    policyTitle: '🛡️ Cancellation & Refund Policy',
+    policyPoint1: 'Cancelling 12+ hours before the session gets you a 100% refund (minus the bank processing fee).',
+    policyPoint2: 'Cancelling less than 12 hours before the session refunds 50%, to compensate the mentor\'s reserved time.',
+    policyPoint3: "If the mentor doesn't show up, you get a full 100% refund.",
   },
 };
 
@@ -306,6 +314,18 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: '
                 <p className="text-slate-600 dark:text-slate-400">{formatPrice(mentor.mentorHourlyRate)}</p>
               )}
             </div>
+
+            <div className="rounded-xl border border-amber-300/60 dark:border-amber-500/30 bg-amber-50/60 dark:bg-amber-500/10 p-4 mb-5">
+              <p className="flex items-center gap-1.5 text-xs font-black text-amber-800 dark:text-amber-300 mb-2">
+                <ShieldCheck className="w-3.5 h-3.5" /> {t.policyTitle}
+              </p>
+              <ul className="space-y-1 text-[11px] text-amber-800/90 dark:text-amber-200/80 list-disc pl-4">
+                <li>{t.policyPoint1}</li>
+                <li>{t.policyPoint2}</li>
+                <li>{t.policyPoint3}</li>
+              </ul>
+            </div>
+
             <div className="flex gap-2">
               <button
                 type="button"

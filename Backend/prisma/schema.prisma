@@ -992,6 +992,11 @@ model ProductPurchase {
   commissionRate   Float?
   commissionAmount Int?
   netAmount        Int?
+  // Set the first time this buyer actually downloads the file (see
+  // GET /products/:id/download) — lets an admin see whether a refund
+  // request came in before or after the file was ever opened. Never reset
+  // on subsequent re-downloads (lifetime re-download is allowed).
+  downloadedAt     DateTime?
   createdAt        DateTime       @default(now())
 
   @@unique([userId, productId])

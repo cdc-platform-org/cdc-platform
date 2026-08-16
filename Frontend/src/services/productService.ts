@@ -103,3 +103,20 @@ export async function uploadProductFile(file: File): Promise<string> {
   const response = await apiClient.post<{ data: { url: string } }>('/admin/products/upload-file', formData);
   return response.data.data.url;
 }
+
+export interface AdminProductPurchase {
+  id: string;
+  amount: number;
+  paymentStatus: string;
+  downloadedAt: string | null;
+  createdAt: string;
+  user: { id: string; name: string; email: string };
+}
+
+// Whether each buyer has ever actually downloaded the file — the deciding
+// fact for a refund request (non-refundable once downloaded, see
+// legalContent.ts's Digital Store refund clause).
+export async function getProductPurchases(productId: string): Promise<AdminProductPurchase[]> {
+  const response = await apiClient.get<{ data: AdminProductPurchase[] }>(`/admin/products/${productId}/purchases`);
+  return response.data.data;
+}

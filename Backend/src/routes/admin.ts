@@ -1,8 +1,18 @@
 import { Router, Request, Response } from 'express';
+import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { rejectUserSchema, banUserSchema, updateAiTrialSchema } from '../schemas/adminSchemas';
+import { sendPasswordResetEmail } from '../services/emailService';
 const router = Router();
+
+// Same hash-the-token-not-the-password posture as routes/auth.ts's own
+// forgot-password flow (duplicated rather than shared — a small pure
+// function, not worth a new module for one line).
+function hashResetToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 
 // Baseline: any admin-team member can at least read. Mutating routes below
 // layer a stricter requireAdminRole() on top where the task calls for it.
@@ -111,6 +121,31 @@ router.post('/users/:id/ban', async (req: Request, res: Response) => {
     omit: { password: true },
   });
   res.json(updated);
+});
+
+// Support-initiated password reset — an admin can't set or see a user's new
+// password directly (same "never handle a real password" posture as
+// bcrypt-hashed storage elsewhere), only trigger the same reset-link email
+// the user's own "Forgot password?" flow sends (routes/auth.ts's
+// POST /forgot-password). Lets support actually help a user locked out of
+// their email too, unlike the self-serve flow.
+router.post('/users/:id/reset-password', requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
+  const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+  if (!user) return res.status(404).json({ message: 'User not found.' });
+  if (user.googleId) {
+    return res.status(400).json({ message: 'This account signs in via Google and has no password to reset.' });
+  }
+
+  const token = crypto.randomBytes(32).toString('hex');
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      passwordResetToken: hashResetToken(token),
+      passwordResetTokenExpires: new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS),
+    },
+  });
+  sendPasswordResetEmail(user.email, token, 'ka');
+  res.json({ message: 'Password reset email sent.' });
 });
 
 router.post('/users/:id/unban', async (req: Request, res: Response) => {
