@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Bot,
   Sparkles,
+  Mail,
 } from 'lucide-react';
 import ProtectedRoute from '../src/components/auth/ProtectedRoute';
 import SiteHeader from '../src/components/layout/SiteHeader';
@@ -133,6 +134,12 @@ const dict = {
     confirmDownload: 'დადასტურება და ჩამოტვირთვა',
     confirmChangeName: 'სახელის შეცვლა (პროფილში გადასვლა)',
     confirmCancel: 'გაუქმება',
+    certDownloadFailed: 'სერტიფიკატის გენერირება ვერ მოხერხდა. სცადეთ თავიდან.',
+    certLimitTitle: 'სერტიფიკატი უკვე ჩამოტვირთულია',
+    certLimitMessage:
+      'სერტიფიკატის განმეორებით ჩამოტვირთვისთვის ან მონაცემების შესაცვლელად, გთხოვთ დაუკავშირდეთ მხარდაჭერის გუნდს ელფოსტაზე: contact@cdc.org.ge',
+    certLimitClose: 'დახურვა',
+    certLimitContactEmail: 'contact@cdc.org.ge',
     // Post quota (non-graduates)
     statPostsLeft: 'დარჩენილი პოსტები (ამ თვეში)',
     postsLeftValue: 'დარჩენილი გაქვთ 3-დან {{remaining}} პოსტი ამ თვეში',
@@ -233,6 +240,12 @@ const dict = {
     confirmDownload: 'Confirm & Download',
     confirmChangeName: 'Change Name (Go to Settings)',
     confirmCancel: 'Cancel',
+    certDownloadFailed: 'Unable to generate the certificate. Please try again.',
+    certLimitTitle: 'Certificate Already Downloaded',
+    certLimitMessage:
+      'To re-download your certificate or update its details, please contact our support team at: contact@cdc.org.ge',
+    certLimitClose: 'Close',
+    certLimitContactEmail: 'contact@cdc.org.ge',
     statPostsLeft: 'Forum posts left (this month)',
     postsLeftValue: 'You have {{remaining}} of 3 posts left this month',
     examTitle: 'Skill Verification / Exam',
@@ -357,9 +370,12 @@ function DashboardContent() {
 
   const [downloadingCourseId, setDownloadingCourseId] = useState<string | null>(null);
   const [confirmCourseId, setConfirmCourseId] = useState<string | null>(null);
+  const [certDownloadError, setCertDownloadError] = useState<string | null>(null);
+  const [certLimitMessage, setCertLimitMessage] = useState<string | null>(null);
   const [requestingMentorFor, setRequestingMentorFor] = useState<string | null>(null);
 
   useEscapeToClose(confirmCourseId !== null, () => setConfirmCourseId(null));
+  useEscapeToClose(certLimitMessage !== null, () => setCertLimitMessage(null));
 
   const [payoutAmount, setPayoutAmount] = useState('');
   const [payoutIban, setPayoutIban] = useState('');
@@ -471,6 +487,7 @@ function DashboardContent() {
 
   const handleDownloadCertificate = async (courseId: string, courseTitle: string) => {
     setDownloadingCourseId(courseId);
+    setCertDownloadError(null);
     try {
       const blob = await downloadCertificate(courseId);
       const url = URL.createObjectURL(blob);
@@ -481,9 +498,33 @@ function DashboardContent() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      setConfirmCourseId(null);
+    } catch (err: any) {
+      // responseType: 'blob' means an error response's JSON body arrives as
+      // a Blob too, not parsed data — err.response.data.message would be
+      // undefined even when the server sent a real error message. Without
+      // this, a failed request (e.g. the one-download-per-course limit)
+      // just silently reset the button with no feedback at all.
+      const errorBlob = err?.response?.data;
+      let serverMessage: string | undefined;
+      let serverErrorKey: string | undefined;
+      if (errorBlob instanceof Blob) {
+        try {
+          const parsed = JSON.parse(await errorBlob.text());
+          serverMessage = parsed?.message;
+          serverErrorKey = parsed?.error;
+        } catch {
+          // not JSON — ignore, fall back to the generic message below
+        }
+      }
+      if (serverErrorKey === 'DOWNLOAD_LIMIT_REACHED') {
+        setConfirmCourseId(null);
+        setCertLimitMessage(serverMessage ?? t.certLimitMessage);
+      } else {
+        setCertDownloadError(serverMessage || t.certDownloadFailed);
+      }
     } finally {
       setDownloadingCourseId(null);
-      setConfirmCourseId(null);
     }
   };
 
@@ -760,7 +801,7 @@ function DashboardContent() {
                       </Link>
                     </div>
                   ) : (
-                    courses.map(({ course, progress, hasCertificate }) => (
+                    courses.map(({ course, progress, hasCertificate, certificateDownloadCount }) => (
                       <div
                         key={course.id}
                         className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4"
@@ -783,7 +824,14 @@ function DashboardContent() {
                           {progress.percent >= 100 ? (
                             <button
                               type="button"
-                              onClick={() => setConfirmCourseId(course.id)}
+                              onClick={() => {
+                                if (certificateDownloadCount >= 1) {
+                                  setCertLimitMessage(t.certLimitMessage);
+                                  return;
+                                }
+                                setCertDownloadError(null);
+                                setConfirmCourseId(course.id);
+                              }}
                               disabled={downloadingCourseId === course.id}
                               className="flex items-center gap-1.5 bg-slate-950 hover:bg-slate-800 dark:bg-cyan-600 dark:hover:bg-cyan-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition disabled:opacity-60"
                             >
@@ -1168,6 +1216,9 @@ function DashboardContent() {
             <p className="text-lg font-bold text-cyan-600 dark:text-cyan-300 mb-1">{certificateNameKa}</p>
             {certificateNameEn && <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">{certificateNameEn}</p>}
             <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-6">{t.confirmChangeHint}</p>
+            {certDownloadError && (
+              <p className="text-xs font-medium text-rose-600 dark:text-rose-400 mb-3">{certDownloadError}</p>
+            )}
             <div className="flex flex-col gap-2">
               <button
                 type="button"
@@ -1189,6 +1240,37 @@ function DashboardContent() {
                 className="w-full text-sm font-bold px-4 py-3 rounded-xl text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 bg-transparent"
               >
                 {t.confirmCancel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {certLimitMessage && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setCertLimitMessage(null)}
+        >
+          <div
+            className="max-w-md w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-extrabold text-slate-900 dark:text-white mb-3">{t.certLimitTitle}</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-5">{certLimitMessage}</p>
+            <div className="flex flex-col gap-2">
+              <a
+                href={`mailto:${t.certLimitContactEmail}`}
+                className="flex items-center justify-center gap-2 w-full text-sm font-bold px-4 py-3 rounded-xl bg-slate-950 dark:bg-cyan-600 text-white hover:bg-slate-800 dark:hover:bg-cyan-500 transition no-underline"
+              >
+                <Mail className="w-4 h-4" />
+                {t.certLimitContactEmail}
+              </a>
+              <button
+                type="button"
+                onClick={() => setCertLimitMessage(null)}
+                className="w-full text-sm font-bold px-4 py-3 rounded-xl text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 bg-transparent"
+              >
+                {t.certLimitClose}
               </button>
             </div>
           </div>

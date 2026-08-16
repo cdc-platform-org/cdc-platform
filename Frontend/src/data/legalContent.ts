@@ -5,9 +5,10 @@
 //
 // NOTE: this is starter/template legal copy reflecting how the platform
 // actually works (BOG as payment processor, the 60-day account-deletion
-// grace period, the 10% marketplace commission, etc.) — it has not been
-// reviewed by a lawyer. Have Georgian legal counsel review before relying on
-// it for real compliance, especially the specific refund timeframes below.
+// grace period, the unified 20% marketplace commission, etc.) — it has not
+// been reviewed by a lawyer. Have Georgian legal counsel review before
+// relying on it for real compliance, especially the specific refund
+// timeframes below.
 
 import { LegalSection } from '@/src/components/layout/LegalSections';
 import { merchantInfo } from './merchantInfo';
@@ -155,7 +156,8 @@ export const termsAndConditions: { ka: LegalSection[]; en: LegalSection[] } = {
     {
       heading: '5. ფრილანს ბირჟა და ესქროუ',
       paragraphs: [
-        'გარიგებაზე დაფინანსებული თანხა ინახება ესქროუში, სანამ დამკვეთი არ დაადასტურებს შესრულებულ სამუშაოს. პლატფორმის საკომისიო შეადგენს გარიგების ღირებულების 10%-ს. ესქროუს გამოთავისუფლების პირობები აღწერილია გარიგების პროცესში.',
+        'გარიგებაზე დაფინანსებული თანხა ინახება ესქროუში, სანამ დამკვეთი არ დაადასტურებს შესრულებულ სამუშაოს. პლატფორმის ჯამური მომსახურების საკომისიო შეადგენს გარიგების ღირებულების 20%-ს — ორი კომპონენტისგან შემდგარი: 10% საბანკო საგადახდო სისტემის ტრანზაქციის საკომისიო და 10% CDC ცენტრის პლატფორმული მხარდაჭერის საკომისიო, იგივე სტრუქტურა, რაც ციფრულ მაღაზიაშია აღწერილი (იხ. მე-6 პუნქტი).',
+        'ფრილანსერი იღებს სუფთა შემოსავლის 80%-ს. ესქროუს გამოთავისუფლების პირობები (დამკვეთის დადასტურება ან დავის გადაწყვეტის პროცედურა) აღწერილია გარიგების პროცესში.',
       ],
     },
     {
@@ -228,7 +230,8 @@ export const termsAndConditions: { ka: LegalSection[]; en: LegalSection[] } = {
     {
       heading: '5. Freelance Marketplace and Escrow',
       paragraphs: [
-        'Funds for a gig are held in escrow until the client approves the delivered work. The platform commission is 10% of the deal value. Escrow release conditions are described during the deal process.',
+        'Funds for a gig are held in escrow until the client approves the delivered work. The total platform service fee is 20% of the deal value, made up of two components: a 10% bank payment-system transaction fee and a 10% CDC Center platform support fee — the same structure described for the Digital Store (see Section 6).',
+        'The freelancer receives a net 80% share. Escrow release conditions (client approval, or the dispute-resolution process) are described during the deal process.',
       ],
     },
     {

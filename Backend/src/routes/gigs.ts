@@ -296,7 +296,7 @@ router.post('/:id/submit', authenticate, loadGig, async (req: Request, res: Resp
   res.json(updated);
 });
 
-// Client approves delivered work — releases escrow (10% platform fee, 90% net
+// Client approves delivered work — releases escrow (20% platform fee, 80% net
 // to the freelancer's balance) and marks the gig completed. The same
 // approveGigWork() is also invoked automatically by the 7-day auto-approve
 // cron (routes/cron.ts) when the client never responds.

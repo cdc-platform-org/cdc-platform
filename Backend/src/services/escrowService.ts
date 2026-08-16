@@ -1,6 +1,13 @@
 import { prisma } from '../lib/prisma';
-// Kept in sync with the 10% shown in the frontend Proposal Calculator (ProposalModal.tsx).
-const PLATFORM_COMMISSION_RATE = 0.1;
+// Unified platform-wide rate — 20% total (10% bank/payment-processing
+// gateway fee + 10% CDC Center platform support fee), same policy and same
+// split as the Digital Store's PLATFORM_COMMISSION_RATE
+// (services/productSaleService.ts). Kept as its own constant rather than a
+// shared import — two independent revenue streams that happen to share a
+// value, not the same policy, so they shouldn't be coupled to a single
+// source that could drift them apart unintentionally. Kept in sync with the
+// 20% shown in the frontend Proposal Calculator (ProposalModal.tsx).
+const PLATFORM_COMMISSION_RATE = 0.2;
 export async function captureEscrow(params: {
   gigId: string;
   gigApplicationId: string;

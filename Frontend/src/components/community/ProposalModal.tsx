@@ -2,7 +2,7 @@ import { useState, useMemo, FormEvent } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 
-const PLATFORM_FEE_RATE = 0.1; // 10% — shown live as the freelancer types their bid
+const PLATFORM_FEE_RATE = 0.2; // 20% (10% bank fee + 10% CDC Center) — shown live as the freelancer types their bid
 
 interface ProposalModalProps {
   gigTitle: string;
@@ -125,8 +125,8 @@ export default function ProposalModal({
                 {t('proposalModal.feeCalculator.title')}
               </p>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600" title={t('proposalModal.feeCalculator.tooltip', { rate: 10 }) as string}>
-                  {t('proposalModal.feeCalculator.platformFee', { rate: 10 })}
+                <span className="text-gray-600" title={t('proposalModal.feeCalculator.tooltip', { rate: PLATFORM_FEE_RATE * 100 }) as string}>
+                  {t('proposalModal.feeCalculator.platformFee', { rate: PLATFORM_FEE_RATE * 100 })}
                 </span>
                 <span className="font-medium text-red-600">
                   -{platformFee.toFixed(2)} {currency}

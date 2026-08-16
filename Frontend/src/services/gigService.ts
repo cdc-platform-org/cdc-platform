@@ -82,7 +82,7 @@ export interface GigApprovalResult {
   };
 }
 
-// Client approves delivered work — releases escrow (10% platform fee, 90% net
+// Client approves delivered work — releases escrow (20% platform fee, 80% net
 // to the freelancer) and marks the gig completed.
 export async function approveGigWork(gigId: string): Promise<GigApprovalResult> {
   const response = await apiClient.post<GigApprovalResult>(`/gigs/${gigId}/approve`);
