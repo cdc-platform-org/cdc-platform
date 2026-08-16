@@ -39,6 +39,14 @@ function RegisterPage() {
     setDarkMode(document.documentElement.classList.contains('dark'));
   }, []);
 
+  // Lets a caller land here with Step 1 already answered — e.g. AuthModal.tsx
+  // redirects business-only CTAs (the Enterprise AI Tools trial) here with
+  // ?intent=EMPLOYER instead of making them re-pick "Hiring & B2B" themselves.
+  useEffect(() => {
+    const q = router.query.intent;
+    if (q === 'TALENT' || q === 'EMPLOYER') setIntent(q);
+  }, [router.query.intent]);
+
   const toggleDarkMode = () => {
     const next = !darkMode;
     setDarkMode(next);
@@ -248,7 +256,7 @@ function RegisterPage() {
             </label>
             <input
               id="email"
-              type="type"
+              type="email"
               required
               autoComplete="email"
               value={email}

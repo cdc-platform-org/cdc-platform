@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/router';
-import Link from 'next/link';
-import { GraduationCap, Building2, X, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { X, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { User } from '../../types/auth';
 import { useAuthModal } from '../../context/AuthModalContext';
@@ -11,7 +10,7 @@ import SocialLoginButtons from './SocialLoginButtons';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { forgotPassword } from '../../services/authService';
 
-type Mode = 'login' | 'register' | 'forgot';
+type Mode = 'login' | 'forgot';
 
 // Self-contained bilingual strings, keyed off next/router's `locale` directly
 // — deliberately NOT next-i18next's useTranslation('auth') here. This modal
@@ -19,29 +18,26 @@ type Mode = 'login' | 'register' | 'forgot';
 // page; relying on a namespace loaded via that specific page's
 // serverSideTranslations would silently break on any page that forgot to
 // list 'auth'. router.locale needs no such per-page wiring.
+//
+// Registration itself doesn't live here — see the redirect-to-/auth/register
+// logic below. That page is a full two-step wizard (intent -> sub-role) with
+// dark-mode support and next-i18next translations; duplicating that inline
+// in a global, i18next-free modal wasn't worth maintaining twice.
 const STRINGS = {
   ka: {
     loginTab: 'შესვლა',
     registerTab: 'რეგისტრაცია',
-    nameLabel: 'სახელი',
-    namePlaceholder: 'თქვენი სახელი',
-    nameLabelBusiness: 'კომპანიის დასახელება',
-    namePlaceholderBusiness: 'კომპანიის / ორგანიზაციის დასახელება',
     emailLabel: 'ელ-ფოსტა',
     emailPlaceholder: 'you@example.com',
     passwordLabel: 'პაროლი',
     passwordPlaceholder: '••••••••',
     loginButton: 'შესვლა',
     loginSubmitting: 'შედის…',
-    registerButton: 'რეგისტრაცია',
-    registerSubmitting: 'იქმნება…',
     googleButton: 'გააგრძელეთ Google-ით',
     googleNotConfigured: 'Google შესვლა ჯერ არ არის კონფიგურირებული',
     orDivider: 'ან',
     noAccount: 'არ გაქვთ ანგარიში?',
-    hasAccount: 'უკვე გაქვთ ანგარიში?',
     switchToRegister: 'დარეგისტრირდით',
-    switchToLogin: 'შედით',
     forgotPassword: 'დაგავიწყდა პაროლი?',
     forgotTitle: 'პაროლის აღდგენა',
     forgotSubtitle: 'შეიყვანეთ თქვენი ანგარიშის ელ-ფოსტა და გამოგიგზავნით აღდგენის ბმულს.',
@@ -49,11 +45,6 @@ const STRINGS = {
     sendingResetLink: 'იგზავნება…',
     resetLinkSent: 'თუ ეს ელ-ფოსტა რეგისტრირებულია, აღდგენის ბმული გამოგზავნილია. შეამოწმეთ თქვენი ინბოქსი.',
     backToLogin: '← შესვლაში დაბრუნება',
-    roleLabel: 'რეგისტრირდები როგორც',
-    roleStudent: 'სტუდენტი / ფრილანსერი',
-    roleClient: 'ბიზნესი',
-    termsPrefix: 'ვეთანხმები',
-    termsLink: 'წესებსა და პირობებს',
     genericError: 'დაფიქსირდა შეცდომა. სცადეთ თავიდან.',
     close: 'დახურვა',
     redirectingToAdmin: '✓ შესვლა წარმატებულია — გადამისამართება Admin სამუშაო სივრცეში…',
@@ -61,25 +52,17 @@ const STRINGS = {
   en: {
     loginTab: 'Login',
     registerTab: 'Register',
-    nameLabel: 'Name',
-    namePlaceholder: 'Your name',
-    nameLabelBusiness: 'Company Name',
-    namePlaceholderBusiness: 'Company / Organization Name',
     emailLabel: 'Email',
     emailPlaceholder: 'you@example.com',
     passwordLabel: 'Password',
     passwordPlaceholder: '••••••••',
     loginButton: 'Log In',
     loginSubmitting: 'Logging in…',
-    registerButton: 'Register',
-    registerSubmitting: 'Creating account…',
     googleButton: 'Continue with Google',
     googleNotConfigured: 'Google Sign-In is not configured yet',
     orDivider: 'OR',
     noAccount: "Don't have an account?",
-    hasAccount: 'Already have an account?',
     switchToRegister: 'Register',
-    switchToLogin: 'Log in',
     forgotPassword: 'Forgot password?',
     forgotTitle: 'Reset Password',
     forgotSubtitle: "Enter your account's email and we'll send you a reset link.",
@@ -87,11 +70,6 @@ const STRINGS = {
     sendingResetLink: 'Sending…',
     resetLinkSent: "If that email is registered, a reset link has been sent. Check your inbox.",
     backToLogin: '← Back to login',
-    roleLabel: 'Registering as',
-    roleStudent: 'Student / Freelancer',
-    roleClient: 'Business',
-    termsPrefix: 'I agree to the',
-    termsLink: 'Terms & Conditions',
     genericError: 'Something went wrong. Please try again.',
     close: 'Close',
     redirectingToAdmin: '✓ Signed in — redirecting to the Admin Workspace…',
@@ -100,17 +78,14 @@ const STRINGS = {
 
 export default function AuthModal() {
   const router = useRouter();
-  const { login, register, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const { isOpen, contextMessage, initialMode, initialRole, onSuccess, closeAuthModal } = useAuthModal();
   const lang = router.locale === 'en' ? 'en' : 'ka';
   const t = STRINGS[lang];
 
-  const [mode, setMode] = useState<Mode>(initialMode);
-  const [name, setName] = useState('');
+  const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'Student' | 'Client'>('Student');
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [redirectingAdmin, setRedirectingAdmin] = useState(false);
@@ -132,13 +107,24 @@ export default function AuthModal() {
 
   useEscapeToClose(isOpen, closeAuthModal);
 
-  // Runs once login/registration (email/password or Google) succeeds. A
-  // pending onSuccess (e.g. "resume checkout for the course I was trying to
-  // buy") always wins over the default redirect — the user had a specific
-  // intent, don't bounce them somewhere else. Otherwise an explicit
-  // ?redirect= (set by ProtectedRoute when it bounced a guest into the
-  // modal) wins next, same precedence as pages/auth/login.tsx; admin-team
-  // members land in the Admin Workspace, everyone else in the dashboard.
+  // Sends the user to the full registration wizard instead of rendering a
+  // second, simplified register form inline — see the STRINGS comment above
+  // for why. ?intent=EMPLOYER carries the modal's initialRole through so a
+  // business-only CTA (e.g. the Enterprise AI Tools trial, which opens this
+  // modal with initialRole: 'Client') still lands past Step 1 instead of
+  // making the user re-pick "Hiring & B2B" themselves.
+  const goToRegister = (role: 'Student' | 'Client' = 'Student') => {
+    closeAuthModal();
+    router.push(role === 'Client' ? '/auth/register?intent=EMPLOYER' : '/auth/register');
+  };
+
+  // Runs once login (email/password or Google) succeeds. A pending onSuccess
+  // (e.g. "resume checkout for the course I was trying to buy") always wins
+  // over the default redirect — the user had a specific intent, don't bounce
+  // them somewhere else. Otherwise an explicit ?redirect= (set by
+  // ProtectedRoute when it bounced a guest into the modal) wins next, same
+  // precedence as pages/auth/login.tsx; admin-team members land in the Admin
+  // Workspace, everyone else in the dashboard.
   const handlePostLogin = (loggedInUser: User) => {
     if (onSuccess) {
       closeAuthModal();
@@ -160,20 +146,24 @@ export default function AuthModal() {
   };
 
   useEffect(() => {
-    if (isOpen) {
-      if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
-      setMode(initialMode);
-      setError(null);
-      setRedirectingAdmin(false);
-      setName('');
-      setEmail('');
-      setPassword('');
-      setRole(initialRole);
-      setForgotEmail('');
-      setForgotSubmitting(false);
-      setForgotSent(false);
-      setForgotError(null);
+    if (!isOpen) return;
+    // Opened directly into register mode (e.g. a business-only CTA) — never
+    // rendered here, just forwarded straight to the real registration page.
+    if (initialMode === 'register') {
+      goToRegister(initialRole);
+      return;
     }
+    if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
+    setMode('login');
+    setError(null);
+    setRedirectingAdmin(false);
+    setEmail('');
+    setPassword('');
+    setForgotEmail('');
+    setForgotSubmitting(false);
+    setForgotSent(false);
+    setForgotError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, initialMode, initialRole]);
 
   if (!isOpen) return null;
@@ -181,9 +171,7 @@ export default function AuthModal() {
   const handleGoogleCredential = (idToken: string) => {
     setSubmitting(true);
     setError(null);
-    // role only matters if this Google identity is creating a brand-new
-    // account — ignored for an existing one (see Backend's /google route).
-    loginWithGoogle(idToken, mode === 'register' ? role : undefined)
+    loginWithGoogle(idToken)
       .then((loggedInUser) => handlePostLogin(loggedInUser))
       .catch((err: any) => setError(err?.response?.data?.message || t.genericError))
       .finally(() => setSubmitting(false));
@@ -194,13 +182,8 @@ export default function AuthModal() {
     setError(null);
     setSubmitting(true);
     try {
-      if (mode === 'login') {
-        const loggedInUser = await login({ email, password });
-        handlePostLogin(loggedInUser);
-      } else {
-        const newUser = await register({ name, email, password, role, acceptedTerms });
-        handlePostLogin(newUser);
-      }
+      const loggedInUser = await login({ email, password });
+      handlePostLogin(loggedInUser);
     } catch (err: any) {
       const apiErrors = err?.response?.data?.errors;
       const apiMessage = err?.response?.data?.message;
@@ -291,33 +274,24 @@ export default function AuthModal() {
         ) : (
           <>
             {/* Tab header — pr-12 keeps the tabs clear of the close button
-                regardless of locale/label length. */}
+                regardless of locale/label length. Register always navigates
+                away (see goToRegister) rather than switching an in-place
+                mode, so it's never the "active" tab. */}
             <div className="relative flex border-b border-gray-200 pr-12 mb-6">
               <button
                 type="button"
-                onClick={() => setMode('login')}
-                className={`relative z-10 flex-1 pb-3 text-sm font-semibold transition-colors ${
-                  mode === 'login' ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'
-                }`}
+                className="relative z-10 flex-1 pb-3 text-sm font-semibold text-indigo-600"
               >
                 {t.loginTab}
               </button>
               <button
                 type="button"
-                onClick={() => setMode('register')}
-                className={`relative z-10 flex-1 pb-3 text-sm font-semibold transition-colors ${
-                  mode === 'register' ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'
-                }`}
+                onClick={() => goToRegister()}
+                className="relative z-10 flex-1 pb-3 text-sm font-semibold text-gray-400 hover:text-gray-600 transition-colors"
               >
                 {t.registerTab}
               </button>
-              {/* Sliding highlight — z-0, purely decorative, sits behind both
-                  the tab labels (z-10) and the close button (z-50) so it can
-                  never intercept clicks meant for either. */}
-              <div
-                className="absolute bottom-0 left-0 z-0 h-0.5 w-1/2 bg-indigo-600 transition-transform duration-300 ease-in-out"
-                style={{ transform: mode === 'register' ? 'translateX(100%)' : 'translateX(0%)' }}
-              />
+              <div className="absolute bottom-0 left-0 z-0 h-0.5 w-1/2 bg-indigo-600" />
             </div>
 
             {contextMessage && (
@@ -333,21 +307,6 @@ export default function AuthModal() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {mode === 'register' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    {role === 'Client' ? t.nameLabelBusiness : t.nameLabel}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder={role === 'Client' ? t.namePlaceholderBusiness : t.namePlaceholder}
-                    className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.emailLabel}</label>
                 <input
@@ -362,15 +321,13 @@ export default function AuthModal() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-sm font-medium text-gray-700">{t.passwordLabel}</label>
-                  {mode === 'login' && (
-                    <button
-                      type="button"
-                      onClick={() => setMode('forgot')}
-                      className="text-xs font-medium text-indigo-600 hover:text-indigo-700 bg-transparent border-none p-0 cursor-pointer"
-                    >
-                      {t.forgotPassword}
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setMode('forgot')}
+                    className="text-xs font-medium text-indigo-600 hover:text-indigo-700 bg-transparent border-none p-0 cursor-pointer"
+                  >
+                    {t.forgotPassword}
+                  </button>
                 </div>
                 <PasswordInput
                   required
@@ -382,70 +339,12 @@ export default function AuthModal() {
                 />
               </div>
 
-              {mode === 'register' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.roleLabel}</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setRole('Student')}
-                      aria-pressed={role === 'Student'}
-                      className={`flex items-center justify-center gap-1.5 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
-                        role === 'Student'
-                          ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                          : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                      }`}
-                    >
-                      <GraduationCap className="w-4 h-4" />
-                      {t.roleStudent}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRole('Client')}
-                      aria-pressed={role === 'Client'}
-                      className={`flex items-center justify-center gap-1.5 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
-                        role === 'Client'
-                          ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                          : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                      }`}
-                    >
-                      <Building2 className="w-4 h-4" />
-                      {t.roleClient}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {mode === 'register' && (
-                <label className="flex items-start gap-2.5 text-sm text-gray-600 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    required
-                    checked={acceptedTerms}
-                    onChange={(e) => setAcceptedTerms(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 shrink-0"
-                  />
-                  <span>
-                    {t.termsPrefix}{' '}
-                    <Link href="/terms" target="_blank" className="font-medium text-indigo-600 hover:text-indigo-500">
-                      {t.termsLink}
-                    </Link>
-                  </span>
-                </label>
-              )}
-
               <button
                 type="submit"
-                disabled={submitting || (mode === 'register' && !acceptedTerms)}
+                disabled={submitting}
                 className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
               >
-                {submitting
-                  ? mode === 'login'
-                    ? t.loginSubmitting
-                    : t.registerSubmitting
-                  : mode === 'login'
-                  ? t.loginButton
-                  : t.registerButton}
+                {submitting ? t.loginSubmitting : t.loginButton}
               </button>
             </form>
 
@@ -457,24 +356,23 @@ export default function AuthModal() {
 
             <div className="space-y-2.5">
               <GoogleSignInButton
-                mode={mode === 'register' ? 'register' : 'login'}
-                role={mode === 'register' ? role : undefined}
+                mode="login"
                 lang={lang}
                 onCredential={handleGoogleCredential}
                 disabledLabel={t.googleButton}
                 disabledTitle={t.googleNotConfigured}
               />
-              <SocialLoginButtons lang={lang} role={mode === 'register' ? role : undefined} />
+              <SocialLoginButtons lang={lang} />
             </div>
 
             <p className="text-center text-sm text-gray-500 mt-5">
-              {mode === 'login' ? t.noAccount : t.hasAccount}{' '}
+              {t.noAccount}{' '}
               <button
                 type="button"
-                onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+                onClick={() => goToRegister()}
                 className="font-medium text-indigo-600 hover:text-indigo-700"
               >
-                {mode === 'login' ? t.switchToRegister : t.switchToLogin}
+                {t.switchToRegister}
               </button>
             </p>
           </>
