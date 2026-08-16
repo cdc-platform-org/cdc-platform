@@ -100,6 +100,25 @@ export const BUNNY_CDN_URL = process.env.BUNNY_CDN_URL || '';
 // fallback (services/imageStorage.ts) when Bunny Storage isn't configured;
 // same pattern/fallback as routes/payments.ts's BACKEND_URL.
 export const BACKEND_URL = (process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 4000}`).replace(/\/$/, '');
+// GitHub/Facebook's redirect_uri must match character-for-character what's
+// registered in that provider's OAuth App dashboard (GitHub → Settings →
+// Developer settings → OAuth Apps; Facebook → App Dashboard → Facebook
+// Login → Settings) — a mismatch (including scheme) is exactly what
+// produces GitHub's "The redirect_uri is not associated with this
+// application". Same https-forcing safety net as routes/payments.ts's
+// resolveHttpsCallbackUrl(): BACKEND_URL degrading to its http://localhost
+// dev fallback in production (e.g. an unset Azure App Setting) would
+// otherwise silently send a redirect_uri neither provider ever accepts, with
+// no indication why. GITHUB_CALLBACK_URL/FACEBOOK_CALLBACK_URL are optional
+// explicit overrides for when the public URL a provider must redirect back
+// to differs from BACKEND_URL itself (e.g. behind a different reverse-proxy
+// path) — unset by default, falling back to BACKEND_URL + the fixed path.
+function resolveHttpsUrl(path: string): string {
+  const httpsBase = BACKEND_URL.startsWith('https://') ? BACKEND_URL : `https://${BACKEND_URL.replace(/^https?:\/\//, '')}`;
+  return `${httpsBase}${path}`;
+}
+export const GITHUB_CALLBACK_URL = cleanEnv(process.env.GITHUB_CALLBACK_URL) || resolveHttpsUrl('/api/auth/github/callback');
+export const FACEBOOK_CALLBACK_URL = cleanEnv(process.env.FACEBOOK_CALLBACK_URL) || resolveHttpsUrl('/api/auth/facebook/callback');
 // Name printed on the left-hand ("დირექტორი / Director") signature rule of
 // every course certificate — see services/certificateService.ts. Deliberately
 // NOT requireEnv() and deliberately not defaulted to a placeholder person:

@@ -6,6 +6,8 @@ import { useAuth } from '../../context/AuthContext';
 import { User } from '../../types/auth';
 import { useAuthModal } from '../../context/AuthModalContext';
 import PasswordInput from './PasswordInput';
+import GoogleSignInButton from './GoogleSignInButton';
+import SocialLoginButtons from './SocialLoginButtons';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { forgotPassword } from '../../services/authService';
 
@@ -116,42 +118,16 @@ export default function AuthModal() {
   const [forgotSubmitting, setForgotSubmitting] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotError, setForgotError] = useState<string | null>(null);
-  const googleButtonRef = useRef<HTMLDivElement>(null);
   // AuthModal is mounted once globally (pages/_app.tsx) and never unmounts,
   // but this timer can still race itself if the modal is closed and reopened
   // before it fires — tracking it lets a new open cancel any stale pending
   // timer instead of it firing later and clobbering fresh state.
   const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Google's GSI script (pages/_app.tsx) loads asynchronously — if the
-  // modal opens before it's ready, window.google is still undefined and
-  // there'd be nothing to make the button-render effect below try again.
-  // This tracks readiness explicitly so that effect re-runs the moment the
-  // script actually finishes loading, even if the modal was opened first.
-  const [googleReady, setGoogleReady] = useState(
-    () => typeof window !== 'undefined' && !!window.google?.accounts?.id
-  );
 
   useEffect(() => {
     return () => {
       if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
     };
-  }, []);
-
-  useEffect(() => {
-    if (googleReady) return;
-    const handleReady = () => setGoogleReady(true);
-    window.addEventListener('google-gsi-ready', handleReady);
-    return () => window.removeEventListener('google-gsi-ready', handleReady);
-  }, [googleReady]);
-
-  useEffect(() => {
-    if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && process.env.NODE_ENV !== 'production') {
-      // eslint-disable-next-line no-console
-      console.warn(
-        'NEXT_PUBLIC_GOOGLE_CLIENT_ID is not set — the "Continue with Google" button will render disabled. ' +
-          'Set it in Frontend/.env.local (see .env.example) and restart the dev server to pick it up.'
-      );
-    }
   }, []);
 
   useEscapeToClose(isOpen, closeAuthModal);
@@ -200,46 +176,18 @@ export default function AuthModal() {
     }
   }, [isOpen, initialMode, initialRole]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-    if (!clientId || typeof window === 'undefined' || !window.google?.accounts?.id || !googleButtonRef.current) {
-      return;
-    }
-    window.google.accounts.id.initialize({
-      client_id: clientId,
-      // Not an actual documented IdConfiguration field (harmless to pass,
-      // but Google ignores it) — the real language control is the `hl`
-      // query param on the GSI script URL itself, see pages/_app.tsx.
-      // Left here in case a future GSI version does honor it.
-      locale: lang,
-      callback: (response) => {
-        setSubmitting(true);
-        setError(null);
-        // role only matters if this Google identity is creating a brand-new
-        // account — ignored for an existing one (see Backend's /google route).
-        loginWithGoogle(response.credential, mode === 'register' ? role : undefined)
-          .then((loggedInUser) => handlePostLogin(loggedInUser))
-          .catch((err: any) => setError(err?.response?.data?.message || t.genericError))
-          .finally(() => setSubmitting(false));
-      },
-    });
-    // Google's GSI renders by appending an iframe into the target node
-    // rather than replacing its contents — without this, switching between
-    // the Login/Register tabs (which re-runs this effect) stacks a new
-    // button on top of the old one instead of swapping it, leaving a stale
-    // button (bound to the previous mode/role) overlapping the current one.
-    googleButtonRef.current.innerHTML = '';
-    window.google.accounts.id.renderButton(googleButtonRef.current, {
-      theme: 'outline',
-      size: 'large',
-      width: 320,
-      text: mode === 'register' ? 'signup_with' : 'signin_with',
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, mode, role, googleReady, lang]);
-
   if (!isOpen) return null;
+
+  const handleGoogleCredential = (idToken: string) => {
+    setSubmitting(true);
+    setError(null);
+    // role only matters if this Google identity is creating a brand-new
+    // account — ignored for an existing one (see Backend's /google route).
+    loginWithGoogle(idToken, mode === 'register' ? role : undefined)
+      .then((loggedInUser) => handlePostLogin(loggedInUser))
+      .catch((err: any) => setError(err?.response?.data?.message || t.genericError))
+      .finally(() => setSubmitting(false));
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -277,8 +225,6 @@ export default function AuthModal() {
       setForgotSubmitting(false);
     }
   };
-
-  const googleClientConfigured = !!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
@@ -509,16 +455,16 @@ export default function AuthModal() {
               <div className="flex-1 h-px bg-gray-200" />
             </div>
 
-            <div className="flex flex-col items-center gap-1.5">
-              <div ref={googleButtonRef} className={googleClientConfigured ? '' : 'hidden'} />
-              {!googleClientConfigured && (
-                <div
-                  title={t.googleNotConfigured}
-                  className="w-full flex items-center justify-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-400 cursor-not-allowed select-none"
-                >
-                  {t.googleButton}
-                </div>
-              )}
+            <div className="space-y-2.5">
+              <GoogleSignInButton
+                mode={mode === 'register' ? 'register' : 'login'}
+                role={mode === 'register' ? role : undefined}
+                lang={lang}
+                onCredential={handleGoogleCredential}
+                disabledLabel={t.googleButton}
+                disabledTitle={t.googleNotConfigured}
+              />
+              <SocialLoginButtons lang={lang} role={mode === 'register' ? role : undefined} />
             </div>
 
             <p className="text-center text-sm text-gray-500 mt-5">

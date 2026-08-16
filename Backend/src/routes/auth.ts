@@ -24,8 +24,10 @@ import {
   GOOGLE_CLIENT_ID,
   GITHUB_CLIENT_ID,
   GITHUB_CLIENT_SECRET,
+  GITHUB_CALLBACK_URL,
   FACEBOOK_CLIENT_ID,
   FACEBOOK_CLIENT_SECRET,
+  FACEBOOK_CALLBACK_URL,
   SUPER_ADMIN_EMAILS,
 } from '../utils/env';
 import { sendVerificationEmail, sendPasswordResetEmail, sendBusinessVerifiedEmail } from '../services/emailService';
@@ -38,14 +40,10 @@ const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // Same fallback pattern as payments.ts/emailService.ts/certificateService.ts.
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://cdc.org.ge';
-// This backend's own public base URL — needed to build the GitHub/Facebook
-// OAuth redirect_uri, which must exactly match what's registered in each
-// provider's app settings (GitHub OAuth App / Facebook App dashboard).
-// Same fallback convention as .env.example already documents for this var
-// (added for BOG webhooks, unused until now): default to localhost for dev
-// safety, and require it to be explicitly set to a real HTTPS URL in
-// production rather than baking a specific domain into source.
-const BACKEND_URL = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 4000}`;
+// GitHub/Facebook redirect_uri construction lives in utils/env.ts
+// (GITHUB_CALLBACK_URL/FACEBOOK_CALLBACK_URL) so it shares BACKEND_URL's
+// single source of truth and https-forcing safety net with the rest of the
+// app, instead of redeclaring the same fallback logic here.
 
 // GitHub/Facebook's redirect-based OAuth flow round-trips through the
 // provider, so the CSRF "state" param can't be verified against anything
@@ -513,7 +511,7 @@ router.get('/github', (req: Request, res: Response) => {
   const role = req.query.role === 'Client' ? 'Client' : req.query.role === 'Student' ? 'Student' : undefined;
   const authorizeUrl = new URL('https://github.com/login/oauth/authorize');
   authorizeUrl.searchParams.set('client_id', GITHUB_CLIENT_ID);
-  authorizeUrl.searchParams.set('redirect_uri', `${BACKEND_URL}/api/auth/github/callback`);
+  authorizeUrl.searchParams.set('redirect_uri', GITHUB_CALLBACK_URL);
   authorizeUrl.searchParams.set('scope', 'read:user user:email');
   authorizeUrl.searchParams.set('state', signOauthState(role));
   res.redirect(authorizeUrl.toString());
@@ -541,7 +539,7 @@ router.get('/github/callback', async (req: Request, res: Response) => {
         client_id: GITHUB_CLIENT_ID,
         client_secret: GITHUB_CLIENT_SECRET,
         code,
-        redirect_uri: `${BACKEND_URL}/api/auth/github/callback`,
+        redirect_uri: GITHUB_CALLBACK_URL,
       }),
     });
     const tokenData = (await tokenRes.json()) as { access_token?: string; error?: string };
@@ -628,7 +626,7 @@ router.get('/facebook', (req: Request, res: Response) => {
   const role = req.query.role === 'Client' ? 'Client' : req.query.role === 'Student' ? 'Student' : undefined;
   const authorizeUrl = new URL('https://www.facebook.com/v19.0/dialog/oauth');
   authorizeUrl.searchParams.set('client_id', FACEBOOK_CLIENT_ID);
-  authorizeUrl.searchParams.set('redirect_uri', `${BACKEND_URL}/api/auth/facebook/callback`);
+  authorizeUrl.searchParams.set('redirect_uri', FACEBOOK_CALLBACK_URL);
   authorizeUrl.searchParams.set('scope', 'email,public_profile');
   authorizeUrl.searchParams.set('state', signOauthState(role));
   res.redirect(authorizeUrl.toString());
@@ -649,7 +647,7 @@ router.get('/facebook/callback', async (req: Request, res: Response) => {
   }
 
   try {
-    const redirectUri = `${BACKEND_URL}/api/auth/facebook/callback`;
+    const redirectUri = FACEBOOK_CALLBACK_URL;
     const tokenUrl = new URL('https://graph.facebook.com/v19.0/oauth/access_token');
     tokenUrl.searchParams.set('client_id', FACEBOOK_CLIENT_ID);
     tokenUrl.searchParams.set('client_secret', FACEBOOK_CLIENT_SECRET);
