@@ -50,8 +50,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // SYSTEM_PROMPT.
     const homepageAgent = await getHomepageAgentConfig();
     const knowledgeContext = await getCdcKnowledgeContext(homepageAgent?.knowledgeSourceFilenames);
-    const reply = await askCdcAssistant(message, effectiveLang, sanitizeHistory(history), knowledgeContext, homepageAgent?.systemPrompt);
-    return res.status(200).json({ reply });
+
+    // gemini-flash-latest returns transient "high demand" failures fairly
+    // often in practice (same behavior already worked around for the AI
+    // Tutor — see Backend's course-tutor route / courseService.ts). Two
+    // silent retries with a short delay smooth that over before this ever
+    // surfaces as a connection error to the widget.
+    const MAX_ATTEMPTS = 3;
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        const reply = await askCdcAssistant(message, effectiveLang, sanitizeHistory(history), knowledgeContext, homepageAgent?.systemPrompt);
+        return res.status(200).json({ reply });
+      } catch (error) {
+        lastError = error;
+        if (attempt < MAX_ATTEMPTS) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+      }
+    }
+    throw lastError;
   } catch (error) {
     console.error('Gemini chat error:', error);
     return res.status(500).json({

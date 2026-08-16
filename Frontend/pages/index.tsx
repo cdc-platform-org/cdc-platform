@@ -105,6 +105,9 @@ export default function Home() {
     { sender: 'bot', text: 'გამარჯობა! მე იაკო ვარ, CDC-ის ციფრული ასისტენტი. 🌟 გსურთ გაიაროთ სწრაფი ტესტირება, რომ კურსის სწორად შერჩევაში დაგეხმაროთ?' }
   ]);
   const [userInput, setUserInput] = useState('');
+  const [chatSending, setChatSending] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [lastFailedInput, setLastFailedInput] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -247,11 +250,10 @@ export default function Home() {
     return <span className="font-sans inline-block font-bold tracking-normal">{text}</span>;
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userInput.trim()) return;
+  const sendChatMessage = async (rawText: string) => {
+    const userText = rawText.trim();
+    if (!userText || chatSending) return;
 
-    const userText = userInput.trim();
     // The widget's opening message (chatMessages[0]) is a hardcoded UI
     // greeting, not a real assistant turn — the Gemini SDK requires chat
     // history to start with a 'user' turn, so it's excluded here.
@@ -261,8 +263,8 @@ export default function Home() {
     const updatedMessages = [...chatMessages, { sender: 'user' as const, text: userText }];
     setChatMessages(updatedMessages);
     setUserInput('');
-
-    setChatMessages([...updatedMessages, { sender: 'bot' as const, text: lang === 'GEO' ? '✍️ ასისტენტი ფიქრობს...' : '✍️ Assistant is thinking...' }]);
+    setChatError(null);
+    setChatSending(true);
 
     try {
       const response = await fetch('/api/chat', {
@@ -270,19 +272,27 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userText, lang, history }),
       });
-
       const data = await response.json();
+      // /api/chat already retries transient Gemini failures server-side
+      // (see pages/api/chat.ts) — a non-2xx response here means that was
+      // exhausted, so this is treated as a genuine connection error rather
+      // than dropped into the chat as a dead-end bot message.
+      if (!response.ok) throw new Error(data?.reply || 'Request failed');
 
-      setChatMessages([
-        ...updatedMessages,
-        { sender: 'bot', text: data.reply }
-      ]);
+      setChatMessages([...updatedMessages, { sender: 'bot', text: data.reply }]);
     } catch (error) {
-      setChatMessages([
-        ...updatedMessages,
-        { sender: 'bot', text: lang === 'GEO' ? '❌ კავშირის ხარვეზი. გთხოვთ სცადოთ მოგვიანებით.' : '❌ Connection error. Please try again later.' }
-      ]);
+      setChatError(
+        lang === 'GEO' ? '❌ ასისტენტთან კავშირის ხარვეზი.' : '❌ Error connecting to the assistant.'
+      );
+      setLastFailedInput(userText);
+    } finally {
+      setChatSending(false);
     }
+  };
+
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    sendChatMessage(userInput);
   };
 
   return (
@@ -1018,6 +1028,31 @@ export default function Home() {
                   </div>
                 </div>
               ))}
+
+              {chatSending && (
+                <div className="flex justify-start">
+                  <div className="p-3 rounded-xl bg-white dark:bg-[#161f30] border border-slate-200 dark:border-slate-800 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.3s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.15s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" />
+                  </div>
+                </div>
+              )}
+
+              {chatError && (
+                <div className="text-center pt-1">
+                  <p className="text-[11px] text-red-500 dark:text-red-400">{chatError}</p>
+                  {lastFailedInput && (
+                    <button
+                      type="button"
+                      onClick={() => sendChatMessage(lastFailedInput)}
+                      className="mt-1.5 text-[11px] font-bold text-cyan-600 dark:text-cyan-400 hover:underline bg-transparent border-none cursor-pointer"
+                    >
+                      {translate('ხელახლა სცადეთ', 'Retry')}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* QUICK REPLY: kicks off the interactive career quiz (hidden once used) */}
@@ -1025,13 +1060,12 @@ export default function Home() {
               <div className="flex gap-2 p-2 justify-center bg-slate-50 dark:bg-[#0b0f17]">
                 <button
                   type="button"
+                  disabled={chatSending}
                   onClick={() => {
                     setTestStep(1);
-                    setUserInput(lang === 'GEO' ? 'დავიწყოთ ტესტი' : 'Start the test');
-                    const mockEvent = { preventDefault: () => {} } as React.FormEvent;
-                    setTimeout(() => handleSendMessage(mockEvent), 50);
+                    sendChatMessage(lang === 'GEO' ? 'დავიწყოთ ტესტი' : 'Start the test');
                   }}
-                  className="flex items-center gap-1.5 bg-cyan-500 text-white px-4 py-1.5 rounded-full text-[11px] font-black cursor-pointer hover:bg-cyan-600 transition border-none shadow"
+                  className="flex items-center gap-1.5 bg-cyan-500 text-white px-4 py-1.5 rounded-full text-[11px] font-black cursor-pointer hover:bg-cyan-600 transition border-none shadow disabled:opacity-40"
                 >
                   <Rocket className="w-3.5 h-3.5" />{translate('დავიწყოთ ტესტი', 'Start Test')}
                 </button>
@@ -1039,8 +1073,8 @@ export default function Home() {
             )}
 
             <form onSubmit={handleSendMessage} className="p-3 border-t flex gap-2 bg-white dark:bg-[#0e1422] border-slate-100 dark:border-slate-800">
-              <input type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} placeholder={translate('ჩაწერეთ პასუხი...', 'Type a reply...') as string} className="flex-1 border rounded-xl px-3 py-2 text-xs focus:outline-none" />
-              <button type="submit" className="bg-slate-900 text-white font-bold px-4 py-2 rounded-xl text-xs border-none cursor-pointer">OK</button>
+              <input type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} disabled={chatSending} placeholder={translate('ჩაწერეთ პასუხი...', 'Type a reply...') as string} className="flex-1 border rounded-xl px-3 py-2 text-xs focus:outline-none disabled:opacity-60" />
+              <button type="submit" disabled={chatSending || !userInput.trim()} className="bg-slate-900 text-white font-bold px-4 py-2 rounded-xl text-xs border-none cursor-pointer disabled:opacity-40">OK</button>
             </form>
           </div>
         )}
