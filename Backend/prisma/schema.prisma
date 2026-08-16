@@ -623,6 +623,11 @@ model Course {
   // the common case, so nothing else reads this field).
   titleEn         String?
   description     String
+  // Optional English translation of `description`, same never-guessed/
+  // never-auto-translated posture as titleEn. The course detail page shows
+  // this instead of `description` when the site's active language is EN,
+  // falling back to `description` when unset — see pages/courses/[id]/index.tsx.
+  descriptionEn   String?
   category        String
   // Admin-set (see admin/courses.tsx) list of freelancer skills (curated
   // src/data/freelancerSkills.ts values, or free text) this course teaches.

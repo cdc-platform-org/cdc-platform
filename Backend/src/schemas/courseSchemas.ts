@@ -20,6 +20,11 @@ export const courseCreateSchema = z
     title: z.string().min(3).max(200),
     titleEn: z.string().trim().max(200).optional(),
     description: z.string().min(20),
+    // No min() — same leniency as titleEn above (a blank optional field
+    // submits as an empty string from the admin form, not `undefined`, so a
+    // min() here would reject "just leave it empty" rather than treat it as
+    // unset).
+    descriptionEn: z.string().trim().optional(),
     category: z.string().min(2).max(100),
     lessons: z.array(lessonSchema).min(1),
     published: z.boolean().optional().default(false),
@@ -46,6 +51,7 @@ export const courseUpdateSchema = z
     title: z.string().min(3).max(200).optional(),
     titleEn: z.string().trim().max(200).optional(),
     description: z.string().min(20).optional(),
+    descriptionEn: z.string().trim().optional(),
     category: z.string().min(2).max(100).optional(),
     lessons: z.array(lessonSchema).min(1).optional(),
     published: z.boolean().optional(),

@@ -7,6 +7,10 @@ export interface Course {
   // the certificate PDF's auto-scaling title block. Never auto-translated.
   titleEn: string | null;
   description: string;
+  // Optional English translation of `description` — same never-auto-
+  // translated posture as titleEn. The course detail page shows this when
+  // the site language is EN, falling back to `description` when unset.
+  descriptionEn: string | null;
   category: string;
   language: CourseLanguage;
   // originalPrice is the sticker price; currentPrice/saleActive are computed
@@ -37,6 +41,7 @@ export interface CoursePayload {
   title: string;
   titleEn?: string;
   description: string;
+  descriptionEn?: string;
   category: string;
   // Legacy flat lessons blob — kept required by the backend's create schema,
   // but the LMS player reads the relational sections/lessons below instead.

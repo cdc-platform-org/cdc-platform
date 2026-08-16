@@ -31,6 +31,7 @@ const emptyForm = {
   title: '',
   titleEn: '',
   description: '',
+  descriptionEn: '',
   category: '',
   originalPrice: 0,
   published: false,
@@ -86,6 +87,7 @@ function CourseForm({
         title: editingCourse.title,
         titleEn: editingCourse.titleEn ?? '',
         description: editingCourse.description,
+        descriptionEn: editingCourse.descriptionEn ?? '',
         category: editingCourse.category,
         originalPrice: editingCourse.originalPrice / 100,
         published: editingCourse.published,
@@ -126,6 +128,7 @@ function CourseForm({
         title: form.title.trim(),
         titleEn: form.titleEn.trim() || undefined,
         description: form.description.trim(),
+        descriptionEn: form.descriptionEn.trim() || undefined,
         category: form.category.trim(),
         originalPrice: Math.round((Number(form.originalPrice) || 0) * 100),
         published: form.published,
@@ -227,6 +230,12 @@ function CourseForm({
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Description</label>
         <RichTextEditor rows={3} value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
+          Description (English) <span className="text-gray-400 font-normal">— optional, shown instead of Description when the site language is English</span>
+        </label>
+        <RichTextEditor rows={3} value={form.descriptionEn} onChange={(v) => setForm({ ...form, descriptionEn: v })} />
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">

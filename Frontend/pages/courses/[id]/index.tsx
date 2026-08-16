@@ -262,7 +262,7 @@ export default function CourseDetailPage() {
         <div className="mb-6">
           <SocialShareButtons title={course.title} lang={lang} />
         </div>
-        <MarkdownContent content={course.description} className="mb-8" />
+        <MarkdownContent content={(lang === 'en' && course.descriptionEn) || course.description} className="mb-8" />
 
         <div className="flex flex-wrap gap-4 mb-8">
           {course.mentorName && (
