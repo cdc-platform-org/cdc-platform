@@ -1886,16 +1886,42 @@ model Notification {
 model SuccessStory {
   id          String   @id @default(uuid())
   studentName String
+  // URL-friendly identifier for /success-stories/[slug], auto-generated
+  // from studentName at creation (see routes/adminSuccessStories.ts) — same
+  // posture as StudioCaseStudy.slug/BlogPost.slug.
+  slug        String   @unique
   // Uploaded via the same Bunny Storage pipeline as everything else
   // (POST /api/success-stories/upload-avatar) — never a freely-settable
   // external URL, consistent with avatarUrl/verificationDocUrl elsewhere.
   avatarUrl   String?
   roleTitle   String
+  // English twin — optional, same "public pages fall back to Georgian when
+  // unset" posture as StudioCaseStudy's titleEn/descriptionEn/fullStoryEn.
+  // studentName and courseName are deliberately NOT twinned: studentName is
+  // a proper noun, and courseName mirrors StudioCaseStudy's own `category`
+  // field, which is likewise single-language and used for grid filtering.
+  roleTitleEn String?
   courseName  String
   testimonial String
+  testimonialEn String?
+  // Full "success journey" article for the /success-stories/[slug] detail
+  // page — optional, since the short testimonial quote above is enough for
+  // a card and not every story needs a full write-up.
+  storyContent   String?
+  storyContentEn String?
+  galleryImages String[] @default([])
   linkedinUrl String?
+  // Distinct from linkedinUrl — a portfolio site / live work sample, same
+  // role StudioCaseStudy.projectUrl plays for a case study.
+  portfolioUrl String?
+  // Free-text outcome badge, e.g. "დასაქმდა Bank of Georgia-ში" / "Top
+  // Rated Freelancer on Upwork" — shown on both the card and the detail
+  // page hero. Optional since not every story has a single hire/outcome to
+  // name.
+  hiredBy     String?
   isFeatured  Boolean  @default(true)
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([isFeatured])
   @@map("success_stories")

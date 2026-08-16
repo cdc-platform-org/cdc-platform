@@ -49,7 +49,8 @@ const STRINGS = {
     tagline: 'ვასწავლით ციფრულ პროფესიებს გურიაში — HEKS/EPER Georgia-ს მხარდაჭერით.',
     coursesHeading: 'კურსები',
     courses: 'კურსები',
-    cases: 'სტუდენტების ნამუშევრები',
+    cases: 'წარმატებული სტუდენტები',
+    caseStudies: 'ქეისები',
     trainers: 'ტრენერები',
     gallery: 'ფოტოგალერეა',
     communityHeading: 'საზოგადოება',
@@ -73,7 +74,8 @@ const STRINGS = {
     tagline: 'Teaching digital professions in Guria — supported by HEKS/EPER Georgia.',
     coursesHeading: 'Courses',
     courses: 'All Courses',
-    cases: 'Student Cases',
+    cases: 'Success Stories',
+    caseStudies: 'Case Studies',
     trainers: 'Trainers',
     gallery: 'Photo Gallery',
     communityHeading: 'Community',
@@ -164,7 +166,7 @@ export default function SiteFooter({ lang }: SiteFooterProps) {
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.coursesHeading}</h3>
             <ul className="space-y-2.5 text-xs">
               <li><Link href="/courses" className={navLink}>{t.courses}</Link></li>
-              <li><Link href="/cases" className={navLink}>{t.cases}</Link></li>
+              <li><Link href="/success-stories" className={navLink}>{t.cases}</Link></li>
               <li><Link href="/trainers" className={navLink}>{t.trainers}</Link></li>
               <li><Link href="/gallery" className={navLink}>{t.gallery}</Link></li>
             </ul>
@@ -179,6 +181,7 @@ export default function SiteFooter({ lang }: SiteFooterProps) {
               <li><Link href="/marketplace" className={navLink}>{t.marketplace}</Link></li>
               <li><Link href="/forum" className={navLink}>{t.forum}</Link></li>
               <li><Link href="/agency" className={navLink}>{t.studio}</Link></li>
+              <li><Link href="/cases" className={navLink}>{t.caseStudies}</Link></li>
             </ul>
           </div>
 

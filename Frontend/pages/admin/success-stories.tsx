@@ -3,6 +3,8 @@ import Head from 'next/head';
 import { ExternalLink, Eye, EyeOff } from 'lucide-react';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
+import RichTextEditor from '../../src/components/shared/RichTextEditor';
+import Toast from '../../src/components/shared/Toast';
 import { SuccessStory } from '../../src/types/successStory';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
 import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../src/utils/imageUpload';
@@ -12,16 +14,25 @@ import {
   updateSuccessStory,
   deleteSuccessStory,
   uploadSuccessStoryAvatar,
+  uploadSuccessStoryGalleryImage,
+  translateSuccessStory,
   SuccessStoryPayload,
 } from '../../src/services/successStoryService';
 
 const emptyForm: SuccessStoryPayload = {
   studentName: '',
   roleTitle: '',
+  roleTitleEn: '',
   courseName: '',
   testimonial: '',
+  testimonialEn: '',
+  storyContent: '',
+  storyContentEn: '',
   avatarUrl: '',
+  galleryImages: [],
   linkedinUrl: '',
+  portfolioUrl: '',
+  hiredBy: '',
   isFeatured: true,
 };
 
@@ -35,6 +46,18 @@ function AdminSuccessStoriesDashboard() {
   const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const [translating, setTranslating] = useState(false);
+  const [translateError, setTranslateError] = useState<string | null>(null);
+  const [showTranslateToast, setShowTranslateToast] = useState(false);
+  const translateToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (translateToastTimeoutRef.current) clearTimeout(translateToastTimeoutRef.current);
+    };
+  }, []);
 
   const loadStories = useCallback(async () => {
     setLoading(true);
@@ -56,7 +79,9 @@ function AdminSuccessStoriesDashboard() {
     setForm(emptyForm);
     setEditingId(null);
     setFormError(null);
+    setTranslateError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
+    if (galleryInputRef.current) galleryInputRef.current.value = '';
   };
 
   const startEdit = (story: SuccessStory) => {
@@ -64,13 +89,21 @@ function AdminSuccessStoriesDashboard() {
     setForm({
       studentName: story.studentName,
       roleTitle: story.roleTitle,
+      roleTitleEn: story.roleTitleEn ?? '',
       courseName: story.courseName,
       testimonial: story.testimonial,
+      testimonialEn: story.testimonialEn ?? '',
+      storyContent: story.storyContent ?? '',
+      storyContentEn: story.storyContentEn ?? '',
       avatarUrl: story.avatarUrl ?? '',
+      galleryImages: story.galleryImages,
       linkedinUrl: story.linkedinUrl ?? '',
+      portfolioUrl: story.portfolioUrl ?? '',
+      hiredBy: story.hiredBy ?? '',
       isFeatured: story.isFeatured,
     });
     setFormError(null);
+    setTranslateError(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -93,6 +126,60 @@ function AdminSuccessStoriesDashboard() {
     }
   };
 
+  const handleGalleryChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (isImageTooLarge(file)) {
+      setFormError(IMAGE_SIZE_ERROR.ka);
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
+      return;
+    }
+    setUploadingGallery(true);
+    setFormError(null);
+    try {
+      const url = await uploadSuccessStoryGalleryImage(file);
+      setForm((f) => ({ ...f, galleryImages: [...(f.galleryImages ?? []), url] }));
+    } catch (err: any) {
+      setFormError(err?.response?.data?.message ?? 'ფოტოს ატვირთვა ვერ მოხერხდა.');
+    } finally {
+      setUploadingGallery(false);
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
+    }
+  };
+
+  const removeGalleryImage = (url: string) => {
+    setForm((f) => ({ ...f, galleryImages: (f.galleryImages ?? []).filter((u) => u !== url) }));
+  };
+
+  const handleAutoTranslate = async () => {
+    setTranslateError(null);
+    if (form.roleTitle.trim().length < 2 || form.testimonial.trim().length < 10) {
+      setTranslateError('შეავსეთ პოზიცია და გამოხმაურება თარგმნამდე.');
+      return;
+    }
+    setTranslating(true);
+    try {
+      const translated = await translateSuccessStory({
+        roleTitle: form.roleTitle.trim(),
+        testimonial: form.testimonial.trim(),
+        storyContent: form.storyContent?.trim() || undefined,
+      });
+      setForm((f) => ({
+        ...f,
+        roleTitleEn: translated.roleTitleEn,
+        testimonialEn: translated.testimonialEn,
+        storyContentEn: translated.storyContentEn ?? f.storyContentEn,
+      }));
+      setShowTranslateToast(true);
+      if (translateToastTimeoutRef.current) clearTimeout(translateToastTimeoutRef.current);
+      translateToastTimeoutRef.current = setTimeout(() => setShowTranslateToast(false), 4000);
+    } catch (err: any) {
+      setTranslateError(err?.response?.data?.message ?? 'თარგმანი ვერ მოხერხდა. სცადეთ თავიდან.');
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setFormError(null);
@@ -106,10 +193,17 @@ function AdminSuccessStoriesDashboard() {
       const payload: SuccessStoryPayload = {
         studentName: form.studentName.trim(),
         roleTitle: form.roleTitle.trim(),
+        roleTitleEn: form.roleTitleEn?.trim() || null,
         courseName: form.courseName.trim(),
         testimonial: form.testimonial.trim(),
+        testimonialEn: form.testimonialEn?.trim() || null,
+        storyContent: form.storyContent?.trim() || null,
+        storyContentEn: form.storyContentEn?.trim() || null,
         avatarUrl: form.avatarUrl?.trim() || null,
+        galleryImages: form.galleryImages ?? [],
         linkedinUrl: form.linkedinUrl?.trim() || null,
+        portfolioUrl: form.portfolioUrl?.trim() || null,
+        hiredBy: form.hiredBy?.trim() || null,
         isFeatured: form.isFeatured,
       };
       if (editingId) {
@@ -240,13 +334,122 @@ function AdminSuccessStoriesDashboard() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">LinkedIn URL <span className="text-gray-400 font-normal">(არასავალდებულო)</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                სრული ისტორია <span className="text-gray-400 font-normal">(არასავალდებულო — ჩანს ისტორიის დეტალურ გვერდზე)</span>
+              </label>
+              <RichTextEditor rows={5} value={form.storyContent ?? ''} onChange={(v) => setForm({ ...form, storyContent: v })} />
+            </div>
+
+            <div>
+              <button
+                type="button"
+                onClick={handleAutoTranslate}
+                disabled={translating}
+                className="text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg disabled:opacity-60"
+              >
+                {translating ? 'ითარგმნება…' : '✨ Auto-Translate via Gemini'}
+              </button>
+              {translateError && <p className="text-xs text-red-600 mt-1.5">{translateError}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                პოზიცია (ინგლისურად) <span className="text-gray-400 font-normal">(არასავალდებულო)</span>
+              </label>
               <input
                 type="text"
-                value={form.linkedinUrl ?? ''}
-                onChange={(e) => setForm({ ...form, linkedinUrl: e.target.value })}
+                value={form.roleTitleEn ?? ''}
+                onChange={(e) => setForm({ ...form, roleTitleEn: e.target.value })}
                 className={inputClass}
-                placeholder="https://linkedin.com/in/..."
+                placeholder="Frontend Developer"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                გამოხმაურება (ინგლისურად) <span className="text-gray-400 font-normal">(არასავალდებულო)</span>
+              </label>
+              <textarea
+                rows={3}
+                value={form.testimonialEn ?? ''}
+                onChange={(e) => setForm({ ...form, testimonialEn: e.target.value })}
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                სრული ისტორია (ინგლისურად) <span className="text-gray-400 font-normal">(არასავალდებულო)</span>
+              </label>
+              <RichTextEditor rows={5} value={form.storyContentEn ?? ''} onChange={(v) => setForm({ ...form, storyContentEn: v })} />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                გალერეის ფოტოები <span className="text-gray-400 font-normal">({(form.galleryImages ?? []).length})</span>
+              </label>
+              {(form.galleryImages ?? []).length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {(form.galleryImages ?? []).map((url) => (
+                    <div key={url} className="relative">
+                      <img src={url} alt="" onError={onImageErrorFallback} className="w-20 h-20 rounded-lg object-cover border border-gray-200" />
+                      <button
+                        type="button"
+                        onClick={() => removeGalleryImage(url)}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center hover:bg-red-600"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <label className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-gray-300 text-sm font-medium text-gray-600 cursor-pointer hover:bg-gray-50">
+                {uploadingGallery ? 'იტვირთება…' : '📁 ფოტოების დამატება'}
+                <input
+                  ref={galleryInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleGalleryChange}
+                  className="hidden"
+                  disabled={uploadingGallery}
+                />
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">LinkedIn URL <span className="text-gray-400 font-normal">(არასავალდებულო)</span></label>
+                <input
+                  type="text"
+                  value={form.linkedinUrl ?? ''}
+                  onChange={(e) => setForm({ ...form, linkedinUrl: e.target.value })}
+                  className={inputClass}
+                  placeholder="https://linkedin.com/in/..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">პორტფოლიო URL <span className="text-gray-400 font-normal">(არასავალდებულო)</span></label>
+                <input
+                  type="text"
+                  value={form.portfolioUrl ?? ''}
+                  onChange={(e) => setForm({ ...form, portfolioUrl: e.target.value })}
+                  className={inputClass}
+                  placeholder="https://..."
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                დასაქმების ბეჯი <span className="text-gray-400 font-normal">(არასავალდებულო — მაგ. &quot;დასაქმდა Bank of Georgia-ში&quot;)</span>
+              </label>
+              <input
+                type="text"
+                value={form.hiredBy ?? ''}
+                onChange={(e) => setForm({ ...form, hiredBy: e.target.value })}
+                className={inputClass}
+                placeholder="დასაქმდა Bank of Georgia-ში"
               />
             </div>
 
@@ -317,6 +520,14 @@ function AdminSuccessStoriesDashboard() {
                     </div>
                     <p className="text-xs text-gray-500 truncate">{story.roleTitle} · {story.courseName}</p>
                     <p className="text-xs text-gray-400 truncate mt-0.5">{story.testimonial}</p>
+                    <a
+                      href={`/success-stories/${story.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-indigo-500 hover:text-indigo-700"
+                    >
+                      /success-stories/{story.slug} ↗
+                    </a>
                   </div>
                   <div className="flex gap-2 shrink-0">
                     <button
@@ -349,6 +560,7 @@ function AdminSuccessStoriesDashboard() {
           )}
         </div>
       </div>
+      {showTranslateToast && <Toast message="✨ ითარგმნა" />}
     </>
   );
 }

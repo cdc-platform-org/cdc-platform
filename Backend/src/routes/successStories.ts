@@ -14,4 +14,10 @@ router.get('/', async (req: Request, res: Response) => {
   res.json({ data: stories });
 });
 
+router.get('/:slug', async (req: Request, res: Response) => {
+  const story = await prisma.successStory.findUnique({ where: { slug: req.params.slug } });
+  if (!story) return res.status(404).json({ message: 'Success story not found.' });
+  res.json({ data: story });
+});
+
 export default router;

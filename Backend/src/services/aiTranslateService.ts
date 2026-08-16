@@ -143,6 +143,72 @@ fullStory: ${params.fullStory}`;
   return result.data;
 }
 
+const successStoryTranslationResponseSchema = z.object({
+  roleTitleEn: z.string(),
+  testimonialEn: z.string(),
+  storyContentEn: z.string().optional(),
+});
+
+export interface TranslateSuccessStoryParams {
+  roleTitle: string;
+  testimonial: string;
+  // Optional — many stories are just a short testimonial with no full
+  // article, unlike StudioCaseStudy's fullStory which this otherwise
+  // mirrors.
+  storyContent?: string;
+}
+
+export interface TranslateSuccessStoryResult {
+  roleTitleEn: string;
+  testimonialEn: string;
+  storyContentEn?: string;
+}
+
+// Same shape/reasoning as translateStudioCase above — studentName and
+// courseName are deliberately NOT translated (see SuccessStory's schema
+// comment: studentName is a proper noun, courseName mirrors the
+// single-language category/clientName posture). Used by the "✨
+// Auto-Translate to English" button in /admin/success-stories.
+export async function translateSuccessStory(params: TranslateSuccessStoryParams): Promise<TranslateSuccessStoryResult> {
+  if (!client) {
+    throw new AiTranslateError('Gemini is not configured (GEMINI_API_KEY missing).');
+  }
+
+  const prompt = `Translate the following Georgian CDC student success story fields into natural, fluent English, suitable for a public alumni showcase. Preserve meaning and tone; do not summarize or shorten. Respond with strict JSON containing ONLY the keys corresponding to what was provided below (omit storyContentEn if storyContent is absent), using this shape:
+{"roleTitleEn": string, "testimonialEn": string, "storyContentEn"?: string}
+
+roleTitle: ${params.roleTitle}
+testimonial: ${params.testimonial}${params.storyContent ? `\nstoryContent: ${params.storyContent}` : ''}`;
+
+  const model = client.getGenerativeModel({
+    model: 'gemini-flash-latest',
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.3 },
+  });
+
+  let raw: string;
+  try {
+    const result = await model.generateContent(prompt);
+    raw = result.response.text();
+  } catch (err) {
+    throw new AiTranslateError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');
+  }
+  if (!raw) throw new AiTranslateError('Gemini returned an empty response.');
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new AiTranslateError('Gemini returned malformed JSON.');
+  }
+
+  const result = successStoryTranslationResponseSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new AiTranslateError('Gemini returned an unexpected translation format.');
+  }
+
+  return result.data;
+}
+
 const mentorProfileTranslationResponseSchema = z.object({
   titleEn: z.string(),
   bioEn: z.string(),
