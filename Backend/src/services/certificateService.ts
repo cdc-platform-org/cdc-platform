@@ -367,6 +367,16 @@ export const G = {
   qrFrameRight: 862 / 1491,
   qrFrameBottom: 52 / 1055,
   qrFrameTop: 181 / 1055,
+  // "Scan to verify" caption width — deliberately wider than the 124pt frame
+  // itself (still centered on the frame's own center, not the widened box's),
+  // since the frame alone is too narrow to hold this caption at a readable
+  // size. Capped at 136 rather than the frame's full available neighbors: 32pt
+  // of clearance to the calendar zone's right edge (706) on the left, and only
+  // ~8.5pt of clearance to the verification-code slot's left edge (870.5, from
+  // G.codeCenterX/G.codeMaxWidth) on the right — the tighter right-hand gap is
+  // what actually bounds this number, symmetric growth past it would start
+  // overlapping the code slot's own text.
+  scanToVerifyMaxWidth: 136 / 1491,
   // Per-slot text widths, each the usable width of the artwork region it sits in.
   courseMaxWidth: 950 / 1491,
   bodyMaxWidth: 1000 / 1491,
@@ -442,6 +452,12 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Buf
   // student name and course title in the page's visual hierarchy instead of
   // competing with them for attention.
   const slate = rgb(0.42, 0.45, 0.52);
+  // #1e293b — a clear, high-contrast dark navy for the "Scan to verify"
+  // caption specifically, distinct from the softer `slate` used for the rest
+  // of the footer captions since this one needs to actually be read at a
+  // glance (it's the instruction that tells someone the QR is scannable),
+  // not just sit quietly in the visual hierarchy.
+  const scanCaptionColor = rgb(0x1e / 255, 0x29 / 255, 0x3b / 255);
   const centerX = width / 2;
 
   // Bilingual heading — its own row below the artwork's gold rules (which
@@ -614,7 +630,10 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Buf
   // of a slightly-misaligned fifth line. The QR itself is sized/centered in
   // the region of the frame ABOVE that baseline (plus clearance for the
   // caption's own glyph height), so the two never overlap even though the
-  // frame is only 124x129pt.
+  // frame is only 124x129pt. The caption is drawn bold and dark (readability
+  // over quiet hierarchy — see scanCaptionColor) at G.scanToVerifyMaxWidth,
+  // wider than the frame itself but still centered on the frame's own
+  // center, since the frame alone is too narrow to hold it at a legible size.
   const verificationUrl = getVerificationUrl(data.verificationCode);
   const qrPngDataUrl = await QRCode.toDataURL(verificationUrl, { margin: 1, width: 512 });
   const qrPngBytes = Buffer.from(qrPngDataUrl.split(',')[1], 'base64');
@@ -636,11 +655,11 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Buf
   drawFittedLine(page, LABELS.scanToVerify, {
     centerX: (frameLeft + frameRight) / 2,
     y: captionY,
-    maxWidth: frameRight - frameLeft,
-    startSize: 8,
-    minSize: 4,
-    color: slate,
-    fonts: regularFonts,
+    maxWidth: width * G.scanToVerifyMaxWidth,
+    startSize: 14,
+    minSize: 11,
+    color: scanCaptionColor,
+    fonts: boldFonts,
   });
 
   const bytes = await doc.save();
