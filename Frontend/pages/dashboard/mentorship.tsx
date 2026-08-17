@@ -9,7 +9,6 @@ import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import {
   getMyMentorProfile,
-  updateMyMentorProfile,
   getMyAvailability,
   createMyAvailabilityRule,
   deleteMyAvailabilityRule,
@@ -27,11 +26,10 @@ const dict = {
     sessionsLink: 'ჩემი სესიები',
     sessionsHint: 'დაჯავშნილი სესიების სია, კალენდარი და ჩართვის ბმულების მართვა',
     rateTitle: 'საათობრივი ტარიფი და პროფილი',
-    hourlyRate: 'საათობრივი ტარიფი (₾)',
+    hourlyRate: 'საათობრივი ტარიფი',
     title2: 'თანამდებობა / სპეციალობა',
-    save: 'შენახვა',
-    saving: 'ინახება…',
-    saved: 'შენახულია ✓',
+    profileManagedByAdmin: 'თქვენი პროფილი (ტარიფი, თანამდებობა, უნარები) იმართება CDC ადმინისტრაციის მიერ. ცვლილების მოთხოვნისთვის დაუკავშირდით მხარდაჭერას.',
+    notSet: 'არ არის მითითებული',
     availabilityTitle: 'ხელმისაწვდომობის განრიგი',
     availabilityHint: 'დაამატეთ დროის შუალედები, როდესაც სტუდენტებს შეუძლიათ სესიის დაჯავშნა.',
     addSlot: 'შუალედის დამატება',
@@ -56,11 +54,10 @@ const dict = {
     sessionsLink: 'My Sessions',
     sessionsHint: 'Booked session list, calendar, and meeting-link management',
     rateTitle: 'Hourly Rate & Profile',
-    hourlyRate: 'Hourly Rate (₾)',
+    hourlyRate: 'Hourly Rate',
     title2: 'Title / Specialty',
-    save: 'Save',
-    saving: 'Saving…',
-    saved: 'Saved ✓',
+    profileManagedByAdmin: 'Your profile (rate, title, skills) is managed by CDC admin. Contact support to request a change.',
+    notSet: 'Not set',
     availabilityTitle: 'Availability Schedule',
     availabilityHint: 'Add time slots when students can book a session with you.',
     addSlot: 'Add Slot',
@@ -99,10 +96,6 @@ function MentorshipWorkspaceContent() {
   const days = lang === 'en' ? DAYS_EN : DAYS_KA;
 
   const [profile, setProfile] = useState<MentorProfile | null>(null);
-  const [rateInput, setRateInput] = useState('');
-  const [titleInput, setTitleInput] = useState('');
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [profileSaved, setProfileSaved] = useState(false);
 
   const [rules, setRules] = useState<MentorAvailabilityRuleRow[]>([]);
   const [newDay, setNewDay] = useState(1);
@@ -119,37 +112,15 @@ function MentorshipWorkspaceContent() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    getMyMentorProfile().then((p) => {
-      setProfile(p);
-      setRateInput(p.mentorHourlyRate != null ? String(p.mentorHourlyRate / 100) : '');
-      setTitleInput((lang === 'en' && p.mentorTitleEn) || p.mentorTitle || '');
-    }).catch(() => {});
+    getMyMentorProfile().then(setProfile).catch(() => {});
     getMyAvailability().then(setRules).catch(() => {});
     getWalletSummary().then(setWallet).catch(() => {});
     getMyPayoutRequests().then(setPayoutRequests).catch(() => {});
-  }, [lang]);
+  }, []);
 
   useEffect(() => {
     load();
   }, [load]);
-
-  const handleSaveProfile = async () => {
-    setSavingProfile(true);
-    setError(null);
-    setProfileSaved(false);
-    try {
-      const rateMinor = Math.round((Number(rateInput) || 0) * 100);
-      const updated = await updateMyMentorProfile(
-        lang === 'en' ? { mentorHourlyRate: rateMinor, mentorTitleEn: titleInput } : { mentorHourlyRate: rateMinor, mentorTitle: titleInput }
-      );
-      setProfile(updated);
-      setProfileSaved(true);
-    } catch {
-      setError(t.error);
-    } finally {
-      setSavingProfile(false);
-    }
-  };
 
   const handleAddRule = async () => {
     setAddingRule(true);
@@ -220,34 +191,19 @@ function MentorshipWorkspaceContent() {
           <h2 className="text-sm font-bold mb-4 flex items-center gap-2"><Settings className="w-4 h-4" /> {t.rateTitle}</h2>
           <div className="grid sm:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t.hourlyRate}</label>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={rateInput}
-                onChange={(e) => setRateInput(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 px-3.5 py-2.5 text-sm"
-              />
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t.hourlyRate}</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-white">
+                {profile?.mentorHourlyRate != null ? `${(profile.mentorHourlyRate / 100).toFixed(2)} ₾` : t.notSet}
+              </p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t.title2}</label>
-              <input
-                type="text"
-                value={titleInput}
-                onChange={(e) => setTitleInput(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 px-3.5 py-2.5 text-sm"
-              />
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t.title2}</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-white">
+                {(lang === 'en' && profile?.mentorTitleEn) || profile?.mentorTitle || t.notSet}
+              </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleSaveProfile}
-            disabled={savingProfile}
-            className="text-xs font-bold px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-cyan-600 text-white disabled:opacity-60"
-          >
-            {savingProfile ? t.saving : profileSaved ? t.saved : t.save}
-          </button>
+          <p className="text-[11px] text-slate-400 dark:text-slate-500">{t.profileManagedByAdmin}</p>
         </div>
 
         <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 p-6 mb-6">

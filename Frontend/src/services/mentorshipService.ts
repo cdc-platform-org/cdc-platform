@@ -132,22 +132,11 @@ export interface MentorProfile {
   cvUrl: string | null;
 }
 
-export interface MentorProfileUpdatePayload {
-  mentorTitle?: string;
-  mentorTitleEn?: string;
-  mentorHourlyRate?: number; // minor units (tetri)
-  mentorSkills?: string[];
-  mentorLanguages?: string[];
-  bio?: string;
-}
-
+// Read-only — see Backend's mentorship.ts GET /me/profile comment. Editing a
+// mentor's listing (title/rate/skills/CV) is admin-only now, via
+// adminMentorshipService.ts's updateMentorProfile (/admin/mentorship CMS).
 export async function getMyMentorProfile(): Promise<MentorProfile> {
   const response = await apiClient.get<{ data: MentorProfile }>('/mentorship/me/profile');
-  return response.data.data;
-}
-
-export async function updateMyMentorProfile(payload: MentorProfileUpdatePayload): Promise<MentorProfile> {
-  const response = await apiClient.put<{ data: MentorProfile }>('/mentorship/me/profile', payload);
   return response.data.data;
 }
 

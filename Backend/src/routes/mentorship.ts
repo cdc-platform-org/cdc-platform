@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved, requireRole } from '../middleware/auth';
 import { createMentorshipRequestSchema, meetingLinkSchema } from '../schemas/mentorshipSchemas';
-import { attachRecordingSchema, mentorProfileSchema, mentorAvailabilityRuleSchema } from '../schemas/adminSchemas';
+import { attachRecordingSchema, mentorAvailabilityRuleSchema } from '../schemas/adminSchemas';
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
 import { generateAvailableSlots } from '../services/mentorAvailabilityService';
 import { attachMentorshipRecording, MentorshipRecordingError } from '../services/mentorshipRecordingService';
@@ -187,21 +187,14 @@ const mentorProfileSelect = {
   cvUrl: true,
 } as const;
 
+// Read-only — mentors can see their own listing (title/rate/skills/CV) but
+// can no longer edit it here. Editing is admin-only now, via
+// adminMentorship.ts's PUT /mentors/:mentorId/profile (/admin/mentorship in
+// the CMS) — a mentor who wants a change contacts CDC support instead of
+// self-serving it, same posture as course pricing/catalog content.
 router.get('/me/profile', authenticate, requireRole('Mentor'), async (req: Request, res: Response) => {
   const mentor = await prisma.user.findUnique({ where: { id: req.user!.id }, select: mentorProfileSelect });
   res.json({ data: mentor });
-});
-
-router.put('/me/profile', authenticate, requireRole('Mentor'), async (req: Request, res: Response) => {
-  const result = mentorProfileSchema.safeParse(req.body);
-  if (!result.success) return res.status(400).json({ errors: result.error.errors });
-
-  const updated = await prisma.user.update({
-    where: { id: req.user!.id },
-    data: result.data,
-    select: mentorProfileSelect,
-  });
-  res.json({ data: updated });
 });
 
 router.get('/me/availability', authenticate, requireRole('Mentor'), async (req: Request, res: Response) => {
