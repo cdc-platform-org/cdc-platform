@@ -417,6 +417,10 @@ model User {
   mentorAvailabilityRules     MentorAvailabilityRule[]
   mentorshipBookingsAsMentor  MentorshipBooking[]          @relation("MentorshipBookingsAsMentor")
   mentorshipBookingsAsStudent MentorshipBooking[]          @relation("MentorshipBookingsAsStudent")
+  mentorBookingHistoryActions MentorBookingHistory[]       @relation("MentorBookingHistoryActor")
+  mentorChatMessagesSent      MentorChatMessage[]          @relation("MentorChatMessagesSent")
+  mentorChatMessagesReceived  MentorChatMessage[]          @relation("MentorChatMessagesReceived")
+  mentorChatViolations        MentorChatViolation[]        @relation("MentorChatViolations")
 
   @@map("users")
 }
@@ -1421,12 +1425,84 @@ model MentorshipBooking {
   commissionAmount        Int?
   netAmount               Int?
   createdAt               DateTime   @default(now())
+  // "SCHEDULED" | "CANCELLED" | "COMPLETED" — no cancel/completion tracking
+  // existed before this field; COMPLETED is set lazily (GET /bookings/mine
+  // flips any SCHEDULED booking whose scheduledAt has passed) rather than by
+  // a cron, since nothing else in this session time-sensitively needs it
+  // set the instant the session ends.
+  status                  String     @default("SCHEDULED")
 
   walletEntries WalletEntry[]
+  history       MentorBookingHistory[]
+  chatMessages  MentorChatMessage[]
+  chatViolations MentorChatViolation[]
 
   @@index([mentorId])
   @@index([studentId])
   @@map("mentorship_bookings")
+}
+
+// Audit trail for MentorshipBooking's lifecycle — one row per state change,
+// append-only (nothing here is ever updated/deleted). action is one of
+// "CREATED" | "RESCHEDULED" | "CANCELLED" | "COMPLETED".
+model MentorBookingHistory {
+  id                  String            @id @default(uuid())
+  bookingId           String
+  booking             MentorshipBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  action              String
+  // Null for the system-derived COMPLETED transition (GET /bookings/mine) —
+  // every other action has a real actor.
+  performedById       String?
+  performedBy         User?             @relation("MentorBookingHistoryActor", fields: [performedById], references: [id], onDelete: SetNull)
+  previousScheduledAt DateTime?
+  newScheduledAt      DateTime?
+  note                String?
+  createdAt           DateTime          @default(now())
+
+  @@index([bookingId])
+  @@map("mentor_booking_history")
+}
+
+// In-app mentor <-> client chat, scoped to one booking — polling-based (no
+// websocket infra in this codebase yet), see GET/POST
+// /mentorship/bookings/:id/messages. Only ever created for messages that
+// passed moderation (chatModerationService.ts) — a blocked attempt is
+// logged to MentorChatViolation instead and never reaches this table.
+model MentorChatMessage {
+  id         String            @id @default(uuid())
+  bookingId  String
+  booking    MentorshipBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  senderId   String
+  sender     User              @relation("MentorChatMessagesSent", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver   User              @relation("MentorChatMessagesReceived", fields: [receiverId], references: [id], onDelete: Cascade)
+  content    String
+  createdAt  DateTime          @default(now())
+
+  @@index([bookingId])
+  @@map("mentor_chat_messages")
+}
+
+// One row per blocked off-platform-contact attempt (chatModerationService.ts)
+// — counted per user across ALL their bookings, not per-booking, since this
+// is about a user's overall conduct on the platform. The 2nd row for a given
+// userId is what flips User.isBanned (see routes/mentorship.ts's POST
+// .../messages) — requireApproved already enforces isBanned on every
+// subsequent authenticated request, which is what actually "logs the
+// offender out" in practice (no server-side session store to revoke a JWT
+// from directly).
+model MentorChatViolation {
+  id               String            @id @default(uuid())
+  bookingId        String
+  booking          MentorshipBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User              @relation("MentorChatViolations", fields: [userId], references: [id], onDelete: Cascade)
+  attemptedContent String
+  detectedReason   String
+  createdAt        DateTime          @default(now())
+
+  @@index([userId])
+  @@map("mentor_chat_violations")
 }
 
 // ============================================================

@@ -1,10 +1,16 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved, requireRole } from '../middleware/auth';
-import { createMentorshipRequestSchema, meetingLinkSchema } from '../schemas/mentorshipSchemas';
+import {
+  createMentorshipRequestSchema,
+  meetingLinkSchema,
+  rescheduleBookingSchema,
+  cancelBookingSchema,
+  chatMessageSchema,
+} from '../schemas/mentorshipSchemas';
 import { attachRecordingSchema, mentorAvailabilityRuleSchema } from '../schemas/adminSchemas';
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
-import { generateAvailableSlots } from '../services/mentorAvailabilityService';
+import { generateAvailableSlots, assertSlotAvailable, SlotUnavailableError } from '../services/mentorAvailabilityService';
 import { attachMentorshipRecording, MentorshipRecordingError } from '../services/mentorshipRecordingService';
 
 const router = Router();
@@ -105,6 +111,21 @@ router.get('/bookings/mine', authenticate, async (req: Request, res: Response) =
   // is created at checkout time (before payment), so a PENDING/FAILED one
   // was never a real confirmed session.
   const confirmed = bookings.filter((b) => b.bogPayment.status === 'COMPLETED');
+
+  // Lazily flip any still-SCHEDULED booking whose time has passed to
+  // COMPLETED — no cron for this; nothing here needs it set the instant the
+  // session ends, only "eventually, next time anyone looks."
+  const nowPast = confirmed.filter((b) => b.status === 'SCHEDULED' && b.scheduledAt.getTime() < Date.now());
+  if (nowPast.length > 0) {
+    await prisma.$transaction([
+      prisma.mentorshipBooking.updateMany({ where: { id: { in: nowPast.map((b) => b.id) } }, data: { status: 'COMPLETED' } }),
+      prisma.mentorBookingHistory.createMany({
+        data: nowPast.map((b) => ({ bookingId: b.id, action: 'COMPLETED', performedById: null })),
+      }),
+    ]);
+    nowPast.forEach((b) => (b.status = 'COMPLETED'));
+  }
+
   res.json({
     data: confirmed.map((b) => ({
       id: b.id,
@@ -112,6 +133,7 @@ router.get('/bookings/mine', authenticate, async (req: Request, res: Response) =
       mentor: b.mentor,
       student: b.student,
       scheduledAt: b.scheduledAt,
+      status: b.status,
       studentPhone: b.studentPhone,
       consultationDescription: b.consultationDescription,
       googleMeetLink: b.googleMeetLink,
@@ -119,6 +141,147 @@ router.get('/bookings/mine', authenticate, async (req: Request, res: Response) =
       recordingUrl: b.recordingUrl,
     })),
   });
+});
+
+// Shared ownership guard for every /bookings/:id/* route below — either
+// participant (mentor or student), never a third party. Returns the
+// booking or null (caller 404s) rather than throwing, since "not found" and
+// "not yours" are deliberately indistinguishable to the caller.
+async function loadOwnedBooking(bookingId: string, userId: string) {
+  const booking = await prisma.mentorshipBooking.findUnique({ where: { id: bookingId } });
+  if (!booking || (booking.mentorId !== userId && booking.studentId !== userId)) return null;
+  return booking;
+}
+
+// ============================================================
+// RESCHEDULE — either participant can move their own SCHEDULED booking to a
+// new time (re-validated against the mentor's current availability, same
+// assertSlotAvailable check the original booking went through). Logs a
+// MentorBookingHistory row; does not touch payment/commission fields.
+// ============================================================
+router.patch('/bookings/:id/reschedule', authenticate, requireApproved, async (req: Request, res: Response) => {
+  const result = rescheduleBookingSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const booking = await loadOwnedBooking(req.params.id, req.user!.id);
+  if (!booking) return res.status(404).json({ message: 'Booking not found.' });
+  if (booking.status !== 'SCHEDULED') {
+    return res.status(400).json({ message: 'Only a scheduled session can be rescheduled.' });
+  }
+
+  const newScheduledAt = new Date(result.data.scheduledAt);
+  try {
+    await assertSlotAvailable(booking.mentorId, newScheduledAt);
+  } catch (err) {
+    if (err instanceof SlotUnavailableError) return res.status(400).json({ message: err.message });
+    throw err;
+  }
+
+  const [updated] = await prisma.$transaction([
+    prisma.mentorshipBooking.update({ where: { id: booking.id }, data: { scheduledAt: newScheduledAt } }),
+    prisma.mentorBookingHistory.create({
+      data: {
+        bookingId: booking.id,
+        action: 'RESCHEDULED',
+        performedById: req.user!.id,
+        previousScheduledAt: booking.scheduledAt,
+        newScheduledAt,
+        note: result.data.note ?? null,
+      },
+    }),
+  ]);
+
+  res.json({ data: updated });
+});
+
+// ============================================================
+// CANCEL — either participant. Refund/payout reversal is out of scope here
+// (no refund flow exists for mentorship bookings today) — this only marks
+// the session cancelled and logs it; an admin handles any money question
+// through the existing dispute/refund process.
+// ============================================================
+router.post('/bookings/:id/cancel', authenticate, requireApproved, async (req: Request, res: Response) => {
+  const result = cancelBookingSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const booking = await loadOwnedBooking(req.params.id, req.user!.id);
+  if (!booking) return res.status(404).json({ message: 'Booking not found.' });
+  if (booking.status !== 'SCHEDULED') {
+    return res.status(400).json({ message: 'Only a scheduled session can be cancelled.' });
+  }
+
+  const [updated] = await prisma.$transaction([
+    prisma.mentorshipBooking.update({ where: { id: booking.id }, data: { status: 'CANCELLED' } }),
+    prisma.mentorBookingHistory.create({
+      data: { bookingId: booking.id, action: 'CANCELLED', performedById: req.user!.id, note: result.data.note ?? null },
+    }),
+  ]);
+
+  res.json({ data: updated });
+});
+
+// ============================================================
+// CHAT — GET/POST /bookings/:id/messages. Every send is checked by
+// sanitizeChatMessage (utils/sanitizeChatMessage.ts, already the
+// platform-wide "no off-platform contact info" filter — forum, DMs,
+// vacancy applications). A flagged message is never stored or delivered;
+// it's logged to MentorChatViolation instead. The SECOND violation by the
+// same user (counted across all their bookings, not just this one) bans
+// their account outright — requireApproved already rejects every
+// subsequent request for a banned user, which is the actual enforcement.
+// ============================================================
+router.get('/bookings/:id/messages', authenticate, requireApproved, async (req: Request, res: Response) => {
+  const booking = await loadOwnedBooking(req.params.id, req.user!.id);
+  if (!booking) return res.status(404).json({ message: 'Booking not found.' });
+
+  const messages = await prisma.mentorChatMessage.findMany({
+    where: { bookingId: booking.id },
+    orderBy: { createdAt: 'asc' },
+  });
+  res.json({ data: messages });
+});
+
+router.post('/bookings/:id/messages', authenticate, requireApproved, async (req: Request, res: Response) => {
+  const result = chatMessageSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const booking = await loadOwnedBooking(req.params.id, req.user!.id);
+  if (!booking) return res.status(404).json({ message: 'Booking not found.' });
+
+  const receiverId = booking.mentorId === req.user!.id ? booking.studentId : booking.mentorId;
+  const { wasFiltered } = sanitizeChatMessage(result.data.content);
+
+  if (wasFiltered) {
+    await prisma.mentorChatViolation.create({
+      data: {
+        bookingId: booking.id,
+        userId: req.user!.id,
+        attemptedContent: result.data.content,
+        detectedReason: 'Message contained off-platform contact info / payment phrasing (sanitizeChatMessage).',
+      },
+    });
+
+    const violationCount = await prisma.mentorChatViolation.count({ where: { userId: req.user!.id } });
+    if (violationCount >= 2) {
+      await prisma.user.update({ where: { id: req.user!.id }, data: { isBanned: true } });
+      return res.status(403).json({
+        blocked: true,
+        banned: true,
+        message: 'ⓘ თქვენი ანგარიში დაბლოკილია პლატფორმის გარეთ კომუნიკაციის განმეორებითი მცდელობის გამო.',
+      });
+    }
+
+    return res.status(422).json({
+      blocked: true,
+      banned: false,
+      message: '⚠️ პლატფორმის გარეთ კომუნიკაცია და გადახდა აკრძალულია საკომისიოს თავიდან არიდების მიზნით.',
+    });
+  }
+
+  const message = await prisma.mentorChatMessage.create({
+    data: { bookingId: booking.id, senderId: req.user!.id, receiverId, content: result.data.content },
+  });
+  res.status(201).json({ data: message });
 });
 
 // Mentor self-serve: attach/replace a recording link on their OWN booking

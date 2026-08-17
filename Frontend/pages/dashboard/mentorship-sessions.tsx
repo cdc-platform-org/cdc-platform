@@ -1,13 +1,39 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
-import { CalendarClock, Video, Users, UserPlus, List, CalendarDays, ChevronLeft, ChevronRight, X, PlayCircle, Link2 } from 'lucide-react';
+import {
+  CalendarClock,
+  Video,
+  Users,
+  UserPlus,
+  List,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  PlayCircle,
+  Link2,
+  MessageCircle,
+  Send,
+  CalendarX2,
+} from 'lucide-react';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
-import { getMyMentorshipBookings, attachMyBookingRecording, setMyBookingMeetingLink, MyMentorshipBooking } from '../../src/services/mentorshipService';
+import {
+  getMyMentorshipBookings,
+  attachMyBookingRecording,
+  setMyBookingMeetingLink,
+  rescheduleMyBooking,
+  cancelMyBooking,
+  getBookingMessages,
+  sendBookingMessage,
+  MyMentorshipBooking,
+  MentorChatMessage,
+} from '../../src/services/mentorshipService';
+import { useAuth } from '../../src/context/AuthContext';
 
 const dict = {
   ka: {
@@ -40,6 +66,18 @@ const dict = {
     editMeetingLink: 'ბმულის რედაქტირება',
     meetingLinkPlaceholder: 'Google Meet / Zoom ბმული',
     meetingLinkSaveFailed: 'ბმულის შენახვა ვერ მოხერხდა.',
+    reschedule: 'გადატანა',
+    rescheduleFailed: 'თარიღის შეცვლა ვერ მოხერხდა.',
+    cancelSession: 'სესიის გაუქმება',
+    confirmCancel: 'ნამდვილად გსურთ ამ სესიის გაუქმება?',
+    cancelFailed: 'გაუქმება ვერ მოხერხდა.',
+    cancelled: 'გაუქმებული',
+    chat: 'ჩატი',
+    chatPlaceholder: 'დაწერეთ შეტყობინება...',
+    chatSend: 'გაგზავნა',
+    chatEmpty: 'ჯერ არცერთი შეტყობინება არ არის.',
+    chatLoadFailed: 'შეტყობინებების ჩატვირთვა ვერ მოხერხდა.',
+    chatBanned: 'თქვენი ანგარიში დაბლოკილია.',
   },
   en: {
     title: 'My Mentorship Sessions',
@@ -71,6 +109,18 @@ const dict = {
     editMeetingLink: 'Edit link',
     meetingLinkPlaceholder: 'Google Meet / Zoom link',
     meetingLinkSaveFailed: 'Could not save the meeting link.',
+    reschedule: 'Reschedule',
+    rescheduleFailed: 'Could not reschedule the session.',
+    cancelSession: 'Cancel Session',
+    confirmCancel: 'Are you sure you want to cancel this session?',
+    cancelFailed: 'Could not cancel the session.',
+    cancelled: 'Cancelled',
+    chat: 'Chat',
+    chatPlaceholder: 'Type a message...',
+    chatSend: 'Send',
+    chatEmpty: 'No messages yet.',
+    chatLoadFailed: 'Could not load messages.',
+    chatBanned: 'Your account has been blocked.',
   },
 };
 
@@ -89,11 +139,12 @@ function googleCalendarAddUrl(booking: MyMentorshipBooking, otherPartyName: stri
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
-function SessionCard({ booking, lang }: { booking: MyMentorshipBooking; lang: 'ka' | 'en' }) {
+function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBooking; lang: 'ka' | 'en'; onChanged: () => void }) {
   const t = dict[lang];
   const otherParty = booking.role === 'student' ? booking.mentor : booking.student;
   const otherPartyLabel = booking.role === 'student' ? t.withMentor : t.withStudent;
   const isPast = new Date(booking.scheduledAt).getTime() < Date.now();
+  const isScheduled = booking.status === 'SCHEDULED';
 
   const [recordingUrl, setRecordingUrl] = useState(booking.recordingUrl);
   const [attaching, setAttaching] = useState(false);
@@ -106,6 +157,16 @@ function SessionCard({ booking, lang }: { booking: MyMentorshipBooking; lang: 'k
   const [meetLinkInput, setMeetLinkInput] = useState(booking.googleMeetLink ?? '');
   const [savingLink, setSavingLink] = useState(false);
   const [meetLinkError, setMeetLinkError] = useState<string | null>(null);
+
+  const [showChat, setShowChat] = useState(false);
+
+  const [rescheduling, setRescheduling] = useState(false);
+  const [rescheduleInput, setRescheduleInput] = useState('');
+  const [savingReschedule, setSavingReschedule] = useState(false);
+  const [rescheduleError, setRescheduleError] = useState<string | null>(null);
+
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const handleSaveMeetingLink = async () => {
     if (!meetLinkInput.trim()) return;
@@ -137,6 +198,34 @@ function SessionCard({ booking, lang }: { booking: MyMentorshipBooking; lang: 'k
     }
   };
 
+  const handleReschedule = async () => {
+    if (!rescheduleInput) return;
+    setSavingReschedule(true);
+    setRescheduleError(null);
+    try {
+      await rescheduleMyBooking(booking.id, new Date(rescheduleInput).toISOString());
+      setRescheduling(false);
+      onChanged();
+    } catch (err: any) {
+      setRescheduleError(err?.response?.data?.message ?? t.rescheduleFailed);
+    } finally {
+      setSavingReschedule(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!window.confirm(t.confirmCancel)) return;
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      await cancelMyBooking(booking.id);
+      onChanged();
+    } catch (err: any) {
+      setCancelError(err?.response?.data?.message ?? t.cancelFailed);
+      setCancelling(false);
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -150,7 +239,14 @@ function SessionCard({ booking, lang }: { booking: MyMentorshipBooking; lang: 'k
             </div>
           )}
           <div>
-            <p className="text-[11px] uppercase tracking-widest font-bold text-slate-400">{otherPartyLabel}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] uppercase tracking-widest font-bold text-slate-400">{otherPartyLabel}</p>
+              {booking.status === 'CANCELLED' && (
+                <span className="text-[10px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
+                  {t.cancelled}
+                </span>
+              )}
+            </div>
             <p className="text-sm font-black text-slate-900 dark:text-white">{otherParty.name}</p>
             <p className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-1">
               <CalendarClock className="w-3.5 h-3.5" />
@@ -217,8 +313,78 @@ function SessionCard({ booking, lang }: { booking: MyMentorshipBooking; lang: 'k
               {t.attachRecording}
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setShowChat((open) => !open)}
+            className={`flex items-center justify-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl border cursor-pointer transition-colors ${
+              showChat
+                ? 'bg-indigo-600 text-white border-indigo-600'
+                : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 bg-transparent'
+            }`}
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            {t.chat}
+          </button>
+          {isScheduled && !isPast && !rescheduling && (
+            <button
+              type="button"
+              onClick={() => {
+                setRescheduling(true);
+                setRescheduleInput('');
+              }}
+              className="flex items-center justify-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 bg-transparent cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              <CalendarClock className="w-3.5 h-3.5" />
+              {t.reschedule}
+            </button>
+          )}
+          {isScheduled && !isPast && (
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={cancelling}
+              className="flex items-center justify-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 bg-transparent cursor-pointer hover:bg-rose-50 dark:hover:bg-rose-950/30 disabled:opacity-60"
+            >
+              <CalendarX2 className="w-3.5 h-3.5" />
+              {t.cancelSession}
+            </button>
+          )}
         </div>
       </div>
+
+      {cancelError && <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-2">{cancelError}</p>}
+
+      {rescheduling && (
+        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="datetime-local"
+              value={rescheduleInput}
+              onChange={(e) => setRescheduleInput(e.target.value)}
+              className="flex-1 min-w-[220px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950/60 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500/60"
+              autoFocus
+            />
+            <button
+              type="button"
+              disabled={savingReschedule || !rescheduleInput}
+              onClick={handleReschedule}
+              className="text-xs font-bold text-white bg-indigo-600 px-3.5 py-2 rounded-lg border-none cursor-pointer hover:bg-indigo-700 disabled:opacity-60"
+            >
+              {savingReschedule ? '…' : t.save}
+            </button>
+            <button
+              type="button"
+              onClick={() => setRescheduling(false)}
+              className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-transparent border-none cursor-pointer hover:text-slate-700 dark:hover:text-slate-200"
+            >
+              {t.cancel}
+            </button>
+          </div>
+          {rescheduleError && <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1.5">{rescheduleError}</p>}
+        </div>
+      )}
+
+      {showChat && <ChatPanel bookingId={booking.id} lang={lang} />}
 
       {editingLink && (
         <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
@@ -281,6 +447,131 @@ function SessionCard({ booking, lang }: { booking: MyMentorshipBooking; lang: 'k
           {recordingError && <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1.5">{recordingError}</p>}
         </div>
       )}
+    </div>
+  );
+}
+
+const CHAT_POLL_MS = 4000;
+
+// Polling-based (no websocket infra in this codebase) — good enough for a
+// mentor/client scheduling-adjacent chat, not a general-purpose messenger.
+// A blocked send (Backend's sanitizeChatMessage catching off-platform
+// contact info/payment phrasing) never reaches the messages list; it
+// surfaces as a warning banner instead, or — on the sender's 2nd such
+// attempt anywhere on the platform — a terminal "account blocked" state.
+function ChatPanel({ bookingId, lang }: { bookingId: string; lang: 'ka' | 'en' }) {
+  const t = dict[lang];
+  const { user } = useAuth();
+  const [messages, setMessages] = useState<MentorChatMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const [warning, setWarning] = useState<string | null>(null);
+  const [banned, setBanned] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setMessages(await getBookingMessages(bookingId));
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [bookingId]);
+
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, CHAT_POLL_MS);
+    return () => clearInterval(interval);
+  }, [load]);
+
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSend = async () => {
+    const content = input.trim();
+    if (!content || sending || banned) return;
+    setSending(true);
+    setWarning(null);
+    try {
+      const message = await sendBookingMessage(bookingId, content);
+      setMessages((prev) => [...prev, message]);
+      setInput('');
+    } catch (err: any) {
+      if (err?.response?.status === 403 && err?.response?.data?.banned) {
+        setBanned(true);
+        setWarning(err.response.data.message ?? t.chatBanned);
+      } else if (err?.response?.status === 422) {
+        setWarning(err.response.data?.message ?? t.chatBanned);
+      } else {
+        setWarning(t.chatLoadFailed);
+      }
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+      <div ref={listRef} className="max-h-64 overflow-y-auto space-y-2 mb-3 pr-1">
+        {loading ? (
+          <p className="text-xs text-slate-400">{t.loading}</p>
+        ) : loadError ? (
+          <p className="text-xs text-rose-500">{t.chatLoadFailed}</p>
+        ) : messages.length === 0 ? (
+          <p className="text-xs text-slate-400">{t.chatEmpty}</p>
+        ) : (
+          messages.map((m) => (
+            <div key={m.id} className={`flex ${m.senderId === user?.id ? 'justify-end' : 'justify-start'}`}>
+              <div
+                className={`max-w-[80%] rounded-xl px-3 py-2 text-xs whitespace-pre-wrap break-words ${
+                  m.senderId === user?.id
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200'
+                }`}
+              >
+                {m.content}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {warning && (
+        <div className={`mb-2 rounded-lg px-3 py-2 text-[11px] ${banned ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'}`}>
+          {warning}
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleSend();
+            }
+          }}
+          disabled={sending || banned}
+          placeholder={t.chatPlaceholder}
+          className="flex-1 min-w-0 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950/60 px-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-cyan-500/60 disabled:opacity-60"
+        />
+        <button
+          type="button"
+          onClick={handleSend}
+          disabled={sending || banned || !input.trim()}
+          aria-label={t.chatSend}
+          className="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-600 text-white border-none cursor-pointer hover:bg-indigo-700 disabled:opacity-60"
+        >
+          <Send className="w-3.5 h-3.5" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -598,7 +889,7 @@ function MentorshipSessionsContent() {
                 <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">{t.upcoming}</h2>
                 <div className="space-y-3">
                   {upcoming.map((b) => (
-                    <SessionCard key={b.id} booking={b} lang={lang} />
+                    <SessionCard key={b.id} booking={b} lang={lang} onChanged={load} />
                   ))}
                 </div>
               </div>
@@ -608,7 +899,7 @@ function MentorshipSessionsContent() {
                 <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">{t.past}</h2>
                 <div className="space-y-3 opacity-70">
                   {past.map((b) => (
-                    <SessionCard key={b.id} booking={b} lang={lang} />
+                    <SessionCard key={b.id} booking={b} lang={lang} onChanged={load} />
                   ))}
                 </div>
               </div>

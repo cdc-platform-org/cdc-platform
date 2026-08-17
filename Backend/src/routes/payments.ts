@@ -261,7 +261,7 @@ router.post(
         status: 'PENDING',
       },
     });
-    await prisma.mentorshipBooking.create({
+    const booking = await prisma.mentorshipBooking.create({
       data: {
         bogPaymentId: bogPayment.id,
         mentorId: mentor.id,
@@ -270,6 +270,12 @@ router.post(
         studentPhone: result.data.studentPhone,
         consultationDescription: result.data.consultationDescription || null,
       },
+    });
+    // Logged at checkout time, same as the booking row itself — a
+    // never-completed-payment booking still shows a real "created" event,
+    // matching how the row exists in the DB regardless of payment outcome.
+    await prisma.mentorBookingHistory.create({
+      data: { bookingId: booking.id, action: 'CREATED', performedById: req.user!.id, newScheduledAt: scheduledAt },
     });
     const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
     const order = await createBogOrderOrRespond(res, {

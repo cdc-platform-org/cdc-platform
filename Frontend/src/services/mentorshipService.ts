@@ -83,6 +83,10 @@ export interface MyMentorshipBooking {
   mentor: BookingParticipant;
   student: BookingParticipant;
   scheduledAt: string;
+  // "SCHEDULED" | "CANCELLED" | "COMPLETED" — COMPLETED is set lazily by
+  // the server the first time anyone fetches a booking whose time has
+  // passed, not the instant the session actually ends.
+  status: 'SCHEDULED' | 'CANCELLED' | 'COMPLETED';
   studentPhone: string;
   consultationDescription: string | null;
   googleMeetLink: string | null;
@@ -92,6 +96,47 @@ export interface MyMentorshipBooking {
 
 export async function getMyMentorshipBookings(): Promise<MyMentorshipBooking[]> {
   const response = await apiClient.get<{ data: MyMentorshipBooking[] }>('/mentorship/bookings/mine');
+  return response.data.data;
+}
+
+// Either participant can reschedule/cancel their own SCHEDULED booking —
+// see routes/mentorship.ts's ownership check (mentor or student on that
+// specific booking, not just "is a Mentor").
+export async function rescheduleMyBooking(bookingId: string, scheduledAt: string, note?: string): Promise<MyMentorshipBooking> {
+  const response = await apiClient.patch<{ data: MyMentorshipBooking }>(`/mentorship/bookings/${bookingId}/reschedule`, {
+    scheduledAt,
+    note,
+  });
+  return response.data.data;
+}
+
+export async function cancelMyBooking(bookingId: string, note?: string): Promise<MyMentorshipBooking> {
+  const response = await apiClient.post<{ data: MyMentorshipBooking }>(`/mentorship/bookings/${bookingId}/cancel`, { note });
+  return response.data.data;
+}
+
+// ============================================================
+// MENTOR <-> CLIENT CHAT — one thread per booking. A blocked send (off-
+// platform contact info/payment phrasing — see Backend's
+// sanitizeChatMessage) throws with response.status 422 (warned) or 403
+// (2nd violation — account now banned); the message is never stored.
+// ============================================================
+export interface MentorChatMessage {
+  id: string;
+  bookingId: string;
+  senderId: string;
+  receiverId: string;
+  content: string;
+  createdAt: string;
+}
+
+export async function getBookingMessages(bookingId: string): Promise<MentorChatMessage[]> {
+  const response = await apiClient.get<{ data: MentorChatMessage[] }>(`/mentorship/bookings/${bookingId}/messages`);
+  return response.data.data;
+}
+
+export async function sendBookingMessage(bookingId: string, content: string): Promise<MentorChatMessage> {
+  const response = await apiClient.post<{ data: MentorChatMessage }>(`/mentorship/bookings/${bookingId}/messages`, { content });
   return response.data.data;
 }
 

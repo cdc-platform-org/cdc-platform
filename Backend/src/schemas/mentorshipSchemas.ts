@@ -18,3 +18,16 @@ export const meetingLinkSchema = z.object({
     .max(2000)
     .refine((url) => /^https?:\/\//i.test(url), { message: 'Must be a valid http(s) URL.' }),
 });
+
+export const rescheduleBookingSchema = z.object({
+  scheduledAt: z.string().datetime(),
+  note: z.string().trim().max(500).optional(),
+});
+
+export const cancelBookingSchema = z.object({
+  note: z.string().trim().max(500).optional(),
+});
+
+export const chatMessageSchema = z.object({
+  content: z.string().trim().min(1).max(2000),
+});
