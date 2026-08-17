@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { Menu, X, LayoutDashboard, GraduationCap, LogOut, ShieldCheck, ChevronDown, ShoppingBag } from 'lucide-react';
+import { Menu, X, LayoutDashboard, GraduationCap, LogOut, ShieldCheck, ChevronDown, ShoppingBag, CalendarClock } from 'lucide-react';
 import LanguageSwitcher from './LanguageSwitcher';
 import UserMenu from './UserMenu';
 import NotificationBell from './NotificationBell';
@@ -24,6 +24,7 @@ const dict = {
     dashboard: 'ჩემი დაშბორდი',
     myCourses: 'ჩემი კურსები',
     admin: 'ადმინ პანელი',
+    mentorPanel: '👨‍🏫 მენტორის პანელი',
     logout: 'გამოსვლა',
   },
   en: {
@@ -39,6 +40,7 @@ const dict = {
     dashboard: 'My Dashboard',
     myCourses: 'My Courses',
     admin: 'Admin Panel',
+    mentorPanel: '👨‍🏫 Mentor Panel',
     logout: 'Log Out',
   },
 };
@@ -78,6 +80,11 @@ export default function SiteHeader() {
   };
 
   const dashboardHref = user?.adminRole ? '/admin' : '/dashboard';
+  // Mentor role or any admin-team member (SUPER_ADMIN/MANAGER — user.adminRole,
+  // same convention as the Admin Panel link below) — the sessions list at
+  // /dashboard/mentorship-sessions shows "with student" rows for mentors and
+  // "with mentor" rows for everyone else, so it's meaningful for both.
+  const canSeeMentorPanel = isAuthenticated && (user?.role === 'Mentor' || !!user?.adminRole);
 
   return (
     <nav className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-[#0e1422]/90 backdrop-blur-md px-4 sm:px-6 py-4">
@@ -102,6 +109,14 @@ export default function SiteHeader() {
             <Link href="/mentors" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
               {t.mentors}
             </Link>
+            {canSeeMentorPanel && (
+              <Link
+                href="/dashboard/mentorship-sessions"
+                className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors"
+              >
+                {t.mentorPanel}
+              </Link>
+            )}
             <div className="relative group py-2 -my-2">
               <Link
                 href="/marketplace"
@@ -292,6 +307,15 @@ export default function SiteHeader() {
                 <Link href="/dashboard?tab=courses" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5 no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
                   <GraduationCap className="w-4 h-4" /> {t.myCourses}
                 </Link>
+                {canSeeMentorPanel && (
+                  <Link
+                    href="/dashboard/mentorship-sessions"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-2.5 no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    <CalendarClock className="w-4 h-4" /> {t.mentorPanel}
+                  </Link>
+                )}
                 {user.adminRole && (
                   <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5 no-underline px-2 py-2.5 rounded-lg text-cyan-600 dark:text-cyan-400 hover:bg-slate-100 dark:hover:bg-slate-800">
                     <ShieldCheck className="w-4 h-4" /> {t.admin}
