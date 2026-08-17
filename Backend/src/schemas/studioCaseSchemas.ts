@@ -19,6 +19,12 @@ export const studioCaseCreateSchema = z.object({
     .union([z.string().trim().url('Enter a valid URL.').regex(/^https?:\/\//, 'Must start with http:// or https://'), z.literal('')])
     .optional()
     .nullable(),
+  // YouTube/Vimeo watch URL or a direct .mp4 link — the detail page
+  // (pages/cases/[slug].tsx) decides how to embed it based on the URL shape.
+  videoUrl: z
+    .union([z.string().trim().url('Enter a valid URL.').regex(/^https?:\/\//, 'Must start with http:// or https://'), z.literal('')])
+    .optional()
+    .nullable(),
   isFeatured: z.boolean().optional().default(false),
   order: z.number().int().optional().default(0),
 });

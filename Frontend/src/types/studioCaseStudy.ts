@@ -15,6 +15,9 @@ export interface StudioCaseStudy {
   coverImageUrl: string | null;
   galleryImages: string[];
   projectUrl: string | null;
+  // YouTube/Vimeo watch URL or a direct .mp4 link — see VideoEmbed's URL
+  // detection for how each shape gets embedded on /cases/[slug].
+  videoUrl: string | null;
   isFeatured: boolean;
   order: number;
   createdAt: string;

@@ -6,6 +6,8 @@ import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import Lightbox from '../../src/components/shared/Lightbox';
+import VideoEmbed from '../../src/components/shared/VideoEmbed';
+import MarkdownContent from '../../src/components/shared/MarkdownContent';
 import { StudioCaseStudy } from '../../src/types/studioCaseStudy';
 import { getStudioCaseBySlug, studioCaseTitle, studioCaseDescription, studioCaseFullStory } from '../../src/services/studioCaseService';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
@@ -109,10 +111,16 @@ export default function StudioCaseDetailPage() {
               )}
             </div>
 
-            <p className="text-base text-slate-600 dark:text-slate-300 leading-relaxed font-medium mb-6">{studioCaseDescription(caseStudy, lang)}</p>
+            <MarkdownContent content={studioCaseDescription(caseStudy, lang)} className="text-base text-slate-600 dark:text-slate-300 font-medium mb-6" />
 
             {studioCaseFullStory(caseStudy, lang) && (
-              <div className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed whitespace-pre-line mb-10">{studioCaseFullStory(caseStudy, lang)}</div>
+              <MarkdownContent content={studioCaseFullStory(caseStudy, lang) ?? ''} className="text-sm text-slate-500 dark:text-slate-400 mb-10" />
+            )}
+
+            {caseStudy.videoUrl && (
+              <div className="mb-10">
+                <VideoEmbed url={caseStudy.videoUrl} title={displayTitle} />
+              </div>
             )}
 
             {galleryImages.length > 0 && (

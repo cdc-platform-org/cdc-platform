@@ -41,6 +41,7 @@ export interface StudioCasePayload {
   coverImageUrl?: string | null;
   galleryImages?: string[];
   projectUrl?: string | null;
+  videoUrl?: string | null;
   isFeatured?: boolean;
   order?: number;
 }

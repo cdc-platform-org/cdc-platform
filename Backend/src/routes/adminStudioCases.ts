@@ -34,7 +34,7 @@ router.post('/', async (req: Request, res: Response) => {
   const result = studioCaseCreateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
-  const { coverImageUrl, projectUrl, fullStory, fullStoryEn, ...rest } = result.data;
+  const { coverImageUrl, projectUrl, videoUrl, fullStory, fullStoryEn, ...rest } = result.data;
   const slug = await createUniqueSlug(result.data.title);
   const caseStudy = await prisma.studioCaseStudy.create({
     data: {
@@ -44,6 +44,7 @@ router.post('/', async (req: Request, res: Response) => {
       fullStoryEn: fullStoryEn || null,
       coverImageUrl: coverImageUrl || null,
       projectUrl: projectUrl || null,
+      videoUrl: videoUrl || null,
     },
   });
   await logAdminAction({ action: 'studio-case.create', targetType: 'StudioCaseStudy', targetId: caseStudy.id, performedById: req.user!.id });
@@ -54,7 +55,7 @@ router.put('/:id', async (req: Request, res: Response) => {
   const result = studioCaseUpdateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
-  const { coverImageUrl, projectUrl, fullStory, fullStoryEn, galleryImages, ...rest } = result.data;
+  const { coverImageUrl, projectUrl, videoUrl, fullStory, fullStoryEn, galleryImages, ...rest } = result.data;
   try {
     // Read the pre-update coverImageUrl/galleryImages only when they're
     // actually changing, so a save that doesn't touch photos skips the
@@ -72,6 +73,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         ...(fullStoryEn !== undefined && { fullStoryEn: fullStoryEn || null }),
         ...(coverImageUrl !== undefined && { coverImageUrl: coverImageUrl || null }),
         ...(projectUrl !== undefined && { projectUrl: projectUrl || null }),
+        ...(videoUrl !== undefined && { videoUrl: videoUrl || null }),
         ...(galleryImages !== undefined && { galleryImages }),
       },
     });

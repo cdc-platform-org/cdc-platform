@@ -6,6 +6,7 @@ import AdminLayout from '../../src/components/admin/AdminLayout';
 import { StudioCaseStudy } from '../../src/types/studioCaseStudy';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
 import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../src/utils/imageUpload';
+import RichTextEditor from '../../src/components/shared/RichTextEditor';
 import {
   adminGetStudioCases,
   createStudioCase,
@@ -28,6 +29,7 @@ const emptyForm: StudioCasePayload = {
   coverImageUrl: '',
   galleryImages: [],
   projectUrl: '',
+  videoUrl: '',
   isFeatured: false,
 };
 
@@ -85,6 +87,7 @@ function AdminStudioCasesDashboard() {
       coverImageUrl: item.coverImageUrl ?? '',
       galleryImages: item.galleryImages,
       projectUrl: item.projectUrl ?? '',
+      videoUrl: item.videoUrl ?? '',
       isFeatured: item.isFeatured,
     });
     setActiveLangTab('ka');
@@ -180,6 +183,7 @@ function AdminStudioCasesDashboard() {
         coverImageUrl: form.coverImageUrl?.trim() || null,
         galleryImages: form.galleryImages ?? [],
         projectUrl: form.projectUrl?.trim() || null,
+        videoUrl: form.videoUrl?.trim() || null,
         isFeatured: form.isFeatured,
       };
       if (editingId) {
@@ -385,11 +389,10 @@ function AdminStudioCasesDashboard() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">მოკლე აღწერა (KA)</label>
-                  <textarea
+                  <RichTextEditor
                     rows={2}
                     value={form.description}
-                    onChange={(e) => setForm({ ...form, description: e.target.value })}
-                    className={inputClass}
+                    onChange={(value) => setForm({ ...form, description: value })}
                     placeholder="მოკლე აღწერა, რომელიც ჩანს ბარათზე..."
                   />
                 </div>
@@ -397,11 +400,10 @@ function AdminStudioCasesDashboard() {
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     სრული ისტორია (KA) <span className="text-gray-400 font-normal">(არასავალდებულო)</span>
                   </label>
-                  <textarea
+                  <RichTextEditor
                     rows={5}
                     value={form.fullStory ?? ''}
-                    onChange={(e) => setForm({ ...form, fullStory: e.target.value })}
-                    className={inputClass}
+                    onChange={(value) => setForm({ ...form, fullStory: value })}
                     placeholder="დეტალური აღწერა პროექტზე, გამოწვევებზე და შედეგებზე..."
                   />
                 </div>
@@ -420,11 +422,10 @@ function AdminStudioCasesDashboard() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Short Description (EN)</label>
-                  <textarea
+                  <RichTextEditor
                     rows={2}
                     value={form.descriptionEn ?? ''}
-                    onChange={(e) => setForm({ ...form, descriptionEn: e.target.value })}
-                    className={inputClass}
+                    onChange={(value) => setForm({ ...form, descriptionEn: value })}
                     placeholder="Short description shown on the card..."
                   />
                 </div>
@@ -432,16 +433,28 @@ function AdminStudioCasesDashboard() {
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Full Story (EN) <span className="text-gray-400 font-normal">(optional)</span>
                   </label>
-                  <textarea
+                  <RichTextEditor
                     rows={5}
                     value={form.fullStoryEn ?? ''}
-                    onChange={(e) => setForm({ ...form, fullStoryEn: e.target.value })}
-                    className={inputClass}
+                    onChange={(value) => setForm({ ...form, fullStoryEn: value })}
                     placeholder="Detailed description of the project, challenges, and results..."
                   />
                 </div>
               </>
             )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                ვიდეოს ბმული <span className="text-gray-400 font-normal">(არასავალდებულო — YouTube, Vimeo ან .mp4)</span>
+              </label>
+              <input
+                type="text"
+                value={form.videoUrl ?? ''}
+                onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
+                className={inputClass}
+                placeholder="https://www.youtube.com/watch?v=..."
+              />
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">პროექტის ბმული <span className="text-gray-400 font-normal">(არასავალდებულო)</span></label>
