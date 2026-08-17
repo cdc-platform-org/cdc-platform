@@ -48,6 +48,12 @@ function AdminBlogDashboard() {
   const [translating, setTranslating] = useState(false);
   const [aiTopic, setAiTopic] = useState('');
   const [generatingWithAi, setGeneratingWithAi] = useState(false);
+  // 502 is specifically how adminBlog.ts's /generate-ai reports a Gemini-side
+  // failure (AiAgentError — see aiAgentService.ts, which already retries
+  // across 3 models before giving up) — distinguished so this shows a
+  // friendly "try again shortly" message with a Retry button instead of
+  // Gemini's raw error text.
+  const [aiGenerateOverloaded, setAiGenerateOverloaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Comment moderation — fetched on demand per post (no dedicated "all
@@ -123,6 +129,7 @@ function AdminBlogDashboard() {
 
   const handleGenerateWithAi = async () => {
     setFormError(null);
+    setAiGenerateOverloaded(false);
     setGeneratingWithAi(true);
     try {
       const draft = await generateBlogPostWithAi(aiTopic.trim() || undefined);
@@ -140,7 +147,12 @@ function AdminBlogDashboard() {
       setEditingId(null);
       setActiveLangTab('ka');
     } catch (err: any) {
-      setFormError(err?.response?.data?.message ?? 'AI გენერაცია ვერ მოხერხდა.');
+      if (err?.response?.status === 502) {
+        setAiGenerateOverloaded(true);
+        setFormError('AI სერვისი დროებით გადატვირთულია. გთხოვთ, სცადოთ ხელახლა 1-2 წუთში.');
+      } else {
+        setFormError(err?.response?.data?.message ?? 'AI გენერაცია ვერ მოხერხდა.');
+      }
     } finally {
       setGeneratingWithAi(false);
     }
@@ -290,8 +302,18 @@ function AdminBlogDashboard() {
           </div>
 
           {formError && (
-            <div className="mb-5 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-              {formError}
+            <div className="mb-5 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3 flex-wrap">
+              <span>{formError}</span>
+              {aiGenerateOverloaded && (
+                <button
+                  type="button"
+                  onClick={handleGenerateWithAi}
+                  disabled={generatingWithAi}
+                  className="shrink-0 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-lg disabled:opacity-60"
+                >
+                  {generatingWithAi ? 'იტვირთება…' : 'ხელახლა ცდა'}
+                </button>
+              )}
             </div>
           )}
 

@@ -26,8 +26,29 @@ const client = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
 // "gemini-2.5-pro"/"gemini-pro-latest" return a hard 0 free-tier quota on
 // this account (see aiExamService.ts) — same reasoning applies here, so
-// text generation stays on the Flash family.
-const TEXT_MODEL = 'gemini-flash-latest';
+// text generation stays on the Flash family. gemini-flash-latest is tried
+// first (fastest, usual default); the other two are only reached when it's
+// actively overloaded (503/429 — see isRetryableGeminiError), since a
+// different model answering is far better than the admin seeing a raw error
+// and having to click Generate again themselves. All three confirmed live
+// via direct ListModels + generateContent probes against this project's API
+// key on 2026-08-17 — gemini-1.5-flash/gemini-1.5-pro and gemini-2.5-flash
+// (and its -lite variant) all now 404 ("no longer available to new users").
+const TEXT_MODEL_FALLBACK_SEQUENCE = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-3.5-flash'];
+const RETRY_DELAY_MS = 1500;
+const ATTEMPTS_PER_MODEL = 2;
+
+// The Gemini SDK doesn't expose a structured status code — API errors come
+// back as an Error whose .message embeds Google's REST status, e.g.
+// "[503 Service Unavailable] The model is overloaded..." or "[429 Too Many
+// Requests] Resource has been exhausted...". Matched defensively since the
+// SDK gives no guarantee on this exact format across versions. A non-match
+// (e.g. a malformed-prompt 400) fails immediately rather than burning
+// through the whole model/retry sequence for an error no retry can fix.
+function isRetryableGeminiError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return /\b(503|429)\b/.test(message) || /overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand/i.test(message);
+}
 
 // Cover images go through Pollinations.ai instead of Gemini/Imagen — Imagen
 // (3 or 4) was evaluated first and rejected: Imagen 3 no longer appears in
@@ -53,19 +74,39 @@ export class AiAgentError extends Error {
 
 async function callTextModel(prompt: string, temperature: number): Promise<string> {
   if (!client) throw new AiAgentError('Gemini is not configured (GEMINI_API_KEY missing).');
-  let raw: string;
-  try {
-    const model = client.getGenerativeModel({
-      model: TEXT_MODEL,
-      generationConfig: { responseMimeType: 'application/json', temperature },
-    });
-    const result = await model.generateContent(prompt);
-    raw = result.response.text();
-  } catch (err) {
-    throw new AiAgentError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');
+
+  let lastError: unknown;
+  for (const modelName of TEXT_MODEL_FALLBACK_SEQUENCE) {
+    for (let attempt = 1; attempt <= ATTEMPTS_PER_MODEL; attempt++) {
+      try {
+        const model = client.getGenerativeModel({
+          model: modelName,
+          generationConfig: { responseMimeType: 'application/json', temperature },
+        });
+        const result = await model.generateContent(prompt);
+        const raw = result.response.text();
+        if (!raw) throw new AiAgentError('Gemini returned an empty response.');
+        return raw;
+      } catch (err) {
+        lastError = err;
+        console.error(`[aiAgentService] ${modelName} attempt ${attempt}/${ATTEMPTS_PER_MODEL} failed:`, err instanceof Error ? err.message : err);
+        if (!isRetryableGeminiError(err)) {
+          throw err instanceof AiAgentError
+            ? err
+            : new AiAgentError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');
+        }
+        if (attempt < ATTEMPTS_PER_MODEL) {
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+        }
+      }
+    }
+    // Retries exhausted for this model (still 503/429) — try the next model
+    // in the sequence immediately, no added delay (a different model has
+    // its own capacity, so there's nothing to wait out here).
   }
-  if (!raw) throw new AiAgentError('Gemini returned an empty response.');
-  return raw;
+  throw lastError instanceof AiAgentError
+    ? lastError
+    : new AiAgentError(lastError instanceof Error ? `Gemini request failed: ${lastError.message}` : 'Gemini request failed.');
 }
 
 // ============================================================

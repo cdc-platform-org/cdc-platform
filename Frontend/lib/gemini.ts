@@ -7,7 +7,16 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 // (Vercel/Netlify/etc.) store whatever string you paste verbatim — a value
 // copied as `"AIza..."` (quotes included) becomes part of the literal key
 // and Google's API rejects it as invalid with no indication why.
-const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || '').trim().replace(/^['"]|['"]$/g, '');
+//
+// NEXT_PUBLIC_GEMINI_API_KEY is read only as a last-resort fallback in case
+// the production env var got set under that name by mistake — it is NOT the
+// intended way to configure this. Next.js inlines every NEXT_PUBLIC_* var
+// into the client bundle at build time, so a real key stored under that name
+// is already exposed to anyone viewing the page source; if isGeminiConfigured
+// stops returning false only because of this fallback, treat it as urgent:
+// rotate the key and re-set it as plain GEMINI_API_KEY (server-only) instead.
+const RAW_GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
+const GEMINI_API_KEY = RAW_GEMINI_API_KEY.trim().replace(/^['"]|['"]$/g, '');
 
 export function isGeminiConfigured(): boolean {
   return !!GEMINI_API_KEY;
@@ -66,6 +75,26 @@ export class GeminiNotConfiguredError extends Error {
 
 export type ChatTurn = { role: 'user' | 'model'; text: string };
 
+// gemini-flash-latest is tried first (fastest, usual default); the other
+// two are only reached when it's actively overloaded (503/429 — see
+// isRetryableGeminiError). All three confirmed live via direct
+// ListModels + generateContent probes against this project's API key on
+// 2026-08-17 — gemini-1.5-flash/gemini-1.5-pro and gemini-2.5-flash(-lite)
+// all now 404 ("no longer available to new users"); gemini-pro-latest is
+// excluded like SYSTEM_PROMPT's sibling comment below explains (0 free-tier
+// quota). Same reasoning and sequence as Backend's aiAgentService.ts, kept
+// independent here since this file has no dependency on Backend and
+// duplicating ~15 lines is cheaper than wiring a shared package across the
+// two apps for this.
+const MODEL_FALLBACK_SEQUENCE = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-3.5-flash'];
+const RETRY_DELAY_MS = 1500;
+const ATTEMPTS_PER_MODEL = 2;
+
+export function isRetryableGeminiError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return /\b(503|429)\b/.test(message) || /overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand/i.test(message);
+}
+
 // Helper for the homepage's "CDC Career Assistant" chat widget
 // (pages/api/chat.ts) — `lang` steers the reply language, matching the
 // widget's GEO/ENG toggle. `history` carries prior turns so multi-step
@@ -94,21 +123,35 @@ export async function askCdcAssistant(
     ? `\n\n### Additional reference material (uploaded by CDC admins — use this to answer questions accurately, but don't mention that it was "uploaded" or read it out verbatim; speak naturally as if you already knew it)\n${knowledgeContext.trim()}`
     : '';
 
-  const model = client.getGenerativeModel({
-    // "gemini-2.5-pro" / "gemini-pro-latest" both return a hard 0 free-tier
-    // quota on this account (confirmed via direct API probes) — only the
-    // Flash family has real free-tier headroom, so that's what's wired up
-    // until the Google Cloud project has billing enabled for Pro models.
-    model: 'gemini-flash-latest',
-    systemInstruction: `${systemPromptOverride?.trim() || SYSTEM_PROMPT}${knowledgeBlock}\n\nAlways respond in the language requested by the user. Current language: ${lang === 'GEO' ? 'Georgian' : 'English'}.`,
-  });
-
+  const systemInstruction = `${systemPromptOverride?.trim() || SYSTEM_PROMPT}${knowledgeBlock}\n\nAlways respond in the language requested by the user. Current language: ${lang === 'GEO' ? 'Georgian' : 'English'}.`;
   // The Gemini SDK requires chat history (if any) to start with a 'user'
   // turn — the widget's hardcoded opening bot greeting isn't a real turn,
   // so callers are expected to have already stripped it before this point.
-  const chat = model.startChat({
-    history: history.map((turn) => ({ role: turn.role, parts: [{ text: turn.text }] })),
-  });
-  const result = await chat.sendMessage(message);
-  return result.response.text();
+  const geminiHistory = history.map((turn) => ({ role: turn.role, parts: [{ text: turn.text }] }));
+
+  // "gemini-2.5-pro" / "gemini-pro-latest" both return a hard 0 free-tier
+  // quota on this account (confirmed via direct API probes) — only the
+  // Flash family has real free-tier headroom, so the fallback sequence
+  // above stays within it too rather than reaching for Pro.
+  let lastError: unknown;
+  for (const modelName of MODEL_FALLBACK_SEQUENCE) {
+    for (let attempt = 1; attempt <= ATTEMPTS_PER_MODEL; attempt++) {
+      try {
+        const model = client.getGenerativeModel({ model: modelName, systemInstruction });
+        const chat = model.startChat({ history: geminiHistory });
+        const result = await chat.sendMessage(message);
+        return result.response.text();
+      } catch (err) {
+        lastError = err;
+        console.error(`[gemini] ${modelName} attempt ${attempt}/${ATTEMPTS_PER_MODEL} failed:`, err instanceof Error ? err.message : err);
+        if (!isRetryableGeminiError(err)) throw err;
+        if (attempt < ATTEMPTS_PER_MODEL) {
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+        }
+      }
+    }
+    // Retries exhausted for this model (still 503/429) — try the next model
+    // immediately, no added delay (a different model has its own capacity).
+  }
+  throw lastError;
 }

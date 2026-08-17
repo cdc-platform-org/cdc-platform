@@ -51,29 +51,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const homepageAgent = await getHomepageAgentConfig();
     const knowledgeContext = await getCdcKnowledgeContext(homepageAgent?.knowledgeSourceFilenames);
 
-    // gemini-flash-latest returns transient "high demand" failures fairly
-    // often in practice (same behavior already worked around for the AI
-    // Tutor — see Backend's course-tutor route / courseService.ts). Two
-    // silent retries with a short delay smooth that over before this ever
-    // surfaces as a connection error to the widget.
-    const MAX_ATTEMPTS = 3;
-    let lastError: unknown;
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      try {
-        const reply = await askCdcAssistant(message, effectiveLang, sanitizeHistory(history), knowledgeContext, homepageAgent?.systemPrompt);
-        return res.status(200).json({ reply });
-      } catch (error) {
-        lastError = error;
-        if (attempt < MAX_ATTEMPTS) {
-          await new Promise((resolve) => setTimeout(resolve, 1500));
-        }
-      }
-    }
-    throw lastError;
+    // askCdcAssistant already retries across its own model-fallback sequence
+    // (gemini-flash-latest → gemini-1.5-flash → gemini-1.5-pro, 2 attempts
+    // each — see lib/gemini.ts) before ever throwing, so this only needs a
+    // single call, not its own retry loop on top of that.
+    const reply = await askCdcAssistant(message, effectiveLang, sanitizeHistory(history), knowledgeContext, homepageAgent?.systemPrompt);
+    return res.status(200).json({ reply });
   } catch (error) {
-    console.error('Gemini chat error:', error);
+    console.error('[api/chat] Gemini chat error (all attempts exhausted):', describeGeminiError(error));
     return res.status(500).json({
       reply: effectiveLang === 'GEO' ? '❌ ასისტენტთან კავშირის ხარვეზი.' : '❌ Error connecting to the assistant.',
+      // Non-sensitive classification only (never the raw Gemini error text,
+      // which can echo back request content) — lets the browser network tab
+      // distinguish "bad/missing key" from "quota" from "unknown" without
+      // needing server log access.
+      reason: classifyGeminiError(error),
     });
   }
+}
+
+// The Gemini SDK doesn't expose a structured status code — API errors come
+// back as an Error whose .message embeds Google's REST status, e.g.
+// "[401 Unauthorized] API key not valid..." or "[429 Too Many Requests]
+// Resource has been exhausted...". Matched defensively since the SDK gives
+// no guarantee on this exact format across versions.
+function classifyGeminiError(error: unknown): 'invalid_api_key' | 'quota_exceeded' | 'unavailable' | 'unknown' {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/\b(401|403)\b/.test(message) || /API key not valid|PERMISSION_DENIED/i.test(message)) return 'invalid_api_key';
+  if (/\b429\b/.test(message) || /RESOURCE_EXHAUSTED|quota/i.test(message)) return 'quota_exceeded';
+  if (/\b503\b/.test(message) || /overloaded|UNAVAILABLE/i.test(message)) return 'unavailable';
+  return 'unknown';
+}
+
+function describeGeminiError(error: unknown): string {
+  if (error instanceof Error) return `${error.name}: ${error.message}`;
+  return String(error);
 }
