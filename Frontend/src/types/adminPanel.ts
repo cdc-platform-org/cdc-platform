@@ -118,6 +118,22 @@ export interface UpdateBogSettingsPayload {
   isLiveMode?: boolean;
 }
 
+// Sensitivity/auto-publish knobs for the platform's autonomous AI agents
+// (productModerationService.ts, blogAgentService.ts on the Backend).
+export interface AiAutomationSettings {
+  autoApproveScoreThreshold: number;
+  autoApproveConfidenceThreshold: number;
+  blogAutoPublish: boolean;
+  updatedByEmail?: string | null;
+  updatedAt?: string;
+}
+
+export interface UpdateAiAutomationSettingsPayload {
+  autoApproveScoreThreshold?: number;
+  autoApproveConfidenceThreshold?: number;
+  blogAutoPublish?: boolean;
+}
+
 export interface TeamMember {
   id: string;
   name: string;

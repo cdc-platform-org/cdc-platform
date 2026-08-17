@@ -20,6 +20,14 @@ export interface DigitalProduct {
   purchased: boolean;
   status?: ProductStatus;
   rejectionReason?: string | null;
+  // AI moderation (Backend's productModerationService.ts) — set once at
+  // submission/resubmission time, never re-run automatically. Only ever
+  // populated on /admin/products (adminProducts.ts's GET / returns the raw
+  // row); never present on the public /products responses.
+  aiReviewScore?: number | null;
+  aiReviewConfidence?: number | null;
+  aiReviewReasoning?: string | null;
+  aiReviewedAt?: string | null;
 }
 
 export async function getProducts(category?: string): Promise<DigitalProduct[]> {

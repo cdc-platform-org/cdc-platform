@@ -7,6 +7,8 @@ import {
   AdminBogPayment,
   BogSettings,
   UpdateBogSettingsPayload,
+  AiAutomationSettings,
+  UpdateAiAutomationSettingsPayload,
   TeamMember,
   ManualCertificatePayload,
   ManualCertificate,
@@ -76,6 +78,16 @@ export async function getBogSettings(): Promise<BogSettings | null> {
 
 export async function updateBogSettings(payload: UpdateBogSettingsPayload): Promise<BogSettings> {
   const response = await apiClient.put<{ data: BogSettings }>('/admin-panel/bog-settings', payload);
+  return response.data.data;
+}
+
+export async function getAiAutomationSettings(): Promise<AiAutomationSettings> {
+  const response = await apiClient.get<{ data: AiAutomationSettings }>('/admin-panel/ai-automation-settings');
+  return response.data.data;
+}
+
+export async function updateAiAutomationSettings(payload: UpdateAiAutomationSettingsPayload): Promise<AiAutomationSettings> {
+  const response = await apiClient.put<{ data: AiAutomationSettings }>('/admin-panel/ai-automation-settings', payload);
   return response.data.data;
 }
 

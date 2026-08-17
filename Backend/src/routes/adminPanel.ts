@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import {
@@ -8,6 +9,7 @@ import {
   updateBogSettingsSchema,
   manualCertificateSchema,
 } from '../schemas/adminSchemas';
+import { getAiAutomationSettings } from '../services/aiAutomationSettingsService';
 import { generateCertificatePdf, generateVerificationCode, CertificateTemplateMissingError } from '../services/certificateService';
 import { sendCertificateEmail } from '../services/emailService';
 
@@ -321,6 +323,43 @@ function maskSecret(value: string | null): string | null {
   if (value.length <= 4) return '••••';
   return `••••${value.slice(-4)}`;
 }
+
+// ============================================================
+// AI AUTOMATION — sensitivity/auto-publish knobs for the platform's
+// autonomous AI agents (productModerationService.ts, blogAgentService.ts).
+// See aiAutomationSettingsService.ts for the singleton read helper both
+// agents actually consult; these routes are just the admin CMS surface.
+// ============================================================
+router.get('/ai-automation-settings', requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (_req, res) => {
+  res.json({ data: await getAiAutomationSettings() });
+});
+
+const updateAiAutomationSettingsSchema = z.object({
+  autoApproveScoreThreshold: z.number().int().min(0).max(100).optional(),
+  autoApproveConfidenceThreshold: z.number().int().min(0).max(100).optional(),
+  blogAutoPublish: z.boolean().optional(),
+});
+
+router.put('/ai-automation-settings', requireAdminRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  const result = updateAiAutomationSettingsSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const existing = await prisma.aiAutomationSettings.findFirst({ orderBy: { updatedAt: 'desc' } });
+  const data = { ...result.data, updatedByEmail: req.user!.email };
+  const settings = existing
+    ? await prisma.aiAutomationSettings.update({ where: { id: existing.id }, data })
+    : await prisma.aiAutomationSettings.create({ data });
+
+  res.json({
+    data: {
+      autoApproveScoreThreshold: settings.autoApproveScoreThreshold,
+      autoApproveConfidenceThreshold: settings.autoApproveConfidenceThreshold,
+      blogAutoPublish: settings.blogAutoPublish,
+      updatedByEmail: settings.updatedByEmail,
+      updatedAt: settings.updatedAt,
+    },
+  });
+});
 
 // ============================================================
 // TEAM & PERMISSIONS — SUPER_ADMIN only.

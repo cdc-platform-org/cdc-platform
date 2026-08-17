@@ -9,6 +9,8 @@ import { uploadImage } from '../services/imageStorage';
 import { BunnyStorageUploadError } from '../services/bunnyStorage';
 import { imageUpload, fileUpload, multerErrorHandler } from '../middleware/productUploads';
 import { fileFormatFromUrl } from '../utils/fileFormat';
+import { moderateProduct, ModerationInput } from '../services/productModerationService';
+import { getAiAutomationSettings } from '../services/aiAutomationSettingsService';
 
 const router = Router();
 
@@ -179,6 +181,49 @@ router.post(
 // who submits — only adminProducts.ts's admin-authored POST / inserts as
 // APPROVED directly.
 // ============================================================
+// ============================================================
+// AI MODERATION — runs once per submission/resubmission (products.ts's
+// POST / and PUT /:id/mine), never on admin-authored products
+// (adminProducts.ts's POST / inserts APPROVED directly, no review needed).
+// Returns the status/AI-field patch to apply; a Gemini failure or a FLAGged
+// verdict both resolve to plain PENDING — the same "a human looks at it"
+// outcome as if this feature didn't exist, just with AI context attached
+// when available. Auto-APPROVE only fires when the model's own verdict AND
+// both admin-configured thresholds agree — either one alone falls back to
+// PENDING, not straight to NEEDS_REVISION (an uncertain-but-not-bad listing
+// deserves a human look, not automated rejection-shaped feedback).
+// ============================================================
+async function runAiModeration(
+  input: ModerationInput
+): Promise<{
+  status: 'APPROVED' | 'NEEDS_REVISION' | 'PENDING';
+  rejectionReason: string | null;
+  aiReviewScore: number | null;
+  aiReviewConfidence: number | null;
+  aiReviewReasoning: string | null;
+  aiReviewedAt: Date | null;
+}> {
+  const result = await moderateProduct(input);
+  if (!result) {
+    return { status: 'PENDING', rejectionReason: null, aiReviewScore: null, aiReviewConfidence: null, aiReviewReasoning: null, aiReviewedAt: null };
+  }
+
+  const { autoApproveScoreThreshold, autoApproveConfidenceThreshold } = await getAiAutomationSettings();
+  const clearsThreshold = result.score >= autoApproveScoreThreshold && result.confidence >= autoApproveConfidenceThreshold;
+
+  const status: 'APPROVED' | 'NEEDS_REVISION' | 'PENDING' =
+    result.verdict === 'APPROVE' && clearsThreshold ? 'APPROVED' : result.verdict === 'NEEDS_REVISION' ? 'NEEDS_REVISION' : 'PENDING';
+
+  return {
+    status,
+    rejectionReason: status === 'NEEDS_REVISION' ? result.reasoningKa : null,
+    aiReviewScore: result.score,
+    aiReviewConfidence: result.confidence,
+    aiReviewReasoning: result.reasoningEn,
+    aiReviewedAt: new Date(),
+  };
+}
+
 router.post('/', authenticate, requireApproved, async (req: Request, res: Response) => {
   if (!(await canSubmitProducts(req.user!.id))) {
     return res.status(403).json({ message: CANNOT_SUBMIT_MESSAGE });
@@ -187,14 +232,44 @@ router.post('/', authenticate, requireApproved, async (req: Request, res: Respon
   const result = submitSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
+  const moderation = await runAiModeration({
+    title: result.data.title,
+    description: result.data.description,
+    category: result.data.category,
+    price: Math.round(result.data.price * 100),
+    imageUrl: result.data.imageUrl,
+    previewImages: result.data.previewImages ?? [],
+  });
+
   const product = await prisma.digitalProduct.create({
     data: {
       ...result.data,
       price: Math.round(result.data.price * 100),
-      status: 'PENDING',
       submittedById: req.user!.id,
+      ...moderation,
     },
   });
+
+  if (moderation.status === 'APPROVED') {
+    await prisma.notification.create({
+      data: {
+        userId: req.user!.id,
+        title: 'თქვენი პროდუქტი ავტომატურად დამტკიცდა! 🎉',
+        message: `„${product.title}" AI მოდერაციამ დაამტკიცა და უკვე გამოქვეყნებულია ციფრულ მაღაზიაში.`,
+        type: 'PRODUCT_MODERATION',
+      },
+    });
+  } else if (moderation.status === 'NEEDS_REVISION') {
+    await prisma.notification.create({
+      data: {
+        userId: req.user!.id,
+        title: 'თქვენი პროდუქტი საჭიროებს ცვლილებებს',
+        message: `„${product.title}": ${moderation.rejectionReason}`,
+        type: 'PRODUCT_MODERATION',
+      },
+    });
+  }
+
   res.status(201).json({ data: product });
 });
 
@@ -230,15 +305,46 @@ router.put('/:id/mine', authenticate, requireApproved, async (req: Request, res:
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
   const { price, ...rest } = result.data;
+  const priceMinor = price !== undefined ? Math.round(price * 100) : product.price;
+
+  const moderation = await runAiModeration({
+    title: result.data.title ?? product.title,
+    description: result.data.description ?? product.description,
+    category: result.data.category ?? product.category,
+    price: priceMinor,
+    imageUrl: result.data.imageUrl ?? product.imageUrl,
+    previewImages: result.data.previewImages ?? product.previewImages,
+  });
+
   const updated = await prisma.digitalProduct.update({
     where: { id: product.id },
     data: {
       ...rest,
-      ...(price !== undefined ? { price: Math.round(price * 100) } : {}),
-      status: 'PENDING',
-      rejectionReason: null,
+      ...(price !== undefined ? { price: priceMinor } : {}),
+      ...moderation,
     },
   });
+
+  if (moderation.status === 'APPROVED') {
+    await prisma.notification.create({
+      data: {
+        userId: req.user!.id,
+        title: 'თქვენი პროდუქტი ავტომატურად დამტკიცდა! 🎉',
+        message: `„${updated.title}" AI მოდერაციამ დაამტკიცა და უკვე გამოქვეყნებულია ციფრულ მაღაზიაში.`,
+        type: 'PRODUCT_MODERATION',
+      },
+    });
+  } else if (moderation.status === 'NEEDS_REVISION') {
+    await prisma.notification.create({
+      data: {
+        userId: req.user!.id,
+        title: 'თქვენი პროდუქტი კვლავ საჭიროებს ცვლილებებს',
+        message: `„${updated.title}": ${moderation.rejectionReason}`,
+        type: 'PRODUCT_MODERATION',
+      },
+    });
+  }
+
   res.json({ data: updated });
 });
 

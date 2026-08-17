@@ -986,16 +986,58 @@ model DigitalProduct {
   downloadsCount  Int               @default(0)
   createdAt       DateTime          @default(now())
   purchases       ProductPurchase[]
-  // "PENDING" | "APPROVED" | "REJECTED" — admin-created products (see
-  // adminProducts.ts) are inserted as APPROVED directly; graduate/verified-
-  // freelancer submissions (products.ts's POST /) start PENDING and only
-  // show up in the public catalog once an admin approves them.
+  // "PENDING" | "APPROVED" | "REJECTED" | "NEEDS_REVISION" — admin-created
+  // products (see adminProducts.ts) are inserted as APPROVED directly;
+  // graduate/verified-freelancer submissions (products.ts's POST /) start
+  // PENDING (or land directly on APPROVED/NEEDS_REVISION when
+  // productModerationService's AI review is confident enough — see
+  // aiReview* fields below) and only show up in the public catalog once
+  // APPROVED.
   status          String            @default("PENDING")
   rejectionReason String?
+  // AI moderation (services/productModerationService.ts), run once at
+  // submission/resubmission time — never re-run automatically afterward, so
+  // these reflect the review that actually decided (or informed) the
+  // current status, not a live/rolling score. Null on admin-authored
+  // products (adminProducts.ts's POST / never invokes the moderator) and on
+  // any submission made while GEMINI_API_KEY isn't configured or the
+  // moderation call itself failed — both fall back to plain PENDING for a
+  // human to review, exactly as if this feature didn't exist.
+  aiReviewScore      Int?
+  aiReviewConfidence Int?
+  aiReviewReasoning  String?
+  aiReviewedAt       DateTime?
   submittedById   String?
   submittedBy     User?             @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
 
   @@map("digital_products")
+}
+
+// Singleton (one row, same convention as BogSettings) — admin-adjustable
+// knobs for the platform's autonomous AI agents. Grouped into one table
+// rather than one-per-agent since every knob here shares the same shape
+// (an admin toggling/tuning how much an AI agent gets to act unattended).
+model AiAutomationSettings {
+  id String @id @default(uuid())
+
+  // productModerationService.ts — both thresholds must be met (score AND
+  // confidence) for an auto-APPROVED verdict; raising either makes
+  // auto-approval rarer and pushes more submissions to NEEDS_REVISION/human
+  // PENDING review instead — the safe direction to err in, since a wrongly-
+  // published listing is far more visible/costly than an extra manual review.
+  autoApproveScoreThreshold      Int @default(85)
+  autoApproveConfidenceThreshold Int @default(85)
+
+  // blogAgentService.ts's twice-weekly cron draft — false (default) means
+  // every AI-generated article lands as an unpublished draft for an admin
+  // to review before it goes live (today's only behavior, unchanged unless
+  // an admin deliberately opts in here).
+  blogAutoPublish Boolean @default(false)
+
+  updatedByEmail String?
+  updatedAt      DateTime @updatedAt
+
+  @@map("ai_automation_settings")
 }
 
 model ProductPurchase {

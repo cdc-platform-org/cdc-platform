@@ -21,6 +21,7 @@ import {
   DigitalProduct,
   AdminProductPurchase,
 } from '../../src/services/productService';
+import { getAiAutomationSettings, updateAiAutomationSettings } from '../../src/services/adminPanelService';
 import { formatPrice } from '../../src/utils/coursePricing';
 
 const ASSET_ACCEPT = '.zip,.pdf,.epub,.rar,.7z,.fig,.sketch,.psd,.ai,.doc,.docx,.mp4,.mov';
@@ -129,6 +130,14 @@ function ModerationProductCard({
         </p>
         {p.status === 'REJECTED' && p.rejectionReason && <p className="text-xs text-red-500 mt-1">Reason: {p.rejectionReason}</p>}
         {p.status === 'NEEDS_REVISION' && p.rejectionReason && <p className="text-xs text-orange-600 mt-1">Requested changes: {p.rejectionReason}</p>}
+        {p.aiReviewedAt && (
+          <div className="mt-1.5 rounded-lg bg-indigo-50 border border-indigo-100 px-2.5 py-1.5">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-indigo-500 mb-0.5">
+              🤖 AI Review — Score {p.aiReviewScore} · Confidence {p.aiReviewConfidence}
+            </p>
+            <p className="text-[11px] text-indigo-700">{p.aiReviewReasoning}</p>
+          </div>
+        )}
 
         {showPurchases && (
           <div className="mt-2 rounded-lg border border-gray-200 p-2">
@@ -206,6 +215,36 @@ function AdminProductsDashboard() {
   const [statusFilter, setStatusFilter] = useState('PENDING');
   const [actionError, setActionError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
+
+  const [scoreThreshold, setScoreThreshold] = useState('85');
+  const [confidenceThreshold, setConfidenceThreshold] = useState('85');
+  const [savingThresholds, setSavingThresholds] = useState(false);
+  const [thresholdsSaved, setThresholdsSaved] = useState(false);
+
+  useEffect(() => {
+    getAiAutomationSettings()
+      .then((s) => {
+        setScoreThreshold(String(s.autoApproveScoreThreshold));
+        setConfidenceThreshold(String(s.autoApproveConfidenceThreshold));
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSaveThresholds = async () => {
+    setSavingThresholds(true);
+    setThresholdsSaved(false);
+    try {
+      await updateAiAutomationSettings({
+        autoApproveScoreThreshold: Number(scoreThreshold),
+        autoApproveConfidenceThreshold: Number(confidenceThreshold),
+      });
+      setThresholdsSaved(true);
+    } catch (err: any) {
+      setActionError(err?.response?.data?.message ?? 'Failed to save AI thresholds.');
+    } finally {
+      setSavingThresholds(false);
+    }
+  };
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -339,6 +378,45 @@ function AdminProductsDashboard() {
           <p className="text-sm text-gray-500 mt-1">
             Review graduate/freelancer submissions, or list a new product directly (published immediately).
           </p>
+        </div>
+
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 mb-8">
+          <p className="text-sm font-semibold text-indigo-900 mb-1">🤖 AI Moderation Sensitivity</p>
+          <p className="text-xs text-indigo-700 mb-3">
+            New/resubmitted products are auto-reviewed by Gemini. Auto-APPROVE only fires when the verdict AND both thresholds below are met — otherwise it falls back to NEEDS_REVISION or a normal PENDING human review. Raising either threshold makes auto-approval rarer (the safer direction).
+          </p>
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="block text-[11px] font-medium text-indigo-700 mb-1">Min. Score (0-100)</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={scoreThreshold}
+                onChange={(e) => setScoreThreshold(e.target.value)}
+                className="w-24 rounded-lg border border-indigo-200 px-3 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-medium text-indigo-700 mb-1">Min. Confidence (0-100)</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={confidenceThreshold}
+                onChange={(e) => setConfidenceThreshold(e.target.value)}
+                className="w-24 rounded-lg border border-indigo-200 px-3 py-1.5 text-sm"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleSaveThresholds}
+              disabled={savingThresholds}
+              className="text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg disabled:opacity-60"
+            >
+              {savingThresholds ? 'Saving…' : thresholdsSaved ? 'Saved ✓' : 'Save'}
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-xl p-6 mb-8 space-y-4">

@@ -72,8 +72,22 @@ export class AiAgentError extends Error {
   }
 }
 
-async function callTextModel(prompt: string, temperature: number): Promise<string> {
+export interface InlineImagePart {
+  mimeType: string;
+  data: string; // base64
+}
+
+// Exported for other operational modules that need raw Gemini JSON output
+// but don't fit this file's existing MODULE N shape (currently
+// productModerationService.ts) — keeps the "exactly one place" model/retry
+// config promise from the file comment above even for those. `imageParts` is
+// optional inline (base64) image data for vision-capable calls — every
+// model in TEXT_MODEL_FALLBACK_SEQUENCE is a Gemini multimodal model, so no
+// separate vision-only model list is needed.
+export async function callTextModel(prompt: string, temperature: number, imageParts?: InlineImagePart[]): Promise<string> {
   if (!client) throw new AiAgentError('Gemini is not configured (GEMINI_API_KEY missing).');
+
+  const parts = [{ text: prompt }, ...(imageParts ?? []).map((img) => ({ inlineData: { mimeType: img.mimeType, data: img.data } }))];
 
   let lastError: unknown;
   for (const modelName of TEXT_MODEL_FALLBACK_SEQUENCE) {
@@ -83,7 +97,7 @@ async function callTextModel(prompt: string, temperature: number): Promise<strin
           model: modelName,
           generationConfig: { responseMimeType: 'application/json', temperature },
         });
-        const result = await model.generateContent(prompt);
+        const result = await model.generateContent(parts);
         const raw = result.response.text();
         if (!raw) throw new AiAgentError('Gemini returned an empty response.');
         return raw;
