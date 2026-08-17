@@ -1004,7 +1004,7 @@ export default function Home() {
       {/* 🤖 AI ASSISTANT CHAT PANEL */}
       <div className="fixed bottom-56 sm:bottom-60 right-4 md:right-6 z-50 flex flex-col gap-3 items-end">
         {isChatOpen && (
-          <div className="w-[calc(100vw-2rem)] sm:w-96 border rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[380px] md:h-[420px] bg-white dark:bg-[#0e1422] text-slate-900 dark:text-white border-slate-200 dark:border-slate-800">
+          <div className="w-[calc(100vw-2rem)] sm:w-[480px] md:w-[520px] border rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[380px] sm:h-[70vh] sm:max-h-[650px] md:h-[80vh] md:max-h-[700px] bg-white dark:bg-[#0e1422] text-slate-900 dark:text-white border-slate-200 dark:border-slate-800">
             <div className="bg-slate-900 text-white p-4 flex flex-col gap-2">
               <div className="flex justify-between items-center gap-2">
                 <span className="text-xs font-bold truncate">{translate('CDC კარიერული ასისტენტი', 'CDC Career Assistant')}</span>
