@@ -1,7 +1,7 @@
 import apiClient from './apiClient';
 
 export type ExamSessionStatus = 'ACTIVE' | 'CLOSED';
-export type ExamQuestionType = 'MCQ' | 'PRACTICAL';
+export type ExamQuestionType = 'MCQ' | 'PRACTICAL' | 'CODE';
 export type ExamSubmissionStatus = 'IN_PROGRESS' | 'COMPLETED' | 'FLAGGED';
 
 export interface ExamSessionSummary {
@@ -26,6 +26,26 @@ export interface ExamQuestionRow {
   options: { A: string; B: string; C: string; D: string } | null;
 }
 
+export interface AnswerGradeEntry {
+  questionId: string;
+  questionType: ExamQuestionType;
+  question: string;
+  candidateAnswer: string;
+  aiScore: number | null;
+  aiFeedback: string | null;
+  aiTextScore: number | null;
+  correct?: boolean;
+}
+
+export interface AdaptiveStudyGuide {
+  id: string;
+  candidateEmail: string;
+  weakTopics: string[];
+  generatedGuideText: string;
+  retestExamSessionId: string | null;
+  createdAt: string;
+}
+
 export interface ExamSubmissionRow {
   id: string;
   candidateName: string;
@@ -34,13 +54,20 @@ export interface ExamSubmissionRow {
   practicalScore: number | null;
   totalScore: number | null;
   aiEvaluation: string | null;
+  answerGrades: AnswerGradeEntry[] | null;
   proctoringViolations: number;
+  tabSwitches: number;
+  copyPasteCount: number;
+  integrityScore: number | null;
+  aiTextScore: number | null;
   status: ExamSubmissionStatus;
   startedAt: string;
   completedAt: string | null;
+  studyGuide: AdaptiveStudyGuide | null;
 }
 
 export interface ExamSessionDetail extends Omit<ExamSessionSummary, '_count'> {
+  rawContent: string | null;
   questions: ExamQuestionRow[];
   submissions: ExamSubmissionRow[];
 }
@@ -49,7 +76,9 @@ export interface CreateExamSessionPayload {
   title: string;
   description?: string;
   topic: string;
+  rawContent?: string;
   mcqCount: number;
+  includeCodeQuestion?: boolean;
   durationMinutes: number;
 }
 
@@ -60,6 +89,17 @@ export interface CreateExamSessionPayload {
 export async function getMyExamSessions(): Promise<ExamSessionSummary[]> {
   const response = await apiClient.get<{ data: ExamSessionSummary[] }>('/exam-proctoring/sessions');
   return response.data.data;
+}
+
+// Two-step upload-then-submit, same pattern as knowledge-base file uploads —
+// returns the parsed text to attach as `rawContent` on the create call.
+export async function parseExamSourceFile(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await apiClient.post<{ data: { rawContent: string } }>('/exam-proctoring/sessions/parse-source', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data.data.rawContent;
 }
 
 export async function createExamSession(payload: CreateExamSessionPayload): Promise<ExamSessionDetail> {
@@ -79,6 +119,18 @@ export async function updateExamSessionStatus(id: string, status: ExamSessionSta
 
 export async function deleteExamSession(id: string): Promise<void> {
   await apiClient.delete(`/exam-proctoring/sessions/${id}`);
+}
+
+export async function downloadExamReport(submissionId: string): Promise<Blob> {
+  const response = await apiClient.get(`/exam-proctoring/submissions/${submissionId}/report.pdf`, { responseType: 'blob' });
+  return response.data;
+}
+
+export async function generateAdaptiveRetest(submissionId: string): Promise<{ studyGuide: AdaptiveStudyGuide; retestSession: ExamSessionSummary }> {
+  const response = await apiClient.post<{ data: { studyGuide: AdaptiveStudyGuide; retestSession: ExamSessionSummary } }>(
+    `/exam-proctoring/submissions/${submissionId}/generate-retest`
+  );
+  return response.data.data;
 }
 
 // ============================================================
@@ -112,7 +164,13 @@ export async function startCandidateExam(
 
 export async function submitCandidateExam(
   submissionToken: string,
-  payload: { answers: Record<string, string>; proctoringViolations: number; disqualified?: boolean }
+  payload: {
+    answers: Record<string, string>;
+    tabSwitches: number;
+    copyPasteCount: number;
+    proctoringViolations: number;
+    disqualified?: boolean;
+  }
 ): Promise<void> {
   await apiClient.post(`/exam-proctoring/submissions/${submissionToken}/submit`, payload);
 }

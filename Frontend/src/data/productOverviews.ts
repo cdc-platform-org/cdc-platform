@@ -1,4 +1,4 @@
-import { Code2, UploadCloud, BarChart3, ShieldCheck, ShieldAlert, EyeOff, KeyRound, Sparkles } from 'lucide-react';
+import { Code2, UploadCloud, BarChart3, ShieldCheck, ShieldAlert, EyeOff, KeyRound, Sparkles, RefreshCw } from 'lucide-react';
 
 // Shared "Learn More" content for ProductOverviewCard — used by both
 // pages/tools.tsx (marketing) and BusinessAiTab.tsx (Dashboard > My Tools),
@@ -32,12 +32,13 @@ export const PRODUCT_OVERVIEW = {
       whyGameChanger: [
         'გამორიცხავს გაცემის რისკებს',
         'ავტომატიზირებს კანდიდატების სკრინინგს',
-        'აფასებს პასუხებს ავტომატურად',
+        'გთავაზობთ ადაპტურ გადამზადებას სუსტი უნარებისთვის',
       ],
       keyBenefits: [
         { icon: Sparkles, label: 'AI კითხვებისა და გამოცდის გენერატორი' },
         { icon: ShieldAlert, label: 'რეალურ დროში ქცევითი პროქტორინგი' },
         { icon: BarChart3, label: 'ავტომატური უნარების შეფასების მატრიცა' },
+        { icon: RefreshCw, label: 'ადაპტური Retest-ის გენერატორი' },
         { icon: Code2, label: '1-სტრიქონიანი ჩასაშენებელი კოდი' },
       ],
       pricing: {
@@ -91,11 +92,12 @@ export const PRODUCT_OVERVIEW = {
     },
     examProctoring: {
       whatYouGet: 'Autonomous AI system for online exams, candidate skill verification, and real-time proctoring.',
-      whyGameChanger: ['Eliminates cheating risks', 'Automates candidate screening', 'Evaluates submissions automatically'],
+      whyGameChanger: ['Eliminates cheating risks', 'Automates candidate screening', 'Provides adaptive retraining for weak skills'],
       keyBenefits: [
         { icon: Sparkles, label: 'AI Question & Exam Generator' },
         { icon: ShieldAlert, label: 'Real-time Behavioral Proctoring' },
         { icon: BarChart3, label: 'Automated Skill Matrix' },
+        { icon: RefreshCw, label: 'Adaptive Retest Generator' },
         { icon: Code2, label: '1-Line Embed Script' },
       ],
       pricing: {

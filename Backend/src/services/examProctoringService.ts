@@ -97,6 +97,9 @@ const practicalSchema = z.object({
 const generationResponseSchema = z.object({
   mcqQuestions: z.array(mcqSchema).min(1),
   practicalQuestion: practicalSchema,
+  // Present only when includeCodeQuestion was requested — see
+  // generateExamQuestions's own comment.
+  codeQuestion: practicalSchema.optional(),
 });
 
 export interface GeneratedMcqQuestion {
@@ -106,28 +109,50 @@ export interface GeneratedMcqQuestion {
   options: { A: string; B: string; C: string; D: string };
   correctAnswer: 'A' | 'B' | 'C' | 'D';
 }
-export interface GeneratedPracticalQuestion {
-  type: 'PRACTICAL';
+export interface GeneratedOpenQuestion {
+  type: 'PRACTICAL' | 'CODE';
   order: number;
   question: string;
   // The AI grading rubric — stored in ExamQuestion.correctAnswer (dual-
   // purpose field, see that model's own comment), never shown to candidates.
   rubric: string;
 }
-export type GeneratedExamQuestion = GeneratedMcqQuestion | GeneratedPracticalQuestion;
+export type GeneratedExamQuestion = GeneratedMcqQuestion | GeneratedOpenQuestion;
 
-// Generates mcqCount multiple-choice questions plus exactly 1 open-ended
-// practical question, scoped to the business's free-text `topic` (e.g.
-// "Senior React Developer — hooks, state management, performance").
-export async function generateExamQuestions(topic: string, mcqCount: number): Promise<GeneratedExamQuestion[]> {
-  const prompt = `You are building a professional candidate-screening exam for an employer. The role/topic being tested is: "${topic}".
+export interface GenerateExamQuestionsParams {
+  topic: string;
+  mcqCount: number;
+  // Parsed text from an optional PDF/DOCX exam-source upload (job
+  // description, existing test bank, etc.) — appended as grounding context
+  // so questions reference the business's actual material, not just the
+  // free-text topic alone.
+  rawContent?: string;
+  // Adds one additional AI-graded question asking the candidate to write
+  // or describe code, distinct from the open-ended PRACTICAL question.
+  includeCodeQuestion?: boolean;
+}
 
-Generate exactly ${mcqCount} multiple-choice questions that test real, practical job-relevant competence — a mix of theory and applied/scenario-based questions (not trivia). Each must have exactly 4 options (A, B, C, D) and one correct answer.
+// Generates mcqCount multiple-choice questions, exactly 1 open-ended
+// practical question, and optionally 1 code question — scoped to the
+// business's free-text `topic` (e.g. "Senior React Developer — hooks,
+// state management, performance") plus any uploaded source material.
+export async function generateExamQuestions(params: GenerateExamQuestionsParams): Promise<GeneratedExamQuestion[]> {
+  const contextBlock = params.rawContent
+    ? `\n\nAdditional source material provided by the employer (job description, existing test bank, or reference document) — ground the questions in this where relevant:\n${params.rawContent.slice(0, 8000)}`
+    : '';
+  const codeInstruction = params.includeCodeQuestion
+    ? `\n\nThen generate exactly 1 coding question that asks the candidate to write or describe an implementation for a realistic problem related to "${params.topic}". Also produce a grading rubric for it — what a strong, correct, well-structured solution should include.`
+    : '';
+  const codeShapeField = params.includeCodeQuestion ? `, "codeQuestion": {"question": string, "rubric": string}` : '';
 
-Then generate exactly 1 open-ended practical question that asks the candidate to describe how they would approach a realistic task or problem related to "${topic}" (a few sentences of free-text answer expected). Also produce a grading rubric for that practical question — a short paragraph describing what a strong, competent answer should include, for an AI grader to score against later.
+  const prompt = `You are building a professional candidate-screening exam for an employer. The role/topic being tested is: "${params.topic}".${contextBlock}
+
+Generate exactly ${params.mcqCount} multiple-choice questions that test real, practical job-relevant competence — a mix of theory and applied/scenario-based questions (not trivia). Each must have exactly 4 options (A, B, C, D) and one correct answer.
+
+Then generate exactly 1 open-ended practical question that asks the candidate to describe how they would approach a realistic task or problem related to "${params.topic}" (a few sentences of free-text answer expected). Also produce a grading rubric for that practical question — a short paragraph describing what a strong, competent answer should include, for an AI grader to score against later.${codeInstruction}
 
 Respond with strict JSON matching this shape:
-{"mcqQuestions": [{"question": string, "options": {"A": string, "B": string, "C": string, "D": string}, "correctAnswer": "A"|"B"|"C"|"D"}], "practicalQuestion": {"question": string, "rubric": string}}`;
+{"mcqQuestions": [{"question": string, "options": {"A": string, "B": string, "C": string, "D": string}, "correctAnswer": "A"|"B"|"C"|"D"}], "practicalQuestion": {"question": string, "rubric": string}${codeShapeField}}`;
 
   const { raw } = await generateJson(prompt, 0.7);
 
@@ -144,12 +169,14 @@ Respond with strict JSON matching this shape:
   }
 
   const mcqQuestions: GeneratedMcqQuestion[] = result.data.mcqQuestions.map((q, i) => ({ type: 'MCQ', order: i, ...q }));
-  const practicalQuestion: GeneratedPracticalQuestion = {
-    type: 'PRACTICAL',
-    order: mcqQuestions.length,
-    ...result.data.practicalQuestion,
-  };
-  return [...mcqQuestions, practicalQuestion];
+  const questions: GeneratedExamQuestion[] = [
+    ...mcqQuestions,
+    { type: 'PRACTICAL', order: mcqQuestions.length, ...result.data.practicalQuestion },
+  ];
+  if (result.data.codeQuestion) {
+    questions.push({ type: 'CODE', order: questions.length, ...result.data.codeQuestion });
+  }
+  return questions;
 }
 
 const gradeResponseSchema = z.object({
@@ -167,17 +194,22 @@ export interface PracticalGradeResult {
   usage?: { promptTokens: number; completionTokens: number };
 }
 
-// Grades a candidate's free-text answer against the rubric
+// Grades a candidate's free-text or code answer against the rubric
 // generateExamQuestions() produced for it. No non-AI fallback — same
 // posture as skillTestService.gradePracticalAnswer, for the same reason (an
 // open-ended answer can't be auto-graded without it).
 export async function gradePracticalAnswer(params: {
   topic: string;
+  questionType: 'PRACTICAL' | 'CODE';
   question: string;
   rubric: string;
   answer: string;
 }): Promise<PracticalGradeResult> {
-  const prompt = `You are grading a job candidate's answer to a practical screening question for the role/topic "${params.topic}".
+  const framing =
+    params.questionType === 'CODE'
+      ? 'a coding question — evaluate correctness, structure, and whether it actually solves the problem, not just style'
+      : 'a practical, open-ended screening question';
+  const prompt = `You are grading a job candidate's answer to ${framing} for the role/topic "${params.topic}".
 
 Question: ${params.question}
 Grading rubric (what a strong answer should include): ${params.rubric}
@@ -200,6 +232,84 @@ Respond with strict JSON matching this shape:
   const result = gradeResponseSchema.safeParse(parsed);
   if (!result.success) {
     throw new ExamProctoringAiError('Gemini returned an unexpected grading format.');
+  }
+  return { ...result.data, usage };
+}
+
+const aiTextScoreResponseSchema = z.object({
+  aiGeneratedLikelihood: z.number().min(0).max(100),
+});
+
+export interface AiTextScoreResult {
+  score: number;
+  usage?: { promptTokens: number; completionTokens: number };
+}
+
+// Best-effort heuristic for whether a candidate's written answer looks
+// AI-generated — see ExamSubmission.aiTextScore's own schema comment on why
+// this is advisory, not a certainty. Skipped entirely for very short
+// answers (nothing meaningful to assess), returning null from the caller
+// rather than a misleadingly confident number.
+export async function estimateAiTextScore(answer: string): Promise<AiTextScoreResult> {
+  const prompt = `You are assessing whether the following written answer to a job-screening question was likely generated by an AI language model rather than written by the candidate themselves. Consider generic phrasing, unnatural uniformity, lack of first-person specificity, and overly polished structure as signals of AI generation; consider typos, informal phrasing, and concrete personal detail as signals of human authorship. This is a heuristic estimate, not a certain determination.
+
+Answer to assess:
+${answer}
+
+Respond with strict JSON matching this shape:
+{"aiGeneratedLikelihood": number} // 0 = clearly human-written, 100 = clearly AI-generated`;
+
+  const { raw, usage } = await generateJson(prompt, 0.2);
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new ExamProctoringAiError('Gemini returned a malformed AI-detection response.');
+  }
+
+  const result = aiTextScoreResponseSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new ExamProctoringAiError('Gemini returned an unexpected AI-detection format.');
+  }
+  return { score: result.data.aiGeneratedLikelihood, usage };
+}
+
+const studyGuideResponseSchema = z.object({
+  guideText: z.string().min(1),
+});
+
+export interface StudyGuideResult {
+  guideText: string;
+  usage?: { promptTokens: number; completionTokens: number };
+}
+
+// One short, focused study guide covering exactly the topics a candidate
+// scored below the pass mark on — not a full course, a "here's what to
+// review before a retest" pointer. weakTopics are question texts
+// (truncated), not a separate taxonomy — see AdaptiveStudyGuide's own
+// schema comment on why no separate topic-tagging field exists.
+export async function generateAdaptiveStudyGuide(params: { topic: string; weakTopics: string[] }): Promise<StudyGuideResult> {
+  const prompt = `A job candidate was screened on "${params.topic}" and scored below the pass mark on questions covering these specific areas:
+${params.weakTopics.map((t, i) => `${i + 1}. ${t}`).join('\n')}
+
+Write a short, focused micro study guide (Markdown, a few short sections with headers) that helps the candidate specifically improve on these weak areas before a retest. Be concrete and actionable — concepts to review, common mistakes to avoid — not generic advice. Keep it concise (a few hundred words).
+
+Respond with strict JSON matching this shape:
+{"guideText": string}`;
+
+  const { raw, usage } = await generateJson(prompt, 0.5);
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new ExamProctoringAiError('Gemini returned a malformed study guide response.');
+  }
+
+  const result = studyGuideResponseSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new ExamProctoringAiError('Gemini returned an unexpected study guide format.');
   }
   return { ...result.data, usage };
 }

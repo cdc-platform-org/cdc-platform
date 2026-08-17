@@ -33,6 +33,7 @@ const dict = {
     warningNote: (n: number) => `⚠️ დარღვევა შეინიშნა (${n}/${MAX_STRIKES}). კიდევ ერთი და გამოცდა ავტომატურად დასრულდება.`,
     proctoringNotice: `ტაბის გადართვა, ფოკუსის დაკარგვა ან სრულეკრანიანი რეჟიმიდან გამოსვლა ითვლება დარღვევად — ${MAX_STRIKES} დარღვევის შემთხვევაში გამოცდა ავტომატურად წყდება.`,
     practicalPlaceholder: 'დაწერეთ თქვენი პასუხი აქ…',
+    codePlaceholder: '// დაწერეთ თქვენი კოდი აქ…',
     errorGeneric: 'დაფიქსირდა შეცდომა. სცადეთ თავიდან.',
   },
   en: {
@@ -49,6 +50,7 @@ const dict = {
     warningNote: (n: number) => `⚠️ Violation detected (${n}/${MAX_STRIKES}). One more and the exam will auto-submit.`,
     proctoringNotice: `Tab switching, losing window focus, or exiting fullscreen counts as a violation — ${MAX_STRIKES} violations auto-submit and end the exam.`,
     practicalPlaceholder: 'Write your answer here…',
+    codePlaceholder: '// Write your code here…',
     errorGeneric: 'Something went wrong. Please try again.',
   },
 };
@@ -70,12 +72,16 @@ export default function CandidateExamPage() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [strikes, setStrikes] = useState(0);
+  const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [copyPasteCount, setCopyPasteCount] = useState(0);
   const [warningToast, setWarningToast] = useState<string | null>(null);
 
   const phaseRef = useRef<Phase>('landing');
   const strikeGuardRef = useRef(false);
   const answersRef = useRef<Record<string, string>>({});
   const strikesRef = useRef(0);
+  const tabSwitchRef = useRef(0);
+  const copyPasteRef = useRef(0);
   const submissionTokenRef = useRef<string | null>(null);
   useEffect(() => {
     phaseRef.current = phase;
@@ -98,6 +104,8 @@ export default function CandidateExamPage() {
       try {
         await submitCandidateExam(submissionTokenRef.current, {
           answers: answersRef.current,
+          tabSwitches: tabSwitchRef.current,
+          copyPasteCount: copyPasteRef.current,
           proctoringViolations: violationCount,
           disqualified,
         });
@@ -111,12 +119,21 @@ export default function CandidateExamPage() {
   );
 
   const registerStrike = useCallback(
-    (reason: string) => {
+    (kind: 'tab' | 'copyPaste') => {
       if (phaseRef.current !== 'in-progress' || strikeGuardRef.current) return;
       strikeGuardRef.current = true;
       setTimeout(() => {
         strikeGuardRef.current = false;
       }, 800);
+
+      if (kind === 'tab') {
+        tabSwitchRef.current += 1;
+        setTabSwitchCount(tabSwitchRef.current);
+      } else {
+        copyPasteRef.current += 1;
+        setCopyPasteCount(copyPasteRef.current);
+      }
+
       setStrikes((prev) => {
         const next = prev + 1;
         strikesRef.current = next;
@@ -127,7 +144,6 @@ export default function CandidateExamPage() {
         }
         return next;
       });
-      void reason;
     },
     [handleSubmit, t]
   );
@@ -136,11 +152,19 @@ export default function CandidateExamPage() {
     if (phase !== 'in-progress') return;
 
     const onVisibilityChange = () => {
-      if (document.hidden) registerStrike('tab-switch');
+      if (document.hidden) registerStrike('tab');
     };
-    const onBlur = () => registerStrike('blur');
+    const onBlur = () => registerStrike('tab');
     const onFullscreenChange = () => {
-      if (!document.fullscreenElement) registerStrike('fullscreen-exit');
+      if (!document.fullscreenElement) registerStrike('tab');
+    };
+    // Paste is both blocked (preventDefault) AND counted as a proctoring
+    // violation — detection alone (per the spec) wouldn't stop a candidate
+    // from pasting an AI-generated answer, and blocking alone would give no
+    // integrityScore signal to the business.
+    const onPaste = (e: Event) => {
+      e.preventDefault();
+      registerStrike('copyPaste');
     };
     const blockEvent = (e: Event) => e.preventDefault();
 
@@ -149,7 +173,7 @@ export default function CandidateExamPage() {
     document.addEventListener('fullscreenchange', onFullscreenChange);
     document.addEventListener('contextmenu', blockEvent);
     document.addEventListener('copy', blockEvent);
-    document.addEventListener('paste', blockEvent);
+    document.addEventListener('paste', onPaste);
 
     return () => {
       document.removeEventListener('visibilitychange', onVisibilityChange);
@@ -157,7 +181,7 @@ export default function CandidateExamPage() {
       document.removeEventListener('fullscreenchange', onFullscreenChange);
       document.removeEventListener('contextmenu', blockEvent);
       document.removeEventListener('copy', blockEvent);
-      document.removeEventListener('paste', blockEvent);
+      document.removeEventListener('paste', onPaste);
     };
   }, [phase, registerStrike]);
 
@@ -306,11 +330,14 @@ export default function CandidateExamPage() {
                     </div>
                   ) : (
                     <textarea
-                      rows={4}
+                      rows={q.type === 'CODE' ? 8 : 4}
                       value={answers[q.id] ?? ''}
                       onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
-                      placeholder={t.practicalPlaceholder}
-                      className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      placeholder={q.type === 'CODE' ? t.codePlaceholder : t.practicalPlaceholder}
+                      spellCheck={q.type !== 'CODE'}
+                      className={`w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
+                        q.type === 'CODE' ? 'font-mono' : ''
+                      }`}
                     />
                   )}
                 </div>
