@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
-import { Bot, MessageSquareText, BookOpen, Code2, BarChart3, ShieldCheck, Users, Sparkles, Lock, Building2, X } from 'lucide-react';
+import { Bot, MessageSquareText, BookOpen, Code2, BarChart3, ShieldCheck, ShieldAlert, Users, Sparkles, Lock, Building2, X, Download, EyeOff } from 'lucide-react';
 import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
 import BackButton from '../src/components/common/BackButton';
@@ -29,6 +29,14 @@ const dict = {
     // Card 3 — Candidate Screener
     screenerTitle: 'AI Candidate Screener & HR Assistant',
     screenerDesc: 'AI ასისტენტი, რომელიც დამსაქმებლებს ეხმარება კანდიდატების პირველად გადარჩევასა და HR პროცესების ავტომატიზაციაში.',
+    // Card 4 — Cyber Sentinel AI
+    sentinelTitle: 'CDC Cyber Sentinel AI & Threat Protection',
+    sentinelDesc:
+      'ავტონომიური AI კიბერ-უსაფრთხოების აგენტი თქვენი კომპიუტერისთვის. ამოიცნობს ჰაკერულ ქმედებებს პრევენციულად, ატარებს ავტომატურ სკანირებას და გიმზადებთ ყოველდღიურ AI ანგარიშს.',
+    sentinelBullet1: 'ჩამოსატვირთი Desktop აგენტი (Windows & Mac)',
+    sentinelBullet2: 'პროაქტიული ჰაკერული შეტევების ბლოკირება & AI ქცევითი ანალიზი',
+    sentinelBullet3: 'ყოველდღიური AI ანგარიში და საფრთხეების მართვა',
+    sentinelBullet4: 'პერსონალური მონაცემების გაჟონვისგან დაცვა',
     comingSoon: 'მალე',
     storeCta: 'ციფრული პროდუქტების მაღაზია',
     storeCtaDesc: 'UI Kits, AI Prompts, შაბლონები და ელექტრონული წიგნები.',
@@ -58,6 +66,13 @@ const dict = {
     examDesc: 'AI-powered online exams with real-time proctoring and automated candidate skill assessment.',
     screenerTitle: 'AI Candidate Screener & HR Assistant',
     screenerDesc: 'An AI assistant that helps employers pre-screen candidates and automate HR workflows.',
+    sentinelTitle: 'CDC Cyber Sentinel AI & Threat Protection',
+    sentinelDesc:
+      'An autonomous AI cybersecurity agent for your computer. Detects hacking activity preventively, runs automatic scans, and prepares a daily AI report.',
+    sentinelBullet1: 'Downloadable Desktop agent (Windows & Mac)',
+    sentinelBullet2: 'Proactive hacking-attempt blocking & AI behavioral analysis',
+    sentinelBullet3: 'Daily AI report and threat management',
+    sentinelBullet4: 'Protection against personal data leaks',
     comingSoon: 'Coming Soon',
     storeCta: 'Digital Product Store',
     storeCtaDesc: 'UI Kits, AI Prompts, templates, and e-books.',
@@ -197,6 +212,41 @@ export default function ToolsPage() {
             </div>
             <h3 className="text-base font-black tracking-wide mb-2">{t.screenerTitle}</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{t.screenerDesc}</p>
+          </div>
+
+          {/* Card 4: Cyber Sentinel AI — coming soon, no desktop agent built
+              yet (see Backend's CyberSentinelDevice model — schema
+              placeholder only, no routes/UI wired to it). Bulleted like
+              Card 1 since there's more to say than Cards 2/3's one-liner,
+              but coming-soon-styled (muted icon, amber lock badge, no CTA)
+              since nothing here is actually usable yet. */}
+          <div className="lg:col-span-3 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-8 flex flex-col lg:flex-row gap-8 items-start">
+            <div className="shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
+              <ShieldAlert className="w-7 h-7 text-white" />
+            </div>
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <h2 className="text-xl font-black tracking-wide">{t.sentinelTitle}</h2>
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                  <Lock className="w-3 h-3" />
+                  {t.comingSoon}
+                </span>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{t.sentinelDesc}</p>
+              <ul className="grid sm:grid-cols-2 gap-3">
+                {[
+                  { icon: Download, label: t.sentinelBullet1 },
+                  { icon: ShieldAlert, label: t.sentinelBullet2 },
+                  { icon: BarChart3, label: t.sentinelBullet3 },
+                  { icon: EyeOff, label: t.sentinelBullet4 },
+                ].map(({ icon: Icon, label }) => (
+                  <li key={label} className="flex items-center gap-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    <Icon className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
+                    {label}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
 
           {/* Store — downloadable products (UI kits, prompts, templates), a

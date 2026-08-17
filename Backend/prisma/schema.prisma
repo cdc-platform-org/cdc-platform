@@ -421,6 +421,7 @@ model User {
   mentorChatMessagesSent      MentorChatMessage[]          @relation("MentorChatMessagesSent")
   mentorChatMessagesReceived  MentorChatMessage[]          @relation("MentorChatMessagesReceived")
   mentorChatViolations        MentorChatViolation[]        @relation("MentorChatViolations")
+  cyberSentinelDevices        CyberSentinelDevice[]        @relation("CyberSentinelDevices")
 
   @@map("users")
 }
@@ -1015,6 +1016,28 @@ model DigitalProduct {
   submittedBy     User?             @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
 
   @@map("digital_products")
+}
+
+// ============================================================
+// CDC CYBER SENTINEL AI — schema placeholder only. No routes, service, or
+// upload/download mechanism exists yet for the actual desktop agent (see
+// pages/tools.tsx's "მალე"/Coming Soon card) — this just reserves the shape
+// a future desktop-client registration would need, so the eventual backend
+// work has somewhere to start from.
+// ============================================================
+model CyberSentinelDevice {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation("CyberSentinelDevices", fields: [userId], references: [id], onDelete: Cascade)
+  deviceName   String
+  os           String // "WINDOWS" | "MAC"
+  agentVersion String?
+  registeredAt DateTime  @default(now())
+  lastSeenAt   DateTime?
+  isActive     Boolean   @default(true)
+
+  @@index([userId])
+  @@map("cyber_sentinel_devices")
 }
 
 // Singleton (one row, same convention as BogSettings) — admin-adjustable
