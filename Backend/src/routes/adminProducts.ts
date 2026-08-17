@@ -177,4 +177,40 @@ router.post('/:id/reject', async (req: Request, res: Response) => {
   res.json({ data: updated });
 });
 
+const requestChangesSchema = z.object({
+  feedback: z.string().min(1).max(1000),
+});
+
+// Distinct from REJECT — REJECTED is a final decision, NEEDS_REVISION tells
+// the submitter exactly what to fix and lets them edit + resubmit (see
+// products.ts's PUT /:id/mine, which resets status back to PENDING on
+// save). Reuses the rejectionReason column to hold the feedback text — same
+// "why this needs attention" purpose in both states, not worth a second
+// column for.
+router.post('/:id/request-changes', async (req: Request, res: Response) => {
+  const result = requestChangesSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const product = await prisma.digitalProduct.findUnique({ where: { id: req.params.id } });
+  if (!product) return res.status(404).json({ message: 'Product not found.' });
+
+  const updated = await prisma.digitalProduct.update({
+    where: { id: product.id },
+    data: { status: 'NEEDS_REVISION', rejectionReason: result.data.feedback },
+  });
+
+  if (product.submittedById) {
+    await prisma.notification.create({
+      data: {
+        userId: product.submittedById,
+        title: 'თქვენი პროდუქტი საჭიროებს ცვლილებებს',
+        message: `„${product.title}": ${result.data.feedback}`,
+        type: 'PRODUCT_MODERATION',
+      },
+    });
+  }
+
+  res.json({ data: updated });
+});
+
 export default router;

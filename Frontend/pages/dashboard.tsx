@@ -45,6 +45,7 @@ import {
   getProducts,
   getProductDownloadUrl,
   submitProduct,
+  updateMyProduct,
   getMySubmissions,
   uploadMyProductImage,
   uploadMyProductFile,
@@ -140,6 +141,7 @@ const dict = {
     formRemove: 'წაშლა',
     formAssetLabel: 'ჩამოსატვირთი ფაილი',
     formAssetHint: 'ZIP, PDF, EPUB, RAR, 7Z, FIG, SKETCH, PSD, AI, DOC, DOCX, MP4 ან MOV — მაქს. 200MB',
+    formAssetHintEditing: 'ატვირთეთ ახალი ფაილი მხოლოდ იმ შემთხვევაში, თუ გსურთ მისი შეცვლა — წინააღმდეგ შემთხვევაში არსებული ფაილი უცვლელი დარჩება.',
     imageUploadFailed: 'სურათის ატვირთვა ვერ მოხერხდა.',
     fileUploadFailed: 'ფაილის ატვირთვა ვერ მოხერხდა.',
     formSubmit: 'გაგზავნა',
@@ -147,9 +149,13 @@ const dict = {
     formCancel: 'გაუქმება',
     mySubmissionsTitle: 'ჩემი გაგზავნილი პროდუქტები',
     statusPending: 'განხილვაშია',
-    statusApproved: 'დამტკიცებული',
+    statusApproved: 'გამოქვეყნებული',
     statusRejected: 'უარყოფილი',
+    statusNeedsRevision: 'საჭიროებს ცვლილებას',
     rejectionReasonLabel: 'მიზეზი',
+    editAndResubmit: 'რედაქტირება და ხელახლა გაგზავნა',
+    editSubmissionTitle: 'პროდუქტის რედაქტირება',
+    formResubmit: 'ხელახლა გაგზავნა',
     // Confirm modal (shared with learn.tsx)
     confirmTitle: 'გთხოვთ შეამოწმოთ!',
     confirmBody: 'სერტიფიკატზე დაიბეჭდება სახელი და გვარი:',
@@ -256,7 +262,8 @@ const dict = {
     formUploading: 'Uploading…',
     formRemove: 'Remove',
     formAssetLabel: 'Downloadable File',
-    formAssetHint: 'ZIP, PDF, EPUB, RAR, 7Z, FIG, SKETCH, PSD, AI, MP4, or MOV — up to 200MB',
+    formAssetHint: 'ZIP, PDF, EPUB, RAR, 7Z, FIG, SKETCH, PSD, AI, DOC, DOCX, MP4, or MOV — up to 200MB',
+    formAssetHintEditing: 'Only upload a new file if you want to replace it — otherwise the existing file stays unchanged.',
     imageUploadFailed: 'Image upload failed.',
     fileUploadFailed: 'File upload failed.',
     formSubmit: 'Submit',
@@ -264,9 +271,13 @@ const dict = {
     formCancel: 'Cancel',
     mySubmissionsTitle: 'My Submissions',
     statusPending: 'Pending Review',
-    statusApproved: 'Approved',
+    statusApproved: 'Published',
     statusRejected: 'Rejected',
+    statusNeedsRevision: 'Needs Revision',
     rejectionReasonLabel: 'Reason',
+    editAndResubmit: 'Edit & Resubmit',
+    editSubmissionTitle: 'Edit Product',
+    formResubmit: 'Resubmit',
     confirmTitle: 'Please double-check!',
     confirmBody: 'This name will be printed on your certificate:',
     confirmChangeHint: 'To change it, go to your account settings.',
@@ -398,6 +409,7 @@ function DashboardContent() {
   const [submitFileUrl, setSubmitFileUrl] = useState('');
   const [submitFileUploading, setSubmitFileUploading] = useState(false);
   const [submitFileUploadError, setSubmitFileUploadError] = useState<string | null>(null);
+  const [editingSubmissionId, setEditingSubmissionId] = useState<string | null>(null);
   const [submittingProduct, setSubmittingProduct] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -495,15 +507,34 @@ function DashboardContent() {
     setSubmitError(null);
     setSubmittingProduct(true);
     try {
-      await submitProduct({
-        title: submitTitle,
-        description: submitDescription,
-        price: Number(submitPrice) || 0,
-        category: submitCategory,
-        imageUrl: submitImageUrl,
-        previewImages: submitPreviewImages,
-        fileUrl: submitFileUrl,
-      });
+      // Editing an existing NEEDS_REVISION/PENDING submission resubmits it
+      // (server resets status back to PENDING) rather than creating a
+      // second, duplicate product — see productService.ts's updateMyProduct.
+      // fileUrl is never returned by GET /mine/submissions (DigitalProduct
+      // has no fileUrl field client-side at all), so startEditSubmission
+      // leaves submitFileUrl blank — only sent when the submitter actually
+      // picks a replacement file; otherwise the existing file is left as-is.
+      if (editingSubmissionId) {
+        await updateMyProduct(editingSubmissionId, {
+          title: submitTitle,
+          description: submitDescription,
+          price: Number(submitPrice) || 0,
+          category: submitCategory,
+          imageUrl: submitImageUrl,
+          previewImages: submitPreviewImages,
+          ...(submitFileUrl ? { fileUrl: submitFileUrl } : {}),
+        });
+      } else {
+        await submitProduct({
+          title: submitTitle,
+          description: submitDescription,
+          price: Number(submitPrice) || 0,
+          category: submitCategory,
+          imageUrl: submitImageUrl,
+          previewImages: submitPreviewImages,
+          fileUrl: submitFileUrl,
+        });
+      }
       setSubmitTitle('');
       setSubmitDescription('');
       setSubmitPrice('');
@@ -511,6 +542,7 @@ function DashboardContent() {
       setSubmitImageUrl('');
       setSubmitPreviewImages([]);
       setSubmitFileUrl('');
+      setEditingSubmissionId(null);
       setShowSubmitForm(false);
       setMySubmissions(await getMySubmissions());
     } catch (err: any) {
@@ -518,6 +550,19 @@ function DashboardContent() {
     } finally {
       setSubmittingProduct(false);
     }
+  };
+
+  const startEditSubmission = (s: DigitalProduct) => {
+    setEditingSubmissionId(s.id);
+    setSubmitTitle(s.title);
+    setSubmitDescription(s.description);
+    setSubmitPrice(String(s.price / 100));
+    setSubmitCategory(s.category);
+    setSubmitImageUrl(s.imageUrl);
+    setSubmitPreviewImages(s.previewImages);
+    setSubmitFileUrl(''); // fileUrl is never exposed to the client — re-upload if it needs to change, otherwise the existing file stays untouched (omitted from the payload).
+    setSubmitError(null);
+    setShowSubmitForm(true);
   };
 
   const handleSubmitAssetFile = async (file: File) => {
@@ -1143,7 +1188,7 @@ function DashboardContent() {
                       onSubmit={handleSubmitProduct}
                       className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-3"
                     >
-                      <h3 className="text-sm font-bold">{t.submitProductTitle}</h3>
+                      <h3 className="text-sm font-bold">{editingSubmissionId ? t.editSubmissionTitle : t.submitProductTitle}</h3>
                       {submitError && (
                         <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-xs text-red-600 dark:text-red-300">
                           {submitError}
@@ -1207,7 +1252,7 @@ function DashboardContent() {
                           selectedFileName={assetFilenameFromUrl(submitFileUrl)}
                           onFile={handleSubmitAssetFile}
                           label={t.formAssetLabel}
-                          hint={t.formAssetHint}
+                          hint={editingSubmissionId ? t.formAssetHintEditing : t.formAssetHint}
                           uploadingLabel={t.formUploading}
                         />
                         {submitFileUploadError && <p className="text-xs text-red-500 mt-1">{submitFileUploadError}</p>}
@@ -1215,14 +1260,17 @@ function DashboardContent() {
                       <div className="flex gap-2">
                         <button
                           type="submit"
-                          disabled={submittingProduct || !submitImageUrl || !submitFileUrl || submitFileUploading}
+                          disabled={submittingProduct || !submitImageUrl || (!editingSubmissionId && !submitFileUrl) || submitFileUploading}
                           className="text-xs font-bold px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-cyan-600 text-white disabled:opacity-60"
                         >
-                          {submittingProduct ? t.formSubmitting : t.formSubmit}
+                          {submittingProduct ? t.formSubmitting : editingSubmissionId ? t.formResubmit : t.formSubmit}
                         </button>
                         <button
                           type="button"
-                          onClick={() => setShowSubmitForm(false)}
+                          onClick={() => {
+                            setShowSubmitForm(false);
+                            setEditingSubmissionId(null);
+                          }}
                           className="text-xs font-bold px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
                         >
                           {t.formCancel}
@@ -1241,23 +1289,42 @@ function DashboardContent() {
                         >
                           <div>
                             <p className="text-sm font-bold text-slate-900 dark:text-white">{s.title}</p>
-                            {s.status === 'REJECTED' && s.rejectionReason && (
-                              <p className="text-xs text-red-500 mt-0.5">
+                            {(s.status === 'REJECTED' || s.status === 'NEEDS_REVISION') && s.rejectionReason && (
+                              <p className={`text-xs mt-0.5 ${s.status === 'NEEDS_REVISION' ? 'text-orange-600' : 'text-red-500'}`}>
                                 {t.rejectionReasonLabel}: {s.rejectionReason}
                               </p>
                             )}
                           </div>
-                          <span
-                            className={`text-[10px] font-bold uppercase px-2 py-1 rounded border ${
-                              s.status === 'APPROVED'
-                                ? 'text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30'
+                          <div className="flex items-center gap-2 shrink-0">
+                            {(s.status === 'PENDING' || s.status === 'NEEDS_REVISION') && (
+                              <button
+                                type="button"
+                                onClick={() => startEditSubmission(s)}
+                                className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 hover:underline bg-transparent border-none cursor-pointer"
+                              >
+                                {t.editAndResubmit}
+                              </button>
+                            )}
+                            <span
+                              className={`text-[10px] font-bold uppercase px-2 py-1 rounded border whitespace-nowrap ${
+                                s.status === 'APPROVED'
+                                  ? 'text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30'
+                                  : s.status === 'REJECTED'
+                                  ? 'text-red-600 border-red-300 bg-red-50 dark:bg-red-950/30'
+                                  : s.status === 'NEEDS_REVISION'
+                                  ? 'text-orange-600 border-orange-300 bg-orange-50 dark:bg-orange-950/30'
+                                  : 'text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30'
+                              }`}
+                            >
+                              {s.status === 'APPROVED'
+                                ? t.statusApproved
                                 : s.status === 'REJECTED'
-                                ? 'text-red-600 border-red-300 bg-red-50 dark:bg-red-950/30'
-                                : 'text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30'
-                            }`}
-                          >
-                            {s.status === 'APPROVED' ? t.statusApproved : s.status === 'REJECTED' ? t.statusRejected : t.statusPending}
-                          </span>
+                                ? t.statusRejected
+                                : s.status === 'NEEDS_REVISION'
+                                ? t.statusNeedsRevision
+                                : t.statusPending}
+                            </span>
+                          </div>
                         </div>
                       ))}
                     </div>

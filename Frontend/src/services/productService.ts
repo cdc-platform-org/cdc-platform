@@ -1,6 +1,6 @@
 import apiClient from './apiClient';
 
-export type ProductStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type ProductStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'NEEDS_REVISION';
 
 export interface DigitalProduct {
   id: string;
@@ -68,6 +68,15 @@ export async function getMySubmissions(): Promise<DigitalProduct[]> {
   return response.data.data;
 }
 
+// Edit + resubmit the submitter's own PENDING/NEEDS_REVISION submission
+// (never APPROVED — see products.ts's PUT /:id/mine). Always resets status
+// back to PENDING server-side, so this doubles as "acknowledge the
+// requested changes and send it back for review."
+export async function updateMyProduct(id: string, payload: Partial<CreateProductPayload>): Promise<DigitalProduct> {
+  const response = await apiClient.put<{ data: DigitalProduct }>(`/products/${id}/mine`, payload);
+  return response.data.data;
+}
+
 export async function getAdminProducts(): Promise<(DigitalProduct & { submittedBy: { id: string; name: string; email: string } | null })[]> {
   const response = await apiClient.get<{ data: (DigitalProduct & { submittedBy: { id: string; name: string; email: string } | null })[] }>(
     '/admin/products'
@@ -96,6 +105,13 @@ export async function approveProduct(id: string): Promise<DigitalProduct> {
 
 export async function rejectProduct(id: string, reason: string): Promise<DigitalProduct> {
   const response = await apiClient.post<{ data: DigitalProduct }>(`/admin/products/${id}/reject`, { reason });
+  return response.data.data;
+}
+
+// Distinct from reject — tells the submitter what to fix and lets them
+// edit + resubmit (see updateMyProduct above), rather than a final decision.
+export async function requestProductChanges(id: string, feedback: string): Promise<DigitalProduct> {
+  const response = await apiClient.post<{ data: DigitalProduct }>(`/admin/products/${id}/request-changes`, { feedback });
   return response.data.data;
 }
 

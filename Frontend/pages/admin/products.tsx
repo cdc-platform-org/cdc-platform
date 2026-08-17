@@ -13,6 +13,7 @@ import {
   createProduct,
   approveProduct,
   rejectProduct,
+  requestProductChanges,
   updateProductAdmin,
   uploadProductImage,
   uploadProductFile,
@@ -30,6 +31,7 @@ const STATUS_BADGE: Record<string, string> = {
   PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
   APPROVED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   REJECTED: 'bg-red-50 text-red-700 border-red-200',
+  NEEDS_REVISION: 'bg-orange-50 text-orange-700 border-orange-200',
 };
 
 function ModerationProductCard({
@@ -37,12 +39,14 @@ function ModerationProductCard({
   acting,
   onApprove,
   onReject,
+  onRequestChanges,
   onSave,
 }: {
   product: AdminProduct;
   acting: boolean;
   onApprove: () => void;
   onReject: () => void;
+  onRequestChanges: () => void;
   onSave: (patch: { title: string; description: string }) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
@@ -124,6 +128,7 @@ function ModerationProductCard({
           {p.submittedBy && <> · Submitted by {p.submittedBy.name} ({p.submittedBy.email})</>}
         </p>
         {p.status === 'REJECTED' && p.rejectionReason && <p className="text-xs text-red-500 mt-1">Reason: {p.rejectionReason}</p>}
+        {p.status === 'NEEDS_REVISION' && p.rejectionReason && <p className="text-xs text-orange-600 mt-1">Requested changes: {p.rejectionReason}</p>}
 
         {showPurchases && (
           <div className="mt-2 rounded-lg border border-gray-200 p-2">
@@ -170,6 +175,14 @@ function ModerationProductCard({
                 className="text-xs font-medium text-white bg-emerald-600 px-3 py-1.5 rounded-lg hover:bg-emerald-700 disabled:opacity-60"
               >
                 Approve
+              </button>
+              <button
+                type="button"
+                onClick={onRequestChanges}
+                disabled={acting}
+                className="text-xs font-medium text-white bg-orange-500 px-3 py-1.5 rounded-lg hover:bg-orange-600 disabled:opacity-60"
+              >
+                Request Changes
               </button>
               <button
                 type="button"
@@ -286,6 +299,21 @@ function AdminProductsDashboard() {
     }
   };
 
+  const handleRequestChanges = async (id: string) => {
+    const feedback = window.prompt('What needs to change? (shown to the submitter, e.g. "Fix cover image resolution")');
+    if (!feedback) return;
+    setActionError(null);
+    setActingId(id);
+    try {
+      const updated = await requestProductChanges(id, feedback);
+      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
+    } catch (err: any) {
+      setActionError(err?.response?.data?.message ?? 'Failed to request changes.');
+    } finally {
+      setActingId(null);
+    }
+  };
+
   const handleUpdate = async (id: string, patch: { title: string; description: string }) => {
     setActionError(null);
     setActingId(id);
@@ -393,7 +421,7 @@ function AdminProductsDashboard() {
         </form>
 
         <div className="flex items-center gap-2 mb-4">
-          {['PENDING', 'APPROVED', 'REJECTED', ''].map((s) => (
+          {['PENDING', 'NEEDS_REVISION', 'APPROVED', 'REJECTED', ''].map((s) => (
             <button
               key={s}
               type="button"
@@ -421,6 +449,7 @@ function AdminProductsDashboard() {
                 acting={actingId === p.id}
                 onApprove={() => handleApprove(p.id)}
                 onReject={() => handleReject(p.id)}
+                onRequestChanges={() => handleRequestChanges(p.id)}
                 onSave={(patch) => handleUpdate(p.id, patch)}
               />
             ))}

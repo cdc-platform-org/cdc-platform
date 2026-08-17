@@ -206,6 +206,42 @@ router.get('/mine/submissions', authenticate, requireApproved, async (req: Reque
   res.json({ data: products });
 });
 
+const updateMySubmissionSchema = submitSchema.partial();
+
+// ============================================================
+// EDIT & RESUBMIT — the submitter's own PENDING/NEEDS_REVISION
+// submission only (never APPROVED — a live catalog listing goes through
+// adminProducts.ts's PUT /:id instead, an admin-only action). Always
+// resets status back to PENDING and clears any prior rejectionReason/
+// feedback, since editing content is exactly what "resubmit after
+// requested changes" means — the admin needs to look at it again either way.
+// ============================================================
+router.put('/:id/mine', authenticate, requireApproved, async (req: Request, res: Response) => {
+  const product = await prisma.digitalProduct.findUnique({ where: { id: req.params.id } });
+  if (!product) return res.status(404).json({ message: 'Product not found.' });
+  if (product.submittedById !== req.user!.id) {
+    return res.status(403).json({ message: 'You can only edit your own submissions.' });
+  }
+  if (product.status === 'APPROVED') {
+    return res.status(400).json({ message: 'This product is already published and can no longer be edited here.' });
+  }
+
+  const result = updateMySubmissionSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const { price, ...rest } = result.data;
+  const updated = await prisma.digitalProduct.update({
+    where: { id: product.id },
+    data: {
+      ...rest,
+      ...(price !== undefined ? { price: Math.round(price * 100) } : {}),
+      status: 'PENDING',
+      rejectionReason: null,
+    },
+  });
+  res.json({ data: updated });
+});
+
 // ============================================================
 // CLAIM — free (price = 0) products only. Paid products go through
 // POST /api/payments/checkout/product/:productId (BOG) instead.
