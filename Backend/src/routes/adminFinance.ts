@@ -5,6 +5,8 @@ import { authenticate, requireAdminRole } from '../middleware/auth';
 import { getBogOrderDetails } from '../services/bogPaymentService';
 import { applyBogPaymentResult } from './payments';
 import { logAdminAction } from '../services/auditLogService';
+import { getBillingSettings } from '../services/billingService';
+import { updateBillingSettingsSchema } from '../schemas/billingSchemas';
 
 const router = Router();
 // Financials are SUPER_ADMIN only, per the RBAC hierarchy (MANAGER/MODERATOR
@@ -152,6 +154,40 @@ router.post('/course-access/grant', async (req: Request, res: Response) => {
     metadata: { note: result.data.note, courseTitle: course.title, userEmail: user.email },
   });
   res.status(201).json({ data: enrollment });
+});
+
+// ============================================================
+// BILLING SETTINGS — the unified SaaS billing engine's pricing knobs (base
+// fee/month, usage margin multiplier, trial length). Same singleton-row
+// pattern as /bog-settings in adminPanel.ts. Reads always fall back to
+// billingService's hardcoded defaults when no row has been saved yet, so
+// the trial/usage flow works out of the box before an admin ever visits
+// this page.
+// ============================================================
+router.get('/billing-settings', async (_req: Request, res: Response) => {
+  const settings = await getBillingSettings();
+  res.json({ data: settings });
+});
+
+router.put('/billing-settings', async (req: Request, res: Response) => {
+  const result = updateBillingSettingsSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const existing = await prisma.billingSettings.findFirst({ orderBy: { updatedAt: 'desc' } });
+  const data = { ...result.data, updatedByEmail: req.user!.email };
+  const settings = existing
+    ? await prisma.billingSettings.update({ where: { id: existing.id }, data })
+    : await prisma.billingSettings.create({ data });
+
+  await logAdminAction({
+    action: 'finance.billing-settings.update',
+    targetType: 'BillingSettings',
+    targetId: settings.id,
+    performedById: req.user!.id,
+    metadata: result.data,
+  });
+
+  res.json({ data: settings });
 });
 
 export default router;

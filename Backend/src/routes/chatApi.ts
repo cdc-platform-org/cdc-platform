@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { rateLimit } from '../middleware/rateLimit';
 import { chatRequestSchema } from '../schemas/agentSchemas';
 import { generateAgentReply, isBusinessAiChatConfigured, BusinessAiChatError, ChatTurn } from '../services/businessAiChatService';
+import { recordAgentUsage } from '../services/billingService';
 
 const router = Router();
 
@@ -110,13 +111,16 @@ router.post('/chat', chatRateLimit, async (req: Request, res: Response) => {
   await prisma.agentMessage.create({ data: { conversationId: conversation.id, role: 'USER', content: message } });
 
   let reply: string;
+  let usage: { promptTokens: number; completionTokens: number } | undefined;
   try {
-    reply = await generateAgentReply({
+    const result = await generateAgentReply({
       systemPrompt: agent.systemPrompt,
       knowledgeContext,
       history,
       message,
     });
+    reply = result.reply;
+    usage = result.usage;
   } catch (err) {
     const errMessage = err instanceof BusinessAiChatError ? err.message : 'Unexpected error generating a reply.';
     console.error('[chatApi] generateAgentReply failed:', errMessage);
@@ -130,6 +134,19 @@ router.post('/chat', chatRateLimit, async (req: Request, res: Response) => {
   }
 
   await prisma.agentMessage.create({ data: { conversationId: conversation.id, role: 'ASSISTANT', content: reply } });
+
+  // Usage Tracker — meters this execution against the agent's
+  // BillingSubscription, if one exists (see billingService.recordAgentUsage's
+  // own comment on why a missing subscription is a silent no-op here). Never
+  // allowed to fail the request the visitor is waiting on.
+  if (usage) {
+    recordAgentUsage({
+      businessId: agent.businessId,
+      agentId: agent.id,
+      promptTokens: usage.promptTokens,
+      completionTokens: usage.completionTokens,
+    }).catch((err) => console.error('[chatApi] recordAgentUsage failed:', err));
+  }
 
   res.json({ conversationId: conversation.id, reply });
 });

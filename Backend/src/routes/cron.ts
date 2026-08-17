@@ -4,6 +4,7 @@ import { CRON_SECRET } from '../utils/env';
 import { autoApproveOverdueGigs } from '../services/gigApprovalService';
 import { cleanupExpiredDeletedAccounts } from '../services/accountCleanupService';
 import { pauseExpiredTrialAgents } from '../services/agentBillingService';
+import { sweepExpiredTrials } from '../services/billingService';
 import { generateAndSaveBlogDraft, BlogAgentError } from '../services/blogAgentService';
 
 const router = Router();
@@ -49,6 +50,18 @@ router.post('/pause-expired-trial-agents', requireCronSecret, async (_req: Reque
   const result = await pauseExpiredTrialAgents();
   res.json({
     message: `Paused ${result.pausedAgentIds.length} CDC Business AI agent(s) past their trial end date.`,
+    ...result,
+  });
+});
+
+// BillingSubscription counterpart to the sweep above — separate cron route
+// since BillingSubscription (new, unified billing) and Agent.status (legacy,
+// per-agent-only) are independent trial mechanisms today; see
+// billingService.sweepExpiredTrials's own comment.
+router.post('/sweep-expired-billing-trials', requireCronSecret, async (_req: Request, res: Response) => {
+  const result = await sweepExpiredTrials();
+  res.json({
+    message: `${result.activatedIds.length} subscription(s) activated, ${result.pastDueIds.length} marked past-due.`,
     ...result,
   });
 });

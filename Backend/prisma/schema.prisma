@@ -410,6 +410,7 @@ model User {
   // Agent model's own comment for why billing fields live there instead of
   // a separate Subscription model for now.
   agents                      Agent[]
+  billingSubscriptions        BillingSubscription[]
   blogComments                BlogComment[]
   mentorshipRequestsMade      MentorshipRequest[]          @relation("MentorshipRequestsMade")
   mentorshipRequestsResolved  MentorshipRequest[]          @relation("MentorshipRequestsResolved")
@@ -673,14 +674,14 @@ model Course {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  orders       Order[]             @relation("OrderCourses")
-  enrollments  CourseEnrollment[]
-  sections     CourseSection[]
-  certificates CourseCertificate[]
+  orders          Order[]                @relation("OrderCourses")
+  enrollments     CourseEnrollment[]
+  sections        CourseSection[]
+  certificates    CourseCertificate[]
   // One AI-generated certification exam per course, if configured by an
   // admin — courses without one keep the old "100% lessons" certificate gate
   // (see routes/courses.ts's GET /:id/certificate).
-  exam         Exam?
+  exam            Exam?
   discussionPosts CourseDiscussionPost[]
 
   @@map("courses")
@@ -713,36 +714,36 @@ model CourseSection {
 }
 
 model Lesson {
-  id               String           @id @default(uuid())
-  sectionId        String
-  section          CourseSection    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  title            String
+  id                 String           @id @default(uuid())
+  sectionId          String
+  section            CourseSection    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  title              String
   // Optional English translation of `title` — see CourseSection.titleEn's
   // comment.
-  titleEn          String?
-  durationSeconds  Int              @default(0)
+  titleEn            String?
+  durationSeconds    Int              @default(0)
   // Bunny Stream video GUID (services/bunnyStreamService.ts) — null until an
   // admin uploads a video for this lesson.
-  bunnyVideoId     String?
-  resources        String[]         @default([])
-  order            Int
+  bunnyVideoId       String?
+  resources          String[]         @default([])
+  order              Int
   // Watchable by anyone on the public course landing page without
   // enrolling — see routes/courses.ts's GET /:id/syllabus, which only
   // includes embedUrl for these lessons.
-  isFreePreview    Boolean          @default(false)
+  isFreePreview      Boolean          @default(false)
   // Optional homework prompt shown on the student player's Assignment tab
   // — null means the lesson has no assignment (existing behavior).
-  assignmentPrompt String?
+  assignmentPrompt   String?
   // Optional English translation of `assignmentPrompt` — same posture as
   // titleEn above. Only meaningful when assignmentPrompt is set.
   assignmentPromptEn String?
   // Auto-generated ka/en/ru captions (services/subtitleService.ts), fired
   // fire-and-forget right after a successful video upload — see
   // POST /lessons/:lessonId/video. null until a video has ever triggered it.
-  subtitlesStatus  SubtitlesStatus?
-  subtitlesError   String?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  subtitlesStatus    SubtitlesStatus?
+  subtitlesError     String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
   progress    LessonProgress[]
   submissions AssignmentSubmission[]
@@ -974,23 +975,23 @@ model VerifiedSkill {
 // Course.originalPrice/BogPayment.amount elsewhere — not Float, to avoid
 // floating-point rounding on money.
 model DigitalProduct {
-  id              String            @id @default(uuid())
-  title           String
-  description     String
-  price           Int
-  category        String
-  imageUrl        String
+  id                 String            @id @default(uuid())
+  title              String
+  description        String
+  price              Int
+  category           String
+  imageUrl           String
   // Up to 4 additional showcase screenshots shown alongside imageUrl (the
   // main cover) in the /store/[id] gallery/carousel — same array-of-URLs
   // pattern as StudioCaseStudy.galleryImages. Capped at 4 in the Zod schemas
   // (products.ts/adminProducts.ts), not here.
-  previewImages   String[]          @default([])
+  previewImages      String[]          @default([])
   // Never exposed directly to the client until a completed purchase is
   // verified server-side — see routes/products.ts's /:id/download.
-  fileUrl         String
-  downloadsCount  Int               @default(0)
-  createdAt       DateTime          @default(now())
-  purchases       ProductPurchase[]
+  fileUrl            String
+  downloadsCount     Int               @default(0)
+  createdAt          DateTime          @default(now())
+  purchases          ProductPurchase[]
   // "PENDING" | "APPROVED" | "REJECTED" | "NEEDS_REVISION" — admin-created
   // products (see adminProducts.ts) are inserted as APPROVED directly;
   // graduate/verified-freelancer submissions (products.ts's POST /) start
@@ -998,8 +999,8 @@ model DigitalProduct {
   // productModerationService's AI review is confident enough — see
   // aiReview* fields below) and only show up in the public catalog once
   // APPROVED.
-  status          String            @default("PENDING")
-  rejectionReason String?
+  status             String            @default("PENDING")
+  rejectionReason    String?
   // AI moderation (services/productModerationService.ts), run once at
   // submission/resubmission time — never re-run automatically afterward, so
   // these reflect the review that actually decided (or informed) the
@@ -1012,8 +1013,8 @@ model DigitalProduct {
   aiReviewConfidence Int?
   aiReviewReasoning  String?
   aiReviewedAt       DateTime?
-  submittedById   String?
-  submittedBy     User?             @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
+  submittedById      String?
+  submittedBy        User?             @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
 
   @@map("digital_products")
 }
@@ -1325,20 +1326,149 @@ model Message {
 // seeding, same as this endpoint's original frontend scaffold assumed)
 // ============================================================
 
+// Which gateway actually issued processorToken. STUB is the only one that
+// ever runs real code today — see paymentGatewayService.ts's own comment for
+// why (mirrors BogSettings below: the data model is ready for a real
+// processor, nothing calls out to one yet).
+enum PaymentProvider {
+  STUB
+  BOG
+}
+
 model PaymentMethod {
-  id             String   @id @default(uuid())
+  id             String          @id @default(uuid())
   userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider       PaymentProvider @default(STUB)
   processorToken String
   brand          String
   last4          String
   expiryMonth    Int
   expiryYear     Int
-  isDefault      Boolean  @default(false)
-  createdAt      DateTime @default(now())
+  isDefault      Boolean         @default(false)
+  // Set the moment the gateway's $0 authorization hold succeeds (see
+  // paymentGatewayService.bindCard) — a trial can only start against a card
+  // with this set. Null means the bind attempt never completed verification.
+  verifiedAt     DateTime?
+  createdAt      DateTime        @default(now())
+
+  billingSubscriptions BillingSubscription[]
 
   @@index([userId])
   @@map("payment_methods")
+}
+
+// ============================================================
+// BILLING SETTINGS — admin-configurable pricing knobs, single-row app-wide
+// singleton. Same pattern as BogSettings below: kept out of hardcoded
+// constants so pricing can change without a deploy. baseFeeTetri/
+// marginMultiplier are read fresh on every trial-start/usage-record call,
+// never cached, so an admin change takes effect on the very next request.
+// ============================================================
+model BillingSettings {
+  id               String   @id @default(uuid())
+  // Minor units (tetri) — 9900 = 99.00 GEL/month, same convention as
+  // Course.originalPrice / mentorHourlyRate. Charged once per active
+  // BillingSubscription per billing cycle, on top of usage.
+  baseFeeTetri     Int      @default(9900)
+  // Multiplier applied to raw AI provider cost to get the billed usage cost
+  // (see UsageRecord.marginMultiplier — frozen per-row at record time so a
+  // later change here never rewrites past usage history).
+  marginMultiplier Float    @default(3.0)
+  trialDays        Int      @default(10)
+  updatedByEmail   String?
+  updatedAt        DateTime @updatedAt
+
+  @@map("billing_settings")
+}
+
+enum BillingProductType {
+  // The only real product wired to billing today — Frontend's
+  // /dashboard/ai-tools chat agents (see Agent model). referenceId on the
+  // subscription below points at the specific Agent.id.
+  AI_AGENT_SUITE
+}
+
+enum BillingSubscriptionStatus {
+  // Card bound + $0-verified, within the trialDays window — usage is still
+  // tracked (see UsageRecord) but nothing is charged.
+  TRIALING
+  // Trial passed with autoRenew on and a verified default payment method —
+  // still "non-invasive" in the same sense as agentBillingService's existing
+  // trial-expiry sweep: no real charge is ever attempted (see
+  // paymentGatewayService's own comment), this just tracks intent/state.
+  ACTIVE
+  // Trial (or a period) ended with no verified payment method / autoRenew
+  // off — mirrors Agent.status's existing PAUSED semantics.
+  PAST_DUE
+  CANCELED
+}
+
+// One row per (business, tool) subscription — productType + referenceId is
+// a polymorphic pointer, same pattern as BogPayment's purpose + referenceId
+// below, since AI_AGENT_SUITE is the only product today but more will
+// follow the same "99 GEL/month per active business tool" shape.
+model BillingSubscription {
+  id                 String                    @id @default(uuid())
+  businessId         String
+  business           User                      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  productType        BillingProductType
+  referenceId        String
+  status             BillingSubscriptionStatus @default(TRIALING)
+  // Snapshot of BillingSettings.baseFeeTetri at subscription-start time —
+  // deliberately NOT re-read live, so an admin pricing change never
+  // retroactively alters an already-running subscription's base fee.
+  baseFeeTetri       Int
+  trialEndsAt        DateTime
+  currentPeriodStart DateTime                  @default(now())
+  currentPeriodEnd   DateTime?
+  autoRenew          Boolean                   @default(true)
+  paymentMethodId    String?
+  paymentMethod      PaymentMethod?            @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  canceledAt         DateTime?
+  cancellationReason String?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+
+  usageRecords UsageRecord[]
+
+  @@unique([businessId, productType, referenceId])
+  @@index([businessId])
+  @@map("billing_subscriptions")
+}
+
+enum UsageEventType {
+  AI_AGENT_EXECUTION
+}
+
+// One row per billable AI Agent execution (POST /api/v1/chat, see
+// routes/chatApi.ts) — token counts come straight from the Gemini response's
+// usageMetadata (see businessAiChatService.ts).
+model UsageRecord {
+  id               String              @id @default(uuid())
+  subscriptionId   String
+  subscription     BillingSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  agentId          String?
+  agent            Agent?              @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  eventType        UsageEventType      @default(AI_AGENT_EXECUTION)
+  promptTokens     Int                 @default(0)
+  completionTokens Int                 @default(0)
+  totalTokens      Int                 @default(0)
+  // Raw provider cost in tetri, before margin — see billingService's
+  // AI_TOKEN_RATE_TETRI_PER_1K constant (placeholder rate; not a real
+  // Gemini invoice figure, same "no real gateway wired up" posture as the
+  // rest of this file).
+  rawCostTetri     Int                 @default(0)
+  // rawCostTetri * marginMultiplier, rounded — the actual amount owed for
+  // this execution. marginMultiplier is frozen here from BillingSettings at
+  // record time (see that model's own comment on why).
+  billedCostTetri  Int                 @default(0)
+  marginMultiplier Float               @default(3.0)
+  createdAt        DateTime            @default(now())
+
+  @@index([subscriptionId])
+  @@index([agentId])
+  @@map("usage_records")
 }
 
 // ============================================================
@@ -1471,9 +1601,9 @@ model MentorshipBooking {
   // set the instant the session ends.
   status                  String     @default("SCHEDULED")
 
-  walletEntries WalletEntry[]
-  history       MentorBookingHistory[]
-  chatMessages  MentorChatMessage[]
+  walletEntries  WalletEntry[]
+  history        MentorBookingHistory[]
+  chatMessages   MentorChatMessage[]
   chatViolations MentorChatViolation[]
 
   @@index([mentorId])
@@ -1862,6 +1992,7 @@ model Agent {
 
   knowledgeDocuments KnowledgeDocument[]
   conversations      AgentConversation[]
+  usageRecords       UsageRecord[]
 
   @@index([businessId])
   @@map("agents")
@@ -2075,44 +2206,44 @@ model Notification {
 // ============================================================
 
 model SuccessStory {
-  id          String   @id @default(uuid())
-  studentName String
+  id             String   @id @default(uuid())
+  studentName    String
   // URL-friendly identifier for /success-stories/[slug], auto-generated
   // from studentName at creation (see routes/adminSuccessStories.ts) — same
   // posture as StudioCaseStudy.slug/BlogPost.slug.
-  slug        String   @unique
+  slug           String   @unique
   // Uploaded via the same Bunny Storage pipeline as everything else
   // (POST /api/success-stories/upload-avatar) — never a freely-settable
   // external URL, consistent with avatarUrl/verificationDocUrl elsewhere.
-  avatarUrl   String?
-  roleTitle   String
+  avatarUrl      String?
+  roleTitle      String
   // English twin — optional, same "public pages fall back to Georgian when
   // unset" posture as StudioCaseStudy's titleEn/descriptionEn/fullStoryEn.
   // studentName and courseName are deliberately NOT twinned: studentName is
   // a proper noun, and courseName mirrors StudioCaseStudy's own `category`
   // field, which is likewise single-language and used for grid filtering.
-  roleTitleEn String?
-  courseName  String
-  testimonial String
-  testimonialEn String?
+  roleTitleEn    String?
+  courseName     String
+  testimonial    String
+  testimonialEn  String?
   // Full "success journey" article for the /success-stories/[slug] detail
   // page — optional, since the short testimonial quote above is enough for
   // a card and not every story needs a full write-up.
   storyContent   String?
   storyContentEn String?
-  galleryImages String[] @default([])
-  linkedinUrl String?
+  galleryImages  String[] @default([])
+  linkedinUrl    String?
   // Distinct from linkedinUrl — a portfolio site / live work sample, same
   // role StudioCaseStudy.projectUrl plays for a case study.
-  portfolioUrl String?
+  portfolioUrl   String?
   // Free-text outcome badge, e.g. "დასაქმდა Bank of Georgia-ში" / "Top
   // Rated Freelancer on Upwork" — shown on both the card and the detail
   // page hero. Optional since not every story has a single hire/outcome to
   // name.
-  hiredBy     String?
-  isFeatured  Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  hiredBy        String?
+  isFeatured     Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([isFeatured])
   @@map("success_stories")

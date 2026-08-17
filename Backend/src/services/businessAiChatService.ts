@@ -39,7 +39,16 @@ export interface GenerateAgentReplyParams {
   message: string;
 }
 
-export async function generateAgentReply(params: GenerateAgentReplyParams): Promise<string> {
+export interface GenerateAgentReplyResult {
+  reply: string;
+  // Gemini's own token accounting for this turn — undefined if the SDK
+  // response didn't include usageMetadata (seen on some error/edge
+  // responses), in which case the caller's usage tracker just skips
+  // recording rather than guessing at a token count.
+  usage?: { promptTokens: number; completionTokens: number };
+}
+
+export async function generateAgentReply(params: GenerateAgentReplyParams): Promise<GenerateAgentReplyResult> {
   if (!client) {
     throw new BusinessAiChatError('Gemini is not configured (GEMINI_API_KEY missing).');
   }
@@ -65,12 +74,20 @@ export async function generateAgentReply(params: GenerateAgentReplyParams): Prom
   });
 
   let reply: string;
+  let usage: GenerateAgentReplyResult['usage'];
   try {
     const result = await chat.sendMessage(params.message);
     reply = result.response.text();
+    const usageMetadata = result.response.usageMetadata;
+    if (usageMetadata) {
+      usage = {
+        promptTokens: usageMetadata.promptTokenCount ?? 0,
+        completionTokens: usageMetadata.candidatesTokenCount ?? 0,
+      };
+    }
   } catch (err) {
     throw new BusinessAiChatError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');
   }
   if (!reply) throw new BusinessAiChatError('Gemini returned an empty response.');
-  return reply;
+  return { reply, usage };
 }
