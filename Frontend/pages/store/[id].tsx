@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag, Building2, X } from 'lucide-react';
+import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag, Building2, X, Zap, Upload, Code2 } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
@@ -25,6 +25,16 @@ function isBusinessToolsCategory(category: string): boolean {
   return !!BUSINESS_TOOLS_CATEGORY && (category === BUSINESS_TOOLS_CATEGORY.value.ka || category === BUSINESS_TOOLS_CATEGORY.value.en);
 }
 
+// Fixed id of the seeded "AI Business Assistant" trial listing (see
+// Backend's 20260807010000_seed_ai_business_trial_product migration) — a
+// web-based SaaS tool represented as a $0 marketplace product, not a real
+// downloadable file (its fileUrl points at /dashboard/ai-tools, but that
+// field is deliberately never sent to this public page — see
+// DigitalProduct's own comment in productService.ts — so matching by id is
+// the only safe discriminator here). Other Business Tools category products
+// are real downloads and keep the generic steps below.
+const AI_BUSINESS_TRIAL_PRODUCT_ID = 'a5f877bb-6875-448a-ac00-40f09d3e2ca3';
+
 const dict = {
   ka: {
     free: 'უფასო',
@@ -41,6 +51,16 @@ const dict = {
     step2Body: 'გახსენით ჩამოტვირთული ფაილი (ორჯერ დაწკაპუნებით) და წაიკითხეთ თანდართული README ინსტრუქცია.',
     step3Title: 'გამოყენება',
     step3Body: 'დააკოპირეთ მზა AI ბრძანებები (Prompts) ChatGPT/Claude-ში ან გახსენით UI Kit ფაილი Figma-ში და დაიწყეთ მუშაობა!',
+    // AI Business Assistant trial — a web-based SaaS tool, not a file
+    // download (see product.fileUrl === '/dashboard/ai-tools' check below),
+    // so it gets its own activation/data/embed steps instead of the generic
+    // download/unzip/use ones above.
+    aiStep1Title: 'გააქტიურება',
+    aiStep1Body: 'დააჭირეთ «უფასოდ მიღებას», მიაბით ბარათი ($0 ₾ ვერიფიკაციით) და გაიარეთ 10-დღიანი ულიმიტო საცდელი პერიოდი.',
+    aiStep2Title: 'მონაცემების მართვა',
+    aiStep2Body: 'დაშბორდში ატვირთეთ თქვენი კომპანიის PDF/DOCX ფაილები ან FAQ ტექსტი AI-ს გადასასწავლებლად.',
+    aiStep3Title: 'საიტზე ჩაშენება',
+    aiStep3Body: 'დააკოპირეთ თქვენი უნიკალური 1-სტრიქონიანი Embed Script კოდი, ჩასვით თქვენს საიტზე და AI ასისტენტი მყისიერად გააქტიურდება!',
     downloadFailed: 'ჩამოტვირთვა ვერ მოხერხდა.',
     checkoutFailed: 'გადახდის დაწყება ვერ მოხერხდა.',
     businessGateTitle: 'ხელმისაწვდომია მხოლოდ ვერიფიცირებული ბიზნესებისთვის',
@@ -63,6 +83,12 @@ const dict = {
     step2Body: 'Open the downloaded file (double-click) and read the included README for instructions.',
     step3Title: 'Use It',
     step3Body: 'Copy the ready-made AI prompts into ChatGPT/Claude, or open the UI Kit file in Figma and start working!',
+    aiStep1Title: 'Activate',
+    aiStep1Body: 'Click "Get for Free", bind a card ($0 verification hold), and get a 10-day unlimited trial period.',
+    aiStep2Title: 'Manage Your Data',
+    aiStep2Body: "Upload your company's PDF/DOCX files or FAQ text in the dashboard to train the AI.",
+    aiStep3Title: 'Embed on Your Site',
+    aiStep3Body: 'Copy your unique 1-line Embed Script, paste it into your site, and the AI assistant activates instantly!',
     downloadFailed: 'Download failed.',
     checkoutFailed: 'Could not start checkout.',
     businessGateTitle: 'Available for Verified Businesses Only',
@@ -87,6 +113,7 @@ function StoreProductContent() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [guideOpen, setGuideOpen] = useState(true);
   const [showBusinessGate, setShowBusinessGate] = useState(false);
+  const isAiBusinessTrial = product?.id === AI_BUSINESS_TRIAL_PRODUCT_ID;
 
   useEffect(() => {
     if (typeof id !== 'string') return;
@@ -255,11 +282,18 @@ function StoreProductContent() {
           </button>
           {guideOpen && (
             <div className="px-6 pb-6 grid sm:grid-cols-3 gap-5">
-              {[
-                { icon: Download, step: '1', title: t.step1Title, body: t.step1Body },
-                { icon: FolderOpen, step: '2', title: t.step2Title, body: t.step2Body },
-                { icon: Sparkles, step: '3', title: t.step3Title, body: t.step3Body },
-              ].map(({ icon: Icon, step, title, body }) => (
+              {(isAiBusinessTrial
+                ? [
+                    { icon: Zap, step: '1', title: t.aiStep1Title, body: t.aiStep1Body },
+                    { icon: Upload, step: '2', title: t.aiStep2Title, body: t.aiStep2Body },
+                    { icon: Code2, step: '3', title: t.aiStep3Title, body: t.aiStep3Body },
+                  ]
+                : [
+                    { icon: Download, step: '1', title: t.step1Title, body: t.step1Body },
+                    { icon: FolderOpen, step: '2', title: t.step2Title, body: t.step2Body },
+                    { icon: Sparkles, step: '3', title: t.step3Title, body: t.step3Body },
+                  ]
+              ).map(({ icon: Icon, step, title, body }) => (
                 <div key={step} className="rounded-xl border border-slate-200 dark:border-slate-800 p-4">
                   <div className="flex items-center gap-2 mb-2.5">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center shrink-0">
