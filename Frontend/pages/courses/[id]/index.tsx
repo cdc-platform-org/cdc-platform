@@ -19,6 +19,7 @@ import { useAuthModal } from '../../../src/context/AuthModalContext';
 import SocialShareButtons from '../../../src/components/shared/SocialShareButtons';
 import SuccessStoriesCarousel from '../../../src/components/shared/SuccessStoriesCarousel';
 import CourseLeaderboard from '../../../src/components/shared/CourseLeaderboard';
+import CourseHeroBanner from '../../../src/components/shared/CourseHeroBanner';
 
 const dict = {
   ka: {
@@ -237,17 +238,16 @@ export default function CourseDetailPage() {
         <title>{`${course.title} | CDC`}</title>
       </Head>
       <SiteHeader />
-      {course.coverImageUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <div className="w-full h-56 md:h-80 relative">
-          <img src={course.coverImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
-        </div>
-      )}
       <div className="max-w-3xl mx-auto px-6 py-16 flex-1 w-full">
         <Link href="/courses" className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white no-underline">
           {t.backToCourses}
         </Link>
+
+        {course.coverImageUrl && (
+          <div className="mt-6">
+            <CourseHeroBanner src={course.coverImageUrl} alt={course.title} />
+          </div>
+        )}
 
         <div className="mt-6 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">

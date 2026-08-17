@@ -4,6 +4,7 @@ import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
 import RichTextEditor from '../../src/components/shared/RichTextEditor';
 import Toast from '../../src/components/shared/Toast';
+import CourseHeroBanner from '../../src/components/shared/CourseHeroBanner';
 import { Course, CoursePayload, CourseLanguage, AdminSection, AdminLesson, Exam } from '../../src/types/lms';
 import SkillPicker from '../../src/components/shared/SkillPicker';
 import {
@@ -340,11 +341,14 @@ function CourseForm({
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Cover Image (Hero Banner)</label>
+          <p className="text-xs text-gray-400 dark:text-slate-500 mb-2">
+            Full-bleed banners (with baked-in title text/diagrams) work best — this preview shows the whole image uncropped,
+            exactly how it renders on the course page. High-res 16:9 recommended.
+          </p>
           {editingCourse ? (
-            <div className="flex items-center gap-3">
+            <div className="space-y-3">
               {form.coverImageUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={form.coverImageUrl} alt="" className="w-24 h-14 rounded-lg object-cover border border-gray-200 dark:border-slate-700 shrink-0" />
+                <CourseHeroBanner src={form.coverImageUrl} alt="" className="max-w-sm" enableLightbox />
               )}
               <div>
                 <input ref={coverImageInputRef} type="file" accept="image/*" onChange={handleCoverImageFile} disabled={coverImageUploading} className="hidden" id="cover-image-file-input" />
