@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import { authenticate } from '../middleware/auth';
 import { generateInvoicePdf, InvoiceData } from '../services/invoiceService';
+import { getCurrentCycleUsageTetri } from '../services/billingService';
 
 const router = Router();
 router.use(authenticate);
@@ -123,6 +124,48 @@ router.get('/gig-transaction/:gigTransactionId/download', async (req: Request, r
     netAmount: transaction.netAmount,
     currency: transaction.currency,
     status: transaction.status === 'REFUNDED' ? 'REFUNDED' : 'PAID',
+  };
+  const pdf = await generateInvoicePdf(data);
+  sendPdf(res, pdf, `${invoiceNumber}.pdf`);
+});
+
+// Unified SaaS billing engine's "current cycle" statement — the honest
+// counterpart to the other two invoice routes above: those cover a real
+// completed BogPayment/GigTransaction, but a BillingSubscription is never
+// actually charged yet (see paymentGatewayService.ts), so this generates an
+// ESTIMATE document (base fee + usage-to-date) rather than pretending
+// something was paid. Becomes a real PAID invoice once a billing cycle
+// actually closes and charges a card — deferred along with real gateway
+// wiring (see billingService.sweepExpiredTrials's own comment).
+router.get('/subscription/:subscriptionId/download', async (req: Request, res: Response) => {
+  const subscription = await prisma.billingSubscription.findUnique({
+    where: { id: req.params.subscriptionId },
+    include: { business: { select: { name: true, email: true, companyName: true, taxId: true, nationalId: true } } },
+  });
+  if (!subscription) return res.status(404).json({ message: 'Subscription not found.' });
+  const isOwner = subscription.businessId === req.user!.id;
+  const isAdmin = req.user!.role === 'SuperAdmin';
+  if (!isOwner && !isAdmin) return res.status(403).json({ message: 'You do not have access to this invoice.' });
+
+  const usageTetri = await getCurrentCycleUsageTetri(subscription.id);
+  const invoiceNumber = invoiceNumberFor(`${subscription.id}:${subscription.currentPeriodStart.getTime()}`, subscription.currentPeriodStart);
+  const lineItems: InvoiceData['lineItems'] = [
+    { description: `Platform Maintenance Base Fee (${subscription.productType})`, amount: subscription.baseFeeTetri },
+  ];
+  if (usageTetri > 0) {
+    lineItems.push({ description: 'AI Agent Usage (current cycle, metered)', amount: usageTetri });
+  }
+
+  const data: InvoiceData = {
+    invoiceNumber,
+    issueDate: new Date(),
+    buyerName: subscription.business.companyName || subscription.business.name,
+    buyerEmail: subscription.business.email,
+    buyerTaxId: buyerTaxId(subscription.business),
+    lineItems,
+    totalAmount: subscription.baseFeeTetri + usageTetri,
+    currency: 'GEL',
+    status: 'ESTIMATE',
   };
   const pdf = await generateInvoicePdf(data);
   sendPdf(res, pdf, `${invoiceNumber}.pdf`);

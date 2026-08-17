@@ -27,3 +27,40 @@ export interface BillingHistory {
   invoices: Invoice[];
   totalCount: number;
 }
+
+// ============================================================
+// Unified SaaS billing engine (BillingSubscription/UsageRecord on the
+// backend) — distinct from the generic Invoice/BillingHistory types above,
+// which predate this feature and aren't wired to a real backend contract
+// yet. base fee/usage are in tetri (minor units), same convention as
+// PaymentMethod above.
+// ============================================================
+
+export type BillingProductType = 'AI_AGENT_SUITE';
+export type BillingSubscriptionStatus = 'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED';
+
+export interface BillingSubscription {
+  id: string;
+  businessId: string;
+  productType: BillingProductType;
+  referenceId: string;
+  status: BillingSubscriptionStatus;
+  baseFeeTetri: number;
+  trialEndsAt: string;
+  currentPeriodStart: string;
+  currentPeriodEnd: string | null;
+  autoRenew: boolean;
+  paymentMethodId: string | null;
+  paymentMethod: { brand: string; last4: string } | null;
+  canceledAt: string | null;
+  cancellationReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  currentCycleUsageTetri: number;
+}
+
+export interface BillingSettings {
+  baseFeeTetri: number;
+  marginMultiplier: number;
+  trialDays: number;
+}

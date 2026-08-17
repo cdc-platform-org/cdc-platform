@@ -117,7 +117,13 @@ export interface InvoiceData {
   platformFee?: number | null;
   netAmount?: number | null;
   currency: string;
-  status: 'PAID' | 'REFUNDED';
+  // ESTIMATE covers the unified billing engine's current-cycle statement
+  // (see routes/invoices.ts's subscription/:id/download) — nothing has
+  // actually been charged yet (no real payment gateway is wired up, see
+  // paymentGatewayService.ts), so labeling it PAID would be false. A real
+  // PAID/REFUNDED invoice still means an actual completed BogPayment/
+  // GigTransaction, same as before.
+  status: 'PAID' | 'REFUNDED' | 'ESTIMATE';
 }
 
 function formatMoney(minorUnits: number, currency: string): string {
@@ -206,7 +212,12 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Buffer> {
   }
 
   y -= 20;
-  const statusLabel = data.status === 'PAID' ? 'PAID / გადახდილია' : 'REFUNDED / დაბრუნებულია';
+  const statusLabel =
+    data.status === 'PAID'
+      ? 'PAID / გადახდილია'
+      : data.status === 'ESTIMATE'
+      ? 'CURRENT CYCLE ESTIMATE / მიმდინარე ციკლის შეფასება'
+      : 'REFUNDED / დაბრუნებულია';
   drawText(page, statusLabel, { x: marginX, y, size: 12, color: data.status === 'PAID' ? emerald : slate, fonts: boldFonts });
 
   const bytes = await doc.save();
