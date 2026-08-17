@@ -1,17 +1,33 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
 import { GEMINI_API_KEY } from '../utils/env';
+import { callTextModel, AiAgentError } from './aiAgentService';
 
 export function isAiTranslateConfigured(): boolean {
   return !!GEMINI_API_KEY;
 }
 
-const client = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
-
 export class AiTranslateError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'AiTranslateError';
+  }
+}
+
+// Routes through aiAgentService.callTextModel() rather than calling Gemini
+// directly — that's the one place in this codebase with the confirmed-live
+// model fallback sequence (gemini-flash-latest -> gemini-flash-lite-latest
+// -> gemini-3.5-flash, with per-model retries), built after this exact
+// 'gemini-flash-latest' model was found intermittently 503ing ("high
+// demand") on this account. Pinning to a single alternate model instead
+// (e.g. gemini-2.5-flash) isn't viable either — that one now hard-404s
+// ("no longer available to new users"), confirmed live against this
+// project's API key.
+async function generateTranslationJson(prompt: string): Promise<string> {
+  try {
+    return await callTextModel(prompt, 0.3);
+  } catch (err) {
+    if (err instanceof AiAgentError) throw new AiTranslateError(err.message);
+    throw err;
   }
 }
 
@@ -38,10 +54,6 @@ export interface TranslateBlogPostResult {
 // consistent, vs. three separate requests) — used by the "Auto-Translate to
 // English" button in /admin/blog.
 export async function translateBlogPost(params: TranslateBlogPostParams): Promise<TranslateBlogPostResult> {
-  if (!client) {
-    throw new AiTranslateError('Gemini is not configured (GEMINI_API_KEY missing).');
-  }
-
   const prompt = `Translate the following Georgian blog post fields into natural, fluent English. Preserve meaning, tone, and any Markdown formatting in the content field — do not summarize or shorten. Respond with strict JSON matching this shape:
 {"titleEn": string, "descriptionEn": string, "contentEn": string}
 
@@ -49,19 +61,7 @@ title: ${params.title}
 description: ${params.description}
 content: ${params.content}`;
 
-  const model = client.getGenerativeModel({
-    model: 'gemini-flash-latest',
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.3 },
-  });
-
-  let raw: string;
-  try {
-    const result = await model.generateContent(prompt);
-    raw = result.response.text();
-  } catch (err) {
-    throw new AiTranslateError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');
-  }
-  if (!raw) throw new AiTranslateError('Gemini returned an empty response.');
+  const raw = await generateTranslationJson(prompt);
 
   let parsed: unknown;
   try {
@@ -103,10 +103,6 @@ export interface TranslateStudioCaseResult {
 // English" button in /admin/studio-cases. clientName/category are
 // deliberately NOT translated here — see StudioCaseStudy's schema comment.
 export async function translateStudioCase(params: TranslateStudioCaseParams): Promise<TranslateStudioCaseResult> {
-  if (!client) {
-    throw new AiTranslateError('Gemini is not configured (GEMINI_API_KEY missing).');
-  }
-
   const prompt = `Translate the following Georgian CDC Studio portfolio case study fields into natural, fluent English. Preserve meaning and tone; do not summarize or shorten. Respond with strict JSON matching this shape:
 {"titleEn": string, "descriptionEn": string, "fullStoryEn": string}
 
@@ -114,19 +110,7 @@ title: ${params.title}
 description: ${params.description}
 fullStory: ${params.fullStory}`;
 
-  const model = client.getGenerativeModel({
-    model: 'gemini-flash-latest',
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.3 },
-  });
-
-  let raw: string;
-  try {
-    const result = await model.generateContent(prompt);
-    raw = result.response.text();
-  } catch (err) {
-    throw new AiTranslateError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');
-  }
-  if (!raw) throw new AiTranslateError('Gemini returned an empty response.');
+  const raw = await generateTranslationJson(prompt);
 
   let parsed: unknown;
   try {
@@ -170,29 +154,13 @@ export interface TranslateSuccessStoryResult {
 // single-language category/clientName posture). Used by the "✨
 // Auto-Translate to English" button in /admin/success-stories.
 export async function translateSuccessStory(params: TranslateSuccessStoryParams): Promise<TranslateSuccessStoryResult> {
-  if (!client) {
-    throw new AiTranslateError('Gemini is not configured (GEMINI_API_KEY missing).');
-  }
-
   const prompt = `Translate the following Georgian CDC student success story fields into natural, fluent English, suitable for a public alumni showcase. Preserve meaning and tone; do not summarize or shorten. Respond with strict JSON containing ONLY the keys corresponding to what was provided below (omit storyContentEn if storyContent is absent), using this shape:
 {"roleTitleEn": string, "testimonialEn": string, "storyContentEn"?: string}
 
 roleTitle: ${params.roleTitle}
 testimonial: ${params.testimonial}${params.storyContent ? `\nstoryContent: ${params.storyContent}` : ''}`;
 
-  const model = client.getGenerativeModel({
-    model: 'gemini-flash-latest',
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.3 },
-  });
-
-  let raw: string;
-  try {
-    const result = await model.generateContent(prompt);
-    raw = result.response.text();
-  } catch (err) {
-    throw new AiTranslateError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');
-  }
-  if (!raw) throw new AiTranslateError('Gemini returned an empty response.');
+  const raw = await generateTranslationJson(prompt);
 
   let parsed: unknown;
   try {
@@ -228,29 +196,13 @@ export interface TranslateMentorProfileResult {
 // used by the "✨ Auto-Translate to English" button on a mentor's profile
 // in /admin/mentorship.
 export async function translateMentorProfile(params: TranslateMentorProfileParams): Promise<TranslateMentorProfileResult> {
-  if (!client) {
-    throw new AiTranslateError('Gemini is not configured (GEMINI_API_KEY missing).');
-  }
-
   const prompt = `Translate the following Georgian mentor profile fields into natural, fluent English, suitable for a public mentor-directory listing. Preserve meaning and tone; do not summarize or shorten. Respond with strict JSON matching this shape:
 {"titleEn": string, "bioEn": string}
 
 title: ${params.title}
 bio: ${params.bio}`;
 
-  const model = client.getGenerativeModel({
-    model: 'gemini-flash-latest',
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.3 },
-  });
-
-  let raw: string;
-  try {
-    const result = await model.generateContent(prompt);
-    raw = result.response.text();
-  } catch (err) {
-    throw new AiTranslateError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');
-  }
-  if (!raw) throw new AiTranslateError('Gemini returned an empty response.');
+  const raw = await generateTranslationJson(prompt);
 
   let parsed: unknown;
   try {
@@ -319,9 +271,6 @@ export type TranslateCourseResult = z.infer<typeof courseTranslationResponseSche
 // business-oriented course content should read in English, not an
 // arbitrary detail to simplify away.
 export async function translateCourse(params: TranslateCourseParams): Promise<TranslateCourseResult> {
-  if (!client) {
-    throw new AiTranslateError('Gemini is not configured (GEMINI_API_KEY missing).');
-  }
   if (!params.title && !params.description && !params.sections?.length) {
     throw new AiTranslateError('Nothing to translate — provide a title, description, or sections.');
   }
@@ -338,19 +287,7 @@ Preserve the exact order and count of sections and lessons from the input — on
 
 ${inputParts.join('\n')}`;
 
-  const model = client.getGenerativeModel({
-    model: 'gemini-flash-latest',
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.3 },
-  });
-
-  let raw: string;
-  try {
-    const result = await model.generateContent(prompt);
-    raw = result.response.text();
-  } catch (err) {
-    throw new AiTranslateError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');
-  }
-  if (!raw) throw new AiTranslateError('Gemini returned an empty response.');
+  const raw = await generateTranslationJson(prompt);
 
   let parsed: unknown;
   try {

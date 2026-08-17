@@ -17,7 +17,7 @@ export const removePaymentMethodSchema = z.object({
 });
 
 export const startTrialSchema = z.object({
-  productType: z.literal('AI_AGENT_SUITE'),
+  productType: z.enum(['AI_AGENT_SUITE', 'AI_EXAM_PROCTORING']),
   referenceId: z.string().uuid(),
 });
 

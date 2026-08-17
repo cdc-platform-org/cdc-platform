@@ -1,4 +1,4 @@
-import { MapPin } from 'lucide-react';
+import { MapPin, Trophy, ExternalLink } from 'lucide-react';
 import SimpleSiteLayout from '@/src/components/layout/SimpleSiteLayout';
 import TeamTrainersSection from '@/src/components/shared/TeamTrainersSection';
 import { aboutContent } from '@/src/data/aboutContent';
@@ -14,8 +14,9 @@ export default function AboutPage() {
             <p className="text-xs text-slate-500 mb-8">{aboutContent.foundingProject[l]}</p>
 
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-cyan-500/10 to-purple-600/10 px-6 py-5 mb-10">
-              <p className="text-sm font-semibold text-cyan-100 leading-relaxed">
-                🏆 {aboutContent.grantAnnouncement.text[l]}
+              <p className="flex items-center gap-2.5 text-sm font-semibold text-cyan-100 leading-relaxed">
+                <Trophy className="w-4 h-4 text-cyan-300 shrink-0" />
+                {aboutContent.grantAnnouncement.text[l]}
               </p>
               <a
                 href={aboutContent.grantAnnouncement.url}
@@ -23,7 +24,8 @@ export default function AboutPage() {
                 rel="noopener noreferrer"
                 className="shrink-0 inline-flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 text-white no-underline whitespace-nowrap hover:opacity-90 transition-opacity"
               >
-                {aboutContent.grantAnnouncement.linkLabel.ka} / {aboutContent.grantAnnouncement.linkLabel.en} 🔗
+                {aboutContent.grantAnnouncement.linkLabel.ka} / {aboutContent.grantAnnouncement.linkLabel.en}
+                <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>
 

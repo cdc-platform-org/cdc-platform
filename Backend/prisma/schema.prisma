@@ -419,6 +419,7 @@ model User {
   // Agent model's own comment for why billing fields live there instead of
   // a separate Subscription model for now.
   agents                      Agent[]
+  examSessions                ExamSession[]
   billingSubscriptions        BillingSubscription[]
   blogComments                BlogComment[]
   mentorshipRequestsMade      MentorshipRequest[]          @relation("MentorshipRequestsMade")
@@ -1392,10 +1393,13 @@ model BillingSettings {
 }
 
 enum BillingProductType {
-  // The only real product wired to billing today — Frontend's
-  // /dashboard/ai-tools chat agents (see Agent model). referenceId on the
-  // subscription below points at the specific Agent.id.
+  // Frontend's /dashboard/ai-tools chat agents (see Agent model).
+  // referenceId on the subscription below points at the specific Agent.id.
   AI_AGENT_SUITE
+  // AI Proctored Exam & Skill Assessment System (see ExamSession model).
+  // referenceId points at the specific ExamSession.id — one subscription
+  // per exam session, same "99 GEL/month per active business tool" shape.
+  AI_EXAM_PROCTORING
 }
 
 enum BillingSubscriptionStatus {
@@ -1448,6 +1452,11 @@ model BillingSubscription {
 
 enum UsageEventType {
   AI_AGENT_EXECUTION
+  // AI grading of one ExamSubmission's practical/open-ended answer (see
+  // examProctoringService.gradePracticalAnswer) — question generation
+  // itself isn't metered, only per-candidate grading calls, since that's
+  // the part that scales with how many candidates a business screens.
+  EXAM_GRADING
 }
 
 // One row per billable AI Agent execution (POST /api/v1/chat, see
@@ -1459,6 +1468,8 @@ model UsageRecord {
   subscription     BillingSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   agentId          String?
   agent            Agent?              @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  examSubmissionId String?
+  examSubmission   ExamSubmission?     @relation(fields: [examSubmissionId], references: [id], onDelete: SetNull)
   eventType        UsageEventType      @default(AI_AGENT_EXECUTION)
   promptTokens     Int                 @default(0)
   completionTokens Int                 @default(0)
@@ -1477,7 +1488,127 @@ model UsageRecord {
 
   @@index([subscriptionId])
   @@index([agentId])
+  @@index([examSubmissionId])
   @@map("usage_records")
+}
+
+// ============================================================
+// AI PROCTORED EXAM & SKILL ASSESSMENT SYSTEM
+//
+// A Business creates an ExamSession (AI-generates a fixed question set once,
+// stored as ExamQuestion rows so every candidate sees the identical set —
+// deliberately NOT regenerated per-candidate like SkillTestAttempt/
+// FreelancerSkillExamAttempt, since fair candidate comparison requires the
+// same questions). candidateToken is the public, unguessable link a
+// business shares — no CDC account required to take the exam, same
+// anonymous-visitor posture as Agent's public chat widget.
+//
+// "Real-time behavioral proctoring" here means what freelancerExam.ts's
+// existing strike system already proves out in production — tab-switch /
+// fullscreen-exit / copy-paste violations counted client-side during the
+// live session and reported on submit — NOT webcam/video analysis, which
+// is a materially different (and much larger) feature this doesn't attempt.
+// ============================================================
+
+enum ExamSessionStatus {
+  ACTIVE
+  CLOSED
+}
+
+model ExamSession {
+  id              String            @id @default(uuid())
+  businessId      String
+  business        User              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?
+  // Free-text steer for the AI question generator, e.g. "Senior React
+  // Developer — hooks, state management, performance" — same role as
+  // Exam.aiPromptContext elsewhere in this schema.
+  topic           String
+  mcqCount        Int               @default(5)
+  durationMinutes Int               @default(30)
+  status          ExamSessionStatus @default(ACTIVE)
+  // Public shareable link uses this, never the real id — same reasoning as
+  // AgentConversation.visitorRef being client-opaque, but here it's the
+  // session itself that must not be guessable/enumerable.
+  candidateToken  String            @unique @default(uuid())
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  questions   ExamQuestion[]
+  submissions ExamSubmission[]
+
+  @@index([businessId])
+  @@map("exam_sessions")
+}
+
+enum ExamQuestionType {
+  MCQ
+  PRACTICAL
+}
+
+// Persisted once per ExamSession at creation time (not per-attempt) — see
+// the section comment above for why. correctAnswer/rubric are never sent to
+// the public candidate-facing routes/examProctoring.ts, only used server-side
+// at grading time — same posture as every other exam model in this schema.
+model ExamQuestion {
+  id            String           @id @default(uuid())
+  examSessionId String
+  examSession   ExamSession      @relation(fields: [examSessionId], references: [id], onDelete: Cascade)
+  order         Int
+  type          ExamQuestionType
+  question      String
+  // MCQ only: {"A": "...", "B": "...", "C": "...", "D": "..."}. Null for PRACTICAL.
+  options       Json?
+  // MCQ: the correct letter (A-D). PRACTICAL: the AI grading rubric — same
+  // dual-purpose-by-type shape as SkillQuestion in skillTestService.ts,
+  // just persisted instead of regenerated per attempt.
+  correctAnswer String?
+  createdAt     DateTime         @default(now())
+
+  @@index([examSessionId])
+  @@map("exam_questions")
+}
+
+enum ExamSubmissionStatus {
+  IN_PROGRESS
+  COMPLETED
+  // Force-submitted for hitting the proctoring strike limit — same
+  // "disqualified" concept as freelancerExam.ts, named for what a business
+  // reviewing candidate reports actually needs to see at a glance.
+  FLAGGED
+}
+
+// One row per candidate attempt — candidateToken (not examSessionId alone)
+// is how the candidate-facing routes address their own in-progress
+// submission, so one candidate's answers/timer are never guessable from
+// another's.
+model ExamSubmission {
+  id                   String               @id @default(uuid())
+  examSessionId        String
+  examSession          ExamSession          @relation(fields: [examSessionId], references: [id], onDelete: Cascade)
+  candidateName        String
+  candidateEmail       String
+  candidateToken       String               @unique @default(uuid())
+  // { [questionId]: "A"|"B"|"C"|"D" } for MCQ, plus the practical question's
+  // free-text answer under its own id — one JSON blob, same convention as
+  // FreelancerSkillExamAttempt.answers.
+  answers              Json?
+  mcqScore             Float?
+  practicalScore       Float?
+  totalScore           Float?
+  // AI's written feedback on the practical answer (gradePracticalAnswer) —
+  // shown to the business in the candidate report, not the candidate.
+  aiEvaluation         String?
+  proctoringViolations Int                  @default(0)
+  status               ExamSubmissionStatus @default(IN_PROGRESS)
+  startedAt            DateTime             @default(now())
+  completedAt          DateTime?
+
+  usageRecords UsageRecord[]
+
+  @@index([examSessionId])
+  @@map("exam_submissions")
 }
 
 // ============================================================

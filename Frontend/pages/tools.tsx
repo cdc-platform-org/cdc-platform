@@ -46,6 +46,11 @@ const dict = {
     // Card 2 — Proctored Exam
     examTitle: 'AI Proctored Exam & Skill Assessment System',
     examDesc: 'AI-ზე დაფუძნებული ონლაინ გამოცდები რეალურ დროში მონიტორინგით და კანდიდატების უნარების ავტომატური შეფასებით.',
+    examBullet1: 'AI კითხვების გენერატორი — ნებისმიერი პოზიციისთვის',
+    examBullet2: 'რეალურ დროში ქცევითი მონიტორინგი',
+    examBullet3: 'ავტომატური უნარების შეფასების მატრიცა',
+    examBullet4: '1-სტრიქონიანი ჩასაშენებელი კოდი',
+    examCta: '10 დღე უფასოდ',
     // Card 3 — Candidate Screener
     screenerTitle: 'AI Candidate Screener & HR Assistant',
     screenerDesc: 'AI ასისტენტი, რომელიც დამსაქმებლებს ეხმარება კანდიდატების პირველად გადარჩევასა და HR პროცესების ავტომატიზაციაში.',
@@ -98,6 +103,11 @@ const dict = {
     aiAvailable: 'Available now',
     examTitle: 'AI Proctored Exam & Skill Assessment System',
     examDesc: 'AI-powered online exams with real-time proctoring and automated candidate skill assessment.',
+    examBullet1: 'AI question generator — for any role',
+    examBullet2: 'Real-time behavioral proctoring',
+    examBullet3: 'Automated skill assessment matrix',
+    examBullet4: '1-line embed script',
+    examCta: '10 Days Free',
     screenerTitle: 'AI Candidate Screener & HR Assistant',
     screenerDesc: 'An AI assistant that helps employers pre-screen candidates and automate HR workflows.',
     sentinelTitle: 'CDC Cyber Sentinel AI & Threat Protection',
@@ -140,7 +150,7 @@ export default function ToolsPage() {
   const { openAuthModal } = useAuthModal();
   const [infoModal, setInfoModal] = useState<'studentBlocked' | 'verificationRequired' | null>(null);
   const [showWaitlistModal, setShowWaitlistModal] = useState(false);
-  const [overviewModal, setOverviewModal] = useState<'enterpriseAi' | 'agsaia' | null>(null);
+  const [overviewModal, setOverviewModal] = useState<'enterpriseAi' | 'examProctoring' | 'agsaia' | null>(null);
   const overview = PRODUCT_OVERVIEW[lang];
 
   // Enterprise AI tools are Business-only, and only for a *verified* Business
@@ -242,19 +252,64 @@ export default function ToolsPage() {
             </div>
           </div>
 
-          {/* Card 2: AI Proctored Exam — coming soon */}
-          <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-7 flex flex-col opacity-90">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                <ShieldCheck className="w-6 h-6 text-slate-400 dark:text-slate-500" />
-              </div>
-              <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                <Lock className="w-3 h-3" />
-                {t.comingSoon}
-              </span>
+          {/* Card 2: AI Proctored Exam — real, available product (activated
+              alongside routes/examProctoring.ts + pages/exam/[token].tsx).
+              Same Business-only gating as Card 1 (canUseAiAssistant), since
+              it lives on the same /dashboard/ai-tools page. */}
+          <div className="lg:col-span-3 rounded-3xl border border-cyan-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-cyan-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
+            <div className="shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
+              <ShieldCheck className="w-7 h-7 text-white" />
             </div>
-            <h3 className="text-base font-black tracking-wide mb-2">{t.examTitle}</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{t.examDesc}</p>
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <h2 className="text-xl font-black tracking-wide">{t.examTitle}</h2>
+                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                  {t.aiAvailable}
+                </span>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{t.examDesc}</p>
+              <ul className="grid sm:grid-cols-2 gap-3 mb-6">
+                {[
+                  { icon: Sparkles, label: t.examBullet1 },
+                  { icon: ShieldAlert, label: t.examBullet2 },
+                  { icon: BarChart3, label: t.examBullet3 },
+                  { icon: Code2, label: t.examBullet4 },
+                ].map(({ icon: Icon, label }) => (
+                  <li key={label} className="flex items-center gap-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    <Icon className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
+                    {label}
+                  </li>
+                ))}
+              </ul>
+              <div className="flex flex-wrap items-center gap-3">
+                {canUseAiAssistant ? (
+                  <Link
+                    href="/dashboard/ai-tools"
+                    className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {t.examCta}
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleAiCtaClick}
+                    className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {t.examCta}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setOverviewModal('examProctoring')}
+                  className="inline-flex items-center gap-1.5 text-sm font-bold text-cyan-700 dark:text-cyan-400 bg-transparent border-none cursor-pointer hover:underline"
+                >
+                  <Info className="w-4 h-4" />
+                  {t.learnMore}
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Card 3: AI Candidate Screener — coming soon */}
@@ -457,6 +512,14 @@ export default function ToolsPage() {
                 title={t.aiTitle}
                 tagline={t.aiDesc}
                 {...overview.enterpriseAi}
+              />
+            ) : overviewModal === 'examProctoring' ? (
+              <ProductOverviewCard
+                lang={lang}
+                icon={ShieldCheck}
+                title={t.examTitle}
+                tagline={t.examDesc}
+                {...overview.examProctoring}
               />
             ) : (
               <ProductOverviewCard

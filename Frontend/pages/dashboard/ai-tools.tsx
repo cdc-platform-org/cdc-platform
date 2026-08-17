@@ -8,6 +8,7 @@ import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import BusinessAiTab from '../../src/components/dashboard/BusinessAiTab';
 import BusinessAiAgentsSuite from '../../src/components/dashboard/BusinessAiAgentsSuite';
+import ExamProctoringTab from '../../src/components/dashboard/ExamProctoringTab';
 
 const dict = {
   ka: {
@@ -53,6 +54,8 @@ function AiToolsContent() {
         >
           <BusinessAiAgentsSuite lang={lang} />
           <BusinessAiTab lang={lang} />
+          <div className="h-px bg-slate-200 dark:bg-slate-800 my-10" />
+          <ExamProctoringTab lang={lang} />
         </RoleGate>
       </div>
 

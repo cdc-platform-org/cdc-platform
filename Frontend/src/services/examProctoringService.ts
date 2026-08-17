@@ -1,0 +1,118 @@
+import apiClient from './apiClient';
+
+export type ExamSessionStatus = 'ACTIVE' | 'CLOSED';
+export type ExamQuestionType = 'MCQ' | 'PRACTICAL';
+export type ExamSubmissionStatus = 'IN_PROGRESS' | 'COMPLETED' | 'FLAGGED';
+
+export interface ExamSessionSummary {
+  id: string;
+  title: string;
+  description: string | null;
+  topic: string;
+  mcqCount: number;
+  durationMinutes: number;
+  status: ExamSessionStatus;
+  candidateToken: string;
+  createdAt: string;
+  updatedAt: string;
+  _count: { submissions: number };
+}
+
+export interface ExamQuestionRow {
+  id: string;
+  order: number;
+  type: ExamQuestionType;
+  question: string;
+  options: { A: string; B: string; C: string; D: string } | null;
+}
+
+export interface ExamSubmissionRow {
+  id: string;
+  candidateName: string;
+  candidateEmail: string;
+  mcqScore: number | null;
+  practicalScore: number | null;
+  totalScore: number | null;
+  aiEvaluation: string | null;
+  proctoringViolations: number;
+  status: ExamSubmissionStatus;
+  startedAt: string;
+  completedAt: string | null;
+}
+
+export interface ExamSessionDetail extends Omit<ExamSessionSummary, '_count'> {
+  questions: ExamQuestionRow[];
+  submissions: ExamSubmissionRow[];
+}
+
+export interface CreateExamSessionPayload {
+  title: string;
+  description?: string;
+  topic: string;
+  mcqCount: number;
+  durationMinutes: number;
+}
+
+// ============================================================
+// BUSINESS — session management + candidate reports
+// ============================================================
+
+export async function getMyExamSessions(): Promise<ExamSessionSummary[]> {
+  const response = await apiClient.get<{ data: ExamSessionSummary[] }>('/exam-proctoring/sessions');
+  return response.data.data;
+}
+
+export async function createExamSession(payload: CreateExamSessionPayload): Promise<ExamSessionDetail> {
+  const response = await apiClient.post<{ data: ExamSessionDetail }>('/exam-proctoring/sessions', payload);
+  return response.data.data;
+}
+
+export async function getExamSession(id: string): Promise<ExamSessionDetail> {
+  const response = await apiClient.get<{ data: ExamSessionDetail }>(`/exam-proctoring/sessions/${id}`);
+  return response.data.data;
+}
+
+export async function updateExamSessionStatus(id: string, status: ExamSessionStatus): Promise<ExamSessionSummary> {
+  const response = await apiClient.patch<{ data: ExamSessionSummary }>(`/exam-proctoring/sessions/${id}`, { status });
+  return response.data.data;
+}
+
+export async function deleteExamSession(id: string): Promise<void> {
+  await apiClient.delete(`/exam-proctoring/sessions/${id}`);
+}
+
+// ============================================================
+// PUBLIC — candidate-facing (no CDC account, addressed by opaque tokens)
+// ============================================================
+
+export interface CandidateExamInfo {
+  title: string;
+  description: string | null;
+  durationMinutes: number;
+}
+
+export async function getCandidateExamInfo(candidateToken: string): Promise<CandidateExamInfo> {
+  const response = await apiClient.get<{ data: CandidateExamInfo }>(`/exam-proctoring/candidate/${candidateToken}`);
+  return response.data.data;
+}
+
+export interface StartCandidateExamResult {
+  submissionToken: string;
+  durationMinutes: number;
+  questions: ExamQuestionRow[];
+}
+
+export async function startCandidateExam(
+  candidateToken: string,
+  payload: { candidateName: string; candidateEmail: string }
+): Promise<StartCandidateExamResult> {
+  const response = await apiClient.post<{ data: StartCandidateExamResult }>(`/exam-proctoring/candidate/${candidateToken}/start`, payload);
+  return response.data.data;
+}
+
+export async function submitCandidateExam(
+  submissionToken: string,
+  payload: { answers: Record<string, string>; proctoringViolations: number; disqualified?: boolean }
+): Promise<void> {
+  await apiClient.post(`/exam-proctoring/submissions/${submissionToken}/submit`, payload);
+}

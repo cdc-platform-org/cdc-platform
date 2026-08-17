@@ -1,4 +1,4 @@
-import { Code2, UploadCloud, BarChart3, ShieldCheck, ShieldAlert, EyeOff, KeyRound } from 'lucide-react';
+import { Code2, UploadCloud, BarChart3, ShieldCheck, ShieldAlert, EyeOff, KeyRound, Sparkles } from 'lucide-react';
 
 // Shared "Learn More" content for ProductOverviewCard — used by both
 // pages/tools.tsx (marketing) and BusinessAiTab.tsx (Dashboard > My Tools),
@@ -23,9 +23,28 @@ export const PRODUCT_OVERVIEW = {
       pricing: {
         trialLabel: '10-დღიანი უფასო საცდელი პერიოდი (0 ₾ ვერიფიკაციის დაჭერა ბარათზე)',
         baseFeeLabel: '99 ₾/თვე საბაზისო საფასური — პლატფორმა, დაშბორდი, უსაფრთხოება და მხარდაჭერა',
-        usageLabel: '+ გადაიხადეთ მხოლოდ რეალურად მოხმარებული ტოკენების მიხედვით',
+        usageLabel: '+ გადაიხადეთ მხოლოდ რეალურად გამოყენებული ტოკენების მიხედვით',
       },
       integrationSteps: ['მონაცემების ატვირთვა', '1-სტრიქონიანი კოდის კოპირება', 'საიტზე ჩასმა'],
+    },
+    examProctoring: {
+      whatYouGet: 'ავტონომიური AI სისტემა ონლაინ გამოცდებისთვის, კანდიდატების უნარების ვერიფიკაციისა და რეალურ დროში პროქტორინგისთვის.',
+      whyGameChanger: [
+        'გამორიცხავს გაცემის რისკებს',
+        'ავტომატიზირებს კანდიდატების სკრინინგს',
+        'აფასებს პასუხებს ავტომატურად',
+      ],
+      keyBenefits: [
+        { icon: Sparkles, label: 'AI კითხვებისა და გამოცდის გენერატორი' },
+        { icon: ShieldAlert, label: 'რეალურ დროში ქცევითი პროქტორინგი' },
+        { icon: BarChart3, label: 'ავტომატური უნარების შეფასების მატრიცა' },
+        { icon: Code2, label: '1-სტრიქონიანი ჩასაშენებელი კოდი' },
+      ],
+      pricing: {
+        trialLabel: '10-დღიანი უფასო საცდელი პერიოდი ($0 ვერიფიკაციის დაჭერა)',
+        baseFeeLabel: '99 ₾/თვე საბაზისო საფასური',
+        usageLabel: '+ გამოყენების საფასური (3x მარჟა)',
+      },
     },
     agsaia: {
       whatYouGet:
@@ -69,6 +88,21 @@ export const PRODUCT_OVERVIEW = {
         usageLabel: '+ Pay strictly for the tokens you actually consume',
       },
       integrationSteps: ['Upload Data', 'Copy 1-Line Script', 'Paste on Website'],
+    },
+    examProctoring: {
+      whatYouGet: 'Autonomous AI system for online exams, candidate skill verification, and real-time proctoring.',
+      whyGameChanger: ['Eliminates cheating risks', 'Automates candidate screening', 'Evaluates submissions automatically'],
+      keyBenefits: [
+        { icon: Sparkles, label: 'AI Question & Exam Generator' },
+        { icon: ShieldAlert, label: 'Real-time Behavioral Proctoring' },
+        { icon: BarChart3, label: 'Automated Skill Matrix' },
+        { icon: Code2, label: '1-Line Embed Script' },
+      ],
+      pricing: {
+        trialLabel: '10-Day Free Trial ($0 hold)',
+        baseFeeLabel: '99 GEL/month Base Fee',
+        usageLabel: '+ Usage Fee (3x margin)',
+      },
     },
     agsaia: {
       whatYouGet:

@@ -322,6 +322,48 @@ export async function recordAgentUsage(params: RecordAgentUsageParams) {
   });
 }
 
+export interface RecordExamGradingUsageParams {
+  businessId: string;
+  examSessionId: string;
+  examSubmissionId: string;
+  promptTokens: number;
+  completionTokens: number;
+}
+
+// Same no-op-if-no-subscription posture as recordAgentUsage above — grading
+// must never fail because billing metadata is missing.
+export async function recordExamGradingUsage(params: RecordExamGradingUsageParams) {
+  const subscription = await prisma.billingSubscription.findUnique({
+    where: {
+      businessId_productType_referenceId: {
+        businessId: params.businessId,
+        productType: BillingProductType.AI_EXAM_PROCTORING,
+        referenceId: params.examSessionId,
+      },
+    },
+  });
+  if (!subscription) return null;
+
+  const settings = await getBillingSettings();
+  const totalTokens = params.promptTokens + params.completionTokens;
+  const rawCostTetri = Math.round((totalTokens / 1000) * AI_TOKEN_RATE_TETRI_PER_1K);
+  const billedCostTetri = Math.round(rawCostTetri * settings.marginMultiplier);
+
+  return prisma.usageRecord.create({
+    data: {
+      subscriptionId: subscription.id,
+      examSubmissionId: params.examSubmissionId,
+      eventType: 'EXAM_GRADING',
+      promptTokens: params.promptTokens,
+      completionTokens: params.completionTokens,
+      totalTokens,
+      rawCostTetri,
+      billedCostTetri,
+      marginMultiplier: settings.marginMultiplier,
+    },
+  });
+}
+
 export async function getCurrentCycleUsageTetri(subscriptionId: string): Promise<number> {
   const subscription = await prisma.billingSubscription.findUnique({ where: { id: subscriptionId } });
   if (!subscription) throw new SubscriptionNotFoundError();
