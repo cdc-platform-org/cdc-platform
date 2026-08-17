@@ -6,6 +6,7 @@ import { Bot, MessageSquareText, BookOpen, Code2, BarChart3, ShieldCheck, Shield
 import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
 import BackButton from '../src/components/common/BackButton';
+import CyberSentinelWaitlistModal from '../src/components/tools/CyberSentinelWaitlistModal';
 import { useAuth } from '../src/context/AuthContext';
 import { useAuthModal } from '../src/context/AuthModalContext';
 
@@ -37,6 +38,7 @@ const dict = {
     sentinelBullet2: 'პროაქტიული ჰაკერული შეტევების ბლოკირება & AI ქცევითი ანალიზი',
     sentinelBullet3: 'ყოველდღიური AI ანგარიში და საფრთხეების მართვა',
     sentinelBullet4: 'პერსონალური მონაცემების გაჟონვისგან დაცვა',
+    sentinelCta: 'ადრეული წვდომის მიღება',
     comingSoon: 'მალე',
     storeCta: 'ციფრული პროდუქტების მაღაზია',
     storeCtaDesc: 'UI Kits, AI Prompts, შაბლონები და ელექტრონული წიგნები.',
@@ -73,6 +75,7 @@ const dict = {
     sentinelBullet2: 'Proactive hacking-attempt blocking & AI behavioral analysis',
     sentinelBullet3: 'Daily AI report and threat management',
     sentinelBullet4: 'Protection against personal data leaks',
+    sentinelCta: 'Get Early Access',
     comingSoon: 'Coming Soon',
     storeCta: 'Digital Product Store',
     storeCtaDesc: 'UI Kits, AI Prompts, templates, and e-books.',
@@ -94,6 +97,7 @@ export default function ToolsPage() {
   const { isAuthenticated, user } = useAuth();
   const { openAuthModal } = useAuthModal();
   const [infoModal, setInfoModal] = useState<'studentBlocked' | 'verificationRequired' | null>(null);
+  const [showWaitlistModal, setShowWaitlistModal] = useState(false);
 
   // Enterprise AI tools are Business-only, and only for a *verified* Business
   // account — SuperAdmin (internal staff) bypasses the verification check.
@@ -246,6 +250,14 @@ export default function ToolsPage() {
                   </li>
                 ))}
               </ul>
+              <button
+                type="button"
+                onClick={() => setShowWaitlistModal(true)}
+                className="mt-6 inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+              >
+                <ShieldAlert className="w-4 h-4" />
+                {t.sentinelCta}
+              </button>
             </div>
           </div>
 
@@ -313,6 +325,8 @@ export default function ToolsPage() {
           </div>
         </div>
       )}
+
+      {showWaitlistModal && <CyberSentinelWaitlistModal lang={lang} onClose={() => setShowWaitlistModal(false)} />}
     </div>
   );
 }

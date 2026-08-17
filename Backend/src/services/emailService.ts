@@ -124,6 +124,21 @@ export async function sendStudioInquiryEmail(
   );
 }
 
+export async function sendCyberSentinelWaitlistEmail(entryId: string, name: string, email: string, os: string): Promise<void> {
+  if (SUPER_ADMIN_EMAILS.length === 0) {
+    console.log(`[DEV EMAIL] No SUPER_ADMIN_EMAILS configured — new Cyber Sentinel waitlist entry ${entryId} from ${email} not emailed.`);
+    return;
+  }
+  const link = `${FRONTEND_URL}/admin/cyber-sentinel`;
+  const html = wrapTemplate(
+    'New Cyber Sentinel Waitlist Signup',
+    `<strong>${name}</strong> (${email}) joined the Cyber Sentinel AI early-access waitlist — preferred OS: <strong>${os}</strong>.`,
+    'View Waitlist',
+    link
+  );
+  await Promise.all(SUPER_ADMIN_EMAILS.map((adminEmail) => sendEmail(adminEmail, 'New Cyber Sentinel Waitlist Signup', html, link)));
+}
+
 // Certificates are sent as a real attachment, not a link — bypasses
 // sendEmail()'s HTML-only helper since Resend's attachments param needs the
 // PDF buffer passed alongside the message. Same log-only fallback when

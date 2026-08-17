@@ -49,6 +49,8 @@ import studioCasesRoutes from './routes/studioCases';
 import adminStudioCasesRoutes from './routes/adminStudioCases';
 import adminKnowledgeRoutes from './routes/adminKnowledge';
 import adminAiAgentsRoutes from './routes/adminAiAgents';
+import cyberSentinelRoutes from './routes/cyberSentinel';
+import adminCyberSentinelRoutes from './routes/adminCyberSentinel';
 import freelancerExamRoutes from './routes/freelancerExam';
 import skillTestsRoutes from './routes/skillTests';
 import invoicesRoutes from './routes/invoices';
@@ -118,6 +120,8 @@ app.use('/api/site-content', siteContentRoutes);
 app.use('/api/admin/cms', adminCmsRoutes);
 app.use('/api/studio', studioRoutes);
 app.use('/api/admin/studio', adminStudioRoutes);
+app.use('/api/cyber-sentinel', cyberSentinelRoutes);
+app.use('/api/admin/cyber-sentinel', adminCyberSentinelRoutes);
 app.use('/api/admin/companies', adminCompaniesRoutes);
 app.use('/api/ai', aiRoutes);
 // CDC Business AI — /api/agents is the authenticated dashboard-facing CRUD

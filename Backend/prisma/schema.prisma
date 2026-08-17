@@ -1040,6 +1040,22 @@ model CyberSentinelDevice {
   @@map("cyber_sentinel_devices")
 }
 
+// Pre-launch lead capture from the "Get Early Access" modal on the /tools
+// "მალე" card — deliberately separate from CyberSentinelDevice above:
+// this is an anonymous visitor expressing interest (no account, no actual
+// software), not a registered installation. No status/review workflow
+// (unlike StudioInquiry) — a waitlist signup doesn't need one, just a list
+// for launch-day outreach (see routes/adminCyberSentinel.ts).
+model CyberSentinelWaitlistEntry {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  os        String // "WINDOWS" | "MAC" | "LINUX"
+  createdAt DateTime @default(now())
+
+  @@map("cyber_sentinel_waitlist_entries")
+}
+
 // Singleton (one row, same convention as BogSettings) — admin-adjustable
 // knobs for the platform's autonomous AI agents. Grouped into one table
 // rather than one-per-agent since every knob here shares the same shape
