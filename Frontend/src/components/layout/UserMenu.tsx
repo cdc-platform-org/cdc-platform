@@ -10,6 +10,7 @@ const dict = {
     myCourses: 'ჩემი კურსები',
     admin: 'ადმინ პანელი',
     billing: 'ბილინგი',
+    cyberSecurity: 'კიბერუსაფრთხოება',
     settings: 'პარამეტრები',
   },
   en: {
@@ -18,6 +19,7 @@ const dict = {
     myCourses: 'My Courses',
     admin: 'Admin Panel',
     billing: 'Billing',
+    cyberSecurity: 'Cyber Security',
     settings: 'Settings',
   },
 };
@@ -105,13 +107,22 @@ export default function UserMenu({ loginFallback, className }: { loginFallback: 
             </Link>
           )}
           {user.role === 'Client' && (
-            <Link
-              href="/dashboard/billing"
-              onClick={() => setMenuOpen(false)}
-              className="block px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 no-underline hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
-              {t.billing}
-            </Link>
+            <>
+              <Link
+                href="/dashboard/billing"
+                onClick={() => setMenuOpen(false)}
+                className="block px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 no-underline hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                {t.billing}
+              </Link>
+              <Link
+                href="/dashboard/cyber-security"
+                onClick={() => setMenuOpen(false)}
+                className="block px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 no-underline hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                {t.cyberSecurity}
+              </Link>
+            </>
           )}
           <Link
             href="/dashboard/settings"

@@ -2,11 +2,30 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
-import { Bot, MessageSquareText, BookOpen, Code2, BarChart3, ShieldCheck, ShieldAlert, Users, Sparkles, Lock, Building2, X, Download, EyeOff } from 'lucide-react';
+import {
+  Bot,
+  MessageSquareText,
+  BookOpen,
+  Code2,
+  BarChart3,
+  ShieldCheck,
+  ShieldAlert,
+  Users,
+  Sparkles,
+  Lock,
+  Building2,
+  X,
+  Download,
+  EyeOff,
+  Info,
+  KeyRound,
+} from 'lucide-react';
 import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
 import BackButton from '../src/components/common/BackButton';
 import CyberSentinelWaitlistModal from '../src/components/tools/CyberSentinelWaitlistModal';
+import ProductOverviewCard from '../src/components/tools/ProductOverviewCard';
+import { PRODUCT_OVERVIEW } from '../src/data/productOverviews';
 import { useAuth } from '../src/context/AuthContext';
 import { useAuthModal } from '../src/context/AuthModalContext';
 
@@ -40,6 +59,19 @@ const dict = {
     sentinelBullet4: 'პერსონალური მონაცემების გაჟონვისგან დაცვა',
     sentinelCta: 'ადრეული წვდომის მიღება',
     comingSoon: 'მალე',
+    // Card 5 — AG-SAIA (pre-launch, informational card only — see
+    // ProductOverviewCard's own "coming soon" posture: no live threat data
+    // is ever shown until this is an actual running product).
+    agsaiaTitle: 'AG-SAIA — Sovereign AI Security',
+    agsaiaTagline: 'სუვერენული AI უსაფრთხოების კვანძი — მალე',
+    agsaiaDesc:
+      'შემდეგი თაობის, სრულად სუვერენული AI უსაფრთხოების სისტემა — Zero-Knowledge Proof ავთენტიფიკაციითა და მოტყუების ტექნოლოგიით მუქარების პრევენციული აღმოსაჩენად.',
+    agsaiaBullet1: 'Zero-Knowledge Proof ავთენტიფიკაცია',
+    agsaiaBullet2: 'რეალურ დროში მუქარის დეტექცია',
+    agsaiaBullet3: 'თაფლის ქოთნის (Honeypot) მუქარის მოზიდვა',
+    agsaiaBullet4: 'ყოველდღიური უსაფრთხოების ანგარიში',
+    agsaiaContact: 'დაგვიკავშირდით განახლებებისთვის',
+    learnMore: 'გაიგეთ მეტი',
     storeCta: 'ციფრული პროდუქტების მაღაზია',
     storeCtaDesc: 'UI Kits, AI Prompts, შაბლონები და ელექტრონული წიგნები.',
     storeCtaButton: 'მაღაზიის ნახვა',
@@ -77,6 +109,16 @@ const dict = {
     sentinelBullet4: 'Protection against personal data leaks',
     sentinelCta: 'Get Early Access',
     comingSoon: 'Coming Soon',
+    agsaiaTitle: 'AG-SAIA — Sovereign AI Security',
+    agsaiaTagline: 'A sovereign AI security node — coming soon',
+    agsaiaDesc:
+      'A next-generation, fully sovereign AI security system — with Zero-Knowledge Proof authentication and deception technology to preventively detect threats.',
+    agsaiaBullet1: 'Zero-Knowledge Proof authentication',
+    agsaiaBullet2: 'Real-time threat detection',
+    agsaiaBullet3: 'Honeypot-based threat luring',
+    agsaiaBullet4: 'Daily security report',
+    agsaiaContact: 'Contact us for updates',
+    learnMore: 'Learn More',
     storeCta: 'Digital Product Store',
     storeCtaDesc: 'UI Kits, AI Prompts, templates, and e-books.',
     storeCtaButton: 'Browse Store',
@@ -98,6 +140,8 @@ export default function ToolsPage() {
   const { openAuthModal } = useAuthModal();
   const [infoModal, setInfoModal] = useState<'studentBlocked' | 'verificationRequired' | null>(null);
   const [showWaitlistModal, setShowWaitlistModal] = useState(false);
+  const [overviewModal, setOverviewModal] = useState<'enterpriseAi' | 'agsaia' | null>(null);
+  const overview = PRODUCT_OVERVIEW[lang];
 
   // Enterprise AI tools are Business-only, and only for a *verified* Business
   // account — SuperAdmin (internal staff) bypasses the verification check.
@@ -167,24 +211,34 @@ export default function ToolsPage() {
                 ))}
               </ul>
 
-              {canUseAiAssistant ? (
-                <Link
-                  href="/dashboard/ai-tools"
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  {t.aiCta}
-                </Link>
-              ) : (
+              <div className="flex flex-wrap items-center gap-3">
+                {canUseAiAssistant ? (
+                  <Link
+                    href="/dashboard/ai-tools"
+                    className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {t.aiCta}
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleAiCtaClick}
+                    className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {t.aiCta}
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={handleAiCtaClick}
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+                  onClick={() => setOverviewModal('enterpriseAi')}
+                  className="inline-flex items-center gap-1.5 text-sm font-bold text-cyan-700 dark:text-cyan-400 bg-transparent border-none cursor-pointer hover:underline"
                 >
-                  <Sparkles className="w-4 h-4" />
-                  {t.aiCta}
+                  <Info className="w-4 h-4" />
+                  {t.learnMore}
                 </button>
-              )}
+              </div>
             </div>
           </div>
 
@@ -250,14 +304,68 @@ export default function ToolsPage() {
                   </li>
                 ))}
               </ul>
-              <button
-                type="button"
-                onClick={() => setShowWaitlistModal(true)}
-                className="mt-6 inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
-              >
-                <ShieldAlert className="w-4 h-4" />
-                {t.sentinelCta}
-              </button>
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowWaitlistModal(true)}
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+                >
+                  <ShieldAlert className="w-4 h-4" />
+                  {t.sentinelCta}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 5: AG-SAIA — Sovereign AI Security. Pre-launch, same
+              "Coming Soon" posture as Card 4: no ZKP handshake, threat
+              detection, or honeypot exist yet, so this is purely
+              informational (description + "Learn More" detail + a plain
+              contact link) — never live status/telemetry, which would
+              misrepresent an unbuilt product as an active security system. */}
+          <div className="lg:col-span-3 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-8 flex flex-col lg:flex-row gap-8 items-start">
+            <div className="shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
+              <KeyRound className="w-7 h-7 text-white" />
+            </div>
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <h2 className="text-xl font-black tracking-wide">{t.agsaiaTitle}</h2>
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                  <Lock className="w-3 h-3" />
+                  {t.comingSoon}
+                </span>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{t.agsaiaDesc}</p>
+              <ul className="grid sm:grid-cols-2 gap-3">
+                {[
+                  { icon: KeyRound, label: t.agsaiaBullet1 },
+                  { icon: ShieldAlert, label: t.agsaiaBullet2 },
+                  { icon: EyeOff, label: t.agsaiaBullet3 },
+                  { icon: BarChart3, label: t.agsaiaBullet4 },
+                ].map(({ icon: Icon, label }) => (
+                  <li key={label} className="flex items-center gap-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    <Icon className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
+                    {label}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <a
+                  href="mailto:contact@cdc.org.ge"
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  {t.agsaiaContact}
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setOverviewModal('agsaia')}
+                  className="inline-flex items-center gap-1.5 text-sm font-bold text-cyan-700 dark:text-cyan-400 bg-transparent border-none cursor-pointer hover:underline"
+                >
+                  <Info className="w-4 h-4" />
+                  {t.learnMore}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -327,6 +435,41 @@ export default function ToolsPage() {
       )}
 
       {showWaitlistModal && <CyberSentinelWaitlistModal lang={lang} onClose={() => setShowWaitlistModal(false)} />}
+
+      {overviewModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-8" onClick={() => setOverviewModal(null)}>
+          <div
+            className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-2xl max-h-full overflow-y-auto p-6 sm:p-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setOverviewModal(null)}
+              aria-label={t.modalClose}
+              className="absolute top-4 right-4 p-2 cursor-pointer text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            {overviewModal === 'enterpriseAi' ? (
+              <ProductOverviewCard
+                lang={lang}
+                icon={Bot}
+                title={t.aiTitle}
+                tagline={t.aiDesc}
+                {...overview.enterpriseAi}
+              />
+            ) : (
+              <ProductOverviewCard
+                lang={lang}
+                icon={KeyRound}
+                title={t.agsaiaTitle}
+                tagline={t.agsaiaTagline}
+                {...overview.agsaia}
+              />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

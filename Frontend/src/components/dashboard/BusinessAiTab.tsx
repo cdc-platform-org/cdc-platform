@@ -12,6 +12,7 @@ import {
   Pause,
   Play,
   UploadCloud,
+  Info,
 } from 'lucide-react';
 import {
   getMyAgents,
@@ -26,8 +27,11 @@ import {
   AgentFormPayload,
 } from '../../services/agentService';
 import { Agent, KnowledgeDocument, AgentConversation } from '../../types/agent';
+import ProductOverviewCard from '../tools/ProductOverviewCard';
+import { PRODUCT_OVERVIEW } from '../../data/productOverviews';
 
-type SubTab = 'config' | 'knowledge' | 'embed' | 'analytics';
+type SubTab = 'config' | 'knowledge' | 'embed' | 'overview' | 'analytics';
+type SetupGuidePlatform = 'wordpress' | 'shopify' | 'html';
 
 const dict = {
   ka: {
@@ -47,6 +51,7 @@ const dict = {
     tabConfig: 'კონფიგურაცია',
     tabKnowledge: 'ცოდნის ბაზა',
     tabEmbed: 'ჩაშენების კოდი',
+    tabOverview: 'პროდუქტის მიმოხილვა',
     tabAnalytics: 'ანალიტიკა',
     name: 'სახელი',
     primaryColor: 'ძირითადი ფერი',
@@ -72,6 +77,25 @@ const dict = {
     embedHint: 'ჩასვით ეს კოდი თქვენი საიტის </body> ტეგამდე.',
     copyCode: 'კოდის კოპირება',
     copied: 'დაკოპირდა ✓',
+    setupGuideTitle: 'დაყენებისა და ინტეგრაციის სახელმძღვანელო',
+    setupWordpress: 'WordPress',
+    setupShopify: 'Shopify',
+    setupHtml: 'Custom HTML',
+    setupWordpressSteps: [
+      'WordPress ადმინ პანელში გადადით Appearance → Theme File Editor-ში.',
+      'გახსენით footer.php და ჩასვით კოდი </body> ტეგის წინ.',
+      'ან გამოიყენეთ "Insert Headers and Footers" ტიპის plugin და ჩასვით კოდი "Footer" ველში — plugin-ი არ საჭიროებს თემის ფაილების რედაქტირებას.',
+    ],
+    setupShopifySteps: [
+      'Shopify ადმინში გადადით Online Store → Themes → Edit Code-ზე.',
+      'გახსენით theme.liquid ფაილი Layout საქაღალდეში.',
+      'ჩასვით კოდი </body> ტეგის წინ და შეინახეთ.',
+    ],
+    setupHtmlSteps: [
+      'გახსენით თქვენი საიტის HTML ფაილი ან CMS-ის template რედაქტორი.',
+      'იპოვეთ დახურვის </body> ტეგი გვერდის ბოლოში.',
+      'ჩასვით კოდი პირდაპირ </body> ტეგის წინ ყველა გვერდზე, სადაც გსურთ ასისტენტის გამოჩენა.',
+    ],
     analyticsHint: 'ბოლო საუბრები ვიზიტორებთან.',
     noConversations: 'საუბრები ჯერ არ არის.',
     messages: 'შეტყობინება',
@@ -95,6 +119,7 @@ const dict = {
     tabConfig: 'Configuration',
     tabKnowledge: 'Knowledge Base',
     tabEmbed: 'Embed Code',
+    tabOverview: 'Product Overview',
     tabAnalytics: 'Analytics',
     name: 'Name',
     primaryColor: 'Primary Color',
@@ -120,6 +145,25 @@ const dict = {
     embedHint: 'Paste this snippet before the closing </body> tag on your site.',
     copyCode: 'Copy Code',
     copied: 'Copied ✓',
+    setupGuideTitle: 'Setup & Integration Guide',
+    setupWordpress: 'WordPress',
+    setupShopify: 'Shopify',
+    setupHtml: 'Custom HTML',
+    setupWordpressSteps: [
+      'In your WordPress admin, go to Appearance → Theme File Editor.',
+      'Open footer.php and paste the snippet right before the closing </body> tag.',
+      'Or use a plugin like "Insert Headers and Footers" and paste the snippet into the Footer field — no theme file editing required.',
+    ],
+    setupShopifySteps: [
+      'In your Shopify admin, go to Online Store → Themes → Edit Code.',
+      'Open theme.liquid inside the Layout folder.',
+      'Paste the snippet right before the closing </body> tag and save.',
+    ],
+    setupHtmlSteps: [
+      'Open your site\'s HTML file or your CMS\'s template editor.',
+      'Find the closing </body> tag near the bottom of the page.',
+      'Paste the snippet directly before </body> on every page you want the assistant to appear on.',
+    ],
     analyticsHint: 'Recent conversations with visitors.',
     noConversations: 'No conversations yet.',
     messages: 'messages',
@@ -170,6 +214,7 @@ export default function BusinessAiTab({ lang }: { lang: 'ka' | 'en' }) {
   const [conversations, setConversations] = useState<AgentConversation[]>([]);
   const [copied, setCopied] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [setupPlatform, setSetupPlatform] = useState<SetupGuidePlatform>('wordpress');
 
   const selectedAgent = agents.find((a) => a.id === selectedAgentId) ?? null;
 
@@ -395,6 +440,7 @@ export default function BusinessAiTab({ lang }: { lang: 'ka' | 'en' }) {
     { key: 'config', label: t.tabConfig, icon: Settings },
     { key: 'knowledge', label: t.tabKnowledge, icon: BookOpen },
     { key: 'embed', label: t.tabEmbed, icon: Code2 },
+    { key: 'overview', label: t.tabOverview, icon: Info },
     { key: 'analytics', label: t.tabAnalytics, icon: BarChart3 },
   ];
 
@@ -573,17 +619,70 @@ export default function BusinessAiTab({ lang }: { lang: 'ka' | 'en' }) {
           )}
 
           {subTab === 'embed' && (
-            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-3 max-w-2xl">
-              <p className="text-xs text-slate-500 dark:text-slate-400">{t.embedHint}</p>
-              <pre className="rounded-lg bg-slate-950 text-slate-100 p-4 text-xs overflow-x-auto"><code>{embedSnippet}</code></pre>
-              <button
-                type="button"
-                onClick={handleCopyEmbed}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-300"
-              >
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copied ? t.copied : t.copyCode}
-              </button>
+            <div className="space-y-4 max-w-2xl">
+              <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-3">
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t.embedHint}</p>
+                <pre className="rounded-lg bg-slate-950 text-slate-100 p-4 text-xs overflow-x-auto"><code>{embedSnippet}</code></pre>
+                <button
+                  type="button"
+                  onClick={handleCopyEmbed}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-300"
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied ? t.copied : t.copyCode}
+                </button>
+              </div>
+
+              {/* Permanent Setup & Integration Guide — always visible under the
+                  snippet, not a one-off tooltip, since a business owner may
+                  come back to this tab weeks later to hand it to a developer. */}
+              <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none p-6">
+                <h3 className="text-sm font-black tracking-wide mb-4">{t.setupGuideTitle}</h3>
+                <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 mb-4">
+                  {([
+                    ['wordpress', t.setupWordpress],
+                    ['shopify', t.setupShopify],
+                    ['html', t.setupHtml],
+                  ] as [SetupGuidePlatform, string][]).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setSetupPlatform(key)}
+                      className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
+                        setupPlatform === key
+                          ? 'bg-slate-900 dark:bg-cyan-600 text-white'
+                          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <ol className="space-y-2.5 list-decimal list-inside">
+                  {(setupPlatform === 'wordpress'
+                    ? t.setupWordpressSteps
+                    : setupPlatform === 'shopify'
+                    ? t.setupShopifySteps
+                    : t.setupHtmlSteps
+                  ).map((step) => (
+                    <li key={step} className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                      {step}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+          )}
+
+          {subTab === 'overview' && (
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none p-6 max-w-2xl">
+              <ProductOverviewCard
+                lang={lang}
+                icon={Bot}
+                title={t.title}
+                tagline={t.subtitle}
+                {...PRODUCT_OVERVIEW[lang].enterpriseAi}
+              />
             </div>
           )}
 
