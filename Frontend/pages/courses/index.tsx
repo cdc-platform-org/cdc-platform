@@ -367,7 +367,7 @@ export default function CoursesPage() {
                     return (
                       <div
                         key={course.id}
-                        className="relative rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 flex flex-col justify-between"
+                        className="relative h-full overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 flex flex-col justify-between"
                       >
                         {course.saleActive && (
                           <span className="absolute -top-2.5 -right-2.5 text-xs font-black text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg shadow-rose-500/30">
@@ -413,29 +413,27 @@ export default function CoursesPage() {
                         </div>
                         <div>
                           {countdown && <p className="text-[11px] font-bold text-rose-500 dark:text-rose-400 mb-2">⏳ {countdown}</p>}
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-baseline gap-2">
-                              {course.saleActive && (
-                                <s className="text-sm text-slate-500">{formatPrice(course.originalPrice)}</s>
-                              )}
-                              <span className="text-xl font-black text-slate-900 dark:text-white">{formatPrice(course.currentPrice)}</span>
-                            </div>
-                            <div className="flex gap-2">
-                              <Link
-                                href={`/courses/${course.id}`}
-                                className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 no-underline"
-                              >
-                                {t.viewDetails}
-                              </Link>
-                              <button
-                                type="button"
-                                onClick={() => handleEnroll(course)}
-                                disabled={enrollingId === course.id}
-                                className="text-xs font-black text-white px-4 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:shadow-lg hover:shadow-cyan-500/30 transition-all disabled:opacity-60"
-                              >
-                                {enrollingId === course.id ? t.enrolling : t.enroll}
-                              </button>
-                            </div>
+                          <div className="flex items-baseline gap-2 mb-3">
+                            {course.saleActive && (
+                              <s className="text-sm text-slate-500 shrink-0">{formatPrice(course.originalPrice)}</s>
+                            )}
+                            <span className="text-xl font-black text-slate-900 dark:text-white shrink-0">{formatPrice(course.currentPrice)}</span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Link
+                              href={`/courses/${course.id}`}
+                              className="flex-1 min-w-[6.5rem] text-center whitespace-nowrap text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 no-underline"
+                            >
+                              {t.viewDetails}
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => handleEnroll(course)}
+                              disabled={enrollingId === course.id}
+                              className="flex-1 min-w-[6.5rem] whitespace-nowrap text-sm font-semibold text-white px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:shadow-lg hover:shadow-cyan-500/30 transition-all disabled:opacity-60"
+                            >
+                              {enrollingId === course.id ? t.enrolling : t.enroll}
+                            </button>
                           </div>
                         </div>
                       </div>

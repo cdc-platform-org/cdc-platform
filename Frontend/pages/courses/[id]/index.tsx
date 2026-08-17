@@ -282,7 +282,7 @@ export default function CourseDetailPage() {
                 <img
                   src={course.mentorAvatarUrl}
                   alt={course.mentorName}
-                  className="w-12 h-16 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                  className="w-12 h-12 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
                 />
               ) : (
                 <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white text-sm font-black shrink-0">
