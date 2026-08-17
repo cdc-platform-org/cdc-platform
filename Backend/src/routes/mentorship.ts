@@ -51,7 +51,13 @@ router.get('/mine', authenticate, async (req: Request, res: Response) => {
 
 router.get('/mentors', async (_req: Request, res: Response) => {
   const mentors = await prisma.user.findMany({
-    where: { role: 'Mentor', isBanned: false },
+    // mentorPublished is the real gate here — a promoted Mentor account
+    // (adminMentorship.ts's /mentors/promote) starts unpublished and stays
+    // that way until an admin explicitly publishes the profile. status
+    // isn't used for this: it governs login/account-level access for every
+    // role, not directory visibility, and would already be APPROVED for
+    // most promoted mentors (they were an approved Student/Client first).
+    where: { role: 'Mentor', isBanned: false, mentorPublished: true },
     select: {
       id: true,
       name: true,
@@ -348,6 +354,9 @@ const mentorProfileSelect = {
   mentorSkills: true,
   mentorLanguages: true,
   cvUrl: true,
+  // Read-only here too — lets a mentor see whether an admin has published
+  // them yet without granting any route that lets them change it themselves.
+  mentorPublished: true,
 } as const;
 
 // Read-only — mentors can see their own listing (title/rate/skills/CV) but

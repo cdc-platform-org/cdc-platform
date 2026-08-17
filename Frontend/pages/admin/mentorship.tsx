@@ -13,6 +13,7 @@ import {
   updateMentorAvailabilityRule,
   deleteMentorAvailabilityRule,
   updateMentorProfile,
+  setMentorPublished,
   uploadMentorCv,
   uploadMentorAvatar,
   translateMentorProfile,
@@ -79,8 +80,24 @@ function MentorAvailabilitySection() {
   const [activeLangTab, setActiveLangTab] = useState<'ka' | 'en'>('ka');
   const [translating, setTranslating] = useState(false);
   const [translateError, setTranslateError] = useState<string | null>(null);
+  const [togglingPublish, setTogglingPublish] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
 
   const selectedMentor = mentors.find((m) => m.id === selectedMentorId);
+
+  const handleTogglePublish = async () => {
+    if (!selectedMentor) return;
+    setTogglingPublish(true);
+    setPublishError(null);
+    try {
+      const updated = await setMentorPublished(selectedMentor.id, !selectedMentor.mentorPublished);
+      setMentors((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+    } catch {
+      setPublishError('Could not update publish status.');
+    } finally {
+      setTogglingPublish(false);
+    }
+  };
 
   const loadMentors = useCallback(async () => {
     const data = await getMentors();
@@ -292,10 +309,36 @@ function MentorAvailabilitySection() {
         >
           {mentors.map((m) => (
             <option key={m.id} value={m.id}>
-              {m.name} ({m.email})
+              {m.name} ({m.email}) {m.mentorPublished ? '— Published' : '— Not Published'}
             </option>
           ))}
         </select>
+
+        {selectedMentor && (
+          <div className="mb-4 flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3">
+            <div>
+              <p className="text-xs font-semibold text-gray-700">Public directory visibility</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {selectedMentor.mentorPublished
+                  ? 'This mentor is live on the public /mentors page.'
+                  : 'Hidden from the public /mentors page until published.'}
+              </p>
+              {publishError && <p className="text-xs text-red-600 mt-1">{publishError}</p>}
+            </div>
+            <button
+              type="button"
+              onClick={handleTogglePublish}
+              disabled={togglingPublish}
+              className={`shrink-0 text-xs font-bold px-4 py-2 rounded-lg border disabled:opacity-60 ${
+                selectedMentor.mentorPublished
+                  ? 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                  : 'border-transparent text-white bg-emerald-600 hover:bg-emerald-700'
+              }`}
+            >
+              {togglingPublish ? '…' : selectedMentor.mentorPublished ? 'Unpublish' : 'Publish'}
+            </button>
+          </div>
+        )}
 
         <div className="mb-4">
           <label className="block text-xs font-medium text-gray-700 mb-1">Avatar / Profile Photo (PNG or JPG)</label>

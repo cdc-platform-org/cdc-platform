@@ -24,7 +24,7 @@ const dict = {
     dashboard: 'ჩემი დაშბორდი',
     myCourses: 'ჩემი კურსები',
     admin: 'ადმინ პანელი',
-    mentorPanel: '👨‍🏫 მენტორის პანელი',
+    mentorPanel: 'მენტორის პანელი',
     logout: 'გამოსვლა',
   },
   en: {
@@ -40,7 +40,7 @@ const dict = {
     dashboard: 'My Dashboard',
     myCourses: 'My Courses',
     admin: 'Admin Panel',
-    mentorPanel: '👨‍🏫 Mentor Panel',
+    mentorPanel: 'Mentor Panel',
     logout: 'Log Out',
   },
 };

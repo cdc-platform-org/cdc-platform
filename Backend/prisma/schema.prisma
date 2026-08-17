@@ -295,6 +295,15 @@ model User {
   mentorTitle                   String?
   mentorTitleEn                 String?
   mentorHourlyRate              Int?
+  // Gates visibility on the public /mentors directory (routes/mentorship.ts's
+  // GET /mentors) — deliberately separate from `status` (which governs
+  // whether the account can log in / act at all, same as every other role).
+  // Being promoted to Mentor (adminMentorship.ts's SUPER_ADMIN-only
+  // /mentors/promote) does NOT set this true — an admin must explicitly
+  // publish the profile via PUT /mentors/:mentorId/profile. No mentor-facing
+  // route ever writes this field; only the admin one does, same posture as
+  // course pricing/catalog content.
+  mentorPublished               Boolean                     @default(false)
   mentorSkills                  String[]                    @default([])
   // Spoken languages, e.g. ["ქართული", "English"] — free-text tags picked
   // from a curated checklist in the admin UI, not a DB enum (same posture

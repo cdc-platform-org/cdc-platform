@@ -98,6 +98,7 @@ const mentorProfileSelect = {
   mentorSkills: true,
   mentorLanguages: true,
   cvUrl: true,
+  mentorPublished: true,
 } as const;
 
 router.get('/mentors', async (_req: Request, res: Response) => {

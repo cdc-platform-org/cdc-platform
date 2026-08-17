@@ -62,6 +62,10 @@ export const mentorProfileSchema = z.object({
   mentorLanguages: z.array(z.string().trim().min(1).max(40)).max(15).optional(),
   bio: z.string().trim().max(1000).optional(),
   bioEn: z.string().trim().max(1000).optional(),
+  // Admin-only publish gate for the public /mentors directory — see the
+  // schema's own comment on User.mentorPublished. Never accepted from any
+  // mentor-facing route, only this admin one.
+  mentorPublished: z.boolean().optional(),
 });
 export const mentorAvailabilityRuleSchema = z
   .object({

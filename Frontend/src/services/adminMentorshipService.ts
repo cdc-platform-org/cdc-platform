@@ -74,6 +74,9 @@ export interface MentorProfile extends MentorshipUser {
   mentorSkills: string[];
   mentorLanguages: string[];
   cvUrl: string | null;
+  // Public /mentors directory visibility — admin-only to change, defaults
+  // false for every newly-promoted mentor (see the schema's own comment).
+  mentorPublished: boolean;
 }
 
 export async function getMentors(): Promise<MentorProfile[]> {
@@ -99,10 +102,19 @@ export async function updateMentorProfile(
     mentorLanguages?: string[];
     bio?: string;
     bioEn?: string;
+    mentorPublished?: boolean;
   }
 ): Promise<MentorProfile> {
   const response = await apiClient.put<{ data: MentorProfile }>(`/admin/mentorship/mentors/${mentorId}/profile`, payload);
   return response.data.data;
+}
+
+// Toggles public directory visibility on its own — deliberately not bundled
+// into the full profile-edit form's save flow, so an admin can publish/
+// unpublish a mentor with one click without also having to submit the rest
+// of the (possibly-unsaved) profile fields.
+export async function setMentorPublished(mentorId: string, mentorPublished: boolean): Promise<MentorProfile> {
+  return updateMentorProfile(mentorId, { mentorPublished });
 }
 
 export async function uploadMentorCv(mentorId: string, file: File): Promise<MentorProfile> {
