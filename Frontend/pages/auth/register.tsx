@@ -177,7 +177,7 @@ function RegisterPage() {
                   {lang === 'ka' ? 'კომპანიებისთვის & B2B' : 'Hiring & B2B'}
                 </span>
                 <span className="block text-xs text-gray-500 dark:text-slate-400">
-                  {lang === 'ka' ? 'პროექტების განთავსება, ბიზნეს ხელსაწყოები' : 'Post gigs, business tools'}
+                  {lang === 'ka' ? 'ვაკანსიების განთავსება, ბიზნეს ხელსაწყოები' : 'Post gigs, business tools'}
                 </span>
               </span>
             </button>
