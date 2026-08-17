@@ -5,6 +5,9 @@ import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
 import RichTextEditor from '../../src/components/shared/RichTextEditor';
 import MarkdownContent from '../../src/components/shared/MarkdownContent';
+import FileDropzone from '../../src/components/shared/FileDropzone';
+import ImageGalleryUploader from '../../src/components/shared/ImageGalleryUploader';
+import { assetFilenameFromUrl } from '../../src/utils/assetFilename';
 import {
   getAdminProducts,
   createProduct,
@@ -18,6 +21,8 @@ import {
   AdminProductPurchase,
 } from '../../src/services/productService';
 import { formatPrice } from '../../src/utils/coursePricing';
+
+const ASSET_ACCEPT = '.zip,.pdf,.epub,.rar,.7z,.fig,.sketch,.psd,.ai,.doc,.docx,.mp4,.mov';
 
 type AdminProduct = DigitalProduct & { submittedBy: { id: string; name: string; email: string } | null };
 
@@ -194,11 +199,10 @@ function AdminProductsDashboard() {
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [fileUrl, setFileUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [imageUploading, setImageUploading] = useState(false);
-  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [fileUploading, setFileUploading] = useState(false);
   const [fileUploadError, setFileUploadError] = useState<string | null>(null);
 
@@ -226,12 +230,13 @@ function AdminProductsDashboard() {
     setError(null);
     setSubmitting(true);
     try {
-      await createProduct({ title, description, price: Number(price) || 0, category, imageUrl, fileUrl });
+      await createProduct({ title, description, price: Number(price) || 0, category, imageUrl, previewImages, fileUrl });
       setTitle('');
       setDescription('');
       setPrice('');
       setCategory('');
       setImageUrl('');
+      setPreviewImages([]);
       setFileUrl('');
       await load();
     } catch (err: any) {
@@ -241,21 +246,7 @@ function AdminProductsDashboard() {
     }
   };
 
-  const handleImageFile = async (file: File | undefined) => {
-    if (!file) return;
-    setImageUploadError(null);
-    setImageUploading(true);
-    try {
-      setImageUrl(await uploadProductImage(file));
-    } catch (err: any) {
-      setImageUploadError(err?.response?.data?.message ?? 'Image upload failed.');
-    } finally {
-      setImageUploading(false);
-    }
-  };
-
-  const handleAssetFile = async (file: File | undefined) => {
-    if (!file) return;
+  const handleAssetFile = async (file: File) => {
     setFileUploadError(null);
     setFileUploading(true);
     try {
@@ -345,48 +336,56 @@ function AdminProductsDashboard() {
             <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
             <RichTextEditor required rows={3} value={description} onChange={setDescription} />
           </div>
-          <div className="grid sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Price (GEL, 0 = free)</label>
-              <input required type="number" min="0" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Product Preview Image</label>
-              <div className="flex items-center gap-2">
-                {imageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover border border-gray-200 shrink-0" />
-                )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  disabled={imageUploading}
-                  onChange={(e) => handleImageFile(e.target.files?.[0])}
-                  className="w-full text-xs"
-                />
-              </div>
-              {imageUploading && <p className="text-xs text-gray-400 mt-1">Uploading…</p>}
-              {imageUploadError && <p className="text-xs text-red-600 mt-1">{imageUploadError}</p>}
-              {!imageUrl && !imageUploading && <p className="text-xs text-amber-600 mt-1">Required</p>}
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Downloadable Product File (Zip/PDF/Asset)</label>
-              <input
-                type="file"
-                accept=".zip,.pdf,.epub,.rar,.7z,.fig,.sketch"
-                disabled={fileUploading}
-                onChange={(e) => handleAssetFile(e.target.files?.[0])}
-                className="w-full text-xs"
-              />
-              {fileUploading && <p className="text-xs text-gray-400 mt-1">Uploading…</p>}
-              {fileUploadError && <p className="text-xs text-red-600 mt-1">{fileUploadError}</p>}
-              {fileUrl && !fileUploading && <p className="text-xs text-emerald-600 mt-1 truncate">Uploaded ✓</p>}
-              {!fileUrl && !fileUploading && <p className="text-xs text-amber-600 mt-1">Required — only revealed to buyers after purchase</p>}
-            </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Price (GEL, 0 = free)</label>
+            <input
+              required
+              type="number"
+              min="0"
+              step="0.01"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              className="w-full sm:w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
           </div>
+
+          <ImageGalleryUploader
+            coverUrl={imageUrl}
+            onCoverChange={setImageUrl}
+            previewImages={previewImages}
+            onPreviewImagesChange={setPreviewImages}
+            uploadImage={uploadProductImage}
+            lang="en"
+            labels={{
+              coverLabel: 'Main Cover Image (required)',
+              coverHint: imageUrl ? 'Click or drop to replace' : 'Click or drop an image',
+              galleryLabel: 'Additional Screenshots',
+              addMore: 'Add',
+              uploading: 'Uploading…',
+              remove: 'Remove',
+              uploadFailed: 'Upload failed.',
+            }}
+          />
+          {!imageUrl && <p className="text-xs text-amber-600">Cover image is required.</p>}
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Downloadable Product File</label>
+            <FileDropzone
+              accept={ASSET_ACCEPT}
+              uploading={fileUploading}
+              selectedFileName={assetFilenameFromUrl(fileUrl)}
+              onFile={handleAssetFile}
+              label="Drag & drop the product file here, or click to browse"
+              hint="ZIP, PDF, EPUB, RAR, 7Z, FIG, SKETCH, PSD, AI, DOC, DOCX, MP4, or MOV — up to 200MB"
+              uploadingLabel="Uploading…"
+            />
+            {fileUploadError && <p className="text-xs text-red-600 mt-1">{fileUploadError}</p>}
+            {!fileUrl && !fileUploading && <p className="text-xs text-amber-600 mt-1">Required — only revealed to buyers after purchase</p>}
+          </div>
+
           <button
             type="submit"
-            disabled={submitting || !imageUrl || !fileUrl || imageUploading || fileUploading}
+            disabled={submitting || !imageUrl || !fileUrl || fileUploading}
             className="text-sm font-medium text-white bg-indigo-600 px-5 py-2.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60"
           >
             {submitting ? 'Saving…' : 'Add Product'}

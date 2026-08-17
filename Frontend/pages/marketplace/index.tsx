@@ -147,6 +147,11 @@ export default function MarketplacePage() {
               >
                 <div className="relative w-full aspect-video bg-slate-100 dark:bg-slate-800">
                   <Image src={product.imageUrl} alt={product.title} fill className="object-cover" unoptimized />
+                  {product.fileFormat && (
+                    <span className="absolute top-3 left-3 inline-flex items-center text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full bg-black/60 text-white shadow">
+                      {product.fileFormat}
+                    </span>
+                  )}
                   {product.purchased && (
                     <span className="absolute top-3 right-3 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500 text-white shadow">
                       <CheckCircle2 className="w-3 h-3" />

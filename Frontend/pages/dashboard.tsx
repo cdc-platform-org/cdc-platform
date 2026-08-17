@@ -41,9 +41,22 @@ import {
 import { getMyPayments, downloadInvoice, MyPaymentRow } from '../src/services/paymentService';
 import { getForumQuota, ForumPostQuota } from '../src/services/forumService';
 import { createMentorshipRequest } from '../src/services/mentorshipService';
-import { getProducts, getProductDownloadUrl, submitProduct, getMySubmissions, DigitalProduct } from '../src/services/productService';
+import {
+  getProducts,
+  getProductDownloadUrl,
+  submitProduct,
+  getMySubmissions,
+  uploadMyProductImage,
+  uploadMyProductFile,
+  DigitalProduct,
+} from '../src/services/productService';
 import RichTextEditor from '../src/components/shared/RichTextEditor';
+import FileDropzone from '../src/components/shared/FileDropzone';
+import ImageGalleryUploader from '../src/components/shared/ImageGalleryUploader';
+import { assetFilenameFromUrl } from '../src/utils/assetFilename';
 import { User } from '../src/types/auth';
+
+const PRODUCT_ASSET_ACCEPT = '.zip,.pdf,.epub,.rar,.7z,.fig,.sketch,.psd,.ai,.doc,.docx,.mp4,.mov';
 
 type Tab = 'overview' | 'courses' | 'wallet' | 'gigs' | 'products';
 
@@ -119,8 +132,16 @@ const dict = {
     commissionBannerText: 'პლატფორმის საკომისიო შეადგენს 20%-ს (10% საბანკო ტრანზაქცია + 10% CDC ცენტრი).',
     commissionBannerNet: 'თქვენი წილი: {{amount}} GEL',
     formCategory: 'კატეგორია',
-    formImageUrl: 'სურათის URL',
-    formFileUrl: 'ფაილის URL',
+    formCoverImage: 'მთავარი ფოტო (გარეკანი)',
+    formCoverHint: 'დააჭირეთ ან ჩააგდეთ სურათი აქ',
+    formGalleryLabel: 'დამატებითი სქრინშოთები',
+    formGalleryAdd: 'დამატება',
+    formUploading: 'იტვირთება…',
+    formRemove: 'წაშლა',
+    formAssetLabel: 'ჩამოსატვირთი ფაილი',
+    formAssetHint: 'ZIP, PDF, EPUB, RAR, 7Z, FIG, SKETCH, PSD, AI, DOC, DOCX, MP4 ან MOV — მაქს. 200MB',
+    imageUploadFailed: 'სურათის ატვირთვა ვერ მოხერხდა.',
+    fileUploadFailed: 'ფაილის ატვირთვა ვერ მოხერხდა.',
     formSubmit: 'გაგზავნა',
     formSubmitting: 'იგზავნება…',
     formCancel: 'გაუქმება',
@@ -228,8 +249,16 @@ const dict = {
     commissionBannerText: 'The platform fee is 20% (10% bank transaction + 10% CDC Center).',
     commissionBannerNet: 'Your share: {{amount}} GEL',
     formCategory: 'Category',
-    formImageUrl: 'Image URL',
-    formFileUrl: 'File URL',
+    formCoverImage: 'Main Cover Image',
+    formCoverHint: 'Click or drop an image here',
+    formGalleryLabel: 'Additional Screenshots',
+    formGalleryAdd: 'Add',
+    formUploading: 'Uploading…',
+    formRemove: 'Remove',
+    formAssetLabel: 'Downloadable File',
+    formAssetHint: 'ZIP, PDF, EPUB, RAR, 7Z, FIG, SKETCH, PSD, AI, MP4, or MOV — up to 200MB',
+    imageUploadFailed: 'Image upload failed.',
+    fileUploadFailed: 'File upload failed.',
     formSubmit: 'Submit',
     formSubmitting: 'Submitting…',
     formCancel: 'Cancel',
@@ -365,7 +394,10 @@ function DashboardContent() {
   const [submitPrice, setSubmitPrice] = useState('');
   const [submitCategory, setSubmitCategory] = useState('');
   const [submitImageUrl, setSubmitImageUrl] = useState('');
+  const [submitPreviewImages, setSubmitPreviewImages] = useState<string[]>([]);
   const [submitFileUrl, setSubmitFileUrl] = useState('');
+  const [submitFileUploading, setSubmitFileUploading] = useState(false);
+  const [submitFileUploadError, setSubmitFileUploadError] = useState<string | null>(null);
   const [submittingProduct, setSubmittingProduct] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -469,6 +501,7 @@ function DashboardContent() {
         price: Number(submitPrice) || 0,
         category: submitCategory,
         imageUrl: submitImageUrl,
+        previewImages: submitPreviewImages,
         fileUrl: submitFileUrl,
       });
       setSubmitTitle('');
@@ -476,6 +509,7 @@ function DashboardContent() {
       setSubmitPrice('');
       setSubmitCategory('');
       setSubmitImageUrl('');
+      setSubmitPreviewImages([]);
       setSubmitFileUrl('');
       setShowSubmitForm(false);
       setMySubmissions(await getMySubmissions());
@@ -483,6 +517,18 @@ function DashboardContent() {
       setSubmitError(err?.response?.data?.message ?? t.submitProductFailed);
     } finally {
       setSubmittingProduct(false);
+    }
+  };
+
+  const handleSubmitAssetFile = async (file: File) => {
+    setSubmitFileUploadError(null);
+    setSubmitFileUploading(true);
+    try {
+      setSubmitFileUrl(await uploadMyProductFile(file));
+    } catch (err: any) {
+      setSubmitFileUploadError(err?.response?.data?.message ?? t.fileUploadFailed);
+    } finally {
+      setSubmitFileUploading(false);
     }
   };
 
@@ -1136,26 +1182,40 @@ function DashboardContent() {
                           {t.commissionBannerNet.replace('{{amount}}', (Number(submitPrice || 0) * 0.8).toFixed(2))}
                         </p>
                       </div>
-                      <input
-                        required
-                        type="url"
-                        placeholder={t.formImageUrl}
-                        value={submitImageUrl}
-                        onChange={(e) => setSubmitImageUrl(e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                      <ImageGalleryUploader
+                        coverUrl={submitImageUrl}
+                        onCoverChange={setSubmitImageUrl}
+                        previewImages={submitPreviewImages}
+                        onPreviewImagesChange={setSubmitPreviewImages}
+                        uploadImage={uploadMyProductImage}
+                        lang={lang}
+                        labels={{
+                          coverLabel: t.formCoverImage,
+                          coverHint: t.formCoverHint,
+                          galleryLabel: t.formGalleryLabel,
+                          addMore: t.formGalleryAdd,
+                          uploading: t.formUploading,
+                          remove: t.formRemove,
+                          uploadFailed: t.imageUploadFailed,
+                        }}
                       />
-                      <input
-                        required
-                        type="url"
-                        placeholder={t.formFileUrl}
-                        value={submitFileUrl}
-                        onChange={(e) => setSubmitFileUrl(e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
-                      />
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{t.formAssetLabel}</label>
+                        <FileDropzone
+                          accept={PRODUCT_ASSET_ACCEPT}
+                          uploading={submitFileUploading}
+                          selectedFileName={assetFilenameFromUrl(submitFileUrl)}
+                          onFile={handleSubmitAssetFile}
+                          label={t.formAssetLabel}
+                          hint={t.formAssetHint}
+                          uploadingLabel={t.formUploading}
+                        />
+                        {submitFileUploadError && <p className="text-xs text-red-500 mt-1">{submitFileUploadError}</p>}
+                      </div>
                       <div className="flex gap-2">
                         <button
                           type="submit"
-                          disabled={submittingProduct}
+                          disabled={submittingProduct || !submitImageUrl || !submitFileUrl || submitFileUploading}
                           className="text-xs font-bold px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-cyan-600 text-white disabled:opacity-60"
                         >
                           {submittingProduct ? t.formSubmitting : t.formSubmit}

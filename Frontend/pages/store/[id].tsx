@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag, Building2, X } from 'lucide-react';
@@ -8,6 +7,7 @@ import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import MarkdownContent from '../../src/components/shared/MarkdownContent';
+import ProductGallery from '../../src/components/shared/ProductGallery';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
 import { getProduct, claimFreeProduct, getProductDownloadUrl, DigitalProduct } from '../../src/services/productService';
@@ -194,14 +194,21 @@ function StoreProductContent() {
         </div>
 
         <div className="grid md:grid-cols-2 gap-8 mb-10">
-          <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800">
-            <Image src={product.imageUrl} alt={product.title} fill className="object-cover" unoptimized />
+          <div>
+            <ProductGallery images={[product.imageUrl, ...product.previewImages]} alt={product.title} />
           </div>
           <div className="flex flex-col">
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-cyan-600 dark:text-cyan-400 mb-2 w-fit">
-              <ShoppingBag className="w-3 h-3" />
-              {product.category}
-            </span>
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-cyan-600 dark:text-cyan-400 w-fit">
+                <ShoppingBag className="w-3 h-3" />
+                {product.category}
+              </span>
+              {product.fileFormat && (
+                <span className="inline-flex items-center text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400">
+                  {product.fileFormat}
+                </span>
+              )}
+            </div>
             <h1 className="text-2xl md:text-3xl font-black tracking-wide mb-3">{product.title}</h1>
             <MarkdownContent content={product.description} className="mb-6 flex-1" />
 

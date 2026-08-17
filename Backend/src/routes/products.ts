@@ -1,8 +1,14 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
+import path from 'path';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticate, optionalAuthenticate, requireApproved } from '../middleware/auth';
 import { isBusinessToolsCategory, canPurchaseBusinessTools } from '../utils/marketplaceCategories';
+import { uploadImage } from '../services/imageStorage';
+import { BunnyStorageUploadError } from '../services/bunnyStorage';
+import { imageUpload, fileUpload, multerErrorHandler } from '../middleware/productUploads';
+import { fileFormatFromUrl } from '../utils/fileFormat';
 
 const router = Router();
 
@@ -38,6 +44,8 @@ router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
       price: p.price,
       category: p.category,
       imageUrl: p.imageUrl,
+      previewImages: p.previewImages,
+      fileFormat: fileFormatFromUrl(p.fileUrl),
       downloadsCount: p.downloadsCount,
       createdAt: p.createdAt,
       purchased: purchasedIds.has(p.id),
@@ -71,6 +79,8 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
       price: product.price,
       category: product.category,
       imageUrl: product.imageUrl,
+      previewImages: product.previewImages,
+      fileFormat: fileFormatFromUrl(product.fileUrl),
       downloadsCount: product.downloadsCount,
       createdAt: product.createdAt,
       purchased,
@@ -86,8 +96,80 @@ const submitSchema = z.object({
   price: z.number().min(0),
   category: z.string().min(1).max(100),
   imageUrl: z.string().url(),
+  // Up to 4 additional showcase screenshots alongside imageUrl (the main
+  // cover) — empty is fine, a submission isn't required to have a gallery.
+  previewImages: z.array(z.string().url()).max(4).optional().default([]),
   fileUrl: z.string().url(),
 });
+
+// Shared by POST / below and the two upload-* routes further down — a
+// submitter needs the exact same standing (verified graduate/freelancer, or
+// any admin-team member) to upload assets as to submit the product itself.
+// Centralized so the two checks can't silently drift apart.
+async function canSubmitProducts(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isVerifiedGraduate: true, adminRole: true },
+  });
+  return !!(user?.isVerifiedGraduate || user?.adminRole);
+}
+const CANNOT_SUBMIT_MESSAGE = 'Only verified graduates/freelancers or admins can submit products for review.';
+
+// Runs before multer so an unauthorized caller's upload is rejected without
+// ever buffering the file into memory.
+async function requireCanSubmitProducts(req: Request, res: Response, next: NextFunction) {
+  if (!(await canSubmitProducts(req.user!.id))) {
+    return res.status(403).json({ message: CANNOT_SUBMIT_MESSAGE });
+  }
+  next();
+}
+
+// ============================================================
+// UPLOAD — verified graduates/freelancers and admin-team members only
+// (canSubmitProducts, same gate as POST / below). Unlike adminProducts.ts's
+// identically-shaped /upload-image and /upload-file (SUPER_ADMIN/MANAGER
+// only, used for admin-authored catalog entries), these exist so a regular
+// verified submitter can actually attach real files to their own
+// submission instead of having to already have the asset hosted elsewhere
+// and paste a URL.
+// ============================================================
+router.post(
+  '/upload-image',
+  authenticate,
+  requireApproved,
+  requireCanSubmitProducts,
+  (req: Request, res: Response, next: NextFunction) => imageUpload.single('image')(req, res, (err: any) => multerErrorHandler(req, res, err, next)),
+  async (req: Request, res: Response) => {
+    if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
+    const filename = `product-${Date.now()}-${crypto.randomUUID()}${path.extname(req.file.originalname)}`;
+    try {
+      const url = await uploadImage({ buffer: req.file.buffer, mimetype: req.file.mimetype, folderName: 'product-images', filename });
+      res.status(201).json({ data: { url } });
+    } catch (err) {
+      const message = err instanceof BunnyStorageUploadError ? err.message : 'Image upload failed. Please try again.';
+      res.status(500).json({ message });
+    }
+  }
+);
+
+router.post(
+  '/upload-file',
+  authenticate,
+  requireApproved,
+  requireCanSubmitProducts,
+  (req: Request, res: Response, next: NextFunction) => fileUpload.single('file')(req, res, (err: any) => multerErrorHandler(req, res, err, next)),
+  async (req: Request, res: Response) => {
+    if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
+    const filename = `product-${Date.now()}-${crypto.randomUUID()}${path.extname(req.file.originalname)}`;
+    try {
+      const url = await uploadImage({ buffer: req.file.buffer, mimetype: req.file.mimetype, folderName: 'product-files', filename });
+      res.status(201).json({ data: { url } });
+    } catch (err) {
+      const message = err instanceof BunnyStorageUploadError ? err.message : 'File upload failed. Please try again.';
+      res.status(500).json({ message });
+    }
+  }
+);
 
 // ============================================================
 // SUBMIT — verified freelancers/graduates (isVerifiedGraduate — the same
@@ -98,14 +180,8 @@ const submitSchema = z.object({
 // APPROVED directly.
 // ============================================================
 router.post('/', authenticate, requireApproved, async (req: Request, res: Response) => {
-  const user = await prisma.user.findUnique({
-    where: { id: req.user!.id },
-    select: { isVerifiedGraduate: true, adminRole: true },
-  });
-  if (!user?.isVerifiedGraduate && !user?.adminRole) {
-    return res.status(403).json({
-      message: 'Only verified graduates/freelancers or admins can submit products for review.',
-    });
+  if (!(await canSubmitProducts(req.user!.id))) {
+    return res.status(403).json({ message: CANNOT_SUBMIT_MESSAGE });
   }
 
   const result = submitSchema.safeParse(req.body);

@@ -9,6 +9,12 @@ export interface DigitalProduct {
   price: number; // minor units (tetri); 0 = free
   category: string;
   imageUrl: string;
+  // Up to 4 additional showcase screenshots alongside imageUrl (the main
+  // cover) — shown as a gallery/carousel on /store/[id].
+  previewImages: string[];
+  // Extension of the (never publicly exposed) fileUrl, e.g. "ZIP"/"PDF" —
+  // safe to show as a format badge without revealing the real download link.
+  fileFormat: string | null;
   downloadsCount: number;
   createdAt: string;
   purchased: boolean;
@@ -41,6 +47,7 @@ export interface CreateProductPayload {
   price: number; // major-unit GEL from the form
   category: string;
   imageUrl: string;
+  previewImages?: string[]; // up to 4
   fileUrl: string;
 }
 
@@ -73,6 +80,8 @@ export interface UpdateProductPayload {
   description?: string;
   category?: string;
   price?: number; // major-unit GEL
+  imageUrl?: string;
+  previewImages?: string[]; // up to 4
 }
 
 export async function updateProductAdmin(id: string, payload: UpdateProductPayload): Promise<DigitalProduct> {
@@ -101,6 +110,24 @@ export async function uploadProductFile(file: File): Promise<string> {
   const formData = new FormData();
   formData.append('file', file);
   const response = await apiClient.post<{ data: { url: string } }>('/admin/products/upload-file', formData);
+  return response.data.data.url;
+}
+
+// Same as uploadProductImage/uploadProductFile above, but for verified
+// graduates/freelancers submitting their own product (see products.ts's
+// /upload-image and /upload-file — gated by canSubmitProducts, not
+// SUPER_ADMIN/MANAGER like the /admin/products/* pair).
+export async function uploadMyProductImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('image', file);
+  const response = await apiClient.post<{ data: { url: string } }>('/products/upload-image', formData);
+  return response.data.data.url;
+}
+
+export async function uploadMyProductFile(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await apiClient.post<{ data: { url: string } }>('/products/upload-file', formData);
   return response.data.data.url;
 }
 

@@ -1,5 +1,4 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import multer from 'multer';
 import path from 'path';
 import crypto from 'crypto';
 import { z } from 'zod';
@@ -7,55 +6,10 @@ import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { uploadImage } from '../services/imageStorage';
 import { BunnyStorageUploadError } from '../services/bunnyStorage';
+import { imageUpload, fileUpload, multerErrorHandler } from '../middleware/productUploads';
 
 const router = Router();
 router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
-
-// Preview image — same 10MB/image-only guard as course thumbnails/avatars.
-const imageUpload = multer({
-  storage: multer.memoryStorage(),
-  fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-    if (file.mimetype.startsWith('image/')) cb(null, true);
-    else cb(new Error('Only image uploads are allowed.'));
-  },
-  limits: { fileSize: 10 * 1024 * 1024 },
-});
-
-// Downloadable asset (UI kit, prompt pack, e-book, etc.) — broader allowlist
-// than images, no code/executable formats. NOTE: like the rest of this
-// codebase's Bunny-Storage-backed uploads, this returns a plain public CDN
-// URL — access control for buyers-only is enforced at the API layer
-// (products.ts's /:id/download only reveals fileUrl to a verified
-// purchaser), not by the storage URL itself being unguessable.
-const ALLOWED_FILE_TYPES = [
-  'application/zip',
-  'application/x-zip-compressed',
-  'application/pdf',
-  'application/epub+zip',
-  'application/vnd.rar',
-  'application/x-rar-compressed',
-  'application/x-7z-compressed',
-  'application/octet-stream',
-];
-const fileUpload = multer({
-  storage: multer.memoryStorage(),
-  fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-    if (ALLOWED_FILE_TYPES.includes(file.mimetype) || /\.(zip|pdf|epub|rar|7z|fig|sketch)$/i.test(file.originalname)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only ZIP, PDF, EPUB, RAR, 7Z, FIG, or SKETCH files are allowed.'));
-    }
-  },
-  limits: { fileSize: 200 * 1024 * 1024 }, // 200MB — product assets, not video
-});
-
-function multerErrorHandler(req: Request, res: Response, err: any, next: NextFunction) {
-  if (!err) return next();
-  if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(413).json({ message: 'File is too large.' });
-  }
-  return res.status(400).json({ message: err.message || 'Upload rejected.' });
-}
 
 router.post(
   '/upload-image',
@@ -98,6 +52,9 @@ const createSchema = z.object({
   price: z.number().min(0),
   category: z.string().min(1).max(100),
   imageUrl: z.string().url(),
+  // Up to 4 additional showcase screenshots alongside imageUrl (the main
+  // cover) — empty is fine, a submission isn't required to have a gallery.
+  previewImages: z.array(z.string().url()).max(4).optional().default([]),
   fileUrl: z.string().url(),
 });
 
@@ -142,6 +99,8 @@ const updateSchema = z.object({
   category: z.string().min(1).max(100).optional(),
   // Major-unit GEL, same conversion as createSchema — omit to leave price unchanged.
   price: z.number().min(0).optional(),
+  imageUrl: z.string().url().optional(),
+  previewImages: z.array(z.string().url()).max(4).optional(),
 });
 
 // Lets an admin fix typos/formatting on a graduate/freelancer submission
