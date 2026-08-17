@@ -53,10 +53,11 @@ router.post('/pause-expired-trial-agents', requireCronSecret, async (_req: Reque
   });
 });
 
-// Scheduled twice a week (Mon & Thu) by Frontend's Vercel Cron
-// (pages/api/cron/generate-blog.ts) — autonomously drafts one bilingual
-// tech/AI blog post as an UNPUBLISHED BlogPost for admin review, never
-// auto-publishes. See services/blogAgentService.ts.
+// Scheduled three times a week (Mon/Wed/Fri, 10:00 AM) by Frontend's Vercel
+// Cron (pages/api/cron/generate-blog.ts) — autonomously drafts one bilingual
+// tech/AI blog post. Published immediately only when an admin has opted
+// into AiAutomationSettings.blogAutoPublish (off by default — every draft
+// then lands unpublished for review instead). See services/blogAgentService.ts.
 router.post('/generate-blog-draft', requireCronSecret, async (_req: Request, res: Response) => {
   try {
     const result = await generateAndSaveBlogDraft();

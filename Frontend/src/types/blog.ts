@@ -26,6 +26,11 @@ export interface BlogPost {
   slug: string;
   createdAt: string;
   updatedAt: string;
+  // Written by the 3x/week cron agent (blogAgentService.ts) rather than a
+  // human admin — see the "🤖 AI Generated" badge in admin/blog.tsx. Admins
+  // can freely edit/unpublish/delete these like any other post; this is
+  // purely informational.
+  generatedByAgent?: boolean;
 }
 
 interface BlogCommentAuthor {

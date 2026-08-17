@@ -20,6 +20,7 @@ import {
   getBlogComments,
   deleteBlogComment,
 } from '../../src/services/blogService';
+import { getAiAutomationSettings, updateAiAutomationSettings } from '../../src/services/adminPanelService';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
 import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../src/utils/imageUpload';
 
@@ -54,6 +55,8 @@ function AdminBlogDashboard() {
   // friendly "try again shortly" message with a Retry button instead of
   // Gemini's raw error text.
   const [aiGenerateOverloaded, setAiGenerateOverloaded] = useState(false);
+  const [blogAutoPublish, setBlogAutoPublish] = useState(false);
+  const [savingAutoPublish, setSavingAutoPublish] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Comment moderation — fetched on demand per post (no dedicated "all
@@ -79,6 +82,25 @@ function AdminBlogDashboard() {
   useEffect(() => {
     loadPosts();
   }, [loadPosts]);
+
+  useEffect(() => {
+    getAiAutomationSettings()
+      .then((s) => setBlogAutoPublish(s.blogAutoPublish))
+      .catch(() => {});
+  }, []);
+
+  const handleToggleAutoPublish = async () => {
+    const next = !blogAutoPublish;
+    setSavingAutoPublish(true);
+    try {
+      await updateAiAutomationSettings({ blogAutoPublish: next });
+      setBlogAutoPublish(next);
+    } catch {
+      setError('პარამეტრის შენახვა ვერ მოხერხდა.');
+    } finally {
+      setSavingAutoPublish(false);
+    }
+  };
 
   const resetForm = () => {
     setForm(emptyForm);
@@ -270,6 +292,28 @@ function AdminBlogDashboard() {
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-gray-900">ბლოგის მართვა</h1>
           <p className="text-sm text-gray-500 mt-1">სტატიების შექმნა, რედაქტირება და წაშლა.</p>
+        </div>
+
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white/95 p-4 mb-8">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-900">🤖 AI ბლოგის ავტომატური აგენტი — კვირაში 3-ჯერ (ორშ/ოთხ/პარ, 10:00)</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {blogAutoPublish
+                ? 'ახალი სტატიები ავტომატურად ქვეყნდება.'
+                : 'ახალი სტატიები ინახება როგორც დრაფტი — თქვენ განიხილავთ და აქვეყნებთ /admin/blog-დან.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleAutoPublish}
+            disabled={savingAutoPublish}
+            aria-pressed={blogAutoPublish}
+            className={`shrink-0 relative inline-flex h-6 w-11 items-center rounded-full transition-colors border-none cursor-pointer disabled:opacity-60 ${
+              blogAutoPublish ? 'bg-emerald-500' : 'bg-gray-300'
+            }`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${blogAutoPublish ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
         </div>
 
         <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200/80 shadow-md shadow-slate-200/40 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 p-6 md:p-8 mb-10">
@@ -525,6 +569,11 @@ function AdminBlogDashboard() {
                         {!post.published && (
                           <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
                             დრაფტი
+                          </span>
+                        )}
+                        {post.generatedByAgent && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 bg-purple-50 px-2 py-0.5 rounded">
+                            🤖 AI Generated
                           </span>
                         )}
                       </div>

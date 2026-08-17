@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-// Vercel Cron entry point — scheduled twice a week (Mon & Thu) via
-// vercel.json's `crons` config. Vercel automatically sends
+// Vercel Cron entry point — scheduled three times a week (Mon/Wed/Fri,
+// 10:00 AM) via vercel.json's `crons` config. Vercel automatically sends
 // `Authorization: Bearer $CRON_SECRET` on its own scheduled requests when
 // CRON_SECRET is set as a Vercel project env var (see
 // https://vercel.com/docs/cron-jobs/manage-cron-jobs#securing-cron-jobs) —
