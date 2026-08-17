@@ -174,10 +174,10 @@ function RegisterPage() {
               </span>
               <span>
                 <span className="block text-sm font-bold text-gray-900 dark:text-white">
-                  {lang === 'ka' ? 'დაქირავება & B2B' : 'Hiring & B2B'}
+                  {lang === 'ka' ? 'კომპანიებისთვის & B2B' : 'Hiring & B2B'}
                 </span>
                 <span className="block text-xs text-gray-500 dark:text-slate-400">
-                  {lang === 'ka' ? 'გიგების განთავსება, ბიზნეს ხელსაწყოები' : 'Post gigs, business tools'}
+                  {lang === 'ka' ? 'პროექტების განთავსება, ბიზნეს ხელსაწყოები' : 'Post gigs, business tools'}
                 </span>
               </span>
             </button>
