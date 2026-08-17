@@ -98,7 +98,7 @@ router.post('/translate', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER
     res.json({ data: translated });
   } catch (err) {
     if (err instanceof AiTranslateError) {
-      return res.status(502).json({ message: err.message });
+      return res.status(err.status).json({ message: err.message });
     }
     throw err;
   }
@@ -121,7 +121,7 @@ router.post('/translate-studio-case', authenticate, requireAdminRole('SUPER_ADMI
     res.json({ data: translated });
   } catch (err) {
     if (err instanceof AiTranslateError) {
-      return res.status(502).json({ message: err.message });
+      return res.status(err.status).json({ message: err.message });
     }
     throw err;
   }
@@ -145,7 +145,7 @@ router.post('/translate-mentor', authenticate, requireAdminRole('SUPER_ADMIN', '
     res.json({ data: translated });
   } catch (err) {
     if (err instanceof AiTranslateError) {
-      return res.status(502).json({ message: err.message });
+      return res.status(err.status).json({ message: err.message });
     }
     throw err;
   }
@@ -168,7 +168,7 @@ router.post('/translate-team-member', authenticate, requireAdminRole('SUPER_ADMI
     res.json({ data: translated });
   } catch (err) {
     if (err instanceof AiTranslateError) {
-      return res.status(502).json({ message: err.message });
+      return res.status(err.status).json({ message: err.message });
     }
     throw err;
   }
@@ -193,7 +193,7 @@ router.post('/translate-course', authenticate, requireAdminRole('SUPER_ADMIN', '
     res.json({ data: translated });
   } catch (err) {
     if (err instanceof AiTranslateError) {
-      return res.status(502).json({ message: err.message });
+      return res.status(err.status).json({ message: err.message });
     }
     throw err;
   }
@@ -216,7 +216,7 @@ router.post('/translate-success-story', authenticate, requireAdminRole('SUPER_AD
     res.json({ data: translated });
   } catch (err) {
     if (err instanceof AiTranslateError) {
-      return res.status(502).json({ message: err.message });
+      return res.status(err.status).json({ message: err.message });
     }
     throw err;
   }

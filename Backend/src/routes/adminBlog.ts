@@ -54,7 +54,7 @@ router.post('/generate-ai', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAG
       errorMessage: err instanceof Error ? err.message : 'Unknown error',
     }).catch(() => {});
 
-    if (err instanceof AiAgentError) return res.status(502).json({ message: err.message });
+    if (err instanceof AiAgentError) return res.status(err.status).json({ message: err.message });
     throw err;
   }
 });

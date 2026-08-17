@@ -16,9 +16,11 @@ async function notifyAdmins(title: string, message: string): Promise<void> {
 }
 
 export class BlogAgentError extends Error {
-  constructor(message: string) {
+  status: number;
+  constructor(message: string, status: number = 502) {
     super(message);
     this.name = 'BlogAgentError';
+    this.status = status;
   }
 }
 

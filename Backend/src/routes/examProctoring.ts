@@ -345,7 +345,8 @@ router.post('/sessions', async (req: Request, res: Response) => {
     });
   } catch (err) {
     const message = err instanceof ExamProctoringAiError ? err.message : 'Failed to generate exam questions.';
-    return res.status(502).json({ message });
+    const status = err instanceof ExamProctoringAiError ? err.status : 502;
+    return res.status(status).json({ message });
   }
 
   const session = await prisma.examSession.create({
@@ -458,7 +459,8 @@ router.post('/submissions/:id/generate-retest', async (req: Request, res: Respon
     });
   } catch (err) {
     const message = err instanceof ExamProctoringAiError ? err.message : 'Failed to generate the retest.';
-    return res.status(502).json({ message });
+    const status = err instanceof ExamProctoringAiError ? err.status : 502;
+    return res.status(status).json({ message });
   }
 
   const retestSession = await prisma.examSession.create({

@@ -29,15 +29,29 @@ const ATTEMPTS_PER_MODEL = 2;
 const RETRY_DELAY_MS = 1500;
 
 export class ExamProctoringAiError extends Error {
-  constructor(message: string) {
+  // HTTP status a route should respond with — see classifyGeminiErrorStatus.
+  status: number;
+  constructor(message: string, status: number = 502) {
     super(message);
     this.name = 'ExamProctoringAiError';
+    this.status = status;
   }
 }
 
 function isRetryableGeminiError(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err);
   return /\b(503|429)\b/.test(message) || /overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand/i.test(message);
+}
+
+// Maps a Gemini failure to the HTTP status a route should respond with —
+// same reasoning/thresholds as aiAgentService's identical classifier
+// (duplicated rather than imported, matching this file's own comment on
+// why the retry loop itself is a local copy too).
+function classifyGeminiErrorStatus(err: unknown): number {
+  const message = err instanceof Error ? err.message : String(err);
+  if (/\b429\b/.test(message) || /RESOURCE_EXHAUSTED|quota/i.test(message)) return 429;
+  if (/\b503\b/.test(message) || /UNAVAILABLE|overloaded|high demand/i.test(message)) return 503;
+  return 502;
 }
 
 export interface GeminiJsonResult {
@@ -74,7 +88,10 @@ async function generateJson(prompt: string, temperature: number): Promise<Gemini
         if (!isRetryableGeminiError(err)) {
           throw err instanceof ExamProctoringAiError
             ? err
-            : new ExamProctoringAiError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');
+            : new ExamProctoringAiError(
+                err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.',
+                classifyGeminiErrorStatus(err)
+              );
         }
         if (attempt < ATTEMPTS_PER_MODEL) await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
       }
@@ -82,7 +99,10 @@ async function generateJson(prompt: string, temperature: number): Promise<Gemini
   }
   throw lastErr instanceof ExamProctoringAiError
     ? lastErr
-    : new ExamProctoringAiError(lastErr instanceof Error ? `Gemini request failed: ${lastErr.message}` : 'Gemini request failed.');
+    : new ExamProctoringAiError(
+        lastErr instanceof Error ? `Gemini request failed: ${lastErr.message}` : 'Gemini request failed.',
+        classifyGeminiErrorStatus(lastErr)
+      );
 }
 
 const mcqSchema = z.object({

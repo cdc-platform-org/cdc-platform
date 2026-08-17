@@ -7,9 +7,11 @@ export function isAiTranslateConfigured(): boolean {
 }
 
 export class AiTranslateError extends Error {
-  constructor(message: string) {
+  status: number;
+  constructor(message: string, status: number = 502) {
     super(message);
     this.name = 'AiTranslateError';
+    this.status = status;
   }
 }
 
@@ -26,7 +28,7 @@ async function generateTranslationJson(prompt: string): Promise<string> {
   try {
     return await callTextModel(prompt, 0.3);
   } catch (err) {
-    if (err instanceof AiAgentError) throw new AiTranslateError(err.message);
+    if (err instanceof AiAgentError) throw new AiTranslateError(err.message, err.status);
     throw err;
   }
 }

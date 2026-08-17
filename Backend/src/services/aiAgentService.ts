@@ -50,6 +50,18 @@ function isRetryableGeminiError(err: unknown): boolean {
   return /\b(503|429)\b/.test(message) || /overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand/i.test(message);
 }
 
+// Maps a Gemini failure to the HTTP status a route should actually respond
+// with — 429 for quota/rate-limit exhaustion (the caller should slow down
+// or try again later, same meaning as this app's own rate-limit middleware
+// returning 429), 503 for "temporarily overloaded" (retry shortly, not the
+// caller's fault), 502 for anything else (a genuine upstream failure).
+function classifyGeminiErrorStatus(err: unknown): number {
+  const message = err instanceof Error ? err.message : String(err);
+  if (/\b429\b/.test(message) || /RESOURCE_EXHAUSTED|quota/i.test(message)) return 429;
+  if (/\b503\b/.test(message) || /UNAVAILABLE|overloaded|high demand/i.test(message)) return 503;
+  return 502;
+}
+
 // Cover images go through Pollinations.ai instead of Gemini/Imagen — Imagen
 // (3 or 4) was evaluated first and rejected: Imagen 3 no longer appears in
 // this Google Cloud project's ListModels response at all (superseded),
@@ -66,9 +78,14 @@ const POLLINATIONS_IMAGE_ENDPOINT = 'https://image.pollinations.ai/prompt';
 const IMAGE_GENERATION_TIMEOUT_MS = 60_000;
 
 export class AiAgentError extends Error {
-  constructor(message: string) {
+  // HTTP status a route should respond with — see classifyGeminiErrorStatus.
+  // Defaults to 502 for callers that construct this directly (malformed
+  // response, missing API key, etc.) rather than via the classifier.
+  status: number;
+  constructor(message: string, status: number = 502) {
     super(message);
     this.name = 'AiAgentError';
+    this.status = status;
   }
 }
 
@@ -107,7 +124,10 @@ export async function callTextModel(prompt: string, temperature: number, imagePa
         if (!isRetryableGeminiError(err)) {
           throw err instanceof AiAgentError
             ? err
-            : new AiAgentError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');
+            : new AiAgentError(
+                err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.',
+                classifyGeminiErrorStatus(err)
+              );
         }
         if (attempt < ATTEMPTS_PER_MODEL) {
           await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
@@ -120,7 +140,10 @@ export async function callTextModel(prompt: string, temperature: number, imagePa
   }
   throw lastError instanceof AiAgentError
     ? lastError
-    : new AiAgentError(lastError instanceof Error ? `Gemini request failed: ${lastError.message}` : 'Gemini request failed.');
+    : new AiAgentError(
+        lastError instanceof Error ? `Gemini request failed: ${lastError.message}` : 'Gemini request failed.',
+        classifyGeminiErrorStatus(lastError)
+      );
 }
 
 // ============================================================

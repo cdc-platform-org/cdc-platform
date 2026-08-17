@@ -67,6 +67,30 @@ import { autoApproveOverdueGigs } from './services/gigApprovalService';
 import { cleanupExpiredDeletedAccounts } from './services/accountCleanupService';
 import { pauseExpiredTrialAgents } from './services/agentBillingService';
 
+// ============================================================
+// PROCESS-LEVEL SAFETY NET
+//
+// express-async-errors (imported first, above) already catches a rejected
+// promise thrown INSIDE a route handler and routes it to errorHandler below
+// — that's the normal, expected path for an AI call failing mid-request,
+// and every AI-calling route in this codebase already wraps its call in a
+// try/catch on top of that. This net exists for what neither of those cover:
+// a rejection from a fire-and-forget call (a `.then()`/`.catch()` chain
+// with a bug, a promise nobody awaited) or a genuinely uncaught exception
+// happening outside any request — Node's default behavior for either is to
+// crash the entire process, taking down every in-flight request with it.
+// Logging and continuing is the right tradeoff for THIS app specifically:
+// every route already treats a missing/failed AI response as a clean
+// user-facing error rather than assuming success, so a stray rejection
+// elsewhere reflects a bug in one feature, not corrupted process-wide state
+// that would make continuing to serve other requests unsafe.
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection] Non-fatal — logged and ignored:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException] Non-fatal — logged and ignored:', err);
+});
+
 declare global {
   namespace Express {
     interface Request {

@@ -52,7 +52,7 @@ router.post('/generate', async (req: Request, res: Response) => {
       inputContext: { userId: req.user!.id },
       errorMessage: err instanceof Error ? err.message : 'Unknown error',
     }).catch(() => {});
-    if (err instanceof AiAgentError) return res.status(502).json({ message: err.message });
+    if (err instanceof AiAgentError) return res.status(err.status).json({ message: err.message });
     throw err;
   }
 });

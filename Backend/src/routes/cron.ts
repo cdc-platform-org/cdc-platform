@@ -6,6 +6,7 @@ import { cleanupExpiredDeletedAccounts } from '../services/accountCleanupService
 import { pauseExpiredTrialAgents } from '../services/agentBillingService';
 import { sweepExpiredTrials } from '../services/billingService';
 import { generateAndSaveBlogDraft, BlogAgentError } from '../services/blogAgentService';
+import { AiAgentError } from '../services/aiAgentService';
 
 const router = Router();
 const expectedSecretBuffer = Buffer.from(CRON_SECRET);
@@ -76,7 +77,7 @@ router.post('/generate-blog-draft', requireCronSecret, async (_req: Request, res
     const result = await generateAndSaveBlogDraft();
     res.json({ message: `Drafted blog post "${result.title}" for review.`, ...result });
   } catch (err) {
-    if (err instanceof BlogAgentError) return res.status(502).json({ message: err.message });
+    if (err instanceof BlogAgentError || err instanceof AiAgentError) return res.status(err.status).json({ message: err.message });
     throw err;
   }
 });
