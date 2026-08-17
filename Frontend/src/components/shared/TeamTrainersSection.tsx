@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { TeamMember } from '../../types/teamMember';
 import { getTeamMembers, getTrainers } from '../../services/teamMemberService';
 import { onImageErrorFallback } from '../../utils/imageFallback';
+import { localizeTeamMember } from '../../utils/localizeTeamMember';
 
 interface TeamTrainersSectionProps {
   lang: 'ka' | 'en';
@@ -83,26 +84,29 @@ export default function TeamTrainersSection({ lang }: TeamTrainersSectionProps) 
         <p className="text-xs text-slate-500">{t.empty}</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          {active.map((member) => (
-            <div key={member.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 text-center">
-              {member.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={member.imageUrl}
-                  alt={member.name}
-                  onError={onImageErrorFallback}
-                  className="w-16 h-16 rounded-full mx-auto mb-4 object-cover"
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-full mx-auto mb-4 bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white font-black text-lg">
-                  {initialsOf(member.name)}
-                </div>
-              )}
-              <h3 className="font-black text-sm mb-1">{member.name}</h3>
-              <span className="text-[11px] text-cyan-400 font-bold block mb-3 uppercase tracking-wider">{member.role}</span>
-              {member.bio && <p className="text-xs text-slate-500 leading-relaxed">{member.bio}</p>}
-            </div>
-          ))}
+          {active.map((member) => {
+            const localized = localizeTeamMember(member, lang);
+            return (
+              <div key={member.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 text-center">
+                {member.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={member.imageUrl}
+                    alt={localized.name}
+                    onError={onImageErrorFallback}
+                    className="w-16 h-16 rounded-full mx-auto mb-4 object-cover"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full mx-auto mb-4 bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white font-black text-lg">
+                    {initialsOf(localized.name)}
+                  </div>
+                )}
+                <h3 className="font-black text-sm mb-1">{localized.name}</h3>
+                <span className="text-[11px] text-cyan-400 font-bold block mb-3 uppercase tracking-wider">{localized.role}</span>
+                {localized.bio && <p className="text-xs text-slate-500 leading-relaxed">{localized.bio}</p>}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

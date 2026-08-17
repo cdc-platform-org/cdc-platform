@@ -21,9 +21,16 @@ router.post('/', async (req: Request, res: Response) => {
   const result = teamMemberCreateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
-  const { bio, imageUrl, ...rest } = result.data;
+  const { bio, bioEn, nameEn, roleEn, imageUrl, ...rest } = result.data;
   const member = await prisma.teamMember.create({
-    data: { ...rest, bio: bio || null, imageUrl: imageUrl || null },
+    data: {
+      ...rest,
+      bio: bio || null,
+      bioEn: bioEn || null,
+      nameEn: nameEn || null,
+      roleEn: roleEn || null,
+      imageUrl: imageUrl || null,
+    },
   });
   await logAdminAction({ action: 'team-member.create', targetType: 'TeamMember', targetId: member.id, performedById: req.user!.id });
   res.status(201).json({ data: member });
@@ -33,7 +40,7 @@ router.put('/:id', async (req: Request, res: Response) => {
   const result = teamMemberUpdateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
-  const { bio, imageUrl, ...rest } = result.data;
+  const { bio, bioEn, nameEn, roleEn, imageUrl, ...rest } = result.data;
   try {
     // Read the pre-update imageUrl only when it's actually changing, so a
     // save that doesn't touch the photo skips the extra query entirely —
@@ -48,6 +55,9 @@ router.put('/:id', async (req: Request, res: Response) => {
       data: {
         ...rest,
         ...(bio !== undefined && { bio: bio || null }),
+        ...(bioEn !== undefined && { bioEn: bioEn || null }),
+        ...(nameEn !== undefined && { nameEn: nameEn || null }),
+        ...(roleEn !== undefined && { roleEn: roleEn || null }),
         ...(imageUrl !== undefined && { imageUrl: imageUrl || null }),
       },
     });

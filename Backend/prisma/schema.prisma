@@ -2406,6 +2406,14 @@ model TeamMember {
   name      String
   role      String
   bio       String?
+  // Optional English twins — same "falls back to Georgian when unset"
+  // convention as mentorTitleEn/bioEn on User, StudioCaseStudy.titleEn,
+  // etc. Never required: adding a team member/trainer only in Georgian is
+  // fine, the public /trainers and homepage Team section just render the
+  // Georgian text on the English locale too until these are filled in.
+  nameEn    String?
+  roleEn    String?
+  bioEn     String?
   // Uploaded via the same Bunny Storage pipeline as SuccessStory.avatarUrl —
   // never a freely-settable external URL.
   imageUrl  String?

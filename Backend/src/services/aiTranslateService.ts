@@ -219,6 +219,60 @@ bio: ${params.bio}`;
   return result.data;
 }
 
+const teamMemberTranslationResponseSchema = z.object({
+  nameEn: z.string(),
+  roleEn: z.string(),
+  bioEn: z.string(),
+});
+
+export interface TranslateTeamMemberParams {
+  name: string;
+  role: string;
+  bio: string;
+}
+
+export interface TranslateTeamMemberResult {
+  nameEn: string;
+  roleEn: string;
+  bioEn: string;
+}
+
+// Same shape/reasoning as translateMentorProfile above — used by the "✨
+// Auto-Translate to English" button in /admin/team-trainers. `name` is a
+// person's name, not translated for meaning like role/bio — transliterated
+// to its standard Latin-script spelling instead (e.g. "ია თავდიშვილი" ->
+// "Ia Tavdishvili"), same posture as SuccessStory's studentName being left
+// untouched, just applied via transliteration here since this field IS
+// shown in both locales (unlike studentName, which stays single-language).
+export async function translateTeamMember(params: TranslateTeamMemberParams): Promise<TranslateTeamMemberResult> {
+  const prompt = `Translate the following Georgian CDC team member / trainer profile fields for a public "About" page and trainer directory.
+- "name" is a person's name — transliterate it to its standard Latin-script spelling (e.g. "ია თავდიშვილი" -> "Ia Tavdishvili"), do not translate its meaning.
+- "role" and "bio" should be translated into natural, fluent English. Preserve meaning and tone; do not summarize or shorten.
+
+Respond with strict JSON matching this shape:
+{"nameEn": string, "roleEn": string, "bioEn": string}
+
+name: ${params.name}
+role: ${params.role}
+bio: ${params.bio}`;
+
+  const raw = await generateTranslationJson(prompt);
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new AiTranslateError('Gemini returned malformed JSON.');
+  }
+
+  const result = teamMemberTranslationResponseSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new AiTranslateError('Gemini returned an unexpected translation format.');
+  }
+
+  return result.data;
+}
+
 // --- Course / curriculum translation ---
 //
 // Unlike the three functions above (which always translate one fixed set of

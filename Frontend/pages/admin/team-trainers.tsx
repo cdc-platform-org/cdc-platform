@@ -12,6 +12,7 @@ import {
   updateTeamMember,
   deleteTeamMember,
   uploadTeamMemberPhoto,
+  translateTeamMember,
   TeamMemberPayload,
 } from '../../src/services/teamMemberService';
 
@@ -19,6 +20,9 @@ const emptyForm: TeamMemberPayload = {
   name: '',
   role: '',
   bio: '',
+  nameEn: '',
+  roleEn: '',
+  bioEn: '',
   imageUrl: '',
   type: 'MANAGEMENT',
   active: true,
@@ -39,6 +43,9 @@ function AdminTeamTrainersDashboard() {
   const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeLangTab, setActiveLangTab] = useState<'ka' | 'en'>('ka');
+  const [translating, setTranslating] = useState(false);
+  const [translateError, setTranslateError] = useState<string | null>(null);
 
   const loadMembers = useCallback(async () => {
     setLoading(true);
@@ -60,6 +67,8 @@ function AdminTeamTrainersDashboard() {
     setForm(emptyForm);
     setEditingId(null);
     setFormError(null);
+    setTranslateError(null);
+    setActiveLangTab('ka');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -69,12 +78,39 @@ function AdminTeamTrainersDashboard() {
       name: member.name,
       role: member.role,
       bio: member.bio ?? '',
+      nameEn: member.nameEn ?? '',
+      roleEn: member.roleEn ?? '',
+      bioEn: member.bioEn ?? '',
       imageUrl: member.imageUrl ?? '',
       type: member.type,
       active: member.active,
     });
     setFormError(null);
+    setTranslateError(null);
+    setActiveLangTab('ka');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleAutoTranslate = async () => {
+    setTranslateError(null);
+    if (form.name.trim().length < 2 || form.role.trim().length < 2) {
+      setTranslateError('Fill in the Georgian Name and Position before translating.');
+      return;
+    }
+    setTranslating(true);
+    try {
+      const translated = await translateTeamMember({
+        name: form.name.trim(),
+        role: form.role.trim(),
+        bio: (form.bio ?? '').trim(),
+      });
+      setForm((f) => ({ ...f, nameEn: translated.nameEn, roleEn: translated.roleEn, bioEn: translated.bioEn }));
+      setActiveLangTab('en');
+    } catch (err: any) {
+      setTranslateError(err?.response?.data?.message ?? 'Translation failed. Please try again.');
+    } finally {
+      setTranslating(false);
+    }
   };
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -108,6 +144,9 @@ function AdminTeamTrainersDashboard() {
         name: form.name.trim(),
         role: form.role.trim(),
         bio: form.bio?.trim() || null,
+        nameEn: form.nameEn?.trim() || null,
+        roleEn: form.roleEn?.trim() || null,
+        bioEn: form.bioEn?.trim() || null,
         imageUrl: form.imageUrl?.trim() || null,
         type: form.type,
         active: form.active,
@@ -216,29 +255,6 @@ function AdminTeamTrainersDashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">სახელი გვარი</label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className={inputClass}
-                  placeholder="ია თავდიშვილი"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">პოზიცია</label>
-                <input
-                  type="text"
-                  value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value })}
-                  className={inputClass}
-                  placeholder="დირექტორი"
-                />
-              </div>
-            </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">ტიპი</label>
               <select
@@ -251,16 +267,103 @@ function AdminTeamTrainersDashboard() {
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">აღწერა / ბიოგრაფია</label>
-              <textarea
-                rows={4}
-                value={form.bio ?? ''}
-                onChange={(e) => setForm({ ...form, bio: e.target.value })}
-                className={inputClass}
-                placeholder="მოკლე აღწერა როლისა და გამოცდილების შესახებ..."
-              />
+            <div className="flex items-center justify-between border-b border-gray-200 mb-1">
+              <div className="flex gap-1">
+                {(['ka', 'en'] as const).map((tabLang) => (
+                  <button
+                    key={tabLang}
+                    type="button"
+                    onClick={() => setActiveLangTab(tabLang)}
+                    className={`px-3.5 py-2 text-xs font-semibold border-b-2 -mb-px transition-colors bg-transparent cursor-pointer ${
+                      activeLangTab === tabLang ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-400 hover:text-gray-600'
+                    }`}
+                  >
+                    {tabLang === 'ka' ? 'GE ქართული' : 'GB English'}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={handleAutoTranslate}
+                disabled={translating}
+                className="mb-1.5 text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg disabled:opacity-60"
+              >
+                {translating ? 'Translating…' : '✨ Auto-Translate to English'}
+              </button>
             </div>
+            {translateError && <p className="text-xs text-red-600 mb-1">{translateError}</p>}
+
+            {activeLangTab === 'ka' ? (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">სახელი გვარი</label>
+                    <input
+                      type="text"
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      className={inputClass}
+                      placeholder="ია თავდიშვილი"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">პოზიცია</label>
+                    <input
+                      type="text"
+                      value={form.role}
+                      onChange={(e) => setForm({ ...form, role: e.target.value })}
+                      className={inputClass}
+                      placeholder="დირექტორი"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">აღწერა / ბიოგრაფია</label>
+                  <textarea
+                    rows={4}
+                    value={form.bio ?? ''}
+                    onChange={(e) => setForm({ ...form, bio: e.target.value })}
+                    className={inputClass}
+                    placeholder="მოკლე აღწერა როლისა და გამოცდილების შესახებ..."
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
+                    <input
+                      type="text"
+                      value={form.nameEn ?? ''}
+                      onChange={(e) => setForm({ ...form, nameEn: e.target.value })}
+                      className={inputClass}
+                      placeholder="Ia Tavdishvili"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Position</label>
+                    <input
+                      type="text"
+                      value={form.roleEn ?? ''}
+                      onChange={(e) => setForm({ ...form, roleEn: e.target.value })}
+                      className={inputClass}
+                      placeholder="Director"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Bio</label>
+                  <textarea
+                    rows={4}
+                    value={form.bioEn ?? ''}
+                    onChange={(e) => setForm({ ...form, bioEn: e.target.value })}
+                    className={inputClass}
+                    placeholder="A short description of the role and experience..."
+                  />
+                </div>
+              </>
+            )}
 
             <label className="flex items-center gap-2 text-sm text-gray-600">
               <input

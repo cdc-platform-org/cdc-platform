@@ -5,6 +5,11 @@ export interface TeamMember {
   name: string;
   role: string;
   bio: string | null;
+  // Optional English twins — falls back to the Georgian field when unset,
+  // same convention as User.mentorTitleEn/bioEn.
+  nameEn: string | null;
+  roleEn: string | null;
+  bioEn: string | null;
   imageUrl: string | null;
   type: TeamMemberType;
   order: number;

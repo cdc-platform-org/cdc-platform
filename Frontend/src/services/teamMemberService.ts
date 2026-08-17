@@ -19,6 +19,9 @@ export interface TeamMemberPayload {
   name: string;
   role: string;
   bio?: string | null;
+  nameEn?: string | null;
+  roleEn?: string | null;
+  bioEn?: string | null;
   imageUrl?: string | null;
   type: TeamMemberType;
   order?: number;
@@ -42,6 +45,17 @@ export async function updateTeamMember(id: string, payload: Partial<TeamMemberPa
 
 export async function deleteTeamMember(id: string): Promise<void> {
   await apiClient.delete(`/admin/team/${id}`);
+}
+
+export interface TranslateTeamMemberResult {
+  nameEn: string;
+  roleEn: string;
+  bioEn: string;
+}
+
+export async function translateTeamMember(payload: { name: string; role: string; bio: string }): Promise<TranslateTeamMemberResult> {
+  const response = await apiClient.post<{ data: TranslateTeamMemberResult }>('/ai/translate-team-member', payload);
+  return response.data.data;
 }
 
 export async function uploadTeamMemberPhoto(file: File): Promise<string> {

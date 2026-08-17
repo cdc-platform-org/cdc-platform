@@ -8,6 +8,7 @@ import BackButton from '../../src/components/common/BackButton';
 import { TeamMember } from '../../src/types/teamMember';
 import { getTrainers } from '../../src/services/teamMemberService';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
+import { localizeTeamMember } from '../../src/utils/localizeTeamMember';
 
 const dict = {
   ka: {
@@ -66,34 +67,37 @@ export default function TrainersPage() {
           <p className="text-slate-500 dark:text-slate-400 text-sm">{t.empty}</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {trainers.map((trainer) => (
-              <div
-                key={trainer.id}
-                className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-[0_0_25px_rgba(34,211,238,0.15)]"
-              >
-                {trainer.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={trainer.imageUrl}
-                    alt={trainer.name}
-                    onError={onImageErrorFallback}
-                    className="w-20 h-20 rounded-full mx-auto mb-5 object-cover"
-                  />
-                ) : (
-                  <div className="w-20 h-20 rounded-full mx-auto mb-5 bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white font-black text-xl">
-                    {trainer.name
-                      .split(' ')
-                      .map((part) => part.charAt(0))
-                      .slice(0, 2)
-                      .join('')
-                      .toUpperCase()}
-                  </div>
-                )}
-                <h3 className="font-black text-lg text-center mb-1">{trainer.name}</h3>
-                <span className="text-[11px] text-cyan-500 font-bold block mb-4 uppercase tracking-wider text-center">{trainer.role}</span>
-                {trainer.bio && <p className="text-sm text-slate-400 leading-relaxed font-medium text-center">{trainer.bio}</p>}
-              </div>
-            ))}
+            {trainers.map((trainer) => {
+              const localized = localizeTeamMember(trainer, lang);
+              return (
+                <div
+                  key={trainer.id}
+                  className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-[0_0_25px_rgba(34,211,238,0.15)]"
+                >
+                  {trainer.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={trainer.imageUrl}
+                      alt={localized.name}
+                      onError={onImageErrorFallback}
+                      className="w-20 h-20 rounded-full mx-auto mb-5 object-cover"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-full mx-auto mb-5 bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white font-black text-xl">
+                      {localized.name
+                        .split(' ')
+                        .map((part) => part.charAt(0))
+                        .slice(0, 2)
+                        .join('')
+                        .toUpperCase()}
+                    </div>
+                  )}
+                  <h3 className="font-black text-lg text-center mb-1">{localized.name}</h3>
+                  <span className="text-[11px] text-cyan-500 font-bold block mb-4 uppercase tracking-wider text-center">{localized.role}</span>
+                  {localized.bio && <p className="text-sm text-slate-400 leading-relaxed font-medium text-center">{localized.bio}</p>}
+                </div>
+              );
+            })}
           </div>
         )}
 
