@@ -129,12 +129,16 @@ router.post('/users/:id/ban', async (req: Request, res: Response) => {
 // the user's own "Forgot password?" flow sends (routes/auth.ts's
 // POST /forgot-password). Lets support actually help a user locked out of
 // their email too, unlike the self-serve flow.
+//
+// Google-linked accounts are allowed through deliberately: routes/auth.ts's
+// POST /reset-password already sets `password` unconditionally (no googleId
+// check) and POST /login has no googleId gate either, so completing this
+// flow just gives a Google-only account a real, usable password — letting
+// them sign in with either method going forward, same as linking normally
+// happens on first Google login for an existing email/password account.
 router.post('/users/:id/reset-password', requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   const user = await prisma.user.findUnique({ where: { id: req.params.id } });
   if (!user) return res.status(404).json({ message: 'User not found.' });
-  if (user.googleId) {
-    return res.status(400).json({ message: 'This account signs in via Google and has no password to reset.' });
-  }
 
   const token = crypto.randomBytes(32).toString('hex');
   await prisma.user.update({
