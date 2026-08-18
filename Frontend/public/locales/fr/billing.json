@@ -1,0 +1,36 @@
+{
+  "pageTitle": "Paiements et facturation",
+  "loading": "Chargement…",
+  "loadError": "Impossible de charger vos informations de facturation. Veuillez réessayer.",
+  "removeError": "Impossible de supprimer ce moyen de paiement. Veuillez réessayer.",
+  "downloadError": "Impossible de télécharger cette facture. Veuillez réessayer.",
+  "savedCards": {
+    "title": "Moyens de paiement enregistrés",
+    "empty": "Vous n'avez pas encore de moyen de paiement enregistré.",
+    "default": "Par défaut",
+    "remove": "Supprimer",
+    "removing": "Suppression…",
+    "confirmRemove": "Supprimer cette carte ?",
+    "confirmYes": "Oui, supprimer",
+    "confirmNo": "Annuler"
+  },
+  "billingHistory": {
+    "title": "Historique de facturation",
+    "empty": "Vous n'avez pas encore de facture.",
+    "download": "Télécharger le PDF",
+    "columns": {
+      "invoice": "Facture",
+      "description": "Description",
+      "amount": "Montant",
+      "status": "Statut",
+      "date": "Date",
+      "actions": "Actions"
+    },
+    "status": {
+      "paid": "Payée",
+      "pending": "En attente",
+      "failed": "Échouée",
+      "refunded": "Remboursée"
+    }
+  }
+}

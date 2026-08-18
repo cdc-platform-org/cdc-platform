@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import { GetStaticProps } from 'next';
+import { useTranslation } from 'next-i18next';
+import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { Calendar, Wallet, Settings, Plus, Trash2, ArrowRight } from 'lucide-react';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import RoleGate from '../../src/components/auth/RoleGate';
@@ -20,65 +23,6 @@ import { getWalletSummary, createPayoutRequest, getMyPayoutRequests, WalletSumma
 const DAYS_KA = ['კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი'];
 const DAYS_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-const dict = {
-  ka: {
-    title: 'მენტორის სამუშაო სივრცე',
-    sessionsLink: 'ჩემი სესიები',
-    sessionsHint: 'დაჯავშნილი სესიების სია, კალენდარი და ჩართვის ბმულების მართვა',
-    rateTitle: 'საათობრივი ტარიფი და პროფილი',
-    hourlyRate: 'საათობრივი ტარიფი',
-    title2: 'თანამდებობა / სპეციალობა',
-    profileManagedByAdmin: 'თქვენი პროფილი (ტარიფი, თანამდებობა, უნარები) იმართება CDC ადმინისტრაციის მიერ. ცვლილების მოთხოვნისთვის დაუკავშირდით მხარდაჭერას.',
-    notSet: 'არ არის მითითებული',
-    availabilityTitle: 'ხელმისაწვდომობის განრიგი',
-    availabilityHint: 'დაამატეთ დროის შუალედები, როდესაც სტუდენტებს შეუძლიათ სესიის დაჯავშნა.',
-    addSlot: 'შუალედის დამატება',
-    day: 'დღე',
-    from: 'დან',
-    to: 'მდე',
-    noSlots: 'ჯერ არცერთი ხელმისაწვდომობის შუალედი არ გაქვთ დამატებული.',
-    earningsTitle: 'შემოსავალი და გატანა',
-    availableBalance: 'ხელმისაწვდომი ბალანსი',
-    requestPayout: 'თანხის გატანა',
-    amount: 'თანხა (₾)',
-    iban: 'IBAN',
-    ibanHint: 'ცარიელი დატოვეთ, პროფილში შენახული IBAN-ის გამოსაყენებლად.',
-    submit: 'მოთხოვნის გაგზავნა',
-    submitting: 'იგზავნება…',
-    payoutHistory: 'გატანის ისტორია',
-    noPayouts: 'ჯერ არცერთი მოთხოვნა არ გაქვთ.',
-    error: 'შეცდომა დაფიქსირდა. სცადეთ ხელახლა.',
-  },
-  en: {
-    title: 'Mentor Workspace',
-    sessionsLink: 'My Sessions',
-    sessionsHint: 'Booked session list, calendar, and meeting-link management',
-    rateTitle: 'Hourly Rate & Profile',
-    hourlyRate: 'Hourly Rate',
-    title2: 'Title / Specialty',
-    profileManagedByAdmin: 'Your profile (rate, title, skills) is managed by CDC admin. Contact support to request a change.',
-    notSet: 'Not set',
-    availabilityTitle: 'Availability Schedule',
-    availabilityHint: 'Add time slots when students can book a session with you.',
-    addSlot: 'Add Slot',
-    day: 'Day',
-    from: 'From',
-    to: 'To',
-    noSlots: "You haven't added any availability slots yet.",
-    earningsTitle: 'Earnings & Withdrawal',
-    availableBalance: 'Available Balance',
-    requestPayout: 'Request a Payout',
-    amount: 'Amount (₾)',
-    iban: 'IBAN',
-    ibanHint: 'Leave blank to use the IBAN saved in your account settings.',
-    submit: 'Submit Request',
-    submitting: 'Submitting…',
-    payoutHistory: 'Payout History',
-    noPayouts: 'No payout requests yet.',
-    error: 'Something went wrong. Please try again.',
-  },
-} as const;
-
 function minutesToTime(minutes: number): string {
   const h = Math.floor(minutes / 60).toString().padStart(2, '0');
   const m = (minutes % 60).toString().padStart(2, '0');
@@ -92,7 +36,7 @@ function timeToMinutes(time: string): number {
 function MentorshipWorkspaceContent() {
   const router = useRouter();
   const lang = router.locale === 'en' ? 'en' : 'ka';
-  const t = dict[lang];
+  const { t } = useTranslation('mentorship');
   const days = lang === 'en' ? DAYS_EN : DAYS_KA;
 
   const [profile, setProfile] = useState<MentorProfile | null>(null);
@@ -129,7 +73,7 @@ function MentorshipWorkspaceContent() {
       const rule = await createMyAvailabilityRule({ dayOfWeek: newDay, startMinute: timeToMinutes(newFrom), endMinute: timeToMinutes(newTo) });
       setRules((prev) => [...prev, rule].sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startMinute - b.startMinute));
     } catch {
-      setError(t.error);
+      setError(t('workspaceError'));
     } finally {
       setAddingRule(false);
     }
@@ -140,7 +84,7 @@ function MentorshipWorkspaceContent() {
     try {
       await deleteMyAvailabilityRule(ruleId);
     } catch {
-      setError(t.error);
+      setError(t('workspaceError'));
       load();
     }
   };
@@ -156,7 +100,7 @@ function MentorshipWorkspaceContent() {
       getWalletSummary().then(setWallet).catch(() => {});
       getMyPayoutRequests().then(setPayoutRequests).catch(() => {});
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? t.error);
+      setError(err?.response?.data?.message ?? t('workspaceError'));
     } finally {
       setSubmittingPayout(false);
     }
@@ -167,7 +111,7 @@ function MentorshipWorkspaceContent() {
       <SiteHeader />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 flex-1 w-full">
         <BackButton fallbackHref="/" className="mb-4" />
-        <h1 className="text-2xl font-black mb-6 flex items-center gap-2">{t.title}</h1>
+        <h1 className="text-2xl font-black mb-6 flex items-center gap-2">{t('workspaceTitle')}</h1>
 
         {error && (
           <div className="mb-6 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-600 dark:text-red-300">{error}</div>
@@ -180,38 +124,38 @@ function MentorshipWorkspaceContent() {
           <div className="flex items-center gap-3">
             <Calendar className="w-6 h-6 text-cyan-500" />
             <div>
-              <p className="font-bold text-sm">{t.sessionsLink}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{t.sessionsHint}</p>
+              <p className="font-bold text-sm">{t('sessionsLink')}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t('sessionsHint')}</p>
             </div>
           </div>
           <ArrowRight className="w-4 h-4 text-slate-400" />
         </Link>
 
         <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 p-6 mb-6">
-          <h2 className="text-sm font-bold mb-4 flex items-center gap-2"><Settings className="w-4 h-4" /> {t.rateTitle}</h2>
+          <h2 className="text-sm font-bold mb-4 flex items-center gap-2"><Settings className="w-4 h-4" /> {t('rateTitle')}</h2>
           <div className="grid sm:grid-cols-2 gap-4 mb-4">
             <div>
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t.hourlyRate}</p>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('hourlyRate')}</p>
               <p className="text-sm font-bold text-slate-900 dark:text-white">
-                {profile?.mentorHourlyRate != null ? `${(profile.mentorHourlyRate / 100).toFixed(2)} ₾` : t.notSet}
+                {profile?.mentorHourlyRate != null ? `${(profile.mentorHourlyRate / 100).toFixed(2)} ₾` : t('notSet')}
               </p>
             </div>
             <div>
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t.title2}</p>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('title2')}</p>
               <p className="text-sm font-bold text-slate-900 dark:text-white">
-                {(lang === 'en' && profile?.mentorTitleEn) || profile?.mentorTitle || t.notSet}
+                {(lang === 'en' && profile?.mentorTitleEn) || profile?.mentorTitle || t('notSet')}
               </p>
             </div>
           </div>
-          <p className="text-[11px] text-slate-400 dark:text-slate-500">{t.profileManagedByAdmin}</p>
+          <p className="text-[11px] text-slate-400 dark:text-slate-500">{t('profileManagedByAdmin')}</p>
         </div>
 
         <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 p-6 mb-6">
-          <h2 className="text-sm font-bold mb-1">{t.availabilityTitle}</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t.availabilityHint}</p>
+          <h2 className="text-sm font-bold mb-1">{t('availabilityTitle')}</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t('availabilityHint')}</p>
 
           {rules.length === 0 ? (
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t.noSlots}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t('availabilityNoSlots')}</p>
           ) : (
             <div className="space-y-2 mb-4">
               {rules.map((rule) => (
@@ -234,7 +178,7 @@ function MentorshipWorkspaceContent() {
 
           <div className="flex flex-wrap items-end gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t.day}</label>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('day')}</label>
               <select value={newDay} onChange={(e) => setNewDay(Number(e.target.value))} className="rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 px-3 py-2 text-sm">
                 {days.map((d, i) => (
                   <option key={i} value={i}>{d}</option>
@@ -242,11 +186,11 @@ function MentorshipWorkspaceContent() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t.from}</label>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('from')}</label>
               <input type="time" value={newFrom} onChange={(e) => setNewFrom(e.target.value)} className="rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 px-3 py-2 text-sm" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t.to}</label>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('to')}</label>
               <input type="time" value={newTo} onChange={(e) => setNewTo(e.target.value)} className="rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 px-3 py-2 text-sm" />
             </div>
             <button
@@ -255,50 +199,50 @@ function MentorshipWorkspaceContent() {
               disabled={addingRule}
               className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white disabled:opacity-60"
             >
-              <Plus className="w-3.5 h-3.5" /> {t.addSlot}
+              <Plus className="w-3.5 h-3.5" /> {t('addSlot')}
             </button>
           </div>
         </div>
 
         <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 p-6">
-          <h2 className="text-sm font-bold mb-4 flex items-center gap-2"><Wallet className="w-4 h-4" /> {t.earningsTitle}</h2>
+          <h2 className="text-sm font-bold mb-4 flex items-center gap-2"><Wallet className="w-4 h-4" /> {t('earningsTitle')}</h2>
           <div className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 p-5 text-white mb-5">
-            <p className="text-xs opacity-80 mb-1">{t.availableBalance}</p>
+            <p className="text-xs opacity-80 mb-1">{t('availableBalance')}</p>
             <p className="text-2xl font-black">{((wallet?.earningsBalance ?? 0) / 100).toFixed(2)} ₾</p>
           </div>
 
-          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">{t.requestPayout}</h3>
+          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">{t('requestPayout')}</h3>
           <div className="grid sm:grid-cols-2 gap-3 mb-3">
             <input
               type="number"
               min="0"
               step="0.01"
-              placeholder={t.amount}
+              placeholder={t('amount') as string}
               value={payoutAmount}
               onChange={(e) => setPayoutAmount(e.target.value)}
               className="rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 px-3.5 py-2.5 text-sm"
             />
             <input
               type="text"
-              placeholder={t.iban}
+              placeholder={t('iban') as string}
               value={payoutIban}
               onChange={(e) => setPayoutIban(e.target.value)}
               className="rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 px-3.5 py-2.5 text-sm"
             />
           </div>
-          <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-3">{t.ibanHint}</p>
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-3">{t('ibanHint')}</p>
           <button
             type="button"
             onClick={handleRequestPayout}
             disabled={submittingPayout || !payoutAmount}
             className="text-xs font-bold px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-cyan-600 text-white disabled:opacity-60 mb-6"
           >
-            {submittingPayout ? t.submitting : t.submit}
+            {submittingPayout ? t('submitting') : t('submit')}
           </button>
 
-          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">{t.payoutHistory}</h3>
+          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">{t('payoutHistory')}</h3>
           {payoutRequests.length === 0 ? (
-            <p className="text-xs text-slate-500 dark:text-slate-400">{t.noPayouts}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t('noPayouts')}</p>
           ) : (
             <div className="space-y-2">
               {payoutRequests.map((p) => (
@@ -332,3 +276,7 @@ export default function MentorshipWorkspacePage() {
     </ProtectedRoute>
   );
 }
+
+export const getStaticProps: GetStaticProps = async ({ locale }) => ({
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['mentorship'])) },
+});

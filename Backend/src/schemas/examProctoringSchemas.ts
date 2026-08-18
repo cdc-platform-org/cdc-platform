@@ -26,15 +26,17 @@ export const startExamAttemptSchema = z.object({
 // answers keys are ExamQuestion ids; MCQ values are 'A'-'D', PRACTICAL/CODE
 // values are free text — both stored as plain strings, validated against
 // the actual question set server-side at grading time.
+//
+// Deliberately does NOT accept tabSwitches/copyPasteCount/proctoringViolations/
+// disqualified from the client anymore — a candidate calling this endpoint
+// directly could set those to anything. routes/examProctoring.ts now
+// recomputes all of them from this submission's ProctoringEvent rows (see
+// POST /submissions/:token/events, logged via proctoringEventSchema below,
+// one per real violation, timestamped by server receipt).
 export const submitExamAttemptSchema = z.object({
   answers: z.record(z.string(), z.string().max(5000)),
-  // Real-time proctoring counts reported by the client — tabSwitches
-  // (visibilitychange) and copyPasteCount (paste event) tracked separately
-  // for the business's report; proctoringViolations is their sum and stays
-  // the FLAG_THRESHOLD source of truth (same field name/meaning as before
-  // this was split out, so old clients sending only that still work).
-  tabSwitches: z.number().int().min(0).max(1000).default(0),
-  copyPasteCount: z.number().int().min(0).max(1000).default(0),
-  proctoringViolations: z.number().int().min(0).max(1000).default(0),
-  disqualified: z.boolean().optional(),
+});
+
+export const proctoringEventSchema = z.object({
+  type: z.enum(['TAB_SWITCH', 'COPY_PASTE']),
 });

@@ -1,35 +1,83 @@
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/router';
 
+// Each language labeled in its own script/name (matching how "ქართული"/
+// "English" already worked before this was a dropdown) — never translate a
+// language's own name into another language.
 const locales = [
   { code: 'ka', label: 'ქართული' },
   { code: 'en', label: 'English' },
+  { code: 'de', label: 'Deutsch' },
+  { code: 'es', label: 'Español' },
+  { code: 'fr', label: 'Français' },
+  { code: 'uk', label: 'Українська' },
 ];
 
+// Was 6 inline buttons before this file grew from 2 languages to 6 — that
+// stopped fitting in SiteHeader's already-tight actions cluster (language +
+// theme toggle + notifications + user menu + burger, all shrink-0). Same
+// click-outside dropdown pattern as UserMenu.tsx for consistency.
 export default function LanguageSwitcher() {
   const router = useRouter();
   const { pathname, asPath, query, locale: currentLocale } = router;
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
+  const current = locales.find((l) => l.code === currentLocale) ?? locales[0];
 
   const switchLocale = (nextLocale: string) => {
+    setOpen(false);
     router.push({ pathname, query }, asPath, { locale: nextLocale });
   };
 
   return (
-    <div className="flex items-center gap-1 text-sm">
-      {locales.map(({ code, label }) => (
-        <button
-          key={code}
-          type="button"
-          onClick={() => switchLocale(code)}
-          disabled={currentLocale === code}
-          className={
-            currentLocale === code
-              ? 'px-2.5 py-1 rounded-md bg-indigo-600 text-white font-medium cursor-default'
-              : 'px-2.5 py-1 rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors'
-          }
+    <div className="relative" ref={menuRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Change language"
+        className="flex items-center gap-1 px-2 py-1.5 rounded-lg border-none bg-transparent cursor-pointer text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+      >
+        <span aria-hidden="true">🌐</span>
+        <span className="uppercase">{current.code}</span>
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 mt-2 w-40 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0e1422] shadow-xl py-1 z-50"
         >
-          {label}
-        </button>
-      ))}
+          {locales.map(({ code, label }) => (
+            <button
+              key={code}
+              type="button"
+              role="menuitem"
+              onClick={() => switchLocale(code)}
+              disabled={currentLocale === code}
+              className={
+                currentLocale === code
+                  ? 'w-full text-left px-4 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border-none cursor-default'
+                  : 'w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-transparent border-none cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800'
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

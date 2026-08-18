@@ -1,0 +1,45 @@
+{
+  "pageTitle": "Paramètres du compte",
+  "backToHome": "← Retour à l'accueil",
+  "paymentSection": {
+    "title": "Moyen de paiement enregistré",
+    "empty": "Vous n'avez pas encore de moyen de paiement enregistré.",
+    "default": "Par défaut",
+    "expires": "Expire",
+    "deleteButton": "Supprimer la carte",
+    "removing": "Suppression…",
+    "removeError": "Impossible de supprimer ce moyen de paiement. Veuillez réessayer.",
+    "loading": "Chargement…"
+  },
+  "removeCardModal": {
+    "title": "Supprimer cette carte ?",
+    "body": "Cette action supprimera définitivement de votre compte la carte se terminant par {{last4}}.",
+    "cancel": "Annuler",
+    "confirm": "Supprimer la carte",
+    "confirming": "Suppression…"
+  },
+  "dangerZone": {
+    "title": "Zone de danger",
+    "description": "La suppression de votre compte est définitive — passé le délai de grâce de 60 jours, elle est irréversible.",
+    "deleteAccountButton": "Supprimer le compte"
+  },
+  "deleteAccountModal": {
+    "title": "Supprimer le compte",
+    "warning": "Êtes-vous sûr de vouloir supprimer votre compte ? Votre profil sera désactivé puis définitivement supprimé de nos serveurs dans 60 jours.",
+    "confirmMethodLabel": "Confirmez avec votre mot de passe, ou tapez DELETE ci-dessous",
+    "passwordLabel": "Mot de passe",
+    "passwordPlaceholder": "Saisissez votre mot de passe actuel",
+    "orDivider": "OU",
+    "confirmTextLabel": "Tapez DELETE pour confirmer",
+    "confirmTextPlaceholder": "DELETE",
+    "cancel": "Annuler",
+    "confirm": "Supprimer mon compte",
+    "confirming": "Suppression…",
+    "error": "Impossible de supprimer votre compte. Veuillez réessayer.",
+    "validation": "Saisissez votre mot de passe ou tapez DELETE pour confirmer.",
+    "wrongPassword": "Mot de passe incorrect."
+  },
+  "toast": {
+    "accountDeleted": "Votre compte a été supprimé avec succès."
+  }
+}

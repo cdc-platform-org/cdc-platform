@@ -33,6 +33,10 @@ router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODER
     vacanciesByStatus,
     volumeAgg,
     salesVolumeAgg,
+    openDisputes,
+    pendingPayouts,
+    examSubmissionsByStatus,
+    flaggedSubmissionsLast7Days,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { status: 'PENDING_APPROVAL' } }),
@@ -53,7 +57,15 @@ router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODER
       _sum: { amount: true },
       _count: { _all: true },
     }),
+    prisma.dispute.count({ where: { status: 'OPEN' } }),
+    prisma.payoutRequest.count({ where: { status: 'PENDING' } }),
+    prisma.examSubmission.groupBy({ by: ['status'], _count: { _all: true } }),
+    prisma.examSubmission.count({
+      where: { status: 'FLAGGED', startedAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+    }),
   ]);
+
+  const examStatusCounts = Object.fromEntries(examSubmissionsByStatus.map((s) => [s.status, s._count._all]));
 
   const gigStatusCounts = Object.fromEntries(gigsByStatus.map((g) => [g.status, g._count._all]));
   const vacancyStatusCounts = Object.fromEntries(vacanciesByStatus.map((v) => [v.status, v._count._all]));
@@ -84,6 +96,19 @@ router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODER
       totalCommissionAmount: volumeAgg._sum.commissionAmount ?? 0,
       totalNetAmount: volumeAgg._sum.netAmount ?? 0,
       transactionCount: volumeAgg._count._all + salesVolumeAgg._count._all,
+    },
+    disputes: {
+      open: openDisputes,
+    },
+    payouts: {
+      pending: pendingPayouts,
+    },
+    examProctoring: {
+      total: Object.values(examStatusCounts).reduce((a, b) => a + b, 0),
+      inProgress: examStatusCounts['IN_PROGRESS'] ?? 0,
+      completed: examStatusCounts['COMPLETED'] ?? 0,
+      flagged: examStatusCounts['FLAGGED'] ?? 0,
+      flaggedLast7Days: flaggedSubmissionsLast7Days,
     },
   });
 });

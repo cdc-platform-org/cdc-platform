@@ -1,8 +1,10 @@
 import crypto from 'crypto';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
+import * as Sentry from '@sentry/node';
 import { GEMINI_API_KEY } from '../utils/env';
 import { uploadImage } from './imageStorage';
+import { isAzureOpenAiConfigured, generateJsonViaAzureOpenAI } from './azureOpenAiService';
 
 // ============================================================
 // CDC AUTONOMOUS OPERATIONS AGENT — central AI service wrapper.
@@ -102,12 +104,25 @@ export interface InlineImagePart {
 // model in TEXT_MODEL_FALLBACK_SEQUENCE is a Gemini multimodal model, so no
 // separate vision-only model list is needed.
 export async function callTextModel(prompt: string, temperature: number, imageParts?: InlineImagePart[]): Promise<string> {
-  if (!client) throw new AiAgentError('Gemini is not configured (GEMINI_API_KEY missing).');
+  // Cross-vendor fallback (see azureOpenAiService.ts) only covers the
+  // text-only path — GPT-4o supports vision too, but wiring inline image
+  // parts into an OpenAI-shaped message is a separate piece of work with no
+  // caller here yet, so it's an explicit scope boundary, not a silent gap.
+  const canUseAzureFallback = !imageParts || imageParts.length === 0;
+
+  if (!client) {
+    if (canUseAzureFallback && isAzureOpenAiConfigured()) return (await generateJsonViaAzureOpenAI(prompt, temperature)).raw;
+    throw new AiAgentError('Gemini is not configured (GEMINI_API_KEY missing).');
+  }
 
   const parts = [{ text: prompt }, ...(imageParts ?? []).map((img) => ({ inlineData: { mimeType: img.mimeType, data: img.data } }))];
 
   let lastError: unknown;
-  for (const modelName of TEXT_MODEL_FALLBACK_SEQUENCE) {
+  // Same reasoning as examProctoringService.ts's identical labeled break —
+  // a non-retryable error stops the Gemini side immediately (all 3 models
+  // share a key/client, so it would just repeat) but still has to reach the
+  // Azure attempt below rather than throw from inside this loop.
+  geminiLoop: for (const modelName of TEXT_MODEL_FALLBACK_SEQUENCE) {
     for (let attempt = 1; attempt <= ATTEMPTS_PER_MODEL; attempt++) {
       try {
         const model = client.getGenerativeModel({
@@ -121,14 +136,7 @@ export async function callTextModel(prompt: string, temperature: number, imagePa
       } catch (err) {
         lastError = err;
         console.error(`[aiAgentService] ${modelName} attempt ${attempt}/${ATTEMPTS_PER_MODEL} failed:`, err instanceof Error ? err.message : err);
-        if (!isRetryableGeminiError(err)) {
-          throw err instanceof AiAgentError
-            ? err
-            : new AiAgentError(
-                err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.',
-                classifyGeminiErrorStatus(err)
-              );
-        }
+        if (!isRetryableGeminiError(err)) break geminiLoop;
         if (attempt < ATTEMPTS_PER_MODEL) {
           await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
         }
@@ -138,6 +146,23 @@ export async function callTextModel(prompt: string, temperature: number, imagePa
     // in the sequence immediately, no added delay (a different model has
     // its own capacity, so there's nothing to wait out here).
   }
+
+  // Every Gemini model failed — same cross-vendor 4th rung as
+  // examProctoringService.ts's generateJson(), same reasoning for why it's
+  // last rather than first. No-op when AZURE_OPENAI_* isn't configured.
+  if (canUseAzureFallback && isAzureOpenAiConfigured()) {
+    try {
+      return (await generateJsonViaAzureOpenAI(prompt, temperature)).raw;
+    } catch (azureErr) {
+      console.error('[aiAgentService] Azure OpenAI fallback also failed:', azureErr instanceof Error ? azureErr.message : azureErr);
+      lastError = azureErr;
+    }
+  }
+
+  // Same reasoning as examProctoringService.ts's identical capture point —
+  // callers of callTextModel() catch this and respond directly, so it never
+  // reaches Sentry.setupExpressErrorHandler in server.ts on its own.
+  Sentry.captureException(lastError);
   throw lastError instanceof AiAgentError
     ? lastError
     : new AiAgentError(

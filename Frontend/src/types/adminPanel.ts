@@ -23,6 +23,19 @@ export interface DashboardStats {
     totalNetAmount: number;
     transactionCount: number;
   };
+  disputes: {
+    open: number;
+  };
+  payouts: {
+    pending: number;
+  };
+  examProctoring: {
+    total: number;
+    inProgress: number;
+    completed: number;
+    flagged: number;
+    flaggedLast7Days: number;
+  };
 }
 
 interface ListingParticipant {

@@ -4,3 +4,4 @@ allowBuilds:
   sharp: true
   core-js: true
   unrs-resolver: true
+  '@sentry/cli': false

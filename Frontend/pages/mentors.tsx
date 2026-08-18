@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import { GetStaticProps } from 'next';
+import { useTranslation } from 'next-i18next';
+import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { FileText, ShieldCheck } from 'lucide-react';
 import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
@@ -10,67 +13,6 @@ import { useAuthModal } from '../src/context/AuthModalContext';
 import { getMentors, getMentorSlots, mentorTitle, mentorBio, PublicMentor } from '../src/services/mentorshipService';
 import { checkoutMentorship } from '../src/services/paymentService';
 import { formatPrice } from '../src/utils/coursePricing';
-
-const dict = {
-  ka: {
-    title: 'მენტორები',
-    subtitle: 'დაჯავშნეთ პირადი კონსულტაცია CDC-ის გამოცდილ მენტორებთან.',
-    loading: 'იტვირთება…',
-    empty: 'ამჟამად ხელმისაწვდომი მენტორები არ არის.',
-    perHour: '/ სთ',
-    bookSession: 'სესიის დაჯავშნა',
-    priceNotSet: 'ფასი მალე დაემატება',
-    step1Title: 'აირჩიეთ თარიღი და დრო',
-    step2Title: 'თქვენი მონაცემები',
-    step3Title: 'გადახდის დადასტურება',
-    noSlots: 'ამ მენტორისთვის ხელმისაწვდომი დრო არ მოიძებნა.',
-    next: 'შემდეგი →',
-    back: '← უკან',
-    phone: 'ტელეფონის ნომერი',
-    topic: 'სესიის მიზანი / თემა',
-    topicPlaceholder: 'მოკლედ აღწერეთ რაზე გსურთ ისაუბროთ',
-    summary: 'შეჯამება',
-    with: 'მენტორთან',
-    payNow: 'გადახდაზე გადასვლა',
-    processing: 'მუშავდება…',
-    close: 'დახურვა',
-    signInRequired: 'სესიის დასაჯავშნად გთხოვთ გაიაროთ ავტორიზაცია.',
-    error: 'დაფიქსირდა შეცდომა. სცადეთ თავიდან.',
-    policyTitle: '🛡️ გაუქმებისა და თანხის დაბრუნების პოლიტიკა',
-    policyPoint1: 'სესიის გაუქმება შეხვედრამდე 12 საათით ადრე ითვალისწინებს თანხის 100%-ით დაბრუნებას (საბანკო საკომისიოს გამოკლებით).',
-    policyPoint2: '12 საათზე ნაკლებ დროში გაუქმებისას, მენტორის დროის კომპენსაციისთვის უბრუნდება ღირებულების 50%.',
-    policyPoint3: 'თუ მენტორი არ გამოცხადდა შეხვედრაზე, თანხა უბრუნდება სტუდენტს სრულად (100%).',
-  },
-  en: {
-    title: 'Mentors',
-    subtitle: 'Book a 1:1 consultation session with an experienced CDC mentor.',
-    loading: 'Loading…',
-    empty: 'No mentors are available right now.',
-    perHour: '/ hr',
-    bookSession: 'Book Session',
-    priceNotSet: 'Pricing coming soon',
-    step1Title: 'Choose a date & time',
-    step2Title: 'Your details',
-    step3Title: 'Confirm & pay',
-    noSlots: 'No available times found for this mentor.',
-    next: 'Next →',
-    back: '← Back',
-    phone: 'Phone number',
-    topic: 'Session goal / topic',
-    topicPlaceholder: 'Briefly describe what you want to discuss',
-    summary: 'Summary',
-    with: 'with',
-    payNow: 'Proceed to Payment',
-    processing: 'Processing…',
-    close: 'Close',
-    signInRequired: 'Please sign in to book a session.',
-    error: 'Something went wrong. Please try again.',
-    policyTitle: '🛡️ Cancellation & Refund Policy',
-    policyPoint1: 'Cancelling 12+ hours before the session gets you a 100% refund (minus the bank processing fee).',
-    policyPoint2: 'Cancelling less than 12 hours before the session refunds 50%, to compensate the mentor\'s reserved time.',
-    policyPoint3: "If the mentor doesn't show up, you get a full 100% refund.",
-  },
-};
 
 function MentorAvatar({ mentor, size = 56 }: { mentor: PublicMentor; size?: number }) {
   return mentor.avatarUrl ? (
@@ -92,7 +34,7 @@ function MentorAvatar({ mentor, size = 56 }: { mentor: PublicMentor; size?: numb
 }
 
 function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: 'ka' | 'en'; onClose: () => void }) {
-  const t = dict[lang];
+  const { t } = useTranslation('mentorship');
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [slots, setSlots] = useState<string[]>([]);
@@ -146,7 +88,7 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: '
       });
       window.location.href = redirectUrl;
     } catch (err: any) {
-      setError(err?.response?.data?.message || t.error);
+      setError(err?.response?.data?.message || t('bookingError'));
       setSubmitting(false);
     }
   };
@@ -167,7 +109,7 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: '
             <div className="flex items-center gap-2 flex-wrap mt-0.5">
               {mentor.mentorHourlyRate != null && (
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {formatPrice(mentor.mentorHourlyRate)} {t.perHour}
+                  {formatPrice(mentor.mentorHourlyRate)} {t('perHour')}
                 </p>
               )}
               {mentor.mentorLanguages.length > 0 && (
@@ -191,7 +133,7 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: '
             onClick={onClose}
             className={`${mentor.cvUrl ? '' : 'ml-auto'} text-xs font-bold text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-transparent border-none cursor-pointer`}
           >
-            {t.close}
+            {t('close')}
           </button>
         </div>
 
@@ -203,11 +145,11 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: '
 
         {step === 1 && (
           <div>
-            <h3 className="text-sm font-black text-slate-900 dark:text-white mb-4">{t.step1Title}</h3>
+            <h3 className="text-sm font-black text-slate-900 dark:text-white mb-4">{t('step1Title')}</h3>
             {loadingSlots ? (
-              <p className="text-sm text-slate-400">{t.loading}</p>
+              <p className="text-sm text-slate-400">{t('loading')}</p>
             ) : dateKeys.length === 0 ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">{t.noSlots}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{t('bookingNoSlots')}</p>
             ) : (
               <>
                 <div className="flex flex-wrap gap-2 mb-4">
@@ -257,27 +199,27 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: '
               disabled={!selectedSlot}
               className="w-full rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-sm py-3 disabled:opacity-40"
             >
-              {t.next}
+              {t('next')}
             </button>
           </div>
         )}
 
         {step === 2 && (
           <div>
-            <h3 className="text-sm font-black text-slate-900 dark:text-white mb-4">{t.step2Title}</h3>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{t.phone}</label>
+            <h3 className="text-sm font-black text-slate-900 dark:text-white mb-4">{t('step2Title')}</h3>
+            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{t('phone')}</label>
             <input
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="w-full rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800 px-3.5 py-2.5 text-sm mb-4"
               placeholder="+995 5xx xxx xxx"
             />
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{t.topic}</label>
+            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{t('topicFieldLabel')}</label>
             <textarea
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               rows={3}
-              placeholder={t.topicPlaceholder}
+              placeholder={t('topicPlaceholder') as string}
               className="w-full rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800 px-3.5 py-2.5 text-sm mb-5"
             />
             <div className="flex gap-2">
@@ -286,7 +228,7 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: '
                 onClick={() => setStep(1)}
                 className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm py-3"
               >
-                {t.back}
+                {t('back')}
               </button>
               <button
                 type="button"
@@ -294,7 +236,7 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: '
                 disabled={phone.trim().length < 5}
                 className="flex-1 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-sm py-3 disabled:opacity-40"
               >
-                {t.next}
+                {t('next')}
               </button>
             </div>
           </div>
@@ -302,10 +244,10 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: '
 
         {step === 3 && selectedSlot && (
           <div>
-            <h3 className="text-sm font-black text-slate-900 dark:text-white mb-4">{t.step3Title}</h3>
+            <h3 className="text-sm font-black text-slate-900 dark:text-white mb-4">{t('step3Title')}</h3>
             <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-4 text-sm space-y-1.5 mb-5">
               <p className="text-slate-800 dark:text-slate-200 font-bold">
-                {t.with} {mentor.name}
+                {t('with')} {mentor.name}
               </p>
               <p className="text-slate-600 dark:text-slate-400">
                 {new Date(selectedSlot).toLocaleString(lang === 'ka' ? 'ka-GE' : 'en-GB', { timeZone: 'Asia/Tbilisi' })}
@@ -317,12 +259,12 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: '
 
             <div className="rounded-xl border border-amber-300/60 dark:border-amber-500/30 bg-amber-50/60 dark:bg-amber-500/10 p-4 mb-5">
               <p className="flex items-center gap-1.5 text-xs font-black text-amber-800 dark:text-amber-300 mb-2">
-                <ShieldCheck className="w-3.5 h-3.5" /> {t.policyTitle}
+                <ShieldCheck className="w-3.5 h-3.5" /> {t('policyTitle')}
               </p>
               <ul className="space-y-1 text-[11px] text-amber-800/90 dark:text-amber-200/80 list-disc pl-4">
-                <li>{t.policyPoint1}</li>
-                <li>{t.policyPoint2}</li>
-                <li>{t.policyPoint3}</li>
+                <li>{t('policyPoint1')}</li>
+                <li>{t('policyPoint2')}</li>
+                <li>{t('policyPoint3')}</li>
               </ul>
             </div>
 
@@ -333,7 +275,7 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: '
                 disabled={submitting}
                 className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm py-3 disabled:opacity-40"
               >
-                {t.back}
+                {t('back')}
               </button>
               <button
                 type="button"
@@ -341,7 +283,7 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: '
                 disabled={submitting}
                 className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-sm py-3 disabled:opacity-60"
               >
-                {submitting ? t.processing : t.payNow}
+                {submitting ? t('processing') : t('payNow')}
               </button>
             </div>
           </div>
@@ -352,7 +294,7 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: '
 }
 
 function MentorCard({ mentor, lang, onBook }: { mentor: PublicMentor; lang: 'ka' | 'en'; onBook: () => void }) {
-  const t = dict[lang];
+  const { t } = useTranslation('mentorship');
   const title = mentorTitle(mentor, lang);
   const bio = mentorBio(mentor, lang);
   return (
@@ -396,10 +338,10 @@ function MentorCard({ mentor, lang, onBook }: { mentor: PublicMentor; lang: 'ka'
           {mentor.mentorHourlyRate != null ? (
             <>
               {formatPrice(mentor.mentorHourlyRate)}
-              <span className="text-xs font-normal text-slate-400"> {t.perHour}</span>
+              <span className="text-xs font-normal text-slate-400"> {t('perHour')}</span>
             </>
           ) : (
-            <span className="text-xs font-normal text-slate-400">{t.priceNotSet}</span>
+            <span className="text-xs font-normal text-slate-400">{t('priceNotSet')}</span>
           )}
         </span>
         <button
@@ -408,7 +350,7 @@ function MentorCard({ mentor, lang, onBook }: { mentor: PublicMentor; lang: 'ka'
           disabled={mentor.mentorHourlyRate == null}
           className="text-xs font-bold px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {t.bookSession}
+          {t('bookSession')}
         </button>
       </div>
     </div>
@@ -418,7 +360,7 @@ function MentorCard({ mentor, lang, onBook }: { mentor: PublicMentor; lang: 'ka'
 export default function MentorsPage() {
   const router = useRouter();
   const lang = router.locale === 'en' ? 'en' : 'ka';
-  const t = dict[lang];
+  const { t } = useTranslation('mentorship');
   const { isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
   const [mentors, setMentors] = useState<PublicMentor[]>([]);
@@ -449,17 +391,17 @@ export default function MentorsPage() {
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       <Head>
-        <title>{`${t.title} | CDC`}</title>
+        <title>{`${t('mentorsTitle')} | CDC`}</title>
       </Head>
       <SiteHeader />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-16 flex-1 w-full">
-        <h1 className="text-2xl sm:text-3xl font-black mb-2">{t.title}</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-8">{t.subtitle}</p>
+        <h1 className="text-2xl sm:text-3xl font-black mb-2">{t('mentorsTitle')}</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-8">{t('mentorsSubtitle')}</p>
 
         {loading ? (
-          <p className="text-sm text-slate-400">{t.loading}</p>
+          <p className="text-sm text-slate-400">{t('loading')}</p>
         ) : mentors.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">{t.empty}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t('mentorsEmpty')}</p>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {mentors.map((mentor) => (
@@ -474,3 +416,7 @@ export default function MentorsPage() {
     </div>
   );
 }
+
+export const getStaticProps: GetStaticProps = async ({ locale }) => ({
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['mentorship'])) },
+});

@@ -28,6 +28,7 @@ import {
   Bell,
   ShoppingBag,
   Bug,
+  UserCheck,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AdminLangProvider, useAdminLang } from '../../context/AdminLangContext';
@@ -64,6 +65,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/cyber-sentinel', labelKey: 'cyberSentinel', icon: Bug, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
   { href: '/admin/courses', labelKey: 'courses', icon: GraduationCap, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },
   { href: '/admin/assignments', labelKey: 'assignments', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },
+  { href: '/admin/candidate-verifications', labelKey: 'candidateVerifications', icon: UserCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },
   { href: '/admin/analytics', labelKey: 'analytics', icon: BarChart3, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },
   { href: '/admin/finance', labelKey: 'finance', icon: CreditCard, tiers: ['SUPER_ADMIN'], section: 'financial' },
   { href: '/admin/finance/payouts', labelKey: 'payouts', icon: Landmark, tiers: ['SUPER_ADMIN'], section: 'financial' },

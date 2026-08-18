@@ -9,6 +9,7 @@ import {
   updateExamSessionSchema,
   startExamAttemptSchema,
   submitExamAttemptSchema,
+  proctoringEventSchema,
 } from '../schemas/examProctoringSchemas';
 import {
   generateExamQuestions,
@@ -31,6 +32,17 @@ const candidateRateLimit = rateLimit({
   windowMs: 10 * 60 * 1000,
   max: 20,
   message: 'Too many requests. Please try again shortly.',
+});
+
+// Separate, much looser budget for proctoring event logging — this fires
+// once per real tab-switch/paste over the whole exam duration, so it would
+// blow through candidateRateLimit's 20-per-10-min budget (and lock a
+// legitimate candidate out of their own submit call) well before hitting
+// PROCTORING_FLAG_THRESHOLD violations.
+const proctoringEventRateLimit = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 200,
+  message: 'Too many events reported. Please try again shortly.',
 });
 
 // Violations at or above this count force-submits the attempt as FLAGGED —
@@ -90,6 +102,32 @@ router.post('/candidate/:candidateToken/start', candidateRateLimit, async (req: 
   });
 });
 
+// Fired by the candidate's browser the moment a real violation happens
+// (visibilitychange, blur, fullscreen-exit, paste — see Frontend's
+// pages/exam/[token].tsx registerStrike) so the count lives server-side,
+// timestamped by server receipt, from the start rather than being totalled
+// up client-side and reported once at /submit — see that route's comment
+// for why that mattered.
+router.post('/submissions/:submissionToken/events', proctoringEventRateLimit, async (req: Request, res: Response) => {
+  const submission = await prisma.examSubmission.findUnique({ where: { candidateToken: req.params.submissionToken } });
+  if (!submission) return res.status(404).json({ message: 'Exam attempt not found.' });
+  if (submission.status !== 'IN_PROGRESS') {
+    // Attempt is already over — silently accept rather than error, since
+    // this can legitimately race the final /submit call (e.g. a paste
+    // event firing right as the timer auto-submits) and the event no
+    // longer affects a score that's already been computed.
+    return res.status(204).send();
+  }
+
+  const result = proctoringEventSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  await prisma.proctoringEvent.create({
+    data: { submissionId: submission.id, type: result.data.type },
+  });
+  res.status(204).send();
+});
+
 router.post('/submissions/:submissionToken/submit', candidateRateLimit, async (req: Request, res: Response) => {
   const submission = await prisma.examSubmission.findUnique({ where: { candidateToken: req.params.submissionToken } });
   if (!submission) return res.status(404).json({ message: 'Exam attempt not found.' });
@@ -114,8 +152,20 @@ router.post('/submissions/:submissionToken/submit', candidateRateLimit, async (r
   const mcqCorrectCount = mcqQuestions.filter((q) => answers[q.id] === q.correctAnswer).length;
   const mcqScore = mcqQuestions.length > 0 ? Math.round((mcqCorrectCount / mcqQuestions.length) * 100) : null;
 
-  const proctoringViolations = result.data.proctoringViolations || result.data.tabSwitches + result.data.copyPasteCount;
-  const disqualified = result.data.disqualified || proctoringViolations >= PROCTORING_FLAG_THRESHOLD;
+  // Server-authoritative violation counts — grouped from this submission's
+  // ProctoringEvent rows (each written in real time by POST .../events as
+  // the candidate's browser reported it), not from anything in this
+  // request's body. A candidate calling this endpoint directly can no
+  // longer just claim zero violations.
+  const eventCounts = await prisma.proctoringEvent.groupBy({
+    by: ['type'],
+    where: { submissionId: submission.id },
+    _count: { _all: true },
+  });
+  const tabSwitches = eventCounts.find((e) => e.type === 'TAB_SWITCH')?._count._all ?? 0;
+  const copyPasteCount = eventCounts.find((e) => e.type === 'COPY_PASTE')?._count._all ?? 0;
+  const proctoringViolations = tabSwitches + copyPasteCount;
+  const disqualified = proctoringViolations >= PROCTORING_FLAG_THRESHOLD;
   const integrityScore = Math.max(0, 100 - proctoringViolations * INTEGRITY_PENALTY_PER_VIOLATION);
 
   // Per-question grading detail — the basis for both totalScore and
@@ -231,8 +281,8 @@ router.post('/submissions/:submissionToken/submit', candidateRateLimit, async (r
       aiEvaluation: answerGrades.find((g) => g.aiFeedback)?.aiFeedback ?? null,
       answerGrades: answerGrades as unknown as Prisma.InputJsonValue,
       proctoringViolations,
-      tabSwitches: result.data.tabSwitches,
-      copyPasteCount: result.data.copyPasteCount,
+      tabSwitches,
+      copyPasteCount,
       integrityScore,
       aiTextScore,
       status: disqualified ? 'FLAGGED' : 'COMPLETED',

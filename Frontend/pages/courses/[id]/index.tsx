@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Head from 'next/head';
+import { GetServerSideProps } from 'next';
+import { useTranslation } from 'next-i18next';
+import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { Play, Lock, X } from 'lucide-react';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
@@ -21,64 +24,11 @@ import SuccessStoriesCarousel from '../../../src/components/shared/SuccessStorie
 import CourseLeaderboard from '../../../src/components/shared/CourseLeaderboard';
 import CourseHeroBanner from '../../../src/components/shared/CourseHeroBanner';
 
-const dict = {
-  ka: {
-    loading: 'იტვირთება…',
-    notFound: 'კურსი ვერ მოიძებნა.',
-    enroll: 'ჩარიცხვა →',
-    enrollFree: 'კურსის უფასოდ გააქტიურება →',
-    enrolling: 'გადამისამართება…',
-    activating: 'მიმდინარეობს…',
-    continueLearning: 'სწავლის გაგრძელება →',
-    backToCourses: '← ყველა კურსი',
-    mentor: 'ლექტორი',
-    duration: 'ხანგრძლივობა',
-    lessons: 'გაკვეთილი',
-    syllabus: 'სილაბუსი',
-    noSyllabus: 'სილაბუსი მალე დაემატება.',
-    signInToEnroll: { ka: 'გთხოვთ გაიაროთ ავტორიზაცია კურსზე ჩასარიცხად', en: 'Please sign in to enroll in a course' },
-    preview: 'გადახედვა',
-    locked: 'დაბლოკილია',
-    paywallTitle: 'ეს გაკვეთილი დაბლოკილია',
-    paywallBody: 'შეიძინეთ სრული კურსი, რომ მიიღოთ დაუყოვნებელი წვდომა ყველა ვიდეოზე, ჩამოსატვირთ მასალებზე და დავალებების ჩაბარებაზე.',
-    buyCourse: 'კურსის შეძენა',
-    promoLabel: 'გაქვთ პრომო კოდი?',
-    promoPlaceholder: 'პრომო კოდი',
-    promoApply: 'გააქტიურება',
-    promoApplying: 'მოწმდება…',
-    promoApplied: 'პრომო კოდი გააქტიურდა',
-    promoRemove: 'წაშლა',
-    promoInvalid: 'არასწორი ან ვადაგასული კოდი',
-  },
-  en: {
-    loading: 'Loading…',
-    notFound: 'Course not found.',
-    enroll: 'Enroll Now →',
-    enrollFree: 'Start Learning For Free →',
-    enrolling: 'Redirecting…',
-    activating: 'Activating…',
-    continueLearning: 'Continue Learning →',
-    backToCourses: '← All Courses',
-    mentor: 'Instructor',
-    duration: 'Duration',
-    lessons: 'lessons',
-    syllabus: 'Syllabus',
-    noSyllabus: 'Syllabus coming soon.',
-    signInToEnroll: { ka: 'გთხოვთ გაიაროთ ავტორიზაცია კურსზე ჩასარიცხად', en: 'Please sign in to enroll in a course' },
-    preview: 'Preview',
-    locked: 'Locked',
-    paywallTitle: 'This lesson is locked',
-    paywallBody: 'Purchase the full course to get instant access to all videos, downloadable resources, and assignment submissions.',
-    buyCourse: 'Buy Course',
-    promoLabel: 'Have a promo code?',
-    promoPlaceholder: 'Promo code',
-    promoApply: 'Apply',
-    promoApplying: 'Checking…',
-    promoApplied: 'Promo code applied',
-    promoRemove: 'Remove',
-    promoInvalid: 'Invalid or expired code',
-  },
-};
+// AuthModalContext always needs both languages at once (the modal itself
+// picks ka/en internally), regardless of this page's current locale — so
+// this stays a plain constant instead of a translation key, matching the
+// SIGN_IN_TO_* constants in community.tsx and forum/thread/[id].tsx.
+const SIGN_IN_TO_ENROLL = { ka: 'გთხოვთ გაიაროთ ავტორიზაცია კურსზე ჩასარიცხად', en: 'Please sign in to enroll in a course' };
 
 function formatTotalDuration(totalSeconds: number, lang: 'ka' | 'en'): string {
   const totalMinutes = Math.round(totalSeconds / 60);
@@ -104,7 +54,7 @@ function formatLessonDuration(seconds: number): string {
 export default function CourseDetailPage() {
   const router = useRouter();
   const lang = router.locale === 'en' ? 'en' : 'ka';
-  const t = dict[lang];
+  const { t } = useTranslation('courses');
   const courseId = typeof router.query.id === 'string' ? router.query.id : null;
   const { isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
@@ -176,7 +126,7 @@ export default function CourseDetailPage() {
   const handleApplyPromo = async () => {
     if (!courseId || !promoInput.trim()) return;
     if (!isAuthenticated) {
-      openAuthModal({ message: t.signInToEnroll });
+      openAuthModal({ message: SIGN_IN_TO_ENROLL });
       return;
     }
     setPromoError(null);
@@ -185,7 +135,7 @@ export default function CourseDetailPage() {
       const result = await validatePromoCode(promoInput.trim(), courseId);
       setAppliedPromo(result);
     } catch (err: any) {
-      setPromoError(err?.response?.data?.message ?? t.promoInvalid);
+      setPromoError(err?.response?.data?.message ?? t('promoInvalid'));
     } finally {
       setApplyingPromo(false);
     }
@@ -195,7 +145,7 @@ export default function CourseDetailPage() {
     if (!isAuthenticated) {
       // Guests never proceed to checkout directly — sign in first, then
       // resume straight into BOG checkout for this exact course.
-      openAuthModal({ message: t.signInToEnroll, onSuccess: startCheckout });
+      openAuthModal({ message: SIGN_IN_TO_ENROLL, onSuccess: startCheckout });
       return;
     }
     startCheckout();
@@ -209,7 +159,7 @@ export default function CourseDetailPage() {
     return (
       <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
         <SiteHeader />
-        <div className="flex-1 flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">{t.loading}</div>
+        <div className="flex-1 flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">{t('loading')}</div>
         <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
       </div>
     );
@@ -219,7 +169,7 @@ export default function CourseDetailPage() {
       <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
         <SiteHeader />
         <div className="flex-1 flex flex-col items-center justify-center gap-4 text-sm text-slate-600 dark:text-slate-300">
-          <p>{t.notFound}</p>
+          <p>{t('notFound')}</p>
           <BackButton fallbackHref="/courses" className="dark:text-slate-400 dark:hover:text-slate-100" />
         </div>
         <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
@@ -240,7 +190,7 @@ export default function CourseDetailPage() {
       <SiteHeader />
       <div className="max-w-3xl mx-auto px-6 py-16 flex-1 w-full">
         <Link href="/courses" className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white no-underline">
-          {t.backToCourses}
+          {t('backToCourses')}
         </Link>
 
         {course.coverImageUrl && (
@@ -290,7 +240,7 @@ export default function CourseDetailPage() {
                 </div>
               )}
               <div>
-                <p className="text-[11px] uppercase tracking-widest text-slate-500 font-bold">{t.mentor}</p>
+                <p className="text-[11px] uppercase tracking-widest text-slate-500 font-bold">{t('mentor')}</p>
                 <p className="text-sm font-bold text-slate-900 dark:text-white">{course.mentorName}</p>
                 {course.mentorTitle && <p className="text-xs text-slate-500 dark:text-slate-400">{course.mentorTitle}</p>}
               </div>
@@ -300,9 +250,9 @@ export default function CourseDetailPage() {
             <div className="flex-1 min-w-[220px] flex items-center gap-4 p-4 rounded-xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
               <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-cyan-600 dark:text-cyan-300 text-lg shrink-0">⏱️</div>
               <div>
-                <p className="text-[11px] uppercase tracking-widest text-slate-500 font-bold">{t.duration}</p>
+                <p className="text-[11px] uppercase tracking-widest text-slate-500 font-bold">{t('duration')}</p>
                 <p className="text-sm font-bold text-slate-900 dark:text-white">{formatTotalDuration(totalDurationSeconds, lang)}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{totalLessonCount} {t.lessons}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{totalLessonCount} {t('courseLessons')}</p>
               </div>
             </div>
           )}
@@ -326,7 +276,7 @@ export default function CourseDetailPage() {
                 href={`/courses/${course.id}/learn`}
                 className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black px-6 py-3.5 rounded-xl text-sm uppercase tracking-widest no-underline shadow-lg hover:shadow-xl transition-all"
               >
-                {t.continueLearning}
+                {t('continueLearning')}
               </Link>
             ) : (
               <button
@@ -335,7 +285,7 @@ export default function CourseDetailPage() {
                 disabled={processing}
                 className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black px-6 py-3.5 rounded-xl text-sm uppercase tracking-widest shadow-lg hover:shadow-xl transition-all disabled:opacity-60"
               >
-                {processing ? (effectivePrice === 0 ? t.activating : t.enrolling) : effectivePrice === 0 ? t.enrollFree : t.enroll}
+                {processing ? (effectivePrice === 0 ? t('activating') : t('detailEnrolling')) : effectivePrice === 0 ? t('enrollFree') : t('enroll')}
               </button>
             )}
           </div>
@@ -345,7 +295,7 @@ export default function CourseDetailPage() {
               {appliedPromo ? (
                 <div className="flex items-center gap-2 flex-wrap text-xs bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl px-3 py-2.5">
                   <span className="font-bold text-emerald-700 dark:text-emerald-400">
-                    ✓ {t.promoApplied}: {appliedPromo.code}
+                    ✓ {t('promoApplied')}: {appliedPromo.code}
                   </span>
                   {formatDiscount(appliedPromo) && (
                     <span className="font-black text-[11px] text-white bg-emerald-600 px-2 py-0.5 rounded-full">
@@ -360,17 +310,17 @@ export default function CourseDetailPage() {
                     }}
                     className="ml-auto text-emerald-700/70 dark:text-emerald-400/70 hover:text-emerald-800 dark:hover:text-emerald-300 bg-transparent border-none cursor-pointer underline"
                   >
-                    {t.promoRemove}
+                    {t('promoRemove')}
                   </button>
                 </div>
               ) : (
                 <div>
-                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">{t.promoLabel}</p>
+                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">{t('promoLabel')}</p>
                   <div className="flex items-center gap-2">
                     <input
                       value={promoInput}
                       onChange={(e) => setPromoInput(e.target.value)}
-                      placeholder={t.promoPlaceholder}
+                      placeholder={t('promoPlaceholder')}
                       className="flex-1 max-w-[220px] rounded-lg border border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400"
                     />
                     <button
@@ -379,7 +329,7 @@ export default function CourseDetailPage() {
                       disabled={applyingPromo || !promoInput.trim()}
                       className="text-xs font-bold text-cyan-700 dark:text-cyan-400 bg-cyan-50/80 dark:bg-cyan-500/10 backdrop-blur-md border border-cyan-500/30 rounded-lg px-3.5 py-2.5 cursor-pointer hover:bg-cyan-100 dark:hover:bg-cyan-500/20 disabled:opacity-50 transition-colors"
                     >
-                      {applyingPromo ? t.promoApplying : t.promoApply}
+                      {applyingPromo ? t('promoApplying') : t('promoApply')}
                     </button>
                   </div>
                 </div>
@@ -391,9 +341,9 @@ export default function CourseDetailPage() {
 
         {/* Syllabus */}
         <div className="mt-12">
-          <h2 className="text-xl font-black mb-5">{t.syllabus}</h2>
+          <h2 className="text-xl font-black mb-5">{t('syllabus')}</h2>
           {syllabus.length === 0 ? (
-            <p className="text-sm text-slate-500">{t.noSyllabus}</p>
+            <p className="text-sm text-slate-500">{t('noSyllabus')}</p>
           ) : (
             <div className="space-y-3">
               {syllabus.map((section, sIdx) => (
@@ -414,13 +364,13 @@ export default function CourseDetailPage() {
                                 className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-cyan-600 dark:text-cyan-400 bg-transparent border border-cyan-500/30 rounded-full px-2 py-0.5 cursor-pointer hover:bg-cyan-500/10"
                               >
                                 <Play className="w-2.5 h-2.5" />
-                                {t.preview}
+                                {t('preview')}
                               </button>
                             ) : (
                               <button
                                 type="button"
                                 onClick={() => setShowPaywall(true)}
-                                title={t.locked}
+                                title={t('locked')}
                                 className="inline-flex items-center text-slate-400 bg-transparent border-none cursor-pointer p-0.5"
                               >
                                 <Lock className="w-3 h-3" />
@@ -445,7 +395,7 @@ export default function CourseDetailPage() {
           <div className="max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-bold text-white">{previewLesson.title}</p>
-              <button type="button" onClick={() => setPreviewLesson(null)} aria-label={t.locked} className="text-white/70 hover:text-white bg-transparent border-none cursor-pointer p-1">
+              <button type="button" onClick={() => setPreviewLesson(null)} aria-label={t('locked')} className="text-white/70 hover:text-white bg-transparent border-none cursor-pointer p-1">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -461,8 +411,8 @@ export default function CourseDetailPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <Lock className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-            <h3 className="text-base font-black text-slate-900 dark:text-white mb-2">{t.paywallTitle}</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{t.paywallBody}</p>
+            <h3 className="text-base font-black text-slate-900 dark:text-white mb-2">{t('paywallTitle')}</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{t('paywallBody')}</p>
             <button
               type="button"
               onClick={() => {
@@ -472,7 +422,7 @@ export default function CourseDetailPage() {
               disabled={processing}
               className="w-full rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-3 text-sm font-black text-white disabled:opacity-60"
             >
-              {processing ? t.enrolling : t.buyCourse}
+              {processing ? t('detailEnrolling') : t('buyCourse')}
             </button>
           </div>
         </div>
@@ -484,3 +434,7 @@ export default function CourseDetailPage() {
     </div>
   );
 }
+
+export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['courses'])) },
+});

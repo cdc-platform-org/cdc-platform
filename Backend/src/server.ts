@@ -1,10 +1,17 @@
-// Must be the first import: patches Express's router so rejected promises in
-// async route handlers reach errorHandler below instead of crashing the process.
+// Must be the very first import of all — Sentry needs to patch Node's core
+// modules (http, etc.) before anything else requires them. See
+// instrument.ts's own comment for why this can't just be folded into the
+// two lines below.
+import './instrument';
+// Must be the first import after that: patches Express's router so rejected
+// promises in async route handlers reach errorHandler below instead of
+// crashing the process.
 import 'express-async-errors';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
+import * as Sentry from '@sentry/node';
 import authRoutes from './routes/auth';
 import courseRoutes from './routes/courses';
 import orderRoutes from './routes/orders';
@@ -29,6 +36,7 @@ import adminFinanceRoutes from './routes/adminFinance';
 import adminAnalyticsRoutes from './routes/adminAnalytics';
 import adminPayoutsRoutes from './routes/adminPayouts';
 import adminDisputesRoutes from './routes/adminDisputes';
+import adminExamProctoringRoutes from './routes/adminExamProctoring';
 import adminMentorshipRoutes from './routes/adminMentorship';
 import adminMessagesRoutes from './routes/adminMessages';
 import siteContentRoutes from './routes/siteContent';
@@ -112,7 +120,31 @@ const app = express();
 // legitimate first-time requests rejected. `1` trusts exactly one hop
 // (Azure's own front-end), matching the actual deployment topology.
 app.set('trust proxy', 1);
-app.use(cors());
+
+// Same FRONTEND_URL fallback pattern as auth.ts/payments.ts/emailService.ts,
+// plus ADDITIONAL_CORS_ORIGINS for any other domain that needs to call this
+// API from a browser (comma-separated, e.g. a staging preview URL) — unset
+// by default. Auth is a Bearer token in the Authorization header, not a
+// cookie (see Frontend's apiClient.ts), so this doesn't need `credentials`.
+const allowedOrigins = new Set(
+  [
+    process.env.FRONTEND_URL || 'https://cdc.org.ge',
+    'https://cdc.org.ge',
+    ...(process.env.ADDITIONAL_CORS_ORIGINS?.split(',').map((o) => o.trim()).filter(Boolean) ?? []),
+    ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:3000'] : []),
+  ]
+);
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // No Origin header at all means this isn't a browser request — a
+      // server-to-server call (BOG's webhook, cron, curl) rather than
+      // something CORS is meant to gate. Those still go through fine.
+      if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+      callback(new Error('Not allowed by CORS'));
+    },
+  })
+);
 app.use(express.json({ verify: (req, _res, buf) => { (req as express.Request).rawBody = buf; } }));
 app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
 
@@ -140,6 +172,7 @@ app.use('/api/admin/finance', adminFinanceRoutes);
 app.use('/api/admin/finance/payouts', adminPayoutsRoutes);
 app.use('/api/admin/analytics', adminAnalyticsRoutes);
 app.use('/api/admin/disputes', adminDisputesRoutes);
+app.use('/api/admin/exam-proctoring', adminExamProctoringRoutes);
 app.use('/api/admin/mentorship', adminMentorshipRoutes);
 app.use('/api/admin/messages', adminMessagesRoutes);
 app.use('/api/site-content', siteContentRoutes);
@@ -225,6 +258,17 @@ const swaggerDocument = {
 };
 
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+// Reports any error that reaches Express's error pipeline with status >= 500
+// (Sentry's own default filter — 4xx application errors like a 404 or a
+// validation 400 are expected traffic, not incidents) straight to Sentry,
+// then calls next(err) so errorHandler below still builds the client
+// response exactly as before. A no-op if SENTRY_DSN isn't set (see
+// instrument.ts). Most routes in this app catch their own errors and
+// respond directly rather than throwing (see routes/payments.ts's BOG
+// callback handler for the highest-value example) — those are captured
+// explicitly at the catch site instead, since they never reach here.
+Sentry.setupExpressErrorHandler(app);
 
 // Global error handler — must be registered LAST, after every route.
 app.use(errorHandler);

@@ -1,0 +1,45 @@
+{
+  "pageTitle": "Kontoeinstellungen",
+  "backToHome": "← Zurück zur Startseite",
+  "paymentSection": {
+    "title": "Gespeicherte Zahlungsmethode",
+    "empty": "Sie haben noch keine gespeicherten Zahlungsmethoden.",
+    "default": "Standard",
+    "expires": "Gültig bis",
+    "deleteButton": "Karte löschen",
+    "removing": "Wird entfernt…",
+    "removeError": "Diese Zahlungsmethode konnte nicht entfernt werden. Bitte versuchen Sie es erneut.",
+    "loading": "Wird geladen…"
+  },
+  "removeCardModal": {
+    "title": "Diese Karte löschen?",
+    "body": "Dadurch wird die Karte mit der Endziffer {{last4}} dauerhaft aus Ihrem Konto entfernt.",
+    "cancel": "Abbrechen",
+    "confirm": "Karte löschen",
+    "confirming": "Wird gelöscht…"
+  },
+  "dangerZone": {
+    "title": "Gefahrenzone",
+    "description": "Das Löschen Ihres Kontos ist endgültig — nach der 60-tägigen Karenzzeit kann es nicht mehr rückgängig gemacht werden.",
+    "deleteAccountButton": "Konto löschen"
+  },
+  "deleteAccountModal": {
+    "title": "Konto löschen",
+    "warning": "Sind Sie sicher, dass Sie Ihr Konto löschen möchten? Ihr Profil wird deaktiviert und in 60 Tagen dauerhaft von unseren Servern gelöscht.",
+    "confirmMethodLabel": "Bestätigen Sie mit Ihrem Passwort oder geben Sie unten DELETE ein",
+    "passwordLabel": "Passwort",
+    "passwordPlaceholder": "Geben Sie Ihr aktuelles Passwort ein",
+    "orDivider": "ODER",
+    "confirmTextLabel": "Geben Sie DELETE ein, um zu bestätigen",
+    "confirmTextPlaceholder": "DELETE",
+    "cancel": "Abbrechen",
+    "confirm": "Mein Konto löschen",
+    "confirming": "Wird gelöscht…",
+    "error": "Ihr Konto konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.",
+    "validation": "Geben Sie Ihr Passwort ein oder tippen Sie DELETE zur Bestätigung.",
+    "wrongPassword": "Falsches Passwort."
+  },
+  "toast": {
+    "accountDeleted": "Ihr Konto wurde erfolgreich gelöscht."
+  }
+}

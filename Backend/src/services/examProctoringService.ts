@@ -1,6 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
+import * as Sentry from '@sentry/node';
 import { GEMINI_API_KEY } from '../utils/env';
+import { isAzureOpenAiConfigured, generateJsonViaAzureOpenAI } from './azureOpenAiService';
 
 // AI question generation + practical-answer grading for the AI Proctored
 // Exam & Skill Assessment System (ExamSession/ExamQuestion/ExamSubmission).
@@ -61,11 +63,25 @@ export interface GeminiJsonResult {
 
 async function generateJson(prompt: string, temperature: number): Promise<GeminiJsonResult> {
   if (!client) {
+    // No Gemini key at all — Azure OpenAI (the 4th-rung cross-vendor
+    // fallback, see azureOpenAiService.ts) still counts as "configured" for
+    // this feature if it's set up on its own, same as any Gemini model
+    // succeeding would. Falls through to the identical not-configured error
+    // below only when neither provider is set up.
+    if (isAzureOpenAiConfigured()) return generateJsonViaAzureOpenAI(prompt, temperature);
     throw new ExamProctoringAiError('Gemini is not configured (GEMINI_API_KEY missing).');
   }
 
   let lastErr: unknown;
-  for (const modelName of MODEL_FALLBACK_SEQUENCE) {
+  // A non-retryable error (bad key, quota hard-dead, etc.) stops the Gemini
+  // side immediately rather than burning through the other two models with
+  // an error that will obviously repeat identically on all three (they
+  // share the same client/key) — but it still has to fall through to the
+  // Azure attempt below, not throw from inside this loop, since that error
+  // shape is exactly what a real Gemini-wide outage looks like in practice
+  // (a 503/429 exhausting retries is the other, and both need the same
+  // cross-vendor fallback).
+  geminiLoop: for (const modelName of MODEL_FALLBACK_SEQUENCE) {
     for (let attempt = 1; attempt <= ATTEMPTS_PER_MODEL; attempt++) {
       try {
         const model = client.getGenerativeModel({
@@ -85,18 +101,32 @@ async function generateJson(prompt: string, temperature: number): Promise<Gemini
       } catch (err) {
         lastErr = err;
         console.error(`[examProctoringService] ${modelName} attempt ${attempt}/${ATTEMPTS_PER_MODEL} failed:`, err instanceof Error ? err.message : err);
-        if (!isRetryableGeminiError(err)) {
-          throw err instanceof ExamProctoringAiError
-            ? err
-            : new ExamProctoringAiError(
-                err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.',
-                classifyGeminiErrorStatus(err)
-              );
-        }
+        if (!isRetryableGeminiError(err)) break geminiLoop;
         if (attempt < ATTEMPTS_PER_MODEL) await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
       }
     }
   }
+  // Every Gemini model in the fallback chain failed — try the cross-vendor
+  // 4th rung before giving up. This is deliberately last, not first or
+  // interleaved: Gemini is cheaper/faster and already proven reliable
+  // enough that it should win whenever it's up at all; Azure OpenAI only
+  // needs to be there for the case Gemini itself (not just one model) is
+  // down. A no-op when AZURE_OPENAI_* isn't configured — same as today.
+  if (isAzureOpenAiConfigured()) {
+    try {
+      return await generateJsonViaAzureOpenAI(prompt, temperature);
+    } catch (azureErr) {
+      console.error('[examProctoringService] Azure OpenAI fallback also failed:', azureErr instanceof Error ? azureErr.message : azureErr);
+      lastErr = azureErr;
+    }
+  }
+
+  // Every model in the fallback chain failed — the route handler that called
+  // us catches this and responds directly (see routes/examProctoring.ts),
+  // so it never reaches Sentry.setupExpressErrorHandler in server.ts.
+  // Reported explicitly here instead, since exam generation/grading going
+  // fully down is exactly the kind of thing worth an alert.
+  Sentry.captureException(lastErr);
   throw lastErr instanceof ExamProctoringAiError
     ? lastErr
     : new ExamProctoringAiError(

@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { GetServerSideProps } from 'next';
+import { useTranslation } from 'next-i18next';
+import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag, Building2, X, Zap, Upload, Code2 } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
@@ -35,74 +38,11 @@ function isBusinessToolsCategory(category: string): boolean {
 // are real downloads and keep the generic steps below.
 const AI_BUSINESS_TRIAL_PRODUCT_ID = 'a5f877bb-6875-448a-ac00-40f09d3e2ca3';
 
-const dict = {
-  ka: {
-    free: 'უფასო',
-    buy: 'ყიდვა (BOG გადახდა)',
-    claim: 'უფასოდ მიღება',
-    download: 'ჩამოტვირთვა',
-    processing: 'მუშავდება…',
-    owned: 'შენი ნაყიდი',
-    loadFailed: 'პროდუქტი ვერ მოიძებნა.',
-    howToUse: 'როგორ გამოვიყენოთ?',
-    step1Title: 'ჩამოტვირთვა',
-    step1Body: 'დააჭირეთ „ჩამოტვირთვა“ ღილაკს და შეინახეთ ფაილი თქვენს მოწყობილობაში.',
-    step2Title: 'გახსნა & ამოარქივება',
-    step2Body: 'გახსენით ჩამოტვირთული ფაილი (ორჯერ დაწკაპუნებით) და წაიკითხეთ თანდართული README ინსტრუქცია.',
-    step3Title: 'გამოყენება',
-    step3Body: 'დააკოპირეთ მზა AI ბრძანებები (Prompts) ChatGPT/Claude-ში ან გახსენით UI Kit ფაილი Figma-ში და დაიწყეთ მუშაობა!',
-    // AI Business Assistant trial — a web-based SaaS tool, not a file
-    // download (see product.fileUrl === '/dashboard/ai-tools' check below),
-    // so it gets its own activation/data/embed steps instead of the generic
-    // download/unzip/use ones above.
-    aiStep1Title: 'გააქტიურება',
-    aiStep1Body: 'დააჭირეთ «უფასოდ მიღებას», მიაბით ბარათი ($0 ₾ ვერიფიკაციით) და გაიარეთ 10-დღიანი ულიმიტო საცდელი პერიოდი.',
-    aiStep2Title: 'მონაცემების მართვა',
-    aiStep2Body: 'დაშბორდში ატვირთეთ თქვენი კომპანიის PDF/DOCX ფაილები ან FAQ ტექსტი AI-ს გადასასწავლებლად.',
-    aiStep3Title: 'საიტზე ჩაშენება',
-    aiStep3Body: 'დააკოპირეთ თქვენი უნიკალური 1-სტრიქონიანი Embed Script კოდი, ჩასვით თქვენს საიტზე და AI ასისტენტი მყისიერად გააქტიურდება!',
-    downloadFailed: 'ჩამოტვირთვა ვერ მოხერხდა.',
-    checkoutFailed: 'გადახდის დაწყება ვერ მოხერხდა.',
-    businessGateTitle: 'ხელმისაწვდომია მხოლოდ ვერიფიცირებული ბიზნესებისთვის',
-    businessGateBody: 'ეს ინსტრუმენტი ხელმისაწვდომია მხოლოდ ვერიფიცირებული ბიზნეს ანგარიშებისთვის.',
-    businessGateCta: 'ბიზნესის ვერიფიკაცია',
-    modalClose: 'დახურვა',
-  },
-  en: {
-    free: 'Free',
-    buy: 'Buy (BOG Payment)',
-    claim: 'Get for Free',
-    download: 'Download',
-    processing: 'Processing…',
-    owned: 'Owned',
-    loadFailed: 'Product not found.',
-    howToUse: 'How to Use',
-    step1Title: 'Download',
-    step1Body: 'Click "Download" and save the file (.ZIP / .PDF) to your device.',
-    step2Title: 'Open & Unzip',
-    step2Body: 'Open the downloaded file (double-click) and read the included README for instructions.',
-    step3Title: 'Use It',
-    step3Body: 'Copy the ready-made AI prompts into ChatGPT/Claude, or open the UI Kit file in Figma and start working!',
-    aiStep1Title: 'Activate',
-    aiStep1Body: 'Click "Get for Free", bind a card ($0 verification hold), and get a 10-day unlimited trial period.',
-    aiStep2Title: 'Manage Your Data',
-    aiStep2Body: "Upload your company's PDF/DOCX files or FAQ text in the dashboard to train the AI.",
-    aiStep3Title: 'Embed on Your Site',
-    aiStep3Body: 'Copy your unique 1-line Embed Script, paste it into your site, and the AI assistant activates instantly!',
-    downloadFailed: 'Download failed.',
-    checkoutFailed: 'Could not start checkout.',
-    businessGateTitle: 'Available for Verified Businesses Only',
-    businessGateBody: 'This tool is available exclusively to verified Business accounts.',
-    businessGateCta: 'Verify Your Business',
-    modalClose: 'Close',
-  },
-};
-
 function StoreProductContent() {
+  const { t } = useTranslation('marketplace');
   const router = useRouter();
   const { id } = router.query;
   const lang = router.locale === 'en' ? 'en' : 'ka';
-  const t = dict[lang];
   const { user, isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
 
@@ -151,7 +91,7 @@ function StoreProductContent() {
       const { redirectUrl } = await checkoutProduct(product.id, lang);
       window.location.href = redirectUrl;
     } catch (err: any) {
-      setActionError(err?.response?.data?.message ?? t.checkoutFailed);
+      setActionError(err?.response?.data?.message ?? t('checkoutFailed'));
       setSubmitting(false);
     }
   };
@@ -172,7 +112,7 @@ function StoreProductContent() {
       await claimFreeProduct(product.id);
       setProduct({ ...product, purchased: true });
     } catch (err: any) {
-      setActionError(err?.response?.data?.message ?? t.checkoutFailed);
+      setActionError(err?.response?.data?.message ?? t('checkoutFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -186,7 +126,7 @@ function StoreProductContent() {
       const fileUrl = await getProductDownloadUrl(product.id);
       window.open(fileUrl, '_blank', 'noopener,noreferrer');
     } catch (err: any) {
-      setActionError(err?.response?.data?.message ?? t.downloadFailed);
+      setActionError(err?.response?.data?.message ?? t('downloadFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -203,7 +143,7 @@ function StoreProductContent() {
   if (notFound || !product) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950">
-        <p className="text-sm text-slate-500 dark:text-slate-400">{t.loadFailed}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t('productNotFound')}</p>
       </div>
     );
   }
@@ -251,11 +191,11 @@ function StoreProductContent() {
                 className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-cyan-600 text-white font-black text-sm px-6 py-3.5 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-emerald-500/30 transition-all disabled:opacity-60"
               >
                 <Download className="w-4 h-4" />
-                {submitting ? t.processing : t.download}
+                {submitting ? t('processing') : t('download')}
               </button>
             ) : (
               <div className="space-y-3">
-                <span className="text-2xl font-black block">{product.price === 0 ? t.free : formatPrice(product.price)}</span>
+                <span className="text-2xl font-black block">{product.price === 0 ? t('free') : formatPrice(product.price)}</span>
                 <button
                   type="button"
                   onClick={product.price === 0 ? handleClaim : handleBuy}
@@ -263,7 +203,7 @@ function StoreProductContent() {
                   className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3.5 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all disabled:opacity-60"
                 >
                   <Sparkles className="w-4 h-4" />
-                  {submitting ? t.processing : product.price === 0 ? t.claim : t.buy}
+                  {submitting ? t('processing') : product.price === 0 ? t('claim') : t('buy')}
                 </button>
               </div>
             )}
@@ -277,21 +217,21 @@ function StoreProductContent() {
             onClick={() => setGuideOpen((open) => !open)}
             className="w-full flex items-center justify-between px-6 py-4 bg-transparent border-none cursor-pointer text-left"
           >
-            <span className="text-sm font-black tracking-wide">{t.howToUse}</span>
+            <span className="text-sm font-black tracking-wide">{t('howToUse')}</span>
             <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${guideOpen ? 'rotate-180' : ''}`} />
           </button>
           {guideOpen && (
             <div className="px-6 pb-6 grid sm:grid-cols-3 gap-5">
               {(isAiBusinessTrial
                 ? [
-                    { icon: Zap, step: '1', title: t.aiStep1Title, body: t.aiStep1Body },
-                    { icon: Upload, step: '2', title: t.aiStep2Title, body: t.aiStep2Body },
-                    { icon: Code2, step: '3', title: t.aiStep3Title, body: t.aiStep3Body },
+                    { icon: Zap, step: '1', title: t('aiStep1Title'), body: t('aiStep1Body') },
+                    { icon: Upload, step: '2', title: t('aiStep2Title'), body: t('aiStep2Body') },
+                    { icon: Code2, step: '3', title: t('aiStep3Title'), body: t('aiStep3Body') },
                   ]
                 : [
-                    { icon: Download, step: '1', title: t.step1Title, body: t.step1Body },
-                    { icon: FolderOpen, step: '2', title: t.step2Title, body: t.step2Body },
-                    { icon: Sparkles, step: '3', title: t.step3Title, body: t.step3Body },
+                    { icon: Download, step: '1', title: t('step1Title'), body: t('step1Body') },
+                    { icon: FolderOpen, step: '2', title: t('step2Title'), body: t('step2Body') },
+                    { icon: Sparkles, step: '3', title: t('step3Title'), body: t('step3Body') },
                   ]
               ).map(({ icon: Icon, step, title, body }) => (
                 <div key={step} className="rounded-xl border border-slate-200 dark:border-slate-800 p-4">
@@ -321,7 +261,7 @@ function StoreProductContent() {
             <button
               type="button"
               onClick={() => setShowBusinessGate(false)}
-              aria-label={t.modalClose}
+              aria-label={t('modalClose')}
               className="absolute top-4 right-4 p-2 cursor-pointer text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
             >
               <X className="w-4 h-4" />
@@ -331,14 +271,14 @@ function StoreProductContent() {
               <Building2 className="w-7 h-7 text-white" />
             </div>
 
-            <h3 className="text-base font-black tracking-wide mb-2">{t.businessGateTitle}</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{t.businessGateBody}</p>
+            <h3 className="text-base font-black tracking-wide mb-2">{t('businessGateTitle')}</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{t('businessGateBody')}</p>
             <Link
               href="/dashboard/client"
               onClick={() => setShowBusinessGate(false)}
               className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
             >
-              {t.businessGateCta}
+              {t('businessGateCta')}
             </Link>
           </div>
         </div>
@@ -350,3 +290,7 @@ function StoreProductContent() {
 export default function StoreProductPage() {
   return <StoreProductContent />;
 }
+
+export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['marketplace'])) },
+});

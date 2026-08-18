@@ -3,6 +3,9 @@ import Head from 'next/head';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
+import { GetStaticProps } from 'next';
+import { useTranslation } from 'next-i18next';
+import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { ShoppingBag, CheckCircle2 } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
@@ -11,33 +14,10 @@ import { getProducts, DigitalProduct } from '../../src/services/productService';
 import { formatPrice } from '../../src/utils/coursePricing';
 import { MARKETPLACE_CATEGORIES } from '../../src/data/marketplaceCategories';
 
-const dict = {
-  ka: {
-    title: 'ციფრული მაღაზია',
-    subtitle: 'UI Kits, AI Prompts, შაბლონები და ელექტრონული წიგნები — მზად გამოსაყენებლად.',
-    all: 'ყველა',
-    free: 'უფასო',
-    owned: 'შენი ნაყიდი',
-    details: 'დეტალურად',
-    empty: 'ამ კატეგორიაში პროდუქტები ჯერ არ არის.',
-    loadFailed: 'პროდუქტების ჩატვირთვა ვერ მოხერხდა.',
-  },
-  en: {
-    title: 'Marketplace',
-    subtitle: 'UI Kits, AI Prompts, templates, and e-books — ready to use.',
-    all: 'All',
-    free: 'Free',
-    owned: 'Owned',
-    details: 'View Details',
-    empty: 'No products in this category yet.',
-    loadFailed: 'Could not load products.',
-  },
-};
-
-export default function MarketplacePage() {
+function MarketplaceContent() {
+  const { t } = useTranslation('marketplace');
   const router = useRouter();
   const lang = router.locale === 'en' ? 'en' : 'ka';
-  const t = dict[lang];
 
   const categoryParam = typeof router.query.category === 'string' ? router.query.category : null;
 
@@ -81,7 +61,7 @@ export default function MarketplacePage() {
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       <Head>
-        <title>{`${t.title} | CDC Platform`}</title>
+        <title>{`${t('title')} | CDC Platform`}</title>
       </Head>
       <SiteHeader />
 
@@ -95,8 +75,8 @@ export default function MarketplacePage() {
             <ShoppingBag className="w-3.5 h-3.5" />
             CDC Marketplace
           </span>
-          <h1 className="text-3xl md:text-4xl font-black tracking-wide mb-3">{t.title}</h1>
-          <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 leading-relaxed">{t.subtitle}</p>
+          <h1 className="text-3xl md:text-4xl font-black tracking-wide mb-3">{t('title')}</h1>
+          <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 leading-relaxed">{t('subtitle')}</p>
         </div>
 
         {categoryChips.length > 0 && (
@@ -110,7 +90,7 @@ export default function MarketplacePage() {
                   : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
-              {t.all}
+              {t('all')}
             </button>
             {categoryChips.map((cat) => (
               <button
@@ -132,10 +112,10 @@ export default function MarketplacePage() {
         {loading ? (
           <p className="text-sm text-slate-400 text-center py-16">…</p>
         ) : error ? (
-          <p className="text-sm text-red-500 text-center py-16">{t.loadFailed}</p>
+          <p className="text-sm text-red-500 text-center py-16">{t('loadFailed')}</p>
         ) : products.length === 0 ? (
           <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-16 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t.empty}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('empty')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -155,7 +135,7 @@ export default function MarketplacePage() {
                   {product.purchased && (
                     <span className="absolute top-3 right-3 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500 text-white shadow">
                       <CheckCircle2 className="w-3 h-3" />
-                      {t.owned}
+                      {t('owned')}
                     </span>
                   )}
                 </div>
@@ -164,8 +144,8 @@ export default function MarketplacePage() {
                   <h3 className="text-sm font-black tracking-wide mb-1.5 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">{product.title}</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 mb-4 flex-1">{product.description}</p>
                   <div className="flex items-center justify-between">
-                    <span className="text-base font-black">{product.price === 0 ? t.free : formatPrice(product.price)}</span>
-                    <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">{t.details} →</span>
+                    <span className="text-base font-black">{product.price === 0 ? t('free') : formatPrice(product.price)}</span>
+                    <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">{t('details')} →</span>
                   </div>
                 </div>
               </Link>
@@ -178,3 +158,11 @@ export default function MarketplacePage() {
     </div>
   );
 }
+
+export default function MarketplacePage() {
+  return <MarketplaceContent />;
+}
+
+export const getStaticProps: GetStaticProps = async ({ locale }) => ({
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['marketplace'])) },
+});

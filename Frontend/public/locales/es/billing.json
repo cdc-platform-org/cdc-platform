@@ -1,0 +1,36 @@
+{
+  "pageTitle": "Pagos y Facturación",
+  "loading": "Cargando…",
+  "loadError": "No se pudo cargar su información de facturación. Inténtelo de nuevo.",
+  "removeError": "No se pudo eliminar este método de pago. Inténtelo de nuevo.",
+  "downloadError": "No se pudo descargar esta factura. Inténtelo de nuevo.",
+  "savedCards": {
+    "title": "Métodos de Pago Guardados",
+    "empty": "Aún no tiene métodos de pago guardados.",
+    "default": "Predeterminado",
+    "remove": "Eliminar",
+    "removing": "Eliminando…",
+    "confirmRemove": "¿Eliminar esta tarjeta?",
+    "confirmYes": "Sí, eliminar",
+    "confirmNo": "Cancelar"
+  },
+  "billingHistory": {
+    "title": "Historial de Facturación",
+    "empty": "Aún no tiene facturas.",
+    "download": "Descargar PDF",
+    "columns": {
+      "invoice": "Factura",
+      "description": "Descripción",
+      "amount": "Importe",
+      "status": "Estado",
+      "date": "Fecha",
+      "actions": "Acciones"
+    },
+    "status": {
+      "paid": "Pagada",
+      "pending": "Pendiente",
+      "failed": "Fallida",
+      "refunded": "Reembolsada"
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
 import StatCard from '../../src/components/admin/StatCard';
@@ -109,6 +110,34 @@ function DashboardOverview() {
                   icon="🤝"
                   accent="purple"
                 />
+              </div>
+            </section>
+
+            {/* Day-to-day ops queue — the three things someone running the
+                pilot needs to check without hunting through five separate
+                pages: escrow disputes waiting on a decision, freelancer
+                payouts waiting on approval, and candidate exam submissions
+                (including how many were flagged for proctoring violations
+                in the last week — the number that matters most to a B2B
+                partner asking "can I trust this screening?"). */}
+            <section>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Needs Attention</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Link href="/admin/disputes" className="no-underline text-current">
+                  <StatCard label="Open Disputes" value={stats.disputes.open} icon="⚖️" accent="rose" />
+                </Link>
+                <Link href="/admin/finance/payouts" className="no-underline text-current">
+                  <StatCard label="Pending Payouts" value={stats.payouts.pending} icon="🏦" accent="amber" />
+                </Link>
+                <Link href="/admin/candidate-verifications" className="no-underline text-current">
+                  <StatCard
+                    label="Flagged Candidates (7d)"
+                    value={stats.examProctoring.flaggedLast7Days}
+                    icon="🛡️"
+                    accent="rose"
+                    sublabel={`${stats.examProctoring.total} total submissions`}
+                  />
+                </Link>
               </div>
             </section>
           </div>

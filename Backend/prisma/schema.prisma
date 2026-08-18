@@ -1621,7 +1621,10 @@ model ExamSubmission {
   // Combined violation count — still the FLAG_THRESHOLD source of truth in
   // routes/examProctoring.ts. tabSwitches/copyPasteCount below are the same
   // events broken out by kind for the business's proctoring report; every
-  // increment of either also increments this one.
+  // increment of either also increments this one. All three are written
+  // once, at submit time, recomputed server-side from this submission's
+  // ProctoringEvent rows — never taken from the client's submit request
+  // body, which a candidate calling the API directly could set to anything.
   proctoringViolations Int                  @default(0)
   tabSwitches          Int                  @default(0)
   copyPasteCount       Int                  @default(0)
@@ -1649,11 +1652,35 @@ model ExamSubmission {
   startedAt            DateTime             @default(now())
   completedAt          DateTime?
 
-  usageRecords UsageRecord[]
-  studyGuide   AdaptiveStudyGuide?
+  usageRecords     UsageRecord[]
+  studyGuide       AdaptiveStudyGuide?
+  proctoringEvents ProctoringEvent[]
 
   @@index([examSessionId])
   @@map("exam_submissions")
+}
+
+enum ProctoringEventType {
+  TAB_SWITCH
+  COPY_PASTE
+}
+
+// One row per candidate-reported violation, timestamped by server receipt
+// (occurredAt), not by the client — the record POST /submissions/:token/submit
+// recomputes tabSwitches/copyPasteCount/proctoringViolations from, instead
+// of trusting whatever counts the submit request body claims. The candidate
+// token is the same opaque-UUID trust boundary already used for every other
+// candidate-facing route in examProctoring.ts, so this doesn't weaken
+// anything — it just moves the count itself out of client control.
+model ProctoringEvent {
+  id           String              @id @default(uuid())
+  submissionId String
+  submission   ExamSubmission      @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  type         ProctoringEventType
+  occurredAt   DateTime            @default(now())
+
+  @@index([submissionId])
+  @@map("proctoring_events")
 }
 
 // Generated once a COMPLETED/FLAGGED submission scores below the pass mark
@@ -1680,12 +1707,18 @@ model AdaptiveStudyGuide {
 // ============================================================
 // BOG SETTINGS (Bank of Georgia payment gateway config — SUPER_ADMIN only)
 //
-// There is no real BOG merchant integration wired up anywhere in this app —
-// no payment gateway has ever called out to BOG. This model is a config
-// store the admin panel can read/write; secretKey/webhookSecret are never
-// echoed back in full once set (masked, same principle as never returning a
-// password hash). A single row is used as an app-wide singleton — the
-// service layer enforces that, not the schema.
+// Backs a real, live BOG merchant integration — see
+// services/bogPaymentService.ts, which authenticates via OAuth2
+// client_credentials against BOG's Online Payment API and verifies callback
+// signatures against BOG's published RSA public key. This model is the
+// config store the admin panel reads/writes credentials through (env vars
+// BOG_CLIENT_ID/BOG_SECRET_KEY take priority over these when set — see
+// bogPaymentService.ts); secretKey/webhookSecret are never echoed back in
+// full once set (masked, same principle as never returning a password
+// hash). A single row is used as an app-wide singleton — the service layer
+// enforces that, not the schema. Note: isLiveMode below is informational
+// only (surfaced in the admin panel) — bogPaymentService.ts does not read
+// it and always targets BOG's production API domains regardless.
 // ============================================================
 
 model BogSettings {

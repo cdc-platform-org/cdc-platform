@@ -2,7 +2,11 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
+import { GetServerSideProps } from 'next';
+import { useTranslation } from 'next-i18next';
+import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { ShieldAlert } from 'lucide-react';
+import type { TFunction } from 'next-i18next';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import BackButton from '../../../src/components/common/BackButton';
@@ -24,85 +28,6 @@ import {
   uploadSubmissionFile,
 } from '../../../src/services/courseService';
 
-const dict = {
-  ka: {
-    overview: 'მიმოხილვა',
-    resources: 'რესურსები',
-    assignment: 'დავალება',
-    discussion: 'დისკუსია',
-    noResources: 'ამ გაკვეთილს დამატებითი მასალა არ აქვს.',
-    noAssignment: 'ამ გაკვეთილს დავალება არ აქვს — გაკვეთილების დასრულებით მიაღწევთ 100%-იან პროგრესს.',
-    assignmentLinkPlaceholder: 'ბმული (მაგ: Figma, Google Drive)…',
-    assignmentCommentPlaceholder: 'კომენტარი (არასავალდებულო)…',
-    assignmentUpload: 'ფაილის ატვირთვა',
-    assignmentSubmit: 'გაგზავნა',
-    assignmentSubmitting: 'იგზავნება…',
-    assignmentSubmitted: 'თქვენი დავალება გაგზავნილია და ელოდება განხილვას.',
-    assignmentApproved: 'დავალება დამტკიცებულია ✅',
-    assignmentNeedsRevision: 'საჭიროა შესწორება',
-    assignmentFeedback: 'უკუკავშირი',
-    assignmentResubmit: 'ხელახლა გაგზავნა',
-    curriculum: 'სილაბუსი',
-    completed: 'დასრულებულია',
-    certificate: '🎓 სერტიფიკატის ჩამოტვირთვა (PDF)',
-    takeExam: '🎓 სერტიფიცირების გამოცდის დაწყება',
-    examPassed: '🎓 გამოცდა ჩაბარებულია — სერტიფიკატის ჩამოტვირთვა',
-    generating: 'გენერირდება…',
-    loading: 'იტვირთება…',
-    notEnrolled: 'თქვენ არ ხართ ჩარიცხული ამ კურსზე.',
-    lessons: 'გაკვეთილი',
-    back: 'კურსზე დაბრუნება',
-    confirmTitle: 'გთხოვთ შეამოწმოთ!',
-    confirmBody: 'სერტიფიკატზე დაიბეჭდება სახელი და გვარი:',
-    confirmChangeHint: 'თუ გსურთ სახელის შეცვლა, გადადით პროფილის პარამეტრებში.',
-    confirmDownload: 'დადასტურება და ჩამოტვირთვა',
-    confirmChangeName: 'სახელის შეცვლა (პროფილში გადასვლა)',
-    confirmCancel: 'გაუქმება',
-    certLimitTitle: 'სერტიფიკატის ჩამოტვირთვის ლიმიტი ამოწურულია',
-    certLimitSubtitle:
-      'უსაფრთხოების მიზნით, სერტიფიკატის ჩამოტვირთვის მაქსიმალური რაოდენობა ამოწურულია. თუ გჭირდებათ დამატებითი ასლი ან გაქვთ შეკითხვა, მოგვწერეთ მხარდაჭერის ჩატში.',
-    certLimitContactSupport: 'მხარდაჭერასთან დაკავშირება',
-  },
-  en: {
-    overview: 'Overview',
-    resources: 'Resources',
-    assignment: 'Assignment',
-    discussion: 'Discussion',
-    noResources: 'This lesson has no attached resources.',
-    noAssignment: 'This lesson has no assignment — complete every lesson to reach 100%.',
-    assignmentLinkPlaceholder: 'Link (e.g. Figma, Google Drive)…',
-    assignmentCommentPlaceholder: 'Comment (optional)…',
-    assignmentUpload: 'Upload file',
-    assignmentSubmit: 'Submit',
-    assignmentSubmitting: 'Submitting…',
-    assignmentSubmitted: 'Your submission is in and waiting for review.',
-    assignmentApproved: 'Assignment approved ✅',
-    assignmentNeedsRevision: 'Needs revision',
-    assignmentFeedback: 'Feedback',
-    assignmentResubmit: 'Resubmit',
-    curriculum: 'Curriculum',
-    completed: 'Completed',
-    certificate: '🎓 Download Certificate (PDF)',
-    takeExam: '🎓 Take Certification Exam',
-    examPassed: '🎓 Exam passed — Download Certificate',
-    generating: 'Generating…',
-    loading: 'Loading…',
-    notEnrolled: 'You are not enrolled in this course.',
-    lessons: 'lesson',
-    back: 'Back to course',
-    confirmTitle: 'Please double-check!',
-    confirmBody: 'This name will be printed on your certificate:',
-    confirmChangeHint: 'To change it, go to your account settings.',
-    confirmDownload: 'Confirm & Download',
-    confirmChangeName: 'Change Name (Go to Settings)',
-    confirmCancel: 'Cancel',
-    certLimitTitle: 'Certificate Download Limit Reached',
-    certLimitSubtitle:
-      'For security reasons, the maximum number of certificate downloads has been reached. If you need an extra copy or have a question, message our support chat.',
-    certLimitContactSupport: 'Contact Support',
-  },
-};
-
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -117,7 +42,7 @@ const STATUS_BADGE: Record<string, string> = {
 
 // Self-contained: fetches/manages its own submission for the active lesson
 // so switching lessons doesn't leak stale state between them.
-function AssignmentPanel({ lessonId, t }: { lessonId: string; t: (typeof dict)['ka']; }) {
+function AssignmentPanel({ lessonId, t }: { lessonId: string; t: TFunction; }) {
   const [submission, setSubmission] = useState<AssignmentSubmission | null | undefined>(undefined);
   const [linkUrl, setLinkUrl] = useState('');
   const [comment, setComment] = useState('');
@@ -178,11 +103,11 @@ function AssignmentPanel({ lessonId, t }: { lessonId: string; t: (typeof dict)['
     return (
       <div className="space-y-2">
         <p className={submission.status === 'APPROVED' ? 'text-emerald-400 font-bold' : 'text-slate-300'}>
-          {submission.status === 'APPROVED' ? t.assignmentApproved : t.assignmentSubmitted}
+          {submission.status === 'APPROVED' ? t('assignmentApproved') : t('assignmentSubmitted')}
         </p>
         {submission.feedback && (
           <p className="text-xs text-slate-400">
-            {t.assignmentFeedback}: {submission.feedback}
+            {t('assignmentFeedback')}: {submission.feedback}
           </p>
         )}
       </div>
@@ -193,7 +118,7 @@ function AssignmentPanel({ lessonId, t }: { lessonId: string; t: (typeof dict)['
     <div className="space-y-3">
       {submission?.status === 'NEEDS_REVISION' && (
         <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3">
-          <p className={`text-xs font-bold ${STATUS_BADGE.NEEDS_REVISION}`}>{t.assignmentNeedsRevision}</p>
+          <p className={`text-xs font-bold ${STATUS_BADGE.NEEDS_REVISION}`}>{t('assignmentNeedsRevision')}</p>
           {submission.feedback && <p className="text-xs text-slate-400 mt-1">{submission.feedback}</p>}
         </div>
       )}
@@ -203,18 +128,18 @@ function AssignmentPanel({ lessonId, t }: { lessonId: string; t: (typeof dict)['
           type="url"
           value={linkUrl}
           onChange={(e) => setLinkUrl(e.target.value)}
-          placeholder={t.assignmentLinkPlaceholder}
+          placeholder={t('assignmentLinkPlaceholder')}
           className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200"
         />
         <textarea
           rows={2}
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          placeholder={t.assignmentCommentPlaceholder}
+          placeholder={t('assignmentCommentPlaceholder')}
           className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200"
         />
         <label className="inline-block text-xs font-bold text-cyan-400 hover:text-cyan-300 cursor-pointer">
-          {uploading ? '…' : uploadedFileUrl ? '✓ ' + t.assignmentUpload : t.assignmentUpload}
+          {uploading ? '…' : uploadedFileUrl ? '✓ ' + t('assignmentUpload') : t('assignmentUpload')}
           <input type="file" onChange={handleFile} disabled={uploading} className="hidden" />
         </label>
         <button
@@ -222,7 +147,7 @@ function AssignmentPanel({ lessonId, t }: { lessonId: string; t: (typeof dict)['
           disabled={submitting || uploading || (!linkUrl.trim() && !uploadedFileUrl)}
           className="block rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
         >
-          {submitting ? t.assignmentSubmitting : submission ? t.assignmentResubmit : t.assignmentSubmit}
+          {submitting ? t('assignmentSubmitting') : submission ? t('assignmentResubmit') : t('assignmentSubmit')}
         </button>
       </form>
     </div>
@@ -232,7 +157,7 @@ function AssignmentPanel({ lessonId, t }: { lessonId: string; t: (typeof dict)['
 function LearnContent() {
   const router = useRouter();
   const lang = router.locale === 'en' ? 'en' : 'ka';
-  const t = dict[lang];
+  const { t } = useTranslation('courses');
   const courseId = typeof router.query.id === 'string' ? router.query.id : null;
   const { user } = useAuth();
 
@@ -275,11 +200,11 @@ function LearnContent() {
       const first = curriculumData[0]?.lessons[0];
       setActiveLessonId((firstIncomplete ?? first)?.id ?? null);
     } catch {
-      setError(t.notEnrolled);
+      setError(t('notEnrolled'));
     } finally {
       setLoading(false);
     }
-  }, [courseId, t.notEnrolled]);
+  }, [courseId, t]);
 
   useEffect(() => {
     load();
@@ -362,14 +287,14 @@ function LearnContent() {
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400 text-sm">{t.loading}</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400 text-sm">{t('loading')}</div>;
   }
 
   if (error || !course) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-950 text-slate-300 text-sm">
         <SiteHeader />
-        <p>{error ?? t.notEnrolled}</p>
+        <p>{error ?? t('notEnrolled')}</p>
         <BackButton fallbackHref="/courses" className="text-slate-400 hover:text-slate-100" />
       </div>
     );
@@ -402,7 +327,7 @@ function LearnContent() {
                   activeTab === tab ? 'border-cyan-400 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'
                 }`}
               >
-                {t[tab]}
+                {t(tab)}
               </button>
             ))}
           </div>
@@ -421,7 +346,7 @@ function LearnContent() {
                   ))}
                 </ul>
               ) : (
-                <p className="text-slate-500">{t.noResources}</p>
+                <p className="text-slate-500">{t('noResources')}</p>
               ))}
             {activeTab === 'assignment' &&
               (activeLesson?.assignmentPrompt ? (
@@ -430,7 +355,7 @@ function LearnContent() {
                   <AssignmentPanel lessonId={activeLesson.id} t={t} />
                 </div>
               ) : (
-                <p className="text-slate-500">{t.noAssignment}</p>
+                <p className="text-slate-500">{t('noAssignment')}</p>
               ))}
             {activeTab === 'discussion' && courseId && <CourseDiscussionPanel courseId={courseId} lang={lang} />}
           </div>
@@ -440,8 +365,8 @@ function LearnContent() {
         <aside className="lg:w-[30%] shrink-0 border-t lg:border-t-0 lg:border-l border-slate-800 bg-slate-900/40 p-4 md:p-6">
           <div className="mb-5">
             <div className="flex items-center justify-between text-xs font-semibold text-slate-300 mb-2">
-              <span>{t.curriculum}</span>
-              <span>{progress?.percent ?? 0}% {t.completed}</span>
+              <span>{t('curriculum')}</span>
+              <span>{progress?.percent ?? 0}% {t('completed')}</span>
             </div>
             <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
               <div
@@ -456,7 +381,7 @@ function LearnContent() {
               href={`/courses/${courseId}/exam`}
               className="w-full mb-5 block text-center rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-white font-bold text-sm py-3 shadow-lg hover:shadow-xl transition-all"
             >
-              {t.takeExam}
+              {t('takeExam')}
             </Link>
           )}
 
@@ -467,7 +392,7 @@ function LearnContent() {
               disabled={downloadingCert}
               className="w-full mb-5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold text-sm py-3 shadow-lg hover:shadow-xl transition-all disabled:opacity-60"
             >
-              {downloadingCert ? t.generating : t.examPassed}
+              {downloadingCert ? t('generating') : t('examPassed')}
             </button>
           )}
 
@@ -478,7 +403,7 @@ function LearnContent() {
               disabled={downloadingCert}
               className="w-full mb-5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold text-sm py-3 shadow-lg hover:shadow-xl transition-all disabled:opacity-60"
             >
-              {downloadingCert ? t.generating : t.certificate}
+              {downloadingCert ? t('generating') : t('certificate')}
             </button>
           )}
 
@@ -535,11 +460,11 @@ function LearnContent() {
             className="w-full max-w-sm rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-black mb-3">{t.confirmTitle}</h2>
-            <p className="text-sm text-slate-300 mb-2">{t.confirmBody}</p>
+            <h2 className="text-lg font-black mb-3">{t('confirmTitle')}</h2>
+            <p className="text-sm text-slate-300 mb-2">{t('confirmBody')}</p>
             <p className="text-lg font-bold text-cyan-300 mb-1">{certificateNameKa}</p>
             {certificateNameEn && <p className="text-sm text-slate-400 mb-3">{certificateNameEn}</p>}
-            <p className="text-xs text-slate-500 mb-6">{t.confirmChangeHint}</p>
+            <p className="text-xs text-slate-500 mb-6">{t('confirmChangeHint')}</p>
             <div className="flex flex-col gap-2">
               <button
                 type="button"
@@ -550,20 +475,20 @@ function LearnContent() {
                 disabled={downloadingCert}
                 className="w-full rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold text-sm py-3 shadow-lg hover:shadow-xl transition-all disabled:opacity-60"
               >
-                {downloadingCert ? t.generating : t.confirmDownload}
+                {downloadingCert ? t('generating') : t('confirmDownload')}
               </button>
               <Link
                 href="/dashboard/settings"
                 className="w-full text-center rounded-xl border border-slate-700 text-slate-300 font-bold text-sm py-3 no-underline hover:bg-slate-800 transition-colors"
               >
-                {t.confirmChangeName}
+                {t('confirmChangeName')}
               </Link>
               <button
                 type="button"
                 onClick={() => setShowDownloadConfirm(false)}
                 className="w-full text-center text-xs text-slate-500 hover:text-slate-300 bg-transparent border-none cursor-pointer py-1"
               >
-                {t.confirmCancel}
+                {t('confirmCancel')}
               </button>
             </div>
           </div>
@@ -582,21 +507,21 @@ function LearnContent() {
             <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/10 border border-amber-500/30">
               <ShieldAlert className="h-7 w-7 text-amber-400" />
             </div>
-            <h2 className="text-lg font-black text-white mb-3">{t.certLimitTitle}</h2>
-            <p className="text-sm text-slate-300 leading-relaxed mb-8">{t.certLimitSubtitle}</p>
+            <h2 className="text-lg font-black text-white mb-3">{t('certLimitTitle')}</h2>
+            <p className="text-sm text-slate-300 leading-relaxed mb-8">{t('certLimitSubtitle')}</p>
             <div className="flex flex-col gap-2.5">
               <Link
                 href="/contact"
                 className="w-full rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm py-3 no-underline shadow-lg hover:shadow-xl hover:shadow-cyan-500/30 transition-all"
               >
-                {t.certLimitContactSupport}
+                {t('certLimitContactSupport')}
               </Link>
               <button
                 type="button"
                 onClick={() => setCertLimitReached(false)}
                 className="w-full text-center rounded-xl border border-white/10 text-slate-300 font-bold text-sm py-3 bg-transparent cursor-pointer hover:bg-white/5 hover:border-cyan-400/50 transition-all"
               >
-                {t.back}
+                {t('back')}
               </button>
             </div>
           </div>
@@ -623,3 +548,7 @@ export default function LearnPage() {
     </ProtectedRoute>
   );
 }
+
+export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['courses'])) },
+});

@@ -1,0 +1,45 @@
+{
+  "pageTitle": "Configuración de la Cuenta",
+  "backToHome": "← Volver al Inicio",
+  "paymentSection": {
+    "title": "Método de Pago Guardado",
+    "empty": "Aún no tiene ningún método de pago guardado.",
+    "default": "Predeterminado",
+    "expires": "Caduca",
+    "deleteButton": "Eliminar Tarjeta",
+    "removing": "Eliminando…",
+    "removeError": "No se pudo eliminar este método de pago. Inténtelo de nuevo.",
+    "loading": "Cargando…"
+  },
+  "removeCardModal": {
+    "title": "¿Eliminar esta tarjeta?",
+    "body": "Esto eliminará permanentemente de su cuenta la tarjeta terminada en {{last4}}.",
+    "cancel": "Cancelar",
+    "confirm": "Eliminar Tarjeta",
+    "confirming": "Eliminando…"
+  },
+  "dangerZone": {
+    "title": "Zona de Peligro",
+    "description": "Eliminar su cuenta es permanente — una vez transcurrido el período de gracia de 60 días, no se puede deshacer.",
+    "deleteAccountButton": "Eliminar Cuenta"
+  },
+  "deleteAccountModal": {
+    "title": "Eliminar Cuenta",
+    "warning": "¿Está seguro de que desea eliminar su cuenta? Su perfil se desactivará y se eliminará de forma permanente de nuestros servidores en 60 días.",
+    "confirmMethodLabel": "Confirme con su contraseña, o escriba DELETE a continuación",
+    "passwordLabel": "Contraseña",
+    "passwordPlaceholder": "Introduzca su contraseña actual",
+    "orDivider": "O",
+    "confirmTextLabel": "Escriba DELETE para confirmar",
+    "confirmTextPlaceholder": "DELETE",
+    "cancel": "Cancelar",
+    "confirm": "Eliminar Mi Cuenta",
+    "confirming": "Eliminando…",
+    "error": "No se pudo eliminar su cuenta. Inténtelo de nuevo.",
+    "validation": "Introduzca su contraseña o escriba DELETE para confirmar.",
+    "wrongPassword": "Contraseña incorrecta."
+  },
+  "toast": {
+    "accountDeleted": "Su cuenta ha sido eliminada correctamente."
+  }
+}

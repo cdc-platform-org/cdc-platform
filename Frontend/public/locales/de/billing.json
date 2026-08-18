@@ -1,0 +1,36 @@
+{
+  "pageTitle": "Zahlungen & Rechnungen",
+  "loading": "Wird geladen…",
+  "loadError": "Ihre Rechnungsdaten konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
+  "removeError": "Diese Zahlungsmethode konnte nicht entfernt werden. Bitte versuchen Sie es erneut.",
+  "downloadError": "Diese Rechnung konnte nicht heruntergeladen werden. Bitte versuchen Sie es erneut.",
+  "savedCards": {
+    "title": "Gespeicherte Zahlungsmethoden",
+    "empty": "Sie haben noch keine gespeicherten Zahlungsmethoden.",
+    "default": "Standard",
+    "remove": "Entfernen",
+    "removing": "Wird entfernt…",
+    "confirmRemove": "Diese Karte entfernen?",
+    "confirmYes": "Ja, entfernen",
+    "confirmNo": "Abbrechen"
+  },
+  "billingHistory": {
+    "title": "Rechnungsverlauf",
+    "empty": "Sie haben noch keine Rechnungen.",
+    "download": "PDF herunterladen",
+    "columns": {
+      "invoice": "Rechnung",
+      "description": "Beschreibung",
+      "amount": "Betrag",
+      "status": "Status",
+      "date": "Datum",
+      "actions": "Aktionen"
+    },
+    "status": {
+      "paid": "Bezahlt",
+      "pending": "Ausstehend",
+      "failed": "Fehlgeschlagen",
+      "refunded": "Erstattet"
+    }
+  }
+}

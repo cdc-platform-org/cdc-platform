@@ -1,7 +1,9 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
+import * as Sentry from '@sentry/node';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved } from '../middleware/auth';
+import { rateLimit } from '../middleware/rateLimit';
 import { checkoutMentorshipSchema } from '../schemas/paymentSchemas';
 import {
   createBogOrder,
@@ -24,6 +26,18 @@ import { sendMentorshipBookingEmails } from '../services/emailService';
 const router = Router();
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://cdc.org.ge';
+
+// Applied to the four checkout-initiating routes below (not /bog/callback,
+// which is BOG's own webhook and must not be throttled, and not /my or
+// /bog/status which are just reads) — same in-memory/IP-keyed limiter as
+// the rest of this app (see middleware/rateLimit.ts), sized to stop a
+// scripted burst of order creation without getting in the way of a real
+// user retrying a failed checkout a few times.
+const checkoutRateLimit = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 20,
+  message: 'Too many checkout attempts. Please wait a moment and try again.',
+});
 
 // BOG's create-order API rejects (or silently fails to reach) a callback_url
 // that isn't a real public https:// endpoint — a plain http:// URL, or the
@@ -106,6 +120,7 @@ async function createBogOrderOrRespond(res: Response, params: CreateBogOrderPara
 // ============================================================
 router.post(
   '/checkout/course/:courseId',
+  checkoutRateLimit,
   authenticate,
   requireApproved,
   async (req: Request, res: Response) => {
@@ -219,6 +234,7 @@ router.post(
 // ============================================================
 router.post(
   '/checkout/mentorship',
+  checkoutRateLimit,
   authenticate,
   requireApproved,
   async (req: Request, res: Response) => {
@@ -305,6 +321,7 @@ router.post(
 // ============================================================
 router.post(
   '/checkout/gig/:gigId',
+  checkoutRateLimit,
   authenticate,
   requireApproved,
   async (req: Request, res: Response) => {
@@ -367,6 +384,7 @@ router.post(
 // ============================================================
 router.post(
   '/checkout/product/:productId',
+  checkoutRateLimit,
   authenticate,
   requireApproved,
   async (req: Request, res: Response) => {
@@ -462,6 +480,13 @@ router.post('/bog/callback', async (req: Request, res: Response) => {
     await applyBogPaymentResult(bogPayment.id, statusKey, payload);
   } catch (err) {
     console.error('[bog-callback] failed to apply payment result:', err);
+    // Caught and reported explicitly — this handler responds with its own
+    // status/body instead of throwing, so it never reaches
+    // Sentry.setupExpressErrorHandler (see server.ts). A failure here means
+    // real money changed hands on BOG's side but the platform (escrow,
+    // enrollment, payout) never caught up, which is exactly the kind of
+    // error that needs an alert, not just a log line.
+    Sentry.captureException(err, { extra: { bogPaymentId: bogPayment.id, bogOrderId, statusKey } });
     // 500 so BOG's retry mechanism re-delivers; grant logic below is
     // idempotent (unique constraints / status guard above) so a retry is safe.
     return res.status(500).json({ message: 'Failed to process callback.' });

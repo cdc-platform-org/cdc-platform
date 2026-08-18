@@ -149,3 +149,17 @@ export const GOOGLE_CALENDAR_CLIENT_EMAIL = (process.env.GOOGLE_CALENDAR_CLIENT_
 // same failure mode as GEMINI_API_KEY/GOOGLE_CLIENT_ID above.
 export const GOOGLE_CALENDAR_PRIVATE_KEY = (process.env.GOOGLE_CALENDAR_PRIVATE_KEY || '').trim().replace(/\\n/g, '\n');
 export const GOOGLE_CALENDAR_ID = (process.env.GOOGLE_CALENDAR_ID || 'contact@cdc.org.ge').trim();
+// Deliberately NOT requireEnv() — the app must still boot without an Azure
+// OpenAI resource configured. This is the 4th-rung fallback in
+// services/azureOpenAiService.ts, reached only once every model in the
+// Gemini fallback chain (examProctoringService.ts / aiAgentService.ts) has
+// already failed — a Google-wide Gemini outage no longer takes down exam
+// generation/grading if this is set, same "optional until configured"
+// pattern as GEMINI_API_KEY itself.
+export const AZURE_OPENAI_API_KEY = (process.env.AZURE_OPENAI_API_KEY || '').trim();
+export const AZURE_OPENAI_ENDPOINT = (process.env.AZURE_OPENAI_ENDPOINT || '').trim().replace(/\/$/, '');
+export const AZURE_OPENAI_DEPLOYMENT_NAME = (process.env.AZURE_OPENAI_DEPLOYMENT_NAME || '').trim();
+// Azure OpenAI requires an explicit API version per request — unlike Gemini,
+// there's no "-latest" alias, so this is pinned to a known-GA version rather
+// than guessed. Override via env if your deployment needs a different one.
+export const AZURE_OPENAI_API_VERSION = (process.env.AZURE_OPENAI_API_VERSION || '2024-10-21').trim();

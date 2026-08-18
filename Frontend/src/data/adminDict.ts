@@ -35,6 +35,7 @@ export const adminDict = {
       notifications: 'შეტყობინებების გაგზავნა',
       products: 'ციფრული მაღაზია',
       assignments: 'საშინაო დავალებები',
+      candidateVerifications: 'კანდიდატების ვერიფიკაცია',
       certificates: 'სერტიფიკატის გაცემა',
     },
     navSections: {
@@ -105,6 +106,7 @@ export const adminDict = {
       notifications: 'Send Notifications',
       products: 'Digital Store',
       assignments: 'Assignments',
+      candidateVerifications: 'Candidate Verifications',
       certificates: 'Issue Certificate',
     },
     navSections: {

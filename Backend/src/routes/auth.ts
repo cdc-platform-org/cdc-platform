@@ -19,6 +19,7 @@ import {
   changePasswordSchema,
 } from '../schemas/authSchemas';
 import { authenticate } from '../middleware/auth';
+import { rateLimit } from '../middleware/rateLimit';
 import {
   JWT_SECRET,
   GOOGLE_CLIENT_ID,
@@ -40,6 +41,27 @@ const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // Same fallback pattern as payments.ts/emailService.ts/certificateService.ts.
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://cdc.org.ge';
+
+// Tighter, dedicated budget for /login specifically — the one endpoint an
+// actual credential-stuffing/brute-force script would hit directly, as
+// opposed to authRateLimit below which just needs to stop casual abuse of
+// the other unauthenticated endpoints.
+const loginRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: 'Too many login attempts. Please wait before trying again.',
+});
+
+// Shared budget for the other unauthenticated, credential-adjacent
+// endpoints (registration, password reset, email verification, OAuth token
+// exchange) — same in-memory/IP-keyed limiter as everywhere else in this
+// app (see middleware/rateLimit.ts), just a looser cap than loginRateLimit
+// since none of these is a single guessable secret to brute-force.
+const authRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: 'Too many attempts. Please try again shortly.',
+});
 // GitHub/Facebook redirect_uri construction lives in utils/env.ts
 // (GITHUB_CALLBACK_URL/FACEBOOK_CALLBACK_URL) so it shares BACKEND_URL's
 // single source of truth and https-forcing safety net with the rest of the
@@ -176,7 +198,7 @@ function toUserResponse(user: {
   };
 }
 
-router.post('/register', async (req, res) => {
+router.post('/register', authRateLimit, async (req, res) => {
   const result = registerSchema.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({ errors: result.error.errors });
@@ -224,7 +246,7 @@ router.post('/register', async (req, res) => {
   });
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', loginRateLimit, async (req, res) => {
   const result = loginSchema.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({ errors: result.error.errors });
@@ -300,7 +322,7 @@ router.post('/delete-account', authenticate, async (req, res) => {
   });
 });
 
-router.post('/verify-email', async (req, res) => {
+router.post('/verify-email', authRateLimit, async (req, res) => {
   const result = verifyEmailSchema.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({ errors: result.error.errors });
@@ -346,7 +368,7 @@ router.post('/resend-verification', authenticate, async (req, res) => {
 
 const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour — shorter than email verification since it grants account takeover, not just a status flag
 
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', authRateLimit, async (req, res) => {
   const result = forgotPasswordSchema.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({ errors: result.error.errors });
@@ -384,7 +406,7 @@ router.post('/forgot-password', async (req, res) => {
   }
 });
 
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', authRateLimit, async (req, res) => {
   const result = resetPasswordSchema.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({ errors: result.error.errors });
@@ -411,7 +433,7 @@ router.post('/reset-password', async (req, res) => {
 // ID token credential from the button/One Tap prompt, and POSTs it here —
 // this never sees the user's Google password, only a signed token we verify
 // against Google's public keys (google-auth-library handles key rotation).
-router.post('/google', async (req, res) => {
+router.post('/google', authRateLimit, async (req, res) => {
   if (!GOOGLE_CLIENT_ID) {
     return res.status(501).json({ message: 'Google Sign-In is not configured on this server.' });
   }

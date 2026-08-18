@@ -162,15 +162,16 @@ export async function startCandidateExam(
   return response.data.data;
 }
 
-export async function submitCandidateExam(
-  submissionToken: string,
-  payload: {
-    answers: Record<string, string>;
-    tabSwitches: number;
-    copyPasteCount: number;
-    proctoringViolations: number;
-    disqualified?: boolean;
-  }
-): Promise<void> {
+export async function submitCandidateExam(submissionToken: string, payload: { answers: Record<string, string> }): Promise<void> {
   await apiClient.post(`/exam-proctoring/submissions/${submissionToken}/submit`, payload);
+}
+
+// Fire-and-forget: called the instant a real violation happens (tab switch,
+// paste, ...) so the count is recorded server-side, timestamped by server
+// receipt, rather than only totalled up client-side and reported once at
+// submit — see the backend route's own comment for why that mattered.
+export type ProctoringEventType = 'TAB_SWITCH' | 'COPY_PASTE';
+
+export async function logProctoringEvent(submissionToken: string, type: ProctoringEventType): Promise<void> {
+  await apiClient.post(`/exam-proctoring/submissions/${submissionToken}/events`, { type });
 }

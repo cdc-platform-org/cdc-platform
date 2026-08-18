@@ -6,6 +6,7 @@ import {
   getCandidateExamInfo,
   startCandidateExam,
   submitCandidateExam,
+  logProctoringEvent,
   CandidateExamInfo,
   ExamQuestionRow,
 } from '../../src/services/examProctoringService';
@@ -79,7 +80,6 @@ export default function CandidateExamPage() {
   const phaseRef = useRef<Phase>('landing');
   const strikeGuardRef = useRef(false);
   const answersRef = useRef<Record<string, string>>({});
-  const strikesRef = useRef(0);
   const tabSwitchRef = useRef(0);
   const copyPasteRef = useRef(0);
   const submissionTokenRef = useRef<string | null>(null);
@@ -97,26 +97,21 @@ export default function CandidateExamPage() {
       .catch(() => setError(t.loadFailed));
   }, [token, t.loadFailed]);
 
-  const handleSubmit = useCallback(
-    async (violationCount: number, disqualified: boolean) => {
-      if (!submissionTokenRef.current || phaseRef.current === 'submitting' || phaseRef.current === 'done') return;
-      setPhase('submitting');
-      try {
-        await submitCandidateExam(submissionTokenRef.current, {
-          answers: answersRef.current,
-          tabSwitches: tabSwitchRef.current,
-          copyPasteCount: copyPasteRef.current,
-          proctoringViolations: violationCount,
-          disqualified,
-        });
-        setPhase('done');
-      } catch {
-        setError(t.errorGeneric);
-        setPhase('error');
-      }
-    },
-    [t.errorGeneric]
-  );
+  const handleSubmit = useCallback(async () => {
+    if (!submissionTokenRef.current || phaseRef.current === 'submitting' || phaseRef.current === 'done') return;
+    setPhase('submitting');
+    try {
+      // Only answers travel here now — tab-switch/paste counts are recorded
+      // server-side in real time by logProctoringEvent below (see
+      // registerStrike) and the server recomputes the integrity score from
+      // those at submit time, rather than trusting anything this call sends.
+      await submitCandidateExam(submissionTokenRef.current, { answers: answersRef.current });
+      setPhase('done');
+    } catch {
+      setError(t.errorGeneric);
+      setPhase('error');
+    }
+  }, [t.errorGeneric]);
 
   const registerStrike = useCallback(
     (kind: 'tab' | 'copyPaste') => {
@@ -125,6 +120,14 @@ export default function CandidateExamPage() {
       setTimeout(() => {
         strikeGuardRef.current = false;
       }, 800);
+
+      if (submissionTokenRef.current) {
+        // Fire-and-forget — this is the server-authoritative record of the
+        // violation; the local strikes/toast state below is only for the
+        // candidate's own on-screen warning and the client-side auto-submit
+        // at MAX_STRIKES.
+        logProctoringEvent(submissionTokenRef.current, kind === 'tab' ? 'TAB_SWITCH' : 'COPY_PASTE').catch(() => {});
+      }
 
       if (kind === 'tab') {
         tabSwitchRef.current += 1;
@@ -136,9 +139,8 @@ export default function CandidateExamPage() {
 
       setStrikes((prev) => {
         const next = prev + 1;
-        strikesRef.current = next;
         if (next >= MAX_STRIKES) {
-          handleSubmit(next, true);
+          handleSubmit();
         } else {
           setWarningToast(t.warningNote(next));
         }
@@ -196,7 +198,7 @@ export default function CandidateExamPage() {
     const interval = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
-          handleSubmit(strikesRef.current, false);
+          handleSubmit();
           return 0;
         }
         return prev - 1;
@@ -346,7 +348,7 @@ export default function CandidateExamPage() {
 
             <button
               type="button"
-              onClick={() => handleSubmit(strikes, false)}
+              onClick={() => handleSubmit()}
               className="mt-6 w-full rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-3 text-sm font-black text-white"
             >
               {t.submit}

@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
+import { GetStaticProps } from 'next';
+import { useTranslation } from 'next-i18next';
+import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import {
   CalendarClock,
   Video,
@@ -35,95 +38,6 @@ import {
 } from '../../src/services/mentorshipService';
 import { useAuth } from '../../src/context/AuthContext';
 
-const dict = {
-  ka: {
-    title: 'ჩემი მენტორის სესიები',
-    subtitle: 'ყველა დაჯავშნილი და გამართული სესია.',
-    loading: 'იტვირთება…',
-    empty: 'თქვენ ჯერ არცერთი სესია არ დაგიჯავშნიათ.',
-    withMentor: 'მენტორი',
-    withStudent: 'სტუდენტი',
-    joinMeet: 'Google Meet-ზე გადასვლა',
-    addToCalendar: 'Google კალენდარში დამატება',
-    calendarPending: 'კალენდარში დამატება მიმდინარეობს.',
-    upcoming: 'მომავალი სესიები',
-    past: 'გასული სესიები',
-    topic: 'თემა',
-    bookMentor: 'მენტორის დაჯავშნა',
-    chooseMentor: 'მენტორის არჩევა და დაჯავშნა →',
-    listView: 'სია',
-    calendarView: 'კალენდარი',
-    scheduled: 'დაგეგმილი',
-    completed: 'დასრულებული',
-    close: 'დახურვა',
-    noSessionsOnDay: 'ამ დღეს სესიები არ არის.',
-    watchRecording: 'ვიდეო ჩანაწერის ყურება',
-    attachRecording: 'ჩანაწერის ბმულის დამატება',
-    recordingPlaceholder: 'ჩასვით ბმული (Google Drive, Bunny CDN, MP4...)',
-    save: 'შენახვა',
-    cancel: 'გაუქმება',
-    recordingSaveFailed: 'ჩანაწერის შენახვა ვერ მოხერხდა.',
-    editMeetingLink: 'ბმულის რედაქტირება',
-    meetingLinkPlaceholder: 'Google Meet / Zoom ბმული',
-    meetingLinkSaveFailed: 'ბმულის შენახვა ვერ მოხერხდა.',
-    reschedule: 'გადატანა',
-    rescheduleFailed: 'თარიღის შეცვლა ვერ მოხერხდა.',
-    cancelSession: 'სესიის გაუქმება',
-    confirmCancel: 'ნამდვილად გსურთ ამ სესიის გაუქმება?',
-    cancelFailed: 'გაუქმება ვერ მოხერხდა.',
-    cancelled: 'გაუქმებული',
-    chat: 'ჩატი',
-    chatPlaceholder: 'დაწერეთ შეტყობინება...',
-    chatSend: 'გაგზავნა',
-    chatEmpty: 'ჯერ არცერთი შეტყობინება არ არის.',
-    chatLoadFailed: 'შეტყობინებების ჩატვირთვა ვერ მოხერხდა.',
-    chatBanned: 'თქვენი ანგარიში დაბლოკილია.',
-  },
-  en: {
-    title: 'My Mentorship Sessions',
-    subtitle: 'Every session you have booked or been booked for.',
-    loading: 'Loading…',
-    empty: "You haven't booked any sessions yet.",
-    withMentor: 'Mentor',
-    withStudent: 'Student',
-    joinMeet: 'Join Google Meet',
-    addToCalendar: 'Add to Google Calendar',
-    calendarPending: 'Calendar invite is still being generated.',
-    upcoming: 'Upcoming Sessions',
-    past: 'Past Sessions',
-    topic: 'Topic',
-    bookMentor: 'Book a Mentor',
-    chooseMentor: 'Choose a mentor & book →',
-    listView: 'List',
-    calendarView: 'Calendar',
-    scheduled: 'Scheduled',
-    completed: 'Completed',
-    close: 'Close',
-    noSessionsOnDay: 'No sessions on this day.',
-    watchRecording: 'Watch Recording',
-    attachRecording: 'Attach recording link',
-    recordingPlaceholder: 'Paste a link (Google Drive, Bunny CDN, MP4...)',
-    save: 'Save',
-    cancel: 'Cancel',
-    recordingSaveFailed: 'Could not save the recording link.',
-    editMeetingLink: 'Edit link',
-    meetingLinkPlaceholder: 'Google Meet / Zoom link',
-    meetingLinkSaveFailed: 'Could not save the meeting link.',
-    reschedule: 'Reschedule',
-    rescheduleFailed: 'Could not reschedule the session.',
-    cancelSession: 'Cancel Session',
-    confirmCancel: 'Are you sure you want to cancel this session?',
-    cancelFailed: 'Could not cancel the session.',
-    cancelled: 'Cancelled',
-    chat: 'Chat',
-    chatPlaceholder: 'Type a message...',
-    chatSend: 'Send',
-    chatEmpty: 'No messages yet.',
-    chatLoadFailed: 'Could not load messages.',
-    chatBanned: 'Your account has been blocked.',
-  },
-};
-
 // Builds a Google Calendar "quick add" URL — works without any OAuth/API
 // call, just a pre-filled event the user reviews and saves themselves.
 function googleCalendarAddUrl(booking: MyMentorshipBooking, otherPartyName: string): string {
@@ -140,9 +54,9 @@ function googleCalendarAddUrl(booking: MyMentorshipBooking, otherPartyName: stri
 }
 
 function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBooking; lang: 'ka' | 'en'; onChanged: () => void }) {
-  const t = dict[lang];
+  const { t } = useTranslation('mentorship');
   const otherParty = booking.role === 'student' ? booking.mentor : booking.student;
-  const otherPartyLabel = booking.role === 'student' ? t.withMentor : t.withStudent;
+  const otherPartyLabel = booking.role === 'student' ? t('withMentor') : t('withStudent');
   const isPast = new Date(booking.scheduledAt).getTime() < Date.now();
   const isScheduled = booking.status === 'SCHEDULED';
 
@@ -177,7 +91,7 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
       setMeetLink(meetLinkInput.trim());
       setEditingLink(false);
     } catch {
-      setMeetLinkError(t.meetingLinkSaveFailed);
+      setMeetLinkError(t('meetingLinkSaveFailed'));
     } finally {
       setSavingLink(false);
     }
@@ -192,7 +106,7 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
       setRecordingUrl(recordingInput.trim());
       setAttaching(false);
     } catch {
-      setRecordingError(t.recordingSaveFailed);
+      setRecordingError(t('recordingSaveFailed'));
     } finally {
       setSavingRecording(false);
     }
@@ -207,21 +121,21 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
       setRescheduling(false);
       onChanged();
     } catch (err: any) {
-      setRescheduleError(err?.response?.data?.message ?? t.rescheduleFailed);
+      setRescheduleError(err?.response?.data?.message ?? t('rescheduleFailed'));
     } finally {
       setSavingReschedule(false);
     }
   };
 
   const handleCancel = async () => {
-    if (!window.confirm(t.confirmCancel)) return;
+    if (!window.confirm(t('confirmCancel'))) return;
     setCancelling(true);
     setCancelError(null);
     try {
       await cancelMyBooking(booking.id);
       onChanged();
     } catch (err: any) {
-      setCancelError(err?.response?.data?.message ?? t.cancelFailed);
+      setCancelError(err?.response?.data?.message ?? t('cancelFailed'));
       setCancelling(false);
     }
   };
@@ -243,7 +157,7 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
               <p className="text-[11px] uppercase tracking-widest font-bold text-slate-400">{otherPartyLabel}</p>
               {booking.status === 'CANCELLED' && (
                 <span className="text-[10px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
-                  {t.cancelled}
+                  {t('cancelled')}
                 </span>
               )}
             </div>
@@ -254,7 +168,7 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
             </p>
             {booking.consultationDescription && (
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                {t.topic}: {booking.consultationDescription}
+                {t('sessionTopicLabel')}: {booking.consultationDescription}
               </p>
             )}
           </div>
@@ -268,10 +182,10 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
               className="flex items-center justify-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-indigo-600 text-white no-underline hover:bg-indigo-700"
             >
               <Video className="w-3.5 h-3.5" />
-              {t.joinMeet}
+              {t('joinMeet')}
             </a>
           ) : (
-            <p className="text-[11px] text-slate-400 max-w-[160px] text-right">{t.calendarPending}</p>
+            <p className="text-[11px] text-slate-400 max-w-[160px] text-right">{t('calendarPending')}</p>
           )}
           {booking.role === 'mentor' && !isPast && !editingLink && (
             <button
@@ -280,7 +194,7 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
               className="flex items-center justify-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 bg-transparent cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800"
             >
               <Link2 className="w-3.5 h-3.5" />
-              {t.editMeetingLink}
+              {t('editMeetingLink')}
             </button>
           )}
           {recordingUrl && (
@@ -291,7 +205,7 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
               className="flex items-center justify-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-emerald-600 text-white no-underline hover:bg-emerald-700"
             >
               <PlayCircle className="w-3.5 h-3.5" />
-              {t.watchRecording}
+              {t('watchRecording')}
             </a>
           )}
           <a
@@ -301,7 +215,7 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
             className="flex items-center justify-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 no-underline hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <CalendarClock className="w-3.5 h-3.5" />
-            {t.addToCalendar}
+            {t('addToCalendar')}
           </a>
           {booking.role === 'mentor' && isPast && !recordingUrl && !attaching && (
             <button
@@ -310,7 +224,7 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
               className="flex items-center justify-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 bg-transparent cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800"
             >
               <Link2 className="w-3.5 h-3.5" />
-              {t.attachRecording}
+              {t('attachRecording')}
             </button>
           )}
           <button
@@ -323,7 +237,7 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
             }`}
           >
             <MessageCircle className="w-3.5 h-3.5" />
-            {t.chat}
+            {t('chat')}
           </button>
           {isScheduled && !isPast && !rescheduling && (
             <button
@@ -335,7 +249,7 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
               className="flex items-center justify-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 bg-transparent cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800"
             >
               <CalendarClock className="w-3.5 h-3.5" />
-              {t.reschedule}
+              {t('reschedule')}
             </button>
           )}
           {isScheduled && !isPast && (
@@ -346,7 +260,7 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
               className="flex items-center justify-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 bg-transparent cursor-pointer hover:bg-rose-50 dark:hover:bg-rose-950/30 disabled:opacity-60"
             >
               <CalendarX2 className="w-3.5 h-3.5" />
-              {t.cancelSession}
+              {t('cancelSession')}
             </button>
           )}
         </div>
@@ -370,14 +284,14 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
               onClick={handleReschedule}
               className="text-xs font-bold text-white bg-indigo-600 px-3.5 py-2 rounded-lg border-none cursor-pointer hover:bg-indigo-700 disabled:opacity-60"
             >
-              {savingReschedule ? '…' : t.save}
+              {savingReschedule ? '…' : t('save')}
             </button>
             <button
               type="button"
               onClick={() => setRescheduling(false)}
               className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-transparent border-none cursor-pointer hover:text-slate-700 dark:hover:text-slate-200"
             >
-              {t.cancel}
+              {t('cancel')}
             </button>
           </div>
           {rescheduleError && <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1.5">{rescheduleError}</p>}
@@ -393,7 +307,7 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
               type="url"
               value={meetLinkInput}
               onChange={(e) => setMeetLinkInput(e.target.value)}
-              placeholder={t.meetingLinkPlaceholder}
+              placeholder={t('meetingLinkPlaceholder')}
               className="flex-1 min-w-[220px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950/60 px-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-cyan-500/60"
               autoFocus
             />
@@ -403,14 +317,14 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
               onClick={handleSaveMeetingLink}
               className="text-xs font-bold text-white bg-indigo-600 px-3.5 py-2 rounded-lg border-none cursor-pointer hover:bg-indigo-700 disabled:opacity-60"
             >
-              {savingLink ? '…' : t.save}
+              {savingLink ? '…' : t('save')}
             </button>
             <button
               type="button"
               onClick={() => setEditingLink(false)}
               className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-transparent border-none cursor-pointer hover:text-slate-700 dark:hover:text-slate-200"
             >
-              {t.cancel}
+              {t('cancel')}
             </button>
           </div>
           {meetLinkError && <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1.5">{meetLinkError}</p>}
@@ -424,7 +338,7 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
               type="url"
               value={recordingInput}
               onChange={(e) => setRecordingInput(e.target.value)}
-              placeholder={t.recordingPlaceholder}
+              placeholder={t('recordingPlaceholder')}
               className="flex-1 min-w-[220px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950/60 px-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-cyan-500/60"
               autoFocus
             />
@@ -434,14 +348,14 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
               onClick={handleSaveRecording}
               className="text-xs font-bold text-white bg-indigo-600 px-3.5 py-2 rounded-lg border-none cursor-pointer hover:bg-indigo-700 disabled:opacity-60"
             >
-              {savingRecording ? '…' : t.save}
+              {savingRecording ? '…' : t('save')}
             </button>
             <button
               type="button"
               onClick={() => setAttaching(false)}
               className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-transparent border-none cursor-pointer hover:text-slate-700 dark:hover:text-slate-200"
             >
-              {t.cancel}
+              {t('cancel')}
             </button>
           </div>
           {recordingError && <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1.5">{recordingError}</p>}
@@ -460,7 +374,7 @@ const CHAT_POLL_MS = 4000;
 // surfaces as a warning banner instead, or — on the sender's 2nd such
 // attempt anywhere on the platform — a terminal "account blocked" state.
 function ChatPanel({ bookingId, lang }: { bookingId: string; lang: 'ka' | 'en' }) {
-  const t = dict[lang];
+  const { t } = useTranslation('mentorship');
   const { user } = useAuth();
   const [messages, setMessages] = useState<MentorChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -504,11 +418,11 @@ function ChatPanel({ bookingId, lang }: { bookingId: string; lang: 'ka' | 'en' }
     } catch (err: any) {
       if (err?.response?.status === 403 && err?.response?.data?.banned) {
         setBanned(true);
-        setWarning(err.response.data.message ?? t.chatBanned);
+        setWarning(err.response.data.message ?? t('chatBanned'));
       } else if (err?.response?.status === 422) {
-        setWarning(err.response.data?.message ?? t.chatBanned);
+        setWarning(err.response.data?.message ?? t('chatBanned'));
       } else {
-        setWarning(t.chatLoadFailed);
+        setWarning(t('chatLoadFailed'));
       }
     } finally {
       setSending(false);
@@ -519,11 +433,11 @@ function ChatPanel({ bookingId, lang }: { bookingId: string; lang: 'ka' | 'en' }
     <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
       <div ref={listRef} className="max-h-64 overflow-y-auto space-y-2 mb-3 pr-1">
         {loading ? (
-          <p className="text-xs text-slate-400">{t.loading}</p>
+          <p className="text-xs text-slate-400">{t('loading')}</p>
         ) : loadError ? (
-          <p className="text-xs text-rose-500">{t.chatLoadFailed}</p>
+          <p className="text-xs text-rose-500">{t('chatLoadFailed')}</p>
         ) : messages.length === 0 ? (
-          <p className="text-xs text-slate-400">{t.chatEmpty}</p>
+          <p className="text-xs text-slate-400">{t('chatEmpty')}</p>
         ) : (
           messages.map((m) => (
             <div key={m.id} className={`flex ${m.senderId === user?.id ? 'justify-end' : 'justify-start'}`}>
@@ -559,14 +473,14 @@ function ChatPanel({ bookingId, lang }: { bookingId: string; lang: 'ka' | 'en' }
             }
           }}
           disabled={sending || banned}
-          placeholder={t.chatPlaceholder}
+          placeholder={t('chatPlaceholder')}
           className="flex-1 min-w-0 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950/60 px-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-cyan-500/60 disabled:opacity-60"
         />
         <button
           type="button"
           onClick={handleSend}
           disabled={sending || banned || !input.trim()}
-          aria-label={t.chatSend}
+          aria-label={t('chatSend')}
           className="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-600 text-white border-none cursor-pointer hover:bg-indigo-700 disabled:opacity-60"
         >
           <Send className="w-3.5 h-3.5" />
@@ -585,9 +499,9 @@ function SessionDetailsModal({
   lang: 'ka' | 'en';
   onClose: () => void;
 }) {
-  const t = dict[lang];
+  const { t } = useTranslation('mentorship');
   const otherParty = booking.role === 'student' ? booking.mentor : booking.student;
-  const otherPartyLabel = booking.role === 'student' ? t.withMentor : t.withStudent;
+  const otherPartyLabel = booking.role === 'student' ? t('withMentor') : t('withStudent');
   const isPast = new Date(booking.scheduledAt).getTime() < Date.now();
 
   return (
@@ -599,7 +513,7 @@ function SessionDetailsModal({
         <button
           type="button"
           onClick={onClose}
-          aria-label={t.close}
+          aria-label={t('close')}
           className="absolute top-4 right-4 p-2 cursor-pointer text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
         >
           <X className="w-4 h-4" />
@@ -612,7 +526,7 @@ function SessionDetailsModal({
               : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
           }`}
         >
-          {isPast ? t.completed : t.scheduled}
+          {isPast ? t('completed') : t('scheduled')}
         </span>
 
         <p className="text-[11px] uppercase tracking-widest font-bold text-slate-400">{otherPartyLabel}</p>
@@ -624,7 +538,7 @@ function SessionDetailsModal({
         </p>
         {booking.consultationDescription && (
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-            {t.topic}: {booking.consultationDescription}
+            {t('sessionTopicLabel')}: {booking.consultationDescription}
           </p>
         )}
 
@@ -637,10 +551,10 @@ function SessionDetailsModal({
               className="flex items-center justify-center gap-1.5 text-sm font-bold px-4 py-2.5 rounded-xl bg-indigo-600 text-white no-underline hover:bg-indigo-700"
             >
               <Video className="w-4 h-4" />
-              {t.joinMeet}
+              {t('joinMeet')}
             </a>
           ) : (
-            <p className="text-xs text-slate-400 text-center">{t.calendarPending}</p>
+            <p className="text-xs text-slate-400 text-center">{t('calendarPending')}</p>
           )}
           {booking.recordingUrl && (
             <a
@@ -650,7 +564,7 @@ function SessionDetailsModal({
               className="flex items-center justify-center gap-1.5 text-sm font-bold px-4 py-2.5 rounded-xl bg-emerald-600 text-white no-underline hover:bg-emerald-700"
             >
               <PlayCircle className="w-4 h-4" />
-              {t.watchRecording}
+              {t('watchRecording')}
             </a>
           )}
         </div>
@@ -681,7 +595,6 @@ function SessionsCalendarView({
   lang: 'ka' | 'en';
   onSelectBooking: (booking: MyMentorshipBooking) => void;
 }) {
-  const t = dict[lang];
   const [cursor, setCursor] = useState(() => new Date());
 
   const weeks = useMemo(() => {
@@ -789,7 +702,7 @@ function SessionsCalendarView({
 function MentorshipSessionsContent() {
   const router = useRouter();
   const lang = router.locale === 'en' ? 'en' : 'ka';
-  const t = dict[lang];
+  const { t } = useTranslation('mentorship');
 
   const [bookings, setBookings] = useState<MyMentorshipBooking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -816,7 +729,7 @@ function MentorshipSessionsContent() {
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       <Head>
-        <title>{`${t.title} | CDC Platform`}</title>
+        <title>{`${t('sessionsTitle')} | CDC Platform`}</title>
       </Head>
       <SiteHeader />
 
@@ -829,9 +742,9 @@ function MentorshipSessionsContent() {
           <div>
             <h1 className="text-2xl font-black tracking-wide flex items-center gap-2">
               <Users className="w-6 h-6 text-indigo-500" />
-              {t.title}
+              {t('sessionsTitle')}
             </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t.subtitle}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t('sessionsSubtitle')}</p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             {bookings.length > 0 && (
@@ -844,7 +757,7 @@ function MentorshipSessionsContent() {
                   }`}
                 >
                   <List className="w-3.5 h-3.5" />
-                  {t.listView}
+                  {t('listView')}
                 </button>
                 <button
                   type="button"
@@ -854,7 +767,7 @@ function MentorshipSessionsContent() {
                   }`}
                 >
                   <CalendarDays className="w-3.5 h-3.5" />
-                  {t.calendarView}
+                  {t('calendarView')}
                 </button>
               </div>
             )}
@@ -863,21 +776,21 @@ function MentorshipSessionsContent() {
               className="inline-flex items-center gap-2 bg-indigo-600 text-white font-bold text-sm px-4 py-2.5 rounded-xl no-underline hover:bg-indigo-700 transition-colors shrink-0"
             >
               <UserPlus className="w-4 h-4" />
-              {t.bookMentor}
+              {t('bookMentor')}
             </Link>
           </div>
         </div>
 
         {loading ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">{t.loading}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t('loading')}</p>
         ) : bookings.length === 0 ? (
           <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-10 text-center">
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t.empty}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t('sessionsEmpty')}</p>
             <Link
               href="/mentors"
               className="inline-flex items-center gap-1.5 text-sm font-bold text-indigo-600 dark:text-indigo-400 no-underline hover:underline"
             >
-              {t.chooseMentor}
+              {t('chooseMentor')}
             </Link>
           </div>
         ) : viewMode === 'calendar' ? (
@@ -886,7 +799,7 @@ function MentorshipSessionsContent() {
           <div className="space-y-10">
             {upcoming.length > 0 && (
               <div>
-                <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">{t.upcoming}</h2>
+                <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">{t('upcoming')}</h2>
                 <div className="space-y-3">
                   {upcoming.map((b) => (
                     <SessionCard key={b.id} booking={b} lang={lang} onChanged={load} />
@@ -896,7 +809,7 @@ function MentorshipSessionsContent() {
             )}
             {past.length > 0 && (
               <div>
-                <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">{t.past}</h2>
+                <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">{t('past')}</h2>
                 <div className="space-y-3 opacity-70">
                   {past.map((b) => (
                     <SessionCard key={b.id} booking={b} lang={lang} onChanged={load} />
@@ -922,3 +835,7 @@ export default function MentorshipSessionsPage() {
     </ProtectedRoute>
   );
 }
+
+export const getStaticProps: GetStaticProps = async ({ locale }) => ({
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['mentorship'])) },
+});
