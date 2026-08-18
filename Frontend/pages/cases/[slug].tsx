@@ -11,6 +11,7 @@ import MarkdownContent from '../../src/components/shared/MarkdownContent';
 import { StudioCaseStudy } from '../../src/types/studioCaseStudy';
 import { getStudioCaseBySlug, studioCaseTitle, studioCaseDescription, studioCaseFullStory } from '../../src/services/studioCaseService';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
+import { resolveLocale } from '@/src/utils/locale';
 
 const dict = {
   ka: {
@@ -31,12 +32,50 @@ const dict = {
     viewLive: 'View Live Project →',
     gallery: 'Gallery',
   },
+  de: {
+    loading: 'Loading…',
+    notFound: 'Case study not found.',
+    backToCases: '← All Case Studies',
+    client: 'Client',
+    category: 'Category',
+    viewLive: 'View Live Project →',
+    gallery: 'Gallery',
+  },
+  es: {
+    loading: 'Loading…',
+    notFound: 'Case study not found.',
+    backToCases: '← All Case Studies',
+    client: 'Client',
+    category: 'Category',
+    viewLive: 'View Live Project →',
+    gallery: 'Gallery',
+  },
+  fr: {
+    loading: 'Loading…',
+    notFound: 'Case study not found.',
+    backToCases: '← All Case Studies',
+    client: 'Client',
+    category: 'Category',
+    viewLive: 'View Live Project →',
+    gallery: 'Gallery',
+  },
+  uk: {
+    loading: 'Loading…',
+    notFound: 'Case study not found.',
+    backToCases: '← All Case Studies',
+    client: 'Client',
+    category: 'Category',
+    viewLive: 'View Live Project →',
+    gallery: 'Gallery',
+  },
 };
 
 export default function StudioCaseDetailPage() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
+  // Studio case studies only store ka/en text — collapse for content lookups.
+  const contentLang = lang === 'ka' ? 'ka' : 'en';
   const slug = typeof router.query.slug === 'string' ? router.query.slug : undefined;
 
   const [caseStudy, setCaseStudy] = useState<StudioCaseStudy | null>(null);
@@ -60,7 +99,7 @@ export default function StudioCaseDetailPage() {
     if (slug) load(slug);
   }, [slug, load]);
 
-  const displayTitle = caseStudy ? studioCaseTitle(caseStudy, lang) : undefined;
+  const displayTitle = caseStudy ? studioCaseTitle(caseStudy, contentLang) : undefined;
   const galleryImages = (caseStudy?.galleryImages ?? []).map((url) => ({ url, alt: displayTitle }));
 
   return (
@@ -111,10 +150,10 @@ export default function StudioCaseDetailPage() {
               )}
             </div>
 
-            <MarkdownContent content={studioCaseDescription(caseStudy, lang)} className="text-base text-slate-600 dark:text-slate-300 font-medium mb-6" />
+            <MarkdownContent content={studioCaseDescription(caseStudy, contentLang)} className="text-base text-slate-600 dark:text-slate-300 font-medium mb-6" />
 
-            {studioCaseFullStory(caseStudy, lang) && (
-              <MarkdownContent content={studioCaseFullStory(caseStudy, lang) ?? ''} className="text-sm text-slate-500 dark:text-slate-400 mb-10" />
+            {studioCaseFullStory(caseStudy, contentLang) && (
+              <MarkdownContent content={studioCaseFullStory(caseStudy, contentLang) ?? ''} className="text-sm text-slate-500 dark:text-slate-400 mb-10" />
             )}
 
             {caseStudy.videoUrl && (

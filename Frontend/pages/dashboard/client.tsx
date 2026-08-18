@@ -38,12 +38,14 @@ import { MyGig } from '../../src/types/community';
 import { getMyGigs, approveGigWork, openGigDispute } from '../../src/services/gigService';
 import { createReview } from '../../src/services/reviewService';
 import { checkoutGigEscrow } from '../../src/services/paymentService';
+import { checkoutGigEscrowStripe } from '../../src/services/stripePaymentService';
 import { MyVacancy, EmploymentType, VacancyStatus } from '../../src/types/community';
 import { getMyVacancies, updateVacancy, UpdateVacancyPayload } from '../../src/services/vacancyService';
+import { resolveLocale, SupportedLocale } from '../../src/utils/locale';
 
 type Tab = 'overview' | 'profile' | 'vacancies' | 'orders';
 
-const dict = {
+const dictBase = {
   ka: {
     title: 'ბიზნეს პანელი',
     subtitle: 'თქვენი კომპანიის პროფილი, ვაკანსიები და გარიგებები — ერთ სივრცეში.',
@@ -194,6 +196,17 @@ const dict = {
   },
 };
 
+// German/Spanish/French/Ukrainian copy hasn't been written for this page yet
+// — fall back to English rather than silently showing Georgian (the old
+// router.locale === 'en' ? 'en' : 'ka' bug) until real translations land.
+const dict: Record<SupportedLocale, typeof dictBase.en> = {
+  ...dictBase,
+  de: dictBase.en,
+  es: dictBase.en,
+  fr: dictBase.en,
+  uk: dictBase.en,
+};
+
 const VACANCY_STATUS_BADGE: Record<VacancyStatus, string> = {
   open: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
   closed: 'bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-500/30',
@@ -234,7 +247,7 @@ function VerificationBadge({ status, t }: { status: VerificationStatus; t: typeo
 
 interface VacancyEditModalProps {
   vacancy: MyVacancy;
-  lang: 'ka' | 'en';
+  lang: SupportedLocale;
   onClose: () => void;
   onSaved: (updated: MyVacancy) => void;
 }
@@ -353,7 +366,7 @@ function VacancyEditModal({ vacancy, lang, onClose, onSaved }: VacancyEditModalP
 }
 
 interface ReviewModalProps {
-  lang: 'ka' | 'en';
+  lang: SupportedLocale;
   onClose: () => void;
   onSubmit: (rating: number, comment: string) => Promise<void>;
 }
@@ -420,7 +433,7 @@ function ReviewModal({ lang, onClose, onSubmit }: ReviewModalProps) {
 
 function BusinessDashboardContent() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
   const { user, refreshUser } = useAuth();
 
@@ -586,7 +599,9 @@ function BusinessDashboardContent() {
     setGigBusyId(gigId);
     setGigActionError(null);
     try {
-      const { redirectUrl } = await checkoutGigEscrow(gigId, lang);
+      // Georgian users pay via BOG (GEL); everyone else via Stripe (USD/EUR).
+      const { redirectUrl } =
+        lang === 'ka' ? await checkoutGigEscrow(gigId, 'ka') : await checkoutGigEscrowStripe(gigId, 'usd');
       window.location.href = redirectUrl;
     } catch (err: any) {
       const serverMessage = err?.response?.data?.message;

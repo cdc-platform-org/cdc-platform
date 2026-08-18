@@ -5,6 +5,7 @@ import Head from 'next/head';
 import BackButton from '../../src/components/common/BackButton';
 import { CertificateVerification } from '../../src/types/lms';
 import { verifyCertificate } from '../../src/services/courseService';
+import { resolveLocale } from '@/src/utils/locale';
 
 const dict = {
   ka: {
@@ -37,13 +38,73 @@ const dict = {
     download: 'Download PDF',
     backHome: '← Back to home',
   },
+  de: {
+    title: 'Certificate Verification',
+    loading: 'Verifying…',
+    verified: 'Verified Certificate',
+    verifiedSub: 'This certificate was issued by CDC — Center for Digital Careers.',
+    notFound: 'Certificate Not Found',
+    notFoundSub: 'This verification code is invalid or the certificate no longer exists.',
+    student: 'Student',
+    course: 'Course Completed',
+    instructor: 'Instructor',
+    issued: 'Issue Date',
+    code: 'Verification Code',
+    download: 'Download PDF',
+    backHome: '← Back to home',
+  },
+  es: {
+    title: 'Certificate Verification',
+    loading: 'Verifying…',
+    verified: 'Verified Certificate',
+    verifiedSub: 'This certificate was issued by CDC — Center for Digital Careers.',
+    notFound: 'Certificate Not Found',
+    notFoundSub: 'This verification code is invalid or the certificate no longer exists.',
+    student: 'Student',
+    course: 'Course Completed',
+    instructor: 'Instructor',
+    issued: 'Issue Date',
+    code: 'Verification Code',
+    download: 'Download PDF',
+    backHome: '← Back to home',
+  },
+  fr: {
+    title: 'Certificate Verification',
+    loading: 'Verifying…',
+    verified: 'Verified Certificate',
+    verifiedSub: 'This certificate was issued by CDC — Center for Digital Careers.',
+    notFound: 'Certificate Not Found',
+    notFoundSub: 'This verification code is invalid or the certificate no longer exists.',
+    student: 'Student',
+    course: 'Course Completed',
+    instructor: 'Instructor',
+    issued: 'Issue Date',
+    code: 'Verification Code',
+    download: 'Download PDF',
+    backHome: '← Back to home',
+  },
+  uk: {
+    title: 'Certificate Verification',
+    loading: 'Verifying…',
+    verified: 'Verified Certificate',
+    verifiedSub: 'This certificate was issued by CDC — Center for Digital Careers.',
+    notFound: 'Certificate Not Found',
+    notFoundSub: 'This verification code is invalid or the certificate no longer exists.',
+    student: 'Student',
+    course: 'Course Completed',
+    instructor: 'Instructor',
+    issued: 'Issue Date',
+    code: 'Verification Code',
+    download: 'Download PDF',
+    backHome: '← Back to home',
+  },
 };
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 export default function VerifyCertificatePage() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
   const code = typeof router.query.code === 'string' ? router.query.code : null;
 

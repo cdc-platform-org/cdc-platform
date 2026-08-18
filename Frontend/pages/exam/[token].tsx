@@ -10,6 +10,7 @@ import {
   CandidateExamInfo,
   ExamQuestionRow,
 } from '../../src/services/examProctoringService';
+import { resolveLocale } from '@/src/utils/locale';
 
 // Same anti-cheat mechanism as pages/freelancer/exam.tsx's registerStrike —
 // tab-switch / window-blur / fullscreen-exit strikes, auto-submitting (here,
@@ -54,11 +55,79 @@ const dict = {
     codePlaceholder: '// Write your code here…',
     errorGeneric: 'Something went wrong. Please try again.',
   },
+  de: {
+    loadFailed: 'This exam link is no longer active.',
+    name: 'Full Name',
+    email: 'Email',
+    start: 'Start Exam',
+    starting: 'Starting…',
+    duration: (m: number) => `Duration: ${m} minutes`,
+    submit: 'Finish & Submit',
+    submitting: 'Submitting…',
+    doneTitle: 'Thank you!',
+    doneBody: 'Your answers were submitted successfully. The employer will be in touch about next steps.',
+    warningNote: (n: number) => `⚠️ Violation detected (${n}/${MAX_STRIKES}). One more and the exam will auto-submit.`,
+    proctoringNotice: `Tab switching, losing window focus, or exiting fullscreen counts as a violation — ${MAX_STRIKES} violations auto-submit and end the exam.`,
+    practicalPlaceholder: 'Write your answer here…',
+    codePlaceholder: '// Write your code here…',
+    errorGeneric: 'Something went wrong. Please try again.',
+  },
+  es: {
+    loadFailed: 'This exam link is no longer active.',
+    name: 'Full Name',
+    email: 'Email',
+    start: 'Start Exam',
+    starting: 'Starting…',
+    duration: (m: number) => `Duration: ${m} minutes`,
+    submit: 'Finish & Submit',
+    submitting: 'Submitting…',
+    doneTitle: 'Thank you!',
+    doneBody: 'Your answers were submitted successfully. The employer will be in touch about next steps.',
+    warningNote: (n: number) => `⚠️ Violation detected (${n}/${MAX_STRIKES}). One more and the exam will auto-submit.`,
+    proctoringNotice: `Tab switching, losing window focus, or exiting fullscreen counts as a violation — ${MAX_STRIKES} violations auto-submit and end the exam.`,
+    practicalPlaceholder: 'Write your answer here…',
+    codePlaceholder: '// Write your code here…',
+    errorGeneric: 'Something went wrong. Please try again.',
+  },
+  fr: {
+    loadFailed: 'This exam link is no longer active.',
+    name: 'Full Name',
+    email: 'Email',
+    start: 'Start Exam',
+    starting: 'Starting…',
+    duration: (m: number) => `Duration: ${m} minutes`,
+    submit: 'Finish & Submit',
+    submitting: 'Submitting…',
+    doneTitle: 'Thank you!',
+    doneBody: 'Your answers were submitted successfully. The employer will be in touch about next steps.',
+    warningNote: (n: number) => `⚠️ Violation detected (${n}/${MAX_STRIKES}). One more and the exam will auto-submit.`,
+    proctoringNotice: `Tab switching, losing window focus, or exiting fullscreen counts as a violation — ${MAX_STRIKES} violations auto-submit and end the exam.`,
+    practicalPlaceholder: 'Write your answer here…',
+    codePlaceholder: '// Write your code here…',
+    errorGeneric: 'Something went wrong. Please try again.',
+  },
+  uk: {
+    loadFailed: 'This exam link is no longer active.',
+    name: 'Full Name',
+    email: 'Email',
+    start: 'Start Exam',
+    starting: 'Starting…',
+    duration: (m: number) => `Duration: ${m} minutes`,
+    submit: 'Finish & Submit',
+    submitting: 'Submitting…',
+    doneTitle: 'Thank you!',
+    doneBody: 'Your answers were submitted successfully. The employer will be in touch about next steps.',
+    warningNote: (n: number) => `⚠️ Violation detected (${n}/${MAX_STRIKES}). One more and the exam will auto-submit.`,
+    proctoringNotice: `Tab switching, losing window focus, or exiting fullscreen counts as a violation — ${MAX_STRIKES} violations auto-submit and end the exam.`,
+    practicalPlaceholder: 'Write your answer here…',
+    codePlaceholder: '// Write your code here…',
+    errorGeneric: 'Something went wrong. Please try again.',
+  },
 };
 
 export default function CandidateExamPage() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
   const token = typeof router.query.token === 'string' ? router.query.token : null;
 

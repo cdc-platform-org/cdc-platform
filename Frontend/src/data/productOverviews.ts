@@ -1,10 +1,11 @@
 import { Code2, UploadCloud, BarChart3, ShieldCheck, ShieldAlert, EyeOff, KeyRound, Sparkles, RefreshCw } from 'lucide-react';
+import { SupportedLocale } from '../utils/locale';
 
 // Shared "Learn More" content for ProductOverviewCard — used by both
 // pages/tools.tsx (marketing) and BusinessAiTab.tsx (Dashboard > My Tools),
 // so the two surfaces never drift into describing the same product
 // differently.
-export const PRODUCT_OVERVIEW = {
+const PRODUCT_OVERVIEW_BASE = {
   ka: {
     enterpriseAi: {
       whatYouGet:
@@ -128,3 +129,16 @@ export const PRODUCT_OVERVIEW = {
     },
   },
 } as const;
+
+// English fallback for locales without a translation yet. Cast through
+// `unknown` because ka's and en's per-key literal string types otherwise
+// don't structurally match under a single Record<SupportedLocale, ...>
+// annotation — a TS inference artifact, not a real shape mismatch (de/es/fr/
+// uk are literally the same object as en).
+export const PRODUCT_OVERVIEW = {
+  ...PRODUCT_OVERVIEW_BASE,
+  de: PRODUCT_OVERVIEW_BASE.en,
+  es: PRODUCT_OVERVIEW_BASE.en,
+  fr: PRODUCT_OVERVIEW_BASE.en,
+  uk: PRODUCT_OVERVIEW_BASE.en,
+} as unknown as Record<SupportedLocale, typeof PRODUCT_OVERVIEW_BASE.en>;

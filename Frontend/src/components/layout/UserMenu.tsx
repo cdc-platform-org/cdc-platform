@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../context/AuthContext';
+import { resolveLocale } from '@/src/utils/locale';
 
 const dict = {
   ka: {
@@ -22,6 +23,42 @@ const dict = {
     cyberSecurity: 'Cyber Security',
     settings: 'Settings',
   },
+  de: {
+    logout: 'Log Out',
+    dashboard: 'My Dashboard',
+    myCourses: 'My Courses',
+    admin: 'Admin Panel',
+    billing: 'Billing',
+    cyberSecurity: 'Cyber Security',
+    settings: 'Settings',
+  },
+  es: {
+    logout: 'Log Out',
+    dashboard: 'My Dashboard',
+    myCourses: 'My Courses',
+    admin: 'Admin Panel',
+    billing: 'Billing',
+    cyberSecurity: 'Cyber Security',
+    settings: 'Settings',
+  },
+  fr: {
+    logout: 'Log Out',
+    dashboard: 'My Dashboard',
+    myCourses: 'My Courses',
+    admin: 'Admin Panel',
+    billing: 'Billing',
+    cyberSecurity: 'Cyber Security',
+    settings: 'Settings',
+  },
+  uk: {
+    logout: 'Log Out',
+    dashboard: 'My Dashboard',
+    myCourses: 'My Courses',
+    admin: 'Admin Panel',
+    billing: 'Billing',
+    cyberSecurity: 'Cyber Security',
+    settings: 'Settings',
+  },
 };
 
 // Single shared source of truth for the "logged in" state of the header
@@ -30,7 +67,7 @@ const dict = {
 // state instead of each maintaining its own auth-button markup.
 export default function UserMenu({ loginFallback, className }: { loginFallback: ReactNode; className?: string }) {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
   const { user, isAuthenticated, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);

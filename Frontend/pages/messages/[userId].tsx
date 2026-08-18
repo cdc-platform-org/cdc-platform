@@ -7,6 +7,7 @@ import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import ChatBox from '../../src/components/community/ChatBox';
 import { useAuth } from '../../src/context/AuthContext';
 import { getMessages } from '../../src/services/messageService';
+import { resolveLocale } from '@/src/utils/locale';
 
 const dict = {
   ka: {
@@ -21,12 +22,36 @@ const dict = {
     loading: 'Loading…',
     fallbackName: 'User',
   },
+  de: {
+    title: 'Messages',
+    home: 'Home',
+    loading: 'Loading…',
+    fallbackName: 'User',
+  },
+  es: {
+    title: 'Messages',
+    home: 'Home',
+    loading: 'Loading…',
+    fallbackName: 'User',
+  },
+  fr: {
+    title: 'Messages',
+    home: 'Home',
+    loading: 'Loading…',
+    fallbackName: 'User',
+  },
+  uk: {
+    title: 'Messages',
+    home: 'Home',
+    loading: 'Loading…',
+    fallbackName: 'User',
+  },
 };
 
 function MessagesThreadContent() {
   const router = useRouter();
   const { user } = useAuth();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
   const otherUserId = typeof router.query.userId === 'string' ? router.query.userId : null;
 

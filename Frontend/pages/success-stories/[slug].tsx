@@ -10,6 +10,7 @@ import MarkdownContent from '../../src/components/shared/MarkdownContent';
 import { SuccessStory } from '../../src/types/successStory';
 import { getSuccessStoryBySlug, successStoryRoleTitle, successStoryTestimonial, successStoryContent } from '../../src/services/successStoryService';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
+import { resolveLocale } from '@/src/utils/locale';
 
 const dict = {
   ka: {
@@ -28,12 +29,46 @@ const dict = {
     viewPortfolio: 'View Portfolio →',
     gallery: 'Gallery',
   },
+  de: {
+    loading: 'Loading…',
+    notFound: 'Story not found.',
+    backToStories: '← All Stories',
+    course: 'Completed Course',
+    viewPortfolio: 'View Portfolio →',
+    gallery: 'Gallery',
+  },
+  es: {
+    loading: 'Loading…',
+    notFound: 'Story not found.',
+    backToStories: '← All Stories',
+    course: 'Completed Course',
+    viewPortfolio: 'View Portfolio →',
+    gallery: 'Gallery',
+  },
+  fr: {
+    loading: 'Loading…',
+    notFound: 'Story not found.',
+    backToStories: '← All Stories',
+    course: 'Completed Course',
+    viewPortfolio: 'View Portfolio →',
+    gallery: 'Gallery',
+  },
+  uk: {
+    loading: 'Loading…',
+    notFound: 'Story not found.',
+    backToStories: '← All Stories',
+    course: 'Completed Course',
+    viewPortfolio: 'View Portfolio →',
+    gallery: 'Gallery',
+  },
 };
 
 export default function SuccessStoryDetailPage() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
+  // Success stories only store ka/en text — collapse for content lookups.
+  const contentLang = lang === 'ka' ? 'ka' : 'en';
   const slug = typeof router.query.slug === 'string' ? router.query.slug : undefined;
 
   const [story, setStory] = useState<SuccessStory | null>(null);
@@ -92,7 +127,7 @@ export default function SuccessStoryDetailPage() {
               )}
               <div>
                 <h1 className="text-2xl font-black mb-1">{story.studentName}</h1>
-                <p className="text-sm font-bold text-cyan-500">{successStoryRoleTitle(story, lang)}</p>
+                <p className="text-sm font-bold text-cyan-500">{successStoryRoleTitle(story, contentLang)}</p>
                 {story.hiredBy && (
                   <span className="inline-block mt-1.5 text-[11px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
                     {story.hiredBy}
@@ -130,12 +165,12 @@ export default function SuccessStoryDetailPage() {
             </div>
 
             <blockquote className="border-l-4 border-cyan-500 pl-5 text-base text-slate-600 dark:text-slate-300 leading-relaxed font-medium italic mb-8">
-              &ldquo;{successStoryTestimonial(story, lang)}&rdquo;
+              &ldquo;{successStoryTestimonial(story, contentLang)}&rdquo;
             </blockquote>
 
-            {successStoryContent(story, lang) && (
+            {successStoryContent(story, contentLang) && (
               <div className="mb-10">
-                <MarkdownContent content={successStoryContent(story, lang)!} />
+                <MarkdownContent content={successStoryContent(story, contentLang)!} />
               </div>
             )}
 

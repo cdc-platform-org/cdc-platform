@@ -9,6 +9,7 @@ import BackButton from '../src/components/common/BackButton';
 import { getCourses } from '../src/services/courseService';
 import { getBlogPosts, blogTitle, blogDescription } from '../src/services/blogService';
 import { formatPrice } from '../src/utils/coursePricing';
+import { resolveLocale } from '@/src/utils/locale';
 
 const dict = {
   ka: {
@@ -31,6 +32,46 @@ const dict = {
     blog: 'Blog',
     viewDetails: 'View Details →',
   },
+  de: {
+    title: 'Search Results',
+    placeholder: 'Search courses, blog...',
+    resultsFor: (q: string) => `Results for: "${q}"`,
+    loading: 'Loading…',
+    empty: 'Nothing matched your search.',
+    courses: 'Courses',
+    blog: 'Blog',
+    viewDetails: 'View Details →',
+  },
+  es: {
+    title: 'Search Results',
+    placeholder: 'Search courses, blog...',
+    resultsFor: (q: string) => `Results for: "${q}"`,
+    loading: 'Loading…',
+    empty: 'Nothing matched your search.',
+    courses: 'Courses',
+    blog: 'Blog',
+    viewDetails: 'View Details →',
+  },
+  fr: {
+    title: 'Search Results',
+    placeholder: 'Search courses, blog...',
+    resultsFor: (q: string) => `Results for: "${q}"`,
+    loading: 'Loading…',
+    empty: 'Nothing matched your search.',
+    courses: 'Courses',
+    blog: 'Blog',
+    viewDetails: 'View Details →',
+  },
+  uk: {
+    title: 'Search Results',
+    placeholder: 'Search courses, blog...',
+    resultsFor: (q: string) => `Results for: "${q}"`,
+    loading: 'Loading…',
+    empty: 'Nothing matched your search.',
+    courses: 'Courses',
+    blog: 'Blog',
+    viewDetails: 'View Details →',
+  },
 };
 
 function matches(query: string, ...fields: (string | null | undefined)[]): boolean {
@@ -41,8 +82,10 @@ function matches(query: string, ...fields: (string | null | undefined)[]): boole
 
 export default function SearchPage() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
+  // Blog posts only store ka/en text (title/titleEn etc.) — collapse for content lookups.
+  const contentLang = lang === 'ka' ? 'ka' : 'en';
   const query = typeof router.query.q === 'string' ? router.query.q : '';
 
   const [inputValue, setInputValue] = useState(query);
@@ -166,8 +209,8 @@ export default function SearchPage() {
                       <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-cyan-300 bg-cyan-500/10 border-cyan-500/20 self-start mb-4">
                         {post.category}
                       </span>
-                      <h3 className="text-lg font-black mb-2 text-white">{blogTitle(post, lang)}</h3>
-                      <p className="text-sm text-slate-400 leading-relaxed line-clamp-3">{blogDescription(post, lang)}</p>
+                      <h3 className="text-lg font-black mb-2 text-white">{blogTitle(post, contentLang)}</h3>
+                      <p className="text-sm text-slate-400 leading-relaxed line-clamp-3">{blogDescription(post, contentLang)}</p>
                     </Link>
                   ))}
                 </div>

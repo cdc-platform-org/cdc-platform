@@ -5,16 +5,17 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { Bot, Sparkles, Send, X, RotateCcw, ChevronLeft } from 'lucide-react';
 import { askCourseTutor, TutorChatTurn } from '../../services/courseService';
+import { SupportedLocale } from '../../utils/locale';
 
 interface CourseTutorPanelProps {
   courseId: string;
   lessonId: string;
   courseTitle: string;
   lessonTitle: string;
-  lang: 'ka' | 'en';
+  lang: SupportedLocale;
 }
 
-const DICT = {
+const DICT_BASE = {
   ka: {
     title: 'AI კურსის რეპეტიტორი',
     online: 'ონლაინ',
@@ -44,6 +45,19 @@ const DICT = {
     chips: ['Explain this lesson simply', 'Help me understand the assignment', 'Code review / Debugging'],
   },
 } as const;
+
+// English fallback for locales without a translation yet. Cast through
+// `unknown` because ka's and en's per-key literal string types otherwise
+// don't structurally match under a single Record<SupportedLocale, ...>
+// annotation — a TS inference artifact, not a real shape mismatch (de/es/fr/
+// uk are literally the same object as en).
+const DICT = {
+  ...DICT_BASE,
+  de: DICT_BASE.en,
+  es: DICT_BASE.en,
+  fr: DICT_BASE.en,
+  uk: DICT_BASE.en,
+} as unknown as Record<SupportedLocale, typeof DICT_BASE.en>;
 
 interface DisplayMessage extends TutorChatTurn {
   id: string;

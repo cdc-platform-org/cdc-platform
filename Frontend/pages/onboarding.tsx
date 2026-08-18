@@ -4,6 +4,7 @@ import { Building2, FileUp, CheckCircle2 } from 'lucide-react';
 import ProtectedRoute from '../src/components/auth/ProtectedRoute';
 import { useAuth } from '../src/context/AuthContext';
 import { updateProfile, uploadVerificationDoc } from '../src/services/authService';
+import { resolveLocale } from '@/src/utils/locale';
 
 // Step 2 of registration for the "Business" sub-role picked in
 // register.tsx's wizard — collects the fields Backend's businessKycService
@@ -13,7 +14,7 @@ import { updateProfile, uploadVerificationDoc } from '../src/services/authServic
 function OnboardingPage() {
   const router = useRouter();
   const { user, refreshUser } = useAuth();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
 
   const [companyName, setCompanyName] = useState(user?.companyName ?? '');
   const [taxId, setTaxId] = useState(user?.taxId ?? '');

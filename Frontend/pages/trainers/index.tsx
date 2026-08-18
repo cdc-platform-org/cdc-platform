@@ -9,6 +9,7 @@ import { TeamMember } from '../../src/types/teamMember';
 import { getTrainers } from '../../src/services/teamMemberService';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
 import { localizeTeamMember } from '../../src/utils/localizeTeamMember';
+import { resolveLocale } from '@/src/utils/locale';
 
 const dict = {
   ka: {
@@ -25,11 +26,39 @@ const dict = {
     empty: 'Trainers will be added soon.',
     viewCourses: 'View Courses →',
   },
+  de: {
+    title: 'Our Trainers',
+    subtitle: 'Meet the CDC trainers — practitioners who teach real, industry-demanded skills.',
+    loading: 'Loading…',
+    empty: 'Trainers will be added soon.',
+    viewCourses: 'View Courses →',
+  },
+  es: {
+    title: 'Our Trainers',
+    subtitle: 'Meet the CDC trainers — practitioners who teach real, industry-demanded skills.',
+    loading: 'Loading…',
+    empty: 'Trainers will be added soon.',
+    viewCourses: 'View Courses →',
+  },
+  fr: {
+    title: 'Our Trainers',
+    subtitle: 'Meet the CDC trainers — practitioners who teach real, industry-demanded skills.',
+    loading: 'Loading…',
+    empty: 'Trainers will be added soon.',
+    viewCourses: 'View Courses →',
+  },
+  uk: {
+    title: 'Our Trainers',
+    subtitle: 'Meet the CDC trainers — practitioners who teach real, industry-demanded skills.',
+    loading: 'Loading…',
+    empty: 'Trainers will be added soon.',
+    viewCourses: 'View Courses →',
+  },
 };
 
 export default function TrainersPage() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
 
   const [trainers, setTrainers] = useState<TeamMember[]>([]);

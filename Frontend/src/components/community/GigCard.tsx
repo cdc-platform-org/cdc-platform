@@ -6,6 +6,7 @@ import VerifiedGraduateBadge from './VerifiedGraduateBadge';
 import SocialShareButtons from '../shared/SocialShareButtons';
 import StarRating from './StarRating';
 import { jobCategoryLabel } from '../../utils/jobCategory';
+import { resolveLocale } from '../../utils/locale';
 
 interface GigCardProps {
   gig: Gig;
@@ -28,7 +29,7 @@ export default function GigCard({
 }: GigCardProps) {
   const { t } = useTranslation('proposals');
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
 
   return (
     <div className="group relative rounded-3xl p-6 overflow-hidden border border-slate-200/70 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/40 backdrop-blur-xl shadow-sm hover:shadow-xl hover:shadow-purple-500/10 dark:hover:shadow-purple-500/20 hover:-translate-y-1 hover:border-purple-300 dark:hover:border-purple-500/50 transition-all duration-300">

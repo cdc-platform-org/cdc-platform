@@ -90,6 +90,7 @@ export async function getBogPaymentStatus(paymentId: string): Promise<BogPayment
 
 export interface MyPaymentRow {
   id: string;
+  gateway: 'BOG' | 'STRIPE';
   purpose: BogPaymentPurpose;
   referenceId: string;
   // Resolved course title for COURSE purchases — null for the other two

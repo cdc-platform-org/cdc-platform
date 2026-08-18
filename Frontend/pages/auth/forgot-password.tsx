@@ -11,11 +11,12 @@ import { forgotPassword } from '../../src/services/authService';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { GetStaticProps } from 'next';
+import { resolveLocale } from '@/src/utils/locale';
 
 function ForgotPasswordPage() {
   const { t } = useTranslation('auth');
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
 
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -35,7 +36,8 @@ function ForgotPasswordPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await forgotPassword({ email, lang });
+      // The reset-link email only has 'ka'/'en' templates.
+      await forgotPassword({ email, lang: lang === 'ka' ? 'ka' : 'en' });
       // Always shown regardless of whether the account exists — the backend
       // deliberately responds the same way either way to avoid leaking
       // which emails are registered.

@@ -6,6 +6,7 @@ import RoleGate from '../../src/components/auth/RoleGate';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
+import { resolveLocale } from '@/src/utils/locale';
 
 const dict = {
   ka: {
@@ -23,6 +24,62 @@ const dict = {
     previewBadge: 'გადახედვა',
   },
   en: {
+    title: 'Cyber Security',
+    subtitle: 'AG-SAIA — Sovereign AI security node management.',
+    fallback: 'The Cyber Security page is available only to Business accounts and administrators.',
+    comingSoonTitle: 'AG-SAIA launches soon',
+    comingSoonBody:
+      "This is a preview of an upcoming product — the panels below aren't active yet and show no live data. Once AG-SAIA launches, this is where you'll see your infrastructure's real-time security status.",
+    contact: 'Contact us for updates',
+    threatLevel: 'Real-Time Threat Level',
+    zkpHandshake: 'ZKP Handshake Status',
+    honeypotLogs: 'Honeypot Logs',
+    availableAtLaunch: 'Available after launch',
+    previewBadge: 'Preview',
+  },
+  de: {
+    title: 'Cyber Security',
+    subtitle: 'AG-SAIA — Sovereign AI security node management.',
+    fallback: 'The Cyber Security page is available only to Business accounts and administrators.',
+    comingSoonTitle: 'AG-SAIA launches soon',
+    comingSoonBody:
+      "This is a preview of an upcoming product — the panels below aren't active yet and show no live data. Once AG-SAIA launches, this is where you'll see your infrastructure's real-time security status.",
+    contact: 'Contact us for updates',
+    threatLevel: 'Real-Time Threat Level',
+    zkpHandshake: 'ZKP Handshake Status',
+    honeypotLogs: 'Honeypot Logs',
+    availableAtLaunch: 'Available after launch',
+    previewBadge: 'Preview',
+  },
+  es: {
+    title: 'Cyber Security',
+    subtitle: 'AG-SAIA — Sovereign AI security node management.',
+    fallback: 'The Cyber Security page is available only to Business accounts and administrators.',
+    comingSoonTitle: 'AG-SAIA launches soon',
+    comingSoonBody:
+      "This is a preview of an upcoming product — the panels below aren't active yet and show no live data. Once AG-SAIA launches, this is where you'll see your infrastructure's real-time security status.",
+    contact: 'Contact us for updates',
+    threatLevel: 'Real-Time Threat Level',
+    zkpHandshake: 'ZKP Handshake Status',
+    honeypotLogs: 'Honeypot Logs',
+    availableAtLaunch: 'Available after launch',
+    previewBadge: 'Preview',
+  },
+  fr: {
+    title: 'Cyber Security',
+    subtitle: 'AG-SAIA — Sovereign AI security node management.',
+    fallback: 'The Cyber Security page is available only to Business accounts and administrators.',
+    comingSoonTitle: 'AG-SAIA launches soon',
+    comingSoonBody:
+      "This is a preview of an upcoming product — the panels below aren't active yet and show no live data. Once AG-SAIA launches, this is where you'll see your infrastructure's real-time security status.",
+    contact: 'Contact us for updates',
+    threatLevel: 'Real-Time Threat Level',
+    zkpHandshake: 'ZKP Handshake Status',
+    honeypotLogs: 'Honeypot Logs',
+    availableAtLaunch: 'Available after launch',
+    previewBadge: 'Preview',
+  },
+  uk: {
     title: 'Cyber Security',
     subtitle: 'AG-SAIA — Sovereign AI security node management.',
     fallback: 'The Cyber Security page is available only to Business accounts and administrators.',
@@ -55,7 +112,7 @@ function PreviewPanel({ icon: Icon, title, note }: { icon: typeof ShieldAlert; t
 
 function CyberSecurityContent() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
 
   return (

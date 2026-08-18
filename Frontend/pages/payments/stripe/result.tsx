@@ -4,9 +4,13 @@ import Link from 'next/link';
 import { Video, CalendarClock } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import BackButton from '../../../src/components/common/BackButton';
-import { getBogPaymentStatus, BogPaymentStatusData } from '../../../src/services/paymentService';
+import { getStripePaymentStatus, StripePaymentStatusData } from '../../../src/services/stripePaymentService';
 import { resolveLocale } from '@/src/utils/locale';
 
+// International-checkout counterpart to pages/payments/bog/result.tsx —
+// same polling/redirect behavior, reading Stripe's own paymentId instead of
+// BOG's. German/Spanish/French/Ukrainian copy hasn't been written yet — see
+// [i18n-final-sweep] fallback policy, English is shown until translations land.
 const dict = {
   ka: {
     title: 'გადახდის სტატუსი',
@@ -15,8 +19,7 @@ const dict = {
     failed: 'გადახდა ვერ განხორციელდა.',
     cancelled: 'გადახდა გაუქმებულია.',
     checkFailed: 'სტატუსის შემოწმება ვერ მოხერხდა. შეამოწმეთ ინტერნეტ კავშირი და სცადეთ თავიდან.',
-    pendingLong:
-      'გადახდა ჯერ კიდევ მუშავდება. თუ ეს გვერდი დიდხანს არ განახლდება, დაუკავშირდით მხარდაჭერას.',
+    pendingLong: 'გადახდა ჯერ კიდევ მუშავდება. თუ ეს გვერდი დიდხანს არ განახლდება, დაუკავშირდით მხარდაჭერას.',
     redirectingToCourse: 'გადამისამართება კურსზე…',
     redirectingToProduct: 'გადამისამართება პროდუქტზე…',
     course: 'კურსზე წვდომა',
@@ -33,13 +36,12 @@ const dict = {
   },
   en: {
     title: 'Payment Status',
-    waiting: 'Waiting for confirmation from the bank…',
+    waiting: 'Waiting for confirmation from Stripe…',
     completed: 'Payment completed successfully!',
     failed: 'Payment failed.',
     cancelled: 'Payment was cancelled.',
     checkFailed: 'Unable to check payment status. Check your connection and try again.',
-    pendingLong:
-      'Your payment is still being processed. If this page doesn’t update soon, please contact support.',
+    pendingLong: 'Your payment is still being processed. If this page doesn’t update soon, please contact support.',
     redirectingToCourse: 'Redirecting to your course…',
     redirectingToProduct: 'Redirecting to your product…',
     course: 'Course access',
@@ -52,101 +54,10 @@ const dict = {
     missingId: 'No payment ID was found.',
     sessionScheduledFor: 'Your session is scheduled for',
     joinMeet: 'Join Google Meet',
-    calendarPending: 'Adding it to your calendar — you\'ll get an email invite shortly.',
-  },
-  de: {
-    title: 'Payment Status',
-    waiting: 'Waiting for confirmation from the bank…',
-    completed: 'Payment completed successfully!',
-    failed: 'Payment failed.',
-    cancelled: 'Payment was cancelled.',
-    checkFailed: 'Unable to check payment status. Check your connection and try again.',
-    pendingLong:
-      'Your payment is still being processed. If this page doesn’t update soon, please contact support.',
-    redirectingToCourse: 'Redirecting to your course…',
-    redirectingToProduct: 'Redirecting to your product…',
-    course: 'Course access',
-    mentorship: 'Mentorship session',
-    gig: 'Gig escrow funding',
-    product: 'Digital product',
-    backHome: 'Back to home',
-    amount: 'Amount',
-    checkAgain: 'Check again',
-    missingId: 'No payment ID was found.',
-    sessionScheduledFor: 'Your session is scheduled for',
-    joinMeet: 'Join Google Meet',
-    calendarPending: 'Adding it to your calendar — you\'ll get an email invite shortly.',
-  },
-  es: {
-    title: 'Payment Status',
-    waiting: 'Waiting for confirmation from the bank…',
-    completed: 'Payment completed successfully!',
-    failed: 'Payment failed.',
-    cancelled: 'Payment was cancelled.',
-    checkFailed: 'Unable to check payment status. Check your connection and try again.',
-    pendingLong:
-      'Your payment is still being processed. If this page doesn’t update soon, please contact support.',
-    redirectingToCourse: 'Redirecting to your course…',
-    redirectingToProduct: 'Redirecting to your product…',
-    course: 'Course access',
-    mentorship: 'Mentorship session',
-    gig: 'Gig escrow funding',
-    product: 'Digital product',
-    backHome: 'Back to home',
-    amount: 'Amount',
-    checkAgain: 'Check again',
-    missingId: 'No payment ID was found.',
-    sessionScheduledFor: 'Your session is scheduled for',
-    joinMeet: 'Join Google Meet',
-    calendarPending: 'Adding it to your calendar — you\'ll get an email invite shortly.',
-  },
-  fr: {
-    title: 'Payment Status',
-    waiting: 'Waiting for confirmation from the bank…',
-    completed: 'Payment completed successfully!',
-    failed: 'Payment failed.',
-    cancelled: 'Payment was cancelled.',
-    checkFailed: 'Unable to check payment status. Check your connection and try again.',
-    pendingLong:
-      'Your payment is still being processed. If this page doesn’t update soon, please contact support.',
-    redirectingToCourse: 'Redirecting to your course…',
-    redirectingToProduct: 'Redirecting to your product…',
-    course: 'Course access',
-    mentorship: 'Mentorship session',
-    gig: 'Gig escrow funding',
-    product: 'Digital product',
-    backHome: 'Back to home',
-    amount: 'Amount',
-    checkAgain: 'Check again',
-    missingId: 'No payment ID was found.',
-    sessionScheduledFor: 'Your session is scheduled for',
-    joinMeet: 'Join Google Meet',
-    calendarPending: 'Adding it to your calendar — you\'ll get an email invite shortly.',
-  },
-  uk: {
-    title: 'Payment Status',
-    waiting: 'Waiting for confirmation from the bank…',
-    completed: 'Payment completed successfully!',
-    failed: 'Payment failed.',
-    cancelled: 'Payment was cancelled.',
-    checkFailed: 'Unable to check payment status. Check your connection and try again.',
-    pendingLong:
-      'Your payment is still being processed. If this page doesn’t update soon, please contact support.',
-    redirectingToCourse: 'Redirecting to your course…',
-    redirectingToProduct: 'Redirecting to your product…',
-    course: 'Course access',
-    mentorship: 'Mentorship session',
-    gig: 'Gig escrow funding',
-    product: 'Digital product',
-    backHome: 'Back to home',
-    amount: 'Amount',
-    checkAgain: 'Check again',
-    missingId: 'No payment ID was found.',
-    sessionScheduledFor: 'Your session is scheduled for',
-    joinMeet: 'Join Google Meet',
-    calendarPending: 'Adding it to your calendar — you\'ll get an email invite shortly.',
+    calendarPending: "Adding it to your calendar — you'll get an email invite shortly.",
   },
 };
+const dictAll = { ...dict, de: dict.en, es: dict.en, fr: dict.en, uk: dict.en };
 
 const purposeKey: Record<string, keyof typeof dict.en> = {
   COURSE: 'course',
@@ -155,24 +66,22 @@ const purposeKey: Record<string, keyof typeof dict.en> = {
   PRODUCT: 'product',
 };
 
-function BogResultContent() {
+function StripeResultContent() {
   const router = useRouter();
   const lang = resolveLocale(router.locale);
-  const t = dict[lang];
+  const t = dictAll[lang];
   const { paymentId } = router.query;
 
-  const [status, setStatus] = useState<BogPaymentStatusData | null>(null);
+  const [status, setStatus] = useState<StripePaymentStatusData | null>(null);
   const [error, setError] = useState(false);
   const [polling, setPolling] = useState(true);
 
   const poll = useCallback(async () => {
     if (typeof paymentId !== 'string') return;
     try {
-      const data = await getBogPaymentStatus(paymentId);
+      const data = await getStripePaymentStatus(paymentId);
       setStatus(data);
-      if (data.status !== 'PENDING') {
-        setPolling(false);
-      }
+      if (data.status !== 'PENDING') setPolling(false);
     } catch {
       setError(true);
       setPolling(false);
@@ -193,20 +102,13 @@ function BogResultContent() {
     };
   }, [paymentId, poll]);
 
-  // Course purchases go straight to the learn page once payment clears —
-  // no separate "continue" click needed. Product purchases go to the
-  // product detail page, which now shows the download button.
   useEffect(() => {
     if (status?.status === 'COMPLETED' && status.purpose === 'COURSE') {
-      const redirect = setTimeout(() => {
-        router.push(`/courses/${status.referenceId}/learn`);
-      }, 1800);
+      const redirect = setTimeout(() => router.push(`/courses/${status.referenceId}/learn`), 1800);
       return () => clearTimeout(redirect);
     }
     if (status?.status === 'COMPLETED' && status.purpose === 'PRODUCT') {
-      const redirect = setTimeout(() => {
-        router.push(`/store/${status.referenceId}`);
-      }, 1800);
+      const redirect = setTimeout(() => router.push(`/store/${status.referenceId}`), 1800);
       return () => clearTimeout(redirect);
     }
   }, [status, router]);
@@ -279,7 +181,7 @@ function BogResultContent() {
                   <CalendarClock className="w-4 h-4 shrink-0" />
                   <span>
                     {t.sessionScheduledFor}:{' '}
-                    {new Date(status.booking.scheduledAt).toLocaleString(lang === 'en' ? 'en-GB' : 'ka-GE', {
+                    {new Date(status.booking.scheduledAt).toLocaleString(lang === 'ka' ? 'ka-GE' : 'en-GB', {
                       timeZone: 'Asia/Tbilisi',
                     })}
                   </span>
@@ -321,10 +223,10 @@ function BogResultContent() {
   );
 }
 
-export default function BogResultPage() {
+export default function StripeResultPage() {
   return (
     <ProtectedRoute>
-      <BogResultContent />
+      <StripeResultContent />
     </ProtectedRoute>
   );
 }

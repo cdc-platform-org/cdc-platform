@@ -37,6 +37,7 @@ import {
   MentorChatMessage,
 } from '../../src/services/mentorshipService';
 import { useAuth } from '../../src/context/AuthContext';
+import { resolveLocale, SupportedLocale } from '@/src/utils/locale';
 
 // Builds a Google Calendar "quick add" URL — works without any OAuth/API
 // call, just a pre-filled event the user reviews and saves themselves.
@@ -53,7 +54,7 @@ function googleCalendarAddUrl(booking: MyMentorshipBooking, otherPartyName: stri
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
-function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBooking; lang: 'ka' | 'en'; onChanged: () => void }) {
+function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBooking; lang: SupportedLocale; onChanged: () => void }) {
   const { t } = useTranslation('mentorship');
   const otherParty = booking.role === 'student' ? booking.mentor : booking.student;
   const otherPartyLabel = booking.role === 'student' ? t('withMentor') : t('withStudent');
@@ -373,7 +374,7 @@ const CHAT_POLL_MS = 4000;
 // contact info/payment phrasing) never reaches the messages list; it
 // surfaces as a warning banner instead, or — on the sender's 2nd such
 // attempt anywhere on the platform — a terminal "account blocked" state.
-function ChatPanel({ bookingId, lang }: { bookingId: string; lang: 'ka' | 'en' }) {
+function ChatPanel({ bookingId, lang }: { bookingId: string; lang: SupportedLocale }) {
   const { t } = useTranslation('mentorship');
   const { user } = useAuth();
   const [messages, setMessages] = useState<MentorChatMessage[]>([]);
@@ -496,7 +497,7 @@ function SessionDetailsModal({
   onClose,
 }: {
   booking: MyMentorshipBooking;
-  lang: 'ka' | 'en';
+  lang: SupportedLocale;
   onClose: () => void;
 }) {
   const { t } = useTranslation('mentorship');
@@ -577,9 +578,13 @@ function SessionDetailsModal({
 // general pattern of small hand-built components over new dependencies for
 // something this size). Monday-first week, matching /admin/mentorship's
 // existing DAY_DISPLAY_ORDER convention.
-const CALENDAR_WEEKDAY_LABELS: Record<'ka' | 'en', string[]> = {
+const CALENDAR_WEEKDAY_LABELS: Record<SupportedLocale, string[]> = {
   ka: ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'],
   en: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  de: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  es: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  fr: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  uk: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
 };
 
 function isSameDay(a: Date, b: Date): boolean {
@@ -592,7 +597,7 @@ function SessionsCalendarView({
   onSelectBooking,
 }: {
   bookings: MyMentorshipBooking[];
-  lang: 'ka' | 'en';
+  lang: SupportedLocale;
   onSelectBooking: (booking: MyMentorshipBooking) => void;
 }) {
   const [cursor, setCursor] = useState(() => new Date());
@@ -701,7 +706,7 @@ function SessionsCalendarView({
 
 function MentorshipSessionsContent() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const { t } = useTranslation('mentorship');
 
   const [bookings, setBookings] = useState<MyMentorshipBooking[]>([]);

@@ -13,13 +13,14 @@ import {
   ExamSessionDetail,
   ExamSubmissionRow,
 } from '../../services/examProctoringService';
+import { SupportedLocale } from '../../utils/locale';
 
 type SetupGuidePlatform = 'wordpress' | 'shopify' | 'html';
 type QuestionPreset = 'quick' | 'standard' | 'deep';
 
 const PRESET_COUNTS: Record<QuestionPreset, number> = { quick: 4, standard: 12, deep: 24 };
 
-const dict = {
+const dictBase = {
   ka: {
     title: 'AI გამოცდის პროქტორინგი',
     subtitle: 'შექმენით AI-გენერირებული სკრინინგ-გამოცდები კანდიდატებისთვის — უნიკალური ბმულით.',
@@ -188,6 +189,15 @@ const dict = {
   },
 };
 
+// English fallback for locales without a translation yet.
+const dict: Record<SupportedLocale, typeof dictBase.en> = {
+  ...dictBase,
+  de: dictBase.en,
+  es: dictBase.en,
+  fr: dictBase.en,
+  uk: dictBase.en,
+};
+
 const STATUS_BADGE: Record<string, string> = {
   ACTIVE: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
   CLOSED: 'bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-500/30',
@@ -222,7 +232,7 @@ function CopyButton({ text, label, copiedLabel }: { text: string; label: string;
   );
 }
 
-function SubmissionCard({ sub, t, onError }: { sub: ExamSubmissionRow; t: typeof dict['ka']; onError: (msg: string) => void }) {
+function SubmissionCard({ sub, t, onError }: { sub: ExamSubmissionRow; t: typeof dict[SupportedLocale]; onError: (msg: string) => void }) {
   const [downloading, setDownloading] = useState(false);
   const [generatingRetest, setGeneratingRetest] = useState(false);
   const [retestDone, setRetestDone] = useState(false);
@@ -351,7 +361,7 @@ function SubmissionCard({ sub, t, onError }: { sub: ExamSubmissionRow; t: typeof
   );
 }
 
-export default function ExamProctoringTab({ lang }: { lang: 'ka' | 'en' }) {
+export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
   const t = dict[lang];
   const [sessions, setSessions] = useState<ExamSessionSummary[]>([]);
   const [loading, setLoading] = useState(true);

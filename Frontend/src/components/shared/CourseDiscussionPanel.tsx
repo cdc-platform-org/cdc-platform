@@ -4,8 +4,9 @@ import { CourseDiscussionPost } from '../../types/lms';
 import { getCourseDiscussion, createCourseDiscussionPost, deleteCourseDiscussionPost } from '../../services/courseService';
 import { useAuth } from '../../context/AuthContext';
 import { onImageErrorFallback } from '../../utils/imageFallback';
+import { SupportedLocale } from '../../utils/locale';
 
-const dict = {
+const dictBase = {
   ka: {
     placeholder: 'დასვი კითხვა ან გააზიარე კოდის ბმული…',
     post: 'გამოქვეყნება',
@@ -30,7 +31,16 @@ const dict = {
   },
 };
 
-function timeAgo(iso: string, lang: 'ka' | 'en'): string {
+// English fallback for locales without a translation yet.
+const dict: Record<SupportedLocale, typeof dictBase.en> = {
+  ...dictBase,
+  de: dictBase.en,
+  es: dictBase.en,
+  fr: dictBase.en,
+  uk: dictBase.en,
+};
+
+function timeAgo(iso: string, lang: SupportedLocale): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diffMs / 60000);
   if (mins < 1) return lang === 'ka' ? 'ახლახან' : 'just now';
@@ -48,7 +58,7 @@ function PostRow({
   onDeleted,
 }: {
   post: CourseDiscussionPost;
-  lang: 'ka' | 'en';
+  lang: SupportedLocale;
   canModerate: boolean;
   onDeleted: (id: string) => void;
 }) {
@@ -95,7 +105,7 @@ function PostRow({
   );
 }
 
-export default function CourseDiscussionPanel({ courseId, lang }: { courseId: string; lang: 'ka' | 'en' }) {
+export default function CourseDiscussionPanel({ courseId, lang }: { courseId: string; lang: SupportedLocale }) {
   const t = dict[lang];
   const { user } = useAuth();
   const canModerate = user?.adminRole === 'SUPER_ADMIN' || user?.adminRole === 'MANAGER';

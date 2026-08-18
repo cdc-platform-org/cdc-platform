@@ -14,6 +14,7 @@ import {
   downloadSubscriptionInvoice,
 } from '../../src/services/billingService';
 import { BillingSubscription, BillingSubscriptionStatus } from '../../src/types/billing';
+import { resolveLocale, SupportedLocale } from '@/src/utils/locale';
 
 const dict = {
   ka: {
@@ -78,6 +79,130 @@ const dict = {
     invoiceEstimateNote: "This is an estimate for the current cycle — real charging isn't switched on yet.",
     downloadFailed: 'Could not download the invoice.',
   },
+  de: {
+    title: 'Billing',
+    subtitle: 'Your active business tool subscriptions, current-cycle cost, and invoices.',
+    fallback: 'The Billing page is available only to Business accounts and administrators.',
+    loading: 'Loading…',
+    loadFailed: 'Could not load billing data.',
+    empty: "You don't have any active subscriptions yet.",
+    emptyCta: 'Start a free AI Tools trial →',
+    productLabel: { AI_AGENT_SUITE: 'AI Agent Suite' },
+    status: {
+      TRIALING: 'Trial',
+      ACTIVE: 'Active',
+      PAST_DUE: 'Past Due',
+      CANCELED: 'Canceled',
+    } as Record<BillingSubscriptionStatus, string>,
+    trialEndsAt: (date: string) => `Trial ends: ${new Date(date).toLocaleDateString('en-US')}`,
+    baseFee: 'Platform Maintenance Base Fee',
+    usage: 'Real-Time Usage Counter',
+    total: 'Estimated Monthly Total',
+    perMonth: '/mo',
+    autoRenew: 'Auto-Renew',
+    on: 'On',
+    off: 'Off',
+    card: 'Card',
+    noCard: 'No card bound',
+    invoicesTitle: 'Invoices & Payment History',
+    downloadInvoice: 'Download PDF Invoice',
+    downloading: 'Downloading…',
+    invoiceEstimateNote: "This is an estimate for the current cycle — real charging isn't switched on yet.",
+    downloadFailed: 'Could not download the invoice.',
+  },
+  es: {
+    title: 'Billing',
+    subtitle: 'Your active business tool subscriptions, current-cycle cost, and invoices.',
+    fallback: 'The Billing page is available only to Business accounts and administrators.',
+    loading: 'Loading…',
+    loadFailed: 'Could not load billing data.',
+    empty: "You don't have any active subscriptions yet.",
+    emptyCta: 'Start a free AI Tools trial →',
+    productLabel: { AI_AGENT_SUITE: 'AI Agent Suite' },
+    status: {
+      TRIALING: 'Trial',
+      ACTIVE: 'Active',
+      PAST_DUE: 'Past Due',
+      CANCELED: 'Canceled',
+    } as Record<BillingSubscriptionStatus, string>,
+    trialEndsAt: (date: string) => `Trial ends: ${new Date(date).toLocaleDateString('en-US')}`,
+    baseFee: 'Platform Maintenance Base Fee',
+    usage: 'Real-Time Usage Counter',
+    total: 'Estimated Monthly Total',
+    perMonth: '/mo',
+    autoRenew: 'Auto-Renew',
+    on: 'On',
+    off: 'Off',
+    card: 'Card',
+    noCard: 'No card bound',
+    invoicesTitle: 'Invoices & Payment History',
+    downloadInvoice: 'Download PDF Invoice',
+    downloading: 'Downloading…',
+    invoiceEstimateNote: "This is an estimate for the current cycle — real charging isn't switched on yet.",
+    downloadFailed: 'Could not download the invoice.',
+  },
+  fr: {
+    title: 'Billing',
+    subtitle: 'Your active business tool subscriptions, current-cycle cost, and invoices.',
+    fallback: 'The Billing page is available only to Business accounts and administrators.',
+    loading: 'Loading…',
+    loadFailed: 'Could not load billing data.',
+    empty: "You don't have any active subscriptions yet.",
+    emptyCta: 'Start a free AI Tools trial →',
+    productLabel: { AI_AGENT_SUITE: 'AI Agent Suite' },
+    status: {
+      TRIALING: 'Trial',
+      ACTIVE: 'Active',
+      PAST_DUE: 'Past Due',
+      CANCELED: 'Canceled',
+    } as Record<BillingSubscriptionStatus, string>,
+    trialEndsAt: (date: string) => `Trial ends: ${new Date(date).toLocaleDateString('en-US')}`,
+    baseFee: 'Platform Maintenance Base Fee',
+    usage: 'Real-Time Usage Counter',
+    total: 'Estimated Monthly Total',
+    perMonth: '/mo',
+    autoRenew: 'Auto-Renew',
+    on: 'On',
+    off: 'Off',
+    card: 'Card',
+    noCard: 'No card bound',
+    invoicesTitle: 'Invoices & Payment History',
+    downloadInvoice: 'Download PDF Invoice',
+    downloading: 'Downloading…',
+    invoiceEstimateNote: "This is an estimate for the current cycle — real charging isn't switched on yet.",
+    downloadFailed: 'Could not download the invoice.',
+  },
+  uk: {
+    title: 'Billing',
+    subtitle: 'Your active business tool subscriptions, current-cycle cost, and invoices.',
+    fallback: 'The Billing page is available only to Business accounts and administrators.',
+    loading: 'Loading…',
+    loadFailed: 'Could not load billing data.',
+    empty: "You don't have any active subscriptions yet.",
+    emptyCta: 'Start a free AI Tools trial →',
+    productLabel: { AI_AGENT_SUITE: 'AI Agent Suite' },
+    status: {
+      TRIALING: 'Trial',
+      ACTIVE: 'Active',
+      PAST_DUE: 'Past Due',
+      CANCELED: 'Canceled',
+    } as Record<BillingSubscriptionStatus, string>,
+    trialEndsAt: (date: string) => `Trial ends: ${new Date(date).toLocaleDateString('en-US')}`,
+    baseFee: 'Platform Maintenance Base Fee',
+    usage: 'Real-Time Usage Counter',
+    total: 'Estimated Monthly Total',
+    perMonth: '/mo',
+    autoRenew: 'Auto-Renew',
+    on: 'On',
+    off: 'Off',
+    card: 'Card',
+    noCard: 'No card bound',
+    invoicesTitle: 'Invoices & Payment History',
+    downloadInvoice: 'Download PDF Invoice',
+    downloading: 'Downloading…',
+    invoiceEstimateNote: "This is an estimate for the current cycle — real charging isn't switched on yet.",
+    downloadFailed: 'Could not download the invoice.',
+  },
 };
 
 const STATUS_BADGE: Record<BillingSubscriptionStatus, string> = {
@@ -87,7 +212,7 @@ const STATUS_BADGE: Record<BillingSubscriptionStatus, string> = {
   CANCELED: 'bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-500/30',
 };
 
-function SubscriptionCard({ sub, lang, t }: { sub: BillingSubscription; lang: 'ka' | 'en'; t: typeof dict['ka'] }) {
+function SubscriptionCard({ sub, lang, t }: { sub: BillingSubscription; lang: SupportedLocale; t: typeof dict['ka'] }) {
   const [autoRenew, setAutoRenew] = useState(sub.autoRenew);
   const [togglingAutoRenew, setTogglingAutoRenew] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -209,7 +334,7 @@ function SubscriptionCard({ sub, lang, t }: { sub: BillingSubscription; lang: 'k
 
 function BillingContent() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
 
   const [subscriptions, setSubscriptions] = useState<BillingSubscription[]>([]);

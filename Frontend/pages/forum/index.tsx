@@ -10,11 +10,12 @@ import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import { ForumCategory } from '../../src/types/forum';
 import { getCategories } from '../../src/services/forumService';
+import { resolveLocale } from '@/src/utils/locale';
 
 function ForumIndexContent() {
   const { t } = useTranslation('forum');
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const [categories, setCategories] = useState<ForumCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

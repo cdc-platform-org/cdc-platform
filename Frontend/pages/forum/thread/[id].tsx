@@ -19,6 +19,7 @@ import {
   likeComment,
   unlikeComment,
 } from '../../../src/services/forumService';
+import { resolveLocale } from '@/src/utils/locale';
 
 const COMMENTS_PAGE_SIZE = 20;
 
@@ -28,7 +29,7 @@ function ThreadDetailContent() {
   const { id } = router.query;
   const { user, isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const SIGN_IN_TO_ENGAGE = { ka: 'გთხოვთ გაიაროთ ავტორიზაცია ფორუმზე დასაწერად', en: 'Please sign in to post on the forum' };
   const [thread, setThread] = useState<ForumThread | null>(null);
   const [comments, setComments] = useState<ForumComment[]>([]);

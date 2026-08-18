@@ -12,7 +12,9 @@ import { useAuth } from '../src/context/AuthContext';
 import { useAuthModal } from '../src/context/AuthModalContext';
 import { getMentors, getMentorSlots, mentorTitle, mentorBio, PublicMentor } from '../src/services/mentorshipService';
 import { checkoutMentorship } from '../src/services/paymentService';
+import { checkoutMentorshipStripe } from '../src/services/stripePaymentService';
 import { formatPrice } from '../src/utils/coursePricing';
+import { resolveLocale, SupportedLocale } from '@/src/utils/locale';
 
 function MentorAvatar({ mentor, size = 56 }: { mentor: PublicMentor; size?: number }) {
   return mentor.avatarUrl ? (
@@ -33,9 +35,11 @@ function MentorAvatar({ mentor, size = 56 }: { mentor: PublicMentor; size?: numb
   );
 }
 
-function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: 'ka' | 'en'; onClose: () => void }) {
+function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: SupportedLocale; onClose: () => void }) {
   const { t } = useTranslation('mentorship');
   const router = useRouter();
+  // Mentor profiles only store ka/en text — collapse for this lookup only.
+  const contentLang = lang === 'ka' ? 'ka' : 'en';
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [slots, setSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(true);
@@ -79,13 +83,23 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: '
     setSubmitting(true);
     setError(null);
     try {
-      const { redirectUrl } = await checkoutMentorship({
-        mentorId: mentor.id,
-        scheduledAt: selectedSlot,
-        studentPhone: phone.trim(),
-        consultationDescription: topic.trim() || undefined,
-        lang,
-      });
+      // Georgian users pay via BOG (GEL); everyone else via Stripe (USD/EUR).
+      const { redirectUrl } =
+        lang === 'ka'
+          ? await checkoutMentorship({
+              mentorId: mentor.id,
+              scheduledAt: selectedSlot,
+              studentPhone: phone.trim(),
+              consultationDescription: topic.trim() || undefined,
+              lang: 'ka',
+            })
+          : await checkoutMentorshipStripe({
+              mentorId: mentor.id,
+              scheduledAt: selectedSlot,
+              studentPhone: phone.trim(),
+              consultationDescription: topic.trim() || undefined,
+              currency: 'usd',
+            });
       window.location.href = redirectUrl;
     } catch (err: any) {
       setError(err?.response?.data?.message || t('bookingError'));
@@ -103,8 +117,8 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: '
           <MentorAvatar mentor={mentor} size={40} />
           <div className="min-w-0">
             <p className="text-sm font-bold text-slate-900 dark:text-white">{mentor.name}</p>
-            {mentorTitle(mentor, lang) && (
-              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{mentorTitle(mentor, lang)}</p>
+            {mentorTitle(mentor, contentLang) && (
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{mentorTitle(mentor, contentLang)}</p>
             )}
             <div className="flex items-center gap-2 flex-wrap mt-0.5">
               {mentor.mentorHourlyRate != null && (
@@ -293,10 +307,12 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: '
   );
 }
 
-function MentorCard({ mentor, lang, onBook }: { mentor: PublicMentor; lang: 'ka' | 'en'; onBook: () => void }) {
+function MentorCard({ mentor, lang, onBook }: { mentor: PublicMentor; lang: SupportedLocale; onBook: () => void }) {
   const { t } = useTranslation('mentorship');
-  const title = mentorTitle(mentor, lang);
-  const bio = mentorBio(mentor, lang);
+  // Mentor profiles only store ka/en text (mentorTitle/mentorTitleEn, bio/bioEn) — collapse for this lookup only.
+  const contentLang = lang === 'ka' ? 'ka' : 'en';
+  const title = mentorTitle(mentor, contentLang);
+  const bio = mentorBio(mentor, contentLang);
   return (
     <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-5 flex flex-col">
       <div className="flex items-center gap-3 mb-3">
@@ -359,7 +375,7 @@ function MentorCard({ mentor, lang, onBook }: { mentor: PublicMentor; lang: 'ka'
 
 export default function MentorsPage() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const { t } = useTranslation('mentorship');
   const { isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();

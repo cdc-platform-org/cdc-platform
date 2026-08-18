@@ -29,11 +29,12 @@ import {
 import { Agent, KnowledgeDocument, AgentConversation } from '../../types/agent';
 import ProductOverviewCard from '../tools/ProductOverviewCard';
 import { PRODUCT_OVERVIEW } from '../../data/productOverviews';
+import { SupportedLocale } from '../../utils/locale';
 
 type SubTab = 'config' | 'knowledge' | 'embed' | 'overview' | 'analytics';
 type SetupGuidePlatform = 'wordpress' | 'shopify' | 'html';
 
-const dict = {
+const dictBase = {
   ka: {
     title: 'CDC ბიზნეს AI',
     subtitle: 'შექმენით და მართეთ AI ჩატბოტი თქვენი საიტისთვის.',
@@ -172,6 +173,15 @@ const dict = {
   },
 };
 
+// English fallback for locales without a translation yet.
+const dict: Record<SupportedLocale, typeof dictBase.en> = {
+  ...dictBase,
+  de: dictBase.en,
+  es: dictBase.en,
+  fr: dictBase.en,
+  uk: dictBase.en,
+};
+
 const STATUS_BADGE: Record<string, string> = {
   TRIAL: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30',
   ACTIVE: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
@@ -184,7 +194,7 @@ const labelClass = 'block text-xs font-bold text-slate-600 dark:text-slate-400 m
 
 const emptyForm: AgentFormPayload = { name: '', primaryColor: '#06b6d4', systemPrompt: '', allowedOrigins: [], fallbackPhone: '' };
 
-export default function BusinessAiTab({ lang }: { lang: 'ka' | 'en' }) {
+export default function BusinessAiTab({ lang }: { lang: SupportedLocale }) {
   const t = dict[lang];
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);

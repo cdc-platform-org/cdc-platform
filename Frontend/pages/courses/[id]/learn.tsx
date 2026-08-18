@@ -27,6 +27,7 @@ import {
   submitAssignment,
   uploadSubmissionFile,
 } from '../../../src/services/courseService';
+import { resolveLocale } from '@/src/utils/locale';
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -156,7 +157,7 @@ function AssignmentPanel({ lessonId, t }: { lessonId: string; t: TFunction; }) {
 
 function LearnContent() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const { t } = useTranslation('courses');
   const courseId = typeof router.query.id === 'string' ? router.query.id : null;
   const { user } = useAuth();

@@ -9,6 +9,7 @@ import BackButton from '../../src/components/common/BackButton';
 import BusinessAiTab from '../../src/components/dashboard/BusinessAiTab';
 import BusinessAiAgentsSuite from '../../src/components/dashboard/BusinessAiAgentsSuite';
 import ExamProctoringTab from '../../src/components/dashboard/ExamProctoringTab';
+import { resolveLocale } from '@/src/utils/locale';
 
 const dict = {
   ka: {
@@ -21,11 +22,31 @@ const dict = {
     subtitle: 'Create and manage an AI chatbot for your business — all in one place.',
     fallback: 'AI agent configuration is available only to business clients and administrators.',
   },
+  de: {
+    title: 'AI Agent',
+    subtitle: 'Create and manage an AI chatbot for your business — all in one place.',
+    fallback: 'AI agent configuration is available only to business clients and administrators.',
+  },
+  es: {
+    title: 'AI Agent',
+    subtitle: 'Create and manage an AI chatbot for your business — all in one place.',
+    fallback: 'AI agent configuration is available only to business clients and administrators.',
+  },
+  fr: {
+    title: 'AI Agent',
+    subtitle: 'Create and manage an AI chatbot for your business — all in one place.',
+    fallback: 'AI agent configuration is available only to business clients and administrators.',
+  },
+  uk: {
+    title: 'AI Agent',
+    subtitle: 'Create and manage an AI chatbot for your business — all in one place.',
+    fallback: 'AI agent configuration is available only to business clients and administrators.',
+  },
 };
 
 function AiToolsContent() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
 
   return (

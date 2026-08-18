@@ -9,6 +9,7 @@ import { getSiteContent } from '../src/services/siteContentService';
 import { resolveBlogImageUrl } from '../src/services/blogService';
 import { onImageErrorFallback } from '../src/utils/imageFallback';
 import Lightbox from '../src/components/shared/Lightbox';
+import { resolveLocale } from '@/src/utils/locale';
 
 const dict = {
   ka: {
@@ -21,11 +22,31 @@ const dict = {
     subtitle: 'Moments from CDC life — lectures, events, and graduates.',
     empty: 'No photos have been added yet.',
   },
+  de: {
+    title: 'Photo Gallery',
+    subtitle: 'Moments from CDC life — lectures, events, and graduates.',
+    empty: 'No photos have been added yet.',
+  },
+  es: {
+    title: 'Photo Gallery',
+    subtitle: 'Moments from CDC life — lectures, events, and graduates.',
+    empty: 'No photos have been added yet.',
+  },
+  fr: {
+    title: 'Photo Gallery',
+    subtitle: 'Moments from CDC life — lectures, events, and graduates.',
+    empty: 'No photos have been added yet.',
+  },
+  uk: {
+    title: 'Photo Gallery',
+    subtitle: 'Moments from CDC life — lectures, events, and graduates.',
+    empty: 'No photos have been added yet.',
+  },
 };
 
 export default function GalleryPage() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
 
   const [images, setImages] = useState<GalleryContent['images']>([]);

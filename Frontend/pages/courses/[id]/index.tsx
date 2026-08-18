@@ -15,6 +15,7 @@ import { useEscapeToClose } from '../../../src/hooks/useEscapeToClose';
 import { Course, SyllabusSection, SyllabusLesson } from '../../../src/types/lms';
 import { getCourse, getProgressSummary, getSyllabus } from '../../../src/services/courseService';
 import { checkoutCourse, validatePromoCode, PromoValidationResult } from '../../../src/services/paymentService';
+import { checkoutCourseStripe } from '../../../src/services/stripePaymentService';
 import { formatPrice, getSaleCountdownLabel } from '../../../src/utils/coursePricing';
 import { courseLanguageBadge } from '../../../src/utils/courseLanguage';
 import { useAuth } from '../../../src/context/AuthContext';
@@ -107,7 +108,11 @@ export default function CourseDetailPage() {
     setError(null);
     setProcessing(true);
     try {
-      const result = await checkoutCourse(courseId, appliedPromo?.code, lang);
+      // Georgian users pay via BOG (GEL); everyone else via Stripe (USD/EUR).
+      const result =
+        lang === 'ka'
+          ? await checkoutCourse(courseId, appliedPromo?.code, 'ka')
+          : await checkoutCourseStripe(courseId, appliedPromo?.code, 'usd');
       if (result.enrolled) {
         router.push(`/courses/${courseId}/learn`);
         return;

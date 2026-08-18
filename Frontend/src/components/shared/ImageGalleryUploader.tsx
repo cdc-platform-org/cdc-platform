@@ -2,6 +2,7 @@ import { useRef, useState, DragEvent, ChangeEvent } from 'react';
 import { ImagePlus, Plus, X } from 'lucide-react';
 import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../utils/imageUpload';
 import { onImageErrorFallback } from '../../utils/imageFallback';
+import { SupportedLocale } from '../../utils/locale';
 
 interface ImageGalleryUploaderProps {
   coverUrl: string;
@@ -27,7 +28,7 @@ interface ImageGalleryUploaderProps {
     // handleGalleryFiles below.
     uploadFailed: string;
   };
-  lang: 'ka' | 'en';
+  lang: SupportedLocale;
   disabled?: boolean;
 }
 

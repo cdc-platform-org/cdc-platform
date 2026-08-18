@@ -1,6 +1,7 @@
 import { LucideIcon, CheckCircle2, Sparkles, Coins } from 'lucide-react';
+import { SupportedLocale } from '../../utils/locale';
 
-const dict = {
+const dictBase = {
   ka: {
     whatYouGet: 'რას იღებთ',
     whyGameChanger: 'რატომ არის გარდამტეხი',
@@ -17,6 +18,15 @@ const dict = {
   },
 };
 
+// English fallback for locales without a translation yet.
+const dict: Record<SupportedLocale, typeof dictBase.en> = {
+  ...dictBase,
+  de: dictBase.en,
+  es: dictBase.en,
+  fr: dictBase.en,
+  uk: dictBase.en,
+};
+
 export interface ProductOverviewPricing {
   trialLabel: string;
   baseFeeLabel: string;
@@ -24,7 +34,7 @@ export interface ProductOverviewPricing {
 }
 
 export interface ProductOverviewCardProps {
-  lang: 'ka' | 'en';
+  lang: SupportedLocale;
   icon: LucideIcon;
   title: string;
   tagline: string;

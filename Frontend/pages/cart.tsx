@@ -5,11 +5,12 @@ import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import BackButton from '../src/components/common/BackButton';
+import { resolveLocale } from '@/src/utils/locale';
 
 function CartContent() {
   const { t } = useTranslation('marketplace');
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const [currency, setCurrency] = useState<'GEL' | 'USD' | 'EUR'>('GEL');
   const [isPaying, setIsPaying] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'paypal'>('card');

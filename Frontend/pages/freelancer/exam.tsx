@@ -10,6 +10,7 @@ import Toast from '../../src/components/shared/Toast';
 import { JOB_CATEGORIES, JOB_CATEGORY_LABEL } from '../../src/utils/jobCategory';
 import { JobCategory } from '../../src/types/community';
 import { generateExam, submitExam, getExamStatus, ExamQuestion, ExamAttemptResult } from '../../src/services/freelancerExamService';
+import { resolveLocale } from '../../src/utils/locale';
 
 const MAX_STRIKES = 3;
 // Mirrors Backend's routes/freelancerExam.ts (PASS_THRESHOLD, QUESTION_COUNT)
@@ -27,7 +28,7 @@ type Phase = 'select' | 'rules' | 'starting' | 'in-progress' | 'result';
 
 function FreelancerExamContent() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
 
   const [phase, setPhase] = useState<Phase>('select');
   const [category, setCategory] = useState<JobCategory | null>(null);
@@ -168,7 +169,8 @@ function FreelancerExamContent() {
       const timeout = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('timeout')), GENERATE_TIMEOUT_MS);
       });
-      const exam = await Promise.race([generateExam(category, lang), timeout]);
+      // The AI skill-exam generator only produces 'ka'/'en' exams.
+      const exam = await Promise.race([generateExam(category, lang === 'ka' ? 'ka' : 'en'), timeout]);
       setAttemptId(exam.attemptId);
       setQuestions(exam.questions);
       setCurrentIndex(0);

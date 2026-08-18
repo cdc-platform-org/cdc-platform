@@ -4,17 +4,22 @@ import Link from 'next/link';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
 import { useAuth } from '../../src/context/AuthContext';
+import { resolveLocale } from '@/src/utils/locale';
 
 const HOME_LABEL: Record<string, string> = {
   ka: 'მთავარ გვერდზე დაბრუნება',
   en: 'Back to Home',
+  de: 'Back to Home',
+  es: 'Back to Home',
+  fr: 'Back to Home',
+  uk: 'Back to Home',
 };
 
 export default function PendingApprovalPage() {
   const { t } = useTranslation('auth');
   const { logout } = useAuth();
   const router = useRouter();
-  const homeLabel = HOME_LABEL[router.locale === 'en' ? 'en' : 'ka'];
+  const homeLabel = HOME_LABEL[resolveLocale(router.locale)];
 
   const handleLogout = () => {
     logout();

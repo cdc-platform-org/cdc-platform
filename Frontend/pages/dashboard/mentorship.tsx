@@ -19,6 +19,7 @@ import {
   MentorAvailabilityRuleRow,
 } from '../../src/services/mentorshipService';
 import { getWalletSummary, createPayoutRequest, getMyPayoutRequests, WalletSummary, PayoutRequestRow } from '../../src/services/walletService';
+import { resolveLocale } from '@/src/utils/locale';
 
 const DAYS_KA = ['კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი'];
 const DAYS_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -35,7 +36,7 @@ function timeToMinutes(time: string): number {
 
 function MentorshipWorkspaceContent() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const { t } = useTranslation('mentorship');
   const days = lang === 'en' ? DAYS_EN : DAYS_KA;
 

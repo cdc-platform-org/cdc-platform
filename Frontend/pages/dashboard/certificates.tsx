@@ -11,6 +11,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useEscapeToClose } from '../../src/hooks/useEscapeToClose';
 import { MyCourseWithProgress } from '../../src/types/lms';
 import { getMyCourses, downloadCertificate } from '../../src/services/courseService';
+import { resolveLocale } from '@/src/utils/locale';
 
 const dict = {
   ka: {
@@ -61,11 +62,107 @@ const dict = {
     limitClose: 'Close',
     limitContactEmail: 'contact@cdc.org.ge',
   },
+  de: {
+    title: 'My Certificates',
+    subtitle: 'Every course you have an issued certificate for.',
+    loading: 'Loading…',
+    empty: "You haven't earned any certificates yet.",
+    browseCourses: 'Browse Courses',
+    issued: 'Issue Date',
+    code: 'Verification Code',
+    download: 'Download',
+    generating: 'Generating…',
+    verify: 'Public verification',
+    confirmTitle: 'Please double-check!',
+    confirmBody: 'This name will be printed on your certificate:',
+    confirmChangeHint: 'To change it, go to your account settings.',
+    confirmDownload: 'Confirm & Download',
+    confirmChangeName: 'Change Name (Go to Settings)',
+    confirmCancel: 'Cancel',
+    downloadFailed: 'Unable to generate the certificate. Please try again.',
+    limitTitle: 'Certificate Already Downloaded',
+    limitMessage:
+      'To re-download your certificate or update its details, please contact our support team at: contact@cdc.org.ge',
+    limitClose: 'Close',
+    limitContactEmail: 'contact@cdc.org.ge',
+  },
+  es: {
+    title: 'My Certificates',
+    subtitle: 'Every course you have an issued certificate for.',
+    loading: 'Loading…',
+    empty: "You haven't earned any certificates yet.",
+    browseCourses: 'Browse Courses',
+    issued: 'Issue Date',
+    code: 'Verification Code',
+    download: 'Download',
+    generating: 'Generating…',
+    verify: 'Public verification',
+    confirmTitle: 'Please double-check!',
+    confirmBody: 'This name will be printed on your certificate:',
+    confirmChangeHint: 'To change it, go to your account settings.',
+    confirmDownload: 'Confirm & Download',
+    confirmChangeName: 'Change Name (Go to Settings)',
+    confirmCancel: 'Cancel',
+    downloadFailed: 'Unable to generate the certificate. Please try again.',
+    limitTitle: 'Certificate Already Downloaded',
+    limitMessage:
+      'To re-download your certificate or update its details, please contact our support team at: contact@cdc.org.ge',
+    limitClose: 'Close',
+    limitContactEmail: 'contact@cdc.org.ge',
+  },
+  fr: {
+    title: 'My Certificates',
+    subtitle: 'Every course you have an issued certificate for.',
+    loading: 'Loading…',
+    empty: "You haven't earned any certificates yet.",
+    browseCourses: 'Browse Courses',
+    issued: 'Issue Date',
+    code: 'Verification Code',
+    download: 'Download',
+    generating: 'Generating…',
+    verify: 'Public verification',
+    confirmTitle: 'Please double-check!',
+    confirmBody: 'This name will be printed on your certificate:',
+    confirmChangeHint: 'To change it, go to your account settings.',
+    confirmDownload: 'Confirm & Download',
+    confirmChangeName: 'Change Name (Go to Settings)',
+    confirmCancel: 'Cancel',
+    downloadFailed: 'Unable to generate the certificate. Please try again.',
+    limitTitle: 'Certificate Already Downloaded',
+    limitMessage:
+      'To re-download your certificate or update its details, please contact our support team at: contact@cdc.org.ge',
+    limitClose: 'Close',
+    limitContactEmail: 'contact@cdc.org.ge',
+  },
+  uk: {
+    title: 'My Certificates',
+    subtitle: 'Every course you have an issued certificate for.',
+    loading: 'Loading…',
+    empty: "You haven't earned any certificates yet.",
+    browseCourses: 'Browse Courses',
+    issued: 'Issue Date',
+    code: 'Verification Code',
+    download: 'Download',
+    generating: 'Generating…',
+    verify: 'Public verification',
+    confirmTitle: 'Please double-check!',
+    confirmBody: 'This name will be printed on your certificate:',
+    confirmChangeHint: 'To change it, go to your account settings.',
+    confirmDownload: 'Confirm & Download',
+    confirmChangeName: 'Change Name (Go to Settings)',
+    confirmCancel: 'Cancel',
+    downloadFailed: 'Unable to generate the certificate. Please try again.',
+    limitTitle: 'Certificate Already Downloaded',
+    limitMessage:
+      'To re-download your certificate or update its details, please contact our support team at: contact@cdc.org.ge',
+    limitClose: 'Close',
+    limitContactEmail: 'contact@cdc.org.ge',
+  },
 };
 
 function CertificatesContent() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
   const { user } = useAuth();
 

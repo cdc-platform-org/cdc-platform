@@ -10,6 +10,7 @@ import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import { useAuth } from '../../../src/context/AuthContext';
 import { Course, ExamStatus, ExamQuestion, ExamSubmitResult, ExamAnswerLetter } from '../../../src/types/lms';
 import { getCourse, getExamStatus, startExam, submitExam } from '../../../src/services/courseService';
+import { resolveLocale } from '../../../src/utils/locale';
 
 function formatCountdown(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -35,7 +36,6 @@ type Phase = 'loading' | 'blocked' | 'ready' | 'in-progress' | 'result';
 
 function ExamContent() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
   const { t } = useTranslation('courses');
   const courseId = typeof router.query.id === 'string' ? router.query.id : null;
   const { refreshUser } = useAuth();
@@ -46,7 +46,9 @@ function ExamContent() {
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
 
-  const [examLang, setExamLang] = useState<'ka' | 'en'>(lang);
+  // The AI exam generator only produces 'ka'/'en' exams (see startExam /
+  // aiExamService) — resolveLocale's other 4 locales collapse to English.
+  const [examLang, setExamLang] = useState<'ka' | 'en'>(resolveLocale(router.locale) === 'ka' ? 'ka' : 'en');
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [questions, setQuestions] = useState<ExamQuestion[]>([]);
   const [passingScore, setPassingScore] = useState(0);

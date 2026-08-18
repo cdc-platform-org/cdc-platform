@@ -10,7 +10,9 @@ export interface FreelancerSkillDefinition {
   group: string;
 }
 
-export const FREELANCER_SKILL_GROUPS: Record<string, { ka: string; en: string }> = {
+import { SupportedLocale } from '../utils/locale';
+
+const FREELANCER_SKILL_GROUPS_BASE: Record<string, { ka: string; en: string }> = {
   web: { ka: 'ვებ დეველოპმენტი', en: 'Web Development' },
   design: { ka: 'დიზაინი', en: 'Design' },
   marketing: { ka: 'მარკეტინგი', en: 'Marketing' },
@@ -18,6 +20,15 @@ export const FREELANCER_SKILL_GROUPS: Record<string, { ka: string; en: string }>
   media: { ka: 'ვიდეო და აუდიო', en: 'Video & Audio' },
   business: { ka: 'ბიზნესი და ადმინისტრირება', en: 'Business & Admin' },
 };
+
+// German/Spanish/French/Ukrainian labels haven't been translated yet — fall
+// back to English rather than silently showing Georgian.
+export const FREELANCER_SKILL_GROUPS: Record<string, Record<SupportedLocale, string>> = Object.fromEntries(
+  Object.entries(FREELANCER_SKILL_GROUPS_BASE).map(([group, { ka, en }]) => [
+    group,
+    { ka, en, de: en, es: en, fr: en, uk: en },
+  ])
+);
 
 export const FREELANCER_SKILLS: FreelancerSkillDefinition[] = [
   { value: 'React / Frontend Development', labelKa: 'React / ფრონტენდ დეველოპმენტი', labelEn: 'React / Frontend Development', group: 'web' },

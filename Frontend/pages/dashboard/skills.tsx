@@ -14,6 +14,7 @@ import {
   SkillClientQuestion,
   SubmitSkillTestResult,
 } from '../../src/services/skillTestService';
+import { resolveLocale } from '@/src/utils/locale';
 
 // Mirrors Backend's routes/skillTests.ts's SECONDS_PER_QUESTION/PASS_THRESHOLD.
 const SECONDS_PER_QUESTION = 90;
@@ -71,11 +72,107 @@ const dict = {
     error: 'Something went wrong. Please try again.',
     timeoutError: 'Loading the test is taking too long — check your connection and try again.',
   },
+  de: {
+    title: 'Skill Verification',
+    subtitle: 'Take an AI-generated test for a declared skill and earn a "Verified Skill" badge on your public profile.',
+    noSkills: "You haven't declared any skills yet.",
+    addSkills: 'Add skills in Settings',
+    verified: 'Verified',
+    verifiedByCourse: 'Verified via course',
+    takeTest: 'Take Test',
+    loadingSkills: 'Loading…',
+    starting: 'Preparing your test…',
+    question: 'Question',
+    practicalLabel: 'Practical question',
+    practicalPlaceholder: 'Describe your approach in a few sentences…',
+    next: 'Next',
+    finish: 'Finish',
+    submitting: 'Submitting…',
+    passedTitle: '🎉 Congratulations — skill verified!',
+    failedTitle: "You didn't pass this time",
+    resultScore: 'Score',
+    retryHint: 'You can try again any time.',
+    backToList: '← Back to skills',
+    error: 'Something went wrong. Please try again.',
+    timeoutError: 'Loading the test is taking too long — check your connection and try again.',
+  },
+  es: {
+    title: 'Skill Verification',
+    subtitle: 'Take an AI-generated test for a declared skill and earn a "Verified Skill" badge on your public profile.',
+    noSkills: "You haven't declared any skills yet.",
+    addSkills: 'Add skills in Settings',
+    verified: 'Verified',
+    verifiedByCourse: 'Verified via course',
+    takeTest: 'Take Test',
+    loadingSkills: 'Loading…',
+    starting: 'Preparing your test…',
+    question: 'Question',
+    practicalLabel: 'Practical question',
+    practicalPlaceholder: 'Describe your approach in a few sentences…',
+    next: 'Next',
+    finish: 'Finish',
+    submitting: 'Submitting…',
+    passedTitle: '🎉 Congratulations — skill verified!',
+    failedTitle: "You didn't pass this time",
+    resultScore: 'Score',
+    retryHint: 'You can try again any time.',
+    backToList: '← Back to skills',
+    error: 'Something went wrong. Please try again.',
+    timeoutError: 'Loading the test is taking too long — check your connection and try again.',
+  },
+  fr: {
+    title: 'Skill Verification',
+    subtitle: 'Take an AI-generated test for a declared skill and earn a "Verified Skill" badge on your public profile.',
+    noSkills: "You haven't declared any skills yet.",
+    addSkills: 'Add skills in Settings',
+    verified: 'Verified',
+    verifiedByCourse: 'Verified via course',
+    takeTest: 'Take Test',
+    loadingSkills: 'Loading…',
+    starting: 'Preparing your test…',
+    question: 'Question',
+    practicalLabel: 'Practical question',
+    practicalPlaceholder: 'Describe your approach in a few sentences…',
+    next: 'Next',
+    finish: 'Finish',
+    submitting: 'Submitting…',
+    passedTitle: '🎉 Congratulations — skill verified!',
+    failedTitle: "You didn't pass this time",
+    resultScore: 'Score',
+    retryHint: 'You can try again any time.',
+    backToList: '← Back to skills',
+    error: 'Something went wrong. Please try again.',
+    timeoutError: 'Loading the test is taking too long — check your connection and try again.',
+  },
+  uk: {
+    title: 'Skill Verification',
+    subtitle: 'Take an AI-generated test for a declared skill and earn a "Verified Skill" badge on your public profile.',
+    noSkills: "You haven't declared any skills yet.",
+    addSkills: 'Add skills in Settings',
+    verified: 'Verified',
+    verifiedByCourse: 'Verified via course',
+    takeTest: 'Take Test',
+    loadingSkills: 'Loading…',
+    starting: 'Preparing your test…',
+    question: 'Question',
+    practicalLabel: 'Practical question',
+    practicalPlaceholder: 'Describe your approach in a few sentences…',
+    next: 'Next',
+    finish: 'Finish',
+    submitting: 'Submitting…',
+    passedTitle: '🎉 Congratulations — skill verified!',
+    failedTitle: "You didn't pass this time",
+    resultScore: 'Score',
+    retryHint: 'You can try again any time.',
+    backToList: '← Back to skills',
+    error: 'Something went wrong. Please try again.',
+    timeoutError: 'Loading the test is taking too long — check your connection and try again.',
+  },
 } as const;
 
 function SkillsContent() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
 
   const [phase, setPhase] = useState<Phase>('list');
@@ -157,7 +254,8 @@ function SkillsContent() {
       const timeout = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('timeout')), GENERATE_TIMEOUT_MS);
       });
-      const test = await Promise.race([generateSkillTest(skillName, lang), timeout]);
+      // The AI skill-test generator only produces 'ka'/'en' questions.
+      const test = await Promise.race([generateSkillTest(skillName, lang === 'ka' ? 'ka' : 'en'), timeout]);
       setAttemptId(test.attemptId);
       setQuestions(test.questions);
       setCurrentIndex(0);

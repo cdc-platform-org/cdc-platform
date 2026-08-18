@@ -15,8 +15,10 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
 import { getProduct, claimFreeProduct, getProductDownloadUrl, DigitalProduct } from '../../src/services/productService';
 import { checkoutProduct } from '../../src/services/paymentService';
+import { checkoutProductStripe } from '../../src/services/stripePaymentService';
 import { formatPrice } from '../../src/utils/coursePricing';
 import { MARKETPLACE_CATEGORIES } from '../../src/data/marketplaceCategories';
+import { resolveLocale } from '@/src/utils/locale';
 
 // Canonical Business Tools category (see marketplaceCategories.ts) — matched
 // against either language's value since `category` is free text set at
@@ -42,7 +44,7 @@ function StoreProductContent() {
   const { t } = useTranslation('marketplace');
   const router = useRouter();
   const { id } = router.query;
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const { user, isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
 
@@ -88,7 +90,9 @@ function StoreProductContent() {
     setActionError(null);
     setSubmitting(true);
     try {
-      const { redirectUrl } = await checkoutProduct(product.id, lang);
+      // Georgian users pay via BOG (GEL); everyone else via Stripe (USD/EUR).
+      const { redirectUrl } =
+        lang === 'ka' ? await checkoutProduct(product.id, 'ka') : await checkoutProductStripe(product.id, 'usd');
       window.location.href = redirectUrl;
     } catch (err: any) {
       setActionError(err?.response?.data?.message ?? t('checkoutFailed'));

@@ -110,13 +110,18 @@ router.get('/bookings/mine', authenticate, async (req: Request, res: Response) =
       mentor: { select: { id: true, name: true, email: true, avatarUrl: true } },
       student: { select: { id: true, name: true, email: true, avatarUrl: true } },
       bogPayment: { select: { status: true } },
+      stripePayment: { select: { status: true } },
     },
     orderBy: { scheduledAt: 'desc' },
   });
   // Only surface bookings whose payment actually completed — a booking row
   // is created at checkout time (before payment), so a PENDING/FAILED one
-  // was never a real confirmed session.
-  const confirmed = bookings.filter((b) => b.bogPayment.status === 'COMPLETED');
+  // was never a real confirmed session. Exactly one of bogPayment/
+  // stripePayment is set per booking (see schema.prisma's MentorshipBooking
+  // comment) — check whichever gateway funded it.
+  const confirmed = bookings.filter(
+    (b) => b.bogPayment?.status === 'COMPLETED' || b.stripePayment?.status === 'COMPLETED'
+  );
 
   // Lazily flip any still-SCHEDULED booking whose time has passed to
   // COMPLETED — no cron for this; nothing here needs it set the instant the

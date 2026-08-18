@@ -163,3 +163,25 @@ export const AZURE_OPENAI_DEPLOYMENT_NAME = (process.env.AZURE_OPENAI_DEPLOYMENT
 // there's no "-latest" alias, so this is pinned to a known-GA version rather
 // than guessed. Override via env if your deployment needs a different one.
 export const AZURE_OPENAI_API_VERSION = (process.env.AZURE_OPENAI_API_VERSION || '2024-10-21').trim();
+// Stripe Checkout — the international (USD/EUR) counterpart to BOG (GEL/ka
+// users), see services/stripePaymentService.ts. Deliberately NOT
+// requireEnv() — same "optional until configured" posture as BOG/Bunny/
+// Gemini above; Stripe checkout routes respond 501 until this is set.
+// No Admin Panel DB fallback (unlike BogSettings) — Stripe keys aren't
+// rotated per-deployment the way BOG merchant credentials are.
+export const STRIPE_SECRET_KEY = cleanEnv(process.env.STRIPE_SECRET_KEY);
+// Signing secret for the /api/payments/stripe/webhook endpoint (Stripe
+// Dashboard -> Developers -> Webhooks -> your endpoint -> Signing secret,
+// or `stripe listen`'s printed secret for local dev). Required for the
+// webhook to verify authenticity — see stripe.webhooks.constructEvent in
+// routes/stripePayments.ts.
+export const STRIPE_WEBHOOK_SECRET = cleanEnv(process.env.STRIPE_WEBHOOK_SECRET);
+// Every priced entity (Course/DigitalProduct/Gig bid/mentorHourlyRate) is
+// stored in GEL only — there is no live FX-rate service anywhere in this
+// codebase. Rather than add a new external FX API dependency, Stripe
+// checkout converts using this manually-set, admin-configurable rate
+// (defaults match the approximate values already used by the Frontend cart
+// mockup). This is NOT live market FX — update it periodically by hand, or
+// wire in a real rate provider before this sees meaningful volume.
+export const STRIPE_GEL_TO_USD_RATE = Number(process.env.STRIPE_GEL_TO_USD_RATE || '0.36');
+export const STRIPE_GEL_TO_EUR_RATE = Number(process.env.STRIPE_GEL_TO_EUR_RATE || '0.33');

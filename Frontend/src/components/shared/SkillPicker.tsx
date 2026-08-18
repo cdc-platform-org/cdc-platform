@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import { FREELANCER_SKILLS, FREELANCER_SKILL_GROUPS } from '../../data/freelancerSkills';
+import { SupportedLocale } from '../../utils/locale';
 
-const STRINGS = {
+const STRINGS_BASE = {
   ka: {
     otherPlaceholder: 'სხვა უნარი…',
     addButton: 'დამატება',
@@ -17,6 +18,19 @@ const STRINGS = {
   },
 } as const;
 
+// English fallback for locales without a translation yet. Cast through
+// `unknown` because ka's and en's per-key literal string types otherwise
+// don't structurally match under a single Record<SupportedLocale, ...>
+// annotation — a TS inference artifact, not a real shape mismatch (de/es/fr/
+// uk are literally the same object as en).
+const STRINGS = {
+  ...STRINGS_BASE,
+  de: STRINGS_BASE.en,
+  es: STRINGS_BASE.en,
+  fr: STRINGS_BASE.en,
+  uk: STRINGS_BASE.en,
+} as unknown as Record<SupportedLocale, typeof STRINGS_BASE.en>;
+
 // Shared "pick predefined skills + add custom ones" control — used by the
 // Freelancer registration step, dashboard/settings.tsx's profile editor, and
 // the admin course form's skillsTaught field. Predefined and custom skills
@@ -29,7 +43,7 @@ export default function SkillPicker({
 }: {
   value: string[];
   onChange: (skills: string[]) => void;
-  lang: 'ka' | 'en';
+  lang: SupportedLocale;
 }) {
   const t = STRINGS[lang];
   const [customInput, setCustomInput] = useState('');

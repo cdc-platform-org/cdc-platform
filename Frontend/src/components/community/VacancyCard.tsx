@@ -6,6 +6,7 @@ import SocialShareButtons from '../shared/SocialShareButtons';
 import VerifiedGraduateBadge from './VerifiedGraduateBadge';
 import StarRating from './StarRating';
 import { jobCategoryLabel } from '../../utils/jobCategory';
+import { resolveLocale } from '../../utils/locale';
 
 interface VacancyCardProps {
   vacancy: Vacancy;
@@ -24,7 +25,7 @@ export default function VacancyCard({ vacancy, onApply, canApply, isOwnerOrAdmin
   };
   const hasSalaryRange = vacancy.salaryMin !== null || vacancy.salaryMax !== null;
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
 
   return (
     <div className="group relative rounded-3xl p-6 overflow-hidden border border-slate-200/70 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/40 backdrop-blur-xl shadow-sm hover:shadow-xl hover:shadow-cyan-500/10 dark:hover:shadow-cyan-500/20 hover:-translate-y-1 hover:border-cyan-300 dark:hover:border-cyan-500/50 transition-all duration-300">

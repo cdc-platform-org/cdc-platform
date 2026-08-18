@@ -9,6 +9,7 @@ import BackButton from '../../src/components/common/BackButton';
 import { StudioCaseStudy } from '../../src/types/studioCaseStudy';
 import { getStudioCases, studioCaseTitle, studioCaseDescription } from '../../src/services/studioCaseService';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
+import { resolveLocale } from '@/src/utils/locale';
 
 const dict = {
   ka: {
@@ -25,12 +26,42 @@ const dict = {
     empty: 'Case studies will be added soon.',
     all: 'All',
   },
+  de: {
+    title: 'CDC Studio Case Studies',
+    subtitle: 'Projects CDC Studio has delivered for real businesses.',
+    loading: 'Loading…',
+    empty: 'Case studies will be added soon.',
+    all: 'All',
+  },
+  es: {
+    title: 'CDC Studio Case Studies',
+    subtitle: 'Projects CDC Studio has delivered for real businesses.',
+    loading: 'Loading…',
+    empty: 'Case studies will be added soon.',
+    all: 'All',
+  },
+  fr: {
+    title: 'CDC Studio Case Studies',
+    subtitle: 'Projects CDC Studio has delivered for real businesses.',
+    loading: 'Loading…',
+    empty: 'Case studies will be added soon.',
+    all: 'All',
+  },
+  uk: {
+    title: 'CDC Studio Case Studies',
+    subtitle: 'Projects CDC Studio has delivered for real businesses.',
+    loading: 'Loading…',
+    empty: 'Case studies will be added soon.',
+    all: 'All',
+  },
 };
 
 export default function StudioCasesPage() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
+  // Studio case studies only store ka/en text — collapse for content lookups.
+  const contentLang = lang === 'ka' ? 'ka' : 'en';
 
   const [cases, setCases] = useState<StudioCaseStudy[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,7 +146,7 @@ export default function StudioCasesPage() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={item.coverImageUrl}
-                      alt={studioCaseTitle(item, lang)}
+                      alt={studioCaseTitle(item, contentLang)}
                       onError={onImageErrorFallback}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
@@ -124,10 +155,10 @@ export default function StudioCasesPage() {
                 <div className="p-6">
                   <span className="text-[11px] font-black uppercase tracking-widest block mb-2 text-cyan-500">{item.category}</span>
                   <h3 className="text-lg font-black mb-2 flex items-center gap-1.5">
-                    {studioCaseTitle(item, lang)}
+                    {studioCaseTitle(item, contentLang)}
                     <ArrowUpRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                   </h3>
-                  <p className="text-sm text-slate-400 leading-relaxed font-medium line-clamp-2">{studioCaseDescription(item, lang)}</p>
+                  <p className="text-sm text-slate-400 leading-relaxed font-medium line-clamp-2">{studioCaseDescription(item, contentLang)}</p>
                 </div>
               </Link>
             ))}

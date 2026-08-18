@@ -393,6 +393,7 @@ model User {
   receivedMessages            Message[]                    @relation("ReceivedMessages")
   paymentMethods              PaymentMethod[]
   bogPayments                 BogPayment[]
+  stripePayments              StripePayment[]
   courseEnrollments           CourseEnrollment[]
   lessonProgress              LessonProgress[]
   courseCertificates          CourseCertificate[]
@@ -1778,6 +1779,42 @@ model BogPayment {
   @@map("bog_payments")
 }
 
+// ============================================================
+// STRIPE PAYMENT — the international-checkout counterpart to BogPayment
+// (USD/EUR, non-Georgian users), kept as a fully separate table rather than
+// widening BogPayment itself: this app has zero automated test coverage on
+// the payment path, so the lower-risk choice is a parallel model + parallel
+// fulfillment function (see routes/stripePayments.ts) rather than touching
+// the BOG code real users already depend on. Reuses BogPaymentPurpose/
+// BogPaymentStatus since the lifecycle concepts are identical, just the
+// gateway differs.
+// ============================================================
+model StripePayment {
+  id                    String             @id @default(uuid())
+  stripeSessionId       String             @unique
+  stripePaymentIntentId String?
+  userId                String
+  user                  User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  purpose               BogPaymentPurpose
+  referenceId           String
+  amount                Int // minor units
+  currency              String             @db.Char(3)
+  status                BogPaymentStatus   @default(PENDING)
+  checkoutUrl           String?
+  // Last webhook event payload received from Stripe, kept for audit/debugging
+  // — never trusted as the source of truth without signature verification.
+  rawEvent              Json?
+  createdAt             DateTime           @default(now())
+  completedAt           DateTime?
+  mentorshipBooking     MentorshipBooking?
+  promoCodeId           String?
+  promoCode             PromoCode?         @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([purpose, referenceId])
+  @@map("stripe_payments")
+}
+
 // A mentor's recurring weekly availability — e.g. "Tuesdays 18:00-22:00".
 // Times are in the platform's fixed reference timezone (Asia/Tbilisi,
 // matching CDC's actual operating hours) as minutes-since-midnight, not a
@@ -1797,16 +1834,22 @@ model MentorAvailabilityRule {
 
 // One row per paid mentorship session — created at checkout time (before
 // payment completes) so the chosen slot/phone/description survive the BOG
-// redirect round-trip; the Google Calendar fields are filled in once
-// applyBogPaymentResult() confirms payment and calls googleCalendarService.
+// (or Stripe) redirect round-trip; the Google Calendar fields are filled in
+// once applyBogPaymentResult()/applyStripePaymentResult() confirms payment
+// and calls googleCalendarService. Exactly one of bogPaymentId/
+// stripePaymentId is set per row (enforced in routes/payments.ts and
+// routes/stripePayments.ts at booking-creation time, not a DB constraint —
+// this app has no other dual-gateway rows to model that decision after).
 model MentorshipBooking {
-  id                      String     @id @default(uuid())
-  bogPaymentId            String     @unique
-  bogPayment              BogPayment @relation(fields: [bogPaymentId], references: [id], onDelete: Cascade)
+  id                      String         @id @default(uuid())
+  bogPaymentId            String?        @unique
+  bogPayment              BogPayment?    @relation(fields: [bogPaymentId], references: [id], onDelete: Cascade)
+  stripePaymentId         String?        @unique
+  stripePayment           StripePayment? @relation(fields: [stripePaymentId], references: [id], onDelete: Cascade)
   mentorId                String
-  mentor                  User       @relation("MentorshipBookingsAsMentor", fields: [mentorId], references: [id], onDelete: Restrict)
+  mentor                  User           @relation("MentorshipBookingsAsMentor", fields: [mentorId], references: [id], onDelete: Restrict)
   studentId               String
-  student                 User       @relation("MentorshipBookingsAsStudent", fields: [studentId], references: [id], onDelete: Restrict)
+  student                 User           @relation("MentorshipBookingsAsStudent", fields: [studentId], references: [id], onDelete: Restrict)
   scheduledAt             DateTime
   studentPhone            String
   consultationDescription String?
@@ -1832,13 +1875,13 @@ model MentorshipBooking {
   commissionRate          Float?
   commissionAmount        Int?
   netAmount               Int?
-  createdAt               DateTime   @default(now())
+  createdAt               DateTime       @default(now())
   // "SCHEDULED" | "CANCELLED" | "COMPLETED" — no cancel/completion tracking
   // existed before this field; COMPLETED is set lazily (GET /bookings/mine
   // flips any SCHEDULED booking whose scheduledAt has passed) rather than by
   // a cron, since nothing else in this session time-sensitively needs it
   // set the instant the session ends.
-  status                  String     @default("SCHEDULED")
+  status                  String         @default("SCHEDULED")
 
   walletEntries  WalletEntry[]
   history        MentorBookingHistory[]
@@ -2371,15 +2414,16 @@ model PlatformAgentKnowledgeSource {
 // comment on why billing is deferred). currentUses is incremented
 // atomically by the redemption route once that exists.
 model PromoCode {
-  id              String       @id @default(uuid())
-  code            String       @unique
+  id              String          @id @default(uuid())
+  code            String          @unique
   discountPercent Int?
   discountAmount  Int?
   expiresAt       DateTime?
   maxUses         Int?
-  currentUses     Int          @default(0)
-  createdAt       DateTime     @default(now())
+  currentUses     Int             @default(0)
+  createdAt       DateTime        @default(now())
   bogPayments     BogPayment[]
+  stripePayments  StripePayment[]
 
   @@map("promo_codes")
 }

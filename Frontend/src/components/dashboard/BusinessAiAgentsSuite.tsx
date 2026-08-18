@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Sparkles, FileText, TrendingUp, MessageCircle, Clock, Lock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { hasAiAgentsSuiteAccess, aiTrialDaysRemaining, generateWithAiAgent, AiAgentSuiteTool } from '../../services/aiAgentsSuiteService';
+import { SupportedLocale } from '../../utils/locale';
 
-const dict = {
+const dictBase = {
   ka: {
     title: 'Business AI Agents',
     subtitle: 'მზა AI ინსტრუმენტები თქვენი ბიზნესისთვის — კონტენტი, ბაზრის ანალიზი და ზოგადი დახმარება.',
@@ -52,6 +53,15 @@ const dict = {
   },
 };
 
+// English fallback for locales without a translation yet.
+const dict: Record<SupportedLocale, typeof dictBase.en> = {
+  ...dictBase,
+  de: dictBase.en,
+  es: dictBase.en,
+  fr: dictBase.en,
+  uk: dictBase.en,
+};
+
 function AiToolCard({
   tool,
   icon: Icon,
@@ -67,7 +77,7 @@ function AiToolCard({
   description: string;
   placeholder: string;
   locked: boolean;
-  lang: 'ka' | 'en';
+  lang: SupportedLocale;
 }) {
   const t = dict[lang];
   const [prompt, setPrompt] = useState('');
@@ -80,7 +90,10 @@ function AiToolCard({
     setLoading(true);
     setError(null);
     try {
-      setResult(await generateWithAiAgent(tool, prompt.trim(), lang));
+      // generateWithAiAgent is typed 'ka' | 'en' — flagged separately as an
+      // external sink (see report). Same "bilingual-only" boundary as the
+      // rest of this i18n pass: non-ka/en locales get English content.
+      setResult(await generateWithAiAgent(tool, prompt.trim(), lang === 'ka' ? 'ka' : 'en'));
     } catch (err: any) {
       setError(err?.response?.data?.message ?? t.error);
     } finally {
@@ -133,7 +146,7 @@ function AiToolCard({
   );
 }
 
-export default function BusinessAiAgentsSuite({ lang }: { lang: 'ka' | 'en' }) {
+export default function BusinessAiAgentsSuite({ lang }: { lang: SupportedLocale }) {
   const t = dict[lang];
   const { user } = useAuth();
   const hasAccess = hasAiAgentsSuiteAccess(user);

@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
+import { SupportedLocale } from '../../utils/locale';
 
 interface SocialShareButtonsProps {
   // Absolute URL to share. Falls back to window.location.href when omitted
   // (e.g. on list-page cards that don't have their own canonical route).
   url?: string;
   title: string;
-  lang?: 'ka' | 'en';
+  lang?: SupportedLocale;
   className?: string;
   // 'auto' follows the page's light/dark toggle via Tailwind `dark:`
   // classes (courses, dashboard, etc). 'dark' fixes dark-friendly colors
@@ -15,9 +16,18 @@ interface SocialShareButtonsProps {
   variant?: 'auto' | 'dark';
 }
 
-const dict = {
+const dictBase = {
   ka: { share: 'გაზიარება', copied: 'ბმული დაკოპირდა!', copyLink: 'ბმულის კოპირება', nativeShare: 'გაზიარება...' },
   en: { share: 'Share', copied: 'Link copied!', copyLink: 'Copy Link', nativeShare: 'Share...' },
+};
+
+// English fallback for locales without a translation yet.
+const dict: Record<SupportedLocale, typeof dictBase.en> = {
+  ...dictBase,
+  de: dictBase.en,
+  es: dictBase.en,
+  fr: dictBase.en,
+  uk: dictBase.en,
 };
 
 // Facebook/LinkedIn/X/copy-link (+ native share sheet on mobile, which

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ScrollText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { acceptTerms } from '../../services/authService';
+import { resolveLocale } from '@/src/utils/locale';
 
 // Scoped to the accepting user's id (not a flat boolean) — localStorage is
 // per-browser, not per-account, so a flat flag would incorrectly skip the
@@ -38,6 +39,34 @@ const dict = {
     agree: 'I Agree & Continue',
     agreeing: 'Please wait…',
   },
+  de: {
+    title: 'Terms & Conditions Update',
+    body: 'Please accept our Terms & Conditions to continue.',
+    linkText: 'Read the full Terms & Conditions',
+    agree: 'I Agree & Continue',
+    agreeing: 'Please wait…',
+  },
+  es: {
+    title: 'Terms & Conditions Update',
+    body: 'Please accept our Terms & Conditions to continue.',
+    linkText: 'Read the full Terms & Conditions',
+    agree: 'I Agree & Continue',
+    agreeing: 'Please wait…',
+  },
+  fr: {
+    title: 'Terms & Conditions Update',
+    body: 'Please accept our Terms & Conditions to continue.',
+    linkText: 'Read the full Terms & Conditions',
+    agree: 'I Agree & Continue',
+    agreeing: 'Please wait…',
+  },
+  uk: {
+    title: 'Terms & Conditions Update',
+    body: 'Please accept our Terms & Conditions to continue.',
+    linkText: 'Read the full Terms & Conditions',
+    agree: 'I Agree & Continue',
+    agreeing: 'Please wait…',
+  },
 };
 
 // Blocking, non-dismissable overlay (no backdrop-click, no X/Escape close) —
@@ -48,7 +77,7 @@ const dict = {
 // dashboard.
 export default function TermsConsentModal() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
   const { user, isAuthenticated, refreshUser } = useAuth();
   const [submitting, setSubmitting] = useState(false);

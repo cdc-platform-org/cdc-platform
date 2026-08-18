@@ -305,6 +305,7 @@ router.get('/bookings', async (_req: Request, res: Response) => {
       mentor: userSelect,
       student: userSelect,
       bogPayment: { select: { status: true, amount: true, currency: true } },
+      stripePayment: { select: { status: true, amount: true, currency: true } },
     },
     orderBy: { scheduledAt: 'desc' },
   });

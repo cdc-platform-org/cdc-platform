@@ -26,6 +26,7 @@ import Lightbox, { LightboxImage } from '../../src/components/shared/Lightbox';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import { isHtmlContent, HTML_CONTENT_ALLOWED_TAGS, HTML_CONTENT_ALLOWED_ATTR } from '../../src/utils/richContent';
+import { resolveLocale, SupportedLocale } from '@/src/utils/locale';
 
 const dict = {
   ka: {
@@ -48,6 +49,82 @@ const dict = {
     delete: 'წაშლა',
   },
   en: {
+    loading: 'Loading…',
+    notFound: 'Article not found.',
+    back: '← Back to blog',
+    by: 'By',
+    minRead: (n: number) => `${n} min read`,
+    toc: 'Table of Contents',
+    related: 'Related Articles',
+    comments: 'Comments',
+    signInToComment: 'Please sign in to leave a comment',
+    commentPlaceholder: 'Write your comment…',
+    post: 'Post',
+    posting: 'Posting…',
+    reply: 'Reply',
+    replyPlaceholder: 'Write a reply…',
+    noComments: 'No comments yet. Be the first to share your thoughts!',
+    commentError: 'Failed to post comment. Please try again.',
+    delete: 'Delete',
+  },
+  de: {
+    loading: 'Loading…',
+    notFound: 'Article not found.',
+    back: '← Back to blog',
+    by: 'By',
+    minRead: (n: number) => `${n} min read`,
+    toc: 'Table of Contents',
+    related: 'Related Articles',
+    comments: 'Comments',
+    signInToComment: 'Please sign in to leave a comment',
+    commentPlaceholder: 'Write your comment…',
+    post: 'Post',
+    posting: 'Posting…',
+    reply: 'Reply',
+    replyPlaceholder: 'Write a reply…',
+    noComments: 'No comments yet. Be the first to share your thoughts!',
+    commentError: 'Failed to post comment. Please try again.',
+    delete: 'Delete',
+  },
+  es: {
+    loading: 'Loading…',
+    notFound: 'Article not found.',
+    back: '← Back to blog',
+    by: 'By',
+    minRead: (n: number) => `${n} min read`,
+    toc: 'Table of Contents',
+    related: 'Related Articles',
+    comments: 'Comments',
+    signInToComment: 'Please sign in to leave a comment',
+    commentPlaceholder: 'Write your comment…',
+    post: 'Post',
+    posting: 'Posting…',
+    reply: 'Reply',
+    replyPlaceholder: 'Write a reply…',
+    noComments: 'No comments yet. Be the first to share your thoughts!',
+    commentError: 'Failed to post comment. Please try again.',
+    delete: 'Delete',
+  },
+  fr: {
+    loading: 'Loading…',
+    notFound: 'Article not found.',
+    back: '← Back to blog',
+    by: 'By',
+    minRead: (n: number) => `${n} min read`,
+    toc: 'Table of Contents',
+    related: 'Related Articles',
+    comments: 'Comments',
+    signInToComment: 'Please sign in to leave a comment',
+    commentPlaceholder: 'Write your comment…',
+    post: 'Post',
+    posting: 'Posting…',
+    reply: 'Reply',
+    replyPlaceholder: 'Write a reply…',
+    noComments: 'No comments yet. Be the first to share your thoughts!',
+    commentError: 'Failed to post comment. Please try again.',
+    delete: 'Delete',
+  },
+  uk: {
     loading: 'Loading…',
     notFound: 'Article not found.',
     back: '← Back to blog',
@@ -182,7 +259,7 @@ function renderHtmlArticle(html: string, resolveImageUrl: (url: string) => strin
 interface CommentThreadProps {
   comment: BlogComment;
   replies: BlogComment[];
-  lang: 'ka' | 'en';
+  lang: SupportedLocale;
   t: (typeof dict)['ka'];
   canModerate: boolean;
   onReply: (parentId: string) => void;
@@ -202,7 +279,7 @@ function CommentHeader({
   onDelete,
 }: {
   comment: BlogComment;
-  lang: 'ka' | 'en';
+  lang: SupportedLocale;
   t: (typeof dict)['ka'];
   canModerate: boolean;
   onDelete: (commentId: string) => void;
@@ -299,8 +376,10 @@ function CommentThread({
 
 export default function BlogPostPage() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
+  // Blog posts only store ka/en text (title/titleEn etc.) — collapse for content lookups.
+  const contentLang = lang === 'ka' ? 'ka' : 'en';
   const { user, isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
   const slug = typeof router.query.slug === 'string' ? router.query.slug : null;
@@ -363,7 +442,7 @@ export default function BlogPostPage() {
     loadComments();
   }, [loadComments]);
 
-  const content = post ? blogContent(post, lang) : '';
+  const content = post ? blogContent(post, contentLang) : '';
   // Human-authored posts (Markdown, via RichTextEditor) and CDC AI agent
   // posts (HTML, via aiAgentService.ts) need different rendering pipelines
   // — see isHtmlContent()/renderHtmlArticle() above. Both useMemo branches
@@ -394,7 +473,7 @@ export default function BlogPostPage() {
   // and matches by URL instead — see handleHtmlContentClick).
   const galleryImages = useMemo<LightboxImage[]>(() => {
     const items: LightboxImage[] = [];
-    if (post?.imageUrl) items.push({ url: resolveBlogImageUrl(post.imageUrl), alt: blogTitle(post, lang) });
+    if (post?.imageUrl) items.push({ url: resolveBlogImageUrl(post.imageUrl), alt: blogTitle(post, contentLang) });
     for (const img of contentImages) items.push({ url: resolveBlogImageUrl(img.url), alt: img.alt });
     return items;
   }, [post, contentImages, lang]);
@@ -539,8 +618,8 @@ export default function BlogPostPage() {
     );
   }
 
-  const title = blogTitle(post, lang);
-  const description = blogDescription(post, lang);
+  const title = blogTitle(post, contentLang);
+  const description = blogDescription(post, contentLang);
   const ogImage = post.imageUrl ? resolveBlogImageUrl(post.imageUrl) : undefined;
   const readingMinutes = estimateReadingMinutes(content);
 
@@ -743,8 +822,8 @@ export default function BlogPostPage() {
                       href={`/blog/${related.slug}`}
                       className="rounded-xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm p-4 no-underline text-current transition-colors hover:border-cyan-400/50"
                     >
-                      <p className="text-sm font-bold text-white line-clamp-2 mb-1">{blogTitle(related, lang)}</p>
-                      <p className="text-xs text-slate-500 line-clamp-2">{blogDescription(related, lang)}</p>
+                      <p className="text-sm font-bold text-white line-clamp-2 mb-1">{blogTitle(related, contentLang)}</p>
+                      <p className="text-xs text-slate-500 line-clamp-2">{blogDescription(related, contentLang)}</p>
                     </Link>
                   ))}
                 </div>

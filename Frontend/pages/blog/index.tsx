@@ -8,6 +8,7 @@ import BackButton from '../../src/components/common/BackButton';
 import { BlogPost } from '../../src/types/blog';
 import { getBlogPosts, resolveBlogImageUrl, blogTitle, blogDescription, blogContent, estimateReadingMinutes, isSuccessStory } from '../../src/services/blogService';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
+import { resolveLocale } from '@/src/utils/locale';
 
 const POSTS_PER_PAGE = 9;
 
@@ -40,12 +41,70 @@ const dict = {
     prev: 'Prev',
     next: 'Next',
   },
+  de: {
+    title: 'Blog',
+    subtitle: 'News, articles, and insights from the world of digital careers.',
+    loading: 'Loading…',
+    empty: 'No articles have been published yet.',
+    noResults: 'No articles match your search.',
+    readMore: 'Read more →',
+    all: 'All',
+    graduateBadge: '🎓 Graduate Success',
+    searchPlaceholder: 'Search by title or description…',
+    minRead: (n: number) => `${n} min read`,
+    prev: 'Prev',
+    next: 'Next',
+  },
+  es: {
+    title: 'Blog',
+    subtitle: 'News, articles, and insights from the world of digital careers.',
+    loading: 'Loading…',
+    empty: 'No articles have been published yet.',
+    noResults: 'No articles match your search.',
+    readMore: 'Read more →',
+    all: 'All',
+    graduateBadge: '🎓 Graduate Success',
+    searchPlaceholder: 'Search by title or description…',
+    minRead: (n: number) => `${n} min read`,
+    prev: 'Prev',
+    next: 'Next',
+  },
+  fr: {
+    title: 'Blog',
+    subtitle: 'News, articles, and insights from the world of digital careers.',
+    loading: 'Loading…',
+    empty: 'No articles have been published yet.',
+    noResults: 'No articles match your search.',
+    readMore: 'Read more →',
+    all: 'All',
+    graduateBadge: '🎓 Graduate Success',
+    searchPlaceholder: 'Search by title or description…',
+    minRead: (n: number) => `${n} min read`,
+    prev: 'Prev',
+    next: 'Next',
+  },
+  uk: {
+    title: 'Blog',
+    subtitle: 'News, articles, and insights from the world of digital careers.',
+    loading: 'Loading…',
+    empty: 'No articles have been published yet.',
+    noResults: 'No articles match your search.',
+    readMore: 'Read more →',
+    all: 'All',
+    graduateBadge: '🎓 Graduate Success',
+    searchPlaceholder: 'Search by title or description…',
+    minRead: (n: number) => `${n} min read`,
+    prev: 'Prev',
+    next: 'Next',
+  },
 };
 
 export default function BlogIndexPage() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
+  // Blog posts only store ka/en text (title/titleEn etc.) — collapse for content lookups.
+  const contentLang = lang === 'ka' ? 'ka' : 'en';
 
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,7 +135,7 @@ export default function BlogIndexPage() {
     return posts.filter((post) => {
       if (activeCategory && post.category !== activeCategory) return false;
       if (!query) return true;
-      const haystack = `${blogTitle(post, lang)} ${blogDescription(post, lang)}`.toLowerCase();
+      const haystack = `${blogTitle(post, contentLang)} ${blogDescription(post, contentLang)}`.toLowerCase();
       return haystack.includes(query);
     });
   }, [posts, activeCategory, searchQuery, lang]);
@@ -160,7 +219,7 @@ export default function BlogIndexPage() {
                 >
                   {post.imageUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={resolveBlogImageUrl(post.imageUrl)} alt={blogTitle(post, lang)} onError={onImageErrorFallback} className="w-full h-40 object-cover" />
+                    <img src={resolveBlogImageUrl(post.imageUrl)} alt={blogTitle(post, contentLang)} onError={onImageErrorFallback} className="w-full h-40 object-cover" />
                   )}
                   <div className="p-6 flex-1 flex flex-col">
                     <div className="flex flex-wrap gap-2 mb-4">
@@ -173,13 +232,13 @@ export default function BlogIndexPage() {
                         </span>
                       )}
                     </div>
-                    <h3 className="text-lg font-black mb-2 text-white line-clamp-2 break-words">{blogTitle(post, lang)}</h3>
-                    <p className="text-sm text-slate-400 leading-relaxed line-clamp-3 mb-4 flex-1">{blogDescription(post, lang)}</p>
+                    <h3 className="text-lg font-black mb-2 text-white line-clamp-2 break-words">{blogTitle(post, contentLang)}</h3>
+                    <p className="text-sm text-slate-400 leading-relaxed line-clamp-3 mb-4 flex-1">{blogDescription(post, contentLang)}</p>
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-cyan-400">{t.readMore}</span>
                       <span className="flex items-center gap-1 text-[11px] text-slate-500 font-medium">
                         <Clock size={12} />
-                        {t.minRead(estimateReadingMinutes(blogContent(post, lang)))}
+                        {t.minRead(estimateReadingMinutes(blogContent(post, contentLang)))}
                       </span>
                     </div>
                   </div>

@@ -679,11 +679,25 @@ router.get('/bog/status/:paymentId', authenticate, async (req: Request, res: Res
 // here since the Gigs tab covers that relationship in full).
 // ============================================================
 router.get('/my', authenticate, async (req: Request, res: Response) => {
-  const payments = await prisma.bogPayment.findMany({
-    where: { userId: req.user!.id },
-    include: { promoCode: { select: { code: true } } },
-    orderBy: { createdAt: 'desc' },
-  });
+  // Merges both gateways' rows into one history list — a user who paid via
+  // Stripe for one purchase and BOG for another should see both, not just
+  // whichever table this happened to query first.
+  const [bogPayments, stripePayments] = await Promise.all([
+    prisma.bogPayment.findMany({
+      where: { userId: req.user!.id },
+      include: { promoCode: { select: { code: true } } },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.stripePayment.findMany({
+      where: { userId: req.user!.id },
+      include: { promoCode: { select: { code: true } } },
+      orderBy: { createdAt: 'desc' },
+    }),
+  ]);
+  const payments = [
+    ...bogPayments.map((p) => ({ ...p, gateway: 'BOG' as const })),
+    ...stripePayments.map((p) => ({ ...p, gateway: 'STRIPE' as const })),
+  ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
   const courseIds = payments.filter((p) => p.purpose === 'COURSE').map((p) => p.referenceId);
   const courses = courseIds.length
@@ -700,6 +714,7 @@ router.get('/my', authenticate, async (req: Request, res: Response) => {
   res.json({
     data: payments.map((p) => ({
       id: p.id,
+      gateway: p.gateway,
       purpose: p.purpose,
       referenceId: p.referenceId,
       referenceTitle:

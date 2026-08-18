@@ -6,6 +6,7 @@ import VerifiedGraduateBadge from './VerifiedGraduateBadge';
 import SocialShareButtons from '../shared/SocialShareButtons';
 import StarRating from './StarRating';
 import { jobCategoryLabel } from '../../utils/jobCategory';
+import { resolveLocale } from '../../utils/locale';
 
 export type CommunityListing = { kind: 'vacancy'; data: Vacancy } | { kind: 'gig'; data: Gig };
 
@@ -32,7 +33,7 @@ export default function CommunityListingCard({
 }: CommunityListingCardProps) {
   const { t } = useTranslation('proposals');
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
 
   const isVacancy = item.kind === 'vacancy';
   const data = item.data;

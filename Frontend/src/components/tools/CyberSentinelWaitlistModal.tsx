@@ -1,8 +1,9 @@
 import { useState, FormEvent } from 'react';
 import { X, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { joinCyberSentinelWaitlist, PreferredOs } from '../../services/cyberSentinelService';
+import { SupportedLocale } from '../../utils/locale';
 
-const dict = {
+const dictBase = {
   ka: {
     title: 'ადრეული წვდომა — Cyber Sentinel AI',
     subtitle: 'შემოგვიერთდით ლისტში და პირველებმა მიიღეთ 10-დღიანი უფასო ულიმიტო წვდომა გაშვებისთანავე.',
@@ -37,13 +38,22 @@ const dict = {
   },
 };
 
+// English fallback for locales without a translation yet.
+const dict: Record<SupportedLocale, typeof dictBase.en> = {
+  ...dictBase,
+  de: dictBase.en,
+  es: dictBase.en,
+  fr: dictBase.en,
+  uk: dictBase.en,
+};
+
 const OS_OPTIONS: { value: PreferredOs; label: string }[] = [
   { value: 'WINDOWS', label: 'Windows' },
   { value: 'MAC', label: 'macOS' },
   { value: 'LINUX', label: 'Linux' },
 ];
 
-export default function CyberSentinelWaitlistModal({ lang, onClose }: { lang: 'ka' | 'en'; onClose: () => void }) {
+export default function CyberSentinelWaitlistModal({ lang, onClose }: { lang: SupportedLocale; onClose: () => void }) {
   const t = dict[lang];
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

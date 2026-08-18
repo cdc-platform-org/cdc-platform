@@ -9,6 +9,7 @@ import BackButton from '../../src/components/common/BackButton';
 import { SuccessStory } from '../../src/types/successStory';
 import { getSuccessStories, successStoryRoleTitle, successStoryTestimonial } from '../../src/services/successStoryService';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
+import { resolveLocale } from '@/src/utils/locale';
 
 const dict = {
   ka: {
@@ -27,12 +28,46 @@ const dict = {
     all: 'All Courses',
     readStory: 'Read the Story ↗',
   },
+  de: {
+    title: 'Success Stories',
+    subtitle: "Real outcomes from CDC graduates — from landing a job to shipping their own projects.",
+    loading: 'Loading…',
+    empty: 'Stories will be added soon.',
+    all: 'All Courses',
+    readStory: 'Read the Story ↗',
+  },
+  es: {
+    title: 'Success Stories',
+    subtitle: "Real outcomes from CDC graduates — from landing a job to shipping their own projects.",
+    loading: 'Loading…',
+    empty: 'Stories will be added soon.',
+    all: 'All Courses',
+    readStory: 'Read the Story ↗',
+  },
+  fr: {
+    title: 'Success Stories',
+    subtitle: "Real outcomes from CDC graduates — from landing a job to shipping their own projects.",
+    loading: 'Loading…',
+    empty: 'Stories will be added soon.',
+    all: 'All Courses',
+    readStory: 'Read the Story ↗',
+  },
+  uk: {
+    title: 'Success Stories',
+    subtitle: "Real outcomes from CDC graduates — from landing a job to shipping their own projects.",
+    loading: 'Loading…',
+    empty: 'Stories will be added soon.',
+    all: 'All Courses',
+    readStory: 'Read the Story ↗',
+  },
 };
 
 export default function SuccessStoriesPage() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
+  // Success stories only store ka/en text — collapse for content lookups.
+  const contentLang = lang === 'ka' ? 'ka' : 'en';
 
   const [stories, setStories] = useState<SuccessStory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,11 +163,11 @@ export default function SuccessStoriesPage() {
                   )}
                   <div className="min-w-0">
                     <h3 className="text-base font-black truncate">{item.studentName}</h3>
-                    <p className="text-xs font-bold text-cyan-500 truncate">{successStoryRoleTitle(item, lang)}</p>
+                    <p className="text-xs font-bold text-cyan-500 truncate">{successStoryRoleTitle(item, contentLang)}</p>
                   </div>
                 </div>
                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium line-clamp-3 mb-4">
-                  &ldquo;{successStoryTestimonial(item, lang)}&rdquo;
+                  &ldquo;{successStoryTestimonial(item, contentLang)}&rdquo;
                 </p>
                 <span className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-widest text-cyan-500">
                   {t.readStory}
