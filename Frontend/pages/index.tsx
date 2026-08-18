@@ -4,11 +4,15 @@ import Image from 'next/image';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import { useRouter } from 'next/router';
+import { useTranslation } from 'next-i18next';
+import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import type { GetStaticProps } from 'next';
 import { CheckCircle2, AlertTriangle, Sun, Moon, User, X, Menu, Link as LinkIcon, Rocket, Clock, Bot, ShieldCheck, Users, Sparkles, Lock, MessageSquareText, BookOpen, Code2, BarChart3, Building2 } from 'lucide-react';
 import { useAuthModal } from '../src/context/AuthModalContext';
 import { useAuth } from '../src/context/AuthContext';
 import SiteFooter from '../src/components/layout/SiteFooter';
 import UserMenu from '../src/components/layout/UserMenu';
+import LanguageSwitcher from '../src/components/layout/LanguageSwitcher';
 import { Course } from '../src/types/lms';
 import { HomepageContent, HomepageStat, GalleryImage } from '../src/types/siteContent';
 import { getCourses } from '../src/services/courseService';
@@ -74,25 +78,22 @@ export default function Home() {
   const [cms, setCms] = useState<HomepageContent | null>(null);
   const [galleryPreview, setGalleryPreview] = useState<GalleryImage[]>([]);
 
-  // 🌐 ენის გადართვის სთეითი — initialized from router.locale so a visitor
-  // arriving already on the English locale (e.g. via a link from an
-  // English-rendered page) sees the homepage start in English too.
-  const [lang, setLang] = useState<'GEO' | 'ENG'>(() => (router.locale === 'en' ? 'ENG' : 'GEO'));
-
-  // This toggle previously only flipped the local `lang` state above, which
-  // drives this page's own inline content — but left next/router's `locale`
-  // untouched. Globally-mounted shared components (AuthModal chief among
-  // them, via router.locale) never found out the user had switched
-  // languages, so opening the login modal after toggling to English still
-  // showed Georgian labels. Pushing the locale keeps both in sync.
-  const handleLangToggle = () => {
-    const next = lang === 'GEO' ? 'ENG' : 'GEO';
-    setLang(next);
-    router.push({ pathname: router.pathname, query: router.query }, router.asPath, {
-      locale: next === 'ENG' ? 'en' : 'ka',
-      shallow: true,
-    });
-  };
+  const { t } = useTranslation('home');
+  // This page predates next-i18next and used to carry its own binary
+  // GEO/ENG toggle (kept globally in sync by pushing router.locale
+  // alongside it — see git history). Now that UI copy goes through
+  // useTranslation('home') above, the only reason to still derive a
+  // language value locally is for the handful of things that aren't
+  // translated UI strings: CMS/DB content that only has ka/en fields
+  // (hero override, stats, FAQ, blog title/description, marketplace
+  // category labels) and 3 shared components not yet migrated off their
+  // own ka/en-only prop (SuccessStoriesCarousel, FeaturedCaseStudies,
+  // TeamSection, SiteFooter, HeaderSearch) — all of those fall back to
+  // English content for de/es/fr/uk visitors, same boundary as the rest of
+  // this i18n pass. `legacyLang` matches HeaderSearch/SiteFooter's existing
+  // 'GEO' | 'ENG' prop type unchanged, so neither needed touching.
+  const contentLang: 'ka' | 'en' = router.locale === 'ka' ? 'ka' : 'en';
+  const legacyLang: 'GEO' | 'ENG' = contentLang === 'ka' ? 'GEO' : 'ENG';
 
   // 📱 მობილური მენიუს სთეითი
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
@@ -194,7 +195,7 @@ export default function Home() {
     setEnrollingId(course.id);
     setCheckoutError(null);
     try {
-      const result = await checkoutCourse(course.id, undefined, lang === 'ENG' ? 'en' : 'ka');
+      const result = await checkoutCourse(course.id, undefined, contentLang);
       if (result.enrolled) {
         router.push(`/courses/${course.id}/learn`);
         return;
@@ -203,7 +204,7 @@ export default function Home() {
     } catch (err: any) {
       const apiMessage = err?.response?.data?.message;
       setCheckoutError(
-        apiMessage || (lang === 'ENG' ? 'Unable to start checkout. Please try again.' : 'გადახდის დაწყება ვერ მოხერხდა. სცადეთ თავიდან.')
+        apiMessage || (contentLang === 'en' ? 'Unable to start checkout. Please try again.' : 'გადახდის დაწყება ვერ მოხერხდა. სცადეთ თავიდან.')
       );
       if (checkoutErrorTimeoutRef.current) clearTimeout(checkoutErrorTimeoutRef.current);
       checkoutErrorTimeoutRef.current = setTimeout(() => setCheckoutError(null), 6000);
@@ -222,9 +223,11 @@ export default function Home() {
     startCheckout(course);
   };
 
-  // 🌐 ჭკვიანი ავტომატური თარგმანის მექანიზმი
+  // CMS/DB content (hero override, stats, FAQ) only ever has ka/en fields,
+  // so this stays around purely to pick between them — all static UI copy
+  // now goes through t() instead.
   const translate = (geo: React.ReactNode, eng: React.ReactNode) => {
-    return lang === 'GEO' ? geo : eng;
+    return contentLang === 'ka' ? geo : eng;
   };
 
   // Enterprise AI tools are Business-only, and only for a *verified*
@@ -270,7 +273,7 @@ export default function Home() {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userText, lang, history }),
+        body: JSON.stringify({ message: userText, lang: legacyLang, history }),
       });
       const data = await response.json();
       // /api/chat already retries transient Gemini failures server-side
@@ -281,9 +284,7 @@ export default function Home() {
 
       setChatMessages([...updatedMessages, { sender: 'bot', text: data.reply }]);
     } catch (error) {
-      setChatError(
-        lang === 'GEO' ? '❌ ასისტენტთან კავშირის ხარვეზი.' : '❌ Error connecting to the assistant.'
-      );
+      setChatError(t('chatConnectionError'));
       setLastFailedInput(userText);
     } finally {
       setChatSending(false);
@@ -314,7 +315,7 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setAiInfoModal(null)}
-              aria-label={lang === 'GEO' ? 'დახურვა' : 'Close'}
+              aria-label={t('close')}
               className={`absolute top-4 right-4 p-2 cursor-pointer rounded-full transition-colors ${darkMode ? 'text-gray-400 hover:text-gray-200 hover:bg-slate-800' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}
             >
               <X className="w-4 h-4" />
@@ -327,39 +328,33 @@ export default function Home() {
             {aiInfoModal === 'studentBlocked' ? (
               <>
                 <h3 className="text-base font-black tracking-wide mb-2">
-                  {translate('ხელმისაწვდომია მხოლოდ ბიზნეს ანგარიშებისთვის', 'Available for Business Accounts Only')}
+                  {t('studentBlockedTitle')}
                 </h3>
                 <p className={`text-sm leading-relaxed mb-5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {translate(
-                    'ეს ინსტრუმენტები განკუთვნილია მხოლოდ ბიზნეს ანგარიშებისთვის. სტუდენტის/ფრილანსერის ანგარიშით მათი გამოყენება შეუძლებელია.',
-                    'These tools are exclusively available for Business accounts. They cannot be used with a Student/Freelancer account.'
-                  )}
+                  {t('studentBlockedBody')}
                 </p>
                 <Link
                   href="/contact"
                   onClick={() => setAiInfoModal(null)}
                   className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all"
                 >
-                  {translate('გაიგეთ მეტი ბიზნეს ანგარიშის შესახებ', 'Learn more about Business accounts')}
+                  {t('learnAboutBusiness')}
                 </Link>
               </>
             ) : (
               <>
                 <h3 className="text-base font-black tracking-wide mb-2">
-                  {translate('საჭიროა ბიზნესის ვერიფიკაცია', 'Business Verification Required')}
+                  {t('verificationRequiredTitle')}
                 </h3>
                 <p className={`text-sm leading-relaxed mb-5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {translate(
-                    'AI ხელსაწყოების გამოსაყენებლად საჭიროა თქვენი ბიზნეს ანგარიშის ვერიფიკაცია. გაიარეთ ვერიფიკაცია პირად კაბინეტში და სცადეთ ხელახლა.',
-                    'Using the AI tools requires your Business account to be verified. Complete verification in your dashboard and try again.'
-                  )}
+                  {t('verificationRequiredBody')}
                 </p>
                 <Link
                   href="/dashboard/client"
                   onClick={() => setAiInfoModal(null)}
                   className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all"
                 >
-                  {translate('ვერიფიკაციის გავლა', 'Complete verification')}
+                  {t('completeVerification')}
                 </Link>
               </>
             )}
@@ -405,7 +400,7 @@ export default function Home() {
           <Link href="/" className="flex items-center space-x-3 shrink-0 no-underline text-current">
             <Image
               src="/images/cdc-logo.png"
-              alt={translate('CDC ლოგო', 'CDC Logo') as string}
+              alt={t('logoAlt') as string}
               width={48}
               height={48}
               priority
@@ -413,7 +408,7 @@ export default function Home() {
             />
             <div className="hidden sm:block">
               <span className="font-bold text-lg block leading-none tracking-tight">{safeText('CDC')}</span>
-              <span className="text-[11px] text-slate-400 font-bold block mt-1">{translate('ციფრული პროფესიები', 'Digital Careers')}</span>
+              <span className="text-[11px] text-slate-400 font-bold block mt-1">{t('tagline')}</span>
             </div>
           </Link>
 
@@ -422,7 +417,7 @@ export default function Home() {
               expanding input, so it no longer needs to shrink/fight the nav
               links row for space at the `lg` breakpoint. */}
           <div className="hidden sm:block">
-            <HeaderSearch darkMode={darkMode} lang={lang} />
+            <HeaderSearch darkMode={darkMode} lang={legacyLang} />
           </div>
 
           {/* Nav links step down to text-sm at `lg` and only reach text-base at
@@ -431,7 +426,7 @@ export default function Home() {
               sizing the row to fit is the fix; the nav no longer clips. */}
           <div className={`hidden lg:flex items-center gap-2 lg:gap-3 xl:gap-6 text-[13px] xl:text-base font-bold tracking-wide whitespace-nowrap ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
             <div className="relative group py-2 -my-2">
-              <Link href="/about" className="hover:text-cyan-500 transition no-underline text-current">{translate('ჩვენ შესახებ', 'About Us')} ▾</Link>
+              <Link href="/about" className="hover:text-cyan-500 transition no-underline text-current">{t('aboutUs')} ▾</Link>
               {/* z-[60] outranks the hero's own layers and the nav's z-50 base,
                   so the panel always paints above the hero below it. */}
               <div
@@ -439,64 +434,55 @@ export default function Home() {
               >
                 <div className={`rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-sm backdrop-blur-md ${darkMode ? 'bg-[#0e1422]/95 border-white/10' : 'bg-white/95 border-slate-200'}`}>
                   <Link href="/about" className={`block px-4 py-3 no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
-                    {translate('ცენტრის შესახებ', 'About Center')}
+                    {t('aboutCenter')}
                   </Link>
                   <Link href="/gallery" className={`block px-4 py-3 no-underline hover:text-cyan-500 transition border-t ${darkMode ? 'text-slate-200 border-slate-800' : 'text-slate-700 border-slate-100'}`}>
-                    {translate('ფოტოგალერეა', 'Photo Gallery')}
+                    {t('photoGallery')}
                   </Link>
                 </div>
               </div>
             </div>
-            <a href="#courses" className="hover:text-cyan-500 transition no-underline text-current">{translate('კურსები', 'Courses')}</a>
+            <a href="#courses" className="hover:text-cyan-500 transition no-underline text-current">{t('courses')}</a>
             <div className="relative group py-2 -my-2">
               <Link href="/marketplace" className="hover:text-cyan-500 transition no-underline text-current">
-                {translate('ციფრული მაღაზია', 'CDC Store')} ▾
+                {t('store')} ▾
               </Link>
               <div className="absolute left-0 top-full pt-2 w-64 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150">
                 <div className={`rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-sm backdrop-blur-md ${darkMode ? 'bg-[#0e1422]/95 border-white/10' : 'bg-white/95 border-slate-200'}`}>
                   <p className={`px-4 pt-3 pb-1.5 text-[10px] font-black uppercase tracking-widest ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                    {translate('კატეგორიები', 'Categories')}
+                    {t('categories')}
                   </p>
                   {MARKETPLACE_CATEGORIES.map((cat) => (
                     <Link
                       key={cat.value.en}
-                      href={`/marketplace?category=${encodeURIComponent(lang === 'ENG' ? cat.value.en : cat.value.ka)}`}
+                      href={`/marketplace?category=${encodeURIComponent(contentLang === 'en' ? cat.value.en : cat.value.ka)}`}
                       className={`block px-4 py-2.5 no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}
                     >
-                      {lang === 'ENG' ? cat.value.en : cat.value.ka}
+                      {contentLang === 'en' ? cat.value.en : cat.value.ka}
                     </Link>
                   ))}
                   <Link
                     href="/marketplace"
                     className={`block px-4 py-2.5 no-underline font-bold text-cyan-600 dark:text-cyan-400 border-t transition ${darkMode ? 'border-slate-800' : 'border-slate-100'}`}
                   >
-                    {translate('ყველა პროდუქტი', 'View All Products')}
+                    {t('viewAllProducts')}
                   </Link>
                 </div>
               </div>
             </div>
-            <a href="#blog" className="hover:text-cyan-500 transition no-underline text-current">{translate('ბლოგი', 'Blog')}</a>
+            <a href="#blog" className="hover:text-cyan-500 transition no-underline text-current">{t('blog')}</a>
             <a href="/agency" className="hover:text-cyan-500 transition no-underline text-current">{safeText('CDC Studio')}</a>
-            <a href="/community" className="hover:text-cyan-500 transition no-underline text-current">{translate('ვაკანსიები', 'Jobs')}</a>
-            <a href="/forum" className="hover:text-cyan-500 transition no-underline text-current">{translate('ფორუმი', 'Forum')}</a>
+            <a href="/community" className="hover:text-cyan-500 transition no-underline text-current">{t('jobs')}</a>
+            <a href="/forum" className="hover:text-cyan-500 transition no-underline text-current">{t('forum')}</a>
           </div>
 
           <div className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-4 shrink-0">
-            <button
-              type="button"
-              onClick={handleLangToggle}
-              title={lang === 'GEO' ? 'Switch to English' : 'ქართულ ენაზე გადართვა'}
-              className={`font-sans font-black text-xs px-2.5 py-1.5 rounded-lg border transition duration-200 cursor-pointer ${
-                darkMode ? 'border-slate-800 bg-slate-900/60 text-cyan-400' : 'border-slate-200 bg-slate-50 text-slate-600'
-              }`}
-            >
-              {lang === 'GEO' ? 'ENG' : 'GEO'}
-            </button>
+            <LanguageSwitcher />
             <button type="button" onClick={toggleDarkMode} aria-label="Toggle dark mode" className="p-2 rounded-xl transition border-none bg-transparent cursor-pointer hover:rotate-12 duration-200">{darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}</button>
             <UserMenu
               className="hidden sm:block"
               loginFallback={
-                <button type="button" onClick={() => openAuthModal()} className={`hidden sm:inline-flex items-center gap-1.5 border font-black text-xs md:text-sm px-4 py-2.5 rounded-xl transition bg-transparent cursor-pointer ${darkMode ? 'text-white border-slate-700 hover:bg-slate-800' : 'text-slate-700 border-slate-200 hover:bg-slate-100'}`}><User className="w-4 h-4" />{translate('შესვლა', 'Login')}</button>
+                <button type="button" onClick={() => openAuthModal()} className={`hidden sm:inline-flex items-center gap-1.5 border font-black text-xs md:text-sm px-4 py-2.5 rounded-xl transition bg-transparent cursor-pointer ${darkMode ? 'text-white border-slate-700 hover:bg-slate-800' : 'text-slate-700 border-slate-200 hover:bg-slate-100'}`}><User className="w-4 h-4" />{t('login')}</button>
               }
             />
 
@@ -507,11 +493,11 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => openAuthModal()}
-                aria-label={lang === 'GEO' ? 'შესვლა' : 'Login'}
+                aria-label={t('login')}
                 className={`sm:hidden flex items-center gap-1 border font-black text-xs px-2.5 py-1.5 rounded-lg transition bg-transparent cursor-pointer shrink-0 ${darkMode ? 'text-white border-slate-700 hover:bg-slate-800' : 'text-slate-700 border-slate-200 hover:bg-slate-100'}`}
               >
                 <User className="w-3.5 h-3.5" />
-                {translate('შესვლა', 'Login')}
+                {t('login')}
               </button>
             )}
 
@@ -532,27 +518,30 @@ export default function Home() {
         {isMobileMenuOpen && (
           <div className={`lg:hidden max-w-full overflow-x-hidden mt-4 pt-4 border-t flex flex-col gap-1 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
             <div className="px-2 pb-2">
-              <HeaderSearch darkMode={darkMode} lang={lang} />
+              <HeaderSearch darkMode={darkMode} lang={legacyLang} />
             </div>
-            <span className={`px-2 pt-3 pb-1 font-black text-xs uppercase tracking-widest ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{translate('ჩვენ შესახებ', 'About Us')}</span>
-            <Link href="/about" onClick={() => setIsMobileMenuOpen(false)} className={`px-4 py-2.5 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('› ცენტრის შესახებ', '› About Center')}</Link>
-            <Link href="/gallery" onClick={() => setIsMobileMenuOpen(false)} className={`px-4 py-2.5 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition mb-1 ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('› ფოტოგალერეა', '› Photo Gallery')}</Link>
-            <a href="#courses" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('კურსები', 'Courses')}</a>
-            <Link href="/marketplace" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('ციფრული მაღაზია', 'CDC Store')}</Link>
+            <div className="px-2 pb-2">
+              <LanguageSwitcher />
+            </div>
+            <span className={`px-2 pt-3 pb-1 font-black text-xs uppercase tracking-widest ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{t('aboutUs')}</span>
+            <Link href="/about" onClick={() => setIsMobileMenuOpen(false)} className={`px-4 py-2.5 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('mobileAboutCenter')}</Link>
+            <Link href="/gallery" onClick={() => setIsMobileMenuOpen(false)} className={`px-4 py-2.5 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition mb-1 ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('mobilePhotoGallery')}</Link>
+            <a href="#courses" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('courses')}</a>
+            <Link href="/marketplace" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('store')}</Link>
             {MARKETPLACE_CATEGORIES.map((cat) => (
               <Link
                 key={cat.value.en}
-                href={`/marketplace?category=${encodeURIComponent(lang === 'ENG' ? cat.value.en : cat.value.ka)}`}
+                href={`/marketplace?category=${encodeURIComponent(contentLang === 'en' ? cat.value.en : cat.value.ka)}`}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`px-4 py-2 rounded-lg font-semibold text-xs no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}
               >
-                {lang === 'ENG' ? cat.value.en : cat.value.ka}
+                {contentLang === 'en' ? cat.value.en : cat.value.ka}
               </Link>
             ))}
-            <a href="#blog" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('ბლოგი', 'Blog')}</a>
+            <a href="#blog" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('blog')}</a>
             <a href="/agency" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{safeText('CDC Studio')}</a>
-            <a href="/community" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('ვაკანსიები', 'Jobs')}</a>
-            <a href="/forum" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{translate('ფორუმი', 'Forum')}</a>
+            <a href="/community" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('jobs')}</a>
+            <a href="/forum" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('forum')}</a>
             <UserMenu
               className="sm:hidden mt-2"
               loginFallback={
@@ -562,7 +551,7 @@ export default function Home() {
                   className={`sm:hidden mt-2 border font-black text-sm px-4 py-3 rounded-xl transition bg-transparent cursor-pointer text-left flex items-center gap-1.5 ${darkMode ? 'text-white border-slate-700 hover:bg-slate-800' : 'text-slate-700 border-slate-200 hover:bg-slate-100'}`}
                 >
                   <User className="w-4 h-4" />
-                  {translate('შესვლა', 'Login')}
+                  {t('login')}
                 </button>
               }
             />
@@ -616,7 +605,7 @@ export default function Home() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
                 </span>
-                {translate('გააციფრულე შენი უნარები | დაარსდა 2023 წელს', 'Digitize Your Skills | Est. 2023')}
+                {t('heroBadge')}
               </div>
 
               {/* Heading — CMS override renders as plain text (no gradient
@@ -624,25 +613,19 @@ export default function Home() {
               <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-tight text-white mb-2 sm:mb-3 outline-none hover:outline-none focus:outline-none border-none hover:border-none hover:shadow-none hover:ring-0">
                 {cms?.heroTitleKa || cms?.heroTitleEn
                   ? translate(cms.heroTitleKa || cms.heroTitleEn, cms.heroTitleEn || cms.heroTitleKa)
-                  : translate(
-                      <>გახდი მოთხოვნადი <span className="inline-block bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent leading-normal py-1">ციფრული ეპოქის</span> პროფესიონალი</>,
-                      <>Become a High-Demand <span className="inline-block bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent leading-normal py-1">Digital-Era</span> Professional</>
-                    )}
+                  : <>{t('heroHeadingBefore')} <span className="inline-block bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent leading-normal py-1">{t('heroHeadingHighlight')}</span> {t('heroHeadingAfter')}</>}
               </h1>
 
               {/* Job placement subtitle */}
               <p className="text-base sm:text-xl lg:text-2xl font-semibold text-cyan-400 mb-2 sm:mb-4">
                 {cms?.heroSubtitleKa || cms?.heroSubtitleEn
                   ? translate(cms.heroSubtitleKa || cms.heroSubtitleEn, cms.heroSubtitleEn || cms.heroSubtitleKa)
-                  : translate('...და დასაქმდი ჩვენივე პლატფორმაზე!', '...and get hired directly on our platform!')}
+                  : t('heroSubtitle')}
               </p>
 
               {/* Description */}
               <p className="text-sm sm:text-base lg:text-lg text-slate-200/90 max-w-xl leading-relaxed mb-5 sm:mb-9 font-medium">
-                {translate(
-                  <>{safeText('HEKS/EPER Georgia')}-ს მხარდაჭერით შექმნილი ეკოსისტემა გურიაში. ჩვენ ვაძლიერებთ ახალგაზრდებსა და ქალებს ციფრული წიგნიერების, ხელოვნური ინტელექტისა და კრეატიული ინდუსტრიების საშუალებით.</>,
-                  <>An ecosystem created in Guria with the support of {safeText('HEKS/EPER Georgia')}. We empower youth and women through digital literacy, artificial intelligence, and creative industries.</>
-                )}
+                {t('heroDescription')}
               </p>
 
               {/* CTA — primary (browse courses) + secondary (register), matching
@@ -652,14 +635,14 @@ export default function Home() {
                   href="#courses"
                   className="group inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl text-sm uppercase tracking-widest no-underline shadow-xl shadow-cyan-500/20 hover:shadow-2xl hover:shadow-cyan-500/40 hover:scale-105 transition-all duration-300 whitespace-nowrap"
                 >
-                  {translate('კურსების ნახვა ციფრულ კოლეჯში', 'Explore Digital College Courses')}
+                  {t('heroCtaCourses')}
                   <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
                 </a>
                 <Link
                   href="/auth/register"
                   className="inline-flex items-center justify-center gap-2 bg-white/10 border border-white/20 backdrop-blur-md text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl text-sm uppercase tracking-widest no-underline hover:bg-white/20 hover:border-white/30 transition-all duration-300 whitespace-nowrap"
                 >
-                  {translate('შემოგვიერთდი', 'Join the Platform')}
+                  {t('heroCtaJoin')}
                 </Link>
               </div>
             </div>
@@ -670,7 +653,7 @@ export default function Home() {
 
       {/* 📊 BENTO GRID SECTION */}
       <section id="about" className="max-w-7xl mx-auto pt-28 px-6">
-        <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{translate('ციფრული ეკოსისტემის მიღწევები', 'Ecosystem Achievements')}</h2>
+        <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('achievementsHeading')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 auto-rows-[240px]">
           <div className={`md:col-span-2 md:row-span-2 rounded-3xl border backdrop-blur-md overflow-hidden flex flex-col transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422]/60 border-slate-800' : 'bg-white/60 border-slate-200'}`}>
             <img
@@ -691,15 +674,15 @@ export default function Home() {
                 <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm0-1.5a8.5 8.5 0 1 1 0-17 8.5 8.5 0 0 1 0 17zm0-11.85l.91 1.84 2.04 .3-1.48 1.44 .35 2.02-1.82-.96-1.82 .96 .35-2.02-1.48-1.44 2.04-.3 .91-1.84z" /></svg>
                 <span className="text-xl font-black tracking-widest text-slate-400 font-sans">EU</span>
               </div>
-              <h3 className="text-xl md:text-2xl font-black mb-4">{translate(<>{safeText('HEKS/EPER Georgia')}-ს მხარდაჭერა</>, <>{safeText('HEKS/EPER Georgia')} Support</>)}</h3>
-              <p className="text-sm md:text-base text-slate-400 leading-relaxed font-medium mb-5">{translate('საერთაშორისო სტანდარტების სასწავლო მეთოდოლოგია და რესურსები, რომელიც სპეციალურად რეგიონული ტექნოლოგიური წინსვლისთვის შეიქმნა.', 'International standard educational methodology and resources specially designed for regional technological progress.')}</p>
+              <h3 className="text-xl md:text-2xl font-black mb-4">{t('heksSupportHeading')}</h3>
+              <p className="text-sm md:text-base text-slate-400 leading-relaxed font-medium mb-5">{t('heksSupportBody')}</p>
               <a
                 href="https://socialinnovation.ge/%e1%83%aa%e1%83%98%e1%83%a4%e1%83%a0%e1%83%a3%e1%83%9a%e1%83%98-%e1%83%9e%e1%83%a0%e1%83%9d%e1%83%a4%e1%83%94%e1%83%a1%e1%83%98%e1%83%91%e1%83%98%e1%83%a1-%e1%83%aa%e1%83%94%e1%83%9c%e1%83%a2/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 self-start text-xs font-bold uppercase tracking-wider text-cyan-500 hover:text-cyan-400 no-underline transition-colors"
               >
-                {translate('პროექტის შესახებ', 'About the Project')}
+                {t('aboutProject')}
                 <LinkIcon className="w-3 h-3" />
               </a>
             </div>
@@ -721,7 +704,7 @@ export default function Home() {
       {/* 🖼️ CDC LIFE — PHOTO GALLERY PREVIEW */}
       {galleryPreview.length > 0 && (
         <section className="max-w-7xl mx-auto pt-28 px-6">
-          <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{translate('CDC Life / ფოტოგალერეა', 'CDC Life / Photo Gallery')}</h2>
+          <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('galleryHeading')}</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
             {galleryPreview.map((img, i) => (
               <Link
@@ -739,7 +722,7 @@ export default function Home() {
               href="/gallery"
               className="inline-flex items-center gap-2 border font-black text-sm px-6 py-3 rounded-xl transition no-underline border-cyan-500/40 text-cyan-500 hover:bg-cyan-500/10"
             >
-              {translate('ყველა ფოტოს ნახვა', 'See All Photos')} →
+              {t('seeAllPhotos')} →
             </Link>
           </div>
         </section>
@@ -747,15 +730,15 @@ export default function Home() {
 
       {/* 📚 COURSES CATALOG */}
       <section id="courses" className="max-w-7xl mx-auto py-28 px-6">
-        <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{translate('ავტორიზებული სასწავლო პროგრამები', 'Authorized Programs')}</h2>
+        <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('coursesHeading')}</h2>
         {coursesLoading ? (
-          <p className="text-center text-slate-400 text-sm">{translate('იტვირთება…', 'Loading…')}</p>
+          <p className="text-center text-slate-400 text-sm">{t('coursesLoading')}</p>
         ) : courses.length === 0 ? (
-          <p className="text-center text-slate-400 text-sm">{translate('კურსები ჯერ არ არის დამატებული.', 'No courses have been published yet.')}</p>
+          <p className="text-center text-slate-400 text-sm">{t('coursesEmpty')}</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {courses.map((course) => {
-              const countdown = course.saleActive ? getSaleCountdownLabel(course.discountEndDate, lang === 'GEO' ? 'ka' : 'en') : null;
+              const countdown = course.saleActive ? getSaleCountdownLabel(course.discountEndDate, contentLang) : null;
               return (
                 <div
                   key={course.id}
@@ -812,7 +795,7 @@ export default function Home() {
                         href={`/courses/${course.id}`}
                         className={`flex-1 text-center py-3.5 rounded-xl font-black text-xs no-underline transition-colors ${darkMode ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-slate-100 text-slate-900 hover:bg-slate-200'}`}
                       >
-                        {translate('ვრცლად', 'View Details')}
+                        {t('viewDetails')}
                       </Link>
                       <button
                         type="button"
@@ -820,7 +803,7 @@ export default function Home() {
                         disabled={enrollingId === course.id}
                         className="flex-1 text-center py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-black text-xs cursor-pointer border-none shadow-md duration-150 hover:shadow-lg disabled:opacity-60"
                       >
-                        {enrollingId === course.id ? translate('იტვირთება…', 'Loading…') : translate('ჩარიცხვა →', 'Enroll →')}
+                        {enrollingId === course.id ? t('enrolling') : t('enroll')}
                       </button>
                     </div>
                   </div>
@@ -843,9 +826,9 @@ export default function Home() {
               <Sparkles className="w-3.5 h-3.5" />
               CDC AI
             </span>
-            <h2 className="text-2xl md:text-3xl font-black tracking-wide mb-3">{translate('ციფრული ხელსაწყოები', 'Digital Tools')}</h2>
+            <h2 className="text-2xl md:text-3xl font-black tracking-wide mb-3">{t('toolsHeading')}</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-              {translate('AI-ზე დაფუძნებული პროდუქტები, რომლებიც CDC-მ შექმნა ბიზნესებისა და დამსაქმებლებისთვის.', 'AI-powered products built by CDC for businesses and employers.')}
+              {t('toolsSubtitle')}
             </p>
           </div>
 
@@ -856,27 +839,24 @@ export default function Home() {
               </div>
               <div className="flex-1">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <h3 className="text-xl font-black tracking-wide">{translate('Enterprise AI ასისტენტი & ცოდნის ბაზა', 'Enterprise AI Assistant & Knowledge Base')}</h3>
+                  <h3 className="text-xl font-black tracking-wide">{t('aiAssistantTitle')}</h3>
                   <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                    {translate('ხელმისაწვდომია', 'Available now')}
+                    {t('availableNow')}
                   </span>
                 </div>
                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">
-                  {translate(
-                    'შექმენით საკუთარი AI ჩატბოტი თქვენი კომპანიისთვის — ის სწავლობს თქვენს ბიზნესზე და პასუხობს ვიზიტორებს თქვენი საიტიდან პირდაპირ.',
-                    'Build your own AI chatbot for your company — it learns your business and answers visitors directly from your website.'
-                  )}
+                  {t('aiAssistantBody')}
                 </p>
                 <ul className="grid sm:grid-cols-2 gap-3 mb-6">
                   {[
-                    { icon: MessageSquareText, ka: 'პერსონალიზებული AI ჩატბოტი თქვენი საიტისთვის', en: 'A custom AI chatbot for your website' },
-                    { icon: BookOpen, ka: 'საკუთარი ცოდნის ბაზა კითხვა-პასუხის ფორმატში', en: 'Your own Q&A-style knowledge base' },
-                    { icon: Code2, ka: 'ჩასაშენებელი ვიჯეტი — ერთი კოდი და მზადაა', en: 'An embeddable widget — one snippet and it is live' },
-                    { icon: BarChart3, ka: 'ვიზიტორთა საუბრების ანალიტიკა', en: 'Visitor conversation analytics' },
-                  ].map(({ icon: Icon, ka, en }) => (
-                    <li key={en} className="flex items-center gap-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    { icon: MessageSquareText, key: 'aiFeature1' as const },
+                    { icon: BookOpen, key: 'aiFeature2' as const },
+                    { icon: Code2, key: 'aiFeature3' as const },
+                    { icon: BarChart3, key: 'aiFeature4' as const },
+                  ].map(({ icon: Icon, key }) => (
+                    <li key={key} className="flex items-center gap-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
                       <Icon className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
-                      {translate(ka, en)}
+                      {t(key)}
                     </li>
                   ))}
                 </ul>
@@ -886,7 +866,7 @@ export default function Home() {
                     className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all"
                   >
                     <Sparkles className="w-4 h-4" />
-                    {translate('7 დღე უფასოდ', '7 Days Free')}
+                    {t('sevenDaysFree')}
                   </Link>
                 ) : (
                   <button
@@ -895,28 +875,28 @@ export default function Home() {
                     className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all"
                   >
                     <Sparkles className="w-4 h-4" />
-                    {translate('7 დღე უფასოდ', '7 Days Free')}
+                    {t('sevenDaysFree')}
                   </button>
                 )}
               </div>
             </div>
 
             {[
-              { icon: ShieldCheck, ka: 'AI Proctored Exam & Skill Assessment System', en: 'AI Proctored Exam & Skill Assessment System', descKa: 'AI-ზე დაფუძნებული ონლაინ გამოცდები რეალურ დროში მონიტორინგით და კანდიდატების უნარების ავტომატური შეფასებით.', descEn: 'AI-powered online exams with real-time proctoring and automated candidate skill assessment.' },
-              { icon: Users, ka: 'AI Candidate Screener & HR Assistant', en: 'AI Candidate Screener & HR Assistant', descKa: 'AI ასისტენტი, რომელიც დამსაქმებლებს ეხმარება კანდიდატების პირველად გადარჩევასა და HR პროცესების ავტომატიზაციაში.', descEn: 'An AI assistant that helps employers pre-screen candidates and automate HR workflows.' },
-            ].map(({ icon: Icon, ka, en, descKa, descEn }) => (
-              <div key={en} className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-7 flex flex-col opacity-90">
+              { icon: ShieldCheck, titleKey: 'examSystemTitle' as const, descKey: 'examSystemBody' as const },
+              { icon: Users, titleKey: 'screenerTitle' as const, descKey: 'screenerBody' as const },
+            ].map(({ icon: Icon, titleKey, descKey }) => (
+              <div key={titleKey} className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-7 flex flex-col opacity-90">
                 <div className="flex items-center justify-between mb-4">
                   <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                     <Icon className="w-6 h-6 text-slate-400 dark:text-slate-500" />
                   </div>
                   <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                     <Lock className="w-3 h-3" />
-                    {translate('მალე', 'Coming Soon')}
+                    {t('comingSoon')}
                   </span>
                 </div>
-                <h3 className="text-base font-black tracking-wide mb-2">{translate(ka, en)}</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{translate(descKa, descEn)}</p>
+                <h3 className="text-base font-black tracking-wide mb-2">{t(titleKey)}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{t(descKey)}</p>
               </div>
             ))}
 
@@ -925,7 +905,7 @@ export default function Home() {
                 href="/tools"
                 className={`inline-flex items-center gap-2 font-black text-sm px-6 py-3 rounded-xl no-underline transition-colors ${darkMode ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-slate-100 text-slate-900 hover:bg-slate-200'}`}
               >
-                {translate('ყველა ხელსაწყოს ნახვა →', 'View All Tools →')}
+                {t('viewAllTools')}
               </Link>
             </div>
           </div>
@@ -935,9 +915,9 @@ export default function Home() {
       {/* 📰 NEWS & BLOG SECTION — real published posts from GET /api/v1/blog */}
       <section id="blog" className={`py-28 border-t ${darkMode ? 'bg-[#0e1422]/40 border-slate-800' : 'bg-slate-50/60 border-slate-200'}`}>
         <div className="max-w-7xl mx-auto px-6">
-          <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{translate('სიახლეები & სტატიები ბლოგიდან', 'News & Blog Articles')}</h2>
+          <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('blogHeading')}</h2>
           {blogPosts.length === 0 ? (
-            <p className="text-center text-sm text-slate-400 font-medium">{translate('სტატიები მალე გამოქვეყნდება.', 'Articles will be published soon.')}</p>
+            <p className="text-center text-sm text-slate-400 font-medium">{t('blogEmpty')}</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {blogPosts.map((post, idx) => {
@@ -953,8 +933,8 @@ export default function Home() {
                     className={`p-8 rounded-3xl border backdrop-blur-md transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}
                   >
                     <span className={`text-[11px] font-black uppercase tracking-widest block mb-3 ${badgeColor}`}>{post.category}</span>
-                    <h3 className="text-lg font-black mb-3">{blogTitle(post, lang === 'GEO' ? 'ka' : 'en')}</h3>
-                    <p className="text-sm text-slate-400 leading-relaxed font-medium line-clamp-3">{blogDescription(post, lang === 'GEO' ? 'ka' : 'en')}</p>
+                    <h3 className="text-lg font-black mb-3">{blogTitle(post, contentLang)}</h3>
+                    <p className="text-sm text-slate-400 leading-relaxed font-medium line-clamp-3">{blogDescription(post, contentLang)}</p>
                   </Link>
                 );
               })}
@@ -965,24 +945,24 @@ export default function Home() {
               href="/blog"
               className={`inline-block px-8 py-3 rounded-full text-sm font-black uppercase tracking-widest border transition-all duration-300 hover:scale-105 ${darkMode ? 'border-cyan-500 text-cyan-400 hover:bg-cyan-500/10' : 'border-cyan-500 text-cyan-600 hover:bg-cyan-50'}`}
             >
-              {translate('ყველა სტატია →', 'All Articles →')}
+              {t('allArticles')}
             </Link>
           </div>
         </div>
       </section>
 
-      <SuccessStoriesCarousel lang={lang === 'GEO' ? 'ka' : 'en'} darkMode={darkMode} />
+      <SuccessStoriesCarousel lang={contentLang} darkMode={darkMode} />
 
-      <FeaturedCaseStudies lang={lang === 'GEO' ? 'ka' : 'en'} darkMode={darkMode} />
+      <FeaturedCaseStudies lang={contentLang} darkMode={darkMode} />
 
       {/* 👥 OFFICIAL TEAM SECTION — real, admin-managed data from GET /api/team */}
-      <TeamSection lang={lang === 'GEO' ? 'ka' : 'en'} darkMode={darkMode} />
+      <TeamSection lang={contentLang} darkMode={darkMode} />
 
       {/* ❓ FAQ SECTION — CMS-managed, hidden entirely with no questions set */}
       {!!cms?.faq?.length && (
         <section className={`py-28 border-t ${darkMode ? 'bg-[#0e1422]/20 border-slate-800' : 'bg-slate-100/40 border-slate-200'}`}>
           <div className="max-w-3xl mx-auto px-6">
-            <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{translate('ხშირად დასმული კითხვები', 'Frequently Asked Questions')}</h2>
+            <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('faqHeading')}</h2>
             <div className="space-y-3">
               {cms.faq.map((item, i) => (
                 <details
@@ -1007,12 +987,12 @@ export default function Home() {
           <div className="w-[calc(100vw-2rem)] sm:w-[480px] md:w-[520px] border rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[380px] sm:h-[70vh] sm:max-h-[650px] md:h-[80vh] md:max-h-[700px] bg-white dark:bg-[#0e1422] text-slate-900 dark:text-white border-slate-200 dark:border-slate-800">
             <div className="bg-slate-900 text-white p-4 flex flex-col gap-2">
               <div className="flex justify-between items-center gap-2">
-                <span className="text-xs font-bold truncate">{translate('CDC კარიერული ასისტენტი', 'CDC Career Assistant')}</span>
+                <span className="text-xs font-bold truncate">{t('chatTitle')}</span>
                 <button type="button" onClick={() => setIsChatOpen(false)} className="shrink-0 text-white font-bold border-none bg-transparent cursor-pointer"><X className="w-4 h-4" /></button>
               </div>
               <div className="inline-flex items-center gap-1.5 self-start px-2.5 py-1 rounded-full bg-white/10 border border-white/15">
                 <Image src="/images/cdc-logo.png" alt="CDC" width={14} height={14} className="w-3.5 h-3.5 rounded-full object-cover shrink-0" />
-                <span className="text-[10px] font-bold text-white/70 whitespace-nowrap">{translate('Powered by CDC Studio', 'Powered by CDC Studio')}</span>
+                <span className="text-[10px] font-bold text-white/70 whitespace-nowrap">{t('poweredBy')}</span>
               </div>
             </div>
             
@@ -1048,7 +1028,7 @@ export default function Home() {
                       onClick={() => sendChatMessage(lastFailedInput)}
                       className="mt-1.5 text-[11px] font-bold text-cyan-600 dark:text-cyan-400 hover:underline bg-transparent border-none cursor-pointer"
                     >
-                      {translate('ხელახლა სცადეთ', 'Retry')}
+                      {t('retry')}
                     </button>
                   )}
                 </div>
@@ -1063,24 +1043,28 @@ export default function Home() {
                   disabled={chatSending}
                   onClick={() => {
                     setTestStep(1);
-                    sendChatMessage(lang === 'GEO' ? 'დავიწყოთ ტესტი' : 'Start the test');
+                    sendChatMessage(t('startTestMessage'));
                   }}
                   className="flex items-center gap-1.5 bg-cyan-500 text-white px-4 py-1.5 rounded-full text-[11px] font-black cursor-pointer hover:bg-cyan-600 transition border-none shadow disabled:opacity-40"
                 >
-                  <Rocket className="w-3.5 h-3.5" />{translate('დავიწყოთ ტესტი', 'Start Test')}
+                  <Rocket className="w-3.5 h-3.5" />{t('startTest')}
                 </button>
               </div>
             )}
 
             <form onSubmit={handleSendMessage} className="p-3 border-t flex gap-2 bg-white dark:bg-[#0e1422] border-slate-100 dark:border-slate-800">
-              <input type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} disabled={chatSending} placeholder={translate('ჩაწერეთ პასუხი...', 'Type a reply...') as string} className="flex-1 border rounded-xl px-3 py-2 text-xs focus:outline-none disabled:opacity-60" />
+              <input type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} disabled={chatSending} placeholder={t('chatInputPlaceholder') as string} className="flex-1 border rounded-xl px-3 py-2 text-xs focus:outline-none disabled:opacity-60" />
               <button type="submit" disabled={chatSending || !userInput.trim()} className="bg-slate-900 text-white font-bold px-4 py-2 rounded-xl text-xs border-none cursor-pointer disabled:opacity-40">OK</button>
             </form>
           </div>
         )}
       </div>
 
-      <SiteFooter lang={lang} />
+      <SiteFooter lang={legacyLang} />
     </div>
   );
 }
+
+export const getStaticProps: GetStaticProps = async ({ locale }) => ({
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['home'])) },
+});
