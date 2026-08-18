@@ -13,12 +13,13 @@ import LanguageSwitcher from '../../src/components/layout/LanguageSwitcher';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { GetStaticProps } from 'next';
+import { resolveLocale } from '../../src/utils/locale';
 
 function LoginPage() {
   const router = useRouter();
   const { login, loginWithGoogle } = useAuth();
   const { t } = useTranslation('auth');
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -58,7 +59,7 @@ function LoginPage() {
       const loggedInUser = await loginWithGoogle(idToken);
       handlePostLogin(loggedInUser);
     } catch {
-      setError('Unable to sign in with Google. Please try again.');
+      setError(t('googleSignInError'));
     } finally {
       setSubmitting(false);
     }
@@ -80,10 +81,7 @@ function LoginPage() {
       handlePostLogin(loggedInUser);
     } catch (err) {
       const axiosErr = err as AxiosError<{ message?: string }>;
-      setError(
-        axiosErr.response?.data?.message ||
-        'Unable to log in. Please check your credentials and try again.'
-      );
+      setError(axiosErr.response?.data?.message || t('login.genericError'));
     } finally {
       if (!redirectingToAdmin) setSubmitting(false);
     }
@@ -122,7 +120,7 @@ function LoginPage() {
         {redirectingAdmin && (
           <div className="mb-6 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 px-4 py-3 text-sm text-indigo-700 dark:text-indigo-300 text-center flex items-center justify-center gap-2">
             <ShieldCheck className="w-4 h-4 shrink-0" />
-            Signed in — redirecting to the Admin Workspace…
+            {t('modalRedirectingToAdmin')}
           </div>
         )}
 
@@ -170,7 +168,7 @@ function LoginPage() {
               onChange={(e) => setRememberMe(e.target.checked)}
               className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 text-cyan-600 focus:ring-cyan-500"
             />
-            {lang === 'ka' ? 'დამიმახსოვრე' : 'Remember me'}
+            {t('login.rememberMe')}
           </label>
 
           <button

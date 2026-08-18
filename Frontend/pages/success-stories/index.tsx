@@ -143,7 +143,7 @@ export default function SuccessStoriesPage() {
           </div>
         )}
       </div>
-      <SiteFooter lang={lang === 'en' ? 'ENG' : 'GEO'} />
+      <SiteFooter />
     </div>
   );
 }

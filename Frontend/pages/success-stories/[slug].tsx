@@ -160,7 +160,7 @@ export default function SuccessStoryDetailPage() {
           </article>
         )}
       </div>
-      <SiteFooter lang={lang === 'en' ? 'ENG' : 'GEO'} />
+      <SiteFooter />
 
       <Lightbox images={galleryImages} index={lightboxIndex} onClose={() => setLightboxIndex(null)} onIndexChange={setLightboxIndex} />
     </div>

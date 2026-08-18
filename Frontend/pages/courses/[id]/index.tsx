@@ -24,12 +24,6 @@ import SuccessStoriesCarousel from '../../../src/components/shared/SuccessStorie
 import CourseLeaderboard from '../../../src/components/shared/CourseLeaderboard';
 import CourseHeroBanner from '../../../src/components/shared/CourseHeroBanner';
 
-// AuthModalContext always needs both languages at once (the modal itself
-// picks ka/en internally), regardless of this page's current locale — so
-// this stays a plain constant instead of a translation key, matching the
-// SIGN_IN_TO_* constants in community.tsx and forum/thread/[id].tsx.
-const SIGN_IN_TO_ENROLL = { ka: 'გთხოვთ გაიაროთ ავტორიზაცია კურსზე ჩასარიცხად', en: 'Please sign in to enroll in a course' };
-
 function formatTotalDuration(totalSeconds: number, lang: 'ka' | 'en'): string {
   const totalMinutes = Math.round(totalSeconds / 60);
   const hours = Math.floor(totalMinutes / 60);
@@ -53,7 +47,10 @@ function formatLessonDuration(seconds: number): string {
 
 export default function CourseDetailPage() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  // Drives ka/en-only data (checkoutCourse's receipt language, course.language
+  // badges, sale countdown, formatTotalDuration) — falls back to English for
+  // de/es/fr/uk visitors rather than Georgian.
+  const lang = router.locale === 'ka' ? 'ka' : 'en';
   const { t } = useTranslation('courses');
   const courseId = typeof router.query.id === 'string' ? router.query.id : null;
   const { isAuthenticated } = useAuth();
@@ -118,7 +115,7 @@ export default function CourseDetailPage() {
       window.location.href = result.redirectUrl!;
     } catch (err: any) {
       const serverMessage = err?.response?.data?.message;
-      setError(serverMessage || (lang === 'en' ? 'Unable to start checkout. Please try again.' : 'გადახდის დაწყება ვერ მოხერხდა.'));
+      setError(serverMessage || t('checkoutError'));
       setProcessing(false);
     }
   };
@@ -126,7 +123,7 @@ export default function CourseDetailPage() {
   const handleApplyPromo = async () => {
     if (!courseId || !promoInput.trim()) return;
     if (!isAuthenticated) {
-      openAuthModal({ message: SIGN_IN_TO_ENROLL });
+      openAuthModal({ message: t('signInToEnroll') });
       return;
     }
     setPromoError(null);
@@ -145,7 +142,7 @@ export default function CourseDetailPage() {
     if (!isAuthenticated) {
       // Guests never proceed to checkout directly — sign in first, then
       // resume straight into BOG checkout for this exact course.
-      openAuthModal({ message: SIGN_IN_TO_ENROLL, onSuccess: startCheckout });
+      openAuthModal({ message: t('signInToEnroll'), onSuccess: startCheckout });
       return;
     }
     startCheckout();
@@ -160,7 +157,7 @@ export default function CourseDetailPage() {
       <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
         <SiteHeader />
         <div className="flex-1 flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">{t('loading')}</div>
-        <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+        <SiteFooter />
       </div>
     );
   }
@@ -172,7 +169,7 @@ export default function CourseDetailPage() {
           <p>{t('notFound')}</p>
           <BackButton fallbackHref="/courses" className="dark:text-slate-400 dark:hover:text-slate-100" />
         </div>
-        <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+        <SiteFooter />
       </div>
     );
   }
@@ -209,7 +206,7 @@ export default function CourseDetailPage() {
             </span>
             {course.saleActive && (
               <span className="text-[10px] font-black text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500">
-                -{course.discountPercent}% {lang === 'ka' ? '' : 'OFF'}
+                -{course.discountPercent}% {t('saleOffSuffix')}
               </span>
             )}
           </div>
@@ -430,7 +427,7 @@ export default function CourseDetailPage() {
 
       <SuccessStoriesCarousel lang={lang} />
 
-      <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+      <SiteFooter />
     </div>
   );
 }

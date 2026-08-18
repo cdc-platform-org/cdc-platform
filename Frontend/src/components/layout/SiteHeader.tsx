@@ -9,7 +9,12 @@ import NotificationBell from './NotificationBell';
 import { useAuth } from '../../context/AuthContext';
 import { useAuthModal } from '../../context/AuthModalContext';
 import { MARKETPLACE_CATEGORIES } from '../../data/marketplaceCategories';
+import { resolveLocale } from '../../utils/locale';
 
+// Inline dict rather than next-i18next: this header is mounted on ~40 pages
+// and can't assume every one of them declares the same namespace in its own
+// getStaticProps, so it resolves its own locale (see utils/locale.ts) and
+// carries its own strings instead.
 const dict = {
   ka: {
     login: 'შესვლა',
@@ -43,6 +48,70 @@ const dict = {
     mentorPanel: 'Mentor Panel',
     logout: 'Log Out',
   },
+  de: {
+    login: 'Anmelden',
+    about: 'Über uns',
+    gallery: 'Galerie',
+    community: 'Jobs',
+    mentors: 'Mentoren',
+    marketplace: 'Marktplatz',
+    categories: 'Kategorien',
+    viewAllProducts: 'Alle Produkte ansehen',
+    tools: 'Digitale Tools',
+    dashboard: 'Mein Dashboard',
+    myCourses: 'Meine Kurse',
+    admin: 'Admin-Panel',
+    mentorPanel: 'Mentoren-Panel',
+    logout: 'Abmelden',
+  },
+  es: {
+    login: 'Iniciar Sesión',
+    about: 'Sobre Nosotros',
+    gallery: 'Galería',
+    community: 'Empleos',
+    mentors: 'Mentores',
+    marketplace: 'Mercado',
+    categories: 'Categorías',
+    viewAllProducts: 'Ver Todos los Productos',
+    tools: 'Herramientas Digitales',
+    dashboard: 'Mi Panel',
+    myCourses: 'Mis Cursos',
+    admin: 'Panel de Administración',
+    mentorPanel: 'Panel de Mentor',
+    logout: 'Cerrar Sesión',
+  },
+  fr: {
+    login: 'Connexion',
+    about: 'À propos',
+    gallery: 'Galerie',
+    community: 'Emplois',
+    mentors: 'Mentors',
+    marketplace: 'Marché',
+    categories: 'Catégories',
+    viewAllProducts: 'Voir tous les produits',
+    tools: 'Outils numériques',
+    dashboard: 'Mon tableau de bord',
+    myCourses: 'Mes cours',
+    admin: 'Panneau admin',
+    mentorPanel: 'Panneau mentor',
+    logout: 'Déconnexion',
+  },
+  uk: {
+    login: 'Увійти',
+    about: 'Про нас',
+    gallery: 'Галерея',
+    community: 'Вакансії',
+    mentors: 'Ментори',
+    marketplace: 'Маркетплейс',
+    categories: 'Категорії',
+    viewAllProducts: 'Переглянути всі товари',
+    tools: 'Цифрові інструменти',
+    dashboard: 'Моя панель',
+    myCourses: 'Мої курси',
+    admin: 'Панель адміністратора',
+    mentorPanel: 'Панель ментора',
+    logout: 'Вийти',
+  },
 };
 
 // Shared, theme-aware header for content pages that don't have their own
@@ -50,8 +119,13 @@ const dict = {
 // logo/home link, language switcher, dark-mode toggle, auth buttons.
 export default function SiteHeader() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
+  // MARKETPLACE_CATEGORIES.value only ever carries ka/en fields — it's the
+  // literal ?category= filter value, which must match DigitalProduct.category
+  // exactly as sellers type it (ka or en, never de/es/fr/uk), so category
+  // links always resolve through this ka/en-only pair regardless of `lang`.
+  const catLocale = lang === 'ka' ? 'ka' : 'en';
   const { user, isAuthenticated, logout } = useAuth();
   const { openAuthModal } = useAuthModal();
   const [darkMode, setDarkMode] = useState(false);
@@ -131,10 +205,10 @@ export default function SiteHeader() {
                   {MARKETPLACE_CATEGORIES.map((cat) => (
                     <Link
                       key={cat.value.en}
-                      href={`/marketplace?category=${encodeURIComponent(cat.value[lang])}`}
+                      href={`/marketplace?category=${encodeURIComponent(cat.value[catLocale])}`}
                       className="block px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
                     >
-                      {cat.value[lang]}
+                      {cat.value[catLocale]}
                     </Link>
                   ))}
                   <Link
@@ -270,11 +344,11 @@ export default function SiteHeader() {
               {MARKETPLACE_CATEGORIES.map((cat) => (
                 <Link
                   key={cat.value.en}
-                  href={`/marketplace?category=${encodeURIComponent(cat.value[lang])}`}
+                  href={`/marketplace?category=${encodeURIComponent(cat.value[catLocale])}`}
                   onClick={() => setMobileMenuOpen(false)}
                   className="no-underline px-2 py-2 rounded-lg text-xs font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
-                  {cat.value[lang]}
+                  {cat.value[catLocale]}
                 </Link>
               ))}
             </div>

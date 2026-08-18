@@ -9,78 +9,33 @@ import GoogleSignInButton from './GoogleSignInButton';
 import SocialLoginButtons from './SocialLoginButtons';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { forgotPassword } from '../../services/authService';
+import { resolveLocale } from '../../utils/locale';
+import kaAuth from '../../../public/locales/ka/auth.json';
+import enAuth from '../../../public/locales/en/auth.json';
+import deAuth from '../../../public/locales/de/auth.json';
+import esAuth from '../../../public/locales/es/auth.json';
+import frAuth from '../../../public/locales/fr/auth.json';
+import ukAuth from '../../../public/locales/uk/auth.json';
 
 type Mode = 'login' | 'forgot';
 
-// Self-contained bilingual strings, keyed off next/router's `locale` directly
-// — deliberately NOT next-i18next's useTranslation('auth') here. This modal
-// is mounted once globally (pages/_app.tsx) and can be triggered from any
-// page; relying on a namespace loaded via that specific page's
-// serverSideTranslations would silently break on any page that forgot to
-// list 'auth'. router.locale needs no such per-page wiring.
+// Directly imports the 'auth' namespace JSON for all 6 locales rather than
+// next-i18next's useTranslation('auth') — this modal is mounted once
+// globally (pages/_app.tsx) and can be triggered from any page, so it can't
+// assume every page declares 'auth' in its own serverSideTranslations.
+// Direct JSON import needs no per-page wiring and can't silently break.
 //
 // Registration itself doesn't live here — see the redirect-to-/auth/register
 // logic below. That page is a full two-step wizard (intent -> sub-role) with
 // dark-mode support and next-i18next translations; duplicating that inline
 // in a global, i18next-free modal wasn't worth maintaining twice.
-const STRINGS = {
-  ka: {
-    loginTab: 'შესვლა',
-    registerTab: 'რეგისტრაცია',
-    emailLabel: 'ელ-ფოსტა',
-    emailPlaceholder: 'you@example.com',
-    passwordLabel: 'პაროლი',
-    passwordPlaceholder: '••••••••',
-    loginButton: 'შესვლა',
-    loginSubmitting: 'შედის…',
-    googleButton: 'გააგრძელეთ Google-ით',
-    googleNotConfigured: 'Google შესვლა ჯერ არ არის კონფიგურირებული',
-    orDivider: 'ან',
-    noAccount: 'არ გაქვთ ანგარიში?',
-    switchToRegister: 'დარეგისტრირდით',
-    forgotPassword: 'დაგავიწყდა პაროლი?',
-    forgotTitle: 'პაროლის აღდგენა',
-    forgotSubtitle: 'შეიყვანეთ თქვენი ანგარიშის ელ-ფოსტა და გამოგიგზავნით აღდგენის ბმულს.',
-    sendResetLink: 'ბმულის გაგზავნა',
-    sendingResetLink: 'იგზავნება…',
-    resetLinkSent: 'თუ ეს ელ-ფოსტა რეგისტრირებულია, აღდგენის ბმული გამოგზავნილია. შეამოწმეთ თქვენი ინბოქსი.',
-    backToLogin: '← შესვლაში დაბრუნება',
-    genericError: 'დაფიქსირდა შეცდომა. სცადეთ თავიდან.',
-    close: 'დახურვა',
-    redirectingToAdmin: '✓ შესვლა წარმატებულია — გადამისამართება Admin სამუშაო სივრცეში…',
-  },
-  en: {
-    loginTab: 'Login',
-    registerTab: 'Register',
-    emailLabel: 'Email',
-    emailPlaceholder: 'you@example.com',
-    passwordLabel: 'Password',
-    passwordPlaceholder: '••••••••',
-    loginButton: 'Log In',
-    loginSubmitting: 'Logging in…',
-    googleButton: 'Continue with Google',
-    googleNotConfigured: 'Google Sign-In is not configured yet',
-    orDivider: 'OR',
-    noAccount: "Don't have an account?",
-    switchToRegister: 'Register',
-    forgotPassword: 'Forgot password?',
-    forgotTitle: 'Reset Password',
-    forgotSubtitle: "Enter your account's email and we'll send you a reset link.",
-    sendResetLink: 'Send Reset Link',
-    sendingResetLink: 'Sending…',
-    resetLinkSent: "If that email is registered, a reset link has been sent. Check your inbox.",
-    backToLogin: '← Back to login',
-    genericError: 'Something went wrong. Please try again.',
-    close: 'Close',
-    redirectingToAdmin: '✓ Signed in — redirecting to the Admin Workspace…',
-  },
-} as const;
+const STRINGS = { ka: kaAuth, en: enAuth, de: deAuth, es: esAuth, fr: frAuth, uk: ukAuth };
 
 export default function AuthModal() {
   const router = useRouter();
   const { login, loginWithGoogle } = useAuth();
   const { isOpen, contextMessage, initialMode, initialRole, onSuccess, closeAuthModal } = useAuthModal();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = STRINGS[lang];
 
   const [mode, setMode] = useState<Mode>('login');
@@ -173,7 +128,7 @@ export default function AuthModal() {
     setError(null);
     loginWithGoogle(idToken)
       .then((loggedInUser) => handlePostLogin(loggedInUser))
-      .catch((err: any) => setError(err?.response?.data?.message || t.genericError))
+      .catch((err: any) => setError(err?.response?.data?.message || t.login.genericError))
       .finally(() => setSubmitting(false));
   };
 
@@ -188,7 +143,7 @@ export default function AuthModal() {
       const apiErrors = err?.response?.data?.errors;
       const apiMessage = err?.response?.data?.message;
       setError(
-        Array.isArray(apiErrors) ? apiErrors.map((e: any) => e.message).join(' ') : apiMessage || t.genericError
+        Array.isArray(apiErrors) ? apiErrors.map((e: any) => e.message).join(' ') : apiMessage || t.login.genericError
       );
     } finally {
       setSubmitting(false);
@@ -200,10 +155,14 @@ export default function AuthModal() {
     setForgotError(null);
     setForgotSubmitting(true);
     try {
-      await forgotPassword({ email: forgotEmail, lang });
+      // The reset-email template is still ka/en-only server-side (see
+      // Backend/src/schemas/authSchemas.ts) — de/es/fr/uk visitors get the
+      // English-language email, same fallback boundary as the rest of this
+      // i18n pass for backend/CMS content that hasn't been extended yet.
+      await forgotPassword({ email: forgotEmail, lang: lang === 'ka' ? 'ka' : 'en' });
       setForgotSent(true);
     } catch (err: any) {
-      setForgotError(err?.response?.data?.message ?? t.genericError);
+      setForgotError(err?.response?.data?.message ?? t.login.genericError);
     } finally {
       setForgotSubmitting(false);
     }
@@ -217,7 +176,7 @@ export default function AuthModal() {
         <button
           type="button"
           onClick={closeAuthModal}
-          aria-label={t.close}
+          aria-label={t.modalClose}
           className="absolute top-4 right-4 z-50 p-2 cursor-pointer text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors"
         >
           <X className="w-4 h-4" />
@@ -226,7 +185,7 @@ export default function AuthModal() {
         {redirectingAdmin ? (
           <div className="text-center pt-2 pb-4">
             <ShieldCheck className="w-10 h-10 text-indigo-600 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-indigo-600">{t.redirectingToAdmin}</p>
+            <p className="text-sm font-semibold text-indigo-600">{t.modalRedirectingToAdmin}</p>
           </div>
         ) : mode === 'forgot' ? (
           <div className="pt-2">
@@ -236,14 +195,14 @@ export default function AuthModal() {
               className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 bg-transparent border-none p-0 cursor-pointer mb-4"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              {t.backToLogin}
+              {t.forgotPassword.backToLogin}
             </button>
-            <h2 className="text-lg font-semibold text-gray-900 mb-1.5">{t.forgotTitle}</h2>
-            <p className="text-sm text-gray-500 mb-5">{t.forgotSubtitle}</p>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1.5">{t.forgotPassword.title}</h2>
+            <p className="text-sm text-gray-500 mb-5">{t.forgotPassword.subtitle}</p>
 
             {forgotSent ? (
               <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700 text-center">
-                ✅ {t.resetLinkSent}
+                ✅ {t.forgotPassword.successMessage}
               </div>
             ) : (
               <form onSubmit={handleForgotSubmit} className="space-y-4">
@@ -251,13 +210,13 @@ export default function AuthModal() {
                   <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{forgotError}</div>
                 )}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.emailLabel}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.login.emailLabel}</label>
                   <input
                     type="email"
                     required
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
-                    placeholder={t.emailPlaceholder}
+                    placeholder={t.login.emailPlaceholder}
                     className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
@@ -266,7 +225,7 @@ export default function AuthModal() {
                   disabled={forgotSubmitting}
                   className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
                 >
-                  {forgotSubmitting ? t.sendingResetLink : t.sendResetLink}
+                  {forgotSubmitting ? t.forgotPassword.submittingButton : t.forgotPassword.submitButton}
                 </button>
               </form>
             )}
@@ -282,21 +241,21 @@ export default function AuthModal() {
                 type="button"
                 className="relative z-10 flex-1 pb-3 text-sm font-semibold text-indigo-600"
               >
-                {t.loginTab}
+                {t.modalLoginTab}
               </button>
               <button
                 type="button"
                 onClick={() => goToRegister()}
                 className="relative z-10 flex-1 pb-3 text-sm font-semibold text-gray-400 hover:text-gray-600 transition-colors"
               >
-                {t.registerTab}
+                {t.modalRegisterTab}
               </button>
               <div className="absolute bottom-0 left-0 z-0 h-0.5 w-1/2 bg-indigo-600" />
             </div>
 
             {contextMessage && (
               <div className="mb-4 rounded-lg bg-indigo-50 border border-indigo-200 px-4 py-3 text-sm text-indigo-800">
-                {lang === 'ka' ? contextMessage.ka : contextMessage.en}
+                {typeof contextMessage === 'string' ? contextMessage : lang === 'ka' ? contextMessage.ka : contextMessage.en}
               </div>
             )}
 
@@ -308,25 +267,25 @@ export default function AuthModal() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.emailLabel}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.login.emailLabel}</label>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t.emailPlaceholder}
+                  placeholder={t.login.emailPlaceholder}
                   className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-sm font-medium text-gray-700">{t.passwordLabel}</label>
+                  <label className="block text-sm font-medium text-gray-700">{t.login.passwordLabel}</label>
                   <button
                     type="button"
                     onClick={() => setMode('forgot')}
                     className="text-xs font-medium text-indigo-600 hover:text-indigo-700 bg-transparent border-none p-0 cursor-pointer"
                   >
-                    {t.forgotPassword}
+                    {t.login.forgotPassword}
                   </button>
                 </div>
                 <PasswordInput
@@ -334,7 +293,7 @@ export default function AuthModal() {
                   minLength={8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t.passwordPlaceholder}
+                  placeholder={t.login.passwordPlaceholder}
                   inputClassName="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -344,7 +303,7 @@ export default function AuthModal() {
                 disabled={submitting}
                 className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
               >
-                {submitting ? t.loginSubmitting : t.loginButton}
+                {submitting ? t.login.submittingButton : t.login.submitButton}
               </button>
             </form>
 
@@ -366,13 +325,13 @@ export default function AuthModal() {
             </div>
 
             <p className="text-center text-sm text-gray-500 mt-5">
-              {t.noAccount}{' '}
+              {t.login.noAccount}{' '}
               <button
                 type="button"
                 onClick={() => goToRegister()}
                 className="font-medium text-indigo-600 hover:text-indigo-700"
               >
-                {t.switchToRegister}
+                {t.login.registerLink}
               </button>
             </p>
           </>

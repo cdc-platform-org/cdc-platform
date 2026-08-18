@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
+import type { SupportedLocale } from '../../utils/locale';
 
 interface GoogleSignInButtonProps {
   mode: 'login' | 'register';
   // Only used if this Google identity is creating a brand-new account —
   // ignored for an existing one (see Backend's POST /auth/google).
   role?: 'Student' | 'Client';
-  lang: 'ka' | 'en';
+  // Google's own GSI widget supports all 6 of our locale codes natively via
+  // its `locale` init option — no ka/en collapse needed here.
+  lang: SupportedLocale;
   onCredential: (idToken: string) => void;
   // Shown as the visible label on the disabled placeholder when Google
   // Sign-In isn't configured (NEXT_PUBLIC_GOOGLE_CLIENT_ID unset).

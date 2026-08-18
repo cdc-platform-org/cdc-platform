@@ -20,31 +20,21 @@ import { Vacancy, Gig, JobCategory } from '../src/types/community';
 import { getVacancies, applyToVacancy } from '../src/services/vacancyService';
 import { getGigs, applyToGig } from '../src/services/gigService';
 import { createReview } from '../src/services/reviewService';
-import { JOB_CATEGORIES, JOB_CATEGORY_LABEL } from '../src/utils/jobCategory';
-
-const SIGN_IN_TO_APPLY = {
-  ka: 'გთხოვთ გაიაროთ ავტორიზაცია შეკვეთის გასაგზავნად',
-  en: 'Please sign in to submit a proposal',
-};
-const SIGN_IN_TO_POST = {
-  ka: 'გთხოვთ გაიაროთ ავტორიზაცია განცხადების გამოსაქვეყნებლად',
-  en: 'Please sign in to post a job',
-};
-const SIGN_IN_TO_REVIEW = {
-  ka: 'გთხოვთ გაიაროთ ავტორიზაცია შეფასების დასატოვებლად',
-  en: 'Please sign in to leave a review',
-};
-const GRADUATES_ONLY_MESSAGE = {
-  ka: 'განაცხადის გაგზავნა მხოლოდ CDC-ის კურსდამთავრებულებს შეუძლიათ.',
-  en: 'Only verified CDC graduates can apply.',
-};
+import { JOB_CATEGORIES } from '../src/utils/jobCategory';
 
 type Category = 'all' | JobCategory;
 
-const CATEGORIES: { value: Category; label: string }[] = [
-  { value: 'all', label: 'ყველა' },
-  ...JOB_CATEGORIES.map((cat) => ({ value: cat as Category, label: JOB_CATEGORY_LABEL[cat].ka })),
-];
+// JOB_CATEGORIES' own union values (e.g. 'ui_ux_design') double as the
+// translation key suffix on proposals.json's jobCategories object (e.g.
+// jobCategories.uiUxDesign) — this map bridges the snake_case enum to the
+// camelCase key rather than keeping a second hardcoded label per category.
+const CATEGORY_LABEL_KEY: Record<JobCategory, string> = {
+  ui_ux_design: 'uiUxDesign',
+  web_development: 'webDevelopment',
+  graphic_design: 'graphicDesign',
+  digital_marketing: 'digitalMarketing',
+  other: 'other',
+};
 
 // Filters on the real, poster-selected category field (Gig/Vacancy.category)
 // rather than guessing from free-text skills — replaces the old keyword-
@@ -136,7 +126,7 @@ function CommunityPageContent() {
 
     if (!isAuthenticated) {
       openAuthModal({
-        message: SIGN_IN_TO_APPLY,
+        message: t('signIn.toApply'),
         onSuccess: (loggedInUser) => openForItem(loggedInUser?.isVerifiedGraduate),
       });
       return;
@@ -147,7 +137,7 @@ function CommunityPageContent() {
   const handleReviewClick = (item: CommunityListing) => {
     if (item.kind !== 'gig') return;
     if (!isAuthenticated) {
-      openAuthModal({ message: SIGN_IN_TO_REVIEW });
+      openAuthModal({ message: t('signIn.toReview') });
       return;
     }
     setReviewingGig(item.data);
@@ -171,10 +161,10 @@ function CommunityPageContent() {
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 pt-2">
         <h1 className={`text-2xl md:text-3xl font-black tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-          ვაკანსიები და პროექტები
+          {t('community.pageTitle')}
         </h1>
         <p className="text-sm text-slate-400 mt-1">
-          იპოვეთ სამუშაო შესაძლებლობა ან გამოაქვეყნეთ საკუთარი განცხადება — ერთ სივრცეში.
+          {t('community.pageSubtitle')}
         </p>
       </div>
 
@@ -186,7 +176,7 @@ function CommunityPageContent() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="ძებნა სათაურით, აღწერით ან უნარებით..."
+              placeholder={t('community.searchPlaceholder')}
               className={`flex-1 rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 transition ${
                 darkMode ? 'bg-[#0e1422] border-slate-800 text-white placeholder-slate-500' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400'
               }`}
@@ -194,28 +184,28 @@ function CommunityPageContent() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map((c) => (
+            {(['all', ...JOB_CATEGORIES] as Category[]).map((c) => (
               <button
-                key={c.value}
+                key={c}
                 type="button"
-                onClick={() => setCategory(c.value)}
+                onClick={() => setCategory(c)}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition border cursor-pointer ${
-                  category === c.value
+                  category === c
                     ? 'bg-slate-900 text-white border-slate-900 shadow'
                     : darkMode
                     ? 'text-slate-400 bg-[#0e1422] border-slate-800'
                     : 'text-slate-500 bg-white border-slate-200'
                 }`}
               >
-                {c.label}
+                {c === 'all' ? t('jobCategories.all') : t(`jobCategories.${CATEGORY_LABEL_KEY[c]}`)}
               </button>
             ))}
           </div>
 
           {loading ? (
-            <p className="text-sm text-slate-400">იტვირთება...</p>
+            <p className="text-sm text-slate-400">{t('marketplace.loading')}</p>
           ) : filteredListings.length === 0 ? (
-            <p className="text-sm text-slate-400">არცერთი განცხადება არ მოიძებნა.</p>
+            <p className="text-sm text-slate-400">{t('community.noListingsFound')}</p>
           ) : (
             <div className="space-y-6">
               {filteredListings.map((item) => (
@@ -250,19 +240,19 @@ function CommunityPageContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <h2 className={`text-lg font-bold tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                განცხადების დამატება
+                {t('community.postSectionTitle')}
               </h2>
             </div>
 
             {!isAuthenticated ? (
               <div className="text-center py-6">
-                <p className="text-xs text-slate-400 mb-4">{SIGN_IN_TO_POST.ka}</p>
+                <p className="text-xs text-slate-400 mb-4">{t('signIn.toPost')}</p>
                 <button
                   type="button"
-                  onClick={() => openAuthModal({ message: SIGN_IN_TO_POST })}
+                  onClick={() => openAuthModal({ message: t('signIn.toPost') })}
                   className="w-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold py-3 rounded-xl text-xs uppercase border-none cursor-pointer transition-all shadow-lg shadow-cyan-500/10 tracking-wider"
                 >
-                  ავტორიზაცია
+                  {t('community.authorizeButton')}
                 </button>
               </div>
             ) : (
@@ -270,7 +260,7 @@ function CommunityPageContent() {
                 allowedRoles={['Client', 'SuperAdmin']}
                 fallback={
                   <p className="text-xs text-slate-400 text-center py-6">
-                    ვაკანსიის ან პროექტის გამოქვეყნება შეუძლიათ მხოლოდ დამკვეთებსა და ადმინისტრატორებს.
+                    {t('community.clientAdminOnlyMessage')}
                   </p>
                 }
               >
@@ -315,7 +305,7 @@ function CommunityPageContent() {
         />
       )}
 
-      {showGraduateGate && <GraduateOnlyModal message={GRADUATES_ONLY_MESSAGE} onClose={() => setShowGraduateGate(false)} />}
+      {showGraduateGate && <GraduateOnlyModal message={t('signIn.graduatesOnly')} onClose={() => setShowGraduateGate(false)} />}
 
       {reviewingGig && (
         <ReviewModal
@@ -341,7 +331,7 @@ function CommunityPageContent() {
       )}
 
       <div className="mt-12">
-        <SiteFooter lang="GEO" />
+        <SiteFooter />
       </div>
     </div>
   );

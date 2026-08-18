@@ -134,7 +134,7 @@ export default function StudioCasesPage() {
           </div>
         )}
       </div>
-      <SiteFooter lang={lang === 'en' ? 'ENG' : 'GEO'} />
+      <SiteFooter />
     </div>
   );
 }

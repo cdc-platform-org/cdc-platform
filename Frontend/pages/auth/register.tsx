@@ -14,12 +14,17 @@ import SkillPicker from '../../src/components/shared/SkillPicker';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { GetStaticProps } from 'next';
+import { resolveLocale } from '../../src/utils/locale';
 
 function RegisterPage() {
   const router = useRouter();
   const { register, loginWithGoogle } = useAuth();
   const { t } = useTranslation('auth');
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
+  // SkillPicker's own taxonomy of freelance skill labels is ka/en-only —
+  // same documented boundary as MARKETPLACE_CATEGORIES elsewhere in this
+  // i18n pass, so de/es/fr/uk visitors see the English skill list.
+  const skillPickerLang = lang === 'ka' ? 'ka' : 'en';
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -71,7 +76,7 @@ function RegisterPage() {
       const loggedInUser = await loginWithGoogle(idToken, role);
       router.push(postSignupRedirect(loggedInUser.status));
     } catch {
-      setError('Unable to sign in with Google. Please try again.');
+      setError(t('googleSignInError'));
     } finally {
       setSubmitting(false);
     }
@@ -103,10 +108,7 @@ function RegisterPage() {
       if (Array.isArray(zodErrors) && zodErrors.length > 0) {
         setError(zodErrors.map((issue) => issue.message).join(' '));
       } else {
-        setError(
-          axiosErr.response?.data?.message ||
-          'Unable to create your account. Please try again.'
-        );
+        setError(axiosErr.response?.data?.message || t('register.genericError'));
       }
     } finally {
       setSubmitting(false);
@@ -157,10 +159,10 @@ function RegisterPage() {
               </span>
               <span>
                 <span className="block text-sm font-bold text-gray-900 dark:text-white">
-                  {lang === 'ka' ? 'სწავლა & კარიერა' : 'Learning & Career'}
+                  {t('register.wizard.talentTitle')}
                 </span>
                 <span className="block text-xs text-gray-500 dark:text-slate-400">
-                  {lang === 'ka' ? 'კურსები, სერტიფიკატები, ფრილანს პროექტები' : 'Courses, certificates, freelance projects'}
+                  {t('register.wizard.talentSubtitle')}
                 </span>
               </span>
             </button>
@@ -174,10 +176,10 @@ function RegisterPage() {
               </span>
               <span>
                 <span className="block text-sm font-bold text-gray-900 dark:text-white">
-                  {lang === 'ka' ? 'კომპანიებისთვის & B2B' : 'Hiring & B2B'}
+                  {t('register.wizard.employerTitle')}
                 </span>
                 <span className="block text-xs text-gray-500 dark:text-slate-400">
-                  {lang === 'ka' ? 'ვაკანსიების განთავსება, ბიზნეს ხელსაწყოები' : 'Post gigs, business tools'}
+                  {t('register.wizard.employerSubtitle')}
                 </span>
               </span>
             </button>
@@ -190,7 +192,7 @@ function RegisterPage() {
               onClick={() => setIntent(null)}
               className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-white bg-transparent border-none cursor-pointer p-0"
             >
-              <ChevronLeft className="w-3.5 h-3.5" /> {lang === 'ka' ? 'უკან' : 'Back'}
+              <ChevronLeft className="w-3.5 h-3.5" /> {t('register.wizard.back')}
             </button>
             <div className="grid grid-cols-2 gap-3">
               {intent === 'TALENT' ? (
@@ -201,7 +203,7 @@ function RegisterPage() {
                     className="flex flex-col items-center gap-1 rounded-lg border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-3 text-sm font-medium text-gray-600 dark:text-slate-400 cursor-pointer hover:border-cyan-400/50 transition-colors"
                   >
                     <GraduationCap className="w-5 h-5" />
-                    {lang === 'ka' ? 'სტუდენტი' : 'Student'}
+                    {t('register.wizard.studentOption')}
                   </button>
                   <button
                     type="button"
@@ -209,7 +211,7 @@ function RegisterPage() {
                     className="flex flex-col items-center gap-1 rounded-lg border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-3 text-sm font-medium text-gray-600 dark:text-slate-400 cursor-pointer hover:border-cyan-400/50 transition-colors"
                   >
                     <Briefcase className="w-5 h-5" />
-                    {lang === 'ka' ? 'ფრილანსერი' : 'Freelancer'}
+                    {t('register.wizard.freelancerOption')}
                   </button>
                 </>
               ) : (
@@ -220,7 +222,7 @@ function RegisterPage() {
                     className="flex flex-col items-center gap-1 rounded-lg border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-3 text-sm font-medium text-gray-600 dark:text-slate-400 cursor-pointer hover:border-cyan-400/50 transition-colors"
                   >
                     <Building2 className="w-5 h-5" />
-                    {lang === 'ka' ? 'კლიენტი' : 'Client'}
+                    {t('register.wizard.clientOption')}
                   </button>
                   <button
                     type="button"
@@ -228,7 +230,7 @@ function RegisterPage() {
                     className="flex flex-col items-center gap-1 rounded-lg border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-3 text-sm font-medium text-gray-600 dark:text-slate-400 cursor-pointer hover:border-cyan-400/50 transition-colors"
                   >
                     <Building2 className="w-5 h-5" />
-                    {lang === 'ka' ? 'ბიზნესი' : 'Business'}
+                    {t('register.wizard.businessOption')}
                   </button>
                 </>
               )}
@@ -241,7 +243,7 @@ function RegisterPage() {
           onClick={() => setSubRole(null)}
           className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-white bg-transparent border-none cursor-pointer p-0"
         >
-          <ChevronLeft className="w-3.5 h-3.5" /> {lang === 'ka' ? 'უკან' : 'Back'}
+          <ChevronLeft className="w-3.5 h-3.5" /> {t('register.wizard.back')}
         </button>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
@@ -295,13 +297,13 @@ function RegisterPage() {
           {subRole === 'Freelancer' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
-                {lang === 'ka' ? 'თქვენი უნარები' : 'Your skills'}
+                {t('register.wizard.skillsLabel')}
                 <span className="text-gray-400 font-normal">
                   {' '}
-                  — {lang === 'ka' ? 'არასავალდებულო, მოგვიანებით პროფილში ჩასწორებადი' : 'optional, editable later in your profile'}
+                  — {t('register.wizard.skillsHint')}
                 </span>
               </label>
-              <SkillPicker value={freelancerSkills} onChange={setFreelancerSkills} lang={lang} />
+              <SkillPicker value={freelancerSkills} onChange={setFreelancerSkills} lang={skillPickerLang} />
             </div>
           )}
 

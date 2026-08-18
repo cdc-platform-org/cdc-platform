@@ -1,13 +1,7 @@
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { merchantInfo } from '@/src/data/merchantInfo';
-
-interface SiteFooterProps {
-  // Matches the local 'GEO' | 'ENG' language-toggle state already used by
-  // the marketing pages (index.tsx, agency.tsx, community.tsx) — none of
-  // them use next-i18next/router.locale, so the footer takes this as a
-  // prop instead of reading router.locale itself.
-  lang: 'GEO' | 'ENG';
-}
+import { resolveLocale } from '@/src/utils/locale';
 
 const SOCIAL_LINKS = [
   {
@@ -45,7 +39,7 @@ const SOCIAL_LINKS = [
 ];
 
 const STRINGS = {
-  GEO: {
+  ka: {
     tagline: 'ვასწავლით ციფრულ პროფესიებს გურიაში — HEKS/EPER Georgia-ს მხარდაჭერით.',
     coursesHeading: 'კურსები',
     courses: 'კურსები',
@@ -70,7 +64,7 @@ const STRINGS = {
     followUs: 'გამოგვყევით',
     weAccept: 'მიიღება გადახდა',
   },
-  ENG: {
+  en: {
     tagline: 'Teaching digital professions in Guria — supported by HEKS/EPER Georgia.',
     coursesHeading: 'Courses',
     courses: 'All Courses',
@@ -95,6 +89,106 @@ const STRINGS = {
     followUs: 'Follow Us',
     weAccept: 'We Accept',
   },
+  de: {
+    tagline: 'Wir unterrichten digitale Berufe in Guria — unterstützt von HEKS/EPER Georgia.',
+    coursesHeading: 'Kurse',
+    courses: 'Alle Kurse',
+    cases: 'Erfolgsgeschichten',
+    caseStudies: 'Fallstudien',
+    trainers: 'Trainer',
+    gallery: 'Fotogalerie',
+    communityHeading: 'Community',
+    jobs: 'Jobs & Projekte',
+    mentors: 'Mentoren',
+    forum: 'Forum',
+    marketplace: 'Marktplatz',
+    studio: 'CDC Studio',
+    helpHeading: 'Hilfe',
+    about: 'Über uns',
+    contactPage: 'Kontakt',
+    legalHeading: 'Rechtliches',
+    privacy: 'Datenschutzrichtlinie',
+    terms: 'Allgemeine Geschäftsbedingungen',
+    refund: 'Rückerstattungsrichtlinie',
+    rights: 'Alle Rechte vorbehalten.',
+    followUs: 'Folgen Sie uns',
+    weAccept: 'Wir akzeptieren',
+  },
+  es: {
+    tagline: 'Enseñamos profesiones digitales en Guria — con el apoyo de HEKS/EPER Georgia.',
+    coursesHeading: 'Cursos',
+    courses: 'Todos los Cursos',
+    cases: 'Historias de Éxito',
+    caseStudies: 'Casos de Estudio',
+    trainers: 'Formadores',
+    gallery: 'Galería de Fotos',
+    communityHeading: 'Comunidad',
+    jobs: 'Empleos y Proyectos',
+    mentors: 'Mentores',
+    forum: 'Foro',
+    marketplace: 'Mercado',
+    studio: 'CDC Studio',
+    helpHeading: 'Ayuda',
+    about: 'Sobre Nosotros',
+    contactPage: 'Contáctanos',
+    legalHeading: 'Legal',
+    privacy: 'Política de Privacidad',
+    terms: 'Términos y Condiciones',
+    refund: 'Política de Reembolso',
+    rights: 'Todos los derechos reservados.',
+    followUs: 'Síguenos',
+    weAccept: 'Aceptamos',
+  },
+  fr: {
+    tagline: 'Nous enseignons les métiers numériques en Gourie — avec le soutien de HEKS/EPER Georgia.',
+    coursesHeading: 'Cours',
+    courses: 'Tous les cours',
+    cases: 'Témoignages de réussite',
+    caseStudies: 'Études de cas',
+    trainers: 'Formateurs',
+    gallery: 'Galerie photo',
+    communityHeading: 'Communauté',
+    jobs: 'Emplois & Projets',
+    mentors: 'Mentors',
+    forum: 'Forum',
+    marketplace: 'Marché',
+    studio: 'CDC Studio',
+    helpHeading: 'Aide',
+    about: 'À propos de nous',
+    contactPage: 'Contactez-nous',
+    legalHeading: 'Mentions légales',
+    privacy: 'Politique de confidentialité',
+    terms: 'Conditions générales',
+    refund: 'Politique de remboursement',
+    rights: 'Tous droits réservés.',
+    followUs: 'Suivez-nous',
+    weAccept: 'Nous acceptons',
+  },
+  uk: {
+    tagline: 'Ми навчаємо цифрових професій у Гурії — за підтримки HEKS/EPER Georgia.',
+    coursesHeading: 'Курси',
+    courses: 'Усі курси',
+    cases: 'Історії успіху',
+    caseStudies: 'Кейси',
+    trainers: 'Тренери',
+    gallery: 'Фотогалерея',
+    communityHeading: 'Спільнота',
+    jobs: 'Вакансії та проєкти',
+    mentors: 'Ментори',
+    forum: 'Форум',
+    marketplace: 'Маркетплейс',
+    studio: 'CDC Studio',
+    helpHeading: 'Допомога',
+    about: 'Про нас',
+    contactPage: "Зв'язатися з нами",
+    legalHeading: 'Правова інформація',
+    privacy: 'Політика конфіденційності',
+    terms: 'Умови використання',
+    refund: 'Політика повернення коштів',
+    rights: 'Усі права захищено.',
+    followUs: 'Слідкуйте за нами',
+    weAccept: 'Ми приймаємо',
+  },
 } as const;
 
 // Shared hover-animated link style used across every column — slides
@@ -103,7 +197,9 @@ const STRINGS = {
 const navLink =
   'inline-block text-slate-400 hover:text-cyan-400 hover:translate-x-1 transition-all duration-200 no-underline';
 
-export default function SiteFooter({ lang }: SiteFooterProps) {
+export default function SiteFooter() {
+  const router = useRouter();
+  const lang = resolveLocale(router.locale);
   const t = STRINGS[lang];
   const year = new Date().getFullYear();
 
@@ -259,7 +355,7 @@ export default function SiteFooter({ lang }: SiteFooterProps) {
             or desktop. */}
         <div className={`border-t border-white/10 ${noHoverFx}`}>
           <p className="max-w-7xl mx-auto px-6 pt-6 pb-16 md:pb-20 text-center text-[11px] text-slate-600">
-            © {year} {lang === 'GEO' ? merchantInfo.orgNameKa : merchantInfo.orgNameEn}. {t.rights}
+            © {year} {lang === 'ka' ? merchantInfo.orgNameKa : merchantInfo.orgNameEn}. {t.rights}
           </p>
         </div>
       </div>

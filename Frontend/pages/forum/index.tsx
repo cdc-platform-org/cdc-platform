@@ -134,7 +134,7 @@ function ForumIndexContent() {
         )}
       </div>
 
-      <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+      <SiteFooter />
     </div>
   );
 }

@@ -89,5 +89,39 @@
     "submitting": "Enviando…",
     "applicationError": "No se pudo enviar su solicitud. Inténtelo de nuevo.",
     "freelancerFallbackName": "el freelancer"
+  },
+  "signIn": {
+    "toApply": "Inicie sesión para enviar una propuesta",
+    "toPost": "Inicie sesión para publicar un trabajo",
+    "toReview": "Inicie sesión para dejar una reseña",
+    "graduatesOnly": "Solo los graduados verificados de CDC pueden postularse."
+  },
+  "jobCategories": {
+    "label": "Categoría",
+    "all": "Todas",
+    "uiUxDesign": "Diseño UI/UX",
+    "webDevelopment": "Desarrollo Web",
+    "graphicDesign": "Diseño Gráfico",
+    "digitalMarketing": "Marketing Digital",
+    "other": "Otro"
+  },
+  "community": {
+    "pageTitle": "Empleos y Proyectos",
+    "pageSubtitle": "Encuentre una oportunidad laboral o publique su propio anuncio, todo en un solo lugar.",
+    "searchPlaceholder": "Buscar por título, descripción o habilidades...",
+    "noListingsFound": "No se encontraron anuncios.",
+    "postSectionTitle": "Publicar un Anuncio",
+    "authorizeButton": "Iniciar Sesión",
+    "clientAdminOnlyMessage": "Solo los clientes y administradores pueden publicar un trabajo o proyecto."
+  },
+  "jobsDashboard": {
+    "pageTitle": "Centro de Empleo",
+    "pageSubtitle": "Encuentre una oportunidad laboral o publique su propio anuncio.",
+    "postSectionTitle": "Agregar un Anuncio de Empleador",
+    "verificationRequiredMessage": "Solo los empleadores verificados y los freelancers verificados (que hayan aprobado el examen) pueden publicar un anuncio.",
+    "businessVerificationLink": "Completar Verificación de Empresa",
+    "skillsVerificationLink": "Completar Verificación de Habilidades",
+    "vacanciesTab": "Vacantes de Empleadores",
+    "gigsTab": "Anuncios de Freelancers"
   }
 }

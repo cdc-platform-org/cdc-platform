@@ -89,5 +89,39 @@
     "submitting": "Submitting…",
     "applicationError": "Unable to submit your application. Please try again.",
     "freelancerFallbackName": "the freelancer"
+  },
+  "signIn": {
+    "toApply": "Please sign in to submit a proposal",
+    "toPost": "Please sign in to post a job",
+    "toReview": "Please sign in to leave a review",
+    "graduatesOnly": "Only verified CDC graduates can apply."
+  },
+  "jobCategories": {
+    "label": "Category",
+    "all": "All",
+    "uiUxDesign": "UI/UX Design",
+    "webDevelopment": "Web Development",
+    "graphicDesign": "Graphic Design",
+    "digitalMarketing": "Digital Marketing",
+    "other": "Other"
+  },
+  "community": {
+    "pageTitle": "Jobs & Projects",
+    "pageSubtitle": "Find a job opportunity or post your own listing — all in one place.",
+    "searchPlaceholder": "Search by title, description, or skills...",
+    "noListingsFound": "No listings found.",
+    "postSectionTitle": "Post a Listing",
+    "authorizeButton": "Sign In",
+    "clientAdminOnlyMessage": "Only clients and administrators can post a job or project."
+  },
+  "jobsDashboard": {
+    "pageTitle": "Employment Center",
+    "pageSubtitle": "Find a job opportunity or post your own listing.",
+    "postSectionTitle": "Add an Employer Listing",
+    "verificationRequiredMessage": "Only verified employers and verified (exam-passed) freelancers can post a listing.",
+    "businessVerificationLink": "Complete Business Verification",
+    "skillsVerificationLink": "Complete Skills Verification",
+    "vacanciesTab": "Employer Vacancies",
+    "gigsTab": "Freelancer Listings"
   }
 }

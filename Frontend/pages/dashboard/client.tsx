@@ -1041,7 +1041,7 @@ function BusinessDashboardContent() {
         />
       )}
 
-      <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+      <SiteFooter />
       {sizeToast && <Toast message={sizeToast} icon="⚠️" />}
     </div>
   );

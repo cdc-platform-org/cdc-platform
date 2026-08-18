@@ -292,7 +292,7 @@ function BillingContent() {
         </RoleGate>
       </div>
 
-      <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+      <SiteFooter />
     </div>
   );
 }

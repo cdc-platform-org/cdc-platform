@@ -70,7 +70,7 @@ export default function SimpleSiteLayout({ titleKa, titleEn, children }: SimpleS
         {children(lang)}
       </main>
 
-      <SiteFooter lang={lang} />
+      <SiteFooter />
     </div>
   );
 }

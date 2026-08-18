@@ -18,23 +18,18 @@ import { Vacancy, Gig } from '../../types/community';
 import { getVacancies, applyToVacancy } from '../../services/vacancyService';
 import { getGigs, applyToGig } from '../../services/gigService';
 import { createReview } from '../../services/reviewService';
-import { JOB_CATEGORIES, JOB_CATEGORY_LABEL } from '../../utils/jobCategory';
+import { JOB_CATEGORIES } from '../../utils/jobCategory';
+import type { JobCategory } from '../../types/community';
 
-const SIGN_IN_TO_APPLY = {
-  ka: 'გთხოვთ გაიაროთ ავტორიზაცია შეკვეთის გასაგზავნად',
-  en: 'Please sign in to submit a proposal',
-};
-const SIGN_IN_TO_POST = {
-  ka: 'გთხოვთ გაიაროთ ავტორიზაცია განცხადების გამოსაქვეყნებლად',
-  en: 'Please sign in to post a job',
-};
-const SIGN_IN_TO_REVIEW = {
-  ka: 'გთხოვთ გაიაროთ ავტორიზაცია შეფასების დასატოვებლად',
-  en: 'Please sign in to leave a review',
-};
-const GRADUATES_ONLY_MESSAGE = {
-  ka: 'განაცხადის გაგზავნა მხოლოდ CDC-ის კურსდამთავრებულებს შეუძლიათ.',
-  en: 'Only verified CDC graduates can apply.',
+// JOB_CATEGORIES' own union values (e.g. 'ui_ux_design') double as the
+// translation key suffix on proposals.json's jobCategories object (e.g.
+// jobCategories.uiUxDesign) — mirrors the same map in pages/community.tsx.
+const CATEGORY_LABEL_KEY: Record<JobCategory, string> = {
+  ui_ux_design: 'uiUxDesign',
+  web_development: 'webDevelopment',
+  graphic_design: 'graphicDesign',
+  digital_marketing: 'digitalMarketing',
+  other: 'other',
 };
 
 type Tab = 'vacancies' | 'gigs';
@@ -111,7 +106,7 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
   const handleApplyVacancy = (vacancy: Vacancy) => {
     if (!isAuthenticated) {
       openAuthModal({
-        message: SIGN_IN_TO_APPLY,
+        message: t('signIn.toApply'),
         onSuccess: (loggedInUser) => {
           if (loggedInUser?.isVerifiedGraduate) setApplyingToVacancy(vacancy);
           else setShowGraduateGate(true);
@@ -126,7 +121,7 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
   const handleApplyGig = (gig: Gig) => {
     if (!isAuthenticated) {
       openAuthModal({
-        message: SIGN_IN_TO_APPLY,
+        message: t('signIn.toApply'),
         onSuccess: (loggedInUser) => {
           if (loggedInUser?.isVerifiedGraduate) setApplyingToGig(gig);
           else setShowGraduateGate(true);
@@ -140,7 +135,7 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
 
   const handleReviewClick = (gig: Gig) => {
     if (!isAuthenticated) {
-      openAuthModal({ message: SIGN_IN_TO_REVIEW });
+      openAuthModal({ message: t('signIn.toReview') });
       return;
     }
     setReviewingGig(gig);
@@ -169,11 +164,11 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
                 bottom of the heading. */}
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight leading-[1.2] pb-1">
               <span className="bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 bg-clip-text text-transparent">
-                დასაქმების ცენტრი
+                {t('jobsDashboard.pageTitle')}
               </span>
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              იპოვეთ სამუშაო შესაძლებლობა ან გამოაქვეყნეთ საკუთარი განცხადება.
+              {t('jobsDashboard.pageSubtitle')}
             </p>
           </div>
         </div>
@@ -187,16 +182,16 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
             link to go get verified, rather than a bare RoleGate block. */}
         <div className="lg:col-span-1">
           <div className="rounded-3xl p-6 border border-slate-200/70 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/40 backdrop-blur-xl shadow-sm sticky top-24">
-            <h2 className="text-lg font-bold tracking-tight mb-6 leading-snug">დამსაქმებლის განცხადების დამატება</h2>
+            <h2 className="text-lg font-bold tracking-tight mb-6 leading-snug">{t('jobsDashboard.postSectionTitle')}</h2>
             {!isAuthenticated ? (
               <div className="text-center py-6">
-                <p className="text-xs text-slate-400 mb-4">{SIGN_IN_TO_POST.ka}</p>
+                <p className="text-xs text-slate-400 mb-4">{t('signIn.toPost')}</p>
                 <button
                   type="button"
-                  onClick={() => openAuthModal({ message: SIGN_IN_TO_POST })}
+                  onClick={() => openAuthModal({ message: t('signIn.toPost') })}
                   className="w-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold py-3 rounded-xl text-xs uppercase transition-all shadow-lg shadow-cyan-500/10 tracking-wider"
                 >
-                  ავტორიზაცია
+                  {t('community.authorizeButton')}
                 </button>
               </div>
             ) : isAdmin || isVerifiedBusiness || isVerifiedGraduate ? (
@@ -204,22 +199,21 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
             ) : (
               <div className="text-center py-6">
                 <p className="text-xs text-slate-400 mb-4">
-                  განცხადების გამოქვეყნება შეუძლიათ მხოლოდ ვერიფიცირებულ დამსაქმებლებსა და ვერიფიცირებულ (გამოცდაგავლილ)
-                  ფრილანსერებს.
+                  {t('jobsDashboard.verificationRequiredMessage')}
                 </p>
                 {user?.role === 'Client' ? (
                   <Link
                     href="/dashboard/settings"
                     className="inline-block w-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold py-3 rounded-xl text-xs uppercase transition-all no-underline tracking-wider"
                   >
-                    ბიზნეს ვერიფიკაციის გავლა
+                    {t('jobsDashboard.businessVerificationLink')}
                   </Link>
                 ) : (
                   <Link
                     href="/freelancer/exam"
                     className="inline-block w-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold py-3 rounded-xl text-xs uppercase transition-all no-underline tracking-wider"
                   >
-                    უნარების ვერიფიკაციის გავლა
+                    {t('jobsDashboard.skillsVerificationLink')}
                   </Link>
                 )}
               </div>
@@ -231,10 +225,10 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
         <div className="lg:col-span-2 space-y-6">
           <div className="flex gap-2 p-1.5 rounded-2xl border border-slate-200/70 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/40 backdrop-blur-xl">
             <button type="button" onClick={() => setTab('vacancies')} className={tabButtonClass(tab === 'vacancies')}>
-              დამსაქმებლის ვაკანსიები
+              {t('jobsDashboard.vacanciesTab')}
             </button>
             <button type="button" onClick={() => setTab('gigs')} className={tabButtonClass(tab === 'gigs')}>
-              დასაქმების მსურველთა განცხადებები
+              {t('jobsDashboard.gigsTab')}
             </button>
           </div>
 
@@ -245,10 +239,10 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
                 onSkillsChange={setVacancySkills}
                 skillsPlaceholder={t('marketplace.skillsFilterPlaceholder')}
                 categoryFilter={{
-                  label: 'კატეგორია',
+                  label: t('jobCategories.label'),
                   value: vacancyCategoryFilter,
                   onChange: setVacancyCategoryFilter,
-                  options: JOB_CATEGORIES.map((cat) => ({ value: cat, label: JOB_CATEGORY_LABEL[cat].ka })),
+                  options: JOB_CATEGORIES.map((cat) => ({ value: cat, label: t(`jobCategories.${CATEGORY_LABEL_KEY[cat]}`) })),
                 }}
                 extraFilter={{
                   label: t('marketplace.employmentTypeLabel'),
@@ -287,10 +281,10 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
                 onSkillsChange={setGigSkills}
                 skillsPlaceholder={t('marketplace.skillsFilterPlaceholder')}
                 categoryFilter={{
-                  label: 'კატეგორია',
+                  label: t('jobCategories.label'),
                   value: gigCategoryFilter,
                   onChange: setGigCategoryFilter,
-                  options: JOB_CATEGORIES.map((cat) => ({ value: cat, label: JOB_CATEGORY_LABEL[cat].ka })),
+                  options: JOB_CATEGORIES.map((cat) => ({ value: cat, label: t(`jobCategories.${CATEGORY_LABEL_KEY[cat]}`) })),
                 }}
                 extraFilter={{
                   label: t('marketplace.budgetTypeLabel'),
@@ -353,7 +347,7 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
         />
       )}
 
-      {showGraduateGate && <GraduateOnlyModal message={GRADUATES_ONLY_MESSAGE} onClose={() => setShowGraduateGate(false)} />}
+      {showGraduateGate && <GraduateOnlyModal message={t('signIn.graduatesOnly')} onClose={() => setShowGraduateGate(false)} />}
 
       {reviewingGig && (
         <ReviewModal
@@ -378,7 +372,7 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
         />
       )}
 
-      <SiteFooter lang="GEO" />
+      <SiteFooter />
     </div>
   );
 }

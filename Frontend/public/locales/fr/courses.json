@@ -121,5 +121,8 @@
   "yourAnswer": "Votre réponse",
   "correctAnswer": "Bonne réponse",
   "noAnswer": "(sans réponse)",
-  "error": "Une erreur est survenue. Veuillez réessayer."
+  "error": "Une erreur est survenue. Veuillez réessayer.",
+  "checkoutError": "Impossible de démarrer le paiement. Veuillez réessayer.",
+  "saleOffSuffix": "PROMO",
+  "signInToEnroll": "Veuillez vous connecter pour vous inscrire à un cours"
 }

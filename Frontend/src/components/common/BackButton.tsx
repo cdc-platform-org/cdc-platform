@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router';
 import { ChevronLeft } from 'lucide-react';
+import { resolveLocale } from '../../utils/locale';
 
 interface BackButtonProps {
   // Where to go if there's no browser history to go back to (e.g. the user
@@ -13,14 +14,18 @@ interface BackButtonProps {
   forceFallback?: boolean;
 }
 
-const DEFAULT_LABEL: Record<string, string> = {
+const DEFAULT_LABEL = {
   ka: 'უკან დაბრუნება',
   en: 'Back',
+  de: 'Zurück',
+  es: 'Atrás',
+  fr: 'Retour',
+  uk: 'Назад',
 };
 
 export default function BackButton({ fallbackHref = '/', label, className = '', forceFallback = false }: BackButtonProps) {
   const router = useRouter();
-  const resolvedLabel = label ?? DEFAULT_LABEL[router.locale === 'en' ? 'en' : 'ka'];
+  const resolvedLabel = label ?? DEFAULT_LABEL[resolveLocale(router.locale)];
 
   const handleClick = () => {
     if (!forceFallback && typeof window !== 'undefined' && window.history.length > 1) {

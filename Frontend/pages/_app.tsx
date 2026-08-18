@@ -11,6 +11,7 @@ import ScrollToTop from '@/src/components/layout/ScrollToTop';
 import FloatingButtons from '@/src/components/layout/FloatingButtons';
 import CookieConsentBanner from '@/src/components/layout/CookieConsentBanner';
 import TermsConsentModal from '@/src/components/auth/TermsConsentModal';
+import { resolveLocale } from '@/src/utils/locale';
 import type { AppProps } from 'next/app';
 import '@/styles/globals.css';
 
@@ -132,7 +133,7 @@ function App({ Component, pageProps }: AppProps) {
         // itself. Without it the button falls back to the browser/OS
         // locale, which is why it was rendering in Russian for some users
         // regardless of the site's own ka/en language switcher.
-        src={`https://accounts.google.com/gsi/client?hl=${router.locale === 'en' ? 'en' : 'ka'}`}
+        src={`https://accounts.google.com/gsi/client?hl=${resolveLocale(router.locale)}`}
         strategy="afterInteractive"
         // Google's script loads async — if AuthModal.tsx opens before this
         // fires, window.google is still undefined and its render-button

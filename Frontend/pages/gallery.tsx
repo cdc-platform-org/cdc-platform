@@ -103,7 +103,7 @@ export default function GalleryPage() {
         onIndexChange={setLightboxIndex}
       />
 
-      <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+      <SiteFooter />
     </div>
   );
 }

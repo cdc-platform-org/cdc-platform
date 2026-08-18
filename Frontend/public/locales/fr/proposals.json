@@ -89,5 +89,39 @@
     "submitting": "Envoi en cours…",
     "applicationError": "Impossible d'envoyer votre candidature. Veuillez réessayer.",
     "freelancerFallbackName": "le freelance"
+  },
+  "signIn": {
+    "toApply": "Veuillez vous connecter pour envoyer une proposition",
+    "toPost": "Veuillez vous connecter pour publier une offre d'emploi",
+    "toReview": "Veuillez vous connecter pour laisser un avis",
+    "graduatesOnly": "Seuls les diplômés CDC vérifiés peuvent postuler."
+  },
+  "jobCategories": {
+    "label": "Catégorie",
+    "all": "Toutes",
+    "uiUxDesign": "Design UI/UX",
+    "webDevelopment": "Développement web",
+    "graphicDesign": "Design graphique",
+    "digitalMarketing": "Marketing digital",
+    "other": "Autre"
+  },
+  "community": {
+    "pageTitle": "Emplois et projets",
+    "pageSubtitle": "Trouvez une opportunité d'emploi ou publiez votre propre annonce — tout en un seul endroit.",
+    "searchPlaceholder": "Rechercher par titre, description ou compétences...",
+    "noListingsFound": "Aucune annonce trouvée.",
+    "postSectionTitle": "Publier une annonce",
+    "authorizeButton": "Se connecter",
+    "clientAdminOnlyMessage": "Seuls les clients et les administrateurs peuvent publier une offre d'emploi ou un projet."
+  },
+  "jobsDashboard": {
+    "pageTitle": "Centre de l'emploi",
+    "pageSubtitle": "Trouvez une opportunité d'emploi ou publiez votre propre annonce.",
+    "postSectionTitle": "Ajouter une offre d'employeur",
+    "verificationRequiredMessage": "Seuls les employeurs vérifiés et les freelances vérifiés (ayant réussi l'examen) peuvent publier une annonce.",
+    "businessVerificationLink": "Compléter la vérification d'entreprise",
+    "skillsVerificationLink": "Compléter la vérification des compétences",
+    "vacanciesTab": "Offres d'emploi des employeurs",
+    "gigsTab": "Annonces des freelances"
   }
 }

@@ -20,15 +20,12 @@ import { courseLanguageBadge } from '../../src/utils/courseLanguage';
 type SortMode = 'recommended' | 'price_asc' | 'price_desc';
 type PriceFilter = 'all' | 'free' | 'paid';
 
-// AuthModalContext always needs both languages at once (the modal itself
-// picks ka/en internally), regardless of this page's current locale — so
-// this stays a plain constant instead of a translation key, matching the
-// SIGN_IN_TO_* constants in community.tsx and forum/thread/[id].tsx.
-const SIGN_IN_TO_ENROLL = { ka: 'გთხოვთ გაიაროთ ავტორიზაცია კურსზე ჩასარიცხად', en: 'Please sign in to enroll in a course' };
-
 export default function CoursesPage() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  // Drives ka/en-only data (checkoutCourse's receipt language, course.language
+  // badges, sale countdown) — falls back to English for de/es/fr/uk visitors
+  // rather than Georgian.
+  const lang = router.locale === 'ka' ? 'ka' : 'en';
   const { t } = useTranslation('courses');
   const { isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
@@ -112,7 +109,7 @@ export default function CoursesPage() {
       }
       window.location.href = result.redirectUrl!;
     } catch {
-      setError(lang === 'en' ? 'Unable to start checkout. Please try again.' : 'გადახდის დაწყება ვერ მოხერხდა.');
+      setError(t('checkoutError'));
       setEnrollingId(null);
     }
   };
@@ -121,7 +118,7 @@ export default function CoursesPage() {
     if (!isAuthenticated) {
       // Guests never proceed to checkout directly — sign in first, then
       // resume straight into BOG checkout for this exact course.
-      openAuthModal({ message: SIGN_IN_TO_ENROLL, onSuccess: () => startCheckout(course) });
+      openAuthModal({ message: t('signInToEnroll'), onSuccess: () => startCheckout(course) });
       return;
     }
     startCheckout(course);
@@ -321,7 +318,7 @@ export default function CoursesPage() {
                       >
                         {course.saleActive && (
                           <span className="absolute top-3 right-3 z-10 text-xs font-black text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg shadow-rose-500/30">
-                            -{course.discountPercent}% {lang === 'ka' ? '' : 'OFF'}
+                            -{course.discountPercent}% {t('saleOffSuffix')}
                           </span>
                         )}
                         <div>
@@ -395,7 +392,7 @@ export default function CoursesPage() {
           </div>
         )}
       </div>
-      <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+      <SiteFooter />
     </div>
   );
 }

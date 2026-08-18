@@ -431,7 +431,7 @@ export default function Agency() {
         </div>
       </section>
 
-      <SiteFooter lang={lang} />
+      <SiteFooter />
 
       {showToast && (
         <Toast message={translate('მოთხოვნა წარმატებით გაიგზავნა!', 'Your request has been submitted!') as string} />

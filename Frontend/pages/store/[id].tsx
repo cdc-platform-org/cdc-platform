@@ -250,7 +250,7 @@ function StoreProductContent() {
         </div>
       </div>
 
-      <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+      <SiteFooter />
 
       {showBusinessGate && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={() => setShowBusinessGate(false)}>

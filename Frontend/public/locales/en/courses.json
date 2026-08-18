@@ -121,5 +121,8 @@
   "yourAnswer": "Your answer",
   "correctAnswer": "Correct answer",
   "noAnswer": "(not answered)",
-  "error": "Something went wrong. Please try again."
+  "error": "Something went wrong. Please try again.",
+  "checkoutError": "Unable to start checkout. Please try again.",
+  "saleOffSuffix": "OFF",
+  "signInToEnroll": "Please sign in to enroll in a course"
 }

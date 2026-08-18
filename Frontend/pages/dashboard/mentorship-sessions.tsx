@@ -821,7 +821,7 @@ function MentorshipSessionsContent() {
         )}
       </div>
 
-      <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+      <SiteFooter />
 
       {selectedBooking && <SessionDetailsModal booking={selectedBooking} lang={lang} onClose={() => setSelectedBooking(null)} />}
     </div>

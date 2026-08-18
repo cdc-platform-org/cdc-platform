@@ -410,7 +410,7 @@ export default function MentorsPage() {
           </div>
         )}
       </div>
-      <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+      <SiteFooter />
 
       {bookingMentor && <BookingModal mentor={bookingMentor} lang={lang} onClose={() => setBookingMentor(null)} />}
     </div>

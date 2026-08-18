@@ -17,7 +17,11 @@ import { MARKETPLACE_CATEGORIES } from '../../src/data/marketplaceCategories';
 function MarketplaceContent() {
   const { t } = useTranslation('marketplace');
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  // MARKETPLACE_CATEGORIES.value only carries ka/en fields (it's the literal
+  // ?category= filter value, matching DigitalProduct.category as sellers
+  // typed it) — falls back to English for de/es/fr/uk visitors rather than
+  // Georgian, same boundary as SiteHeader's catLocale.
+  const lang = router.locale === 'ka' ? 'ka' : 'en';
 
   const categoryParam = typeof router.query.category === 'string' ? router.query.category : null;
 
@@ -154,7 +158,7 @@ function MarketplaceContent() {
         )}
       </div>
 
-      <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+      <SiteFooter />
     </div>
   );
 }

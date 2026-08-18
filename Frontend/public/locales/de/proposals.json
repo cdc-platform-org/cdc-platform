@@ -89,5 +89,39 @@
     "submitting": "Wird gesendet…",
     "applicationError": "Ihre Bewerbung konnte nicht gesendet werden. Bitte versuchen Sie es erneut.",
     "freelancerFallbackName": "den Freelancer"
+  },
+  "signIn": {
+    "toApply": "Bitte melden Sie sich an, um ein Angebot einzureichen",
+    "toPost": "Bitte melden Sie sich an, um einen Auftrag zu veröffentlichen",
+    "toReview": "Bitte melden Sie sich an, um eine Bewertung abzugeben",
+    "graduatesOnly": "Nur verifizierte CDC-Absolventen können sich bewerben."
+  },
+  "jobCategories": {
+    "label": "Kategorie",
+    "all": "Alle",
+    "uiUxDesign": "UI/UX-Design",
+    "webDevelopment": "Webentwicklung",
+    "graphicDesign": "Grafikdesign",
+    "digitalMarketing": "Digitales Marketing",
+    "other": "Sonstiges"
+  },
+  "community": {
+    "pageTitle": "Aufträge & Projekte",
+    "pageSubtitle": "Finden Sie eine Jobmöglichkeit oder veröffentlichen Sie Ihr eigenes Angebot — alles an einem Ort.",
+    "searchPlaceholder": "Suche nach Titel, Beschreibung oder Fähigkeiten...",
+    "noListingsFound": "Keine Angebote gefunden.",
+    "postSectionTitle": "Ein Angebot veröffentlichen",
+    "authorizeButton": "Anmelden",
+    "clientAdminOnlyMessage": "Nur Kunden und Administratoren können einen Auftrag oder ein Projekt veröffentlichen."
+  },
+  "jobsDashboard": {
+    "pageTitle": "Beschäftigungszentrum",
+    "pageSubtitle": "Finden Sie eine Jobmöglichkeit oder veröffentlichen Sie Ihr eigenes Angebot.",
+    "postSectionTitle": "Ein Arbeitgeberangebot hinzufügen",
+    "verificationRequiredMessage": "Nur verifizierte Arbeitgeber und verifizierte (prüfungsbestandene) Freelancer können ein Angebot veröffentlichen.",
+    "businessVerificationLink": "Unternehmensverifizierung abschließen",
+    "skillsVerificationLink": "Kompetenzverifizierung abschließen",
+    "vacanciesTab": "Stellenangebote der Arbeitgeber",
+    "gigsTab": "Freelancer-Angebote"
   }
 }

@@ -438,7 +438,7 @@ function FreelancerExamContent() {
           </div>
         )}
       </div>
-      <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+      <SiteFooter />
       {warningToast && <Toast message={warningToast} icon="⚠️" />}
     </div>
   );

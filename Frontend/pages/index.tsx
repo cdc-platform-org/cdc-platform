@@ -1060,7 +1060,7 @@ export default function Home() {
         )}
       </div>
 
-      <SiteFooter lang={legacyLang} />
+      <SiteFooter />
     </div>
   );
 }

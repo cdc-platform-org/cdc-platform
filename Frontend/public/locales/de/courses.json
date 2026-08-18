@@ -121,5 +121,8 @@
   "yourAnswer": "Ihre Antwort",
   "correctAnswer": "Richtige Antwort",
   "noAnswer": "(nicht beantwortet)",
-  "error": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+  "error": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+  "checkoutError": "Der Bezahlvorgang konnte nicht gestartet werden. Bitte versuchen Sie es erneut.",
+  "saleOffSuffix": "RABATT",
+  "signInToEnroll": "Bitte melden Sie sich an, um sich für einen Kurs einzuschreiben"
 }

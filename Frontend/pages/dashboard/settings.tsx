@@ -472,7 +472,7 @@ function SettingsContent() {
         </div>
       </div>
 
-      <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+      <SiteFooter />
       {sizeToast && <Toast message={sizeToast} icon="⚠️" />}
       {resetLinkToast && <Toast message={resetLinkToast} icon="✅" />}
     </div>

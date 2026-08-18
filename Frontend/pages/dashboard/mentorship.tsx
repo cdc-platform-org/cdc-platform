@@ -255,7 +255,7 @@ function MentorshipWorkspaceContent() {
           )}
         </div>
       </div>
-      <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+      <SiteFooter />
     </div>
   );
 }

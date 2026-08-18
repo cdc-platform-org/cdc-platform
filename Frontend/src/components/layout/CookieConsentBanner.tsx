@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { Cookie, X } from 'lucide-react';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
+import { resolveLocale } from '../../utils/locale';
 
 const STORAGE_KEY = 'cdc-cookie-consent';
 
@@ -48,6 +49,74 @@ const dict = {
     save: 'Save Preferences',
     close: 'Close',
   },
+  de: {
+    body: 'Wir verwenden Cookies, damit die Website reibungslos funktioniert und um Ihre Erfahrung zu verbessern.',
+    learnMore: 'Mehr erfahren',
+    acceptAll: 'Alle akzeptieren',
+    manage: 'Verwalten',
+    modalTitle: 'Cookie-Einstellungen',
+    modalBody: 'Wählen Sie, welche Arten von Cookies Sie zulassen möchten. Essenzielle Cookies sind immer aktiv, da grundlegende Funktionen der Website von ihnen abhängen.',
+    essential: 'Essenziell',
+    essentialDesc: 'Anmeldung, Sicherheit und grundlegende Funktionen der Website. Kann nicht deaktiviert werden.',
+    analytics: 'Analyse',
+    analyticsDesc: 'Hilft uns zu verstehen, wie Besucher die Website nutzen, damit wir sie verbessern können.',
+    marketing: 'Marketing',
+    marketingDesc: 'Wird verwendet, um Anzeigen zu personalisieren und ihre Wirksamkeit zu messen.',
+    alwaysOn: 'Immer aktiv',
+    save: 'Einstellungen speichern',
+    close: 'Schließen',
+  },
+  es: {
+    body: 'Utilizamos cookies para que el sitio funcione correctamente y para mejorar su experiencia.',
+    learnMore: 'Más información',
+    acceptAll: 'Aceptar todo',
+    manage: 'Gestionar',
+    modalTitle: 'Preferencias de cookies',
+    modalBody: 'Elija qué tipos de cookies acepta. Las cookies esenciales siempre están activas, ya que las funciones principales del sitio dependen de ellas.',
+    essential: 'Esenciales',
+    essentialDesc: 'Inicio de sesión, seguridad y funcionalidad básica del sitio. No se pueden desactivar.',
+    analytics: 'Analítica',
+    analyticsDesc: 'Nos ayuda a entender cómo los visitantes usan el sitio para poder mejorarlo.',
+    marketing: 'Marketing',
+    marketingDesc: 'Se utiliza para personalizar anuncios y medir su eficacia.',
+    alwaysOn: 'Siempre activas',
+    save: 'Guardar preferencias',
+    close: 'Cerrar',
+  },
+  fr: {
+    body: 'Nous utilisons des cookies pour assurer le bon fonctionnement du site et améliorer votre expérience.',
+    learnMore: 'En savoir plus',
+    acceptAll: 'Tout accepter',
+    manage: 'Gérer',
+    modalTitle: 'Préférences relatives aux cookies',
+    modalBody: 'Choisissez les types de cookies que vous acceptez. Les cookies essentiels sont toujours actifs, car les fonctionnalités principales du site en dépendent.',
+    essential: 'Essentiels',
+    essentialDesc: 'Connexion, sécurité et fonctionnalités principales du site. Ne peuvent pas être désactivés.',
+    analytics: 'Analyse',
+    analyticsDesc: 'Nous aide à comprendre comment les visiteurs utilisent le site afin de l’améliorer.',
+    marketing: 'Marketing',
+    marketingDesc: 'Utilisés pour personnaliser les publicités et mesurer leur efficacité.',
+    alwaysOn: 'Toujours actifs',
+    save: 'Enregistrer les préférences',
+    close: 'Fermer',
+  },
+  uk: {
+    body: 'Ми використовуємо файли cookie, щоб сайт працював належним чином, і для покращення вашого досвіду.',
+    learnMore: 'Дізнатися більше',
+    acceptAll: 'Прийняти всі',
+    manage: 'Керувати',
+    modalTitle: 'Налаштування файлів cookie',
+    modalBody: 'Оберіть, які типи файлів cookie ви дозволяєте. Необхідні файли cookie завжди активні, оскільки від них залежать основні функції сайту.',
+    essential: 'Необхідні',
+    essentialDesc: 'Вхід, безпека та основні функції сайту. Не можна вимкнути.',
+    analytics: 'Аналітика',
+    analyticsDesc: 'Допомагає нам зрозуміти, як відвідувачі використовують сайт, щоб ми могли його покращити.',
+    marketing: 'Маркетинг',
+    marketingDesc: 'Використовується для персоналізації реклами та вимірювання її ефективності.',
+    alwaysOn: 'Завжди активні',
+    save: 'Зберегти налаштування',
+    close: 'Закрити',
+  },
 };
 
 function readStoredPreferences(): CookiePreferences | null {
@@ -87,7 +156,7 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange?: 
 // need to be re-asked at that point.
 export default function CookieConsentBanner() {
   const router = useRouter();
-  const lang = router.locale === 'en' ? 'en' : 'ka';
+  const lang = resolveLocale(router.locale);
   const t = dict[lang];
   const [visible, setVisible] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);

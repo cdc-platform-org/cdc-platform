@@ -1,10 +1,12 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { User } from '../types/auth';
 
-export interface AuthModalContextMessage {
-  ka: string;
-  en: string;
-}
+// Either a ka/en pair (for callers that only have Georgian/English source
+// text on hand, e.g. hardcoded marketing copy) or a plain string that's
+// already resolved to the visitor's locale (e.g. from useTranslation) —
+// AuthModal renders the latter as-is, so it works correctly in all 6
+// languages instead of only ka/en.
+export type AuthModalContextMessage = { ka: string; en: string } | string;
 
 type AuthModalSuccessHandler = (user: User) => void;
 

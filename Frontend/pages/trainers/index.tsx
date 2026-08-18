@@ -110,7 +110,7 @@ export default function TrainersPage() {
           </Link>
         </div>
       </div>
-      <SiteFooter lang={lang === 'en' ? 'ENG' : 'GEO'} />
+      <SiteFooter />
     </div>
   );
 }

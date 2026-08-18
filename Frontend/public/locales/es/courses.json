@@ -121,5 +121,8 @@
   "yourAnswer": "Su respuesta",
   "correctAnswer": "Respuesta correcta",
   "noAnswer": "(sin responder)",
-  "error": "Algo salió mal. Inténtelo de nuevo."
+  "error": "Algo salió mal. Inténtelo de nuevo.",
+  "checkoutError": "No se pudo iniciar el proceso de pago. Inténtelo de nuevo.",
+  "saleOffSuffix": "OFERTA",
+  "signInToEnroll": "Inicia sesión para inscribirte en un curso"
 }

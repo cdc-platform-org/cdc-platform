@@ -59,7 +59,7 @@ function AiToolsContent() {
         </RoleGate>
       </div>
 
-      <SiteFooter lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+      <SiteFooter />
     </div>
   );
 }
