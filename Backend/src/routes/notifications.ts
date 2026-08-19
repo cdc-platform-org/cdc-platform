@@ -20,7 +20,12 @@ router.get('/', async (req: Request, res: Response) => {
 router.post('/:id/read', async (req: Request, res: Response) => {
   const notification = await prisma.notification.findFirst({ where: { id: req.params.id, userId: req.user!.id } });
   if (!notification) return res.status(404).json({ message: 'Notification not found.' });
-  const updated = await prisma.notification.update({ where: { id: notification.id }, data: { isRead: true } });
+  // readAt only ever set once — a later call (e.g. re-opening an already-
+  // read notification) must not overwrite the original open time.
+  const updated = await prisma.notification.update({
+    where: { id: notification.id },
+    data: { isRead: true, readAt: notification.readAt ?? new Date() },
+  });
   res.json({ data: updated });
 });
 

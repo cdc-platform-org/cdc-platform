@@ -32,3 +32,34 @@ export async function sendNotification(payload: SendNotificationPayload): Promis
   const response = await apiClient.post<{ data: { sentCount: number } }>('/admin/notifications', payload);
   return response.data.data;
 }
+
+export interface NotificationBatchRow {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  targetLabel: string;
+  recipientCount: number;
+  readCount: number;
+  sentByName: string;
+  sentByEmail: string;
+  createdAt: string;
+  // Only meaningful when recipientCount === 1 — see Backend's GET
+  // /admin/notifications.
+  singleRecipientRead: boolean | null;
+  singleRecipientReadAt: string | null;
+}
+
+export async function getNotificationBatches(): Promise<NotificationBatchRow[]> {
+  const response = await apiClient.get<{ data: NotificationBatchRow[] }>('/admin/notifications');
+  return response.data.data;
+}
+
+export async function deleteNotificationBatch(id: string): Promise<void> {
+  await apiClient.delete(`/admin/notifications/${id}`);
+}
+
+export async function resendNotificationBatch(id: string): Promise<{ sentCount: number }> {
+  const response = await apiClient.post<{ data: { sentCount: number } }>(`/admin/notifications/${id}/resend`);
+  return response.data.data;
+}
