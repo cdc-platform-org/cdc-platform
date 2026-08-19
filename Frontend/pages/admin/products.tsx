@@ -20,6 +20,8 @@ import {
   getProductPurchases,
   DigitalProduct,
   AdminProductPurchase,
+  ProductLicenseType,
+  LICENSE_LABELS,
 } from '../../src/services/productService';
 import { getAiAutomationSettings, updateAiAutomationSettings } from '../../src/services/adminPanelService';
 import { formatPrice } from '../../src/utils/coursePricing';
@@ -125,7 +127,7 @@ function ModerationProductCard({
         )}
 
         <p className="text-xs text-gray-500">
-          {p.price === 0 ? 'Free' : formatPrice(p.price)} · {p.downloadsCount} downloads
+          {p.price === 0 ? 'Free' : formatPrice(p.price)} · {p.downloadsCount} downloads · {LICENSE_LABELS[p.licenseType].en}
           {p.submittedBy && <> · Submitted by {p.submittedBy.name} ({p.submittedBy.email})</>}
         </p>
         {p.status === 'REJECTED' && p.rejectionReason && <p className="text-xs text-red-500 mt-1">Reason: {p.rejectionReason}</p>}
@@ -253,6 +255,7 @@ function AdminProductsDashboard() {
   const [imageUrl, setImageUrl] = useState('');
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [fileUrl, setFileUrl] = useState('');
+  const [licenseType, setLicenseType] = useState<ProductLicenseType>('PERSONAL_USE');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fileUploading, setFileUploading] = useState(false);
@@ -282,7 +285,7 @@ function AdminProductsDashboard() {
     setError(null);
     setSubmitting(true);
     try {
-      await createProduct({ title, description, price: Number(price) || 0, category, imageUrl, previewImages, fileUrl });
+      await createProduct({ title, description, price: Number(price) || 0, category, imageUrl, previewImages, fileUrl, licenseType });
       setTitle('');
       setDescription('');
       setPrice('');
@@ -290,6 +293,7 @@ function AdminProductsDashboard() {
       setImageUrl('');
       setPreviewImages([]);
       setFileUrl('');
+      setLicenseType('PERSONAL_USE');
       await load();
     } catch (err: any) {
       setError(err?.response?.data?.message ?? 'Failed to create product.');
@@ -489,6 +493,20 @@ function AdminProductsDashboard() {
             />
             {fileUploadError && <p className="text-xs text-red-600 mt-1">{fileUploadError}</p>}
             {!fileUrl && !fileUploading && <p className="text-xs text-amber-600 mt-1">Required — only revealed to buyers after purchase</p>}
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">License</label>
+            <select
+              value={licenseType}
+              onChange={(e) => setLicenseType(e.target.value as ProductLicenseType)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            >
+              {(Object.keys(LICENSE_LABELS) as ProductLicenseType[]).map((key) => (
+                <option key={key} value={key}>{LICENSE_LABELS[key].en}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">{LICENSE_LABELS[licenseType].descriptionEn}</p>
           </div>
 
           <button

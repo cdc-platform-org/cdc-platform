@@ -2,6 +2,31 @@ import apiClient from './apiClient';
 
 export type ProductStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'NEEDS_REVISION';
 
+export type ProductLicenseType = 'PERSONAL_USE' | 'COMMERCIAL_USE' | 'EXTENDED_COMMERCIAL';
+
+// Shown on the submission form, the store product page, and the buyer's
+// purchase/download view — one label source so the three never drift.
+export const LICENSE_LABELS: Record<ProductLicenseType, { ka: string; en: string; descriptionKa: string; descriptionEn: string }> = {
+  PERSONAL_USE: {
+    ka: 'პირადი გამოყენება',
+    en: 'Personal Use Only',
+    descriptionKa: 'გამოსაყენებლად პირადი/არაკომერციული პროექტებისთვის.',
+    descriptionEn: 'For personal, non-commercial projects only.',
+  },
+  COMMERCIAL_USE: {
+    ka: 'კომერციული ლიცენზია',
+    en: 'Commercial License',
+    descriptionKa: 'შესაძლებელია გამოყენება კომერციულ პროექტებში.',
+    descriptionEn: 'May be used in commercial projects.',
+  },
+  EXTENDED_COMMERCIAL: {
+    ka: 'გაფართოებული კომერციული ლიცენზია',
+    en: 'Extended Commercial License',
+    descriptionKa: 'კომერციული გამოყენება გადაყიდვის/მასობრივი დისტრიბუციის უფლებით.',
+    descriptionEn: 'Commercial use including resale or mass distribution rights.',
+  },
+};
+
 export interface DigitalProduct {
   id: string;
   title: string;
@@ -21,6 +46,7 @@ export interface DigitalProduct {
   // Extension of the (never publicly exposed) fileUrl, e.g. "ZIP"/"PDF" —
   // safe to show as a format badge without revealing the real download link.
   fileFormat: string | null;
+  licenseType: ProductLicenseType;
   downloadsCount: number;
   createdAt: string;
   purchased: boolean;
@@ -60,9 +86,12 @@ export async function claimFreeProduct(id: string): Promise<void> {
   await apiClient.post(`/products/${id}/claim`);
 }
 
-export async function getProductDownloadUrl(id: string): Promise<string> {
-  const response = await apiClient.get<{ data: { fileUrl: string } }>(`/products/${id}/download`);
-  return response.data.data.fileUrl;
+// fileUrl is short-lived for private-storage products (see Backend's
+// productFileDelivery.ts) — always call this fresh right before opening the
+// download, never cache/reuse a previously-returned link.
+export async function getProductDownload(id: string): Promise<{ fileUrl: string; licenseType: ProductLicenseType | null }> {
+  const response = await apiClient.get<{ data: { fileUrl: string; licenseType: ProductLicenseType | null } }>(`/products/${id}/download`);
+  return response.data.data;
 }
 
 export interface CreateProductPayload {
@@ -73,6 +102,7 @@ export interface CreateProductPayload {
   imageUrl: string;
   previewImages?: string[]; // up to 4
   fileUrl: string;
+  licenseType?: ProductLicenseType; // omit to default to PERSONAL_USE (see Backend schema)
 }
 
 // Admin-authored — published immediately (no moderation needed).
@@ -115,6 +145,7 @@ export interface UpdateProductPayload {
   price?: number; // major-unit GEL
   imageUrl?: string;
   previewImages?: string[]; // up to 4
+  licenseType?: ProductLicenseType;
 }
 
 export async function updateProductAdmin(id: string, payload: UpdateProductPayload): Promise<DigitalProduct> {

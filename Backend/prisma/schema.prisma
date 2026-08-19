@@ -157,6 +157,17 @@ enum ListingModerationStatus {
   removed
 }
 
+// Digital Store usage rights — DigitalProduct.licenseType is the terms a
+// buyer agrees to at checkout; ProductPurchase.licenseType is a snapshot of
+// that value taken at fulfillment time (see productSaleService.ts), so a
+// later admin edit to the catalog listing's license never retroactively
+// changes what an existing buyer already purchased.
+enum ProductLicenseType {
+  PERSONAL_USE
+  COMMERCIAL_USE
+  EXTENDED_COMMERCIAL
+}
+
 // Background 3-language (ka/en/ru) subtitle generation for a lesson video
 // (see services/subtitleService.ts) — null means no video has ever
 // triggered the pipeline yet.
@@ -399,66 +410,66 @@ model User {
   aiSubscriptionActive          Boolean                     @default(false)
   createdAt                     DateTime                    @default(now())
 
-  postedGigs                  Gig[]                        @relation("PostedGigs")
-  assignedGigs                Gig[]                        @relation("AssignedGigs")
-  gigApplications             GigApplication[]
-  clientTransactions          GigTransaction[]             @relation("ClientTransactions")
-  freelancerTransactions      GigTransaction[]             @relation("FreelancerTransactions")
-  walletEntries               WalletEntry[]
-  postedVacancies             Vacancy[]
-  vacancyApplications         VacancyApplication[]
-  blogPosts                   BlogPost[]
-  reviewsGiven                Review[]                     @relation("ReviewsGiven")
-  reviewsReceived             Review[]                     @relation("ReviewsReceived")
-  sentDirectOffers            DirectOffer[]                @relation("SentDirectOffers")
-  receivedDirectOffers        DirectOffer[]                @relation("ReceivedDirectOffers")
-  sentMessages                Message[]                    @relation("SentMessages")
-  receivedMessages            Message[]                    @relation("ReceivedMessages")
-  paymentMethods              PaymentMethod[]
-  bogPayments                 BogPayment[]
-  stripePayments              StripePayment[]
-  courseEnrollments           CourseEnrollment[]
-  lessonProgress              LessonProgress[]
-  courseCertificates          CourseCertificate[]
-  courseDiscussionPosts       CourseDiscussionPost[]
-  examAttempts                ExamAttempt[]
-  freelancerSkillExamAttempts FreelancerSkillExamAttempt[]
-  skillTestAttempts           SkillTestAttempt[]
-  verifiedSkills              VerifiedSkill[]
-  productPurchases            ProductPurchase[]
-  assignmentSubmissions       AssignmentSubmission[]
-  submittedProducts           DigitalProduct[]             @relation("SubmittedProducts")
-  forumThreads                ForumThread[]
-  forumComments               ForumComment[]
-  forumThreadLikes            ForumThreadLike[]
-  forumCommentLikes           ForumCommentLike[]
-  disputesRaised              Dispute[]                    @relation("DisputesRaised")
-  disputesResolved            Dispute[]                    @relation("DisputesResolved")
-  payoutRequests              PayoutRequest[]              @relation("PayoutRequests")
-  payoutRequestsReviewed      PayoutRequest[]              @relation("PayoutRequestsReviewed")
-  auditLogs                   AuditLog[]
-  siteContentUpdates          SiteContent[]
-  studioInquiriesReviewed     StudioInquiry[]
+  postedGigs                   Gig[]                         @relation("PostedGigs")
+  assignedGigs                 Gig[]                         @relation("AssignedGigs")
+  gigApplications              GigApplication[]
+  clientTransactions           GigTransaction[]              @relation("ClientTransactions")
+  freelancerTransactions       GigTransaction[]              @relation("FreelancerTransactions")
+  walletEntries                WalletEntry[]
+  postedVacancies              Vacancy[]
+  vacancyApplications          VacancyApplication[]
+  blogPosts                    BlogPost[]
+  reviewsGiven                 Review[]                      @relation("ReviewsGiven")
+  reviewsReceived              Review[]                      @relation("ReviewsReceived")
+  sentDirectOffers             DirectOffer[]                 @relation("SentDirectOffers")
+  receivedDirectOffers         DirectOffer[]                 @relation("ReceivedDirectOffers")
+  sentMessages                 Message[]                     @relation("SentMessages")
+  receivedMessages             Message[]                     @relation("ReceivedMessages")
+  paymentMethods               PaymentMethod[]
+  bogPayments                  BogPayment[]
+  stripePayments               StripePayment[]
+  courseEnrollments            CourseEnrollment[]
+  lessonProgress               LessonProgress[]
+  courseCertificates           CourseCertificate[]
+  courseDiscussionPosts        CourseDiscussionPost[]
+  examAttempts                 ExamAttempt[]
+  freelancerSkillExamAttempts  FreelancerSkillExamAttempt[]
+  skillTestAttempts            SkillTestAttempt[]
+  verifiedSkills               VerifiedSkill[]
+  productPurchases             ProductPurchase[]
+  assignmentSubmissions        AssignmentSubmission[]
+  submittedProducts            DigitalProduct[]              @relation("SubmittedProducts")
+  forumThreads                 ForumThread[]
+  forumComments                ForumComment[]
+  forumThreadLikes             ForumThreadLike[]
+  forumCommentLikes            ForumCommentLike[]
+  disputesRaised               Dispute[]                     @relation("DisputesRaised")
+  disputesResolved             Dispute[]                     @relation("DisputesResolved")
+  payoutRequests               PayoutRequest[]               @relation("PayoutRequests")
+  payoutRequestsReviewed       PayoutRequest[]               @relation("PayoutRequestsReviewed")
+  auditLogs                    AuditLog[]
+  siteContentUpdates           SiteContent[]
+  studioInquiriesReviewed      StudioInquiry[]
   // CDC Business AI — a Business (Client) account's chat agents. See the
   // Agent model's own comment for why billing fields live there instead of
   // a separate Subscription model for now.
-  agents                      Agent[]
-  examSessions                ExamSession[]
-  billingSubscriptions        BillingSubscription[]
-  blogComments                BlogComment[]
-  mentorshipRequestsMade      MentorshipRequest[]          @relation("MentorshipRequestsMade")
-  mentorshipRequestsResolved  MentorshipRequest[]          @relation("MentorshipRequestsResolved")
-  notifications               Notification[]
-  mentorAvailabilityRules     MentorAvailabilityRule[]
+  agents                       Agent[]
+  examSessions                 ExamSession[]
+  billingSubscriptions         BillingSubscription[]
+  blogComments                 BlogComment[]
+  mentorshipRequestsMade       MentorshipRequest[]           @relation("MentorshipRequestsMade")
+  mentorshipRequestsResolved   MentorshipRequest[]           @relation("MentorshipRequestsResolved")
+  notifications                Notification[]
+  mentorAvailabilityRules      MentorAvailabilityRule[]
   mentorAvailabilityExceptions MentorAvailabilityException[]
-  sentNotificationBatches     NotificationBatch[]
-  mentorshipBookingsAsMentor  MentorshipBooking[]          @relation("MentorshipBookingsAsMentor")
-  mentorshipBookingsAsStudent MentorshipBooking[]          @relation("MentorshipBookingsAsStudent")
-  mentorBookingHistoryActions MentorBookingHistory[]       @relation("MentorBookingHistoryActor")
-  mentorChatMessagesSent      MentorChatMessage[]          @relation("MentorChatMessagesSent")
-  mentorChatMessagesReceived  MentorChatMessage[]          @relation("MentorChatMessagesReceived")
-  mentorChatViolations        MentorChatViolation[]        @relation("MentorChatViolations")
-  cyberSentinelDevices        CyberSentinelDevice[]        @relation("CyberSentinelDevices")
+  sentNotificationBatches      NotificationBatch[]
+  mentorshipBookingsAsMentor   MentorshipBooking[]           @relation("MentorshipBookingsAsMentor")
+  mentorshipBookingsAsStudent  MentorshipBooking[]           @relation("MentorshipBookingsAsStudent")
+  mentorBookingHistoryActions  MentorBookingHistory[]        @relation("MentorBookingHistoryActor")
+  mentorChatMessagesSent       MentorChatMessage[]           @relation("MentorChatMessagesSent")
+  mentorChatMessagesReceived   MentorChatMessage[]           @relation("MentorChatMessagesReceived")
+  mentorChatViolations         MentorChatViolation[]         @relation("MentorChatViolations")
+  cyberSentinelDevices         CyberSentinelDevice[]         @relation("CyberSentinelDevices")
 
   @@map("users")
 }
@@ -710,15 +721,15 @@ model Course {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  orders          Order[]                @relation("OrderCourses")
-  enrollments     CourseEnrollment[]
-  sections        CourseSection[]
-  certificates    CourseCertificate[]
+  orders             Order[]                @relation("OrderCourses")
+  enrollments        CourseEnrollment[]
+  sections           CourseSection[]
+  certificates       CourseCertificate[]
   // One AI-generated certification exam per course, if configured by an
   // admin — courses without one keep the old "100% lessons" certificate gate
   // (see routes/courses.ts's GET /:id/certificate).
-  exam            Exam?
-  discussionPosts CourseDiscussionPost[]
+  exam               Exam?
+  discussionPosts    CourseDiscussionPost[]
   // Set once a LiveTraining recording gets turned into this course — see
   // LiveTraining.convertedToCourseId's own comment for why this is a link
   // rather than a merge.
@@ -739,35 +750,35 @@ model Course {
 // ============================================================
 
 model LiveTraining {
-  id            String    @id @default(uuid())
-  title         String
-  titleEn       String?
-  description   String
-  descriptionEn String?
-  category      String
-  scheduledAt   DateTime
+  id                  String   @id @default(uuid())
+  title               String
+  titleEn             String?
+  description         String
+  descriptionEn       String?
+  category            String
+  scheduledAt         DateTime
   // Minor units (tetri), same Int-money convention as Course.originalPrice
   // elsewhere. Nullable — a lead-gen/intro session may be free, with any
   // real payment collected on the follow-up call rather than through this
   // registration form.
-  price         Int?
-  thumbnailUrl  String?
+  price               Int?
+  thumbnailUrl        String?
   // Group-viability floor — see LiveTrainingLead's registeredCount-derived
   // "min threshold met" badge on both the admin and public pages. 0 means
   // no minimum is enforced.
-  minCapacity   Int       @default(0)
-  maxCapacity   Int
-  published     Boolean   @default(false)
+  minCapacity         Int      @default(0)
+  maxCapacity         Int
+  published           Boolean  @default(false)
   // Set once an admin turns the recording into a real Course. A link, not a
   // merge: the new Course still needs real sections/lessons authored by
   // hand, this just lets past leads be notified and traced back to the
   // session that originated the course.
-  convertedToCourseId String?      @unique
-  convertedToCourse   Course?      @relation(fields: [convertedToCourseId], references: [id])
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  convertedToCourseId String?  @unique
+  convertedToCourse   Course?  @relation(fields: [convertedToCourseId], references: [id])
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  leads         LiveTrainingLead[]
+  leads LiveTrainingLead[]
 
   @@index([published])
   @@map("live_trainings")
@@ -784,16 +795,16 @@ enum LiveTrainingLeadStatus {
 // admin-managed status), not a User relation, since a prospective trainee
 // registering by phone number has no reason to have an account yet.
 model LiveTrainingLead {
-  id             String                  @id @default(uuid())
+  id             String                 @id @default(uuid())
   liveTrainingId String
-  liveTraining   LiveTraining            @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  liveTraining   LiveTraining           @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
   name           String
   email          String
   phone          String
-  status         LiveTrainingLeadStatus  @default(NOT_CONTACTED)
+  status         LiveTrainingLeadStatus @default(NOT_CONTACTED)
   adminNote      String?
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
 
   @@index([liveTrainingId])
   @@index([status])
@@ -1101,7 +1112,7 @@ model VerifiedSkill {
 // Course.originalPrice/BogPayment.amount elsewhere — not Float, to avoid
 // floating-point rounding on money.
 model DigitalProduct {
-  id                 String            @id @default(uuid())
+  id                 String             @id @default(uuid())
   title              String
   // Auto-translated by Gemini at create/update time whenever left blank
   // (see aiTranslateService.ts's translateTitleAndDescription, wired into
@@ -1110,7 +1121,7 @@ model DigitalProduct {
   // opt-in via a manual "Auto-Translate" button.
   titleEn            String?
   description        String
-  descriptionEn       String?
+  descriptionEn      String?
   price              Int
   category           String
   imageUrl           String
@@ -1118,13 +1129,24 @@ model DigitalProduct {
   // main cover) in the /store/[id] gallery/carousel — same array-of-URLs
   // pattern as StudioCaseStudy.galleryImages. Capped at 4 in the Zod schemas
   // (products.ts/adminProducts.ts), not here.
-  previewImages      String[]          @default([])
+  previewImages      String[]           @default([])
   // Never exposed directly to the client until a completed purchase is
-  // verified server-side — see routes/products.ts's /:id/download.
+  // verified server-side — see routes/products.ts's /:id/download. Uploads
+  // made through /upload-file store a `cdcblob://<blobName>` marker here
+  // instead of a real URL — privateBlobStorage.ts's isPrivateBlobRef()/
+  // resolveDeliveryUrl() mint a short-lived signed URL from it on demand.
+  // Pre-migration rows (or an admin who pasted an external URL directly)
+  // keep a plain URL, returned as-is — same protection level those had
+  // before this existed, not a regression.
   fileUrl            String
-  downloadsCount     Int               @default(0)
-  createdAt          DateTime          @default(now())
+  downloadsCount     Int                @default(0)
+  createdAt          DateTime           @default(now())
   purchases          ProductPurchase[]
+  // Usage terms attached to this listing — snapshotted onto ProductPurchase
+  // at fulfillment time (see productSaleService.ts). Defaults to the most
+  // restrictive option so an admin/submitter has to deliberately opt into a
+  // broader license rather than one being granted by omission.
+  licenseType        ProductLicenseType @default(PERSONAL_USE)
   // "PENDING" | "APPROVED" | "REJECTED" | "NEEDS_REVISION" — admin-created
   // products (see adminProducts.ts) are inserted as APPROVED directly;
   // graduate/verified-freelancer submissions (products.ts's POST /) start
@@ -1132,7 +1154,7 @@ model DigitalProduct {
   // productModerationService's AI review is confident enough — see
   // aiReview* fields below) and only show up in the public catalog once
   // APPROVED.
-  status             String            @default("PENDING")
+  status             String             @default("PENDING")
   rejectionReason    String?
   // AI moderation (services/productModerationService.ts), run once at
   // submission/resubmission time — never re-run automatically afterward, so
@@ -1147,7 +1169,7 @@ model DigitalProduct {
   aiReviewReasoning  String?
   aiReviewedAt       DateTime?
   submittedById      String?
-  submittedBy        User?             @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
+  submittedBy        User?              @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
 
   @@map("digital_products")
 }
@@ -1218,15 +1240,15 @@ model AiAutomationSettings {
 }
 
 model ProductPurchase {
-  id               String         @id @default(uuid())
+  id               String              @id @default(uuid())
   userId           String
-  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   productId        String
-  product          DigitalProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product          DigitalProduct      @relation(fields: [productId], references: [id], onDelete: Cascade)
   amount           Int
   // "PENDING" | "COMPLETED" — mirrors BogPayment.status naming for the
   // paid path; free (price=0) products are inserted directly as COMPLETED.
-  paymentStatus    String         @default("PENDING")
+  paymentStatus    String              @default("PENDING")
   // Creator payout split — set only when the product has a real external
   // creator (DigitalProduct.submittedById; admin-catalog products have
   // none and keep the full amount with the platform). Null on free claims
@@ -1234,12 +1256,18 @@ model ProductPurchase {
   commissionRate   Float?
   commissionAmount Int?
   netAmount        Int?
+  // Snapshot of DigitalProduct.licenseType at the moment this purchase was
+  // completed (see productSaleService.ts's completeProductPurchase and
+  // products.ts's free /:id/claim) — nullable only because purchases made
+  // before this field existed have no snapshot to backfill from; every
+  // purchase completed from here on always sets it.
+  licenseType      ProductLicenseType?
   // Set the first time this buyer actually downloads the file (see
   // GET /products/:id/download) — lets an admin see whether a refund
   // request came in before or after the file was ever opened. Never reset
   // on subsequent re-downloads (lifetime re-download is allowed).
   downloadedAt     DateTime?
-  createdAt        DateTime       @default(now())
+  createdAt        DateTime            @default(now())
 
   @@unique([userId, productId])
   @@index([userId])
@@ -2637,16 +2665,16 @@ model MentorshipRequest {
 // panel, surfaced via the header bell) — deliberately no reply/thread
 // concept, unlike MessageThread.
 model Notification {
-  id        String   @id @default(uuid())
+  id        String             @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   message   String
   // Free-form category tag ("MODERATION" | "ADMIN_DIRECT" | "SYSTEM", etc.)
   // — not a Prisma enum since admin-authored notification types may grow
   // without needing a migration each time.
-  type      String   @default("ADMIN_DIRECT")
-  isRead    Boolean  @default(false)
+  type      String             @default("ADMIN_DIRECT")
+  isRead    Boolean            @default(false)
   // Set alongside isRead the first time it flips true — POST
   // /notifications/:id/read never overwrites it on a later call, so it
   // stays the *first* open time. Null while unread.
@@ -2659,7 +2687,7 @@ model Notification {
   // it from every recipient's bell/hub too, not just the admin's history.
   batchId   String?
   batch     NotificationBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  createdAt DateTime           @default(now())
 
   @@index([userId])
   @@index([userId, isRead])
@@ -2692,7 +2720,7 @@ model NotificationBatch {
   sentBy         User     @relation(fields: [sentById], references: [id], onDelete: Restrict)
   createdAt      DateTime @default(now())
 
-  notifications  Notification[]
+  notifications Notification[]
 
   @@index([sentById])
   @@map("notification_batches")

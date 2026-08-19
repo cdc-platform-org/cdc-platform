@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import path from 'path';
 import { z } from 'zod';
+import { ProductLicenseType } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { authenticate, optionalAuthenticate, requireApproved } from '../middleware/auth';
 import { isBusinessToolsCategory, canPurchaseBusinessTools } from '../utils/marketplaceCategories';
@@ -12,6 +13,8 @@ import { fileFormatFromUrl } from '../utils/fileFormat';
 import { moderateProduct, ModerationInput } from '../services/productModerationService';
 import { getAiAutomationSettings } from '../services/aiAutomationSettingsService';
 import { autoTranslateIfBlank } from '../services/aiTranslateService';
+import { protectProductPreviewImage } from '../services/productImageProtection';
+import { uploadProductFile, resolveProductFileDeliveryUrl } from '../services/productFileDelivery';
 
 const router = Router();
 
@@ -49,6 +52,7 @@ router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
       imageUrl: p.imageUrl,
       previewImages: p.previewImages,
       fileFormat: fileFormatFromUrl(p.fileUrl),
+      licenseType: p.licenseType,
       downloadsCount: p.downloadsCount,
       createdAt: p.createdAt,
       purchased: purchasedIds.has(p.id),
@@ -84,6 +88,7 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
       imageUrl: product.imageUrl,
       previewImages: product.previewImages,
       fileFormat: fileFormatFromUrl(product.fileUrl),
+      licenseType: product.licenseType,
       downloadsCount: product.downloadsCount,
       createdAt: product.createdAt,
       purchased,
@@ -107,6 +112,10 @@ const submitSchema = z.object({
   // cover) — empty is fine, a submission isn't required to have a gallery.
   previewImages: z.array(z.string().url()).max(4).optional().default([]),
   fileUrl: z.string().url(),
+  // Omit to keep the schema-level default (PERSONAL_USE, the most
+  // restrictive option) — a submitter has to deliberately pick a broader
+  // license, not have one granted by omission.
+  licenseType: z.nativeEnum(ProductLicenseType).optional(),
 });
 
 // Shared by POST / below and the two upload-* routes further down — a
@@ -148,9 +157,14 @@ router.post(
   (req: Request, res: Response, next: NextFunction) => imageUpload.single('image')(req, res, (err: any) => multerErrorHandler(req, res, err, next)),
   async (req: Request, res: Response) => {
     if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
-    const filename = `product-${Date.now()}-${crypto.randomUUID()}${path.extname(req.file.originalname)}`;
     try {
-      const url = await uploadImage({ buffer: req.file.buffer, mimetype: req.file.mimetype, folderName: 'product-images', filename });
+      // Resized/watermarked before it ever reaches storage — see
+      // productImageProtection.ts. Always re-encoded to JPEG, so the stored
+      // filename's extension reflects that rather than the upload's original.
+      const protectedImage = await protectProductPreviewImage(req.file.buffer, req.file.mimetype);
+      const extension = protectedImage.mimetype === 'image/jpeg' ? '.jpg' : path.extname(req.file.originalname);
+      const filename = `product-${Date.now()}-${crypto.randomUUID()}${extension}`;
+      const url = await uploadImage({ buffer: protectedImage.buffer, mimetype: protectedImage.mimetype, folderName: 'product-images', filename });
       res.status(201).json({ data: { url } });
     } catch (err) {
       const message = err instanceof BunnyStorageUploadError ? err.message : 'Image upload failed. Please try again.';
@@ -167,9 +181,11 @@ router.post(
   (req: Request, res: Response, next: NextFunction) => fileUpload.single('file')(req, res, (err: any) => multerErrorHandler(req, res, err, next)),
   async (req: Request, res: Response) => {
     if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
-    const filename = `product-${Date.now()}-${crypto.randomUUID()}${path.extname(req.file.originalname)}`;
     try {
-      const url = await uploadImage({ buffer: req.file.buffer, mimetype: req.file.mimetype, folderName: 'product-files', filename });
+      // Private Azure Blob storage, not the public Bunny CDN used for
+      // images above — the returned `url` is a cdcblob:// marker, not a
+      // working link. See productFileDelivery.ts for why.
+      const url = await uploadProductFile(req.file.buffer, req.file.mimetype, req.file.originalname);
       res.status(201).json({ data: { url } });
     } catch (err) {
       const message = err instanceof BunnyStorageUploadError ? err.message : 'File upload failed. Please try again.';
@@ -396,8 +412,13 @@ router.post('/:id/claim', authenticate, requireApproved, async (req: Request, re
 
   await prisma.productPurchase.upsert({
     where: { userId_productId: { userId: req.user!.id, productId: product.id } },
-    update: {},
-    create: { userId: req.user!.id, productId: product.id, amount: 0, paymentStatus: 'COMPLETED' },
+    // A free product's licenseType can't have changed between an earlier
+    // claim and a repeat call here (upsert is idempotent for this route
+    // already), but re-stamping it on every call costs nothing and means a
+    // pre-this-feature claim (licenseType null) self-heals the next time
+    // the same user hits claim again.
+    update: { licenseType: product.licenseType },
+    create: { userId: req.user!.id, productId: product.id, amount: 0, paymentStatus: 'COMPLETED', licenseType: product.licenseType },
   });
 
   res.status(200).json({ data: { claimed: true } });
@@ -405,7 +426,10 @@ router.post('/:id/claim', authenticate, requireApproved, async (req: Request, re
 
 // ============================================================
 // DOWNLOAD — never returns fileUrl to anyone without a verified COMPLETED
-// purchase; also fine for lifetime re-downloads (no expiry check).
+// purchase; also fine for lifetime re-downloads (no expiry check). The
+// resolved URL itself (for private-storage products) is short-lived — see
+// productFileDelivery.ts — so re-hitting this endpoint is how a buyer gets
+// a fresh working link, not a cached one going stale.
 // ============================================================
 router.get('/:id/download', authenticate, requireApproved, async (req: Request, res: Response) => {
   const purchase = await prisma.productPurchase.findUnique({
@@ -431,7 +455,8 @@ router.get('/:id/download', authenticate, requireApproved, async (req: Request, 
         }),
   ]);
 
-  res.json({ data: { fileUrl: product.fileUrl } });
+  const fileUrl = await resolveProductFileDeliveryUrl(product.fileUrl);
+  res.json({ data: { fileUrl, licenseType: purchase.licenseType ?? product.licenseType } });
 });
 
 export default router;

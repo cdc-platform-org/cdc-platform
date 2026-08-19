@@ -44,13 +44,15 @@ import { getForumQuota, ForumPostQuota } from '../src/services/forumService';
 import { createMentorshipRequest } from '../src/services/mentorshipService';
 import {
   getProducts,
-  getProductDownloadUrl,
+  getProductDownload,
   submitProduct,
   updateMyProduct,
   getMySubmissions,
   uploadMyProductImage,
   uploadMyProductFile,
   DigitalProduct,
+  ProductLicenseType,
+  LICENSE_LABELS,
 } from '../src/services/productService';
 import RichTextEditor from '../src/components/shared/RichTextEditor';
 import FileDropzone from '../src/components/shared/FileDropzone';
@@ -899,6 +901,7 @@ function DashboardContent() {
   const [submitImageUrl, setSubmitImageUrl] = useState('');
   const [submitPreviewImages, setSubmitPreviewImages] = useState<string[]>([]);
   const [submitFileUrl, setSubmitFileUrl] = useState('');
+  const [submitLicenseType, setSubmitLicenseType] = useState<ProductLicenseType>('PERSONAL_USE');
   const [submitFileUploading, setSubmitFileUploading] = useState(false);
   const [submitFileUploadError, setSubmitFileUploadError] = useState<string | null>(null);
   const [editingSubmissionId, setEditingSubmissionId] = useState<string | null>(null);
@@ -1019,6 +1022,7 @@ function DashboardContent() {
           category: submitCategory,
           imageUrl: submitImageUrl,
           previewImages: submitPreviewImages,
+          licenseType: submitLicenseType,
           ...(submitFileUrl ? { fileUrl: submitFileUrl } : {}),
         });
       } else {
@@ -1030,6 +1034,7 @@ function DashboardContent() {
           imageUrl: submitImageUrl,
           previewImages: submitPreviewImages,
           fileUrl: submitFileUrl,
+          licenseType: submitLicenseType,
         });
       }
       setSubmitTitle('');
@@ -1039,6 +1044,7 @@ function DashboardContent() {
       setSubmitImageUrl('');
       setSubmitPreviewImages([]);
       setSubmitFileUrl('');
+      setSubmitLicenseType('PERSONAL_USE');
       setEditingSubmissionId(null);
       setShowSubmitForm(false);
       setMySubmissions(await getMySubmissions());
@@ -1057,6 +1063,7 @@ function DashboardContent() {
     setSubmitCategory(s.category);
     setSubmitImageUrl(s.imageUrl);
     setSubmitPreviewImages(s.previewImages);
+    setSubmitLicenseType(s.licenseType);
     setSubmitFileUrl(''); // fileUrl is never exposed to the client — re-upload if it needs to change, otherwise the existing file stays untouched (omitted from the payload).
     setSubmitError(null);
     setShowSubmitForm(true);
@@ -1149,7 +1156,7 @@ function DashboardContent() {
     setProductDownloadError(null);
     setDownloadingProductId(productId);
     try {
-      const fileUrl = await getProductDownloadUrl(productId);
+      const { fileUrl } = await getProductDownload(productId);
       window.open(fileUrl, '_blank', 'noopener,noreferrer');
     } catch {
       setProductDownloadError(t.downloadFailed);
@@ -1778,6 +1785,18 @@ function DashboardContent() {
                         />
                         {submitFileUploadError && <p className="text-xs text-red-500 mt-1">{submitFileUploadError}</p>}
                       </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{lang === 'ka' ? 'ლიცენზია' : 'License'}</label>
+                        <select
+                          value={submitLicenseType}
+                          onChange={(e) => setSubmitLicenseType(e.target.value as ProductLicenseType)}
+                          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm"
+                        >
+                          {(Object.keys(LICENSE_LABELS) as ProductLicenseType[]).map((key) => (
+                            <option key={key} value={key}>{LICENSE_LABELS[key][lang === 'ka' ? 'ka' : 'en']}</option>
+                          ))}
+                        </select>
+                      </div>
                       <div className="flex gap-2">
                         <button
                           type="submit"
@@ -1875,6 +1894,7 @@ function DashboardContent() {
                         <div>
                           <span className="text-[10px] font-black uppercase tracking-widest text-cyan-600 dark:text-cyan-400">{product.category}</span>
                           <h3 className="font-bold text-base text-slate-900 dark:text-white tracking-wide">{product.title}</h3>
+                          <span className="text-[11px] text-slate-400">{LICENSE_LABELS[product.licenseType][lang === 'ka' ? 'ka' : 'en']}</span>
                         </div>
                         <button
                           type="button"

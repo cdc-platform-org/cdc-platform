@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import { GetServerSideProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag, Building2, X, Zap, Upload, Code2 } from 'lucide-react';
+import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag, Building2, X, Zap, Upload, Code2, ShieldCheck } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
@@ -13,7 +13,7 @@ import MarkdownContent from '../../src/components/shared/MarkdownContent';
 import ProductGallery from '../../src/components/shared/ProductGallery';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
-import { getProduct, claimFreeProduct, getProductDownloadUrl, productTitle, productDescription, DigitalProduct } from '../../src/services/productService';
+import { getProduct, claimFreeProduct, getProductDownload, productTitle, productDescription, DigitalProduct, LICENSE_LABELS } from '../../src/services/productService';
 import { checkoutProduct } from '../../src/services/paymentService';
 import { checkoutProductStripe } from '../../src/services/stripePaymentService';
 import { formatPrice } from '../../src/utils/coursePricing';
@@ -135,7 +135,7 @@ function StoreProductContent() {
     setActionError(null);
     setSubmitting(true);
     try {
-      const fileUrl = await getProductDownloadUrl(product.id);
+      const { fileUrl } = await getProductDownload(product.id);
       window.open(fileUrl, '_blank', 'noopener,noreferrer');
     } catch (err: any) {
       setActionError(err?.response?.data?.message ?? t('downloadFailed'));
@@ -187,9 +187,14 @@ function StoreProductContent() {
                   {product.fileFormat}
                 </span>
               )}
+              <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400">
+                <ShieldCheck className="w-3 h-3" />
+                {LICENSE_LABELS[product.licenseType][contentLang]}
+              </span>
             </div>
             <h1 className="text-2xl md:text-3xl font-black tracking-wide mb-3">{productTitle(product, contentLang)}</h1>
             <MarkdownContent content={productDescription(product, contentLang)} className="mb-6 flex-1" />
+            <p className="text-xs text-slate-500 dark:text-slate-400 -mt-4 mb-6">{LICENSE_LABELS[product.licenseType][contentLang === 'ka' ? 'descriptionKa' : 'descriptionEn']}</p>
 
             {actionError && (
               <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-xs text-red-600 dark:text-red-300">{actionError}</div>
