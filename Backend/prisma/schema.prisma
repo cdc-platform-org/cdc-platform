@@ -717,8 +717,85 @@ model Course {
   // (see routes/courses.ts's GET /:id/certificate).
   exam            Exam?
   discussionPosts CourseDiscussionPost[]
+  // Set once a LiveTraining recording gets turned into this course — see
+  // LiveTraining.convertedToCourseId's own comment for why this is a link
+  // rather than a merge.
+  liveTrainingSource LiveTraining?
 
   @@map("courses")
+}
+
+// ============================================================
+// LIVE TRAININGS — one-off scheduled workshops sold as a lead-capture form
+// (name/email/phone), not a purchase: registering doesn't grant access to
+// anything by itself, it queues a callback for the team to schedule the
+// session by phone. Deliberately its own model rather than a Course
+// `type` field — a live training has no lessons/sections/exam/certificate,
+// and forcing it through Course's shape would leave most of that model
+// meaningless for every row of this kind (same reasoning MentorshipBooking
+// is its own model instead of an Order variant).
+// ============================================================
+
+model LiveTraining {
+  id            String    @id @default(uuid())
+  title         String
+  titleEn       String?
+  description   String
+  descriptionEn String?
+  category      String
+  scheduledAt   DateTime
+  // Minor units (tetri), same Int-money convention as Course.originalPrice
+  // elsewhere. Nullable — a lead-gen/intro session may be free, with any
+  // real payment collected on the follow-up call rather than through this
+  // registration form.
+  price         Int?
+  thumbnailUrl  String?
+  // Group-viability floor — see LiveTrainingLead's registeredCount-derived
+  // "min threshold met" badge on both the admin and public pages. 0 means
+  // no minimum is enforced.
+  minCapacity   Int       @default(0)
+  maxCapacity   Int
+  published     Boolean   @default(false)
+  // Set once an admin turns the recording into a real Course. A link, not a
+  // merge: the new Course still needs real sections/lessons authored by
+  // hand, this just lets past leads be notified and traced back to the
+  // session that originated the course.
+  convertedToCourseId String?      @unique
+  convertedToCourse   Course?      @relation(fields: [convertedToCourseId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  leads         LiveTrainingLead[]
+
+  @@index([published])
+  @@map("live_trainings")
+}
+
+enum LiveTrainingLeadStatus {
+  NOT_CONTACTED
+  CONTACTED
+  SCHEDULED
+  DECLINED
+}
+
+// A no-login registration — same shape as StudioInquiry (name/email/phone +
+// admin-managed status), not a User relation, since a prospective trainee
+// registering by phone number has no reason to have an account yet.
+model LiveTrainingLead {
+  id             String                  @id @default(uuid())
+  liveTrainingId String
+  liveTraining   LiveTraining            @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  name           String
+  email          String
+  phone          String
+  status         LiveTrainingLeadStatus  @default(NOT_CONTACTED)
+  adminNote      String?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@index([liveTrainingId])
+  @@index([status])
+  @@map("live_training_leads")
 }
 
 // ============================================================
