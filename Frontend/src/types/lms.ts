@@ -109,6 +109,13 @@ export interface LmsLesson {
   completed: boolean;
   embedUrl: string | null;
   thumbnailUrl: string | null;
+  // AI-generated conspectus (services/subtitleService.ts on the Backend) —
+  // null until generated, or if that language's translation pass failed
+  // (see conspectusStatus/conspectusError, partial success is possible).
+  conspectusStatus: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | null;
+  conspectusKa: string | null;
+  conspectusEn: string | null;
+  conspectusRu: string | null;
 }
 
 export interface LmsSection {

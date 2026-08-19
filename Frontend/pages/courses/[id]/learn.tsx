@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { GetServerSideProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, Loader2 } from 'lucide-react';
 import type { TFunction } from 'next-i18next';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
@@ -13,6 +13,7 @@ import BackButton from '../../../src/components/common/BackButton';
 import CourseVideoPlayer from '../../../src/components/courses/CourseVideoPlayer';
 import CourseTutorPanel from '../../../src/components/courses/CourseTutorPanel';
 import CourseDiscussionPanel from '../../../src/components/shared/CourseDiscussionPanel';
+import MarkdownContent from '../../../src/components/shared/MarkdownContent';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useEscapeToClose } from '../../../src/hooks/useEscapeToClose';
 import { LmsSection, LmsLesson, CourseProgressSummary, Course, ExamStatus, AssignmentSubmission } from '../../../src/types/lms';
@@ -168,7 +169,7 @@ function LearnContent() {
   const [examStatus, setExamStatus] = useState<ExamStatus | null>(null);
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
   const [expandedSectionIds, setExpandedSectionIds] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'overview' | 'resources' | 'assignment' | 'discussion'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'conspectus' | 'resources' | 'assignment' | 'discussion'>('overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloadingCert, setDownloadingCert] = useState(false);
@@ -180,6 +181,14 @@ function LearnContent() {
 
   const allLessons = useMemo(() => sections.flatMap((s) => s.lessons), [sections]);
   const activeLesson: LmsLesson | undefined = allLessons.find((l) => l.id === activeLessonId);
+
+  // Conspectus is only ever generated in ka/en/ru (see subtitleService.ts —
+  // matches the video's own caption languages, not the site's 6-locale
+  // system). Same ka/en 2-way collapse as every other ka/en-only field in
+  // this codebase (skills, marketplace categories, etc.) — de/es/fr/uk
+  // visitors get the English conspectus, same as they already get English
+  // course descriptions.
+  const conspectusText = activeLesson ? (lang === 'ka' ? activeLesson.conspectusKa : activeLesson.conspectusEn) : null;
 
   const load = useCallback(async () => {
     if (!courseId) return;
@@ -319,7 +328,7 @@ function LearnContent() {
           <h1 className="text-xl font-bold mt-6">{activeLesson?.title ?? course.title}</h1>
 
           <div className="flex gap-2 mt-6 border-b border-slate-800">
-            {(['overview', 'resources', 'assignment', 'discussion'] as const).map((tab) => (
+            {(['overview', 'conspectus', 'resources', 'assignment', 'discussion'] as const).map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -335,6 +344,19 @@ function LearnContent() {
 
           <div className="py-6 text-sm leading-relaxed text-slate-300">
             {activeTab === 'overview' && <p>{course.description}</p>}
+            {activeTab === 'conspectus' &&
+              (conspectusText ? (
+                <MarkdownContent content={conspectusText} className="!text-slate-300" />
+              ) : activeLesson?.conspectusStatus === 'PENDING' || activeLesson?.conspectusStatus === 'PROCESSING' ? (
+                <p className="flex items-center gap-2 text-slate-500">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {t('conspectusGenerating')}
+                </p>
+              ) : activeLesson?.conspectusStatus === 'FAILED' ? (
+                <p className="text-slate-500">{t('conspectusFailed')}</p>
+              ) : (
+                <p className="text-slate-500">{t('conspectusEmpty')}</p>
+              ))}
             {activeTab === 'resources' &&
               (activeLesson?.resources.length ? (
                 <ul className="space-y-2">
