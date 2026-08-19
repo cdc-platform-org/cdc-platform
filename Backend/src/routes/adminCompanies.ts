@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { logAdminAction } from '../services/auditLogService';
-import { sendBusinessVerifiedEmail } from '../services/emailService';
+import { sendBusinessVerifiedEmail, sendBusinessRejectedEmail } from '../services/emailService';
 
 const router = Router();
 router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
@@ -25,6 +25,14 @@ const companySelect = {
   aiTrialEndsAt: true,
   aiSubscriptionActive: true,
   createdAt: true,
+  // AI KYC inspection data (see services/businessKycService.ts) — read by
+  // the admin inspection drawer's extracted-vs-entered comparison. Null
+  // until the business's first document upload.
+  businessKycExtractedData: true,
+  businessKycScore: true,
+  businessKycReasoning: true,
+  businessKycCheckedAt: true,
+  businessKycRejectionReason: true,
 };
 
 const AI_TRIAL_DAYS_ON_FIRST_VERIFY = 7;
@@ -80,6 +88,16 @@ async function setVerified(req: Request, res: Response, isVerified: boolean, act
     sendBusinessVerifiedEmail(existing.email, existing.companyName ?? '').catch((err) =>
       console.error('[adminCompanies] sendBusinessVerifiedEmail failed:', err instanceof Error ? err.message : err)
     );
+    prisma.notification
+      .create({
+        data: {
+          userId: user.id,
+          title: 'თქვენი ბიზნეს ანგარიში დადასტურდა',
+          message: 'ადმინისტრაციამ დაადასტურა თქვენი ბიზნეს დოკუმენტი — Buy/Sell წვდომა უკვე ხელმისაწვდომია.',
+          type: 'BUSINESS_KYC',
+        },
+      })
+      .catch((err) => console.error('[adminCompanies] verify notification failed:', err));
   }
   res.json({ data: user });
 }
@@ -88,20 +106,45 @@ router.post('/:id/verify', (req: Request, res: Response) => setVerified(req, res
 router.post('/:id/unverify', (req: Request, res: Response) => setVerified(req, res, false, 'company.unverify'));
 
 // Distinct from unverify: rejection is a terminal state shown back to the
-// business (verificationStatus REJECTED) with an optional reason, whereas
-// unverify is an admin-initiated toggle-off with no such messaging. Doesn't
-// touch isVerified (already false for anything reject-able) or the trial.
+// business (verificationStatus REJECTED) with a required reason — sent to
+// them by email and in-app, and invites a resubmission — whereas unverify
+// is an admin-initiated toggle-off with no such messaging. Doesn't touch
+// isVerified (already false for anything reject-able) or the trial.
 router.post('/:id/reject', async (req: Request, res: Response) => {
-  const existing = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true, role: true } });
+  const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : '';
+  if (!reason) {
+    return res.status(400).json({ message: 'A rejection reason is required.' });
+  }
+  const existing = await prisma.user.findUnique({
+    where: { id: req.params.id },
+    select: { id: true, role: true, email: true, companyName: true },
+  });
   if (!existing || existing.role !== 'Client') {
     return res.status(404).json({ message: 'Business account not found.' });
   }
   const user = await prisma.user.update({
     where: { id: existing.id },
-    data: { verificationStatus: 'REJECTED' },
+    data: { verificationStatus: 'REJECTED', businessKycRejectionReason: reason },
     select: companySelect,
   });
   await logAdminAction({ action: 'company.reject', targetType: 'User', targetId: user.id, performedById: req.user!.id });
+
+  // Best-effort, same reasoning as the verify path above — a delivery
+  // failure shouldn't undo the rejection that already committed.
+  sendBusinessRejectedEmail(existing.email, existing.companyName ?? '', reason).catch((err) =>
+    console.error('[adminCompanies] sendBusinessRejectedEmail failed:', err instanceof Error ? err.message : err)
+  );
+  prisma.notification
+    .create({
+      data: {
+        userId: user.id,
+        title: 'თქვენი ბიზნეს დოკუმენტი უარყოფილია',
+        message: reason,
+        type: 'BUSINESS_KYC',
+      },
+    })
+    .catch((err) => console.error('[adminCompanies] reject notification failed:', err));
+
   res.json({ data: user });
 });
 

@@ -1,5 +1,20 @@
 import apiClient from './apiClient';
 
+// Mirrors services/businessKycService.ts's BusinessDocumentParseResult on
+// the Backend — the structured AI extraction, shown in the admin
+// inspection drawer's extracted-vs-entered comparison.
+export interface BusinessKycExtractedData {
+  hasOfficialHeaders: boolean;
+  companyName: string | null;
+  identificationCode: string | null;
+  registrationDate: string | null;
+  registryAuthority: string | null;
+  activeStatus: 'ACTIVE' | 'LIQUIDATION' | 'INSOLVENCY' | 'RESTRAINED' | 'UNKNOWN';
+  directors: { name: string; personalId: string | null }[];
+  confidenceScore: number;
+  reasoning: string;
+}
+
 export interface CompanyRow {
   id: string;
   name: string;
@@ -18,6 +33,11 @@ export interface CompanyRow {
   aiTrialEndsAt: string | null;
   aiSubscriptionActive: boolean;
   createdAt: string;
+  businessKycExtractedData: BusinessKycExtractedData | null;
+  businessKycScore: number | null;
+  businessKycReasoning: string | null;
+  businessKycCheckedAt: string | null;
+  businessKycRejectionReason: string | null;
 }
 
 export async function getCompanies(status?: 'unverified' | 'under_review' | 'verified' | 'pending' | 'rejected'): Promise<CompanyRow[]> {
@@ -35,8 +55,8 @@ export async function unverifyCompany(id: string): Promise<CompanyRow> {
   return response.data.data;
 }
 
-export async function rejectCompany(id: string): Promise<CompanyRow> {
-  const response = await apiClient.post<{ data: CompanyRow }>(`/admin/companies/${id}/reject`);
+export async function rejectCompany(id: string, reason: string): Promise<CompanyRow> {
+  const response = await apiClient.post<{ data: CompanyRow }>(`/admin/companies/${id}/reject`, { reason });
   return response.data.data;
 }
 

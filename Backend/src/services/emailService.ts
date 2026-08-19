@@ -327,6 +327,25 @@ export async function sendBusinessVerifiedEmail(email: string, companyName: stri
   await sendEmail(email, 'თქვენი ბიზნეს ანგარიში დადასტურდა! ✅', html, link);
 }
 
+// Distinct from the auto-verify path's silence-on-pending: this fires only
+// for an admin's explicit reject action (see routes/adminCompanies.ts),
+// which is the one point in the KYC flow where a human-written reason
+// actually exists. `reason` is admin-authored, not AI output — see
+// businessKycReasoning on the User model for the AI's own explanation,
+// which is shown in the admin drawer but never sent to the business.
+export async function sendBusinessRejectedEmail(email: string, companyName: string, reason: string): Promise<void> {
+  const link = `${FRONTEND_URL}/onboarding`;
+  const html = wrapTemplate(
+    'თქვენი ბიზნეს დოკუმენტის განხილვა ⚠️',
+    `სამწუხაროდ, ვერ დავადასტურეთ <strong>${companyName || 'თქვენი კომპანიის'}</strong> რეგისტრაციის დოკუმენტი.<br><br>` +
+      `მიზეზი: ${reason}<br><br>` +
+      `გთხოვთ ატვირთოთ ახალი ან გასწორებული დოკუმენტი განხილვისთვის.`,
+    'დოკუმენტის ხელახლა ატვირთვა',
+    link
+  );
+  await sendEmail(email, 'თქვენი ბიზნეს დოკუმენტის განხილვა ⚠️', html, link);
+}
+
 export async function sendPasswordResetEmail(email: string, token: string, lang: 'ka' | 'en' = 'ka'): Promise<void> {
   const link = `${FRONTEND_URL}/reset-password?token=${token}`;
   const html =

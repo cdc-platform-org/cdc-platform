@@ -1,10 +1,192 @@
 import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
-import { FileText, ShieldCheck, ShieldAlert, ShieldQuestion, Globe, Sparkles, X } from 'lucide-react';
+import { FileText, ShieldCheck, ShieldAlert, ShieldQuestion, Globe, Sparkles, X, Search, Users } from 'lucide-react';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
 import { getCompanies, verifyCompany, unverifyCompany, rejectCompany, updateAiTrial, CompanyRow } from '../../src/services/adminCompaniesService';
 import { useAuth } from '../../src/context/AuthContext';
+
+const ACTIVE_STATUS_BADGE: Record<string, string> = {
+  ACTIVE: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
+  LIQUIDATION: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/20',
+  INSOLVENCY: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/20',
+  RESTRAINED: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
+  UNKNOWN: 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 border-gray-200 dark:border-slate-700',
+};
+
+function ScoreBadge({ score }: { score: number }) {
+  const tone =
+    score >= 85
+      ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'
+      : score >= 50
+        ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20'
+        : 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/20';
+  return (
+    <span className={`inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full border ${tone}`}>
+      AI Confidence: {score}%
+    </span>
+  );
+}
+
+// Extracted-vs-entered comparison row — flags a mismatch visually rather
+// than making the admin eyeball two free-text values side by side.
+function CompareRow({ label, extracted, entered }: { label: string; extracted: string; entered: string }) {
+  const mismatch = extracted.trim().toLowerCase() !== entered.trim().toLowerCase() && extracted !== '—' && entered !== '—';
+  return (
+    <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-100 dark:border-slate-800 last:border-0">
+      <span className="text-xs font-medium text-gray-500 dark:text-slate-400">{label}</span>
+      <span className={`text-xs ${mismatch ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-gray-900 dark:text-white'}`}>{extracted}</span>
+      <span className="text-xs text-gray-600 dark:text-slate-300">{entered}</span>
+    </div>
+  );
+}
+
+function KycInspectionDrawer({
+  company,
+  onClose,
+  onApprove,
+  onReject,
+  busy,
+}: {
+  company: CompanyRow;
+  onClose: () => void;
+  onApprove: () => void;
+  onReject: (reason: string) => void;
+  busy: boolean;
+}) {
+  const [reasonDraft, setReasonDraft] = useState('');
+  const extracted = company.businessKycExtractedData;
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-end z-50" onClick={onClose}>
+      <div
+        className="h-full w-full max-w-lg bg-white dark:bg-slate-900 border-l border-gray-200 dark:border-white/10 overflow-y-auto p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">{company.companyName || company.name}</h3>
+            <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{company.email}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="p-2 cursor-pointer text-gray-400 dark:text-slate-500 hover:text-gray-700 dark:hover:text-slate-200 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {company.verificationDocUrl ? (
+          <a
+            href={company.verificationDocUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline mb-5 rounded-lg border border-gray-200 dark:border-slate-700 px-3.5 py-2.5"
+          >
+            <FileText className="w-4 h-4" />
+            Open uploaded document
+          </a>
+        ) : (
+          <p className="text-sm text-gray-400 dark:text-slate-500 mb-5">No document uploaded yet.</p>
+        )}
+
+        {extracted ? (
+          <>
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <ScoreBadge score={company.businessKycScore ?? extracted.confidenceScore} />
+              <span className={`inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full border ${ACTIVE_STATUS_BADGE[extracted.activeStatus]}`}>
+                {extracted.activeStatus}
+              </span>
+              {extracted.hasOfficialHeaders ? (
+                <span className="inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300">
+                  Official headers detected
+                </span>
+              ) : (
+                <span className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10">
+                  No official headers detected
+                </span>
+              )}
+            </div>
+
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-2">Extracted vs. entered</h4>
+            <div className="rounded-lg border border-gray-200 dark:border-slate-700 px-3.5 py-1 mb-4">
+              <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-100 dark:border-slate-800">
+                <span className="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500">Field</span>
+                <span className="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500">AI extracted</span>
+                <span className="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500">User entered</span>
+              </div>
+              <CompareRow label="Company name" extracted={extracted.companyName ?? '—'} entered={company.companyName ?? '—'} />
+              <CompareRow label="Tax/ID code" extracted={extracted.identificationCode ?? '—'} entered={company.taxId ?? '—'} />
+              <div className="grid grid-cols-3 gap-2 py-2">
+                <span className="text-xs font-medium text-gray-500 dark:text-slate-400">Registered</span>
+                <span className="text-xs text-gray-900 dark:text-white">{extracted.registrationDate ?? '—'}</span>
+                <span className="text-xs text-gray-600 dark:text-slate-300">{extracted.registryAuthority ?? '—'}</span>
+              </div>
+            </div>
+
+            {extracted.directors.length > 0 && (
+              <>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-2 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5" /> Directors / representatives
+                </h4>
+                <ul className="mb-4 space-y-1">
+                  {extracted.directors.map((d, i) => (
+                    <li key={i} className="text-xs text-gray-700 dark:text-slate-300">
+                      {d.name}
+                      {d.personalId ? ` · ${d.personalId}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-2">AI reasoning</h4>
+            <p className="text-xs text-gray-600 dark:text-slate-300 bg-gray-50 dark:bg-slate-800/60 rounded-lg p-3 mb-5">{extracted.reasoning}</p>
+          </>
+        ) : (
+          <p className="text-sm text-gray-400 dark:text-slate-500 mb-5">
+            No AI parse on file yet — either Gemini isn't configured, or this document hasn't been analyzed.
+          </p>
+        )}
+
+        {company.businessKycRejectionReason && (
+          <div className="mb-5 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 px-3.5 py-2.5">
+            <p className="text-xs font-bold text-red-700 dark:text-red-400 mb-0.5">Last rejection reason</p>
+            <p className="text-xs text-red-600 dark:text-red-300">{company.businessKycRejectionReason}</p>
+          </div>
+        )}
+
+        <div className="border-t border-gray-200 dark:border-slate-800 pt-5 space-y-3">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onApprove}
+            className="w-full text-sm font-semibold px-4 py-2.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+          >
+            Approve — Grant Buy/Sell Access
+          </button>
+          <textarea
+            value={reasonDraft}
+            onChange={(e) => setReasonDraft(e.target.value)}
+            rows={2}
+            placeholder="Rejection reason (sent to the business by email + in-app)"
+            className="w-full rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-800/60 dark:text-white px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-red-500"
+          />
+          <button
+            type="button"
+            disabled={busy || !reasonDraft.trim()}
+            onClick={() => onReject(reasonDraft.trim())}
+            className="w-full text-sm font-semibold px-4 py-2.5 rounded-lg border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-60"
+          >
+            Reject
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function formatAiTrialStatus(company: CompanyRow): string {
   if (company.aiSubscriptionActive) return 'Unlimited';
@@ -124,6 +306,7 @@ function AdminCompaniesDashboard() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | 'unverified' | 'under_review' | 'verified' | 'rejected'>('under_review');
   const [aiTrialCompanyId, setAiTrialCompanyId] = useState<string | null>(null);
+  const [inspectingCompanyId, setInspectingCompanyId] = useState<string | null>(null);
   const { user } = useAuth();
   // Matches the backend's requireAdminRole('SUPER_ADMIN') on PATCH
   // /admin/users/:id/ai-trial — hidden for MANAGER rather than shown as a
@@ -147,6 +330,7 @@ function AdminCompaniesDashboard() {
     setBusyId(id);
     try {
       await verifyCompany(id);
+      setInspectingCompanyId(null);
       load();
     } finally {
       setBusyId(null);
@@ -163,10 +347,11 @@ function AdminCompaniesDashboard() {
     }
   };
 
-  const handleReject = async (id: string) => {
+  const handleReject = async (id: string, reason: string) => {
     setBusyId(id);
     try {
-      await rejectCompany(id);
+      await rejectCompany(id, reason);
+      setInspectingCompanyId(null);
       load();
     } finally {
       setBusyId(null);
@@ -246,6 +431,17 @@ function AdminCompaniesDashboard() {
                       ) : (
                         <span className="text-xs text-gray-400 dark:text-slate-500">No document uploaded</span>
                       )}
+                      <div className="flex items-center gap-1.5">
+                        {c.businessKycScore !== null && <ScoreBadge score={c.businessKycScore} />}
+                        <button
+                          type="button"
+                          onClick={() => setInspectingCompanyId(c.id)}
+                          className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center gap-1.5"
+                        >
+                          <Search className="w-3.5 h-3.5" />
+                          Inspect
+                        </button>
+                      </div>
                       {c.isVerified ? (
                         <button
                           type="button"
@@ -256,24 +452,14 @@ function AdminCompaniesDashboard() {
                           Revoke Verification
                         </button>
                       ) : (
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            disabled={busyId === c.id || !c.verificationDocUrl}
-                            onClick={() => handleVerify(c.id)}
-                            className="text-xs font-medium px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            type="button"
-                            disabled={busyId === c.id || !c.verificationDocUrl}
-                            onClick={() => handleReject(c.id)}
-                            className="text-xs font-medium px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-60"
-                          >
-                            Reject
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          disabled={busyId === c.id || !c.verificationDocUrl}
+                          onClick={() => handleVerify(c.id)}
+                          className="text-xs font-medium px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+                        >
+                          Approve
+                        </button>
                       )}
                       {canManageAiTrial && (
                         <button
@@ -305,6 +491,21 @@ function AdminCompaniesDashboard() {
               onUpdated={(updated) => {
                 setCompanies((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
               }}
+            />
+          );
+        })()}
+
+      {inspectingCompanyId &&
+        (() => {
+          const company = companies.find((c) => c.id === inspectingCompanyId);
+          if (!company) return null;
+          return (
+            <KycInspectionDrawer
+              company={company}
+              busy={busyId === company.id}
+              onClose={() => setInspectingCompanyId(null)}
+              onApprove={() => handleVerify(company.id)}
+              onReject={(reason) => handleReject(company.id, reason)}
             />
           );
         })()}

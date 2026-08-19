@@ -6,7 +6,7 @@ import multer from 'multer';
 import path from 'path';
 import { OAuth2Client } from 'google-auth-library';
 import * as Sentry from '@sentry/node';
-import { User } from '@prisma/client';
+import { User, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import {
   registerSchema,
@@ -35,7 +35,7 @@ import {
 import { sendVerificationEmail, sendPasswordResetEmail, sendBusinessVerifiedEmail } from '../services/emailService';
 import { uploadToBunnyStorage, isBunnyStorageConfigured, BunnyStorageUploadError, deleteBunnyStorageUrlIfManaged } from '../services/bunnyStorage';
 import { uploadImage, deleteManagedImage } from '../services/imageStorage';
-import { parseBusinessDocument, isBusinessKycParsingConfigured, taxIdsMatch } from '../services/businessKycService';
+import { parseBusinessDocument, isBusinessKycParsingConfigured, shouldAutoApprove } from '../services/businessKycService';
 
 const router = Router();
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
@@ -892,20 +892,19 @@ router.post(
 
       // Best-effort instant auto-verification: only fires on a clean,
       // high-confidence match against the business's own self-reported
-      // taxId — anything else (not configured, low confidence, no taxId
-      // on file, a parse error) just leaves isVerified false, which is
-      // already the fallback "needs manual admin review" state, so a
-      // failure here never blocks the upload itself.
+      // taxId (see businessKycService.ts's shouldAutoApprove) — anything
+      // else (not configured, low score, non-ACTIVE status, no taxId on
+      // file, a parse error) just leaves isVerified false, which is already
+      // the fallback "needs manual admin review" state, so a failure here
+      // never blocks the upload itself. The extracted fields are persisted
+      // either way so the admin inspection drawer has something to show
+      // even when auto-approval didn't fire.
       let autoVerified = false;
-      if (isBusinessKycParsingConfigured() && previous?.taxId) {
+      let extractedData: Awaited<ReturnType<typeof parseBusinessDocument>> | null = null;
+      if (isBusinessKycParsingConfigured()) {
         try {
-          const parsed = await parseBusinessDocument(req.file.buffer, req.file.mimetype);
-          if (
-            parsed.hasOfficialHeaders &&
-            parsed.confidence === 'high' &&
-            parsed.identificationCode &&
-            taxIdsMatch(parsed.identificationCode, previous.taxId)
-          ) {
+          extractedData = await parseBusinessDocument(req.file.buffer, req.file.mimetype);
+          if (previous?.taxId && shouldAutoApprove(extractedData, previous.taxId)) {
             autoVerified = true;
           }
         } catch (err) {
@@ -928,6 +927,15 @@ router.post(
           verificationDocUrl: url,
           isVerified: autoVerified,
           verificationStatus: autoVerified ? 'VERIFIED' : 'PENDING',
+          businessKycRejectionReason: null,
+          ...(extractedData
+            ? {
+                businessKycExtractedData: extractedData as unknown as Prisma.InputJsonValue,
+                businessKycScore: extractedData.confidenceScore,
+                businessKycReasoning: extractedData.reasoning,
+                businessKycCheckedAt: new Date(),
+              }
+            : {}),
           ...(isFirstTrialGrant
             ? { trialStartDate: new Date(), aiTrialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }
             : {}),
@@ -942,6 +950,16 @@ router.post(
         sendBusinessVerifiedEmail(user.email, previous?.companyName ?? '').catch((err) =>
           console.error('[auth] sendBusinessVerifiedEmail failed:', err instanceof Error ? err.message : err)
         );
+        prisma.notification
+          .create({
+            data: {
+              userId: user.id,
+              title: 'თქვენი ბიზნეს ანგარიში დადასტურდა',
+              message: 'AI-მ ავტომატურად დაადასტურა თქვენი დოკუმენტი — Buy/Sell წვდომა უკვე ხელმისაწვდომია.',
+              type: 'BUSINESS_KYC',
+            },
+          })
+          .catch((err) => console.error('[auth] business-kyc notification failed:', err));
       }
 
       res.status(201).json({ user: toUserResponse(user) });

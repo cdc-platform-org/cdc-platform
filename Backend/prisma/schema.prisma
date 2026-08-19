@@ -342,6 +342,22 @@ model User {
   // Must be filled in by the business before auto-verification can ever
   // fire; blank always falls through to manual admin review.
   taxId                         String?
+  // Structured output of the last Gemini KYC parse (see
+  // services/businessKycService.ts) — companyName/registrationDate/
+  // registryAuthority/activeStatus/directors bundled as one JSON blob since
+  // they're only ever read together (the admin inspection drawer's
+  // extracted-vs-entered comparison) and never individually queried/
+  // filtered on. Same naming convention as Product.aiReviewScore/
+  // aiReviewConfidence/aiReviewReasoning/aiReviewedAt. Null until the first
+  // document upload; overwritten (not appended) on every resubmission.
+  businessKycExtractedData      Json?
+  businessKycScore              Int?
+  businessKycReasoning          String?
+  businessKycCheckedAt          DateTime?
+  // Set only by an admin's POST /admin/companies/:id/reject — distinct from
+  // the account-approval UserStatus.rejectionReason above, which is a
+  // different flow entirely.
+  businessKycRejectionReason    String?
   // Business/employer profile fields — only meaningful for role Client, but
   // not schema-restricted to it (same posture as the legal-identity fields
   // above, which are equally open to every role). `avatarUrl` doubles as

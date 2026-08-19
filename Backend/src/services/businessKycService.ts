@@ -3,16 +3,19 @@ import { z } from 'zod';
 import { GEMINI_API_KEY } from '../utils/env';
 
 // ============================================================
-// Business KYC document parsing — reads an uploaded Public Registry
-// Extract / company registration document (PDF or image) with Gemini's
-// multimodal API and extracts the identification code (ს/კ), so a match
-// against the business's self-reported taxId can auto-verify the account
-// instantly instead of always waiting on manual admin review.
+// Business KYC document parsing — reads an uploaded business registration
+// document (Georgian Public Registry Extract, or a foreign Certificate of
+// Incorporation / equivalent) with Gemini's multimodal API and extracts a
+// structured profile — company name, tax/identification code, registration
+// date, registry authority, active/liquidation status, and directors — plus
+// a 0-100 confidence score, so a high-confidence clean match can auto-verify
+// the account instantly instead of always waiting on manual admin review.
 //
 // Deliberately conservative: any failure mode (not configured, request
-// error, malformed response, low-confidence read) falls through to manual
-// review rather than guessing — this only ever *speeds up* verification
-// for a clean match, it never itself rejects or blocks an account.
+// error, malformed response, low score, non-ACTIVE status, a taxId
+// mismatch) falls through to manual review rather than guessing — this only
+// ever *speeds up* verification for a clean match, it never itself rejects
+// or blocks an account (only an admin's explicit reject does that).
 // ============================================================
 
 export function isBusinessKycParsingConfigured(): boolean {
@@ -21,16 +24,44 @@ export function isBusinessKycParsingConfigured(): boolean {
 
 const client = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
+const directorSchema = z.object({
+  name: z.string(),
+  // Personal ID / national ID — frequently redacted or absent on foreign
+  // certificates, so nullable rather than required.
+  personalId: z.string().nullable(),
+});
+
 const parseResultSchema = z.object({
   hasOfficialHeaders: z.boolean(),
+  companyName: z.string().nullable(),
   identificationCode: z.string().nullable(),
-  confidence: z.enum(['low', 'medium', 'high']),
+  // Free text, not a Date — source documents format this inconsistently
+  // (Georgian extracts vs. foreign certificates), and this is only ever
+  // displayed to an admin, never parsed/compared programmatically.
+  registrationDate: z.string().nullable(),
+  registryAuthority: z.string().nullable(),
+  activeStatus: z.enum(['ACTIVE', 'LIQUIDATION', 'INSOLVENCY', 'RESTRAINED', 'UNKNOWN']),
+  directors: z.array(directorSchema).default([]),
+  confidenceScore: z.number().min(0).max(100),
+  // Gemini's own explanation of what it saw and why — shown verbatim in the
+  // admin inspection drawer (e.g. "document shows inactive status", "scan
+  // quality too low to confirm the ID code", "no visible official
+  // letterhead"). Never shown to the business itself; the user-facing
+  // rejection message is written by the admin, or falls back to a generic
+  // string (see routes/adminCompanies.ts).
+  reasoning: z.string(),
 });
 
 export interface BusinessDocumentParseResult {
   hasOfficialHeaders: boolean;
+  companyName: string | null;
   identificationCode: string | null;
-  confidence: 'low' | 'medium' | 'high';
+  registrationDate: string | null;
+  registryAuthority: string | null;
+  activeStatus: 'ACTIVE' | 'LIQUIDATION' | 'INSOLVENCY' | 'RESTRAINED' | 'UNKNOWN';
+  directors: { name: string; personalId: string | null }[];
+  confidenceScore: number;
+  reasoning: string;
 }
 
 export class BusinessKycParseError extends Error {
@@ -50,17 +81,23 @@ export async function parseBusinessDocument(buffer: Buffer, mimetype: string): P
     throw new BusinessKycParseError(`Unsupported document type for parsing: ${mimetype}`);
   }
 
-  const prompt = `You are verifying a Georgian business registration document (a "Public Registry Extract" / ამონაწერი მეწარმეთა და არასამეწარმეო (არაკომერციული) იურიდიული პირების რეესტრიდან, issued by საჯარო რეესტრის ეროვნული სააგენტო).
+  const prompt = `You are verifying a business registration document for a KYC (Know Your Customer) check. This may be:
+- A Georgian "Public Registry Extract" (ამონაწერი მეწარმეთა და არასამეწარმეო (არაკომერციული) იურიდიული პირების რეესტრიდან), issued by საჯარო რეესტრის ეროვნული სააგენტო (the National Agency of Public Registry), OR
+- A foreign business registration document — a Certificate of Incorporation, Companies House extract, trade register excerpt, or equivalent official filing from any other country's business registry.
 
-Examine the attached document and determine:
-1. Whether it visibly contains official Georgian Public Registry headers/letterhead (phrases like "საჯარო რეესტრის ეროვნული სააგენტო" or "ამონაწერი მეწარმეთა და არასამეწარმეო").
-2. The company's identification code (ს/კ, "საიდენტიფიკაციო კოდი") printed on the document — a numeric code, typically 9 digits.
-3. Your confidence in this reading, given scan quality and clarity.
-
-If this does not look like a genuine Georgian Public Registry extract, or the identification code is illegible, set identificationCode to null and confidence to "low".
+Examine the attached document carefully and extract:
+1. hasOfficialHeaders: whether it visibly contains official registry letterhead/seals/header text (for Georgian documents, phrases like "საჯარო რეესტრის ეროვნული სააგენტო"; for foreign documents, the issuing registry's own official header).
+2. companyName: the registered business name exactly as printed.
+3. identificationCode: the company's tax/identification number (Georgian ს/კ "საიდენტიფიკაციო კოდი", typically 9 digits — or the equivalent company/tax registration number for a foreign document).
+4. registrationDate: the date this business was registered, as printed (any format).
+5. registryAuthority: the name of the issuing registry/authority.
+6. activeStatus: one of "ACTIVE" (in good standing, no restrictions), "LIQUIDATION" (undergoing or completed liquidation), "INSOLVENCY" (bankruptcy/insolvency proceedings), "RESTRAINED" (an active ban, seizure, or legal restraint on the company), or "UNKNOWN" (the document does not state a status, or it's illegible).
+7. directors: every legal representative / director / authorized person named, with their personal ID if printed (null if not printed or not applicable).
+8. confidenceScore: your confidence (0-100) that this is a genuine, unaltered, legible business registration document and that the fields above were read correctly. Score low (below 50) if the document doesn't look like an official registry document at all, appears digitally altered, is too blurry/cropped to read key fields, or is missing an identification code entirely.
+9. reasoning: 1-3 sentences explaining your reading — what you saw, and specifically call out anything suspicious, illegible, or that lowered your confidence (e.g. "no identification code visible", "status appears to be liquidation, not active", "document quality is too low to confirm authenticity").
 
 Respond with strict JSON only, matching this shape:
-{"hasOfficialHeaders": boolean, "identificationCode": string | null, "confidence": "low" | "medium" | "high"}`;
+{"hasOfficialHeaders": boolean, "companyName": string | null, "identificationCode": string | null, "registrationDate": string | null, "registryAuthority": string | null, "activeStatus": "ACTIVE" | "LIQUIDATION" | "INSOLVENCY" | "RESTRAINED" | "UNKNOWN", "directors": [{"name": string, "personalId": string | null}], "confidenceScore": number, "reasoning": string}`;
 
   const model = client.getGenerativeModel({
     // Same model as aiExamService.ts — confirmed to have real free-tier
@@ -106,4 +143,20 @@ export function taxIdsMatch(a: string, b: string): boolean {
   const na = normalizeTaxId(a);
   const nb = normalizeTaxId(b);
   return na.length > 0 && na === nb;
+}
+
+// Single source of truth for the auto-approve decision, used by routes/auth.ts's
+// upload handler — kept here (not inlined in the route) so the threshold and
+// its exact conditions live next to the parser that produces the values it
+// reads, rather than drifting out of sync in a second file.
+export const AUTO_APPROVE_SCORE_THRESHOLD = 85;
+
+export function shouldAutoApprove(parsed: BusinessDocumentParseResult, selfReportedTaxId: string): boolean {
+  return (
+    parsed.hasOfficialHeaders &&
+    parsed.confidenceScore >= AUTO_APPROVE_SCORE_THRESHOLD &&
+    parsed.activeStatus === 'ACTIVE' &&
+    !!parsed.identificationCode &&
+    taxIdsMatch(parsed.identificationCode, selfReportedTaxId)
+  );
 }
