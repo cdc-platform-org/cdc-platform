@@ -215,6 +215,15 @@ model User {
   // (profile pages, gig/vacancy cards, etc).
   averageRating                 Float?
   reviewCount                   Int                         @default(0)
+  // Same denormalized-rollup pattern as averageRating/reviewCount above, but
+  // for this user's Digital Store listings as a seller/creator (ProductReview,
+  // recomputed on every product review create/delete) — deliberately a
+  // separate figure from the gig-marketplace rating above, since a great
+  // freelancer and a great product creator are different reputations. Null/0
+  // for users who have never had a product reviewed (including anyone who
+  // has never submitted a product at all).
+  sellerRating                  Float?
+  sellerReviewCount             Int                         @default(0)
   // Set only by a SuperAdmin (POST /api/admin/users/:id/verify-graduate) once
   // they've confirmed the user actually completed a CDC course — there is no
   // automated course-completion pipeline yet, so this is a manual gate.
@@ -399,66 +408,68 @@ model User {
   aiSubscriptionActive          Boolean                     @default(false)
   createdAt                     DateTime                    @default(now())
 
-  postedGigs                  Gig[]                        @relation("PostedGigs")
-  assignedGigs                Gig[]                        @relation("AssignedGigs")
-  gigApplications             GigApplication[]
-  clientTransactions          GigTransaction[]             @relation("ClientTransactions")
-  freelancerTransactions      GigTransaction[]             @relation("FreelancerTransactions")
-  walletEntries               WalletEntry[]
-  postedVacancies             Vacancy[]
-  vacancyApplications         VacancyApplication[]
-  blogPosts                   BlogPost[]
-  reviewsGiven                Review[]                     @relation("ReviewsGiven")
-  reviewsReceived             Review[]                     @relation("ReviewsReceived")
-  sentDirectOffers            DirectOffer[]                @relation("SentDirectOffers")
-  receivedDirectOffers        DirectOffer[]                @relation("ReceivedDirectOffers")
-  sentMessages                Message[]                    @relation("SentMessages")
-  receivedMessages            Message[]                    @relation("ReceivedMessages")
-  paymentMethods              PaymentMethod[]
-  bogPayments                 BogPayment[]
-  stripePayments              StripePayment[]
-  courseEnrollments           CourseEnrollment[]
-  lessonProgress              LessonProgress[]
-  courseCertificates          CourseCertificate[]
-  courseDiscussionPosts       CourseDiscussionPost[]
-  examAttempts                ExamAttempt[]
-  freelancerSkillExamAttempts FreelancerSkillExamAttempt[]
-  skillTestAttempts           SkillTestAttempt[]
-  verifiedSkills              VerifiedSkill[]
-  productPurchases            ProductPurchase[]
-  assignmentSubmissions       AssignmentSubmission[]
-  submittedProducts           DigitalProduct[]             @relation("SubmittedProducts")
-  forumThreads                ForumThread[]
-  forumComments               ForumComment[]
-  forumThreadLikes            ForumThreadLike[]
-  forumCommentLikes           ForumCommentLike[]
-  disputesRaised              Dispute[]                    @relation("DisputesRaised")
-  disputesResolved            Dispute[]                    @relation("DisputesResolved")
-  payoutRequests              PayoutRequest[]              @relation("PayoutRequests")
-  payoutRequestsReviewed      PayoutRequest[]              @relation("PayoutRequestsReviewed")
-  auditLogs                   AuditLog[]
-  siteContentUpdates          SiteContent[]
-  studioInquiriesReviewed     StudioInquiry[]
+  postedGigs                   Gig[]                         @relation("PostedGigs")
+  assignedGigs                 Gig[]                         @relation("AssignedGigs")
+  gigApplications              GigApplication[]
+  clientTransactions           GigTransaction[]              @relation("ClientTransactions")
+  freelancerTransactions       GigTransaction[]              @relation("FreelancerTransactions")
+  walletEntries                WalletEntry[]
+  postedVacancies              Vacancy[]
+  vacancyApplications          VacancyApplication[]
+  blogPosts                    BlogPost[]
+  reviewsGiven                 Review[]                      @relation("ReviewsGiven")
+  reviewsReceived              Review[]                      @relation("ReviewsReceived")
+  sentDirectOffers             DirectOffer[]                 @relation("SentDirectOffers")
+  receivedDirectOffers         DirectOffer[]                 @relation("ReceivedDirectOffers")
+  sentMessages                 Message[]                     @relation("SentMessages")
+  receivedMessages             Message[]                     @relation("ReceivedMessages")
+  paymentMethods               PaymentMethod[]
+  bogPayments                  BogPayment[]
+  stripePayments               StripePayment[]
+  courseEnrollments            CourseEnrollment[]
+  lessonProgress               LessonProgress[]
+  courseCertificates           CourseCertificate[]
+  courseDiscussionPosts        CourseDiscussionPost[]
+  examAttempts                 ExamAttempt[]
+  freelancerSkillExamAttempts  FreelancerSkillExamAttempt[]
+  skillTestAttempts            SkillTestAttempt[]
+  verifiedSkills               VerifiedSkill[]
+  productPurchases             ProductPurchase[]
+  assignmentSubmissions        AssignmentSubmission[]
+  submittedProducts            DigitalProduct[]              @relation("SubmittedProducts")
+  productReviewsGiven          ProductReview[]               @relation("ProductReviewsGiven")
+  productReviewHelpfulVotes    ProductReviewHelpfulVote[]
+  forumThreads                 ForumThread[]
+  forumComments                ForumComment[]
+  forumThreadLikes             ForumThreadLike[]
+  forumCommentLikes            ForumCommentLike[]
+  disputesRaised               Dispute[]                     @relation("DisputesRaised")
+  disputesResolved             Dispute[]                     @relation("DisputesResolved")
+  payoutRequests               PayoutRequest[]               @relation("PayoutRequests")
+  payoutRequestsReviewed       PayoutRequest[]               @relation("PayoutRequestsReviewed")
+  auditLogs                    AuditLog[]
+  siteContentUpdates           SiteContent[]
+  studioInquiriesReviewed      StudioInquiry[]
   // CDC Business AI — a Business (Client) account's chat agents. See the
   // Agent model's own comment for why billing fields live there instead of
   // a separate Subscription model for now.
-  agents                      Agent[]
-  examSessions                ExamSession[]
-  billingSubscriptions        BillingSubscription[]
-  blogComments                BlogComment[]
-  mentorshipRequestsMade      MentorshipRequest[]          @relation("MentorshipRequestsMade")
-  mentorshipRequestsResolved  MentorshipRequest[]          @relation("MentorshipRequestsResolved")
-  notifications               Notification[]
-  mentorAvailabilityRules     MentorAvailabilityRule[]
+  agents                       Agent[]
+  examSessions                 ExamSession[]
+  billingSubscriptions         BillingSubscription[]
+  blogComments                 BlogComment[]
+  mentorshipRequestsMade       MentorshipRequest[]           @relation("MentorshipRequestsMade")
+  mentorshipRequestsResolved   MentorshipRequest[]           @relation("MentorshipRequestsResolved")
+  notifications                Notification[]
+  mentorAvailabilityRules      MentorAvailabilityRule[]
   mentorAvailabilityExceptions MentorAvailabilityException[]
-  sentNotificationBatches     NotificationBatch[]
-  mentorshipBookingsAsMentor  MentorshipBooking[]          @relation("MentorshipBookingsAsMentor")
-  mentorshipBookingsAsStudent MentorshipBooking[]          @relation("MentorshipBookingsAsStudent")
-  mentorBookingHistoryActions MentorBookingHistory[]       @relation("MentorBookingHistoryActor")
-  mentorChatMessagesSent      MentorChatMessage[]          @relation("MentorChatMessagesSent")
-  mentorChatMessagesReceived  MentorChatMessage[]          @relation("MentorChatMessagesReceived")
-  mentorChatViolations        MentorChatViolation[]        @relation("MentorChatViolations")
-  cyberSentinelDevices        CyberSentinelDevice[]        @relation("CyberSentinelDevices")
+  sentNotificationBatches      NotificationBatch[]
+  mentorshipBookingsAsMentor   MentorshipBooking[]           @relation("MentorshipBookingsAsMentor")
+  mentorshipBookingsAsStudent  MentorshipBooking[]           @relation("MentorshipBookingsAsStudent")
+  mentorBookingHistoryActions  MentorBookingHistory[]        @relation("MentorBookingHistoryActor")
+  mentorChatMessagesSent       MentorChatMessage[]           @relation("MentorChatMessagesSent")
+  mentorChatMessagesReceived   MentorChatMessage[]           @relation("MentorChatMessagesReceived")
+  mentorChatViolations         MentorChatViolation[]         @relation("MentorChatViolations")
+  cyberSentinelDevices         CyberSentinelDevice[]         @relation("CyberSentinelDevices")
 
   @@map("users")
 }
@@ -710,15 +721,15 @@ model Course {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  orders          Order[]                @relation("OrderCourses")
-  enrollments     CourseEnrollment[]
-  sections        CourseSection[]
-  certificates    CourseCertificate[]
+  orders             Order[]                @relation("OrderCourses")
+  enrollments        CourseEnrollment[]
+  sections           CourseSection[]
+  certificates       CourseCertificate[]
   // One AI-generated certification exam per course, if configured by an
   // admin — courses without one keep the old "100% lessons" certificate gate
   // (see routes/courses.ts's GET /:id/certificate).
-  exam            Exam?
-  discussionPosts CourseDiscussionPost[]
+  exam               Exam?
+  discussionPosts    CourseDiscussionPost[]
   // Set once a LiveTraining recording gets turned into this course — see
   // LiveTraining.convertedToCourseId's own comment for why this is a link
   // rather than a merge.
@@ -739,35 +750,35 @@ model Course {
 // ============================================================
 
 model LiveTraining {
-  id            String    @id @default(uuid())
-  title         String
-  titleEn       String?
-  description   String
-  descriptionEn String?
-  category      String
-  scheduledAt   DateTime
+  id                  String   @id @default(uuid())
+  title               String
+  titleEn             String?
+  description         String
+  descriptionEn       String?
+  category            String
+  scheduledAt         DateTime
   // Minor units (tetri), same Int-money convention as Course.originalPrice
   // elsewhere. Nullable — a lead-gen/intro session may be free, with any
   // real payment collected on the follow-up call rather than through this
   // registration form.
-  price         Int?
-  thumbnailUrl  String?
+  price               Int?
+  thumbnailUrl        String?
   // Group-viability floor — see LiveTrainingLead's registeredCount-derived
   // "min threshold met" badge on both the admin and public pages. 0 means
   // no minimum is enforced.
-  minCapacity   Int       @default(0)
-  maxCapacity   Int
-  published     Boolean   @default(false)
+  minCapacity         Int      @default(0)
+  maxCapacity         Int
+  published           Boolean  @default(false)
   // Set once an admin turns the recording into a real Course. A link, not a
   // merge: the new Course still needs real sections/lessons authored by
   // hand, this just lets past leads be notified and traced back to the
   // session that originated the course.
-  convertedToCourseId String?      @unique
-  convertedToCourse   Course?      @relation(fields: [convertedToCourseId], references: [id])
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  convertedToCourseId String?  @unique
+  convertedToCourse   Course?  @relation(fields: [convertedToCourseId], references: [id])
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  leads         LiveTrainingLead[]
+  leads LiveTrainingLead[]
 
   @@index([published])
   @@map("live_trainings")
@@ -784,16 +795,16 @@ enum LiveTrainingLeadStatus {
 // admin-managed status), not a User relation, since a prospective trainee
 // registering by phone number has no reason to have an account yet.
 model LiveTrainingLead {
-  id             String                  @id @default(uuid())
+  id             String                 @id @default(uuid())
   liveTrainingId String
-  liveTraining   LiveTraining            @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  liveTraining   LiveTraining           @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
   name           String
   email          String
   phone          String
-  status         LiveTrainingLeadStatus  @default(NOT_CONTACTED)
+  status         LiveTrainingLeadStatus @default(NOT_CONTACTED)
   adminNote      String?
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
 
   @@index([liveTrainingId])
   @@index([status])
@@ -1110,7 +1121,7 @@ model DigitalProduct {
   // opt-in via a manual "Auto-Translate" button.
   titleEn            String?
   description        String
-  descriptionEn       String?
+  descriptionEn      String?
   price              Int
   category           String
   imageUrl           String
@@ -1148,6 +1159,11 @@ model DigitalProduct {
   aiReviewedAt       DateTime?
   submittedById      String?
   submittedBy        User?             @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
+  // Denormalized rollup of `reviews` (ProductReview), same pattern as
+  // User.averageRating/reviewCount — recomputed on every review create/delete.
+  averageRating      Float?
+  reviewCount        Int               @default(0)
+  reviews            ProductReview[]
 
   @@map("digital_products")
 }
@@ -1240,6 +1256,10 @@ model ProductPurchase {
   // on subsequent re-downloads (lifetime re-download is allowed).
   downloadedAt     DateTime?
   createdAt        DateTime       @default(now())
+  // The review left against this specific purchase, if any — see
+  // ProductReview.purchaseId, which is how "Verified Buyer" is enforced
+  // (one review per completed purchase, never per user-product pair alone).
+  review           ProductReview?
 
   @@unique([userId, productId])
   @@index([userId])
@@ -1433,6 +1453,57 @@ model Review {
   @@unique([gigId, reviewerId])
   @@index([revieweeId])
   @@map("reviews")
+}
+
+// ============================================================
+// PRODUCT REVIEW (Digital Store — Etsy/Amazon-style verified-purchase
+// rating on a DigitalProduct, distinct from the gig-marketplace Review
+// model above). Security rule lives here, not just in the UI: a review can
+// only ever be created against a purchaseId that is (a) this reviewer's own
+// ProductPurchase row and (b) paymentStatus COMPLETED — see routes/
+// productReviews.ts. purchaseId is @unique so a purchase can never carry
+// more than one review, which is the actual "already reviewed" guard
+// (stronger than the [productId, userId] unique below, which just prevents
+// a rare double-purchase from producing two reviews for the same product).
+// ============================================================
+model ProductReview {
+  id           String                     @id @default(uuid())
+  productId    String
+  product      DigitalProduct             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User                       @relation("ProductReviewsGiven", fields: [userId], references: [id], onDelete: Cascade)
+  purchaseId   String                     @unique
+  purchase     ProductPurchase            @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  rating       Int
+  comment      String
+  // Optional proof/showcase photo (e.g. the finished product in use) —
+  // same Bunny-Storage-CDN-URL convention as every other upload in this
+  // codebase, never a freely-settable arbitrary URL.
+  imageUrl     String?
+  // Denormalized count of helpfulVotes below — recomputed on every vote
+  // toggle, same rollup pattern used everywhere else in this schema.
+  helpfulCount Int                        @default(0)
+  createdAt    DateTime                   @default(now())
+  updatedAt    DateTime                   @updatedAt
+  helpfulVotes ProductReviewHelpfulVote[]
+
+  @@unique([productId, userId])
+  @@index([productId])
+  @@map("product_reviews")
+}
+
+// One "helpful" vote per (review, user) — prevents a single user from
+// inflating helpfulCount by repeat-clicking.
+model ProductReviewHelpfulVote {
+  id        String        @id @default(uuid())
+  reviewId  String
+  review    ProductReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+
+  @@unique([reviewId, userId])
+  @@map("product_review_helpful_votes")
 }
 
 // ============================================================
@@ -2637,16 +2708,16 @@ model MentorshipRequest {
 // panel, surfaced via the header bell) — deliberately no reply/thread
 // concept, unlike MessageThread.
 model Notification {
-  id        String   @id @default(uuid())
+  id        String             @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   message   String
   // Free-form category tag ("MODERATION" | "ADMIN_DIRECT" | "SYSTEM", etc.)
   // — not a Prisma enum since admin-authored notification types may grow
   // without needing a migration each time.
-  type      String   @default("ADMIN_DIRECT")
-  isRead    Boolean  @default(false)
+  type      String             @default("ADMIN_DIRECT")
+  isRead    Boolean            @default(false)
   // Set alongside isRead the first time it flips true — POST
   // /notifications/:id/read never overwrites it on a later call, so it
   // stays the *first* open time. Null while unread.
@@ -2659,7 +2730,7 @@ model Notification {
   // it from every recipient's bell/hub too, not just the admin's history.
   batchId   String?
   batch     NotificationBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  createdAt DateTime           @default(now())
 
   @@index([userId])
   @@index([userId, isRead])
@@ -2692,7 +2763,7 @@ model NotificationBatch {
   sentBy         User     @relation(fields: [sentById], references: [id], onDelete: Restrict)
   createdAt      DateTime @default(now())
 
-  notifications  Notification[]
+  notifications Notification[]
 
   @@index([sentById])
   @@map("notification_batches")

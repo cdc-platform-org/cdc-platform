@@ -22,6 +22,11 @@ export interface DigitalProduct {
   // safe to show as a format badge without revealing the real download link.
   fileFormat: string | null;
   downloadsCount: number;
+  // Denormalized rollup of this product's ProductReview rows (see
+  // productReviewService.ts for the review CRUD itself) — null/0 until the
+  // first review is left.
+  averageRating: number | null;
+  reviewCount: number;
   createdAt: string;
   purchased: boolean;
   status?: ProductStatus;

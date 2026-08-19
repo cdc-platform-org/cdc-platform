@@ -24,6 +24,10 @@ export interface UserRatingSummary {
   averageRating: number | null;
   reviewCount: number;
   isVerifiedGraduate: boolean;
+  // Digital Store seller/creator reputation — separate rollup from the
+  // gig-marketplace averageRating/reviewCount above (see ProductReview).
+  sellerRating: number | null;
+  sellerReviewCount: number;
 }
 
 export interface PublicVerifiedSkill {

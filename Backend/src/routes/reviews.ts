@@ -108,7 +108,16 @@ router.get('/gig/:gigId', authenticate, async (req: Request, res: Response) => {
 router.get('/user/:userId', async (req: Request, res: Response) => {
   const user = await prisma.user.findUnique({
     where: { id: req.params.userId },
-    select: { id: true, name: true, role: true, averageRating: true, reviewCount: true, isVerifiedGraduate: true },
+    select: {
+      id: true,
+      name: true,
+      role: true,
+      averageRating: true,
+      reviewCount: true,
+      isVerifiedGraduate: true,
+      sellerRating: true,
+      sellerReviewCount: true,
+    },
   });
   if (!user) {
     return res.status(404).json({ message: 'User not found.' });

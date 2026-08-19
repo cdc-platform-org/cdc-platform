@@ -145,6 +145,19 @@ function ProfileContent() {
             )}
           </div>
 
+          {profileUser.sellerReviewCount > 0 && (
+            <div className="mt-6 pt-6 border-t border-gray-100">
+              <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Seller Rating</p>
+              <div className="flex items-center gap-3">
+                <StarRating value={profileUser.sellerRating ?? 0} size="sm" />
+                <span className="text-sm font-semibold text-gray-900">{profileUser.sellerRating?.toFixed(1)}</span>
+                <span className="text-sm text-gray-400">
+                  ({profileUser.sellerReviewCount} review{profileUser.sellerReviewCount !== 1 ? 's' : ''})
+                </span>
+              </div>
+            </div>
+          )}
+
           {verifiedSkills.length > 0 && (
             <div className="mt-6 pt-6 border-t border-gray-100">
               <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2.5">Verified Skills</p>

@@ -30,6 +30,7 @@ import {
   Bug,
   UserCheck,
   PlayCircle,
+  Star,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AdminLangProvider, useAdminLang } from '../../context/AdminLangContext';
@@ -52,6 +53,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/messages', labelKey: 'messages', icon: ShieldAlert, section: 'core' },
   { href: '/admin/notifications', labelKey: 'notifications', icon: Bell, section: 'core' },
   { href: '/admin/products', labelKey: 'products', icon: ShoppingBag, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  { href: '/admin/product-reviews', labelKey: 'productReviews', icon: Star, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/forum', labelKey: 'forum', icon: MessageSquare, section: 'content' },
   { href: '/admin/bot-knowledge', labelKey: 'botKnowledge', icon: BrainCircuit, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/cms/homepage', labelKey: 'cms', icon: PenTool, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
