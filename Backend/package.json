@@ -11,7 +11,8 @@
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:seed": "prisma db seed",
-    "db:seed:forum": "ts-node prisma/seedForum.ts"
+    "db:seed:forum": "ts-node prisma/seedForum.ts",
+    "db:seed:e2e": "ts-node prisma/seedE2E.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
