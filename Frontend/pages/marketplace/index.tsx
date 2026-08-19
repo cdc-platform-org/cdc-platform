@@ -129,7 +129,7 @@ function MarketplaceContent() {
                 href={`/store/${product.id}`}
                 className="group rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden no-underline text-current hover:border-cyan-400 dark:hover:border-cyan-500 transition-colors flex flex-col"
               >
-                <div className="relative w-full aspect-video bg-slate-100 dark:bg-slate-800">
+                <div className="relative w-full aspect-[4/3] bg-slate-100 dark:bg-slate-800">
                   <Image src={product.imageUrl} alt={productTitle(product, lang)} fill className="object-cover" unoptimized />
                   {product.fileFormat && (
                     <span className="absolute top-3 left-3 inline-flex items-center text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full bg-black/60 text-white shadow">

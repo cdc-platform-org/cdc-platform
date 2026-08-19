@@ -465,7 +465,9 @@ function AdminProductsDashboard() {
             labels={{
               coverLabel: 'Main Cover Image (required)',
               coverHint: imageUrl ? 'Click or drop to replace' : 'Click or drop an image',
+              coverSizeHint: 'Recommended size: 2000 × 1500 px (4:3 ratio) or 2000 × 2000 px. PNG/JPG, up to 10MB.',
               galleryLabel: 'Additional Screenshots',
+              gallerySizeHint: 'Upload up to 4 preview images (Recommended: 2000 × 1500 px).',
               addMore: 'Add',
               uploading: 'Uploading…',
               remove: 'Remove',

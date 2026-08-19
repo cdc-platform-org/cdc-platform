@@ -18,7 +18,13 @@ interface ImageGalleryUploaderProps {
   labels: {
     coverLabel: string;
     coverHint: string;
+    // Recommended dimensions/format/size note shown under the cover
+    // dropzone (Etsy/Gumroad-style guidance so sellers upload something
+    // that won't look distorted once object-fit: cover crops it in the
+    // marketplace grid) — optional so a caller can omit it.
+    coverSizeHint?: string;
     galleryLabel: string;
+    gallerySizeHint?: string;
     addMore: string;
     uploading: string;
     remove: string;
@@ -112,6 +118,7 @@ export default function ImageGalleryUploader({
       {/* COVER — main product image, required by the forms that use this. */}
       <div>
         <label className="block text-xs font-medium text-gray-700 mb-1.5">{labels.coverLabel}</label>
+        {labels.coverSizeHint && <p className="text-[11px] text-gray-400 mb-1.5">{labels.coverSizeHint}</p>}
         <div
           role="button"
           tabIndex={0}
@@ -159,6 +166,7 @@ export default function ImageGalleryUploader({
         <label className="block text-xs font-medium text-gray-700 mb-1.5">
           {labels.galleryLabel} <span className="text-gray-400 font-normal">({previewImages.length}/{maxGalleryImages})</span>
         </label>
+        {labels.gallerySizeHint && <p className="text-[11px] text-gray-400 mb-1.5">{labels.gallerySizeHint}</p>}
         <div className="flex flex-wrap gap-2">
           {previewImages.map((url) => (
             <div key={url} className="relative w-20 h-20 shrink-0">
