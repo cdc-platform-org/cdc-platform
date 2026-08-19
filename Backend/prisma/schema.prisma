@@ -450,6 +450,8 @@ model User {
   mentorshipRequestsResolved  MentorshipRequest[]          @relation("MentorshipRequestsResolved")
   notifications               Notification[]
   mentorAvailabilityRules     MentorAvailabilityRule[]
+  mentorAvailabilityExceptions MentorAvailabilityException[]
+  sentNotificationBatches     NotificationBatch[]
   mentorshipBookingsAsMentor  MentorshipBooking[]          @relation("MentorshipBookingsAsMentor")
   mentorshipBookingsAsStudent MentorshipBooking[]          @relation("MentorshipBookingsAsStudent")
   mentorBookingHistoryActions MentorBookingHistory[]       @relation("MentorBookingHistoryActor")
@@ -1984,6 +1986,26 @@ model MentorAvailabilityRule {
   @@map("mentor_availability_rules")
 }
 
+// A single blocked calendar date (vacation, sick day, etc.) layered on top
+// of MentorAvailabilityRule above — the recurring rules stay the source of
+// truth for which weekly slots exist at all (removing them would leave
+// nothing for generateAvailableSlots() to generate from), this just
+// excludes one specific date from them. `date` is stored at Tbilisi
+// midnight UTC — see mentorAvailabilityService.ts's own REFERENCE_TIMEZONE
+// — and compared by calendar date, not exact instant.
+model MentorAvailabilityException {
+  id        String   @id @default(uuid())
+  mentorId  String
+  mentor    User     @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  date      DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@unique([mentorId, date])
+  @@index([mentorId])
+  @@map("mentor_availability_exceptions")
+}
+
 // One row per paid mentorship session — created at checkout time (before
 // payment completes) so the chosen slot/phone/description survive the BOG
 // (or Stripe) redirect round-trip; the Google Calendar fields are filled in
@@ -2625,11 +2647,55 @@ model Notification {
   // without needing a migration each time.
   type      String   @default("ADMIN_DIRECT")
   isRead    Boolean  @default(false)
+  // Set alongside isRead the first time it flips true — POST
+  // /notifications/:id/read never overwrites it on a later call, so it
+  // stays the *first* open time. Null while unread.
+  readAt    DateTime?
+  // Only set for a notification sent via POST /admin/notifications (the
+  // manual broadcast form) — null for every automated notification.create
+  // call elsewhere in the codebase (product moderation, KYC, live training
+  // leads, etc.), which have no batch to belong to. Cascade: deleting the
+  // batch (an admin's own "delete this sent notification" action) removes
+  // it from every recipient's bell/hub too, not just the admin's history.
+  batchId   String?
+  batch     NotificationBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([userId, isRead])
+  @@index([batchId])
   @@map("notifications")
+}
+
+// One row per admin broadcast from POST /admin/notifications — the
+// individual Notification rows it fanned out to (one per recipient,
+// linked via Notification.batchId) are what each user actually sees; this
+// is what /admin/notifications' history table lists, with a read-count
+// computed from those linked rows.
+model NotificationBatch {
+  id             String   @id @default(uuid())
+  title          String
+  message        String
+  type           String   @default("ADMIN_DIRECT")
+  // Exactly one of these was the original send target — kept (not just
+  // targetLabel) so "Resend" can reconstruct the actual recipient set
+  // rather than only having a display string to work from.
+  targetUserId   String?
+  targetRole     String?
+  // Human-readable rendering of whichever target field is set, computed
+  // once at send time (e.g. the recipient's email, or "All Users") so the
+  // history table never needs a join back to targetUserId just to display
+  // a label — that user could since be deleted anyway.
+  targetLabel    String
+  recipientCount Int
+  sentById       String
+  sentBy         User     @relation(fields: [sentById], references: [id], onDelete: Restrict)
+  createdAt      DateTime @default(now())
+
+  notifications  Notification[]
+
+  @@index([sentById])
+  @@map("notification_batches")
 }
 
 // ============================================================

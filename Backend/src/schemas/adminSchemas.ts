@@ -77,6 +77,12 @@ export const mentorAvailabilityRuleSchema = z
     message: 'endMinute must be after startMinute.',
     path: ['endMinute'],
   });
+export const mentorAvailabilityExceptionSchema = z.object({
+  // Date-only (YYYY-MM-DD) — the mentor blocks a whole calendar day, not a
+  // specific instant. Parsed as Tbilisi midnight in the route, not here.
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD.'),
+  reason: z.string().trim().max(200).optional(),
+});
 export const manualCertificateSchema = z.object({
   studentNameKa: z.string().trim().min(2).max(200),
   studentNameEn: z.string().trim().max(200).optional(),

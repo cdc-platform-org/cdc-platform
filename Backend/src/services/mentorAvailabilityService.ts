@@ -32,6 +32,13 @@ function tbilisiDayOfWeekAndMinutes(date: Date): { dayOfWeek: number; minutes: n
 // book). Georgia has used a fixed UTC+4 offset with no DST since 2017, so
 // constructing a Tbilisi wall-clock time as an explicit "+04:00" ISO string
 // is safe and avoids needing a timezone-math library.
+// Tbilisi calendar date, normalized to midnight UTC — matches how
+// MentorAvailabilityException.date is stored, so a straight Set-membership
+// check is enough rather than a range comparison.
+function tbilisiDateKey(date: Date): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: REFERENCE_TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+}
+
 export async function generateAvailableSlots(
   mentorId: string,
   days = 14,
@@ -39,6 +46,9 @@ export async function generateAvailableSlots(
 ): Promise<Date[]> {
   const rules = await prisma.mentorAvailabilityRule.findMany({ where: { mentorId } });
   if (rules.length === 0) return [];
+
+  const exceptions = await prisma.mentorAvailabilityException.findMany({ where: { mentorId } });
+  const exceptionDateKeys = new Set(exceptions.map((e) => tbilisiDateKey(e.date)));
 
   const rulesByDay = new Map<number, typeof rules>();
   for (const rule of rules) {
@@ -59,6 +69,7 @@ export async function generateAvailableSlots(
       month: '2-digit',
       day: '2-digit',
     }).format(probe);
+    if (exceptionDateKeys.has(tbilisiDateStr)) continue;
     const dayOfWeek = new Date(`${tbilisiDateStr}T12:00:00Z`).getUTCDay();
     const rulesForDay = rulesByDay.get(dayOfWeek);
     if (!rulesForDay) continue;
@@ -110,6 +121,14 @@ export async function assertSlotAvailable(mentorId: string, scheduledAt: Date, d
   const fitsARule = rules.some((rule) => minutes >= rule.startMinute && minutes + durationMinutes <= rule.endMinute);
   if (!fitsARule) {
     throw new SlotUnavailableError('This mentor is not available at the selected time.');
+  }
+
+  const dateKey = tbilisiDateKey(scheduledAt);
+  const exception = await prisma.mentorAvailabilityException.findFirst({
+    where: { mentorId, date: { gte: new Date(`${dateKey}T00:00:00Z`), lt: new Date(`${dateKey}T23:59:59.999Z`) } },
+  });
+  if (exception) {
+    throw new SlotUnavailableError('This mentor has marked this date as unavailable.');
   }
 
   const windowStart = new Date(scheduledAt.getTime() - durationMinutes * 60_000);

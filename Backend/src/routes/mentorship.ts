@@ -8,7 +8,7 @@ import {
   cancelBookingSchema,
   chatMessageSchema,
 } from '../schemas/mentorshipSchemas';
-import { attachRecordingSchema, mentorAvailabilityRuleSchema } from '../schemas/adminSchemas';
+import { attachRecordingSchema, mentorAvailabilityRuleSchema, mentorAvailabilityExceptionSchema } from '../schemas/adminSchemas';
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
 import { generateAvailableSlots, assertSlotAvailable, SlotUnavailableError } from '../services/mentorAvailabilityService';
 import { attachMentorshipRecording, MentorshipRecordingError } from '../services/mentorshipRecordingService';
@@ -411,6 +411,48 @@ router.delete('/me/availability/:ruleId', authenticate, requireRole('Mentor'), a
   if (!owned) return res.status(404).json({ message: 'Availability rule not found.' });
 
   await prisma.mentorAvailabilityRule.delete({ where: { id: req.params.ruleId } });
+  res.status(204).send();
+});
+
+// ============================================================
+// EXCEPTION DAYS — a mentor blocking a specific date (vacation, sick day)
+// on top of their recurring weekly rules above. See
+// mentorAvailabilityService.ts's own comment on MentorAvailabilityException
+// for why this layers on top of the rules rather than replacing them.
+// ============================================================
+
+router.get('/me/availability/exceptions', authenticate, requireRole('Mentor'), async (req: Request, res: Response) => {
+  const exceptions = await prisma.mentorAvailabilityException.findMany({
+    where: { mentorId: req.user!.id, date: { gte: new Date() } },
+    orderBy: { date: 'asc' },
+  });
+  res.json({ data: exceptions });
+});
+
+router.post('/me/availability/exceptions', authenticate, requireRole('Mentor'), async (req: Request, res: Response) => {
+  const result = mentorAvailabilityExceptionSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  try {
+    const exception = await prisma.mentorAvailabilityException.create({
+      data: { mentorId: req.user!.id, date: new Date(`${result.data.date}T00:00:00Z`), reason: result.data.reason ?? null },
+    });
+    res.status(201).json({ data: exception });
+  } catch (err: any) {
+    // Unique [mentorId, date] — marking the same date twice is a no-op
+    // conflict, not a server error.
+    if (err.code === 'P2002') return res.status(400).json({ message: 'This date is already marked unavailable.' });
+    throw err;
+  }
+});
+
+router.delete('/me/availability/exceptions/:exceptionId', authenticate, requireRole('Mentor'), async (req: Request, res: Response) => {
+  const owned = await prisma.mentorAvailabilityException.findFirst({
+    where: { id: req.params.exceptionId, mentorId: req.user!.id },
+  });
+  if (!owned) return res.status(404).json({ message: 'Exception day not found.' });
+
+  await prisma.mentorAvailabilityException.delete({ where: { id: req.params.exceptionId } });
   res.status(204).send();
 });
 

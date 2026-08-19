@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { Calendar, Wallet, Settings, Plus, Trash2, ArrowRight } from 'lucide-react';
+import { Calendar, Wallet, Settings, Plus, Trash2, ArrowRight, CalendarOff } from 'lucide-react';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import RoleGate from '../../src/components/auth/RoleGate';
 import SiteHeader from '../../src/components/layout/SiteHeader';
@@ -15,8 +15,12 @@ import {
   getMyAvailability,
   createMyAvailabilityRule,
   deleteMyAvailabilityRule,
+  getMyAvailabilityExceptions,
+  createMyAvailabilityException,
+  deleteMyAvailabilityException,
   MentorProfile,
   MentorAvailabilityRuleRow,
+  MentorAvailabilityException,
 } from '../../src/services/mentorshipService';
 import { getWalletSummary, createPayoutRequest, getMyPayoutRequests, WalletSummary, PayoutRequestRow } from '../../src/services/walletService';
 import { resolveLocale } from '@/src/utils/locale';
@@ -48,6 +52,11 @@ function MentorshipWorkspaceContent() {
   const [newTo, setNewTo] = useState('21:00');
   const [addingRule, setAddingRule] = useState(false);
 
+  const [exceptions, setExceptions] = useState<MentorAvailabilityException[]>([]);
+  const [newExceptionDate, setNewExceptionDate] = useState('');
+  const [newExceptionReason, setNewExceptionReason] = useState('');
+  const [addingException, setAddingException] = useState(false);
+
   const [wallet, setWallet] = useState<WalletSummary | null>(null);
   const [payoutRequests, setPayoutRequests] = useState<PayoutRequestRow[]>([]);
   const [payoutAmount, setPayoutAmount] = useState('');
@@ -59,6 +68,7 @@ function MentorshipWorkspaceContent() {
   const load = useCallback(() => {
     getMyMentorProfile().then(setProfile).catch(() => {});
     getMyAvailability().then(setRules).catch(() => {});
+    getMyAvailabilityExceptions().then(setExceptions).catch(() => {});
     getWalletSummary().then(setWallet).catch(() => {});
     getMyPayoutRequests().then(setPayoutRequests).catch(() => {});
   }, []);
@@ -84,6 +94,32 @@ function MentorshipWorkspaceContent() {
     setRules((prev) => prev.filter((r) => r.id !== ruleId));
     try {
       await deleteMyAvailabilityRule(ruleId);
+    } catch {
+      setError(t('workspaceError'));
+      load();
+    }
+  };
+
+  const handleAddException = async () => {
+    if (!newExceptionDate) return;
+    setAddingException(true);
+    setError(null);
+    try {
+      const exception = await createMyAvailabilityException(newExceptionDate, newExceptionReason.trim() || undefined);
+      setExceptions((prev) => [...prev, exception].sort((a, b) => a.date.localeCompare(b.date)));
+      setNewExceptionDate('');
+      setNewExceptionReason('');
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? t('workspaceError'));
+    } finally {
+      setAddingException(false);
+    }
+  };
+
+  const handleDeleteException = async (exceptionId: string) => {
+    setExceptions((prev) => prev.filter((e) => e.id !== exceptionId));
+    try {
+      await deleteMyAvailabilityException(exceptionId);
     } catch {
       setError(t('workspaceError'));
       load();
@@ -201,6 +237,65 @@ function MentorshipWorkspaceContent() {
               className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white disabled:opacity-60"
             >
               <Plus className="w-3.5 h-3.5" /> {t('addSlot')}
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 p-6 mb-6">
+          <h2 className="text-sm font-bold mb-1 flex items-center gap-2"><CalendarOff className="w-4 h-4" /> {t('exceptionsTitle')}</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t('exceptionsHint')}</p>
+
+          {exceptions.length === 0 ? (
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t('exceptionsNoDays')}</p>
+          ) : (
+            <div className="space-y-2 mb-4">
+              {exceptions.map((exception) => (
+                <div key={exception.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2.5">
+                  <span className="text-sm">
+                    {new Date(exception.date).toLocaleDateString()}
+                    {exception.reason && <span className="text-slate-400 dark:text-slate-500"> — {exception.reason}</span>}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteException(exception.id)}
+                    aria-label="Delete"
+                    className="text-slate-400 hover:text-red-500 bg-transparent border-none cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('day')}</label>
+              <input
+                type="date"
+                min={new Date().toISOString().slice(0, 10)}
+                value={newExceptionDate}
+                onChange={(e) => setNewExceptionDate(e.target.value)}
+                className="rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="flex-1 min-w-[180px]">
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">&nbsp;</label>
+              <input
+                type="text"
+                placeholder={t('exceptionReasonPlaceholder') as string}
+                value={newExceptionReason}
+                onChange={(e) => setNewExceptionReason(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 px-3 py-2 text-sm"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleAddException}
+              disabled={addingException || !newExceptionDate}
+              className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white disabled:opacity-60"
+            >
+              <Plus className="w-3.5 h-3.5" /> {t('addException')}
             </button>
           </div>
         </div>

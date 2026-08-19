@@ -202,3 +202,26 @@ export async function createMyAvailabilityRule(rule: MentorAvailabilityRule): Pr
 export async function deleteMyAvailabilityRule(ruleId: string): Promise<void> {
   await apiClient.delete(`/mentorship/me/availability/${ruleId}`);
 }
+
+// --- Exception days — a single blocked date layered on top of the
+// recurring rules above (vacation, sick day). ---
+
+export interface MentorAvailabilityException {
+  id: string;
+  date: string;
+  reason: string | null;
+}
+
+export async function getMyAvailabilityExceptions(): Promise<MentorAvailabilityException[]> {
+  const response = await apiClient.get<{ data: MentorAvailabilityException[] }>('/mentorship/me/availability/exceptions');
+  return response.data.data;
+}
+
+export async function createMyAvailabilityException(date: string, reason?: string): Promise<MentorAvailabilityException> {
+  const response = await apiClient.post<{ data: MentorAvailabilityException }>('/mentorship/me/availability/exceptions', { date, reason });
+  return response.data.data;
+}
+
+export async function deleteMyAvailabilityException(exceptionId: string): Promise<void> {
+  await apiClient.delete(`/mentorship/me/availability/exceptions/${exceptionId}`);
+}
