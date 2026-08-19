@@ -11,6 +11,7 @@ import { imageUpload, fileUpload, multerErrorHandler } from '../middleware/produ
 import { fileFormatFromUrl } from '../utils/fileFormat';
 import { moderateProduct, ModerationInput } from '../services/productModerationService';
 import { getAiAutomationSettings } from '../services/aiAutomationSettingsService';
+import { autoTranslateIfBlank } from '../services/aiTranslateService';
 
 const router = Router();
 
@@ -95,6 +96,10 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
 const submitSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().min(1).max(5000),
+  // Left blank, both are auto-translated by Gemini before the product is
+  // created/resubmitted — see aiTranslateService.ts's autoTranslateIfBlank.
+  titleEn: z.string().min(1).max(200).optional().nullable(),
+  descriptionEn: z.string().min(1).max(5000).optional().nullable(),
   price: z.number().min(0),
   category: z.string().min(1).max(100),
   imageUrl: z.string().url(),
@@ -241,9 +246,19 @@ router.post('/', authenticate, requireApproved, async (req: Request, res: Respon
     previewImages: result.data.previewImages ?? [],
   });
 
+  const { titleEn, descriptionEn } = await autoTranslateIfBlank(
+    result.data.title,
+    result.data.description,
+    result.data.titleEn,
+    result.data.descriptionEn,
+    'products'
+  );
+
   const product = await prisma.digitalProduct.create({
     data: {
       ...result.data,
+      titleEn,
+      descriptionEn,
       price: Math.round(result.data.price * 100),
       submittedById: req.user!.id,
       ...moderation,
@@ -316,10 +331,20 @@ router.put('/:id/mine', authenticate, requireApproved, async (req: Request, res:
     previewImages: result.data.previewImages ?? product.previewImages,
   });
 
+  const { titleEn, descriptionEn } = await autoTranslateIfBlank(
+    result.data.title ?? product.title,
+    result.data.description ?? product.description,
+    result.data.titleEn !== undefined ? result.data.titleEn : product.titleEn,
+    result.data.descriptionEn !== undefined ? result.data.descriptionEn : product.descriptionEn,
+    'products'
+  );
+
   const updated = await prisma.digitalProduct.update({
     where: { id: product.id },
     data: {
       ...rest,
+      titleEn,
+      descriptionEn,
       ...(price !== undefined ? { price: priceMinor } : {}),
       ...moderation,
     },

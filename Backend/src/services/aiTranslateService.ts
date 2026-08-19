@@ -275,6 +275,80 @@ bio: ${params.bio}`;
   return result.data;
 }
 
+const titleDescriptionTranslationSchema = z.object({
+  titleEn: z.string(),
+  descriptionEn: z.string(),
+});
+
+export interface TranslateTitleAndDescriptionResult {
+  titleEn: string;
+  descriptionEn: string;
+}
+
+// Shared by Digital Products and Tutorials (both a plain title+description
+// pair, nothing else) — unlike blog/studio-case/mentor/team above, which
+// each have their own distinct extra fields and stay as separate functions.
+// Called automatically (not from an admin-clicked button) whenever
+// titleEn/descriptionEn is left blank on create/update — see routes/
+// products.ts, routes/adminProducts.ts, routes/tutorials.ts. Best-effort:
+// every caller catches AiTranslateError and just leaves the *En fields
+// null rather than failing the save, same "AI enrichment never blocks the
+// core action" posture as businessKycService/subtitleService.
+export async function translateTitleAndDescription(title: string, description: string): Promise<TranslateTitleAndDescriptionResult> {
+  const prompt = `Translate the following Georgian title and description into natural, fluent English. Preserve meaning and tone; do not summarize or shorten. Respond with strict JSON matching this shape:
+{"titleEn": string, "descriptionEn": string}
+
+title: ${title}
+description: ${description}`;
+
+  const raw = await generateTranslationJson(prompt);
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new AiTranslateError('Gemini returned malformed JSON.');
+  }
+
+  const result = titleDescriptionTranslationSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new AiTranslateError('Gemini returned an unexpected translation format.');
+  }
+  return result.data;
+}
+
+// Convenience wrapper around translateTitleAndDescription for the automatic
+// (not button-triggered) callers — routes/products.ts, routes/
+// adminProducts.ts, routes/tutorials.ts. Handles every "don't bother"
+// case itself (already filled in, Gemini not configured, translation
+// failed) so those routes just call this once and merge the result,
+// rather than each re-implementing the same best-effort try/catch.
+// logContext is just for the console.error prefix, e.g. "products".
+export async function autoTranslateIfBlank(
+  title: string,
+  description: string,
+  existingTitleEn: string | null | undefined,
+  existingDescriptionEn: string | null | undefined,
+  logContext: string
+): Promise<{ titleEn: string | null | undefined; descriptionEn: string | null | undefined }> {
+  if (existingTitleEn && existingDescriptionEn) {
+    return { titleEn: existingTitleEn, descriptionEn: existingDescriptionEn };
+  }
+  if (!isAiTranslateConfigured()) {
+    return { titleEn: existingTitleEn, descriptionEn: existingDescriptionEn };
+  }
+  try {
+    const translated = await translateTitleAndDescription(title, description);
+    return {
+      titleEn: existingTitleEn || translated.titleEn,
+      descriptionEn: existingDescriptionEn || translated.descriptionEn,
+    };
+  } catch (err) {
+    console.error(`[${logContext}] auto-translate failed:`, err instanceof Error ? err.message : err);
+    return { titleEn: existingTitleEn, descriptionEn: existingDescriptionEn };
+  }
+}
+
 // --- Course / curriculum translation ---
 //
 // Unlike the three functions above (which always translate one fixed set of

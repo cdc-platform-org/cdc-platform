@@ -10,7 +10,7 @@ import { ShoppingBag, CheckCircle2 } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
-import { getProducts, DigitalProduct } from '../../src/services/productService';
+import { getProducts, productTitle, productDescription, DigitalProduct } from '../../src/services/productService';
 import { formatPrice } from '../../src/utils/coursePricing';
 import { MARKETPLACE_CATEGORIES } from '../../src/data/marketplaceCategories';
 
@@ -130,7 +130,7 @@ function MarketplaceContent() {
                 className="group rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden no-underline text-current hover:border-cyan-400 dark:hover:border-cyan-500 transition-colors flex flex-col"
               >
                 <div className="relative w-full aspect-video bg-slate-100 dark:bg-slate-800">
-                  <Image src={product.imageUrl} alt={product.title} fill className="object-cover" unoptimized />
+                  <Image src={product.imageUrl} alt={productTitle(product, lang)} fill className="object-cover" unoptimized />
                   {product.fileFormat && (
                     <span className="absolute top-3 left-3 inline-flex items-center text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full bg-black/60 text-white shadow">
                       {product.fileFormat}
@@ -145,8 +145,8 @@ function MarketplaceContent() {
                 </div>
                 <div className="p-5 flex flex-col flex-1">
                   <span className="text-[10px] font-black uppercase tracking-widest text-cyan-600 dark:text-cyan-400 mb-1.5">{product.category}</span>
-                  <h3 className="text-sm font-black tracking-wide mb-1.5 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">{product.title}</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 mb-4 flex-1">{product.description}</p>
+                  <h3 className="text-sm font-black tracking-wide mb-1.5 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">{productTitle(product, lang)}</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 mb-4 flex-1">{productDescription(product, lang)}</p>
                   <div className="flex items-center justify-between">
                     <span className="text-base font-black">{product.price === 0 ? t('free') : formatPrice(product.price)}</span>
                     <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">{t('details')} →</span>

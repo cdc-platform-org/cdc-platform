@@ -7,6 +7,7 @@ import { authenticate, requireAdminRole } from '../middleware/auth';
 import { uploadImage } from '../services/imageStorage';
 import { BunnyStorageUploadError } from '../services/bunnyStorage';
 import { imageUpload, fileUpload, multerErrorHandler } from '../middleware/productUploads';
+import { autoTranslateIfBlank } from '../services/aiTranslateService';
 
 const router = Router();
 router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
@@ -46,6 +47,10 @@ router.post(
 const createSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().min(1).max(5000),
+  // Left blank, both are auto-translated by Gemini before the product is
+  // created — see aiTranslateService.ts's autoTranslateIfBlank.
+  titleEn: z.string().min(1).max(200).optional().nullable(),
+  descriptionEn: z.string().min(1).max(5000).optional().nullable(),
   // Major-unit GEL from the admin form — converted to minor units (tetri)
   // here so every other money field in the DB (Course.originalPrice,
   // BogPayment.amount) stays in the same unit.
@@ -65,8 +70,16 @@ router.post('/', async (req: Request, res: Response) => {
   const result = createSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
+  const { titleEn, descriptionEn } = await autoTranslateIfBlank(
+    result.data.title,
+    result.data.description,
+    result.data.titleEn,
+    result.data.descriptionEn,
+    'adminProducts'
+  );
+
   const product = await prisma.digitalProduct.create({
-    data: { ...result.data, price: Math.round(result.data.price * 100), status: 'APPROVED' },
+    data: { ...result.data, titleEn, descriptionEn, price: Math.round(result.data.price * 100), status: 'APPROVED' },
   });
   res.status(201).json({ data: product });
 });
@@ -96,6 +109,8 @@ router.get('/:id/purchases', async (req: Request, res: Response) => {
 const updateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().min(1).max(5000).optional(),
+  titleEn: z.string().min(1).max(200).optional().nullable(),
+  descriptionEn: z.string().min(1).max(5000).optional().nullable(),
   category: z.string().min(1).max(100).optional(),
   // Major-unit GEL, same conversion as createSchema — omit to leave price unchanged.
   price: z.number().min(0).optional(),
@@ -111,11 +126,26 @@ router.put('/:id', async (req: Request, res: Response) => {
   const result = updateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
+  const existing = await prisma.digitalProduct.findUnique({ where: { id: req.params.id } });
+  if (!existing) return res.status(404).json({ message: 'Product not found.' });
+
+  // Auto-translate against whatever the title/description will actually be
+  // post-update (the new value if provided, else the existing one) — a
+  // title-only edit still gets a fresh titleEn/descriptionEn if both are
+  // still blank, not just a brand-new product.
+  const { titleEn, descriptionEn } = await autoTranslateIfBlank(
+    result.data.title ?? existing.title,
+    result.data.description ?? existing.description,
+    result.data.titleEn !== undefined ? result.data.titleEn : existing.titleEn,
+    result.data.descriptionEn !== undefined ? result.data.descriptionEn : existing.descriptionEn,
+    'adminProducts'
+  );
+
   try {
     const { price, ...rest } = result.data;
     const updated = await prisma.digitalProduct.update({
       where: { id: req.params.id },
-      data: { ...rest, ...(price !== undefined ? { price: Math.round(price * 100) } : {}) },
+      data: { ...rest, titleEn, descriptionEn, ...(price !== undefined ? { price: Math.round(price * 100) } : {}) },
     });
     res.json({ data: updated });
   } catch (err: any) {

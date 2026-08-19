@@ -1101,7 +1101,14 @@ model VerifiedSkill {
 model DigitalProduct {
   id                 String            @id @default(uuid())
   title              String
+  // Auto-translated by Gemini at create/update time whenever left blank
+  // (see aiTranslateService.ts's translateTitleAndDescription, wired into
+  // routes/products.ts and routes/adminProducts.ts) — unlike Course/blog/
+  // mentor's *En fields, which are deliberately never auto-fired and stay
+  // opt-in via a manual "Auto-Translate" button.
+  titleEn            String?
   description        String
+  descriptionEn       String?
   price              Int
   category           String
   imageUrl           String

@@ -6,6 +6,12 @@ export interface DigitalProduct {
   id: string;
   title: string;
   description: string;
+  // Auto-translated by Gemini at create/update time whenever left blank
+  // (see Backend's aiTranslateService.autoTranslateIfBlank) — null only if
+  // translation failed or Gemini isn't configured. Use productTitle()/
+  // productDescription() below rather than reading these directly.
+  titleEn: string | null;
+  descriptionEn: string | null;
   price: number; // minor units (tetri); 0 = free
   category: string;
   imageUrl: string;
@@ -28,6 +34,16 @@ export interface DigitalProduct {
   aiReviewConfidence?: number | null;
   aiReviewReasoning?: string | null;
   aiReviewedAt?: string | null;
+}
+
+// English falls back to the Georgian (primary) field whenever a product
+// has no translation yet (still pending, or Gemini wasn't configured at
+// save time) — same convention as blogService.ts's blogTitle/blogDescription.
+export function productTitle(product: DigitalProduct, lang: 'ka' | 'en'): string {
+  return (lang === 'en' && product.titleEn) || product.title;
+}
+export function productDescription(product: DigitalProduct, lang: 'ka' | 'en'): string {
+  return (lang === 'en' && product.descriptionEn) || product.description;
 }
 
 export async function getProducts(category?: string): Promise<DigitalProduct[]> {

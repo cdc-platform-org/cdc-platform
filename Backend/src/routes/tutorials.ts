@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole, optionalAuthenticate } from '../middleware/auth';
 import { tutorialCreateSchema, tutorialUpdateSchema } from '../schemas/tutorialSchemas';
+import { autoTranslateIfBlank } from '../services/aiTranslateService';
 
 // Same shape as routes/blog.ts: one router, public read + admin-gated
 // write, rather than a separate /api/admin/tutorials CRUD router — mirrors
@@ -46,8 +47,15 @@ router.post('/', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async
   const result = tutorialCreateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
   const { published, ...data } = result.data;
+  const { titleEn, descriptionEn } = await autoTranslateIfBlank(
+    data.title,
+    data.description,
+    data.titleEn,
+    data.descriptionEn,
+    'tutorials'
+  );
   const tutorial = await prisma.tutorial.create({
-    data: { ...data, publishedAt: published ? new Date() : null },
+    data: { ...data, titleEn, descriptionEn, publishedAt: published ? new Date() : null },
   });
   res.status(201).json({ data: tutorial });
 });
@@ -57,23 +65,29 @@ router.put('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), asy
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
   const { published, ...data } = result.data;
   try {
+    const existing = await prisma.tutorial.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ message: 'Tutorial not found.' });
+
     // Only touch publishedAt when the request actually includes `published`
     // — an edit that doesn't touch the publish toggle shouldn't bump the
     // "recently added" sort timestamp. Re-publishing keeps the original
     // publishedAt rather than resetting it, same reasoning.
     let publishedAt: Date | null | undefined;
     if (published !== undefined) {
-      if (published) {
-        const existing = await prisma.tutorial.findUnique({ where: { id: req.params.id }, select: { publishedAt: true } });
-        publishedAt = existing?.publishedAt ?? new Date();
-      } else {
-        publishedAt = null;
-      }
+      publishedAt = published ? (existing.publishedAt ?? new Date()) : null;
     }
+
+    const { titleEn, descriptionEn } = await autoTranslateIfBlank(
+      data.title ?? existing.title,
+      data.description ?? existing.description,
+      data.titleEn !== undefined ? data.titleEn : existing.titleEn,
+      data.descriptionEn !== undefined ? data.descriptionEn : existing.descriptionEn,
+      'tutorials'
+    );
 
     const tutorial = await prisma.tutorial.update({
       where: { id: req.params.id },
-      data: { ...data, ...(publishedAt !== undefined ? { publishedAt } : {}) },
+      data: { ...data, titleEn, descriptionEn, ...(publishedAt !== undefined ? { publishedAt } : {}) },
     });
     res.json({ data: tutorial });
   } catch (err: any) {

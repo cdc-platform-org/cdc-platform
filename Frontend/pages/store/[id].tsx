@@ -13,7 +13,7 @@ import MarkdownContent from '../../src/components/shared/MarkdownContent';
 import ProductGallery from '../../src/components/shared/ProductGallery';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
-import { getProduct, claimFreeProduct, getProductDownloadUrl, DigitalProduct } from '../../src/services/productService';
+import { getProduct, claimFreeProduct, getProductDownloadUrl, productTitle, productDescription, DigitalProduct } from '../../src/services/productService';
 import { checkoutProduct } from '../../src/services/paymentService';
 import { checkoutProductStripe } from '../../src/services/stripePaymentService';
 import { formatPrice } from '../../src/utils/coursePricing';
@@ -45,6 +45,8 @@ function StoreProductContent() {
   const router = useRouter();
   const { id } = router.query;
   const lang = resolveLocale(router.locale);
+  // Products only store ka/en text (title/titleEn etc.) — collapse for content lookups.
+  const contentLang = lang === 'ka' ? 'ka' : 'en';
   const { user, isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
 
@@ -155,7 +157,7 @@ function StoreProductContent() {
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       <Head>
-        <title>{`${product.title} | CDC Store`}</title>
+        <title>{`${productTitle(product, contentLang)} | CDC Store`}</title>
       </Head>
       <SiteHeader />
 
@@ -166,7 +168,7 @@ function StoreProductContent() {
 
         <div className="grid md:grid-cols-2 gap-8 mb-10">
           <div>
-            <ProductGallery images={[product.imageUrl, ...product.previewImages]} alt={product.title} />
+            <ProductGallery images={[product.imageUrl, ...product.previewImages]} alt={productTitle(product, contentLang)} />
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -180,8 +182,8 @@ function StoreProductContent() {
                 </span>
               )}
             </div>
-            <h1 className="text-2xl md:text-3xl font-black tracking-wide mb-3">{product.title}</h1>
-            <MarkdownContent content={product.description} className="mb-6 flex-1" />
+            <h1 className="text-2xl md:text-3xl font-black tracking-wide mb-3">{productTitle(product, contentLang)}</h1>
+            <MarkdownContent content={productDescription(product, contentLang)} className="mb-6 flex-1" />
 
             {actionError && (
               <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-xs text-red-600 dark:text-red-300">{actionError}</div>
