@@ -79,16 +79,17 @@ function StoreProductContent() {
   const canPurchaseBusinessTool =
     isAuthenticated && (user?.role === 'SuperAdmin' || (user?.role === 'Client' && !!user.isVerified));
 
-  const handleBuy = async () => {
+  // Pure actions — no auth check inside, unlike the gated handleBuy/
+  // handleClaim below that call these. Passed directly as openAuthModal's
+  // onSuccess so a guest who logs in mid-purchase resumes straight into
+  // checkout instead of landing back on the page with nothing continued —
+  // same "sign in, then resume" pattern as courses/[id]/index.tsx's
+  // startCheckout/handleEnroll. A function checking `isAuthenticated` itself
+  // would still see the stale pre-login value from the closure that was
+  // captured when openAuthModal was first called, so the check has to live
+  // only in the outer gate, never in the part onSuccess invokes.
+  const startCheckout = async () => {
     if (!product) return;
-    if (isBusinessTool && !canPurchaseBusinessTool) {
-      setShowBusinessGate(true);
-      return;
-    }
-    if (!isAuthenticated) {
-      openAuthModal();
-      return;
-    }
     setActionError(null);
     setSubmitting(true);
     try {
@@ -108,16 +109,8 @@ function StoreProductContent() {
     }
   };
 
-  const handleClaim = async () => {
+  const startClaim = async () => {
     if (!product) return;
-    if (isBusinessTool && !canPurchaseBusinessTool) {
-      setShowBusinessGate(true);
-      return;
-    }
-    if (!isAuthenticated) {
-      openAuthModal();
-      return;
-    }
     setActionError(null);
     setSubmitting(true);
     try {
@@ -128,6 +121,32 @@ function StoreProductContent() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleBuy = () => {
+    if (!product) return;
+    if (isBusinessTool && !canPurchaseBusinessTool) {
+      setShowBusinessGate(true);
+      return;
+    }
+    if (!isAuthenticated) {
+      openAuthModal({ onSuccess: startCheckout });
+      return;
+    }
+    startCheckout();
+  };
+
+  const handleClaim = () => {
+    if (!product) return;
+    if (isBusinessTool && !canPurchaseBusinessTool) {
+      setShowBusinessGate(true);
+      return;
+    }
+    if (!isAuthenticated) {
+      openAuthModal({ onSuccess: startClaim });
+      return;
+    }
+    startClaim();
   };
 
   const handleDownload = async () => {
