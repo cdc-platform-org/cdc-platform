@@ -19,6 +19,13 @@ export interface StripeCourseCheckoutResult {
   enrolled?: boolean;
 }
 
+export interface StripeProductCheckoutResult {
+  paymentId: string;
+  // null when the admin test-mode bypass fired.
+  redirectUrl: string | null;
+  purchased?: boolean;
+}
+
 export interface StripePaymentStatusData {
   id: string;
   status: BogPaymentStatus;
@@ -57,8 +64,8 @@ export async function checkoutGigEscrowStripe(gigId: string, currency: StripeCur
   return response.data;
 }
 
-export async function checkoutProductStripe(productId: string, currency: StripeCurrency = 'usd'): Promise<StripeCheckoutResult> {
-  const response = await apiClient.post<StripeCheckoutResult>(`/payments/stripe/checkout/product/${productId}`, { currency });
+export async function checkoutProductStripe(productId: string, currency: StripeCurrency = 'usd'): Promise<StripeProductCheckoutResult> {
+  const response = await apiClient.post<StripeProductCheckoutResult>(`/payments/stripe/checkout/product/${productId}`, { currency });
   return response.data;
 }
 

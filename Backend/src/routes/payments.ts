@@ -143,6 +143,17 @@ router.post(
     // active sale, that's the discounted price, not originalPrice.
     let chargeAmount = getCurrentPrice(course);
 
+    // Admin/manager/moderator test-mode bypass — lets the admin team QA the
+    // full enroll flow (notification, dashboard entry, /learn access) for
+    // free rather than needing a real BOG charge on every test pass. Gated
+    // on the DB's own adminRole, never a client-sent flag. Always on for an
+    // admin-team member (no separate opt-in), same unconditional posture as
+    // checkCourseAccess()'s existing free-view bypass for admins — an admin
+    // account is simply never charged here; use a non-admin test account to
+    // exercise the real BOG path.
+    const requesterAdminRole = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } }))?.adminRole;
+    if (requesterAdminRole) chargeAmount = 0;
+
     // Optional promo code — re-validated here rather than trusting whatever
     // discountedAmount the client saw from POST /promos/validate, so a
     // tampered/stale client value can never under-charge. Discount is
@@ -411,6 +422,29 @@ router.post(
     const reusable = await findReusablePendingOrder(req.user!.id, 'PRODUCT', product.id);
     if (reusable) {
       return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.redirectUrl });
+    }
+
+    // Admin/manager/moderator test-mode bypass — same reasoning and posture
+    // as the course checkout's own bypass above: unconditional for any
+    // admin-team account, gated on the DB's adminRole. amount: 0 means the
+    // creator (if any) is correctly credited nothing — this is a QA pass,
+    // not a real sale, so there's no real revenue to split.
+    const requesterAdminRole = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } }))?.adminRole;
+    if (requesterAdminRole) {
+      const freePayment = await prisma.bogPayment.create({
+        data: {
+          bogOrderId: `admin-test-${crypto.randomUUID()}`,
+          userId: req.user!.id,
+          purpose: 'PRODUCT',
+          referenceId: product.id,
+          amount: 0,
+          currency: 'GEL',
+          status: 'COMPLETED',
+          completedAt: new Date(),
+        },
+      });
+      await completeProductPurchase({ userId: req.user!.id, productId: product.id, amount: 0 });
+      return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, purchased: true });
     }
 
     const bogPayment = await prisma.bogPayment.create({

@@ -179,10 +179,17 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
             </div>
             <div className="text-xs text-slate-400 truncate">{user?.email}</div>
           </div>
-          <div className="flex items-center gap-3">
-            <Link href="/" className="text-xs font-medium text-slate-400 hover:text-white no-underline">
-              {t.chrome.backToSite}
-            </Link>
+          {/* Prominent, real button (not the small text link this used to
+              be) — the "exit admin chrome, browse as a regular user"
+              affordance. AdminModeBar (rendered globally in _app.tsx)
+              is the way back once here. */}
+          <Link
+            href="/"
+            className="flex items-center justify-center gap-1.5 w-full text-xs font-bold text-white bg-gradient-to-r from-cyan-500 to-purple-600 hover:opacity-90 rounded-lg px-3 py-2.5 no-underline transition-opacity"
+          >
+            {t.chrome.backToSite}
+          </Link>
+          <div className="flex items-center justify-center">
             <button
               type="button"
               onClick={() => { logout(); router.push('/'); }}

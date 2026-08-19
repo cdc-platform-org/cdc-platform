@@ -8,17 +8,26 @@ export interface BogCheckoutResult {
   redirectUrl: string;
 }
 
-// Only routes/payments.ts's checkout/course route can ever bypass BOG (a
-// 100% discount promo code bringing the charge to 0 GEL) — mentorship/gig-
-// escrow/product checkout always return a real redirectUrl, so THEY keep
-// the plain BogCheckoutResult above rather than every caller across the
-// app having to guard against a null that can't actually happen for them.
+// Course and Product checkout can each bypass BOG at 0 GEL — a 100%
+// discount promo code (course only), or an admin-team account's unconditional
+// free test-mode bypass (both course and product, see routes/payments.ts).
+// Mentorship/gig-escrow checkout have no such bypass and keep the plain
+// BogCheckoutResult above rather than every caller having to guard against a
+// null that can't actually happen for them.
 export interface CourseCheckoutResult {
   paymentId: string;
   // null when the 0-GEL bypass fired — enrollment is already granted
   // server-side and `enrolled` is true instead of a redirect.
   redirectUrl: string | null;
   enrolled?: boolean;
+}
+
+export interface ProductCheckoutResult {
+  paymentId: string;
+  // null when the admin test-mode bypass fired — the purchase is already
+  // granted server-side and `purchased` is true instead of a redirect.
+  redirectUrl: string | null;
+  purchased?: boolean;
 }
 
 export interface BogPaymentBookingInfo {
@@ -78,8 +87,8 @@ export async function checkoutGigEscrow(gigId: string, lang?: 'ka' | 'en'): Prom
   return response.data;
 }
 
-export async function checkoutProduct(productId: string, lang?: 'ka' | 'en'): Promise<BogCheckoutResult> {
-  const response = await apiClient.post<BogCheckoutResult>(`/payments/checkout/product/${productId}`, { lang });
+export async function checkoutProduct(productId: string, lang?: 'ka' | 'en'): Promise<ProductCheckoutResult> {
+  const response = await apiClient.post<ProductCheckoutResult>(`/payments/checkout/product/${productId}`, { lang });
   return response.data;
 }
 

@@ -50,7 +50,9 @@ export const adminDict = {
     },
     chrome: {
       adminPanel: 'ადმინ პანელი',
-      backToSite: '← საიტზე დაბრუნება',
+      backToSite: 'მთავარ გვერდზე გადასვლა (მომხმარებლის ხედვა)',
+      backToAdminPanel: '↩ ადმინ პანელში დაბრუნება',
+      adminModeLabel: 'ადმინისტრატორის რეჟიმი',
       logout: 'გასვლა',
     },
     common: {
@@ -123,7 +125,9 @@ export const adminDict = {
     },
     chrome: {
       adminPanel: 'Admin Panel',
-      backToSite: '← Back to site',
+      backToSite: 'Go to Homepage (User View)',
+      backToAdminPanel: '↩ Back to Admin Panel',
+      adminModeLabel: 'Admin Mode',
       logout: 'Log out',
     },
     common: {

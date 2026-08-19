@@ -123,6 +123,12 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
     appliedPromo = promo;
   }
 
+  // Admin/manager/moderator test-mode bypass — same posture as routes/
+  // payments.ts's identical BOG-side bypass: unconditional for any
+  // admin-team account, gated on the DB's adminRole, never a client flag.
+  const requesterAdminRole = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } }))?.adminRole;
+  if (requesterAdminRole) chargeAmountGel = 0;
+
   if (chargeAmountGel <= 0) {
     const freePayment = await prisma.stripePayment.create({
       data: {
@@ -308,6 +314,26 @@ router.post('/checkout/product/:productId', checkoutRateLimit, authenticate, req
   if (existingPurchase?.paymentStatus === 'COMPLETED') return res.status(400).json({ message: 'You already own this product.' });
   const reusable = await findReusablePendingOrder(req.user!.id, 'PRODUCT', product.id);
   if (reusable) return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.checkoutUrl });
+
+  // Admin/manager/moderator test-mode bypass — same posture as routes/
+  // payments.ts's identical BOG-side bypass.
+  const requesterAdminRole = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } }))?.adminRole;
+  if (requesterAdminRole) {
+    const freePayment = await prisma.stripePayment.create({
+      data: {
+        stripeSessionId: `admin-test-${crypto.randomUUID()}`,
+        userId: req.user!.id,
+        purpose: 'PRODUCT',
+        referenceId: product.id,
+        amount: 0,
+        currency: 'USD',
+        status: 'COMPLETED',
+        completedAt: new Date(),
+      },
+    });
+    await completeProductPurchase({ userId: req.user!.id, productId: product.id, amount: 0 });
+    return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, purchased: true });
+  }
 
   const currency = checkoutCurrency(req);
   const amount = convertGelToStripeMinorUnits(product.price, currency);

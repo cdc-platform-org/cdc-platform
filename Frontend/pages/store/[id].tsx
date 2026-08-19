@@ -93,9 +93,15 @@ function StoreProductContent() {
     setSubmitting(true);
     try {
       // Georgian users pay via BOG (GEL); everyone else via Stripe (USD/EUR).
-      const { redirectUrl } =
-        lang === 'ka' ? await checkoutProduct(product.id, 'ka') : await checkoutProductStripe(product.id, 'usd');
-      window.location.href = redirectUrl;
+      const result = lang === 'ka' ? await checkoutProduct(product.id, 'ka') : await checkoutProductStripe(product.id, 'usd');
+      if (result.purchased) {
+        // Admin test-mode bypass fired server-side — already owned, no
+        // gateway redirect to follow. Reload so the page's own
+        // already-purchased state (download button, etc.) picks it up.
+        window.location.reload();
+        return;
+      }
+      window.location.href = result.redirectUrl!;
     } catch (err: any) {
       setActionError(err?.response?.data?.message ?? t('checkoutFailed'));
       setSubmitting(false);
