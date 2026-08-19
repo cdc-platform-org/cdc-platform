@@ -26,7 +26,7 @@ const dict = {
     categories: 'კატეგორიები',
     viewAllProducts: 'ყველა პროდუქტი',
     tools: 'ციფრული ხელსაწყოები',
-    tutorials: 'ვიდეო ტუტორიალები',
+    tutorials: 'ვიდეო ინსტრუქციები',
     dashboard: 'ჩემი დაშბორდი',
     myCourses: 'ჩემი კურსები',
     admin: 'ადმინ პანელი',
@@ -254,6 +254,12 @@ export default function SiteHeader() {
                       className="block px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
                     >
                       {t.gallery}
+                    </Link>
+                    <Link
+                      href="/tutorials"
+                      className="block px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                    >
+                      {t.tutorials}
                     </Link>
                   </div>
                 </div>
