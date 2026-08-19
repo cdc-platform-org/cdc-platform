@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
+import { sendOfficialNotificationEmail } from '../services/emailService';
 
 const router = Router();
 router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'));
@@ -24,22 +25,30 @@ router.post('/', async (req: Request, res: Response) => {
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
   const { title, message, type, targetUserId, targetRole } = result.data;
 
-  const userIds = targetUserId
-    ? [targetUserId]
-    : (
-        await prisma.user.findMany({
-          where: targetRole === 'ALL' ? {} : { role: targetRole },
-          select: { id: true },
-        })
-      ).map((u) => u.id);
+  const recipients = targetUserId
+    ? await prisma.user.findMany({ where: { id: targetUserId }, select: { id: true, email: true } })
+    : await prisma.user.findMany({
+        where: targetRole === 'ALL' ? {} : { role: targetRole },
+        select: { id: true, email: true },
+      });
 
-  if (userIds.length === 0) {
+  if (recipients.length === 0) {
     return res.status(404).json({ message: 'No matching recipients found.' });
   }
 
   const { count } = await prisma.notification.createMany({
-    data: userIds.map((userId) => ({ userId, title, message, type: type ?? 'ADMIN_DIRECT' })),
+    data: recipients.map((r) => ({ userId: r.id, title, message, type: type ?? 'ADMIN_DIRECT' })),
   });
+
+  // Best-effort, fire-and-forget per recipient — a broadcast to hundreds of
+  // students must never wait on hundreds of Resend calls before responding,
+  // and one failed send must never affect the others or the in-app
+  // notifications already committed above.
+  for (const r of recipients) {
+    sendOfficialNotificationEmail(r.email).catch((err) =>
+      console.error(`[adminNotifications] sendOfficialNotificationEmail failed for ${r.email}:`, err instanceof Error ? err.message : err)
+    );
+  }
 
   res.status(201).json({ data: { sentCount: count } });
 });

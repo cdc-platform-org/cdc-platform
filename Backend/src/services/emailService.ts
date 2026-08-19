@@ -346,6 +346,27 @@ export async function sendBusinessRejectedEmail(email: string, companyName: stri
   await sendEmail(email, 'თქვენი ბიზნეს დოკუმენტის განხილვა ⚠️', html, link);
 }
 
+// Fired alongside every in-app Notification row an admin creates (manual
+// POST /admin/notifications, or an automated system one — see that route
+// and every other prisma.notification.create call across this codebase)
+// so a notification isn't missed by someone who doesn't have the site open.
+// Deliberately generic ("you have an official notification") rather than
+// repeating the notification's own title/message in the email body — the
+// full content only ever lives on the platform, consistent with this
+// system being a one-way admin -> user channel with no reply-in-app
+// affordance (see NotificationBell.tsx's own comment).
+export async function sendOfficialNotificationEmail(email: string): Promise<void> {
+  const link = `${FRONTEND_URL}/dashboard/notifications`;
+  const html = wrapTemplate(
+    'თქვენ მიიღეთ ახალი შეტყობინება',
+    'ადმინისტრაციისგან მიღებული გაქვთ ახალი ოფიციალური შეტყობინება. გთხოვთ გაეცნოთ მას პლატფორმაზე.' +
+      '<p style="margin-top:20px;font-size:12px;color:#94a3b8;">კითხვების შემთხვევაში მოგვწერეთ პირდაპირ: info@cdc.org.ge</p>',
+    'შეტყობინების ნახვა პლატფორმაზე',
+    link
+  );
+  await sendEmail(email, 'CDC პლატფორმის შეტყობინება / Official Notification from CDC', html, link);
+}
+
 export async function sendPasswordResetEmail(email: string, token: string, lang: 'ka' | 'en' = 'ka'): Promise<void> {
   const link = `${FRONTEND_URL}/reset-password?token=${token}`;
   const html =

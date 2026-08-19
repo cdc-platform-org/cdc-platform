@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/router';
 import { Bell } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getMyNotifications, markNotificationRead, AppNotification } from '../../services/notificationService';
@@ -9,6 +10,7 @@ const EMPTY_LABEL: Record<string, string> = { ka: 'შეტყობინე�
 // deliberately no reply affordance. Polls every 60s so the badge updates
 // without the user needing to refresh the page.
 export default function NotificationBell() {
+  const router = useRouter();
   const { isAuthenticated } = useAuth();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -41,10 +43,13 @@ export default function NotificationBell() {
   }, [open]);
 
   const handleNotificationClick = (n: AppNotification) => {
-    if (n.isRead) return;
-    setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
-    setUnreadCount((c) => Math.max(0, c - 1));
-    markNotificationRead(n.id).catch(() => {});
+    if (!n.isRead) {
+      setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
+      setUnreadCount((c) => Math.max(0, c - 1));
+      markNotificationRead(n.id).catch(() => {});
+    }
+    setOpen(false);
+    router.push(`/dashboard/notifications?id=${n.id}`);
   };
 
   if (!isAuthenticated) return null;
