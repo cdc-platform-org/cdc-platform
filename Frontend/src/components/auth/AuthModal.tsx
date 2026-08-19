@@ -128,7 +128,14 @@ export default function AuthModal() {
     setError(null);
     loginWithGoogle(idToken)
       .then((loggedInUser) => handlePostLogin(loggedInUser))
-      .catch((err: any) => setError(err?.response?.data?.message || t.login.genericError))
+      .catch((err: any) => {
+        // Logged so a CORS rejection (no response body reaching here at
+        // all) is distinguishable in the console from a real backend
+        // rejection of the token — both otherwise show the same generic
+        // UI message.
+        console.error('[GoogleSignIn] Token validation request failed:', err);
+        setError(err?.response?.data?.message || t.login.genericError);
+      })
       .finally(() => setSubmitting(false));
   };
 

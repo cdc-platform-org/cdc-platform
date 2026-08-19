@@ -114,10 +114,11 @@ router.get('/mentors', async (_req: Request, res: Response) => {
 // previously no in-app way to do this at all (mentor accounts were only
 // ever set directly in the database), so the Mentor Dashboard and every
 // other mentor-only route in this codebase was unreachable in practice for
-// a newly-recruited mentor. Deliberately SUPER_ADMIN-only (narrower than
-// this router's default SUPER_ADMIN|MANAGER|MODERATOR) since a role change
-// is more consequential than the profile/availability edits below.
-router.post('/mentors/promote', requireAdminRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+// a newly-recruited mentor. SUPER_ADMIN|MANAGER (same tier as the demote
+// endpoint below, and as the badge/ban actions on routes/admin.ts) —
+// previously SUPER_ADMIN-only, widened so the promote/demote toggle in
+// User Management has one consistent permission in both directions.
+router.post('/mentors/promote', requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
   const userId = typeof req.body?.userId === 'string' ? req.body.userId : null;
   if (!userId) return res.status(400).json({ message: 'userId is required.' });
 
@@ -128,8 +129,31 @@ router.post('/mentors/promote', requireAdminRole('SUPER_ADMIN'), async (req: Req
 
   const updated = await prisma.user.update({
     where: { id: userId },
-    data: { role: 'Mentor' },
+    // Remember what they were so a later demote can put them back —
+    // role itself is about to be overwritten and has no history of its own.
+    data: { role: 'Mentor', preMentorRole: user.role },
     select: mentorProfileSelect,
+  });
+  res.status(200).json({ data: updated });
+});
+
+// Reverses promote above — used by the User Management "remove Mentor
+// status" toggle. Reverts to whichever of Student/Client the account was
+// before promotion (preMentorRole), falling back to Student for a Mentor
+// promoted before that field existed. Deliberately doesn't touch the
+// mentorTitle/bio/cvUrl/etc. profile fields or past MentorshipBooking rows —
+// those stay in place (harmless while role isn't Mentor) so a later
+// re-promotion doesn't lose the mentor's old profile, and booking history
+// is never something a role toggle should delete.
+router.post('/mentors/:userId/demote', requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
+  const user = await prisma.user.findUnique({ where: { id: req.params.userId } });
+  if (!user) return res.status(404).json({ message: 'User not found.' });
+  if (user.role !== 'Mentor') return res.status(400).json({ message: 'This user is not a Mentor.' });
+
+  const updated = await prisma.user.update({
+    where: { id: user.id },
+    data: { role: user.preMentorRole ?? 'Student', preMentorRole: null },
+    select: { id: true, name: true, email: true, role: true },
   });
   res.status(200).json({ data: updated });
 });

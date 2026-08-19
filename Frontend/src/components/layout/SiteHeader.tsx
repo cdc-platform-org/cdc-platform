@@ -26,6 +26,7 @@ const dict = {
     categories: 'კატეგორიები',
     viewAllProducts: 'ყველა პროდუქტი',
     tools: 'ციფრული ხელსაწყოები',
+    tutorials: 'ვიდეო ტუტორიალები',
     dashboard: 'ჩემი დაშბორდი',
     myCourses: 'ჩემი კურსები',
     admin: 'ადმინ პანელი',
@@ -42,6 +43,7 @@ const dict = {
     categories: 'Categories',
     viewAllProducts: 'View All Products',
     tools: 'Digital Tools',
+    tutorials: 'Video Tutorials',
     dashboard: 'My Dashboard',
     myCourses: 'My Courses',
     admin: 'Admin Panel',
@@ -58,6 +60,7 @@ const dict = {
     categories: 'Kategorien',
     viewAllProducts: 'Alle Produkte ansehen',
     tools: 'Digitale Tools',
+    tutorials: 'Video-Tutorials',
     dashboard: 'Mein Dashboard',
     myCourses: 'Meine Kurse',
     admin: 'Admin-Panel',
@@ -74,6 +77,7 @@ const dict = {
     categories: 'Categorías',
     viewAllProducts: 'Ver Todos los Productos',
     tools: 'Herramientas Digitales',
+    tutorials: 'Video Tutoriales',
     dashboard: 'Mi Panel',
     myCourses: 'Mis Cursos',
     admin: 'Panel de Administración',
@@ -90,6 +94,7 @@ const dict = {
     categories: 'Catégories',
     viewAllProducts: 'Voir tous les produits',
     tools: 'Outils numériques',
+    tutorials: 'Tutoriels vidéo',
     dashboard: 'Mon tableau de bord',
     myCourses: 'Mes cours',
     admin: 'Panneau admin',
@@ -106,6 +111,7 @@ const dict = {
     categories: 'Категорії',
     viewAllProducts: 'Переглянути всі товари',
     tools: 'Цифрові інструменти',
+    tutorials: 'Відеоуроки',
     dashboard: 'Моя панель',
     myCourses: 'Мої курси',
     admin: 'Панель адміністратора',
@@ -357,6 +363,9 @@ export default function SiteHeader() {
                 {t.tools}
               </Link>
             )}
+            <Link href="/tutorials" onClick={() => setMobileMenuOpen(false)} className="no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+              {t.tutorials}
+            </Link>
             {!(isAuthenticated && user) && (
               <>
                 <Link href="/about" onClick={() => setMobileMenuOpen(false)} className="no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">

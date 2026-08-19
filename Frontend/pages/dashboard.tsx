@@ -1661,7 +1661,16 @@ function DashboardContent() {
                       onSubmit={handleSubmitProduct}
                       className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-3"
                     >
-                      <h3 className="text-sm font-bold">{editingSubmissionId ? t.editSubmissionTitle : t.submitProductTitle}</h3>
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <h3 className="text-sm font-bold">{editingSubmissionId ? t.editSubmissionTitle : t.submitProductTitle}</h3>
+                        <Link
+                          href="/tutorials"
+                          target="_blank"
+                          className="text-xs font-semibold text-cyan-600 dark:text-cyan-400 hover:underline whitespace-nowrap"
+                        >
+                          🎥 {lang === 'ka' ? 'ვიდეო ინსტრუქცია' : 'Watch tutorial'}
+                        </Link>
+                      </div>
                       {submitError && (
                         <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-xs text-red-600 dark:text-red-300">
                           {submitError}

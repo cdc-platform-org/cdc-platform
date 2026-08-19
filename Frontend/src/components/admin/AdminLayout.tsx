@@ -29,6 +29,7 @@ import {
   ShoppingBag,
   Bug,
   UserCheck,
+  PlayCircle,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AdminLangProvider, useAdminLang } from '../../context/AdminLangContext';
@@ -59,6 +60,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/studio', labelKey: 'studio', icon: ClipboardList, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/companies', labelKey: 'companies', icon: ShieldCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
   { href: '/admin/blog', labelKey: 'blog', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
+  { href: '/admin/tutorials', labelKey: 'tutorials', icon: PlayCircle, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
   { href: '/admin/success-stories', labelKey: 'successStories', icon: Award, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
   { href: '/admin/team-trainers', labelKey: 'teamTrainers', icon: UsersRound, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
   { href: '/admin/studio-cases', labelKey: 'studioCases', icon: Layers, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },

@@ -200,6 +200,13 @@ model User {
   password                      String
   name                          String
   role                          Role                        @default(Student)
+  // Captures `role` at the moment POST /admin/mentorship/mentors/promote
+  // overwrites it with `Mentor` — the only way to know which of Student/
+  // Client to revert to on POST /admin/mentorship/mentors/:userId/demote,
+  // since `role` itself is a single field with no history. Null for every
+  // non-Mentor account, and for any Mentor promoted before this field
+  // existed (demote falls back to Student for those).
+  preMentorRole                 Role?
   status                        UserStatus                  @default(PENDING_APPROVAL)
   rejectionReason               String?
   earningsBalance               Int                         @default(0)
@@ -1191,6 +1198,38 @@ model Order {
 // ============================================================
 // BLOG POST
 // ============================================================
+
+// Video Tutorials / Help Center — short how-to videos (YouTube/Vimeo/Loom
+// links, not hosted files) shown on the public /tutorials page and managed
+// by SUPER_ADMIN/MANAGER via /admin/tutorials. Deliberately its own model
+// rather than reusing BlogPost: no rich content/comments/authorship, just a
+// title+description+video link, closer to StudioCaseStudy's shape.
+model Tutorial {
+  id            String    @id @default(uuid())
+  title         String
+  description   String
+  category      String
+  // Raw YouTube/Vimeo/Loom watch/share URL as pasted by the admin — turned
+  // into an embeddable player URL client-side (see Frontend's
+  // tutorialService.ts), not normalized at write time, so the admin form can
+  // keep showing back exactly what was entered.
+  videoUrl      String
+  titleEn       String?
+  descriptionEn String?
+  // Manual sort position within a category — lower first. Admin-set, no
+  // uniqueness constraint (ties just fall back to createdAt below).
+  order         Int       @default(0)
+  // Null = draft, not shown on the public page. Non-null = published, and
+  // doubles as the "recently added" sort key — same nullable-DateTime-as-
+  // gate convention as User.emailVerifiedAt/termsAcceptedAt.
+  publishedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([category])
+  @@index([publishedAt])
+  @@map("tutorials")
+}
 
 model BlogPost {
   id                 String   @id @default(uuid())

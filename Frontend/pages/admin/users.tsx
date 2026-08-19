@@ -18,7 +18,7 @@ import {
   unbanUser,
   sendAdminPasswordReset,
 } from '../../src/services/adminService';
-import { promoteToMentor } from '../../src/services/adminMentorshipService';
+import { promoteToMentor, demoteFromMentor } from '../../src/services/adminMentorshipService';
 
 const STATUS_BADGE: Record<AdminUser['status'], string> = {
   PENDING_APPROVAL: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20 shadow-amber-400/30 dark:shadow-amber-500/20',
@@ -64,7 +64,10 @@ const PAGE_DICT = {
     ban: 'დაბლოკვა',
     resetPassword: 'პაროლის აღდგენა',
     promoteToMentor: 'მენტორის სტატუსის მინიჭება',
+    removeMentor: 'მენტორის სტატუსის მოხსნა',
+    mentorBadge: 'მენტორი',
     promoteConfirm: (name: string) => `დაუმატოთ „${name}“ მენტორის სტატუსი? ისინი საჯაროდ გამოჩნდებიან /mentors გვერდზე.`,
+    demoteConfirm: (name: string) => `მოეხსნას „${name}“-ს მენტორის სტატუსი? ისინი გაქრებიან /mentors გვერდიდან.`,
     resetPasswordSuccess: 'პაროლის აღდგენის ბმული გაიგზავნა მომხმარებლის ელფოსტაზე',
     noUsers: 'მომხმარებელი ვერ მოიძებნა.',
     loadError: 'მომხმარებლების ჩატვირთვა ვერ მოხერხდა. სცადეთ ხელახლა.',
@@ -93,7 +96,10 @@ const PAGE_DICT = {
     ban: 'Ban',
     resetPassword: 'Reset Password',
     promoteToMentor: 'Promote to Mentor',
+    removeMentor: 'Remove Mentor status',
+    mentorBadge: 'Mentor',
     promoteConfirm: (name: string) => `Promote "${name}" to Mentor? They will become publicly visible on /mentors.`,
+    demoteConfirm: (name: string) => `Remove "${name}"'s Mentor status? They will disappear from /mentors.`,
     resetPasswordSuccess: 'Password reset link sent to the user\'s email',
     noUsers: 'No users match your search.',
     loadError: 'Unable to load users. Please try again.',
@@ -125,10 +131,11 @@ function UserManagement() {
   // Only ADMIN/SUPER_ADMIN can approve/reject/badge — mirrors the backend's
   // requireAdminRole('SUPER_ADMIN','MANAGER') on those specific routes.
   const canManageContent = viewer?.adminRole === 'SUPER_ADMIN' || viewer?.adminRole === 'MANAGER';
-  // Promoting to Mentor is narrower — mirrors the backend's
-  // requireAdminRole('SUPER_ADMIN') on POST /mentors/promote specifically
-  // (a role change is more consequential than the actions above).
-  const canPromoteToMentor = viewer?.adminRole === 'SUPER_ADMIN';
+  // Mirrors the backend's requireAdminRole('SUPER_ADMIN', 'MANAGER') on both
+  // POST /mentors/promote and POST /mentors/:userId/demote — same tier as
+  // canManageContent above, kept as its own flag since it gates a distinct
+  // action (role change) rather than content moderation.
+  const canPromoteToMentor = viewer?.adminRole === 'SUPER_ADMIN' || viewer?.adminRole === 'MANAGER';
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -191,9 +198,10 @@ function UserManagement() {
     }
   };
 
-  // Separate from runAction — promoteToMentor returns a MentorProfile, not
-  // an AdminUser, so only the one field that actually changed (role) is
-  // merged into the existing row rather than replacing it wholesale.
+  // Separate from runAction — promoteToMentor/demoteFromMentor return a
+  // MentorProfile/DemoteMentorResult, not an AdminUser, so only the one
+  // field that actually changed (role) is merged into the existing row
+  // rather than replacing it wholesale.
   const handlePromote = async (u: AdminUser) => {
     if (!window.confirm(p.promoteConfirm(u.name))) return;
     setActioningId(u.id);
@@ -201,6 +209,20 @@ function UserManagement() {
     try {
       await promoteToMentor(u.id);
       setUsers((prev) => prev.map((row) => (row.id === u.id ? { ...row, role: 'Mentor' } : row)));
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? p.actionError);
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  const handleDemote = async (u: AdminUser) => {
+    if (!window.confirm(p.demoteConfirm(u.name))) return;
+    setActioningId(u.id);
+    setError(null);
+    try {
+      const { role } = await demoteFromMentor(u.id);
+      setUsers((prev) => prev.map((row) => (row.id === u.id ? { ...row, role } : row)));
     } catch (err: any) {
       setError(err?.response?.data?.message ?? p.actionError);
     } finally {
@@ -340,6 +362,11 @@ function UserManagement() {
                                 🚫 {p.banned}
                               </span>
                             )}
+                            {u.role === 'Mentor' && (
+                              <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 text-purple-700 dark:text-purple-300">
+                                🧑‍🏫 {p.mentorBadge}
+                              </span>
+                            )}
                             {u.adminRole && (
                               <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 text-indigo-700 dark:text-indigo-300">
                                 {u.adminRole.replace('_', ' ')}
@@ -380,13 +407,13 @@ function UserManagement() {
                                 {u.isVerifiedGraduate ? p.removeBadge : p.assignBadge}
                               </button>
                             )}
-                            {canPromoteToMentor && (u.role === 'Student' || u.role === 'Client') && (
+                            {canPromoteToMentor && (u.role === 'Student' || u.role === 'Client' || u.role === 'Mentor') && (
                               <button
                                 disabled={isActioning}
-                                onClick={() => handlePromote(u)}
+                                onClick={() => (u.role === 'Mentor' ? handleDemote(u) : handlePromote(u))}
                                 className="text-xs font-medium text-purple-700 dark:text-purple-300 hover:text-purple-800 dark:hover:text-purple-200 bg-purple-50 dark:bg-purple-500/10 hover:bg-purple-100 dark:hover:bg-purple-500/20 px-2.5 py-1 rounded-lg disabled:opacity-50"
                               >
-                                {p.promoteToMentor}
+                                {u.role === 'Mentor' ? p.removeMentor : p.promoteToMentor}
                               </button>
                             )}
                             {u.id !== viewer?.id && (

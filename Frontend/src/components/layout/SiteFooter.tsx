@@ -54,6 +54,7 @@ const STRINGS = {
     marketplace: 'ციფრული მაღაზია',
     studio: 'CDC Studio',
     helpHeading: 'დახმარება',
+    tutorials: 'ვიდეო ტუტორიალები',
     about: 'ჩვენ შესახებ',
     contactPage: 'დაგვიკავშირდით',
     legalHeading: 'სამართლებრივი',
@@ -79,6 +80,7 @@ const STRINGS = {
     marketplace: 'Marketplace',
     studio: 'CDC Studio',
     helpHeading: 'Help',
+    tutorials: 'Video Tutorials',
     about: 'About Us',
     contactPage: 'Get in Touch',
     legalHeading: 'Legal',
@@ -104,6 +106,7 @@ const STRINGS = {
     marketplace: 'Marktplatz',
     studio: 'CDC Studio',
     helpHeading: 'Hilfe',
+    tutorials: 'Video-Tutorials',
     about: 'Über uns',
     contactPage: 'Kontakt',
     legalHeading: 'Rechtliches',
@@ -129,6 +132,7 @@ const STRINGS = {
     marketplace: 'Mercado',
     studio: 'CDC Studio',
     helpHeading: 'Ayuda',
+    tutorials: 'Video Tutoriales',
     about: 'Sobre Nosotros',
     contactPage: 'Contáctanos',
     legalHeading: 'Legal',
@@ -154,6 +158,7 @@ const STRINGS = {
     marketplace: 'Marché',
     studio: 'CDC Studio',
     helpHeading: 'Aide',
+    tutorials: 'Tutoriels vidéo',
     about: 'À propos de nous',
     contactPage: 'Contactez-nous',
     legalHeading: 'Mentions légales',
@@ -179,6 +184,7 @@ const STRINGS = {
     marketplace: 'Маркетплейс',
     studio: 'CDC Studio',
     helpHeading: 'Допомога',
+    tutorials: 'Відеоуроки',
     about: 'Про нас',
     contactPage: "Зв'язатися з нами",
     legalHeading: 'Правова інформація',
@@ -285,6 +291,7 @@ export default function SiteFooter() {
           <div className={noHoverFx}>
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.helpHeading}</h3>
             <ul className="space-y-2.5 text-xs">
+              <li><Link href="/tutorials" className={navLink}>{t.tutorials}</Link></li>
               <li><Link href="/about" className={navLink}>{t.about}</Link></li>
               <li><Link href="/contact" className={navLink}>{t.contactPage}</Link></li>
               <li>

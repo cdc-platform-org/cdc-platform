@@ -1,5 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { postVacancy, VacancyFormPayload } from '../../services/vacancyService';
 import { postGig, PostGigPayload } from '../../services/gigService';
 import { EmploymentType, GigBudgetType, JobCategory } from '../../types/community';
@@ -142,6 +143,11 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
 
   return (
     <div className={className ?? DEFAULT_CLASS_NAME}>
+      <div className="flex justify-end mb-4">
+        <Link href="/tutorials" target="_blank" className="text-xs font-semibold text-indigo-600 hover:underline whitespace-nowrap">
+          🎥 Watch tutorial
+        </Link>
+      </div>
       {allowTypeToggle && (
         <div className="flex gap-2 mb-8 bg-gray-100 rounded-lg p-1 w-fit">
           <button

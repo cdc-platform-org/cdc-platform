@@ -63,6 +63,10 @@ function LoginPage() {
       // same generic string — same pattern as the password-login handler
       // below. Falls back to the generic string only when there's truly no
       // response body (a network/CORS failure never reached the backend).
+      // Also logged: a CORS rejection and a real backend rejection both
+      // produce the same fallback UI message, so the console is the only
+      // place to tell them apart.
+      console.error('[GoogleSignIn] Token validation request failed:', err);
       const axiosErr = err as AxiosError<{ message?: string }>;
       setError(axiosErr.response?.data?.message || t('googleSignInError'));
     } finally {

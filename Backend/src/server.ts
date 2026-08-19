@@ -22,6 +22,7 @@ import adminRoutes from './routes/admin';
 import adminPanelRoutes from './routes/adminPanel';
 import walletRoutes from './routes/wallet';
 import blogRoutes from './routes/blog';
+import tutorialRoutes from './routes/tutorials';
 import adminBlogRoutes from './routes/adminBlog';
 import reviewRoutes from './routes/reviews';
 import directOfferRoutes from './routes/directOffers';
@@ -124,24 +125,44 @@ app.set('trust proxy', 1);
 
 // Same FRONTEND_URL fallback pattern as auth.ts/payments.ts/emailService.ts,
 // plus ADDITIONAL_CORS_ORIGINS for any other domain that needs to call this
-// API from a browser (comma-separated, e.g. a staging preview URL) — unset
-// by default. Auth is a Bearer token in the Authorization header, not a
-// cookie (see Frontend's apiClient.ts), so this doesn't need `credentials`.
-const allowedOrigins = new Set(
-  [
-    process.env.FRONTEND_URL || 'https://cdc.org.ge',
-    'https://cdc.org.ge',
-    ...(process.env.ADDITIONAL_CORS_ORIGINS?.split(',').map((o) => o.trim()).filter(Boolean) ?? []),
-    ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:3000'] : []),
-  ]
-);
+// API from a browser (comma-separated, e.g. a staging preview URL, or a
+// `*.vercel.app` wildcard to cover every Vercel preview deployment — each
+// one gets its own unique subdomain, so listing them individually doesn't
+// scale) — unset by default. Auth is a Bearer token in the Authorization
+// header, not a cookie (see Frontend's apiClient.ts), so this doesn't need
+// `credentials`.
+const allowedOriginPatterns = [
+  process.env.FRONTEND_URL || 'https://cdc.org.ge',
+  'https://cdc.org.ge',
+  ...(process.env.ADDITIONAL_CORS_ORIGINS?.split(',').map((o) => o.trim()).filter(Boolean) ?? []),
+  ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:3000'] : []),
+];
+
+// A pattern is either an exact origin ("https://staging.cdc.org.ge") or a
+// `*.` wildcard ("*.vercel.app") matching any https subdomain of the rest —
+// deliberately https-only and requires at least one label before the
+// suffix, so `*.vercel.app` matches `https://cdc-platform-git-foo.vercel.app`
+// but not `http://vercel.app` or `https://vercel.app` itself.
+function originMatches(origin: string, pattern: string): boolean {
+  if (!pattern.startsWith('*.')) return origin === pattern;
+  const suffix = pattern.slice(1); // ".vercel.app"
+  try {
+    const { protocol, hostname } = new URL(origin);
+    return protocol === 'https:' && hostname.endsWith(suffix) && hostname.length > suffix.length;
+  } catch {
+    return false;
+  }
+}
+
 app.use(
   cors({
     origin: (origin, callback) => {
       // No Origin header at all means this isn't a browser request — a
       // server-to-server call (BOG's webhook, cron, curl) rather than
       // something CORS is meant to gate. Those still go through fine.
-      if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+      if (!origin || allowedOriginPatterns.some((p) => originMatches(origin, p))) {
+        return callback(null, true);
+      }
       // Logged (not just silently rejected) — this is invisible from the
       // browser's own error message ("Failed to fetch" gives no hint it was
       // CORS specifically, let alone which origin was rejected), and a
@@ -150,11 +171,11 @@ app.use(
       // added to FRONTEND_URL/ADDITIONAL_CORS_ORIGINS — exactly the kind of
       // config drift that otherwise looks identical to "the API is down"
       // from the outside.
-      console.error(`[cors] Rejected origin: ${origin} (allowed: ${[...allowedOrigins].join(', ')})`);
+      console.error(`[cors] Rejected origin: ${origin} (allowed: ${allowedOriginPatterns.join(', ')})`);
       Sentry.captureMessage('CORS rejected an origin', {
         level: 'warning',
         tags: { cause: 'cors_origin_rejected' },
-        extra: { origin, allowedOrigins: [...allowedOrigins] },
+        extra: { origin, allowedOriginPatterns },
       });
       callback(new Error('Not allowed by CORS'));
     },
@@ -172,6 +193,7 @@ app.use('/api/vacancies', vacanciesRoutes);
 app.use('/api/admin-panel', adminPanelRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/blog', blogRoutes);
+app.use('/api/tutorials', tutorialRoutes);
 app.use('/api/admin/blog', adminBlogRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/direct-offers', directOfferRoutes);

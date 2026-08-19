@@ -53,17 +53,30 @@ export default function GoogleSignInButton({ mode, role, lang, onCredential, dis
     if (!clientId || typeof window === 'undefined' || !window.google?.accounts?.id || !buttonRef.current) {
       return;
     }
-    window.google.accounts.id.initialize({
-      client_id: clientId,
-      locale: lang,
-      callback: (response) => onCredential(response.credential),
-    });
-    window.google.accounts.id.renderButton(buttonRef.current, {
-      theme: 'outline',
-      size: 'large',
-      width: 320,
-      text: mode === 'register' ? 'signup_with' : 'signin_with',
-    });
+    try {
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        locale: lang,
+        callback: (response) => onCredential(response.credential),
+        // Covers sign-in-flow errors (e.g. FedCM). An origin_mismatch is a
+        // separate case — Google's script detects and logs it itself
+        // (`[GSI_LOGGER]: The given origin is not allowed for the given
+        // client ID.`) before either callback here would ever fire, so
+        // there's nothing for this handler to add for that specific error;
+        // this is for the failure modes that don't self-report.
+        error_callback: (error) => {
+          console.error('[GoogleSignIn] GIS sign-in flow error:', error);
+        },
+      });
+      window.google.accounts.id.renderButton(buttonRef.current, {
+        theme: 'outline',
+        size: 'large',
+        width: 320,
+        text: mode === 'register' ? 'signup_with' : 'signin_with',
+      });
+    } catch (err) {
+      console.error('[GoogleSignIn] Failed to initialize/render the Google Sign-In button:', err);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId, mode, role, googleReady, lang]);
 

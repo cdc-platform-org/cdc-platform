@@ -84,11 +84,27 @@ export async function getMentors(): Promise<MentorProfile[]> {
   return response.data.data;
 }
 
-// Promotes an existing Student/Client account to Mentor — SUPER_ADMIN-only
-// on the backend (see adminMentorship.ts's /mentors/promote), so callers
-// must gate this behind the same check on the frontend too.
+// Promotes an existing Student/Client account to Mentor — SUPER_ADMIN or
+// MANAGER on the backend (see adminMentorship.ts's /mentors/promote), so
+// callers must gate this behind the same check on the frontend too.
 export async function promoteToMentor(userId: string): Promise<MentorProfile> {
   const response = await apiClient.post<{ data: MentorProfile }>('/admin/mentorship/mentors/promote', { userId });
+  return response.data.data;
+}
+
+export interface DemoteMentorResult {
+  id: string;
+  name: string;
+  email: string;
+  // Whichever of Student/Client the backend reverted them to — see
+  // adminMentorship.ts's /mentors/:userId/demote for how that's decided.
+  role: 'Student' | 'Client';
+}
+
+// Reverses promoteToMentor — same permission tier as promote, on the
+// backend.
+export async function demoteFromMentor(userId: string): Promise<DemoteMentorResult> {
+  const response = await apiClient.post<{ data: DemoteMentorResult }>(`/admin/mentorship/mentors/${userId}/demote`);
   return response.data.data;
 }
 
