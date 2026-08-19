@@ -16,6 +16,7 @@ import { STRIPE_GEL_TO_USD_RATE, STRIPE_GEL_TO_EUR_RATE } from '../utils/env';
 import { captureEscrow } from '../services/escrowService';
 import { completeProductPurchase } from '../services/productSaleService';
 import { getCurrentPrice, computeCoursePriceWithPromo } from '../services/coursePricing';
+import { getCurrentProductPrice } from '../services/productPricing';
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
 import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
 import { creditMentorshipSession } from '../services/mentorshipPayoutService';
@@ -336,7 +337,10 @@ router.post('/checkout/product/:productId', checkoutRateLimit, authenticate, req
   }
 
   const currency = checkoutCurrency(req);
-  const amount = convertGelToStripeMinorUnits(product.price, currency);
+  // The actual charged amount when a discount is active — same reasoning as
+  // routes/payments.ts's BOG checkout: the platform's commission applies to
+  // whatever this converts to, never the original price.
+  const amount = convertGelToStripeMinorUnits(getCurrentProductPrice(product), currency);
   const stripePayment = await prisma.stripePayment.create({
     data: {
       stripeSessionId: `pending-${crypto.randomUUID()}`,

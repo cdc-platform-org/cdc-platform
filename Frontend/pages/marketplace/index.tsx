@@ -136,8 +136,13 @@ function MarketplaceContent() {
                       {product.fileFormat}
                     </span>
                   )}
+                  {product.saleActive && (
+                    <span className="absolute top-3 right-3 z-10 text-xs font-black text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg shadow-rose-500/30">
+                      -{Math.round((1 - product.currentPrice / product.price) * 100)}%
+                    </span>
+                  )}
                   {product.purchased && (
-                    <span className="absolute top-3 right-3 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500 text-white shadow">
+                    <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500 text-white shadow">
                       <CheckCircle2 className="w-3 h-3" />
                       {t('owned')}
                     </span>
@@ -148,7 +153,10 @@ function MarketplaceContent() {
                   <h3 className="text-sm font-black tracking-wide mb-1.5 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">{productTitle(product, lang)}</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 mb-4 flex-1">{productDescription(product, lang)}</p>
                   <div className="flex items-center justify-between">
-                    <span className="text-base font-black">{product.price === 0 ? t('free') : formatPrice(product.price)}</span>
+                    <span className="flex items-baseline gap-1.5">
+                      {product.saleActive && <s className="text-xs text-slate-500">{formatPrice(product.price)}</s>}
+                      <span className="text-base font-black">{product.currentPrice === 0 ? t('free') : formatPrice(product.currentPrice)}</span>
+                    </span>
                     <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">{t('details')} →</span>
                   </div>
                 </div>

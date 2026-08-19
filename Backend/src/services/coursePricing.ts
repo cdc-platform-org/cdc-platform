@@ -4,6 +4,8 @@
 // needed to "turn off" a sale. All prices are Int minor units (tetri),
 // matching this codebase's money convention everywhere else.
 
+import { MIN_SALE_PRICE_MINOR } from './pricingRules';
+
 export interface CoursePricingInput {
   originalPrice: number;
   discountPercent: number | null;
@@ -24,11 +26,24 @@ export function getCurrentPrice(course: CoursePricingInput): number {
 }
 
 // Shape merged into every course API response — see routes/courses.ts.
-export function withCurrentPrice<T extends CoursePricingInput>(course: T): T & { currentPrice: number; saleActive: boolean } {
+// discountedPrice/saleEndsAt are aliases (currentPrice-when-on-sale and
+// discountEndDate respectively), not new stored data — added so the
+// Frontend's product/course sale-badge display code can read one consistent
+// shape off either resource instead of branching on which one it has.
+// Course itself keeps storing a percent (discountPercent) rather than an
+// absolute discountedPrice column, unlike DigitalProduct — see
+// productPricing.ts's own comment for why that's a deliberate difference,
+// not an oversight.
+export function withCurrentPrice<T extends CoursePricingInput>(
+  course: T
+): T & { currentPrice: number; saleActive: boolean; discountedPrice: number | null; saleEndsAt: Date | null } {
+  const saleActive = isSaleActive(course);
   return {
     ...course,
     currentPrice: getCurrentPrice(course),
-    saleActive: isSaleActive(course),
+    saleActive,
+    discountedPrice: saleActive ? getCurrentPrice(course) : null,
+    saleEndsAt: course.discountEndDate,
   };
 }
 
@@ -56,4 +71,19 @@ export function computeCoursePriceWithPromo(
   const promoPrice = computeDiscount(promo, course.originalPrice);
   const currentSalePrice = getCurrentPrice(course);
   return Math.min(promoPrice, currentSalePrice);
+}
+
+// Course's discount cap stays its own pre-existing 90% (schemas/
+// courseSchemas.ts's discountPercent.max(90)) — deliberately NOT unified
+// with DigitalProduct's newer 80% cap (productPricing.ts's
+// MAX_DISCOUNT_PERCENT), which is a separate, later policy decision for a
+// different pricing mechanism. Only the absolute price floor is shared.
+// All amounts minor units. Returns a rejection reason, or null when valid.
+export function validateCourseDiscount(originalPrice: number, discountPercent: number | null | undefined, isOnSale: boolean): string | null {
+  if (!isOnSale || !discountPercent) return null;
+  const salePrice = Math.round(originalPrice * (1 - discountPercent / 100));
+  if (salePrice < MIN_SALE_PRICE_MINOR) {
+    return `Sale price would be ${(salePrice / 100).toFixed(2)} GEL, below the minimum allowed (${(MIN_SALE_PRICE_MINOR / 100).toFixed(2)} GEL). Lower the discount percentage.`;
+  }
+  return null;
 }

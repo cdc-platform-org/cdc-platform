@@ -191,6 +191,11 @@ function StoreProductContent() {
                 <ShieldCheck className="w-3 h-3" />
                 {LICENSE_LABELS[product.licenseType][contentLang]}
               </span>
+              {product.saleActive && (
+                <span className="inline-flex items-center text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full text-white bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg shadow-rose-500/30">
+                  -{Math.round((1 - product.currentPrice / product.price) * 100)}%
+                </span>
+              )}
             </div>
             <h1 className="text-2xl md:text-3xl font-black tracking-wide mb-3">{productTitle(product, contentLang)}</h1>
             <MarkdownContent content={productDescription(product, contentLang)} className="mb-6 flex-1" />
@@ -212,7 +217,10 @@ function StoreProductContent() {
               </button>
             ) : (
               <div className="space-y-3">
-                <span className="text-2xl font-black block">{product.price === 0 ? t('free') : formatPrice(product.price)}</span>
+                <div className="flex items-baseline gap-2">
+                  {product.saleActive && <s className="text-base text-slate-500">{formatPrice(product.price)}</s>}
+                  <span className="text-2xl font-black block">{product.currentPrice === 0 ? t('free') : formatPrice(product.currentPrice)}</span>
+                </div>
                 <button
                   type="button"
                   onClick={product.price === 0 ? handleClaim : handleBuy}

@@ -1122,7 +1122,25 @@ model DigitalProduct {
   titleEn            String?
   description        String
   descriptionEn      String?
+  // Minor units (tetri), matching every other money field in this schema.
   price              Int
+  // Absolute sale price, also minor units — NOT a percent, unlike
+  // Course.discountPercent. Null (the common case) means no sale. Validated
+  // against MIN_SALE_PRICE_MINOR/MAX_DISCOUNT_PERCENT (services/
+  // productPricing.ts) at write time, not here — same "validation lives in
+  // the Zod schema/route, not the DB" posture as everything else in this
+  // file. getCurrentProductPrice()/withCurrentProductPrice() compute the
+  // actual charged price at read time, same pattern as Course's
+  // originalPrice/discountPercent via coursePricing.ts — deliberately a
+  // second, differently-shaped mechanism rather than retrofitting Course's
+  // percent-based one, since a seller here sets an absolute floor price,
+  // not "X% off," and the two models' commission/ownership semantics
+  // already differ (Course has no per-item creator split).
+  discountedPrice    Int?
+  // Null = sale never expires until discountedPrice is unset. Past this
+  // moment, getCurrentProductPrice() reverts to `price` automatically — no
+  // cron needed, same as Course.discountEndDate.
+  saleEndsAt         DateTime?
   category           String
   imageUrl           String
   // Up to 4 additional showcase screenshots shown alongside imageUrl (the

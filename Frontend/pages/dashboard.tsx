@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, FormEvent } from 'react';
+import { useState, useEffect, useCallback, useMemo, FormEvent } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -53,6 +53,7 @@ import {
   DigitalProduct,
   ProductLicenseType,
   LICENSE_LABELS,
+  validateProductDiscount,
 } from '../src/services/productService';
 import RichTextEditor from '../src/components/shared/RichTextEditor';
 import FileDropzone from '../src/components/shared/FileDropzone';
@@ -902,6 +903,8 @@ function DashboardContent() {
   const [submitPreviewImages, setSubmitPreviewImages] = useState<string[]>([]);
   const [submitFileUrl, setSubmitFileUrl] = useState('');
   const [submitLicenseType, setSubmitLicenseType] = useState<ProductLicenseType>('PERSONAL_USE');
+  const [submitDiscountedPrice, setSubmitDiscountedPrice] = useState('');
+  const [submitSaleEndsAt, setSubmitSaleEndsAt] = useState('');
   const [submitFileUploading, setSubmitFileUploading] = useState(false);
   const [submitFileUploadError, setSubmitFileUploadError] = useState<string | null>(null);
   const [editingSubmissionId, setEditingSubmissionId] = useState<string | null>(null);
@@ -1002,9 +1005,15 @@ function DashboardContent() {
     }
   }, [activeTab, canSubmitProduct]);
 
+  const submitDiscountError = useMemo(() => {
+    if (!submitDiscountedPrice) return null;
+    return validateProductDiscount(Number(submitPrice) || 0, Number(submitDiscountedPrice) || 0);
+  }, [submitPrice, submitDiscountedPrice]);
+
   const handleSubmitProduct = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
+    if (submitDiscountError) return setSubmitError(submitDiscountError);
     setSubmittingProduct(true);
     try {
       // Editing an existing NEEDS_REVISION/PENDING submission resubmits it
@@ -1023,6 +1032,8 @@ function DashboardContent() {
           imageUrl: submitImageUrl,
           previewImages: submitPreviewImages,
           licenseType: submitLicenseType,
+          discountedPrice: submitDiscountedPrice ? Number(submitDiscountedPrice) : null,
+          saleEndsAt: submitSaleEndsAt || null,
           ...(submitFileUrl ? { fileUrl: submitFileUrl } : {}),
         });
       } else {
@@ -1035,6 +1046,8 @@ function DashboardContent() {
           previewImages: submitPreviewImages,
           fileUrl: submitFileUrl,
           licenseType: submitLicenseType,
+          discountedPrice: submitDiscountedPrice ? Number(submitDiscountedPrice) : null,
+          saleEndsAt: submitSaleEndsAt || null,
         });
       }
       setSubmitTitle('');
@@ -1045,6 +1058,8 @@ function DashboardContent() {
       setSubmitPreviewImages([]);
       setSubmitFileUrl('');
       setSubmitLicenseType('PERSONAL_USE');
+      setSubmitDiscountedPrice('');
+      setSubmitSaleEndsAt('');
       setEditingSubmissionId(null);
       setShowSubmitForm(false);
       setMySubmissions(await getMySubmissions());
@@ -1064,6 +1079,10 @@ function DashboardContent() {
     setSubmitImageUrl(s.imageUrl);
     setSubmitPreviewImages(s.previewImages);
     setSubmitLicenseType(s.licenseType);
+    setSubmitDiscountedPrice(s.discountedPrice != null ? String(s.discountedPrice / 100) : '');
+    // <input type="datetime-local"> needs "YYYY-MM-DDTHH:mm", not a full ISO
+    // string with seconds/ms/timezone — slice(0, 16) trims exactly that.
+    setSubmitSaleEndsAt(s.saleEndsAt ? s.saleEndsAt.slice(0, 16) : '');
     setSubmitFileUrl(''); // fileUrl is never exposed to the client — re-upload if it needs to change, otherwise the existing file stays untouched (omitted from the payload).
     setSubmitError(null);
     setShowSubmitForm(true);
@@ -1797,10 +1816,39 @@ function DashboardContent() {
                           ))}
                         </select>
                       </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+                            {lang === 'ka' ? 'ფასდაკლებული ფასი (GEL)' : 'Discounted Price (GEL)'}
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={submitDiscountedPrice}
+                            onChange={(e) => setSubmitDiscountedPrice(e.target.value)}
+                            placeholder={lang === 'ka' ? 'ცარიელი — ფასდაკლების გარეშე' : 'Leave blank for no sale'}
+                            className={`w-full rounded-xl border bg-white dark:bg-slate-900 px-3 py-2 text-sm ${submitDiscountError ? 'border-red-400' : 'border-slate-200 dark:border-slate-700'}`}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+                            {lang === 'ka' ? 'ფასდაკლება მთავრდება' : 'Sale Ends At'}
+                          </label>
+                          <input
+                            type="datetime-local"
+                            value={submitSaleEndsAt}
+                            onChange={(e) => setSubmitSaleEndsAt(e.target.value)}
+                            disabled={!submitDiscountedPrice}
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm disabled:opacity-50"
+                          />
+                        </div>
+                      </div>
+                      {submitDiscountError && <p className="text-xs text-red-500">{submitDiscountError}</p>}
                       <div className="flex gap-2">
                         <button
                           type="submit"
-                          disabled={submittingProduct || !submitImageUrl || (!editingSubmissionId && !submitFileUrl) || submitFileUploading}
+                          disabled={submittingProduct || !submitImageUrl || (!editingSubmissionId && !submitFileUrl) || submitFileUploading || !!submitDiscountError}
                           className="text-xs font-bold px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-cyan-600 text-white disabled:opacity-60"
                         >
                           {submittingProduct ? t.formSubmitting : editingSubmissionId ? t.formResubmit : t.formSubmit}

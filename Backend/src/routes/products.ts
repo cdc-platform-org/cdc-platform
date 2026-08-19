@@ -15,6 +15,17 @@ import { getAiAutomationSettings } from '../services/aiAutomationSettingsService
 import { autoTranslateIfBlank } from '../services/aiTranslateService';
 import { protectProductPreviewImage } from '../services/productImageProtection';
 import { uploadProductFile, resolveProductFileDeliveryUrl } from '../services/productFileDelivery';
+import { withCurrentProductPrice, validateProductDiscount } from '../services/productPricing';
+
+// ISO string (or '' / null / undefined for "no sale end date") from the
+// form's <input type="datetime-local"> — mirrors courses.ts's identical
+// toPrismaDiscountEndDate helper. Prisma's DateTime field needs an actual
+// Date or null, never an empty string.
+function toPrismaSaleEndsAt(value: string | null | undefined): Date | null | undefined {
+  if (value === undefined) return undefined;
+  if (!value) return null;
+  return new Date(value);
+}
 
 const router = Router();
 
@@ -43,20 +54,32 @@ router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
     : new Set<string>();
 
   res.json({
-    data: products.map((p) => ({
-      id: p.id,
-      title: p.title,
-      description: p.description,
-      price: p.price,
-      category: p.category,
-      imageUrl: p.imageUrl,
-      previewImages: p.previewImages,
-      fileFormat: fileFormatFromUrl(p.fileUrl),
-      licenseType: p.licenseType,
-      downloadsCount: p.downloadsCount,
-      createdAt: p.createdAt,
-      purchased: purchasedIds.has(p.id),
-    })),
+    data: products.map((p) => {
+      // Deliberately pulling only currentPrice/saleActive out of
+      // withCurrentProductPrice(p), not spreading its whole return value —
+      // that includes every raw column (fileUrl, submittedById, etc.) this
+      // hand-picked public shape exists specifically to keep off the
+      // catalog response.
+      const { currentPrice, saleActive } = withCurrentProductPrice(p);
+      return {
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        price: p.price,
+        discountedPrice: saleActive ? p.discountedPrice : null,
+        saleEndsAt: saleActive ? p.saleEndsAt : null,
+        currentPrice,
+        saleActive,
+        category: p.category,
+        imageUrl: p.imageUrl,
+        previewImages: p.previewImages,
+        fileFormat: fileFormatFromUrl(p.fileUrl),
+        licenseType: p.licenseType,
+        downloadsCount: p.downloadsCount,
+        createdAt: p.createdAt,
+        purchased: purchasedIds.has(p.id),
+      };
+    }),
   });
 });
 
@@ -78,12 +101,17 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
     purchased = purchase?.paymentStatus === 'COMPLETED';
   }
 
+  const { currentPrice, saleActive } = withCurrentProductPrice(product);
   res.json({
     data: {
       id: product.id,
       title: product.title,
       description: product.description,
       price: product.price,
+      discountedPrice: saleActive ? product.discountedPrice : null,
+      saleEndsAt: saleActive ? product.saleEndsAt : null,
+      currentPrice,
+      saleActive,
       category: product.category,
       imageUrl: product.imageUrl,
       previewImages: product.previewImages,
@@ -116,6 +144,12 @@ const submitSchema = z.object({
   // restrictive option) — a submitter has to deliberately pick a broader
   // license, not have one granted by omission.
   licenseType: z.nativeEnum(ProductLicenseType).optional(),
+  // Major-unit GEL, same as price — converted + validated (productPricing.ts's
+  // validateProductDiscount) in the route handler, not here, since that
+  // needs the already-converted minor-unit price to compare against.
+  discountedPrice: z.number().min(0).optional().nullable(),
+  // ISO string from <input type="datetime-local">, or '' / null to clear.
+  saleEndsAt: z.string().datetime().optional().nullable().or(z.literal('')),
 });
 
 // Shared by POST / below and the two upload-* routes further down — a
@@ -253,11 +287,18 @@ router.post('/', authenticate, requireApproved, async (req: Request, res: Respon
   const result = submitSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
+  const priceMinor = Math.round(result.data.price * 100);
+  const discountedPriceMinor = result.data.discountedPrice != null ? Math.round(result.data.discountedPrice * 100) : null;
+  if (discountedPriceMinor !== null) {
+    const discountError = validateProductDiscount(priceMinor, discountedPriceMinor);
+    if (discountError) return res.status(400).json({ message: discountError });
+  }
+
   const moderation = await runAiModeration({
     title: result.data.title,
     description: result.data.description,
     category: result.data.category,
-    price: Math.round(result.data.price * 100),
+    price: priceMinor,
     imageUrl: result.data.imageUrl,
     previewImages: result.data.previewImages ?? [],
   });
@@ -270,12 +311,15 @@ router.post('/', authenticate, requireApproved, async (req: Request, res: Respon
     'products'
   );
 
+  const { discountedPrice, saleEndsAt, ...rest } = result.data;
   const product = await prisma.digitalProduct.create({
     data: {
-      ...result.data,
+      ...rest,
       titleEn,
       descriptionEn,
-      price: Math.round(result.data.price * 100),
+      price: priceMinor,
+      discountedPrice: discountedPriceMinor,
+      saleEndsAt: toPrismaSaleEndsAt(saleEndsAt) ?? null,
       submittedById: req.user!.id,
       ...moderation,
     },
@@ -309,7 +353,11 @@ router.get('/mine/submissions', authenticate, requireApproved, async (req: Reque
     where: { submittedById: req.user!.id },
     orderBy: { createdAt: 'desc' },
   });
-  res.json({ data: products });
+  // Full raw rows (including discountedPrice/saleEndsAt even when expired)
+  // are fine here — this is the submitter's own dashboard/edit form, not a
+  // public-facing price display, so it needs the actual stored values to
+  // pre-fill editing, not the "only while active" gate GET /'s catalog uses.
+  res.json({ data: products.map(withCurrentProductPrice) });
 });
 
 const updateMySubmissionSchema = submitSchema.partial();
@@ -335,8 +383,17 @@ router.put('/:id/mine', authenticate, requireApproved, async (req: Request, res:
   const result = updateMySubmissionSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
-  const { price, ...rest } = result.data;
+  const { price, discountedPrice, saleEndsAt, ...rest } = result.data;
   const priceMinor = price !== undefined ? Math.round(price * 100) : product.price;
+  // Explicit null clears a discount; undefined (field omitted) leaves the
+  // existing one untouched — same three-way distinction the rest of this
+  // codebase's optional-nullable Zod fields use (see titleEn/descriptionEn
+  // just below).
+  const discountedPriceMinor = discountedPrice !== undefined ? (discountedPrice != null ? Math.round(discountedPrice * 100) : null) : product.discountedPrice;
+  if (discountedPriceMinor !== null) {
+    const discountError = validateProductDiscount(priceMinor, discountedPriceMinor);
+    if (discountError) return res.status(400).json({ message: discountError });
+  }
 
   const moderation = await runAiModeration({
     title: result.data.title ?? product.title,
@@ -362,6 +419,8 @@ router.put('/:id/mine', authenticate, requireApproved, async (req: Request, res:
       titleEn,
       descriptionEn,
       ...(price !== undefined ? { price: priceMinor } : {}),
+      discountedPrice: discountedPriceMinor,
+      ...(saleEndsAt !== undefined ? { saleEndsAt: toPrismaSaleEndsAt(saleEndsAt) } : {}),
       ...moderation,
     },
   });
