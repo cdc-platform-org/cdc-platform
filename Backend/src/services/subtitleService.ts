@@ -12,7 +12,8 @@ import { prisma } from '../lib/prisma';
 import { uploadBunnyCaption } from './bunnyStreamService';
 
 // ============================================================
-// Automated 3-language (ka/en/ru) lesson subtitles — Gemini-powered.
+// Automated 3-language (ka/en/ru) lesson subtitles AND conspectus —
+// Gemini-powered, both produced from the same transcription pass.
 //
 // Pipeline: extract audio from the just-uploaded video buffer (ffmpeg,
 // already a dependency — see videoCompressionService.ts) -> upload it to
@@ -25,6 +26,16 @@ import { uploadBunnyCaption } from './bunnyStreamService';
 // language is uploaded to Bunny Stream via its Captions API. Bunny's own
 // embed player shows the CC toggle automatically once captions exist — no
 // custom player work needed.
+//
+// The conspectus stage reuses that same transcript rather than re-touching
+// the audio: the plain-text transcript is fed to Gemini once more to
+// extract only actionable takeaways/step-by-step details (filtering filler
+// talk), in the detected language, then translated into whichever of
+// ka/en/ru wasn't detected — same base-then-translate shape as the
+// subtitles above, just for a summary instead of timed cues, and cheaper
+// since it's a text-only call rather than a second audio upload. Tracked
+// independently (Lesson.conspectusStatus/Error) so a conspectus failure
+// never blocks subtitles succeeding, or vice versa.
 //
 // Fire-and-forget, no queue (same posture as videoCompressionService.ts) —
 // triggered right after a successful lesson video upload, never blocks that
@@ -209,6 +220,98 @@ async function translateVtt(baseVtt: string, targetCode: 'ka' | 'en' | 'ru'): Pr
   return translated;
 }
 
+// Strips VTT structure (header, cue timing lines, blank lines) down to the
+// plain spoken text — the conspectus extraction below cares about content,
+// not timing, so it reads far more naturally (and cheaply) as prose than as
+// a cue-by-cue transcript.
+function vttToPlainText(vtt: string): string {
+  return vtt
+    .split('\n')
+    .filter((line) => line.trim() && line.trim() !== 'WEBVTT' && !line.includes('-->'))
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const CONSPECTUS_FIELD: Record<'ka' | 'en' | 'ru', 'conspectusKa' | 'conspectusEn' | 'conspectusRu'> = {
+  ka: 'conspectusKa',
+  en: 'conspectusEn',
+  ru: 'conspectusRu',
+};
+
+// Extracts the actionable-takeaways summary from the plain-text transcript,
+// in whatever language that transcript is already in — filler talk,
+// digressions, and small talk are deliberately excluded, per the "clean
+// conspectus" requirement.
+async function extractConspectus(transcriptText: string, languageName: string): Promise<string> {
+  const model = client!.getGenerativeModel({ model: MODEL_NAME, generationConfig: { temperature: 0.2 } });
+  const prompt =
+    `The following is a raw speech transcript (in ${languageName}) of a course lesson video. Produce a clean, ` +
+    `well-organized "conspectus" (study notes) from it: extract ONLY actionable takeaways, step-by-step ` +
+    `technical instructions, and core concept/feature explanations. Completely omit filler talk, small talk, ` +
+    `verbal digressions, and anything not substantively teaching the viewer something. Use clear headings and ` +
+    `bullet points where that helps readability. Write the conspectus in ${languageName} — do not translate it. ` +
+    `Respond with ONLY the conspectus text (plain text or simple markdown — headings/bullets only, no code ` +
+    `fences), no preamble, no explanation of what you did.\n\n${transcriptText}`;
+
+  const result = await model.generateContent(prompt);
+  const text = result.response.text().trim();
+  if (!text) throw new Error('Gemini returned an empty conspectus.');
+  return text;
+}
+
+// Simple prose translation — unlike translateVtt, there's no cue structure
+// to preserve, just meaning and the same heading/bullet formatting.
+async function translateConspectus(baseConspectus: string, targetCode: 'ka' | 'en' | 'ru'): Promise<string> {
+  const model = client!.getGenerativeModel({ model: MODEL_NAME, generationConfig: { temperature: 0.2 } });
+  const prompt =
+    `Translate the following study notes ("conspectus") into ${LANGUAGE_NAMES[targetCode]}. Preserve the ` +
+    `heading/bullet structure. Keep standard technical/IT terms that are normally used in English even in ` +
+    `translated text (e.g. "API", "SEO", "component"). Respond with ONLY the translated text, no preamble.\n\n${baseConspectus}`;
+
+  const result = await model.generateContent(prompt);
+  const translated = result.response.text().trim();
+  if (!translated) throw new Error(`Gemini returned an empty conspectus translation for "${targetCode}".`);
+  return translated;
+}
+
+// Runs the extraction + per-language translation and persists the result.
+// Wrapped in its own try/catch by the caller — a conspectus failure must
+// never abort the subtitle pipeline it runs alongside, and vice versa.
+async function processConspectus(lessonId: string, baseVtt: string, detectedCode: 'ka' | 'en' | 'ru' | null): Promise<void> {
+  await prisma.lesson.update({ where: { id: lessonId }, data: { conspectusStatus: 'PROCESSING', conspectusError: null } });
+
+  const sourceCode = detectedCode ?? 'en';
+  const baseConspectus = await extractConspectus(vttToPlainText(baseVtt), LANGUAGE_NAMES[sourceCode]);
+
+  const data: Record<string, string> = { [CONSPECTUS_FIELD[sourceCode]]: baseConspectus };
+  const failures: string[] = [];
+  let succeeded = 1;
+  for (const { code } of TARGET_LANGUAGES) {
+    if (code === sourceCode) continue;
+    try {
+      data[CONSPECTUS_FIELD[code]] = await translateConspectus(baseConspectus, code);
+      succeeded += 1;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'unknown error';
+      console.error(`[subtitleService] lesson ${lessonId}: conspectus "${code}" FAILED —`, message);
+      failures.push(`${code}: ${message}`);
+    }
+  }
+
+  if (succeeded === 0) {
+    throw new Error(`All languages failed: ${failures.join('; ')}`);
+  }
+  await prisma.lesson.update({
+    where: { id: lessonId },
+    data: {
+      ...data,
+      conspectusStatus: 'COMPLETED',
+      conspectusError: failures.length > 0 ? `Partial success — failed: ${failures.join('; ')}` : null,
+    },
+  });
+}
+
 // Entry point — called fire-and-forget right after a lesson video upload
 // succeeds (see POST /lessons/:lessonId/video). Never throws: every failure
 // path records subtitlesStatus/subtitlesError on the lesson instead, since
@@ -216,12 +319,15 @@ async function translateVtt(baseVtt: string, targetCode: 'ka' | 'en' | 'ru'): Pr
 // it (which has already responded by the time this runs).
 export async function processLessonSubtitles(lessonId: string, videoId: string, videoBuffer: Buffer): Promise<void> {
   if (!isSubtitlePipelineConfigured()) {
+    const notConfigured = 'Subtitle pipeline is not configured (GEMINI_API_KEY missing, or ffmpeg unavailable).';
     await prisma.lesson
       .update({
         where: { id: lessonId },
         data: {
           subtitlesStatus: 'FAILED',
-          subtitlesError: 'Subtitle pipeline is not configured (GEMINI_API_KEY missing, or ffmpeg unavailable).',
+          subtitlesError: notConfigured,
+          conspectusStatus: 'FAILED',
+          conspectusError: notConfigured,
         },
       })
       .catch(() => {});
@@ -233,7 +339,10 @@ export async function processLessonSubtitles(lessonId: string, videoId: string, 
   let audioPath: string | null = null;
   let geminiFileName: string | null = null;
   try {
-    await prisma.lesson.update({ where: { id: lessonId }, data: { subtitlesStatus: 'PROCESSING', subtitlesError: null } });
+    await prisma.lesson.update({
+      where: { id: lessonId },
+      data: { subtitlesStatus: 'PROCESSING', subtitlesError: null, conspectusStatus: 'PROCESSING', conspectusError: null },
+    });
 
     audioPath = await extractAudio(videoBuffer, jobId);
     const uploadedFile = await uploadAudioAndWaitActive(audioPath);
@@ -241,6 +350,22 @@ export async function processLessonSubtitles(lessonId: string, videoId: string, 
 
     const { vtt: baseVtt, detectedCode } = await transcribeAudioToVtt(uploadedFile.uri);
     console.log(`[subtitleService] lesson ${lessonId}: transcribed ${countCues(baseVtt)} cues, detected language "${detectedCode ?? 'unknown'}".`);
+
+    // Independent of the caption loop below — a conspectus failure must
+    // never mark subtitles as failed, or vice versa (see processConspectus's
+    // own comment). Not awaited-with-Promise.all alongside the caption loop
+    // on purpose: keeping this sequential and separately try/caught makes
+    // which stage failed unambiguous in the logs.
+    try {
+      await processConspectus(lessonId, baseVtt, detectedCode);
+      console.log(`[subtitleService] lesson ${lessonId}: conspectus generated.`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Conspectus generation failed.';
+      console.error(`[subtitleService] lesson ${lessonId}: conspectus failed —`, message);
+      await prisma.lesson
+        .update({ where: { id: lessonId }, data: { conspectusStatus: 'FAILED', conspectusError: message.slice(0, 1000) } })
+        .catch(() => {});
+    }
 
     const failures: string[] = [];
     let succeeded = 0;
@@ -272,10 +397,19 @@ export async function processLessonSubtitles(lessonId: string, videoId: string, 
       },
     });
   } catch (err) {
+    // Reaches here only for a failure before/outside the conspectus stage
+    // (audio extraction, upload, or transcription itself) — those are
+    // prerequisites conspectus also needs, so it's marked failed too. A
+    // failure inside processConspectus itself is caught closer to its own
+    // call and never reaches this block, so it can't overwrite a
+    // conspectusStatus that already reached COMPLETED.
     const message = err instanceof Error ? err.message : 'Subtitle generation failed.';
     console.error(`[subtitleService] lesson ${lessonId} failed:`, message);
     await prisma.lesson
-      .update({ where: { id: lessonId }, data: { subtitlesStatus: 'FAILED', subtitlesError: message.slice(0, 1000) } })
+      .update({
+        where: { id: lessonId },
+        data: { subtitlesStatus: 'FAILED', subtitlesError: message.slice(0, 1000), conspectusStatus: 'FAILED', conspectusError: message.slice(0, 1000) },
+      })
       .catch(() => {});
   } finally {
     releaseSlot();

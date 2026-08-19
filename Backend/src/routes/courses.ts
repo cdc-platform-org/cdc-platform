@@ -1028,7 +1028,13 @@ router.post(
       await uploadBunnyVideoBinary(videoId, req.file.buffer);
       const updated = await prisma.lesson.update({
         where: { id: lesson.id },
-        data: { bunnyVideoId: videoId, subtitlesStatus: isSubtitlePipelineConfigured() ? 'PENDING' : null, subtitlesError: null },
+        data: {
+          bunnyVideoId: videoId,
+          subtitlesStatus: isSubtitlePipelineConfigured() ? 'PENDING' : null,
+          subtitlesError: null,
+          conspectusStatus: isSubtitlePipelineConfigured() ? 'PENDING' : null,
+          conspectusError: null,
+        },
       });
       res.status(201).json({ data: { ...updated, ...lessonWithPlayback(updated) } });
       // Fire-and-forget — never blocks/breaks the upload response above; see
@@ -1067,11 +1073,13 @@ router.post(
 
     const updated = await prisma.lesson.update({
       where: { id: lesson.id },
-      data: { subtitlesStatus: 'PENDING', subtitlesError: null },
+      data: { subtitlesStatus: 'PENDING', subtitlesError: null, conspectusStatus: 'PENDING', conspectusError: null },
     });
     res.status(202).json({ data: { ...updated, ...lessonWithPlayback(updated) } });
 
-    // Fire-and-forget, same posture as the upload route above.
+    // Fire-and-forget, same posture as the upload route above — regenerates
+    // the conspectus too, since regenerateLessonSubtitles calls the same
+    // processLessonSubtitles that now handles both.
     regenerateLessonSubtitles(lesson.id, lesson.bunnyVideoId).catch((err) => {
       console.error(`[courses] subtitle regeneration threw unexpectedly for lesson ${lesson.id}:`, err);
     });
