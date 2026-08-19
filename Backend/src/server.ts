@@ -142,6 +142,20 @@ app.use(
       // server-to-server call (BOG's webhook, cron, curl) rather than
       // something CORS is meant to gate. Those still go through fine.
       if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+      // Logged (not just silently rejected) — this is invisible from the
+      // browser's own error message ("Failed to fetch" gives no hint it was
+      // CORS specifically, let alone which origin was rejected), and a
+      // rejected-origin wave usually means the frontend is being served from
+      // a domain (e.g. a `www.` variant, a new preview URL) that was never
+      // added to FRONTEND_URL/ADDITIONAL_CORS_ORIGINS — exactly the kind of
+      // config drift that otherwise looks identical to "the API is down"
+      // from the outside.
+      console.error(`[cors] Rejected origin: ${origin} (allowed: ${[...allowedOrigins].join(', ')})`);
+      Sentry.captureMessage('CORS rejected an origin', {
+        level: 'warning',
+        tags: { cause: 'cors_origin_rejected' },
+        extra: { origin, allowedOrigins: [...allowedOrigins] },
+      });
       callback(new Error('Not allowed by CORS'));
     },
   })

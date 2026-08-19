@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import multer from 'multer';
 import path from 'path';
 import { OAuth2Client } from 'google-auth-library';
+import * as Sentry from '@sentry/node';
 import { User } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import {
@@ -435,6 +436,15 @@ router.post('/reset-password', authRateLimit, async (req, res) => {
 // against Google's public keys (google-auth-library handles key rotation).
 router.post('/google', authRateLimit, async (req, res) => {
   if (!GOOGLE_CLIENT_ID) {
+    // Captured (not just console.error'd) because this is the "someone
+    // wiped/never set the env var" case — the kind of failure that's easy
+    // to miss in raw logs but should page/alert like any other outage,
+    // since it silently breaks Google Sign-In for every single visitor.
+    console.error('[auth] Google Sign-In attempted but GOOGLE_CLIENT_ID is not configured.');
+    Sentry.captureMessage('Google Sign-In attempted with no GOOGLE_CLIENT_ID configured', {
+      level: 'error',
+      tags: { route: 'auth/google', cause: 'not_configured' },
+    });
     return res.status(501).json({ message: 'Google Sign-In is not configured on this server.' });
   }
   const result = googleAuthSchema.safeParse(req.body);
@@ -447,11 +457,21 @@ router.post('/google', authRateLimit, async (req, res) => {
     const ticket = await googleClient.verifyIdToken({ idToken: result.data.idToken, audience: GOOGLE_CLIENT_ID });
     payload = ticket.getPayload();
   } catch (err) {
-    // Logged server-side only — the client-facing message stays generic so
-    // it can't be used to probe why a specific token was rejected, but an
-    // operator debugging a wave of failed sign-ins (e.g. a misconfigured
-    // GOOGLE_CLIENT_ID) needs the real cause, not just "it failed."
-    console.error('[auth] Google ID token verification failed:', err instanceof Error ? err.message : err);
+    // Logged server-side AND to Sentry — the client-facing message stays
+    // generic so it can't be used to probe why a specific token was
+    // rejected, but an operator debugging a wave of failed sign-ins (e.g. a
+    // misconfigured GOOGLE_CLIENT_ID — the `aud` mismatch shows up here as
+    // "Wrong recipient, payload audience != requiredAudience" — vs a
+    // genuinely expired/replayed token) needs the real cause, not just "it
+    // failed." Tagged distinctly from the not-configured branch above so
+    // Sentry can group "config problem" separately from "verification
+    // problem" without reading the message text.
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[auth] Google ID token verification failed:', message);
+    Sentry.captureException(err, {
+      tags: { route: 'auth/google', cause: 'token_verification_failed' },
+      extra: { verifyIdTokenError: message },
+    });
     return res.status(401).json({ message: 'Invalid or expired Google credential.' });
   }
   if (!payload?.email || !payload.email_verified) {

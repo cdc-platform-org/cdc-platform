@@ -75,8 +75,14 @@ function RegisterPage() {
     try {
       const loggedInUser = await loginWithGoogle(idToken, role);
       router.push(postSignupRedirect(loggedInUser.status));
-    } catch {
-      setError(t('googleSignInError'));
+    } catch (err) {
+      // Surface the backend's actual message (e.g. "not configured" vs
+      // "invalid/expired credential") instead of always showing the same
+      // generic string — same pattern as handleSubmit below. Falls back to
+      // the generic string only when there's truly no response body (a
+      // network/CORS failure never reached the backend at all).
+      const axiosErr = err as AxiosError<{ message?: string }>;
+      setError(axiosErr.response?.data?.message || t('googleSignInError'));
     } finally {
       setSubmitting(false);
     }

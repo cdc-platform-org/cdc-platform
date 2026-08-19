@@ -58,8 +58,13 @@ function LoginPage() {
     try {
       const loggedInUser = await loginWithGoogle(idToken);
       handlePostLogin(loggedInUser);
-    } catch {
-      setError(t('googleSignInError'));
+    } catch (err) {
+      // Surface the backend's actual message instead of always showing the
+      // same generic string — same pattern as the password-login handler
+      // below. Falls back to the generic string only when there's truly no
+      // response body (a network/CORS failure never reached the backend).
+      const axiosErr = err as AxiosError<{ message?: string }>;
+      setError(axiosErr.response?.data?.message || t('googleSignInError'));
     } finally {
       setSubmitting(false);
     }
