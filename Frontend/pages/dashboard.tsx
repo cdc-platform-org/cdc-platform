@@ -20,6 +20,7 @@ import {
   Bot,
   Sparkles,
   Mail,
+  Users,
 } from 'lucide-react';
 import ProtectedRoute from '../src/components/auth/ProtectedRoute';
 import SiteHeader from '../src/components/layout/SiteHeader';
@@ -72,6 +73,7 @@ const dict = {
     tabProducts: 'ჩემი ციფრული ინსტრუმენტები',
     tabSettings: 'პარამეტრები',
     tabMentorshipSessions: 'მენტორის სესიები',
+    mentorWorkspace: 'მენტორის პანელი',
     logout: 'გასვლა',
     loading: 'იტვირთება…',
     // Overview
@@ -199,6 +201,7 @@ const dict = {
     tabProducts: 'My Digital Tools',
     tabSettings: 'Account Settings',
     tabMentorshipSessions: 'Mentorship Sessions',
+    mentorWorkspace: 'Mentor Workspace',
     logout: 'Log Out',
     loading: 'Loading…',
     statCourses: 'Enrolled Courses',
@@ -317,6 +320,7 @@ const dict = {
     tabProducts: 'My Digital Tools',
     tabSettings: 'Account Settings',
     tabMentorshipSessions: 'Mentorship Sessions',
+    mentorWorkspace: 'Mentor Workspace',
     logout: 'Log Out',
     loading: 'Loading…',
     statCourses: 'Enrolled Courses',
@@ -435,6 +439,7 @@ const dict = {
     tabProducts: 'My Digital Tools',
     tabSettings: 'Account Settings',
     tabMentorshipSessions: 'Mentorship Sessions',
+    mentorWorkspace: 'Mentor Workspace',
     logout: 'Log Out',
     loading: 'Loading…',
     statCourses: 'Enrolled Courses',
@@ -553,6 +558,7 @@ const dict = {
     tabProducts: 'My Digital Tools',
     tabSettings: 'Account Settings',
     tabMentorshipSessions: 'Mentorship Sessions',
+    mentorWorkspace: 'Mentor Workspace',
     logout: 'Log Out',
     loading: 'Loading…',
     statCourses: 'Enrolled Courses',
@@ -671,6 +677,7 @@ const dict = {
     tabProducts: 'My Digital Tools',
     tabSettings: 'Account Settings',
     tabMentorshipSessions: 'Mentorship Sessions',
+    mentorWorkspace: 'Mentor Workspace',
     logout: 'Log Out',
     loading: 'Loading…',
     statCourses: 'Enrolled Courses',
@@ -915,12 +922,17 @@ function DashboardContent() {
   useEscapeToClose(showMentorshipModal, () => setShowMentorshipModal(false));
 
   useEffect(() => {
-    // Clients and Mentors get their own dedicated dashboards — this one is
-    // student-focused.
+    // Clients get their own dedicated dashboard — this one is student-
+    // facing. Mentors used to be redirected away to /dashboard/mentorship
+    // too, which meant a Mentor could never see their own courses/wallet/
+    // digital products/settings here — a Mentor is still a regular
+    // platform user underneath (see Role enum: Mentor is a value of the
+    // same single `role` field Student/Client use, not a separate add-on
+    // flag), so those sections are just as real for them. They now see
+    // this standard dashboard like everyone else, plus the Mentor
+    // Workspace sidebar link below.
     if (user?.role === 'Client') {
       router.replace('/dashboard/client');
-    } else if (user?.role === 'Mentor') {
-      router.replace('/dashboard/mentorship');
     }
   }, [user?.role, router]);
 
@@ -1253,6 +1265,19 @@ function DashboardContent() {
               <Wifi className="w-4 h-4 shrink-0" />
               {t.mentorshipButton}
             </button>
+          )}
+          {/* Dynamic — only a current Mentor sees this, and it disappears
+              the moment an admin demotes them back to Student/Client (see
+              adminMentorship.ts's promote/demote), since it reads the same
+              `role` value everything else on this page already does. */}
+          {user?.role === 'Mentor' && (
+            <Link
+              href="/dashboard/mentorship"
+              className="flex items-center gap-2.5 w-full text-left p-3.5 rounded-xl text-xs font-bold transition border border-slate-200 dark:border-cyan-900/50 bg-white dark:bg-slate-900/60 text-cyan-600 dark:text-cyan-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:shadow-[0_0_14px_2px_rgba(34,211,238,0.4)] no-underline"
+            >
+              <Users className="w-4 h-4 shrink-0" />
+              {t.mentorWorkspace}
+            </Link>
           )}
           <Link
             href="/dashboard/mentorship-sessions"
