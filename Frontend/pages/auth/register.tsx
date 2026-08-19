@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Image from 'next/image';
 import { AxiosError } from 'axios';
-import { GraduationCap, Building2, Sun, Moon, Briefcase, Sparkles, ChevronLeft } from 'lucide-react';
+import { GraduationCap, Sun, Moon, Briefcase, Sparkles, ChevronLeft } from 'lucide-react';
 import { useAuth } from '../../src/context/AuthContext';
 import GuestRoute from '../../src/components/auth/GuestRoute';
 import PasswordInput from '../../src/components/auth/PasswordInput';
@@ -30,12 +30,16 @@ function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'Student' | 'Client'>('Student');
-  // Step 1: broad intent. Step 2: the specific sub-choice within it — both
-  // map onto the existing Student/Client role (no separate Freelancer/
-  // Business role exists), "Business" additionally means /onboarding
-  // collects company KYC fields right after this form succeeds.
+  // Step 1: broad intent. Step 2: only the TALENT path still branches
+  // further (Student vs Freelancer — both map to role Student). EMPLOYER
+  // used to offer a "Client" vs "Business" sub-choice here too, but both
+  // saved the identical role: 'Client' — the only real difference was
+  // whether /onboarding's company-KYC form came right after. Removed as a
+  // confusing distinction with no actual backend effect; every Employer
+  // signup now goes straight to the account form and always gets the KYC
+  // prompt afterward (see postSignupRedirect below).
   const [intent, setIntent] = useState<'TALENT' | 'EMPLOYER' | null>(null);
-  const [subRole, setSubRole] = useState<'Student' | 'Freelancer' | 'Client' | 'Business' | null>(null);
+  const [subRole, setSubRole] = useState<'Student' | 'Freelancer' | 'Client' | null>(null);
   const [freelancerSkills, setFreelancerSkills] = useState<string[]>([]);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -63,9 +67,11 @@ function RegisterPage() {
 
   const postSignupRedirect = (status: string) => {
     if (status === 'PENDING_APPROVAL') return '/auth/pending-approval';
-    // Business intent (not just "Client") means they'll want to submit
-    // company KYC — send them straight there instead of the course catalog.
-    if (subRole === 'Business') return '/onboarding';
+    // Every Employer signup (role: Client) gets the company-KYC prompt —
+    // previously only the "Business" sub-choice did; "Client" landed on
+    // /courses instead. Collapsing that choice means always taking the
+    // more-complete path rather than silently dropping the KYC prompt.
+    if (subRole === 'Client') return '/onboarding';
     return '/courses';
   };
 
@@ -178,7 +184,7 @@ function RegisterPage() {
             </button>
             <button
               type="button"
-              onClick={() => setIntent('EMPLOYER')}
+              onClick={() => { setIntent('EMPLOYER'); setSubRole('Client'); setRole('Client'); }}
               className="flex items-center gap-3 rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-4 text-left cursor-pointer hover:border-cyan-400/50 dark:hover:border-cyan-400/50 transition-colors"
             >
               <span className="shrink-0 w-10 h-10 rounded-lg bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
@@ -204,53 +210,41 @@ function RegisterPage() {
             >
               <ChevronLeft className="w-3.5 h-3.5" /> {t('register.wizard.back')}
             </button>
+            {/* Only TALENT reaches this step — EMPLOYER's Step 1 button
+                sets subRole directly and skips straight to the form (see
+                above), so this sub-choice is Student-vs-Freelancer only. */}
             <div className="grid grid-cols-2 gap-3">
-              {intent === 'TALENT' ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => { setSubRole('Student'); setRole('Student'); }}
-                    className="flex flex-col items-center gap-1 rounded-lg border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-3 text-sm font-medium text-gray-600 dark:text-slate-400 cursor-pointer hover:border-cyan-400/50 transition-colors"
-                  >
-                    <GraduationCap className="w-5 h-5" />
-                    {t('register.wizard.studentOption')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setSubRole('Freelancer'); setRole('Student'); }}
-                    className="flex flex-col items-center gap-1 rounded-lg border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-3 text-sm font-medium text-gray-600 dark:text-slate-400 cursor-pointer hover:border-cyan-400/50 transition-colors"
-                  >
-                    <Briefcase className="w-5 h-5" />
-                    {t('register.wizard.freelancerOption')}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => { setSubRole('Client'); setRole('Client'); }}
-                    className="flex flex-col items-center gap-1 rounded-lg border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-3 text-sm font-medium text-gray-600 dark:text-slate-400 cursor-pointer hover:border-cyan-400/50 transition-colors"
-                  >
-                    <Building2 className="w-5 h-5" />
-                    {t('register.wizard.clientOption')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setSubRole('Business'); setRole('Client'); }}
-                    className="flex flex-col items-center gap-1 rounded-lg border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-3 text-sm font-medium text-gray-600 dark:text-slate-400 cursor-pointer hover:border-cyan-400/50 transition-colors"
-                  >
-                    <Building2 className="w-5 h-5" />
-                    {t('register.wizard.businessOption')}
-                  </button>
-                </>
-              )}
+              <button
+                type="button"
+                onClick={() => { setSubRole('Student'); setRole('Student'); }}
+                className="flex flex-col items-center gap-1 rounded-lg border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-3 text-sm font-medium text-gray-600 dark:text-slate-400 cursor-pointer hover:border-cyan-400/50 transition-colors"
+              >
+                <GraduationCap className="w-5 h-5" />
+                {t('register.wizard.studentOption')}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setSubRole('Freelancer'); setRole('Student'); }}
+                className="flex flex-col items-center gap-1 rounded-lg border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-3 text-sm font-medium text-gray-600 dark:text-slate-400 cursor-pointer hover:border-cyan-400/50 transition-colors"
+              >
+                <Briefcase className="w-5 h-5" />
+                {t('register.wizard.freelancerOption')}
+              </button>
             </div>
           </div>
         ) : (
         <>
         <button
           type="button"
-          onClick={() => setSubRole(null)}
+          onClick={() => {
+            // EMPLOYER has no Step 2 of its own anymore (see Step 1's
+            // button above) — back from here must clear intent too, or
+            // it'd land on Step 2's Student/Freelancer choice under a
+            // still-set EMPLOYER intent, which no longer renders anything
+            // for that combination.
+            if (intent === 'EMPLOYER') setIntent(null);
+            setSubRole(null);
+          }}
           className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-white bg-transparent border-none cursor-pointer p-0"
         >
           <ChevronLeft className="w-3.5 h-3.5" /> {t('register.wizard.back')}
