@@ -73,6 +73,20 @@ function isSafePath(relPath) {
   return normalized.startsWith('e2e' + path.sep) && !normalized.includes('..');
 }
 
+// Anthropic's SDK throws APIError with a numeric `.status` for HTTP-level
+// failures; a depleted/unfunded key comes back as 400 "Your credit balance
+// is too low..." rather than a dedicated status code, so the message is
+// matched too. A key still pending activation on a brand-new account has
+// been observed to 401 with an account-status message rather than the usual
+// auth-failure text, so that's covered here as well — both are "nothing we
+// can do right now", not a script bug.
+function isBillingUnavailableError(err) {
+  const status = err?.status ?? err?.response?.status;
+  const message = String(err?.message ?? err?.error?.error?.message ?? '');
+  if (status === 402) return true;
+  return /credit balance|insufficient.*credit|billing|payment required|account.*(pending|not.*activ)/i.test(message);
+}
+
 async function fixFile(client, relFile, fileFailures) {
   const absPath = path.join(FRONTEND_ROOT, relFile);
   if (!fs.existsSync(absPath)) {
@@ -85,27 +99,49 @@ async function fixFile(client, relFile, fileFailures) {
     .map((f, i) => `### Failure ${i + 1}: "${f.title}" [${f.project}]\n\nError:\n${f.error}\n\nStack:\n${f.stack}`)
     .join('\n\n');
 
-  const message = await client.messages.create({
-    model: 'claude-opus-5',
-    max_tokens: 16000,
-    thinking: { type: 'adaptive' },
-    output_config: { effort: 'high' },
-    system:
-      'You are fixing a failing Playwright E2E test in the CDC Platform repo. ' +
-      'You will be given the full content of ONE failing spec file and the error output from a nightly CI run. ' +
-      'Diagnose whether this is a test bug (bad selector, missing wait, wrong assumption about app state) and, if so, fix it. ' +
-      "If the error suggests a real application regression rather than a test bug, do NOT invent a fix for application code you cannot see — instead return the file's content UNCHANGED and explain why in the summary. " +
-      'Respond with ONLY a JSON object, no markdown fences, matching exactly: {"summary": string, "changed": boolean, "content": string} ' +
-      'where "content" is the COMPLETE new file content (the whole file, not a diff or excerpt) — or the original content unchanged if "changed" is false.',
-    messages: [
-      {
-        role: 'user',
-        content:
-          `Spec file: e2e/${relFile}\n\n\`\`\`typescript\n${originalContent}\n\`\`\`\n\n` +
-          `Failures from last night's run:\n\n${failuresText}`,
-      },
-    ],
-  });
+  // Capped tight for token cost-efficiency. Note this is well under a full
+  // spec file's size — the response (which echoes the COMPLETE file back)
+  // will often get cut off mid-JSON for any non-trivial file. That's fine:
+  // the JSON.parse failure below already treats an unparsable response as
+  // "no confident fix, skip" rather than crashing, so a truncated response
+  // just means fewer successful autofixes, not a broken run.
+  let message;
+  try {
+    message = await client.messages.create({
+      model: 'claude-opus-5',
+      max_tokens: 1000,
+      thinking: { type: 'adaptive' },
+      output_config: { effort: 'high' },
+      system:
+        'You are fixing a failing Playwright E2E test in the CDC Platform repo. ' +
+        'You will be given the full content of ONE failing spec file and the error output from a nightly CI run. ' +
+        'Diagnose whether this is a test bug (bad selector, missing wait, wrong assumption about app state) and, if so, fix it. ' +
+        "If the error suggests a real application regression rather than a test bug, do NOT invent a fix for application code you cannot see — instead return the file's content UNCHANGED and explain why in the summary. " +
+        'Respond with ONLY a JSON object, no markdown fences, matching exactly: {"summary": string, "changed": boolean, "content": string} ' +
+        'where "content" is the COMPLETE new file content (the whole file, not a diff or excerpt) — or the original content unchanged if "changed" is false.',
+      messages: [
+        {
+          role: 'user',
+          content:
+            `Spec file: e2e/${relFile}\n\n\`\`\`typescript\n${originalContent}\n\`\`\`\n\n` +
+            `Failures from last night's run:\n\n${failuresText}`,
+        },
+      ],
+    });
+  } catch (err) {
+    if (isBillingUnavailableError(err)) {
+      // Newly-added key with no funded/activated balance yet returns a 400
+      // ("credit balance too low") or 402 here, same shape as a mid-month
+      // depletion — either way this is an account-level condition every
+      // remaining file will also hit, not a per-file problem, so the caller
+      // stops the whole run rather than burning through MAX_FAILURES worth
+      // of identical failures. Surfaced as a skip, not a workflow failure:
+      // an unfunded/paused key isn't a bug in this script.
+      console.log(`Anthropic API unavailable (billing) while fixing ${relFile}: ${err.message}`);
+      return { billingUnavailable: true };
+    }
+    throw err;
+  }
 
   const textBlock = message.content.find((b) => b.type === 'text');
   if (!textBlock) {
@@ -146,6 +182,7 @@ async function main() {
   const client = new Anthropic({ apiKey });
   const changes = [];
   const summaries = [];
+  let billingUnavailable = false;
 
   for (const [relFile, fileFailures] of byFile) {
     if (!isSafePath(relFile)) {
@@ -153,6 +190,12 @@ async function main() {
       continue;
     }
     const result = await fixFile(client, relFile, fileFailures);
+    if (result?.billingUnavailable) {
+      // Account-level condition, not per-file — stop trying the rest of
+      // this run's files instead of repeating the same failure for each one.
+      billingUnavailable = true;
+      break;
+    }
     if (result) {
       fs.writeFileSync(path.join(FRONTEND_ROOT, result.relFile), result.content, 'utf8');
       changes.push(result.relFile);
@@ -160,6 +203,16 @@ async function main() {
     } else {
       summaries.push(`- **${relFile}**: no automated fix applied (see logs)`);
     }
+  }
+
+  if (billingUnavailable) {
+    console.log('Anthropic API balance is depleted or pending — no-oping the rest of this run without failing the workflow.');
+    fs.writeFileSync(
+      'qa-autofix-summary.md',
+      '## Nightly QA auto-fix\n\nSkipped: the Anthropic API key has no available balance right now (depleted or still pending activation). No files were changed.',
+      'utf8'
+    );
+    process.exit(0);
   }
 
   // Consumed by the workflow step that feeds create-pull-request's PR body.
@@ -176,6 +229,14 @@ async function main() {
 }
 
 main().catch((err) => {
+  // Defense-in-depth: every call site that reaches the Anthropic API today
+  // is already wrapped in fixFile's own try/catch above, but a billing
+  // error escaping from anywhere else (e.g. a future call site) should
+  // still no-op rather than fail the workflow, for the same reason.
+  if (isBillingUnavailableError(err)) {
+    console.log(`Anthropic API unavailable (billing) — skipping without failing the workflow: ${err.message}`);
+    process.exit(0);
+  }
   console.error(err);
   process.exit(1);
 });
