@@ -399,66 +399,68 @@ model User {
   aiSubscriptionActive          Boolean                     @default(false)
   createdAt                     DateTime                    @default(now())
 
-  postedGigs                  Gig[]                        @relation("PostedGigs")
-  assignedGigs                Gig[]                        @relation("AssignedGigs")
-  gigApplications             GigApplication[]
-  clientTransactions          GigTransaction[]             @relation("ClientTransactions")
-  freelancerTransactions      GigTransaction[]             @relation("FreelancerTransactions")
-  walletEntries               WalletEntry[]
-  postedVacancies             Vacancy[]
-  vacancyApplications         VacancyApplication[]
-  blogPosts                   BlogPost[]
-  reviewsGiven                Review[]                     @relation("ReviewsGiven")
-  reviewsReceived             Review[]                     @relation("ReviewsReceived")
-  sentDirectOffers            DirectOffer[]                @relation("SentDirectOffers")
-  receivedDirectOffers        DirectOffer[]                @relation("ReceivedDirectOffers")
-  sentMessages                Message[]                    @relation("SentMessages")
-  receivedMessages            Message[]                    @relation("ReceivedMessages")
-  paymentMethods              PaymentMethod[]
-  bogPayments                 BogPayment[]
-  stripePayments              StripePayment[]
-  courseEnrollments           CourseEnrollment[]
-  lessonProgress              LessonProgress[]
-  courseCertificates          CourseCertificate[]
-  courseDiscussionPosts       CourseDiscussionPost[]
-  examAttempts                ExamAttempt[]
-  freelancerSkillExamAttempts FreelancerSkillExamAttempt[]
-  skillTestAttempts           SkillTestAttempt[]
-  verifiedSkills              VerifiedSkill[]
-  productPurchases            ProductPurchase[]
-  assignmentSubmissions       AssignmentSubmission[]
-  submittedProducts           DigitalProduct[]             @relation("SubmittedProducts")
-  forumThreads                ForumThread[]
-  forumComments               ForumComment[]
-  forumThreadLikes            ForumThreadLike[]
-  forumCommentLikes           ForumCommentLike[]
-  disputesRaised              Dispute[]                    @relation("DisputesRaised")
-  disputesResolved            Dispute[]                    @relation("DisputesResolved")
-  payoutRequests              PayoutRequest[]              @relation("PayoutRequests")
-  payoutRequestsReviewed      PayoutRequest[]              @relation("PayoutRequestsReviewed")
-  auditLogs                   AuditLog[]
-  siteContentUpdates          SiteContent[]
-  studioInquiriesReviewed     StudioInquiry[]
+  postedGigs                   Gig[]                         @relation("PostedGigs")
+  assignedGigs                 Gig[]                         @relation("AssignedGigs")
+  gigApplications              GigApplication[]
+  clientTransactions           GigTransaction[]              @relation("ClientTransactions")
+  freelancerTransactions       GigTransaction[]              @relation("FreelancerTransactions")
+  walletEntries                WalletEntry[]
+  postedVacancies              Vacancy[]
+  vacancyApplications          VacancyApplication[]
+  blogPosts                    BlogPost[]
+  reviewsGiven                 Review[]                      @relation("ReviewsGiven")
+  reviewsReceived              Review[]                      @relation("ReviewsReceived")
+  sentDirectOffers             DirectOffer[]                 @relation("SentDirectOffers")
+  receivedDirectOffers         DirectOffer[]                 @relation("ReceivedDirectOffers")
+  sentMessages                 Message[]                     @relation("SentMessages")
+  receivedMessages             Message[]                     @relation("ReceivedMessages")
+  paymentMethods               PaymentMethod[]
+  bogPayments                  BogPayment[]
+  stripePayments               StripePayment[]
+  courseEnrollments            CourseEnrollment[]
+  lessonProgress               LessonProgress[]
+  courseCertificates           CourseCertificate[]
+  courseDiscussionPosts        CourseDiscussionPost[]
+  examAttempts                 ExamAttempt[]
+  freelancerSkillExamAttempts  FreelancerSkillExamAttempt[]
+  skillTestAttempts            SkillTestAttempt[]
+  verifiedSkills               VerifiedSkill[]
+  productPurchases             ProductPurchase[]
+  assignmentSubmissions        AssignmentSubmission[]
+  submittedProducts            DigitalProduct[]              @relation("SubmittedProducts")
+  forumThreads                 ForumThread[]
+  forumComments                ForumComment[]
+  forumThreadLikes             ForumThreadLike[]
+  forumCommentLikes            ForumCommentLike[]
+  disputesRaised               Dispute[]                     @relation("DisputesRaised")
+  disputesResolved             Dispute[]                     @relation("DisputesResolved")
+  payoutRequests               PayoutRequest[]               @relation("PayoutRequests")
+  payoutRequestsReviewed       PayoutRequest[]               @relation("PayoutRequestsReviewed")
+  auditLogs                    AuditLog[]
+  siteContentUpdates           SiteContent[]
+  studioInquiriesReviewed      StudioInquiry[]
   // CDC Business AI — a Business (Client) account's chat agents. See the
   // Agent model's own comment for why billing fields live there instead of
   // a separate Subscription model for now.
-  agents                      Agent[]
-  examSessions                ExamSession[]
-  billingSubscriptions        BillingSubscription[]
-  blogComments                BlogComment[]
-  mentorshipRequestsMade      MentorshipRequest[]          @relation("MentorshipRequestsMade")
-  mentorshipRequestsResolved  MentorshipRequest[]          @relation("MentorshipRequestsResolved")
-  notifications               Notification[]
-  mentorAvailabilityRules     MentorAvailabilityRule[]
+  agents                       Agent[]
+  examSessions                 ExamSession[]
+  billingSubscriptions         BillingSubscription[]
+  blogComments                 BlogComment[]
+  mentorshipRequestsMade       MentorshipRequest[]           @relation("MentorshipRequestsMade")
+  mentorshipRequestsResolved   MentorshipRequest[]           @relation("MentorshipRequestsResolved")
+  notifications                Notification[]
+  mentorAvailabilityRules      MentorAvailabilityRule[]
   mentorAvailabilityExceptions MentorAvailabilityException[]
-  sentNotificationBatches     NotificationBatch[]
-  mentorshipBookingsAsMentor  MentorshipBooking[]          @relation("MentorshipBookingsAsMentor")
-  mentorshipBookingsAsStudent MentorshipBooking[]          @relation("MentorshipBookingsAsStudent")
-  mentorBookingHistoryActions MentorBookingHistory[]       @relation("MentorBookingHistoryActor")
-  mentorChatMessagesSent      MentorChatMessage[]          @relation("MentorChatMessagesSent")
-  mentorChatMessagesReceived  MentorChatMessage[]          @relation("MentorChatMessagesReceived")
-  mentorChatViolations        MentorChatViolation[]        @relation("MentorChatViolations")
-  cyberSentinelDevices        CyberSentinelDevice[]        @relation("CyberSentinelDevices")
+  sentNotificationBatches      NotificationBatch[]
+  mentorshipBookingsAsMentor   MentorshipBooking[]           @relation("MentorshipBookingsAsMentor")
+  mentorshipBookingsAsStudent  MentorshipBooking[]           @relation("MentorshipBookingsAsStudent")
+  mentorBookingHistoryActions  MentorBookingHistory[]        @relation("MentorBookingHistoryActor")
+  mentorChatMessagesSent       MentorChatMessage[]           @relation("MentorChatMessagesSent")
+  mentorChatMessagesReceived   MentorChatMessage[]           @relation("MentorChatMessagesReceived")
+  mentorChatViolations         MentorChatViolation[]         @relation("MentorChatViolations")
+  cyberSentinelDevices         CyberSentinelDevice[]         @relation("CyberSentinelDevices")
+  reviewedGrantOpportunities   GrantOpportunity[]
+  generatedLaunchKits          LaunchKit[]
 
   @@map("users")
 }
@@ -710,19 +712,20 @@ model Course {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  orders          Order[]                @relation("OrderCourses")
-  enrollments     CourseEnrollment[]
-  sections        CourseSection[]
-  certificates    CourseCertificate[]
+  orders             Order[]                @relation("OrderCourses")
+  enrollments        CourseEnrollment[]
+  sections           CourseSection[]
+  certificates       CourseCertificate[]
   // One AI-generated certification exam per course, if configured by an
   // admin — courses without one keep the old "100% lessons" certificate gate
   // (see routes/courses.ts's GET /:id/certificate).
-  exam            Exam?
-  discussionPosts CourseDiscussionPost[]
+  exam               Exam?
+  discussionPosts    CourseDiscussionPost[]
   // Set once a LiveTraining recording gets turned into this course — see
   // LiveTraining.convertedToCourseId's own comment for why this is a link
   // rather than a merge.
   liveTrainingSource LiveTraining?
+  launchKits         LaunchKit[]
 
   @@map("courses")
 }
@@ -739,35 +742,35 @@ model Course {
 // ============================================================
 
 model LiveTraining {
-  id            String    @id @default(uuid())
-  title         String
-  titleEn       String?
-  description   String
-  descriptionEn String?
-  category      String
-  scheduledAt   DateTime
+  id                  String   @id @default(uuid())
+  title               String
+  titleEn             String?
+  description         String
+  descriptionEn       String?
+  category            String
+  scheduledAt         DateTime
   // Minor units (tetri), same Int-money convention as Course.originalPrice
   // elsewhere. Nullable — a lead-gen/intro session may be free, with any
   // real payment collected on the follow-up call rather than through this
   // registration form.
-  price         Int?
-  thumbnailUrl  String?
+  price               Int?
+  thumbnailUrl        String?
   // Group-viability floor — see LiveTrainingLead's registeredCount-derived
   // "min threshold met" badge on both the admin and public pages. 0 means
   // no minimum is enforced.
-  minCapacity   Int       @default(0)
-  maxCapacity   Int
-  published     Boolean   @default(false)
+  minCapacity         Int      @default(0)
+  maxCapacity         Int
+  published           Boolean  @default(false)
   // Set once an admin turns the recording into a real Course. A link, not a
   // merge: the new Course still needs real sections/lessons authored by
   // hand, this just lets past leads be notified and traced back to the
   // session that originated the course.
-  convertedToCourseId String?      @unique
-  convertedToCourse   Course?      @relation(fields: [convertedToCourseId], references: [id])
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  convertedToCourseId String?  @unique
+  convertedToCourse   Course?  @relation(fields: [convertedToCourseId], references: [id])
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  leads         LiveTrainingLead[]
+  leads LiveTrainingLead[]
 
   @@index([published])
   @@map("live_trainings")
@@ -784,16 +787,16 @@ enum LiveTrainingLeadStatus {
 // admin-managed status), not a User relation, since a prospective trainee
 // registering by phone number has no reason to have an account yet.
 model LiveTrainingLead {
-  id             String                  @id @default(uuid())
+  id             String                 @id @default(uuid())
   liveTrainingId String
-  liveTraining   LiveTraining            @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  liveTraining   LiveTraining           @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
   name           String
   email          String
   phone          String
-  status         LiveTrainingLeadStatus  @default(NOT_CONTACTED)
+  status         LiveTrainingLeadStatus @default(NOT_CONTACTED)
   adminNote      String?
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
 
   @@index([liveTrainingId])
   @@index([status])
@@ -1110,7 +1113,7 @@ model DigitalProduct {
   // opt-in via a manual "Auto-Translate" button.
   titleEn            String?
   description        String
-  descriptionEn       String?
+  descriptionEn      String?
   price              Int
   category           String
   imageUrl           String
@@ -1148,6 +1151,7 @@ model DigitalProduct {
   aiReviewedAt       DateTime?
   submittedById      String?
   submittedBy        User?             @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
+  launchKits         LaunchKit[]
 
   @@map("digital_products")
 }
@@ -1210,6 +1214,17 @@ model AiAutomationSettings {
   // to review before it goes live (today's only behavior, unchanged unless
   // an admin deliberately opts in here).
   blogAutoPublish Boolean @default(false)
+
+  // grantScoutService.ts's daily cron scan. false (default) keeps every
+  // scraped opportunity visible on /admin/opportunities, including
+  // NOT_ELIGIBLE ones, until an admin archives it themselves — true hides
+  // NOT_ELIGIBLE rows from the default view automatically.
+  grantScoutAutoArchiveIneligible Boolean @default(false)
+  // Whether notifyAdmins() fires (same Notification-based admin broadcast
+  // as blogAgentService.ts) when a scan finds a NEW opportunity that comes
+  // back ELIGIBLE. Only fires once per opportunity (on first insert, not
+  // on every rescan of an already-seen listing) — see grantScoutService.ts.
+  grantScoutNotifyOnMatch         Boolean @default(true)
 
   updatedByEmail String?
   updatedAt      DateTime @updatedAt
@@ -2637,16 +2652,16 @@ model MentorshipRequest {
 // panel, surfaced via the header bell) — deliberately no reply/thread
 // concept, unlike MessageThread.
 model Notification {
-  id        String   @id @default(uuid())
+  id        String             @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   message   String
   // Free-form category tag ("MODERATION" | "ADMIN_DIRECT" | "SYSTEM", etc.)
   // — not a Prisma enum since admin-authored notification types may grow
   // without needing a migration each time.
-  type      String   @default("ADMIN_DIRECT")
-  isRead    Boolean  @default(false)
+  type      String             @default("ADMIN_DIRECT")
+  isRead    Boolean            @default(false)
   // Set alongside isRead the first time it flips true — POST
   // /notifications/:id/read never overwrites it on a later call, so it
   // stays the *first* open time. Null while unread.
@@ -2659,7 +2674,7 @@ model Notification {
   // it from every recipient's bell/hub too, not just the admin's history.
   batchId   String?
   batch     NotificationBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  createdAt DateTime           @default(now())
 
   @@index([userId])
   @@index([userId, isRead])
@@ -2692,7 +2707,7 @@ model NotificationBatch {
   sentBy         User     @relation(fields: [sentById], references: [id], onDelete: Restrict)
   createdAt      DateTime @default(now())
 
-  notifications  Notification[]
+  notifications Notification[]
 
   @@index([sentById])
   @@map("notification_batches")
@@ -2826,4 +2841,146 @@ model StudioCaseStudy {
 
   @@index([isFeatured])
   @@map("studio_case_studies")
+}
+
+// ============================================================
+// GRANT & TENDER SCOUT — autonomous daily scan of external funding sites
+// (grantScoutService.ts, triggered by POST /api/cron/scan-grant-opportunities,
+// same secret-gated cron shape as blogAgentService.ts's draft cron). Every
+// scraped listing is run through Gemini (via aiAgentService.ts's existing
+// callTextModel — no separate AI client) to answer three fixed questions:
+// is Georgia eligible, does it fit CDC's scope, and what are the
+// deadline/budget. Reviewed on /admin/opportunities.
+// ============================================================
+
+// null on either boolean below means the AI couldn't confidently determine
+// it from the scraped page (kept distinct from an explicit false) — either
+// null collapses eligibilityStatus to NEEDS_REVIEW rather than guessing.
+enum GrantEligibilityStatus {
+  ELIGIBLE
+  NOT_ELIGIBLE
+  NEEDS_REVIEW
+}
+
+// Admin-configurable scrape targets so adding/pausing a source (grantebi.ge,
+// salto-youth.net, a specific EU portal listing page) is a data change on
+// /admin/opportunities, not a code deploy — same "admin-configured, not
+// hardcoded" posture as PlatformAgent.
+model GrantSource {
+  id             String    @id @default(uuid())
+  name           String
+  baseUrl        String
+  // One or more listing/index pages to crawl per scan — a single source can
+  // have more than one feed worth scanning (e.g. grantebi.ge's separate
+  // grants vs. tenders sections).
+  listingUrls    String[]  @default([])
+  isActive       Boolean   @default(true)
+  lastScanAt     DateTime?
+  // "success" | "failed" | null (never scanned) — free-form like
+  // Notification.type, not a Prisma enum, since scan outcomes may grow more
+  // detail later without a migration.
+  lastScanStatus String?
+  lastScanError  String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  opportunities GrantOpportunity[]
+
+  @@map("grant_sources")
+}
+
+model GrantOpportunity {
+  id           String      @id @default(uuid())
+  sourceId     String
+  source       GrantSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  // Canonical detail-page URL — the dedupe key alongside sourceId, so a
+  // rescan of an already-seen listing updates the existing row instead of
+  // duplicating it.
+  sourceUrl    String
+  title        String
+  titleEn      String?
+  // AI-generated markdown bullet summary of the opportunity.
+  summary      String
+  organization String?
+
+  deadline       DateTime?
+  // Whole-currency-unit Int — deliberately NOT minor units/cents like
+  // BogPayment.amount or Course.originalPrice elsewhere in this schema.
+  // This is an informational figure parsed off a funder's page for display
+  // only; no payment ever moves through it, so cent precision would imply
+  // an accuracy the extraction doesn't actually have.
+  budgetMin      Int?
+  budgetMax      Int?
+  budgetCurrency String? // ISO 4217, e.g. "EUR", "GEL"
+
+  georgiaEligible       Boolean?
+  georgiaEligibleReason String
+  scopeMatch            Boolean? // fits Digital Education/Youth/Tech/Entrepreneurship?
+  scopeMatchReason      String
+  // Derived from the two booleans above at write time (see
+  // grantScoutService.ts) — never set directly from a partial AI answer.
+  eligibilityStatus     GrantEligibilityStatus @default(NEEDS_REVIEW)
+
+  // Admin-dismissed rows are hidden from the default dashboard view but
+  // kept (not deleted) for audit — same posture as soft-delete elsewhere
+  // in this schema (User.deletionRequestedAt, etc).
+  isArchived        Boolean   @default(false)
+  archivedReason    String?
+  reviewedByAdminId String?
+  reviewedByAdmin   User?     @relation(fields: [reviewedByAdminId], references: [id])
+  reviewedAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sourceId, sourceUrl])
+  @@index([eligibilityStatus, isArchived, deadline])
+  @@map("grant_opportunities")
+}
+
+// ============================================================
+// AI SALES & MARKETING MANAGER — on-demand "Generate Sales Launch Kit"
+// button on a DigitalProduct or Course row in the admin panel
+// (marketingAgentService.ts, POST /api/admin/marketing/launch-kits). Unlike
+// the grant scout above this is synchronous and admin-triggered, not a
+// cron job — same request/response shape as aiAgentsSuite.ts's /generate.
+// ============================================================
+
+enum LaunchKitTargetType {
+  DIGITAL_PRODUCT
+  COURSE
+}
+
+// Regenerating creates a new row rather than overwriting the last one —
+// same "never destructively overwrite an AI draft" posture as BlogPost's
+// AI-generated drafts. The admin UI shows the latest by createdAt; older
+// generations stay as history.
+model LaunchKit {
+  id         String              @id @default(uuid())
+  targetType LaunchKitTargetType
+  // Exactly one of productId/courseId is set, matching targetType —
+  // enforced in adminMarketing.ts (Prisma has no XOR constraint to express
+  // this in the schema itself).
+  productId  String?
+  product    DigitalProduct?     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  courseId   String?
+  course     Course?             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  // Facebook/Instagram posts — [{ platform, hook, body, cta, hashtags: string[] }]
+  socialPosts       Json
+  // LinkedIn post + direct sales email, targeting partners/schools/businesses.
+  linkedinPost      String
+  salesEmailSubject String
+  salesEmailBody    String
+  // { demographics: string[], positioning: string[], recommendedChannels: string[] }
+  audienceProfile   Json
+
+  lang              String   @default("ka") // "ka" | "en"
+  generatedByUserId String
+  generatedByUser   User     @relation(fields: [generatedByUserId], references: [id])
+  createdAt         DateTime @default(now())
+
+  @@index([productId])
+  @@index([courseId])
+  @@map("launch_kits")
 }

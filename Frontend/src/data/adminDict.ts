@@ -39,6 +39,8 @@ export const adminDict = {
       assignments: 'საშინაო დავალებები',
       candidateVerifications: 'კანდიდატების ვერიფიკაცია',
       certificates: 'სერტიფიკატის გაცემა',
+      opportunities: 'გრანტები & ტენდერები',
+      marketing: 'AI მარკეტინგის მენეჯერი',
     },
     navSections: {
       core: 'ძირითადი მართვა',
@@ -114,6 +116,8 @@ export const adminDict = {
       assignments: 'Assignments',
       candidateVerifications: 'Candidate Verifications',
       certificates: 'Issue Certificate',
+      opportunities: 'Grants & Tenders',
+      marketing: 'AI Marketing Manager',
     },
     navSections: {
       core: 'Core Management',

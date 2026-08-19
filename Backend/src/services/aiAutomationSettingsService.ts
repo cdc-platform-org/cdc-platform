@@ -9,6 +9,8 @@ const DEFAULTS = {
   autoApproveScoreThreshold: 85,
   autoApproveConfidenceThreshold: 85,
   blogAutoPublish: false,
+  grantScoutAutoArchiveIneligible: false,
+  grantScoutNotifyOnMatch: true,
 };
 
 export async function getAiAutomationSettings() {
@@ -17,5 +19,7 @@ export async function getAiAutomationSettings() {
     autoApproveScoreThreshold: settings?.autoApproveScoreThreshold ?? DEFAULTS.autoApproveScoreThreshold,
     autoApproveConfidenceThreshold: settings?.autoApproveConfidenceThreshold ?? DEFAULTS.autoApproveConfidenceThreshold,
     blogAutoPublish: settings?.blogAutoPublish ?? DEFAULTS.blogAutoPublish,
+    grantScoutAutoArchiveIneligible: settings?.grantScoutAutoArchiveIneligible ?? DEFAULTS.grantScoutAutoArchiveIneligible,
+    grantScoutNotifyOnMatch: settings?.grantScoutNotifyOnMatch ?? DEFAULTS.grantScoutNotifyOnMatch,
   };
 }
