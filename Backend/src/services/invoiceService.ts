@@ -126,8 +126,12 @@ export interface InvoiceData {
   status: 'PAID' | 'REFUNDED' | 'ESTIMATE';
 }
 
+// The Lari sign (₾, U+20BE) falls outside the embedded Latin font's WinAnsi
+// range, so sanitizeLatinForWinAnsi() above silently swaps it for '?' —
+// this printed literal "GEL" text instead, same posture as every other
+// currency code here (USD etc. never had a symbol to begin with).
 function formatMoney(minorUnits: number, currency: string): string {
-  return `${(minorUnits / 100).toFixed(2)} ${currency === 'GEL' ? '₾' : currency}`;
+  return `${(minorUnits / 100).toFixed(2)} ${currency}`;
 }
 
 export async function generateInvoicePdf(data: InvoiceData): Promise<Buffer> {
