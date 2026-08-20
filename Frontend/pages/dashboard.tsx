@@ -999,9 +999,25 @@ function DashboardContent() {
     }
   }, [activeTab, canSubmitProduct]);
 
+  // Mirrors Backend's products.ts validateSubmitterPrice exactly: only an
+  // admin-team member (user.adminRole set) may publish a 0 GEL product —
+  // a regular seller's price must clear the 2 GEL floor that covers the
+  // payment gateway's own per-transaction fee. Checked live as the seller
+  // types, not just on submit, so the button disables before they even try.
+  const MIN_SUBMITTER_PRICE_GEL = 2;
+  const submitPriceError =
+    submitPrice === '' || !!user?.adminRole
+      ? null
+      : Number(submitPrice) === 0
+        ? 'Only CDC admins can publish a free (0 GEL) product. Set a price of at least 2 GEL, or ask an admin to publish it as a free lead-magnet listing.'
+        : Number(submitPrice) < MIN_SUBMITTER_PRICE_GEL
+          ? `Price must be at least ${MIN_SUBMITTER_PRICE_GEL} GEL to cover payment processing fees.`
+          : null;
+
   const handleSubmitProduct = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
+    if (submitPriceError) return setSubmitError(submitPriceError);
     setSubmittingProduct(true);
     try {
       // Editing an existing NEEDS_REVISION/PENDING submission resubmits it
@@ -1722,16 +1738,19 @@ function DashboardContent() {
                       />
                       <RichTextEditor required rows={3} placeholder={t.formDescription} value={submitDescription} onChange={setSubmitDescription} />
                       <div className="grid sm:grid-cols-2 gap-3">
-                        <input
-                          required
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder={t.formPrice}
-                          value={submitPrice}
-                          onChange={(e) => setSubmitPrice(e.target.value)}
-                          className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
-                        />
+                        <div>
+                          <input
+                            required
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder={t.formPrice}
+                            value={submitPrice}
+                            onChange={(e) => setSubmitPrice(e.target.value)}
+                            className={`w-full rounded-lg border bg-white dark:bg-slate-800 px-3 py-2 text-sm ${submitPriceError ? 'border-red-400' : 'border-slate-300 dark:border-slate-700'}`}
+                          />
+                          {submitPriceError && <p className="text-xs text-red-500 mt-1">{submitPriceError}</p>}
+                        </div>
                         <input
                           required
                           placeholder={t.formCategory}
@@ -1781,7 +1800,7 @@ function DashboardContent() {
                       <div className="flex gap-2">
                         <button
                           type="submit"
-                          disabled={submittingProduct || !submitImageUrl || (!editingSubmissionId && !submitFileUrl) || submitFileUploading}
+                          disabled={submittingProduct || !submitImageUrl || (!editingSubmissionId && !submitFileUrl) || submitFileUploading || !!submitPriceError}
                           className="text-xs font-bold px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-cyan-600 text-white disabled:opacity-60"
                         >
                           {submittingProduct ? t.formSubmitting : editingSubmissionId ? t.formResubmit : t.formSubmit}

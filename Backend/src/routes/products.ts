@@ -122,6 +122,24 @@ async function canSubmitProducts(userId: string): Promise<boolean> {
 }
 const CANNOT_SUBMIT_MESSAGE = 'Only verified graduates/freelancers or admins can submit products for review.';
 
+// Business rule: a regular seller (verified graduate/freelancer, no
+// adminRole) may never publish a $0 product — only an admin-team member can,
+// for deliberate free lead-magnet listings. A non-admin's price must clear
+// the same >=2 GEL floor the payment gateway needs to cover its own
+// per-transaction processing fee; anything between 0 and 2 GEL exclusive is
+// just as disallowed as exactly 0.
+const MIN_SUBMITTER_PRICE_GEL = 2;
+function validateSubmitterPrice(priceGel: number, isAdminTeamMember: boolean): string | null {
+  if (isAdminTeamMember) return null;
+  if (priceGel === 0) {
+    return 'Only CDC admins can publish a free (0 GEL) product. Set a price of at least 2 GEL, or ask an admin to publish it as a free lead-magnet listing.';
+  }
+  if (priceGel < MIN_SUBMITTER_PRICE_GEL) {
+    return `Price must be at least ${MIN_SUBMITTER_PRICE_GEL} GEL to cover payment processing fees.`;
+  }
+  return null;
+}
+
 // Runs before multer so an unauthorized caller's upload is rejected without
 // ever buffering the file into memory.
 async function requireCanSubmitProducts(req: Request, res: Response, next: NextFunction) {
@@ -230,12 +248,16 @@ async function runAiModeration(
 }
 
 router.post('/', authenticate, requireApproved, async (req: Request, res: Response) => {
-  if (!(await canSubmitProducts(req.user!.id))) {
+  const submitter = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { isVerifiedGraduate: true, adminRole: true } });
+  if (!(submitter?.isVerifiedGraduate || submitter?.adminRole)) {
     return res.status(403).json({ message: CANNOT_SUBMIT_MESSAGE });
   }
 
   const result = submitSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const priceError = validateSubmitterPrice(result.data.price, !!submitter.adminRole);
+  if (priceError) return res.status(400).json({ message: priceError });
 
   const moderation = await runAiModeration({
     title: result.data.title,
@@ -320,6 +342,13 @@ router.put('/:id/mine', authenticate, requireApproved, async (req: Request, res:
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
   const { price, ...rest } = result.data;
+
+  if (price !== undefined) {
+    const submitter = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } });
+    const priceError = validateSubmitterPrice(price, !!submitter?.adminRole);
+    if (priceError) return res.status(400).json({ message: priceError });
+  }
+
   const priceMinor = price !== undefined ? Math.round(price * 100) : product.price;
 
   const moderation = await runAiModeration({
