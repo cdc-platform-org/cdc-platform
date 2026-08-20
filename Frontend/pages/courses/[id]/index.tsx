@@ -280,6 +280,10 @@ export default function CourseDetailPage() {
               >
                 {t('continueLearning')}
               </Link>
+            ) : course.isFull ? (
+              <span className="inline-flex items-center gap-2 bg-slate-300 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-black px-6 py-3.5 rounded-xl text-sm uppercase tracking-widest cursor-not-allowed">
+                {t('soldOut')}
+              </span>
             ) : (
               <button
                 type="button"
@@ -415,17 +419,23 @@ export default function CourseDetailPage() {
             <Lock className="w-10 h-10 text-slate-400 mx-auto mb-3" />
             <h3 className="text-base font-black text-slate-900 dark:text-white mb-2">{t('paywallTitle')}</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{t('paywallBody')}</p>
-            <button
-              type="button"
-              onClick={() => {
-                setShowPaywall(false);
-                handleEnroll();
-              }}
-              disabled={processing}
-              className="w-full rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-3 text-sm font-black text-white disabled:opacity-60"
-            >
-              {processing ? t('detailEnrolling') : t('buyCourse')}
-            </button>
+            {course.isFull ? (
+              <span className="block w-full rounded-xl bg-slate-300 dark:bg-slate-700 px-5 py-3 text-sm font-black text-slate-600 dark:text-slate-300 cursor-not-allowed">
+                {t('soldOut')}
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPaywall(false);
+                  handleEnroll();
+                }}
+                disabled={processing}
+                className="w-full rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-3 text-sm font-black text-white disabled:opacity-60"
+              >
+                {processing ? t('detailEnrolling') : t('buyCourse')}
+              </button>
+            )}
           </div>
         </div>
       )}

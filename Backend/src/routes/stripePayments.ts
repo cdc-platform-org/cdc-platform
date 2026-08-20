@@ -22,6 +22,7 @@ import { createMentorshipCalendarEvent } from '../services/googleCalendarService
 import { creditMentorshipSession } from '../services/mentorshipPayoutService';
 import { isBusinessToolsCategory, canPurchaseBusinessTools } from '../utils/marketplaceCategories';
 import { sendMentorshipBookingEmails } from '../services/emailService';
+import { notifyCourseEnrollment } from '../services/courseEnrollmentNotification';
 
 // ============================================================
 // Stripe Checkout routes — the international-currency (USD/EUR) sibling of
@@ -109,6 +110,10 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
     where: { userId_courseId: { userId: req.user!.id, courseId: course.id } },
   });
   if (existingEnrollment) return res.status(400).json({ message: 'You are already enrolled in this course.' });
+  if (course.maxCapacity != null) {
+    const enrolledCount = await prisma.courseEnrollment.count({ where: { courseId: course.id } });
+    if (enrolledCount >= course.maxCapacity) return res.status(409).json({ message: 'This course is full.' });
+  }
   const reusable = await findReusablePendingOrder(req.user!.id, 'COURSE', course.id);
   if (reusable) return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.checkoutUrl });
 
@@ -146,6 +151,7 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
     });
     await prisma.courseEnrollment.create({ data: { userId: req.user!.id, courseId: course.id } });
     if (appliedPromo) await prisma.promoCode.update({ where: { id: appliedPromo.id }, data: { currentUses: { increment: 1 } } });
+    await notifyCourseEnrollment(req.user!.id, course);
     return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
   }
 
@@ -442,11 +448,18 @@ export async function applyStripePaymentResult(stripePaymentId: string, session:
   });
 
   if (stripePayment.purpose === 'COURSE') {
+    const existingEnrollment = await prisma.courseEnrollment.findUnique({
+      where: { userId_courseId: { userId: stripePayment.userId, courseId: stripePayment.referenceId } },
+    });
     await prisma.courseEnrollment.upsert({
       where: { userId_courseId: { userId: stripePayment.userId, courseId: stripePayment.referenceId } },
       update: {},
       create: { userId: stripePayment.userId, courseId: stripePayment.referenceId },
     });
+    if (!existingEnrollment) {
+      const course = await prisma.course.findUnique({ where: { id: stripePayment.referenceId }, select: { id: true, title: true } });
+      if (course) await notifyCourseEnrollment(stripePayment.userId, course);
+    }
   } else if (stripePayment.purpose === 'GIG_ESCROW_FUNDING') {
     const gig = await prisma.gig.findUnique({ where: { id: stripePayment.referenceId } });
     if (!gig || !gig.assignedFreelancerId) return;

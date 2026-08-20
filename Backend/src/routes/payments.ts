@@ -23,6 +23,7 @@ import { createMentorshipCalendarEvent } from '../services/googleCalendarService
 import { creditMentorshipSession } from '../services/mentorshipPayoutService';
 import { isBusinessToolsCategory, canPurchaseBusinessTools } from '../utils/marketplaceCategories';
 import { sendMentorshipBookingEmails } from '../services/emailService';
+import { notifyCourseEnrollment } from '../services/courseEnrollmentNotification';
 
 const router = Router();
 
@@ -135,6 +136,12 @@ router.post(
     if (existingEnrollment) {
       return res.status(400).json({ message: 'You are already enrolled in this course.' });
     }
+    if (course.maxCapacity != null) {
+      const enrolledCount = await prisma.courseEnrollment.count({ where: { courseId: course.id } });
+      if (enrolledCount >= course.maxCapacity) {
+        return res.status(409).json({ message: 'This course is full.' });
+      }
+    }
     const reusable = await findReusablePendingOrder(req.user!.id, 'COURSE', course.id);
     if (reusable) {
       return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.redirectUrl });
@@ -199,6 +206,7 @@ router.post(
       if (appliedPromo) {
         await prisma.promoCode.update({ where: { id: appliedPromo.id }, data: { currentUses: { increment: 1 } } });
       }
+      await notifyCourseEnrollment(req.user!.id, course);
       return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
     }
 
@@ -558,11 +566,20 @@ export async function applyBogPaymentResult(
   });
 
   if (bogPayment.purpose === 'COURSE') {
+    const existingEnrollment = await prisma.courseEnrollment.findUnique({
+      where: { userId_courseId: { userId: bogPayment.userId, courseId: bogPayment.referenceId } },
+    });
     await prisma.courseEnrollment.upsert({
       where: { userId_courseId: { userId: bogPayment.userId, courseId: bogPayment.referenceId } },
       update: {},
       create: { userId: bogPayment.userId, courseId: bogPayment.referenceId },
     });
+    // Only notify on the genuine first completion — a retried/duplicate
+    // webhook delivery for an already-enrolled purchase must not resend it.
+    if (!existingEnrollment) {
+      const course = await prisma.course.findUnique({ where: { id: bogPayment.referenceId }, select: { id: true, title: true } });
+      if (course) await notifyCourseEnrollment(bogPayment.userId, course);
+    }
   } else if (bogPayment.purpose === 'GIG_ESCROW_FUNDING') {
     const gig = await prisma.gig.findUnique({ where: { id: bogPayment.referenceId } });
     if (!gig || !gig.assignedFreelancerId) return;

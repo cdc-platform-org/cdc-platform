@@ -47,9 +47,28 @@ function toPrismaDiscountEndDate(value: string | null | undefined): Date | null 
   return new Date(value);
 }
 
+// enrolledCount is always the live CourseEnrollment count (via `_count`),
+// never a stored counter — same "count on read, can't drift" posture as
+// liveTrainings.ts's withCapacity(). Unlike LiveTraining, maxCapacity is
+// nullable here (most courses are unlimited), so seatsRemaining/isFull only
+// mean something once a cap is actually set.
+function withCapacityInfo<T extends { maxCapacity: number | null; _count: { enrollments: number } }>(course: T) {
+  const { _count, ...rest } = course;
+  const enrolledCount = _count.enrollments;
+  return {
+    ...rest,
+    enrolledCount,
+    seatsRemaining: course.maxCapacity != null ? Math.max(0, course.maxCapacity - enrolledCount) : null,
+    isFull: course.maxCapacity != null && enrolledCount >= course.maxCapacity,
+  };
+}
+
 router.get('/', async (req, res) => {
-  const courses = await prisma.course.findMany({ orderBy: { createdAt: 'desc' } });
-  res.json({ data: courses.map(withCurrentPrice) });
+  const courses = await prisma.course.findMany({
+    orderBy: { createdAt: 'desc' },
+    include: { _count: { select: { enrollments: true } } },
+  });
+  res.json({ data: courses.map((c) => withCurrentPrice(withCapacityInfo(c))) });
 });
 
 // Student's own enrolled courses + per-course progress, for the dashboard
@@ -90,11 +109,14 @@ router.get('/mine', authenticate, async (req: Request, res: Response) => {
 });
 
 router.get('/:id', async (req, res) => {
-  const course = await prisma.course.findUnique({ where: { id: req.params.id } });
+  const course = await prisma.course.findUnique({
+    where: { id: req.params.id },
+    include: { _count: { select: { enrollments: true } } },
+  });
   if (!course) {
     return res.status(404).json({ message: 'Course not found.' });
   }
-  res.json({ data: withCurrentPrice(course) });
+  res.json({ data: withCurrentPrice(withCapacityInfo(course)) });
 });
 
 // Public curriculum outline (section/lesson titles + durations only — no

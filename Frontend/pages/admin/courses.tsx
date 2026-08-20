@@ -40,6 +40,9 @@ const emptyForm = {
   descriptionEn: '',
   category: '',
   originalPrice: 0,
+  // '' = unlimited seats (the common case) — only a capacity-capped cohort
+  // (e.g. a live masterclass) sets this to a real number.
+  maxCapacity: '',
   published: false,
   mentorName: '',
   mentorTitle: '',
@@ -100,6 +103,7 @@ function CourseForm({
         descriptionEn: editingCourse.descriptionEn ?? '',
         category: editingCourse.category,
         originalPrice: editingCourse.originalPrice / 100,
+        maxCapacity: editingCourse.maxCapacity != null ? String(editingCourse.maxCapacity) : '',
         published: editingCourse.published,
         mentorName: editingCourse.mentorName ?? '',
         mentorTitle: editingCourse.mentorTitle ?? '',
@@ -171,6 +175,7 @@ function CourseForm({
         descriptionEn: form.descriptionEn.trim() || undefined,
         category: form.category.trim(),
         originalPrice: Math.round((Number(form.originalPrice) || 0) * 100),
+        maxCapacity: form.maxCapacity.trim() ? Math.round(Number(form.maxCapacity)) : null,
         published: form.published,
         mentorName: form.mentorName.trim() || undefined,
         mentorTitle: form.mentorTitle.trim() || undefined,
@@ -307,6 +312,25 @@ function CourseForm({
             className={inputClass}
           />
           <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{formatGel(form.originalPrice * 100)}</p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
+            Max Capacity <span className="text-gray-400 font-normal">— blank = unlimited</span>
+          </label>
+          <input
+            type="number"
+            min={1}
+            step="1"
+            value={form.maxCapacity}
+            onChange={(e) => setForm({ ...form, maxCapacity: e.target.value })}
+            placeholder="Unlimited"
+            className={inputClass}
+          />
+          {editingCourse && (
+            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
+              {editingCourse.enrolledCount} enrolled{editingCourse.maxCapacity != null ? ` / ${editingCourse.maxCapacity}` : ''}
+            </p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Mentor Name</label>

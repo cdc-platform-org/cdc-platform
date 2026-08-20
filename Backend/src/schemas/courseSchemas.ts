@@ -39,6 +39,8 @@ export const courseCreateSchema = z
     // moment they earn this course's certificate, see routes/courses.ts's
     // autoVerifySkillsForCourse().
     skillsTaught: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
+    // Omit/null = unlimited seats — see Course.maxCapacity's schema comment.
+    maxCapacity: z.number().int().min(1).optional().nullable(),
     ...coursePricingFields,
   })
   .refine((data) => !data.isOnSale || !!data.discountPercent, {
@@ -62,6 +64,7 @@ export const courseUpdateSchema = z
     mentorAvatarUrl: z.string().trim().max(2000).optional(),
     language: z.enum(['GEORGIAN', 'ENGLISH', 'BOTH']).optional(),
     skillsTaught: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
+    maxCapacity: z.number().int().min(1).optional().nullable(),
     ...coursePricingFields,
     originalPrice: coursePricingFields.originalPrice.optional(),
     isOnSale: coursePricingFields.isOnSale.optional(),

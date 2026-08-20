@@ -736,6 +736,12 @@ model Course {
   // Instruction language, shown as a badge on course cards. Defaults to
   // GEORGIAN since every pre-existing course is Georgian-taught.
   language        CourseLanguage @default(GEORGIAN)
+  // Null (the default/common case) = unlimited seats, same "absence means
+  // no limit" posture as PromoCode.maxUses. Set for capacity-capped cohorts
+  // (e.g. a live masterclass) — checked at checkout-initiation time in
+  // payments.ts/stripePayments.ts against a live CourseEnrollment count
+  // (never a stored counter, so it can't drift out of sync with reality).
+  maxCapacity     Int?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
