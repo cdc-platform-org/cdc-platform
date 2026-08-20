@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { authenticate, optionalAuthenticate, requireApproved } from '../middleware/auth';
 import { createThreadSchema, createCommentSchema } from '../schemas/forumSchemas';
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
+import { hasFreelancerRights } from '../utils/freelancerVerification';
 
 const router = Router();
 
@@ -173,8 +174,11 @@ router.get('/threads/:id', async (req: Request, res: Response) => {
 // no limit; everyone else is capped at NON_GRADUATE_MONTHLY_POST_LIMIT new
 // threads per calendar month (used/shown by the dashboard's post counter).
 router.get('/quota', authenticate, async (req: Request, res: Response) => {
-  const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { isVerifiedGraduate: true } });
-  if (user?.isVerifiedGraduate) {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { isVerifiedGraduate: true, verificationLevel: true, verificationStatus: true },
+  });
+  if (user && hasFreelancerRights(user)) {
     return res.json({ isGraduate: true, limit: null, used: null, remaining: null });
   }
   const used = await prisma.forumThread.count({
@@ -195,8 +199,11 @@ router.post('/threads', requireApproved, async (req: Request, res: Response) => 
   const category = await prisma.forumCategory.findUnique({ where: { id: result.data.categoryId } });
   if (!category) return res.status(404).json({ message: 'Category not found.' });
 
-  const author = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { isVerifiedGraduate: true } });
-  if (!author?.isVerifiedGraduate) {
+  const author = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { isVerifiedGraduate: true, verificationLevel: true, verificationStatus: true },
+  });
+  if (!author || !hasFreelancerRights(author)) {
     const postsThisMonth = await prisma.forumThread.count({
       where: { authorId: req.user!.id, createdAt: { gte: startOfCurrentMonth() } },
     });

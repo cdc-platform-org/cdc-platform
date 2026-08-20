@@ -154,6 +154,7 @@ function toUserResponse(user: {
   websiteUrl?: string | null;
   companyDescription?: string | null;
   verificationDocUrl?: string | null;
+  verificationLevel?: string | null;
   isVerified?: boolean;
   verificationStatus?: string | null;
   primaryIntent?: string | null;
@@ -188,8 +189,9 @@ function toUserResponse(user: {
     companyDescription: user.companyDescription ?? null,
     taxId: user.taxId ?? null,
     verificationDocUrl: user.verificationDocUrl ?? null,
+    verificationLevel: user.verificationLevel ?? 'NONE',
     isVerified: user.isVerified ?? false,
-    verificationStatus: user.verificationStatus ?? 'UNSUBMITTED',
+    verificationStatus: user.verificationStatus ?? 'UNVERIFIED',
     primaryIntent: user.primaryIntent ?? null,
     termsAcceptedAt: user.termsAcceptedAt ?? null,
     trialStartDate: user.trialStartDate ?? null,
@@ -925,8 +927,9 @@ router.post(
         where: { id: req.user!.id },
         data: {
           verificationDocUrl: url,
+          verificationLevel: 'BUSINESS',
           isVerified: autoVerified,
-          verificationStatus: autoVerified ? 'VERIFIED' : 'PENDING',
+          verificationStatus: autoVerified ? 'APPROVED' : 'PENDING',
           businessKycRejectionReason: null,
           ...(extractedData
             ? {
@@ -960,6 +963,66 @@ router.post(
             },
           })
           .catch((err) => console.error('[auth] business-kyc notification failed:', err));
+      }
+
+      res.status(201).json({ user: toUserResponse(user) });
+    } catch (err) {
+      const message = err instanceof BunnyStorageUploadError ? err.message : 'Document upload failed. Please try again.';
+      res.status(500).json({ message });
+    }
+  }
+);
+
+// Individual identity verification — self-serve upload of an ID card/
+// passport scan, the INDIVIDUAL counterpart to the BUSINESS KYC upload
+// above. Unlike the business path, there's no automated-parsing/auto-
+// approve heuristic for a personal ID (no equivalent of
+// businessKycService.ts's taxId cross-check exists), so this always lands
+// PENDING for manual admin review — see routes/adminVerifications.ts's
+// verify-individual/reject-individual. Never touches isVerified/
+// isVerifiedGraduate (those stay BUSINESS-only / skill-earned-only
+// respectively) — an approved individual verification is read as an
+// additional OR-condition alongside isVerifiedGraduate wherever freelancer
+// marketplace rights are gated (gigs.ts, vacancies.ts, products.ts,
+// forum.ts), not folded into either existing flag.
+router.post(
+  '/me/individual-verification-doc',
+  authenticate,
+  (req: Request, res: Response, next) => {
+    if (!isBunnyStorageConfigured()) {
+      return res.status(501).json({ message: 'Bunny Storage is not configured (BUNNY_STORAGE_ZONE_NAME / BUNNY_STORAGE_API_KEY / BUNNY_CDN_URL).' });
+    }
+    next();
+  },
+  verificationDocUpload.single('document'),
+  async (req: Request, res: Response) => {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file was selected.' });
+    }
+    const previous = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { verificationDocUrl: true, verificationLevel: true } });
+
+    const filename = `id-verification-${req.user!.id}-${Date.now()}${path.extname(req.file.originalname)}`;
+    try {
+      const url = await uploadToBunnyStorage({ buffer: req.file.buffer, mimetype: req.file.mimetype, folderName: 'individual-verification', filename });
+
+      const user = await prisma.user.update({
+        where: { id: req.user!.id },
+        data: {
+          verificationDocUrl: url,
+          verificationLevel: 'INDIVIDUAL',
+          verificationStatus: 'PENDING',
+          businessKycRejectionReason: null,
+        },
+      });
+
+      // Only delete the old file if it was itself an INDIVIDUAL-level
+      // upload — never delete out from under a BUSINESS submission the
+      // user might switch back to reviewing (each level keeps its own doc
+      // conceptually; this reuses the single verificationDocUrl column, so
+      // switching levels does mean only the most recent submission's file
+      // survives, which matches "one active submission at a time" above).
+      if (previous?.verificationDocUrl && previous.verificationDocUrl !== url) {
+        deleteBunnyStorageUrlIfManaged(previous.verificationDocUrl).catch(() => {});
       }
 
       res.status(201).json({ user: toUserResponse(user) });

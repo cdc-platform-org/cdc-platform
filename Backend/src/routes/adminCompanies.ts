@@ -71,10 +71,19 @@ async function setVerified(req: Request, res: Response, isVerified: boolean, act
   // idempotent (a later re-verify never resets/extends it) and never
   // touched on an unverify, so toggling verification off and back on
   // doesn't hand out a second trial.
-  const data: { isVerified: boolean; verificationStatus: 'VERIFIED' | 'UNSUBMITTED'; aiTrialEndsAt?: Date; trialStartDate?: Date } = {
+  const data: {
+    isVerified: boolean;
+    verificationStatus: 'APPROVED' | 'UNVERIFIED';
+    verificationLevel?: 'BUSINESS';
+    aiTrialEndsAt?: Date;
+    trialStartDate?: Date;
+  } = {
     isVerified,
-    verificationStatus: isVerified ? 'VERIFIED' : 'UNSUBMITTED',
+    verificationStatus: isVerified ? 'APPROVED' : 'UNVERIFIED',
   };
+  // Only set on a genuine verify — an unverify leaves the level as-is
+  // (still BUSINESS, just no longer approved), never resets it to NONE.
+  if (isVerified) data.verificationLevel = 'BUSINESS';
   const isFirstTrialGrant = isVerified && !existing.aiTrialEndsAt;
   if (isFirstTrialGrant) {
     data.trialStartDate = new Date();

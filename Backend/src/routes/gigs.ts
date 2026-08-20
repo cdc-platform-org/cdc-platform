@@ -6,6 +6,7 @@ import { openDisputeSchema } from '../schemas/disputeSchemas';
 import { captureEscrow } from '../services/escrowService';
 import { approveGigWork, GigApprovalError } from '../services/gigApprovalService';
 import { hasReachedMonthlyPostLimit, MONTHLY_POST_LIMIT } from '../services/postingLimitService';
+import { hasFreelancerRights } from '../utils/freelancerVerification';
 import { z } from 'zod';
 
 const router = Router();
@@ -175,10 +176,10 @@ router.post(
     // real gate has to live here, since anyone can call this endpoint directly.
     const applicant = await prisma.user.findUnique({
       where: { id: req.user!.id },
-      select: { isVerifiedGraduate: true },
+      select: { isVerifiedGraduate: true, verificationLevel: true, verificationStatus: true },
     });
-    if (!applicant?.isVerifiedGraduate) {
-      return res.status(403).json({ message: 'Only verified CDC graduates can submit proposals.' });
+    if (!applicant || !hasFreelancerRights(applicant)) {
+      return res.status(403).json({ message: 'Only verified CDC graduates or identity-verified freelancers can submit proposals.' });
     }
     const result = applyToGigSchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ errors: result.error.errors });

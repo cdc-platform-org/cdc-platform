@@ -6,6 +6,7 @@ import { ProductLicenseType } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { authenticate, optionalAuthenticate, requireApproved } from '../middleware/auth';
 import { isBusinessToolsCategory, canPurchaseBusinessTools } from '../utils/marketplaceCategories';
+import { hasFreelancerRights } from '../utils/freelancerVerification';
 import { uploadImage } from '../services/imageStorage';
 import { BunnyStorageUploadError } from '../services/bunnyStorage';
 import { imageUpload, fileUpload, videoUpload, multerErrorHandler } from '../middleware/productUploads';
@@ -169,9 +170,9 @@ const submitSchema = z.object({
 async function canSubmitProducts(userId: string): Promise<boolean> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { isVerifiedGraduate: true, adminRole: true },
+    select: { isVerifiedGraduate: true, verificationLevel: true, verificationStatus: true, adminRole: true },
   });
-  return !!(user?.isVerifiedGraduate || user?.adminRole);
+  return !!(user && (hasFreelancerRights(user) || user.adminRole));
 }
 const CANNOT_SUBMIT_MESSAGE = 'Only verified graduates/freelancers or admins can submit products for review.';
 
@@ -330,8 +331,11 @@ async function runAiModeration(
 }
 
 router.post('/', authenticate, requireApproved, async (req: Request, res: Response) => {
-  const submitter = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { isVerifiedGraduate: true, adminRole: true } });
-  if (!(submitter?.isVerifiedGraduate || submitter?.adminRole)) {
+  const submitter = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { isVerifiedGraduate: true, verificationLevel: true, verificationStatus: true, adminRole: true },
+  });
+  if (!submitter || !(hasFreelancerRights(submitter) || submitter.adminRole)) {
     return res.status(403).json({ message: CANNOT_SUBMIT_MESSAGE });
   }
 

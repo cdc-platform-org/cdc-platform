@@ -5,6 +5,7 @@ import { postVacancySchema, updateVacancySchema, applyToVacancySchema, reviewVac
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
 import { sendVacancyApplicationEmail } from '../services/emailService';
 import { hasReachedMonthlyPostLimit, MONTHLY_POST_LIMIT } from '../services/postingLimitService';
+import { hasFreelancerRights } from '../utils/freelancerVerification';
 const router = Router();
 const posterSelect = { select: { id: true, name: true, role: true, isVerifiedGraduate: true, averageRating: true, reviewCount: true } };
 const applicantSelect = { select: { name: true, isVerifiedGraduate: true, averageRating: true, reviewCount: true } };
@@ -131,10 +132,10 @@ router.post(
     // Matches the same isVerifiedGraduate gate gigs.ts's apply route enforces.
     const applicant = await prisma.user.findUnique({
       where: { id: req.user!.id },
-      select: { isVerifiedGraduate: true },
+      select: { isVerifiedGraduate: true, verificationLevel: true, verificationStatus: true },
     });
-    if (!applicant?.isVerifiedGraduate) {
-      return res.status(403).json({ message: 'ვაკანსიაზე განაცხადის გაგზავნა მხოლოდ CDC-ის კურსდამთავრებულებს შეუძლიათ.' });
+    if (!applicant || !hasFreelancerRights(applicant)) {
+      return res.status(403).json({ message: 'ვაკანსიაზე განაცხადის გაგზავნა მხოლოდ CDC-ის კურსდამთავრებულებს ან ვერიფიცირებულ ფრილანსერებს შეუძლიათ.' });
     }
     const result = applyToVacancySchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ errors: result.error.errors });

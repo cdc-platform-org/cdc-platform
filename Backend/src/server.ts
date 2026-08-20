@@ -50,6 +50,7 @@ import adminCmsRoutes from './routes/adminCms';
 import studioRoutes from './routes/studio';
 import adminStudioRoutes from './routes/adminStudio';
 import adminCompaniesRoutes from './routes/adminCompanies';
+import adminVerificationsRoutes from './routes/adminVerifications';
 import aiRoutes from './routes/ai';
 import agentsRoutes from './routes/agents';
 import chatApiRoutes from './routes/chatApi';
@@ -232,6 +233,7 @@ app.use('/api/admin/studio', adminStudioRoutes);
 app.use('/api/cyber-sentinel', cyberSentinelRoutes);
 app.use('/api/admin/cyber-sentinel', adminCyberSentinelRoutes);
 app.use('/api/admin/companies', adminCompaniesRoutes);
+app.use('/api/admin/individual-verifications', adminVerificationsRoutes);
 app.use('/api/ai', aiRoutes);
 // CDC Business AI — /api/agents is the authenticated dashboard-facing CRUD
 // (config, knowledge base, analytics); /api/v1/chat is the public,

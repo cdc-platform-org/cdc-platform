@@ -31,20 +31,44 @@ enum PrimaryIntent {
   EMPLOYER
 }
 
-// Richer verification state for a Client (Business) account than the
-// existing `isVerified` boolean alone can express (specifically: a
-// distinct PENDING state between "never submitted" and "verified", plus a
-// REJECTED terminal state) — see User.verificationStatus. `isVerified`
-// stays as the single source every existing access-check (business tools
-// gate, AI Agents Suite, admin dashboards) already reads; the two are
-// always written together at the one place that changes verification
-// (routes/adminCompanies.ts's setVerified()) rather than one being
-// computed from the other, since Prisma has no computed-field support.
-enum BusinessVerificationStatus {
-  UNSUBMITTED
+// Richer verification state than a plain `isVerified` boolean alone can
+// express (specifically: a distinct PENDING state between "never
+// submitted" and "approved", plus a REJECTED terminal state) — see
+// User.verificationStatus. Originally BUSINESS-only (named
+// BusinessVerificationStatus); the level a given submission is FOR is now
+// tracked separately by User.verificationLevel, so this enum's values are
+// level-agnostic (UNVERIFIED/PENDING/APPROVED/REJECTED, not "unsubmitted
+// business"/"verified business"). `isVerified` stays as the single source
+// every existing BUSINESS-tools access-check (business tools gate, AI
+// Agents Suite, admin dashboards) already reads — it is deliberately NOT
+// repurposed to mean "verified at any level," since flipping it true for
+// an INDIVIDUAL verification would incorrectly unlock business-only gates.
+// `isVerified`/`verificationStatus` are still always written together at
+// the one place BUSINESS verification changes (routes/adminCompanies.ts's
+// setVerified()) rather than one being computed from the other, since
+// Prisma has no computed-field support.
+enum VerificationStatus {
+  UNVERIFIED
   PENDING
-  VERIFIED
+  APPROVED
   REJECTED
+}
+
+// Which kind of verification a user has submitted/holds — NONE (default)
+// means no submission has ever been made. Deliberately a separate field
+// from `verificationStatus` above rather than folding level into the
+// status enum (e.g. "BUSINESS_PENDING"), since the two vary independently:
+// a resubmission after rejection keeps the same level but resets status,
+// and every status transition (routes/adminCompanies.ts for BUSINESS,
+// the individual-verification review path for INDIVIDUAL) only ever
+// touches whichever level's own downstream unlock this triggers — an
+// INDIVIDUAL approval sets isVerifiedGraduate-adjacent freelancer rights
+// (see the routes that read this alongside isVerifiedGraduate), a
+// BUSINESS approval sets `isVerified` — never both from one submission.
+enum VerificationLevel {
+  NONE
+  INDIVIDUAL
+  BUSINESS
 }
 
 enum UserStatus {
@@ -206,11 +230,11 @@ enum BogPaymentStatus {
 // ============================================================
 
 model User {
-  id                            String                      @id @default(uuid())
-  email                         String                      @unique
+  id                            String              @id @default(uuid())
+  email                         String              @unique
   password                      String
   name                          String
-  role                          Role                        @default(Student)
+  role                          Role                @default(Student)
   // Captures `role` at the moment POST /admin/mentorship/mentors/promote
   // overwrites it with `Mentor` — the only way to know which of Student/
   // Client to revert to on POST /admin/mentorship/mentors/:userId/demote,
@@ -218,14 +242,14 @@ model User {
   // non-Mentor account, and for any Mentor promoted before this field
   // existed (demote falls back to Student for those).
   preMentorRole                 Role?
-  status                        UserStatus                  @default(PENDING_APPROVAL)
+  status                        UserStatus          @default(PENDING_APPROVAL)
   rejectionReason               String?
-  earningsBalance               Int                         @default(0)
+  earningsBalance               Int                 @default(0)
   // Denormalized rollup of `reviewsReceived`, recomputed on every new review —
   // avoids an AVG() aggregate query every time a rating needs to be displayed
   // (profile pages, gig/vacancy cards, etc).
   averageRating                 Float?
-  reviewCount                   Int                         @default(0)
+  reviewCount                   Int                 @default(0)
   // Same denormalized-rollup pattern as averageRating/reviewCount above, but
   // for this user's Digital Store listings as a seller/creator (ProductReview,
   // recomputed on every product review create/delete) — deliberately a
@@ -234,11 +258,11 @@ model User {
   // for users who have never had a product reviewed (including anyone who
   // has never submitted a product at all).
   sellerRating                  Float?
-  sellerReviewCount             Int                         @default(0)
+  sellerReviewCount             Int                 @default(0)
   // Set only by a SuperAdmin (POST /api/admin/users/:id/verify-graduate) once
   // they've confirmed the user actually completed a CDC course — there is no
   // automated course-completion pipeline yet, so this is a manual gate.
-  isVerifiedGraduate            Boolean                     @default(false)
+  isVerifiedGraduate            Boolean             @default(false)
   // Set when a freelancer skill exam attempt is force-submitted for
   // repeated anti-cheat violations (tab switch/fullscreen exit, see
   // routes/freelancerExam.ts) — blocks starting a new attempt until this
@@ -250,7 +274,7 @@ model User {
   // per-skill system from isVerifiedGraduate above: a skill here only shows
   // a "Verified" badge (see VerifiedSkill) once the freelancer passes an
   // AI-generated test for it, or a completed course auto-verifies it.
-  freelancerSkills              String[]                    @default([])
+  freelancerSkills              String[]            @default([])
   // Soft-delete: set the moment the user confirms account deletion. The
   // account is deactivated immediately (blocked from logging in or taking
   // marketplace actions). 60 days later, the cleanup cron either hard-deletes
@@ -266,18 +290,18 @@ model User {
   // Existing rows are backfilled to their createdAt at migration time so this
   // new gate doesn't retroactively lock out accounts that predate it.
   emailVerifiedAt               DateTime?
-  emailVerificationToken        String?                     @unique
+  emailVerificationToken        String?             @unique
   emailVerificationTokenExpires DateTime?
   // Self-service password reset (POST /api/auth/forgot-password + /reset-password).
-  passwordResetToken            String?                     @unique
+  passwordResetToken            String?             @unique
   passwordResetTokenExpires     DateTime?
   // Set for accounts created (or later linked) via Google/GitHub/Facebook
   // Sign-In. Such accounts get a random unusable password hash — there is
   // no password-based login path for them unless they later set one (see
   // routes/auth.ts).
-  googleId                      String?                     @unique
-  githubId                      String?                     @unique
-  facebookId                    String?                     @unique
+  googleId                      String?             @unique
+  githubId                      String?             @unique
+  facebookId                    String?             @unique
   // Internal admin-team tier (see AdminRole) — null means "not on the admin
   // team." Independent of `role`; set only via the admin Team Management
   // panel (SUPER_ADMIN-only) or the one-off seed utility.
@@ -286,7 +310,7 @@ model User {
   // self-service account deletion). A banned user is blocked from logging in
   // and from every requireApproved-gated action, same enforcement points as
   // deletion, but reversible and admin-controlled.
-  isBanned                      Boolean                     @default(false)
+  isBanned                      Boolean             @default(false)
   bannedAt                      DateTime?
   banReason                     String?
   // Legal identity fields — self-reported by the student under
@@ -330,12 +354,12 @@ model User {
   // publish the profile via PUT /mentors/:mentorId/profile. No mentor-facing
   // route ever writes this field; only the admin one does, same posture as
   // course pricing/catalog content.
-  mentorPublished               Boolean                     @default(false)
-  mentorSkills                  String[]                    @default([])
+  mentorPublished               Boolean             @default(false)
+  mentorSkills                  String[]            @default([])
   // Spoken languages, e.g. ["ქართული", "English"] — free-text tags picked
   // from a curated checklist in the admin UI, not a DB enum (same posture
   // as mentorSkills).
-  mentorLanguages               String[]                    @default([])
+  mentorLanguages               String[]            @default([])
   // CV/résumé (PDF/DOCX), uploaded via POST /admin/mentorship/mentors/:id/cv
   // — a public CDN URL like the other Bunny-Storage-backed uploads in this
   // codebase; there's nothing sensitive in a mentor's own public CV.
@@ -345,17 +369,21 @@ model User {
   // PrimaryIntent's own comment. Null for every account created before
   // this field existed.
   primaryIntent                 PrimaryIntent?
-  // Business KYC — self-uploaded Public Registry Extract / company
-  // registration document, reviewed manually by an admin (see
-  // routes/adminCompanies.ts). `isVerified` remains the single field every
-  // existing access-check reads; `verificationStatus` adds the PENDING/
-  // REJECTED distinction a plain boolean can't express, kept in sync with
-  // it at the one place both ever change. Uploading a new doc after
-  // rejection resets both back to Under Review/PENDING so a resubmission
-  // always lands back in the review queue.
+  // Self-uploaded verification document — either a Public Registry Extract
+  // / company registration doc (BUSINESS level, reviewed by
+  // routes/adminCompanies.ts) or a personal ID card/passport scan
+  // (INDIVIDUAL level) — which one it is is `verificationLevel` below, not
+  // a separate URL field, since a user only ever has one active submission
+  // at a time. `isVerified` remains the single field every existing
+  // BUSINESS-only access-check reads; `verificationStatus` adds the
+  // PENDING/REJECTED distinction a plain boolean can't express, kept in
+  // sync with it at the one place both ever change for BUSINESS
+  // submissions. Uploading a new doc after rejection resets status back to
+  // PENDING so a resubmission always lands back in the review queue.
   verificationDocUrl            String?
-  isVerified                    Boolean                     @default(false)
-  verificationStatus            BusinessVerificationStatus? @default(UNSUBMITTED)
+  verificationLevel             VerificationLevel   @default(NONE)
+  isVerified                    Boolean             @default(false)
+  verificationStatus            VerificationStatus? @default(UNVERIFIED)
   // Self-reported identification code (ს/კ) — compared against whatever
   // ID the AI parser extracts from the uploaded document (see
   // services/businessKycService.ts) to auto-verify on an exact match.
@@ -416,8 +444,8 @@ model User {
   // this model).
   trialStartDate                DateTime?
   aiTrialEndsAt                 DateTime?
-  aiSubscriptionActive          Boolean                     @default(false)
-  createdAt                     DateTime                    @default(now())
+  aiSubscriptionActive          Boolean             @default(false)
+  createdAt                     DateTime            @default(now())
 
   postedGigs                   Gig[]                         @relation("PostedGigs")
   assignedGigs                 Gig[]                         @relation("AssignedGigs")
