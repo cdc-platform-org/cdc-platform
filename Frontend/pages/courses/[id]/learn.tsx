@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { GetServerSideProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
@@ -11,7 +12,6 @@ import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import BackButton from '../../../src/components/common/BackButton';
 import CourseVideoPlayer from '../../../src/components/courses/CourseVideoPlayer';
-import CourseTutorPanel from '../../../src/components/courses/CourseTutorPanel';
 import CourseDiscussionPanel from '../../../src/components/shared/CourseDiscussionPanel';
 import MarkdownContent from '../../../src/components/shared/MarkdownContent';
 import { useAuth } from '../../../src/context/AuthContext';
@@ -29,6 +29,16 @@ import {
   uploadSubmissionFile,
 } from '../../../src/services/courseService';
 import { resolveLocale } from '@/src/utils/locale';
+
+// Loaded client-side only. CourseTutorPanel pulls in react-syntax-highlighter
+// (for code blocks in the AI tutor's markdown replies), whose refractor
+// dependency ships ESM-only — requiring it during Vercel's server-side
+// render throws ERR_REQUIRE_ESM and 500s this entire page. A static import
+// bundles the module into the SSR chunk regardless of when the component
+// actually renders; `next/dynamic` with `ssr: false` keeps it out of the
+// server bundle entirely; the panel itself is UI (a chat drawer) with
+// nothing that needs to exist in the server-rendered HTML anyway.
+const CourseTutorPanel = dynamic(() => import('../../../src/components/courses/CourseTutorPanel'), { ssr: false });
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
