@@ -101,6 +101,11 @@ export async function completeProductPurchase(params: {
       },
     });
 
+    // Reached only on a genuine new completion — the early-return above
+    // already caught a retry of an already-COMPLETED purchase, so this
+    // never double-counts a webhook retry or the /bog/status poll fallback.
+    await tx.digitalProduct.update({ where: { id: params.productId }, data: { salesCount: { increment: 1 } } });
+
     return {
       paymentStatus: purchase.paymentStatus,
       commissionRate: purchase.commissionRate,

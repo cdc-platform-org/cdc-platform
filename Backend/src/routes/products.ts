@@ -76,6 +76,7 @@ router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
         fileFormat: fileFormatFromUrl(p.fileUrl),
         licenseType: p.licenseType,
         downloadsCount: p.downloadsCount,
+        salesCount: p.salesCount,
         createdAt: p.createdAt,
         purchased: purchasedIds.has(p.id),
       };
@@ -118,6 +119,7 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
       fileFormat: fileFormatFromUrl(product.fileUrl),
       licenseType: product.licenseType,
       downloadsCount: product.downloadsCount,
+      salesCount: product.salesCount,
       createdAt: product.createdAt,
       purchased,
       status: product.status,
@@ -469,16 +471,28 @@ router.post('/:id/claim', authenticate, requireApproved, async (req: Request, re
     }
   }
 
-  await prisma.productPurchase.upsert({
+  const existing = await prisma.productPurchase.findUnique({
     where: { userId_productId: { userId: req.user!.id, productId: product.id } },
-    // A free product's licenseType can't have changed between an earlier
-    // claim and a repeat call here (upsert is idempotent for this route
-    // already), but re-stamping it on every call costs nothing and means a
-    // pre-this-feature claim (licenseType null) self-heals the next time
-    // the same user hits claim again.
-    update: { licenseType: product.licenseType },
-    create: { userId: req.user!.id, productId: product.id, amount: 0, paymentStatus: 'COMPLETED', licenseType: product.licenseType },
   });
+
+  await prisma.$transaction([
+    prisma.productPurchase.upsert({
+      where: { userId_productId: { userId: req.user!.id, productId: product.id } },
+      // A free product's licenseType can't have changed between an earlier
+      // claim and a repeat call here (upsert is idempotent for this route
+      // already), but re-stamping it on every call costs nothing and means a
+      // pre-this-feature claim (licenseType null) self-heals the next time
+      // the same user hits claim again.
+      update: { licenseType: product.licenseType },
+      create: { userId: req.user!.id, productId: product.id, amount: 0, paymentStatus: 'COMPLETED', licenseType: product.licenseType },
+    }),
+    // Only on a genuine first claim — existing already being COMPLETED means
+    // this is just a repeat call (e.g. re-opening the product page), not a
+    // new sale, so salesCount must not move.
+    ...(existing?.paymentStatus === 'COMPLETED'
+      ? []
+      : [prisma.digitalProduct.update({ where: { id: product.id }, data: { salesCount: { increment: 1 } } })]),
+  ]);
 
   res.status(200).json({ data: { claimed: true } });
 });

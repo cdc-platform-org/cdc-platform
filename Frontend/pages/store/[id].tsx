@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import { GetServerSideProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag, Building2, X, Zap, Upload, Code2, ShieldCheck } from 'lucide-react';
+import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag, Building2, X, Zap, Upload, Code2, ShieldCheck, Tag } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
@@ -213,6 +213,12 @@ function StoreProductContent() {
               {product.saleActive && (
                 <span className="inline-flex items-center text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full text-white bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg shadow-rose-500/30">
                   -{Math.round((1 - product.currentPrice / product.price) * 100)}%
+                </span>
+              )}
+              {product.salesCount > 0 && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                  <Tag className="w-3 h-3" />
+                  {t(product.salesCount === 1 ? 'salesCount' : 'salesCountPlural', { count: product.salesCount })}
                 </span>
               )}
             </div>

@@ -1158,6 +1158,13 @@ model DigitalProduct {
   // before this existed, not a regression.
   fileUrl            String
   downloadsCount     Int                @default(0)
+  // Denormalized rollup of ProductPurchase rows that reached COMPLETED —
+  // same "avoid an aggregate query on every list read" posture as
+  // User.averageRating/reviewCount elsewhere in this schema. Incremented
+  // exactly once per genuine new completion (productSaleService.ts's
+  // completeProductPurchase and products.ts's free /:id/claim), never on a
+  // retry of an already-COMPLETED purchase.
+  salesCount         Int                @default(0)
   createdAt          DateTime           @default(now())
   purchases          ProductPurchase[]
   // Usage terms attached to this listing — snapshotted onto ProductPurchase

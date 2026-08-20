@@ -4,6 +4,8 @@
   "all": "All",
   "free": "Free",
   "owned": "Owned",
+  "salesCount": "{{count}} sale",
+  "salesCountPlural": "{{count}} sales",
   "details": "View Details",
   "empty": "No products in this category yet.",
   "loadFailed": "Could not load products.",

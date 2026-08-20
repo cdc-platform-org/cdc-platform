@@ -56,6 +56,11 @@ export interface DigitalProduct {
   fileFormat: string | null;
   licenseType: ProductLicenseType;
   downloadsCount: number;
+  // Verified-purchase count only (COMPLETED ProductPurchase rows) — a free
+  // claim counts, an abandoned/PENDING checkout does not. Denormalized on
+  // DigitalProduct, incremented server-side at fulfillment time; never
+  // computed client-side.
+  salesCount: number;
   createdAt: string;
   purchased: boolean;
   status?: ProductStatus;
