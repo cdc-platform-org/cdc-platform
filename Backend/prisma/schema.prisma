@@ -2290,11 +2290,16 @@ model MentorAvailabilityException {
   mentorId  String
   mentor    User     @relation(fields: [mentorId], references: [id], onDelete: Cascade)
   date      DateTime
+  // Both null = the whole day is blocked (original behavior). Both set =
+  // only that minute range within the day is blocked, so a mentor can keep
+  // the rest of the day bookable — see mentorAvailabilityService.ts's
+  // partial-exception handling in generateMentorSlots/assertSlotAvailable.
+  startMinute Int?
+  endMinute   Int?
   reason    String?
   createdAt DateTime @default(now())
 
-  @@unique([mentorId, date])
-  @@index([mentorId])
+  @@index([mentorId, date])
   @@map("mentor_availability_exceptions")
 }
 

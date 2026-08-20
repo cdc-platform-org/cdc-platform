@@ -60,10 +60,17 @@ export async function getMentors(): Promise<PublicMentor[]> {
   return response.data.data;
 }
 
-// Concrete, real bookable ISO datetimes over the next `days` days — already
-// excludes already-booked slots server-side.
-export async function getMentorSlots(mentorId: string, days = 14): Promise<string[]> {
-  const response = await apiClient.get<{ data: string[] }>(`/mentorship/mentors/${mentorId}/slots`, { params: { days } });
+// Every candidate ISO datetime over the next `days` days, each tagged with
+// whether it's still bookable — `available: false` covers both an
+// already-booked session and a mentor's manual block, so the booking UI can
+// render it grayed-out/disabled instead of hiding it outright.
+export interface MentorSlot {
+  time: string;
+  available: boolean;
+}
+
+export async function getMentorSlots(mentorId: string, days = 14): Promise<MentorSlot[]> {
+  const response = await apiClient.get<{ data: MentorSlot[] }>(`/mentorship/mentors/${mentorId}/slots`, { params: { days } });
   return response.data.data;
 }
 
@@ -210,6 +217,10 @@ export interface MentorAvailabilityException {
   id: string;
   date: string;
   reason: string | null;
+  // Both null = the whole day is blocked. Both set = only that minute range
+  // within the day is blocked (see Backend's mentorAvailabilityService.ts).
+  startMinute: number | null;
+  endMinute: number | null;
 }
 
 export async function getMyAvailabilityExceptions(): Promise<MentorAvailabilityException[]> {
@@ -217,8 +228,17 @@ export async function getMyAvailabilityExceptions(): Promise<MentorAvailabilityE
   return response.data.data;
 }
 
-export async function createMyAvailabilityException(date: string, reason?: string): Promise<MentorAvailabilityException> {
-  const response = await apiClient.post<{ data: MentorAvailabilityException }>('/mentorship/me/availability/exceptions', { date, reason });
+export async function createMyAvailabilityException(
+  date: string,
+  reason?: string,
+  timeRange?: { startMinute: number; endMinute: number }
+): Promise<MentorAvailabilityException> {
+  const response = await apiClient.post<{ data: MentorAvailabilityException }>('/mentorship/me/availability/exceptions', {
+    date,
+    reason,
+    startMinute: timeRange?.startMinute,
+    endMinute: timeRange?.endMinute,
+  });
   return response.data.data;
 }
 

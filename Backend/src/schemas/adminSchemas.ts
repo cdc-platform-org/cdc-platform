@@ -77,12 +77,26 @@ export const mentorAvailabilityRuleSchema = z
     message: 'endMinute must be after startMinute.',
     path: ['endMinute'],
   });
-export const mentorAvailabilityExceptionSchema = z.object({
-  // Date-only (YYYY-MM-DD) — the mentor blocks a whole calendar day, not a
-  // specific instant. Parsed as Tbilisi midnight in the route, not here.
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD.'),
-  reason: z.string().trim().max(200).optional(),
-});
+export const mentorAvailabilityExceptionSchema = z
+  .object({
+    // Date-only (YYYY-MM-DD) — the mentor blocks a calendar day (or part of
+    // one, see startMinute/endMinute below), not a specific instant. Parsed
+    // as Tbilisi midnight in the route, not here.
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD.'),
+    reason: z.string().trim().max(200).optional(),
+    // Omit both to block the whole day. Set both to block only that minute
+    // range within the day, leaving the rest of it bookable.
+    startMinute: z.number().int().min(0).max(1439).optional(),
+    endMinute: z.number().int().min(1).max(1440).optional(),
+  })
+  .refine((data) => (data.startMinute == null) === (data.endMinute == null), {
+    message: 'startMinute and endMinute must both be set or both omitted.',
+    path: ['endMinute'],
+  })
+  .refine((data) => data.startMinute == null || data.endMinute! > data.startMinute, {
+    message: 'endMinute must be after startMinute.',
+    path: ['endMinute'],
+  });
 export const manualCertificateSchema = z.object({
   studentNameKa: z.string().trim().min(2).max(200),
   studentNameEn: z.string().trim().max(200).optional(),

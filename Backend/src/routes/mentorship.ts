@@ -10,7 +10,7 @@ import {
 } from '../schemas/mentorshipSchemas';
 import { attachRecordingSchema, mentorAvailabilityRuleSchema, mentorAvailabilityExceptionSchema } from '../schemas/adminSchemas';
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
-import { generateAvailableSlots, assertSlotAvailable, SlotUnavailableError } from '../services/mentorAvailabilityService';
+import { generateMentorSlots, assertSlotAvailable, SlotUnavailableError } from '../services/mentorAvailabilityService';
 import { attachMentorshipRecording, MentorshipRecordingError } from '../services/mentorshipRecordingService';
 
 const router = Router();
@@ -89,12 +89,14 @@ router.get('/mentors/:mentorId/availability', async (req: Request, res: Response
   res.json({ data: rules });
 });
 
-// Concrete bookable datetimes over the next N days — what the booking modal
-// actually renders as clickable slots (already excludes taken times).
+// Every candidate datetime over the next N days — what the booking modal
+// renders as the slot grid. Each entry is tagged `available: false` if it's
+// already booked or the mentor manually blocked it, so the UI can show it
+// grayed-out/disabled instead of just hiding it.
 router.get('/mentors/:mentorId/slots', async (req: Request, res: Response) => {
   const days = Math.min(30, Math.max(1, Number(req.query.days) || 14));
-  const slots = await generateAvailableSlots(req.params.mentorId, days);
-  res.json({ data: slots.map((d) => d.toISOString()) });
+  const slots = await generateMentorSlots(req.params.mentorId, days);
+  res.json({ data: slots.map((s) => ({ time: s.time.toISOString(), available: s.available })) });
 });
 
 // ============================================================
@@ -433,17 +435,33 @@ router.post('/me/availability/exceptions', authenticate, requireRole('Mentor'), 
   const result = mentorAvailabilityExceptionSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
-  try {
-    const exception = await prisma.mentorAvailabilityException.create({
-      data: { mentorId: req.user!.id, date: new Date(`${result.data.date}T00:00:00Z`), reason: result.data.reason ?? null },
-    });
-    res.status(201).json({ data: exception });
-  } catch (err: any) {
-    // Unique [mentorId, date] — marking the same date twice is a no-op
-    // conflict, not a server error.
-    if (err.code === 'P2002') return res.status(400).json({ message: 'This date is already marked unavailable.' });
-    throw err;
+  const { date, reason, startMinute, endMinute } = result.data;
+  const dayStart = new Date(`${date}T00:00:00Z`);
+
+  // No unique DB constraint any more (a day can hold several partial
+  // blocks), so duplicate/overlap detection happens here instead.
+  const sameDay = await prisma.mentorAvailabilityException.findMany({
+    where: { mentorId: req.user!.id, date: dayStart },
+  });
+  const isFullDay = startMinute == null || endMinute == null;
+  const conflict = sameDay.some((e) => {
+    if (isFullDay || e.startMinute == null || e.endMinute == null) return true; // either side is a whole-day block
+    return startMinute! < e.endMinute && e.startMinute < endMinute!;
+  });
+  if (conflict) {
+    return res.status(400).json({ message: 'This date/time is already marked unavailable.' });
   }
+
+  const exception = await prisma.mentorAvailabilityException.create({
+    data: {
+      mentorId: req.user!.id,
+      date: dayStart,
+      startMinute: startMinute ?? null,
+      endMinute: endMinute ?? null,
+      reason: reason ?? null,
+    },
+  });
+  res.status(201).json({ data: exception });
 });
 
 router.delete('/me/availability/exceptions/:exceptionId', authenticate, requireRole('Mentor'), async (req: Request, res: Response) => {

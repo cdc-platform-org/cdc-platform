@@ -55,6 +55,9 @@ function MentorshipWorkspaceContent() {
   const [exceptions, setExceptions] = useState<MentorAvailabilityException[]>([]);
   const [newExceptionDate, setNewExceptionDate] = useState('');
   const [newExceptionReason, setNewExceptionReason] = useState('');
+  const [blockWholeDay, setBlockWholeDay] = useState(true);
+  const [newExceptionFrom, setNewExceptionFrom] = useState('18:00');
+  const [newExceptionTo, setNewExceptionTo] = useState('21:00');
   const [addingException, setAddingException] = useState(false);
 
   const [wallet, setWallet] = useState<WalletSummary | null>(null);
@@ -105,7 +108,10 @@ function MentorshipWorkspaceContent() {
     setAddingException(true);
     setError(null);
     try {
-      const exception = await createMyAvailabilityException(newExceptionDate, newExceptionReason.trim() || undefined);
+      const timeRange = blockWholeDay
+        ? undefined
+        : { startMinute: timeToMinutes(newExceptionFrom), endMinute: timeToMinutes(newExceptionTo) };
+      const exception = await createMyAvailabilityException(newExceptionDate, newExceptionReason.trim() || undefined, timeRange);
       setExceptions((prev) => [...prev, exception].sort((a, b) => a.date.localeCompare(b.date)));
       setNewExceptionDate('');
       setNewExceptionReason('');
@@ -253,6 +259,12 @@ function MentorshipWorkspaceContent() {
                 <div key={exception.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2.5">
                   <span className="text-sm">
                     {new Date(exception.date).toLocaleDateString()}
+                    {exception.startMinute != null && exception.endMinute != null && (
+                      <span className="text-slate-500 dark:text-slate-400">
+                        {' '}
+                        ({minutesToTime(exception.startMinute)}–{minutesToTime(exception.endMinute)})
+                      </span>
+                    )}
                     {exception.reason && <span className="text-slate-400 dark:text-slate-500"> — {exception.reason}</span>}
                   </span>
                   <button
@@ -268,6 +280,10 @@ function MentorshipWorkspaceContent() {
             </div>
           )}
 
+          <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400 mb-3 cursor-pointer">
+            <input type="checkbox" checked={!blockWholeDay} onChange={(e) => setBlockWholeDay(!e.target.checked)} />
+            {t('exceptionPartialDayToggle')}
+          </label>
           <div className="flex flex-wrap items-end gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('day')}</label>
@@ -279,6 +295,28 @@ function MentorshipWorkspaceContent() {
                 className="rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 px-3 py-2 text-sm"
               />
             </div>
+            {!blockWholeDay && (
+              <>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('from')}</label>
+                  <input
+                    type="time"
+                    value={newExceptionFrom}
+                    onChange={(e) => setNewExceptionFrom(e.target.value)}
+                    className="rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('to')}</label>
+                  <input
+                    type="time"
+                    value={newExceptionTo}
+                    onChange={(e) => setNewExceptionTo(e.target.value)}
+                    className="rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 px-3 py-2 text-sm"
+                  />
+                </div>
+              </>
+            )}
             <div className="flex-1 min-w-[180px]">
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">&nbsp;</label>
               <input
@@ -292,7 +330,7 @@ function MentorshipWorkspaceContent() {
             <button
               type="button"
               onClick={handleAddException}
-              disabled={addingException || !newExceptionDate}
+              disabled={addingException || !newExceptionDate || (!blockWholeDay && newExceptionTo <= newExceptionFrom)}
               className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white disabled:opacity-60"
             >
               <Plus className="w-3.5 h-3.5" /> {t('addException')}

@@ -10,7 +10,7 @@ import SiteFooter from '../src/components/layout/SiteFooter';
 import { useEscapeToClose } from '../src/hooks/useEscapeToClose';
 import { useAuth } from '../src/context/AuthContext';
 import { useAuthModal } from '../src/context/AuthModalContext';
-import { getMentors, getMentorSlots, mentorTitle, mentorBio, PublicMentor } from '../src/services/mentorshipService';
+import { getMentors, getMentorSlots, mentorTitle, mentorBio, PublicMentor, MentorSlot } from '../src/services/mentorshipService';
 import { checkoutMentorship } from '../src/services/paymentService';
 import { checkoutMentorshipStripe } from '../src/services/stripePaymentService';
 import { formatPrice } from '../src/utils/coursePricing';
@@ -41,7 +41,7 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: S
   // Mentor profiles only store ka/en text — collapse for this lookup only.
   const contentLang = lang === 'ka' ? 'ka' : 'en';
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [slots, setSlots] = useState<string[]>([]);
+  const [slots, setSlots] = useState<MentorSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -54,20 +54,28 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: S
 
   useEffect(() => {
     getMentorSlots(mentor.id)
-      .then(setSlots)
+      .then((fetched) => {
+        // Defensive: dedupe by timestamp and sort chronologically even
+        // though the server already does both — a stale mentor-facing
+        // caller elsewhere shouldn't be able to reintroduce duplicate
+        // buttons here.
+        const byTime = new Map<string, MentorSlot>();
+        for (const s of fetched) byTime.set(s.time, s);
+        setSlots(Array.from(byTime.values()).sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()));
+      })
       .finally(() => setLoadingSlots(false));
   }, [mentor.id]);
 
   const slotsByDate = useMemo(() => {
-    const map = new Map<string, string[]>();
-    for (const iso of slots) {
-      const dateKey = new Date(iso).toLocaleDateString(lang === 'ka' ? 'ka-GE' : 'en-GB', {
+    const map = new Map<string, MentorSlot[]>();
+    for (const s of slots) {
+      const dateKey = new Date(s.time).toLocaleDateString(lang === 'ka' ? 'ka-GE' : 'en-GB', {
         weekday: 'short',
         month: 'short',
         day: 'numeric',
       });
       if (!map.has(dateKey)) map.set(dateKey, []);
-      map.get(dateKey)!.push(iso);
+      map.get(dateKey)!.push(s);
     }
     return map;
   }, [slots, lang]);
@@ -185,19 +193,23 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: S
                     </button>
                   ))}
                 </div>
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-5">
-                  {(selectedDate ? slotsByDate.get(selectedDate) ?? [] : []).map((iso) => (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-3">
+                  {(selectedDate ? slotsByDate.get(selectedDate) ?? [] : []).map(({ time, available }) => (
                     <button
-                      key={iso}
+                      key={time}
                       type="button"
-                      onClick={() => setSelectedSlot(iso)}
+                      disabled={!available}
+                      onClick={() => setSelectedSlot(time)}
+                      title={available ? undefined : (t('slotBooked') as string)}
                       className={`text-xs font-bold px-2 py-2 rounded-lg border transition-colors ${
-                        selectedSlot === iso
+                        !available
+                          ? 'border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600 bg-slate-100 dark:bg-slate-800/40 cursor-not-allowed line-through'
+                          : selectedSlot === time
                           ? 'border-cyan-500 bg-cyan-500 text-white'
                           : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400'
                       }`}
                     >
-                      {new Date(iso).toLocaleTimeString(lang === 'ka' ? 'ka-GE' : 'en-GB', {
+                      {new Date(time).toLocaleTimeString(lang === 'ka' ? 'ka-GE' : 'en-GB', {
                         hour: '2-digit',
                         minute: '2-digit',
                         timeZone: 'Asia/Tbilisi',
@@ -205,6 +217,19 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: S
                     </button>
                   ))}
                 </div>
+                {selectedSlot && (
+                  <p className="text-xs font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-500/10 border border-cyan-500/30 rounded-lg px-3 py-2 mb-5">
+                    {t('selectedTimeLabel')}{' '}
+                    {new Date(selectedSlot).toLocaleString(lang === 'ka' ? 'ka-GE' : 'en-GB', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      timeZone: 'Asia/Tbilisi',
+                    })}
+                  </p>
+                )}
               </>
             )}
             <button
