@@ -69,7 +69,7 @@ router.post('/', authenticate, requireApproved, async (req: Request, res: Respon
     }
   }
 
-  const { wasFiltered } = sanitizeChatMessage(content);
+  const { wasFiltered, severity } = sanitizeChatMessage(content);
 
   if (wasFiltered) {
     await prisma.chatFlag.create({
@@ -77,13 +77,18 @@ router.post('/', authenticate, requireApproved, async (req: Request, res: Respon
         senderId: req.user!.id,
         recipientId,
         attemptedContent: content,
-        detectedReason: 'Message contained off-platform contact info / payment phrasing (sanitizeChatMessage).',
+        detectedReason: 'Message contained off-platform contact info / payment phrasing (sanitizeChatMessage, evasion-aware).',
+        severity,
       },
     });
     await notifyBothOfBlockedMessage(req.user!.id, recipientId);
 
     return res.status(422).json({
       blocked: true,
+      severity,
+      // Exact literal alert text — surfaced by ChatBox.tsx as a distinct,
+      // more urgent banner than the general Georgian `message` below.
+      alert: 'SECURITY ALERT: Offboarding attempt detected. Continued violations will result in account suspension.',
       message: '⚠️ პლატფორმის გარეთ კომუნიკაცია და გადახდა აკრძალულია საკომისიოს თავიდან არიდების მიზნით.',
     });
   }

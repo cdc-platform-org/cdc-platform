@@ -7,12 +7,15 @@ interface FlagParticipant {
   isBanned: boolean;
 }
 
+export type ChatFlagSeverity = 'MEDIUM' | 'HIGH';
+
 export interface ChatFlagIncident {
   id: string;
   sender: FlagParticipant;
   recipient: FlagParticipant;
   attemptedContent: string;
   detectedReason: string;
+  severity: ChatFlagSeverity;
   reviewedAt: string | null;
   reviewedByAdmin: { id: string; name: string } | null;
   createdAt: string;

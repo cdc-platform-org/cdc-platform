@@ -17,6 +17,10 @@ export default function ChatBox({ otherUserId, otherUserName }: ChatBoxProps) {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set only for a HIGH-severity block — the explicit "SECURITY ALERT" UI
+  // payload the anti-offboarding engine returns, shown as its own more
+  // urgent banner rather than folded into the general `error` text.
+  const [securityAlert, setSecurityAlert] = useState<string | null>(null);
   const listEndRef = useRef<HTMLDivElement>(null);
 
   const loadMessages = useCallback(async () => {
@@ -45,6 +49,7 @@ export default function ChatBox({ otherUserId, otherUserName }: ChatBoxProps) {
     if (!draft.trim() || sending) return;
     setSending(true);
     setError(null);
+    setSecurityAlert(null);
     try {
       const sent = await sendMessage(otherUserId, draft.trim());
       setMessages((prev) => [...prev, sent]);
@@ -54,7 +59,12 @@ export default function ChatBox({ otherUserId, otherUserName }: ChatBoxProps) {
       // block (422) and the Student<->Student consent gate (403) — surface
       // it directly rather than a generic failure, since both are the user
       // finding out *why* nothing sent, not a transient error to just retry.
+      // A HIGH-severity block also carries an explicit `alert` payload,
+      // shown as its own banner rather than folded into the general message.
       setError(err?.response?.data?.message ?? 'Unable to send this message. Please try again.');
+      if (err?.response?.data?.severity === 'HIGH' && err?.response?.data?.alert) {
+        setSecurityAlert(err.response.data.alert);
+      }
     } finally {
       setSending(false);
     }
@@ -101,6 +111,11 @@ export default function ChatBox({ otherUserId, otherUserName }: ChatBoxProps) {
         <div ref={listEndRef} />
       </div>
 
+      {securityAlert && (
+        <div className="px-3 py-2 text-[11px] font-bold text-white bg-red-600 shrink-0 flex items-center gap-1.5">
+          🚨 {securityAlert}
+        </div>
+      )}
       {error && <div className="px-3 py-1.5 text-[11px] text-red-600 bg-red-50 shrink-0">{error}</div>}
 
       {draft.trim() && draftPreview.wasFiltered && (
