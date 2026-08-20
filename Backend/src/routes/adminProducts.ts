@@ -2,12 +2,22 @@ import { Router, Request, Response, NextFunction } from 'express';
 import path from 'path';
 import crypto from 'crypto';
 import { z } from 'zod';
+import { ProductLicenseType } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { uploadImage } from '../services/imageStorage';
 import { BunnyStorageUploadError } from '../services/bunnyStorage';
 import { imageUpload, fileUpload, multerErrorHandler } from '../middleware/productUploads';
 import { autoTranslateIfBlank } from '../services/aiTranslateService';
+import { protectProductPreviewImage } from '../services/productImageProtection';
+import { uploadProductFile } from '../services/productFileDelivery';
+import { withCurrentProductPrice, validateProductDiscount } from '../services/productPricing';
+
+function toPrismaSaleEndsAt(value: string | null | undefined): Date | null | undefined {
+  if (value === undefined) return undefined;
+  if (!value) return null;
+  return new Date(value);
+}
 
 const router = Router();
 router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
@@ -17,9 +27,11 @@ router.post(
   (req: Request, res: Response, next: NextFunction) => imageUpload.single('image')(req, res, (err: any) => multerErrorHandler(req, res, err, next)),
   async (req: Request, res: Response) => {
     if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
-    const filename = `product-${Date.now()}-${crypto.randomUUID()}${path.extname(req.file.originalname)}`;
     try {
-      const url = await uploadImage({ buffer: req.file.buffer, mimetype: req.file.mimetype, folderName: 'product-images', filename });
+      const protectedImage = await protectProductPreviewImage(req.file.buffer, req.file.mimetype);
+      const extension = protectedImage.mimetype === 'image/jpeg' ? '.jpg' : path.extname(req.file.originalname);
+      const filename = `product-${Date.now()}-${crypto.randomUUID()}${extension}`;
+      const url = await uploadImage({ buffer: protectedImage.buffer, mimetype: protectedImage.mimetype, folderName: 'product-images', filename });
       res.status(201).json({ data: { url } });
     } catch (err) {
       const message = err instanceof BunnyStorageUploadError ? err.message : 'Image upload failed. Please try again.';
@@ -33,9 +45,11 @@ router.post(
   (req: Request, res: Response, next: NextFunction) => fileUpload.single('file')(req, res, (err: any) => multerErrorHandler(req, res, err, next)),
   async (req: Request, res: Response) => {
     if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
-    const filename = `product-${Date.now()}-${crypto.randomUUID()}${path.extname(req.file.originalname)}`;
     try {
-      const url = await uploadImage({ buffer: req.file.buffer, mimetype: req.file.mimetype, folderName: 'product-files', filename });
+      // Private Azure Blob storage — see productFileDelivery.ts. Returned
+      // `url` is a cdcblob:// marker, resolved to a real short-lived link
+      // only by products.ts's purchase-gated GET /:id/download.
+      const url = await uploadProductFile(req.file.buffer, req.file.mimetype, req.file.originalname);
       res.status(201).json({ data: { url } });
     } catch (err) {
       const message = err instanceof BunnyStorageUploadError ? err.message : 'File upload failed. Please try again.';
@@ -61,6 +75,9 @@ const createSchema = z.object({
   // cover) — empty is fine, a submission isn't required to have a gallery.
   previewImages: z.array(z.string().url()).max(4).optional().default([]),
   fileUrl: z.string().url(),
+  licenseType: z.nativeEnum(ProductLicenseType).optional(),
+  discountedPrice: z.number().min(0).optional().nullable(),
+  saleEndsAt: z.string().datetime().optional().nullable().or(z.literal('')),
 });
 
 // Admin-authored products skip moderation — there's no point an admin
@@ -70,6 +87,13 @@ router.post('/', async (req: Request, res: Response) => {
   const result = createSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
+  const priceMinor = Math.round(result.data.price * 100);
+  const discountedPriceMinor = result.data.discountedPrice != null ? Math.round(result.data.discountedPrice * 100) : null;
+  if (discountedPriceMinor !== null) {
+    const discountError = validateProductDiscount(priceMinor, discountedPriceMinor);
+    if (discountError) return res.status(400).json({ message: discountError });
+  }
+
   const { titleEn, descriptionEn } = await autoTranslateIfBlank(
     result.data.title,
     result.data.description,
@@ -78,20 +102,33 @@ router.post('/', async (req: Request, res: Response) => {
     'adminProducts'
   );
 
+  const { discountedPrice, saleEndsAt, ...rest } = result.data;
   const product = await prisma.digitalProduct.create({
-    data: { ...result.data, titleEn, descriptionEn, price: Math.round(result.data.price * 100), status: 'APPROVED' },
+    data: {
+      ...rest,
+      titleEn,
+      descriptionEn,
+      price: priceMinor,
+      discountedPrice: discountedPriceMinor,
+      saleEndsAt: toPrismaSaleEndsAt(saleEndsAt) ?? null,
+      status: 'APPROVED',
+    },
   });
-  res.status(201).json({ data: product });
+  res.status(201).json({ data: withCurrentProductPrice(product) });
 });
 
 // Full list across every status — the public GET /api/products only ever
-// shows APPROVED, so the moderation queue needs its own view.
+// shows APPROVED, so the moderation queue needs its own view. No locale or
+// submitter filter: every SUPER_ADMIN/MANAGER (see router.use above) sees
+// every product regardless of who submitted it or the site's active
+// language — status filtering (PENDING/APPROVED/etc.) is handled entirely
+// client-side by the admin panel from this same full list.
 router.get('/', async (_req: Request, res: Response) => {
   const products = await prisma.digitalProduct.findMany({
     orderBy: { createdAt: 'desc' },
     include: { submittedBy: { select: { id: true, name: true, email: true } } },
   });
-  res.json({ data: products });
+  res.json({ data: products.map(withCurrentProductPrice) });
 });
 
 // Every purchase of one product, including whether the buyer has ever
@@ -116,6 +153,9 @@ const updateSchema = z.object({
   price: z.number().min(0).optional(),
   imageUrl: z.string().url().optional(),
   previewImages: z.array(z.string().url()).max(4).optional(),
+  licenseType: z.nativeEnum(ProductLicenseType).optional(),
+  discountedPrice: z.number().min(0).optional().nullable(),
+  saleEndsAt: z.string().datetime().optional().nullable().or(z.literal('')),
 });
 
 // Lets an admin fix typos/formatting on a graduate/freelancer submission
@@ -141,13 +181,28 @@ router.put('/:id', async (req: Request, res: Response) => {
     'adminProducts'
   );
 
+  const { price, discountedPrice, saleEndsAt, ...rest } = result.data;
+  const priceMinor = price !== undefined ? Math.round(price * 100) : existing.price;
+  const discountedPriceMinor =
+    discountedPrice !== undefined ? (discountedPrice != null ? Math.round(discountedPrice * 100) : null) : existing.discountedPrice;
+  if (discountedPriceMinor !== null) {
+    const discountError = validateProductDiscount(priceMinor, discountedPriceMinor);
+    if (discountError) return res.status(400).json({ message: discountError });
+  }
+
   try {
-    const { price, ...rest } = result.data;
     const updated = await prisma.digitalProduct.update({
       where: { id: req.params.id },
-      data: { ...rest, titleEn, descriptionEn, ...(price !== undefined ? { price: Math.round(price * 100) } : {}) },
+      data: {
+        ...rest,
+        titleEn,
+        descriptionEn,
+        ...(price !== undefined ? { price: priceMinor } : {}),
+        discountedPrice: discountedPriceMinor,
+        ...(saleEndsAt !== undefined ? { saleEndsAt: toPrismaSaleEndsAt(saleEndsAt) } : {}),
+      },
     });
-    res.json({ data: updated });
+    res.json({ data: withCurrentProductPrice(updated) });
   } catch (err: any) {
     if (err.code === 'P2025') return res.status(404).json({ message: 'Product not found.' });
     throw err;

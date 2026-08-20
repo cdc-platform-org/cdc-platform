@@ -25,7 +25,13 @@ export default function ProductGallery({ images, alt }: ProductGalleryProps) {
 
   return (
     <div>
-      <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 group">
+      {/* 4:3, matching the marketplace card's aspect and the admin upload
+          form's "optimal cover size" guidance — was aspect-video (16:9)
+          before, which cropped a portrait cover far more aggressively than
+          the listing card two clicks away ever showed. object-cover still
+          crops to fill (never stretches), but the shallower 4:3 box keeps
+          noticeably more of a tall image's vertical center in frame. */}
+      <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 group">
         <button
           type="button"
           onClick={() => setLightboxOpen(true)}

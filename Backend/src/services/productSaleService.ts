@@ -53,7 +53,7 @@ export async function completeProductPurchase(params: {
 
     const product = await tx.digitalProduct.findUnique({
       where: { id: params.productId },
-      select: { submittedById: true },
+      select: { submittedById: true, licenseType: true },
     });
 
     let commissionRate: number | null = null;
@@ -87,6 +87,7 @@ export async function completeProductPurchase(params: {
         commissionRate,
         commissionAmount,
         netAmount,
+        licenseType: product?.licenseType,
       },
       create: {
         userId: params.userId,
@@ -96,8 +97,14 @@ export async function completeProductPurchase(params: {
         commissionRate,
         commissionAmount,
         netAmount,
+        licenseType: product?.licenseType,
       },
     });
+
+    // Reached only on a genuine new completion — the early-return above
+    // already caught a retry of an already-COMPLETED purchase, so this
+    // never double-counts a webhook retry or the /bog/status poll fallback.
+    await tx.digitalProduct.update({ where: { id: params.productId }, data: { salesCount: { increment: 1 } } });
 
     return {
       paymentStatus: purchase.paymentStatus,

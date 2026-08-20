@@ -17,6 +17,7 @@ import {
 import { captureEscrow } from '../services/escrowService';
 import { completeProductPurchase } from '../services/productSaleService';
 import { getCurrentPrice, computeCoursePriceWithPromo } from '../services/coursePricing';
+import { getCurrentProductPrice } from '../services/productPricing';
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
 import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
 import { creditMentorshipSession } from '../services/mentorshipPayoutService';
@@ -404,6 +405,10 @@ router.post(
     if (product.price <= 0) {
       return res.status(400).json({ message: 'This product is free — claim it directly instead of checking out.' });
     }
+    // The actual charged amount when a discount is active — the platform's
+    // 20% commission (productSaleService.ts) applies to whatever this is,
+    // never the original price, so a 5 GEL sale nets the creator 4 GEL.
+    const chargeAmount = getCurrentProductPrice(product);
     // The real enforcement boundary for the Business Tools purchase
     // restriction — the frontend's identical check (pages/store/[id].tsx)
     // is UX only and does not stop a direct API call.
@@ -453,7 +458,7 @@ router.post(
         userId: req.user!.id,
         purpose: 'PRODUCT',
         referenceId: product.id,
-        amount: product.price,
+        amount: chargeAmount,
         currency: 'GEL',
         status: 'PENDING',
       },
@@ -461,7 +466,7 @@ router.post(
     const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
     const order = await createBogOrderOrRespond(res, {
       externalOrderId: bogPayment.id,
-      amount: product.price,
+      amount: chargeAmount,
       currency: 'GEL',
       basketItemName: product.title,
       callbackUrl: CALLBACK_URL,

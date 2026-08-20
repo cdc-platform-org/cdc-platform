@@ -6,7 +6,7 @@ import { useRouter } from 'next/router';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { ShoppingBag, CheckCircle2 } from 'lucide-react';
+import { ShoppingBag, CheckCircle2, Tag } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
@@ -136,19 +136,35 @@ function MarketplaceContent() {
                       {product.fileFormat}
                     </span>
                   )}
+                  {product.saleActive && (
+                    <span className="absolute top-3 right-3 z-10 text-xs font-black text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg shadow-rose-500/30">
+                      -{Math.round((1 - product.currentPrice / product.price) * 100)}%
+                    </span>
+                  )}
                   {product.purchased && (
-                    <span className="absolute top-3 right-3 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500 text-white shadow">
+                    <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500 text-white shadow">
                       <CheckCircle2 className="w-3 h-3" />
                       {t('owned')}
                     </span>
                   )}
                 </div>
                 <div className="p-5 flex flex-col flex-1">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-cyan-600 dark:text-cyan-400 mb-1.5">{product.category}</span>
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-cyan-600 dark:text-cyan-400">{product.category}</span>
+                    {product.salesCount > 0 && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                        <Tag className="w-3 h-3" />
+                        {t(product.salesCount === 1 ? 'salesCount' : 'salesCountPlural', { count: product.salesCount })}
+                      </span>
+                    )}
+                  </div>
                   <h3 className="text-sm font-black tracking-wide mb-1.5 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">{productTitle(product, lang)}</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 mb-4 flex-1">{productDescription(product, lang)}</p>
                   <div className="flex items-center justify-between">
-                    <span className="text-base font-black">{product.price === 0 ? t('free') : formatPrice(product.price)}</span>
+                    <span className="flex items-baseline gap-1.5">
+                      {product.saleActive && <s className="text-xs text-slate-500">{formatPrice(product.price)}</s>}
+                      <span className="text-base font-black">{product.currentPrice === 0 ? t('free') : formatPrice(product.currentPrice)}</span>
+                    </span>
                     <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">{t('details')} →</span>
                   </div>
                 </div>

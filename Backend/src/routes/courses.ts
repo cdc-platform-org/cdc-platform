@@ -30,7 +30,7 @@ import {
   isBunnyConfigured,
 } from '../services/bunnyStreamService';
 import { generateCertificatePdf, generateVerificationCode, CertificateTemplateMissingError } from '../services/certificateService';
-import { withCurrentPrice } from '../services/coursePricing';
+import { withCurrentPrice, validateCourseDiscount } from '../services/coursePricing';
 import { generateExamQuestions, isAiExamConfigured, AiExamGenerationError, GeneratedQuestion } from '../services/aiExamService';
 import { createExamSessionToken, verifyExamSessionToken, ExamSessionError } from '../services/examSessionService';
 import { logAdminAction } from '../services/auditLogService';
@@ -134,6 +134,9 @@ router.post('/', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async
     return res.status(400).json({ errors: result.error.errors });
   }
 
+  const discountError = validateCourseDiscount(result.data.originalPrice, result.data.discountPercent, result.data.isOnSale);
+  if (discountError) return res.status(400).json({ message: discountError });
+
   const course = await prisma.course.create({
     data: { ...result.data, discountEndDate: toPrismaDiscountEndDate(result.data.discountEndDate) },
   });
@@ -145,6 +148,19 @@ router.put('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), asy
   if (!result.success) {
     return res.status(400).json({ errors: result.error.errors });
   }
+
+  const existing = await prisma.course.findUnique({ where: { id: req.params.id } });
+  if (!existing) return res.status(404).json({ message: 'Course not found.' });
+
+  // A partial update may touch only one of originalPrice/discountPercent/
+  // isOnSale — validate against the values the row will actually have once
+  // this update lands, not just whatever happened to be in this request body.
+  const discountError = validateCourseDiscount(
+    result.data.originalPrice ?? existing.originalPrice,
+    result.data.discountPercent !== undefined ? result.data.discountPercent : existing.discountPercent,
+    result.data.isOnSale ?? existing.isOnSale
+  );
+  if (discountError) return res.status(400).json({ message: discountError });
 
   try {
     const course = await prisma.course.update({

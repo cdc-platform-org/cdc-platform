@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, FormEvent } from 'react';
+import { useState, useEffect, useCallback, useMemo, FormEvent } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -44,13 +44,16 @@ import { getForumQuota, ForumPostQuota } from '../src/services/forumService';
 import { createMentorshipRequest } from '../src/services/mentorshipService';
 import {
   getProducts,
-  getProductDownloadUrl,
+  getProductDownload,
   submitProduct,
   updateMyProduct,
   getMySubmissions,
   uploadMyProductImage,
   uploadMyProductFile,
   DigitalProduct,
+  ProductLicenseType,
+  LICENSE_LABELS,
+  validateProductDiscount,
 } from '../src/services/productService';
 import RichTextEditor from '../src/components/shared/RichTextEditor';
 import FileDropzone from '../src/components/shared/FileDropzone';
@@ -138,9 +141,9 @@ const dict = {
     formCategory: 'კატეგორია',
     formCoverImage: 'მთავარი ფოტო (გარეკანი)',
     formCoverHint: 'დააჭირეთ ან ჩააგდეთ სურათი აქ',
-    formCoverSizeHint: 'რეკომენდებული ზომა: 2000 × 1500 px (4:3) ან 2000 × 2000 px. PNG/JPG, მაქს. 10MB.',
+    formCoverSizeHint: 'ოპტიმალური ზომა: 2000 × 1500 px (4:3 თანაფარდობა). PNG/JPG, მაქს. 10MB.',
     formGalleryLabel: 'დამატებითი სქრინშოთები',
-    formGallerySizeHint: 'ატვირთეთ მაქს. 4 სურათი (რეკომენდებული: 2000 × 1500 px).',
+    formGallerySizeHint: 'ატვირთეთ მაქს. 4 სურათი (ოპტიმალური ზომა: 2000 × 1500 px, 4:3).',
     formGalleryAdd: 'დამატება',
     formUploading: 'იტვირთება…',
     formRemove: 'წაშლა',
@@ -263,9 +266,9 @@ const dict = {
     formCategory: 'Category',
     formCoverImage: 'Main Cover Image',
     formCoverHint: 'Click or drop an image here',
-    formCoverSizeHint: 'Recommended size: 2000 × 1500 px (4:3 ratio) or 2000 × 2000 px. PNG/JPG, up to 10MB.',
+    formCoverSizeHint: 'Optimal Cover Size: 2000 × 1500 px (4:3 ratio). PNG/JPG, up to 10MB.',
     formGalleryLabel: 'Additional Screenshots',
-    formGallerySizeHint: 'Upload up to 4 preview images (Recommended: 2000 × 1500 px).',
+    formGallerySizeHint: 'Upload up to 4 preview images (Optimal Size: 2000 × 1500 px, 4:3 ratio).',
     formGalleryAdd: 'Add',
     formUploading: 'Uploading…',
     formRemove: 'Remove',
@@ -384,9 +387,9 @@ const dict = {
     formCategory: 'Category',
     formCoverImage: 'Main Cover Image',
     formCoverHint: 'Click or drop an image here',
-    formCoverSizeHint: 'Recommended size: 2000 × 1500 px (4:3 ratio) or 2000 × 2000 px. PNG/JPG, up to 10MB.',
+    formCoverSizeHint: 'Optimal Cover Size: 2000 × 1500 px (4:3 ratio). PNG/JPG, up to 10MB.',
     formGalleryLabel: 'Additional Screenshots',
-    formGallerySizeHint: 'Upload up to 4 preview images (Recommended: 2000 × 1500 px).',
+    formGallerySizeHint: 'Upload up to 4 preview images (Optimal Size: 2000 × 1500 px, 4:3 ratio).',
     formGalleryAdd: 'Add',
     formUploading: 'Uploading…',
     formRemove: 'Remove',
@@ -505,9 +508,9 @@ const dict = {
     formCategory: 'Category',
     formCoverImage: 'Main Cover Image',
     formCoverHint: 'Click or drop an image here',
-    formCoverSizeHint: 'Recommended size: 2000 × 1500 px (4:3 ratio) or 2000 × 2000 px. PNG/JPG, up to 10MB.',
+    formCoverSizeHint: 'Optimal Cover Size: 2000 × 1500 px (4:3 ratio). PNG/JPG, up to 10MB.',
     formGalleryLabel: 'Additional Screenshots',
-    formGallerySizeHint: 'Upload up to 4 preview images (Recommended: 2000 × 1500 px).',
+    formGallerySizeHint: 'Upload up to 4 preview images (Optimal Size: 2000 × 1500 px, 4:3 ratio).',
     formGalleryAdd: 'Add',
     formUploading: 'Uploading…',
     formRemove: 'Remove',
@@ -626,9 +629,9 @@ const dict = {
     formCategory: 'Category',
     formCoverImage: 'Main Cover Image',
     formCoverHint: 'Click or drop an image here',
-    formCoverSizeHint: 'Recommended size: 2000 × 1500 px (4:3 ratio) or 2000 × 2000 px. PNG/JPG, up to 10MB.',
+    formCoverSizeHint: 'Optimal Cover Size: 2000 × 1500 px (4:3 ratio). PNG/JPG, up to 10MB.',
     formGalleryLabel: 'Additional Screenshots',
-    formGallerySizeHint: 'Upload up to 4 preview images (Recommended: 2000 × 1500 px).',
+    formGallerySizeHint: 'Upload up to 4 preview images (Optimal Size: 2000 × 1500 px, 4:3 ratio).',
     formGalleryAdd: 'Add',
     formUploading: 'Uploading…',
     formRemove: 'Remove',
@@ -747,9 +750,9 @@ const dict = {
     formCategory: 'Category',
     formCoverImage: 'Main Cover Image',
     formCoverHint: 'Click or drop an image here',
-    formCoverSizeHint: 'Recommended size: 2000 × 1500 px (4:3 ratio) or 2000 × 2000 px. PNG/JPG, up to 10MB.',
+    formCoverSizeHint: 'Optimal Cover Size: 2000 × 1500 px (4:3 ratio). PNG/JPG, up to 10MB.',
     formGalleryLabel: 'Additional Screenshots',
-    formGallerySizeHint: 'Upload up to 4 preview images (Recommended: 2000 × 1500 px).',
+    formGallerySizeHint: 'Upload up to 4 preview images (Optimal Size: 2000 × 1500 px, 4:3 ratio).',
     formGalleryAdd: 'Add',
     formUploading: 'Uploading…',
     formRemove: 'Remove',
@@ -899,6 +902,9 @@ function DashboardContent() {
   const [submitImageUrl, setSubmitImageUrl] = useState('');
   const [submitPreviewImages, setSubmitPreviewImages] = useState<string[]>([]);
   const [submitFileUrl, setSubmitFileUrl] = useState('');
+  const [submitLicenseType, setSubmitLicenseType] = useState<ProductLicenseType>('PERSONAL_USE');
+  const [submitDiscountedPrice, setSubmitDiscountedPrice] = useState('');
+  const [submitSaleEndsAt, setSubmitSaleEndsAt] = useState('');
   const [submitFileUploading, setSubmitFileUploading] = useState(false);
   const [submitFileUploadError, setSubmitFileUploadError] = useState<string | null>(null);
   const [editingSubmissionId, setEditingSubmissionId] = useState<string | null>(null);
@@ -999,9 +1005,15 @@ function DashboardContent() {
     }
   }, [activeTab, canSubmitProduct]);
 
+  const submitDiscountError = useMemo(() => {
+    if (!submitDiscountedPrice) return null;
+    return validateProductDiscount(Number(submitPrice) || 0, Number(submitDiscountedPrice) || 0);
+  }, [submitPrice, submitDiscountedPrice]);
+
   const handleSubmitProduct = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
+    if (submitDiscountError) return setSubmitError(submitDiscountError);
     setSubmittingProduct(true);
     try {
       // Editing an existing NEEDS_REVISION/PENDING submission resubmits it
@@ -1019,6 +1031,9 @@ function DashboardContent() {
           category: submitCategory,
           imageUrl: submitImageUrl,
           previewImages: submitPreviewImages,
+          licenseType: submitLicenseType,
+          discountedPrice: submitDiscountedPrice ? Number(submitDiscountedPrice) : null,
+          saleEndsAt: submitSaleEndsAt || null,
           ...(submitFileUrl ? { fileUrl: submitFileUrl } : {}),
         });
       } else {
@@ -1030,6 +1045,9 @@ function DashboardContent() {
           imageUrl: submitImageUrl,
           previewImages: submitPreviewImages,
           fileUrl: submitFileUrl,
+          licenseType: submitLicenseType,
+          discountedPrice: submitDiscountedPrice ? Number(submitDiscountedPrice) : null,
+          saleEndsAt: submitSaleEndsAt || null,
         });
       }
       setSubmitTitle('');
@@ -1039,6 +1057,9 @@ function DashboardContent() {
       setSubmitImageUrl('');
       setSubmitPreviewImages([]);
       setSubmitFileUrl('');
+      setSubmitLicenseType('PERSONAL_USE');
+      setSubmitDiscountedPrice('');
+      setSubmitSaleEndsAt('');
       setEditingSubmissionId(null);
       setShowSubmitForm(false);
       setMySubmissions(await getMySubmissions());
@@ -1057,6 +1078,11 @@ function DashboardContent() {
     setSubmitCategory(s.category);
     setSubmitImageUrl(s.imageUrl);
     setSubmitPreviewImages(s.previewImages);
+    setSubmitLicenseType(s.licenseType);
+    setSubmitDiscountedPrice(s.discountedPrice != null ? String(s.discountedPrice / 100) : '');
+    // <input type="datetime-local"> needs "YYYY-MM-DDTHH:mm", not a full ISO
+    // string with seconds/ms/timezone — slice(0, 16) trims exactly that.
+    setSubmitSaleEndsAt(s.saleEndsAt ? s.saleEndsAt.slice(0, 16) : '');
     setSubmitFileUrl(''); // fileUrl is never exposed to the client — re-upload if it needs to change, otherwise the existing file stays untouched (omitted from the payload).
     setSubmitError(null);
     setShowSubmitForm(true);
@@ -1149,7 +1175,7 @@ function DashboardContent() {
     setProductDownloadError(null);
     setDownloadingProductId(productId);
     try {
-      const fileUrl = await getProductDownloadUrl(productId);
+      const { fileUrl } = await getProductDownload(productId);
       window.open(fileUrl, '_blank', 'noopener,noreferrer');
     } catch {
       setProductDownloadError(t.downloadFailed);
@@ -1778,10 +1804,51 @@ function DashboardContent() {
                         />
                         {submitFileUploadError && <p className="text-xs text-red-500 mt-1">{submitFileUploadError}</p>}
                       </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{lang === 'ka' ? 'ლიცენზია' : 'License'}</label>
+                        <select
+                          value={submitLicenseType}
+                          onChange={(e) => setSubmitLicenseType(e.target.value as ProductLicenseType)}
+                          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm"
+                        >
+                          {(Object.keys(LICENSE_LABELS) as ProductLicenseType[]).map((key) => (
+                            <option key={key} value={key}>{LICENSE_LABELS[key][lang === 'ka' ? 'ka' : 'en']}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+                            {lang === 'ka' ? 'ფასდაკლებული ფასი (GEL)' : 'Discounted Price (GEL)'}
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={submitDiscountedPrice}
+                            onChange={(e) => setSubmitDiscountedPrice(e.target.value)}
+                            placeholder={lang === 'ka' ? 'ცარიელი — ფასდაკლების გარეშე' : 'Leave blank for no sale'}
+                            className={`w-full rounded-xl border bg-white dark:bg-slate-900 px-3 py-2 text-sm ${submitDiscountError ? 'border-red-400' : 'border-slate-200 dark:border-slate-700'}`}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+                            {lang === 'ka' ? 'ფასდაკლება მთავრდება' : 'Sale Ends At'}
+                          </label>
+                          <input
+                            type="datetime-local"
+                            value={submitSaleEndsAt}
+                            onChange={(e) => setSubmitSaleEndsAt(e.target.value)}
+                            disabled={!submitDiscountedPrice}
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm disabled:opacity-50"
+                          />
+                        </div>
+                      </div>
+                      {submitDiscountError && <p className="text-xs text-red-500">{submitDiscountError}</p>}
                       <div className="flex gap-2">
                         <button
                           type="submit"
-                          disabled={submittingProduct || !submitImageUrl || (!editingSubmissionId && !submitFileUrl) || submitFileUploading}
+                          disabled={submittingProduct || !submitImageUrl || (!editingSubmissionId && !submitFileUrl) || submitFileUploading || !!submitDiscountError}
                           className="text-xs font-bold px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-cyan-600 text-white disabled:opacity-60"
                         >
                           {submittingProduct ? t.formSubmitting : editingSubmissionId ? t.formResubmit : t.formSubmit}
@@ -1875,6 +1942,7 @@ function DashboardContent() {
                         <div>
                           <span className="text-[10px] font-black uppercase tracking-widest text-cyan-600 dark:text-cyan-400">{product.category}</span>
                           <h3 className="font-bold text-base text-slate-900 dark:text-white tracking-wide">{product.title}</h3>
+                          <span className="text-[11px] text-slate-400">{LICENSE_LABELS[product.licenseType][lang === 'ka' ? 'ka' : 'en']}</span>
                         </div>
                         <button
                           type="button"

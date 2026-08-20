@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import path from 'path';
 import { z } from 'zod';
+import { ProductLicenseType } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { authenticate, optionalAuthenticate, requireApproved } from '../middleware/auth';
 import { isBusinessToolsCategory, canPurchaseBusinessTools } from '../utils/marketplaceCategories';
@@ -12,6 +13,19 @@ import { fileFormatFromUrl } from '../utils/fileFormat';
 import { moderateProduct, ModerationInput } from '../services/productModerationService';
 import { getAiAutomationSettings } from '../services/aiAutomationSettingsService';
 import { autoTranslateIfBlank } from '../services/aiTranslateService';
+import { protectProductPreviewImage } from '../services/productImageProtection';
+import { uploadProductFile, resolveProductFileDeliveryUrl } from '../services/productFileDelivery';
+import { withCurrentProductPrice, validateProductDiscount } from '../services/productPricing';
+
+// ISO string (or '' / null / undefined for "no sale end date") from the
+// form's <input type="datetime-local"> — mirrors courses.ts's identical
+// toPrismaDiscountEndDate helper. Prisma's DateTime field needs an actual
+// Date or null, never an empty string.
+function toPrismaSaleEndsAt(value: string | null | undefined): Date | null | undefined {
+  if (value === undefined) return undefined;
+  if (!value) return null;
+  return new Date(value);
+}
 
 const router = Router();
 
@@ -40,19 +54,33 @@ router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
     : new Set<string>();
 
   res.json({
-    data: products.map((p) => ({
-      id: p.id,
-      title: p.title,
-      description: p.description,
-      price: p.price,
-      category: p.category,
-      imageUrl: p.imageUrl,
-      previewImages: p.previewImages,
-      fileFormat: fileFormatFromUrl(p.fileUrl),
-      downloadsCount: p.downloadsCount,
-      createdAt: p.createdAt,
-      purchased: purchasedIds.has(p.id),
-    })),
+    data: products.map((p) => {
+      // Deliberately pulling only currentPrice/saleActive out of
+      // withCurrentProductPrice(p), not spreading its whole return value —
+      // that includes every raw column (fileUrl, submittedById, etc.) this
+      // hand-picked public shape exists specifically to keep off the
+      // catalog response.
+      const { currentPrice, saleActive } = withCurrentProductPrice(p);
+      return {
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        price: p.price,
+        discountedPrice: saleActive ? p.discountedPrice : null,
+        saleEndsAt: saleActive ? p.saleEndsAt : null,
+        currentPrice,
+        saleActive,
+        category: p.category,
+        imageUrl: p.imageUrl,
+        previewImages: p.previewImages,
+        fileFormat: fileFormatFromUrl(p.fileUrl),
+        licenseType: p.licenseType,
+        downloadsCount: p.downloadsCount,
+        salesCount: p.salesCount,
+        createdAt: p.createdAt,
+        purchased: purchasedIds.has(p.id),
+      };
+    }),
   });
 });
 
@@ -74,17 +102,24 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
     purchased = purchase?.paymentStatus === 'COMPLETED';
   }
 
+  const { currentPrice, saleActive } = withCurrentProductPrice(product);
   res.json({
     data: {
       id: product.id,
       title: product.title,
       description: product.description,
       price: product.price,
+      discountedPrice: saleActive ? product.discountedPrice : null,
+      saleEndsAt: saleActive ? product.saleEndsAt : null,
+      currentPrice,
+      saleActive,
       category: product.category,
       imageUrl: product.imageUrl,
       previewImages: product.previewImages,
       fileFormat: fileFormatFromUrl(product.fileUrl),
+      licenseType: product.licenseType,
       downloadsCount: product.downloadsCount,
+      salesCount: product.salesCount,
       createdAt: product.createdAt,
       purchased,
       status: product.status,
@@ -107,6 +142,16 @@ const submitSchema = z.object({
   // cover) — empty is fine, a submission isn't required to have a gallery.
   previewImages: z.array(z.string().url()).max(4).optional().default([]),
   fileUrl: z.string().url(),
+  // Omit to keep the schema-level default (PERSONAL_USE, the most
+  // restrictive option) — a submitter has to deliberately pick a broader
+  // license, not have one granted by omission.
+  licenseType: z.nativeEnum(ProductLicenseType).optional(),
+  // Major-unit GEL, same as price — converted + validated (productPricing.ts's
+  // validateProductDiscount) in the route handler, not here, since that
+  // needs the already-converted minor-unit price to compare against.
+  discountedPrice: z.number().min(0).optional().nullable(),
+  // ISO string from <input type="datetime-local">, or '' / null to clear.
+  saleEndsAt: z.string().datetime().optional().nullable().or(z.literal('')),
 });
 
 // Shared by POST / below and the two upload-* routes further down — a
@@ -148,9 +193,14 @@ router.post(
   (req: Request, res: Response, next: NextFunction) => imageUpload.single('image')(req, res, (err: any) => multerErrorHandler(req, res, err, next)),
   async (req: Request, res: Response) => {
     if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
-    const filename = `product-${Date.now()}-${crypto.randomUUID()}${path.extname(req.file.originalname)}`;
     try {
-      const url = await uploadImage({ buffer: req.file.buffer, mimetype: req.file.mimetype, folderName: 'product-images', filename });
+      // Resized/watermarked before it ever reaches storage — see
+      // productImageProtection.ts. Always re-encoded to JPEG, so the stored
+      // filename's extension reflects that rather than the upload's original.
+      const protectedImage = await protectProductPreviewImage(req.file.buffer, req.file.mimetype);
+      const extension = protectedImage.mimetype === 'image/jpeg' ? '.jpg' : path.extname(req.file.originalname);
+      const filename = `product-${Date.now()}-${crypto.randomUUID()}${extension}`;
+      const url = await uploadImage({ buffer: protectedImage.buffer, mimetype: protectedImage.mimetype, folderName: 'product-images', filename });
       res.status(201).json({ data: { url } });
     } catch (err) {
       const message = err instanceof BunnyStorageUploadError ? err.message : 'Image upload failed. Please try again.';
@@ -167,9 +217,11 @@ router.post(
   (req: Request, res: Response, next: NextFunction) => fileUpload.single('file')(req, res, (err: any) => multerErrorHandler(req, res, err, next)),
   async (req: Request, res: Response) => {
     if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
-    const filename = `product-${Date.now()}-${crypto.randomUUID()}${path.extname(req.file.originalname)}`;
     try {
-      const url = await uploadImage({ buffer: req.file.buffer, mimetype: req.file.mimetype, folderName: 'product-files', filename });
+      // Private Azure Blob storage, not the public Bunny CDN used for
+      // images above — the returned `url` is a cdcblob:// marker, not a
+      // working link. See productFileDelivery.ts for why.
+      const url = await uploadProductFile(req.file.buffer, req.file.mimetype, req.file.originalname);
       res.status(201).json({ data: { url } });
     } catch (err) {
       const message = err instanceof BunnyStorageUploadError ? err.message : 'File upload failed. Please try again.';
@@ -237,11 +289,18 @@ router.post('/', authenticate, requireApproved, async (req: Request, res: Respon
   const result = submitSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
+  const priceMinor = Math.round(result.data.price * 100);
+  const discountedPriceMinor = result.data.discountedPrice != null ? Math.round(result.data.discountedPrice * 100) : null;
+  if (discountedPriceMinor !== null) {
+    const discountError = validateProductDiscount(priceMinor, discountedPriceMinor);
+    if (discountError) return res.status(400).json({ message: discountError });
+  }
+
   const moderation = await runAiModeration({
     title: result.data.title,
     description: result.data.description,
     category: result.data.category,
-    price: Math.round(result.data.price * 100),
+    price: priceMinor,
     imageUrl: result.data.imageUrl,
     previewImages: result.data.previewImages ?? [],
   });
@@ -254,12 +313,15 @@ router.post('/', authenticate, requireApproved, async (req: Request, res: Respon
     'products'
   );
 
+  const { discountedPrice, saleEndsAt, ...rest } = result.data;
   const product = await prisma.digitalProduct.create({
     data: {
-      ...result.data,
+      ...rest,
       titleEn,
       descriptionEn,
-      price: Math.round(result.data.price * 100),
+      price: priceMinor,
+      discountedPrice: discountedPriceMinor,
+      saleEndsAt: toPrismaSaleEndsAt(saleEndsAt) ?? null,
       submittedById: req.user!.id,
       ...moderation,
     },
@@ -293,7 +355,11 @@ router.get('/mine/submissions', authenticate, requireApproved, async (req: Reque
     where: { submittedById: req.user!.id },
     orderBy: { createdAt: 'desc' },
   });
-  res.json({ data: products });
+  // Full raw rows (including discountedPrice/saleEndsAt even when expired)
+  // are fine here — this is the submitter's own dashboard/edit form, not a
+  // public-facing price display, so it needs the actual stored values to
+  // pre-fill editing, not the "only while active" gate GET /'s catalog uses.
+  res.json({ data: products.map(withCurrentProductPrice) });
 });
 
 const updateMySubmissionSchema = submitSchema.partial();
@@ -319,8 +385,17 @@ router.put('/:id/mine', authenticate, requireApproved, async (req: Request, res:
   const result = updateMySubmissionSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
-  const { price, ...rest } = result.data;
+  const { price, discountedPrice, saleEndsAt, ...rest } = result.data;
   const priceMinor = price !== undefined ? Math.round(price * 100) : product.price;
+  // Explicit null clears a discount; undefined (field omitted) leaves the
+  // existing one untouched — same three-way distinction the rest of this
+  // codebase's optional-nullable Zod fields use (see titleEn/descriptionEn
+  // just below).
+  const discountedPriceMinor = discountedPrice !== undefined ? (discountedPrice != null ? Math.round(discountedPrice * 100) : null) : product.discountedPrice;
+  if (discountedPriceMinor !== null) {
+    const discountError = validateProductDiscount(priceMinor, discountedPriceMinor);
+    if (discountError) return res.status(400).json({ message: discountError });
+  }
 
   const moderation = await runAiModeration({
     title: result.data.title ?? product.title,
@@ -346,6 +421,8 @@ router.put('/:id/mine', authenticate, requireApproved, async (req: Request, res:
       titleEn,
       descriptionEn,
       ...(price !== undefined ? { price: priceMinor } : {}),
+      discountedPrice: discountedPriceMinor,
+      ...(saleEndsAt !== undefined ? { saleEndsAt: toPrismaSaleEndsAt(saleEndsAt) } : {}),
       ...moderation,
     },
   });
@@ -394,18 +471,38 @@ router.post('/:id/claim', authenticate, requireApproved, async (req: Request, re
     }
   }
 
-  await prisma.productPurchase.upsert({
+  const existing = await prisma.productPurchase.findUnique({
     where: { userId_productId: { userId: req.user!.id, productId: product.id } },
-    update: {},
-    create: { userId: req.user!.id, productId: product.id, amount: 0, paymentStatus: 'COMPLETED' },
   });
+
+  await prisma.$transaction([
+    prisma.productPurchase.upsert({
+      where: { userId_productId: { userId: req.user!.id, productId: product.id } },
+      // A free product's licenseType can't have changed between an earlier
+      // claim and a repeat call here (upsert is idempotent for this route
+      // already), but re-stamping it on every call costs nothing and means a
+      // pre-this-feature claim (licenseType null) self-heals the next time
+      // the same user hits claim again.
+      update: { licenseType: product.licenseType },
+      create: { userId: req.user!.id, productId: product.id, amount: 0, paymentStatus: 'COMPLETED', licenseType: product.licenseType },
+    }),
+    // Only on a genuine first claim — existing already being COMPLETED means
+    // this is just a repeat call (e.g. re-opening the product page), not a
+    // new sale, so salesCount must not move.
+    ...(existing?.paymentStatus === 'COMPLETED'
+      ? []
+      : [prisma.digitalProduct.update({ where: { id: product.id }, data: { salesCount: { increment: 1 } } })]),
+  ]);
 
   res.status(200).json({ data: { claimed: true } });
 });
 
 // ============================================================
 // DOWNLOAD — never returns fileUrl to anyone without a verified COMPLETED
-// purchase; also fine for lifetime re-downloads (no expiry check).
+// purchase; also fine for lifetime re-downloads (no expiry check). The
+// resolved URL itself (for private-storage products) is short-lived — see
+// productFileDelivery.ts — so re-hitting this endpoint is how a buyer gets
+// a fresh working link, not a cached one going stale.
 // ============================================================
 router.get('/:id/download', authenticate, requireApproved, async (req: Request, res: Response) => {
   const purchase = await prisma.productPurchase.findUnique({
@@ -431,7 +528,8 @@ router.get('/:id/download', authenticate, requireApproved, async (req: Request, 
         }),
   ]);
 
-  res.json({ data: { fileUrl: product.fileUrl } });
+  const fileUrl = await resolveProductFileDeliveryUrl(product.fileUrl);
+  res.json({ data: { fileUrl, licenseType: purchase.licenseType ?? product.licenseType } });
 });
 
 export default router;

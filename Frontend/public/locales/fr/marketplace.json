@@ -4,6 +4,8 @@
   "all": "Tous",
   "free": "Gratuit",
   "owned": "Acquis",
+  "salesCount": "{{count}} vente",
+  "salesCountPlural": "{{count}} ventes",
   "details": "Voir les détails",
   "empty": "Aucun produit dans cette catégorie pour l'instant.",
   "loadFailed": "Impossible de charger les produits.",

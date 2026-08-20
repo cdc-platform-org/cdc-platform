@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import { GetServerSideProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag, Building2, X, Zap, Upload, Code2 } from 'lucide-react';
+import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag, Building2, X, Zap, Upload, Code2, ShieldCheck, Tag } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
@@ -13,7 +13,7 @@ import MarkdownContent from '../../src/components/shared/MarkdownContent';
 import ProductGallery from '../../src/components/shared/ProductGallery';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
-import { getProduct, claimFreeProduct, getProductDownloadUrl, productTitle, productDescription, DigitalProduct } from '../../src/services/productService';
+import { getProduct, claimFreeProduct, getProductDownload, productTitle, productDescription, DigitalProduct, LICENSE_LABELS } from '../../src/services/productService';
 import { checkoutProduct } from '../../src/services/paymentService';
 import { checkoutProductStripe } from '../../src/services/stripePaymentService';
 import { formatPrice } from '../../src/utils/coursePricing';
@@ -79,16 +79,17 @@ function StoreProductContent() {
   const canPurchaseBusinessTool =
     isAuthenticated && (user?.role === 'SuperAdmin' || (user?.role === 'Client' && !!user.isVerified));
 
-  const handleBuy = async () => {
+  // Pure actions — no auth check inside, unlike the gated handleBuy/
+  // handleClaim below that call these. Passed directly as openAuthModal's
+  // onSuccess so a guest who logs in mid-purchase resumes straight into
+  // checkout instead of landing back on the page with nothing continued —
+  // same "sign in, then resume" pattern as courses/[id]/index.tsx's
+  // startCheckout/handleEnroll. A function checking `isAuthenticated` itself
+  // would still see the stale pre-login value from the closure that was
+  // captured when openAuthModal was first called, so the check has to live
+  // only in the outer gate, never in the part onSuccess invokes.
+  const startCheckout = async () => {
     if (!product) return;
-    if (isBusinessTool && !canPurchaseBusinessTool) {
-      setShowBusinessGate(true);
-      return;
-    }
-    if (!isAuthenticated) {
-      openAuthModal();
-      return;
-    }
     setActionError(null);
     setSubmitting(true);
     try {
@@ -108,16 +109,8 @@ function StoreProductContent() {
     }
   };
 
-  const handleClaim = async () => {
+  const startClaim = async () => {
     if (!product) return;
-    if (isBusinessTool && !canPurchaseBusinessTool) {
-      setShowBusinessGate(true);
-      return;
-    }
-    if (!isAuthenticated) {
-      openAuthModal();
-      return;
-    }
     setActionError(null);
     setSubmitting(true);
     try {
@@ -130,12 +123,38 @@ function StoreProductContent() {
     }
   };
 
+  const handleBuy = () => {
+    if (!product) return;
+    if (isBusinessTool && !canPurchaseBusinessTool) {
+      setShowBusinessGate(true);
+      return;
+    }
+    if (!isAuthenticated) {
+      openAuthModal({ onSuccess: startCheckout });
+      return;
+    }
+    startCheckout();
+  };
+
+  const handleClaim = () => {
+    if (!product) return;
+    if (isBusinessTool && !canPurchaseBusinessTool) {
+      setShowBusinessGate(true);
+      return;
+    }
+    if (!isAuthenticated) {
+      openAuthModal({ onSuccess: startClaim });
+      return;
+    }
+    startClaim();
+  };
+
   const handleDownload = async () => {
     if (!product) return;
     setActionError(null);
     setSubmitting(true);
     try {
-      const fileUrl = await getProductDownloadUrl(product.id);
+      const { fileUrl } = await getProductDownload(product.id);
       window.open(fileUrl, '_blank', 'noopener,noreferrer');
     } catch (err: any) {
       setActionError(err?.response?.data?.message ?? t('downloadFailed'));
@@ -187,9 +206,25 @@ function StoreProductContent() {
                   {product.fileFormat}
                 </span>
               )}
+              <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400">
+                <ShieldCheck className="w-3 h-3" />
+                {LICENSE_LABELS[product.licenseType][contentLang]}
+              </span>
+              {product.saleActive && (
+                <span className="inline-flex items-center text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full text-white bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg shadow-rose-500/30">
+                  -{Math.round((1 - product.currentPrice / product.price) * 100)}%
+                </span>
+              )}
+              {product.salesCount > 0 && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                  <Tag className="w-3 h-3" />
+                  {t(product.salesCount === 1 ? 'salesCount' : 'salesCountPlural', { count: product.salesCount })}
+                </span>
+              )}
             </div>
             <h1 className="text-2xl md:text-3xl font-black tracking-wide mb-3">{productTitle(product, contentLang)}</h1>
             <MarkdownContent content={productDescription(product, contentLang)} className="mb-6 flex-1" />
+            <p className="text-xs text-slate-500 dark:text-slate-400 -mt-4 mb-6">{LICENSE_LABELS[product.licenseType][contentLang === 'ka' ? 'descriptionKa' : 'descriptionEn']}</p>
 
             {actionError && (
               <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-xs text-red-600 dark:text-red-300">{actionError}</div>
@@ -207,7 +242,10 @@ function StoreProductContent() {
               </button>
             ) : (
               <div className="space-y-3">
-                <span className="text-2xl font-black block">{product.price === 0 ? t('free') : formatPrice(product.price)}</span>
+                <div className="flex items-baseline gap-2">
+                  {product.saleActive && <s className="text-base text-slate-500">{formatPrice(product.price)}</s>}
+                  <span className="text-2xl font-black block">{product.currentPrice === 0 ? t('free') : formatPrice(product.currentPrice)}</span>
+                </div>
                 <button
                   type="button"
                   onClick={product.price === 0 ? handleClaim : handleBuy}

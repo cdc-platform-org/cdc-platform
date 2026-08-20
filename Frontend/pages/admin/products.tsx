@@ -20,6 +20,9 @@ import {
   getProductPurchases,
   DigitalProduct,
   AdminProductPurchase,
+  ProductLicenseType,
+  LICENSE_LABELS,
+  validateProductDiscount,
 } from '../../src/services/productService';
 import { getAiAutomationSettings, updateAiAutomationSettings } from '../../src/services/adminPanelService';
 import { formatPrice } from '../../src/utils/coursePricing';
@@ -125,7 +128,17 @@ function ModerationProductCard({
         )}
 
         <p className="text-xs text-gray-500">
-          {p.price === 0 ? 'Free' : formatPrice(p.price)} · {p.downloadsCount} downloads
+          {p.price === 0 ? (
+            'Free'
+          ) : p.saleActive ? (
+            <>
+              <s className="text-gray-400">{formatPrice(p.price)}</s> {formatPrice(p.currentPrice)}{' '}
+              <span className="text-rose-600 font-semibold">(-{Math.round((1 - p.currentPrice / p.price) * 100)}%)</span>
+            </>
+          ) : (
+            formatPrice(p.price)
+          )}{' '}
+          · {p.downloadsCount} downloads · {LICENSE_LABELS[p.licenseType].en}
           {p.submittedBy && <> · Submitted by {p.submittedBy.name} ({p.submittedBy.email})</>}
         </p>
         {p.status === 'REJECTED' && p.rejectionReason && <p className="text-xs text-red-500 mt-1">Reason: {p.rejectionReason}</p>}
@@ -253,6 +266,9 @@ function AdminProductsDashboard() {
   const [imageUrl, setImageUrl] = useState('');
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [fileUrl, setFileUrl] = useState('');
+  const [licenseType, setLicenseType] = useState<ProductLicenseType>('PERSONAL_USE');
+  const [discountedPrice, setDiscountedPrice] = useState('');
+  const [saleEndsAt, setSaleEndsAt] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fileUploading, setFileUploading] = useState(false);
@@ -277,12 +293,32 @@ function AdminProductsDashboard() {
   );
   const pendingCount = products.filter((p) => p.status === 'PENDING').length;
 
+  // Real-time — checked as the admin types, before the form is even
+  // submitted, mirroring Backend's own productPricing.ts validation exactly
+  // so the message they see now matches what a submit would say anyway.
+  const discountError = useMemo(() => {
+    if (!discountedPrice) return null;
+    return validateProductDiscount(Number(price) || 0, Number(discountedPrice) || 0);
+  }, [price, discountedPrice]);
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (discountError) return setError(discountError);
     setSubmitting(true);
     try {
-      await createProduct({ title, description, price: Number(price) || 0, category, imageUrl, previewImages, fileUrl });
+      await createProduct({
+        title,
+        description,
+        price: Number(price) || 0,
+        category,
+        imageUrl,
+        previewImages,
+        fileUrl,
+        licenseType,
+        discountedPrice: discountedPrice ? Number(discountedPrice) : null,
+        saleEndsAt: saleEndsAt || null,
+      });
       setTitle('');
       setDescription('');
       setPrice('');
@@ -290,6 +326,9 @@ function AdminProductsDashboard() {
       setImageUrl('');
       setPreviewImages([]);
       setFileUrl('');
+      setLicenseType('PERSONAL_USE');
+      setDiscountedPrice('');
+      setSaleEndsAt('');
       await load();
     } catch (err: any) {
       setError(err?.response?.data?.message ?? 'Failed to create product.');
@@ -465,9 +504,9 @@ function AdminProductsDashboard() {
             labels={{
               coverLabel: 'Main Cover Image (required)',
               coverHint: imageUrl ? 'Click or drop to replace' : 'Click or drop an image',
-              coverSizeHint: 'Recommended size: 2000 × 1500 px (4:3 ratio) or 2000 × 2000 px. PNG/JPG, up to 10MB.',
+              coverSizeHint: 'Optimal Cover Size: 2000 × 1500 px (4:3 ratio). PNG/JPG, up to 10MB.',
               galleryLabel: 'Additional Screenshots',
-              gallerySizeHint: 'Upload up to 4 preview images (Recommended: 2000 × 1500 px).',
+              gallerySizeHint: 'Upload up to 4 preview images (Optimal Size: 2000 × 1500 px, 4:3 ratio).',
               addMore: 'Add',
               uploading: 'Uploading…',
               remove: 'Remove',
@@ -491,9 +530,49 @@ function AdminProductsDashboard() {
             {!fileUrl && !fileUploading && <p className="text-xs text-amber-600 mt-1">Required — only revealed to buyers after purchase</p>}
           </div>
 
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">License</label>
+            <select
+              value={licenseType}
+              onChange={(e) => setLicenseType(e.target.value as ProductLicenseType)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            >
+              {(Object.keys(LICENSE_LABELS) as ProductLicenseType[]).map((key) => (
+                <option key={key} value={key}>{LICENSE_LABELS[key].en}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">{LICENSE_LABELS[licenseType].descriptionEn}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">Discounted Price (GEL, optional)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={discountedPrice}
+                onChange={(e) => setDiscountedPrice(e.target.value)}
+                placeholder="Leave blank for no sale"
+                className={`w-full rounded-lg border px-3 py-2 text-sm ${discountError ? 'border-red-400' : 'border-gray-300'}`}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">Sale Ends At (optional)</label>
+              <input
+                type="datetime-local"
+                value={saleEndsAt}
+                onChange={(e) => setSaleEndsAt(e.target.value)}
+                disabled={!discountedPrice}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-50"
+              />
+            </div>
+          </div>
+          {discountError && <p className="text-xs text-red-600">{discountError}</p>}
+
           <button
             type="submit"
-            disabled={submitting || !imageUrl || !fileUrl || fileUploading}
+            disabled={submitting || !imageUrl || !fileUrl || fileUploading || !!discountError}
             className="text-sm font-medium text-white bg-indigo-600 px-5 py-2.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60"
           >
             {submitting ? 'Saving…' : 'Add Product'}
