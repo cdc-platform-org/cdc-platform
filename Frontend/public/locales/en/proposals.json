@@ -120,6 +120,26 @@
     "authorizeButton": "Sign In",
     "clientAdminOnlyMessage": "Only clients and administrators can post a job or project."
   },
+  "profilePage": {
+    "loading": "Loading…",
+    "notFound": "This user couldn't be found.",
+    "contactButton": "Contact",
+    "reviewsHeading": "Reviews",
+    "noReviews": "No reviews to show yet.",
+    "noReviewsShort": "No reviews yet.",
+    "reviewCount": "{{count}} review",
+    "reviewCount_plural": "{{count}} reviews",
+    "sellerRating": "Seller Rating",
+    "verifiedSkills": "Verified Skills",
+    "verified": "Verified",
+    "standard": "Standard",
+    "asFreelancer": "as freelancer",
+    "asClient": "as client",
+    "roleStudent": "Learner / Freelancer",
+    "roleMentor": "Mentor",
+    "roleClient": "Business",
+    "roleSuperAdmin": "Administrator"
+  },
   "jobsDashboard": {
     "pageTitle": "Employment Center",
     "pageSubtitle": "Find a job opportunity or post your own listing.",

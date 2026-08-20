@@ -120,6 +120,26 @@
     "authorizeButton": "Se connecter",
     "clientAdminOnlyMessage": "Seuls les clients et les administrateurs peuvent publier une offre d'emploi ou un projet."
   },
+  "profilePage": {
+    "loading": "Chargement…",
+    "notFound": "Cet utilisateur est introuvable.",
+    "contactButton": "Contacter",
+    "reviewsHeading": "Avis",
+    "noReviews": "Aucun avis pour le moment.",
+    "noReviewsShort": "Aucun avis pour le moment.",
+    "reviewCount": "{{count}} avis",
+    "reviewCount_plural": "{{count}} avis",
+    "sellerRating": "Note en tant que vendeur",
+    "verifiedSkills": "Compétences vérifiées",
+    "verified": "Vérifié",
+    "standard": "Standard",
+    "asFreelancer": "en tant que freelance",
+    "asClient": "en tant que client",
+    "roleStudent": "Apprenant / Freelance",
+    "roleMentor": "Mentor",
+    "roleClient": "Entreprise",
+    "roleSuperAdmin": "Administrateur"
+  },
   "jobsDashboard": {
     "pageTitle": "Centre de l'emploi",
     "pageSubtitle": "Trouvez une opportunité d'emploi ou publiez votre propre annonce.",

@@ -120,6 +120,26 @@
     "authorizeButton": "Anmelden",
     "clientAdminOnlyMessage": "Nur Kunden und Administratoren können einen Auftrag oder ein Projekt veröffentlichen."
   },
+  "profilePage": {
+    "loading": "Wird geladen…",
+    "notFound": "Dieser Nutzer konnte nicht gefunden werden.",
+    "contactButton": "Kontakt",
+    "reviewsHeading": "Bewertungen",
+    "noReviews": "Noch keine Bewertungen.",
+    "noReviewsShort": "Noch keine Bewertungen.",
+    "reviewCount": "{{count}} Bewertung",
+    "reviewCount_plural": "{{count}} Bewertungen",
+    "sellerRating": "Verkäuferbewertung",
+    "verifiedSkills": "Verifizierte Fähigkeiten",
+    "verified": "Verifiziert",
+    "standard": "Standard",
+    "asFreelancer": "als Freelancer",
+    "asClient": "als Auftraggeber",
+    "roleStudent": "Lernender / Freelancer",
+    "roleMentor": "Mentor",
+    "roleClient": "Unternehmen",
+    "roleSuperAdmin": "Administrator"
+  },
   "jobsDashboard": {
     "pageTitle": "Beschäftigungszentrum",
     "pageSubtitle": "Finden Sie eine Jobmöglichkeit oder veröffentlichen Sie Ihr eigenes Angebot.",

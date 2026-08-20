@@ -120,6 +120,26 @@
     "authorizeButton": "Увійти",
     "clientAdminOnlyMessage": "Публікувати вакансії та проєкти можуть лише клієнти й адміністратори."
   },
+  "profilePage": {
+    "loading": "Завантаження…",
+    "notFound": "Цього користувача не знайдено.",
+    "contactButton": "Зв'язатися",
+    "reviewsHeading": "Відгуки",
+    "noReviews": "Відгуків поки немає.",
+    "noReviewsShort": "Відгуків поки немає.",
+    "reviewCount": "{{count}} відгук",
+    "reviewCount_plural": "{{count}} відгуків",
+    "sellerRating": "Рейтинг продавця",
+    "verifiedSkills": "Підтверджені навички",
+    "verified": "Підтверджено",
+    "standard": "Стандарт",
+    "asFreelancer": "як фрилансер",
+    "asClient": "як замовник",
+    "roleStudent": "Учень / Фрилансер",
+    "roleMentor": "Ментор",
+    "roleClient": "Бізнес",
+    "roleSuperAdmin": "Адміністратор"
+  },
   "jobsDashboard": {
     "pageTitle": "Центр працевлаштування",
     "pageSubtitle": "Знайдіть роботу або опублікуйте власне оголошення.",

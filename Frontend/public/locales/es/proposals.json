@@ -120,6 +120,26 @@
     "authorizeButton": "Iniciar Sesión",
     "clientAdminOnlyMessage": "Solo los clientes y administradores pueden publicar un trabajo o proyecto."
   },
+  "profilePage": {
+    "loading": "Cargando…",
+    "notFound": "No se pudo encontrar a este usuario.",
+    "contactButton": "Contactar",
+    "reviewsHeading": "Reseñas",
+    "noReviews": "Aún no hay reseñas.",
+    "noReviewsShort": "Aún no hay reseñas.",
+    "reviewCount": "{{count}} reseña",
+    "reviewCount_plural": "{{count}} reseñas",
+    "sellerRating": "Valoración como vendedor",
+    "verifiedSkills": "Habilidades verificadas",
+    "verified": "Verificado",
+    "standard": "Estándar",
+    "asFreelancer": "como freelancer",
+    "asClient": "como cliente",
+    "roleStudent": "Estudiante / Freelancer",
+    "roleMentor": "Mentor",
+    "roleClient": "Empresa",
+    "roleSuperAdmin": "Administrador"
+  },
   "jobsDashboard": {
     "pageTitle": "Centro de Empleo",
     "pageSubtitle": "Encuentre una oportunidad laboral o publique su propio anuncio.",

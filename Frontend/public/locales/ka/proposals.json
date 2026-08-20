@@ -120,6 +120,26 @@
     "authorizeButton": "ავტორიზაცია",
     "clientAdminOnlyMessage": "ვაკანსიის ან პროექტის გამოქვეყნება შეუძლიათ მხოლოდ დამკვეთებსა და ადმინისტრატორებს."
   },
+  "profilePage": {
+    "loading": "იტვირთება…",
+    "notFound": "მომხმარებელი ვერ მოიძებნა.",
+    "contactButton": "კონტაქტი",
+    "reviewsHeading": "შეფასებები",
+    "noReviews": "ჯერ არცერთი შეფასება არ არის.",
+    "noReviewsShort": "შეფასებები ჯერ არ არის.",
+    "reviewCount": "{{count}} შეფასება",
+    "reviewCount_plural": "{{count}} შეფასება",
+    "sellerRating": "გამყიდველის რეიტინგი",
+    "verifiedSkills": "დადასტურებული უნარები",
+    "verified": "ვერიფიცირებული",
+    "standard": "სტანდარტული",
+    "asFreelancer": "როგორც ფრილანსერი",
+    "asClient": "როგორც დამკვეთი",
+    "roleStudent": "სტუდენტი / ფრილანსერი",
+    "roleMentor": "მენტორი",
+    "roleClient": "ბიზნესი",
+    "roleSuperAdmin": "ადმინისტრატორი"
+  },
   "jobsDashboard": {
     "pageTitle": "დასაქმების ცენტრი",
     "pageSubtitle": "იპოვეთ სამუშაო შესაძლებლობა ან გამოაქვეყნეთ საკუთარი განცხადება.",
