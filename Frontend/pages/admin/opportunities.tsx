@@ -46,6 +46,28 @@ function formatBudget(o: GrantOpportunity): string {
   return `${(o.budgetMax ?? o.budgetMin)!.toLocaleString()} ${cur}`;
 }
 
+// Surfaces the ACTUAL backend failure instead of a blanket "check your
+// URLs" message — that generic message used to fire for any error at all
+// (a permissions 403, a network failure, an unrelated 500), which was
+// actively misleading when the real cause had nothing to do with URLs.
+const SOURCE_FIELD_LABELS: Record<string, string> = { name: 'სახელი', baseUrl: 'baseUrl', listingUrls: 'listing URL' };
+function describeSourceError(err: any): string {
+  const zodIssues = err?.response?.data?.errors;
+  if (Array.isArray(zodIssues) && zodIssues.length > 0) {
+    return zodIssues
+      .map((issue: any) => {
+        const [field, index] = issue.path ?? [];
+        const label = SOURCE_FIELD_LABELS[field] ?? field ?? 'ველი';
+        const location = typeof index === 'number' ? ` (ხაზი ${index + 1})` : '';
+        return `${label}${location}: ${issue.message}`;
+      })
+      .join(' ');
+  }
+  const apiMessage = err?.response?.data?.message;
+  if (apiMessage) return apiMessage;
+  return 'წყაროს დამატება ვერ მოხერხდა. სცადეთ თავიდან.';
+}
+
 function SourcesModal({ onClose }: { onClose: () => void }) {
   const [sources, setSources] = useState<GrantSource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,8 +97,8 @@ function SourcesModal({ onClose }: { onClose: () => void }) {
       await createGrantSource(payload);
       setForm({ name: '', baseUrl: '', listingUrls: '' });
       load();
-    } catch {
-      setError('წყაროს დამატება ვერ მოხერხდა — შეამოწმეთ URL-ები.');
+    } catch (err: any) {
+      setError(describeSourceError(err));
     } finally {
       setSubmitting(false);
     }

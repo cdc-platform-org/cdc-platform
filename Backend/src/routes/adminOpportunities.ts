@@ -96,7 +96,13 @@ const sourceSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-router.post('/sources', requireAdminRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+// No per-route requireAdminRole override here — falls through to the
+// router-level SUPER_ADMIN/MANAGER gate above, same as every other route
+// in this file. A prior SUPER_ADMIN-only override on this route (and
+// PATCH/DELETE below) meant a MANAGER admin — who can otherwise fully use
+// this page — got a 403 on submit that the frontend's generic error
+// handler then misreported as an invalid-URL problem.
+router.post('/sources', async (req: Request, res: Response) => {
   const result = sourceSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
@@ -105,7 +111,7 @@ router.post('/sources', requireAdminRole('SUPER_ADMIN'), async (req: Request, re
   res.status(201).json({ data: source });
 });
 
-router.patch('/sources/:id', requireAdminRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+router.patch('/sources/:id', async (req: Request, res: Response) => {
   const source = await prisma.grantSource.findUnique({ where: { id: req.params.id } });
   if (!source) return res.status(404).json({ message: 'Source not found.' });
 
@@ -117,7 +123,7 @@ router.patch('/sources/:id', requireAdminRole('SUPER_ADMIN'), async (req: Reques
   res.json({ data: updated });
 });
 
-router.delete('/sources/:id', requireAdminRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+router.delete('/sources/:id', async (req: Request, res: Response) => {
   const source = await prisma.grantSource.findUnique({ where: { id: req.params.id } });
   if (!source) return res.status(404).json({ message: 'Source not found.' });
 
