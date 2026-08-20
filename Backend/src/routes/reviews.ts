@@ -115,6 +115,8 @@ router.get('/user/:userId', async (req: Request, res: Response) => {
       averageRating: true,
       reviewCount: true,
       isVerifiedGraduate: true,
+      verificationLevel: true,
+      verificationStatus: true,
       sellerRating: true,
       sellerReviewCount: true,
     },

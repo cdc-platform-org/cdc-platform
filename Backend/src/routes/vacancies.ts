@@ -5,10 +5,11 @@ import { postVacancySchema, updateVacancySchema, applyToVacancySchema, reviewVac
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
 import { sendVacancyApplicationEmail } from '../services/emailService';
 import { hasReachedMonthlyPostLimit, MONTHLY_POST_LIMIT } from '../services/postingLimitService';
-import { hasFreelancerRights } from '../utils/freelancerVerification';
 const router = Router();
 const posterSelect = { select: { id: true, name: true, role: true, isVerifiedGraduate: true, averageRating: true, reviewCount: true } };
-const applicantSelect = { select: { name: true, isVerifiedGraduate: true, averageRating: true, reviewCount: true } };
+const applicantSelect = {
+  select: { name: true, isVerifiedGraduate: true, verificationLevel: true, verificationStatus: true, averageRating: true, reviewCount: true },
+};
 declare global {
   namespace Express {
     interface Request {
@@ -127,16 +128,9 @@ router.post(
     if (req.vacancy!.status !== 'open') {
       return res.status(400).json({ message: 'This vacancy is no longer accepting applications.' });
     }
-    // Client-side also checks this, but that's UX only — the real gate has
-    // to live here, since anyone can otherwise call this endpoint directly.
-    // Matches the same isVerifiedGraduate gate gigs.ts's apply route enforces.
-    const applicant = await prisma.user.findUnique({
-      where: { id: req.user!.id },
-      select: { isVerifiedGraduate: true, verificationLevel: true, verificationStatus: true },
-    });
-    if (!applicant || !hasFreelancerRights(applicant)) {
-      return res.status(403).json({ message: 'ვაკანსიაზე განაცხადის გაგზავნა მხოლოდ CDC-ის კურსდამთავრებულებს ან ვერიფიცირებულ ფრილანსერებს შეუძლიათ.' });
-    }
+    // Deliberately NOT gated on hasFreelancerRights() — see gigs.ts's
+    // identical comment on its own /apply route. Soft nudge, not a hard
+    // block; the employer sees a Verified/Standard badge on the applicant.
     const result = applyToVacancySchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ errors: result.error.errors });
     try {

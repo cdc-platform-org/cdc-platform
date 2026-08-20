@@ -7,6 +7,8 @@ import { useRouter } from 'next/router';
 import { AuthProvider } from '@/src/context/AuthContext';
 import { AuthModalProvider } from '@/src/context/AuthModalContext';
 import AuthModal from '@/src/components/auth/AuthModal';
+import { VerificationDrawerProvider } from '@/src/context/VerificationDrawerContext';
+import VerificationDrawer from '@/src/components/shared/VerificationDrawer';
 import ScrollToTop from '@/src/components/layout/ScrollToTop';
 import FloatingButtons from '@/src/components/layout/FloatingButtons';
 import CookieConsentBanner from '@/src/components/layout/CookieConsentBanner';
@@ -145,13 +147,16 @@ function App({ Component, pageProps }: AppProps) {
       <div className={`${headingFont.variable} ${fallbackFont.variable}`}>
         <AuthProvider>
           <AuthModalProvider>
-            <Component {...pageProps} />
-            <ScrollToTop positionClassName={scrollToTopPosition} />
-            <FloatingButtons />
-            <AuthModal />
-            <CookieConsentBanner />
-            <TermsConsentModal />
-            <AdminModeBar />
+            <VerificationDrawerProvider>
+              <Component {...pageProps} />
+              <ScrollToTop positionClassName={scrollToTopPosition} />
+              <FloatingButtons />
+              <AuthModal />
+              <VerificationDrawer />
+              <CookieConsentBanner />
+              <TermsConsentModal />
+              <AdminModeBar />
+            </VerificationDrawerProvider>
           </AuthModalProvider>
         </AuthProvider>
       </div>

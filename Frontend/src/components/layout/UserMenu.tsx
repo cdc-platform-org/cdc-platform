@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { BadgeCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useVerificationDrawer } from '../../context/VerificationDrawerContext';
 import { resolveLocale } from '@/src/utils/locale';
 
 const dict = {
@@ -101,6 +102,7 @@ export default function UserMenu({ loginFallback, className }: { loginFallback: 
   const lang = resolveLocale(router.locale);
   const t = dict[lang];
   const { user, isAuthenticated, logout } = useAuth();
+  const { openVerificationDrawer } = useVerificationDrawer();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -226,14 +228,17 @@ export default function UserMenu({ loginFallback, className }: { loginFallback: 
             </>
           )}
           {!isFullyVerified && (
-            <Link
-              href="/dashboard/settings"
-              onClick={() => setMenuOpen(false)}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-black text-emerald-600 dark:text-emerald-400 no-underline hover:bg-slate-100 dark:hover:bg-slate-800"
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                openVerificationDrawer();
+              }}
+              className="flex items-center gap-1.5 w-full text-left px-4 py-2 text-xs font-black text-emerald-600 dark:text-emerald-400 border-none bg-transparent cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               <BadgeCheck className="w-3.5 h-3.5 shrink-0" />
               {t.verifyAccount}
-            </Link>
+            </button>
           )}
           <Link
             href="/dashboard/settings"

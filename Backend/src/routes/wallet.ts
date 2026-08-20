@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireRole } from '../middleware/auth';
 import { createPayoutRequestSchema } from '../schemas/payoutSchemas';
+import { isIdentityVerified } from '../utils/freelancerVerification';
 const router = Router();
 
 // Carries an HTTP status + message out of the Serializable transaction
@@ -56,8 +57,17 @@ router.post('/payout-requests', authenticate, requireRole('Student', 'Mentor'), 
   try {
     const request = await prisma.$transaction(
       async (tx) => {
-        const user = await tx.user.findUnique({ where: { id: req.user!.id }, select: { earningsBalance: true, payoutIban: true } });
+        const user = await tx.user.findUnique({
+          where: { id: req.user!.id },
+          select: { earningsBalance: true, payoutIban: true, isVerifiedGraduate: true, verificationLevel: true, verificationStatus: true, isVerified: true },
+        });
         if (!user) throw new PayoutRequestError(404, 'User not found.');
+        // The one hard verification gate in the whole hybrid model — see
+        // isIdentityVerified()'s own comment for why this moment (not
+        // proposal/application submission) is where it actually matters.
+        if (!isIdentityVerified(user)) {
+          throw new PayoutRequestError(403, 'Verify your identity before requesting a payout.');
+        }
         const iban = result.data.iban || user.payoutIban;
         if (!iban) {
           throw new PayoutRequestError(400, 'Add an IBAN in your account settings, or provide one with this request.');

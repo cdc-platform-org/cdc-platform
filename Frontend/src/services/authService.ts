@@ -100,3 +100,16 @@ export async function uploadVerificationDoc(file: File): Promise<User> {
   });
   return response.data.user;
 }
+
+// INDIVIDUAL-level counterpart to uploadVerificationDoc above (BUSINESS) —
+// an ID card/passport scan, always lands PENDING for manual admin review
+// (see Backend's routes/auth.ts, no auto-approve heuristic exists for a
+// personal ID the way businessKycService.ts has one for a registry extract).
+export async function uploadIndividualVerificationDoc(file: File): Promise<User> {
+  const formData = new FormData();
+  formData.append('document', file);
+  const response = await apiClient.post<{ user: User }>('/auth/me/individual-verification-doc', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data.user;
+}

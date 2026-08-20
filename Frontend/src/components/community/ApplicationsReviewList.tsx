@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { VacancyApplication, GigApplication, ApplicationStatus } from '../../types/community';
+import { isFreelancerVerified } from '../../types/auth';
 import VerifiedGraduateBadge from './VerifiedGraduateBadge';
 import StarRating from './StarRating';
 
@@ -86,7 +87,17 @@ export default function ApplicationsReviewList({
                     <p className="text-sm font-semibold text-gray-900">
                       {app.applicant.name}
                     </p>
-                    {app.applicant.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
+                    {app.applicant.isVerifiedGraduate ? (
+                      <VerifiedGraduateBadge size="sm" />
+                    ) : isFreelancerVerified(app.applicant) ? (
+                      <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border text-emerald-700 bg-emerald-50 border-emerald-200">
+                        Verified
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border text-gray-500 bg-gray-100 border-gray-200">
+                        Standard
+                      </span>
+                    )}
                     {app.applicant.averageRating !== null && (
                       <span className="inline-flex items-center gap-1">
                         <StarRating value={app.applicant.averageRating} size="sm" />

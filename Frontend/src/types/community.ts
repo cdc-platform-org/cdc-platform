@@ -52,7 +52,14 @@ export interface VacancyApplication {
   id: string;
   vacancyId: string;
   applicantId: string;
-  applicant: { name: string; isVerifiedGraduate: boolean; averageRating: number | null; reviewCount: number }; // matches the API's actual include shape
+  applicant: {
+    name: string;
+    isVerifiedGraduate: boolean;
+    verificationLevel: 'NONE' | 'INDIVIDUAL' | 'BUSINESS';
+    verificationStatus: 'UNVERIFIED' | 'PENDING' | 'APPROVED' | 'REJECTED';
+    averageRating: number | null;
+    reviewCount: number;
+  }; // matches the API's actual include shape
   coverNote: string;
   status: ApplicationStatus;
   createdAt: string;
@@ -157,7 +164,15 @@ export interface GigApplication {
   id: string;
   gigId: string;
   applicantId: string;
-  applicant: { id: string; name: string; isVerifiedGraduate: boolean; averageRating: number | null; reviewCount: number };
+  applicant: {
+    id: string;
+    name: string;
+    isVerifiedGraduate: boolean;
+    verificationLevel: 'NONE' | 'INDIVIDUAL' | 'BUSINESS';
+    verificationStatus: 'UNVERIFIED' | 'PENDING' | 'APPROVED' | 'REJECTED';
+    averageRating: number | null;
+    reviewCount: number;
+  };
   proposalNote: string;
   bidAmount: number;      // the freelancer's proposed price, minor units — may differ from budgetAmount
   deliveryDays: number;

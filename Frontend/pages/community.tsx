@@ -12,10 +12,12 @@ import PostingForm from '../src/components/community/PostingForm';
 import ApplicationModal from '../src/components/community/ApplicationModal';
 import ProposalModal from '../src/components/community/ProposalModal';
 import ReviewModal from '../src/components/community/ReviewModal';
-import GraduateOnlyModal from '../src/components/community/GraduateOnlyModal';
+import SoftVerificationNudge from '../src/components/community/SoftVerificationNudge';
 import RoleGate from '../src/components/auth/RoleGate';
 import { useAuth } from '../src/context/AuthContext';
 import { useAuthModal } from '../src/context/AuthModalContext';
+import { useVerificationDrawer } from '../src/context/VerificationDrawerContext';
+import { isFreelancerVerified } from '../src/types/auth';
 import { Vacancy, Gig, JobCategory } from '../src/types/community';
 import { getVacancies, applyToVacancy } from '../src/services/vacancyService';
 import { getGigs, applyToGig } from '../src/services/gigService';
@@ -58,6 +60,7 @@ function CommunityPageContent() {
   const { t } = useTranslation('proposals');
   const { user, isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
+  const { openVerificationDrawer } = useVerificationDrawer();
 
   const [darkMode, setDarkMode] = useState(false);
   const [listings, setListings] = useState<CommunityListing[]>([]);
@@ -69,7 +72,8 @@ function CommunityPageContent() {
   const [applyingGig, setApplyingGig] = useState<Gig | null>(null);
   const [reviewingGig, setReviewingGig] = useState<Gig | null>(null);
   const [reviewedGigIds, setReviewedGigIds] = useState<Set<string>>(new Set());
-  const [showGraduateGate, setShowGraduateGate] = useState(false);
+  // Soft-nudge state — see JobsDashboard.tsx's identical pattern/comment.
+  const [pendingApply, setPendingApply] = useState<CommunityListing | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -114,24 +118,35 @@ function CommunityPageContent() {
   const canApply = !isAuthenticated || user?.role === 'Student';
   const canPost = user?.role === 'Client' || user?.role === 'SuperAdmin';
 
+  const openListingModal = (item: CommunityListing) => {
+    if (item.kind === 'vacancy') setApplyingVacancy(item.data);
+    else setApplyingGig(item.data);
+  };
+
   const handleApplyClick = (item: CommunityListing) => {
-    const openForItem = (verified: boolean | undefined) => {
-      if (!verified) {
-        setShowGraduateGate(true);
-        return;
-      }
-      if (item.kind === 'vacancy') setApplyingVacancy(item.data);
-      else setApplyingGig(item.data);
+    const openForItem = (verified: boolean) => {
+      if (verified) openListingModal(item);
+      else setPendingApply(item);
     };
 
     if (!isAuthenticated) {
       openAuthModal({
         message: t('signIn.toApply'),
-        onSuccess: (loggedInUser) => openForItem(loggedInUser?.isVerifiedGraduate),
+        onSuccess: (loggedInUser) => openForItem(!!loggedInUser && isFreelancerVerified(loggedInUser)),
       });
       return;
     }
-    openForItem(user?.isVerifiedGraduate);
+    openForItem(!!user && isFreelancerVerified(user));
+  };
+
+  const handleContinueWithoutVerifying = () => {
+    if (pendingApply) openListingModal(pendingApply);
+    setPendingApply(null);
+  };
+
+  const handleVerifyFromNudge = () => {
+    setPendingApply(null);
+    openVerificationDrawer({ initialTab: 'individual' });
   };
 
   const handleReviewClick = (item: CommunityListing) => {
@@ -305,7 +320,13 @@ function CommunityPageContent() {
         />
       )}
 
-      {showGraduateGate && <GraduateOnlyModal message={t('signIn.graduatesOnly')} onClose={() => setShowGraduateGate(false)} />}
+      {pendingApply && (
+        <SoftVerificationNudge
+          onContinueWithoutVerifying={handleContinueWithoutVerifying}
+          onVerify={handleVerifyFromNudge}
+          onClose={() => setPendingApply(null)}
+        />
+      )}
 
       {reviewingGig && (
         <ReviewModal

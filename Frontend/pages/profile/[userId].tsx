@@ -12,6 +12,7 @@ import { ShieldCheck, GraduationCap } from 'lucide-react';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
 import { UserRatingSummary, UserReview, PublicVerifiedSkill } from '../../src/types/review';
+import { isFreelancerVerified } from '../../src/types/auth';
 import { Gig } from '../../src/types/community';
 import { getUserReviews } from '../../src/services/reviewService';
 import { getGigs } from '../../src/services/gigService';
@@ -115,7 +116,17 @@ function ProfileContent() {
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-xl font-semibold text-gray-900">{profileUser.name}</h1>
-                  {profileUser.isVerifiedGraduate && <VerifiedGraduateBadge />}
+                  {profileUser.isVerifiedGraduate ? (
+                    <VerifiedGraduateBadge />
+                  ) : isFreelancerVerified(profileUser) ? (
+                    <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border text-emerald-700 bg-emerald-50 border-emerald-200">
+                      Verified
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border text-gray-500 bg-gray-100 border-gray-200">
+                      Standard
+                    </span>
+                  )}
                 </div>
                 <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">{profileUser.role}</span>
               </div>

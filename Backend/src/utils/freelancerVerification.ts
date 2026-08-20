@@ -12,3 +12,20 @@ export function hasFreelancerRights(user: {
 }): boolean {
   return user.isVerifiedGraduate || (user.verificationLevel === 'INDIVIDUAL' && user.verificationStatus === 'APPROVED');
 }
+
+// Used ONLY where real money is about to leave the platform (wallet payout
+// requests) — everywhere else (submitting a proposal, applying to a
+// vacancy) is deliberately a soft nudge, not a hard gate: a "Standard" vs
+// "Verified" badge lets a client self-select, rather than the platform
+// blocking submission outright. Payout is the one moment an unverified
+// identity is an actual fraud risk, so it's the one place this still
+// blocks. Any approved verification track counts — individual, graduate,
+// or business — not just the freelancer-specific OR above.
+export function isIdentityVerified(user: {
+  isVerifiedGraduate: boolean;
+  verificationLevel?: string | null;
+  verificationStatus?: string | null;
+  isVerified?: boolean;
+}): boolean {
+  return hasFreelancerRights(user) || !!user.isVerified;
+}

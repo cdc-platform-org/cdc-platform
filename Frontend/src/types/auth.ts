@@ -80,6 +80,14 @@ export function getVerificationStatus(user: Pick<User, 'verificationDocUrl' | 'i
   return 'unverified';
 }
 
+// Mirrors Backend's utils/freelancerVerification.ts's hasFreelancerRights()
+// exactly — used purely for the "Verified"/"Standard" trust badge now (soft
+// nudge, not a hard gate, on proposal/vacancy submission), so this needs to
+// stay in lockstep with the Backend version, not drift into its own logic.
+export function isFreelancerVerified(user: Pick<User, 'isVerifiedGraduate' | 'verificationLevel' | 'verificationStatus'>): boolean {
+  return user.isVerifiedGraduate || (user.verificationLevel === 'INDIVIDUAL' && user.verificationStatus === 'APPROVED');
+}
+
 export interface UpdateProfilePayload {
   name?: string;
   bio?: string | null;

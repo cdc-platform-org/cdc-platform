@@ -8,12 +8,14 @@ import PostingForm from './PostingForm';
 import ApplicationModal from './ApplicationModal';
 import ProposalModal from './ProposalModal';
 import ReviewModal from './ReviewModal';
-import GraduateOnlyModal from './GraduateOnlyModal';
+import SoftVerificationNudge from './SoftVerificationNudge';
 import SiteHeader from '../layout/SiteHeader';
 import SiteFooter from '../layout/SiteFooter';
 import BackButton from '../common/BackButton';
 import { useAuth } from '../../context/AuthContext';
 import { useAuthModal } from '../../context/AuthModalContext';
+import { useVerificationDrawer } from '../../context/VerificationDrawerContext';
+import { isFreelancerVerified } from '../../types/auth';
 import { Vacancy, Gig } from '../../types/community';
 import { getVacancies, applyToVacancy } from '../../services/vacancyService';
 import { getGigs, applyToGig } from '../../services/gigService';
@@ -38,6 +40,7 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
   const { t } = useTranslation('proposals');
   const { user, isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
+  const { openVerificationDrawer } = useVerificationDrawer();
   const [tab, setTab] = useState<Tab>(defaultTab);
 
   const [vacancies, setVacancies] = useState<Vacancy[]>([]);
@@ -56,7 +59,11 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
   const [reviewingGig, setReviewingGig] = useState<Gig | null>(null);
   const [reviewedGigIds, setReviewedGigIds] = useState<Set<string>>(new Set());
 
-  const [showGraduateGate, setShowGraduateGate] = useState(false);
+  // Soft-nudge state — pendingApply remembers which gig/vacancy triggered
+  // the nudge so "Continue without verifying" can still open the right
+  // modal. Never a hard block (see gigs.ts/vacancies.ts's own comment on
+  // their /apply routes) — an unverified user can always proceed.
+  const [pendingApply, setPendingApply] = useState<{ kind: 'gig'; gig: Gig } | { kind: 'vacancy'; vacancy: Vacancy } | null>(null);
 
   const loadVacancies = useCallback(async () => {
     setVacanciesLoading(true);
@@ -108,14 +115,14 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
       openAuthModal({
         message: t('signIn.toApply'),
         onSuccess: (loggedInUser) => {
-          if (loggedInUser?.isVerifiedGraduate) setApplyingToVacancy(vacancy);
-          else setShowGraduateGate(true);
+          if (loggedInUser && isFreelancerVerified(loggedInUser)) setApplyingToVacancy(vacancy);
+          else setPendingApply({ kind: 'vacancy', vacancy });
         },
       });
       return;
     }
-    if (user?.isVerifiedGraduate) setApplyingToVacancy(vacancy);
-    else setShowGraduateGate(true);
+    if (user && isFreelancerVerified(user)) setApplyingToVacancy(vacancy);
+    else setPendingApply({ kind: 'vacancy', vacancy });
   };
 
   const handleApplyGig = (gig: Gig) => {
@@ -123,14 +130,25 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
       openAuthModal({
         message: t('signIn.toApply'),
         onSuccess: (loggedInUser) => {
-          if (loggedInUser?.isVerifiedGraduate) setApplyingToGig(gig);
-          else setShowGraduateGate(true);
+          if (loggedInUser && isFreelancerVerified(loggedInUser)) setApplyingToGig(gig);
+          else setPendingApply({ kind: 'gig', gig });
         },
       });
       return;
     }
-    if (user?.isVerifiedGraduate) setApplyingToGig(gig);
-    else setShowGraduateGate(true);
+    if (user && isFreelancerVerified(user)) setApplyingToGig(gig);
+    else setPendingApply({ kind: 'gig', gig });
+  };
+
+  const handleContinueWithoutVerifying = () => {
+    if (pendingApply?.kind === 'gig') setApplyingToGig(pendingApply.gig);
+    else if (pendingApply?.kind === 'vacancy') setApplyingToVacancy(pendingApply.vacancy);
+    setPendingApply(null);
+  };
+
+  const handleVerifyFromNudge = () => {
+    setPendingApply(null);
+    openVerificationDrawer({ initialTab: 'individual' });
   };
 
   const handleReviewClick = (gig: Gig) => {
@@ -347,7 +365,13 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
         />
       )}
 
-      {showGraduateGate && <GraduateOnlyModal message={t('signIn.graduatesOnly')} onClose={() => setShowGraduateGate(false)} />}
+      {pendingApply && (
+        <SoftVerificationNudge
+          onContinueWithoutVerifying={handleContinueWithoutVerifying}
+          onVerify={handleVerifyFromNudge}
+          onClose={() => setPendingApply(null)}
+        />
+      )}
 
       {reviewingGig && (
         <ReviewModal
