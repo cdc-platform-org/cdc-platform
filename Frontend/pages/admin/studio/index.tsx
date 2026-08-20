@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
+import { Trash2 } from 'lucide-react';
 import AdminGuard from '../../../src/components/admin/AdminGuard';
 import AdminLayout from '../../../src/components/admin/AdminLayout';
-import { getStudioInquiries, updateStudioInquiry } from '../../../src/services/studioService';
+import { getStudioInquiries, updateStudioInquiry, deleteStudioInquiry } from '../../../src/services/studioService';
 import { StudioInquiry, StudioInquiryStatus } from '../../../src/types/studio';
 
 const STATUS_BADGE: Record<StudioInquiryStatus, string> = {
@@ -36,6 +37,17 @@ function AdminStudioDashboard() {
     try {
       await updateStudioInquiry(id, { status });
       load();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('ნამდვილად გსურთ ამ განაცხადის სამუდამოდ წაშლა?')) return;
+    setBusyId(id);
+    try {
+      await deleteStudioInquiry(id);
+      setInquiries((prev) => prev.filter((inq) => inq.id !== id));
     } finally {
       setBusyId(null);
     }
@@ -98,6 +110,15 @@ function AdminStudioDashboard() {
                           {s.replace('_', ' ')}
                         </button>
                       ))}
+                    <button
+                      type="button"
+                      disabled={busyId === inq.id}
+                      onClick={() => handleDelete(inq.id)}
+                      title="წაშლა"
+                      className="p-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-60"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
                 <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 rounded-lg p-3">{inq.message}</p>

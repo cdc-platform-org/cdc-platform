@@ -44,4 +44,20 @@ router.patch('/:id', async (req: Request, res: Response) => {
   res.json({ data: inquiry });
 });
 
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const inquiry = await prisma.studioInquiry.delete({ where: { id: req.params.id } });
+    await logAdminAction({
+      action: 'studio.inquiry.delete',
+      targetType: 'StudioInquiry',
+      targetId: inquiry.id,
+      performedById: req.user!.id,
+    });
+    res.status(204).send();
+  } catch (err: any) {
+    if (err.code === 'P2025') return res.status(404).json({ message: 'Inquiry not found.' });
+    throw err;
+  }
+});
+
 export default router;

@@ -15,3 +15,7 @@ export async function updateStudioInquiry(id: string, payload: UpdateStudioInqui
   const response = await apiClient.patch<{ data: StudioInquiry }>(`/admin/studio/${id}`, payload);
   return response.data.data;
 }
+
+export async function deleteStudioInquiry(id: string): Promise<void> {
+  await apiClient.delete(`/admin/studio/${id}`);
+}
