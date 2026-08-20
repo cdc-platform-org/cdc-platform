@@ -49,8 +49,12 @@ export default function ChatBox({ otherUserId, otherUserName }: ChatBoxProps) {
       const sent = await sendMessage(otherUserId, draft.trim());
       setMessages((prev) => [...prev, sent]);
       setDraft('');
-    } catch {
-      setError('Unable to send this message. Please try again.');
+    } catch (err: any) {
+      // Backend returns a specific message for both the anti-offboarding
+      // block (422) and the Student<->Student consent gate (403) — surface
+      // it directly rather than a generic failure, since both are the user
+      // finding out *why* nothing sent, not a transient error to just retry.
+      setError(err?.response?.data?.message ?? 'Unable to send this message. Please try again.');
     } finally {
       setSending(false);
     }

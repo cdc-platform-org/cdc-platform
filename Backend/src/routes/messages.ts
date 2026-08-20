@@ -3,10 +3,50 @@ import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved } from '../middleware/auth';
 import { sendMessageSchema } from '../schemas/messageSchemas';
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
+import { requiresChatRequestConsent, hasAcceptedChatRequest } from '../services/chatConsentService';
 
 const router = Router();
 const participantSelect = { select: { id: true, name: true, role: true } };
 
+// Broadcasts an in-app warning to both participants when a message gets
+// blocked — the sender gets the specific reason; the recipient gets a
+// lighter notice so they're not left wondering why nothing arrived, without
+// exposing the blocked content to them.
+async function notifyBothOfBlockedMessage(senderId: string, recipientId: string): Promise<void> {
+  await prisma.notification
+    .createMany({
+      data: [
+        {
+          userId: senderId,
+          title: '⚠️ შეტყობინება დაბლოკილია',
+          message: 'თქვენი შეტყობინება არ გაიგზავნა — მასში აღმოჩენილია საკონტაქტო ინფორმაცია ან პლატფორმის გარეშე გადახდის ფრაზა, რაც ეწინააღმდეგება წესებს.',
+          type: 'CHAT_POLICY_VIOLATION',
+        },
+        {
+          userId: recipientId,
+          title: 'ℹ️ შეტყობინება დაბლოკილია',
+          message: 'ამ საუბარში ერთი შეტყობინება დაიბლოკა პლატფორმის წესების დარღვევის გამო.',
+          type: 'CHAT_POLICY_VIOLATION',
+        },
+      ],
+    })
+    .catch(() => {});
+}
+
+// ============================================================
+// SEND — POST /messages. Two independent, layered checks before a message
+// is ever created:
+//   1. Request-First consent gate (services/chatConsentService.ts) — only
+//      blocks Student<->Student pairs with no accepted ChatRequest and no
+//      prior conversation. Every other role combination skips this check
+//      entirely.
+//   2. Anti-offboarding content filter (sanitizeChatMessage) — applies to
+//      EVERY message through this route regardless of role. A flagged
+//      message is BLOCKED outright (never stored, unlike this route's
+//      previous mask-and-still-send behavior — see the Message model's own
+//      comment in schema.prisma), logged to ChatFlag for /admin/chat-
+//      moderation, and both participants get an in-app warning.
+// ============================================================
 router.post('/', authenticate, requireApproved, async (req: Request, res: Response) => {
   const result = sendMessageSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
@@ -20,14 +60,40 @@ router.post('/', authenticate, requireApproved, async (req: Request, res: Respon
     return res.status(404).json({ message: 'Recipient not found.' });
   }
 
-  const { sanitized, wasFiltered } = sanitizeChatMessage(content);
+  if (await requiresChatRequestConsent(req.user!.id, recipientId)) {
+    if (!(await hasAcceptedChatRequest(req.user!.id, recipientId))) {
+      return res.status(403).json({
+        requiresChatRequest: true,
+        message: 'Send a chat request first — direct messages between students open only once the other person accepts.',
+      });
+    }
+  }
+
+  const { wasFiltered } = sanitizeChatMessage(content);
+
+  if (wasFiltered) {
+    await prisma.chatFlag.create({
+      data: {
+        senderId: req.user!.id,
+        recipientId,
+        attemptedContent: content,
+        detectedReason: 'Message contained off-platform contact info / payment phrasing (sanitizeChatMessage).',
+      },
+    });
+    await notifyBothOfBlockedMessage(req.user!.id, recipientId);
+
+    return res.status(422).json({
+      blocked: true,
+      message: '⚠️ პლატფორმის გარეთ კომუნიკაცია და გადახდა აკრძალულია საკომისიოს თავიდან არიდების მიზნით.',
+    });
+  }
 
   const message = await prisma.message.create({
     data: {
       senderId: req.user!.id,
       recipientId,
-      content: sanitized,
-      wasFiltered,
+      content,
+      wasFiltered: false,
     },
     include: { sender: participantSelect, recipient: participantSelect },
   });

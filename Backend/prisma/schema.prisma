@@ -472,6 +472,11 @@ model User {
   cyberSentinelDevices         CyberSentinelDevice[]         @relation("CyberSentinelDevices")
   reviewedGrantOpportunities   GrantOpportunity[]
   generatedLaunchKits          LaunchKit[]
+  chatRequestsSent             ChatRequest[]                 @relation("ChatRequestsSent")
+  chatRequestsReceived         ChatRequest[]                 @relation("ChatRequestsReceived")
+  chatFlagsAsSender            ChatFlag[]                    @relation("ChatFlagsAsSender")
+  chatFlagsAsRecipient         ChatFlag[]                    @relation("ChatFlagsAsRecipient")
+  chatFlagsReviewed            ChatFlag[]                    @relation("ChatFlagsReviewed")
 
   @@map("users")
 }
@@ -1532,9 +1537,28 @@ model DirectOffer {
 }
 
 // ============================================================
-// MESSAGE (direct 1:1 chat between two users — content is sanitized with
-// sanitizeChatMessage server-side BEFORE it ever reaches this table, so
-// what's stored is already safe to display as-is)
+// MESSAGE (direct 1:1 chat between two users). Every message sent through
+// routes/messages.ts's POST / is checked by sanitizeChatMessage
+// (utils/sanitizeChatMessage.ts) server-side; a flagged message is BLOCKED
+// entirely regardless of either participant's role — never stored here at
+// all, logged to ChatFlag below instead — same hard-block posture as
+// MentorChatMessage/MentorChatViolation. This means wasFiltered essentially
+// never turns true for a NEW row created through that route going forward.
+//
+// The column still exists and can still be true because two other,
+// unrelated call sites write directly to this table with the OLDER
+// mask-in-place-and-still-send behavior, never having gone through
+// routes/messages.ts at all: routes/vacancies.ts (a candidate's application
+// cover note, delivered as a kickoff DM to the employer) and any historical
+// row from before this hard-block change shipped. Changing those two
+// direct-write call sites' posture was out of scope here — see the fresh
+// ChatFlag model below for what covers the messages.ts path now, and
+// routes/adminMessages.ts's existing wasFiltered-based audit view for
+// what still covers those.
+//
+// Separately, Student<->Student pairs also need an ACCEPTED ChatRequest
+// (below) before POST / will accept anything from them at all — see
+// services/chatConsentService.ts for exactly when that gate applies.
 // ============================================================
 
 model Message {
@@ -1550,6 +1574,76 @@ model Message {
   @@index([senderId, recipientId])
   @@index([recipientId, senderId])
   @@map("messages")
+}
+
+// ============================================================
+// CHAT REQUEST — Request-First consent gate for Student<->Student direct
+// messaging specifically (routes/messages.ts's POST / enforces this only
+// when both sender and recipient have role Student; any other role
+// combination — a Client, Mentor, or SuperAdmin on either side — keeps the
+// platform's original open-messaging behavior, since those relationships
+// already come with their own established channel: a gig/vacancy, a
+// mentorship booking, admin support, etc). A prior Message already existing
+// between the two users also bypasses this gate — the point is to stop an
+// UNSOLICITED first contact, not to re-gate an already-ongoing, legitimate
+// conversation that predates this feature.
+// ============================================================
+
+enum ChatRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model ChatRequest {
+  id           String            @id @default(uuid())
+  senderId     String
+  sender       User              @relation("ChatRequestsSent", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId  String
+  recipient    User              @relation("ChatRequestsReceived", fields: [recipientId], references: [id], onDelete: Cascade)
+  status       ChatRequestStatus @default(PENDING)
+  // Short note shown to the recipient when deciding whether to accept —
+  // itself run through sanitizeChatMessage the same as any chat content,
+  // since it's free text visible to a stranger before any consent exists.
+  introMessage String?
+  respondedAt  DateTime?
+  createdAt    DateTime          @default(now())
+
+  // One row per direction per pair — a REJECTED request can't be re-sent by
+  // the same sender (routes/chatRequests.ts checks for an existing row in
+  // either direction before creating one), though the original recipient
+  // can still initiate their own request back if they change their mind —
+  // that's a different row, the reverse direction, not blocked by this.
+  @@unique([senderId, recipientId])
+  @@index([recipientId, status])
+  @@map("chat_requests")
+}
+
+// One row per BLOCKED off-platform-contact attempt in general Message
+// traffic — the Student<->Student equivalent of MentorChatViolation, kept
+// as its own separate model rather than merged into that one since the two
+// guard entirely different relationships (a paid mentorship booking vs.
+// unsolicited peer messaging) and this one additionally tracks admin
+// review state for /admin/chat-moderation, which MentorChatViolation has
+// no equivalent page for. Manual ban only — unlike MentorChatViolation's
+// automatic 2-strike ban, an admin decides here (see routes/
+// adminChatModeration.ts); nothing in this model auto-bans anyone.
+model ChatFlag {
+  id                String    @id @default(uuid())
+  senderId          String
+  sender            User      @relation("ChatFlagsAsSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId       String
+  recipient         User      @relation("ChatFlagsAsRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  attemptedContent  String
+  detectedReason    String
+  reviewedAt        DateTime?
+  reviewedByAdminId String?
+  reviewedByAdmin   User?     @relation("ChatFlagsReviewed", fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
+  createdAt         DateTime  @default(now())
+
+  @@index([senderId])
+  @@index([createdAt])
+  @@map("chat_flags")
 }
 
 // ============================================================
