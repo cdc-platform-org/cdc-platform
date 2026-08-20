@@ -238,7 +238,7 @@ Requirements:
   * Overall length: at least 4-6 substantial sections' worth of content, genuinely informative and specific to the topic, never generic filler.
 - Every article MUST end with a sources section as its final <h2>: use exactly "<h2>წყაროები</h2>" in contentKa and "<h2>Sources</h2>" in contentEn, immediately followed by a <ul> of 2-4 <li><a href="..." target="_blank" rel="noopener noreferrer">...</a></li> entries. Only cite well-known, stable, real URLs you are highly confident exist (official documentation, an official product/GitHub page, a well-established technical reference) — never invent or guess a URL. If you cannot recall a specific real source confidently, link to the general official docs/homepage of the technology discussed instead of fabricating a deep link.
 - "descriptionKa"/"descriptionEn" are a 1-2 sentence excerpt (under 200 characters) suitable for a blog list preview.
-- "imageConcept" is a short (1-2 sentence) description of a concrete visual scene for the cover image — describe objects/composition/mood, not style keywords (style is handled separately).
+- "imageConcept" is a short (1-2 sentence) description of what's ON SCREEN in the cover photo — describe the concrete, topic-specific subject matter, not style keywords (style/lighting/composition are handled separately). Name the actual technology/framework/tool the article is about and what a viewer would recognize on the screen: e.g. for "React 19", describe a code editor or UI mockup showing React component code with a floating React logo icon nearby; for "AI Automation", describe a dashboard UI with connected workflow/pipeline nodes and an AI icon. Avoid vague scenes ("a laptop with some code") in favor of ones a reader would immediately connect to the article's actual subject.
 
 Respond with strict JSON matching this shape:
 {"titleKa": string, "titleEn": string, "category": string, "descriptionKa": string, "descriptionEn": string, "contentKa": string, "contentEn": string, "imageConcept": string}`;
@@ -273,8 +273,22 @@ Respond with strict JSON matching this shape:
 // through this one function, so the mandatory style/aspect-ratio/negative-
 // constraint rules are applied exactly once, centrally, rather than being
 // copy-pasted (and potentially drifting) at every call site.
+//
+// Structured as a "tech product showcase" composition (subject/environment,
+// graphic overlay, lighting/style, negative constraints) rather than a flat
+// keyword bag — `concept` (Gemini's topic-specific imageConcept, e.g. "a
+// code editor showing React 19 component code with a floating React logo")
+// slots into the Subject & Environment clause, so the topic keywords a
+// reader would recognize stay concrete instead of getting diluted by the
+// style boilerplate around them.
 function buildImagePrompt(concept: string): string {
-  return `${concept}, ULTRA-HIGH DEFINITION 3D vector illustration, vibrant modern tech artwork, isometric technology concept, clean professional digital vector aesthetic, sharp detailed rendering, brilliant composition, studio lighting, strictly 16:9 widescreen, no typography, no watermarks, no logos, visually stunning`;
+  const subjectAndEnvironment = `${concept}, displayed on a premium sleek laptop or monitor screen in a cozy dark modern office, soft ambient cinematic lighting, shallow depth of field, subtle background bokeh`;
+  const graphicOverlay = `high-definition 3D floating glassmorphism tech icons relevant to the subject arranged around the screen, crisp clean typography accents, sleek modern logo-style accents along the side — no random unrelated icons`;
+  const lightingAndStyle = `photorealistic 8k render, cinematic studio lighting, dark mode UI theme in slate/indigo/cyan tones with a subtle glow, professional tech product advertisement style, official Anthropic/OpenAI-style marketing visual quality`;
+  const aspectRatio = `strictly 16:9 widescreen aspect ratio, 1920x1080`;
+  const negative = `no messy abstract shapes, no distorted or illegible text, no generic cartoonish clip-art, no low-resolution gradients, no random floating glowing spheres, no watermarks`;
+
+  return `${subjectAndEnvironment}. ${graphicOverlay}. ${lightingAndStyle}. ${aspectRatio}. Avoid: ${negative}.`;
 }
 
 // Generates a cover image from a short visual concept via Pollinations.ai
@@ -292,7 +306,12 @@ export async function generateCoverImage(concept: string, folderName = 'blog'): 
     // request first) can return a cached empty body from Pollinations' edge
     // cache, confirmed live on 2026-08-06.
     const seed = Math.floor(Math.random() * 1_000_000_000);
-    const url = `${POLLINATIONS_IMAGE_ENDPOINT}/${encodeURIComponent(buildImagePrompt(concept))}?width=1280&height=720&seed=${seed}&nologo=true`;
+    // model=flux — Pollinations' sharpest general-purpose model, a real
+    // (if less controllable than a paid API) step up from its default
+    // Turbo model for this "tech product showcase" style. 1920x1080 (vs.
+    // the previous 1280x720) is the highest resolution Pollinations
+    // reliably renders at without timing out.
+    const url = `${POLLINATIONS_IMAGE_ENDPOINT}/${encodeURIComponent(buildImagePrompt(concept))}?width=1920&height=1080&model=flux&seed=${seed}&nologo=true`;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), IMAGE_GENERATION_TIMEOUT_MS);
