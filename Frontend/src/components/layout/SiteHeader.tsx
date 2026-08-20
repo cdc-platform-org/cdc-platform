@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { Menu, X, LayoutDashboard, GraduationCap, LogOut, ShieldCheck, ChevronDown, ShoppingBag, CalendarClock } from 'lucide-react';
+import { Menu, X, LayoutDashboard, GraduationCap, LogOut, ShieldCheck, ChevronDown, ShoppingBag, CalendarClock, PlayCircle } from 'lucide-react';
 import LanguageSwitcher from './LanguageSwitcher';
 import UserMenu from './UserMenu';
 import NotificationBell from './NotificationBell';
@@ -257,8 +257,9 @@ export default function SiteHeader() {
                     </Link>
                     <Link
                       href="/tutorials"
-                      className="block px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                      className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
                     >
+                      <PlayCircle className="w-4 h-4 shrink-0" />
                       {t.tutorials}
                     </Link>
                   </div>
@@ -374,7 +375,8 @@ export default function SiteHeader() {
                 {t.tools}
               </Link>
             )}
-            <Link href="/tutorials" onClick={() => setMobileMenuOpen(false)} className="no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+            <Link href="/tutorials" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+              <PlayCircle className="w-4 h-4 shrink-0" />
               {t.tutorials}
             </Link>
             {!(isAuthenticated && user) && (

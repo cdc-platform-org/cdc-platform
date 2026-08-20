@@ -1,7 +1,53 @@
-import { MapPin, Trophy, ExternalLink } from 'lucide-react';
+import { MapPin, Trophy, ExternalLink, GraduationCap, Briefcase, ShoppingBag, Building2, Bot } from 'lucide-react';
 import SimpleSiteLayout from '@/src/components/layout/SimpleSiteLayout';
 import TeamTrainersSection from '@/src/components/shared/TeamTrainersSection';
 import { aboutContent } from '@/src/data/aboutContent';
+
+// The five pillars of the CDC ecosystem — each a distinct product area,
+// not just a marketing bullet, so the icon+glow treatment doubles as a
+// visual map of "everything one CDC account can do."
+const ECOSYSTEM_FEATURES = [
+  {
+    icon: GraduationCap,
+    title: { ka: 'LMS & ლაივ ვორქშოფები', en: 'LMS & Live Workshops' },
+    description: {
+      ka: 'თვითტემპური კურსები სერტიფიკატებით, პლუს დაგეგმილი ლაივ სესიები ტრენერებთან ერთად.',
+      en: 'Self-paced courses with certificates, plus scheduled live sessions with real trainers.',
+    },
+  },
+  {
+    icon: Briefcase,
+    title: { ka: 'დასაქმების ფორუმი & ფრილანს ჰაბი', en: 'Employment Forum & Freelance Hub' },
+    description: {
+      ka: 'ვაკანსიები, გიგები და დისკუსიები ერთ სივრცეში — ვერიფიცირებული ფრილანსერებისთვის.',
+      en: 'Vacancies, gigs, and discussions in one place — for verified freelancers.',
+    },
+  },
+  {
+    icon: ShoppingBag,
+    title: { ka: 'ციფრული პროდუქტების მაღაზია', en: 'Digital Product Store' },
+    description: {
+      ka: 'UI ნაკრებები, AI პრომფტები, შაბლონები და ელ-წიგნები — მზად გამოსაყენებლად.',
+      en: 'UI kits, AI prompts, templates, and e-books — ready to use.',
+    },
+  },
+  {
+    icon: Building2,
+    title: { ka: 'CDC სააგენტო / სტუდია', en: 'CDC Agency / Studio' },
+    description: {
+      ka: 'რეალური კლიენტების პროექტები — სტუდენტები და მენტორები ერთად ქმნიან საიტებს, რეკლამასა და ვიზუალებს.',
+      en: 'Real client projects — students and mentors building websites, ads, and visuals together.',
+    },
+  },
+  {
+    icon: Bot,
+    title: { ka: 'CDC AI ასისტენტი & ხელსაწყოები', en: 'CDC AI Assistant & Tools' },
+    description: {
+      ka: 'ბიზნესებისთვის მორგებული AI ავტომატიზაცია და ანალიტიკური ხელსაწყოები.',
+      en: 'AI automation and analytics tools tailored for businesses.',
+    },
+  },
+] as const;
 
 export default function AboutPage() {
   return (
@@ -37,6 +83,25 @@ export default function AboutPage() {
                   {p[l]}
                 </p>
               ))}
+            </div>
+
+            <h2 className="text-xl font-black mb-8">{lang === 'GEO' ? 'CDC ეკოსისტემა' : 'The CDC Ecosystem'}</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-16">
+              {ECOSYSTEM_FEATURES.map((feature, i) => {
+                const Icon = feature.icon;
+                return (
+                  <div
+                    key={i}
+                    className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 transition-all duration-300 hover:border-indigo-400/40 hover:shadow-[0_0_25px_rgba(99,102,241,0.15)]"
+                  >
+                    <div className="inline-flex bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 text-indigo-400 p-3.5 rounded-2xl shadow-lg shadow-indigo-500/10 mb-4">
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <h3 className="font-black text-sm mb-2 text-white">{feature.title[l]}</h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">{feature.description[l]}</p>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="flex flex-wrap gap-2 mb-14">
