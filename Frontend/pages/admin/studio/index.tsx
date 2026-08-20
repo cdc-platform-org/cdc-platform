@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Phone } from 'lucide-react';
 import AdminGuard from '../../../src/components/admin/AdminGuard';
 import AdminLayout from '../../../src/components/admin/AdminLayout';
 import { getStudioInquiries, updateStudioInquiry, deleteStudioInquiry } from '../../../src/services/studioService';
@@ -91,7 +91,22 @@ function AdminStudioDashboard() {
                       <span className="font-semibold text-gray-900">{inq.name}</span>
                       <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${STATUS_BADGE[inq.status]}`}>{inq.status}</span>
                     </div>
-                    <p className="text-xs text-gray-500">{inq.email}{inq.phone ? ` · ${inq.phone}` : ''}{inq.company ? ` · ${inq.company}` : ''}</p>
+                    <p className="text-xs text-gray-500 flex items-center flex-wrap gap-x-1.5">
+                      <span>{inq.email}</span>
+                      {inq.phone && (
+                        <>
+                          <span>·</span>
+                          <a
+                            href={`tel:${inq.phone}`}
+                            className="inline-flex items-center gap-1 font-semibold text-emerald-600 hover:text-emerald-700 no-underline"
+                          >
+                            <Phone className="w-3 h-3" />
+                            {inq.phone}
+                          </a>
+                        </>
+                      )}
+                      {inq.company && <span>· {inq.company}</span>}
+                    </p>
                     <p className="text-xs text-gray-400 mt-1">
                       {inq.projectType}{inq.budgetRange ? ` · Budget: ${inq.budgetRange}` : ''} · {new Date(inq.createdAt).toLocaleString()}
                     </p>

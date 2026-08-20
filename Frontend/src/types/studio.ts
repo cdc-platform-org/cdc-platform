@@ -20,10 +20,10 @@ export interface StudioInquiry {
 export interface CreateStudioInquiryPayload {
   name: string;
   email: string;
-  phone?: string;
-  company?: string;
+  phone: string;
+  company: string;
   projectType: string;
-  budgetRange?: string;
+  budgetRange: string;
   message: string;
 }
 

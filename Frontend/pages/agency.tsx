@@ -158,10 +158,10 @@ export default function Agency() {
       await submitStudioInquiry({
         name: form.name,
         email: form.email,
-        phone: form.phone || undefined,
-        company: form.company || undefined,
+        phone: form.phone,
+        company: form.company,
         projectType: form.projectType,
-        budgetRange: form.budgetRange || undefined,
+        budgetRange: form.budgetRange,
         message: form.message,
       });
       setForm(emptyForm);
@@ -363,7 +363,7 @@ export default function Agency() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input
                 required
-                placeholder={translate('სახელი', 'Name') as string}
+                placeholder={translate('სახელი *', 'Name *') as string}
                 value={form.name}
                 onChange={handleFormChange('name')}
                 className={inputClass}
@@ -371,7 +371,7 @@ export default function Agency() {
               <input
                 required
                 type="email"
-                placeholder={translate('ელ-ფოსტა', 'Email') as string}
+                placeholder={translate('ელ-ფოსტა *', 'Email *') as string}
                 value={form.email}
                 onChange={handleFormChange('email')}
                 className={inputClass}
@@ -380,13 +380,16 @@ export default function Agency() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input
-                placeholder={translate('ტელეფონი (არასავალდებულო)', 'Phone (optional)') as string}
+                required
+                type="tel"
+                placeholder={translate('ტელეფონის ნომერი *', 'Phone Number *') as string}
                 value={form.phone}
                 onChange={handleFormChange('phone')}
                 className={inputClass}
               />
               <input
-                placeholder={translate('კომპანია (არასავალდებულო)', 'Company (optional)') as string}
+                required
+                placeholder={translate('კომპანია *', 'Company *') as string}
                 value={form.company}
                 onChange={handleFormChange('company')}
                 className={inputClass}
@@ -396,13 +399,14 @@ export default function Agency() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input
                 required
-                placeholder={translate('პროექტის ტიპი (მაგ. ვებ-საიტი, SMM)', 'Project type (e.g. Website, SMM)') as string}
+                placeholder={translate('პროექტის ტიპი (მაგ. ვებ-საიტი, SMM) *', 'Project type (e.g. Website, SMM) *') as string}
                 value={form.projectType}
                 onChange={handleFormChange('projectType')}
                 className={inputClass}
               />
               <input
-                placeholder={translate('ბიუჯეტის დიაპაზონი (არასავალდებულო)', 'Budget range (optional)') as string}
+                required
+                placeholder={translate('სავარაუდო ბიუჯეტი *', 'Estimated Budget *') as string}
                 value={form.budgetRange}
                 onChange={handleFormChange('budgetRange')}
                 className={inputClass}
@@ -412,7 +416,7 @@ export default function Agency() {
             <textarea
               required
               rows={5}
-              placeholder={translate('მოგვიყევით პროექტზე...', 'Tell us about your project...') as string}
+              placeholder={translate('მოგვიყევით პროექტზე... *', 'Tell us about your project... *') as string}
               value={form.message}
               onChange={handleFormChange('message')}
               className={inputClass}
