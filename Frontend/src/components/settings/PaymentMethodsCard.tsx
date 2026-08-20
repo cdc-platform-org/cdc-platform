@@ -28,6 +28,7 @@ const STRINGS = {
     expires: 'ვადა',
     loadFailed: 'გადახდის მეთოდების ჩატვირთვა ვერ მოხერხდა.',
     stripeNotConfigured: 'ბარათების დამატება დროებით მიუწვდომელია.',
+    initializingCard: 'იტვირთება…',
     addFailed: 'ბარათის დამატება ვერ მოხერხდა. სცადეთ თავიდან.',
     deleteFailed: 'ბარათის წაშლა ვერ მოხერხდა.',
     deleteConfirmAutoRenew:
@@ -51,6 +52,7 @@ const STRINGS = {
     expires: 'Expires',
     loadFailed: 'Unable to load payment methods.',
     stripeNotConfigured: 'Adding a card is temporarily unavailable.',
+    initializingCard: 'Loading…',
     addFailed: 'Unable to add this card. Please try again.',
     deleteFailed: 'Unable to delete this card.',
     deleteConfirmAutoRenew:
@@ -90,6 +92,11 @@ export default function PaymentMethodsCard({ lang, userName }: { lang: Supported
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [cardElementReady, setCardElementReady] = useState(false);
+  // Distinct from addError (a failed submit) — set when Stripe.js itself
+  // never becomes usable (missing/invalid NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+  // or js.stripe.com blocked/unreachable), so the form shows a clear message
+  // instead of a permanently empty, silently-disabled box.
+  const [stripeInitError, setStripeInitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const elementRef = useRef<HTMLDivElement>(null);
@@ -121,8 +128,16 @@ export default function PaymentMethodsCard({ lang, userName }: { lang: Supported
     if (!showAddForm) return;
     let cancelled = false;
     let card: StripeCardElement | null = null;
+    setStripeInitError(null);
     getStripe().then((stripe) => {
-      if (cancelled || !stripe || !elementRef.current) return;
+      if (cancelled) return;
+      if (!stripe) {
+        // loadStripe resolved to null — no publishable key (or Stripe.js
+        // failed to load). Surface it instead of leaving the box empty.
+        setStripeInitError(t.stripeNotConfigured);
+        return;
+      }
+      if (!elementRef.current) return;
       stripeRef.current = stripe;
       const isDark = document.documentElement.classList.contains('dark');
       const elements = stripe.elements();
@@ -146,7 +161,7 @@ export default function PaymentMethodsCard({ lang, userName }: { lang: Supported
       cardElementInstanceRef.current = null;
       setCardElementReady(false);
     };
-  }, [showAddForm]);
+  }, [showAddForm, t.stripeNotConfigured]);
 
   const handleAddCard = async () => {
     const stripe = stripeRef.current;
@@ -317,7 +332,19 @@ export default function PaymentMethodsCard({ lang, userName }: { lang: Supported
 
       {showAddForm ? (
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
-          <div ref={elementRef} className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/60 px-3.5 py-3" />
+          <div className="relative">
+            <div
+              ref={elementRef}
+              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/60 px-3.5 py-3 min-h-[42px]"
+            />
+            {!cardElementReady && !stripeInitError && (
+              <div className="absolute inset-0 flex items-center gap-2 px-3.5 rounded-lg bg-white dark:bg-slate-800/60 pointer-events-none">
+                <span className="w-3.5 h-3.5 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-cyan-500 animate-spin" />
+                <span className="text-xs text-slate-400 dark:text-slate-500">{t.initializingCard}</span>
+              </div>
+            )}
+          </div>
+          {stripeInitError && <p className="text-xs text-red-600 dark:text-red-400">{stripeInitError}</p>}
           {addError && <p className="text-xs text-red-600 dark:text-red-400">{addError}</p>}
           <div className="flex gap-2">
             <button
