@@ -7,6 +7,7 @@ import { pauseExpiredTrialAgents } from '../services/agentBillingService';
 import { sweepExpiredTrials } from '../services/billingService';
 import { generateAndSaveBlogDraft, BlogAgentError } from '../services/blogAgentService';
 import { AiAgentError } from '../services/aiAgentService';
+import { scanAllActiveSources } from '../services/grantScoutService';
 
 const router = Router();
 const expectedSecretBuffer = Buffer.from(CRON_SECRET);
@@ -80,6 +81,19 @@ router.post('/generate-blog-draft', requireCronSecret, async (_req: Request, res
     if (err instanceof BlogAgentError || err instanceof AiAgentError) return res.status(err.status).json({ message: err.message });
     throw err;
   }
+});
+
+// Scheduled once daily by Frontend's Vercel Cron (pages/api/cron/scan-grants.ts)
+// — scans every active GrantSource for new funding opportunities. Never
+// throws: scanAllActiveSources() catches per-source failures internally and
+// always returns a summary, same "no-op rather than fail the workflow"
+// posture as qa-autofix's billing-error handling.
+router.post('/scan-grant-opportunities', requireCronSecret, async (_req: Request, res: Response) => {
+  const result = await scanAllActiveSources();
+  res.json({
+    message: `Scanned ${result.sourcesScanned} source(s) (${result.sourcesFailed} failed): ${result.newOpportunities} new opportunit(ies), ${result.newlyEligible} eligible.`,
+    ...result,
+  });
 });
 
 export default router;

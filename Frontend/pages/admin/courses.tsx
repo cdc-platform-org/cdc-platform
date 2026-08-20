@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef, FormEvent, ChangeEvent } from 'react';
 import Head from 'next/head';
+import { Sparkles } from 'lucide-react';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
+import LaunchKitDrawer from '../../src/components/admin/LaunchKitDrawer';
 import RichTextEditor from '../../src/components/shared/RichTextEditor';
 import Toast from '../../src/components/shared/Toast';
 import CourseHeroBanner from '../../src/components/shared/CourseHeroBanner';
@@ -1110,6 +1112,7 @@ function AdminCoursesDashboard() {
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [managingCourse, setManagingCourse] = useState<Course | null>(null);
   const [togglingPublishId, setTogglingPublishId] = useState<string | null>(null);
+  const [launchKitCourse, setLaunchKitCourse] = useState<Course | null>(null);
   const formCardRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -1207,6 +1210,13 @@ function AdminCoursesDashboard() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => setLaunchKitCourse(course)}
+                      className="flex items-center gap-1 text-xs font-medium text-white bg-gradient-to-r from-cyan-500 to-purple-600 px-3 py-1.5 rounded-lg hover:opacity-90"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" /> Launch Kit
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => handleTogglePublish(course)}
                       disabled={togglingPublishId === course.id}
                       className={`text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-60 ${
@@ -1238,6 +1248,9 @@ function AdminCoursesDashboard() {
           )}
         </div>
       </div>
+      {launchKitCourse && (
+        <LaunchKitDrawer target={{ courseId: launchKitCourse.id }} title={launchKitCourse.title} onClose={() => setLaunchKitCourse(null)} />
+      )}
     </>
   );
 }

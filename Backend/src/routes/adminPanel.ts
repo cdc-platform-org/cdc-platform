@@ -363,6 +363,8 @@ const updateAiAutomationSettingsSchema = z.object({
   autoApproveScoreThreshold: z.number().int().min(0).max(100).optional(),
   autoApproveConfidenceThreshold: z.number().int().min(0).max(100).optional(),
   blogAutoPublish: z.boolean().optional(),
+  grantScoutAutoArchiveIneligible: z.boolean().optional(),
+  grantScoutNotifyOnMatch: z.boolean().optional(),
 });
 
 router.put('/ai-automation-settings', requireAdminRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
@@ -380,6 +382,8 @@ router.put('/ai-automation-settings', requireAdminRole('SUPER_ADMIN'), async (re
       autoApproveScoreThreshold: settings.autoApproveScoreThreshold,
       autoApproveConfidenceThreshold: settings.autoApproveConfidenceThreshold,
       blogAutoPublish: settings.blogAutoPublish,
+      grantScoutAutoArchiveIneligible: settings.grantScoutAutoArchiveIneligible,
+      grantScoutNotifyOnMatch: settings.grantScoutNotifyOnMatch,
       updatedByEmail: settings.updatedByEmail,
       updatedAt: settings.updatedAt,
     },

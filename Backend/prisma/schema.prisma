@@ -470,6 +470,8 @@ model User {
   mentorChatMessagesReceived   MentorChatMessage[]           @relation("MentorChatMessagesReceived")
   mentorChatViolations         MentorChatViolation[]         @relation("MentorChatViolations")
   cyberSentinelDevices         CyberSentinelDevice[]         @relation("CyberSentinelDevices")
+  reviewedGrantOpportunities   GrantOpportunity[]
+  generatedLaunchKits          LaunchKit[]
 
   @@map("users")
 }
@@ -734,6 +736,7 @@ model Course {
   // LiveTraining.convertedToCourseId's own comment for why this is a link
   // rather than a merge.
   liveTrainingSource LiveTraining?
+  launchKits         LaunchKit[]
 
   @@map("courses")
 }
@@ -1195,6 +1198,7 @@ model DigitalProduct {
   aiReviewedAt       DateTime?
   submittedById      String?
   submittedBy        User?              @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
+  launchKits         LaunchKit[]
 
   @@map("digital_products")
 }
@@ -1257,6 +1261,17 @@ model AiAutomationSettings {
   // to review before it goes live (today's only behavior, unchanged unless
   // an admin deliberately opts in here).
   blogAutoPublish Boolean @default(false)
+
+  // grantScoutService.ts's daily cron scan. false (default) keeps every
+  // scraped opportunity visible on /admin/opportunities, including
+  // NOT_ELIGIBLE ones, until an admin archives it themselves — true hides
+  // NOT_ELIGIBLE rows from the default view automatically.
+  grantScoutAutoArchiveIneligible Boolean @default(false)
+  // Whether notifyAdmins() fires (same Notification-based admin broadcast
+  // as blogAgentService.ts) when a scan finds a NEW opportunity that comes
+  // back ELIGIBLE. Only fires once per opportunity (on first insert, not
+  // on every rescan of an already-seen listing) — see grantScoutService.ts.
+  grantScoutNotifyOnMatch         Boolean @default(true)
 
   updatedByEmail String?
   updatedAt      DateTime @updatedAt
@@ -2879,4 +2894,146 @@ model StudioCaseStudy {
 
   @@index([isFeatured])
   @@map("studio_case_studies")
+}
+
+// ============================================================
+// GRANT & TENDER SCOUT — autonomous daily scan of external funding sites
+// (grantScoutService.ts, triggered by POST /api/cron/scan-grant-opportunities,
+// same secret-gated cron shape as blogAgentService.ts's draft cron). Every
+// scraped listing is run through Gemini (via aiAgentService.ts's existing
+// callTextModel — no separate AI client) to answer three fixed questions:
+// is Georgia eligible, does it fit CDC's scope, and what are the
+// deadline/budget. Reviewed on /admin/opportunities.
+// ============================================================
+
+// null on either boolean below means the AI couldn't confidently determine
+// it from the scraped page (kept distinct from an explicit false) — either
+// null collapses eligibilityStatus to NEEDS_REVIEW rather than guessing.
+enum GrantEligibilityStatus {
+  ELIGIBLE
+  NOT_ELIGIBLE
+  NEEDS_REVIEW
+}
+
+// Admin-configurable scrape targets so adding/pausing a source (grantebi.ge,
+// salto-youth.net, a specific EU portal listing page) is a data change on
+// /admin/opportunities, not a code deploy — same "admin-configured, not
+// hardcoded" posture as PlatformAgent.
+model GrantSource {
+  id             String    @id @default(uuid())
+  name           String
+  baseUrl        String
+  // One or more listing/index pages to crawl per scan — a single source can
+  // have more than one feed worth scanning (e.g. grantebi.ge's separate
+  // grants vs. tenders sections).
+  listingUrls    String[]  @default([])
+  isActive       Boolean   @default(true)
+  lastScanAt     DateTime?
+  // "success" | "failed" | null (never scanned) — free-form like
+  // Notification.type, not a Prisma enum, since scan outcomes may grow more
+  // detail later without a migration.
+  lastScanStatus String?
+  lastScanError  String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  opportunities GrantOpportunity[]
+
+  @@map("grant_sources")
+}
+
+model GrantOpportunity {
+  id           String      @id @default(uuid())
+  sourceId     String
+  source       GrantSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  // Canonical detail-page URL — the dedupe key alongside sourceId, so a
+  // rescan of an already-seen listing updates the existing row instead of
+  // duplicating it.
+  sourceUrl    String
+  title        String
+  titleEn      String?
+  // AI-generated markdown bullet summary of the opportunity.
+  summary      String
+  organization String?
+
+  deadline       DateTime?
+  // Whole-currency-unit Int — deliberately NOT minor units/cents like
+  // BogPayment.amount or Course.originalPrice elsewhere in this schema.
+  // This is an informational figure parsed off a funder's page for display
+  // only; no payment ever moves through it, so cent precision would imply
+  // an accuracy the extraction doesn't actually have.
+  budgetMin      Int?
+  budgetMax      Int?
+  budgetCurrency String? // ISO 4217, e.g. "EUR", "GEL"
+
+  georgiaEligible       Boolean?
+  georgiaEligibleReason String
+  scopeMatch            Boolean? // fits Digital Education/Youth/Tech/Entrepreneurship?
+  scopeMatchReason      String
+  // Derived from the two booleans above at write time (see
+  // grantScoutService.ts) — never set directly from a partial AI answer.
+  eligibilityStatus     GrantEligibilityStatus @default(NEEDS_REVIEW)
+
+  // Admin-dismissed rows are hidden from the default dashboard view but
+  // kept (not deleted) for audit — same posture as soft-delete elsewhere
+  // in this schema (User.deletionRequestedAt, etc).
+  isArchived        Boolean   @default(false)
+  archivedReason    String?
+  reviewedByAdminId String?
+  reviewedByAdmin   User?     @relation(fields: [reviewedByAdminId], references: [id])
+  reviewedAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sourceId, sourceUrl])
+  @@index([eligibilityStatus, isArchived, deadline])
+  @@map("grant_opportunities")
+}
+
+// ============================================================
+// AI SALES & MARKETING MANAGER — on-demand "Generate Sales Launch Kit"
+// button on a DigitalProduct or Course row in the admin panel
+// (marketingAgentService.ts, POST /api/admin/marketing/launch-kits). Unlike
+// the grant scout above this is synchronous and admin-triggered, not a
+// cron job — same request/response shape as aiAgentsSuite.ts's /generate.
+// ============================================================
+
+enum LaunchKitTargetType {
+  DIGITAL_PRODUCT
+  COURSE
+}
+
+// Regenerating creates a new row rather than overwriting the last one —
+// same "never destructively overwrite an AI draft" posture as BlogPost's
+// AI-generated drafts. The admin UI shows the latest by createdAt; older
+// generations stay as history.
+model LaunchKit {
+  id         String              @id @default(uuid())
+  targetType LaunchKitTargetType
+  // Exactly one of productId/courseId is set, matching targetType —
+  // enforced in adminMarketing.ts (Prisma has no XOR constraint to express
+  // this in the schema itself).
+  productId  String?
+  product    DigitalProduct?     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  courseId   String?
+  course     Course?             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  // Facebook/Instagram posts — [{ platform, hook, body, cta, hashtags: string[] }]
+  socialPosts       Json
+  // LinkedIn post + direct sales email, targeting partners/schools/businesses.
+  linkedinPost      String
+  salesEmailSubject String
+  salesEmailBody    String
+  // { demographics: string[], positioning: string[], recommendedChannels: string[] }
+  audienceProfile   Json
+
+  lang              String   @default("ka") // "ka" | "en"
+  generatedByUserId String
+  generatedByUser   User     @relation(fields: [generatedByUserId], references: [id])
+  createdAt         DateTime @default(now())
+
+  @@index([productId])
+  @@index([courseId])
+  @@map("launch_kits")
 }

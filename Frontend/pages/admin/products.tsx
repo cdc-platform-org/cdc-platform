@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useMemo, FormEvent } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
+import { Sparkles } from 'lucide-react';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
+import LaunchKitDrawer from '../../src/components/admin/LaunchKitDrawer';
 import RichTextEditor from '../../src/components/shared/RichTextEditor';
 import MarkdownContent from '../../src/components/shared/MarkdownContent';
 import FileDropzone from '../../src/components/shared/FileDropzone';
@@ -60,6 +62,7 @@ function ModerationProductCard({
   const [showPurchases, setShowPurchases] = useState(false);
   const [purchases, setPurchases] = useState<AdminProductPurchase[] | null>(null);
   const [loadingPurchases, setLoadingPurchases] = useState(false);
+  const [showLaunchKit, setShowLaunchKit] = useState(false);
 
   const togglePurchases = async () => {
     if (showPurchases) return setShowPurchases(false);
@@ -188,6 +191,13 @@ function ModerationProductCard({
           <button type="button" onClick={togglePurchases} className="text-xs font-medium text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50">
             {showPurchases ? 'Hide Purchases' : 'Purchases'}
           </button>
+          <button
+            type="button"
+            onClick={() => setShowLaunchKit(true)}
+            className="flex items-center justify-center gap-1 text-xs font-medium text-white bg-gradient-to-r from-cyan-500 to-purple-600 px-3 py-1.5 rounded-lg hover:opacity-90"
+          >
+            <Sparkles className="w-3.5 h-3.5" /> Launch Kit
+          </button>
           {p.status === 'PENDING' && (
             <>
               <button
@@ -218,6 +228,7 @@ function ModerationProductCard({
           )}
         </div>
       )}
+      {showLaunchKit && <LaunchKitDrawer target={{ productId: p.id }} title={p.title} onClose={() => setShowLaunchKit(false)} />}
     </div>
   );
 }
