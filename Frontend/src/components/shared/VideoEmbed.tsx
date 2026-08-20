@@ -37,7 +37,7 @@ function parseVideoUrl(url: string): ParsedVideo {
     const match = parsed.pathname.match(/(\d+)/);
     return match ? { kind: 'vimeo', id: match[1] } : null;
   }
-  if (/\.(mp4|webm|ogg)$/i.test(parsed.pathname)) {
+  if (/\.(mp4|webm|ogg|mov)$/i.test(parsed.pathname)) {
     return { kind: 'file' };
   }
   return null;

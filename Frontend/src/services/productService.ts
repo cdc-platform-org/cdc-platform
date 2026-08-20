@@ -51,6 +51,10 @@ export interface DigitalProduct {
   // Up to 4 additional showcase screenshots alongside imageUrl (the main
   // cover) — shown as a gallery/carousel on /store/[id].
   previewImages: string[];
+  // Optional demo clip — either an uploaded MP4/MOV's CDN URL or a pasted
+  // YouTube/Vimeo link (VideoEmbed.tsx tells them apart). Only present on
+  // the /store/[id] detail response, not the catalog list.
+  previewVideoUrl?: string | null;
   // Extension of the (never publicly exposed) fileUrl, e.g. "ZIP"/"PDF" —
   // safe to show as a format badge without revealing the real download link.
   fileFormat: string | null;
@@ -144,6 +148,7 @@ export interface CreateProductPayload {
   category: string;
   imageUrl: string;
   previewImages?: string[]; // up to 4
+  previewVideoUrl?: string | null; // uploaded MP4/MOV CDN URL or a pasted YouTube/Vimeo link
   fileUrl: string;
   licenseType?: ProductLicenseType; // omit to default to PERSONAL_USE (see Backend schema)
   discountedPrice?: number | null; // major-unit GEL — null clears an existing sale
@@ -190,6 +195,7 @@ export interface UpdateProductPayload {
   price?: number; // major-unit GEL
   imageUrl?: string;
   previewImages?: string[]; // up to 4
+  previewVideoUrl?: string | null;
   licenseType?: ProductLicenseType;
   discountedPrice?: number | null;
   saleEndsAt?: string | null;
@@ -231,6 +237,13 @@ export async function uploadProductFile(file: File): Promise<string> {
   return response.data.data.url;
 }
 
+export async function uploadProductVideo(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('video', file);
+  const response = await apiClient.post<{ data: { url: string } }>('/admin/products/upload-video', formData);
+  return response.data.data.url;
+}
+
 // Same as uploadProductImage/uploadProductFile above, but for verified
 // graduates/freelancers submitting their own product (see products.ts's
 // /upload-image and /upload-file — gated by canSubmitProducts, not
@@ -246,6 +259,13 @@ export async function uploadMyProductFile(file: File): Promise<string> {
   const formData = new FormData();
   formData.append('file', file);
   const response = await apiClient.post<{ data: { url: string } }>('/products/upload-file', formData);
+  return response.data.data.url;
+}
+
+export async function uploadMyProductVideo(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('video', file);
+  const response = await apiClient.post<{ data: { url: string } }>('/products/upload-video', formData);
   return response.data.data.url;
 }
 

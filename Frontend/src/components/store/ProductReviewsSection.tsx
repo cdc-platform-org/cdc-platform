@@ -39,9 +39,13 @@ function ReviewCard({ review, onToggleHelpful }: { review: ProductReview; onTogg
 
       <p className="text-sm text-slate-600 dark:text-slate-300 mt-3 leading-relaxed whitespace-pre-wrap">{review.comment}</p>
 
-      {review.imageUrl && (
-        <div className="mt-3 relative w-24 h-24 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800">
-          <Image src={review.imageUrl} alt="" fill className="object-cover" unoptimized />
+      {review.images.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {review.images.map((url, i) => (
+            <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="relative w-24 h-24 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 block">
+              <Image src={url} alt={`${review.user.name} photo ${i + 1}`} fill className="object-cover" unoptimized />
+            </a>
+          ))}
         </div>
       )}
 
@@ -92,7 +96,7 @@ export default function ProductReviewsSection({ productId }: ProductReviewsSecti
   const [showForm, setShowForm] = useState(false);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [images, setImages] = useState<string[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -126,18 +130,24 @@ export default function ProductReviewsSection({ productId }: ProductReviewsSecti
     }
   };
 
+  const MAX_REVIEW_PHOTOS = 3;
+
   const handleImageSelect = async (file: File | null) => {
-    if (!file) return;
+    if (!file || images.length >= MAX_REVIEW_PHOTOS) return;
     setUploadingImage(true);
     setFormError(null);
     try {
       const url = await uploadProductReviewImage(file);
-      setImageUrl(url);
+      setImages((prev) => [...prev, url]);
     } catch {
       setFormError(t('reviewsSubmitFailed'));
     } finally {
       setUploadingImage(false);
     }
+  };
+
+  const handleRemoveImage = (url: string) => {
+    setImages((prev) => prev.filter((u) => u !== url));
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -153,11 +163,11 @@ export default function ProductReviewsSection({ productId }: ProductReviewsSecti
     setFormError(null);
     setSubmitting(true);
     try {
-      await createProductReview({ productId, rating, comment: comment.trim(), imageUrl });
+      await createProductReview({ productId, rating, comment: comment.trim(), images });
       setShowForm(false);
       setRating(0);
       setComment('');
-      setImageUrl(null);
+      setImages([]);
       load();
     } catch (err: any) {
       setFormError(err?.response?.data?.message ?? t('reviewsSubmitFailed'));
@@ -222,19 +232,20 @@ export default function ProductReviewsSection({ productId }: ProductReviewsSecti
               placeholder={t('reviewsCommentPlaceholder')}
               className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
             />
-            <div>
-              {imageUrl ? (
-                <div className="relative w-20 h-20">
-                  <Image src={imageUrl} alt="" fill className="object-cover rounded-lg border border-slate-200 dark:border-slate-800" unoptimized />
+            <div className="flex flex-wrap items-center gap-2">
+              {images.map((url) => (
+                <div key={url} className="relative w-20 h-20">
+                  <Image src={url} alt="" fill className="object-cover rounded-lg border border-slate-200 dark:border-slate-800" unoptimized />
                   <button
                     type="button"
-                    onClick={() => setImageUrl(null)}
+                    onClick={() => handleRemoveImage(url)}
                     className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center"
                   >
                     <X className="w-3 h-3" />
                   </button>
                 </div>
-              ) : (
+              ))}
+              {images.length < MAX_REVIEW_PHOTOS && (
                 <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 cursor-pointer hover:text-cyan-600">
                   <ImagePlus className="w-4 h-4" />
                   {uploadingImage ? t('processing') : t('reviewsAddPhoto')}

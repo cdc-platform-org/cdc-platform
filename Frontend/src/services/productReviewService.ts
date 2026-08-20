@@ -5,7 +5,7 @@ export interface CreateProductReviewPayload {
   productId: string;
   rating: number;
   comment: string;
-  imageUrl?: string | null;
+  images?: string[]; // up to 3
 }
 
 export async function uploadProductReviewImage(file: File): Promise<string> {

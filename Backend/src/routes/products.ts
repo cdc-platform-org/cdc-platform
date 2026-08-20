@@ -8,7 +8,7 @@ import { authenticate, optionalAuthenticate, requireApproved } from '../middlewa
 import { isBusinessToolsCategory, canPurchaseBusinessTools } from '../utils/marketplaceCategories';
 import { uploadImage } from '../services/imageStorage';
 import { BunnyStorageUploadError } from '../services/bunnyStorage';
-import { imageUpload, fileUpload, multerErrorHandler } from '../middleware/productUploads';
+import { imageUpload, fileUpload, videoUpload, multerErrorHandler } from '../middleware/productUploads';
 import { fileFormatFromUrl } from '../utils/fileFormat';
 import { moderateProduct, ModerationInput } from '../services/productModerationService';
 import { getAiAutomationSettings } from '../services/aiAutomationSettingsService';
@@ -118,6 +118,7 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
       category: product.category,
       imageUrl: product.imageUrl,
       previewImages: product.previewImages,
+      previewVideoUrl: product.previewVideoUrl,
       fileFormat: fileFormatFromUrl(product.fileUrl),
       licenseType: product.licenseType,
       downloadsCount: product.downloadsCount,
@@ -145,6 +146,9 @@ const submitSchema = z.object({
   // Up to 4 additional showcase screenshots alongside imageUrl (the main
   // cover) — empty is fine, a submission isn't required to have a gallery.
   previewImages: z.array(z.string().url()).max(4).optional().default([]),
+  // Either an uploaded MP4/MOV's Bunny CDN URL or a pasted YouTube/Vimeo
+  // link — both are just URLs from here, VideoEmbed.tsx tells them apart.
+  previewVideoUrl: z.string().url().optional().nullable(),
   fileUrl: z.string().url(),
   // Omit to keep the schema-level default (PERSONAL_USE, the most
   // restrictive option) — a submitter has to deliberately pick a broader
@@ -226,6 +230,28 @@ router.post(
       res.status(201).json({ data: { url } });
     } catch (err) {
       const message = err instanceof BunnyStorageUploadError ? err.message : 'Image upload failed. Please try again.';
+      res.status(500).json({ message });
+    }
+  }
+);
+
+router.post(
+  '/upload-video',
+  authenticate,
+  requireApproved,
+  requireCanSubmitProducts,
+  (req: Request, res: Response, next: NextFunction) => videoUpload.single('video')(req, res, (err: any) => multerErrorHandler(req, res, err, next)),
+  async (req: Request, res: Response) => {
+    if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
+    try {
+      // Plain public Bunny CDN URL, same convention as /upload-image — this
+      // is a marketing preview clip, not the gated paid deliverable, so it
+      // doesn't go through productFileDelivery.ts's private-blob path.
+      const filename = `product-video-${Date.now()}-${crypto.randomUUID()}${path.extname(req.file.originalname)}`;
+      const url = await uploadImage({ buffer: req.file.buffer, mimetype: req.file.mimetype, folderName: 'product-videos', filename });
+      res.status(201).json({ data: { url } });
+    } catch (err) {
+      const message = err instanceof BunnyStorageUploadError ? err.message : 'Video upload failed. Please try again.';
       res.status(500).json({ message });
     }
   }

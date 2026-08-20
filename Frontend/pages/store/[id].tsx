@@ -11,6 +11,7 @@ import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import MarkdownContent from '../../src/components/shared/MarkdownContent';
 import ProductGallery from '../../src/components/shared/ProductGallery';
+import VideoEmbed from '../../src/components/shared/VideoEmbed';
 import ProductReviewsSection from '../../src/components/store/ProductReviewsSection';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
@@ -268,6 +269,12 @@ function StoreProductContent() {
             )}
           </div>
         </div>
+
+        {product.previewVideoUrl && (
+          <div className="mb-10">
+            <VideoEmbed url={product.previewVideoUrl} title={productTitle(product, contentLang)} />
+          </div>
+        )}
 
         {/* HOW TO USE — expandable premium card under the buy/download button */}
         <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden">

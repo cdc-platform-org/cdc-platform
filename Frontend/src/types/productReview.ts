@@ -11,7 +11,7 @@ export interface ProductReview {
   user: ProductReviewer;
   rating: number;
   comment: string;
-  imageUrl: string | null;
+  images: string[];
   helpfulCount: number;
   createdAt: string;
   updatedAt: string;
@@ -48,7 +48,7 @@ export interface AdminProductReview {
   id: string;
   rating: number;
   comment: string;
-  imageUrl: string | null;
+  images: string[];
   helpfulCount: number;
   createdAt: string;
   user: { id: string; name: string; email: string };

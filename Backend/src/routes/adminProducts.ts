@@ -7,7 +7,7 @@ import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { uploadImage } from '../services/imageStorage';
 import { BunnyStorageUploadError } from '../services/bunnyStorage';
-import { imageUpload, fileUpload, multerErrorHandler } from '../middleware/productUploads';
+import { imageUpload, fileUpload, videoUpload, multerErrorHandler } from '../middleware/productUploads';
 import { autoTranslateIfBlank } from '../services/aiTranslateService';
 import { protectProductPreviewImage } from '../services/productImageProtection';
 import { uploadProductFile } from '../services/productFileDelivery';
@@ -35,6 +35,22 @@ router.post(
       res.status(201).json({ data: { url } });
     } catch (err) {
       const message = err instanceof BunnyStorageUploadError ? err.message : 'Image upload failed. Please try again.';
+      res.status(500).json({ message });
+    }
+  }
+);
+
+router.post(
+  '/upload-video',
+  (req: Request, res: Response, next: NextFunction) => videoUpload.single('video')(req, res, (err: any) => multerErrorHandler(req, res, err, next)),
+  async (req: Request, res: Response) => {
+    if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
+    try {
+      const filename = `product-video-${Date.now()}-${crypto.randomUUID()}${path.extname(req.file.originalname)}`;
+      const url = await uploadImage({ buffer: req.file.buffer, mimetype: req.file.mimetype, folderName: 'product-videos', filename });
+      res.status(201).json({ data: { url } });
+    } catch (err) {
+      const message = err instanceof BunnyStorageUploadError ? err.message : 'Video upload failed. Please try again.';
       res.status(500).json({ message });
     }
   }
@@ -74,6 +90,7 @@ const createSchema = z.object({
   // Up to 4 additional showcase screenshots alongside imageUrl (the main
   // cover) — empty is fine, a submission isn't required to have a gallery.
   previewImages: z.array(z.string().url()).max(4).optional().default([]),
+  previewVideoUrl: z.string().url().optional().nullable(),
   fileUrl: z.string().url(),
   licenseType: z.nativeEnum(ProductLicenseType).optional(),
   discountedPrice: z.number().min(0).optional().nullable(),
@@ -153,6 +170,7 @@ const updateSchema = z.object({
   price: z.number().min(0).optional(),
   imageUrl: z.string().url().optional(),
   previewImages: z.array(z.string().url()).max(4).optional(),
+  previewVideoUrl: z.string().url().optional().nullable(),
   licenseType: z.nativeEnum(ProductLicenseType).optional(),
   discountedPrice: z.number().min(0).optional().nullable(),
   saleEndsAt: z.string().datetime().optional().nullable().or(z.literal('')),

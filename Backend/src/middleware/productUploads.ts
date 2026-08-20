@@ -54,6 +54,28 @@ export const fileUpload = multer({
   limits: { fileSize: 200 * 1024 * 1024 }, // 200MB — product assets/short demo videos
 });
 
+// DigitalProduct.previewVideoUrl's upload path — a small public marketing
+// clip (unlike fileUpload above, which stores the actual paid deliverable
+// privately). MOV has no reliable standard mimetype across browsers/OSes,
+// so the extension check is the real gate for it, same posture as
+// fileUploadFilter's design-tool formats above.
+const VIDEO_UPLOAD_MIMETYPES = ['video/mp4', 'video/quicktime'];
+const VIDEO_UPLOAD_EXTENSIONS = /\.(mp4|mov)$/i;
+
+const videoUploadFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  if (VIDEO_UPLOAD_MIMETYPES.includes(file.mimetype) || VIDEO_UPLOAD_EXTENSIONS.test(file.originalname)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only MP4 or MOV video files are allowed.'));
+  }
+};
+
+export const videoUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: videoUploadFilter,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB, per the product spec
+});
+
 export function multerErrorHandler(req: Request, res: Response, err: any, next: NextFunction) {
   if (!err) return next();
   if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {

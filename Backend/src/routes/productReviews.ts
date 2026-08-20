@@ -8,6 +8,7 @@ import { recomputeProductReviewAggregates } from '../services/productReviewAggre
 import { uploadImage } from '../services/imageStorage';
 import { BunnyStorageUploadError } from '../services/bunnyStorage';
 import { imageUpload, multerErrorHandler } from '../middleware/productUploads';
+import { optimizeReviewImage } from '../services/reviewImageOptimization';
 
 const router = Router();
 const reviewerSelect = { select: { id: true, name: true, avatarUrl: true } };
@@ -22,9 +23,11 @@ router.post(
   (req: Request, res: Response, next: NextFunction) => imageUpload.single('image')(req, res, (err: any) => multerErrorHandler(req, res, err, next)),
   async (req: Request, res: Response) => {
     if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
-    const filename = `product-review-${Date.now()}-${crypto.randomUUID()}${path.extname(req.file.originalname)}`;
     try {
-      const url = await uploadImage({ buffer: req.file.buffer, mimetype: req.file.mimetype, folderName: 'product-review-images', filename });
+      const optimized = await optimizeReviewImage(req.file.buffer, req.file.mimetype);
+      const extension = optimized.mimetype === 'image/jpeg' ? '.jpg' : path.extname(req.file.originalname);
+      const filename = `product-review-${Date.now()}-${crypto.randomUUID()}${extension}`;
+      const url = await uploadImage({ buffer: optimized.buffer, mimetype: optimized.mimetype, folderName: 'product-review-images', filename });
       res.status(201).json({ data: { url } });
     } catch (err) {
       const message = err instanceof BunnyStorageUploadError ? err.message : 'Image upload failed. Please try again.';
@@ -43,7 +46,7 @@ router.post(
 router.post('/', authenticate, requireApproved, async (req: Request, res: Response) => {
   const result = createProductReviewSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
-  const { productId, rating, comment, imageUrl } = result.data;
+  const { productId, rating, comment, images } = result.data;
 
   const purchase = await prisma.productPurchase.findUnique({
     where: { userId_productId: { userId: req.user!.id, productId } },
@@ -61,7 +64,7 @@ router.post('/', authenticate, requireApproved, async (req: Request, res: Respon
           purchaseId: purchase.id,
           rating,
           comment,
-          imageUrl: imageUrl ?? null,
+          images,
         },
         include: { user: reviewerSelect },
       });

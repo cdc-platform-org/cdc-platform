@@ -19,6 +19,7 @@ import {
   updateProductAdmin,
   uploadProductImage,
   uploadProductFile,
+  uploadProductVideo,
   getProductPurchases,
   DigitalProduct,
   AdminProductPurchase,
@@ -53,11 +54,21 @@ function ModerationProductCard({
   onApprove: () => void;
   onReject: () => void;
   onRequestChanges: () => void;
-  onSave: (patch: { title: string; description: string }) => Promise<void>;
+  onSave: (patch: {
+    title: string;
+    description: string;
+    imageUrl: string;
+    previewImages: string[];
+    previewVideoUrl: string | null;
+  }) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(p.title);
   const [description, setDescription] = useState(p.description);
+  const [editImageUrl, setEditImageUrl] = useState(p.imageUrl);
+  const [editPreviewImages, setEditPreviewImages] = useState<string[]>(p.previewImages);
+  const [editVideoUrl, setEditVideoUrl] = useState(p.previewVideoUrl ?? '');
+  const [editVideoUploading, setEditVideoUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showPurchases, setShowPurchases] = useState(false);
   const [purchases, setPurchases] = useState<AdminProductPurchase[] | null>(null);
@@ -79,18 +90,32 @@ function ModerationProductCard({
   const startEdit = () => {
     setTitle(p.title);
     setDescription(p.description);
+    setEditImageUrl(p.imageUrl);
+    setEditPreviewImages(p.previewImages);
+    setEditVideoUrl(p.previewVideoUrl ?? '');
     setEditing(true);
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave({ title, description });
+      await onSave({ title, description, imageUrl: editImageUrl, previewImages: editPreviewImages, previewVideoUrl: editVideoUrl || null });
       setEditing(false);
     } catch {
       // error already surfaced via the parent's actionError state
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleEditVideoFile = async (file: File) => {
+    setEditVideoUploading(true);
+    try {
+      setEditVideoUrl(await uploadProductVideo(file));
+    } catch {
+      // Non-fatal — the demo video is optional.
+    } finally {
+      setEditVideoUploading(false);
     }
   };
 
@@ -106,9 +131,46 @@ function ModerationProductCard({
         </div>
 
         {editing ? (
-          <div className="space-y-2 mb-2">
+          <div className="space-y-3 mb-2">
             <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold" />
             <RichTextEditor rows={3} value={description} onChange={setDescription} />
+            <ImageGalleryUploader
+              coverUrl={editImageUrl}
+              onCoverChange={setEditImageUrl}
+              previewImages={editPreviewImages}
+              onPreviewImagesChange={setEditPreviewImages}
+              uploadImage={uploadProductImage}
+              lang="en"
+              labels={{
+                coverLabel: 'Cover Image',
+                coverHint: 'Click or drop to replace',
+                coverSizeHint: 'Max 10MB',
+                galleryLabel: 'Screenshots',
+                gallerySizeHint: 'Max 10MB each, up to 4',
+                addMore: 'Add more',
+                uploading: 'Uploading…',
+                remove: 'Remove',
+                uploadFailed: 'Upload failed.',
+              }}
+            />
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Demo Video (optional)</label>
+              <input
+                value={editVideoUrl}
+                onChange={(e) => setEditVideoUrl(e.target.value)}
+                placeholder="YouTube/Vimeo link, or upload a file below"
+                className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm mb-2"
+              />
+              <FileDropzone
+                accept=".mp4,.mov"
+                uploading={editVideoUploading}
+                selectedFileName={editVideoUrl ? assetFilenameFromUrl(editVideoUrl) : null}
+                onFile={handleEditVideoFile}
+                label="Upload video"
+                hint="MP4 or MOV, up to 50MB"
+                uploadingLabel="Uploading…"
+              />
+            </div>
             <div className="flex gap-2">
               <button
                 type="button"

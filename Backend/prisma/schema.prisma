@@ -1167,6 +1167,14 @@ model DigitalProduct {
   // pattern as StudioCaseStudy.galleryImages. Capped at 4 in the Zod schemas
   // (products.ts/adminProducts.ts), not here.
   previewImages      String[]           @default([])
+  // Optional demo/preview clip shown on /store/[id] alongside the gallery —
+  // either an uploaded MP4/MOV (plain public Bunny CDN URL, same convention
+  // as imageUrl/previewImages, capped at 50MB by videoUpload in
+  // middleware/productUploads.ts) or a pasted YouTube/Vimeo link (validated
+  // as a URL only, same posture as StudioCaseStudy.videoUrl). Rendering
+  // (VideoEmbed.tsx) tells the two apart by parsing the URL shape, not by a
+  // separate flag here.
+  previewVideoUrl    String?
   // Never exposed directly to the client until a completed purchase is
   // verified server-side — see routes/products.ts's /:id/download. Uploads
   // made through /upload-file store a `cdcblob://<blobName>` marker here
@@ -1549,10 +1557,11 @@ model ProductReview {
   purchase     ProductPurchase            @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   rating       Int
   comment      String
-  // Optional proof/showcase photo (e.g. the finished product in use) —
-  // same Bunny-Storage-CDN-URL convention as every other upload in this
-  // codebase, never a freely-settable arbitrary URL.
-  imageUrl     String?
+  // Up to 3 optional proof/showcase photos (e.g. the finished product in
+  // use) — same Bunny-Storage-CDN-URL convention as every other upload in
+  // this codebase, never freely-settable arbitrary URLs. Capped at 3 in the
+  // Zod schema (productReviewSchemas.ts), not here.
+  images       String[]                   @default([])
   // Denormalized count of helpfulVotes below — recomputed on every vote
   // toggle, same rollup pattern used everywhere else in this schema.
   helpfulCount Int                        @default(0)

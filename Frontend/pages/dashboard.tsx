@@ -50,6 +50,7 @@ import {
   getMySubmissions,
   uploadMyProductImage,
   uploadMyProductFile,
+  uploadMyProductVideo,
   DigitalProduct,
   ProductLicenseType,
   LICENSE_LABELS,
@@ -902,6 +903,8 @@ function DashboardContent() {
   const [submitImageUrl, setSubmitImageUrl] = useState('');
   const [submitPreviewImages, setSubmitPreviewImages] = useState<string[]>([]);
   const [submitFileUrl, setSubmitFileUrl] = useState('');
+  const [submitVideoUrl, setSubmitVideoUrl] = useState('');
+  const [submitVideoUploading, setSubmitVideoUploading] = useState(false);
   const [submitLicenseType, setSubmitLicenseType] = useState<ProductLicenseType>('PERSONAL_USE');
   const [submitDiscountedPrice, setSubmitDiscountedPrice] = useState('');
   const [submitSaleEndsAt, setSubmitSaleEndsAt] = useState('');
@@ -1047,6 +1050,7 @@ function DashboardContent() {
           category: submitCategory,
           imageUrl: submitImageUrl,
           previewImages: submitPreviewImages,
+          previewVideoUrl: submitVideoUrl || null,
           licenseType: submitLicenseType,
           discountedPrice: submitDiscountedPrice ? Number(submitDiscountedPrice) : null,
           saleEndsAt: submitSaleEndsAt || null,
@@ -1060,6 +1064,7 @@ function DashboardContent() {
           category: submitCategory,
           imageUrl: submitImageUrl,
           previewImages: submitPreviewImages,
+          previewVideoUrl: submitVideoUrl || null,
           fileUrl: submitFileUrl,
           licenseType: submitLicenseType,
           discountedPrice: submitDiscountedPrice ? Number(submitDiscountedPrice) : null,
@@ -1073,6 +1078,7 @@ function DashboardContent() {
       setSubmitImageUrl('');
       setSubmitPreviewImages([]);
       setSubmitFileUrl('');
+      setSubmitVideoUrl('');
       setSubmitLicenseType('PERSONAL_USE');
       setSubmitDiscountedPrice('');
       setSubmitSaleEndsAt('');
@@ -1094,6 +1100,7 @@ function DashboardContent() {
     setSubmitCategory(s.category);
     setSubmitImageUrl(s.imageUrl);
     setSubmitPreviewImages(s.previewImages);
+    setSubmitVideoUrl(s.previewVideoUrl ?? '');
     setSubmitLicenseType(s.licenseType);
     setSubmitDiscountedPrice(s.discountedPrice != null ? String(s.discountedPrice / 100) : '');
     // <input type="datetime-local"> needs "YYYY-MM-DDTHH:mm", not a full ISO
@@ -1113,6 +1120,17 @@ function DashboardContent() {
       setSubmitFileUploadError(err?.response?.data?.message ?? t.fileUploadFailed);
     } finally {
       setSubmitFileUploading(false);
+    }
+  };
+
+  const handleSubmitVideoFile = async (file: File) => {
+    setSubmitVideoUploading(true);
+    try {
+      setSubmitVideoUrl(await uploadMyProductVideo(file));
+    } catch {
+      // Non-fatal — the demo video is optional, leave whatever was there.
+    } finally {
+      setSubmitVideoUploading(false);
     }
   };
 
@@ -1822,6 +1840,26 @@ function DashboardContent() {
                           uploadingLabel={t.formUploading}
                         />
                         {submitFileUploadError && <p className="text-xs text-red-500 mt-1">{submitFileUploadError}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+                          {lang === 'ka' ? 'დემო ვიდეო (არასავალდებულო)' : 'Demo Video (optional)'}
+                        </label>
+                        <input
+                          value={submitVideoUrl}
+                          onChange={(e) => setSubmitVideoUrl(e.target.value)}
+                          placeholder={lang === 'ka' ? 'YouTube/Vimeo ბმული, ან ატვირთეთ ფაილი ქვემოთ' : 'YouTube/Vimeo link, or upload a file below'}
+                          className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm mb-2"
+                        />
+                        <FileDropzone
+                          accept=".mp4,.mov"
+                          uploading={submitVideoUploading}
+                          selectedFileName={submitVideoUrl ? assetFilenameFromUrl(submitVideoUrl) : null}
+                          onFile={handleSubmitVideoFile}
+                          label={lang === 'ka' ? 'ვიდეოს ატვირთვა' : 'Upload video'}
+                          hint={lang === 'ka' ? 'MP4 ან MOV, მაქს. 50MB' : 'MP4 or MOV, up to 50MB'}
+                          uploadingLabel={t.formUploading}
+                        />
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{lang === 'ka' ? 'ლიცენზია' : 'License'}</label>
