@@ -574,8 +574,14 @@ router.get('/:id/exam/status', authenticate, requireCourseAccess, async (req: Re
     prisma.examAttempt.findFirst({ where: { userId: req.user!.id, examId: exam.id }, orderBy: { completedAt: 'desc' } }),
   ]);
 
+  // completedAt is non-nullable in the schema (every ExamAttempt is only
+  // ever created already-scored), but `?.` here costs nothing and means a
+  // row written by some future/manual path that doesn't hold that
+  // invariant degrades to "no cooldown" instead of 500ing this endpoint.
   const cooldownEndsAt =
-    lastAttempt && !passedAttempt ? new Date(lastAttempt.completedAt.getTime() + exam.cooldownHours * 60 * 60 * 1000) : null;
+    lastAttempt && !passedAttempt && lastAttempt.completedAt
+      ? new Date(lastAttempt.completedAt.getTime() + exam.cooldownHours * 60 * 60 * 1000)
+      : null;
   const inCooldown = !!cooldownEndsAt && cooldownEndsAt.getTime() > Date.now();
 
   res.json({

@@ -206,8 +206,11 @@ function LearnContent() {
       setProgress(progressData);
       setExamStatus(examStatusData);
       setExpandedSectionIds(new Set(curriculumData.map((s) => s.id)));
-      const firstIncomplete = curriculumData.flatMap((s) => s.lessons).find((l) => !l.completed);
-      const first = curriculumData[0]?.lessons[0];
+      // Every lesson's own array is guaranteed present by the curriculum
+      // endpoint (an empty array, never missing) — `?.[0]` still guards the
+      // section itself being absent (a course with zero sections yet).
+      const firstIncomplete = curriculumData.flatMap((s) => s.lessons ?? []).find((l) => !l.completed);
+      const first = curriculumData[0]?.lessons?.[0];
       setActiveLessonId((firstIncomplete ?? first)?.id ?? null);
     } catch {
       setError(t('notEnrolled'));
@@ -219,6 +222,20 @@ function LearnContent() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // router.query.id is genuinely absent for a tick during the very first
+  // client hydration of a hard page load — load() above already
+  // self-corrects once it populates (a fresh `courseId` reruns the effect).
+  // This only fires for the case that never resolves on its own: a
+  // malformed route (empty/invalid id segment) where `courseId` stays null
+  // even after the router has fully hydrated — without this, that case left
+  // the page spinning on the loading state forever instead of going
+  // anywhere.
+  useEffect(() => {
+    if (router.isReady && !courseId) {
+      router.replace('/courses');
+    }
+  }, [router, courseId]);
 
   const toggleSection = (sectionId: string) => {
     setExpandedSectionIds((prev) => {
