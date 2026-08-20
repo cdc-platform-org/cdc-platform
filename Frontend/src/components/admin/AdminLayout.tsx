@@ -30,6 +30,7 @@ import {
   Bug,
   UserCheck,
   PlayCircle,
+  ShieldBan,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AdminLangProvider, useAdminLang } from '../../context/AdminLangContext';
@@ -50,6 +51,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/disputes', labelKey: 'disputes', icon: Scale, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'core' },
   { href: '/admin/mentorship', labelKey: 'mentorship', icon: GraduationCap, section: 'core' },
   { href: '/admin/messages', labelKey: 'messages', icon: ShieldAlert, section: 'core' },
+  { href: '/admin/chat-moderation', labelKey: 'chatModeration', icon: ShieldBan, tiers: ['SUPER_ADMIN', 'MANAGER', 'MODERATOR'], section: 'core' },
   { href: '/admin/notifications', labelKey: 'notifications', icon: Bell, section: 'core' },
   { href: '/admin/products', labelKey: 'products', icon: ShoppingBag, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/forum', labelKey: 'forum', icon: MessageSquare, section: 'content' },

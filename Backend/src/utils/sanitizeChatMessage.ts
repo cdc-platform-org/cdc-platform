@@ -22,7 +22,13 @@ const IBAN_PATTERN = /\b[A-Za-z]{2}\d{2}[A-Za-z0-9]{10,30}\b/g;
 const PHONE_CANDIDATE_PATTERN = /(\+?\d[\d\-.\s()]{5,}\d)/g;
 
 const EXTERNAL_CONTACT_PATTERN =
-  /\b(whats ?app|wa\.me|telegram|t\.me|viber|messenger|signal|skype|ვაცაპი|ტელეგრამი|ვაიბერი|პირდაპირი გადარიცხვა|direct transfer|bank transfer|cash payment|off[- ]?platform)\b/gi;
+  /\b(whats ?app|wa\.me|telegram|t\.me|viber|messenger|signal|skype|instagram|insta\b|ვაცაპი|ტელეგრამი|ვაიბერი|ინსტაგრამი|პირდაპირი გადარიცხვა|ბანკის გადარიცხვა|ბოგ(ის)? გადარიცხვა|ბარათზე გადარიცხვა|direct transfer|bank transfer|bog transfer|card transfer|cash payment|off[- ]?platform)\b/gi;
+
+// @handle-style social mentions (Instagram/Telegram/X/etc.) — a bare
+// "@word" has no legitimate use in this platform's chat context, so this is
+// safe to always mask without the false-positive risk phone/IBAN detection
+// has to guard against above.
+const SOCIAL_HANDLE_PATTERN = /@[a-zA-Z0-9_.]{3,30}\b/g;
 
 function maskAll(text: string, pattern: RegExp): { text: string; matched: boolean } {
   let matched = false;
@@ -72,6 +78,10 @@ export function sanitizeChatMessage(text: string): SanitizeChatMessageResult {
   const links = maskAll(sanitized, EXTERNAL_CONTACT_PATTERN);
   sanitized = links.text;
   wasFiltered = wasFiltered || links.matched;
+
+  const handles = maskAll(sanitized, SOCIAL_HANDLE_PATTERN);
+  sanitized = handles.text;
+  wasFiltered = wasFiltered || handles.matched;
 
   return { sanitized, wasFiltered };
 }

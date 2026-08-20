@@ -399,66 +399,71 @@ model User {
   aiSubscriptionActive          Boolean                     @default(false)
   createdAt                     DateTime                    @default(now())
 
-  postedGigs                  Gig[]                        @relation("PostedGigs")
-  assignedGigs                Gig[]                        @relation("AssignedGigs")
-  gigApplications             GigApplication[]
-  clientTransactions          GigTransaction[]             @relation("ClientTransactions")
-  freelancerTransactions      GigTransaction[]             @relation("FreelancerTransactions")
-  walletEntries               WalletEntry[]
-  postedVacancies             Vacancy[]
-  vacancyApplications         VacancyApplication[]
-  blogPosts                   BlogPost[]
-  reviewsGiven                Review[]                     @relation("ReviewsGiven")
-  reviewsReceived             Review[]                     @relation("ReviewsReceived")
-  sentDirectOffers            DirectOffer[]                @relation("SentDirectOffers")
-  receivedDirectOffers        DirectOffer[]                @relation("ReceivedDirectOffers")
-  sentMessages                Message[]                    @relation("SentMessages")
-  receivedMessages            Message[]                    @relation("ReceivedMessages")
-  paymentMethods              PaymentMethod[]
-  bogPayments                 BogPayment[]
-  stripePayments              StripePayment[]
-  courseEnrollments           CourseEnrollment[]
-  lessonProgress              LessonProgress[]
-  courseCertificates          CourseCertificate[]
-  courseDiscussionPosts       CourseDiscussionPost[]
-  examAttempts                ExamAttempt[]
-  freelancerSkillExamAttempts FreelancerSkillExamAttempt[]
-  skillTestAttempts           SkillTestAttempt[]
-  verifiedSkills              VerifiedSkill[]
-  productPurchases            ProductPurchase[]
-  assignmentSubmissions       AssignmentSubmission[]
-  submittedProducts           DigitalProduct[]             @relation("SubmittedProducts")
-  forumThreads                ForumThread[]
-  forumComments               ForumComment[]
-  forumThreadLikes            ForumThreadLike[]
-  forumCommentLikes           ForumCommentLike[]
-  disputesRaised              Dispute[]                    @relation("DisputesRaised")
-  disputesResolved            Dispute[]                    @relation("DisputesResolved")
-  payoutRequests              PayoutRequest[]              @relation("PayoutRequests")
-  payoutRequestsReviewed      PayoutRequest[]              @relation("PayoutRequestsReviewed")
-  auditLogs                   AuditLog[]
-  siteContentUpdates          SiteContent[]
-  studioInquiriesReviewed     StudioInquiry[]
+  postedGigs                   Gig[]                         @relation("PostedGigs")
+  assignedGigs                 Gig[]                         @relation("AssignedGigs")
+  gigApplications              GigApplication[]
+  clientTransactions           GigTransaction[]              @relation("ClientTransactions")
+  freelancerTransactions       GigTransaction[]              @relation("FreelancerTransactions")
+  walletEntries                WalletEntry[]
+  postedVacancies              Vacancy[]
+  vacancyApplications          VacancyApplication[]
+  blogPosts                    BlogPost[]
+  reviewsGiven                 Review[]                      @relation("ReviewsGiven")
+  reviewsReceived              Review[]                      @relation("ReviewsReceived")
+  sentDirectOffers             DirectOffer[]                 @relation("SentDirectOffers")
+  receivedDirectOffers         DirectOffer[]                 @relation("ReceivedDirectOffers")
+  sentMessages                 Message[]                     @relation("SentMessages")
+  receivedMessages             Message[]                     @relation("ReceivedMessages")
+  paymentMethods               PaymentMethod[]
+  bogPayments                  BogPayment[]
+  stripePayments               StripePayment[]
+  courseEnrollments            CourseEnrollment[]
+  lessonProgress               LessonProgress[]
+  courseCertificates           CourseCertificate[]
+  courseDiscussionPosts        CourseDiscussionPost[]
+  examAttempts                 ExamAttempt[]
+  freelancerSkillExamAttempts  FreelancerSkillExamAttempt[]
+  skillTestAttempts            SkillTestAttempt[]
+  verifiedSkills               VerifiedSkill[]
+  productPurchases             ProductPurchase[]
+  assignmentSubmissions        AssignmentSubmission[]
+  submittedProducts            DigitalProduct[]              @relation("SubmittedProducts")
+  forumThreads                 ForumThread[]
+  forumComments                ForumComment[]
+  forumThreadLikes             ForumThreadLike[]
+  forumCommentLikes            ForumCommentLike[]
+  disputesRaised               Dispute[]                     @relation("DisputesRaised")
+  disputesResolved             Dispute[]                     @relation("DisputesResolved")
+  payoutRequests               PayoutRequest[]               @relation("PayoutRequests")
+  payoutRequestsReviewed       PayoutRequest[]               @relation("PayoutRequestsReviewed")
+  auditLogs                    AuditLog[]
+  siteContentUpdates           SiteContent[]
+  studioInquiriesReviewed      StudioInquiry[]
   // CDC Business AI — a Business (Client) account's chat agents. See the
   // Agent model's own comment for why billing fields live there instead of
   // a separate Subscription model for now.
-  agents                      Agent[]
-  examSessions                ExamSession[]
-  billingSubscriptions        BillingSubscription[]
-  blogComments                BlogComment[]
-  mentorshipRequestsMade      MentorshipRequest[]          @relation("MentorshipRequestsMade")
-  mentorshipRequestsResolved  MentorshipRequest[]          @relation("MentorshipRequestsResolved")
-  notifications               Notification[]
-  mentorAvailabilityRules     MentorAvailabilityRule[]
+  agents                       Agent[]
+  examSessions                 ExamSession[]
+  billingSubscriptions         BillingSubscription[]
+  blogComments                 BlogComment[]
+  mentorshipRequestsMade       MentorshipRequest[]           @relation("MentorshipRequestsMade")
+  mentorshipRequestsResolved   MentorshipRequest[]           @relation("MentorshipRequestsResolved")
+  notifications                Notification[]
+  mentorAvailabilityRules      MentorAvailabilityRule[]
   mentorAvailabilityExceptions MentorAvailabilityException[]
-  sentNotificationBatches     NotificationBatch[]
-  mentorshipBookingsAsMentor  MentorshipBooking[]          @relation("MentorshipBookingsAsMentor")
-  mentorshipBookingsAsStudent MentorshipBooking[]          @relation("MentorshipBookingsAsStudent")
-  mentorBookingHistoryActions MentorBookingHistory[]       @relation("MentorBookingHistoryActor")
-  mentorChatMessagesSent      MentorChatMessage[]          @relation("MentorChatMessagesSent")
-  mentorChatMessagesReceived  MentorChatMessage[]          @relation("MentorChatMessagesReceived")
-  mentorChatViolations        MentorChatViolation[]        @relation("MentorChatViolations")
-  cyberSentinelDevices        CyberSentinelDevice[]        @relation("CyberSentinelDevices")
+  sentNotificationBatches      NotificationBatch[]
+  mentorshipBookingsAsMentor   MentorshipBooking[]           @relation("MentorshipBookingsAsMentor")
+  mentorshipBookingsAsStudent  MentorshipBooking[]           @relation("MentorshipBookingsAsStudent")
+  mentorBookingHistoryActions  MentorBookingHistory[]        @relation("MentorBookingHistoryActor")
+  mentorChatMessagesSent       MentorChatMessage[]           @relation("MentorChatMessagesSent")
+  mentorChatMessagesReceived   MentorChatMessage[]           @relation("MentorChatMessagesReceived")
+  mentorChatViolations         MentorChatViolation[]         @relation("MentorChatViolations")
+  cyberSentinelDevices         CyberSentinelDevice[]         @relation("CyberSentinelDevices")
+  chatRequestsSent             ChatRequest[]                 @relation("ChatRequestsSent")
+  chatRequestsReceived         ChatRequest[]                 @relation("ChatRequestsReceived")
+  chatFlagsAsSender            ChatFlag[]                    @relation("ChatFlagsAsSender")
+  chatFlagsAsRecipient         ChatFlag[]                    @relation("ChatFlagsAsRecipient")
+  chatFlagsReviewed            ChatFlag[]                    @relation("ChatFlagsReviewed")
 
   @@map("users")
 }
@@ -710,15 +715,15 @@ model Course {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  orders          Order[]                @relation("OrderCourses")
-  enrollments     CourseEnrollment[]
-  sections        CourseSection[]
-  certificates    CourseCertificate[]
+  orders             Order[]                @relation("OrderCourses")
+  enrollments        CourseEnrollment[]
+  sections           CourseSection[]
+  certificates       CourseCertificate[]
   // One AI-generated certification exam per course, if configured by an
   // admin — courses without one keep the old "100% lessons" certificate gate
   // (see routes/courses.ts's GET /:id/certificate).
-  exam            Exam?
-  discussionPosts CourseDiscussionPost[]
+  exam               Exam?
+  discussionPosts    CourseDiscussionPost[]
   // Set once a LiveTraining recording gets turned into this course — see
   // LiveTraining.convertedToCourseId's own comment for why this is a link
   // rather than a merge.
@@ -739,35 +744,35 @@ model Course {
 // ============================================================
 
 model LiveTraining {
-  id            String    @id @default(uuid())
-  title         String
-  titleEn       String?
-  description   String
-  descriptionEn String?
-  category      String
-  scheduledAt   DateTime
+  id                  String   @id @default(uuid())
+  title               String
+  titleEn             String?
+  description         String
+  descriptionEn       String?
+  category            String
+  scheduledAt         DateTime
   // Minor units (tetri), same Int-money convention as Course.originalPrice
   // elsewhere. Nullable — a lead-gen/intro session may be free, with any
   // real payment collected on the follow-up call rather than through this
   // registration form.
-  price         Int?
-  thumbnailUrl  String?
+  price               Int?
+  thumbnailUrl        String?
   // Group-viability floor — see LiveTrainingLead's registeredCount-derived
   // "min threshold met" badge on both the admin and public pages. 0 means
   // no minimum is enforced.
-  minCapacity   Int       @default(0)
-  maxCapacity   Int
-  published     Boolean   @default(false)
+  minCapacity         Int      @default(0)
+  maxCapacity         Int
+  published           Boolean  @default(false)
   // Set once an admin turns the recording into a real Course. A link, not a
   // merge: the new Course still needs real sections/lessons authored by
   // hand, this just lets past leads be notified and traced back to the
   // session that originated the course.
-  convertedToCourseId String?      @unique
-  convertedToCourse   Course?      @relation(fields: [convertedToCourseId], references: [id])
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  convertedToCourseId String?  @unique
+  convertedToCourse   Course?  @relation(fields: [convertedToCourseId], references: [id])
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  leads         LiveTrainingLead[]
+  leads LiveTrainingLead[]
 
   @@index([published])
   @@map("live_trainings")
@@ -784,16 +789,16 @@ enum LiveTrainingLeadStatus {
 // admin-managed status), not a User relation, since a prospective trainee
 // registering by phone number has no reason to have an account yet.
 model LiveTrainingLead {
-  id             String                  @id @default(uuid())
+  id             String                 @id @default(uuid())
   liveTrainingId String
-  liveTraining   LiveTraining            @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  liveTraining   LiveTraining           @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
   name           String
   email          String
   phone          String
-  status         LiveTrainingLeadStatus  @default(NOT_CONTACTED)
+  status         LiveTrainingLeadStatus @default(NOT_CONTACTED)
   adminNote      String?
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
 
   @@index([liveTrainingId])
   @@index([status])
@@ -1110,7 +1115,7 @@ model DigitalProduct {
   // opt-in via a manual "Auto-Translate" button.
   titleEn            String?
   description        String
-  descriptionEn       String?
+  descriptionEn      String?
   price              Int
   category           String
   imageUrl           String
@@ -1464,9 +1469,28 @@ model DirectOffer {
 }
 
 // ============================================================
-// MESSAGE (direct 1:1 chat between two users — content is sanitized with
-// sanitizeChatMessage server-side BEFORE it ever reaches this table, so
-// what's stored is already safe to display as-is)
+// MESSAGE (direct 1:1 chat between two users). Every message sent through
+// routes/messages.ts's POST / is checked by sanitizeChatMessage
+// (utils/sanitizeChatMessage.ts) server-side; a flagged message is BLOCKED
+// entirely regardless of either participant's role — never stored here at
+// all, logged to ChatFlag below instead — same hard-block posture as
+// MentorChatMessage/MentorChatViolation. This means wasFiltered essentially
+// never turns true for a NEW row created through that route going forward.
+//
+// The column still exists and can still be true because two other,
+// unrelated call sites write directly to this table with the OLDER
+// mask-in-place-and-still-send behavior, never having gone through
+// routes/messages.ts at all: routes/vacancies.ts (a candidate's application
+// cover note, delivered as a kickoff DM to the employer) and any historical
+// row from before this hard-block change shipped. Changing those two
+// direct-write call sites' posture was out of scope here — see the fresh
+// ChatFlag model below for what covers the messages.ts path now, and
+// routes/adminMessages.ts's existing wasFiltered-based audit view for
+// what still covers those.
+//
+// Separately, Student<->Student pairs also need an ACCEPTED ChatRequest
+// (below) before POST / will accept anything from them at all — see
+// services/chatConsentService.ts for exactly when that gate applies.
 // ============================================================
 
 model Message {
@@ -1482,6 +1506,76 @@ model Message {
   @@index([senderId, recipientId])
   @@index([recipientId, senderId])
   @@map("messages")
+}
+
+// ============================================================
+// CHAT REQUEST — Request-First consent gate for Student<->Student direct
+// messaging specifically (routes/messages.ts's POST / enforces this only
+// when both sender and recipient have role Student; any other role
+// combination — a Client, Mentor, or SuperAdmin on either side — keeps the
+// platform's original open-messaging behavior, since those relationships
+// already come with their own established channel: a gig/vacancy, a
+// mentorship booking, admin support, etc). A prior Message already existing
+// between the two users also bypasses this gate — the point is to stop an
+// UNSOLICITED first contact, not to re-gate an already-ongoing, legitimate
+// conversation that predates this feature.
+// ============================================================
+
+enum ChatRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model ChatRequest {
+  id           String            @id @default(uuid())
+  senderId     String
+  sender       User              @relation("ChatRequestsSent", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId  String
+  recipient    User              @relation("ChatRequestsReceived", fields: [recipientId], references: [id], onDelete: Cascade)
+  status       ChatRequestStatus @default(PENDING)
+  // Short note shown to the recipient when deciding whether to accept —
+  // itself run through sanitizeChatMessage the same as any chat content,
+  // since it's free text visible to a stranger before any consent exists.
+  introMessage String?
+  respondedAt  DateTime?
+  createdAt    DateTime          @default(now())
+
+  // One row per direction per pair — a REJECTED request can't be re-sent by
+  // the same sender (routes/chatRequests.ts checks for an existing row in
+  // either direction before creating one), though the original recipient
+  // can still initiate their own request back if they change their mind —
+  // that's a different row, the reverse direction, not blocked by this.
+  @@unique([senderId, recipientId])
+  @@index([recipientId, status])
+  @@map("chat_requests")
+}
+
+// One row per BLOCKED off-platform-contact attempt in general Message
+// traffic — the Student<->Student equivalent of MentorChatViolation, kept
+// as its own separate model rather than merged into that one since the two
+// guard entirely different relationships (a paid mentorship booking vs.
+// unsolicited peer messaging) and this one additionally tracks admin
+// review state for /admin/chat-moderation, which MentorChatViolation has
+// no equivalent page for. Manual ban only — unlike MentorChatViolation's
+// automatic 2-strike ban, an admin decides here (see routes/
+// adminChatModeration.ts); nothing in this model auto-bans anyone.
+model ChatFlag {
+  id                String    @id @default(uuid())
+  senderId          String
+  sender            User      @relation("ChatFlagsAsSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId       String
+  recipient         User      @relation("ChatFlagsAsRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  attemptedContent  String
+  detectedReason    String
+  reviewedAt        DateTime?
+  reviewedByAdminId String?
+  reviewedByAdmin   User?     @relation("ChatFlagsReviewed", fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
+  createdAt         DateTime  @default(now())
+
+  @@index([senderId])
+  @@index([createdAt])
+  @@map("chat_flags")
 }
 
 // ============================================================
@@ -2637,16 +2731,16 @@ model MentorshipRequest {
 // panel, surfaced via the header bell) — deliberately no reply/thread
 // concept, unlike MessageThread.
 model Notification {
-  id        String   @id @default(uuid())
+  id        String             @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   message   String
   // Free-form category tag ("MODERATION" | "ADMIN_DIRECT" | "SYSTEM", etc.)
   // — not a Prisma enum since admin-authored notification types may grow
   // without needing a migration each time.
-  type      String   @default("ADMIN_DIRECT")
-  isRead    Boolean  @default(false)
+  type      String             @default("ADMIN_DIRECT")
+  isRead    Boolean            @default(false)
   // Set alongside isRead the first time it flips true — POST
   // /notifications/:id/read never overwrites it on a later call, so it
   // stays the *first* open time. Null while unread.
@@ -2659,7 +2753,7 @@ model Notification {
   // it from every recipient's bell/hub too, not just the admin's history.
   batchId   String?
   batch     NotificationBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  createdAt DateTime           @default(now())
 
   @@index([userId])
   @@index([userId, isRead])
@@ -2692,7 +2786,7 @@ model NotificationBatch {
   sentBy         User     @relation(fields: [sentById], references: [id], onDelete: Restrict)
   createdAt      DateTime @default(now())
 
-  notifications  Notification[]
+  notifications Notification[]
 
   @@index([sentById])
   @@map("notification_batches")
