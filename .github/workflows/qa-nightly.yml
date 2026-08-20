@@ -1,18 +1,25 @@
 name: Nightly QA
 
-# Runs the Playwright E2E suite every night, AND on every PR into main, against
-# a fresh, self-contained stack (Postgres + Backend + Frontend, all spun up in
-# this job — see the comment on the `e2e` job below for why there's no real
-# staging deployment to point at yet). On a scheduled/manual run's failure,
-# `autofix` drafts a PR with a proposed test fix — it never pushes to `main`
-# directly (see the `autofix` job's `if:` for why it never fires on a PR run
-# itself — opening a fix-PR against a PR that's still under review would be
-# confusing); see qa-autofix's own README-style comment in analyze-and-fix.mjs
-# for exactly what it will and won't touch.
+# Runs the Playwright E2E suite every night, on every PR into main, AND on
+# every direct push to main — against a fresh, self-contained stack (Postgres
+# + Backend + Frontend, all spun up in this job — see the comment on the
+# `e2e` job below for why there's no real staging deployment to point at
+# yet). The push-to-main trigger exists specifically so this workflow is
+# something main_cdc-api-prod.yml (Backend's Azure deploy) can gate on via
+# `workflow_run` — see that workflow's own comment. This workflow's `name:`
+# is referenced there verbatim; keep them in sync if either changes.
+# On a scheduled/manual run's failure, `autofix` drafts a PR with a proposed
+# test fix — it never pushes to `main` directly (see the `autofix` job's
+# `if:` for why it never fires on a PR run itself — opening a fix-PR against
+# a PR that's still under review would be confusing); see qa-autofix's own
+# README-style comment in analyze-and-fix.mjs for exactly what it will and
+# won't touch.
 on:
   schedule:
     - cron: '0 0 * * *' # midnight UTC
   pull_request:
+    branches: [main]
+  push:
     branches: [main]
   workflow_dispatch: {}
 
