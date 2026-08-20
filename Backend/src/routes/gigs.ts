@@ -15,7 +15,7 @@ const posterSelect = { select: { id: true, name: true, role: true, isVerifiedGra
 // (see Frontend's hasFreelancerRights-equivalent derivation) — isVerifiedGraduate
 // alone would miss an INDIVIDUAL-verified (non-graduate) applicant.
 const applicantSelect = {
-  select: { id: true, name: true, isVerifiedGraduate: true, verificationLevel: true, verificationStatus: true, averageRating: true, reviewCount: true },
+  select: { id: true, name: true, isVerifiedGraduate: true, verificationLevel: true, verificationStatus: true, averageRating: true, reviewCount: true, cvUrl: true },
 };
 
 declare global {

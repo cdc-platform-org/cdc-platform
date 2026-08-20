@@ -27,6 +27,11 @@ export interface User {
   // freely-settable URL, see Backend's routes/auth.ts. Doubles as the
   // company logo for Client accounts.
   avatarUrl: string | null;
+  // Set only via POST /auth/me/cv (uploads to Bunny Storage) — same field
+  // an admin can also set for a Mentor via /admin/mentorship, see
+  // Backend's routes/auth.ts. Used both on the profile settings page and
+  // on the "View CV" button on applicant cards (ApplicationsReviewList).
+  cvUrl: string | null;
   bio: string | null;
   // Business/employer profile — only meaningful for role Client.
   companyName: string | null;
@@ -104,6 +109,10 @@ export interface UpdateProfilePayload {
   companyDescription?: string | null;
   taxId?: string | null;
   freelancerSkills?: string[];
+  // Re-editable any time (unlike registration's one-shot pick) — only
+  // changes which dashboard.tsx unlock-card is highlighted first, never a
+  // capability gate. See Backend's schemas/authSchemas.ts.
+  primaryIntent?: 'TALENT' | 'EMPLOYER';
 }
 
 export interface ChangePasswordPayload {

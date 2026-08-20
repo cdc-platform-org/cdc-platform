@@ -2,12 +2,12 @@ import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Upload } from 'lucide-react';
+import { Upload, FileText, Briefcase, Building2 } from 'lucide-react';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import { useAuth } from '../../src/context/AuthContext';
-import { updateProfile, changePassword, uploadAvatar, forgotPassword } from '../../src/services/authService';
+import { updateProfile, changePassword, uploadAvatar, uploadCv, forgotPassword } from '../../src/services/authService';
 import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../src/utils/imageUpload';
 import Toast from '../../src/components/shared/Toast';
 import SkillPicker from '../../src/components/shared/SkillPicker';
@@ -22,6 +22,18 @@ const dict = {
     avatarUploading: 'იტვირთება…',
     avatarError: 'სურათის ატვირთვა ვერ მოხერხდა.',
     avatarHint: 'მაქსიმუმ 10 MB (JPG, PNG, WEBP)',
+    cvTitle: 'რეზიუმე / CV',
+    cvHint: 'ატვირთეთ თქვენი CV — გამოჩნდება გიგებზე/ვაკანსიებზე განაცხადებში და თქვენს პროფილში.',
+    cvUpload: 'CV-ის ატვირთვა',
+    cvReplace: 'CV-ის შეცვლა',
+    cvUploading: 'იტვირთება…',
+    cvView: 'CV-ის ნახვა',
+    cvUploadError: 'ფაილის ატვირთვა ვერ მოხერხდა.',
+    intentTitle: 'დაშბორდის ფოკუსი',
+    intentHint: 'ეს მხოლოდ განსაზღვრავს, რომელი მალსახმობი გამოჩნდება პირველად თქვენს დაშბორდზე — არცერთ შესაძლებლობას არ ზღუდავს.',
+    intentTalent: 'ფრილანსი',
+    intentEmployer: 'დაქირავება / ბიზნესი',
+    intentSaved: 'შენახულია ✓',
     displayName: 'სახელი (საჯარო)',
     bio: 'ბიო / სათაური',
     bioPlaceholder: 'მოკლედ მოგვიყევით საკუთარ თავზე...',
@@ -67,6 +79,18 @@ const dict = {
     avatarUploading: 'Uploading…',
     avatarError: 'Unable to upload the image.',
     avatarHint: 'Max 10 MB (JPG, PNG, WEBP)',
+    cvTitle: 'CV / Resume',
+    cvHint: 'Upload your CV — shown on gig/vacancy applications and your profile.',
+    cvUpload: 'Upload CV',
+    cvReplace: 'Replace CV',
+    cvUploading: 'Uploading…',
+    cvView: 'View CV',
+    cvUploadError: 'Unable to upload the file.',
+    intentTitle: 'Dashboard Focus',
+    intentHint: "This only decides which shortcut appears first on your dashboard — it never restricts what you can do.",
+    intentTalent: 'Freelancing',
+    intentEmployer: 'Hiring / Business',
+    intentSaved: 'Saved ✓',
     displayName: 'Display Name',
     bio: 'Bio / Headline',
     bioPlaceholder: 'Tell us a bit about yourself...',
@@ -111,6 +135,18 @@ const dict = {
     avatarUploading: 'Uploading…',
     avatarError: 'Unable to upload the image.',
     avatarHint: 'Max 10 MB (JPG, PNG, WEBP)',
+    cvTitle: 'CV / Resume',
+    cvHint: 'Upload your CV — shown on gig/vacancy applications and your profile.',
+    cvUpload: 'Upload CV',
+    cvReplace: 'Replace CV',
+    cvUploading: 'Uploading…',
+    cvView: 'View CV',
+    cvUploadError: 'Unable to upload the file.',
+    intentTitle: 'Dashboard Focus',
+    intentHint: "This only decides which shortcut appears first on your dashboard — it never restricts what you can do.",
+    intentTalent: 'Freelancing',
+    intentEmployer: 'Hiring / Business',
+    intentSaved: 'Saved ✓',
     displayName: 'Display Name',
     bio: 'Bio / Headline',
     bioPlaceholder: 'Tell us a bit about yourself...',
@@ -155,6 +191,18 @@ const dict = {
     avatarUploading: 'Uploading…',
     avatarError: 'Unable to upload the image.',
     avatarHint: 'Max 10 MB (JPG, PNG, WEBP)',
+    cvTitle: 'CV / Resume',
+    cvHint: 'Upload your CV — shown on gig/vacancy applications and your profile.',
+    cvUpload: 'Upload CV',
+    cvReplace: 'Replace CV',
+    cvUploading: 'Uploading…',
+    cvView: 'View CV',
+    cvUploadError: 'Unable to upload the file.',
+    intentTitle: 'Dashboard Focus',
+    intentHint: "This only decides which shortcut appears first on your dashboard — it never restricts what you can do.",
+    intentTalent: 'Freelancing',
+    intentEmployer: 'Hiring / Business',
+    intentSaved: 'Saved ✓',
     displayName: 'Display Name',
     bio: 'Bio / Headline',
     bioPlaceholder: 'Tell us a bit about yourself...',
@@ -199,6 +247,18 @@ const dict = {
     avatarUploading: 'Uploading…',
     avatarError: 'Unable to upload the image.',
     avatarHint: 'Max 10 MB (JPG, PNG, WEBP)',
+    cvTitle: 'CV / Resume',
+    cvHint: 'Upload your CV — shown on gig/vacancy applications and your profile.',
+    cvUpload: 'Upload CV',
+    cvReplace: 'Replace CV',
+    cvUploading: 'Uploading…',
+    cvView: 'View CV',
+    cvUploadError: 'Unable to upload the file.',
+    intentTitle: 'Dashboard Focus',
+    intentHint: "This only decides which shortcut appears first on your dashboard — it never restricts what you can do.",
+    intentTalent: 'Freelancing',
+    intentEmployer: 'Hiring / Business',
+    intentSaved: 'Saved ✓',
     displayName: 'Display Name',
     bio: 'Bio / Headline',
     bioPlaceholder: 'Tell us a bit about yourself...',
@@ -243,6 +303,18 @@ const dict = {
     avatarUploading: 'Uploading…',
     avatarError: 'Unable to upload the image.',
     avatarHint: 'Max 10 MB (JPG, PNG, WEBP)',
+    cvTitle: 'CV / Resume',
+    cvHint: 'Upload your CV — shown on gig/vacancy applications and your profile.',
+    cvUpload: 'Upload CV',
+    cvReplace: 'Replace CV',
+    cvUploading: 'Uploading…',
+    cvView: 'View CV',
+    cvUploadError: 'Unable to upload the file.',
+    intentTitle: 'Dashboard Focus',
+    intentHint: "This only decides which shortcut appears first on your dashboard — it never restricts what you can do.",
+    intentTalent: 'Freelancing',
+    intentEmployer: 'Hiring / Business',
+    intentSaved: 'Saved ✓',
     displayName: 'Display Name',
     bio: 'Bio / Headline',
     bioPlaceholder: 'Tell us a bit about yourself...',
@@ -312,6 +384,13 @@ function SettingsContent() {
   const [sizeToast, setSizeToast] = useState<string | null>(null);
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
 
+  const [uploadingCv, setUploadingCv] = useState(false);
+  const [cvError, setCvError] = useState<string | null>(null);
+  const cvFileInputRef = useRef<HTMLInputElement>(null);
+
+  const [savingIntent, setSavingIntent] = useState(false);
+  const [intentSaved, setIntentSaved] = useState(false);
+
   useEffect(() => {
     if (!sizeToast) return;
     const timer = setTimeout(() => setSizeToast(null), 5000);
@@ -364,6 +443,35 @@ function SettingsContent() {
     } finally {
       setUploadingAvatar(false);
       if (avatarFileInputRef.current) avatarFileInputRef.current.value = '';
+    }
+  };
+
+  const handleCvFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingCv(true);
+    setCvError(null);
+    try {
+      await uploadCv(file);
+      await refreshUser();
+    } catch (err: any) {
+      setCvError(err?.response?.data?.message ?? t.cvUploadError);
+    } finally {
+      setUploadingCv(false);
+      if (cvFileInputRef.current) cvFileInputRef.current.value = '';
+    }
+  };
+
+  const handleIntentChange = async (intent: 'TALENT' | 'EMPLOYER') => {
+    if (savingIntent || user?.primaryIntent === intent) return;
+    setSavingIntent(true);
+    setIntentSaved(false);
+    try {
+      await updateProfile({ primaryIntent: intent });
+      await refreshUser();
+      setIntentSaved(true);
+    } finally {
+      setSavingIntent(false);
     }
   };
 
@@ -490,6 +598,37 @@ function SettingsContent() {
             </div>
 
             <div>
+              <label className={labelClass}>{t.cvTitle}</label>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">{t.cvHint}</p>
+              <div className="flex items-center gap-3 flex-wrap">
+                <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-300 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800">
+                  <Upload className="w-4 h-4" />
+                  {uploadingCv ? t.cvUploading : user?.cvUrl ? t.cvReplace : t.cvUpload}
+                  <input
+                    ref={cvFileInputRef}
+                    type="file"
+                    accept="application/pdf,.doc,.docx"
+                    onChange={handleCvFileChange}
+                    className="hidden"
+                    disabled={uploadingCv}
+                  />
+                </label>
+                {user?.cvUrl && (
+                  <a
+                    href={user.cvUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    {t.cvView}
+                  </a>
+                )}
+              </div>
+              {cvError && <p className="text-xs text-red-600 mt-1.5">{cvError}</p>}
+            </div>
+
+            <div>
               <label className={labelClass}>{t.displayName}</label>
               <input className={inputClass} value={form.name} onChange={handleChange('name')} />
             </div>
@@ -546,6 +685,37 @@ function SettingsContent() {
               <p className="text-[11px] text-slate-500 dark:text-slate-400">{t.skillsHint}</p>
             </div>
             <SkillPicker value={skills} onChange={setSkills} lang={lang} />
+          </div>
+
+          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4">
+            <div>
+              <h2 className="text-sm font-bold mb-1">{t.intentTitle}</h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">{t.intentHint}</p>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {(
+                [
+                  { value: 'TALENT' as const, label: t.intentTalent, icon: Briefcase },
+                  { value: 'EMPLOYER' as const, label: t.intentEmployer, icon: Building2 },
+                ]
+              ).map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  disabled={savingIntent}
+                  onClick={() => handleIntentChange(option.value)}
+                  className={`flex items-center gap-2.5 rounded-xl border p-3.5 text-left text-sm font-bold transition-colors disabled:opacity-60 ${
+                    user?.primaryIntent === option.value
+                      ? 'border-cyan-500 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300'
+                      : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'
+                  }`}
+                >
+                  <option.icon className="w-4 h-4 shrink-0" />
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            {intentSaved && <p className="text-xs text-emerald-600 dark:text-emerald-400">{t.intentSaved}</p>}
           </div>
 
           <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4">

@@ -1,6 +1,9 @@
-import { useState, useMemo, FormEvent } from 'react';
+import { useState, useMemo, useRef, FormEvent, ChangeEvent } from 'react';
 import { useTranslation } from 'next-i18next';
+import { FileText, Upload } from 'lucide-react';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
+import { useAuth } from '../../context/AuthContext';
+import { uploadCv } from '../../services/authService';
 
 const PLATFORM_FEE_RATE = 0.2; // 20% (10% bank fee + 10% CDC Center) — shown live as the freelancer types their bid
 
@@ -20,13 +23,34 @@ export default function ProposalModal({
   onSubmit,
 }: ProposalModalProps) {
   const { t } = useTranslation('proposals');
+  const { user, refreshUser } = useAuth();
   const [proposedBudget, setProposedBudget] = useState('');
   const [deliveryDays, setDeliveryDays] = useState('');
   const [coverLetter, setCoverLetter] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [uploadingCv, setUploadingCv] = useState(false);
+  const [cvError, setCvError] = useState<string | null>(null);
+  const cvInputRef = useRef<HTMLInputElement>(null);
+
   useEscapeToClose(true, onClose);
+
+  const handleCvChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingCv(true);
+    setCvError(null);
+    try {
+      await uploadCv(file);
+      await refreshUser();
+    } catch (err: any) {
+      setCvError(err?.response?.data?.message ?? t('proposalModal.cvUploadError'));
+    } finally {
+      setUploadingCv(false);
+      if (cvInputRef.current) cvInputRef.current.value = '';
+    }
+  };
 
   const proposedMajor = parseFloat(proposedBudget) || 0;
   const platformFee = useMemo(() => proposedMajor * PLATFORM_FEE_RATE, [proposedMajor]);
@@ -153,6 +177,36 @@ export default function ProposalModal({
               className={inputClass}
               placeholder={t('proposalModal.coverLetterPlaceholder') as string}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('proposalModal.cvLabel')}</label>
+            <div className="flex items-center gap-3 flex-wrap">
+              <label className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 cursor-pointer hover:bg-gray-50">
+                <Upload className="w-4 h-4" />
+                {uploadingCv ? t('proposalModal.cvUploading') : user?.cvUrl ? t('proposalModal.cvReplace') : t('proposalModal.cvUpload')}
+                <input
+                  ref={cvInputRef}
+                  type="file"
+                  accept="application/pdf,.doc,.docx"
+                  onChange={handleCvChange}
+                  className="hidden"
+                  disabled={uploadingCv}
+                />
+              </label>
+              {user?.cvUrl && (
+                <a
+                  href={user.cvUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:underline"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  {t('proposalModal.cvView')}
+                </a>
+              )}
+            </div>
+            {cvError && <p className="text-xs text-red-600 mt-1.5">{cvError}</p>}
           </div>
 
           <div className="flex gap-3 pt-2">

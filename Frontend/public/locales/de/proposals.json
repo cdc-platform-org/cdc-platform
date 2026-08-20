@@ -10,6 +10,12 @@
     "deliveryPlaceholder": "z. B. 7",
     "coverLetterLabel": "Anschreiben",
     "coverLetterPlaceholder": "Beschreiben Sie Ihren Ansatz, Ihre relevante Erfahrung und warum Sie gut geeignet sind…",
+    "cvLabel": "Lebenslauf / CV (optional)",
+    "cvUpload": "CV hochladen",
+    "cvReplace": "CV ersetzen",
+    "cvUploading": "Wird hochgeladen…",
+    "cvView": "CV ansehen",
+    "cvUploadError": "Die Datei konnte nicht hochgeladen werden.",
     "feeCalculator": {
       "title": "Verdienstschätzung",
       "platformFee": "Plattformgebühr ({{rate}} %)",

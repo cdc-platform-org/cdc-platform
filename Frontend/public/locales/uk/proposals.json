@@ -10,6 +10,12 @@
     "deliveryPlaceholder": "напр. 7",
     "coverLetterLabel": "Супровідний лист",
     "coverLetterPlaceholder": "Опишіть свій підхід, відповідний досвід і чому ви ідеально підходите…",
+    "cvLabel": "Резюме / CV (необов'язково)",
+    "cvUpload": "Завантажити CV",
+    "cvReplace": "Замінити CV",
+    "cvUploading": "Завантаження…",
+    "cvView": "Переглянути CV",
+    "cvUploadError": "Не вдалося завантажити файл.",
     "feeCalculator": {
       "title": "Оцінка доходу",
       "platformFee": "Комісія платформи ({{rate}}%)",

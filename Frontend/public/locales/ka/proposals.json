@@ -10,6 +10,12 @@
     "deliveryPlaceholder": "მაგ. 7",
     "coverLetterLabel": "სამოტივაციო წერილი",
     "coverLetterPlaceholder": "აღწერეთ თქვენი მიდგომა, გამოცდილება და რატომ ხართ შესაფერისი კანდიდატი…",
+    "cvLabel": "რეზიუმე / CV (არასავალდებულო)",
+    "cvUpload": "CV-ის ატვირთვა",
+    "cvReplace": "CV-ის შეცვლა",
+    "cvUploading": "იტვირთება…",
+    "cvView": "CV-ის ნახვა",
+    "cvUploadError": "ფაილის ატვირთვა ვერ მოხერხდა.",
     "feeCalculator": {
       "title": "შემოსავლის დათვლა",
       "platformFee": "პლატფორმის საკომისიო ({{rate}}%)",

@@ -10,6 +10,12 @@
     "deliveryPlaceholder": "p. ej. 7",
     "coverLetterLabel": "Carta de Presentación",
     "coverLetterPlaceholder": "Explique su enfoque, experiencia relevante y por qué es el candidato ideal…",
+    "cvLabel": "CV / Currículum (opcional)",
+    "cvUpload": "Subir CV",
+    "cvReplace": "Reemplazar CV",
+    "cvUploading": "Subiendo…",
+    "cvView": "Ver CV",
+    "cvUploadError": "No se pudo subir el archivo.",
     "feeCalculator": {
       "title": "Estimación de Ganancias",
       "platformFee": "Comisión de la Plataforma ({{rate}}%)",

@@ -8,7 +8,7 @@ import { hasReachedMonthlyPostLimit, MONTHLY_POST_LIMIT } from '../services/post
 const router = Router();
 const posterSelect = { select: { id: true, name: true, role: true, isVerifiedGraduate: true, averageRating: true, reviewCount: true } };
 const applicantSelect = {
-  select: { name: true, isVerifiedGraduate: true, verificationLevel: true, verificationStatus: true, averageRating: true, reviewCount: true },
+  select: { name: true, isVerifiedGraduate: true, verificationLevel: true, verificationStatus: true, averageRating: true, reviewCount: true, cvUrl: true },
 };
 declare global {
   namespace Express {

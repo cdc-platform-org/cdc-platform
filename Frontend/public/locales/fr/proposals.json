@@ -10,6 +10,12 @@
     "deliveryPlaceholder": "ex. 7",
     "coverLetterLabel": "Lettre de motivation",
     "coverLetterPlaceholder": "Expliquez votre approche, votre expérience pertinente, et pourquoi vous êtes le candidat idéal…",
+    "cvLabel": "CV / Résumé (facultatif)",
+    "cvUpload": "Téléverser le CV",
+    "cvReplace": "Remplacer le CV",
+    "cvUploading": "Téléversement…",
+    "cvView": "Voir le CV",
+    "cvUploadError": "Impossible de téléverser le fichier.",
     "feeCalculator": {
       "title": "Estimation des revenus",
       "platformFee": "Frais de plateforme ({{rate}} %)",

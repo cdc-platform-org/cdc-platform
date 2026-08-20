@@ -102,6 +102,11 @@ export const updateProfileSchema = z.object({
   // VerifiedSkill badge). Capped generously, not tied to role — same posture
   // as the business fields above.
   freelancerSkills: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+  // Purely which dashboard quick-links are highlighted first (see
+  // pages/dashboard.tsx's DashboardUnlockCards) — never gates capabilities,
+  // so re-editable any time under /dashboard/settings unlike the one-time
+  // pick at registration (routes/auth.ts's /register).
+  primaryIntent: z.enum(['TALENT', 'EMPLOYER']).optional(),
 });
 
 export const changePasswordSchema = z.object({

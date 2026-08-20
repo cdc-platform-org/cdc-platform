@@ -59,6 +59,7 @@ export interface VacancyApplication {
     verificationStatus: 'UNVERIFIED' | 'PENDING' | 'APPROVED' | 'REJECTED';
     averageRating: number | null;
     reviewCount: number;
+    cvUrl: string | null;
   }; // matches the API's actual include shape
   coverNote: string;
   status: ApplicationStatus;
@@ -172,6 +173,7 @@ export interface GigApplication {
     verificationStatus: 'UNVERIFIED' | 'PENDING' | 'APPROVED' | 'REJECTED';
     averageRating: number | null;
     reviewCount: number;
+    cvUrl: string | null;
   };
   proposalNote: string;
   bidAmount: number;      // the freelancer's proposed price, minor units — may differ from budgetAmount

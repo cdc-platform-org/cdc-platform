@@ -10,6 +10,12 @@
     "deliveryPlaceholder": "e.g. 7",
     "coverLetterLabel": "Cover Letter",
     "coverLetterPlaceholder": "Explain your approach, relevant experience, and why you're a great fit…",
+    "cvLabel": "CV / Resume (optional)",
+    "cvUpload": "Upload CV",
+    "cvReplace": "Replace CV",
+    "cvUploading": "Uploading…",
+    "cvView": "View CV",
+    "cvUploadError": "Unable to upload the file.",
     "feeCalculator": {
       "title": "Earnings Estimate",
       "platformFee": "Platform Fee ({{rate}}%)",

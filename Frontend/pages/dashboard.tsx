@@ -91,6 +91,11 @@ const dict = {
     progressTitle: 'კურსის პროგრესი',
     noCourses: 'თქვენ ჯერ არცერთ კურსზე არ ხართ ჩარიცხული.',
     browseCourses: 'კურსების დათვალიერება',
+    unlockLearnerTitle: 'სწავლის გაგრძელება',
+    unlockLearnerDesc: 'გააგრძელეთ იქიდან, სადაც გაჩერდით.',
+    unlockFreelancerTitle: 'ფრილანსის შესაძლებლობები',
+    unlockFreelancerDesc: 'დაათვალიერეთ გიგები და განავითარეთ ფრილანსერული კარიერა.',
+    unlockCta: 'გადასვლა →',
     // Courses tab
     coursesTitle: 'ჩემი კურსები & სერტიფიკატები',
     viewAllCertificates: 'ყველა სერტიფიკატი',
@@ -220,6 +225,11 @@ const dict = {
     progressTitle: 'Course Progress',
     noCourses: "You're not enrolled in any courses yet.",
     browseCourses: 'Browse Courses',
+    unlockLearnerTitle: 'Continue Learning',
+    unlockLearnerDesc: 'Pick up where you left off in your courses.',
+    unlockFreelancerTitle: 'Explore Freelancing',
+    unlockFreelancerDesc: 'Browse gigs and grow your freelance career.',
+    unlockCta: 'Go →',
     coursesTitle: 'My Courses & Certificates',
     viewAllCertificates: 'View all certificates',
     progress: 'Progress',
@@ -341,6 +351,11 @@ const dict = {
     progressTitle: 'Course Progress',
     noCourses: "You're not enrolled in any courses yet.",
     browseCourses: 'Browse Courses',
+    unlockLearnerTitle: 'Continue Learning',
+    unlockLearnerDesc: 'Pick up where you left off in your courses.',
+    unlockFreelancerTitle: 'Explore Freelancing',
+    unlockFreelancerDesc: 'Browse gigs and grow your freelance career.',
+    unlockCta: 'Go →',
     coursesTitle: 'My Courses & Certificates',
     viewAllCertificates: 'View all certificates',
     progress: 'Progress',
@@ -462,6 +477,11 @@ const dict = {
     progressTitle: 'Course Progress',
     noCourses: "You're not enrolled in any courses yet.",
     browseCourses: 'Browse Courses',
+    unlockLearnerTitle: 'Continue Learning',
+    unlockLearnerDesc: 'Pick up where you left off in your courses.',
+    unlockFreelancerTitle: 'Explore Freelancing',
+    unlockFreelancerDesc: 'Browse gigs and grow your freelance career.',
+    unlockCta: 'Go →',
     coursesTitle: 'My Courses & Certificates',
     viewAllCertificates: 'View all certificates',
     progress: 'Progress',
@@ -583,6 +603,11 @@ const dict = {
     progressTitle: 'Course Progress',
     noCourses: "You're not enrolled in any courses yet.",
     browseCourses: 'Browse Courses',
+    unlockLearnerTitle: 'Continue Learning',
+    unlockLearnerDesc: 'Pick up where you left off in your courses.',
+    unlockFreelancerTitle: 'Explore Freelancing',
+    unlockFreelancerDesc: 'Browse gigs and grow your freelance career.',
+    unlockCta: 'Go →',
     coursesTitle: 'My Courses & Certificates',
     viewAllCertificates: 'View all certificates',
     progress: 'Progress',
@@ -704,6 +729,11 @@ const dict = {
     progressTitle: 'Course Progress',
     noCourses: "You're not enrolled in any courses yet.",
     browseCourses: 'Browse Courses',
+    unlockLearnerTitle: 'Continue Learning',
+    unlockLearnerDesc: 'Pick up where you left off in your courses.',
+    unlockFreelancerTitle: 'Explore Freelancing',
+    unlockFreelancerDesc: 'Browse gigs and grow your freelance career.',
+    unlockCta: 'Go →',
     coursesTitle: 'My Courses & Certificates',
     viewAllCertificates: 'View all certificates',
     progress: 'Progress',
@@ -843,6 +873,60 @@ function ProgressBar({ percent }: { percent: number }) {
         className="bg-gradient-to-r from-cyan-500 to-purple-500 h-full transition-all duration-300"
         style={{ width: `${percent}%` }}
       />
+    </div>
+  );
+}
+
+// Two quick-nav cards into the paths a Student account can take (learning
+// vs. freelancing) — purely a display convenience, never a gate: which one
+// is visually first/highlighted follows user.primaryIntent (set at
+// registration, re-editable any time under /dashboard/settings), but both
+// stay fully clickable regardless. See Backend's schemas/authSchemas.ts —
+// primaryIntent never restricts what an account can actually do.
+function DashboardUnlockCards({ user, t }: { user: User; t: typeof dict['ka'] }) {
+  const cards = [
+    {
+      key: 'learner',
+      href: '/courses',
+      icon: GraduationCap,
+      title: t.unlockLearnerTitle,
+      desc: t.unlockLearnerDesc,
+      highlighted: user.primaryIntent !== 'TALENT',
+    },
+    {
+      key: 'freelancer',
+      href: '/gigs',
+      icon: Briefcase,
+      title: t.unlockFreelancerTitle,
+      desc: t.unlockFreelancerDesc,
+      highlighted: user.primaryIntent === 'TALENT',
+    },
+  ].sort((a, b) => Number(b.highlighted) - Number(a.highlighted));
+
+  return (
+    <div className="grid sm:grid-cols-2 gap-4">
+      {cards.map((card) => (
+        <Link
+          key={card.key}
+          href={card.href}
+          className={`flex items-center gap-4 rounded-2xl border p-5 no-underline text-current transition-all duration-300 ${
+            card.highlighted
+              ? 'border-cyan-400/60 dark:border-cyan-500/40 bg-gradient-to-r from-cyan-500/10 to-purple-600/10 shadow-lg shadow-cyan-500/10'
+              : 'border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 hover:border-cyan-400/50 dark:hover:border-cyan-400/40'
+          }`}
+        >
+          <div className="shrink-0 w-11 h-11 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
+            <card.icon className="w-5 h-5 text-white" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-black text-slate-900 dark:text-white">{card.title}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{card.desc}</p>
+          </div>
+          <span className="shrink-0 text-xs font-bold text-cyan-600 dark:text-cyan-400 whitespace-nowrap hidden sm:inline">
+            {t.unlockCta}
+          </span>
+        </Link>
+      ))}
     </div>
   );
 }
@@ -1410,6 +1494,8 @@ function DashboardContent() {
                       {t.postsLeftValue.replace('{{remaining}}', String(postQuota.remaining))}
                     </p>
                   )}
+
+                  {user?.role === 'Student' && <DashboardUnlockCards user={user} t={t} />}
 
                   {user?.role === 'Student' && <FreelancerExamCard user={user} t={t} />}
 

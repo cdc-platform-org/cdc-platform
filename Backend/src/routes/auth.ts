@@ -148,6 +148,7 @@ function toUserResponse(user: {
   phone?: string | null;
   payoutIban?: string | null;
   avatarUrl?: string | null;
+  cvUrl?: string | null;
   bio?: string | null;
   companyName?: string | null;
   industry?: string | null;
@@ -182,6 +183,7 @@ function toUserResponse(user: {
     phone: user.phone ?? null,
     payoutIban: user.payoutIban ?? null,
     avatarUrl: user.avatarUrl ?? null,
+    cvUrl: user.cvUrl ?? null,
     bio: user.bio ?? null,
     companyName: user.companyName ?? null,
     industry: user.industry ?? null,
@@ -842,6 +844,67 @@ router.post(
       res.status(201).json({ user: toUserResponse(user) });
     } catch (err) {
       const message = err instanceof BunnyStorageUploadError ? err.message : 'Avatar upload failed. Please try again.';
+      res.status(500).json({ message });
+    }
+  }
+);
+
+// Self-serve CV/résumé upload — any authenticated user (freelancers
+// attaching one to a gig/vacancy application, mentors, anyone). Same
+// buffered-then-Bunny-Storage flow as the avatar upload above, and same
+// "own endpoint rather than a freely-settable field" reasoning: the URL is
+// only ever the server's own upload, never an arbitrary pasted link. This
+// is the same User.cvUrl field the admin-only mentor CV upload
+// (routes/adminMentorship.ts) writes to — one field, two upload paths.
+const CV_MIME_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+];
+const cvUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    if (CV_MIME_TYPES.includes(file.mimetype) || /\.(pdf|docx?)$/i.test(file.originalname)) cb(null, true);
+    else cb(new Error('Only PDF or DOCX files are allowed.'));
+  },
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB — plenty for a CV
+});
+
+router.post(
+  '/me/cv',
+  authenticate,
+  (req: Request, res: Response, next) => {
+    cvUpload.single('cv')(req, res, (err: any) => {
+      if (!err) return next();
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ message: 'The file exceeds 15MB.' });
+      }
+      return res.status(400).json({ message: err.message || 'Only PDF or DOCX files are allowed.' });
+    });
+  },
+  async (req: Request, res: Response) => {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file was selected.' });
+    }
+    const previous = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { cvUrl: true } });
+
+    const filename = `cv-${req.user!.id}-${Date.now()}${path.extname(req.file.originalname) || '.pdf'}`;
+    try {
+      const url = await uploadImage({
+        buffer: req.file.buffer,
+        mimetype: req.file.mimetype,
+        folderName: 'user-cvs',
+        filename,
+      });
+      const user = await prisma.user.update({ where: { id: req.user!.id }, data: { cvUrl: url } });
+
+      if (previous?.cvUrl && previous.cvUrl !== url) {
+        deleteManagedImage(previous.cvUrl).catch(() => {});
+      }
+
+      res.status(201).json({ user: toUserResponse(user) });
+    } catch (err) {
+      const message = err instanceof BunnyStorageUploadError ? err.message : 'CV upload failed. Please try again.';
       res.status(500).json({ message });
     }
   }

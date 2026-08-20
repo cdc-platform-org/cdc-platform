@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FileText } from 'lucide-react';
 import { VacancyApplication, GigApplication, ApplicationStatus } from '../../types/community';
 import { isFreelancerVerified } from '../../types/auth';
 import VerifiedGraduateBadge from './VerifiedGraduateBadge';
@@ -108,6 +109,17 @@ export default function ApplicationsReviewList({
                   <p className="text-xs text-gray-400 mt-0.5">
                     Applied {new Date(app.createdAt).toLocaleDateString()}
                   </p>
+                  {app.applicant.cvUrl && (
+                    <a
+                      href={app.applicant.cvUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:underline mt-1"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      📄 რეზიუმეს ნახვა / View CV
+                    </a>
+                  )}
                 </div>
                 <div className="flex items-center gap-3">
                   {hasBid(app) && (
