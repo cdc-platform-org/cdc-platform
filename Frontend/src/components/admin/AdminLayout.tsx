@@ -1,4 +1,4 @@
-import { ReactNode, useLayoutEffect, useRef } from 'react';
+import { ReactNode, useLayoutEffect, useRef, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import {
@@ -38,6 +38,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { AdminLangProvider, useAdminLang } from '../../context/AdminLangContext';
 import { adminDict } from '../../data/adminDict';
+import { getSidebarBadgeCounts, AdminSidebarBadgeCounts } from '../../services/adminPanelService';
 
 interface NavItem {
   href: string;
@@ -45,6 +46,9 @@ interface NavItem {
   icon: typeof LayoutDashboard;
   tiers?: ('SUPER_ADMIN' | 'MANAGER' | 'MODERATOR')[]; // omit = visible to any admin-team member
   section: keyof typeof adminDict.en.navSections;
+  // Pending-count badge sourced from GET /admin-panel/sidebar-badges — omit
+  // for every nav item that has no "needs attention now" queue.
+  badgeKey?: keyof AdminSidebarBadgeCounts;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -54,17 +58,17 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/disputes', labelKey: 'disputes', icon: Scale, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'core' },
   { href: '/admin/mentorship', labelKey: 'mentorship', icon: GraduationCap, section: 'core' },
   { href: '/admin/messages', labelKey: 'messages', icon: ShieldAlert, section: 'core' },
-  { href: '/admin/chat-moderation', labelKey: 'chatModeration', icon: ShieldBan, tiers: ['SUPER_ADMIN', 'MANAGER', 'MODERATOR'], section: 'core' },
+  { href: '/admin/chat-moderation', labelKey: 'chatModeration', icon: ShieldBan, tiers: ['SUPER_ADMIN', 'MANAGER', 'MODERATOR'], section: 'core', badgeKey: 'highSeverityChatFlags' },
   { href: '/admin/notifications', labelKey: 'notifications', icon: Bell, section: 'core' },
-  { href: '/admin/products', labelKey: 'products', icon: ShoppingBag, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  { href: '/admin/products', labelKey: 'products', icon: ShoppingBag, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content', badgeKey: 'pendingProducts' },
   { href: '/admin/product-reviews', labelKey: 'productReviews', icon: Star, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/forum', labelKey: 'forum', icon: MessageSquare, section: 'content' },
   { href: '/admin/bot-knowledge', labelKey: 'botKnowledge', icon: BrainCircuit, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/cms/homepage', labelKey: 'cms', icon: PenTool, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/cms/gallery', labelKey: 'gallery', icon: ImageIcon, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/cms/agency', labelKey: 'agencyCms', icon: Building2, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
-  { href: '/admin/studio', labelKey: 'studio', icon: ClipboardList, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
-  { href: '/admin/companies', labelKey: 'companies', icon: ShieldCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
+  { href: '/admin/studio', labelKey: 'studio', icon: ClipboardList, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content', badgeKey: 'studioInquiries' },
+  { href: '/admin/companies', labelKey: 'companies', icon: ShieldCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business', badgeKey: 'businessVerifications' },
   { href: '/admin/blog', labelKey: 'blog', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
   { href: '/admin/tutorials', labelKey: 'tutorials', icon: PlayCircle, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
   { href: '/admin/opportunities', labelKey: 'opportunities', icon: Radar, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
@@ -105,6 +109,33 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
     section,
     items: visibleNav.filter((item) => item.section === section),
   })).filter((group) => group.items.length > 0);
+
+  // Polled independently of the rest of the sidebar (60s, same interval as
+  // NotificationBell.tsx's identical pattern) rather than passed down as a
+  // prop — nothing above AdminLayout persists across an /admin/* route
+  // change (see the sidebar-scroll comment below), so this has to refetch
+  // itself on every mount regardless. The count is a live server-side
+  // query each time (see adminPanel.ts's /sidebar-badges), so a badge
+  // simply disappears/shrinks on the next poll once an admin resolves the
+  // underlying item — no client-side decrement bookkeeping needed here.
+  const [badgeCounts, setBadgeCounts] = useState<AdminSidebarBadgeCounts | null>(null);
+  const loadBadgeCounts = useCallback(() => {
+    getSidebarBadgeCounts()
+      .then(setBadgeCounts)
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    loadBadgeCounts();
+    const timer = setInterval(loadBadgeCounts, 60000);
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) loadBadgeCounts();
+    };
+    window.addEventListener('pageshow', onPageShow);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('pageshow', onPageShow);
+    };
+  }, [loadBadgeCounts]);
 
   // Each admin page mounts its own <AdminLayout>, so this <aside> is torn
   // down and rebuilt on every route change — losing its scrollTop even
@@ -159,6 +190,7 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
                 {items.map((item) => {
                   const isActive = router.pathname === item.href;
                   const Icon = item.icon;
+                  const badgeCount = item.badgeKey ? badgeCounts?.[item.badgeKey] : undefined;
                   return (
                     <Link
                       key={item.href}
@@ -171,7 +203,12 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
                       }`}
                     >
                       <Icon className="w-4 h-4 shrink-0" />
-                      {t.nav[item.labelKey]}
+                      <span className="flex-1 min-w-0">{t.nav[item.labelKey]}</span>
+                      {!!badgeCount && (
+                        <span className="shrink-0 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-black">
+                          {badgeCount > 9 ? '9+' : badgeCount}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}

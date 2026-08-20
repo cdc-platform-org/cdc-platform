@@ -114,6 +114,30 @@ router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODER
 });
 
 // ============================================================
+// SIDEBAR BADGE COUNTS — deliberately a separate, much cheaper endpoint
+// from /dashboard-stats above: AdminLayout mounts fresh on every /admin/*
+// page navigation (see its own file comment on why — sidebar scroll
+// position needs restoring across the remount), so whatever it polls has
+// to be cheap enough to hit repeatedly, unlike the heavier KPI aggregate
+// dashboard-stats runs (gig/vacancy groupBys, payment volume sums, etc.)
+// that only the /admin dashboard page itself needs once per visit.
+// ============================================================
+router.get('/sidebar-badges', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'), async (_req, res) => {
+  const [studioInquiries, businessVerifications, pendingProducts, highSeverityChatFlags] = await Promise.all([
+    prisma.studioInquiry.count({ where: { status: { in: ['PENDING', 'IN_REVIEW'] } } }),
+    // Mirrors adminCompanies.ts's own "under_review" filter exactly — a
+    // business account that uploaded a verification doc but isn't verified
+    // yet — rather than trusting the separate verificationStatus enum,
+    // which that route's own list filter doesn't use as the source of truth.
+    prisma.user.count({ where: { role: 'Client', verificationDocUrl: { not: null }, isVerified: false } }),
+    prisma.digitalProduct.count({ where: { status: 'PENDING' } }),
+    prisma.chatFlag.count({ where: { reviewedAt: null, severity: 'HIGH' } }),
+  ]);
+
+  res.json({ studioInquiries, businessVerifications, pendingProducts, highSeverityChatFlags });
+});
+
+// ============================================================
 // GIGS & VACANCIES MODERATION — any admin tier. Post-hoc moderation: listings
 // go live immediately on posting (unchanged); this lets a mod take one down
 // after the fact, or restore it. Not a pre-publish approval queue.

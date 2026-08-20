@@ -19,6 +19,18 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   return response.data;
 }
 
+export interface AdminSidebarBadgeCounts {
+  studioInquiries: number;
+  businessVerifications: number;
+  pendingProducts: number;
+  highSeverityChatFlags: number;
+}
+
+export async function getSidebarBadgeCounts(): Promise<AdminSidebarBadgeCounts> {
+  const response = await apiClient.get<AdminSidebarBadgeCounts>('/admin-panel/sidebar-badges');
+  return response.data;
+}
+
 // --- Gigs & Vacancies moderation ---
 export async function getListings(params?: {
   type?: 'gig' | 'vacancy';
