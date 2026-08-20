@@ -9,6 +9,7 @@ import Toast from '../../src/components/shared/Toast';
 import CourseHeroBanner from '../../src/components/shared/CourseHeroBanner';
 import { Course, CoursePayload, CourseLanguage, AdminSection, AdminLesson, Exam } from '../../src/types/lms';
 import SkillPicker from '../../src/components/shared/SkillPicker';
+import AITranslateButton from '../../src/components/admin/AITranslateButton';
 import {
   getCourses,
   createCourse,
@@ -277,14 +278,7 @@ function CourseForm({
         <RichTextEditor rows={3} value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
       </div>
       <div>
-        <button
-          type="button"
-          onClick={handleAutoTranslate}
-          disabled={translating}
-          className="text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg disabled:opacity-60"
-        >
-          {translating ? 'Translating…' : '✨ Auto-Translate to English via Gemini'}
-        </button>
+        <AITranslateButton onClick={handleAutoTranslate} loading={translating} className="!mb-0" />
         {translateError && <p className="text-xs text-red-600 mt-1.5">{translateError}</p>}
       </div>
       <div>

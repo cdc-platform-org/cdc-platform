@@ -269,6 +269,19 @@ export async function uploadMyProductVideo(file: File): Promise<string> {
   return response.data.data.url;
 }
 
+export interface TranslateTitleDescriptionResult {
+  titleEn: string;
+  descriptionEn: string;
+}
+
+// Manual trigger for the same title+description translation products
+// already run automatically (best-effort) whenever titleEn/descriptionEn
+// is left blank on save — lets an admin re-run it on demand from a button.
+export async function translateProduct(payload: { title: string; description: string }): Promise<TranslateTitleDescriptionResult> {
+  const response = await apiClient.post<{ data: TranslateTitleDescriptionResult }>('/ai/translate-title-description', payload);
+  return response.data.data;
+}
+
 export interface AdminProductPurchase {
   id: string;
   amount: number;

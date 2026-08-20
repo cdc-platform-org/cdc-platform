@@ -23,6 +23,7 @@ import {
 import { getAiAutomationSettings, updateAiAutomationSettings } from '../../src/services/adminPanelService';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
 import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../src/utils/imageUpload';
+import AITranslateButton from '../../src/components/admin/AITranslateButton';
 
 const emptyForm: BlogPostPayload = {
   title: '',
@@ -399,14 +400,7 @@ function AdminBlogDashboard() {
                   </button>
                 ))}
               </div>
-              <button
-                type="button"
-                onClick={handleAutoTranslate}
-                disabled={translating}
-                className="mb-1.5 text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg disabled:opacity-60"
-              >
-                {translating ? 'ითარგმნება…' : '✨ Auto-Translate to English'}
-              </button>
+              <AITranslateButton onClick={handleAutoTranslate} loading={translating} />
             </div>
 
             {activeLangTab === 'ka' ? (

@@ -11,6 +11,7 @@ import {
   translateTeamMember,
   translateCourse,
   translateSuccessStory,
+  translateTitleAndDescription,
   isAiTranslateConfigured,
   AiTranslateError,
 } from '../services/aiTranslateService';
@@ -45,6 +46,11 @@ const translateSuccessStorySchema = z.object({
   roleTitle: z.string().min(1),
   testimonial: z.string().min(1),
   storyContent: z.string().optional(),
+});
+
+const translateTitleDescriptionSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().min(1),
 });
 
 const translateCourseLessonSchema = z.object({
@@ -190,6 +196,32 @@ router.post('/translate-course', authenticate, requireAdminRole('SUPER_ADMIN', '
 
   try {
     const translated = await translateCourse(result.data);
+    res.json({ data: translated });
+  } catch (err) {
+    if (err instanceof AiTranslateError) {
+      return res.status(err.status).json({ message: err.message });
+    }
+    throw err;
+  }
+});
+
+// Admin-only manual trigger for the same title+description translation
+// products.ts/adminProducts.ts already run automatically (best-effort, no
+// button) whenever titleEn/descriptionEn is left blank on save — this lets
+// an admin re-run it on demand (e.g. after editing the Georgian title)
+// from a button instead of only ever firing implicitly on submit.
+router.post('/translate-title-description', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
+  if (!isAiTranslateConfigured()) {
+    return res.status(501).json({ message: 'AI translation is not configured yet (GEMINI_API_KEY).' });
+  }
+
+  const result = translateTitleDescriptionSchema.safeParse(req.body);
+  if (!result.success) {
+    return res.status(400).json({ errors: result.error.errors });
+  }
+
+  try {
+    const translated = await translateTitleAndDescription(result.data.title, result.data.description);
     res.json({ data: translated });
   } catch (err) {
     if (err instanceof AiTranslateError) {
