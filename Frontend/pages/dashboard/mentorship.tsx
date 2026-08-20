@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { Calendar, Wallet, Settings, Plus, Trash2, ArrowRight, CalendarOff } from 'lucide-react';
+import { Calendar, Wallet, Settings, Plus, Trash2, ArrowRight, CalendarOff, Check } from 'lucide-react';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import RoleGate from '../../src/components/auth/RoleGate';
 import SiteHeader from '../../src/components/layout/SiteHeader';
@@ -27,6 +27,20 @@ import { resolveLocale } from '@/src/utils/locale';
 
 const DAYS_KA = ['კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი'];
 const DAYS_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+// Same dayOfWeek values (0=Sunday..6=Saturday) as everywhere else in this
+// app, just displayed Monday-first — a natural work-week reading order for
+// the grid below.
+const DAYS_SHORT_KA = ['კვ', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
+const DAYS_SHORT_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const GRID_DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+// The grid's cell granularity matches the backend's fixed session length
+// (mentorAvailabilityService.ts's DEFAULT_SESSION_MINUTES = 60) — every
+// bookable slot is exactly one hour, so a 1-hour cell can't misrepresent a
+// mentor's actual availability the way a coarser one could.
+const GRID_HOUR_START = 8;
+const GRID_HOUR_END = 22; // last selectable start hour — that cell covers 22:00-23:00
+const GRID_HOURS = Array.from({ length: GRID_HOUR_END - GRID_HOUR_START + 1 }, (_, i) => GRID_HOUR_START + i);
 
 function minutesToTime(minutes: number): string {
   const h = Math.floor(minutes / 60).toString().padStart(2, '0');
@@ -38,19 +52,59 @@ function timeToMinutes(time: string): number {
   return h * 60 + m;
 }
 
+// A day's rules -> which of GRID_HOURS are fully covered ("on"). A hour
+// only counts as on if some rule covers the whole [hour, hour+1) span —
+// this stays correct even for pre-existing rules whose boundaries don't
+// align to whole hours (nothing in the old form enforced that).
+function deriveDayGrid(dayRules: MentorAvailabilityRuleRow[]): boolean[] {
+  return GRID_HOURS.map((hour) => {
+    const start = hour * 60;
+    const end = start + 60;
+    return dayRules.some((r) => r.startMinute <= start && r.endMinute >= end);
+  });
+}
+
+// The inverse — collapses a boolean-per-hour day back into the minimal set
+// of contiguous [startMinute, endMinute) ranges the backend actually
+// stores. Rebuilding fresh from the full day's grid on every toggle (rather
+// than patching individual rules) means legacy non-hour-aligned rules get
+// naturally normalized the first time a mentor touches that day.
+function gridToRanges(dayGrid: boolean[]): { startMinute: number; endMinute: number }[] {
+  const ranges: { startMinute: number; endMinute: number }[] = [];
+  let i = 0;
+  while (i < dayGrid.length) {
+    if (!dayGrid[i]) {
+      i += 1;
+      continue;
+    }
+    let j = i;
+    while (j < dayGrid.length && dayGrid[j]) j += 1;
+    ranges.push({ startMinute: GRID_HOURS[i] * 60, endMinute: GRID_HOURS[j - 1] * 60 + 60 });
+    i = j;
+  }
+  return ranges;
+}
+
 function MentorshipWorkspaceContent() {
   const router = useRouter();
   const lang = resolveLocale(router.locale);
   const { t } = useTranslation('mentorship');
-  const days = lang === 'en' ? DAYS_EN : DAYS_KA;
 
   const [profile, setProfile] = useState<MentorProfile | null>(null);
 
   const [rules, setRules] = useState<MentorAvailabilityRuleRow[]>([]);
-  const [newDay, setNewDay] = useState(1);
-  const [newFrom, setNewFrom] = useState('18:00');
-  const [newTo, setNewTo] = useState('21:00');
-  const [addingRule, setAddingRule] = useState(false);
+  // dayOfWeek -> boolean per GRID_HOURS index. The single source of truth
+  // for what the grid renders — always updated optimistically on click, and
+  // only ever re-derived wholesale from a fresh `rules` fetch on initial
+  // load/rollback, never reactively off every `rules` change (that would
+  // stomp a same-render-cycle optimistic toggle on a day whose debounced
+  // sync hasn't landed yet).
+  const [grid, setGrid] = useState<Record<number, boolean[]>>({});
+  const [savingDays, setSavingDays] = useState<Set<number>>(new Set());
+  const [savedDays, setSavedDays] = useState<Set<number>>(new Set());
+  const [gridError, setGridError] = useState<string | null>(null);
+  const syncTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+  const savedFlashTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
 
   const [exceptions, setExceptions] = useState<MentorAvailabilityException[]>([]);
   const [newExceptionDate, setNewExceptionDate] = useState('');
@@ -68,39 +122,76 @@ function MentorshipWorkspaceContent() {
 
   const [error, setError] = useState<string | null>(null);
 
+  const loadRules = useCallback(() => {
+    getMyAvailability().then((fetched) => {
+      setRules(fetched);
+      const g: Record<number, boolean[]> = {};
+      for (const day of GRID_DAY_ORDER) {
+        g[day] = deriveDayGrid(fetched.filter((r) => r.dayOfWeek === day));
+      }
+      setGrid(g);
+    }).catch(() => {});
+  }, []);
+
   const load = useCallback(() => {
     getMyMentorProfile().then(setProfile).catch(() => {});
-    getMyAvailability().then(setRules).catch(() => {});
+    loadRules();
     getMyAvailabilityExceptions().then(setExceptions).catch(() => {});
     getWalletSummary().then(setWallet).catch(() => {});
     getMyPayoutRequests().then(setPayoutRequests).catch(() => {});
-  }, []);
+  }, [loadRules]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  const handleAddRule = async () => {
-    setAddingRule(true);
-    setError(null);
-    try {
-      const rule = await createMyAvailabilityRule({ dayOfWeek: newDay, startMinute: timeToMinutes(newFrom), endMinute: timeToMinutes(newTo) });
-      setRules((prev) => [...prev, rule].sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startMinute - b.startMinute));
-    } catch {
-      setError(t('workspaceError'));
-    } finally {
-      setAddingRule(false);
-    }
-  };
+  // Debounced per-day sync — lets a mentor click several cells on the same
+  // day in quick succession without firing a request per click, while the
+  // cell color itself still updates instantly (see toggleCell below).
+  const syncDay = useCallback(
+    async (day: number, dayGrid: boolean[]) => {
+      setSavingDays((prev) => new Set(prev).add(day));
+      setGridError(null);
+      const ranges = gridToRanges(dayGrid);
+      const oldIds = rules.filter((r) => r.dayOfWeek === day).map((r) => r.id);
+      try {
+        const created = await Promise.all(ranges.map((range) => createMyAvailabilityRule({ dayOfWeek: day, ...range })));
+        await Promise.all(oldIds.map((id) => deleteMyAvailabilityRule(id)));
+        setRules((prev) => [...prev.filter((r) => r.dayOfWeek !== day), ...created]);
+        setSavedDays((prev) => new Set(prev).add(day));
+        if (savedFlashTimers.current[day]) clearTimeout(savedFlashTimers.current[day]);
+        savedFlashTimers.current[day] = setTimeout(() => {
+          setSavedDays((prev) => {
+            const next = new Set(prev);
+            next.delete(day);
+            return next;
+          });
+        }, 2000);
+      } catch {
+        setGridError(t('gridSyncError'));
+        // Roll back this day's cells to the last known-good server state —
+        // every other day's grid (synced or still-pending) is untouched.
+        setGrid((prev) => ({ ...prev, [day]: deriveDayGrid(rules.filter((r) => r.dayOfWeek === day)) }));
+      } finally {
+        setSavingDays((prev) => {
+          const next = new Set(prev);
+          next.delete(day);
+          return next;
+        });
+      }
+    },
+    [rules, t]
+  );
 
-  const handleDeleteRule = async (ruleId: string) => {
-    setRules((prev) => prev.filter((r) => r.id !== ruleId));
-    try {
-      await deleteMyAvailabilityRule(ruleId);
-    } catch {
-      setError(t('workspaceError'));
-      load();
-    }
+  const toggleCell = (day: number, hourIndex: number) => {
+    setGrid((prev) => {
+      const dayGrid = [...(prev[day] ?? GRID_HOURS.map(() => false))];
+      dayGrid[hourIndex] = !dayGrid[hourIndex];
+      const next = { ...prev, [day]: dayGrid };
+      if (syncTimers.current[day]) clearTimeout(syncTimers.current[day]);
+      syncTimers.current[day] = setTimeout(() => syncDay(day, dayGrid), 700);
+      return next;
+    });
   };
 
   const handleAddException = async () => {
@@ -194,56 +285,78 @@ function MentorshipWorkspaceContent() {
         </div>
 
         <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 p-6 mb-6">
-          <h2 className="text-sm font-bold mb-1">{t('availabilityTitle')}</h2>
+          <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
+            <h2 className="text-sm font-bold">{t('availabilityTitle')}</h2>
+            {(savingDays.size > 0 || savedDays.size > 0) && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400">
+                {savingDays.size > 0 ? (
+                  t('gridSaving')
+                ) : (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                    <span className="text-emerald-600 dark:text-emerald-400">{t('gridSaved')}</span>
+                  </>
+                )}
+              </span>
+            )}
+          </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t('availabilityHint')}</p>
 
-          {rules.length === 0 ? (
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t('availabilityNoSlots')}</p>
-          ) : (
-            <div className="space-y-2 mb-4">
-              {rules.map((rule) => (
-                <div key={rule.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2.5">
-                  <span className="text-sm">
-                    {days[rule.dayOfWeek]}, {minutesToTime(rule.startMinute)}–{minutesToTime(rule.endMinute)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteRule(rule.id)}
-                    aria-label="Delete"
-                    className="text-slate-400 hover:text-red-500 bg-transparent border-none cursor-pointer"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
+          {gridError && (
+            <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/30 px-3 py-2 text-xs text-red-600 dark:text-red-300">{gridError}</div>
           )}
 
-          <div className="flex flex-wrap items-end gap-3">
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('day')}</label>
-              <select value={newDay} onChange={(e) => setNewDay(Number(e.target.value))} className="rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 px-3 py-2 text-sm">
-                {days.map((d, i) => (
-                  <option key={i} value={i}>{d}</option>
+          <div className="flex items-center gap-4 mb-4 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-3.5 h-3.5 rounded bg-emerald-500 inline-block" /> {t('gridLegendAvailable')}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-3.5 h-3.5 rounded bg-slate-200 dark:bg-slate-700 inline-block" /> {t('gridLegendBlocked')}
+            </span>
+          </div>
+
+          <div className="overflow-x-auto -mx-1 px-1">
+            <table className="border-collapse select-none" style={{ minWidth: 560 }}>
+              <thead>
+                <tr>
+                  <th className="w-12" />
+                  {GRID_DAY_ORDER.map((day) => (
+                    <th key={day} className="text-[11px] font-black text-slate-500 dark:text-slate-400 pb-1.5 px-0.5">
+                      {(lang === 'en' ? DAYS_SHORT_EN : DAYS_SHORT_KA)[day]}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {GRID_HOURS.map((hour, hourIndex) => (
+                  <tr key={hour}>
+                    <td className="text-[11px] font-bold text-slate-400 dark:text-slate-500 pr-2 text-right whitespace-nowrap">
+                      {String(hour).padStart(2, '0')}:00
+                    </td>
+                    {GRID_DAY_ORDER.map((day) => {
+                      const isOn = grid[day]?.[hourIndex] ?? false;
+                      const isSaving = savingDays.has(day);
+                      return (
+                        <td key={day} className="p-0.5">
+                          <button
+                            type="button"
+                            onClick={() => toggleCell(day, hourIndex)}
+                            disabled={isSaving}
+                            aria-pressed={isOn}
+                            aria-label={`${(lang === 'en' ? DAYS_EN : DAYS_KA)[day]} ${String(hour).padStart(2, '0')}:00`}
+                            className={`w-9 h-8 sm:w-11 sm:h-9 rounded-md border transition-colors cursor-pointer disabled:cursor-wait ${
+                              isOn
+                                ? 'bg-emerald-500 border-emerald-600 hover:bg-emerald-600'
+                                : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+                            }`}
+                          />
+                        </td>
+                      );
+                    })}
+                  </tr>
                 ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('from')}</label>
-              <input type="time" value={newFrom} onChange={(e) => setNewFrom(e.target.value)} className="rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 px-3 py-2 text-sm" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('to')}</label>
-              <input type="time" value={newTo} onChange={(e) => setNewTo(e.target.value)} className="rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 px-3 py-2 text-sm" />
-            </div>
-            <button
-              type="button"
-              onClick={handleAddRule}
-              disabled={addingRule}
-              className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white disabled:opacity-60"
-            >
-              <Plus className="w-3.5 h-3.5" /> {t('addSlot')}
-            </button>
+              </tbody>
+            </table>
           </div>
         </div>
 
