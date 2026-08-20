@@ -19,7 +19,10 @@ export function useAuthState() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  // Reads the cached session and silently revalidates it against the
+  // server — factored out of the mount effect so it can also run on a
+  // bfcache restore (see the pageshow listener below), not just first load.
+  const hydrateFromStorage = useCallback(() => {
     const token = localStorage.getItem(TOKEN_KEY);
     const storedUser = localStorage.getItem(USER_KEY);
 
@@ -49,9 +52,31 @@ export function useAuthState() {
           removeCookie(TOKEN_COOKIE);
           setUser(null);
         });
+    } else {
+      setUser(null);
     }
-    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    hydrateFromStorage();
+    setLoading(false);
+
+    // Chrome/Safari (desktop and mobile) restore a page from the
+    // back-forward cache on Back/Forward navigation without re-running any
+    // JS — this component's state is a frozen snapshot from whenever the
+    // user navigated away, so a session that expired/changed in the
+    // meantime (or a login/logout that happened in another tab) would
+    // otherwise render as stale until the next full reload. `pageshow`'s
+    // `persisted` flag is the one reliable signal a bfcache restore
+    // actually happened (a normal first load never sets it), so this
+    // re-runs the exact same revalidation the mount effect does instead of
+    // trusting the frozen snapshot.
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) hydrateFromStorage();
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, [hydrateFromStorage]);
 
   // `remember` only affects the mirrored `token` cookie's lifetime (7 days
   // vs a browser-session cookie) — the primary auth mechanism (the

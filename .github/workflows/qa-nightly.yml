@@ -1,0 +1,180 @@
+name: Nightly QA
+
+# Runs the Playwright E2E suite every night, AND on every PR into main, against
+# a fresh, self-contained stack (Postgres + Backend + Frontend, all spun up in
+# this job — see the comment on the `e2e` job below for why there's no real
+# staging deployment to point at yet). On a scheduled/manual run's failure,
+# `autofix` drafts a PR with a proposed test fix — it never pushes to `main`
+# directly (see the `autofix` job's `if:` for why it never fires on a PR run
+# itself — opening a fix-PR against a PR that's still under review would be
+# confusing); see qa-autofix's own README-style comment in analyze-and-fix.mjs
+# for exactly what it will and won't touch.
+on:
+  schedule:
+    - cron: '0 0 * * *' # midnight UTC
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: qa
+          POSTGRES_PASSWORD: qa
+          POSTGRES_DB: cdc_platform_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # A fresh Postgres service container per run — there is no staging/
+      # preview deployment for this app yet (see CLAUDE.md/project notes:
+      # Backend deploys straight to Azure prod on push to main, Frontend to
+      # Vercel prod). Building the whole stack here, migrated + seeded from
+      # scratch every run, is more reproducible than pointing at a shared
+      # environment anyway. If a real staging URL is added later, swap this
+      # job's "start Backend/Frontend" steps for a health-check against
+      # PLAYWRIGHT_BASE_URL instead.
+      DATABASE_URL: postgresql://qa:qa@localhost:5432/cdc_platform_qa
+      JWT_SECRET: qa-nightly-ci-only-secret-not-used-anywhere-real
+      PORT: 4000
+      CRON_SECRET: qa-nightly-ci-only-secret
+      # AZURE_STORAGE_ACCOUNT_URL/CONTAINER_NAME are required at boot (see
+      # Backend/src/utils/env.ts's requireEnv) but never actually reached —
+      # the only route that touches them fails closed behind its own
+      # `containerReady.catch(() => {})` guard, and nothing in this suite
+      # exercises video upload. Dummy values only.
+      AZURE_STORAGE_ACCOUNT_URL: https://qa-ci-unused.blob.core.windows.net
+      AZURE_STORAGE_CONTAINER_NAME: qa-ci-unused
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
+      QA_TEST_EMAIL: qa-e2e@cdc.test
+      QA_TEST_PASSWORD: QaE2ePass123!
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: corepack enable
+
+      - name: Install Backend dependencies
+        working-directory: Backend
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Frontend dependencies
+        working-directory: Frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations
+        working-directory: Backend
+        run: npx prisma migrate deploy
+
+      - name: Seed E2E fixtures
+        working-directory: Backend
+        run: pnpm run db:seed:e2e
+
+      - name: Build and start Backend
+        working-directory: Backend
+        run: |
+          pnpm run build
+          nohup pnpm run start > backend.log 2>&1 &
+          npx wait-on -t 60000 http://localhost:4000/api/products
+
+      - name: Build and start Frontend
+        working-directory: Frontend
+        run: |
+          pnpm run build
+          nohup pnpm run start -- -p 3000 > frontend.log 2>&1 &
+          npx wait-on -t 120000 http://localhost:3000
+
+      - name: Install Playwright browsers
+        working-directory: Frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright suite
+        working-directory: Frontend
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+          CI: true
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            Frontend/playwright-report/
+            Frontend/test-results/
+          retention-days: 14
+
+      - name: Upload server logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-logs
+          path: |
+            Backend/backend.log
+            Frontend/frontend.log
+          retention-days: 14
+
+  autofix:
+    needs: e2e
+    # Only for the scheduled/manual run — a PR's own failure should be fixed
+    # by the person driving that PR, not by a second bot-authored PR opened
+    # against a branch that's still under review.
+    if: failure() && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # Uploaded with paths like "Frontend/playwright-report/..." relative
+      # to the repo root (see the e2e job's upload step) — downloading with
+      # no `path` override extracts back into that same relative layout
+      # under the checkout, so Frontend/playwright-report/results.json ends
+      # up exactly where analyze-and-fix.mjs expects it.
+      - uses: actions/download-artifact@v4
+        with:
+          name: playwright-report
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: corepack enable
+
+      - name: Install autofix script dependencies
+        working-directory: .github/scripts/qa-autofix
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Draft a fix from the failure report
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: node .github/scripts/qa-autofix/analyze-and-fix.mjs
+
+      # No-op (no PR) when analyze-and-fix.mjs didn't write any file
+      # changes — this action diffs the working tree itself and skips
+      # creating a PR when it's clean, so a "no confident fix" run doesn't
+      # produce noise.
+      - name: Open a PR with the proposed fix
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'fix(qa): automated fix for nightly E2E failure'
+          branch: qa-autofix/${{ github.run_id }}
+          title: '[QA Autofix] Nightly E2E failure — proposed fix for review'
+          body-path: qa-autofix-summary.md
+          labels: qa-autofix,needs-review
+          draft: true

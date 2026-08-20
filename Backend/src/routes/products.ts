@@ -77,6 +77,8 @@ router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
         licenseType: p.licenseType,
         downloadsCount: p.downloadsCount,
         salesCount: p.salesCount,
+        averageRating: p.averageRating,
+        reviewCount: p.reviewCount,
         createdAt: p.createdAt,
         purchased: purchasedIds.has(p.id),
       };
@@ -120,6 +122,8 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
       licenseType: product.licenseType,
       downloadsCount: product.downloadsCount,
       salesCount: product.salesCount,
+      averageRating: product.averageRating,
+      reviewCount: product.reviewCount,
       createdAt: product.createdAt,
       purchased,
       status: product.status,

@@ -285,15 +285,20 @@ export default function SiteHeader() {
               {darkMode ? '☀️' : '🌙'}
             </button>
             <NotificationBell />
-            <div className="hidden md:block">
-              <UserMenu
-                loginFallback={
-                  <button type="button" onClick={() => openAuthModal()} className="vip-btn-secondary !px-4 !py-2">
-                    👤 {t.login}
-                  </button>
-                }
-              />
-            </div>
+            {/* Was `hidden md:block` — on mobile that left a logged-in user
+                with NO visible profile entry point in the header row at all
+                (their avatar only ever appeared after opening the hamburger
+                drawer below). UserMenu's own avatar-only-on-narrow-screens
+                sizing (name is `hidden sm:inline`) already made it compact
+                enough to sit directly in the actions cluster on every
+                viewport, same as the bell — it just hadn't been un-hidden. */}
+            <UserMenu
+              loginFallback={
+                <button type="button" onClick={() => openAuthModal()} className="vip-btn-secondary !px-4 !py-2 hidden md:inline-flex">
+                  👤 {t.login}
+                </button>
+              }
+            />
             {!isAuthenticated && (
               <button type="button" onClick={() => openAuthModal()} className="vip-btn-secondary md:hidden !px-3 !py-2 whitespace-nowrap">
                 {t.login}

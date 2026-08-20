@@ -74,6 +74,8 @@ import productRoutes from './routes/products';
 import adminProductRoutes from './routes/adminProducts';
 import adminOpportunitiesRoutes from './routes/adminOpportunities';
 import adminMarketingRoutes from './routes/adminMarketing';
+import productReviewRoutes from './routes/productReviews';
+import adminProductReviewRoutes from './routes/adminProductReviews';
 import promoRoutes from './routes/promos';
 import aiAgentsSuiteRoutes from './routes/aiAgentsSuite';
 import examProctoringRoutes from './routes/examProctoring';
@@ -257,6 +259,8 @@ app.use('/api/products', productRoutes);
 app.use('/api/admin/products', adminProductRoutes);
 app.use('/api/admin/opportunities', adminOpportunitiesRoutes);
 app.use('/api/admin/marketing', adminMarketingRoutes);
+app.use('/api/product-reviews', productReviewRoutes);
+app.use('/api/admin/product-reviews', adminProductReviewRoutes);
 // Deliberately last among the /api/admin/* mounts — this is the ONLY
 // generically-prefixed one (all its siblings above are specific sub-paths
 // like /api/admin/knowledge). Express tries mounted routers in registration

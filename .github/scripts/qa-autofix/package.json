@@ -1,0 +1,10 @@
+{
+  "name": "qa-autofix",
+  "private": true,
+  "version": "1.0.0",
+  "description": "CI-only script — analyzes a failed nightly Playwright run and drafts a fix PR. Not part of the app; deliberately kept out of Backend/Frontend's own dependency trees.",
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.70.0"
+  }
+}

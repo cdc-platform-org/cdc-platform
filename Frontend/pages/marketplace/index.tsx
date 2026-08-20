@@ -6,7 +6,7 @@ import { useRouter } from 'next/router';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { ShoppingBag, CheckCircle2, Tag } from 'lucide-react';
+import { ShoppingBag, CheckCircle2, Tag, Star } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
@@ -159,6 +159,13 @@ function MarketplaceContent() {
                     )}
                   </div>
                   <h3 className="text-sm font-black tracking-wide mb-1.5 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">{productTitle(product, lang)}</h3>
+                  {product.reviewCount > 0 && (
+                    <div className="flex items-center gap-1 mb-1.5">
+                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{product.averageRating?.toFixed(1)}</span>
+                      <span className="text-xs text-slate-400">({product.reviewCount})</span>
+                    </div>
+                  )}
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 mb-4 flex-1">{productDescription(product, lang)}</p>
                   <div className="flex items-center justify-between">
                     <span className="flex items-baseline gap-1.5">

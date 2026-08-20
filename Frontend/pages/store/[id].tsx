@@ -11,8 +11,10 @@ import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import MarkdownContent from '../../src/components/shared/MarkdownContent';
 import ProductGallery from '../../src/components/shared/ProductGallery';
+import ProductReviewsSection from '../../src/components/store/ProductReviewsSection';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
+import StarRating from '../../src/components/community/StarRating';
 import { getProduct, claimFreeProduct, getProductDownload, productTitle, productDescription, DigitalProduct, LICENSE_LABELS } from '../../src/services/productService';
 import { checkoutProduct } from '../../src/services/paymentService';
 import { checkoutProductStripe } from '../../src/services/stripePaymentService';
@@ -223,6 +225,13 @@ function StoreProductContent() {
               )}
             </div>
             <h1 className="text-2xl md:text-3xl font-black tracking-wide mb-3">{productTitle(product, contentLang)}</h1>
+            {product.reviewCount > 0 && (
+              <div className="flex items-center gap-2 mb-3">
+                <StarRating value={product.averageRating ?? 0} size="sm" />
+                <span className="text-sm font-bold">{product.averageRating?.toFixed(1)}</span>
+                <span className="text-xs text-slate-400">({product.reviewCount})</span>
+              </div>
+            )}
             <MarkdownContent content={productDescription(product, contentLang)} className="mb-6 flex-1" />
             <p className="text-xs text-slate-500 dark:text-slate-400 -mt-4 mb-6">{LICENSE_LABELS[product.licenseType][contentLang === 'ka' ? 'descriptionKa' : 'descriptionEn']}</p>
 
@@ -298,6 +307,8 @@ function StoreProductContent() {
             </div>
           )}
         </div>
+
+        <ProductReviewsSection productId={product.id} />
       </div>
 
       <SiteFooter />

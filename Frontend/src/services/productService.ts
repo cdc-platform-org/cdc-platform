@@ -61,6 +61,11 @@ export interface DigitalProduct {
   // DigitalProduct, incremented server-side at fulfillment time; never
   // computed client-side.
   salesCount: number;
+  // Denormalized rollup of this product's ProductReview rows (see
+  // productReviewService.ts for the review CRUD itself) — null/0 until the
+  // first review is left.
+  averageRating: number | null;
+  reviewCount: number;
   createdAt: string;
   purchased: boolean;
   status?: ProductStatus;

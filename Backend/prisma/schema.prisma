@@ -226,6 +226,15 @@ model User {
   // (profile pages, gig/vacancy cards, etc).
   averageRating                 Float?
   reviewCount                   Int                         @default(0)
+  // Same denormalized-rollup pattern as averageRating/reviewCount above, but
+  // for this user's Digital Store listings as a seller/creator (ProductReview,
+  // recomputed on every product review create/delete) — deliberately a
+  // separate figure from the gig-marketplace rating above, since a great
+  // freelancer and a great product creator are different reputations. Null/0
+  // for users who have never had a product reviewed (including anyone who
+  // has never submitted a product at all).
+  sellerRating                  Float?
+  sellerReviewCount             Int                         @default(0)
   // Set only by a SuperAdmin (POST /api/admin/users/:id/verify-graduate) once
   // they've confirmed the user actually completed a CDC course — there is no
   // automated course-completion pipeline yet, so this is a manual gate.
@@ -439,6 +448,8 @@ model User {
   productPurchases             ProductPurchase[]
   assignmentSubmissions        AssignmentSubmission[]
   submittedProducts            DigitalProduct[]              @relation("SubmittedProducts")
+  productReviewsGiven          ProductReview[]               @relation("ProductReviewsGiven")
+  productReviewHelpfulVotes    ProductReviewHelpfulVote[]
   forumThreads                 ForumThread[]
   forumComments                ForumComment[]
   forumThreadLikes             ForumThreadLike[]
@@ -1204,6 +1215,11 @@ model DigitalProduct {
   submittedById      String?
   submittedBy        User?              @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
   launchKits         LaunchKit[]
+  // Denormalized rollup of `reviews` (ProductReview), same pattern as
+  // User.averageRating/reviewCount — recomputed on every review create/delete.
+  averageRating      Float?
+  reviewCount        Int                @default(0)
+  reviews            ProductReview[]
 
   @@map("digital_products")
 }
@@ -1313,6 +1329,10 @@ model ProductPurchase {
   // on subsequent re-downloads (lifetime re-download is allowed).
   downloadedAt     DateTime?
   createdAt        DateTime            @default(now())
+  // The review left against this specific purchase, if any — see
+  // ProductReview.purchaseId, which is how "Verified Buyer" is enforced
+  // (one review per completed purchase, never per user-product pair alone).
+  review           ProductReview?
 
   @@unique([userId, productId])
   @@index([userId])
@@ -1506,6 +1526,57 @@ model Review {
   @@unique([gigId, reviewerId])
   @@index([revieweeId])
   @@map("reviews")
+}
+
+// ============================================================
+// PRODUCT REVIEW (Digital Store — Etsy/Amazon-style verified-purchase
+// rating on a DigitalProduct, distinct from the gig-marketplace Review
+// model above). Security rule lives here, not just in the UI: a review can
+// only ever be created against a purchaseId that is (a) this reviewer's own
+// ProductPurchase row and (b) paymentStatus COMPLETED — see routes/
+// productReviews.ts. purchaseId is @unique so a purchase can never carry
+// more than one review, which is the actual "already reviewed" guard
+// (stronger than the [productId, userId] unique below, which just prevents
+// a rare double-purchase from producing two reviews for the same product).
+// ============================================================
+model ProductReview {
+  id           String                     @id @default(uuid())
+  productId    String
+  product      DigitalProduct             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User                       @relation("ProductReviewsGiven", fields: [userId], references: [id], onDelete: Cascade)
+  purchaseId   String                     @unique
+  purchase     ProductPurchase            @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  rating       Int
+  comment      String
+  // Optional proof/showcase photo (e.g. the finished product in use) —
+  // same Bunny-Storage-CDN-URL convention as every other upload in this
+  // codebase, never a freely-settable arbitrary URL.
+  imageUrl     String?
+  // Denormalized count of helpfulVotes below — recomputed on every vote
+  // toggle, same rollup pattern used everywhere else in this schema.
+  helpfulCount Int                        @default(0)
+  createdAt    DateTime                   @default(now())
+  updatedAt    DateTime                   @updatedAt
+  helpfulVotes ProductReviewHelpfulVote[]
+
+  @@unique([productId, userId])
+  @@index([productId])
+  @@map("product_reviews")
+}
+
+// One "helpful" vote per (review, user) — prevents a single user from
+// inflating helpfulCount by repeat-clicking.
+model ProductReviewHelpfulVote {
+  id        String        @id @default(uuid())
+  reviewId  String
+  review    ProductReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+
+  @@unique([reviewId, userId])
+  @@map("product_review_helpful_votes")
 }
 
 // ============================================================

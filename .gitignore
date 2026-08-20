@@ -12,4 +12,8 @@ yarn-error.log*
 # Raw Stitch AI design export (static HTML/PNG mockups, not application
 # code) — kept local for reference, never committed.
 stitch-export/
+
+# Written by .github/scripts/qa-autofix/analyze-and-fix.mjs during the
+# nightly QA workflow's autofix job — feeds the PR body for that run only.
+qa-autofix-summary.md
 "

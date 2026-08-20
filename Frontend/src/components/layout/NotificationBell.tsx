@@ -30,7 +30,19 @@ export default function NotificationBell() {
     if (!isAuthenticated) return;
     load();
     const timer = setInterval(load, 60000);
-    return () => clearInterval(timer);
+    // See useAuth.ts's own pageshow listener — a bfcache-restored page
+    // (Back/Forward nav) resumes this exact timer instead of re-running it,
+    // so the badge could otherwise sit stale for up to 60s after a restore.
+    // Refetching immediately on a real bfcache restore keeps it current
+    // without polling any more aggressively on a normal page.
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) load();
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('pageshow', handlePageShow);
+    };
   }, [isAuthenticated, load]);
 
   useEffect(() => {
