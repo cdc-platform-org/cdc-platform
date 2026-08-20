@@ -13,11 +13,32 @@ import {
   getVacancyApplications,
   reviewVacancyApplication,
 } from '../../../src/services/vacancyService';
+import { resolveLocale } from '../../../src/utils/locale';
+
+const EN_STRINGS = {
+  loading: 'Loading…',
+  notFound: "This vacancy doesn't exist or you don't have permission to view its applications.",
+  applications: (n: number) => `${n} application${n !== 1 ? 's' : ''}`,
+};
+
+const dict = {
+  ka: {
+    loading: 'იტვირთება…',
+    notFound: 'ეს ვაკანსია არ არსებობს ან არ გაქვთ განაცხადების ნახვის უფლება.',
+    applications: (n: number) => `${n} განაცხადი`,
+  },
+  en: EN_STRINGS,
+  de: EN_STRINGS,
+  es: EN_STRINGS,
+  fr: EN_STRINGS,
+  uk: EN_STRINGS,
+};
 
 function VacancyApplicationsContent() {
   const router = useRouter();
   const { id } = router.query;
   const { user } = useAuth();
+  const t = dict[resolveLocale(router.locale)];
   const [vacancy, setVacancy] = useState<Vacancy | null>(null);
   const [applications, setApplications] = useState<VacancyApplication[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,16 +92,14 @@ function VacancyApplicationsContent() {
   };
 
   if (loading) {
-    return <p className="text-center text-sm text-gray-400 dark:text-slate-500 py-10">Loading…</p>;
+    return <p className="text-center text-sm text-gray-400 dark:text-slate-500 py-10">{t.loading}</p>;
   }
 
   if (notFoundOrForbidden || !vacancy) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-100 dark:bg-[#0b0f19] py-10">
         <SiteHeader />
-        <p className="text-center text-sm text-gray-500 dark:text-slate-400">
-          This vacancy doesn't exist or you don't have permission to view its applications.
-        </p>
+        <p className="text-center text-sm text-gray-500 dark:text-slate-400">{t.notFound}</p>
         <BackButton fallbackHref="/vacancies" />
       </div>
     );
@@ -95,7 +114,7 @@ function VacancyApplicationsContent() {
         </div>
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{vacancy.title}</h1>
         <p className="text-sm text-gray-500 dark:text-slate-400 mt-1 mb-8">
-          {applications.length} application{applications.length !== 1 ? 's' : ''} · {vacancy.location}
+          {t.applications(applications.length)} · {vacancy.location}
         </p>
         <ApplicationsReviewList
           applications={applications}

@@ -15,11 +15,42 @@ import {
   rejectGigApplication,
 } from '../../../src/services/gigService';
 import { checkoutGigEscrow } from '../../../src/services/paymentService';
+import { resolveLocale } from '../../../src/utils/locale';
+
+const EN_STRINGS = {
+  loading: 'Loading…',
+  notFound: "This gig doesn't exist or you don't have permission to view its applications.",
+  applications: (n: number) => `${n} application${n !== 1 ? 's' : ''}`,
+  budget: 'Budget',
+  assignedNotice: 'This gig is assigned. Fund escrow via Bank of Georgia to let work begin — funds are held until you approve the delivered work.',
+  fundEscrow: 'Fund Escrow with BOG',
+  redirecting: 'Redirecting to BOG…',
+  fundingError: 'Unable to start payment. Please try again.',
+};
+
+const dict = {
+  ka: {
+    loading: 'იტვირთება…',
+    notFound: 'ეს გიგი არ არსებობს ან არ გაქვთ განაცხადების ნახვის უფლება.',
+    applications: (n: number) => `${n} განაცხადი`,
+    budget: 'ბიუჯეტი',
+    assignedNotice: 'ეს გიგი დანიშნულია. დააფინანსეთ ესქროუ Bank of Georgia-ს მეშვეობით სამუშაოს დასაწყებად — თანხა ინახება, სანამ არ დაამტკიცებთ შესრულებულ სამუშაოს.',
+    fundEscrow: 'ესქროუს დაფინანსება BOG-ით',
+    redirecting: 'გადამისამართება BOG-ზე…',
+    fundingError: 'გადახდის დაწყება ვერ მოხერხდა. სცადეთ თავიდან.',
+  },
+  en: EN_STRINGS,
+  de: EN_STRINGS,
+  es: EN_STRINGS,
+  fr: EN_STRINGS,
+  uk: EN_STRINGS,
+};
 
 function GigApplicationsContent() {
   const router = useRouter();
   const { id } = router.query;
   const { user } = useAuth();
+  const t = dict[resolveLocale(router.locale)];
   const [gig, setGig] = useState<Gig | null>(null);
   const [applications, setApplications] = useState<GigApplication[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,22 +114,20 @@ function GigApplicationsContent() {
       const { redirectUrl } = await checkoutGigEscrow(id, router.locale === 'en' ? 'en' : 'ka');
       window.location.href = redirectUrl;
     } catch (err: any) {
-      setFundingError(err?.response?.data?.message || 'Unable to start payment. Please try again.');
+      setFundingError(err?.response?.data?.message || t.fundingError);
       setFunding(false);
     }
   };
 
   if (loading) {
-    return <p className="text-center text-sm text-gray-400 dark:text-slate-500 py-10">Loading…</p>;
+    return <p className="text-center text-sm text-gray-400 dark:text-slate-500 py-10">{t.loading}</p>;
   }
 
   if (notFoundOrForbidden || !gig) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-100 dark:bg-[#0b0f19] py-10">
         <SiteHeader />
-        <p className="text-center text-sm text-gray-500 dark:text-slate-400">
-          This gig doesn't exist or you don't have permission to view its applications.
-        </p>
+        <p className="text-center text-sm text-gray-500 dark:text-slate-400">{t.notFound}</p>
         <BackButton fallbackHref="/gigs" />
       </div>
     );
@@ -113,23 +142,20 @@ function GigApplicationsContent() {
         </div>
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{gig.title}</h1>
         <p className="text-sm text-gray-500 dark:text-slate-400 mt-1 mb-8">
-          {applications.length} application{applications.length !== 1 ? 's' : ''} · Budget:{' '}
+          {t.applications(applications.length)} · {t.budget}:{' '}
           {(gig.budgetAmount / 100).toFixed(2)} {gig.currency}
           {gig.budgetType === 'hourly' ? '/hr' : ''}
         </p>
         {gig.status === 'assigned' && gig.assignedFreelancerId && (
           <div className="mb-8 rounded-xl border border-indigo-200 dark:border-indigo-500/20 bg-indigo-50 dark:bg-indigo-500/10 p-4">
-            <p className="text-sm text-indigo-900 mb-3">
-              This gig is assigned. Fund escrow via Bank of Georgia to let work begin — funds are held until you
-              approve the delivered work.
-            </p>
-            {fundingError && <p className="text-sm text-red-600 mb-2">{fundingError}</p>}
+            <p className="text-sm text-indigo-900 dark:text-indigo-200 mb-3">{t.assignedNotice}</p>
+            {fundingError && <p className="text-sm text-red-600 dark:text-red-400 mb-2">{fundingError}</p>}
             <button
               onClick={handleFundEscrow}
               disabled={funding}
               className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
             >
-              {funding ? 'Redirecting to BOG…' : 'Fund Escrow with BOG'}
+              {funding ? t.redirecting : t.fundEscrow}
             </button>
           </div>
         )}

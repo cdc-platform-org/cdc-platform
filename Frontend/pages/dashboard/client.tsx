@@ -104,6 +104,18 @@ const dictBase = {
     close: 'დახურვა',
     reopen: 'ხელახლა გახსნა',
     editVacancyTitle: 'ვაკანსიის რედაქტირება',
+    fieldTitle: 'დასახელება',
+    fieldDescription: 'აღწერა',
+    fieldEmploymentType: 'დასაქმების ტიპი',
+    employmentFullTime: 'სრული განაკვეთი',
+    employmentPartTime: 'ნახევარი განაკვეთი',
+    employmentContract: 'ხელშეკრულებით',
+    employmentInternship: 'სტაჟირება',
+    fieldLocation: 'მდებარეობა',
+    fieldSkills: 'უნარები (მძიმით გამოყოფილი)',
+    fieldMinSalary: 'მინ. ხელფასი',
+    fieldMaxSalary: 'მაქს. ხელფასი',
+    fieldCurrency: 'ვალუტა',
     cancel: 'გაუქმება',
     // Orders
     postGig: '+ გიგის გამოქვეყნება',
@@ -177,6 +189,18 @@ const dictBase = {
     close: 'Close',
     reopen: 'Reopen',
     editVacancyTitle: 'Edit Vacancy',
+    fieldTitle: 'Title',
+    fieldDescription: 'Description',
+    fieldEmploymentType: 'Employment Type',
+    employmentFullTime: 'Full-time',
+    employmentPartTime: 'Part-time',
+    employmentContract: 'Contract',
+    employmentInternship: 'Internship',
+    fieldLocation: 'Location',
+    fieldSkills: 'Skills (comma-separated)',
+    fieldMinSalary: 'Min Salary',
+    fieldMaxSalary: 'Max Salary',
+    fieldCurrency: 'Currency',
     cancel: 'Cancel',
     postGig: '+ Post a Gig',
     noGigs: "You haven't posted any gigs yet.",
@@ -307,43 +331,43 @@ function VacancyEditModal({ vacancy, lang, onClose, onSaved }: VacancyEditModalP
         {error && <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-xs text-red-600 dark:text-red-300">{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className={labelClass}>Title</label>
+            <label className={labelClass}>{t.fieldTitle}</label>
             <input className={inputClass} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           </div>
           <div>
-            <label className={labelClass}>Description</label>
+            <label className={labelClass}>{t.fieldDescription}</label>
             <textarea rows={4} className={inputClass} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelClass}>Employment Type</label>
+              <label className={labelClass}>{t.fieldEmploymentType}</label>
               <select className={inputClass} value={form.employmentType} onChange={(e) => setForm({ ...form, employmentType: e.target.value as EmploymentType })}>
-                <option value="full_time">Full-time</option>
-                <option value="part_time">Part-time</option>
-                <option value="contract">Contract</option>
-                <option value="internship">Internship</option>
+                <option value="full_time">{t.employmentFullTime}</option>
+                <option value="part_time">{t.employmentPartTime}</option>
+                <option value="contract">{t.employmentContract}</option>
+                <option value="internship">{t.employmentInternship}</option>
               </select>
             </div>
             <div>
-              <label className={labelClass}>Location</label>
+              <label className={labelClass}>{t.fieldLocation}</label>
               <input className={inputClass} value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
             </div>
           </div>
           <div>
-            <label className={labelClass}>Skills (comma-separated)</label>
+            <label className={labelClass}>{t.fieldSkills}</label>
             <input className={inputClass} value={form.skillsRequired} onChange={(e) => setForm({ ...form, skillsRequired: e.target.value })} />
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className={labelClass}>Min Salary</label>
+              <label className={labelClass}>{t.fieldMinSalary}</label>
               <input type="number" min="0" step="0.01" className={inputClass} value={form.salaryMin} onChange={(e) => setForm({ ...form, salaryMin: e.target.value })} />
             </div>
             <div>
-              <label className={labelClass}>Max Salary</label>
+              <label className={labelClass}>{t.fieldMaxSalary}</label>
               <input type="number" min="0" step="0.01" className={inputClass} value={form.salaryMax} onChange={(e) => setForm({ ...form, salaryMax: e.target.value })} />
             </div>
             <div>
-              <label className={labelClass}>Currency</label>
+              <label className={labelClass}>{t.fieldCurrency}</label>
               <select className={inputClass} value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })}>
                 <option value="GEL">GEL</option>
                 <option value="USD">USD</option>
