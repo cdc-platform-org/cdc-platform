@@ -156,7 +156,7 @@ export default function BusinessAiAgentsSuite({ lang }: { lang: SupportedLocale 
   // a trial — they've never had one yet. Distinct messaging + no false
   // "contact us to renew" CTA for that case.
   const verificationPending =
-    !hasAccess && user?.role === 'Client' && user.verificationStatus !== 'VERIFIED' && user.verificationStatus !== 'REJECTED';
+    !hasAccess && user?.role === 'Client' && user.verificationStatus !== 'APPROVED' && user.verificationStatus !== 'REJECTED';
 
   return (
     <div className="mb-10">

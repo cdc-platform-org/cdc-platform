@@ -28,7 +28,7 @@ export interface CompanyRow {
   taxId: string | null;
   verificationDocUrl: string | null;
   isVerified: boolean;
-  verificationStatus: 'UNSUBMITTED' | 'PENDING' | 'VERIFIED' | 'REJECTED' | null;
+  verificationStatus: 'UNVERIFIED' | 'PENDING' | 'APPROVED' | 'REJECTED' | null;
   trialStartDate: string | null;
   aiTrialEndsAt: string | null;
   aiSubscriptionActive: boolean;

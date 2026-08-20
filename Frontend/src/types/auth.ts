@@ -41,9 +41,16 @@ export interface User {
   // not isVerified = Under Review, isVerified = Verified.
   verificationDocUrl: string | null;
   isVerified: boolean;
-  // Richer than isVerified alone (adds PENDING vs REJECTED) — always kept
-  // in sync with isVerified server-side, see Backend's adminCompanies.ts.
-  verificationStatus: 'UNSUBMITTED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
+  // Which kind of verification (if any) this account has submitted — NONE
+  // until a first submission. See Backend's adminVerifications.ts
+  // (INDIVIDUAL) / adminCompanies.ts (BUSINESS).
+  verificationLevel: 'NONE' | 'INDIVIDUAL' | 'BUSINESS';
+  // Richer than isVerified alone (adds PENDING vs REJECTED) — for BUSINESS
+  // always kept in sync with isVerified server-side (adminCompanies.ts);
+  // for INDIVIDUAL, isVerified stays false even once APPROVED — see
+  // hasFreelancerRights() on the Backend, the actual "is this an approved
+  // individual verification" check, since isVerified is BUSINESS-only.
+  verificationStatus: 'UNVERIFIED' | 'PENDING' | 'APPROVED' | 'REJECTED';
   // Which onboarding path this account picked at registration — null for
   // accounts created before this field existed, or via Google/GitHub/
   // Facebook sign-up (those skip the 2-step onboarding flow).
