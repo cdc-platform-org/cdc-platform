@@ -8,6 +8,7 @@ export interface LiveTraining {
   scheduledAt: string;
   price: number | null;
   thumbnailUrl: string | null;
+  videoUrl: string | null;
   minCapacity: number;
   maxCapacity: number;
   published: boolean;

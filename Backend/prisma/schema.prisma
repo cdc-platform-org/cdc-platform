@@ -816,6 +816,10 @@ model LiveTraining {
   // registration form.
   price               Int?
   thumbnailUrl        String?
+  // Promo/demo clip — either a pasted YouTube/Vimeo link or a direct
+  // .mp4/.webm/.ogg URL, same convention and rendering (VideoEmbed.tsx) as
+  // StudioCaseStudy.videoUrl. No upload path — always a plain URL.
+  videoUrl            String?
   // Group-viability floor — see LiveTrainingLead's registeredCount-derived
   // "min threshold met" badge on both the admin and public pages. 0 means
   // no minimum is enforced.

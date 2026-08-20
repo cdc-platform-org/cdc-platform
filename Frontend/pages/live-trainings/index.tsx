@@ -17,6 +17,7 @@ const EN_STRINGS = {
   seatsRemaining: (n: number, total: number) => `${n} seats left of ${total}`,
   full: 'Fully booked',
   register: 'Register',
+  free: 'Free',
 };
 
 const dict = {
@@ -28,6 +29,7 @@ const dict = {
     seatsRemaining: (n: number, total: number) => `დარჩენილია ${n} ადგილი ${total}-დან`,
     full: 'ადგილები შევსებულია',
     register: 'რეგისტრაცია',
+    free: 'უფასო',
   },
   en: EN_STRINGS,
   de: EN_STRINGS,
@@ -84,6 +86,16 @@ export default function LiveTrainingsIndexPage() {
                 href={`/live-trainings/${tr.id}`}
                 className="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm overflow-hidden flex flex-col transition-all duration-300 hover:border-cyan-400/50 hover:shadow-[0_0_25px_rgba(34,211,238,0.15)] no-underline text-current"
               >
+                <div className="relative w-full aspect-video overflow-hidden bg-slate-900">
+                  {tr.thumbnailUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={tr.thumbnailUrl} alt="" className="w-full h-full object-cover object-center" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
+                      <Calendar className="w-8 h-8 text-cyan-500/40" />
+                    </div>
+                  )}
+                </div>
                 <div className="p-6 flex-1 flex flex-col">
                   <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-cyan-300 bg-cyan-500/10 border-cyan-500/20 self-start mb-4">
                     {tr.category}
@@ -94,9 +106,14 @@ export default function LiveTrainingsIndexPage() {
                   <p className="text-sm text-slate-400 leading-relaxed line-clamp-2 mb-4 flex-1">
                     {(contentLang === 'en' && tr.descriptionEn) || tr.description}
                   </p>
-                  <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-2">
-                    <Calendar size={12} />
-                    {new Date(tr.scheduledAt).toLocaleString()}
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <Calendar size={12} />
+                      {new Date(tr.scheduledAt).toLocaleString()}
+                    </div>
+                    <span className="text-xs font-black text-cyan-400 shrink-0">
+                      {tr.price ? `${(tr.price / 100).toFixed(2)} ₾` : t.free}
+                    </span>
                   </div>
                   <div className={`flex items-center gap-1.5 text-xs font-bold ${tr.isFull ? 'text-red-400' : 'text-cyan-400'}`}>
                     <Users size={12} />

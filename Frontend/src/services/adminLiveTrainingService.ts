@@ -15,6 +15,7 @@ export interface LiveTrainingPayload {
   descriptionEn?: string | null;
   price?: number | null;
   thumbnailUrl?: string;
+  videoUrl?: string;
   minCapacity?: number;
   maxCapacity: number;
   published?: boolean;
@@ -32,6 +33,13 @@ export async function updateLiveTraining(id: string, payload: Partial<LiveTraini
 
 export async function deleteLiveTraining(id: string): Promise<void> {
   await apiClient.delete(`/admin/live-trainings/${id}`);
+}
+
+export async function uploadLiveTrainingImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('image', file);
+  const response = await apiClient.post<{ data: { url: string } }>('/admin/live-trainings/upload-image', formData);
+  return response.data.data.url;
 }
 
 export async function getLiveTrainingLeads(trainingId: string): Promise<LiveTrainingLead[]> {

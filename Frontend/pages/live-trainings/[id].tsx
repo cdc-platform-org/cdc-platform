@@ -4,6 +4,7 @@ import Head from 'next/head';
 import { Calendar, Users, CheckCircle2 } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import BackButton from '../../src/components/common/BackButton';
+import VideoEmbed from '../../src/components/shared/VideoEmbed';
 import { LiveTraining } from '../../src/types/liveTraining';
 import { getLiveTraining, registerForLiveTraining } from '../../src/services/liveTrainingService';
 import { resolveLocale } from '@/src/utils/locale';
@@ -131,11 +132,24 @@ export default function LiveTrainingDetailPage() {
           <BackButton fallbackHref="/live-trainings" className="text-slate-400 hover:text-slate-100" />
         </div>
 
+        {training.thumbnailUrl && (
+          <div className="relative w-full aspect-video overflow-hidden rounded-2xl bg-slate-900 mb-6">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={training.thumbnailUrl} alt={title} className="w-full h-full object-cover object-center" />
+          </div>
+        )}
+
         <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-cyan-300 bg-cyan-500/10 border-cyan-500/20 self-start mb-4 inline-block">
           {training.category}
         </span>
         <h1 className="text-3xl font-black mb-3">{title}</h1>
         <p className="text-slate-400 leading-relaxed mb-6 whitespace-pre-line">{description}</p>
+
+        {training.videoUrl && (
+          <div className="mb-6">
+            <VideoEmbed url={training.videoUrl} title={title} />
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-4 mb-6 text-sm text-slate-300">
           <span className="flex items-center gap-1.5">

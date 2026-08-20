@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, FormEvent } from 'react';
+import { useState, useEffect, useCallback, FormEvent, ChangeEvent } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { Users } from 'lucide-react';
@@ -10,6 +10,7 @@ import {
   createLiveTraining,
   updateLiveTraining,
   deleteLiveTraining,
+  uploadLiveTrainingImage,
   LiveTrainingPayload,
 } from '../../../src/services/adminLiveTrainingService';
 
@@ -36,6 +37,7 @@ const emptyForm: LiveTrainingPayload & { scheduledAtLocal: string } = {
   descriptionEn: '',
   price: null,
   thumbnailUrl: '',
+  videoUrl: '',
   minCapacity: 0,
   maxCapacity: 15,
   published: true,
@@ -50,6 +52,23 @@ function AdminLiveTrainingsDashboard() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [activeLangTab, setActiveLangTab] = useState<'ka' | 'en'>('ka');
+  const [imageUploading, setImageUploading] = useState(false);
+
+  const handleCoverImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setImageUploading(true);
+    setFormError(null);
+    try {
+      const url = await uploadLiveTrainingImage(file);
+      setForm((f) => ({ ...f, thumbnailUrl: url }));
+    } catch (err: any) {
+      setFormError(err?.response?.data?.message ?? 'ფოტოს ატვირთვა ვერ მოხერხდა.');
+    } finally {
+      setImageUploading(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -86,6 +105,7 @@ function AdminLiveTrainingsDashboard() {
       descriptionEn: t.descriptionEn ?? '',
       price: t.price,
       thumbnailUrl: t.thumbnailUrl ?? '',
+      videoUrl: t.videoUrl ?? '',
       minCapacity: t.minCapacity,
       maxCapacity: t.maxCapacity,
       published: t.published,
@@ -118,6 +138,7 @@ function AdminLiveTrainingsDashboard() {
         descriptionEn: form.descriptionEn?.trim() || null,
         price: form.price,
         thumbnailUrl: form.thumbnailUrl?.trim() || undefined,
+        videoUrl: form.videoUrl?.trim() || undefined,
         minCapacity: form.minCapacity ?? 0,
         maxCapacity: form.maxCapacity,
         published: form.published,
@@ -195,15 +216,17 @@ function AdminLiveTrainingsDashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  ფასი <span className="text-gray-400 font-normal">(თეთრი, ცარიელი = უფასო)</span>
+                  ფასი (ლარი ₾) <span className="text-gray-400 font-normal">(ცარიელი = უფასო)</span>
                 </label>
                 <input
                   type="number"
                   min={0}
-                  value={form.price ?? ''}
-                  onChange={(e) => setForm({ ...form, price: e.target.value ? Number(e.target.value) : null })}
+                  step="0.01"
+                  value={form.price != null ? form.price / 100 : ''}
+                  onChange={(e) => setForm({ ...form, price: e.target.value ? Math.round(Number(e.target.value) * 100) : null })}
                   className={inputClass}
                 />
+                <p className="text-xs text-gray-400 mt-1">შეიყვანეთ თანხა ლარებში (მაგ. 300 ₾)</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">მინ. ჯგუფი</label>
@@ -222,6 +245,34 @@ function AdminLiveTrainingsDashboard() {
                   min={1}
                   value={form.maxCapacity}
                   onChange={(e) => setForm({ ...form, maxCapacity: Number(e.target.value) || 1 })}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  ქავერ ფოტო <span className="text-gray-400 font-normal">(რეკომენდებული ზომა: 1280 × 720px / 16:9)</span>
+                </label>
+                <div className="flex items-center gap-3">
+                  {form.thumbnailUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={form.thumbnailUrl} alt="" className="w-20 h-12 rounded-lg object-cover border border-gray-200 shrink-0" />
+                  )}
+                  <label className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-gray-300 text-sm font-medium text-gray-600 cursor-pointer hover:bg-gray-50">
+                    {imageUploading ? 'იტვირთება…' : form.thumbnailUrl ? 'ფოტოს შეცვლა' : '📁 ატვირთვა'}
+                    <input type="file" accept="image/*" onChange={handleCoverImageChange} className="hidden" disabled={imageUploading} />
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">YouTube / Video Trailer Link</label>
+                <input
+                  type="text"
+                  value={form.videoUrl ?? ''}
+                  onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
+                  placeholder="მაგ. https://www.youtube.com/watch?v=..."
                   className={inputClass}
                 />
               </div>

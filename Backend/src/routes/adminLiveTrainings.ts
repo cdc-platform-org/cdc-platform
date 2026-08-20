@@ -1,7 +1,12 @@
 import { Router, Request, Response } from 'express';
+import multer from 'multer';
+import path from 'path';
+import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { logAdminAction } from '../services/auditLogService';
+import { uploadImage } from '../services/imageStorage';
+import { BunnyStorageUploadError } from '../services/bunnyStorage';
 import {
   liveTrainingCreateSchema,
   liveTrainingUpdateSchema,
@@ -10,6 +15,41 @@ import {
 
 const router = Router();
 router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
+
+// Same buffered-straight-to-Bunny pattern as adminStudioCases.ts's own
+// /upload-image — a plain marketing cover photo, no Sharp processing.
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Only image uploads are allowed.'));
+  },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+});
+
+router.post(
+  '/upload-image',
+  (req: Request, res: Response, next) => {
+    imageUpload.single('image')(req, res, (err: any) => {
+      if (!err) return next();
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ message: 'The photo exceeds 10MB. Please choose a smaller file.' });
+      }
+      return res.status(400).json({ message: err.message || 'Only image uploads are allowed.' });
+    });
+  },
+  async (req: Request, res: Response) => {
+    if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
+    const filename = `live-training-${Date.now()}-${crypto.randomUUID()}${path.extname(req.file.originalname)}`;
+    try {
+      const url = await uploadImage({ buffer: req.file.buffer, mimetype: req.file.mimetype, folderName: 'live-trainings', filename });
+      res.status(201).json({ data: { url } });
+    } catch (err) {
+      const message = err instanceof BunnyStorageUploadError ? err.message : 'Image upload failed. Please try again.';
+      res.status(500).json({ message });
+    }
+  }
+);
 
 function withCapacity<T extends { minCapacity: number; maxCapacity: number; _count: { leads: number } }>(training: T) {
   const { _count, ...rest } = training;
@@ -34,9 +74,9 @@ router.get('/', async (_req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   const result = liveTrainingCreateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
-  const { thumbnailUrl, ...rest } = result.data;
+  const { thumbnailUrl, videoUrl, ...rest } = result.data;
   const training = await prisma.liveTraining.create({
-    data: { ...rest, thumbnailUrl: thumbnailUrl || null, scheduledAt: new Date(result.data.scheduledAt) },
+    data: { ...rest, thumbnailUrl: thumbnailUrl || null, videoUrl: videoUrl || null, scheduledAt: new Date(result.data.scheduledAt) },
     include: { _count: { select: { leads: true } } },
   });
   await logAdminAction({ action: 'liveTraining.create', targetType: 'LiveTraining', targetId: training.id, performedById: req.user!.id });
@@ -46,13 +86,14 @@ router.post('/', async (req: Request, res: Response) => {
 router.put('/:id', async (req: Request, res: Response) => {
   const result = liveTrainingUpdateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
-  const { thumbnailUrl, scheduledAt, ...rest } = result.data;
+  const { thumbnailUrl, videoUrl, scheduledAt, ...rest } = result.data;
   try {
     const training = await prisma.liveTraining.update({
       where: { id: req.params.id },
       data: {
         ...rest,
         ...(thumbnailUrl !== undefined ? { thumbnailUrl: thumbnailUrl || null } : {}),
+        ...(videoUrl !== undefined ? { videoUrl: videoUrl || null } : {}),
         ...(scheduledAt !== undefined ? { scheduledAt: new Date(scheduledAt) } : {}),
       },
       include: { _count: { select: { leads: true } } },
