@@ -23,7 +23,7 @@
   "signInRequired": "Veuillez vous connecter pour réserver une session.",
   "bookingError": "Une erreur est survenue. Veuillez réessayer.",
   "policyTitle": "🛡️ Politique d'annulation et de remboursement",
-  "policyPoint1": "Une annulation 12 heures ou plus avant la session vous donne droit à un remboursement de 100 % (hors frais bancaires).",
+  "policyPoint1": "Une annulation 12 heures ou plus avant la session vous donne droit à un remboursement de 100 % (moins des frais bancaires de 10 %).",
   "policyPoint2": "Une annulation moins de 12 heures avant la session est remboursée à 50 %, afin de compenser le temps réservé par le mentor.",
   "policyPoint3": "Si le mentor ne se présente pas, vous êtes intégralement remboursé (100 %).",
 

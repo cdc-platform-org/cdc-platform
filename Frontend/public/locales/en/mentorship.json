@@ -23,7 +23,7 @@
   "signInRequired": "Please sign in to book a session.",
   "bookingError": "Something went wrong. Please try again.",
   "policyTitle": "🛡️ Cancellation & Refund Policy",
-  "policyPoint1": "Cancelling 12+ hours before the session gets you a 100% refund (minus the bank processing fee).",
+  "policyPoint1": "Cancelling 12+ hours before the session gets you a 100% refund (minus the 10% bank processing fee).",
   "policyPoint2": "Cancelling less than 12 hours before the session refunds 50%, to compensate the mentor's reserved time.",
   "policyPoint3": "If the mentor doesn't show up, you get a full 100% refund.",
 

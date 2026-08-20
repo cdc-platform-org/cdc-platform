@@ -23,7 +23,7 @@
   "signInRequired": "Inicie sesión para reservar una sesión.",
   "bookingError": "Algo salió mal. Inténtelo de nuevo.",
   "policyTitle": "🛡️ Política de Cancelación y Reembolso",
-  "policyPoint1": "Cancelar con 12 horas o más de antelación a la sesión le da derecho a un reembolso del 100% (menos la comisión de procesamiento bancario).",
+  "policyPoint1": "Cancelar con 12 horas o más de antelación a la sesión le da derecho a un reembolso del 100% (menos la comisión bancaria del 10%).",
   "policyPoint2": "Cancelar con menos de 12 horas de antelación reembolsa el 50%, para compensar el tiempo reservado del mentor.",
   "policyPoint3": "Si el mentor no se presenta, recibe un reembolso completo del 100%.",
 

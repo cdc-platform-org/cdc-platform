@@ -10,7 +10,7 @@ import Toast from '../../src/components/shared/Toast';
 import { JOB_CATEGORIES, JOB_CATEGORY_LABEL } from '../../src/utils/jobCategory';
 import { JobCategory } from '../../src/types/community';
 import { generateExam, submitExam, getExamStatus, ExamQuestion, ExamAttemptResult } from '../../src/services/freelancerExamService';
-import { resolveLocale } from '../../src/utils/locale';
+import { resolveLocale, SupportedLocale } from '../../src/utils/locale';
 
 const MAX_STRIKES = 3;
 // Mirrors Backend's routes/freelancerExam.ts (PASS_THRESHOLD, QUESTION_COUNT)
@@ -23,8 +23,85 @@ const EXAM_LOCK_HOURS = 24;
 // generateExam calls out to an AI question generator — bound how long we
 // wait so a slow/stuck request surfaces a retry instead of spinning forever.
 const GENERATE_TIMEOUT_MS = 45000;
+// Per-question countdown — purely client-side pacing (the server has no
+// concept of per-question timing, see the note on PASS_THRESHOLD above), so
+// running out never disqualifies the attempt, it just auto-advances.
+const QUESTION_TIME_LIMIT_SECONDS = 90;
 
 type Phase = 'select' | 'rules' | 'starting' | 'in-progress' | 'result';
+
+// The one rules-card component both the pre-test screen and the failed-
+// result screen render — same visual container, same three anti-cheat
+// bullets, so the two can never silently drift apart the way the old
+// hand-duplicated pre-test/result cards had (different wording, same
+// header). `practicalInfo`/`categoryLabel` are pre-test-only; `retakeNote`
+// is written by the caller since its wording depends on context (a blanket
+// warning before the attempt vs. a specific "you can retry now/in 24h"
+// after one already failed).
+function ExamRulesCard({
+  lang,
+  categoryLabel,
+  practicalInfo,
+  retakeNote,
+}: {
+  lang: SupportedLocale;
+  categoryLabel?: string;
+  practicalInfo?: { timeLimit: string; questionCount: number; passThreshold: number };
+  retakeNote: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden">
+      <div className="bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-4">
+        {categoryLabel && <p className="text-xs font-bold uppercase tracking-widest text-cyan-100">{categoryLabel}</p>}
+        <h2 className="text-lg font-black text-white">ტესტირების წესები და პირობები</h2>
+      </div>
+      <div className="p-6 space-y-4">
+        {practicalInfo && (
+          <>
+            <div className="flex items-start gap-3">
+              <Clock className="w-5 h-5 text-cyan-500 shrink-0 mt-0.5" />
+              <p className="text-sm">
+                <span className="font-bold">{lang === 'ka' ? 'დროის ლიმიტი კითხვაზე:' : 'Time limit per question:'}</span> {practicalInfo.timeLimit}
+              </p>
+            </div>
+            <div className="flex items-start gap-3">
+              <HelpCircle className="w-5 h-5 text-cyan-500 shrink-0 mt-0.5" />
+              <p className="text-sm">
+                <span className="font-bold">{lang === 'ka' ? 'კითხვების რაოდენობა:' : 'Number of questions:'}</span> {practicalInfo.questionCount}
+              </p>
+            </div>
+            <div className="flex items-start gap-3">
+              <Target className="w-5 h-5 text-cyan-500 shrink-0 mt-0.5" />
+              <p className="text-sm">
+                <span className="font-bold">{lang === 'ka' ? 'გადალახვის ბარიერი:' : 'Passing threshold:'}</span> {practicalInfo.passThreshold}%
+              </p>
+            </div>
+          </>
+        )}
+        <div className="flex items-start gap-3">
+          <ShieldAlert className="w-4 h-4 text-cyan-500 shrink-0 mt-0.5" />
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            {lang === 'ka'
+              ? 'ტესტირების მიმდინარეობისას საჭიროა სრულეკრანიან რეჟიმში ყოფნა და ბრაუზერის ტაბზე/ფანჯარაზე ფოკუსის შენარჩუნება.'
+              : 'The exam requires staying in fullscreen mode and keeping focus on the browser tab/window at all times.'}
+          </p>
+        </div>
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            {lang === 'ka'
+              ? `ტაბის გადართვა, ფოკუსის დაკარგვა ან სრულეკრანიანი რეჟიმიდან გამოსვლა ითვლება დარღვევად — ${MAX_STRIKES} დარღვევის შემთხვევაში ტესტი ავტომატურად წყდება.`
+              : `Tab switching, losing window focus, or exiting fullscreen counts as a violation — ${MAX_STRIKES} violations auto-submit and terminate the exam.`}
+          </p>
+        </div>
+        <div className="flex items-start gap-3">
+          <RefreshCw className="w-4 h-4 text-cyan-500 shrink-0 mt-0.5" />
+          <p className="text-sm text-slate-600 dark:text-slate-300">{retakeNote}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function FreelancerExamContent() {
   const router = useRouter();
@@ -44,6 +121,7 @@ function FreelancerExamContent() {
   const [lockedUntil, setLockedUntil] = useState<string | null>(null);
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [violationReason, setViolationReason] = useState<string | null>(null);
+  const [questionSecondsLeft, setQuestionSecondsLeft] = useState(QUESTION_TIME_LIMIT_SECONDS);
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
   const strikeGuardRef = useRef(false);
@@ -194,6 +272,33 @@ function FreelancerExamContent() {
   const currentQuestion = questions[currentIndex];
   const isLastQuestion = currentIndex === questions.length - 1;
 
+  // Per-question countdown — resets whenever a genuinely new question comes
+  // into view (keyed on the question's own id, not just currentIndex, so a
+  // re-render that doesn't actually change the question can't restart the
+  // clock). Reaching 0 auto-advances exactly like the manual "შემდეგი"
+  // button would (or auto-submits on the last question, like "დასრულება"),
+  // leaving the question unanswered in `answers` if none was picked — same
+  // as a manual skip would.
+  useEffect(() => {
+    if (phase !== 'in-progress' || !currentQuestion) return;
+    setQuestionSecondsLeft(QUESTION_TIME_LIMIT_SECONDS);
+    const timer = setInterval(() => {
+      setQuestionSecondsLeft((prev) => {
+        if (prev <= 1) {
+          if (isLastQuestion) {
+            handleSubmit();
+          } else {
+            setCurrentIndex((i) => i + 1);
+          }
+          return QUESTION_TIME_LIMIT_SECONDS;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, currentQuestion?.id]);
+
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 flex flex-col">
       <SiteHeader />
@@ -245,57 +350,45 @@ function FreelancerExamContent() {
         )}
 
         {!isLocked && phase === 'rules' && category && (
-          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden">
-            <div className="bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-cyan-100">{JOB_CATEGORY_LABEL[category][lang]}</p>
-              <h2 className="text-lg font-black text-white">ტესტირების წესები და პირობები</h2>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="flex items-start gap-3">
-                <Clock className="w-5 h-5 text-cyan-500 shrink-0 mt-0.5" />
-                <p className="text-sm"><span className="font-bold">დროის ლიმიტი:</span> შეზღუდვის გარეშე — საკუთარი ტემპით</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <HelpCircle className="w-5 h-5 text-cyan-500 shrink-0 mt-0.5" />
-                <p className="text-sm"><span className="font-bold">კითხვების რაოდენობა:</span> {QUESTION_COUNT}</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <Target className="w-5 h-5 text-cyan-500 shrink-0 mt-0.5" />
-                <p className="text-sm"><span className="font-bold">გადალახვის ბარიერი:</span> {PASS_THRESHOLD}%</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                <p className="text-sm">
-                  <span className="font-bold">წესები:</span> ტესტირების მიმდინარეობისას ბრაუზერის ტაბის გადართვა ან
-                  გვერდის დახურვა აკრძალულია (3 დარღვევის შემთხვევაში ტესტირების გავლის შესაძლებლობა ავტომატურად
-                  დაიბლოკება 24 საათით).
-                </p>
-              </div>
+          <div>
+            <ExamRulesCard
+              lang={lang}
+              categoryLabel={JOB_CATEGORY_LABEL[category][lang]}
+              practicalInfo={{
+                timeLimit: lang === 'ka' ? `${QUESTION_TIME_LIMIT_SECONDS} წამი` : `${QUESTION_TIME_LIMIT_SECONDS} seconds`,
+                questionCount: QUESTION_COUNT,
+                passThreshold: PASS_THRESHOLD,
+              }}
+              retakeNote={
+                lang === 'ka'
+                  ? `დაბალი ქულით ჩაჭრის შემთხვევაში ხელახლა ცდა შესაძლებელია დაუყოვნებლივ, ხოლო დარღვევით შეწყვეტისას — ${EXAM_LOCK_HOURS} საათის შემდეგ.`
+                  : `If you fail on score alone you can retake immediately; a violation-terminated attempt locks retakes for ${EXAM_LOCK_HOURS} hours.`
+              }
+            />
 
-              {error && (
-                <div className="flex items-start gap-3 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3">
-                  <ShieldAlert className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
-                </div>
-              )}
-
-              <div className="flex flex-wrap gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => { setPhase('select'); setCategory(null); setError(null); }}
-                  className="rounded-lg border border-slate-300 dark:border-slate-700 px-5 py-2.5 text-sm font-bold"
-                >
-                  ← უკან
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmStart}
-                  className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-2.5 text-sm font-bold text-white"
-                >
-                  {error ? <RefreshCw className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                  {error ? 'ხელახლა ცდა' : 'ტესტირების დაწყება'}
-                </button>
+            {error && (
+              <div className="mt-4 flex items-start gap-3 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3">
+                <ShieldAlert className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
               </div>
+            )}
+
+            <div className="flex flex-wrap gap-3 pt-4">
+              <button
+                type="button"
+                onClick={() => { setPhase('select'); setCategory(null); setError(null); }}
+                className="rounded-lg border border-slate-300 dark:border-slate-700 px-5 py-2.5 text-sm font-bold"
+              >
+                ← უკან
+              </button>
+              <button
+                type="button"
+                onClick={confirmStart}
+                className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-2.5 text-sm font-bold text-white"
+              >
+                {error ? <RefreshCw className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                {error ? 'ხელახლა ცდა' : 'გაგება და დაწყება'}
+              </button>
             </div>
           </div>
         )}
@@ -309,15 +402,24 @@ function FreelancerExamContent() {
 
         {phase === 'in-progress' && currentQuestion && (
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 mb-4 flex items-center justify-between bg-slate-100/95 dark:bg-[#0b0f19]/95 backdrop-blur-sm">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                 კითხვა {currentIndex + 1} / {questions.length}
               </span>
-              {strikes > 0 && (
-                <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400">
-                  <ShieldAlert className="w-3.5 h-3.5" /> {strikes}/{MAX_STRIKES}
+              <div className="flex items-center gap-3">
+                <span
+                  className={`inline-flex items-center gap-1 text-xs font-black tabular-nums ${
+                    questionSecondsLeft <= 10 ? 'text-red-500' : 'text-cyan-600 dark:text-cyan-400'
+                  }`}
+                >
+                  ⏱️ {String(Math.floor(questionSecondsLeft / 60)).padStart(2, '0')}:{String(questionSecondsLeft % 60).padStart(2, '0')}
                 </span>
-              )}
+                {strikes > 0 && (
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400">
+                    <ShieldAlert className="w-3.5 h-3.5" /> {strikes}/{MAX_STRIKES}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6">
               <p className="text-sm font-bold mb-5">{currentQuestion.question}</p>
@@ -339,25 +441,30 @@ function FreelancerExamContent() {
                 ))}
               </div>
             </div>
-            <div className="flex justify-end gap-3 mt-5">
-              {!isLastQuestion ? (
-                <button
-                  type="button"
-                  disabled={!answers[currentQuestion.id]}
-                  onClick={() => setCurrentIndex((i) => i + 1)}
-                  className="rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-                >
-                  შემდეგი
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={!answers[currentQuestion.id] || submitting}
-                  onClick={() => handleSubmit()}
-                  className="rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-                >
-                  {submitting ? 'იგზავნება…' : 'დასრულება'}
-                </button>
+            <div className="flex flex-col items-end gap-1.5 mt-5">
+              <div className="flex justify-end gap-3">
+                {!isLastQuestion ? (
+                  <button
+                    type="button"
+                    disabled={!answers[currentQuestion.id]}
+                    onClick={() => setCurrentIndex((i) => i + 1)}
+                    className="rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                  >
+                    შემდეგი
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={!answers[currentQuestion.id] || submitting}
+                    onClick={() => handleSubmit()}
+                    className="rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                  >
+                    {submitting ? 'იგზავნება…' : 'დასრულება'}
+                  </button>
+                )}
+              </div>
+              {!answers[currentQuestion.id] && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">{lang === 'ka' ? 'გთხოვთ აირჩიოთ პასუხი გასაგრძელებლად.' : 'Please select an answer to continue.'}</p>
               )}
             </div>
           </div>
@@ -393,40 +500,19 @@ function FreelancerExamContent() {
             </p>
 
             {!result.passed && (
-              <div className="text-left rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden mb-6">
-                <div className="bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-800/60 px-5 py-3">
-                  <h3 className="text-sm font-black">{lang === 'ka' ? 'ტესტირების წესები და პირობები' : 'Exam Rules & Policy'}</h3>
-                </div>
-                <div className="p-5 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <ShieldAlert className="w-4 h-4 text-cyan-500 shrink-0 mt-0.5" />
-                    <p className="text-xs text-slate-600 dark:text-slate-300">
-                      {lang === 'ka'
-                        ? 'ტესტირების მიმდინარეობისას საჭიროა სრულეკრანიან რეჟიმში ყოფნა და ბრაუზერის ტაბზე/ფანჯარაზე ფოკუსის შენარჩუნება.'
-                        : 'The exam requires staying in fullscreen mode and keeping focus on the browser tab/window at all times.'}
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <p className="text-xs text-slate-600 dark:text-slate-300">
-                      {lang === 'ka'
-                        ? `ტაბის გადართვა, ფოკუსის დაკარგვა ან სრულეკრანიანი რეჟიმიდან გამოსვლა ითვლება დარღვევად — ${MAX_STRIKES} დარღვევის შემთხვევაში ტესტი ავტომატურად წყდება.`
-                        : `Tab switching, losing window focus, or exiting fullscreen counts as a violation — ${MAX_STRIKES} violations auto-submit and terminate the exam.`}
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <Clock className="w-4 h-4 text-cyan-500 shrink-0 mt-0.5" />
-                    <p className="text-xs text-slate-600 dark:text-slate-300">
-                      {result.examLockedUntil
-                        ? lang === 'ka'
-                          ? `დარღვევით შეწყვეტილი ტესტირების ხელახლა ცდა შესაძლებელია ${EXAM_LOCK_HOURS} საათის შემდეგ.`
-                          : `A violation-terminated exam can be retaken after ${EXAM_LOCK_HOURS} hours.`
-                        : lang === 'ka'
-                        ? 'დაბალი ქულით ჩაჭრის შემთხვევაში ტესტის ხელახლა ცდა შესაძლებელია დაუყოვნებლივ.'
-                        : "If you failed on score alone (no violation), you can retake the exam immediately."}
-                    </p>
-                  </div>
-                </div>
+              <div className="text-left mb-6">
+                <ExamRulesCard
+                  lang={lang}
+                  retakeNote={
+                    result.examLockedUntil
+                      ? lang === 'ka'
+                        ? `დარღვევით შეწყვეტილი ტესტირების ხელახლა ცდა შესაძლებელია ${EXAM_LOCK_HOURS} საათის შემდეგ.`
+                        : `A violation-terminated exam can be retaken after ${EXAM_LOCK_HOURS} hours.`
+                      : lang === 'ka'
+                      ? 'დაბალი ქულით ჩაჭრის შემთხვევაში ტესტის ხელახლა ცდა შესაძლებელია დაუყოვნებლივ.'
+                      : "If you failed on score alone (no violation), you can retake the exam immediately."
+                  }
+                />
               </div>
             )}
 
