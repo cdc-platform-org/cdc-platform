@@ -494,6 +494,11 @@ function AdminBlogDashboard() {
                   />
                 </label>
               </div>
+              <p className="mt-1.5 text-xs text-gray-400">
+                ოპტიმალური ზომა: 1200 × 675 px (16:9 ratio) | WebP, JPG, PNG
+                <br />
+                Optimal Cover Size: 1200 × 675 px (16:9 ratio)
+              </p>
               {form.imageUrl && (
                 <img
                   src={resolveBlogImageUrl(form.imageUrl)}

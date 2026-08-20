@@ -8,6 +8,7 @@ import { blogPostCreateSchema, blogPostUpdateSchema, blogCommentSchema } from '.
 import { BunnyStorageUploadError } from '../services/bunnyStorage';
 import { uploadImage, deleteManagedImage } from '../services/imageStorage';
 import { createUniqueBlogSlug } from '../services/blogSlugService';
+import { processBlogCoverImage } from '../services/blogImageProcessing';
 
 // Migrated from requireRole('SuperAdmin') to the admin-team adminRole system
 // (SUPER_ADMIN + ADMIN) — content management is explicitly ADMIN's domain
@@ -236,9 +237,10 @@ router.post(
     }
     const filename = `blog-${Date.now()}-${crypto.randomUUID()}${path.extname(req.file.originalname)}`;
     try {
+      const processed = await processBlogCoverImage(req.file.buffer, req.file.mimetype);
       const url = await uploadImage({
-        buffer: req.file.buffer,
-        mimetype: req.file.mimetype,
+        buffer: processed.buffer,
+        mimetype: processed.mimetype,
         folderName: 'blog',
         filename,
       });
