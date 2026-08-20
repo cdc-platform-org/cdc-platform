@@ -30,9 +30,22 @@ function IncidentRow({ incident, onChanged }: { incident: ChatFlagIncident; onCh
   };
 
   return (
-    <div className={`bg-white border rounded-xl p-4 ${incident.reviewedAt ? 'border-gray-200 opacity-70' : 'border-amber-300'}`}>
+    <div
+      className={`bg-white border rounded-xl p-4 ${
+        incident.reviewedAt ? 'border-gray-200 opacity-70' : incident.severity === 'HIGH' ? 'border-red-300' : 'border-amber-300'
+      }`}
+    >
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span
+              className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${
+                incident.severity === 'HIGH' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+              }`}
+            >
+              {incident.severity}
+            </span>
+          </div>
           <p className="text-sm font-medium text-gray-900">
             {incident.sender.name} ({incident.sender.email}) → {incident.recipient.name} ({incident.recipient.email})
           </p>
@@ -83,7 +96,11 @@ function AdminChatModerationDashboard() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setIncidents(await getChatFlagIncidents(onlyUnreviewed));
+      const data = await getChatFlagIncidents(onlyUnreviewed);
+      // HIGH-severity incidents (evasion attempts, phone numbers, payment
+      // terms) surfaced first — the newest-first order from the API is
+      // preserved within each severity tier.
+      setIncidents([...data].sort((a, b) => (a.severity === b.severity ? 0 : a.severity === 'HIGH' ? -1 : 1)));
     } finally {
       setLoading(false);
     }

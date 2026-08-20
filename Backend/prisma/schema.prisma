@@ -1560,18 +1560,30 @@ model ChatRequest {
 // no equivalent page for. Manual ban only — unlike MentorChatViolation's
 // automatic 2-strike ban, an admin decides here (see routes/
 // adminChatModeration.ts); nothing in this model auto-bans anyone.
+// HIGH = a phone number, payment-specific term, or an actual evasion
+// technique (verbal-number spelling, noise-character-separated digits)
+// was involved — a deliberate circumvention attempt, not just a casual
+// slip. MEDIUM = a plain direct match (bare email/IBAN, an obvious
+// platform-name mention) with no evasion technique detected. Set once at
+// write time by utils/sanitizeChatMessage.ts's detection, not re-derived.
+enum ChatFlagSeverity {
+  MEDIUM
+  HIGH
+}
+
 model ChatFlag {
-  id                String    @id @default(uuid())
+  id                String           @id @default(uuid())
   senderId          String
-  sender            User      @relation("ChatFlagsAsSender", fields: [senderId], references: [id], onDelete: Cascade)
+  sender            User             @relation("ChatFlagsAsSender", fields: [senderId], references: [id], onDelete: Cascade)
   recipientId       String
-  recipient         User      @relation("ChatFlagsAsRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  recipient         User             @relation("ChatFlagsAsRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
   attemptedContent  String
   detectedReason    String
+  severity          ChatFlagSeverity @default(MEDIUM)
   reviewedAt        DateTime?
   reviewedByAdminId String?
-  reviewedByAdmin   User?     @relation("ChatFlagsReviewed", fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
-  createdAt         DateTime  @default(now())
+  reviewedByAdmin   User?            @relation("ChatFlagsReviewed", fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
+  createdAt         DateTime         @default(now())
 
   @@index([senderId])
   @@index([createdAt])
