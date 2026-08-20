@@ -16,7 +16,16 @@ import ProductReviewsSection from '../../src/components/store/ProductReviewsSect
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
 import StarRating from '../../src/components/community/StarRating';
-import { getProduct, claimFreeProduct, getProductDownload, productTitle, productDescription, DigitalProduct, LICENSE_LABELS } from '../../src/services/productService';
+import {
+  getProduct,
+  claimFreeProduct,
+  getProductDownload,
+  productTitle,
+  productDescription,
+  DigitalProduct,
+  LICENSE_LABELS,
+  HowItWorksIcon,
+} from '../../src/services/productService';
 import { checkoutProduct } from '../../src/services/paymentService';
 import { checkoutProductStripe } from '../../src/services/stripePaymentService';
 import { formatPrice } from '../../src/utils/coursePricing';
@@ -42,6 +51,13 @@ function isBusinessToolsCategory(category: string): boolean {
 // the only safe discriminator here). Other Business Tools category products
 // are real downloads and keep the generic steps below.
 const AI_BUSINESS_TRIAL_PRODUCT_ID = 'a5f877bb-6875-448a-ac00-40f09d3e2ca3';
+
+// Must cover every name in Backend's adminProducts.ts HOW_IT_WORKS_ICONS —
+// that's the actual enforcement point (an admin can't save a name outside
+// it), this is just the render-side lookup for whichever one they picked.
+const HOW_IT_WORKS_ICON_MAP: Record<HowItWorksIcon, typeof Download> = {
+  Download, FolderOpen, Sparkles, Zap, Upload, Code2, ShieldCheck, Tag,
+};
 
 function StoreProductContent() {
   const { t } = useTranslation('marketplace');
@@ -288,7 +304,14 @@ function StoreProductContent() {
           </button>
           {guideOpen && (
             <div className="px-6 pb-6 grid sm:grid-cols-3 gap-5">
-              {(isAiBusinessTrial
+              {(product.howItWorksSteps && product.howItWorksSteps.length === 3
+                ? product.howItWorksSteps.map((s, i) => ({
+                    icon: HOW_IT_WORKS_ICON_MAP[s.icon],
+                    step: String(i + 1),
+                    title: contentLang === 'ka' ? s.titleKa : s.titleEn,
+                    body: contentLang === 'ka' ? s.bodyKa : s.bodyEn,
+                  }))
+                : isAiBusinessTrial
                 ? [
                     { icon: Zap, step: '1', title: t('aiStep1Title'), body: t('aiStep1Body') },
                     { icon: Upload, step: '2', title: t('aiStep2Title'), body: t('aiStep2Body') },

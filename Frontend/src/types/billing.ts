@@ -1,12 +1,47 @@
+export type PaymentProvider = 'STUB' | 'BOG' | 'STRIPE';
+
 export interface PaymentMethod {
   id: string;
+  provider: PaymentProvider;
   processorToken: string;
-  brand: 'visa' | 'mastercard' | 'amex' | 'other';
+  // Stripe's own lowercase brand string ("visa", "mastercard", "amex",
+  // "discover", "diners", "jcb", "unionpay", "unknown") — never a closed
+  // union here, so an unrecognized value still renders (capitalized) rather
+  // than needing a type update every time a new network shows up.
+  brand: string;
   last4: string;
   expiryMonth: number;
   expiryYear: number;
   isDefault: boolean;
+  // Null means the $0 verification hold never completed — shouldn't happen
+  // for a card that made it into this list (bindCard only creates verified
+  // rows), kept nullable to match the DB column honestly.
+  verifiedAt: string | null;
   createdAt: string;
+}
+
+// What POST /billing/payment-methods actually needs — brand/last4/expiry
+// come straight from Stripe.js's PaymentMethod object after tokenization,
+// not typed in by the user.
+export interface AddPaymentMethodPayload {
+  processorToken: string;
+  brand: string;
+  last4: string;
+  expiryMonth: number;
+  expiryYear: number;
+  setDefault?: boolean;
+  // The confirmed SetupIntent's id — required for a real Stripe card (the
+  // backend uses it to verify the $0 hold actually succeeded, not just that
+  // the PaymentMethod exists). See PaymentMethodsCard.tsx's handleAddCard.
+  setupIntentId?: string;
+}
+
+// Mirrors Backend's CardRemovalRequiresConfirmationError (409) body —
+// thrown when deleting this card would silently turn off auto-renew on a
+// live subscription.
+export interface CardRemovalConfirmationRequired {
+  message: string;
+  details: { affectedSubscriptions: { id: string; productType: BillingProductType; referenceId: string }[] };
 }
 
 export type InvoiceStatus = 'paid' | 'pending' | 'failed' | 'refunded';

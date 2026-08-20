@@ -11,6 +11,7 @@ import { updateProfile, changePassword, uploadAvatar, uploadCv, forgotPassword }
 import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../src/utils/imageUpload';
 import Toast from '../../src/components/shared/Toast';
 import SkillPicker from '../../src/components/shared/SkillPicker';
+import PaymentMethodsCard from '../../src/components/settings/PaymentMethodsCard';
 import { resolveLocale } from '@/src/utils/locale';
 
 const dict = {
@@ -717,6 +718,8 @@ function SettingsContent() {
             </div>
             {intentSaved && <p className="text-xs text-emerald-600 dark:text-emerald-400">{t.intentSaved}</p>}
           </div>
+
+          <PaymentMethodsCard lang={lang} userName={user?.name} />
 
           <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4">
             <h2 className="text-sm font-bold">{t.payoutTitle}</h2>

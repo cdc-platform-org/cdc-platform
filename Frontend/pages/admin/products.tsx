@@ -26,6 +26,9 @@ import {
   ProductLicenseType,
   LICENSE_LABELS,
   validateProductDiscount,
+  UpdateProductPayload,
+  HowItWorksStep,
+  HOW_IT_WORKS_ICONS,
 } from '../../src/services/productService';
 import { getAiAutomationSettings, updateAiAutomationSettings } from '../../src/services/adminPanelService';
 import { formatPrice } from '../../src/utils/coursePricing';
@@ -33,6 +36,8 @@ import { formatPrice } from '../../src/utils/coursePricing';
 const ASSET_ACCEPT = '.zip,.pdf,.epub,.rar,.7z,.fig,.sketch,.psd,.ai,.doc,.docx,.mp4,.mov';
 
 type AdminProduct = DigitalProduct & { submittedBy: { id: string; name: string; email: string } | null };
+
+const emptyHowItWorksStep = (): HowItWorksStep => ({ icon: 'Zap', titleKa: '', titleEn: '', bodyKa: '', bodyEn: '' });
 
 const STATUS_BADGE: Record<string, string> = {
   PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
@@ -54,13 +59,7 @@ function ModerationProductCard({
   onApprove: () => void;
   onReject: () => void;
   onRequestChanges: () => void;
-  onSave: (patch: {
-    title: string;
-    description: string;
-    imageUrl: string;
-    previewImages: string[];
-    previewVideoUrl: string | null;
-  }) => Promise<void>;
+  onSave: (patch: UpdateProductPayload) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(p.title);
@@ -69,6 +68,14 @@ function ModerationProductCard({
   const [editPreviewImages, setEditPreviewImages] = useState<string[]>(p.previewImages);
   const [editVideoUrl, setEditVideoUrl] = useState(p.previewVideoUrl ?? '');
   const [editVideoUploading, setEditVideoUploading] = useState(false);
+  const [useCustomSteps, setUseCustomSteps] = useState(!!p.howItWorksSteps);
+  const [steps, setSteps] = useState<HowItWorksStep[]>(
+    p.howItWorksSteps ?? [emptyHowItWorksStep(), emptyHowItWorksStep(), emptyHowItWorksStep()]
+  );
+  const updateStep = (index: number, patch: Partial<HowItWorksStep>) => {
+    setSteps((prev) => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)));
+  };
+  const stepsValid = steps.every((s) => s.titleKa.trim() && s.titleEn.trim() && s.bodyKa.trim() && s.bodyEn.trim());
   const [saving, setSaving] = useState(false);
   const [showPurchases, setShowPurchases] = useState(false);
   const [purchases, setPurchases] = useState<AdminProductPurchase[] | null>(null);
@@ -93,13 +100,23 @@ function ModerationProductCard({
     setEditImageUrl(p.imageUrl);
     setEditPreviewImages(p.previewImages);
     setEditVideoUrl(p.previewVideoUrl ?? '');
+    setUseCustomSteps(!!p.howItWorksSteps);
+    setSteps(p.howItWorksSteps ?? [emptyHowItWorksStep(), emptyHowItWorksStep(), emptyHowItWorksStep()]);
     setEditing(true);
   };
 
   const handleSave = async () => {
+    if (useCustomSteps && !stepsValid) return;
     setSaving(true);
     try {
-      await onSave({ title, description, imageUrl: editImageUrl, previewImages: editPreviewImages, previewVideoUrl: editVideoUrl || null });
+      await onSave({
+        title,
+        description,
+        imageUrl: editImageUrl,
+        previewImages: editPreviewImages,
+        previewVideoUrl: editVideoUrl || null,
+        howItWorksSteps: useCustomSteps ? steps : null,
+      });
       setEditing(false);
     } catch {
       // error already surfaced via the parent's actionError state
@@ -171,11 +188,73 @@ function ModerationProductCard({
                 uploadingLabel="Uploading…"
               />
             </div>
+
+            <div className="rounded-lg border border-gray-200 p-3">
+              <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 mb-1 cursor-pointer">
+                <input type="checkbox" checked={useCustomSteps} onChange={(e) => setUseCustomSteps(e.target.checked)} />
+                Custom "How it Works" steps for this listing
+              </label>
+              <p className="text-[11px] text-gray-400 mb-3">
+                Unchecked = the storefront page's generic 3-step copy. Checked = exactly these 3 steps, both languages.
+              </p>
+              {useCustomSteps && (
+                <div className="space-y-3">
+                  {steps.map((step, i) => (
+                    <div key={i} className="rounded-lg bg-gray-50 border border-gray-200 p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold text-gray-400 shrink-0">STEP {i + 1}</span>
+                        <select
+                          value={step.icon}
+                          onChange={(e) => updateStep(i, { icon: e.target.value as HowItWorksStep['icon'] })}
+                          className="text-xs rounded-md border border-gray-300 px-2 py-1"
+                        >
+                          {HOW_IT_WORKS_ICONS.map((icon) => (
+                            <option key={icon} value={icon}>{icon}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          value={step.titleKa}
+                          onChange={(e) => updateStep(i, { titleKa: e.target.value })}
+                          placeholder="სათაური (ქართ.)"
+                          className="rounded-md border border-gray-300 px-2.5 py-1.5 text-xs"
+                        />
+                        <input
+                          value={step.titleEn}
+                          onChange={(e) => updateStep(i, { titleEn: e.target.value })}
+                          placeholder="Title (EN)"
+                          className="rounded-md border border-gray-300 px-2.5 py-1.5 text-xs"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <textarea
+                          value={step.bodyKa}
+                          onChange={(e) => updateStep(i, { bodyKa: e.target.value })}
+                          placeholder="აღწერა (ქართ.)"
+                          rows={2}
+                          className="rounded-md border border-gray-300 px-2.5 py-1.5 text-xs"
+                        />
+                        <textarea
+                          value={step.bodyEn}
+                          onChange={(e) => updateStep(i, { bodyEn: e.target.value })}
+                          placeholder="Description (EN)"
+                          rows={2}
+                          className="rounded-md border border-gray-300 px-2.5 py-1.5 text-xs"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  {!stepsValid && <p className="text-[11px] text-red-600">All 3 steps need both a title and description in both languages.</p>}
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || (useCustomSteps && !stepsValid)}
                 className="text-xs font-medium text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60"
               >
                 {saving ? 'Saving…' : 'Save'}
@@ -465,7 +544,7 @@ function AdminProductsDashboard() {
     }
   };
 
-  const handleUpdate = async (id: string, patch: { title: string; description: string }) => {
+  const handleUpdate = async (id: string, patch: UpdateProductPayload) => {
     setActionError(null);
     setActingId(id);
     try {

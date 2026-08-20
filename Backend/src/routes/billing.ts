@@ -21,6 +21,7 @@ import {
   BillingError,
 } from '../services/billingService';
 import { PaymentGatewayError } from '../services/paymentGatewayService';
+import { getOrCreateStripeCustomerId, createStripeCardSetupIntent, StripeNotConfiguredError } from '../services/stripePaymentService';
 
 const router = Router();
 
@@ -39,6 +40,24 @@ function respondBillingError(res: Response, err: unknown): boolean {
 // ============================================================
 // PAYMENT METHODS
 // ============================================================
+
+// Step 1 of adding a card: mint a SetupIntent client secret for this user's
+// Stripe Customer (created on first use). The frontend confirms it
+// client-side with Stripe.js/Elements — raw card data never reaches this
+// server — then POSTs the resulting PaymentMethod id to POST
+// /payment-methods below, which is what actually saves it.
+router.post('/setup-intent', authenticate, async (req: Request, res: Response) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { email: true, name: true } });
+  if (!user) return res.status(404).json({ message: 'Account not found.' });
+  try {
+    const customerId = await getOrCreateStripeCustomerId(req.user!.id, user.email, user.name);
+    const clientSecret = await createStripeCardSetupIntent(customerId);
+    res.json({ data: { clientSecret } });
+  } catch (err) {
+    if (err instanceof StripeNotConfiguredError) return res.status(503).json({ message: err.message });
+    throw err;
+  }
+});
 
 router.get('/payment-methods', authenticate, async (req: Request, res: Response) => {
   const methods = await prisma.paymentMethod.findMany({

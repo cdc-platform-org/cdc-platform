@@ -2,6 +2,21 @@ import apiClient from './apiClient';
 
 export type ProductStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'NEEDS_REVISION';
 
+// Must match Backend's adminProducts.ts HOW_IT_WORKS_ICONS exactly — an
+// icon name outside this list fails validation server-side at save time.
+export const HOW_IT_WORKS_ICONS = [
+  'Download', 'FolderOpen', 'Sparkles', 'Zap', 'Upload', 'Code2', 'ShieldCheck', 'Tag',
+] as const;
+export type HowItWorksIcon = (typeof HOW_IT_WORKS_ICONS)[number];
+
+export interface HowItWorksStep {
+  icon: HowItWorksIcon;
+  titleKa: string;
+  titleEn: string;
+  bodyKa: string;
+  bodyEn: string;
+}
+
 export type ProductLicenseType = 'PERSONAL_USE' | 'COMMERCIAL_USE' | 'EXTENDED_COMMERCIAL';
 
 // Shown on the submission form, the store product page, and the buyer's
@@ -55,6 +70,11 @@ export interface DigitalProduct {
   // YouTube/Vimeo link (VideoEmbed.tsx tells them apart). Only present on
   // the /store/[id] detail response, not the catalog list.
   previewVideoUrl?: string | null;
+  // Admin-authored override for the "How it Works" 3-step panel on
+  // /store/[id] — null (the default) means the page falls back to its own
+  // generic hardcoded copy. See Backend's adminProducts.ts for the fixed
+  // icon-name allow-list this is validated against at write time.
+  howItWorksSteps?: HowItWorksStep[] | null;
   // Extension of the (never publicly exposed) fileUrl, e.g. "ZIP"/"PDF" —
   // safe to show as a format badge without revealing the real download link.
   fileFormat: string | null;
@@ -199,6 +219,9 @@ export interface UpdateProductPayload {
   licenseType?: ProductLicenseType;
   discountedPrice?: number | null;
   saleEndsAt?: string | null;
+  // Exactly 3 entries or omit/null to clear back to the page's generic
+  // fallback copy — enforced server-side (adminProducts.ts).
+  howItWorksSteps?: HowItWorksStep[] | null;
 }
 
 export async function updateProductAdmin(id: string, payload: UpdateProductPayload): Promise<DigitalProduct> {

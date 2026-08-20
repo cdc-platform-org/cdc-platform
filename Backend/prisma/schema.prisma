@@ -462,6 +462,12 @@ model User {
   receivedDirectOffers         DirectOffer[]                 @relation("ReceivedDirectOffers")
   sentMessages                 Message[]                     @relation("SentMessages")
   receivedMessages             Message[]                     @relation("ReceivedMessages")
+  // One Stripe Customer per platform user, created lazily the first time
+  // they start adding a card (see stripePaymentService.getOrCreateStripeCustomerId)
+  // — every saved PaymentMethod of provider STRIPE is attached to this same
+  // customer, which is what makes "reuse this card for a future charge"
+  // possible at all on Stripe's side. Null until that first card add.
+  stripeCustomerId              String?
   paymentMethods               PaymentMethod[]
   bogPayments                  BogPayment[]
   stripePayments               StripePayment[]
@@ -1213,6 +1219,14 @@ model DigitalProduct {
   // (VideoEmbed.tsx) tells the two apart by parsing the URL shape, not by a
   // separate flag here.
   previewVideoUrl    String?
+  // Optional admin-authored override for the "How it Works" 3-step panel on
+  // /store/[id] — an array of exactly 3 { icon, titleKa, titleEn, bodyKa,
+  // bodyEn } objects (validated in adminProducts.ts's zod schema, not here).
+  // Null (the default for every existing product) means the page keeps
+  // using its generic hardcoded copy — this only exists so an admin can
+  // customize the panel for a specific listing (originally: the seeded AI
+  // Business Assistant trial product) without a code change/deploy.
+  howItWorksSteps    Json?
   // Never exposed directly to the client until a completed purchase is
   // verified server-side — see routes/products.ts's /:id/download. Uploads
   // made through /upload-file store a `cdcblob://<blobName>` marker here
@@ -1790,6 +1804,11 @@ model ChatFlag {
 enum PaymentProvider {
   STUB
   BOG
+  // Real card-on-file tokenization — a Stripe PaymentMethod attached to the
+  // user's Stripe Customer (see User.stripeCustomerId), verified server-side
+  // via the Stripe API in paymentGatewayService.bindCard rather than the
+  // STUB provider's format-only check.
+  STRIPE
 }
 
 model PaymentMethod {

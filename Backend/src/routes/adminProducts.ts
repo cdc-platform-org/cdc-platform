@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import path from 'path';
 import crypto from 'crypto';
 import { z } from 'zod';
-import { ProductLicenseType } from '@prisma/client';
+import { ProductLicenseType, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { uploadImage } from '../services/imageStorage';
@@ -18,6 +18,40 @@ function toPrismaSaleEndsAt(value: string | null | undefined): Date | null | und
   if (!value) return null;
   return new Date(value);
 }
+
+// Prisma's Json? columns need the explicit Prisma.JsonNull sentinel to set
+// SQL NULL — a plain `null` is ambiguous (it could mean "the JSON value
+// null" or "no value") and Prisma rejects it at the type level for exactly
+// that reason. `undefined` (field omitted from the request) still means
+// "leave this column untouched", same as every other optional field here.
+function toPrismaJson<T>(value: T | null | undefined): T | typeof Prisma.JsonNull | undefined {
+  if (value === undefined) return undefined;
+  return value === null ? Prisma.JsonNull : value;
+}
+
+// Icons the "How it Works" panel (pages/store/[id].tsx) actually has a
+// lookup for — kept as a closed enum rather than a free-text icon name so a
+// typo can't silently render nothing on the storefront.
+const HOW_IT_WORKS_ICONS = [
+  'Download', 'FolderOpen', 'Sparkles', 'Zap', 'Upload', 'Code2', 'ShieldCheck', 'Tag',
+] as const;
+
+// Exactly 3 steps or omit entirely — a partial override (1 or 2 steps) has
+// no sensible rendering, so it's rejected here rather than left for the
+// frontend to guess how to fill the gap.
+const howItWorksStepsSchema = z
+  .array(
+    z.object({
+      icon: z.enum(HOW_IT_WORKS_ICONS),
+      titleKa: z.string().trim().min(1).max(80),
+      titleEn: z.string().trim().min(1).max(80),
+      bodyKa: z.string().trim().min(1).max(300),
+      bodyEn: z.string().trim().min(1).max(300),
+    })
+  )
+  .length(3)
+  .optional()
+  .nullable();
 
 const router = Router();
 router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
@@ -95,6 +129,7 @@ const createSchema = z.object({
   licenseType: z.nativeEnum(ProductLicenseType).optional(),
   discountedPrice: z.number().min(0).optional().nullable(),
   saleEndsAt: z.string().datetime().optional().nullable().or(z.literal('')),
+  howItWorksSteps: howItWorksStepsSchema,
 });
 
 // Admin-authored products skip moderation — there's no point an admin
@@ -119,7 +154,7 @@ router.post('/', async (req: Request, res: Response) => {
     'adminProducts'
   );
 
-  const { discountedPrice, saleEndsAt, ...rest } = result.data;
+  const { discountedPrice, saleEndsAt, howItWorksSteps, ...rest } = result.data;
   const product = await prisma.digitalProduct.create({
     data: {
       ...rest,
@@ -128,6 +163,7 @@ router.post('/', async (req: Request, res: Response) => {
       price: priceMinor,
       discountedPrice: discountedPriceMinor,
       saleEndsAt: toPrismaSaleEndsAt(saleEndsAt) ?? null,
+      howItWorksSteps: toPrismaJson(howItWorksSteps),
       status: 'APPROVED',
     },
   });
@@ -174,6 +210,7 @@ const updateSchema = z.object({
   licenseType: z.nativeEnum(ProductLicenseType).optional(),
   discountedPrice: z.number().min(0).optional().nullable(),
   saleEndsAt: z.string().datetime().optional().nullable().or(z.literal('')),
+  howItWorksSteps: howItWorksStepsSchema,
 });
 
 // Lets an admin fix typos/formatting on a graduate/freelancer submission
@@ -199,7 +236,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     'adminProducts'
   );
 
-  const { price, discountedPrice, saleEndsAt, ...rest } = result.data;
+  const { price, discountedPrice, saleEndsAt, howItWorksSteps, ...rest } = result.data;
   const priceMinor = price !== undefined ? Math.round(price * 100) : existing.price;
   const discountedPriceMinor =
     discountedPrice !== undefined ? (discountedPrice != null ? Math.round(discountedPrice * 100) : null) : existing.discountedPrice;
@@ -218,6 +255,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         ...(price !== undefined ? { price: priceMinor } : {}),
         discountedPrice: discountedPriceMinor,
         ...(saleEndsAt !== undefined ? { saleEndsAt: toPrismaSaleEndsAt(saleEndsAt) } : {}),
+        ...(howItWorksSteps !== undefined ? { howItWorksSteps: toPrismaJson(howItWorksSteps) } : {}),
       },
     });
     res.json({ data: withCurrentProductPrice(updated) });

@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { bindCard, BindCardParams } from './paymentGatewayService';
+import { detachStripePaymentMethod } from './stripePaymentService';
 import { BillingProductType } from '@prisma/client';
 
 // ============================================================
@@ -97,7 +98,10 @@ export async function addPaymentMethod(
   card: BindCardParams,
   opts: { setDefault?: boolean } = {}
 ) {
-  const bindResult = await bindCard(card); // throws PaymentGatewayError on invalid card
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, name: true } });
+  if (!user) throw new PaymentMethodNotFoundError(); // can't happen behind `authenticate`, but keeps bindCard's type honest
+
+  const bindResult = await bindCard(card, user); // throws PaymentGatewayError on invalid card
 
   const existingCount = await prisma.paymentMethod.count({ where: { userId } });
   const makeDefault = opts.setDefault || existingCount === 0;
@@ -109,11 +113,15 @@ export async function addPaymentMethod(
     return tx.paymentMethod.create({
       data: {
         userId,
+        provider: bindResult.provider,
         processorToken: card.processorToken,
-        brand: card.brand,
-        last4: card.last4,
-        expiryMonth: card.expiryMonth,
-        expiryYear: card.expiryYear,
+        // From bindResult, not the raw `card` param — for STRIPE this is
+        // what Stripe's own API reported for the token, not whatever the
+        // client happened to send.
+        brand: bindResult.brand,
+        last4: bindResult.last4,
+        expiryMonth: bindResult.expiryMonth,
+        expiryYear: bindResult.expiryYear,
         isDefault: makeDefault,
         verifiedAt: bindResult.verifiedAt,
       },
@@ -163,6 +171,14 @@ export async function removePaymentMethod(
     }
     await tx.paymentMethod.delete({ where: { id: paymentMethodId } });
   });
+
+  // Best-effort, after the local delete has already committed — the local
+  // PaymentMethod row (now gone) is what CDC treats as the source of truth
+  // for "this card is removed"; a Stripe-side detach failure shouldn't
+  // resurrect it or fail this call.
+  if (method.provider === 'STRIPE') {
+    detachStripePaymentMethod(method.processorToken).catch(() => {});
+  }
 }
 
 // ============================================================

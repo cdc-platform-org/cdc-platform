@@ -10,6 +10,10 @@ export const addPaymentMethodSchema = z.object({
   expiryMonth: z.number().int().min(1).max(12),
   expiryYear: z.number().int().min(new Date().getFullYear()),
   setDefault: z.boolean().optional(),
+  // Required in practice whenever processorToken is a real Stripe
+  // PaymentMethod id — enforced in paymentGatewayService.bindCard, not
+  // here, since the STUB provider's tokens never have one.
+  setupIntentId: z.string().trim().min(1).max(500).optional(),
 });
 
 export const removePaymentMethodSchema = z.object({
