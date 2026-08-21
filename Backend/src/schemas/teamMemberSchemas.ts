@@ -10,6 +10,9 @@ export const teamMemberCreateSchema = z.object({
   // Set via POST /upload-photo, then submitted back on the create/update call —
   // same two-step flow as SuccessStory's avatarUrl.
   imageUrl: z.union([z.string().trim().url('Enter a valid URL.'), z.literal('')]).optional().nullable(),
+  // Internal path only ("/about/...") — never an external URL, this links
+  // within the site to a dedicated full-bio page.
+  profileUrl: z.union([z.string().trim().regex(/^\//, 'Must be an internal path starting with /.').max(200), z.literal('')]).optional().nullable(),
   type: z.enum(['MANAGEMENT', 'TRAINER']).optional().default('MANAGEMENT'),
   order: z.number().int().optional().default(0),
   active: z.boolean().optional().default(true),

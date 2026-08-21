@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import Head from 'next/head';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { FileText, ShieldCheck } from 'lucide-react';
+import { FileText, ShieldCheck, ArrowRight } from 'lucide-react';
 import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
 import { useEscapeToClose } from '../src/hooks/useEscapeToClose';
@@ -438,6 +439,25 @@ export default function MentorsPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-16 flex-1 w-full">
         <h1 className="text-2xl sm:text-3xl font-black mb-2">{t('mentorsTitle')}</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-8">{t('mentorsSubtitle')}</p>
+
+        {/* CDC's co-founder isn't currently a published/bookable mentor
+            (no mentorTitle/rate set), so this links to her bio page instead
+            of sitting inside the bookable-mentor grid below, which would
+            misrepresent her as bookable. */}
+        <Link
+          href="/about/ia-tavdishvili"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-purple-500/30 bg-gradient-to-r from-purple-600/10 to-cyan-500/10 px-5 py-4 mb-8 no-underline text-current hover:border-purple-400/50 transition-colors"
+        >
+          <span className="text-sm font-bold">
+            {lang === 'ka'
+              ? 'გაიცანით CDC-ს თანადამფუძნებელი — ია თავდიშვილი'
+              : 'Meet CDC’s Co-Founder — Ia Tavdishvili'}
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-600 dark:text-purple-300">
+            {lang === 'ka' ? 'სრული პროფილი' : 'View Full Profile'}
+            <ArrowRight className="w-3.5 h-3.5" />
+          </span>
+        </Link>
 
         {loading ? (
           <p className="text-sm text-slate-400">{t('loading')}</p>

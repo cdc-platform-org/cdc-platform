@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 import { TeamMember } from '../../types/teamMember';
 import { getTeamMembers, getTrainers } from '../../services/teamMemberService';
 import { onImageErrorFallback } from '../../utils/imageFallback';
@@ -11,8 +13,8 @@ interface TeamTrainersSectionProps {
 type Tab = 'team' | 'trainers';
 
 const dict = {
-  ka: { heading: 'ჩვენი გუნდი', team: 'ადმინისტრაცია', trainers: 'ტრენერები', empty: 'ინფორმაცია მალე დაემატება.' },
-  en: { heading: 'Our Team', team: 'Administration', trainers: 'Trainers', empty: 'Coming soon.' },
+  ka: { heading: 'ჩვენი გუნდი', team: 'ადმინისტრაცია', trainers: 'ტრენერები', empty: 'ინფორმაცია მალე დაემატება.', viewProfile: 'სრული პროფილი' },
+  en: { heading: 'Our Team', team: 'Administration', trainers: 'Trainers', empty: 'Coming soon.', viewProfile: 'View Full Profile' },
 };
 
 function initialsOf(name: string): string {
@@ -104,6 +106,15 @@ export default function TeamTrainersSection({ lang }: TeamTrainersSectionProps) 
                 <h3 className="font-black text-sm mb-1">{localized.name}</h3>
                 <span className="text-[11px] text-cyan-400 font-bold block mb-3 uppercase tracking-wider">{localized.role}</span>
                 {localized.bio && <p className="text-xs text-slate-500 leading-relaxed">{localized.bio}</p>}
+                {member.profileUrl && (
+                  <Link
+                    href={member.profileUrl}
+                    className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-cyan-400 hover:text-cyan-300"
+                  >
+                    {t.viewProfile}
+                    <ArrowRight className="w-3 h-3" />
+                  </Link>
+                )}
               </div>
             );
           })}

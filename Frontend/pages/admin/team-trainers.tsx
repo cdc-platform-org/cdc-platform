@@ -24,6 +24,7 @@ const emptyForm: TeamMemberPayload = {
   roleEn: '',
   bioEn: '',
   imageUrl: '',
+  profileUrl: '',
   type: 'MANAGEMENT',
   active: true,
 };
@@ -82,6 +83,7 @@ function AdminTeamTrainersDashboard() {
       roleEn: member.roleEn ?? '',
       bioEn: member.bioEn ?? '',
       imageUrl: member.imageUrl ?? '',
+      profileUrl: member.profileUrl ?? '',
       type: member.type,
       active: member.active,
     });
@@ -148,6 +150,7 @@ function AdminTeamTrainersDashboard() {
         roleEn: form.roleEn?.trim() || null,
         bioEn: form.bioEn?.trim() || null,
         imageUrl: form.imageUrl?.trim() || null,
+        profileUrl: form.profileUrl?.trim() || null,
         type: form.type,
         active: form.active,
       };
@@ -265,6 +268,22 @@ function AdminTeamTrainersDashboard() {
                 <option value="MANAGEMENT">{TYPE_LABEL.MANAGEMENT}</option>
                 <option value="TRAINER">{TYPE_LABEL.TRAINER}</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                სრული პროფილის გვერდი (არასავალდებულო)
+              </label>
+              <input
+                type="text"
+                value={form.profileUrl ?? ''}
+                onChange={(e) => setForm({ ...form, profileUrl: e.target.value })}
+                className={inputClass}
+                placeholder="/about/ia-tavdishvili"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                შიდა ბმული საიტზე არსებულ გვერდზე — ცარიელი, თუ ამ წევრს ცალკე გვერდი არ აქვს.
+              </p>
             </div>
 
             <div className="flex items-center justify-between border-b border-gray-200 mb-1">

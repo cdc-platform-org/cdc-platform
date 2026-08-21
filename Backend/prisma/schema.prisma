@@ -3145,6 +3145,11 @@ model TeamMember {
   // Uploaded via the same Bunny Storage pipeline as SuccessStory.avatarUrl —
   // never a freely-settable external URL.
   imageUrl  String?
+  // Internal site path (e.g. "/about/ia-tavdishvili") to a dedicated
+  // full-bio page for this person — set by an admin only for members who
+  // actually have one; renders a "View Full Profile" link on this card
+  // when present, nothing otherwise.
+  profileUrl String?
   type      TeamMemberType @default(MANAGEMENT)
   order     Int            @default(0)
   active    Boolean        @default(true)

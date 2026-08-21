@@ -23,6 +23,7 @@ export interface TeamMemberPayload {
   roleEn?: string | null;
   bioEn?: string | null;
   imageUrl?: string | null;
+  profileUrl?: string | null;
   type: TeamMemberType;
   order?: number;
   active?: boolean;
