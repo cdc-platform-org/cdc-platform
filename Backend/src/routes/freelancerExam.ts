@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved, requireRole } from '../middleware/auth';
-import { generateExamQuestions, AiExamGenerationError, GeneratedQuestion } from '../services/aiExamService';
+import { generateExamQuestions, GeneratedQuestion } from '../services/aiExamService';
 
 const router = Router();
 router.use(authenticate, requireApproved, requireRole('Student'));
@@ -102,6 +102,33 @@ const FALLBACK_QUESTIONS: Record<string, GeneratedQuestion[]> = {
   ],
 };
 
+// Universal padding pool — used whenever the selected categories' own
+// static banks (5 questions each, see FALLBACK_QUESTIONS above) don't add
+// up to QUESTION_COUNT on their own (the common case: a single-profession
+// selection only yields 5). Deliberately sized to 15 so even the
+// pathological case (zero recognized categories, or every category bank
+// somehow missing) can still fill a full exam from this array alone,
+// without ever repeating a question. Distinct content from
+// FALLBACK_QUESTIONS.other (not reused) so selecting "other" alongside
+// another profession never shows the same question twice.
+const GENERAL_PADDING_QUESTIONS: GeneratedQuestion[] = [
+  { id: 'g1', topic: 'negotiation', question: 'A client asks for a lower price than your quote. What is the most professional response?', options: { A: 'Immediately agree to any price to keep the client', B: 'Explain your value and explore adjusting scope, not just cutting price', C: 'Refuse to discuss it further', D: 'Raise the price instead to punish the request' }, correctAnswer: 'B', explanation: 'Professional negotiation focuses on value and scope, not just dropping price on demand.' },
+  { id: 'g2', topic: 'teamwork', question: 'When collaborating with other freelancers on a shared project, what best prevents duplicated or conflicting work?', options: { A: 'Everyone works independently with no updates', B: 'Clear task ownership and regular status updates', C: 'Only communicating at the very end', D: 'Avoiding any shared documentation' }, correctAnswer: 'B', explanation: 'Clear ownership plus regular updates keeps collaborators aligned and avoids overlap.' },
+  { id: 'g3', topic: 'remote communication', question: 'What is the main benefit of over-communicating status on a remote/async project?', options: { A: 'It wastes the client\'s time', B: 'It reduces uncertainty and builds trust when there is no in-person contact', C: 'It is required by law', D: 'It replaces the need for a contract' }, correctAnswer: 'B', explanation: 'Without in-person cues, proactive updates are what build client trust remotely.' },
+  { id: 'g4', topic: 'prioritization', question: 'You have three tasks due the same day for different clients. What should you do first?', options: { A: 'Whichever is easiest, regardless of deadline or impact', B: 'Assess urgency/impact for each and communicate a realistic order to all three clients', C: 'Ignore two of them silently', D: 'Work on all three at once with no plan' }, correctAnswer: 'B', explanation: 'Prioritizing by urgency/impact and communicating proactively is the professional approach.' },
+  { id: 'g5', topic: 'handling feedback', question: 'A client gives critical feedback on your delivered work. What is the best reaction?', options: { A: 'Get defensive and argue every point', B: 'Listen, clarify specifics, and revise based on valid points', C: 'Ignore the feedback entirely', D: 'Stop responding to the client' }, correctAnswer: 'B', explanation: 'Constructive handling of feedback means listening, clarifying, and acting on valid points.' },
+  { id: 'g6', topic: 'contracts & invoicing', question: 'Why should a freelancer use a written agreement before starting paid work?', options: { A: 'It is only useful for large companies', B: 'It clearly defines deliverables, payment terms, and protects both sides', C: 'It slows down the project unnecessarily', D: 'It is optional once you trust the client' }, correctAnswer: 'B', explanation: 'A written agreement protects both parties by clarifying scope and payment terms upfront.' },
+  { id: 'g7', topic: 'logical reasoning', question: 'If all verified freelancers on a platform pass a skill exam, and Ana passed the skill exam, what can you logically conclude?', options: { A: 'Ana is definitely verified', B: 'Ana might be verified, but passing alone does not guarantee it', C: 'Ana is not verified', D: 'Nothing can be concluded at all' }, correctAnswer: 'B', explanation: 'Passing the exam is presented as a necessary condition among verified freelancers, not proven sufficient on its own from the statement given.' },
+  { id: 'g8', topic: 'adaptability', question: 'Midway through a project, a client changes a core requirement. What is the best first step?', options: { A: 'Refuse any changes outright', B: 'Assess the impact on scope/timeline/price and discuss it with the client', C: 'Silently absorb the extra work for free', D: 'Abandon the project' }, correctAnswer: 'B', explanation: 'Requirement changes should be assessed for impact and discussed, not silently absorbed or refused outright.' },
+  { id: 'g9', topic: 'organization & tools', question: 'What is the main benefit of using a dedicated task/project tracking tool across multiple clients?', options: { A: 'It guarantees more clients automatically', B: 'It keeps deliverables, deadlines, and communication organized in one place', C: 'It replaces the need for direct client communication', D: 'It is only useful for large teams' }, correctAnswer: 'B', explanation: 'Tracking tools help keep multi-client work organized, reducing missed deadlines or lost context.' },
+  { id: 'g10', topic: 'conflict resolution', question: 'A client disputes the quality of delivered work you believe meets the agreed spec. What is the best approach?', options: { A: 'Immediately issue a full refund without discussion', B: 'Calmly review the agreed spec together and address any genuine gaps', C: 'Refuse to discuss it and end communication', D: 'Publicly argue with the client online' }, correctAnswer: 'B', explanation: 'Reviewing the agreed spec together is the professional way to resolve a quality dispute.' },
+  { id: 'g11', topic: 'goal setting', question: 'What makes a project milestone useful for tracking freelance work?', options: { A: 'It is vague so it is always technically met', B: 'It is specific and measurable, with a clear deadline', C: 'It only exists in the freelancer\'s head', D: 'It never changes even if the project scope changes' }, correctAnswer: 'B', explanation: 'Useful milestones are specific, measurable, and time-bound.' },
+  { id: 'g12', topic: 'problem solving', question: 'You hit an unexpected technical blocker with no clear solution. What is the most effective next step?', options: { A: 'Stop working and say nothing to the client', B: 'Break the problem into smaller parts and research or ask for help on the specific blocker', C: 'Guess randomly until something works with no documentation', D: 'Immediately quit the project' }, correctAnswer: 'B', explanation: 'Breaking a blocker into smaller, researchable parts is a systematic way to solve it.' },
+  { id: 'g13', topic: 'professionalism', question: 'What best demonstrates professionalism when you make a mistake on a project?', options: { A: 'Hiding the mistake and hoping no one notices', B: 'Owning the mistake, informing the client, and proposing a fix', C: 'Blaming a teammate or the client instead', D: 'Deleting all evidence of the work' }, correctAnswer: 'B', explanation: 'Owning mistakes and proposing fixes is the professional response, not hiding or blaming.' },
+  { id: 'g14', topic: 'client onboarding', question: 'What is the most useful thing to clarify with a new client before work begins?', options: { A: 'Their favorite color scheme only', B: 'Scope, deliverables, timeline, and how/when to communicate', C: 'Nothing — figure it out as you go', D: 'Only the final price, nothing else' }, correctAnswer: 'B', explanation: 'Clarifying scope, deliverables, timeline, and communication upfront prevents most later disputes.' },
+  { id: 'g15', topic: 'work-life boundaries', question: 'What is a sustainable way for a freelancer to handle client messages outside agreed working hours?', options: { A: 'Respond instantly at all hours forever', B: 'Set and communicate clear availability windows, then hold to them', C: 'Never respond to any message ever', D: 'Only work at night with no fixed hours' }, correctAnswer: 'B', explanation: 'Clear, communicated availability windows are a sustainable way to manage client expectations.' },
+];
+
 router.get('/status', async (req: Request, res: Response) => {
   const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { examLockedUntil: true } });
   const lockedUntil = user?.examLockedUntil && user.examLockedUntil > new Date() ? user.examLockedUntil : null;
@@ -136,23 +163,26 @@ router.post('/generate', async (req: Request, res: Response) => {
       lang: lang ?? 'ka',
     });
   } catch (err) {
-    // AI generator unavailable/misconfigured/erroring — fall back to the
-    // static question bank rather than failing the request outright. Best-
-    // effort only for a multi-profession selection: each category's bank
-    // has 5 questions, interleaved and capped at QUESTION_COUNT, so a
-    // 3+-profession fallback test may come in under 15 — there's no static
-    // content deep enough to guarantee 15 across every combination the way
-    // the AI path does.
+    // AI generator unavailable/misconfigured/erroring (both the Gemini
+    // fallback chain AND, if configured, the Azure OpenAI cross-vendor rung
+    // — see aiExamService.ts's callTextModel() — already exhausted) — fall
+    // back to the static question bank rather than failing the request
+    // outright. Each selected category's bank only has 5 questions, so a
+    // 1- or 2-profession selection interleaves to fewer than QUESTION_COUNT;
+    // GENERAL_PADDING_QUESTIONS above fills the rest so the user always
+    // gets exactly QUESTION_COUNT, never a short or failed test — including
+    // the pathological case of zero recognized categories, where padding
+    // alone (all 15) carries the entire exam.
+    console.error('[freelancerExam] AI generation failed, using static fallback:', err instanceof Error ? err.message : err);
     const banks = categories.map((c) => FALLBACK_QUESTIONS[c]).filter((b): b is GeneratedQuestion[] => !!b);
-    if (banks.length === 0) {
-      const message = err instanceof AiExamGenerationError ? err.message : GENERIC_FAILURE_MESSAGE;
-      return res.status(502).json({ message });
-    }
     const interleaved: GeneratedQuestion[] = [];
     for (let i = 0; interleaved.length < QUESTION_COUNT && banks.some((b) => i < b.length); i++) {
       for (const bank of banks) {
         if (i < bank.length) interleaved.push(bank[i]);
       }
+    }
+    if (interleaved.length < QUESTION_COUNT) {
+      interleaved.push(...GENERAL_PADDING_QUESTIONS.slice(0, QUESTION_COUNT - interleaved.length));
     }
     questions = interleaved.slice(0, QUESTION_COUNT).map((q, i) => ({ ...q, id: `f${i + 1}` }));
   }

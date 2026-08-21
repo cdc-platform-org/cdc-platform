@@ -1,12 +1,15 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
+import { callTextModel, AiAgentError } from './aiAgentService';
+import { isAzureOpenAiConfigured } from './azureOpenAiService';
 import { GEMINI_API_KEY } from '../utils/env';
 
+// Configured if EITHER provider is — callTextModel() (aiAgentService.ts)
+// already falls through Gemini's 3-model chain to the cross-vendor Azure
+// OpenAI rung (azureOpenAiService.ts) on its own, so this only needs to
+// gate the fully-unconfigured case.
 export function isAiExamConfigured(): boolean {
-  return !!GEMINI_API_KEY;
+  return !!GEMINI_API_KEY || isAzureOpenAiConfigured();
 }
-
-const client = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
 export interface GeneratedQuestion {
   id: string;
@@ -51,8 +54,8 @@ export class AiExamGenerationError extends Error {
 }
 
 export async function generateExamQuestions(params: GenerateExamParams): Promise<GeneratedQuestion[]> {
-  if (!client) {
-    throw new AiExamGenerationError('Gemini is not configured (GEMINI_API_KEY missing).');
+  if (!isAiExamConfigured()) {
+    throw new AiExamGenerationError('AI exam generation is not configured (GEMINI_API_KEY/AZURE_OPENAI_* missing).');
   }
 
   const focusLine = params.focusTopics?.length
@@ -67,38 +70,37 @@ export async function generateExamQuestions(params: GenerateExamParams): Promise
   const prompt = `You are generating a certification exam for the online course "${params.courseTitle}".
 Course description: ${params.courseDescription}
 Lesson topics covered: ${params.lessonTitles.join(', ') || '(no lessons listed)'}${focusLine}${contextLine}${languageLine}
+If the course title, description, or topics name an unrecognized, unclear, or overly narrow custom profession (e.g. a free-typed "Other" field), do not attempt to invent implausible profession-specific trivia — instead generate general freelancing, logical reasoning, and project management questions for that portion of the test.
 
 Generate exactly ${params.questionCount} multiple-choice questions that test real understanding of the course material (not trivia). Each question must have exactly 4 options (A, B, C, D), one correct answer, and a short explanation of why it's correct. Vary the topics across the course's lessons. Respond with strict JSON matching this shape:
 {"questions": [{"topic": string, "question": string, "options": {"A": string, "B": string, "C": string, "D": string}, "correctAnswer": "A"|"B"|"C"|"D", "explanation": string}]}`;
 
-  const model = client.getGenerativeModel({
-    // "gemini-2.5-pro" / "gemini-pro-latest" both return a hard 0 free-tier
-    // quota on this account (confirmed via direct API probes) — only the
-    // Flash family has real free-tier headroom, so that's what's wired up
-    // until the Google Cloud project has billing enabled for Pro models.
-    model: 'gemini-flash-latest',
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.7 },
-  });
-
+  // callTextModel() (aiAgentService.ts) already runs the full resilience
+  // chain: gemini-flash-latest → gemini-flash-lite-latest → gemini-3.5-flash
+  // (2 attempts each on a retryable 503/429), then falls through to Azure
+  // OpenAI (azureOpenAiService.ts) if that's configured and every Gemini
+  // model failed. A single Gemini hiccup — or a full Google-side outage, if
+  // Azure is set up — no longer surfaces as "გამოცდის გენერაცია ვერ
+  // მოხერხდა" here; the route's own FALLBACK_QUESTIONS static bank remains
+  // the last resort if this whole chain is exhausted or unconfigured.
   let raw: string;
   try {
-    const result = await model.generateContent(prompt);
-    raw = result.response.text();
+    raw = await callTextModel(prompt, 0.7);
   } catch (err) {
-    throw new AiExamGenerationError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');
+    throw new AiExamGenerationError(err instanceof AiAgentError ? err.message : 'AI exam generation request failed.');
   }
-  if (!raw) throw new AiExamGenerationError('Gemini returned an empty response.');
+  if (!raw) throw new AiExamGenerationError('AI provider returned an empty response.');
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new AiExamGenerationError('Gemini returned malformed JSON.');
+    throw new AiExamGenerationError('AI provider returned malformed JSON.');
   }
 
   const result = questionsResponseSchema.safeParse(parsed);
   if (!result.success || result.data.questions.length === 0) {
-    throw new AiExamGenerationError('Gemini returned an unexpected question format.');
+    throw new AiExamGenerationError('AI provider returned an unexpected question format.');
   }
 
   return result.data.questions.slice(0, params.questionCount).map((q, i) => ({ id: `q${i + 1}`, ...q }));
