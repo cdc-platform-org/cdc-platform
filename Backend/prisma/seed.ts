@@ -4,8 +4,12 @@
 // admin routes only approve/reject — there is no role-change endpoint — so
 // without this script there is no way to ever get past the first account.
 //
-// Credentials are read from environment variables only. Nothing here is
-// hardcoded or committed. Run with:
+// SuperAdmin credentials are read from SEED_SUPERADMIN_EMAIL/PASSWORD when
+// set. If either is missing, this falls back to a fixed local-dev default
+// (see DEFAULT_SUPERADMIN_EMAIL/PASSWORD below) so a fresh clone can seed
+// with zero .env setup — a console.warn fires whenever that fallback is
+// used, since these defaults are public (committed in this file) and must
+// never be relied on outside a disposable local dev database. Run with:
 //   SEED_SUPERADMIN_EMAIL=... SEED_SUPERADMIN_PASSWORD=... pnpm run db:seed
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
@@ -58,11 +62,24 @@ function requireEnv(key: string): string {
   return value;
 }
 
+// Local-dev-only fallback — see the file header comment. Never used when
+// SEED_SUPERADMIN_EMAIL/PASSWORD are actually set (every real deployment
+// should set them).
+const DEFAULT_SUPERADMIN_EMAIL = 'admin@cdc.ge';
+const DEFAULT_SUPERADMIN_PASSWORD = 'Admin123!456';
+
 async function main() {
   await seedForumCategories();
 
-  const superAdminEmail = requireEnv('SEED_SUPERADMIN_EMAIL').toLowerCase();
-  const superAdminPassword = requireEnv('SEED_SUPERADMIN_PASSWORD');
+  if (!process.env.SEED_SUPERADMIN_EMAIL || !process.env.SEED_SUPERADMIN_PASSWORD) {
+    console.warn(
+      '⚠ SEED_SUPERADMIN_EMAIL/SEED_SUPERADMIN_PASSWORD not set — falling back to local default credentials ' +
+        `(${DEFAULT_SUPERADMIN_EMAIL}). These are committed in prisma/seed.ts and are NOT secret — never rely on ` +
+        'them outside a disposable local dev database.'
+    );
+  }
+  const superAdminEmail = (process.env.SEED_SUPERADMIN_EMAIL ?? DEFAULT_SUPERADMIN_EMAIL).toLowerCase();
+  const superAdminPassword = process.env.SEED_SUPERADMIN_PASSWORD ?? DEFAULT_SUPERADMIN_PASSWORD;
   if (superAdminPassword.length < 8) {
     throw new Error('SEED_SUPERADMIN_PASSWORD must be at least 8 characters.');
   }
