@@ -16,7 +16,7 @@ const EN_STRINGS = {
   registeredOf: (n: number, total: number) => `${n} / ${total} registered`,
   full: 'Fully Booked',
   minMet: 'Minimum group reached — this session is confirmed to run',
-  minNotMet: (n: number) => `${n} more needed to confirm this session`,
+  minNotMet: (n: number, min: number) => `${n} more needed to reach the minimum group of ${min}`,
   nameLabel: 'Full name',
   emailLabel: 'Email',
   phoneLabel: 'Phone number',
@@ -35,7 +35,13 @@ const dict = {
     registeredOf: (n: number, total: number) => `${n} / ${total} დარეგისტრირებულია`,
     full: 'ადგილები შევსებულია',
     minMet: 'მინიმალური ჯგუფი შევსებულია — სესია დადასტურებულია',
-    minNotMet: (n: number) => `აკლია ${n} ადამიანი დასადასტურებლად`,
+    // Explicitly names the minimum-group threshold (a separate, usually
+    // much smaller number from maxCapacity/room size above) — without it,
+    // "აკლია 3" read next to "0 / 15" looked like a contradiction, when
+    // it's actually two independent thresholds (e.g. "need 3 to run the
+    // session" vs. "room holds 15") both correctly derived from the same
+    // live registeredCount.
+    minNotMet: (n: number, min: number) => `მინიმალური ${min}-კაციანი ჯგუფისთვის აკლია ${n} ადამიანი`,
     nameLabel: 'სახელი და გვარი',
     emailLabel: 'ელ. ფოსტა',
     phoneLabel: 'ტელეფონის ნომერი',
@@ -187,7 +193,9 @@ export default function LiveTrainingDetailPage() {
               }`}
             >
               {training.minThresholdMet ? <CheckCircle2 size={12} /> : null}
-              {training.minThresholdMet ? t.minMet : t.minNotMet(Math.max(0, training.minCapacity - training.registeredCount))}
+              {training.minThresholdMet
+                ? t.minMet
+                : t.minNotMet(Math.max(0, training.minCapacity - training.registeredCount), training.minCapacity)}
             </span>
           )}
         </div>

@@ -108,7 +108,9 @@ function AdminLiveTrainingLeadsDashboard() {
             {training && (
               <p className="text-sm text-gray-500 mt-1">
                 {new Date(training.scheduledAt).toLocaleString()} · {training.registeredCount} / {training.maxCapacity} რეგისტრირებული ·{' '}
-                {training.minThresholdMet ? 'მინ. ჯგუფი შევსებულია' : `აკლია ${Math.max(0, training.minCapacity - training.registeredCount)} ადამიანი`}
+                {training.minThresholdMet
+                  ? 'მინ. ჯგუფი შევსებულია'
+                  : `მინ. ${training.minCapacity}-კაციან ჯგუფს აკლია ${Math.max(0, training.minCapacity - training.registeredCount)} ადამიანი`}
               </p>
             )}
           </div>

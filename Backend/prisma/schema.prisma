@@ -858,6 +858,25 @@ model CandidateEvaluation {
   @@map("hr_candidate_evaluations")
 }
 
+// Anti-fraud KYC cap on the "ბიზნესი" (Business) verification tab — up to
+// maxAccounts distinct User accounts may verify with the same taxId (see
+// routes/auth.ts's /me/verification-doc) before submissions are blocked
+// with "ეს ს/კ უკვე გამოყენებულია...". No row = the platform default of 3
+// (BUSINESS_TAX_ID_DEFAULT_LIMIT in routes/auth.ts) applies; a SuperAdmin
+// creates one via routes/adminCompanies.ts to raise or remove (maxAccounts
+// null) the limit for a specific legitimate multi-branch business.
+model BusinessAccountLimit {
+  id          String   @id @default(uuid())
+  taxId       String   @unique
+  // null = unlimited (explicit admin override to remove the cap entirely,
+  // not "unset" — a genuinely unset taxId never gets a row at all).
+  maxAccounts Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("business_account_limits")
+}
+
 // ============================================================
 // COURSE
 // ============================================================

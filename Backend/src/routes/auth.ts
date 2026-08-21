@@ -936,6 +936,10 @@ const verificationDocUpload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
+// Platform default when a taxId has no BusinessAccountLimit override row —
+// see the model's own schema comment for the override mechanism.
+const BUSINESS_TAX_ID_DEFAULT_LIMIT = 3;
+
 router.post(
   '/me/verification-doc',
   authenticate,
@@ -954,6 +958,27 @@ router.post(
       where: { id: req.user!.id },
       select: { verificationDocUrl: true, taxId: true, aiTrialEndsAt: true, companyName: true },
     });
+
+    // Anti-fraud cap: at most N distinct accounts may verify against the
+    // same Company ID (ს/კ) — counts every OTHER account already on this
+    // taxId regardless of their own approval status, since the fraud risk
+    // is "how many accounts registered under this code," not just how many
+    // were approved. A taxId with no submitted business documents yet has
+    // nothing to count against, so this only fires once the user has
+    // actually set a taxId on their profile (see VerificationDrawer.tsx).
+    if (previous?.taxId) {
+      const [override, accountsOnThisTaxId] = await Promise.all([
+        prisma.businessAccountLimit.findUnique({ where: { taxId: previous.taxId } }),
+        prisma.user.count({ where: { taxId: previous.taxId, id: { not: req.user!.id } } }),
+      ]);
+      // maxAccounts === null on an override row means "unlimited" (an
+      // explicit admin removal of the cap) — Infinity makes that branch of
+      // the comparison below a no-op without a separate special case.
+      const effectiveLimit = override ? override.maxAccounts ?? Infinity : BUSINESS_TAX_ID_DEFAULT_LIMIT;
+      if (accountsOnThisTaxId >= effectiveLimit) {
+        return res.status(409).json({ message: 'ეს ს/კ უკვე გამოყენებულია დაშვებული ექაუნთების მაქსიმალურ რაოდენობაზე.' });
+      }
+    }
 
     const filename = `kyc-${req.user!.id}-${Date.now()}${path.extname(req.file.originalname)}`;
     try {

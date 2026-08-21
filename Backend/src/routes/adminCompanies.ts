@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { logAdminAction } from '../services/auditLogService';
@@ -155,6 +156,68 @@ router.post('/:id/reject', async (req: Request, res: Response) => {
     .catch((err) => console.error('[adminCompanies] reject notification failed:', err));
 
   res.json({ data: user });
+});
+
+// ============================================================
+// TAX ID ACCOUNT LIMIT — anti-fraud cap on how many accounts may verify
+// against the same Company ID (see BusinessAccountLimit's schema comment
+// and routes/auth.ts's BUSINESS_TAX_ID_DEFAULT_LIMIT).
+// ============================================================
+
+const setTaxIdLimitSchema = z.object({
+  // null explicitly removes the cap (unlimited); omit the field entirely
+  // (or send a positive int) to set/change an explicit override.
+  maxAccounts: z.number().int().positive().nullable(),
+});
+
+// Current override (if any) plus a live count of accounts already
+// registered on this taxId — everything the admin UI needs to decide
+// whether/how to adjust the cap for one business.
+router.get('/tax-id-limit/:taxId', async (req: Request, res: Response) => {
+  const [override, accountCount] = await Promise.all([
+    prisma.businessAccountLimit.findUnique({ where: { taxId: req.params.taxId } }),
+    prisma.user.count({ where: { taxId: req.params.taxId } }),
+  ]);
+  res.json({
+    data: {
+      taxId: req.params.taxId,
+      maxAccounts: override?.maxAccounts ?? null,
+      isDefault: !override,
+      accountCount,
+    },
+  });
+});
+
+router.put('/tax-id-limit/:taxId', async (req: Request, res: Response) => {
+  const result = setTaxIdLimitSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const override = await prisma.businessAccountLimit.upsert({
+    where: { taxId: req.params.taxId },
+    update: { maxAccounts: result.data.maxAccounts },
+    create: { taxId: req.params.taxId, maxAccounts: result.data.maxAccounts },
+  });
+  await logAdminAction({
+    action: 'company.set-tax-id-limit',
+    targetType: 'BusinessAccountLimit',
+    targetId: override.id,
+    performedById: req.user!.id,
+  });
+  res.json({ data: override });
+});
+
+// Reverts to the platform default (BUSINESS_TAX_ID_DEFAULT_LIMIT) by
+// deleting the override row entirely — distinct from PUT with
+// maxAccounts: null, which explicitly sets "no limit."
+router.delete('/tax-id-limit/:taxId', async (req: Request, res: Response) => {
+  await prisma.businessAccountLimit.deleteMany({ where: { taxId: req.params.taxId } });
+  await logAdminAction({
+    action: 'company.reset-tax-id-limit',
+    targetType: 'BusinessAccountLimit',
+    targetId: req.params.taxId,
+    performedById: req.user!.id,
+  });
+  res.status(204).send();
 });
 
 export default router;

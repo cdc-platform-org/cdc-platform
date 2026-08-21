@@ -1,10 +1,126 @@
 import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
-import { FileText, ShieldCheck, ShieldAlert, ShieldQuestion, Globe, Sparkles, X, Search, Users } from 'lucide-react';
+import { FileText, ShieldCheck, ShieldAlert, ShieldQuestion, Globe, Sparkles, X, Search, Users, Lock, Unlock } from 'lucide-react';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
-import { getCompanies, verifyCompany, unverifyCompany, rejectCompany, updateAiTrial, CompanyRow } from '../../src/services/adminCompaniesService';
+import {
+  getCompanies,
+  verifyCompany,
+  unverifyCompany,
+  rejectCompany,
+  updateAiTrial,
+  getTaxIdLimit,
+  setTaxIdLimit,
+  resetTaxIdLimit,
+  CompanyRow,
+} from '../../src/services/adminCompaniesService';
 import { useAuth } from '../../src/context/AuthContext';
+
+// Inline "how many accounts may share this ს/კ" control — fetches the
+// current override (or platform default) only when opened, since most
+// companies never need this touched at all.
+function TaxIdLimitControl({ taxId }: { taxId: string }) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [maxAccounts, setMaxAccounts] = useState<number | null>(null);
+  const [isDefault, setIsDefault] = useState(true);
+  const [accountCount, setAccountCount] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [input, setInput] = useState('');
+
+  const load = () => {
+    setLoading(true);
+    getTaxIdLimit(taxId)
+      .then((data) => {
+        setMaxAccounts(data.maxAccounts);
+        setIsDefault(data.isDefault);
+        setAccountCount(data.accountCount);
+        setInput(data.maxAccounts?.toString() ?? '');
+      })
+      .finally(() => setLoading(false));
+  };
+
+  const toggle = () => {
+    if (!open) load();
+    setOpen((v) => !v);
+  };
+
+  const handleSetLimit = async () => {
+    setSaving(true);
+    try {
+      const parsed = input.trim() === '' ? null : parseInt(input, 10);
+      await setTaxIdLimit(taxId, Number.isFinite(parsed) ? parsed : null);
+      load();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReset = async () => {
+    setSaving(true);
+    try {
+      await resetTaxIdLimit(taxId);
+      load();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mt-1">
+      <button
+        type="button"
+        onClick={toggle}
+        className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400"
+      >
+        {isDefault ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+        ს/კ ლიმიტი
+      </button>
+      {open && (
+        <div className="mt-1.5 p-2.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/60 w-56">
+          {loading ? (
+            <p className="text-[11px] text-gray-400">იტვირთება…</p>
+          ) : (
+            <>
+              <p className="text-[11px] text-gray-500 dark:text-slate-400 mb-1.5">
+                ამჟამად {accountCount} ანგარიში ამ ს/კ-ზე · ლიმიტი: {maxAccounts ?? (isDefault ? '3 (ნაგულისხმევი)' : 'ულიმიტო')}
+              </p>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min={1}
+                  placeholder="რაოდ."
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  className="w-16 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 px-2 py-1 text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={handleSetLimit}
+                  disabled={saving}
+                  className="text-[11px] font-bold px-2 py-1 rounded bg-indigo-600 text-white disabled:opacity-50"
+                >
+                  შენახვა
+                </button>
+                {!isDefault && (
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    disabled={saving}
+                    className="text-[11px] font-bold px-2 py-1 rounded border border-gray-300 dark:border-slate-600 disabled:opacity-50"
+                  >
+                    ნაგულისხმევზე დაბრუნება
+                  </button>
+                )}
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1">ცარიელი = ულიმიტო</p>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const ACTIVE_STATUS_BADGE: Record<string, string> = {
   ACTIVE: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
@@ -409,6 +525,7 @@ function AdminCompaniesDashboard() {
                         {c.industry ?? '—'}
                         {c.taxId ? ` · ს/კ ${c.taxId}` : ''} · Registered {new Date(c.createdAt).toLocaleDateString()}
                       </p>
+                      {c.taxId && <TaxIdLimitControl taxId={c.taxId} />}
                       {c.websiteUrl && (
                         <a href={c.websiteUrl} target="_blank" rel="noreferrer" className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 mt-1">
                           <Globe className="w-3 h-3" />

@@ -65,6 +65,29 @@ export type AiTrialUpdatePayload =
   | { mode: 'set'; date: string }
   | { mode: 'unlimited' };
 
+export interface TaxIdLimit {
+  taxId: string;
+  maxAccounts: number | null;
+  isDefault: boolean;
+  accountCount: number;
+}
+
+export async function getTaxIdLimit(taxId: string): Promise<TaxIdLimit> {
+  const response = await apiClient.get<{ data: TaxIdLimit }>(`/admin/companies/tax-id-limit/${encodeURIComponent(taxId)}`);
+  return response.data.data;
+}
+
+// maxAccounts: null explicitly removes the cap (unlimited).
+export async function setTaxIdLimit(taxId: string, maxAccounts: number | null): Promise<void> {
+  await apiClient.put(`/admin/companies/tax-id-limit/${encodeURIComponent(taxId)}`, { maxAccounts });
+}
+
+// Reverts to the platform default — distinct from setTaxIdLimit(taxId, null),
+// which explicitly sets "no limit."
+export async function resetTaxIdLimit(taxId: string): Promise<void> {
+  await apiClient.delete(`/admin/companies/tax-id-limit/${encodeURIComponent(taxId)}`);
+}
+
 export async function updateAiTrial(
   userId: string,
   payload: AiTrialUpdatePayload

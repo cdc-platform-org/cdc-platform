@@ -366,7 +366,9 @@ function AdminLiveTrainingsDashboard() {
                             t.minThresholdMet ? 'text-emerald-600 bg-emerald-50' : 'text-gray-500 bg-gray-100'
                           }`}
                         >
-                          {t.minThresholdMet ? 'მინ. ჯგუფი შევსებულია' : `აკლია ${Math.max(0, t.minCapacity - t.registeredCount)} ადამიანი`}
+                          {t.minThresholdMet
+                            ? 'მინ. ჯგუფი შევსებულია'
+                            : `მინ. ${t.minCapacity}-კაციან ჯგუფს აკლია ${Math.max(0, t.minCapacity - t.registeredCount)} ადამიანი`}
                         </span>
                       </div>
                       <h3 className="font-semibold text-sm text-gray-900 truncate mt-1">{t.title}</h3>
