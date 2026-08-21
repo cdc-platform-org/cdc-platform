@@ -12,6 +12,10 @@ export const tutorialCreateSchema = z.object({
   descriptionEn: z.string().min(10).max(1000).optional().nullable(),
   order: z.number().int().min(0).optional().default(0),
   published: z.boolean().optional().default(true),
+  // The homepage's "▶ გაიგე როგორ მუშაობს პლატფორმა" button opens whichever
+  // tutorial has this set — at most one at a time (routes/tutorials.ts
+  // unsets every other row when this is true).
+  isFeatured: z.boolean().optional().default(false),
 });
 
 export const tutorialUpdateSchema = tutorialCreateSchema.partial();

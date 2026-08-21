@@ -22,11 +22,12 @@ async function canViewDrafts(req: Request): Promise<boolean> {
 }
 
 router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
-  const { category } = req.query;
+  const { category, featured } = req.query;
   const includeDrafts = await canViewDrafts(req);
   const tutorials = await prisma.tutorial.findMany({
     where: {
       ...(category ? { category: String(category) } : {}),
+      ...(featured === 'true' ? { isFeatured: true } : {}),
       ...(includeDrafts ? {} : { publishedAt: { not: null } }),
     },
     orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],
@@ -54,8 +55,15 @@ router.post('/', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async
     data.descriptionEn,
     'tutorials'
   );
-  const tutorial = await prisma.tutorial.create({
-    data: { ...data, titleEn, descriptionEn, publishedAt: published ? new Date() : null },
+  const tutorial = await prisma.$transaction(async (tx) => {
+    // At most one featured tutorial at a time — see schema.prisma's own
+    // comment on Tutorial.isFeatured.
+    if (data.isFeatured) {
+      await tx.tutorial.updateMany({ where: { isFeatured: true }, data: { isFeatured: false } });
+    }
+    return tx.tutorial.create({
+      data: { ...data, titleEn, descriptionEn, publishedAt: published ? new Date() : null },
+    });
   });
   res.status(201).json({ data: tutorial });
 });
@@ -85,9 +93,17 @@ router.put('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), asy
       'tutorials'
     );
 
-    const tutorial = await prisma.tutorial.update({
-      where: { id: req.params.id },
-      data: { ...data, titleEn, descriptionEn, ...(publishedAt !== undefined ? { publishedAt } : {}) },
+    const tutorial = await prisma.$transaction(async (tx) => {
+      // At most one featured tutorial at a time — unset every OTHER row
+      // (excluding this one — it may already be the featured one being
+      // re-saved) before writing this one true.
+      if (data.isFeatured) {
+        await tx.tutorial.updateMany({ where: { isFeatured: true, id: { not: req.params.id } }, data: { isFeatured: false } });
+      }
+      return tx.tutorial.update({
+        where: { id: req.params.id },
+        data: { ...data, titleEn, descriptionEn, ...(publishedAt !== undefined ? { publishedAt } : {}) },
+      });
     });
     res.json({ data: tutorial });
   } catch (err: any) {

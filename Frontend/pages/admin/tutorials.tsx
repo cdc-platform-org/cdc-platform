@@ -7,6 +7,11 @@ import AdminLayout from '../../src/components/admin/AdminLayout';
 import { Tutorial } from '../../src/types/tutorial';
 import { getTutorials, createTutorial, updateTutorial, deleteTutorial, getEmbedUrl, TutorialPayload } from '../../src/services/tutorialService';
 
+// The public /tutorials page groups by these four exact category strings
+// into its own dedicated section — any other category still gets
+// published, just lands in that page's "სხვა/Other" catch-all instead.
+const SUGGESTED_CATEGORIES = ['მენტორობა', 'ფრილანსი და ვაკანსიები', 'AI ინსტრუმენტები', 'გადახდები და ბილინგი'];
+
 const emptyForm: TutorialPayload = {
   title: '',
   description: '',
@@ -16,6 +21,7 @@ const emptyForm: TutorialPayload = {
   descriptionEn: '',
   order: 0,
   published: true,
+  isFeatured: false,
 };
 
 function AdminTutorialsDashboard() {
@@ -63,6 +69,7 @@ function AdminTutorialsDashboard() {
       descriptionEn: tutorial.descriptionEn ?? '',
       order: tutorial.order,
       published: !!tutorial.publishedAt,
+      isFeatured: tutorial.isFeatured,
     });
     setActiveLangTab('ka');
     setFormError(null);
@@ -90,6 +97,7 @@ function AdminTutorialsDashboard() {
         descriptionEn: form.descriptionEn?.trim() || null,
         order: form.order ?? 0,
         published: form.published,
+        isFeatured: form.isFeatured,
       };
       if (editingId) {
         const updated = await updateTutorial(editingId, payload);
@@ -151,8 +159,17 @@ function AdminTutorialsDashboard() {
                   value={form.category}
                   onChange={(e) => setForm({ ...form, category: e.target.value })}
                   className={inputClass}
-                  placeholder="რეგისტრაცია, ციფრული მაღაზია, მენტორობა..."
+                  placeholder="მენტორობა, AI ინსტრუმენტები..."
+                  list="tutorial-category-suggestions"
                 />
+                <datalist id="tutorial-category-suggestions">
+                  {SUGGESTED_CATEGORIES.map((c) => (
+                    <option key={c} value={c} />
+                  ))}
+                </datalist>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  ერთ-ერთი ამ ოთხიდან ავტომატურად მოხვდება შესაბამის სექციაში /tutorials გვერდზე: {SUGGESTED_CATEGORIES.join(' · ')}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -246,15 +263,27 @@ function AdminTutorialsDashboard() {
               />
             </div>
 
-            <label className="flex items-center gap-2 text-sm text-gray-600">
-              <input
-                type="checkbox"
-                checked={form.published ?? true}
-                onChange={(e) => setForm({ ...form, published: e.target.checked })}
-                className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              გამოქვეყნებულია
-            </label>
+            <div className="flex flex-wrap gap-6">
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={form.published ?? true}
+                  onChange={(e) => setForm({ ...form, published: e.target.checked })}
+                  className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                გამოქვეყნებულია
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={form.isFeatured ?? false}
+                  onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })}
+                  className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                მთავარი გვერდის პრომო ვიდეო
+                <span className="text-gray-400 font-normal">(ერთდროულად მხოლოდ ერთი)</span>
+              </label>
+            </div>
 
             <div className="flex gap-3 pt-2">
               <button
@@ -301,6 +330,11 @@ function AdminTutorialsDashboard() {
                         {!tutorial.publishedAt && (
                           <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
                             დრაფტი
+                          </span>
+                        )}
+                        {tutorial.isFeatured && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded">
+                            ★ პრომო ვიდეო
                           </span>
                         )}
                       </div>

@@ -22,6 +22,14 @@ export async function getTutorialById(id: string): Promise<Tutorial> {
   return response.data.data;
 }
 
+// The homepage's "▶ გაიგე როგორ მუშაობს პლატფორმა" button — returns null
+// (never a fabricated fallback) until an admin actually marks one tutorial
+// as featured in /admin/tutorials, at which point the button appears.
+export async function getFeaturedTutorial(): Promise<Tutorial | null> {
+  const response = await apiClient.get<{ data: Tutorial[] }>('/tutorials', { params: { featured: 'true' } });
+  return response.data.data[0] ?? null;
+}
+
 export interface TutorialPayload {
   title: string;
   description: string;
@@ -31,6 +39,7 @@ export interface TutorialPayload {
   descriptionEn?: string | null;
   order?: number;
   published?: boolean;
+  isFeatured?: boolean;
 }
 
 export async function createTutorial(payload: TutorialPayload): Promise<Tutorial> {

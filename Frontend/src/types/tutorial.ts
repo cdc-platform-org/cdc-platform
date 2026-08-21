@@ -11,4 +11,7 @@ export interface Tutorial {
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  // At most one tutorial is ever featured at a time — the homepage's promo
+  // video button opens whichever one has this set.
+  isFeatured: boolean;
 }

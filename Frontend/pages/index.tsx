@@ -7,7 +7,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import type { GetStaticProps } from 'next';
-import { CheckCircle2, AlertTriangle, Sun, Moon, User, X, Menu, Link as LinkIcon, Rocket, Clock, Bot, ShieldCheck, Users, Sparkles, Lock, MessageSquareText, BookOpen, Code2, BarChart3, Building2, Calendar } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Sun, Moon, User, X, Menu, Link as LinkIcon, Rocket, Clock, Bot, ShieldCheck, Users, Sparkles, Lock, MessageSquareText, BookOpen, Code2, BarChart3, Building2, Calendar, Play } from 'lucide-react';
 import { useAuthModal } from '../src/context/AuthModalContext';
 import { useAuth } from '../src/context/AuthContext';
 import SiteFooter from '../src/components/layout/SiteFooter';
@@ -30,6 +30,9 @@ import { getSiteContent } from '../src/services/siteContentService';
 import { resolveBlogImageUrl } from '../src/services/blogService';
 import { onImageErrorFallback } from '../src/utils/imageFallback';
 import { formatPrice, getSaleCountdownLabel } from '../src/utils/coursePricing';
+import { Tutorial } from '../src/types/tutorial';
+import { getFeaturedTutorial, tutorialTitle } from '../src/services/tutorialService';
+import TutorialVideoModal from '../src/components/shared/TutorialVideoModal';
 
 const DEFAULT_HOMEPAGE_STATS: HomepageStat[] = [
   { valueKa: '200+', labelKa: 'კურსდამთავრებული', valueEn: '200+', labelEn: 'Graduates' },
@@ -188,6 +191,17 @@ export default function Home() {
     getBlogPosts()
       .then((data) => setBlogPosts(data.filter((p) => p.published).slice(0, 3)))
       .catch(() => setBlogPosts([]));
+  }, []);
+
+  // Hero's "▶ გაიგე როგორ მუშაობს პლატფორმა" button — only rendered once an
+  // admin has actually marked a tutorial as featured (/admin/tutorials);
+  // never a fabricated placeholder video.
+  const [promoVideo, setPromoVideo] = useState<Tutorial | null>(null);
+  const [showPromoVideo, setShowPromoVideo] = useState(false);
+  useEffect(() => {
+    getFeaturedTutorial()
+      .then(setPromoVideo)
+      .catch(() => setPromoVideo(null));
   }, []);
 
   useEffect(() => {
@@ -389,6 +403,17 @@ export default function Home() {
         </div>
       )}
 
+      {/* PROMO VIDEO — hero's "▶ გაიგე როგორ მუშაობს პლატფორმა" button */}
+      {showPromoVideo && promoVideo && (
+        <TutorialVideoModal
+          tutorial={promoVideo}
+          title={tutorialTitle(promoVideo, contentLang)}
+          openExternallyLabel={t('heroPromoOpenExternally')}
+          openInNewTabLabel={t('heroPromoOpenInNewTab')}
+          onClose={() => setShowPromoVideo(false)}
+        />
+      )}
+
       {/* BACKGROUND GLOW ORBS */}
       <div className="absolute top-[20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-cyan-500/5 blur-[120px] pointer-events-none dark:bg-cyan-500/10" />
       <div className="absolute top-[50%] right-[-10%] w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[150px] pointer-events-none dark:bg-purple-500/5" />
@@ -449,6 +474,9 @@ export default function Home() {
                   </Link>
                   <Link href="/gallery" className={`block px-4 py-3 no-underline hover:text-cyan-500 transition border-t ${darkMode ? 'text-slate-200 border-slate-800' : 'text-slate-700 border-slate-100'}`}>
                     {t('photoGallery')}
+                  </Link>
+                  <Link href="/tutorials" className={`block px-4 py-3 no-underline hover:text-cyan-500 transition border-t ${darkMode ? 'text-slate-200 border-slate-800' : 'text-slate-700 border-slate-100'}`}>
+                    {t('videoTutorials')}
                   </Link>
                 </div>
               </div>
@@ -536,7 +564,8 @@ export default function Home() {
             </div>
             <span className={`px-2 pt-3 pb-1 font-black text-xs uppercase tracking-widest ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{t('aboutUs')}</span>
             <Link href="/about" onClick={() => setIsMobileMenuOpen(false)} className={`px-4 py-2.5 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('mobileAboutCenter')}</Link>
-            <Link href="/gallery" onClick={() => setIsMobileMenuOpen(false)} className={`px-4 py-2.5 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition mb-1 ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('mobilePhotoGallery')}</Link>
+            <Link href="/gallery" onClick={() => setIsMobileMenuOpen(false)} className={`px-4 py-2.5 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('mobilePhotoGallery')}</Link>
+            <Link href="/tutorials" onClick={() => setIsMobileMenuOpen(false)} className={`px-4 py-2.5 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition mb-1 ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('videoTutorials')}</Link>
             <a href="#courses" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('courses')}</a>
             <Link href="/marketplace" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('store')}</Link>
             {MARKETPLACE_CATEGORIES.map((cat) => (
@@ -655,6 +684,19 @@ export default function Home() {
                 >
                   {t('heroCtaJoin')}
                 </Link>
+                {/* Only rendered once an admin has actually featured a
+                    tutorial (/admin/tutorials) — never a placeholder for a
+                    video that doesn't exist yet. */}
+                {promoVideo && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPromoVideo(true)}
+                    className="inline-flex items-center justify-center gap-2 bg-transparent border border-white/30 text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl text-sm uppercase tracking-widest cursor-pointer hover:bg-white/10 hover:border-white/50 transition-all duration-300 whitespace-nowrap"
+                  >
+                    <Play size={16} className="fill-current" />
+                    {t('heroCtaWatchDemo')}
+                  </button>
+                )}
               </div>
             </div>
             {/* lg:col-span-5 intentionally left empty — this is where the video reads clearly */}

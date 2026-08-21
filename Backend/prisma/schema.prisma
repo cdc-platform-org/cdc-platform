@@ -1493,6 +1493,15 @@ model Tutorial {
   publishedAt   DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  // At most one tutorial is ever featured at a time — the homepage's "▶
+  // გაიგე როგორ მუშაობს პლატფორმა" button opens whichever one has this set
+  // (see routes/tutorials.ts's GET /?featured=true). Setting this true on
+  // one row unsets it on every other row in the same request, enforced in
+  // the route handler rather than a DB constraint (same posture as
+  // PaymentMethod.isDefault). A tutorial can be both featured and belong
+  // to one of the public category sections at once — the two are
+  // independent.
+  isFeatured    Boolean   @default(false)
 
   @@index([category])
   @@index([publishedAt])

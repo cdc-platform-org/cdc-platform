@@ -1,23 +1,79 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { Search, X, ExternalLink, PlayCircle } from 'lucide-react';
+import { Search, PlayCircle, ChevronDown, GraduationCap, Briefcase, Bot, CreditCard, Sparkles } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import BackButton from '../../src/components/common/BackButton';
+import TutorialVideoModal from '../../src/components/shared/TutorialVideoModal';
 import { Tutorial } from '../../src/types/tutorial';
-import { getTutorials, tutorialTitle, tutorialDescription, getEmbedUrl } from '../../src/services/tutorialService';
+import { getTutorials, tutorialTitle, tutorialDescription } from '../../src/services/tutorialService';
 import { resolveLocale } from '@/src/utils/locale';
+
+// The four canonical sections — category is a free-text field an admin
+// types into /admin/tutorials, so these keys have to be the EXACT strings
+// admins are expected to use for a tutorial to land in the right section
+// (see admin/tutorials.tsx's own placeholder text, which now suggests
+// these). Anything published under a category that doesn't match one of
+// these four falls into the "სხვა/Other" catch-all at the end rather than
+// silently disappearing.
+interface CategorySection {
+  key: string;
+  icon: typeof GraduationCap;
+  label: { ka: string; en: string };
+  hint: { ka: string; en: string };
+}
+
+const SECTIONS: CategorySection[] = [
+  {
+    key: 'მენტორობა',
+    icon: GraduationCap,
+    label: { ka: 'მენტორობა', en: 'Mentorship' },
+    hint: {
+      ka: 'როგორ დავჯავშნოთ სესია და ვისარგებლოთ კონსულტაციით',
+      en: 'How to book a session and get the most out of a consultation',
+    },
+  },
+  {
+    key: 'ფრილანსი და ვაკანსიები',
+    icon: Briefcase,
+    label: { ka: 'ფრილანსი და ვაკანსიები', en: 'Freelance & Jobs' },
+    hint: {
+      ka: 'როგორ გამოვაქვეყნოთ შეკვეთა / აიღოთ პროექტი',
+      en: 'How to post a job / take on a project',
+    },
+  },
+  {
+    key: 'AI ინსტრუმენტები',
+    icon: Bot,
+    label: { ka: 'AI ინსტრუმენტები', en: 'AI Tools' },
+    hint: {
+      ka: 'როგორ გამოვიყენოთ ციფრული ასისტენტები',
+      en: 'How to use the digital assistants',
+    },
+  },
+  {
+    key: 'გადახდები და ბილინგი',
+    icon: CreditCard,
+    label: { ka: 'გადახდები და ბილინგი', en: 'Payments & Billing' },
+    hint: {
+      ka: 'ბარათის მიბმა, IBAN და თანხის გატანა',
+      en: 'Attaching a card, IBAN, and withdrawing funds',
+    },
+  },
+];
+
+const OTHER_KEY = '__other__';
 
 const EN_STRINGS = {
   title: 'Video Tutorials',
   subtitle: 'Short how-to videos for getting the most out of the CDC platform.',
   loading: 'Loading…',
-  empty: 'No tutorials have been published yet.',
-  noResults: 'No tutorials match your search.',
-  all: 'All',
   searchPlaceholder: 'Search tutorials…',
+  noResults: 'No tutorials match your search.',
+  comingSoon: 'Videos for this section are coming soon.',
   watch: 'Watch',
-  openExternally: 'This video can\'t be embedded — open it in a new tab instead.',
+  otherLabel: 'Other',
+  openExternally: "This video can't be embedded — open it in a new tab instead.",
   openInNewTab: 'Open video',
 };
 
@@ -26,11 +82,11 @@ const dict = {
     title: 'ვიდეო ტუტორიალები',
     subtitle: 'მოკლე ვიდეო ინსტრუქციები CDC პლატფორმის გამოსაყენებლად.',
     loading: 'იტვირთება…',
-    empty: 'ტუტორიალები ჯერ არ არის დამატებული.',
-    noResults: 'თქვენი ძიების შესაბამისი ტუტორიალი ვერ მოიძებნა.',
-    all: 'ყველა',
     searchPlaceholder: 'ტუტორიალების ძებნა…',
+    noResults: 'თქვენი ძიების შესაბამისი ტუტორიალი ვერ მოიძებნა.',
+    comingSoon: 'ამ განყოფილების ვიდეოები მალე დაემატება.',
     watch: 'ყურება',
+    otherLabel: 'სხვა',
     openExternally: 'ეს ვიდეო ვერ ჩაშენდება — გახსენით ახალ ტაბში.',
     openInNewTab: 'ვიდეოს გახსნა',
   },
@@ -41,18 +97,50 @@ const dict = {
   uk: EN_STRINGS,
 };
 
+function TutorialCard({
+  tutorial,
+  contentLang,
+  watchLabel,
+  onSelect,
+}: {
+  tutorial: Tutorial;
+  contentLang: 'ka' | 'en';
+  watchLabel: string;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className="text-left rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm overflow-hidden flex flex-col transition-all duration-300 hover:border-cyan-400/50 hover:shadow-[0_0_25px_rgba(34,211,238,0.15)] cursor-pointer"
+    >
+      <div className="w-full h-36 bg-slate-800/80 flex items-center justify-center">
+        <PlayCircle size={36} className="text-cyan-400" />
+      </div>
+      <div className="p-5 flex-1 flex flex-col">
+        <h3 className="text-base font-black mb-1.5 text-white line-clamp-2 break-words">{tutorialTitle(tutorial, contentLang)}</h3>
+        <p className="text-xs text-slate-400 leading-relaxed line-clamp-2 mb-3 flex-1">{tutorialDescription(tutorial, contentLang)}</p>
+        <span className="flex items-center gap-1.5 text-xs font-bold text-cyan-400">
+          <PlayCircle size={13} /> {watchLabel}
+        </span>
+      </div>
+    </button>
+  );
+}
+
 export default function TutorialsIndexPage() {
   const router = useRouter();
   const lang = resolveLocale(router.locale);
   const t = dict[lang];
   // Tutorials only store ka/en text (title/titleEn etc.) — collapse for content lookups.
   const contentLang = lang === 'ka' ? 'ka' : 'en';
+  const labelLang = lang === 'ka' ? 'ka' : 'en';
 
   const [tutorials, setTutorials] = useState<Tutorial[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTutorial, setActiveTutorial] = useState<Tutorial | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set([...SECTIONS.map((s) => s.key), OTHER_KEY]));
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,19 +158,45 @@ export default function TutorialsIndexPage() {
     load();
   }, [load]);
 
-  const categories = useMemo(() => Array.from(new Set(tutorials.map((tut) => tut.category))).sort(), [tutorials]);
-
-  const visibleTutorials = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    return tutorials.filter((tut) => {
-      if (activeCategory && tut.category !== activeCategory) return false;
+  const query = searchQuery.trim().toLowerCase();
+  const matches = useCallback(
+    (tut: Tutorial) => {
       if (!query) return true;
       const haystack = `${tutorialTitle(tut, contentLang)} ${tutorialDescription(tut, contentLang)}`.toLowerCase();
       return haystack.includes(query);
-    });
-  }, [tutorials, activeCategory, searchQuery, contentLang]);
+    },
+    [query, contentLang]
+  );
 
-  const embedUrl = activeTutorial ? getEmbedUrl(activeTutorial.videoUrl) : null;
+  const sectionsWithContent = useMemo(() => {
+    const sectionKeys = new Set(SECTIONS.map((s) => s.key));
+    return [
+      ...SECTIONS.map((section) => ({
+        section,
+        tutorials: tutorials.filter((tut) => tut.category === section.key && matches(tut)),
+      })),
+      {
+        section: {
+          key: OTHER_KEY,
+          icon: Sparkles,
+          label: { ka: t.otherLabel, en: t.otherLabel },
+          hint: { ka: '', en: '' },
+        } as CategorySection,
+        tutorials: tutorials.filter((tut) => !sectionKeys.has(tut.category) && matches(tut)),
+      },
+    ];
+  }, [tutorials, matches, t.otherLabel]);
+
+  const toggleSection = (key: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const hasAnyResults = sectionsWithContent.some(({ tutorials: list }) => list.length > 0);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-16">
@@ -90,14 +204,14 @@ export default function TutorialsIndexPage() {
         <title>{`${t.title} | CDC`}</title>
       </Head>
       <SiteHeader />
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <div className="mb-4">
           <BackButton fallbackHref="/" className="text-slate-400 hover:text-slate-100" />
         </div>
         <h1 className="text-3xl font-black mb-2">{t.title}</h1>
         <p className="text-slate-400 mb-10">{t.subtitle}</p>
 
-        <div className="relative mb-8 max-w-md">
+        <div className="relative mb-10 max-w-md">
           <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
@@ -108,115 +222,77 @@ export default function TutorialsIndexPage() {
           />
         </div>
 
-        {!loading && categories.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-10">
-            <button
-              type="button"
-              onClick={() => setActiveCategory(null)}
-              className={`text-xs font-bold uppercase tracking-widest px-3.5 py-2 rounded-full border transition-colors ${
-                activeCategory === null
-                  ? 'text-white bg-cyan-500/20 border-cyan-500/40'
-                  : 'text-slate-400 border-slate-800 hover:border-slate-700'
-              }`}
-            >
-              {t.all}
-            </button>
-            {categories.map((category) => (
-              <button
-                key={category}
-                type="button"
-                onClick={() => setActiveCategory(category)}
-                className={`text-xs font-bold uppercase tracking-widest px-3.5 py-2 rounded-full border transition-colors ${
-                  activeCategory === category
-                    ? 'text-white bg-cyan-500/20 border-cyan-500/40'
-                    : 'text-slate-400 border-slate-800 hover:border-slate-700'
-                }`}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-        )}
-
         {loading ? (
           <p className="text-slate-400 text-sm">{t.loading}</p>
-        ) : tutorials.length === 0 ? (
-          <p className="text-slate-400 text-sm">{t.empty}</p>
-        ) : visibleTutorials.length === 0 ? (
+        ) : query && !hasAnyResults ? (
           <p className="text-slate-400 text-sm">{t.noResults}</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {visibleTutorials.map((tut) => (
-              <button
-                key={tut.id}
-                type="button"
-                onClick={() => setActiveTutorial(tut)}
-                className="text-left rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm overflow-hidden flex flex-col transition-all duration-300 hover:border-cyan-400/50 hover:shadow-[0_0_25px_rgba(34,211,238,0.15)] cursor-pointer"
-              >
-                <div className="w-full h-40 bg-slate-800/80 flex items-center justify-center">
-                  <PlayCircle size={40} className="text-cyan-400" />
-                </div>
-                <div className="p-6 flex-1 flex flex-col">
-                  <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-cyan-300 bg-cyan-500/10 border-cyan-500/20 self-start mb-4">
-                    {tut.category}
-                  </span>
-                  <h3 className="text-lg font-black mb-2 text-white line-clamp-2 break-words">{tutorialTitle(tut, contentLang)}</h3>
-                  <p className="text-sm text-slate-400 leading-relaxed line-clamp-3 mb-4 flex-1">{tutorialDescription(tut, contentLang)}</p>
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-cyan-400">
-                    <PlayCircle size={14} /> {t.watch}
-                  </span>
-                </div>
-              </button>
-            ))}
+          <div className="space-y-4">
+            {sectionsWithContent
+              .filter(({ section, tutorials: list }) => section.key !== OTHER_KEY || list.length > 0)
+              .map(({ section, tutorials: list }) => {
+                const isOpen = expanded.has(section.key);
+                const Icon = section.icon;
+                return (
+                  <div
+                    key={section.key}
+                    className="rounded-2xl border border-slate-800 bg-slate-900/40 overflow-hidden"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleSection(section.key)}
+                      className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left bg-transparent border-none cursor-pointer hover:bg-slate-900/60 transition-colors"
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="shrink-0 w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                          <Icon size={18} className="text-cyan-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h2 className="text-base font-black text-white">{section.label[labelLang]}</h2>
+                          {section.hint[labelLang] && (
+                            <p className="text-xs text-slate-400 mt-0.5 truncate">{section.hint[labelLang]}</p>
+                          )}
+                        </div>
+                      </div>
+                      <ChevronDown
+                        size={18}
+                        className={`shrink-0 text-slate-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+                    {isOpen && (
+                      <div className="px-6 pb-6 pt-1">
+                        {list.length === 0 ? (
+                          <p className="text-xs text-slate-500">{t.comingSoon}</p>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {list.map((tut) => (
+                              <TutorialCard
+                                key={tut.id}
+                                tutorial={tut}
+                                contentLang={contentLang}
+                                watchLabel={t.watch}
+                                onSelect={() => setActiveTutorial(tut)}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
           </div>
         )}
       </div>
 
       {activeTutorial && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4"
-          onClick={() => setActiveTutorial(null)}
-        >
-          <div
-            className="w-full max-w-3xl bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
-              <h3 className="text-sm font-bold text-white truncate pr-4">{tutorialTitle(activeTutorial, contentLang)}</h3>
-              <button
-                type="button"
-                onClick={() => setActiveTutorial(null)}
-                className="shrink-0 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
-                aria-label="Close"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            {embedUrl ? (
-              <div className="aspect-video w-full bg-black">
-                <iframe
-                  src={embedUrl}
-                  title={tutorialTitle(activeTutorial, contentLang)}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
-            ) : (
-              <div className="p-8 text-center">
-                <p className="text-sm text-slate-400 mb-4">{t.openExternally}</p>
-                <a
-                  href={activeTutorial.videoUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm font-bold text-cyan-400 hover:text-cyan-300"
-                >
-                  {t.openInNewTab} <ExternalLink size={14} />
-                </a>
-              </div>
-            )}
-          </div>
-        </div>
+        <TutorialVideoModal
+          tutorial={activeTutorial}
+          title={tutorialTitle(activeTutorial, contentLang)}
+          openExternallyLabel={t.openExternally}
+          openInNewTabLabel={t.openInNewTab}
+          onClose={() => setActiveTutorial(null)}
+        />
       )}
     </div>
   );
