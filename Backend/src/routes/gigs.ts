@@ -148,11 +148,16 @@ router.post('/:id/dispute', authenticate, requireApproved, loadGig, async (req: 
   res.status(201).json(dispute);
 });
 
+// Open to any authenticated, approved account — not just Client/SuperAdmin.
+// A freelancer/verified specialist posting their own gig is a legitimate
+// flow (e.g. subcontracting, or a Student who's also hiring help), and
+// there's no fraud/payout risk here the way there is on wallet.ts's payout
+// route — same "soft, not hard" posture as the /apply route's own comment
+// below. hasReachedMonthlyPostLimit still applies to every non-admin poster.
 router.post(
   '/',
   authenticate,
   requireApproved,
-  requireRole('Client', 'SuperAdmin'),
   async (req: Request, res: Response) => {
     if (req.user!.role !== 'SuperAdmin' && (await hasReachedMonthlyPostLimit(req.user!.id))) {
       return res.status(429).json({ message: `You've reached your monthly posting limit (${MONTHLY_POST_LIMIT}). Try again next month.` });

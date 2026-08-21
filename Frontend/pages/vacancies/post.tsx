@@ -2,15 +2,14 @@ import { useRouter } from 'next/router';
 import { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
-import RoleGate from '../../src/components/auth/RoleGate';
 import PostingForm from '../../src/components/community/PostingForm';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import BackButton from '../../src/components/common/BackButton';
 import { resolveLocale } from '../../src/utils/locale';
 
 const STRINGS = {
-  ka: { title: 'ვაკანსიის გამოქვეყნება', forbidden: 'ვაკანსიის გამოქვეყნება შეუძლიათ მხოლოდ ბიზნეს ანგარიშებსა და ადმინისტრატორებს.' },
-  en: { title: 'Post a Vacancy', forbidden: 'Only business accounts and administrators can post vacancies.' },
+  ka: { title: 'ვაკანსიის გამოქვეყნება' },
+  en: { title: 'Post a Vacancy' },
 };
 
 function PostVacancyPageContent() {
@@ -23,14 +22,9 @@ function PostVacancyPageContent() {
         <BackButton fallbackHref="/vacancies" />
       </div>
       <h1 className="text-2xl font-semibold text-gray-900 dark:text-white text-center mb-8">{t.title}</h1>
-      <RoleGate
-        allowedRoles={['Client', 'SuperAdmin']}
-        fallback={
-          <p className="text-center text-sm text-gray-500 dark:text-slate-400">{t.forbidden}</p>
-        }
-      >
-        <PostingForm initialType="vacancy" />
-      </RoleGate>
+      {/* Open to any authenticated user — ProtectedRoute below already
+          guarantees that; no additional role restriction. */}
+      <PostingForm initialType="vacancy" />
     </div>
   );
 }

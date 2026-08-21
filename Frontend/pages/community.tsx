@@ -13,7 +13,6 @@ import ApplicationModal from '../src/components/community/ApplicationModal';
 import ProposalModal from '../src/components/community/ProposalModal';
 import ReviewModal from '../src/components/community/ReviewModal';
 import SoftVerificationNudge from '../src/components/community/SoftVerificationNudge';
-import RoleGate from '../src/components/auth/RoleGate';
 import { useAuth } from '../src/context/AuthContext';
 import { useAuthModal } from '../src/context/AuthModalContext';
 import { useVerificationDrawer } from '../src/context/VerificationDrawerContext';
@@ -116,7 +115,6 @@ function CommunityPageContent() {
   );
 
   const canApply = !isAuthenticated || user?.role === 'Student';
-  const canPost = user?.role === 'Client' || user?.role === 'SuperAdmin';
 
   const openListingModal = (item: CommunityListing) => {
     if (item.kind === 'vacancy') setApplyingVacancy(item.data);
@@ -271,20 +269,14 @@ function CommunityPageContent() {
                 </button>
               </div>
             ) : (
-              <RoleGate
-                allowedRoles={['Client', 'SuperAdmin']}
-                fallback={
-                  <p className="text-xs text-slate-400 text-center py-6">
-                    {t('community.clientAdminOnlyMessage')}
-                  </p>
-                }
-              >
-                <PostingForm
-                  initialType="vacancy"
-                  allowTypeToggle
-                  className={darkMode ? 'text-slate-900' : undefined}
-                />
-              </RoleGate>
+              // Open to any authenticated, approved account — not just
+              // Client/SuperAdmin. A freelancer or verified specialist
+              // posting their own gig/vacancy is a legitimate flow.
+              <PostingForm
+                initialType="vacancy"
+                allowTypeToggle
+                className={darkMode ? 'text-slate-900' : undefined}
+              />
             )}
           </div>
         </div>

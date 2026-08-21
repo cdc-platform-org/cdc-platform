@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
 import { useTranslation } from 'next-i18next';
 import VacancyCard from './VacancyCard';
 import GigCard from './GigCard';
@@ -106,9 +105,6 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
   }, [loadGigs]);
 
   const canApply = !isAuthenticated || user?.role === 'Student';
-  const isAdmin = !!user?.adminRole || user?.role === 'SuperAdmin';
-  const isVerifiedBusiness = user?.role === 'Client' && !!user?.isVerified;
-  const isVerifiedGraduate = !!user?.isVerifiedGraduate;
 
   const handleApplyVacancy = (vacancy: Vacancy) => {
     if (!isAuthenticated) {
@@ -193,11 +189,11 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* LEFT — employer post form. Eligibility: verified business
-            (Client + KYC isVerified), verified graduate (isVerifiedGraduate,
-            typically Students who passed the freelancer exam), or any admin
-            — everyone else authenticated sees why they can't post yet and a
-            link to go get verified, rather than a bare RoleGate block. */}
+        {/* LEFT — employer post form. Open to any authenticated, approved
+            account (Freelancer, Client, Verified Specialist, or admin) —
+            no role/verification restriction. Verification still matters
+            elsewhere (e.g. the Verified/Standard badge shown on a proposal),
+            it just isn't a hard gate on posting itself. */}
         <div className="lg:col-span-1">
           <div className="rounded-3xl p-6 border border-slate-200/70 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/40 backdrop-blur-xl shadow-sm sticky top-24">
             <h2 className="text-lg font-bold tracking-tight mb-6 leading-snug">{t('jobsDashboard.postSectionTitle')}</h2>
@@ -212,29 +208,8 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
                   {t('community.authorizeButton')}
                 </button>
               </div>
-            ) : isAdmin || isVerifiedBusiness || isVerifiedGraduate ? (
-              <PostingForm initialType={tab === 'vacancies' ? 'vacancy' : 'gig'} allowTypeToggle />
             ) : (
-              <div className="text-center py-6">
-                <p className="text-xs text-slate-400 mb-4">
-                  {t('jobsDashboard.verificationRequiredMessage')}
-                </p>
-                {user?.role === 'Client' ? (
-                  <Link
-                    href="/dashboard/settings"
-                    className="inline-block w-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold py-3 rounded-xl text-xs uppercase transition-all no-underline tracking-wider"
-                  >
-                    {t('jobsDashboard.businessVerificationLink')}
-                  </Link>
-                ) : (
-                  <Link
-                    href="/freelancer/exam"
-                    className="inline-block w-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold py-3 rounded-xl text-xs uppercase transition-all no-underline tracking-wider"
-                  >
-                    {t('jobsDashboard.skillsVerificationLink')}
-                  </Link>
-                )}
-              </div>
+              <PostingForm initialType={tab === 'vacancies' ? 'vacancy' : 'gig'} allowTypeToggle />
             )}
           </div>
         </div>

@@ -69,11 +69,13 @@ router.get('/:id', async (req: Request, res: Response) => {
   if (!vacancy || vacancy.status === 'draft') return res.status(404).json({ message: 'Vacancy not found.' });
   res.json(vacancy);
 });
+// Open to any authenticated, approved account — see gigs.ts's identical
+// POST / comment for the reasoning. hasReachedMonthlyPostLimit still
+// applies to every non-admin poster.
 router.post(
   '/',
   authenticate,
   requireApproved,
-  requireRole('Client', 'SuperAdmin'),
   async (req: Request, res: Response) => {
     if (req.user!.role !== 'SuperAdmin' && (await hasReachedMonthlyPostLimit(req.user!.id))) {
       return res.status(429).json({ message: `You've reached your monthly posting limit (${MONTHLY_POST_LIMIT}). Try again next month.` });
