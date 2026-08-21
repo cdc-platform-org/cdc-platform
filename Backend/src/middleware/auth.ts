@@ -34,7 +34,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
   }
   const token = authHeader.slice('Bearer '.length);
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as JwtPayload;
     req.user = { id: payload.userId, role: payload.role, email: payload.email };
     next();
   } catch {
@@ -51,7 +51,7 @@ export function optionalAuthenticate(req: Request, res: Response, next: NextFunc
   if (!authHeader?.startsWith('Bearer ')) return next();
   const token = authHeader.slice('Bearer '.length);
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as JwtPayload;
     req.user = { id: payload.userId, role: payload.role, email: payload.email };
   } catch {
     // Invalid/expired token on an optional-auth route — proceed as anonymous
@@ -88,6 +88,37 @@ export async function requireApproved(req: Request, res: Response, next: NextFun
   }
   if (user.status !== 'APPROVED') {
     return res.status(403).json({ message: 'Your account is pending administrator approval.' });
+  }
+  next();
+}
+
+// Closes a real gap: authenticate() only verifies the JWT itself (up to 7
+// days old, see auth.ts's signToken) — it never re-checks the account's
+// current standing, so a user banned or who self-requested deletion AFTER
+// their token was issued stays fully authenticated on any route guarded by
+// authenticate alone until that token naturally expires. requireApproved
+// already closes this for routes that also gate on approval status; this
+// is the lighter version for routes (billing, wallet payouts) that
+// shouldn't require a PENDING account to be blocked, but must never allow
+// a banned/deleted one through. Same DB-lookup-per-request cost as
+// requireApproved/requireAdminRole — an accepted tradeoff already made
+// throughout this file for anything security-sensitive.
+export async function requireNotBannedOrDeleted(req: Request, res: Response, next: NextFunction) {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required.' });
+  }
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.id },
+    select: { isBanned: true, deletionRequestedAt: true },
+  });
+  if (!user) {
+    return res.status(401).json({ message: 'Account no longer exists.' });
+  }
+  if (user.isBanned) {
+    return res.status(403).json({ message: 'This account has been banned.' });
+  }
+  if (user.deletionRequestedAt) {
+    return res.status(403).json({ message: 'This account has been deactivated.' });
   }
   next();
 }

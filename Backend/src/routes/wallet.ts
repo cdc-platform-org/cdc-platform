@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
-import { authenticate, requireRole } from '../middleware/auth';
+import { authenticate, requireRole, requireApproved } from '../middleware/auth';
 import { createPayoutRequestSchema } from '../schemas/payoutSchemas';
 import { isIdentityVerified } from '../utils/freelancerVerification';
 const router = Router();
@@ -43,7 +43,7 @@ router.get('/me', authenticate, requireRole('Student', 'Mentor'), async (req: Re
 // actual bank transfer happens manually (admin executes it via BOG's own
 // dashboard/banking after approving — see routes/adminPayouts.ts).
 // ============================================================
-router.post('/payout-requests', authenticate, requireRole('Student', 'Mentor'), async (req: Request, res: Response) => {
+router.post('/payout-requests', authenticate, requireRole('Student', 'Mentor'), requireApproved, async (req: Request, res: Response) => {
   const result = createPayoutRequestSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 

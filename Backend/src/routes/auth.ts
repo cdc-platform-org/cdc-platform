@@ -251,6 +251,15 @@ router.post('/register', authRateLimit, async (req, res) => {
   });
 });
 
+// Precomputed once at startup — a bcrypt hash of a value nobody's real
+// password can equal by construction, used purely to keep a nonexistent-
+// email login attempt's response time indistinguishable from a wrong-
+// password one. Without this, /login only calls bcrypt.compare (a
+// deliberately slow, tens-of-ms operation) on the email-exists branch,
+// letting an attacker enumerate registered emails from response timing
+// alone even though both branches return the identical error message.
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync(crypto.randomUUID(), 10);
+
 router.post('/login', loginRateLimit, async (req, res) => {
   const result = loginSchema.safeParse(req.body);
   if (!result.success) {
@@ -259,12 +268,8 @@ router.post('/login', loginRateLimit, async (req, res) => {
 
   const { email, password } = result.data;
   let user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
-  if (!user) {
-    return res.status(401).json({ message: 'Invalid credentials.' });
-  }
-
-  const passwordMatch = await bcrypt.compare(password, user.password);
-  if (!passwordMatch) {
+  const passwordMatch = await bcrypt.compare(password, user?.password ?? DUMMY_PASSWORD_HASH);
+  if (!user || !passwordMatch) {
     return res.status(401).json({ message: 'Invalid credentials.' });
   }
 

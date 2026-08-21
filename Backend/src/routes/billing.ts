@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
-import { authenticate, requireApproved } from '../middleware/auth';
+import { authenticate, requireApproved, requireNotBannedOrDeleted } from '../middleware/auth';
 import {
   addPaymentMethodSchema,
   removePaymentMethodSchema,
@@ -46,7 +46,7 @@ function respondBillingError(res: Response, err: unknown): boolean {
 // client-side with Stripe.js/Elements — raw card data never reaches this
 // server — then POSTs the resulting PaymentMethod id to POST
 // /payment-methods below, which is what actually saves it.
-router.post('/setup-intent', authenticate, async (req: Request, res: Response) => {
+router.post('/setup-intent', authenticate, requireNotBannedOrDeleted, async (req: Request, res: Response) => {
   const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { email: true, name: true } });
   if (!user) return res.status(404).json({ message: 'Account not found.' });
   try {
@@ -59,7 +59,7 @@ router.post('/setup-intent', authenticate, async (req: Request, res: Response) =
   }
 });
 
-router.get('/payment-methods', authenticate, async (req: Request, res: Response) => {
+router.get('/payment-methods', authenticate, requireNotBannedOrDeleted, async (req: Request, res: Response) => {
   const methods = await prisma.paymentMethod.findMany({
     where: { userId: req.user!.id },
     orderBy: { createdAt: 'desc' },
@@ -67,7 +67,7 @@ router.get('/payment-methods', authenticate, async (req: Request, res: Response)
   res.json(methods);
 });
 
-router.post('/payment-methods', authenticate, async (req: Request, res: Response) => {
+router.post('/payment-methods', authenticate, requireNotBannedOrDeleted, async (req: Request, res: Response) => {
   const result = addPaymentMethodSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
   try {
@@ -83,7 +83,7 @@ router.post('/payment-methods', authenticate, async (req: Request, res: Response
 // forward for new trials/renewals. Does not touch already-running
 // subscriptions' paymentMethodId (those keep billing to whatever card they
 // started on until explicitly changed).
-router.patch('/payment-methods/:id/default', authenticate, async (req: Request, res: Response) => {
+router.patch('/payment-methods/:id/default', authenticate, requireNotBannedOrDeleted, async (req: Request, res: Response) => {
   try {
     const method = await setDefaultPaymentMethod(req.user!.id, req.params.id);
     res.json(method);
@@ -93,7 +93,7 @@ router.patch('/payment-methods/:id/default', authenticate, async (req: Request, 
   }
 });
 
-router.delete('/payment-methods/:id', authenticate, async (req: Request, res: Response) => {
+router.delete('/payment-methods/:id', authenticate, requireNotBannedOrDeleted, async (req: Request, res: Response) => {
   const result = removePaymentMethodSchema.safeParse(req.body ?? {});
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
   try {
@@ -109,7 +109,7 @@ router.delete('/payment-methods/:id', authenticate, async (req: Request, res: Re
 // SUBSCRIPTIONS
 // ============================================================
 
-router.get('/subscriptions', authenticate, async (req: Request, res: Response) => {
+router.get('/subscriptions', authenticate, requireNotBannedOrDeleted, async (req: Request, res: Response) => {
   const subscriptions = await listMySubscriptions(req.user!.id);
   const withUsage = await Promise.all(
     subscriptions.map(async (sub) => ({
@@ -132,7 +132,7 @@ router.post('/subscriptions/trial', authenticate, requireApproved, async (req: R
   }
 });
 
-router.patch('/subscriptions/:id/auto-renew', authenticate, async (req: Request, res: Response) => {
+router.patch('/subscriptions/:id/auto-renew', authenticate, requireNotBannedOrDeleted, async (req: Request, res: Response) => {
   const result = autoRenewSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
   try {
@@ -144,7 +144,7 @@ router.patch('/subscriptions/:id/auto-renew', authenticate, async (req: Request,
   }
 });
 
-router.post('/subscriptions/:id/cancel', authenticate, async (req: Request, res: Response) => {
+router.post('/subscriptions/:id/cancel', authenticate, requireNotBannedOrDeleted, async (req: Request, res: Response) => {
   const result = cancelSubscriptionSchema.safeParse(req.body ?? {});
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
   try {
