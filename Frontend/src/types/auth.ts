@@ -8,6 +8,9 @@ export interface User {
   role: 'Student' | 'Mentor' | 'SuperAdmin' | 'Client';
   readonly status: 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
   isVerifiedGraduate: boolean;
+  // Grants access to /admin/hr-requests's specialist-facing screens — see
+  // the isHrSpecialist comment on the User model.
+  isHrSpecialist: boolean;
   emailVerifiedAt: string | null;
   // Internal admin-team tier — separate from `role`. null means not on the
   // admin team at all (most users).

@@ -7,6 +7,8 @@ import { pauseExpiredTrialAgents } from '../services/agentBillingService';
 import { sweepExpiredTrials, rolloverActiveBillingPeriods, sweepTrialEndingWarnings, sweepRenewalReminders } from '../services/billingService';
 import { cancelAbandonedMentorshipBookings } from '../services/mentorAvailabilityService';
 import { autoReleaseMentorshipEscrows } from '../services/mentorshipEscrowService';
+import { autoReleaseHRSupportEscrows } from '../services/hrSupportEscrowService';
+import { expireOverdueVacancies } from '../services/listingExpiryService';
 import { generateAndSaveBlogDraft, BlogAgentError } from '../services/blogAgentService';
 import { AiAgentError } from '../services/aiAgentService';
 import { scanAllActiveSources } from '../services/grantScoutService';
@@ -136,6 +138,20 @@ router.post('/cancel-abandoned-mentorship-bookings', requireCronSecret, async (_
 router.post('/auto-release-mentorship-escrow', requireCronSecret, async (_req: Request, res: Response) => {
   const result = await autoReleaseMentorshipEscrows();
   res.json({ message: `${result.releasedIds.length} session(s) auto-released.`, ...result });
+});
+
+// Releases HR Assistance escrow 5 days past delivery with no dispute raised
+// — see hrSupportEscrowService.autoReleaseHRSupportEscrows.
+router.post('/auto-release-hr-support-escrow', requireCronSecret, async (_req: Request, res: Response) => {
+  const result = await autoReleaseHRSupportEscrows();
+  res.json({ message: `${result.releasedIds.length} request(s) auto-released.`, ...result });
+});
+
+// Closes any vacancy whose application deadline has passed — see
+// listingExpiryService.expireOverdueVacancies.
+router.post('/expire-overdue-vacancies', requireCronSecret, async (_req: Request, res: Response) => {
+  const result = await expireOverdueVacancies();
+  res.json({ message: `${result.closedIds.length} vacancy(ies) closed.`, ...result });
 });
 
 export default router;

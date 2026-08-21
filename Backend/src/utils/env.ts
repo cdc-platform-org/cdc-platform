@@ -73,6 +73,17 @@ export const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS || '')
   .split(',')
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
+// Who gets alerted when an employer pays for a new HR Assistance request.
+// Same comma-separated env override as SUPER_ADMIN_EMAILS, but with a real
+// default so this works out of the box — deliberately NOT hardcoded inline
+// wherever the alert is sent, so changing recipients later is a config
+// change, not a deploy.
+export const HR_SUPPORT_NOTIFICATION_EMAILS = (
+  process.env.HR_SUPPORT_NOTIFICATION_EMAILS || 'iakodigital@gmail.com,martikovi.imedo@gmail.com'
+)
+  .split(',')
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean);
 // Deliberately NOT requireEnv() — the app must still boot without a Resend
 // account configured; email sends fall back to console-logging the link
 // instead (see services/emailService.ts). Same reasoning as GOOGLE_CLIENT_ID.

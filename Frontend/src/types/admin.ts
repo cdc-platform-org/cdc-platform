@@ -8,6 +8,8 @@ export interface AdminUser {
   status: 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
   rejectionReason: string | null;
   isVerifiedGraduate: boolean;
+  // Grants access to /admin/hr-requests's specialist-facing screens.
+  isHrSpecialist: boolean;
   isBanned: boolean;
   bannedAt: string | null;
   banReason: string | null;

@@ -45,6 +45,13 @@ function matchesCategory(item: CommunityListing, category: Category): boolean {
   return item.data.category === category;
 }
 
+// Vacancy calls it applicationDeadline, Gig calls it deadline — same
+// "when this stops taking applications" concept, just named differently on
+// each model (see the Georgian-terminology-cleanup note on PostingForm.tsx).
+function listingDeadline(item: CommunityListing): string | null {
+  return item.kind === 'vacancy' ? item.data.applicationDeadline : item.data.deadline;
+}
+
 function matchesSearch(item: CommunityListing, query: string): boolean {
   if (!query.trim()) return true;
   const q = query.trim().toLowerCase();
@@ -66,6 +73,7 @@ function CommunityPageContent() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<Category>('all');
+  const [sortMode, setSortMode] = useState<'newest' | 'oldest' | 'expiring'>('newest');
 
   const [applyingVacancy, setApplyingVacancy] = useState<Vacancy | null>(null);
   const [applyingGig, setApplyingGig] = useState<Gig | null>(null);
@@ -109,10 +117,27 @@ function CommunityPageContent() {
     loadListings();
   }, [loadListings]);
 
-  const filteredListings = useMemo(
-    () => listings.filter((item) => matchesCategory(item, category) && matchesSearch(item, search)),
-    [listings, category, search]
-  );
+  const filteredListings = useMemo(() => {
+    const filtered = listings.filter((item) => matchesCategory(item, category) && matchesSearch(item, search));
+    const sorted = [...filtered];
+    if (sortMode === 'oldest') {
+      sorted.sort((a, b) => new Date(a.data.createdAt).getTime() - new Date(b.data.createdAt).getTime());
+    } else if (sortMode === 'expiring') {
+      // No deadline set sorts last, regardless of direction — nothing to
+      // expire, so it shouldn't crowd out listings that actually are.
+      sorted.sort((a, b) => {
+        const deadlineA = listingDeadline(a);
+        const deadlineB = listingDeadline(b);
+        if (!deadlineA && !deadlineB) return 0;
+        if (!deadlineA) return 1;
+        if (!deadlineB) return -1;
+        return new Date(deadlineA).getTime() - new Date(deadlineB).getTime();
+      });
+    } else {
+      sorted.sort((a, b) => new Date(b.data.createdAt).getTime() - new Date(a.data.createdAt).getTime());
+    }
+    return sorted;
+  }, [listings, category, search, sortMode]);
 
   const canApply = !isAuthenticated || user?.role === 'Student';
 
@@ -196,8 +221,9 @@ function CommunityPageContent() {
             />
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {(['all', ...JOB_CATEGORIES] as Category[]).map((c) => (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              {(['all', ...JOB_CATEGORIES] as Category[]).map((c) => (
               <button
                 key={c}
                 type="button"
@@ -212,7 +238,20 @@ function CommunityPageContent() {
               >
                 {c === 'all' ? t('jobCategories.all') : t(`jobCategories.${CATEGORY_LABEL_KEY[c]}`)}
               </button>
-            ))}
+              ))}
+            </div>
+
+            <select
+              value={sortMode}
+              onChange={(e) => setSortMode(e.target.value as 'newest' | 'oldest' | 'expiring')}
+              className={`shrink-0 rounded-xl border px-3 py-2 text-xs font-bold ${
+                darkMode ? 'bg-[#0e1422] border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-600'
+              }`}
+            >
+              <option value="newest">{t('community.sortNewest')}</option>
+              <option value="oldest">{t('community.sortOldest')}</option>
+              <option value="expiring">{t('community.sortExpiring')}</option>
+            </select>
           </div>
 
           {loading ? (

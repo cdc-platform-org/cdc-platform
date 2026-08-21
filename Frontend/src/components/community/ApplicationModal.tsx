@@ -4,6 +4,8 @@ import { FileText, Upload } from 'lucide-react';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { useAuth } from '../../context/AuthContext';
 import { uploadCv } from '../../services/authService';
+import { classifyApiError, ApiErrorReason } from '../../utils/apiErrorMessages';
+import PermissionDeniedModal from '../shared/PermissionDeniedModal';
 
 interface ApplicationModalProps {
   title: string;
@@ -19,6 +21,7 @@ export default function ApplicationModal({ title, includeBid, onSubmit, onClose 
   const [bidAmount, setBidAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [permissionErrorReason, setPermissionErrorReason] = useState<ApiErrorReason | null>(null);
 
   const [uploadingCv, setUploadingCv] = useState(false);
   const [cvError, setCvError] = useState<string | null>(null);
@@ -45,6 +48,7 @@ export default function ApplicationModal({ title, includeBid, onSubmit, onClose 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    setPermissionErrorReason(null);
     setSubmitting(true);
     try {
       await onSubmit({
@@ -52,8 +56,13 @@ export default function ApplicationModal({ title, includeBid, onSubmit, onClose 
         bidAmount: includeBid ? Math.round(parseFloat(bidAmount) * 100) : undefined, // გადაჰყავს თეთრებში/ცენტებში
       });
       onClose();
-    } catch {
-      setError(t('marketplace.applicationError'));
+    } catch (err: any) {
+      const reason = classifyApiError(err?.response?.data?.message);
+      if (reason) {
+        setPermissionErrorReason(reason);
+      } else {
+        setError(t('marketplace.applicationError'));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -131,6 +140,8 @@ export default function ApplicationModal({ title, includeBid, onSubmit, onClose 
             {cvError && <p className="text-xs text-red-600 mt-1.5">{cvError}</p>}
           </div>
 
+          <p className="text-[11px] text-gray-400 leading-relaxed">{t('marketplace.hrConsentNotice')}</p>
+
           <div className="flex gap-3 pt-2">
             <button
               type="button"
@@ -149,6 +160,10 @@ export default function ApplicationModal({ title, includeBid, onSubmit, onClose 
           </div>
         </form>
       </div>
+
+      {permissionErrorReason && (
+        <PermissionDeniedModal reason={permissionErrorReason} context="applying" onClose={() => setPermissionErrorReason(null)} />
+      )}
     </div>
   );
 }

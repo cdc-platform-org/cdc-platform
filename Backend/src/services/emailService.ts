@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { RESEND_API_KEY, EMAIL_FROM, SUPER_ADMIN_EMAILS, BACKEND_URL } from '../utils/env';
+import { RESEND_API_KEY, EMAIL_FROM, SUPER_ADMIN_EMAILS, HR_SUPPORT_NOTIFICATION_EMAILS, BACKEND_URL } from '../utils/env';
 import { buildMentorshipIcs } from './icsService';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://cdc.org.ge';
@@ -121,6 +121,36 @@ export async function sendStudioInquiryEmail(
   );
   await Promise.all(
     SUPER_ADMIN_EMAILS.map((adminEmail) => sendEmail(adminEmail, `New Studio Inquiry: ${projectType}`, html, link))
+  );
+}
+
+// Fired from routes/payments.ts's HR_SUPPORT callback branch once payment
+// completes and escrow is captured — recipients come from
+// HR_SUPPORT_NOTIFICATION_EMAILS (utils/env.ts), not hardcoded here, so
+// changing who gets alerted is a config change, not a deploy.
+export async function sendHRSupportRequestAlertEmail(params: {
+  requestId: string;
+  vacancyTitle: string;
+  employerName: string;
+  employerEmail: string;
+  candidateCount: number;
+  grossAmount: number;
+  currency: string;
+}): Promise<void> {
+  if (HR_SUPPORT_NOTIFICATION_EMAILS.length === 0) {
+    console.log(`[DEV EMAIL] No HR_SUPPORT_NOTIFICATION_EMAILS configured — HR request ${params.requestId} not emailed.`);
+    return;
+  }
+  const link = `${FRONTEND_URL}/admin/hr-requests`;
+  const amount = (params.grossAmount / 100).toFixed(2);
+  const html = wrapTemplate(
+    'New HR Assistance Request',
+    `<strong>${params.employerName}</strong> (${params.employerEmail}) paid for HR screening on their vacancy „${params.vacancyTitle}“ — <strong>${params.candidateCount} candidate(s)</strong>, <strong>${amount} ${params.currency}</strong>. Assign a specialist in the admin portal.`,
+    'Open HR Requests',
+    link
+  );
+  await Promise.all(
+    HR_SUPPORT_NOTIFICATION_EMAILS.map((adminEmail) => sendEmail(adminEmail, `New HR Assistance Request: ${params.vacancyTitle}`, html, link))
   );
 }
 

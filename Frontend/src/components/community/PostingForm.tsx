@@ -6,6 +6,8 @@ import { postGig, PostGigPayload } from '../../services/gigService';
 import { EmploymentType, GigBudgetType, GigOfferType, JobCategory } from '../../types/community';
 import { JOB_CATEGORIES, JOB_CATEGORY_LABEL } from '../../utils/jobCategory';
 import { resolveLocale } from '../../utils/locale';
+import { classifyApiError, ApiErrorReason } from '../../utils/apiErrorMessages';
+import PermissionDeniedModal from '../shared/PermissionDeniedModal';
 import RichTextEditor from '../shared/RichTextEditor';
 
 // Three distinct posting types, two directions:
@@ -93,6 +95,7 @@ const EN_STRINGS = {
   currency: 'Currency',
   deadline: 'Deadline',
   applicationDeadline: 'Application deadline',
+  applicationDeadlineHint: 'After this date the listing automatically archives and stops accepting applications.',
   budgetType: 'Budget type',
   budgetFixed: 'Fixed price',
   budgetHourly: 'Hourly',
@@ -157,7 +160,8 @@ const dict = {
     salaryPlaceholder: 'მაგ. 1500',
     currency: 'ვალუტა',
     deadline: 'ვადა',
-    applicationDeadline: 'განაცხადის ვადა',
+    applicationDeadline: 'განაცხადების მიღების ბოლო ვადა',
+    applicationDeadlineHint: 'ამ თარიღის შემდეგ განცხადება ავტომატურად გადავა არქივში და განაცხადების მიღება შეწყდება.',
     budgetType: 'ბიუჯეტის ტიპი',
     budgetFixed: 'ფიქსირებული ფასი',
     budgetHourly: 'საათობრივი',
@@ -221,6 +225,10 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
   const [attempted, setAttempted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Set instead of submitError when the backend's message is one of the
+  // known permission/approval-status strings — shown as a helpful modal
+  // rather than a raw banner. See utils/apiErrorMessages.ts.
+  const [permissionErrorReason, setPermissionErrorReason] = useState<ApiErrorReason | null>(null);
 
   const isGig = postType === 'gig_request' || postType === 'gig_offer';
   const offerType: GigOfferType = postType === 'gig_offer' ? 'FREELANCER_OFFER' : 'CLIENT_REQUEST';
@@ -299,6 +307,7 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
+    setPermissionErrorReason(null);
     setAttempted(true);
     if (!isFormValid) return;
     setSubmitting(true);
@@ -337,7 +346,13 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
         router.push('/gigs');
       }
     } catch (err: any) {
-      setSubmitError(err?.response?.data?.message || submitErrorFallback);
+      const message = err?.response?.data?.message;
+      const reason = classifyApiError(message);
+      if (reason) {
+        setPermissionErrorReason(reason);
+      } else {
+        setSubmitError(message || submitErrorFallback);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -552,6 +567,7 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
                 onChange={(e) => setVacancyForm({ ...vacancyForm, applicationDeadline: e.target.value })}
                 className={inputClass(!!errors.applicationDeadline)}
               />
+              <p className="mt-1.5 text-[11px] text-gray-400 dark:text-slate-500 leading-relaxed">{t.applicationDeadlineHint}</p>
               {errors.applicationDeadline && (
                 <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.applicationDeadline}</p>
               )}
@@ -652,6 +668,10 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
           {submitting ? t.posting : postButtonLabel}
         </button>
       </form>
+
+      {permissionErrorReason && (
+        <PermissionDeniedModal reason={permissionErrorReason} context="posting" onClose={() => setPermissionErrorReason(null)} />
+      )}
     </div>
   );
 }

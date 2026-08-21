@@ -98,6 +98,31 @@ router.post(
   }
 );
 
+// Grants/revokes access to /admin/hr-requests's specialist-facing screens
+// (see the isHrSpecialist comment on the User model) — set manually for now,
+// no self-serve application flow.
+router.post('/users/:id/set-hr-specialist', requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
+  const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+  if (!user) return res.status(404).json({ message: 'User not found.' });
+  const updated = await prisma.user.update({
+    where: { id: req.params.id },
+    data: { isHrSpecialist: true },
+    omit: { password: true },
+  });
+  res.json(updated);
+});
+
+router.post('/users/:id/unset-hr-specialist', requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
+  const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+  if (!user) return res.status(404).json({ message: 'User not found.' });
+  const updated = await prisma.user.update({
+    where: { id: req.params.id },
+    data: { isHrSpecialist: false },
+    omit: { password: true },
+  });
+  res.json(updated);
+});
+
 // Ban/unban: available to all three admin tiers (this is the "Support/Report
 // Management" domain MODERATOR is meant to cover), but a non-SUPER_ADMIN
 // can't ban a fellow admin-team member — only SUPER_ADMIN can act on staff.

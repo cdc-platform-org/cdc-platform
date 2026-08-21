@@ -14,6 +14,8 @@ import {
   rejectUser,
   verifyGraduate,
   unverifyGraduate,
+  setHrSpecialist,
+  unsetHrSpecialist,
   banUser,
   unbanUser,
   sendAdminPasswordReset,
@@ -60,6 +62,9 @@ const PAGE_DICT = {
     banned: 'დაბლოკილი',
     removeBadge: 'ნიშნის მოხსნა',
     assignBadge: '🎓 ნიშნის მინიჭება',
+    hrSpecialistBadge: 'HR სპეციალისტი',
+    removeHrSpecialist: 'HR წვდომის მოხსნა',
+    assignHrSpecialist: '🗂️ HR წვდომის მინიჭება',
     unban: 'განბლოკვა',
     ban: 'დაბლოკვა',
     resetPassword: 'პაროლის აღდგენა',
@@ -92,6 +97,9 @@ const PAGE_DICT = {
     banned: 'Banned',
     removeBadge: 'Remove Badge',
     assignBadge: '🎓 Assign Badge',
+    hrSpecialistBadge: 'HR Specialist',
+    removeHrSpecialist: 'Remove HR Access',
+    assignHrSpecialist: '🗂️ Grant HR Access',
     unban: 'Unban',
     ban: 'Ban',
     resetPassword: 'Reset Password',
@@ -405,6 +413,19 @@ function UserManagement() {
                                 className="text-xs font-medium text-indigo-700 dark:text-indigo-300 hover:text-indigo-800 dark:hover:text-indigo-200 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 px-2.5 py-1 rounded-lg disabled:opacity-50"
                               >
                                 {u.isVerifiedGraduate ? p.removeBadge : p.assignBadge}
+                              </button>
+                            )}
+                            {canManageContent && (
+                              <button
+                                disabled={isActioning}
+                                onClick={() =>
+                                  runAction(u.id, () =>
+                                    u.isHrSpecialist ? unsetHrSpecialist(u.id) : setHrSpecialist(u.id)
+                                  )
+                                }
+                                className="text-xs font-medium text-teal-700 dark:text-teal-300 hover:text-teal-800 dark:hover:text-teal-200 bg-teal-50 dark:bg-teal-500/10 hover:bg-teal-100 dark:hover:bg-teal-500/20 px-2.5 py-1 rounded-lg disabled:opacity-50"
+                              >
+                                {u.isHrSpecialist ? p.removeHrSpecialist : p.assignHrSpecialist}
                               </button>
                             )}
                             {canPromoteToMentor && (u.role === 'Student' || u.role === 'Client' || u.role === 'Mentor') && (

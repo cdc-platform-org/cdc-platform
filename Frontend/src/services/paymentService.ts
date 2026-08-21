@@ -1,6 +1,6 @@
 import apiClient from './apiClient';
 
-export type BogPaymentPurpose = 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT';
+export type BogPaymentPurpose = 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT' | 'HR_SUPPORT';
 export type BogPaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
 export interface BogCheckoutResult {
@@ -84,6 +84,16 @@ export async function checkoutMentorship(params: {
 
 export async function checkoutGigEscrow(gigId: string, lang?: 'ka' | 'en'): Promise<BogCheckoutResult> {
   const response = await apiClient.post<BogCheckoutResult>(`/payments/checkout/gig/${gigId}`, { lang });
+  return response.data;
+}
+
+// GEL-only for this MVP (no Stripe path yet) — see Backend/src/routes/payments.ts's
+// checkout/hr-support route.
+export async function checkoutHRSupport(vacancyId: string, lang?: 'ka' | 'en'): Promise<BogCheckoutResult> {
+  const response = await apiClient.post<BogCheckoutResult>(`/payments/checkout/hr-support/${vacancyId}`, {
+    tosAccepted: true,
+    lang,
+  });
   return response.data;
 }
 

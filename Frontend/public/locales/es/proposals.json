@@ -92,6 +92,7 @@
     "coverNoteLabel": "Nota de presentación",
     "proposalPlaceholder": "Describa su enfoque y experiencia relevante…",
     "coverNotePlaceholder": "¿Por qué es usted el candidato ideal?",
+    "hrConsentNotice": "Su solicitud podría ser revisada por un especialista de RR. HH. de CDC como parte de un servicio de selección pagado solicitado por el empleador.",
     "yourBid": "Su oferta",
     "cancel": "Cancelar",
     "submit": "Enviar",
@@ -119,6 +120,9 @@
     "pageSubtitle": "Encuentre una oportunidad laboral o publique su propio anuncio, todo en un solo lugar.",
     "searchPlaceholder": "Buscar por título, descripción o habilidades...",
     "noListingsFound": "No se encontraron anuncios.",
+    "sortNewest": "Más recientes primero",
+    "sortOldest": "Más antiguos primero",
+    "sortExpiring": "Expiran pronto",
     "postSectionTitle": "Publicar un Anuncio",
     "authorizeButton": "Iniciar Sesión",
     "clientAdminOnlyMessage": "Solo los clientes y administradores pueden publicar un trabajo o proyecto."

@@ -92,6 +92,7 @@
     "coverNoteLabel": "Note de motivation",
     "proposalPlaceholder": "Décrivez votre approche et votre expérience pertinente…",
     "coverNotePlaceholder": "Pourquoi êtes-vous le candidat idéal ?",
+    "hrConsentNotice": "Votre candidature pourra être examinée par un spécialiste RH de CDC dans le cadre d'un service de présélection payant demandé par l'employeur.",
     "yourBid": "Votre offre",
     "cancel": "Annuler",
     "submit": "Envoyer",
@@ -119,6 +120,9 @@
     "pageSubtitle": "Trouvez une opportunité d'emploi ou publiez votre propre annonce — tout en un seul endroit.",
     "searchPlaceholder": "Rechercher par titre, description ou compétences...",
     "noListingsFound": "Aucune annonce trouvée.",
+    "sortNewest": "Plus récentes",
+    "sortOldest": "Plus anciennes",
+    "sortExpiring": "Expirent bientôt",
     "postSectionTitle": "Publier une annonce",
     "authorizeButton": "Se connecter",
     "clientAdminOnlyMessage": "Seuls les clients et les administrateurs peuvent publier une offre d'emploi ou un projet."

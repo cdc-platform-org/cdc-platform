@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { GetServerSideProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import { Users } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import ApplicationsReviewList from '../../../src/components/community/ApplicationsReviewList';
+import HRSupportRequestModal from '../../../src/components/community/HRSupportRequestModal';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import BackButton from '../../../src/components/common/BackButton';
 import { useAuth } from '../../../src/context/AuthContext';
@@ -19,6 +21,7 @@ const EN_STRINGS = {
   loading: 'Loading…',
   notFound: "This vacancy doesn't exist or you don't have permission to view its applications.",
   applications: (n: number) => `${n} application${n !== 1 ? 's' : ''}`,
+  requestHrHelp: 'Request HR Screening Support',
 };
 
 const dict = {
@@ -26,6 +29,7 @@ const dict = {
     loading: 'იტვირთება…',
     notFound: 'ეს ვაკანსია არ არსებობს ან არ გაქვთ განაცხადების ნახვის უფლება.',
     applications: (n: number) => `${n} განაცხადი`,
+    requestHrHelp: 'HR დახმარების მოთხოვნა',
   },
   en: EN_STRINGS,
   de: EN_STRINGS,
@@ -43,6 +47,7 @@ function VacancyApplicationsContent() {
   const [applications, setApplications] = useState<VacancyApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFoundOrForbidden, setNotFoundOrForbidden] = useState(false);
+  const [showHrModal, setShowHrModal] = useState(false);
 
   const loadData = useCallback(async () => {
     if (typeof id !== 'string') return;
@@ -112,16 +117,38 @@ function VacancyApplicationsContent() {
         <div className="mb-4">
           <BackButton fallbackHref="/vacancies" />
         </div>
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{vacancy.title}</h1>
-        <p className="text-sm text-gray-500 dark:text-slate-400 mt-1 mb-8">
-          {t.applications(applications.length)} · {vacancy.location}
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-8">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{vacancy.title}</h1>
+            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
+              {t.applications(applications.length)} · {vacancy.location}
+            </p>
+          </div>
+          {applications.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowHrModal(true)}
+              className="inline-flex items-center gap-1.5 shrink-0 text-xs font-bold px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 text-white hover:opacity-90 transition-opacity"
+            >
+              <Users className="w-3.5 h-3.5" />
+              {t.requestHrHelp}
+            </button>
+          )}
+        </div>
         <ApplicationsReviewList
           applications={applications}
           onApprove={handleApprove}
           onReject={handleReject}
         />
       </div>
+
+      {showHrModal && (
+        <HRSupportRequestModal
+          vacancyId={vacancy.id}
+          vacancyTitle={vacancy.title}
+          onClose={() => setShowHrModal(false)}
+        />
+      )}
     </div>
   );
 }

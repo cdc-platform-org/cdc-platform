@@ -26,6 +26,16 @@ export async function unverifyGraduate(userId: string): Promise<AdminUser> {
   return response.data;
 }
 
+export async function setHrSpecialist(userId: string): Promise<AdminUser> {
+  const response = await apiClient.post<AdminUser>(`/admin/users/${userId}/set-hr-specialist`);
+  return response.data;
+}
+
+export async function unsetHrSpecialist(userId: string): Promise<AdminUser> {
+  const response = await apiClient.post<AdminUser>(`/admin/users/${userId}/unset-hr-specialist`);
+  return response.data;
+}
+
 export async function banUser(userId: string, reason?: string): Promise<AdminUser> {
   const response = await apiClient.post<AdminUser>(`/admin/users/${userId}/ban`, { reason });
   return response.data;

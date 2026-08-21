@@ -76,6 +76,12 @@ export default function CommunityListingCard({
       })();
   const priceColor = isVacancy ? 'text-cyan-500' : 'text-purple-500';
 
+  const postedDate = new Date(data.createdAt).toLocaleDateString(lang === 'ka' ? 'ka-GE' : 'en-GB', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+
   const detailHref = isVacancy ? `/vacancies/${data.id}/applications` : `/gigs/${data.id}/applications`;
   const assignedFreelancer = !isVacancy ? (data as Gig).assignedFreelancer : null;
   const showReview = !isVacancy && canReview && (data as Gig).status === 'completed';
@@ -108,6 +114,7 @@ export default function CommunityListingCard({
                   {assignedFreelancer.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
                 </span>
               )}
+              <span className="text-[10px] text-slate-400 font-normal">· {postedDate}</span>
             </h4>
           </div>
           {priceLabel && (

@@ -92,6 +92,7 @@
     "coverNoteLabel": "Anschreiben",
     "proposalPlaceholder": "Beschreiben Sie Ihren Ansatz und Ihre relevante Erfahrung…",
     "coverNotePlaceholder": "Warum sind Sie gut geeignet?",
+    "hrConsentNotice": "Ihre Bewerbung kann im Rahmen eines vom Arbeitgeber beauftragten kostenpflichtigen Auswahlverfahrens von einem CDC-HR-Spezialisten geprüft werden.",
     "yourBid": "Ihr Gebot",
     "cancel": "Abbrechen",
     "submit": "Absenden",
@@ -119,6 +120,9 @@
     "pageSubtitle": "Finden Sie eine Jobmöglichkeit oder veröffentlichen Sie Ihr eigenes Angebot — alles an einem Ort.",
     "searchPlaceholder": "Suche nach Titel, Beschreibung oder Fähigkeiten...",
     "noListingsFound": "Keine Angebote gefunden.",
+    "sortNewest": "Neueste zuerst",
+    "sortOldest": "Älteste zuerst",
+    "sortExpiring": "Bald ablaufend",
     "postSectionTitle": "Ein Angebot veröffentlichen",
     "authorizeButton": "Anmelden",
     "clientAdminOnlyMessage": "Nur Kunden und Administratoren können einen Auftrag oder ein Projekt veröffentlichen."

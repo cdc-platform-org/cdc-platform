@@ -6,6 +6,9 @@ import { Prisma } from '@prisma/client';
 import { authenticate, requireApproved } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { checkoutMentorshipSchema } from '../schemas/paymentSchemas';
+import { requestHRSupportSchema } from '../schemas/hrSupportSchemas';
+import { calculateHRSupportFee } from '../services/hrPricingService';
+import { captureHRSupportEscrow } from '../services/hrSupportEscrowService';
 import {
   createBogOrder,
   getBogOrderDetails,
@@ -23,7 +26,7 @@ import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } fr
 import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
 import { captureMentorshipEscrow } from '../services/mentorshipEscrowService';
 import { isBusinessToolsCategory, canPurchaseBusinessTools } from '../utils/marketplaceCategories';
-import { sendMentorshipBookingEmails } from '../services/emailService';
+import { sendMentorshipBookingEmails, sendHRSupportRequestAlertEmail } from '../services/emailService';
 import { notifyCourseEnrollment } from '../services/courseEnrollmentNotification';
 
 const router = Router();
@@ -86,7 +89,11 @@ function resultRedirects(paymentId: string) {
 // click without indefinitely blocking a genuinely abandoned/expired attempt.
 const PENDING_ORDER_REUSE_WINDOW_MS = 15 * 60 * 1000;
 
-async function findReusablePendingOrder(userId: string, purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT', referenceId: string) {
+async function findReusablePendingOrder(
+  userId: string,
+  purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT' | 'HR_SUPPORT',
+  referenceId: string
+) {
   const existing = await prisma.bogPayment.findFirst({
     where: { userId, purpose, referenceId, status: 'PENDING' },
     orderBy: { createdAt: 'desc' },
@@ -450,6 +457,81 @@ router.post(
 );
 
 // ============================================================
+// CHECKOUT — HR ASSISTANCE
+// GEL-only for this MVP (no Stripe path yet) — see the pricing report this
+// feature was speced from. Creates the HRSupportRequest AND snapshots every
+// current VacancyApplication into a CandidateEvaluation row up front (see
+// the candidateCount comment on the model) — both must exist before
+// checkout so the price shown in the pre-purchase modal is exactly what's
+// charged, with no gap for the applicant pool to change underneath it.
+// ============================================================
+router.post(
+  '/checkout/hr-support/:vacancyId',
+  checkoutRateLimit,
+  authenticate,
+  requireApproved,
+  async (req: Request, res: Response) => {
+    const result = requestHRSupportSchema.safeParse(req.body);
+    if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+    const vacancy = await prisma.vacancy.findUnique({ where: { id: req.params.vacancyId } });
+    if (!vacancy) return res.status(404).json({ message: 'Vacancy not found.' });
+    if (vacancy.postedById !== req.user!.id) {
+      return res.status(403).json({ message: 'Only the vacancy owner can request HR Assistance.' });
+    }
+
+    const applications = await prisma.vacancyApplication.findMany({ where: { vacancyId: vacancy.id } });
+    if (applications.length === 0) {
+      return res.status(400).json({ message: 'This vacancy has no applicants to screen yet.' });
+    }
+
+    const grossAmount = calculateHRSupportFee(applications.length);
+    const hrRequest = await prisma.hRSupportRequest.create({
+      data: {
+        vacancyId: vacancy.id,
+        requestedById: req.user!.id,
+        candidateCount: applications.length,
+        grossAmount,
+        currency: 'GEL',
+        tosAcceptedAt: new Date(),
+        candidateEvaluations: {
+          create: applications.map((application) => ({ applicationId: application.id })),
+        },
+      },
+    });
+
+    const bogPayment = await prisma.bogPayment.create({
+      data: {
+        bogOrderId: `pending-${crypto.randomUUID()}`,
+        userId: req.user!.id,
+        purpose: 'HR_SUPPORT',
+        referenceId: hrRequest.id,
+        amount: grossAmount,
+        currency: 'GEL',
+        status: 'PENDING',
+      },
+    });
+    const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
+    const order = await createBogOrderOrRespond(res, {
+      externalOrderId: bogPayment.id,
+      amount: grossAmount,
+      currency: 'GEL',
+      basketItemName: `HR Assistance: ${vacancy.title}`,
+      callbackUrl: CALLBACK_URL,
+      successRedirectUrl,
+      failRedirectUrl,
+      lang: checkoutLang(req),
+    });
+    if (!order) return;
+    const updated = await prisma.bogPayment.update({
+      where: { id: bogPayment.id },
+      data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },
+    });
+    res.status(201).json({ paymentId: updated.id, redirectUrl: order.redirectUrl });
+  }
+);
+
+// ============================================================
 // CHECKOUT — DIGITAL PRODUCT
 // ============================================================
 router.post(
@@ -620,6 +702,14 @@ export async function applyBogPaymentResult(
         where: { bogPaymentId: failedPayment.id, status: 'SCHEDULED' },
         data: { status: 'CANCELLED' },
       });
+    } else if (failedPayment.purpose === 'HR_SUPPORT') {
+      // Same reasoning as MENTORSHIP above — the request row is created
+      // up-front (see routes/payments.ts's checkout/hr-support route) so a
+      // declined card doesn't leave it stuck showing as pending forever.
+      await prisma.hRSupportRequest.updateMany({
+        where: { id: failedPayment.referenceId, status: 'PENDING_PAYMENT' },
+        data: { status: 'CANCELLED' },
+      });
     }
     return;
   }
@@ -739,6 +829,35 @@ export async function applyBogPaymentResult(
       productId: bogPayment.referenceId,
       amount: bogPayment.amount,
     });
+  } else if (bogPayment.purpose === 'HR_SUPPORT') {
+    // Places the payment into escrow — does NOT credit a specialist yet
+    // (none is assigned at this point). See hrSupportEscrowService.ts's own
+    // comment for the full release lifecycle.
+    try {
+      await captureHRSupportEscrow({ requestId: bogPayment.referenceId, grossAmount: bogPayment.amount });
+    } catch (err) {
+      console.error('[bog-callback] Failed to capture HR Assistance escrow:', err);
+    }
+
+    const hrRequest = await prisma.hRSupportRequest.findUnique({
+      where: { id: bogPayment.referenceId },
+      include: { vacancy: { select: { title: true } }, requestedBy: { select: { name: true, email: true } } },
+    });
+    if (hrRequest) {
+      try {
+        await sendHRSupportRequestAlertEmail({
+          requestId: hrRequest.id,
+          vacancyTitle: hrRequest.vacancy.title,
+          employerName: hrRequest.requestedBy.name,
+          employerEmail: hrRequest.requestedBy.email,
+          candidateCount: hrRequest.candidateCount,
+          grossAmount: hrRequest.grossAmount,
+          currency: hrRequest.currency,
+        });
+      } catch (err) {
+        console.error('[bog-callback] HR Assistance alert email failed:', err);
+      }
+    }
   }
 }
 
@@ -831,6 +950,17 @@ router.get('/my', authenticate, async (req: Request, res: Response) => {
     : [];
   const productTitleById = new Map(products.map((p) => [p.id, p.title]));
 
+  // HR_SUPPORT's referenceId is the HRSupportRequest.id, not the vacancy
+  // itself — one extra hop via the request to get to a real title.
+  const hrRequestIds = payments.filter((p) => p.purpose === 'HR_SUPPORT').map((p) => p.referenceId);
+  const hrRequests = hrRequestIds.length
+    ? await prisma.hRSupportRequest.findMany({
+        where: { id: { in: hrRequestIds } },
+        select: { id: true, vacancy: { select: { title: true } } },
+      })
+    : [];
+  const hrRequestTitleById = new Map(hrRequests.map((r) => [r.id, r.vacancy.title]));
+
   res.json({
     data: payments.map((p) => ({
       id: p.id,
@@ -842,6 +972,8 @@ router.get('/my', authenticate, async (req: Request, res: Response) => {
           ? courseTitleById.get(p.referenceId) ?? null
           : p.purpose === 'PRODUCT'
           ? productTitleById.get(p.referenceId) ?? null
+          : p.purpose === 'HR_SUPPORT'
+          ? hrRequestTitleById.get(p.referenceId) ?? null
           : null,
       amount: p.amount,
       currency: p.currency,

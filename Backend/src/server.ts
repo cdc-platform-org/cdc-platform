@@ -43,6 +43,8 @@ import adminPayoutsRoutes from './routes/adminPayouts';
 import adminDisputesRoutes from './routes/adminDisputes';
 import adminExamProctoringRoutes from './routes/adminExamProctoring';
 import adminMentorshipRoutes from './routes/adminMentorship';
+import hrSupportRoutes from './routes/hrSupport';
+import adminHRSupportRoutes from './routes/adminHRSupport';
 import adminMessagesRoutes from './routes/adminMessages';
 import adminChatModerationRoutes from './routes/adminChatModeration';
 import siteContentRoutes from './routes/siteContent';
@@ -88,6 +90,8 @@ import { pauseExpiredTrialAgents } from './services/agentBillingService';
 import { rolloverActiveBillingPeriods, sweepTrialEndingWarnings, sweepRenewalReminders } from './services/billingService';
 import { cancelAbandonedMentorshipBookings } from './services/mentorAvailabilityService';
 import { autoReleaseMentorshipEscrows } from './services/mentorshipEscrowService';
+import { autoReleaseHRSupportEscrows } from './services/hrSupportEscrowService';
+import { expireOverdueVacancies } from './services/listingExpiryService';
 
 // ============================================================
 // PROCESS-LEVEL SAFETY NET
@@ -227,6 +231,8 @@ app.use('/api/admin/analytics', adminAnalyticsRoutes);
 app.use('/api/admin/disputes', adminDisputesRoutes);
 app.use('/api/admin/exam-proctoring', adminExamProctoringRoutes);
 app.use('/api/admin/mentorship', adminMentorshipRoutes);
+app.use('/api/hr-support', hrSupportRoutes);
+app.use('/api/admin/hr-support', adminHRSupportRoutes);
 app.use('/api/admin/messages', adminMessagesRoutes);
 app.use('/api/admin/chat-moderation', adminChatModerationRoutes);
 app.use('/api/site-content', siteContentRoutes);
@@ -445,3 +451,29 @@ setInterval(() => {
     })
     .catch((err) => console.error('[mentorship-escrow-auto-release] run failed:', err));
 }, MENTORSHIP_ESCROW_POLL_INTERVAL_MS);
+
+// Same in-process-fallback caveat — production should prefer a single
+// external scheduler hitting POST /api/cron/auto-release-hr-support-escrow.
+// Hourly is precise enough against HR support's 5-day grace window
+// (AUTO_RELEASE_GRACE_MS in hrSupportEscrowService.ts).
+const HR_SUPPORT_ESCROW_POLL_INTERVAL_MS = 60 * 60 * 1000;
+setInterval(() => {
+  autoReleaseHRSupportEscrows()
+    .then(({ releasedIds }) => {
+      if (releasedIds.length > 0) console.log(`[hr-support-escrow-auto-release] released=${releasedIds.length}`);
+    })
+    .catch((err) => console.error('[hr-support-escrow-auto-release] run failed:', err));
+}, HR_SUPPORT_ESCROW_POLL_INTERVAL_MS);
+
+// Same in-process-fallback caveat — production should prefer a single
+// external scheduler hitting POST /api/cron/expire-overdue-vacancies.
+// A deadline is a whole calendar date, not a precise instant, so an hourly
+// check is more than precise enough.
+const VACANCY_EXPIRY_POLL_INTERVAL_MS = 60 * 60 * 1000;
+setInterval(() => {
+  expireOverdueVacancies()
+    .then(({ closedIds }) => {
+      if (closedIds.length > 0) console.log(`[vacancy-auto-expiry] closed=${closedIds.length}`);
+    })
+    .catch((err) => console.error('[vacancy-auto-expiry] run failed:', err));
+}, VACANCY_EXPIRY_POLL_INTERVAL_MS);

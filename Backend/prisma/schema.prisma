@@ -132,6 +132,7 @@ enum WalletEntryType {
   ESCROW_RELEASE_CREDIT
   PRODUCT_SALE_CREDIT
   MENTORSHIP_SESSION_CREDIT
+  HR_SUPPORT_CREDIT
   PAYOUT_DEBIT
   ADJUSTMENT
 }
@@ -219,6 +220,7 @@ enum BogPaymentPurpose {
   MENTORSHIP
   GIG_ESCROW_FUNDING
   PRODUCT
+  HR_SUPPORT
 }
 
 // Mirrors BOG's own order_status.key values (see GET /payments/v1/receipt/:id)
@@ -275,6 +277,14 @@ model User {
   // they've confirmed the user actually completed a CDC course — there is no
   // automated course-completion pipeline yet, so this is a manual gate.
   isVerifiedGraduate            Boolean             @default(false)
+  // Grants access to /admin/hr-requests's specialist-facing screens
+  // (assigned requests, candidate scoring matrix) — deliberately NOT part
+  // of AdminRoleTier/requireAdminRole: an HR specialist is very likely an
+  // external contractor and should only ever see the specific requests
+  // assigned to them, never the general admin panel a SUPER_ADMIN/MANAGER/
+  // MODERATOR gets. Set manually by a SuperAdmin for now (no self-serve
+  // application flow yet).
+  isHrSpecialist                Boolean             @default(false)
   // Set when a freelancer skill exam attempt is force-submitted for
   // repeated anti-cheat violations (tab switch/fullscreen exit, see
   // routes/freelancerExam.ts) — blocks starting a new attempt until this
@@ -459,81 +469,83 @@ model User {
   aiSubscriptionActive          Boolean             @default(false)
   createdAt                     DateTime            @default(now())
 
-  postedGigs                   Gig[]                         @relation("PostedGigs")
-  assignedGigs                 Gig[]                         @relation("AssignedGigs")
-  gigApplications              GigApplication[]
-  clientTransactions           GigTransaction[]              @relation("ClientTransactions")
-  freelancerTransactions       GigTransaction[]              @relation("FreelancerTransactions")
-  walletEntries                WalletEntry[]
-  postedVacancies              Vacancy[]
-  vacancyApplications          VacancyApplication[]
-  blogPosts                    BlogPost[]
-  reviewsGiven                 Review[]                      @relation("ReviewsGiven")
-  reviewsReceived              Review[]                      @relation("ReviewsReceived")
-  sentDirectOffers             DirectOffer[]                 @relation("SentDirectOffers")
-  receivedDirectOffers         DirectOffer[]                 @relation("ReceivedDirectOffers")
-  sentMessages                 Message[]                     @relation("SentMessages")
-  receivedMessages             Message[]                     @relation("ReceivedMessages")
+  postedGigs                    Gig[]                         @relation("PostedGigs")
+  assignedGigs                  Gig[]                         @relation("AssignedGigs")
+  gigApplications               GigApplication[]
+  clientTransactions            GigTransaction[]              @relation("ClientTransactions")
+  freelancerTransactions        GigTransaction[]              @relation("FreelancerTransactions")
+  walletEntries                 WalletEntry[]
+  postedVacancies               Vacancy[]
+  vacancyApplications           VacancyApplication[]
+  blogPosts                     BlogPost[]
+  reviewsGiven                  Review[]                      @relation("ReviewsGiven")
+  reviewsReceived               Review[]                      @relation("ReviewsReceived")
+  sentDirectOffers              DirectOffer[]                 @relation("SentDirectOffers")
+  receivedDirectOffers          DirectOffer[]                 @relation("ReceivedDirectOffers")
+  sentMessages                  Message[]                     @relation("SentMessages")
+  receivedMessages              Message[]                     @relation("ReceivedMessages")
   // One Stripe Customer per platform user, created lazily the first time
   // they start adding a card (see stripePaymentService.getOrCreateStripeCustomerId)
   // — every saved PaymentMethod of provider STRIPE is attached to this same
   // customer, which is what makes "reuse this card for a future charge"
   // possible at all on Stripe's side. Null until that first card add.
   stripeCustomerId              String?
-  paymentMethods               PaymentMethod[]
-  bogPayments                  BogPayment[]
-  stripePayments               StripePayment[]
-  courseEnrollments            CourseEnrollment[]
-  lessonProgress               LessonProgress[]
-  courseCertificates           CourseCertificate[]
-  courseDiscussionPosts        CourseDiscussionPost[]
-  examAttempts                 ExamAttempt[]
-  freelancerSkillExamAttempts  FreelancerSkillExamAttempt[]
-  skillTestAttempts            SkillTestAttempt[]
-  verifiedSkills               VerifiedSkill[]
-  productPurchases             ProductPurchase[]
-  assignmentSubmissions        AssignmentSubmission[]
-  submittedProducts            DigitalProduct[]              @relation("SubmittedProducts")
-  productReviewsGiven          ProductReview[]               @relation("ProductReviewsGiven")
-  productReviewHelpfulVotes    ProductReviewHelpfulVote[]
-  forumThreads                 ForumThread[]
-  forumComments                ForumComment[]
-  forumThreadLikes             ForumThreadLike[]
-  forumCommentLikes            ForumCommentLike[]
-  disputesRaised               Dispute[]                     @relation("DisputesRaised")
-  disputesResolved             Dispute[]                     @relation("DisputesResolved")
-  payoutRequests               PayoutRequest[]               @relation("PayoutRequests")
-  payoutRequestsReviewed       PayoutRequest[]               @relation("PayoutRequestsReviewed")
-  auditLogs                    AuditLog[]
-  siteContentUpdates           SiteContent[]
-  studioInquiriesReviewed      StudioInquiry[]
+  paymentMethods                PaymentMethod[]
+  bogPayments                   BogPayment[]
+  stripePayments                StripePayment[]
+  courseEnrollments             CourseEnrollment[]
+  lessonProgress                LessonProgress[]
+  courseCertificates            CourseCertificate[]
+  courseDiscussionPosts         CourseDiscussionPost[]
+  examAttempts                  ExamAttempt[]
+  freelancerSkillExamAttempts   FreelancerSkillExamAttempt[]
+  skillTestAttempts             SkillTestAttempt[]
+  verifiedSkills                VerifiedSkill[]
+  productPurchases              ProductPurchase[]
+  assignmentSubmissions         AssignmentSubmission[]
+  submittedProducts             DigitalProduct[]              @relation("SubmittedProducts")
+  productReviewsGiven           ProductReview[]               @relation("ProductReviewsGiven")
+  productReviewHelpfulVotes     ProductReviewHelpfulVote[]
+  forumThreads                  ForumThread[]
+  forumComments                 ForumComment[]
+  forumThreadLikes              ForumThreadLike[]
+  forumCommentLikes             ForumCommentLike[]
+  disputesRaised                Dispute[]                     @relation("DisputesRaised")
+  disputesResolved              Dispute[]                     @relation("DisputesResolved")
+  payoutRequests                PayoutRequest[]               @relation("PayoutRequests")
+  payoutRequestsReviewed        PayoutRequest[]               @relation("PayoutRequestsReviewed")
+  auditLogs                     AuditLog[]
+  siteContentUpdates            SiteContent[]
+  studioInquiriesReviewed       StudioInquiry[]
   // CDC Business AI — a Business (Client) account's chat agents. See the
   // Agent model's own comment for why billing fields live there instead of
   // a separate Subscription model for now.
-  agents                       Agent[]
-  examSessions                 ExamSession[]
-  billingSubscriptions         BillingSubscription[]
-  blogComments                 BlogComment[]
-  mentorshipRequestsMade       MentorshipRequest[]           @relation("MentorshipRequestsMade")
-  mentorshipRequestsResolved   MentorshipRequest[]           @relation("MentorshipRequestsResolved")
-  notifications                Notification[]
-  mentorAvailabilityRules      MentorAvailabilityRule[]
-  mentorAvailabilityExceptions MentorAvailabilityException[]
-  sentNotificationBatches      NotificationBatch[]
-  mentorshipBookingsAsMentor   MentorshipBooking[]           @relation("MentorshipBookingsAsMentor")
-  mentorshipBookingsAsStudent  MentorshipBooking[]           @relation("MentorshipBookingsAsStudent")
-  mentorBookingHistoryActions  MentorBookingHistory[]        @relation("MentorBookingHistoryActor")
-  mentorChatMessagesSent       MentorChatMessage[]           @relation("MentorChatMessagesSent")
-  mentorChatMessagesReceived   MentorChatMessage[]           @relation("MentorChatMessagesReceived")
-  mentorChatViolations         MentorChatViolation[]         @relation("MentorChatViolations")
-  cyberSentinelDevices         CyberSentinelDevice[]         @relation("CyberSentinelDevices")
-  reviewedGrantOpportunities   GrantOpportunity[]
-  generatedLaunchKits          LaunchKit[]
-  chatRequestsSent             ChatRequest[]                 @relation("ChatRequestsSent")
-  chatRequestsReceived         ChatRequest[]                 @relation("ChatRequestsReceived")
-  chatFlagsAsSender            ChatFlag[]                    @relation("ChatFlagsAsSender")
-  chatFlagsAsRecipient         ChatFlag[]                    @relation("ChatFlagsAsRecipient")
-  chatFlagsReviewed            ChatFlag[]                    @relation("ChatFlagsReviewed")
+  agents                        Agent[]
+  examSessions                  ExamSession[]
+  billingSubscriptions          BillingSubscription[]
+  blogComments                  BlogComment[]
+  mentorshipRequestsMade        MentorshipRequest[]           @relation("MentorshipRequestsMade")
+  mentorshipRequestsResolved    MentorshipRequest[]           @relation("MentorshipRequestsResolved")
+  notifications                 Notification[]
+  mentorAvailabilityRules       MentorAvailabilityRule[]
+  mentorAvailabilityExceptions  MentorAvailabilityException[]
+  sentNotificationBatches       NotificationBatch[]
+  mentorshipBookingsAsMentor    MentorshipBooking[]           @relation("MentorshipBookingsAsMentor")
+  mentorshipBookingsAsStudent   MentorshipBooking[]           @relation("MentorshipBookingsAsStudent")
+  mentorBookingHistoryActions   MentorBookingHistory[]        @relation("MentorBookingHistoryActor")
+  mentorChatMessagesSent        MentorChatMessage[]           @relation("MentorChatMessagesSent")
+  mentorChatMessagesReceived    MentorChatMessage[]           @relation("MentorChatMessagesReceived")
+  mentorChatViolations          MentorChatViolation[]         @relation("MentorChatViolations")
+  cyberSentinelDevices          CyberSentinelDevice[]         @relation("CyberSentinelDevices")
+  reviewedGrantOpportunities    GrantOpportunity[]
+  generatedLaunchKits           LaunchKit[]
+  chatRequestsSent              ChatRequest[]                 @relation("ChatRequestsSent")
+  chatRequestsReceived          ChatRequest[]                 @relation("ChatRequestsReceived")
+  chatFlagsAsSender             ChatFlag[]                    @relation("ChatFlagsAsSender")
+  chatFlagsAsRecipient          ChatFlag[]                    @relation("ChatFlagsAsRecipient")
+  chatFlagsReviewed             ChatFlag[]                    @relation("ChatFlagsReviewed")
+  hrSupportRequestsAsClient     HRSupportRequest[]            @relation("HRSupportRequestsAsClient")
+  hrSupportRequestsAsSpecialist HRSupportRequest[]            @relation("HRSupportRequestsAsSpecialist")
 
   @@map("users")
 }
@@ -668,6 +680,8 @@ model WalletEntry {
   relatedGigTransaction      GigTransaction?    @relation(fields: [relatedGigTransactionId], references: [id], onDelete: SetNull)
   relatedMentorshipBookingId String?
   relatedMentorshipBooking   MentorshipBooking? @relation(fields: [relatedMentorshipBookingId], references: [id], onDelete: SetNull)
+  relatedHRSupportRequestId  String?
+  relatedHRSupportRequest    HRSupportRequest?  @relation(fields: [relatedHRSupportRequestId], references: [id], onDelete: SetNull)
   balanceAfter               Int
   createdAt                  DateTime           @default(now())
 
@@ -700,7 +714,8 @@ model Vacancy {
   createdAt           DateTime                @default(now())
   updatedAt           DateTime                @updatedAt
 
-  applications VacancyApplication[]
+  applications      VacancyApplication[]
+  hrSupportRequests HRSupportRequest[]
 
   @@index([status])
   @@index([moderationStatus])
@@ -722,9 +737,116 @@ model VacancyApplication {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
+  // Set only when this application is swept into a paid HR Assistance
+  // request (see HRSupportRequest) — most applications never have one.
+  hrEvaluation CandidateEvaluation?
+
   @@unique([vacancyId, applicantId])
   @@index([status])
   @@map("vacancy_applications")
+}
+
+// ============================================================
+// HR ASSISTANCE — a paid, human-delivered candidate-screening service an
+// employer can request on top of a Vacancy they've posted. Escrow lifecycle
+// mirrors MentorshipBooking's held-escrow model (mentorshipEscrowService.ts)
+// almost exactly, just inlined here the same way rather than a separate
+// transaction table: capture happens on payment (see routes/payments.ts's
+// HR_SUPPORT branch), release happens on the employer's explicit
+// confirmation OR an N-day auto-release sweep once the specialist marks the
+// request DELIVERED, OR an admin resolving a raised dispute. See
+// services/hrSupportEscrowService.ts.
+// ============================================================
+
+model HRSupportRequest {
+  id                   String    @id @default(uuid())
+  vacancyId            String
+  vacancy              Vacancy   @relation(fields: [vacancyId], references: [id], onDelete: Restrict)
+  requestedById        String
+  requestedBy          User      @relation("HRSupportRequestsAsClient", fields: [requestedById], references: [id], onDelete: Restrict)
+  assignedSpecialistId String?
+  assignedSpecialist   User?     @relation("HRSupportRequestsAsSpecialist", fields: [assignedSpecialistId], references: [id], onDelete: SetNull)
+  // Snapshot of the vacancy's applicant count at request time — this is what
+  // grossAmount was actually priced against (200 GEL base for the first 10,
+  // +50 GEL per candidate beyond that), kept even if applications change
+  // later so the price never silently drifts from what was charged.
+  candidateCount       Int
+  grossAmount          Int
+  currency             String    @default("GEL") @db.Char(3)
+  // Timestamp of the employer's mandatory ToS/effort-based-disclaimer
+  // checkbox at request time — never null, required before checkout can
+  // even start (see hrSupportSchemas.ts).
+  tosAcceptedAt        DateTime
+  // "PENDING_PAYMENT" | "AWAITING_ASSIGNMENT" | "IN_PROGRESS" | "DELIVERED" | "CANCELLED"
+  // — plain string, same convention as MentorshipBooking.status, kept
+  // separate from the escrow fields below (escrowStatus tracks the money,
+  // this tracks the actual screening work).
+  status               String    @default("PENDING_PAYMENT")
+  // Locked in at capture time — see the commissionRate comment on
+  // MentorshipBooking, same reasoning (must not retroactively move if the
+  // platform's split changes later).
+  commissionRate       Float?
+  commissionAmount     Int?
+  netAmount            Int?
+  escrowStatus         String?
+  paidAt               DateTime?
+  assignedAt           DateTime?
+  // Set by the assigned specialist once the Top-3 report is ready — starts
+  // the auto-release clock (see HR_AUTO_RELEASE_GRACE_MS in
+  // hrSupportEscrowService.ts).
+  deliveredAt          DateTime?
+  reportSummary        String?
+  autoReleaseAt        DateTime?
+  releasedAt           DateTime?
+  // "CLIENT_CONFIRMED" | "AUTO_RELEASE" | "ADMIN_RESOLVED"
+  releaseTrigger       String?
+  disputeRaisedAt      DateTime?
+  disputeReason        String?
+  disputeResolvedAt    DateTime?
+  // "RELEASE" | "REFUND"
+  disputeResolution    String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  candidateEvaluations CandidateEvaluation[]
+  walletEntries        WalletEntry[]
+
+  @@index([status])
+  @@index([requestedById])
+  @@index([assignedSpecialistId])
+  @@map("hr_support_requests")
+}
+
+// One row per applicant swept into a paid HRSupportRequest — created
+// up-front for every VacancyApplication on the vacancy at request time (see
+// the comment on candidateCount above), then filled in by the assigned
+// specialist as screening progresses.
+model CandidateEvaluation {
+  id               String             @id @default(uuid())
+  hrRequestId      String
+  hrRequest        HRSupportRequest   @relation(fields: [hrRequestId], references: [id], onDelete: Cascade)
+  applicationId    String             @unique
+  application      VacancyApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  // 0-100 each — kept as separate dimensions (rather than one composite
+  // score) so the employer-facing comparison matrix is transparent about
+  // *why* a candidate ranked where they did, not a black-box number.
+  hardSkillsScore  Int?
+  softSkillsScore  Int?
+  taskScore        Int?
+  culturalFitScore Int?
+  overallRank      Int?
+  hrNotes          String?
+  // External meeting link (Google Meet/Zoom) — no in-platform video for
+  // this MVP, see the architecture report this feature was speced from.
+  meetingUrl       String?
+  interviewAt      DateTime?
+  // "PENDING" | "TASK_SENT" | "TASK_SUBMITTED" | "INTERVIEWED" | "SCORED"
+  status           String             @default("PENDING")
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([hrRequestId])
+  @@map("hr_candidate_evaluations")
 }
 
 // ============================================================
@@ -1868,26 +1990,26 @@ model PaymentMethod {
 // never cached, so an admin change takes effect on the very next request.
 // ============================================================
 model BillingSettings {
-  id               String   @id @default(uuid())
+  id                      String   @id @default(uuid())
   // Minor units (tetri) — 9900 = 99.00 GEL/month, same convention as
   // Course.originalPrice / mentorHourlyRate. Charged once per active
   // BillingSubscription per billing cycle, on top of usage.
-  baseFeeTetri     Int      @default(9900)
+  baseFeeTetri            Int      @default(9900)
   // Multiplier applied to raw AI provider cost to get the billed usage cost
   // (see UsageRecord.marginMultiplier — frozen per-row at record time so a
   // later change here never rewrites past usage history).
-  marginMultiplier Float    @default(3.0)
-  trialDays        Int      @default(10)
+  marginMultiplier        Float    @default(3.0)
+  trialDays               Int      @default(10)
   // Manual bank-transfer alternative for users who don't want to attach a
   // card — shown read-only wherever card-attachment happens (see
   // PaymentMethodsCard.tsx) whenever an admin has actually filled these in.
   // Null (the default) means the option simply doesn't render — CDC never
   // fabricates banking details client-side.
-  bankTransferIban          String?
-  bankTransferBankName      String?
-  bankTransferAccountName   String?
-  updatedByEmail   String?
-  updatedAt        DateTime @updatedAt
+  bankTransferIban        String?
+  bankTransferBankName    String?
+  bankTransferAccountName String?
+  updatedByEmail          String?
+  updatedAt               DateTime @updatedAt
 
   @@map("billing_settings")
 }
@@ -1922,33 +2044,33 @@ enum BillingSubscriptionStatus {
 // below, since AI_AGENT_SUITE is the only product today but more will
 // follow the same "99 GEL/month per active business tool" shape.
 model BillingSubscription {
-  id                 String                    @id @default(uuid())
-  businessId         String
-  business           User                      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  productType        BillingProductType
-  referenceId        String
-  status             BillingSubscriptionStatus @default(TRIALING)
+  id                    String                    @id @default(uuid())
+  businessId            String
+  business              User                      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  productType           BillingProductType
+  referenceId           String
+  status                BillingSubscriptionStatus @default(TRIALING)
   // Snapshot of BillingSettings.baseFeeTetri at subscription-start time —
   // deliberately NOT re-read live, so an admin pricing change never
   // retroactively alters an already-running subscription's base fee.
-  baseFeeTetri       Int
-  trialEndsAt        DateTime
-  currentPeriodStart DateTime                  @default(now())
-  currentPeriodEnd   DateTime?
-  autoRenew          Boolean                   @default(true)
-  paymentMethodId    String?
-  paymentMethod      PaymentMethod?            @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  baseFeeTetri          Int
+  trialEndsAt           DateTime
+  currentPeriodStart    DateTime                  @default(now())
+  currentPeriodEnd      DateTime?
+  autoRenew             Boolean                   @default(true)
+  paymentMethodId       String?
+  paymentMethod         PaymentMethod?            @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
   // Set once, the first time sweepTrialEndingWarnings fires the "1 day
   // left" notice for this trial — never re-sent, even across sweep runs.
-  trialWarningSentAt DateTime?
+  trialWarningSentAt    DateTime?
   // Set once per billing cycle, the first time sweepRenewalReminders fires
   // the pre-debit notice ahead of currentPeriodEnd — cleared on each
   // rolloverActiveBillingPeriods advance so the next cycle gets its own.
   renewalReminderSentAt DateTime?
-  canceledAt         DateTime?
-  cancellationReason String?
-  createdAt          DateTime                  @default(now())
-  updatedAt          DateTime                  @updatedAt
+  canceledAt            DateTime?
+  cancellationReason    String?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
 
   usageRecords UsageRecord[]
 
@@ -2346,18 +2468,18 @@ model MentorAvailabilityRule {
 // midnight UTC — see mentorAvailabilityService.ts's own REFERENCE_TIMEZONE
 // — and compared by calendar date, not exact instant.
 model MentorAvailabilityException {
-  id        String   @id @default(uuid())
-  mentorId  String
-  mentor    User     @relation(fields: [mentorId], references: [id], onDelete: Cascade)
-  date      DateTime
+  id          String   @id @default(uuid())
+  mentorId    String
+  mentor      User     @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  date        DateTime
   // Both null = the whole day is blocked (original behavior). Both set =
   // only that minute range within the day is blocked, so a mentor can keep
   // the rest of the day bookable — see mentorAvailabilityService.ts's
   // partial-exception handling in generateMentorSlots/assertSlotAvailable.
   startMinute Int?
   endMinute   Int?
-  reason    String?
-  createdAt DateTime @default(now())
+  reason      String?
+  createdAt   DateTime @default(now())
 
   @@index([mentorId, date])
   @@map("mentor_availability_exceptions")
@@ -2426,20 +2548,20 @@ model MentorshipBooking {
   // Set at capture time = scheduledAt + session length + 24h grace period.
   // The auto-release sweep (autoReleaseMentorshipEscrows) only ever acts on
   // rows past this timestamp with no open dispute.
-  autoReleaseAt            DateTime?
-  releasedAt               DateTime?
+  autoReleaseAt           DateTime?
+  releasedAt              DateTime?
   // "STUDENT_CONFIRMED" | "AUTO_RELEASE" | "ADMIN_RESOLVED"
-  releaseTrigger           String?
+  releaseTrigger          String?
   // Set by the student's own dispute action, OR automatically when a
   // booking with funds already in escrow is cancelled before the session
   // starts (see routes/mentorship.ts's cancel route) — either way, a
   // non-null disputeRaisedAt freezes the auto-release sweep until an admin
   // resolves it via resolveMentorshipDispute.
-  disputeRaisedAt          DateTime?
-  disputeReason            String?
-  disputeResolvedAt        DateTime?
+  disputeRaisedAt         DateTime?
+  disputeReason           String?
+  disputeResolvedAt       DateTime?
   // "RELEASE" | "REFUND"
-  disputeResolution        String?
+  disputeResolution       String?
 
   walletEntries  WalletEntry[]
   history        MentorBookingHistory[]
@@ -3147,31 +3269,31 @@ enum TeamMemberType {
 }
 
 model TeamMember {
-  id        String         @id @default(uuid())
-  name      String
-  role      String
-  bio       String?
+  id         String         @id @default(uuid())
+  name       String
+  role       String
+  bio        String?
   // Optional English twins — same "falls back to Georgian when unset"
   // convention as mentorTitleEn/bioEn on User, StudioCaseStudy.titleEn,
   // etc. Never required: adding a team member/trainer only in Georgian is
   // fine, the public /trainers and homepage Team section just render the
   // Georgian text on the English locale too until these are filled in.
-  nameEn    String?
-  roleEn    String?
-  bioEn     String?
+  nameEn     String?
+  roleEn     String?
+  bioEn      String?
   // Uploaded via the same Bunny Storage pipeline as SuccessStory.avatarUrl —
   // never a freely-settable external URL.
-  imageUrl  String?
+  imageUrl   String?
   // Internal site path (e.g. "/about/ia-tavdishvili") to a dedicated
   // full-bio page for this person — set by an admin only for members who
   // actually have one; renders a "View Full Profile" link on this card
   // when present, nothing otherwise.
   profileUrl String?
-  type      TeamMemberType @default(MANAGEMENT)
-  order     Int            @default(0)
-  active    Boolean        @default(true)
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  type       TeamMemberType @default(MANAGEMENT)
+  order      Int            @default(0)
+  active     Boolean        @default(true)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
 
   @@index([type, active])
   @@map("team_members")

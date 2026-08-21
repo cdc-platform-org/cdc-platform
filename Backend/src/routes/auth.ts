@@ -138,6 +138,7 @@ function toUserResponse(user: {
   role: string;
   status: string;
   isVerifiedGraduate: boolean;
+  isHrSpecialist: boolean;
   emailVerifiedAt: Date | null;
   adminRole: string | null;
   legalFirstNameKa?: string | null;
@@ -173,6 +174,7 @@ function toUserResponse(user: {
     role: user.role,
     status: user.status,
     isVerifiedGraduate: user.isVerifiedGraduate,
+    isHrSpecialist: user.isHrSpecialist,
     emailVerifiedAt: user.emailVerifiedAt,
     adminRole: user.adminRole,
     legalFirstNameKa: user.legalFirstNameKa ?? null,

@@ -92,6 +92,7 @@
     "coverNoteLabel": "Cover note",
     "proposalPlaceholder": "Describe your approach and relevant experience…",
     "coverNotePlaceholder": "Why are you a good fit?",
+    "hrConsentNotice": "Your application may be reviewed by a CDC HR specialist as part of a paid screening service the employer has requested.",
     "yourBid": "Your bid",
     "cancel": "Cancel",
     "submit": "Submit",
@@ -119,6 +120,9 @@
     "pageSubtitle": "Find a job opportunity or post your own listing — all in one place.",
     "searchPlaceholder": "Search by title, description, or skills...",
     "noListingsFound": "No listings found.",
+    "sortNewest": "Newest First",
+    "sortOldest": "Oldest First",
+    "sortExpiring": "Expiring Soon",
     "postSectionTitle": "Post a Listing",
     "authorizeButton": "Sign In",
     "clientAdminOnlyMessage": "Only clients and administrators can post a job or project."
