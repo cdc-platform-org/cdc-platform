@@ -19,6 +19,7 @@ import {
   translateMentorProfile,
   getAdminMentorshipBookings,
   attachBookingRecording,
+  resolveMentorshipDispute,
   MentorshipGig,
   MentorshipHelpRequest,
   MentorProfile,
@@ -779,6 +780,79 @@ function RecordingCell({ booking, onUpdated }: { booking: AdminMentorshipBooking
   );
 }
 
+// Escrow status + dispute resolution — the student's own confirm/dispute
+// actions (mentorship-sessions.tsx) and the 24h auto-release sweep
+// (Backend's mentorshipEscrowService.ts) drive escrowStatus for most
+// bookings; this cell's own actions only matter once a dispute is open
+// (disputeRaisedAt set, disputeResolvedAt not) and an admin needs to
+// decide release-vs-refund.
+function EscrowCell({ booking, onUpdated }: { booking: AdminMentorshipBooking; onUpdated: (b: AdminMentorshipBooking) => void }) {
+  const [resolving, setResolving] = useState<'RELEASE' | 'REFUND' | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleResolve = async (resolution: 'RELEASE' | 'REFUND') => {
+    if (!window.confirm(resolution === 'RELEASE' ? 'Release these funds to the mentor?' : 'Refund these funds (no mentor credit)?')) return;
+    setResolving(resolution);
+    setError(null);
+    try {
+      const updated = await resolveMentorshipDispute(booking.id, resolution);
+      onUpdated(updated);
+    } catch {
+      setError('Resolution failed.');
+    } finally {
+      setResolving(null);
+    }
+  };
+
+  const disputePending = !!booking.disputeRaisedAt && !booking.disputeResolvedAt;
+
+  return (
+    <div className="min-w-[160px]">
+      <span
+        className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${
+          booking.escrowStatus === 'RELEASED'
+            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            : booking.escrowStatus === 'REFUNDED'
+              ? 'bg-gray-100 text-gray-500 border-gray-200'
+              : booking.escrowStatus === 'HELD_IN_ESCROW'
+                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                : 'bg-gray-50 text-gray-400 border-gray-200'
+        }`}
+      >
+        {booking.escrowStatus ?? 'NOT CAPTURED'}
+      </span>
+      {disputePending && (
+        <div className="mt-1.5">
+          <p className="text-[10px] text-red-600 font-semibold mb-1">⚠ Dispute open</p>
+          {booking.disputeReason && <p className="text-[10px] text-gray-500 mb-1 max-w-[180px]">{booking.disputeReason}</p>}
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              disabled={resolving !== null}
+              onClick={() => handleResolve('RELEASE')}
+              className="text-[10px] font-medium px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+            >
+              {resolving === 'RELEASE' ? '…' : 'Release'}
+            </button>
+            <button
+              type="button"
+              disabled={resolving !== null}
+              onClick={() => handleResolve('REFUND')}
+              className="text-[10px] font-medium px-2 py-1 rounded bg-gray-600 text-white hover:bg-gray-700 disabled:opacity-60"
+            >
+              {resolving === 'REFUND' ? '…' : 'Refund'}
+            </button>
+          </div>
+          {error && <p className="text-[10px] text-red-500 mt-1">{error}</p>}
+        </div>
+      )}
+      {booking.disputeResolvedAt && (
+        <p className="text-[10px] text-gray-400 mt-1">Resolved: {booking.disputeResolution}</p>
+      )}
+    </div>
+  );
+}
+
 // Every paid session across the platform — loads current data on mount and
 // via manual refresh (no push/websocket infrastructure exists anywhere in
 // this codebase; adding one would be new architecture, not a small
@@ -838,6 +912,7 @@ function BookingsSection() {
                 <th className="px-4 py-3 font-medium">Scheduled</th>
                 <th className="px-4 py-3 font-medium">Meet Link</th>
                 <th className="px-4 py-3 font-medium">Recording</th>
+                <th className="px-4 py-3 font-medium">Escrow</th>
               </tr>
             </thead>
             <tbody>
@@ -879,6 +954,12 @@ function BookingsSection() {
                   </td>
                   <td className="px-4 py-3">
                     <RecordingCell
+                      booking={b}
+                      onUpdated={(updated) => setBookings((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))}
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <EscrowCell
                       booking={b}
                       onUpdated={(updated) => setBookings((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))}
                     />

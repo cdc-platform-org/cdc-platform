@@ -20,6 +20,8 @@ import {
   MessageCircle,
   Send,
   CalendarX2,
+  CheckCircle2,
+  ShieldAlert,
 } from 'lucide-react';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../src/components/layout/SiteHeader';
@@ -31,6 +33,8 @@ import {
   setMyBookingMeetingLink,
   rescheduleMyBooking,
   cancelMyBooking,
+  confirmMySessionHappened,
+  disputeMyBooking,
   getBookingMessages,
   sendBookingMessage,
   MyMentorshipBooking,
@@ -82,6 +86,17 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
 
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+
+  const [escrowStatus, setEscrowStatus] = useState(booking.escrowStatus);
+  const [disputeRaisedAt, setDisputeRaisedAt] = useState(booking.disputeRaisedAt);
+  const [disputeResolvedAt, setDisputeResolvedAt] = useState(booking.disputeResolvedAt);
+  const [disputeResolution, setDisputeResolution] = useState(booking.disputeResolution);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [disputing, setDisputing] = useState(false);
+  const [disputeReasonInput, setDisputeReasonInput] = useState('');
+  const [submittingDispute, setSubmittingDispute] = useState(false);
+  const [disputeError, setDisputeError] = useState<string | null>(null);
 
   const handleSaveMeetingLink = async () => {
     if (!meetLinkInput.trim()) return;
@@ -141,6 +156,40 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
     }
   };
 
+  // "დადასტურება / სესია ჩატარდა" — releases the escrowed payment to the
+  // mentor right away instead of waiting for the 24h auto-release window.
+  const handleConfirmSession = async () => {
+    if (!window.confirm(t('confirmSessionWarning'))) return;
+    setConfirming(true);
+    setConfirmError(null);
+    try {
+      const updated = await confirmMySessionHappened(booking.id);
+      setEscrowStatus(updated.escrowStatus);
+    } catch (err: any) {
+      setConfirmError(err?.response?.data?.message ?? t('confirmSessionFailed'));
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  const handleSubmitDispute = async () => {
+    if (!disputeReasonInput.trim()) return;
+    setSubmittingDispute(true);
+    setDisputeError(null);
+    try {
+      const updated = await disputeMyBooking(booking.id, disputeReasonInput.trim());
+      setDisputeRaisedAt(updated.disputeRaisedAt);
+      setDisputing(false);
+    } catch (err: any) {
+      setDisputeError(err?.response?.data?.message ?? t('disputeFailed'));
+    } finally {
+      setSubmittingDispute(false);
+    }
+  };
+
+  const canActOnEscrow = booking.role === 'student' && isPast && escrowStatus === 'HELD_IN_ESCROW' && !disputeRaisedAt;
+  const disputePending = !!disputeRaisedAt && !disputeResolvedAt;
+
   return (
     <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -159,6 +208,11 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
               {booking.status === 'CANCELLED' && (
                 <span className="text-[10px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
                   {t('cancelled')}
+                </span>
+              )}
+              {disputePending && (
+                <span className="text-[10px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                  {t('disputePending')}
                 </span>
               )}
             </div>
@@ -264,10 +318,64 @@ function SessionCard({ booking, lang, onChanged }: { booking: MyMentorshipBookin
               {t('cancelSession')}
             </button>
           )}
+          {canActOnEscrow && (
+            <button
+              type="button"
+              onClick={handleConfirmSession}
+              disabled={confirming}
+              className="flex items-center justify-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-emerald-600 text-white border-none cursor-pointer hover:bg-emerald-700 disabled:opacity-60"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              {confirming ? t('confirmingSession') : t('confirmSession')}
+            </button>
+          )}
+          {canActOnEscrow && !disputing && (
+            <button
+              type="button"
+              onClick={() => setDisputing(true)}
+              className="flex items-center justify-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl border border-dashed border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 bg-transparent cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-950/30"
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              {t('reportProblem')}
+            </button>
+          )}
         </div>
       </div>
 
       {cancelError && <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-2">{cancelError}</p>}
+      {confirmError && <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-2">{confirmError}</p>}
+
+      {disputing && (
+        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">{t('reportProblemHint')}</p>
+          <textarea
+            value={disputeReasonInput}
+            onChange={(e) => setDisputeReasonInput(e.target.value)}
+            placeholder={t('reportProblemPlaceholder')}
+            rows={3}
+            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950/60 px-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-amber-500/60"
+            autoFocus
+          />
+          <div className="flex gap-2 mt-2">
+            <button
+              type="button"
+              disabled={submittingDispute || !disputeReasonInput.trim()}
+              onClick={handleSubmitDispute}
+              className="text-xs font-bold text-white bg-amber-600 px-3.5 py-2 rounded-lg border-none cursor-pointer hover:bg-amber-700 disabled:opacity-60"
+            >
+              {submittingDispute ? '…' : t('submitDispute')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setDisputing(false)}
+              className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-transparent border-none cursor-pointer hover:text-slate-700 dark:hover:text-slate-200"
+            >
+              {t('cancel')}
+            </button>
+          </div>
+          {disputeError && <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1.5">{disputeError}</p>}
+        </div>
+      )}
 
       {rescheduling && (
         <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">

@@ -7,11 +7,13 @@ import {
   rescheduleBookingSchema,
   cancelBookingSchema,
   chatMessageSchema,
+  disputeBookingSchema,
 } from '../schemas/mentorshipSchemas';
 import { attachRecordingSchema, mentorAvailabilityRuleSchema, mentorAvailabilityExceptionSchema } from '../schemas/adminSchemas';
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
 import { generateMentorSlots, assertSlotAvailable, SlotUnavailableError } from '../services/mentorAvailabilityService';
 import { attachMentorshipRecording, MentorshipRecordingError } from '../services/mentorshipRecordingService';
+import { releaseMentorshipEscrow, flagMentorshipEscrowForReview, MentorshipEscrowError } from '../services/mentorshipEscrowService';
 
 const router = Router();
 
@@ -152,6 +154,10 @@ router.get('/bookings/mine', authenticate, async (req: Request, res: Response) =
       googleMeetLink: b.googleMeetLink,
       calendarSyncError: b.calendarSyncError,
       recordingUrl: b.recordingUrl,
+      escrowStatus: b.escrowStatus,
+      disputeRaisedAt: b.disputeRaisedAt,
+      disputeResolvedAt: b.disputeResolvedAt,
+      disputeResolution: b.disputeResolution,
     })),
   });
 });
@@ -208,10 +214,14 @@ router.patch('/bookings/:id/reschedule', authenticate, requireApproved, async (r
 });
 
 // ============================================================
-// CANCEL — either participant. Refund/payout reversal is out of scope here
-// (no refund flow exists for mentorship bookings today) — this only marks
-// the session cancelled and logs it; an admin handles any money question
-// through the existing dispute/refund process.
+// CANCEL — either participant, only before the session starts (status must
+// still be SCHEDULED). If the payment had already been captured into
+// escrow, cancelling doesn't touch the money itself — it freezes the
+// auto-release clock (flagMentorshipEscrowForReview) so an admin decides
+// release-vs-refund instead of the funds either sitting there forever or
+// silently auto-releasing to a mentor for a session that never happened.
+// A booking cancelled before payment ever completed (still PENDING) has no
+// escrow to freeze — nothing else to do there.
 // ============================================================
 router.post('/bookings/:id/cancel', authenticate, requireApproved, async (req: Request, res: Response) => {
   const result = cancelBookingSchema.safeParse(req.body);
@@ -230,6 +240,79 @@ router.post('/bookings/:id/cancel', authenticate, requireApproved, async (req: R
     }),
   ]);
 
+  if (booking.escrowStatus === 'HELD_IN_ESCROW') {
+    await flagMentorshipEscrowForReview(booking.id, 'Booking cancelled before the session started.').catch((err) =>
+      console.error(`[mentorship] flagMentorshipEscrowForReview failed for booking ${booking.id}:`, err)
+    );
+  }
+
+  res.json({ data: updated });
+});
+
+// ============================================================
+// STUDENT CONFIRMS THE SESSION HAPPENED — "დადასტურება / სესია ჩატარდა" in
+// the dashboard. Releases escrow to the mentor immediately rather than
+// waiting for the 24h auto-release window. Student-only (a mentor
+// confirming their own session happened would be confirming themselves
+// paid, an obvious conflict of interest) and only while funds are still
+// actually held — releaseMentorshipEscrow's own atomic claim is what
+// actually enforces that, this check is just a friendlier error message.
+// ============================================================
+router.post('/bookings/:id/confirm-session', authenticate, requireApproved, async (req: Request, res: Response) => {
+  const booking = await prisma.mentorshipBooking.findUnique({ where: { id: req.params.id } });
+  if (!booking || booking.studentId !== req.user!.id) {
+    return res.status(404).json({ message: 'Booking not found.' });
+  }
+  if (booking.disputeRaisedAt && !booking.disputeResolvedAt) {
+    return res.status(400).json({ message: 'This session already has an open dispute — an admin needs to resolve it first.' });
+  }
+
+  try {
+    await releaseMentorshipEscrow(booking.id, 'STUDENT_CONFIRMED');
+  } catch (err) {
+    if (err instanceof MentorshipEscrowError) return res.status(400).json({ message: err.message });
+    throw err;
+  }
+
+  await prisma.mentorBookingHistory.create({
+    data: { bookingId: booking.id, action: 'SESSION_CONFIRMED', performedById: req.user!.id },
+  });
+
+  const updated = await prisma.mentorshipBooking.findUniqueOrThrow({ where: { id: booking.id } });
+  res.json({ data: updated });
+});
+
+// ============================================================
+// STUDENT DISPUTES THE SESSION — freezes the auto-release clock and hands
+// the booking to an admin (adminMentorship.ts's resolve-dispute route)
+// instead of releasing or refunding it here directly; same "admin makes
+// the call" posture as gig disputes (routes/gigs.ts's POST
+// /:id/dispute + escrowService.refundEscrow). Student-only, and only
+// while there's actually something in escrow to dispute — a booking whose
+// payment never completed, or one already released/refunded, has nothing
+// left to freeze.
+// ============================================================
+router.post('/bookings/:id/dispute', authenticate, requireApproved, async (req: Request, res: Response) => {
+  const result = disputeBookingSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const booking = await prisma.mentorshipBooking.findUnique({ where: { id: req.params.id } });
+  if (!booking || booking.studentId !== req.user!.id) {
+    return res.status(404).json({ message: 'Booking not found.' });
+  }
+
+  try {
+    await flagMentorshipEscrowForReview(booking.id, result.data.reason);
+  } catch (err) {
+    if (err instanceof MentorshipEscrowError) return res.status(400).json({ message: err.message });
+    throw err;
+  }
+
+  await prisma.mentorBookingHistory.create({
+    data: { bookingId: booking.id, action: 'DISPUTED', performedById: req.user!.id, note: result.data.reason },
+  });
+
+  const updated = await prisma.mentorshipBooking.findUniqueOrThrow({ where: { id: booking.id } });
   res.json({ data: updated });
 });
 

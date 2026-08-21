@@ -105,5 +105,15 @@
   "chatSend": "Senden",
   "chatEmpty": "Noch keine Nachrichten.",
   "chatLoadFailed": "Nachrichten konnten nicht geladen werden.",
-  "chatBanned": "Ihr Konto wurde gesperrt."
+  "chatBanned": "Ihr Konto wurde gesperrt.",
+  "confirmSession": "Bestätigen / Sitzung fand statt",
+  "confirmingSession": "Wird bestätigt…",
+  "confirmSessionWarning": "Bestätigen Sie, dass die Sitzung stattgefunden hat — die Zahlung wird sofort an den Mentor freigegeben und dies kann nicht rückgängig gemacht werden.",
+  "confirmSessionFailed": "Die Sitzung konnte nicht bestätigt werden.",
+  "reportProblem": "Problem melden",
+  "reportProblemHint": "Falls die Sitzung nicht stattgefunden hat oder etwas schiefgelaufen ist, beschreiben Sie es im Detail — ein Administrator prüft dies und entscheidet, ob Ihnen der Betrag erstattet oder dem Mentor ausgezahlt wird.",
+  "reportProblemPlaceholder": "Beschreiben Sie, was passiert ist…",
+  "submitDispute": "Absenden",
+  "disputeFailed": "Die Meldung konnte nicht gesendet werden.",
+  "disputePending": "In Prüfung"
 }

@@ -99,10 +99,36 @@ export interface MyMentorshipBooking {
   googleMeetLink: string | null;
   calendarSyncError: string | null;
   recordingUrl: string | null;
+  // Escrow lifecycle — null until the payment is captured (should never
+  // actually be null here, every booking returned by /bookings/mine has a
+  // completed payment by definition), then "HELD_IN_ESCROW" | "RELEASED" |
+  // "REFUNDED". A student can release funds early by confirming the
+  // session happened; otherwise it auto-releases 24h after the scheduled
+  // end with no dispute raised.
+  escrowStatus: 'HELD_IN_ESCROW' | 'RELEASED' | 'REFUNDED' | null;
+  disputeRaisedAt: string | null;
+  disputeResolvedAt: string | null;
+  disputeResolution: 'RELEASE' | 'REFUND' | null;
 }
 
 export async function getMyMentorshipBookings(): Promise<MyMentorshipBooking[]> {
   const response = await apiClient.get<{ data: MyMentorshipBooking[] }>('/mentorship/bookings/mine');
+  return response.data.data;
+}
+
+// Student-only: "დადასტურება / სესია ჩატარდა" — releases the escrowed
+// payment to the mentor immediately instead of waiting for the 24h
+// auto-release window.
+export async function confirmMySessionHappened(bookingId: string): Promise<MyMentorshipBooking> {
+  const response = await apiClient.post<{ data: MyMentorshipBooking }>(`/mentorship/bookings/${bookingId}/confirm-session`);
+  return response.data.data;
+}
+
+// Student-only: flags the booking for admin review — freezes the
+// auto-release clock. The admin resolves it (release to the mentor or
+// refund) via the admin mentorship dashboard, not automatically.
+export async function disputeMyBooking(bookingId: string, reason: string): Promise<MyMentorshipBooking> {
+  const response = await apiClient.post<{ data: MyMentorshipBooking }>(`/mentorship/bookings/${bookingId}/dispute`, { reason });
   return response.data.data;
 }
 

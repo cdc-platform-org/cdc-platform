@@ -105,5 +105,15 @@
   "chatSend": "Enviar",
   "chatEmpty": "Aún no hay mensajes.",
   "chatLoadFailed": "No se pudieron cargar los mensajes.",
-  "chatBanned": "Su cuenta ha sido bloqueada."
+  "chatBanned": "Su cuenta ha sido bloqueada.",
+  "confirmSession": "Confirmar / Sesión realizada",
+  "confirmingSession": "Confirmando…",
+  "confirmSessionWarning": "Confirma que la sesión tuvo lugar — el pago se liberará al mentor de inmediato y esto no se puede deshacer.",
+  "confirmSessionFailed": "No se pudo confirmar la sesión.",
+  "reportProblem": "Reportar un problema",
+  "reportProblemHint": "Si la sesión no se llevó a cabo o algo salió mal, descríbelo con detalle — un administrador lo revisará y decidirá si te reembolsa o libera el pago al mentor.",
+  "reportProblemPlaceholder": "Describe lo que ocurrió…",
+  "submitDispute": "Enviar",
+  "disputeFailed": "No se pudo enviar el reporte.",
+  "disputePending": "En revisión"
 }

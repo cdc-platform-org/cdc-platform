@@ -21,7 +21,7 @@ import { getCurrentPrice, computeCoursePriceWithPromo } from '../services/course
 import { getCurrentProductPrice } from '../services/productPricing';
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
 import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
-import { creditMentorshipSession } from '../services/mentorshipPayoutService';
+import { captureMentorshipEscrow } from '../services/mentorshipEscrowService';
 import { isBusinessToolsCategory, canPurchaseBusinessTools } from '../utils/marketplaceCategories';
 import { sendMentorshipBookingEmails } from '../services/emailService';
 import { notifyCourseEnrollment } from '../services/courseEnrollmentNotification';
@@ -673,17 +673,17 @@ export async function applyBogPaymentResult(
     if (!booking) return;
 
     try {
-      await creditMentorshipSession({
-        bookingId: booking.id,
-        mentorId: bogPayment.referenceId,
-        grossAmount: bogPayment.amount,
-        currency: bogPayment.currency,
-      });
+      // Places the payment into escrow — does NOT credit the mentor yet.
+      // See mentorshipEscrowService.ts's own comment for the full release
+      // lifecycle (student confirmation, 24h auto-release, or admin
+      // dispute resolution).
+      await captureMentorshipEscrow({ bookingId: booking.id, grossAmount: bogPayment.amount });
     } catch (err) {
-      // Never silently drop a real crediting failure — the calendar/email
-      // steps below are still best-effort, but the mentor's payout must
-      // not fail silently, so this is logged loudly for follow-up.
-      console.error('[bog-callback] Failed to credit mentor for completed session:', err);
+      // Never silently drop a real capture failure — the calendar/email
+      // steps below are still best-effort, but the mentor's eventual
+      // payout must not fail silently, so this is logged loudly for
+      // follow-up.
+      console.error('[bog-callback] Failed to capture mentorship escrow:', err);
     }
 
     let meetLink: string | null = null;

@@ -31,3 +31,11 @@ export const cancelBookingSchema = z.object({
 export const chatMessageSchema = z.object({
   content: z.string().trim().min(1).max(2000),
 });
+
+export const disputeBookingSchema = z.object({
+  reason: z.string().trim().min(5).max(1000),
+});
+
+export const resolveMentorshipDisputeSchema = z.object({
+  resolution: z.enum(['RELEASE', 'REFUND']),
+});

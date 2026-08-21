@@ -5,9 +5,12 @@ import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { mentorAvailabilityRuleSchema, mentorProfileSchema, attachRecordingSchema } from '../schemas/adminSchemas';
+import { resolveMentorshipDisputeSchema } from '../schemas/mentorshipSchemas';
 import { uploadImage } from '../services/imageStorage';
 import { BunnyStorageUploadError } from '../services/bunnyStorage';
 import { attachMentorshipRecording, MentorshipRecordingError } from '../services/mentorshipRecordingService';
+import { resolveMentorshipDispute, MentorshipEscrowError } from '../services/mentorshipEscrowService';
+import { logAdminAction } from '../services/auditLogService';
 
 const router = Router();
 router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'));
@@ -349,6 +352,45 @@ router.patch('/bookings/:id/recording', async (req: Request, res: Response) => {
     if (err instanceof MentorshipRecordingError) return res.status(404).json({ message: err.message });
     throw err;
   }
+});
+
+// Resolves a booking flagged for review — either by the student's own
+// dispute (POST /mentorship/bookings/:id/dispute) or a cancellation that
+// happened after escrow was already captured (routes/mentorship.ts's
+// cancel route). RELEASE credits the mentor as if the student had
+// confirmed the session; REFUND locks the funds without crediting anyone
+// (the real bank refund to the student still happens by hand through
+// BOG/Stripe's dashboard, same posture as gig dispute resolution).
+router.post('/bookings/:id/resolve-dispute', async (req: Request, res: Response) => {
+  const result = resolveMentorshipDisputeSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const booking = await prisma.mentorshipBooking.findUnique({ where: { id: req.params.id } });
+  if (!booking) return res.status(404).json({ message: 'Booking not found.' });
+  if (!booking.disputeRaisedAt) {
+    return res.status(400).json({ message: 'This booking has no open dispute to resolve.' });
+  }
+  if (booking.disputeResolvedAt) {
+    return res.status(400).json({ message: 'This dispute has already been resolved.' });
+  }
+
+  try {
+    await resolveMentorshipDispute(booking.id, result.data.resolution);
+  } catch (err) {
+    if (err instanceof MentorshipEscrowError) return res.status(400).json({ message: err.message });
+    throw err;
+  }
+
+  await logAdminAction({
+    action: `mentorship.dispute.${result.data.resolution.toLowerCase()}`,
+    targetType: 'MentorshipBooking',
+    targetId: booking.id,
+    performedById: req.user!.id,
+    metadata: { reason: booking.disputeReason },
+  });
+
+  const updated = await prisma.mentorshipBooking.findUniqueOrThrow({ where: { id: booking.id } });
+  res.json({ data: updated });
 });
 
 export default router;

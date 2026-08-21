@@ -199,6 +199,29 @@ export interface AdminMentorshipBooking {
   mentor: MentorshipUser;
   student: MentorshipUser;
   bogPayment: { status: string; amount: number; currency: string };
+  // Escrow lifecycle (see Backend's mentorshipEscrowService.ts) — null
+  // until the payment captures. A non-null disputeRaisedAt with no
+  // disputeResolvedAt is what this page needs to resolve.
+  netAmount: number | null;
+  escrowStatus: 'HELD_IN_ESCROW' | 'RELEASED' | 'REFUNDED' | null;
+  disputeRaisedAt: string | null;
+  disputeReason: string | null;
+  disputeResolvedAt: string | null;
+  disputeResolution: 'RELEASE' | 'REFUND' | null;
+}
+
+// Resolves a booking flagged for review (student dispute, or a
+// cancellation that happened after the payment was already captured) —
+// RELEASE credits the mentor, REFUND locks the funds without crediting
+// anyone (the real bank refund still happens by hand through BOG/Stripe).
+export async function resolveMentorshipDispute(
+  bookingId: string,
+  resolution: 'RELEASE' | 'REFUND'
+): Promise<AdminMentorshipBooking> {
+  const response = await apiClient.post<{ data: AdminMentorshipBooking }>(`/admin/mentorship/bookings/${bookingId}/resolve-dispute`, {
+    resolution,
+  });
+  return response.data.data;
 }
 
 // Attaches/replaces a pasted recording link (Google Drive, Bunny CDN,

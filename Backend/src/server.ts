@@ -87,6 +87,7 @@ import { cleanupExpiredDeletedAccounts } from './services/accountCleanupService'
 import { pauseExpiredTrialAgents } from './services/agentBillingService';
 import { rolloverActiveBillingPeriods, sweepTrialEndingWarnings, sweepRenewalReminders } from './services/billingService';
 import { cancelAbandonedMentorshipBookings } from './services/mentorAvailabilityService';
+import { autoReleaseMentorshipEscrows } from './services/mentorshipEscrowService';
 
 // ============================================================
 // PROCESS-LEVEL SAFETY NET
@@ -430,3 +431,17 @@ setInterval(() => {
     })
     .catch((err) => console.error('[mentorship-abandoned-sweep] run failed:', err));
 }, ABANDONED_MENTORSHIP_POLL_INTERVAL_MS);
+
+// Same in-process-fallback caveat as above — production should prefer a
+// single external scheduler hitting POST /api/cron/auto-release-
+// mentorship-escrow. Hourly is precise enough against a 24h grace window
+// (AUTO_RELEASE_GRACE_MS in mentorshipEscrowService.ts) — worst case a
+// release fires up to an hour later than the exact mark, never earlier.
+const MENTORSHIP_ESCROW_POLL_INTERVAL_MS = 60 * 60 * 1000;
+setInterval(() => {
+  autoReleaseMentorshipEscrows()
+    .then(({ releasedIds }) => {
+      if (releasedIds.length > 0) console.log(`[mentorship-escrow-auto-release] released=${releasedIds.length}`);
+    })
+    .catch((err) => console.error('[mentorship-escrow-auto-release] run failed:', err));
+}, MENTORSHIP_ESCROW_POLL_INTERVAL_MS);

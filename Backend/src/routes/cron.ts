@@ -6,6 +6,7 @@ import { cleanupExpiredDeletedAccounts } from '../services/accountCleanupService
 import { pauseExpiredTrialAgents } from '../services/agentBillingService';
 import { sweepExpiredTrials, rolloverActiveBillingPeriods, sweepTrialEndingWarnings, sweepRenewalReminders } from '../services/billingService';
 import { cancelAbandonedMentorshipBookings } from '../services/mentorAvailabilityService';
+import { autoReleaseMentorshipEscrows } from '../services/mentorshipEscrowService';
 import { generateAndSaveBlogDraft, BlogAgentError } from '../services/blogAgentService';
 import { AiAgentError } from '../services/aiAgentService';
 import { scanAllActiveSources } from '../services/grantScoutService';
@@ -128,6 +129,13 @@ router.post('/scan-grant-opportunities', requireCronSecret, async (_req: Request
 router.post('/cancel-abandoned-mentorship-bookings', requireCronSecret, async (_req: Request, res: Response) => {
   const result = await cancelAbandonedMentorshipBookings();
   res.json({ message: `${result.cancelledIds.length} abandoned booking(s) cancelled.`, ...result });
+});
+
+// Releases mentorship escrow 24h past the session's scheduled end with no
+// dispute raised — see mentorshipEscrowService.autoReleaseMentorshipEscrows.
+router.post('/auto-release-mentorship-escrow', requireCronSecret, async (_req: Request, res: Response) => {
+  const result = await autoReleaseMentorshipEscrows();
+  res.json({ message: `${result.releasedIds.length} session(s) auto-released.`, ...result });
 });
 
 export default router;

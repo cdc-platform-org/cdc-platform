@@ -20,7 +20,7 @@ import { getCurrentPrice, computeCoursePriceWithPromo } from '../services/course
 import { getCurrentProductPrice } from '../services/productPricing';
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
 import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
-import { creditMentorshipSession } from '../services/mentorshipPayoutService';
+import { captureMentorshipEscrow } from '../services/mentorshipEscrowService';
 import { isBusinessToolsCategory, canPurchaseBusinessTools } from '../utils/marketplaceCategories';
 import { sendMentorshipBookingEmails } from '../services/emailService';
 import { notifyCourseEnrollment } from '../services/courseEnrollmentNotification';
@@ -542,14 +542,13 @@ export async function applyStripePaymentResult(stripePaymentId: string, session:
     if (!booking) return;
 
     try {
-      await creditMentorshipSession({
-        bookingId: booking.id,
-        mentorId: stripePayment.referenceId,
-        grossAmount: stripePayment.amount,
-        currency: stripePayment.currency,
-      });
+      // Places the payment into escrow — does NOT credit the mentor yet.
+      // See mentorshipEscrowService.ts's own comment for the full release
+      // lifecycle (student confirmation, 24h auto-release, or admin
+      // dispute resolution).
+      await captureMentorshipEscrow({ bookingId: booking.id, grossAmount: stripePayment.amount });
     } catch (err) {
-      console.error('[stripe-webhook] Failed to credit mentor for completed session:', err);
+      console.error('[stripe-webhook] Failed to capture mentorship escrow:', err);
     }
 
     let meetLink: string | null = null;

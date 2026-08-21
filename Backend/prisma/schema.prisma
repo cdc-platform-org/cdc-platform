@@ -2372,11 +2372,12 @@ model MentorshipBooking {
   // a later edit of an already-set URL, only on the first attach.
   recordingUrl            String?
   recordingUploadedAt     DateTime?
-  // Set once the session payment is captured and the mentor's 80% net share
-  // is credited to their earningsBalance (see routes/payments.ts's
-  // applyBogPaymentResult MENTORSHIP branch) — same 20%/80% split as every
-  // other revenue stream on the platform (escrowService.ts,
-  // productSaleService.ts). null until that credit actually happens.
+  // Locked in once the session payment is captured (see
+  // services/mentorshipEscrowService.ts's captureMentorshipEscrow) — same
+  // 20%/80% split as every other revenue stream on the platform
+  // (escrowService.ts, productSaleService.ts). null until capture happens.
+  // Note this is only ever computed at capture time, never re-derived —
+  // netAmount is what actually gets credited to the mentor on release.
   commissionRate          Float?
   commissionAmount        Int?
   netAmount               Int?
@@ -2387,6 +2388,32 @@ model MentorshipBooking {
   // a cron, since nothing else in this session time-sensitively needs it
   // set the instant the session ends.
   status                  String         @default("SCHEDULED")
+  // ============================================================
+  // ESCROW LIFECYCLE — mirrors GigTransaction's HELD_IN_ESCROW/RELEASED/
+  // REFUNDED shape (escrowService.ts), just inlined onto the booking row
+  // instead of a separate transaction model, matching how this model
+  // already combines "booking" and "transaction" in one place. Null until
+  // payment is captured (see mentorshipEscrowService.ts); a booking whose
+  // payment never completes never gets an escrowStatus at all.
+  // ============================================================
+  escrowStatus            String?
+  // Set at capture time = scheduledAt + session length + 24h grace period.
+  // The auto-release sweep (autoReleaseMentorshipEscrows) only ever acts on
+  // rows past this timestamp with no open dispute.
+  autoReleaseAt            DateTime?
+  releasedAt               DateTime?
+  // "STUDENT_CONFIRMED" | "AUTO_RELEASE" | "ADMIN_RESOLVED"
+  releaseTrigger           String?
+  // Set by the student's own dispute action, OR automatically when a
+  // booking with funds already in escrow is cancelled before the session
+  // starts (see routes/mentorship.ts's cancel route) — either way, a
+  // non-null disputeRaisedAt freezes the auto-release sweep until an admin
+  // resolves it via resolveMentorshipDispute.
+  disputeRaisedAt          DateTime?
+  disputeReason            String?
+  disputeResolvedAt        DateTime?
+  // "RELEASE" | "REFUND"
+  disputeResolution        String?
 
   walletEntries  WalletEntry[]
   history        MentorBookingHistory[]
