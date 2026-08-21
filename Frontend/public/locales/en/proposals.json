@@ -18,7 +18,8 @@
     "cvUploadError": "Unable to upload the file.",
     "feeCalculator": {
       "title": "Earnings Estimate",
-      "platformFee": "Platform Fee ({{rate}}%)",
+      "platformFee": "Commission: {{rate}}%",
+      "verifyLink": "Get verified to reduce it to {{verifiedRate}}%",
       "netEarnings": "Net Earnings for Freelancer",
       "tooltip": "CDC charges a {{rate}}% platform fee on the amount you propose. This is an estimate — the final fee is calculated on the accepted bid."
     },

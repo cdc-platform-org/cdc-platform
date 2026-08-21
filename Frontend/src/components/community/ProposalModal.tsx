@@ -1,11 +1,17 @@
 import { useState, useMemo, useRef, FormEvent, ChangeEvent } from 'react';
 import { useTranslation } from 'next-i18next';
-import { FileText, Upload } from 'lucide-react';
+import { FileText, Upload, ShieldCheck } from 'lucide-react';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { useAuth } from '../../context/AuthContext';
+import { useVerificationDrawer } from '../../context/VerificationDrawerContext';
 import { uploadCv } from '../../services/authService';
+import { isFreelancerVerified } from '../../types/auth';
 
-const PLATFORM_FEE_RATE = 0.2; // 20% (10% bank fee + 10% CDC Center) — shown live as the freelancer types their bid
+// Same rule and split as Backend's escrowService.ts (kept in sync by hand,
+// same posture as that file's own "not a shared import" comment) — bank
+// fee is fixed, only CDC's own slice moves as the verification incentive.
+const VERIFIED_PLATFORM_FEE_RATE = 0.2; // 10% bank + 10% CDC
+const UNVERIFIED_PLATFORM_FEE_RATE = 0.25; // 10% bank + 15% CDC
 
 interface ProposalModalProps {
   gigTitle: string;
@@ -24,6 +30,9 @@ export default function ProposalModal({
 }: ProposalModalProps) {
   const { t } = useTranslation('proposals');
   const { user, refreshUser } = useAuth();
+  const { openVerificationDrawer } = useVerificationDrawer();
+  const verified = !!user && isFreelancerVerified(user);
+  const PLATFORM_FEE_RATE = verified ? VERIFIED_PLATFORM_FEE_RATE : UNVERIFIED_PLATFORM_FEE_RATE;
   const [proposedBudget, setProposedBudget] = useState('');
   const [deliveryDays, setDeliveryDays] = useState('');
   const [coverLetter, setCoverLetter] = useState('');
@@ -162,6 +171,23 @@ export default function ProposalModal({
                   {netEarnings.toFixed(2)} {currency}
                 </span>
               </div>
+              {!verified && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    openVerificationDrawer({
+                      message: {
+                        ka: 'გაიარეთ ვერიფიკაცია, რომ პლატფორმის საკომისიო 25%-დან 20%-მდე შემცირდეს.',
+                        en: 'Get verified to reduce the platform fee from 25% to 20%.',
+                      },
+                    })
+                  }
+                  className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline bg-transparent border-none p-0 cursor-pointer"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  {t('proposalModal.feeCalculator.verifyLink', { verifiedRate: VERIFIED_PLATFORM_FEE_RATE * 100 })}
+                </button>
+              )}
             </div>
           )}
 

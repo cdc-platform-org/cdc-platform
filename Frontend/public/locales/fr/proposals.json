@@ -18,7 +18,8 @@
     "cvUploadError": "Impossible de téléverser le fichier.",
     "feeCalculator": {
       "title": "Estimation des revenus",
-      "platformFee": "Frais de plateforme ({{rate}} %)",
+      "platformFee": "Commission : {{rate}} %",
+      "verifyLink": "Faites-vous vérifier pour la réduire à {{verifiedRate}} %",
       "netEarnings": "Revenu net pour le freelance",
       "tooltip": "CDC applique des frais de plateforme de {{rate}} % sur le montant que vous proposez. Il s'agit d'une estimation — les frais finaux sont calculés sur l'offre acceptée."
     },

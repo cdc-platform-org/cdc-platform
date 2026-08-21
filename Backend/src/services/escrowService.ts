@@ -1,13 +1,17 @@
 import { prisma } from '../lib/prisma';
-// Unified platform-wide rate — 20% total (10% bank/payment-processing
-// gateway fee + 10% CDC Center platform support fee), same policy and same
-// split as the Digital Store's PLATFORM_COMMISSION_RATE
-// (services/productSaleService.ts). Kept as its own constant rather than a
-// shared import — two independent revenue streams that happen to share a
-// value, not the same policy, so they shouldn't be coupled to a single
-// source that could drift them apart unintentionally. Kept in sync with the
-// 20% shown in the frontend Proposal Calculator (ProposalModal.tsx).
-const PLATFORM_COMMISSION_RATE = 0.2;
+import { hasFreelancerRights } from '../utils/freelancerVerification';
+
+// Bank/payment-processing gateway slice is fixed regardless of
+// verification — only CDC's own platform-fee slice moves, as the
+// verification incentive: 15% for an unverified freelancer (25% total) vs
+// 10% for one with freelancer rights (hasFreelancerRights — course/skill-
+// exam graduate or admin-approved individual verification; see
+// utils/freelancerVerification.ts), 20% total. Same split shown in the
+// frontend Proposal Calculator (ProposalModal.tsx).
+const BANK_FEE_RATE = 0.1;
+const PLATFORM_FEE_RATE_UNVERIFIED = 0.15;
+const PLATFORM_FEE_RATE_VERIFIED = 0.1;
+
 export async function captureEscrow(params: {
   gigId: string;
   gigApplicationId: string;
@@ -17,7 +21,17 @@ export async function captureEscrow(params: {
   currency: string;
   providerRef: string;
 }) {
-  const commissionAmount = Math.round(params.grossAmount * PLATFORM_COMMISSION_RATE);
+  // Verification status is checked and locked in right here, at capture
+  // time — not re-derived at release. A freelancer who verifies mid-gig
+  // doesn't retroactively lower the commission on an already-funded escrow;
+  // the discount applies to the next gig they get paid for.
+  const freelancer = await prisma.user.findUnique({
+    where: { id: params.freelancerId },
+    select: { isVerifiedGraduate: true, verificationLevel: true, verificationStatus: true },
+  });
+  const verified = !!freelancer && hasFreelancerRights(freelancer);
+  const commissionRate = BANK_FEE_RATE + (verified ? PLATFORM_FEE_RATE_VERIFIED : PLATFORM_FEE_RATE_UNVERIFIED);
+  const commissionAmount = Math.round(params.grossAmount * commissionRate);
   const netAmount = params.grossAmount - commissionAmount;
   return prisma.gigTransaction.create({
     data: {
@@ -28,7 +42,7 @@ export async function captureEscrow(params: {
       grossAmount: params.grossAmount,
       currency: params.currency,
       providerRef: params.providerRef,
-      commissionRate: PLATFORM_COMMISSION_RATE,
+      commissionRate,
       commissionAmount,
       netAmount,
       status: 'HELD_IN_ESCROW',

@@ -18,7 +18,8 @@
     "cvUploadError": "Die Datei konnte nicht hochgeladen werden.",
     "feeCalculator": {
       "title": "Verdienstschätzung",
-      "platformFee": "Plattformgebühr ({{rate}} %)",
+      "platformFee": "Kommission: {{rate}} %",
+      "verifyLink": "Lassen Sie sich verifizieren, um auf {{verifiedRate}} % zu reduzieren",
       "netEarnings": "Nettoverdienst für Freelancer",
       "tooltip": "CDC erhebt eine Plattformgebühr von {{rate}} % auf den von Ihnen vorgeschlagenen Betrag. Dies ist eine Schätzung — die endgültige Gebühr wird auf Basis des angenommenen Angebots berechnet."
     },

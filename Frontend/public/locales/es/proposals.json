@@ -18,7 +18,8 @@
     "cvUploadError": "No se pudo subir el archivo.",
     "feeCalculator": {
       "title": "Estimación de Ganancias",
-      "platformFee": "Comisión de la Plataforma ({{rate}}%)",
+      "platformFee": "Comisión: {{rate}}%",
+      "verifyLink": "Verifícate para reducirla al {{verifiedRate}}%",
       "netEarnings": "Ganancia Neta del Freelancer",
       "tooltip": "CDC cobra una comisión de plataforma del {{rate}}% sobre el importe que proponga. Esto es una estimación — la comisión final se calcula sobre la oferta aceptada."
     },
