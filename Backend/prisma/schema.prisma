@@ -2058,6 +2058,53 @@ model BillingSettings {
   @@map("billing_settings")
 }
 
+// Platform-wide anti-spam/monetization knob for the free Vacancy/Gig posting
+// flow — see Backend/src/services/postingLimitService.ts. Same
+// singleton-row, fall-back-to-default-when-no-row-exists pattern as
+// BillingSettings/BogSettings above.
+model PlatformSettings {
+  id             String   @id @default(uuid())
+  dailyPostLimit Int      @default(3)
+  updatedByEmail String?
+  updatedAt      DateTime @updatedAt
+
+  @@map("platform_settings")
+}
+
+// Service lines whose platform commission used to be a hardcoded constant
+// duplicated across 4 independent services (escrowService.ts,
+// mentorshipEscrowService.ts, hrSupportEscrowService.ts,
+// productSaleService.ts) — now a SuperAdmin-editable row per service type,
+// read via Backend/src/services/platformFeeScheduleService.ts. Each service
+// still locks its rate in at capture time (never re-derived at
+// release/payout), so a rate change here only affects transactions captured
+// after the change.
+model PlatformFeeSchedule {
+  id                   String                 @id @default(uuid())
+  serviceType          PlatformFeeServiceType @unique
+  // Whole percentage points, e.g. 25 = 25%, not a 0-1 fraction — matches how
+  // the admin UI displays and edits it.
+  commissionPercentage Float
+  updatedByEmail       String?
+  updatedAt            DateTime               @updatedAt
+
+  @@map("platform_fee_schedule")
+}
+
+enum PlatformFeeServiceType {
+  // escrowService.ts — freelancer has NOT met hasFreelancerRights().
+  GIG_UNVERIFIED
+  // escrowService.ts — freelancer has met hasFreelancerRights().
+  GIG_VERIFIED
+  // mentorshipEscrowService.ts — flat rate, no verified/unverified split.
+  MENTORSHIP
+  // hrSupportEscrowService.ts — flat rate.
+  HR_SUPPORT
+  // productSaleService.ts — flat rate, only charged when the product has a
+  // real external creator (submittedById).
+  DIGITAL_PRODUCT
+}
+
 enum BillingProductType {
   // Frontend's /dashboard/ai-tools chat agents (see Agent model).
   // referenceId on the subscription below points at the specific Agent.id.

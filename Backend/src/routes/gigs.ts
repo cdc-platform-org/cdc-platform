@@ -5,7 +5,8 @@ import { postGigSchema, applyToGigSchema, submitGigWorkSchema } from '../schemas
 import { openDisputeSchema } from '../schemas/disputeSchemas';
 import { captureEscrow } from '../services/escrowService';
 import { approveGigWork, GigApprovalError } from '../services/gigApprovalService';
-import { hasReachedMonthlyPostLimit, MONTHLY_POST_LIMIT } from '../services/postingLimitService';
+import { hasReachedDailyPostLimit } from '../services/postingLimitService';
+import { canPostListing, VERIFICATION_REQUIRED_TO_POST_MESSAGE } from '../utils/freelancerVerification';
 import { z } from 'zod';
 
 const router = Router();
@@ -164,19 +165,22 @@ router.post('/:id/dispute', authenticate, requireApproved, loadGig, async (req: 
   res.status(201).json(dispute);
 });
 
-// Open to any authenticated, approved account — not just Client/SuperAdmin.
-// A freelancer/verified specialist posting their own gig is a legitimate
-// flow (e.g. subcontracting, or a Student who's also hiring help), and
-// there's no fraud/payout risk here the way there is on wallet.ts's payout
-// route — same "soft, not hard" posture as the /apply route's own comment
-// below. hasReachedMonthlyPostLimit still applies to every non-admin poster.
+// Open to any authenticated, approved account — not just Client/SuperAdmin —
+// but unlike the /apply route below, publishing a listing IS a hard gate on
+// canPostListing() (any approved verification track, or admin/SuperAdmin):
+// an unverified account gets VERIFICATION_REQUIRED_TO_POST_MESSAGE and the
+// Frontend's "ვერიფიკაცია აუცილებელია" modal instead of a created gig.
+// hasReachedDailyPostLimit still applies to every non-admin poster.
 router.post(
   '/',
   authenticate,
   requireApproved,
   async (req: Request, res: Response) => {
-    if (req.user!.role !== 'SuperAdmin' && (await hasReachedMonthlyPostLimit(req.user!.id))) {
-      return res.status(429).json({ message: `You've reached your monthly posting limit (${MONTHLY_POST_LIMIT}). Try again next month.` });
+    if (req.user!.role !== 'SuperAdmin' && (await hasReachedDailyPostLimit(req.user!.id))) {
+      return res.status(429).json({ message: 'You have reached your daily posting limit. Try again tomorrow.' });
+    }
+    if (!(await canPostListing(prisma, req.user!.id, req.user!.role))) {
+      return res.status(403).json({ message: VERIFICATION_REQUIRED_TO_POST_MESSAGE });
     }
     const result = postGigSchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ errors: result.error.errors });

@@ -4,7 +4,8 @@ import { authenticate, requireRole, requireApproved } from '../middleware/auth';
 import { postVacancySchema, updateVacancySchema, applyToVacancySchema, reviewVacancyApplicationSchema } from '../schemas/vacancySchemas';
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
 import { sendVacancyApplicationEmail } from '../services/emailService';
-import { hasReachedMonthlyPostLimit, MONTHLY_POST_LIMIT } from '../services/postingLimitService';
+import { hasReachedDailyPostLimit } from '../services/postingLimitService';
+import { canPostListing, VERIFICATION_REQUIRED_TO_POST_MESSAGE } from '../utils/freelancerVerification';
 const router = Router();
 // _count.courseEnrollments drives the "სტუდენტი" badge on listing cards —
 // see the hasPurchasedCourse comment on routes/reviews.ts's profile route.
@@ -86,15 +87,19 @@ router.get('/:id', async (req: Request, res: Response) => {
   res.json(vacancy);
 });
 // Open to any authenticated, approved account — see gigs.ts's identical
-// POST / comment for the reasoning. hasReachedMonthlyPostLimit still
-// applies to every non-admin poster.
+// POST / comment for the reasoning, including the canPostListing() hard
+// verification gate. hasReachedDailyPostLimit still applies to every
+// non-admin poster.
 router.post(
   '/',
   authenticate,
   requireApproved,
   async (req: Request, res: Response) => {
-    if (req.user!.role !== 'SuperAdmin' && (await hasReachedMonthlyPostLimit(req.user!.id))) {
-      return res.status(429).json({ message: `You've reached your monthly posting limit (${MONTHLY_POST_LIMIT}). Try again next month.` });
+    if (req.user!.role !== 'SuperAdmin' && (await hasReachedDailyPostLimit(req.user!.id))) {
+      return res.status(429).json({ message: 'You have reached your daily posting limit. Try again tomorrow.' });
+    }
+    if (!(await canPostListing(prisma, req.user!.id, req.user!.role))) {
+      return res.status(403).json({ message: VERIFICATION_REQUIRED_TO_POST_MESSAGE });
     }
     const result = postVacancySchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ errors: result.error.errors });

@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { DEFAULT_SESSION_MINUTES } from './mentorAvailabilityService';
+import { getCommissionRate } from './platformFeeScheduleService';
 
 // ============================================================
 // Mentorship payout, refactored from "instant credit on payment
@@ -10,14 +11,11 @@ import { DEFAULT_SESSION_MINUTES } from './mentorAvailabilityService';
 // cancellation-before-start or an explicit student dispute freezes the
 // auto-release clock and hands the booking to an admin instead.
 //
-// Same unified 20% total fee (10% bank + 10% CDC Center) / 80% net split
-// as every other revenue stream on the platform (escrowService.ts,
-// productSaleService.ts) — kept as its own constant for the same reason
-// those two are: independent revenue streams that happen to share a value
-// today, not a single coupled policy.
+// Commission rate (20% by default: 10% bank + 10% CDC Center) is read from
+// PlatformFeeSchedule's MENTORSHIP row (platformFeeScheduleService.ts),
+// admin-editable at /admin/commissions — independent from the other 3
+// revenue streams' rows even though they may share a value today.
 // ============================================================
-
-const PLATFORM_COMMISSION_RATE = 0.2;
 
 // How long after the session's scheduled END time a HELD_IN_ESCROW booking
 // with no dispute auto-releases to the mentor.
@@ -47,14 +45,15 @@ export async function captureMentorshipEscrow(params: { bookingId: string; gross
   if (!booking) return; // booking row should always exist by this point — nothing to capture against if not
   if (booking.commissionAmount != null) return; // already captured — no-op
 
-  const commissionAmount = Math.round(params.grossAmount * PLATFORM_COMMISSION_RATE);
+  const commissionRate = await getCommissionRate('MENTORSHIP');
+  const commissionAmount = Math.round(params.grossAmount * commissionRate);
   const netAmount = params.grossAmount - commissionAmount;
   const autoReleaseAt = new Date(booking.scheduledAt.getTime() + DEFAULT_SESSION_MINUTES * 60_000 + AUTO_RELEASE_GRACE_MS);
 
   await prisma.mentorshipBooking.update({
     where: { id: params.bookingId },
     data: {
-      commissionRate: PLATFORM_COMMISSION_RATE,
+      commissionRate,
       commissionAmount,
       netAmount,
       escrowStatus: 'HELD_IN_ESCROW',

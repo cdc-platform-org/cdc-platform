@@ -1,16 +1,15 @@
 import { prisma } from '../lib/prisma';
 import { hasFreelancerRights } from '../utils/freelancerVerification';
+import { getCommissionRate } from './platformFeeScheduleService';
 
-// Bank/payment-processing gateway slice is fixed regardless of
-// verification — only CDC's own platform-fee slice moves, as the
-// verification incentive: 15% for an unverified freelancer (25% total) vs
-// 10% for one with freelancer rights (hasFreelancerRights — course/skill-
-// exam graduate or admin-approved individual verification; see
-// utils/freelancerVerification.ts), 20% total. Same split shown in the
-// frontend Proposal Calculator (ProposalModal.tsx).
-const BANK_FEE_RATE = 0.1;
-const PLATFORM_FEE_RATE_UNVERIFIED = 0.15;
-const PLATFORM_FEE_RATE_VERIFIED = 0.1;
+// Total commission rate (bank/payment-gateway slice + CDC's own platform
+// slice, no longer split into separate constants) comes from
+// PlatformFeeSchedule — GIG_UNVERIFIED (25% by default) vs GIG_VERIFIED
+// (20% by default), the verification incentive: an unverified freelancer
+// pays more (hasFreelancerRights — course/skill-exam graduate or
+// admin-approved individual verification; see
+// utils/freelancerVerification.ts). Admin-editable at /admin/commissions.
+// Same split shown in the frontend Proposal Calculator (ProposalModal.tsx).
 
 export async function captureEscrow(params: {
   gigId: string;
@@ -30,7 +29,7 @@ export async function captureEscrow(params: {
     select: { isVerifiedGraduate: true, verificationLevel: true, verificationStatus: true },
   });
   const verified = !!freelancer && hasFreelancerRights(freelancer);
-  const commissionRate = BANK_FEE_RATE + (verified ? PLATFORM_FEE_RATE_VERIFIED : PLATFORM_FEE_RATE_UNVERIFIED);
+  const commissionRate = await getCommissionRate(verified ? 'GIG_VERIFIED' : 'GIG_UNVERIFIED');
   const commissionAmount = Math.round(params.grossAmount * commissionRate);
   const netAmount = params.grossAmount - commissionAmount;
   return prisma.gigTransaction.create({

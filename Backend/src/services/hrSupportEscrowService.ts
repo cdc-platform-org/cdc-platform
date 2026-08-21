@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma';
+import { getCommissionRate } from './platformFeeScheduleService';
 
 // ============================================================
 // HR Assistance payout — same held-escrow model as mentorship sessions
@@ -8,13 +9,13 @@ import { prisma } from '../lib/prisma';
 // request DELIVERED, whichever comes first. An employer-raised dispute
 // freezes the auto-release clock and hands the request to an admin.
 //
-// Split defaults to the platform's proposed 60% specialist / 40% platform
-// (a materially bigger platform share than the 20% marketplace/mentorship
-// commission — justified here by this being a higher-touch, time-intensive
-// human service rather than a passive digital sale/session).
+// Split defaults to 60% specialist / 40% platform (a materially bigger
+// platform share than the 20% marketplace/mentorship commission — justified
+// here by this being a higher-touch, time-intensive human service rather
+// than a passive digital sale/session), read from PlatformFeeSchedule's
+// HR_SUPPORT row (platformFeeScheduleService.ts), admin-editable at
+// /admin/commissions.
 // ============================================================
-
-const PLATFORM_COMMISSION_RATE = 0.4;
 
 // How long after the specialist marks a request DELIVERED a HELD_IN_ESCROW
 // request with no dispute auto-releases to them. Longer than mentorship's
@@ -42,13 +43,14 @@ export async function captureHRSupportEscrow(params: { requestId: string; grossA
   if (!request) return;
   if (request.commissionAmount != null) return; // already captured — no-op
 
-  const commissionAmount = Math.round(params.grossAmount * PLATFORM_COMMISSION_RATE);
+  const commissionRate = await getCommissionRate('HR_SUPPORT');
+  const commissionAmount = Math.round(params.grossAmount * commissionRate);
   const netAmount = params.grossAmount - commissionAmount;
 
   await prisma.hRSupportRequest.update({
     where: { id: params.requestId },
     data: {
-      commissionRate: PLATFORM_COMMISSION_RATE,
+      commissionRate,
       commissionAmount,
       netAmount,
       escrowStatus: 'HELD_IN_ESCROW',

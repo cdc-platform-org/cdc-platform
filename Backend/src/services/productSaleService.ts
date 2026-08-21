@@ -1,20 +1,21 @@
 import { prisma } from '../lib/prisma';
+import { getCommissionRate } from './platformFeeScheduleService';
 
 // ============================================================
 // Digital Store creator payout — mirrors escrowService.ts's gig-commission
 // pattern (compute platform commission + net share, atomically credit
-// earningsBalance, write an immutable WalletEntry) for product sales. Kept
-// as its own constant rather than importing escrow's rate — these are two
-// independent revenue streams that happen to share a value today, not the
-// same policy, and shouldn't be coupled.
+// earningsBalance, write an immutable WalletEntry) for product sales.
 //
-// 20% total service fee = 10% bank/payment-gateway (BOG) processing fee +
-// 10% CDC Center platform support fee — see legalContent.ts's Terms &
-// Conditions "Digital Store — Revenue Split" clause and the upload form's
-// commission banner, both of which must stay in sync with this constant.
+// Rate (20% by default: 10% bank/payment-gateway (BOG) processing fee + 10%
+// CDC Center platform support fee) is read from PlatformFeeSchedule's
+// DIGITAL_PRODUCT row (platformFeeScheduleService.ts), admin-editable at
+// /admin/commissions — independent from the other 3 revenue streams' rows.
+// NOTE: legalContent.ts's Terms & Conditions "Digital Store — Revenue
+// Split" clause and the upload form's commission banner still quote a
+// static 20% and are NOT wired to this table — they'll drift if an admin
+// changes this rate, same known gap as everywhere else static legal copy
+// quotes a number that's now admin-editable.
 // ============================================================
-
-const PLATFORM_COMMISSION_RATE = 0.2; // CDC keeps 20% (10% bank fee + 10% platform fee), creator gets 80%
 
 export interface ProductSaleResult {
   paymentStatus: string;
@@ -61,7 +62,7 @@ export async function completeProductPurchase(params: {
     let netAmount: number | null = null;
 
     if (product?.submittedById) {
-      commissionRate = PLATFORM_COMMISSION_RATE;
+      commissionRate = await getCommissionRate('DIGITAL_PRODUCT');
       commissionAmount = Math.round(params.amount * commissionRate);
       netAmount = params.amount - commissionAmount;
 

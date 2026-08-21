@@ -29,3 +29,28 @@ export function isIdentityVerified(user: {
 }): boolean {
   return hasFreelancerRights(user) || !!user.isVerified;
 }
+
+// Raw message matched by Frontend/src/utils/apiErrorMessages.ts's
+// classifyApiError -> shown as the "ვერიფიკაცია აუცილებელია" modal.
+export const VERIFICATION_REQUIRED_TO_POST_MESSAGE =
+  'Account verification is required before you can publish a listing.';
+
+// Gates gig/vacancy POST / — any approved verification track (individual,
+// graduate, or business) satisfies this, same breadth as isIdentityVerified,
+// since a vacancy poster is typically business-verified while a gig poster
+// is typically individual/graduate-verified and this check has to cover
+// both listing types with one rule. Admin-team members and SuperAdmin bypass
+// it entirely, same as the existing monthly-post-limit exemption on both
+// routes.
+export async function canPostListing(
+  prisma: { user: { findUnique: (args: any) => Promise<any> } },
+  userId: string,
+  role: string
+): Promise<boolean> {
+  if (role === 'SuperAdmin') return true;
+  const poster = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isVerifiedGraduate: true, verificationLevel: true, verificationStatus: true, isVerified: true, adminRole: true },
+  });
+  return !!poster && (isIdentityVerified(poster) || !!poster.adminRole);
+}
