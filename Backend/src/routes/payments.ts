@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import * as Sentry from '@sentry/node';
 import { prisma } from '../lib/prisma';
+import { Prisma } from '@prisma/client';
 import { authenticate, requireApproved } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { checkoutMentorshipSchema } from '../schemas/paymentSchemas';
@@ -245,6 +246,70 @@ router.post(
   }
 );
 
+// The availability check and the booking INSERT run inside one Serializable
+// transaction so two concurrent checkouts for the same mentor/time can't
+// both pass assertSlotAvailable's read and both create a booking — Postgres
+// aborts the loser with a serialization failure (P2034) instead of silently
+// double-booking the slot. One retry covers the ordinary case of losing
+// that race once; a second collision surfaces as SlotUnavailableError,
+// same as a "genuinely already booked" result, so callers only need to
+// handle one error type either way.
+async function createMentorshipCheckoutRecords(params: {
+  mentorId: string;
+  studentId: string;
+  scheduledAt: Date;
+  chargeAmount: number;
+  currency: string;
+  studentPhone: string;
+  consultationDescription?: string;
+}) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await prisma.$transaction(
+        async (tx) => {
+          await assertSlotAvailable(params.mentorId, params.scheduledAt, undefined, tx);
+          // No reusable-pending-order shortcut here (unlike course/product/
+          // gig-escrow checkouts) — a prior PENDING order may have been for
+          // a different scheduledAt, and reusing it would silently book
+          // the wrong time.
+          const bogPayment = await tx.bogPayment.create({
+            data: {
+              bogOrderId: `pending-${crypto.randomUUID()}`,
+              userId: params.studentId,
+              purpose: 'MENTORSHIP',
+              referenceId: params.mentorId,
+              amount: params.chargeAmount,
+              currency: params.currency,
+              status: 'PENDING',
+            },
+          });
+          const booking = await tx.mentorshipBooking.create({
+            data: {
+              bogPaymentId: bogPayment.id,
+              mentorId: params.mentorId,
+              studentId: params.studentId,
+              scheduledAt: params.scheduledAt,
+              studentPhone: params.studentPhone,
+              consultationDescription: params.consultationDescription || null,
+            },
+          });
+          return { bogPayment, booking };
+        },
+        { isolationLevel: 'Serializable' }
+      );
+    } catch (err) {
+      if (err instanceof SlotUnavailableError) throw err;
+      const isSerializationConflict = err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2034';
+      if (isSerializationConflict && attempt === 0) continue;
+      if (isSerializationConflict) {
+        throw new SlotUnavailableError('This time slot was just booked by someone else. Please pick another.');
+      }
+      throw err;
+    }
+  }
+  throw new SlotUnavailableError('This time slot was just booked by someone else. Please pick another.');
+}
+
 // ============================================================
 // CHECKOUT — MENTORSHIP SESSION
 // Creates a MentorshipBooking alongside the BogPayment so the chosen
@@ -276,37 +341,22 @@ router.post(
     const currency = 'GEL';
 
     const scheduledAt = new Date(result.data.scheduledAt);
+
+    let bogPayment, booking;
     try {
-      await assertSlotAvailable(mentor.id, scheduledAt);
+      ({ bogPayment, booking } = await createMentorshipCheckoutRecords({
+        mentorId: mentor.id,
+        studentId: req.user!.id,
+        scheduledAt,
+        chargeAmount,
+        currency,
+        studentPhone: result.data.studentPhone,
+        consultationDescription: result.data.consultationDescription,
+      }));
     } catch (err) {
       if (err instanceof SlotUnavailableError) return res.status(400).json({ message: err.message });
       throw err;
     }
-
-    // No reusable-pending-order shortcut here (unlike course/product/gig-escrow
-    // above) — a prior PENDING order may have been for a different
-    // scheduledAt, and reusing it would silently book the wrong time.
-    const bogPayment = await prisma.bogPayment.create({
-      data: {
-        bogOrderId: `pending-${crypto.randomUUID()}`,
-        userId: req.user!.id,
-        purpose: 'MENTORSHIP',
-        referenceId: mentor.id,
-        amount: chargeAmount,
-        currency,
-        status: 'PENDING',
-      },
-    });
-    const booking = await prisma.mentorshipBooking.create({
-      data: {
-        bogPaymentId: bogPayment.id,
-        mentorId: mentor.id,
-        studentId: req.user!.id,
-        scheduledAt,
-        studentPhone: result.data.studentPhone,
-        consultationDescription: result.data.consultationDescription || null,
-      },
-    });
     // Logged at checkout time, same as the booking row itself — a
     // never-completed-payment booking still shows a real "created" event,
     // matching how the row exists in the DB regardless of payment outcome.
@@ -553,10 +603,24 @@ export async function applyBogPaymentResult(
   }
 
   if (statusKey !== 'completed') {
-    await prisma.bogPayment.update({
+    const failedPayment = await prisma.bogPayment.update({
       where: { id: bogPaymentId },
       data: { status: 'FAILED', rawCallback: rawCallback as any },
     });
+    // A mentorship booking is created up-front at checkout (before payment
+    // completes) so the chosen slot survives the BOG redirect round-trip —
+    // but that means a declined card / abandoned checkout otherwise leaves
+    // a SCHEDULED booking with no payment behind it, permanently blocking
+    // the slot for everyone else (assertSlotAvailable/generateMentorSlots
+    // only ever check status != CANCELLED, never payment status). Cancel it
+    // here so the slot frees up the moment BOG reports the payment as
+    // terminally failed, not just when it happens to succeed.
+    if (failedPayment.purpose === 'MENTORSHIP') {
+      await prisma.mentorshipBooking.updateMany({
+        where: { bogPaymentId: failedPayment.id, status: 'SCHEDULED' },
+        data: { status: 'CANCELLED' },
+      });
+    }
     return;
   }
 

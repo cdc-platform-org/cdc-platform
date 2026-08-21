@@ -1,4 +1,13 @@
 import { prisma } from '../lib/prisma';
+import { Prisma } from '@prisma/client';
+
+// Accepted by assertSlotAvailable so a caller can run it inside its own
+// $transaction (see routes/payments.ts and stripePayments.ts's mentorship
+// checkout) — every query inside then sees the same transactional
+// snapshot as the booking INSERT that follows it, closing the
+// check-then-create race two concurrent checkouts for the same slot would
+// otherwise hit (both read "available", both create a booking).
+type DbClient = typeof prisma | Prisma.TransactionClient;
 
 // Mentor availability is expressed in the platform's fixed reference
 // timezone (Asia/Tbilisi, CDC's actual operating timezone) rather than each
@@ -156,6 +165,42 @@ export async function generateMentorSlots(
   });
 }
 
+// How long a checkout can sit unpaid before its booking is treated as
+// abandoned and the slot freed back up. Covers the gap the explicit
+// failure-callback handlers (payments.ts's applyBogPaymentResult,
+// stripePayments.ts's checkout.session.expired branch) can't: a user who
+// just closes the tab mid-checkout, for whom BOG/Stripe may never send any
+// callback at all — nothing else in this codebase ever revisits a
+// still-PENDING payment on its own.
+const ABANDONED_CHECKOUT_MS = 60 * 60 * 1000; // 1 hour
+
+// Cancels SCHEDULED bookings whose linked payment has sat PENDING past the
+// abandonment window — see ABANDONED_CHECKOUT_MS. Only touches bookings
+// with an actual payment reference (bogPaymentId/stripePaymentId); a
+// booking with neither (if one is ever created some other way, e.g. a
+// future free/admin-granted session) is left alone since there's no
+// payment to have failed.
+export async function cancelAbandonedMentorshipBookings(): Promise<{ cancelledIds: string[] }> {
+  const cutoff = new Date(Date.now() - ABANDONED_CHECKOUT_MS);
+  const candidates = await prisma.mentorshipBooking.findMany({
+    where: {
+      status: 'SCHEDULED',
+      createdAt: { lte: cutoff },
+      OR: [{ bogPaymentId: { not: null } }, { stripePaymentId: { not: null } }],
+    },
+    include: { bogPayment: { select: { status: true } }, stripePayment: { select: { status: true } } },
+  });
+  const abandonedIds = candidates
+    .filter((b) => b.bogPayment?.status === 'PENDING' || b.stripePayment?.status === 'PENDING')
+    .map((b) => b.id);
+  if (abandonedIds.length === 0) return { cancelledIds: [] };
+  await prisma.mentorshipBooking.updateMany({
+    where: { id: { in: abandonedIds }, status: 'SCHEDULED' },
+    data: { status: 'CANCELLED' },
+  });
+  return { cancelledIds: abandonedIds };
+}
+
 export class SlotUnavailableError extends Error {
   constructor(message: string) {
     super(message);
@@ -169,20 +214,25 @@ export class SlotUnavailableError extends Error {
 // MentorshipBooking within DEFAULT_SESSION_MINUTES of it). Never trusts a
 // client-computed "this slot is free" — always re-checked here at the point
 // of charge, same posture as promo-code re-validation in payments.ts.
-export async function assertSlotAvailable(mentorId: string, scheduledAt: Date, durationMinutes = DEFAULT_SESSION_MINUTES): Promise<void> {
+export async function assertSlotAvailable(
+  mentorId: string,
+  scheduledAt: Date,
+  durationMinutes = DEFAULT_SESSION_MINUTES,
+  db: DbClient = prisma
+): Promise<void> {
   if (scheduledAt.getTime() < Date.now()) {
     throw new SlotUnavailableError('The selected time is in the past.');
   }
 
   const { dayOfWeek, minutes } = tbilisiDayOfWeekAndMinutes(scheduledAt);
-  const rules = await prisma.mentorAvailabilityRule.findMany({ where: { mentorId, dayOfWeek } });
+  const rules = await db.mentorAvailabilityRule.findMany({ where: { mentorId, dayOfWeek } });
   const fitsARule = rules.some((rule) => minutes >= rule.startMinute && minutes + durationMinutes <= rule.endMinute);
   if (!fitsARule) {
     throw new SlotUnavailableError('This mentor is not available at the selected time.');
   }
 
   const dateKey = tbilisiDateKey(scheduledAt);
-  const exceptions = await prisma.mentorAvailabilityException.findMany({
+  const exceptions = await db.mentorAvailabilityException.findMany({
     where: { mentorId, date: { gte: new Date(`${dateKey}T00:00:00Z`), lt: new Date(`${dateKey}T23:59:59.999Z`) } },
   });
   const { fullDayDates, partialByDate } = splitExceptions(exceptions);
@@ -196,7 +246,7 @@ export async function assertSlotAvailable(mentorId: string, scheduledAt: Date, d
 
   const windowStart = new Date(scheduledAt.getTime() - durationMinutes * 60_000);
   const windowEnd = new Date(scheduledAt.getTime() + durationMinutes * 60_000);
-  const conflict = await prisma.mentorshipBooking.findFirst({
+  const conflict = await db.mentorshipBooking.findFirst({
     where: { mentorId, status: { not: 'CANCELLED' }, scheduledAt: { gt: windowStart, lt: windowEnd } },
   });
   if (conflict) {

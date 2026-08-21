@@ -16,6 +16,15 @@ export async function approveGigWork(gigId: string) {
   if (gig.status !== 'submitted') {
     throw new GigApprovalError('This gig has no submitted work awaiting approval.');
   }
+  // Checked here (not just in the cron's pre-filter query) so the
+  // client-triggered POST /gigs/:id/approve route gets the same
+  // protection — approving a gig releases escrow to the freelancer, which
+  // must never happen while a dispute the client themselves may have
+  // raised is still unresolved.
+  const openDispute = await prisma.dispute.findFirst({ where: { gigId, status: 'OPEN' } });
+  if (openDispute) {
+    throw new GigApprovalError('This gig has an open dispute — resolve it before approving.');
+  }
 
   const transaction = await releaseEscrow(gigId);
   const updatedGig = await prisma.gig.findUnique({
@@ -39,8 +48,15 @@ export interface AutoApproveResult {
 // release escrow, same as if the client had clicked approve themselves.
 export async function autoApproveOverdueGigs(): Promise<AutoApproveResult> {
   const cutoff = new Date(Date.now() - AUTO_APPROVE_AFTER_MS);
+  // Opening a dispute (POST /gigs/:id/dispute) never moves gig.status off
+  // 'submitted' — it only inserts a Dispute row — so without this exclusion
+  // the cron would happily auto-approve (and release escrow to the
+  // freelancer) a gig the client has explicitly flagged as bad/non-
+  // delivered work, out from under an unresolved OPEN dispute. A gig can
+  // have at most one live dispute in practice, but `none` is correct even
+  // if that ever changes.
   const overdueGigs = await prisma.gig.findMany({
-    where: { status: 'submitted', submittedAt: { lte: cutoff } },
+    where: { status: 'submitted', submittedAt: { lte: cutoff }, disputes: { none: { status: 'OPEN' } } },
     select: { id: true },
   });
 

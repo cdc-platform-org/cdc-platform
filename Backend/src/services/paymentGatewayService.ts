@@ -1,5 +1,6 @@
 import { PaymentProvider } from '@prisma/client';
 import { getOrCreateStripeCustomerId, verifyStripeCardSetup, StripePaymentMethodInvalidError } from './stripePaymentService';
+import { STRIPE_SECRET_KEY } from '../utils/env';
 
 // ============================================================
 // Payment gateway abstraction for card-on-file billing (trial card binding,
@@ -92,6 +93,18 @@ export async function bindCard(
       }
       throw err;
     }
+  }
+
+  // The STUB fallback below is for local/dev use before a real gateway is
+  // wired up — it must NEVER be reachable once Stripe actually is
+  // configured, or any authenticated user could POST an arbitrary
+  // non-"pm_" token straight to /billing/payment-methods and get back an
+  // instantly-"verified: true" card with zero real verification, no
+  // network call, and a client-supplied brand/last4 — satisfying
+  // startTrialSubscription's "verified payment method required" gate with
+  // a card that was never actually checked against anything.
+  if (STRIPE_SECRET_KEY) {
+    throw new PaymentGatewayError('This does not look like a valid card token. Please try adding the card again.');
   }
 
   return {

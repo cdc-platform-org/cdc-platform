@@ -319,13 +319,18 @@ export async function setAutoRenew(businessId: string, subscriptionId: string, a
 export async function cancelSubscription(businessId: string, subscriptionId: string, reason?: string) {
   const subscription = await prisma.billingSubscription.findUnique({ where: { id: subscriptionId } });
   if (!subscription || subscription.businessId !== businessId) throw new SubscriptionNotFoundError();
-  // Already canceled — return as-is rather than re-firing the
-  // notification/email and re-touching aiSubscriptionActive on a repeat
-  // call (the frontend hides the cancel button once CANCELED, but the API
-  // itself should still be idempotent).
   if (subscription.status === 'CANCELED') return subscription;
-  const updated = await prisma.billingSubscription.update({
-    where: { id: subscriptionId },
+
+  // Atomic claim (same pattern as escrowService's releaseEscrow/
+  // refundEscrow) — the plain read-then-write above has a gap two
+  // near-simultaneous cancel requests (e.g. a double-click, or this
+  // racing removePaymentMethod's own instant-cancel) could both pass,
+  // both firing revokeAccessAndNotify: a duplicate notification/email and
+  // a redundant aiSubscriptionActive write. This `updateMany` only
+  // actually flips a row still not-yet-CANCELED; the loser sees count 0
+  // and returns the already-canceled row without re-notifying.
+  const claim = await prisma.billingSubscription.updateMany({
+    where: { id: subscriptionId, status: { not: 'CANCELED' } },
     data: {
       status: 'CANCELED',
       autoRenew: false,
@@ -333,6 +338,8 @@ export async function cancelSubscription(businessId: string, subscriptionId: str
       cancellationReason: reason ?? null,
     },
   });
+  const updated = await prisma.billingSubscription.findUniqueOrThrow({ where: { id: subscriptionId } });
+  if (claim.count === 0) return updated;
   await revokeAccessAndNotify(updated, 'USER_CANCELED');
   return updated;
 }

@@ -86,6 +86,7 @@ import { autoApproveOverdueGigs } from './services/gigApprovalService';
 import { cleanupExpiredDeletedAccounts } from './services/accountCleanupService';
 import { pauseExpiredTrialAgents } from './services/agentBillingService';
 import { rolloverActiveBillingPeriods, sweepTrialEndingWarnings, sweepRenewalReminders } from './services/billingService';
+import { cancelAbandonedMentorshipBookings } from './services/mentorAvailabilityService';
 
 // ============================================================
 // PROCESS-LEVEL SAFETY NET
@@ -414,3 +415,18 @@ setInterval(() => {
     })
     .catch((err) => console.error('[billing-renewal-reminder] run failed:', err));
 }, BILLING_REMINDER_POLL_INTERVAL_MS);
+
+// Same in-process-fallback caveat as above — production should prefer a
+// single external scheduler hitting POST /api/cron/cancel-abandoned-
+// mentorship-bookings. Runs more often than the hourly sweeps above (every
+// 15 minutes) since a blocked mentor slot is directly user-facing —
+// ABANDONED_CHECKOUT_MS in mentorAvailabilityService.ts is the actual
+// 1-hour abandonment threshold this polls against, not this interval.
+const ABANDONED_MENTORSHIP_POLL_INTERVAL_MS = 15 * 60 * 1000;
+setInterval(() => {
+  cancelAbandonedMentorshipBookings()
+    .then(({ cancelledIds }) => {
+      if (cancelledIds.length > 0) console.log(`[mentorship-abandoned-sweep] cancelled=${cancelledIds.length}`);
+    })
+    .catch((err) => console.error('[mentorship-abandoned-sweep] run failed:', err));
+}, ABANDONED_MENTORSHIP_POLL_INTERVAL_MS);

@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import * as Sentry from '@sentry/node';
 import Stripe from 'stripe';
 import { prisma } from '../lib/prisma';
+import { Prisma } from '@prisma/client';
 import { authenticate, requireApproved } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { checkoutMentorshipSchema } from '../schemas/paymentSchemas';
@@ -188,6 +189,63 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
   res.status(201).json({ paymentId: updated.id, redirectUrl: session.checkoutUrl });
 });
 
+// Same Serializable-transaction-with-one-retry shape as payments.ts's
+// createMentorshipCheckoutRecords, and for the same reason — the
+// availability check and the booking INSERT must be atomic against each
+// other, or two concurrent Stripe checkouts for the same mentor/time can
+// both pass assertSlotAvailable and both create a booking.
+async function createMentorshipCheckoutRecordsStripe(params: {
+  mentorId: string;
+  studentId: string;
+  scheduledAt: Date;
+  amount: number;
+  currency: string;
+  studentPhone: string;
+  consultationDescription?: string;
+}) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await prisma.$transaction(
+        async (tx) => {
+          await assertSlotAvailable(params.mentorId, params.scheduledAt, undefined, tx);
+          const stripePayment = await tx.stripePayment.create({
+            data: {
+              stripeSessionId: `pending-${crypto.randomUUID()}`,
+              userId: params.studentId,
+              purpose: 'MENTORSHIP',
+              referenceId: params.mentorId,
+              amount: params.amount,
+              currency: params.currency,
+              status: 'PENDING',
+            },
+          });
+          const booking = await tx.mentorshipBooking.create({
+            data: {
+              stripePaymentId: stripePayment.id,
+              mentorId: params.mentorId,
+              studentId: params.studentId,
+              scheduledAt: params.scheduledAt,
+              studentPhone: params.studentPhone,
+              consultationDescription: params.consultationDescription || null,
+            },
+          });
+          return { stripePayment, booking };
+        },
+        { isolationLevel: 'Serializable' }
+      );
+    } catch (err) {
+      if (err instanceof SlotUnavailableError) throw err;
+      const isSerializationConflict = err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2034';
+      if (isSerializationConflict && attempt === 0) continue;
+      if (isSerializationConflict) {
+        throw new SlotUnavailableError('This time slot was just booked by someone else. Please pick another.');
+      }
+      throw err;
+    }
+  }
+  throw new SlotUnavailableError('This time slot was just booked by someone else. Please pick another.');
+}
+
 // ============================================================
 // CHECKOUT — MENTORSHIP SESSION
 // ============================================================
@@ -201,36 +259,24 @@ router.post('/checkout/mentorship', checkoutRateLimit, authenticate, requireAppr
   }
 
   const scheduledAt = new Date(result.data.scheduledAt);
+  const currency = checkoutCurrency(req);
+  const amount = convertGelToStripeMinorUnits(mentor.mentorHourlyRate, currency);
+
+  let stripePayment, booking;
   try {
-    await assertSlotAvailable(mentor.id, scheduledAt);
+    ({ stripePayment, booking } = await createMentorshipCheckoutRecordsStripe({
+      mentorId: mentor.id,
+      studentId: req.user!.id,
+      scheduledAt,
+      amount,
+      currency,
+      studentPhone: result.data.studentPhone,
+      consultationDescription: result.data.consultationDescription,
+    }));
   } catch (err) {
     if (err instanceof SlotUnavailableError) return res.status(400).json({ message: err.message });
     throw err;
   }
-
-  const currency = checkoutCurrency(req);
-  const amount = convertGelToStripeMinorUnits(mentor.mentorHourlyRate, currency);
-  const stripePayment = await prisma.stripePayment.create({
-    data: {
-      stripeSessionId: `pending-${crypto.randomUUID()}`,
-      userId: req.user!.id,
-      purpose: 'MENTORSHIP',
-      referenceId: mentor.id,
-      amount,
-      currency,
-      status: 'PENDING',
-    },
-  });
-  const booking = await prisma.mentorshipBooking.create({
-    data: {
-      stripePaymentId: stripePayment.id,
-      mentorId: mentor.id,
-      studentId: req.user!.id,
-      scheduledAt,
-      studentPhone: result.data.studentPhone,
-      consultationDescription: result.data.consultationDescription || null,
-    },
-  });
   await prisma.mentorBookingHistory.create({
     data: { bookingId: booking.id, action: 'CREATED', performedById: req.user!.id, newScheduledAt: scheduledAt },
   });
@@ -423,6 +469,16 @@ router.post('/webhook', async (req: Request, res: Response) => {
         where: { id: stripePayment.id },
         data: { status: 'FAILED', rawEvent: event as any },
       });
+      // Same "free the slot back up" fix as the BOG failure path in
+      // payments.ts's applyBogPaymentResult — an abandoned Stripe Checkout
+      // session must not leave a SCHEDULED-but-unpaid booking permanently
+      // blocking the mentor's slot.
+      if (stripePayment.purpose === 'MENTORSHIP') {
+        await prisma.mentorshipBooking.updateMany({
+          where: { stripePaymentId: stripePayment.id, status: 'SCHEDULED' },
+          data: { status: 'CANCELLED' },
+        });
+      }
     } else {
       await applyStripePaymentResult(stripePayment.id, session, event);
     }

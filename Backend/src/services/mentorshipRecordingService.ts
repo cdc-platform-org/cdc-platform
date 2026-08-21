@@ -24,11 +24,24 @@ export async function attachMentorshipRecording(bookingId: string, recordingUrl:
     throw new MentorshipRecordingError('Booking not found.');
   }
 
-  const isFirstAttach = !booking.recordingUploadedAt;
-  const updated = await prisma.mentorshipBooking.update({
-    where: { id: bookingId },
-    data: { recordingUrl, recordingUploadedAt: booking.recordingUploadedAt ?? new Date() },
+  // Atomic claim on the "is this the first attach" check — the previous
+  // plain findUnique-then-update had a gap two near-simultaneous PATCH
+  // calls (e.g. the mentor and an admin both attaching a link within
+  // moments of each other, or a client retry) could both read
+  // recordingUploadedAt: null and both send the "recording ready" email.
+  // Only the request whose updateMany actually flips a still-null row
+  // (count 1) is the genuine first attach; the loser still gets its own
+  // recordingUrl written via the unconditional update just below, matching
+  // the existing "editing an already-set link doesn't re-notify" behavior,
+  // it just also doesn't send a duplicate notification for a race it lost.
+  const claim = await prisma.mentorshipBooking.updateMany({
+    where: { id: bookingId, recordingUploadedAt: null },
+    data: { recordingUrl, recordingUploadedAt: new Date() },
   });
+  const isFirstAttach = claim.count > 0;
+  const updated = isFirstAttach
+    ? await prisma.mentorshipBooking.findUniqueOrThrow({ where: { id: bookingId } })
+    : await prisma.mentorshipBooking.update({ where: { id: bookingId }, data: { recordingUrl } });
 
   if (isFirstAttach) {
     try {

@@ -5,6 +5,7 @@ import { autoApproveOverdueGigs } from '../services/gigApprovalService';
 import { cleanupExpiredDeletedAccounts } from '../services/accountCleanupService';
 import { pauseExpiredTrialAgents } from '../services/agentBillingService';
 import { sweepExpiredTrials, rolloverActiveBillingPeriods, sweepTrialEndingWarnings, sweepRenewalReminders } from '../services/billingService';
+import { cancelAbandonedMentorshipBookings } from '../services/mentorAvailabilityService';
 import { generateAndSaveBlogDraft, BlogAgentError } from '../services/blogAgentService';
 import { AiAgentError } from '../services/aiAgentService';
 import { scanAllActiveSources } from '../services/grantScoutService';
@@ -120,6 +121,13 @@ router.post('/scan-grant-opportunities', requireCronSecret, async (_req: Request
     message: `Scanned ${result.sourcesScanned} source(s) (${result.sourcesFailed} failed): ${result.newOpportunities} new opportunit(ies), ${result.newlyEligible} eligible.`,
     ...result,
   });
+});
+
+// Frees mentor slots blocked by an abandoned/never-completed checkout —
+// see mentorAvailabilityService.cancelAbandonedMentorshipBookings.
+router.post('/cancel-abandoned-mentorship-bookings', requireCronSecret, async (_req: Request, res: Response) => {
+  const result = await cancelAbandonedMentorshipBookings();
+  res.json({ message: `${result.cancelledIds.length} abandoned booking(s) cancelled.`, ...result });
 });
 
 export default router;

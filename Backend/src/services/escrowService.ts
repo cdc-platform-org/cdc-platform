@@ -57,14 +57,24 @@ export async function captureEscrow(params: {
 export async function refundEscrow(gigId: string) {
   const transaction = await prisma.gigTransaction.findUnique({ where: { gigId } });
   if (!transaction) throw new Error('No escrow transaction found for this gig.');
-  if (transaction.status !== 'HELD_IN_ESCROW') {
+
+  // Atomic claim, same pattern and same reason as releaseEscrow's own claim
+  // below — without it, this racing releaseEscrow (e.g. the hourly
+  // auto-approve cron firing around the same time an admin resolves a
+  // dispute) could both pass their initial status check, then both commit:
+  // the freelancer already credited by releaseEscrow, while this call's
+  // unconditional update still overwrites the transaction to REFUNDED and
+  // the gig to 'cancelled' — an accounting mismatch with no way to recover
+  // which one "actually" happened.
+  const claim = await prisma.gigTransaction.updateMany({
+    where: { id: transaction.id, status: 'HELD_IN_ESCROW' },
+    data: { status: 'REFUNDED' },
+  });
+  if (claim.count === 0) {
     throw new Error('Funds are not currently held in escrow.');
   }
-  const [updatedTransaction] = await prisma.$transaction([
-    prisma.gigTransaction.update({ where: { id: transaction.id }, data: { status: 'REFUNDED' } }),
-    prisma.gig.update({ where: { id: gigId }, data: { status: 'cancelled' } }),
-  ]);
-  return updatedTransaction;
+  await prisma.gig.update({ where: { id: gigId }, data: { status: 'cancelled' } });
+  return prisma.gigTransaction.findUniqueOrThrow({ where: { id: transaction.id } });
 }
 
 export async function releaseEscrow(gigId: string) {
