@@ -574,6 +574,11 @@ model Gig {
   currency              String                  @db.Char(3)
   skillsRequired        String[]
   category              JobCategory?
+  // Free-typed category when category is 'other' — the JobCategory enum
+  // itself has no room for arbitrary text, so this is what actually gets
+  // displayed in place of the generic "Other" label wherever this listing's
+  // category is shown (see utils/jobCategory.ts's jobCategoryLabel).
+  customCategory        String?
   deadline              DateTime?
   // See GigOfferType. FREELANCER_OFFER postings use portfolioLinks +
   // deliveryDays instead of deadline.
@@ -712,6 +717,8 @@ model Vacancy {
   location            String
   skillsRequired      String[]
   category            JobCategory?
+  // See the identical field's comment on Gig.
+  customCategory      String?
   salaryMin           Int?
   salaryMax           Int?
   currency            String?                 @db.Char(3)

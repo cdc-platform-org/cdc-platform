@@ -55,7 +55,7 @@ export default function VacancyCard({ vacancy, onApply, canApply, isOwnerOrAdmin
       <div className="relative flex flex-wrap gap-1.5 mt-3">
         {vacancy.category && (
           <span className="text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-500/10 border border-purple-200/60 dark:border-purple-500/20 px-2 py-0.5 rounded-full">
-            {jobCategoryLabel(vacancy.category, lang)}
+            {jobCategoryLabel(vacancy.category, lang, vacancy.customCategory)}
           </span>
         )}
         {vacancy.skillsRequired.map((skill) => (

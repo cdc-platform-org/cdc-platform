@@ -76,7 +76,7 @@ export default function GigCard({
       <div className="relative flex flex-wrap gap-1.5 mt-3">
         {gig.category && (
           <span className="text-xs font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-200/60 dark:border-cyan-500/20 px-2 py-0.5 rounded-full">
-            {jobCategoryLabel(gig.category, lang)}
+            {jobCategoryLabel(gig.category, lang, gig.customCategory)}
           </span>
         )}
         {gig.skillsRequired.map((skill) => (

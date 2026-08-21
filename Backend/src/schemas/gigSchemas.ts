@@ -20,6 +20,9 @@ export const postGigSchema = z
     skillsRequired: z.array(z.string().trim().min(1)).min(1, 'At least one skill is required.'),
     // Required at creation — see the equivalent note on postVacancySchema.
     category: jobCategorySchema,
+    // Free-typed category when category === 'other' — see the field's
+    // schema comment on the Gig model.
+    customCategory: z.string().trim().max(80).nullable().optional(),
     offerType: z.enum(['CLIENT_REQUEST', 'FREELANCER_OFFER']).optional().default('CLIENT_REQUEST'),
     deadline: z.string().datetime().nullable().optional(),
     portfolioLinks: z.array(z.string().trim().url('Enter a valid URL.')).max(10).optional().default([]),
@@ -36,6 +39,10 @@ export const postGigSchema = z
   .refine((data) => data.offerType !== 'FREELANCER_OFFER' || !!data.deliveryDays, {
     message: 'Delivery time is required.',
     path: ['deliveryDays'],
+  })
+  .refine((data) => data.category !== 'other' || !!data.customCategory?.trim(), {
+    message: 'Please specify the custom category.',
+    path: ['customCategory'],
   });
 
 export const applyToGigSchema = z.object({

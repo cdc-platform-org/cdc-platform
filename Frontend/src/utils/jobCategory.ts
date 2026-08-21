@@ -20,7 +20,15 @@ export const JOB_CATEGORY_LABEL: Record<JobCategory, Record<SupportedLocale, str
   ])
 ) as Record<JobCategory, Record<SupportedLocale, string>>;
 
-export function jobCategoryLabel(category: JobCategory | null | undefined, lang: SupportedLocale): string | null {
+// customCategory (free-typed text, only ever set when category === 'other')
+// takes priority over the generic "Other" label wherever a listing's
+// category is displayed — see the field's comment on Vacancy/Gig.
+export function jobCategoryLabel(
+  category: JobCategory | null | undefined,
+  lang: SupportedLocale,
+  customCategory?: string | null
+): string | null {
   if (!category) return null;
+  if (category === 'other' && customCategory) return customCategory;
   return JOB_CATEGORY_LABEL[category][lang];
 }

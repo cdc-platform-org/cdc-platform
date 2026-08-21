@@ -41,6 +41,7 @@ const emptyVacancyForm = {
   location: '',
   skillsRequired: '',
   category: '' as JobCategory | '',
+  customCategory: '',
   salaryMin: '',
   salaryMax: '',
   currency: 'GEL',
@@ -55,6 +56,7 @@ const emptyGigForm = {
   currency: 'GEL',
   skillsRequired: '',
   category: '' as JobCategory | '',
+  customCategory: '',
   deadline: '',
   // FREELANCER_OFFER only:
   portfolioLinks: '',
@@ -82,6 +84,7 @@ const EN_STRINGS = {
   skillsPlaceholder: 'React, TypeScript, Figma',
   category: 'Category',
   categoryEmpty: 'Select a category…',
+  customCategoryPlaceholder: 'Specify your category…',
   employmentType: 'Employment type',
   employmentFullTime: 'Full-time',
   employmentPartTime: 'Part-time',
@@ -116,6 +119,7 @@ const EN_STRINGS = {
   errLocation: 'Location is required.',
   errSkills: 'Add at least one skill.',
   errCategory: 'Please choose a category.',
+  errCustomCategory: 'Please specify your category.',
   errSalaryMin: 'Minimum salary is required.',
   errSalaryMaxRequired: 'Maximum salary is required.',
   errSalaryMax: 'Maximum salary must be greater than or equal to minimum salary.',
@@ -148,6 +152,7 @@ const dict = {
     skillsPlaceholder: 'React, TypeScript, Figma',
     category: 'კატეგორია',
     categoryEmpty: 'აირჩიეთ კატეგორია…',
+    customCategoryPlaceholder: 'მიუთითეთ კატეგორია...',
     employmentType: 'დასაქმების ტიპი',
     employmentFullTime: 'სრული განაკვეთი',
     employmentPartTime: 'ნახევარი განაკვეთი',
@@ -182,6 +187,7 @@ const dict = {
     errLocation: 'მდებარეობის მითითება სავალდებულოა.',
     errSkills: 'დაამატეთ მინიმუმ ერთი უნარი.',
     errCategory: 'გთხოვთ აირჩიოთ კატეგორია.',
+    errCustomCategory: 'გთხოვთ მიუთითოთ კატეგორია.',
     errSalaryMin: 'მინიმალური ხელფასის მითითება სავალდებულოა.',
     errSalaryMaxRequired: 'მაქსიმალური ხელფასის მითითება სავალდებულოა.',
     errSalaryMax: 'მაქსიმალური ხელფასი უნდა აღემატებოდეს ან უდრიდეს მინიმალურს.',
@@ -253,6 +259,7 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
     if (!vacancyForm.location.trim()) e.location = t.errLocation;
     if (parseSkills(vacancyForm.skillsRequired).length === 0) e.skillsRequired = t.errSkills;
     if (!vacancyForm.category) e.category = t.errCategory;
+    if (vacancyForm.category === 'other' && !vacancyForm.customCategory.trim()) e.customCategory = t.errCustomCategory;
     if (!vacancyForm.salaryMin) {
       e.salaryMin = t.errSalaryMin;
     }
@@ -277,6 +284,7 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
     }
     if (parseSkills(gigForm.skillsRequired).length === 0) e.skillsRequired = t.errSkills;
     if (!gigForm.category) e.category = t.errCategory;
+    if (gigForm.category === 'other' && !gigForm.customCategory.trim()) e.customCategory = t.errCustomCategory;
 
     if (postType === 'gig_request') {
       if (!gigForm.deadline) e.deadline = t.errDeadline;
@@ -321,6 +329,7 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
           location: vacancyForm.location.trim(),
           skillsRequired: parseSkills(vacancyForm.skillsRequired),
           category: vacancyForm.category || null,
+          customCategory: vacancyForm.category === 'other' ? vacancyForm.customCategory.trim() : null,
           salaryMin: vacancyForm.salaryMin ? Math.round(parseFloat(vacancyForm.salaryMin) * 100) : null,
           salaryMax: vacancyForm.salaryMax ? Math.round(parseFloat(vacancyForm.salaryMax) * 100) : null,
           currency: vacancyForm.salaryMin || vacancyForm.salaryMax ? vacancyForm.currency : null,
@@ -337,6 +346,7 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
           currency: gigForm.currency,
           skillsRequired: parseSkills(gigForm.skillsRequired),
           category: gigForm.category || null,
+          customCategory: gigForm.category === 'other' ? gigForm.customCategory.trim() : null,
           offerType,
           deadline: postType === 'gig_request' ? toIsoDatetime(gigForm.deadline) : null,
           portfolioLinks: postType === 'gig_offer' ? parsePortfolioLinks(gigForm.portfolioLinks) : [],
@@ -485,6 +495,22 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
             ))}
           </select>
           {errors.category && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.category}</p>}
+          {(postType === 'vacancy' ? vacancyForm.category : gigForm.category) === 'other' && (
+            <>
+              <input
+                type="text"
+                value={postType === 'vacancy' ? vacancyForm.customCategory : gigForm.customCategory}
+                onChange={(e) =>
+                  postType === 'vacancy'
+                    ? setVacancyForm({ ...vacancyForm, customCategory: e.target.value })
+                    : setGigForm({ ...gigForm, customCategory: e.target.value })
+                }
+                placeholder={t.customCategoryPlaceholder}
+                className={`${inputClass(!!errors.customCategory)} mt-2`}
+              />
+              {errors.customCategory && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.customCategory}</p>}
+            </>
+          )}
         </div>
 
         {postType === 'vacancy' && (

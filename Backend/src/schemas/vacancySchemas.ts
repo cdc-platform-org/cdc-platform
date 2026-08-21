@@ -8,6 +8,9 @@ const vacancyFieldsSchema = z.object({
   location: z.string().trim().min(1, 'Location is required.'),
   skillsRequired: z.array(z.string().trim().min(1)).min(1, 'At least one skill is required.'),
   category: jobCategorySchema.nullable().optional(),
+  // Free-typed category when category === 'other' — see the field's schema
+  // comment on the Vacancy model.
+  customCategory: z.string().trim().max(80).nullable().optional(),
   salaryMin: z.number().int().positive().nullable().optional(),
   salaryMax: z.number().int().positive().nullable().optional(),
   currency: z.string().length(3).toUpperCase().nullable().optional(),
@@ -15,6 +18,8 @@ const vacancyFieldsSchema = z.object({
 });
 const salaryRangeRefinement = (data: { salaryMin?: number | null; salaryMax?: number | null }) =>
   !data.salaryMin || !data.salaryMax || data.salaryMin <= data.salaryMax;
+const customCategoryRefinement = (data: { category?: string | null; customCategory?: string | null }) =>
+  data.category !== 'other' || !!data.customCategory?.trim();
 
 export const postVacancySchema = vacancyFieldsSchema
   .extend({
@@ -34,6 +39,10 @@ export const postVacancySchema = vacancyFieldsSchema
   .refine(salaryRangeRefinement, {
     message: 'Maximum salary must be greater than or equal to minimum salary.',
     path: ['salaryMax'],
+  })
+  .refine(customCategoryRefinement, {
+    message: 'Please specify the custom category.',
+    path: ['customCategory'],
   });
 
 // All fields optional (a partial edit only sends what changed), plus status
@@ -47,6 +56,10 @@ export const updateVacancySchema = vacancyFieldsSchema
   .refine(salaryRangeRefinement, {
     message: 'Maximum salary must be greater than or equal to minimum salary.',
     path: ['salaryMax'],
+  })
+  .refine(customCategoryRefinement, {
+    message: 'Please specify the custom category.',
+    path: ['customCategory'],
   });
 
 export const applyToVacancySchema = z.object({

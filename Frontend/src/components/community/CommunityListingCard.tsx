@@ -143,7 +143,7 @@ export default function CommunityListingCard({
                 darkMode ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-300' : 'bg-cyan-50 border-cyan-100 text-cyan-700'
               }`}
             >
-              {jobCategoryLabel(data.category, lang)}
+              {jobCategoryLabel(data.category, lang, data.customCategory)}
             </span>
           )}
           {data.skillsRequired.map((skill) => (

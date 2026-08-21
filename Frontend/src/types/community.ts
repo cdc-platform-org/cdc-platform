@@ -38,6 +38,7 @@ export interface Vacancy {
   location: string;
   skillsRequired: string[];
   category: JobCategory | null;
+  customCategory: string | null;
   salaryMin: number | null;
   salaryMax: number | null;
   currency: string | null;
@@ -100,6 +101,7 @@ export interface Gig {
   currency: string;
   skillsRequired: string[];
   category: JobCategory | null;
+  customCategory: string | null;
   offerType: GigOfferType;
   deadline: string | null;
   // FREELANCER_OFFER only — see GigOfferType.
@@ -139,6 +141,7 @@ export interface MyGig {
   currency: string;
   skillsRequired: string[];
   category: JobCategory | null;
+  customCategory: string | null;
   offerType: GigOfferType;
   deadline: string | null;
   portfolioLinks: string[];
