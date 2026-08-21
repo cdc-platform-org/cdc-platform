@@ -11,7 +11,7 @@ interface OpenVerificationDrawerOptions {
   message?: VerificationDrawerContextMessage;
   // Which tab opens first — a "Submit Proposal" block opens on Individual,
   // a "Post a Job" block opens on Business. Defaults to Individual.
-  initialTab?: 'individual' | 'business';
+  initialTab?: 'individual' | 'business' | 'freelancer';
   // Fires once the relevant verification is actually APPROVED (not just
   // submitted) — most callers won't use this since approval is rarely
   // instant; it exists for the same "resume the interrupted action" shape
@@ -22,7 +22,7 @@ interface OpenVerificationDrawerOptions {
 interface VerificationDrawerContextValue {
   isOpen: boolean;
   contextMessage: VerificationDrawerContextMessage | null;
-  initialTab: 'individual' | 'business';
+  initialTab: 'individual' | 'business' | 'freelancer';
   onSuccess: VerificationDrawerSuccessHandler | null;
   openVerificationDrawer: (options?: OpenVerificationDrawerOptions) => void;
   closeVerificationDrawer: () => void;
@@ -33,7 +33,7 @@ const VerificationDrawerContext = createContext<VerificationDrawerContextValue |
 export function VerificationDrawerProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [contextMessage, setContextMessage] = useState<VerificationDrawerContextMessage | null>(null);
-  const [initialTab, setInitialTab] = useState<'individual' | 'business'>('individual');
+  const [initialTab, setInitialTab] = useState<'individual' | 'business' | 'freelancer'>('individual');
   const [onSuccess, setOnSuccess] = useState<VerificationDrawerSuccessHandler | null>(null);
 
   const openVerificationDrawer = (options?: OpenVerificationDrawerOptions) => {

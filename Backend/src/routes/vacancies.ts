@@ -6,9 +6,25 @@ import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
 import { sendVacancyApplicationEmail } from '../services/emailService';
 import { hasReachedMonthlyPostLimit, MONTHLY_POST_LIMIT } from '../services/postingLimitService';
 const router = Router();
-const posterSelect = { select: { id: true, name: true, role: true, isVerifiedGraduate: true, averageRating: true, reviewCount: true } };
+// _count.courseEnrollments drives the "სტუდენტი" badge on listing cards —
+// see the hasPurchasedCourse comment on routes/reviews.ts's profile route.
+// Reused across every endpoint below (list/mine/detail/applications), so
+// adding it here is the one edit that surfaces it everywhere postedBy is
+// returned, no per-handler changes needed.
+const posterSelect = {
+  select: { id: true, name: true, role: true, isVerifiedGraduate: true, averageRating: true, reviewCount: true, _count: { select: { courseEnrollments: true } } },
+};
 const applicantSelect = {
-  select: { name: true, isVerifiedGraduate: true, verificationLevel: true, verificationStatus: true, averageRating: true, reviewCount: true, cvUrl: true },
+  select: {
+    name: true,
+    isVerifiedGraduate: true,
+    verificationLevel: true,
+    verificationStatus: true,
+    averageRating: true,
+    reviewCount: true,
+    cvUrl: true,
+    _count: { select: { courseEnrollments: true } },
+  },
 };
 declare global {
   namespace Express {

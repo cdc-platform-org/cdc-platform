@@ -8,6 +8,9 @@ interface Poster {
   isVerifiedGraduate: boolean;
   averageRating: number | null;
   reviewCount: number;
+  // Drives the "სტუდენტი" badge — see the hasPurchasedCourse comment on
+  // Backend/src/routes/reviews.ts's profile route.
+  _count: { courseEnrollments: number };
 }
 
 export type JobCategory = 'ui_ux_design' | 'web_development' | 'graphic_design' | 'digital_marketing' | 'other';
@@ -63,6 +66,7 @@ export interface VacancyApplication {
     averageRating: number | null;
     reviewCount: number;
     cvUrl: string | null;
+    _count: { courseEnrollments: number };
   }; // matches the API's actual include shape
   coverNote: string;
   status: ApplicationStatus;
@@ -189,6 +193,7 @@ export interface GigApplication {
     averageRating: number | null;
     reviewCount: number;
     cvUrl: string | null;
+    _count: { courseEnrollments: number };
   };
   proposalNote: string;
   bidAmount: number;      // the freelancer's proposed price, minor units — may differ from budgetAmount

@@ -102,6 +102,11 @@ export default function CommunityListingCard({
               <Link href={`/profile/${data.postedBy.id}`} className="hover:underline text-current no-underline">
                 {data.postedBy.name}
               </Link>
+              {!data.postedBy.isVerifiedGraduate && data.postedBy._count.courseEnrollments > 0 && (
+                <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full border text-cyan-700 bg-cyan-50 border-cyan-200 dark:text-cyan-400 dark:bg-cyan-500/10 dark:border-cyan-500/30">
+                  {t('profilePage.studentBadge')}
+                </span>
+              )}
               {data.postedBy.averageRating !== null && (
                 <span className="inline-flex items-center gap-1 font-normal">
                   <StarRating value={data.postedBy.averageRating} size="sm" />

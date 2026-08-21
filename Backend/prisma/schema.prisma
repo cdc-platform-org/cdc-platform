@@ -345,6 +345,15 @@ model User {
   legalFirstNameEn              String?
   legalLastNameEn               String?
   nationalId                    String?
+  // 11-digit Georgian personal ID number — anti-fraud KYC constraint on the
+  // "ფიზიკური პირი" (Individual) verification tab, enforcing one verified
+  // account per real identity. Deliberately a separate field from
+  // nationalId above (that one's a free-form invoicing field with no
+  // uniqueness guarantee and pre-dates this constraint); @unique allows
+  // any number of NULLs (users who haven't submitted individual
+  // verification yet) but rejects a second account claiming the same
+  // number — see routes/auth.ts's /me/individual-verification-doc.
+  personalNumber                String?             @unique
   phone                         String?
   // Default IBAN pre-filled into new payout requests — the request itself
   // still stores its own snapshot, so changing this later doesn't alter
@@ -1233,19 +1242,28 @@ model ExamAttempt {
 // isVerifiedGraduate flag/badge used across the marketplace, rather than
 // introducing a second parallel "verified" concept.
 model FreelancerSkillExamAttempt {
-  id          String      @id @default(uuid())
-  userId      String
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category    JobCategory
+  id               String        @id @default(uuid())
+  userId           String
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Kept for backward compatibility with rows created before multi-
+  // profession selection existed — always set to categories[0] on new
+  // attempts. `categories` (plural) is the real source of truth going
+  // forward; a test now spans every profession the user selected, not just
+  // one, per the Freelancer verification tab in VerificationDrawer.
+  category         JobCategory
+  categories       JobCategory[] @default([])
+  // Free-typed profession when "სხვა" (Other) is selected — blended into
+  // the AI prompt alongside `categories`, if any are also selected.
+  customProfession String?
   // Snapshot including correct answers/explanations, same reasoning as
   // ExamAttempt.questions — graded server-side against this, never trusts
   // the client's copy.
-  questions   Json
-  answers     Json?
-  score       Float?
-  passed      Boolean     @default(false)
-  createdAt   DateTime    @default(now())
-  completedAt DateTime?
+  questions        Json
+  answers          Json?
+  score            Float?
+  passed           Boolean       @default(false)
+  createdAt        DateTime      @default(now())
+  completedAt      DateTime?
 
   @@index([userId])
   @@map("freelancer_skill_exam_attempts")

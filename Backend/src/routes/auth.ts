@@ -146,6 +146,7 @@ function toUserResponse(user: {
   legalFirstNameEn?: string | null;
   legalLastNameEn?: string | null;
   nationalId?: string | null;
+  personalNumber?: string | null;
   phone?: string | null;
   payoutIban?: string | null;
   avatarUrl?: string | null;
@@ -182,6 +183,7 @@ function toUserResponse(user: {
     legalFirstNameEn: user.legalFirstNameEn ?? null,
     legalLastNameEn: user.legalLastNameEn ?? null,
     nationalId: user.nationalId ?? null,
+    personalNumber: user.personalNumber ?? null,
     phone: user.phone ?? null,
     payoutIban: user.payoutIban ?? null,
     avatarUrl: user.avatarUrl ?? null,
@@ -1055,6 +1057,11 @@ router.post(
 // additional OR-condition alongside isVerifiedGraduate wherever freelancer
 // marketplace rights are gated (gigs.ts, vacancies.ts, products.ts,
 // forum.ts), not folded into either existing flag.
+// 11-digit Georgian personal ID number — see the personalNumber comment on
+// the User model for why this is a separate field/constraint from the
+// pre-existing free-form nationalId.
+const PERSONAL_NUMBER_PATTERN = /^\d{11}$/;
+
 router.post(
   '/me/individual-verification-doc',
   authenticate,
@@ -1069,21 +1076,48 @@ router.post(
     if (!req.file) {
       return res.status(400).json({ message: 'No file was selected.' });
     }
+    // multer parses multipart text fields into req.body alongside req.file
+    // — the frontend sends this in the same request as the document itself,
+    // so the anti-fraud KYC number and the ID scan it belongs to are always
+    // submitted as one atomic verification act, never out of sync.
+    const personalNumber = typeof req.body.personalNumber === 'string' ? req.body.personalNumber.trim() : '';
+    if (!PERSONAL_NUMBER_PATTERN.test(personalNumber)) {
+      return res.status(400).json({ message: 'პირადი ნომერი უნდა შედგებოდეს ზუსტად 11 ციფრისგან.' });
+    }
+    const existingOwner = await prisma.user.findUnique({ where: { personalNumber }, select: { id: true } });
+    if (existingOwner && existingOwner.id !== req.user!.id) {
+      return res.status(409).json({ message: 'ეს პირადი ნომერი უკვე გამოყენებულია სხვა ანგარიშზე.' });
+    }
+
     const previous = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { verificationDocUrl: true, verificationLevel: true } });
 
     const filename = `id-verification-${req.user!.id}-${Date.now()}${path.extname(req.file.originalname)}`;
     try {
       const url = await uploadToBunnyStorage({ buffer: req.file.buffer, mimetype: req.file.mimetype, folderName: 'individual-verification', filename });
 
-      const user = await prisma.user.update({
-        where: { id: req.user!.id },
-        data: {
-          verificationDocUrl: url,
-          verificationLevel: 'INDIVIDUAL',
-          verificationStatus: 'PENDING',
-          businessKycRejectionReason: null,
-        },
-      });
+      let user;
+      try {
+        user = await prisma.user.update({
+          where: { id: req.user!.id },
+          data: {
+            verificationDocUrl: url,
+            verificationLevel: 'INDIVIDUAL',
+            verificationStatus: 'PENDING',
+            businessKycRejectionReason: null,
+            personalNumber,
+          },
+        });
+      } catch (err: any) {
+        // Defense-in-depth against a race (two requests both passing the
+        // findUnique check above before either commits) — the @unique
+        // constraint is the real guarantee, this just turns its violation
+        // into the same clean, localized message instead of a raw 500.
+        if (err.code === 'P2002') {
+          deleteBunnyStorageUrlIfManaged(url).catch(() => {});
+          return res.status(409).json({ message: 'ეს პირადი ნომერი უკვე გამოყენებულია სხვა ანგარიშზე.' });
+        }
+        throw err;
+      }
 
       // Only delete the old file if it was itself an INDIVIDUAL-level
       // upload — never delete out from under a BUSINESS submission the

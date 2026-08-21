@@ -30,6 +30,9 @@ export interface UserRatingSummary {
   // gig-marketplace averageRating/reviewCount above (see ProductReview).
   sellerRating: number | null;
   sellerReviewCount: number;
+  // "სტუდენტი" badge — has purchased at least one course but hasn't
+  // completed one yet (isVerifiedGraduate, above, takes priority once true).
+  hasPurchasedCourse: boolean;
 }
 
 export interface PublicVerifiedSkill {

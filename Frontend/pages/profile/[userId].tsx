@@ -126,6 +126,10 @@ function ProfileContent() {
                     <span className="inline-flex items-center text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-500/10 dark:border-emerald-500/30">
                       {t('profilePage.verified')}
                     </span>
+                  ) : profileUser.hasPurchasedCourse ? (
+                    <span className="inline-flex items-center text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border text-cyan-700 bg-cyan-50 border-cyan-200 dark:text-cyan-400 dark:bg-cyan-500/10 dark:border-cyan-500/30">
+                      {t('profilePage.studentBadge')}
+                    </span>
                   ) : (
                     <span className="inline-flex items-center text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border text-gray-500 bg-gray-100 border-gray-200 dark:text-slate-400 dark:bg-slate-800 dark:border-slate-700">
                       {t('profilePage.standard')}

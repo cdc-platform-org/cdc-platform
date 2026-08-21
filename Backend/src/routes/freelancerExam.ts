@@ -39,8 +39,16 @@ const CATEGORY_BRIEF: Record<string, { title: string; description: string; topic
   },
 };
 
-const categorySchema = z.object({
-  category: z.enum(['ui_ux_design', 'web_development', 'graphic_design', 'digital_marketing', 'other']),
+const jobCategoryEnum = z.enum(['ui_ux_design', 'web_development', 'graphic_design', 'digital_marketing', 'other']);
+
+// One test can now span multiple professions at once (the Freelancer tab in
+// VerificationDrawer offers a multi-select) — categories drives which
+// CATEGORY_BRIEF topic lists get blended into a single 15-question prompt;
+// customProfession is the free-typed text shown when 'other' is selected,
+// folded into the same prompt as an additional topic.
+const generateSchema = z.object({
+  categories: z.array(jobCategoryEnum).min(1, 'Select at least one profession.').max(5),
+  customProfession: z.string().trim().max(80).optional(),
   lang: z.enum(['ka', 'en']).optional(),
 });
 
@@ -101,39 +109,64 @@ router.get('/status', async (req: Request, res: Response) => {
 });
 
 router.post('/generate', async (req: Request, res: Response) => {
-  const result = categorySchema.safeParse(req.body);
+  const result = generateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
+  const { categories, customProfession, lang } = result.data;
 
   const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { examLockedUntil: true } });
   if (user?.examLockedUntil && user.examLockedUntil > new Date()) {
     return res.status(403).json({ message: 'ტესტირება დაბლოკილია დარღვევების გამო.', examLockedUntil: user.examLockedUntil });
   }
 
-  const brief = CATEGORY_BRIEF[result.data.category];
+  // Blend every selected profession's brief into one prompt so a single
+  // 15-question test spans all of them, rather than one test per profession.
+  const briefs = categories.map((c) => CATEGORY_BRIEF[c]);
+  const combinedTitle = briefs.map((b) => b.title).join(' + ');
+  const combinedDescription = briefs.map((b) => b.description).join(' ');
+  const combinedTopics = briefs.flatMap((b) => b.topics);
+  if (customProfession) combinedTopics.push(customProfession);
+
   let questions: GeneratedQuestion[];
   try {
     questions = await generateExamQuestions({
-      courseTitle: brief.title,
-      courseDescription: brief.description,
-      lessonTitles: brief.topics,
+      courseTitle: customProfession ? `${combinedTitle} + ${customProfession}` : combinedTitle,
+      courseDescription: combinedDescription,
+      lessonTitles: combinedTopics,
       questionCount: QUESTION_COUNT,
-      lang: result.data.lang ?? 'ka',
+      lang: lang ?? 'ka',
     });
   } catch (err) {
     // AI generator unavailable/misconfigured/erroring — fall back to the
-    // static question bank rather than failing the request outright.
-    const fallback = FALLBACK_QUESTIONS[result.data.category];
-    if (!fallback) {
+    // static question bank rather than failing the request outright. Best-
+    // effort only for a multi-profession selection: each category's bank
+    // has 5 questions, interleaved and capped at QUESTION_COUNT, so a
+    // 3+-profession fallback test may come in under 15 — there's no static
+    // content deep enough to guarantee 15 across every combination the way
+    // the AI path does.
+    const banks = categories.map((c) => FALLBACK_QUESTIONS[c]).filter((b): b is GeneratedQuestion[] => !!b);
+    if (banks.length === 0) {
       const message = err instanceof AiExamGenerationError ? err.message : GENERIC_FAILURE_MESSAGE;
       return res.status(502).json({ message });
     }
-    questions = fallback;
+    const interleaved: GeneratedQuestion[] = [];
+    for (let i = 0; interleaved.length < QUESTION_COUNT && banks.some((b) => i < b.length); i++) {
+      for (const bank of banks) {
+        if (i < bank.length) interleaved.push(bank[i]);
+      }
+    }
+    questions = interleaved.slice(0, QUESTION_COUNT).map((q, i) => ({ ...q, id: `f${i + 1}` }));
   }
 
   let attempt;
   try {
     attempt = await prisma.freelancerSkillExamAttempt.create({
-      data: { userId: req.user!.id, category: result.data.category, questions: questions as unknown as Prisma.InputJsonValue },
+      data: {
+        userId: req.user!.id,
+        category: categories[0],
+        categories,
+        customProfession: customProfession || null,
+        questions: questions as unknown as Prisma.InputJsonValue,
+      },
     });
   } catch (err) {
     // Never let a DB-layer failure (e.g. connection issue, schema drift)
@@ -143,7 +176,14 @@ router.post('/generate', async (req: Request, res: Response) => {
     return res.status(500).json({ message: GENERIC_FAILURE_MESSAGE });
   }
 
-  res.status(201).json({ data: { attemptId: attempt.id, category: attempt.category, questions: stripAnswers(questions) } });
+  res.status(201).json({
+    data: {
+      attemptId: attempt.id,
+      categories: attempt.categories,
+      customProfession: attempt.customProfession,
+      questions: stripAnswers(questions),
+    },
+  });
 });
 
 const EXAM_LOCK_HOURS = 24;

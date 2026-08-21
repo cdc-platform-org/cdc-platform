@@ -24,6 +24,10 @@ export interface User {
   legalFirstNameEn: string | null;
   legalLastNameEn: string | null;
   nationalId: string | null;
+  // 11-digit Georgian personal ID, unique platform-wide — set via the
+  // Individual verification tab. See the anti-fraud KYC comment on
+  // Backend's User.personalNumber.
+  personalNumber: string | null;
   phone: string | null;
   payoutIban: string | null;
   // Set only via POST /auth/me/avatar (uploads to Bunny Storage) — never a

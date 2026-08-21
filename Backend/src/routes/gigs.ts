@@ -9,13 +9,29 @@ import { hasReachedMonthlyPostLimit, MONTHLY_POST_LIMIT } from '../services/post
 import { z } from 'zod';
 
 const router = Router();
-const posterSelect = { select: { id: true, name: true, role: true, isVerifiedGraduate: true, averageRating: true, reviewCount: true } };
+// _count.courseEnrollments drives the "სტუდენტი" badge on listing cards —
+// see the hasPurchasedCourse comment on routes/reviews.ts's profile route.
+// Reused across every endpoint below, so adding it here is the one edit
+// that surfaces it everywhere postedBy/assignedFreelancer is returned.
+const posterSelect = {
+  select: { id: true, name: true, role: true, isVerifiedGraduate: true, averageRating: true, reviewCount: true, _count: { select: { courseEnrollments: true } } },
+};
 // verificationLevel/verificationStatus alongside isVerifiedGraduate so the
 // client-facing proposal list can render the full Verified/Standard badge
 // (see Frontend's hasFreelancerRights-equivalent derivation) — isVerifiedGraduate
 // alone would miss an INDIVIDUAL-verified (non-graduate) applicant.
 const applicantSelect = {
-  select: { id: true, name: true, isVerifiedGraduate: true, verificationLevel: true, verificationStatus: true, averageRating: true, reviewCount: true, cvUrl: true },
+  select: {
+    id: true,
+    name: true,
+    isVerifiedGraduate: true,
+    verificationLevel: true,
+    verificationStatus: true,
+    averageRating: true,
+    reviewCount: true,
+    cvUrl: true,
+    _count: { select: { courseEnrollments: true } },
+  },
 };
 
 declare global {

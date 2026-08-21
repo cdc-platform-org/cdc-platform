@@ -23,14 +23,16 @@ export interface ExamAttemptResult {
   }[];
 }
 
+// A test now spans every profession the user selected (up to 5) instead of
+// just one — see Backend/src/routes/freelancerExam.ts's generateSchema.
 export async function generateExam(
-  category: JobCategory,
+  categories: JobCategory[],
+  customProfession: string | undefined,
   lang: 'ka' | 'en' = 'ka'
-): Promise<{ attemptId: string; category: JobCategory; questions: ExamQuestion[] }> {
-  const response = await apiClient.post<{ data: { attemptId: string; category: JobCategory; questions: ExamQuestion[] } }>(
-    '/freelancer-exam/generate',
-    { category, lang }
-  );
+): Promise<{ attemptId: string; categories: JobCategory[]; customProfession: string | null; questions: ExamQuestion[] }> {
+  const response = await apiClient.post<{
+    data: { attemptId: string; categories: JobCategory[]; customProfession: string | null; questions: ExamQuestion[] };
+  }>('/freelancer-exam/generate', { categories, customProfession, lang });
   return response.data.data;
 }
 

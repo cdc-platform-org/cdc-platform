@@ -119,11 +119,17 @@ router.get('/user/:userId', async (req: Request, res: Response) => {
       verificationStatus: true,
       sellerRating: true,
       sellerReviewCount: true,
+      // Drives the "სტუდენტი" (Student) badge — anyone who's purchased at
+      // least one course, one rung below isVerifiedGraduate ("ვერიფიცირებული")
+      // which is set automatically on course completion (see routes/courses.ts).
+      _count: { select: { courseEnrollments: true } },
     },
   });
   if (!user) {
     return res.status(404).json({ message: 'User not found.' });
   }
+  const { _count, ...userFields } = user;
+  const userWithBadges = { ...userFields, hasPurchasedCourse: _count.courseEnrollments > 0 };
   const [reviews, verifiedSkills] = await Promise.all([
     prisma.review.findMany({
       where: { revieweeId: req.params.userId },
@@ -139,7 +145,7 @@ router.get('/user/:userId', async (req: Request, res: Response) => {
       orderBy: { verifiedAt: 'asc' },
     }),
   ]);
-  res.json({ data: { user, reviews, verifiedSkills } });
+  res.json({ data: { user: userWithBadges, reviews, verifiedSkills } });
 });
 
 export default router;

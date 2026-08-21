@@ -108,7 +108,8 @@ function FreelancerExamContent() {
   const lang = resolveLocale(router.locale);
 
   const [phase, setPhase] = useState<Phase>('select');
-  const [category, setCategory] = useState<JobCategory | null>(null);
+  const [categories, setCategories] = useState<JobCategory[]>([]);
+  const [customProfession, setCustomProfession] = useState('');
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<ExamQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -131,6 +132,21 @@ function FreelancerExamContent() {
       .then((res) => setLockedUntil(res.examLockedUntil))
       .catch(() => {});
   }, []);
+
+  // Pre-populates from VerificationDrawer's "Freelancer" tab, which
+  // multi-selects professions before ever landing here — router.isReady
+  // guards against reading query before Next.js has parsed it client-side.
+  useEffect(() => {
+    if (!router.isReady) return;
+    const rawCategories = router.query.categories;
+    if (typeof rawCategories === 'string' && rawCategories.length > 0) {
+      const valid = rawCategories.split(',').filter((c): c is JobCategory => JOB_CATEGORIES.includes(c as JobCategory));
+      if (valid.length > 0) setCategories(valid);
+    }
+    const rawOther = router.query.other;
+    if (typeof rawOther === 'string' && rawOther.length > 0) setCustomProfession(rawOther);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady]);
 
   // Live countdown for the lockout screen — re-renders every 30s so the
   // remaining time stays roughly accurate without a per-second timer.
@@ -223,17 +239,26 @@ function FreelancerExamContent() {
     return () => clearTimeout(timer);
   }, [warningToast]);
 
-  // Clicking a category no longer jumps straight into the (fullscreen,
-  // timed-strike) exam — it opens the rules screen first so the user
+  const toggleCategory = (cat: JobCategory) => {
+    setCategories((prev) => (prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]));
+    setError(null);
+  };
+
+  const canProceed = categories.length > 0 || customProfession.trim().length > 0;
+
+  // No longer jumps straight into the (fullscreen, timed-strike) exam once
+  // a profession is picked — this opens the rules screen first so the user
   // explicitly opts in via "ტესტირების დაწყება" before anything starts.
-  const handleSelectCategory = (cat: JobCategory) => {
-    setCategory(cat);
+  const proceedToRules = () => {
+    if (!canProceed) return;
     setError(null);
     setPhase('rules');
   };
 
+  const combinedLabel = [...categories.map((c) => JOB_CATEGORY_LABEL[c][lang]), customProfession.trim()].filter(Boolean).join(' + ');
+
   const confirmStart = async () => {
-    if (!category) return;
+    if (!canProceed) return;
     setPhase('starting');
     setError(null);
     try {
@@ -248,7 +273,10 @@ function FreelancerExamContent() {
         setTimeout(() => reject(new Error('timeout')), GENERATE_TIMEOUT_MS);
       });
       // The AI skill-exam generator only produces 'ka'/'en' exams.
-      const exam = await Promise.race([generateExam(category, lang === 'ka' ? 'ka' : 'en'), timeout]);
+      const exam = await Promise.race([
+        generateExam(categories, customProfession.trim() || undefined, lang === 'ka' ? 'ka' : 'en'),
+        timeout,
+      ]);
       setAttemptId(exam.attemptId);
       setQuestions(exam.questions);
       setCurrentIndex(0);
@@ -332,28 +360,56 @@ function FreelancerExamContent() {
         {!isLocked && phase === 'select' && (
           <>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-              აირჩიეთ კატეგორია — შემდეგ გაეცნობით წესებს და დაიწყებთ ტესტირებას.
+              {lang === 'ka'
+                ? 'აირჩიეთ ერთი ან რამდენიმე პროფესია — ტესტი დაფარავს ყველა არჩეულს ერთდროულად.'
+                : 'Select one or more professions — the test will cover all of them at once.'}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {JOB_CATEGORIES.filter((c) => c !== 'other').map((cat) => (
                 <button
                   key={cat}
                   type="button"
-                  onClick={() => handleSelectCategory(cat)}
-                  className="text-left rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-5 hover:border-cyan-400 dark:hover:border-cyan-500 transition-colors"
+                  onClick={() => toggleCategory(cat)}
+                  className={`text-left rounded-2xl border backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 p-5 ${
+                    categories.includes(cat)
+                      ? 'border-cyan-500 bg-cyan-50 dark:bg-cyan-500/10'
+                      : 'border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10'
+                  }`}
                 >
                   <p className="font-bold text-sm">{JOB_CATEGORY_LABEL[cat][lang]}</p>
                 </button>
               ))}
             </div>
+
+            <div className="mt-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 p-5">
+              <label className="block font-bold text-sm mb-2">{lang === 'ka' ? 'სხვა პროფესია (არასავალდებულო)' : 'Other profession (optional)'}</label>
+              <input
+                type="text"
+                value={customProfession}
+                onChange={(e) => setCustomProfession(e.target.value)}
+                placeholder={lang === 'ka' ? 'ჩაწერეთ თქვენი პროფესია…' : 'Type your profession…'}
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800 px-3.5 py-2.5 text-sm"
+              />
+            </div>
+
+            <div className="flex justify-end pt-6">
+              <button
+                type="button"
+                onClick={proceedToRules}
+                disabled={!canProceed}
+                className="rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-2.5 text-sm font-bold text-white disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {lang === 'ka' ? 'გაგრძელება →' : 'Continue →'}
+              </button>
+            </div>
           </>
         )}
 
-        {!isLocked && phase === 'rules' && category && (
+        {!isLocked && phase === 'rules' && canProceed && (
           <div>
             <ExamRulesCard
               lang={lang}
-              categoryLabel={JOB_CATEGORY_LABEL[category][lang]}
+              categoryLabel={combinedLabel}
               practicalInfo={{
                 timeLimit: lang === 'ka' ? `${QUESTION_TIME_LIMIT_SECONDS} წამი` : `${QUESTION_TIME_LIMIT_SECONDS} seconds`,
                 questionCount: QUESTION_COUNT,
@@ -376,7 +432,7 @@ function FreelancerExamContent() {
             <div className="flex flex-wrap gap-3 pt-4">
               <button
                 type="button"
-                onClick={() => { setPhase('select'); setCategory(null); setError(null); }}
+                onClick={() => { setPhase('select'); setError(null); }}
                 className="rounded-lg border border-slate-300 dark:border-slate-700 px-5 py-2.5 text-sm font-bold"
               >
                 ← უკან

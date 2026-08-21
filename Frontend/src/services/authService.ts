@@ -114,9 +114,13 @@ export async function uploadVerificationDoc(file: File): Promise<User> {
 // an ID card/passport scan, always lands PENDING for manual admin review
 // (see Backend's routes/auth.ts, no auto-approve heuristic exists for a
 // personal ID the way businessKycService.ts has one for a registry extract).
-export async function uploadIndividualVerificationDoc(file: File): Promise<User> {
+// personalNumber (11-digit Georgian ID) is submitted in the same request as
+// the document itself — see the anti-fraud KYC comment on Backend's
+// routes/auth.ts's /me/individual-verification-doc for why.
+export async function uploadIndividualVerificationDoc(file: File, personalNumber: string): Promise<User> {
   const formData = new FormData();
   formData.append('document', file);
+  formData.append('personalNumber', personalNumber);
   const response = await apiClient.post<{ user: User }>('/auth/me/individual-verification-doc', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
