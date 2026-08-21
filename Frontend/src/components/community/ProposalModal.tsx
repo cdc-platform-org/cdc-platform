@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, FormEvent, ChangeEvent } from 'react';
+import { useState, useMemo, useRef, useEffect, FormEvent, ChangeEvent } from 'react';
 import { useTranslation } from 'next-i18next';
 import { FileText, Upload, ShieldCheck } from 'lucide-react';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
@@ -6,12 +6,16 @@ import { useAuth } from '../../context/AuthContext';
 import { useVerificationDrawer } from '../../context/VerificationDrawerContext';
 import { uploadCv } from '../../services/authService';
 import { isFreelancerVerified } from '../../types/auth';
+import { getFeeSchedule, findRate } from '../../services/commissionsService';
 
-// Same rule and split as Backend's escrowService.ts (kept in sync by hand,
-// same posture as that file's own "not a shared import" comment) — bank
-// fee is fixed, only CDC's own slice moves as the verification incentive.
-const VERIFIED_PLATFORM_FEE_RATE = 0.2; // 10% bank + 10% CDC
-const UNVERIFIED_PLATFORM_FEE_RATE = 0.25; // 10% bank + 15% CDC
+// Fallback only — used until GET /commissions resolves (or if it fails),
+// so the calculator never shows 0% while loading. Matches
+// platformFeeScheduleService.ts's own FALLBACK_PERCENTAGE on the backend,
+// which escrowService.ts itself falls back to under the same condition —
+// kept in sync by hand, same posture as that file's "not a shared import"
+// comment, since Frontend/Backend can't literally share a TS constant.
+const VERIFIED_PLATFORM_FEE_RATE_FALLBACK = 0.2; // 10% bank + 10% CDC
+const UNVERIFIED_PLATFORM_FEE_RATE_FALLBACK = 0.25; // 10% bank + 15% CDC
 
 interface ProposalModalProps {
   gigTitle: string;
@@ -32,7 +36,22 @@ export default function ProposalModal({
   const { user, refreshUser } = useAuth();
   const { openVerificationDrawer } = useVerificationDrawer();
   const verified = !!user && isFreelancerVerified(user);
-  const PLATFORM_FEE_RATE = verified ? VERIFIED_PLATFORM_FEE_RATE : UNVERIFIED_PLATFORM_FEE_RATE;
+  const [verifiedRate, setVerifiedRate] = useState(VERIFIED_PLATFORM_FEE_RATE_FALLBACK);
+  const [unverifiedRate, setUnverifiedRate] = useState(UNVERIFIED_PLATFORM_FEE_RATE_FALLBACK);
+  useEffect(() => {
+    getFeeSchedule()
+      .then((schedule) => {
+        const verifiedPct = findRate(schedule, 'GIG_VERIFIED');
+        const unverifiedPct = findRate(schedule, 'GIG_UNVERIFIED');
+        if (verifiedPct != null) setVerifiedRate(verifiedPct / 100);
+        if (unverifiedPct != null) setUnverifiedRate(unverifiedPct / 100);
+      })
+      .catch(() => {
+        // Fee calculator just keeps showing the fallback rates above — not
+        // worth an error banner over a live-rate refresh failing.
+      });
+  }, []);
+  const PLATFORM_FEE_RATE = verified ? verifiedRate : unverifiedRate;
   const [proposedBudget, setProposedBudget] = useState('');
   const [deliveryDays, setDeliveryDays] = useState('');
   const [coverLetter, setCoverLetter] = useState('');
@@ -177,15 +196,15 @@ export default function ProposalModal({
                   onClick={() =>
                     openVerificationDrawer({
                       message: {
-                        ka: 'გაიარეთ ვერიფიკაცია, რომ პლატფორმის საკომისიო 25%-დან 20%-მდე შემცირდეს.',
-                        en: 'Get verified to reduce the platform fee from 25% to 20%.',
+                        ka: `გაიარეთ ვერიფიკაცია, რომ პლატფორმის საკომისიო ${unverifiedRate * 100}%-დან ${verifiedRate * 100}%-მდე შემცირდეს.`,
+                        en: `Get verified to reduce the platform fee from ${unverifiedRate * 100}% to ${verifiedRate * 100}%.`,
                       },
                     })
                   }
                   className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline bg-transparent border-none p-0 cursor-pointer"
                 >
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  {t('proposalModal.feeCalculator.verifyLink', { verifiedRate: VERIFIED_PLATFORM_FEE_RATE * 100 })}
+                  {t('proposalModal.feeCalculator.verifyLink', { verifiedRate: verifiedRate * 100 })}
                 </button>
               )}
             </div>

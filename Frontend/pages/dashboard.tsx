@@ -31,6 +31,7 @@ import { MyCourseWithProgress } from '../src/types/lms';
 import { getMyCourses, downloadCertificate } from '../src/services/courseService';
 import { AssignedGig, GigStatus } from '../src/types/community';
 import { getAssignedGigs, requestMentorHelp } from '../src/services/gigService';
+import { getFeeSchedule, findRate } from '../src/services/commissionsService';
 import { useEscapeToClose } from '../src/hooks/useEscapeToClose';
 import {
   getWalletSummary,
@@ -142,7 +143,7 @@ const dict = {
     formTitle: 'სათაური',
     formDescription: 'აღწერა',
     formPrice: 'ფასი (GEL, 0 = უფასო)',
-    commissionBannerText: 'პლატფორმის საკომისიო შეადგენს 20%-ს (10% საბანკო ტრანზაქცია + 10% CDC ცენტრი).',
+    commissionBannerText: 'პლატფორმის საკომისიო შეადგენს {{rate}}%-ს.',
     commissionBannerNet: 'თქვენი წილი: {{amount}} GEL',
     formCategory: 'კატეგორია',
     formCoverImage: 'მთავარი ფოტო (გარეკანი)',
@@ -272,7 +273,7 @@ const dict = {
     formTitle: 'Title',
     formDescription: 'Description',
     formPrice: 'Price (GEL, 0 = free)',
-    commissionBannerText: 'The platform fee is 20% (10% bank transaction + 10% CDC Center).',
+    commissionBannerText: 'The platform fee is {{rate}}%.',
     commissionBannerNet: 'Your share: {{amount}} GEL',
     formCategory: 'Category',
     formCoverImage: 'Main Cover Image',
@@ -398,7 +399,7 @@ const dict = {
     formTitle: 'Title',
     formDescription: 'Description',
     formPrice: 'Price (GEL, 0 = free)',
-    commissionBannerText: 'The platform fee is 20% (10% bank transaction + 10% CDC Center).',
+    commissionBannerText: 'The platform fee is {{rate}}%.',
     commissionBannerNet: 'Your share: {{amount}} GEL',
     formCategory: 'Category',
     formCoverImage: 'Main Cover Image',
@@ -524,7 +525,7 @@ const dict = {
     formTitle: 'Title',
     formDescription: 'Description',
     formPrice: 'Price (GEL, 0 = free)',
-    commissionBannerText: 'The platform fee is 20% (10% bank transaction + 10% CDC Center).',
+    commissionBannerText: 'The platform fee is {{rate}}%.',
     commissionBannerNet: 'Your share: {{amount}} GEL',
     formCategory: 'Category',
     formCoverImage: 'Main Cover Image',
@@ -650,7 +651,7 @@ const dict = {
     formTitle: 'Title',
     formDescription: 'Description',
     formPrice: 'Price (GEL, 0 = free)',
-    commissionBannerText: 'The platform fee is 20% (10% bank transaction + 10% CDC Center).',
+    commissionBannerText: 'The platform fee is {{rate}}%.',
     commissionBannerNet: 'Your share: {{amount}} GEL',
     formCategory: 'Category',
     formCoverImage: 'Main Cover Image',
@@ -776,7 +777,7 @@ const dict = {
     formTitle: 'Title',
     formDescription: 'Description',
     formPrice: 'Price (GEL, 0 = free)',
-    commissionBannerText: 'The platform fee is 20% (10% bank transaction + 10% CDC Center).',
+    commissionBannerText: 'The platform fee is {{rate}}%.',
     commissionBannerNet: 'Your share: {{amount}} GEL',
     formCategory: 'Category',
     formCoverImage: 'Main Cover Image',
@@ -997,6 +998,20 @@ function DashboardContent() {
   const [editingSubmissionId, setEditingSubmissionId] = useState<string | null>(null);
   const [submittingProduct, setSubmittingProduct] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Fallback only (matches productSaleService.ts's own FALLBACK_PERCENTAGE
+  // for DIGITAL_PRODUCT) — used until GET /commissions resolves, so the
+  // commission banner below never shows a stale/wrong rate while loading.
+  const [digitalProductCommissionPct, setDigitalProductCommissionPct] = useState(20);
+  useEffect(() => {
+    getFeeSchedule()
+      .then((schedule) => {
+        const pct = findRate(schedule, 'DIGITAL_PRODUCT');
+        if (pct != null) setDigitalProductCommissionPct(pct);
+      })
+      .catch(() => {
+        // Commission banner just keeps showing the fallback rate above.
+      });
+  }, []);
 
   // isVerifiedGraduate covers both "passed the freelancer exam" and "CDC
   // course graduate" (see Backend's freelancerExam.ts/courses.ts — same
@@ -1890,9 +1905,12 @@ function DashboardContent() {
                         />
                       </div>
                       <div className="rounded-lg border border-cyan-400/30 bg-cyan-50/60 dark:bg-cyan-500/10 px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
-                        <p>{t.commissionBannerText}</p>
+                        <p>{t.commissionBannerText.replace('{{rate}}', String(digitalProductCommissionPct))}</p>
                         <p className="font-bold text-cyan-700 dark:text-cyan-400 mt-0.5">
-                          {t.commissionBannerNet.replace('{{amount}}', (Number(submitPrice || 0) * 0.8).toFixed(2))}
+                          {t.commissionBannerNet.replace(
+                            '{{amount}}',
+                            (Number(submitPrice || 0) * (1 - digitalProductCommissionPct / 100)).toFixed(2)
+                          )}
                         </p>
                       </div>
                       <ImageGalleryUploader
