@@ -18,6 +18,15 @@ const salaryRangeRefinement = (data: { salaryMin?: number | null; salaryMax?: nu
 
 export const postVacancySchema = vacancyFieldsSchema
   .extend({
+    // Creating a posting requires the full work-scope/conditions set —
+    // category, salary range, currency, and a deadline are all optional on
+    // vacancyFieldsSchema (shared with updateVacancySchema's partial edits)
+    // but required here at creation time.
+    category: jobCategorySchema,
+    salaryMin: z.number().int().positive(),
+    salaryMax: z.number().int().positive(),
+    currency: z.string().length(3).toUpperCase(),
+    applicationDeadline: z.string().datetime(),
     // Defaults to 'open' (unchanged behavior) when omitted — 'draft' lets an
     // employer save a posting before it's ready to accept applications.
     status: z.enum(['open', 'draft']).optional(),

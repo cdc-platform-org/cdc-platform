@@ -19,7 +19,7 @@ const ECOSYSTEM_FEATURES = [
     icon: Briefcase,
     title: { ka: 'დასაქმების ფორუმი & ფრილანს ჰაბი', en: 'Employment Forum & Freelance Hub' },
     description: {
-      ka: 'ვაკანსიები, გიგები და დისკუსიები ერთ სივრცეში — ვერიფიცირებული ფრილანსერებისთვის.',
+      ka: 'ვაკანსიები, შეკვეთები და დისკუსიები ერთ სივრცეში — ვერიფიცირებული ფრილანსერებისთვის.',
       en: 'Vacancies, gigs, and discussions in one place — for verified freelancers.',
     },
   },

@@ -133,15 +133,26 @@ export function useAuthState() {
     setUser(null);
   }, []);
 
-  // Re-syncs the cached user from the server — call after profile/settings
-  // updates so every consumer (certificate name, payout IBAN prefill,
-  // header greeting) reflects the change without a full reload.
-  const refreshUser = useCallback(async () => {
-    const freshUser = await getMeRequest();
+  // Writes a known-fresh user straight into context + localStorage — no
+  // network round-trip. `updateProfile()`'s PUT /auth/me response already
+  // *is* the fresh user, so callers (settings.tsx, client.tsx, onboarding.tsx)
+  // pass that response here directly instead of following up with a second
+  // GET just to get the same data back; this is what makes the header
+  // name/avatar update the instant a save succeeds rather than after a
+  // second request resolves.
+  const syncUser = useCallback((freshUser: User) => {
     localStorage.setItem(USER_KEY, JSON.stringify(freshUser));
     setUser(freshUser);
-    return freshUser;
   }, []);
+
+  // Re-fetches the cached user from the server — for call sites that don't
+  // already have a fresh User object in hand (e.g. after a webhook-driven
+  // change, or just to revalidate).
+  const refreshUser = useCallback(async () => {
+    const freshUser = await getMeRequest();
+    syncUser(freshUser);
+    return freshUser;
+  }, [syncUser]);
 
   return {
     user,
@@ -153,5 +164,6 @@ export function useAuthState() {
     loginWithToken,
     logout,
     refreshUser,
+    setUser: syncUser,
   };
 }

@@ -12,8 +12,9 @@ export const postGigSchema = z.object({
   budgetAmount: z.number().int('Budget must be a whole number of minor units.').positive(),
   currency: z.string().length(3).toUpperCase(),
   skillsRequired: z.array(z.string().trim().min(1)).min(1, 'At least one skill is required.'),
-  category: jobCategorySchema.nullable().optional(),
-  deadline: z.string().datetime().nullable().optional(),
+  // Required at creation — see the equivalent note on postVacancySchema.
+  category: jobCategorySchema,
+  deadline: z.string().datetime(),
 });
 
 export const applyToGigSchema = z.object({

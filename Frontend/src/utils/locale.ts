@@ -17,3 +17,16 @@ export function resolveLocale(locale: string | undefined): SupportedLocale {
     ? (locale as SupportedLocale)
     : 'ka';
 }
+
+// Next.js's own automatic locale detection (i18n.localeDetection, on by
+// default) redirects any locale-prefixless request based on the
+// Accept-Language header UNLESS a NEXT_LOCALE cookie is present, in which
+// case the cookie wins. Nothing in this app used to set that cookie, so a
+// user who explicitly picked "ka" (the defaultLocale, served with no URL
+// prefix) would get silently redirected back to whatever their browser's
+// Accept-Language preferred on the next full refresh. LanguageSwitcher.tsx
+// writes this cookie (plus the localStorage mirror below) on every manual
+// switch so Next's own detection logic respects the choice on refreshes and
+// on any fresh, prefixless navigation — no custom redirect logic needed.
+export const LOCALE_COOKIE = 'NEXT_LOCALE';
+export const LOCALE_STORAGE_KEY = 'cdc_locale';

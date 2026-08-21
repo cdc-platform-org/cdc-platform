@@ -8,7 +8,7 @@ import BackButton from '../../src/components/common/BackButton';
 import { resolveLocale } from '../../src/utils/locale';
 
 const STRINGS = {
-  ka: { title: 'გიგის გამოქვეყნება' },
+  ka: { title: 'შეკვეთის გამოქვეყნება' },
   en: { title: 'Post a Gig' },
 };
 

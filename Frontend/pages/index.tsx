@@ -510,7 +510,7 @@ export default function Home() {
               </div>
             </div>
             <a href="#blog" className="hover:text-cyan-500 transition no-underline text-current">{t('blog')}</a>
-            <a href="/agency" className="hover:text-cyan-500 transition no-underline text-current">{safeText('CDC Studio')}</a>
+            <a href="/agency" className="hover:text-cyan-500 transition no-underline text-current">{safeText(t('studio'))}</a>
             <a href="/community" className="hover:text-cyan-500 transition no-underline text-current">{t('jobs')}</a>
             <a href="/forum" className="hover:text-cyan-500 transition no-underline text-current">{t('forum')}</a>
           </div>
@@ -579,7 +579,7 @@ export default function Home() {
               </Link>
             ))}
             <a href="#blog" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('blog')}</a>
-            <a href="/agency" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{safeText('CDC Studio')}</a>
+            <a href="/agency" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{safeText(t('studio'))}</a>
             <a href="/community" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('jobs')}</a>
             <a href="/forum" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('forum')}</a>
             <UserMenu

@@ -12,6 +12,9 @@ interface AuthContextValue {
   loginWithToken: (token: string) => Promise<User>;
   logout: () => void;
   refreshUser: () => Promise<User>;
+  // Writes an already-known-fresh User (e.g. updateProfile()'s own response)
+  // straight into context — see the comment on syncUser in useAuth.ts.
+  setUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);

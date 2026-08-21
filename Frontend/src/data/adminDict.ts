@@ -9,7 +9,7 @@ export const adminDict = {
     nav: {
       dashboard: 'მთავარი პანელი',
       users: 'მომხმარებლების მართვა',
-      gigs: 'გიგები & ვაკანსიები',
+      gigs: 'შეკვეთები & ვაკანსიები',
       disputes: 'დავები',
       mentorship: 'მენტორობის რიგი',
       messages: 'შეტყობინებების ზედამხედველობა',

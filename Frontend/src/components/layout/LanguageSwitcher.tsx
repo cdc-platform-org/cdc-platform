@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { setCookie } from '../../utils/cookies';
+import { LOCALE_COOKIE, LOCALE_STORAGE_KEY } from '../../utils/locale';
 
 // Each language labeled in its own script/name (matching how "ქართული"/
 // "English" already worked before this was a dropdown) — never translate a
@@ -38,6 +40,16 @@ export default function LanguageSwitcher() {
 
   const switchLocale = (nextLocale: string) => {
     setOpen(false);
+    // Persist the choice so it survives a full refresh — see the comment on
+    // LOCALE_COOKIE in utils/locale.ts for why the cookie is what actually
+    // makes Next.js's automatic locale detection respect it.
+    setCookie(LOCALE_COOKIE, nextLocale, 365);
+    try {
+      localStorage.setItem(LOCALE_STORAGE_KEY, nextLocale);
+    } catch {
+      // Ignore (private-browsing storage restrictions, etc.) — the cookie
+      // above is what actually drives persistence.
+    }
     router.push({ pathname, query }, asPath, { locale: nextLocale });
   };
 

@@ -118,7 +118,7 @@ const dictBase = {
     fieldCurrency: 'ვალუტა',
     cancel: 'გაუქმება',
     // Orders
-    postGig: '+ გიგის გამოქვეყნება',
+    postGig: '+ შეკვეთის გამოქვეყნება',
     noGigs: 'გარიგებები ჯერ არ არის.',
     budget: 'ბიუჯეტი',
     fundEscrow: 'ესქროუს დაფინანსება',
@@ -459,7 +459,7 @@ function BusinessDashboardContent() {
   const router = useRouter();
   const lang = resolveLocale(router.locale);
   const t = dict[lang];
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, setUser } = useAuth();
 
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [loading, setLoading] = useState(true);
@@ -580,7 +580,7 @@ function BusinessDashboardContent() {
     setSaving(true);
     setSaved(false);
     try {
-      await updateProfile({
+      const updated = await updateProfile({
         name: form.name,
         phone: form.phone || null,
         companyName: form.companyName || null,
@@ -589,7 +589,8 @@ function BusinessDashboardContent() {
         companyDescription: form.companyDescription || null,
         taxId: form.taxId || null,
       });
-      await refreshUser();
+      // Instant header sync — see the same comment in dashboard/settings.tsx.
+      setUser(updated);
       setSaved(true);
     } finally {
       setSaving(false);

@@ -63,9 +63,9 @@
     }
   },
   "marketplace": {
-    "gigsTitle": "ფრილანს გიგები",
+    "gigsTitle": "ფრილანს შეკვეთები",
     "vacanciesTitle": "ვაკანსიები",
-    "postGig": "გიგის გამოქვეყნება",
+    "postGig": "შეკვეთის გამოქვეყნება",
     "postVacancy": "ვაკანსიის გამოქვეყნება",
     "budgetTypeLabel": "ბიუჯეტის ტიპი",
     "budgetFixed": "ფიქსირებული ფასი",
@@ -77,7 +77,7 @@
     "employmentInternship": "სტაჟირება",
     "skillsFilterPlaceholder": "გაფილტვრა უნარით (მაგ. React, Figma)",
     "loading": "იტვირთება…",
-    "noGigsMatch": "თქვენი ფილტრებით გიგები ვერ მოიძებნა.",
+    "noGigsMatch": "თქვენი ფილტრებით შეკვეთები ვერ მოიძებნა.",
     "noVacanciesMatch": "თქვენი ფილტრებით ვაკანსიები ვერ მოიძებნა.",
     "viewApplications": "განაცხადების ნახვა",
     "reviewed": "შეფასებულია",

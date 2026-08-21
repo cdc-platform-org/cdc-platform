@@ -24,7 +24,7 @@ const dict = {
     avatarError: 'სურათის ატვირთვა ვერ მოხერხდა.',
     avatarHint: 'მაქსიმუმ 10 MB (JPG, PNG, WEBP)',
     cvTitle: 'რეზიუმე / CV',
-    cvHint: 'ატვირთეთ თქვენი CV — გამოჩნდება გიგებზე/ვაკანსიებზე განაცხადებში და თქვენს პროფილში.',
+    cvHint: 'ატვირთეთ თქვენი CV — გამოჩნდება შეკვეთებზე/ვაკანსიებზე განაცხადებში და თქვენს პროფილში.',
     cvUpload: 'CV-ის ატვირთვა',
     cvReplace: 'CV-ის შეცვლა',
     cvUploading: 'იტვირთება…',
@@ -362,7 +362,7 @@ function SettingsContent() {
   const router = useRouter();
   const lang = resolveLocale(router.locale);
   const t = dict[lang];
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, setUser } = useAuth();
 
   const [form, setForm] = useState({
     name: '',
@@ -468,8 +468,8 @@ function SettingsContent() {
     setSavingIntent(true);
     setIntentSaved(false);
     try {
-      await updateProfile({ primaryIntent: intent });
-      await refreshUser();
+      const updated = await updateProfile({ primaryIntent: intent });
+      setUser(updated);
       setIntentSaved(true);
     } finally {
       setSavingIntent(false);
@@ -486,7 +486,7 @@ function SettingsContent() {
     setSaveError(null);
     setSaving(true);
     try {
-      await updateProfile({
+      const updated = await updateProfile({
         name: form.name,
         bio: form.bio || null,
         legalFirstNameKa: form.legalFirstNameKa || null,
@@ -498,10 +498,11 @@ function SettingsContent() {
         payoutIban: form.payoutIban || null,
         freelancerSkills: skills,
       });
-      // Re-syncs the cached user everywhere it's read from context — the
-      // certificate confirm modal and wallet payout form both pick this up
-      // immediately, no reload needed (data-sync requirement).
-      await refreshUser();
+      // Writes the PUT response straight into context — the header name,
+      // certificate confirm modal, and wallet payout form all read from the
+      // same context and update on this same render, no reload and no
+      // second network round-trip needed (data-sync requirement).
+      setUser(updated);
       setSaved(true);
     } catch (err: any) {
       setSaveError(err?.response?.data?.message ?? (lang === 'ka' ? 'შენახვა ვერ მოხერხდა.' : 'Unable to save changes.'));
