@@ -7,6 +7,8 @@ import {
   reverifyCoursePayment,
   refundCoursePayment,
   grantCourseAccess,
+  getAdminBillingSettings,
+  updateAdminBillingSettings,
   CoursePaymentRow,
 } from '../../src/services/adminFinanceService';
 
@@ -77,6 +79,82 @@ function GrantAccessForm({ onGranted }: { onGranted: () => void }) {
           {submitting ? 'Granting…' : 'Grant Access'}
         </button>
       </form>
+    </div>
+  );
+}
+
+// Configures the manual bank-transfer alternative shown in
+// PaymentMethodsCard.tsx (Settings > Payment Methods) for users who don't
+// want to attach a card. IBAN is required for the section to render there
+// at all — bank name / recipient are optional context lines under it.
+function BankTransferSettingsForm() {
+  const [iban, setIban] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [accountName, setAccountName] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    getAdminBillingSettings()
+      .then((s) => {
+        setIban(s.bankTransferIban ?? '');
+        setBankName(s.bankTransferBankName ?? '');
+        setAccountName(s.bankTransferAccountName ?? '');
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setMessage(null);
+    try {
+      await updateAdminBillingSettings({ bankTransferIban: iban, bankTransferBankName: bankName, bankTransferAccountName: accountName });
+      setMessage('✓ Saved.');
+    } catch {
+      setMessage('Unable to save — check the IBAN format.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="bg-white/90 dark:bg-slate-900/70 backdrop-blur-md border border-gray-200 dark:border-white/10 shadow-md shadow-slate-200/40 dark:shadow-none rounded-xl p-5 mb-8 transition-colors">
+      <h3 className="font-semibold text-sm text-gray-900 dark:text-white mb-1">Bank Transfer Settings</h3>
+      <p className="text-xs text-gray-500 dark:text-slate-400 mb-4">
+        Shown to users as a manual bank-transfer alternative to attaching a card (Settings → Payment Methods). Leave IBAN blank to hide the option entirely.
+      </p>
+      {loading ? (
+        <p className="text-xs text-gray-400 dark:text-slate-500">Loading…</p>
+      ) : (
+        <>
+          {message && <div className="mb-3 text-xs text-gray-600 dark:text-slate-300">{message}</div>}
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-2">
+            <input
+              placeholder="IBAN (e.g. GE29TB...)"
+              value={iban}
+              onChange={(e) => setIban(e.target.value)}
+              className="rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white px-3 py-2 text-sm font-mono"
+            />
+            <input
+              placeholder="Bank name (optional)"
+              value={bankName}
+              onChange={(e) => setBankName(e.target.value)}
+              className="rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white px-3 py-2 text-sm"
+            />
+            <input
+              placeholder="Recipient name (optional)"
+              value={accountName}
+              onChange={(e) => setAccountName(e.target.value)}
+              className="rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white px-3 py-2 text-sm"
+            />
+            <button type="submit" disabled={saving} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60">
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+          </form>
+        </>
+      )}
     </div>
   );
 }
@@ -178,6 +256,7 @@ function AdminFinanceDashboard() {
         </div>
 
         <GrantAccessForm onGranted={load} />
+        <BankTransferSettingsForm />
 
         <div className="flex flex-wrap items-center gap-2 mb-4">
           {['', 'PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'].map((s) => (

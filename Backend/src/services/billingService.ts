@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma';
 import { bindCard, BindCardParams } from './paymentGatewayService';
 import { detachStripePaymentMethod } from './stripePaymentService';
 import { BillingProductType } from '@prisma/client';
+import { sendTrialEndingWarningEmail, sendPreDebitReminderEmail } from './emailService';
 
 // ============================================================
 // Unified SaaS billing — base fee + usage-based (token/event) charges per
@@ -67,6 +68,17 @@ const DEFAULT_BASE_FEE_TETRI = 9900; // 99.00 GEL
 const DEFAULT_MARGIN_MULTIPLIER = 3.0;
 const DEFAULT_TRIAL_DAYS = 10;
 
+// Length of one recurring billing cycle for an ACTIVE subscription — see
+// rolloverActiveBillingPeriods. Same "non-invasive" posture as the rest of
+// this file: this only advances currentPeriodStart/currentPeriodEnd and
+// resets the usage window, it never attempts a real charge.
+const BILLING_CYCLE_DAYS = 30;
+
+// How far ahead of an event (trial end / next charge) its warning fires —
+// matches the exact "1 day" commitment in the required notice text, so
+// don't change this without updating both email templates in emailService.ts.
+const REMINDER_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 // Placeholder raw-provider rate — not a real Gemini invoice figure (no
 // billing account is wired up to pull actual per-token cost from). Kept as
 // a single named constant so it's obvious where to plug in a real number
@@ -78,6 +90,13 @@ export interface ResolvedBillingSettings {
   baseFeeTetri: number;
   marginMultiplier: number;
   trialDays: number;
+  // Manual bank-transfer alternative, read-only display data — all three
+  // are null unless an admin has actually filled them in (PUT
+  // /admin/billing-settings), so the frontend only ever shows real,
+  // admin-entered banking details, never a placeholder.
+  bankTransferIban: string | null;
+  bankTransferBankName: string | null;
+  bankTransferAccountName: string | null;
 }
 
 export async function getBillingSettings(): Promise<ResolvedBillingSettings> {
@@ -86,6 +105,9 @@ export async function getBillingSettings(): Promise<ResolvedBillingSettings> {
     baseFeeTetri: settings?.baseFeeTetri ?? DEFAULT_BASE_FEE_TETRI,
     marginMultiplier: settings?.marginMultiplier ?? DEFAULT_MARGIN_MULTIPLIER,
     trialDays: settings?.trialDays ?? DEFAULT_TRIAL_DAYS,
+    bankTransferIban: settings?.bankTransferIban ?? null,
+    bankTransferBankName: settings?.bankTransferBankName ?? null,
+    bankTransferAccountName: settings?.bankTransferAccountName ?? null,
   };
 }
 
@@ -280,16 +302,135 @@ export async function sweepExpiredTrials(): Promise<{ activatedIds: string[]; pa
   const pastDueIds: string[] = [];
   for (const sub of expired) {
     const canActivate = sub.autoRenew && sub.paymentMethod?.verifiedAt;
+    const now = new Date();
     await prisma.billingSubscription.update({
       where: { id: sub.id },
       data: {
         status: canActivate ? 'ACTIVE' : 'PAST_DUE',
-        currentPeriodStart: new Date(),
+        currentPeriodStart: now,
+        // Marks when the first recurring "charge" (still non-invasive —
+        // see rolloverActiveBillingPeriods) is due, so
+        // sweepRenewalReminders has something concrete to warn ahead of.
+        // Left null on the PAST_DUE branch — there's no live cycle to
+        // remind about until autoRenew/a verified card comes back.
+        currentPeriodEnd: canActivate ? new Date(now.getTime() + BILLING_CYCLE_DAYS * 24 * 60 * 60 * 1000) : null,
       },
     });
     (canActivate ? activatedIds : pastDueIds).push(sub.id);
   }
   return { activatedIds, pastDueIds };
+}
+
+// Advances every ACTIVE subscription whose current cycle has ended —
+// mirrors sweepExpiredTrials's own canActivate check (autoRenew + a still-
+// verified default card) so a card removed mid-cycle correctly stops the
+// clock instead of silently rolling forward forever. Still never attempts
+// a real charge, same "Non-Invasive Pause" posture as the rest of this
+// file — this only advances the tracked cycle and resets the usage window
+// (getCurrentCycleUsageTetri sums from currentPeriodStart) and the
+// per-cycle reminder flag so the next cycle gets its own pre-debit notice.
+export async function rolloverActiveBillingPeriods(): Promise<{ rolledOverIds: string[]; pastDueIds: string[] }> {
+  const due = await prisma.billingSubscription.findMany({
+    where: { status: 'ACTIVE', currentPeriodEnd: { lte: new Date() } },
+    include: { paymentMethod: true },
+  });
+  const rolledOverIds: string[] = [];
+  const pastDueIds: string[] = [];
+  for (const sub of due) {
+    const canRenew = sub.autoRenew && sub.paymentMethod?.verifiedAt;
+    const periodEnd = sub.currentPeriodEnd ?? new Date();
+    if (canRenew) {
+      await prisma.billingSubscription.update({
+        where: { id: sub.id },
+        data: {
+          currentPeriodStart: periodEnd,
+          currentPeriodEnd: new Date(periodEnd.getTime() + BILLING_CYCLE_DAYS * 24 * 60 * 60 * 1000),
+          renewalReminderSentAt: null,
+        },
+      });
+      rolledOverIds.push(sub.id);
+    } else {
+      await prisma.billingSubscription.update({
+        where: { id: sub.id },
+        data: { status: 'PAST_DUE', currentPeriodEnd: null },
+      });
+      pastDueIds.push(sub.id);
+    }
+  }
+  return { rolledOverIds, pastDueIds };
+}
+
+// Ethical-billing commitment #1: warn 1 day before trial access could
+// lapse, so a user is never surprised by a sudden loss of access. Fires
+// once per trial (trialWarningSentAt guards re-sends) — in-app
+// Notification + email, both with the exact required wording.
+export async function sweepTrialEndingWarnings(): Promise<{ notifiedIds: string[] }> {
+  const dueSoon = await prisma.billingSubscription.findMany({
+    where: {
+      status: 'TRIALING',
+      trialWarningSentAt: null,
+      trialEndsAt: { lte: new Date(Date.now() + REMINDER_WINDOW_MS), gt: new Date() },
+    },
+    include: { business: { select: { id: true, email: true } } },
+  });
+  const notifiedIds: string[] = [];
+  for (const sub of dueSoon) {
+    const title = 'თქვენი საცდელი პერიოდი მალე იწურება';
+    const message = 'თქვენს საცდელ პერიოდს ვადა 1 დღეში ეწურება. წვდომის გასაგრძელებლად შეგიძლიათ გადაიხადოთ დაშბორდიდან.';
+    await prisma.notification.create({
+      data: { userId: sub.businessId, title, message, type: 'BILLING_TRIAL_ENDING' },
+    });
+    await prisma.billingSubscription.update({
+      where: { id: sub.id },
+      data: { trialWarningSentAt: new Date() },
+    });
+    if (sub.business.email) {
+      sendTrialEndingWarningEmail(sub.business.email).catch((err) =>
+        console.error(`[billingService] sendTrialEndingWarningEmail failed for ${sub.business.email}:`, err)
+      );
+    }
+    notifiedIds.push(sub.id);
+  }
+  return { notifiedIds };
+}
+
+// Ethical-billing commitment #2: no surprise charges — always a heads-up
+// before a recurring debit, only for subscriptions the user actually
+// opted into (autoRenew on + a verified card), with the exact required
+// wording that also names the opt-out (delete the card in Settings).
+// Fires once per cycle (renewalReminderSentAt, cleared on each
+// rolloverActiveBillingPeriods advance).
+export async function sweepRenewalReminders(): Promise<{ notifiedIds: string[] }> {
+  const dueSoon = await prisma.billingSubscription.findMany({
+    where: {
+      status: 'ACTIVE',
+      autoRenew: true,
+      renewalReminderSentAt: null,
+      currentPeriodEnd: { lte: new Date(Date.now() + REMINDER_WINDOW_MS), gt: new Date() },
+      paymentMethod: { verifiedAt: { not: null } },
+    },
+    include: { business: { select: { id: true, email: true } } },
+  });
+  const notifiedIds: string[] = [];
+  for (const sub of dueSoon) {
+    const title = 'მოახლოებული გადახდა თქვენს ანგარიშზე';
+    const message =
+      'თანხის ჩამოჭრის დროა. თუ გსურთ მომსახურების გაგრძელება, გთხოვთ დაახვედროთ საკმარისი თანხა ბარათზე. თუ არ გსურთ გაგრძელება, შეგიძლიათ წაშალოთ ბარათი პარამეტრებიდან.';
+    await prisma.notification.create({
+      data: { userId: sub.businessId, title, message, type: 'BILLING_RENEWAL_REMINDER' },
+    });
+    await prisma.billingSubscription.update({
+      where: { id: sub.id },
+      data: { renewalReminderSentAt: new Date() },
+    });
+    if (sub.business.email) {
+      sendPreDebitReminderEmail(sub.business.email).catch((err) =>
+        console.error(`[billingService] sendPreDebitReminderEmail failed for ${sub.business.email}:`, err)
+      );
+    }
+    notifiedIds.push(sub.id);
+  }
+  return { notifiedIds };
 }
 
 // ============================================================

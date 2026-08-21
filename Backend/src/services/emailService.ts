@@ -367,6 +367,39 @@ export async function sendOfficialNotificationEmail(email: string): Promise<void
   await sendEmail(email, 'CDC პლატფორმის შეტყობინება / Official Notification from CDC', html, link);
 }
 
+// Fired once per subscription, ~24h before BillingSubscription.trialEndsAt
+// (see billingService.sweepTrialEndingWarnings) — paired with an identical
+// in-app Notification. Exact wording is the platform's explicit ethical-
+// billing commitment: the user is told before access could lapse, not
+// after. Never re-sent for the same trial (trialWarningSentAt guards it).
+export async function sendTrialEndingWarningEmail(email: string): Promise<void> {
+  const link = `${FRONTEND_URL}/dashboard/billing`;
+  const html = wrapTemplate(
+    'თქვენი საცდელი პერიოდი მალე იწურება',
+    'თქვენს საცდელ პერიოდს ვადა 1 დღეში ეწურება. წვდომის გასაგრძელებლად შეგიძლიათ გადაიხადოთ დაშბორდიდან.',
+    'ბილინგის გვერდის ნახვა',
+    link
+  );
+  await sendEmail(email, 'თქვენი საცდელი პერიოდი მალე იწურება — CDC', html, link);
+}
+
+// Fired once per billing cycle, ~24h before BillingSubscription.currentPeriodEnd
+// (see billingService.sweepRenewalReminders) — only for subscriptions with
+// autoRenew on and a verified card, i.e. a charge the user actually opted
+// into. This is the platform's "no surprise charges" commitment in
+// practice: always a heads-up before money moves, with an explicit way out
+// (delete the card) named right in the message. Exact wording as specified.
+export async function sendPreDebitReminderEmail(email: string): Promise<void> {
+  const link = `${FRONTEND_URL}/dashboard/settings`;
+  const html = wrapTemplate(
+    'მოახლოებული გადახდა თქვენს ანგარიშზე',
+    'თანხის ჩამოჭრის დროა. თუ გსურთ მომსახურების გაგრძელება, გთხოვთ დაახვედროთ საკმარისი თანხა ბარათზე. თუ არ გსურთ გაგრძელება, შეგიძლიათ წაშალოთ ბარათი პარამეტრებიდან.',
+    'ბარათის მართვა',
+    link
+  );
+  await sendEmail(email, 'მოახლოებული გადახდა თქვენს ანგარიშზე — CDC', html, link);
+}
+
 export async function sendPasswordResetEmail(email: string, token: string, lang: 'ka' | 'en' = 'ka'): Promise<void> {
   const link = `${FRONTEND_URL}/reset-password?token=${token}`;
   const html =

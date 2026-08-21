@@ -37,4 +37,13 @@ export const updateBillingSettingsSchema = z.object({
   baseFeeTetri: z.number().int().positive().optional(),
   marginMultiplier: z.number().positive().optional(),
   trialDays: z.number().int().positive().max(90).optional(),
+  // Manual bank-transfer alternative — undefined (field omitted) leaves the
+  // stored value untouched; null or "" clears it back to "not configured"
+  // (see adminFinance.ts's PUT handler, which normalizes "" to null before
+  // writing — Prisma treats an explicit null in `data` as "set to null"
+  // and an absent key as "don't touch", so that distinction has to survive
+  // past this schema).
+  bankTransferIban: z.string().trim().max(50).nullable().optional(),
+  bankTransferBankName: z.string().trim().max(120).nullable().optional(),
+  bankTransferAccountName: z.string().trim().max(120).nullable().optional(),
 });

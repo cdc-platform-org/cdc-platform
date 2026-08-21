@@ -85,6 +85,7 @@ import { PORT } from './utils/env';
 import { autoApproveOverdueGigs } from './services/gigApprovalService';
 import { cleanupExpiredDeletedAccounts } from './services/accountCleanupService';
 import { pauseExpiredTrialAgents } from './services/agentBillingService';
+import { rolloverActiveBillingPeriods, sweepTrialEndingWarnings, sweepRenewalReminders } from './services/billingService';
 
 // ============================================================
 // PROCESS-LEVEL SAFETY NET
@@ -386,3 +387,30 @@ setInterval(() => {
     })
     .catch((err) => console.error('[agent-trial-sweep] run failed:', err));
 }, AGENT_TRIAL_POLL_INTERVAL_MS);
+
+// Same in-process-fallback caveat as above — production should prefer a
+// single external scheduler hitting these three POST /api/cron/... routes.
+// Hourly is precise enough against a 24h reminder window (REMINDER_WINDOW_MS
+// in billingService.ts) — worst case a warning fires up to an hour later
+// than the exact 1-day mark, never earlier and never skipped, since each
+// sweep's own *SentAt guard makes a redundant run a no-op.
+const BILLING_REMINDER_POLL_INTERVAL_MS = 60 * 60 * 1000; // hourly
+setInterval(() => {
+  rolloverActiveBillingPeriods()
+    .then(({ rolledOverIds, pastDueIds }) => {
+      if (rolledOverIds.length > 0 || pastDueIds.length > 0) {
+        console.log(`[billing-rollover] rolledOver=${rolledOverIds.length} pastDue=${pastDueIds.length}`);
+      }
+    })
+    .catch((err) => console.error('[billing-rollover] run failed:', err));
+  sweepTrialEndingWarnings()
+    .then(({ notifiedIds }) => {
+      if (notifiedIds.length > 0) console.log(`[billing-trial-warning] notified=${notifiedIds.length}`);
+    })
+    .catch((err) => console.error('[billing-trial-warning] run failed:', err));
+  sweepRenewalReminders()
+    .then(({ notifiedIds }) => {
+      if (notifiedIds.length > 0) console.log(`[billing-renewal-reminder] notified=${notifiedIds.length}`);
+    })
+    .catch((err) => console.error('[billing-renewal-reminder] run failed:', err));
+}, BILLING_REMINDER_POLL_INTERVAL_MS);

@@ -1852,6 +1852,14 @@ model BillingSettings {
   // later change here never rewrites past usage history).
   marginMultiplier Float    @default(3.0)
   trialDays        Int      @default(10)
+  // Manual bank-transfer alternative for users who don't want to attach a
+  // card — shown read-only wherever card-attachment happens (see
+  // PaymentMethodsCard.tsx) whenever an admin has actually filled these in.
+  // Null (the default) means the option simply doesn't render — CDC never
+  // fabricates banking details client-side.
+  bankTransferIban          String?
+  bankTransferBankName      String?
+  bankTransferAccountName   String?
   updatedByEmail   String?
   updatedAt        DateTime @updatedAt
 
@@ -1904,6 +1912,13 @@ model BillingSubscription {
   autoRenew          Boolean                   @default(true)
   paymentMethodId    String?
   paymentMethod      PaymentMethod?            @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  // Set once, the first time sweepTrialEndingWarnings fires the "1 day
+  // left" notice for this trial — never re-sent, even across sweep runs.
+  trialWarningSentAt DateTime?
+  // Set once per billing cycle, the first time sweepRenewalReminders fires
+  // the pre-debit notice ahead of currentPeriodEnd — cleared on each
+  // rolloverActiveBillingPeriods advance so the next cycle gets its own.
+  renewalReminderSentAt DateTime?
   canceledAt         DateTime?
   cancellationReason String?
   createdAt          DateTime                  @default(now())

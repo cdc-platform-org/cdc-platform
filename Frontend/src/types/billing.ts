@@ -98,4 +98,10 @@ export interface BillingSettings {
   baseFeeTetri: number;
   marginMultiplier: number;
   trialDays: number;
+  // Manual bank-transfer alternative for users who don't want to attach a
+  // card — all three null unless an admin has actually configured them
+  // (PUT /admin/billing-settings). See PaymentMethodsCard.tsx.
+  bankTransferIban: string | null;
+  bankTransferBankName: string | null;
+  bankTransferAccountName: string | null;
 }

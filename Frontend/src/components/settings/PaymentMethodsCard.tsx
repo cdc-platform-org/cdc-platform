@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import Link from 'next/link';
 import { loadStripe, Stripe, StripeCardElement } from '@stripe/stripe-js';
-import { Plus, Trash2, CreditCard, ShieldCheck } from 'lucide-react';
+import { Plus, Trash2, CreditCard, ShieldCheck, Landmark } from 'lucide-react';
 import {
   getPaymentMethods,
   createCardSetupIntent,
   addPaymentMethod,
   setDefaultPaymentMethod,
   removePaymentMethod,
+  getBillingSettings,
 } from '../../services/billingService';
 import { PaymentMethod } from '../../types/billing';
 import { SupportedLocale } from '../../utils/locale';
@@ -35,6 +37,14 @@ const STRINGS = {
       'ამ ბარათით ფინანსდება აქტიური გამოწერა ავტომატური განახლებით — წაშლის შემთხვევაში ავტომატური განახლება გამოირთვება. გავაგრძელო წაშლა?',
     confirmDeleteYes: 'დიახ, წაშლა',
     confirmDeleteNo: 'გაუქმება',
+    termsPrefix: 'ვეთანხმები',
+    termsLink: 'წესებსა და პირობებს',
+    termsRequired: 'ბარათის შესანახად საჭიროა წესებსა და პირობებზე თანხმობა.',
+    bankTransferToggle: 'არ გსურთ ბარათის მიბმა? საბანკო გადარიცხვა (IBAN)',
+    bankTransferHint: 'შეგიძლიათ ჩაირიცხოთ თანხა უშუალოდ ჩვენს ანგარიშზე — მიუთითეთ თქვენი ანგარიშის ელ-ფოსტა გადარიცხვის დანიშნულებაში, რომ თანხა ჩაგერიცხოთ ხელით.',
+    bankTransferIban: 'IBAN',
+    bankTransferBank: 'ბანკი',
+    bankTransferAccountName: 'მიმღები',
   },
   en: {
     title: 'Payment Methods',
@@ -59,6 +69,14 @@ const STRINGS = {
       'This card is funding an active auto-renewing subscription — removing it will turn auto-renew off. Continue removing it?',
     confirmDeleteYes: 'Yes, delete it',
     confirmDeleteNo: 'Cancel',
+    termsPrefix: 'I agree to the',
+    termsLink: 'Terms & Conditions',
+    termsRequired: 'You need to accept the Terms & Conditions to save a card.',
+    bankTransferToggle: "Don't want to attach a card? Bank transfer (IBAN)",
+    bankTransferHint: 'You can wire the amount directly to our account — put your account email in the transfer reference so we can credit it manually.',
+    bankTransferIban: 'IBAN',
+    bankTransferBank: 'Bank',
+    bankTransferAccountName: 'Recipient',
   },
 };
 
@@ -90,7 +108,11 @@ export default function PaymentMethodsCard({ lang, userName }: { lang: Supported
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  const [bankTransfer, setBankTransfer] = useState<{ iban: string; bankName: string | null; accountName: string | null } | null>(null);
+  const [showBankTransfer, setShowBankTransfer] = useState(false);
+
   const [showAddForm, setShowAddForm] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [cardElementReady, setCardElementReady] = useState(false);
   // Distinct from addError (a failed submit) — set when Stripe.js itself
   // never becomes usable (missing/invalid NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
@@ -119,6 +141,22 @@ export default function PaymentMethodsCard({ lang, userName }: { lang: Supported
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    // Best-effort — a settings-fetch failure just means the bank-transfer
+    // alternative doesn't render, not a load error for the whole card.
+    getBillingSettings()
+      .then((settings) => {
+        if (settings.bankTransferIban) {
+          setBankTransfer({
+            iban: settings.bankTransferIban,
+            bankName: settings.bankTransferBankName,
+            accountName: settings.bankTransferAccountName,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Mounts a fresh Stripe Card Element (a Stripe-hosted iframe — raw card
   // input never touches this page's own DOM/JS) each time the add-card form
@@ -170,6 +208,10 @@ export default function PaymentMethodsCard({ lang, userName }: { lang: Supported
       setAddError(t.stripeNotConfigured);
       return;
     }
+    if (!termsAccepted) {
+      setAddError(t.termsRequired);
+      return;
+    }
     setSubmitting(true);
     setAddError(null);
     try {
@@ -201,6 +243,7 @@ export default function PaymentMethodsCard({ lang, userName }: { lang: Supported
         expiryYear: paymentMethod.card.exp_year,
       });
       setShowAddForm(false);
+      setTermsAccepted(false);
       load();
     } catch (err: any) {
       setAddError(err?.response?.data?.message ?? t.addFailed);
@@ -346,13 +389,30 @@ export default function PaymentMethodsCard({ lang, userName }: { lang: Supported
           </div>
           {stripeInitError && <p className="text-xs text-red-600 dark:text-red-400">{stripeInitError}</p>}
           {addError && <p className="text-xs text-red-600 dark:text-red-400">{addError}</p>}
+
+          <label className="flex items-start gap-2 text-[11px] text-slate-500 dark:text-slate-400 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={termsAccepted}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
+              className="mt-0.5 shrink-0"
+            />
+            <span>
+              {t.termsPrefix}{' '}
+              <Link href="/terms" target="_blank" className="font-bold text-cyan-600 dark:text-cyan-400 hover:underline">
+                {t.termsLink}
+              </Link>
+            </span>
+          </label>
+
           <div className="flex gap-2">
             <button
               type="button"
               onClick={handleAddCard}
-              disabled={submitting || !cardElementReady}
-              className="text-xs font-bold px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white disabled:opacity-60"
+              disabled={submitting || !cardElementReady || !termsAccepted}
+              className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white disabled:opacity-60"
             >
+              {submitting && <span className="w-3 h-3 rounded-full border-2 border-white/40 border-t-white animate-spin" />}
               {submitting ? t.saving : t.saveCard}
             </button>
             <button
@@ -360,6 +420,7 @@ export default function PaymentMethodsCard({ lang, userName }: { lang: Supported
               onClick={() => {
                 setShowAddForm(false);
                 setAddError(null);
+                setTermsAccepted(false);
               }}
               disabled={submitting}
               className="text-xs font-bold px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-60"
@@ -376,6 +437,39 @@ export default function PaymentMethodsCard({ lang, userName }: { lang: Supported
         >
           <Plus className="w-3.5 h-3.5" /> {t.addCard}
         </button>
+      )}
+
+      {bankTransfer && (
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={() => setShowBankTransfer((v) => !v)}
+            className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 bg-transparent border-none cursor-pointer p-0"
+          >
+            <Landmark className="w-3.5 h-3.5" /> {t.bankTransferToggle}
+          </button>
+          {showBankTransfer && (
+            <div className="mt-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-950/40 px-4 py-3 space-y-1.5">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">{t.bankTransferHint}</p>
+              <div className="text-xs flex items-center justify-between gap-3">
+                <span className="text-slate-500 dark:text-slate-400">{t.bankTransferIban}</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">{bankTransfer.iban}</span>
+              </div>
+              {bankTransfer.bankName && (
+                <div className="text-xs flex items-center justify-between gap-3">
+                  <span className="text-slate-500 dark:text-slate-400">{t.bankTransferBank}</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{bankTransfer.bankName}</span>
+                </div>
+              )}
+              {bankTransfer.accountName && (
+                <div className="text-xs flex items-center justify-between gap-3">
+                  <span className="text-slate-500 dark:text-slate-400">{t.bankTransferAccountName}</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{bankTransfer.accountName}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

@@ -174,7 +174,15 @@ router.put('/billing-settings', async (req: Request, res: Response) => {
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
   const existing = await prisma.billingSettings.findFirst({ orderBy: { updatedAt: 'desc' } });
-  const data = { ...result.data, updatedByEmail: req.user!.email };
+  // "" means "clear this field" (see updateBillingSettingsSchema's own
+  // comment) — normalized to null here, after validation, so an explicit
+  // clear reaches Prisma as `null` while an omitted field stays absent
+  // from `data` and leaves the stored value untouched.
+  const normalized = { ...result.data };
+  for (const key of ['bankTransferIban', 'bankTransferBankName', 'bankTransferAccountName'] as const) {
+    if (normalized[key] === '') normalized[key] = null;
+  }
+  const data = { ...normalized, updatedByEmail: req.user!.email };
   const settings = existing
     ? await prisma.billingSettings.update({ where: { id: existing.id }, data })
     : await prisma.billingSettings.create({ data });

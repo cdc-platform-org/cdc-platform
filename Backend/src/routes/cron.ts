@@ -4,7 +4,7 @@ import { CRON_SECRET } from '../utils/env';
 import { autoApproveOverdueGigs } from '../services/gigApprovalService';
 import { cleanupExpiredDeletedAccounts } from '../services/accountCleanupService';
 import { pauseExpiredTrialAgents } from '../services/agentBillingService';
-import { sweepExpiredTrials } from '../services/billingService';
+import { sweepExpiredTrials, rolloverActiveBillingPeriods, sweepTrialEndingWarnings, sweepRenewalReminders } from '../services/billingService';
 import { generateAndSaveBlogDraft, BlogAgentError } from '../services/blogAgentService';
 import { AiAgentError } from '../services/aiAgentService';
 import { scanAllActiveSources } from '../services/grantScoutService';
@@ -66,6 +66,32 @@ router.post('/sweep-expired-billing-trials', requireCronSecret, async (_req: Req
     message: `${result.activatedIds.length} subscription(s) activated, ${result.pastDueIds.length} marked past-due.`,
     ...result,
   });
+});
+
+// Advances every ACTIVE subscription past the end of its tracked cycle —
+// see billingService.rolloverActiveBillingPeriods's own comment for why
+// this still never attempts a real charge.
+router.post('/rollover-billing-periods', requireCronSecret, async (_req: Request, res: Response) => {
+  const result = await rolloverActiveBillingPeriods();
+  res.json({
+    message: `${result.rolledOverIds.length} subscription(s) rolled to a new cycle, ${result.pastDueIds.length} marked past-due.`,
+    ...result,
+  });
+});
+
+// Ethical-billing commitment: 1-day trial-ending warning (email + in-app
+// notification). See billingService.sweepTrialEndingWarnings.
+router.post('/sweep-billing-trial-warnings', requireCronSecret, async (_req: Request, res: Response) => {
+  const result = await sweepTrialEndingWarnings();
+  res.json({ message: `${result.notifiedIds.length} trial-ending warning(s) sent.`, ...result });
+});
+
+// Ethical-billing commitment: pre-debit reminder ahead of a recurring
+// charge (email + in-app notification), only for subscriptions the user
+// actually opted auto-renew on. See billingService.sweepRenewalReminders.
+router.post('/sweep-billing-renewal-reminders', requireCronSecret, async (_req: Request, res: Response) => {
+  const result = await sweepRenewalReminders();
+  res.json({ message: `${result.notifiedIds.length} pre-debit reminder(s) sent.`, ...result });
 });
 
 // Scheduled three times a week (Mon/Wed/Fri, 10:00 AM) by Frontend's Vercel

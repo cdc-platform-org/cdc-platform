@@ -68,3 +68,32 @@ export async function rejectPayoutRequest(id: string, adminNote?: string): Promi
 export async function markPayoutPaid(id: string): Promise<void> {
   await apiClient.post(`/admin/finance/payouts/${id}/mark-paid`);
 }
+
+// --- Billing settings (unified SaaS billing engine's pricing knobs + the
+// manual bank-transfer alternative shown in PaymentMethodsCard.tsx) ---
+export interface AdminBillingSettings {
+  baseFeeTetri: number;
+  marginMultiplier: number;
+  trialDays: number;
+  bankTransferIban: string | null;
+  bankTransferBankName: string | null;
+  bankTransferAccountName: string | null;
+}
+
+export async function getAdminBillingSettings(): Promise<AdminBillingSettings> {
+  const response = await apiClient.get<{ data: AdminBillingSettings }>('/admin/finance/billing-settings');
+  return response.data.data;
+}
+
+// Empty string clears a bank-transfer field back to "not configured" (see
+// Backend's adminFinance.ts PUT handler) — the other two fields are left
+// undefined entirely on a call that only clears the IBAN elsewhere, so
+// they're each optional here too.
+export async function updateAdminBillingSettings(payload: {
+  bankTransferIban?: string;
+  bankTransferBankName?: string;
+  bankTransferAccountName?: string;
+}): Promise<AdminBillingSettings> {
+  const response = await apiClient.put<{ data: AdminBillingSettings }>('/admin/finance/billing-settings', payload);
+  return response.data.data;
+}
