@@ -209,7 +209,7 @@ export default function JobsDashboard({ defaultTab }: { defaultTab: Tab }) {
                 </button>
               </div>
             ) : (
-              <PostingForm initialType={tab === 'vacancies' ? 'vacancy' : 'gig'} allowTypeToggle />
+              <PostingForm initialType={tab === 'vacancies' ? 'vacancy' : 'gig_request'} allowTypeToggle />
             )}
           </div>
         </div>

@@ -64,6 +64,8 @@
   },
   "marketplace": {
     "gigsTitle": "Missions freelance",
+    "gigRequest": "Commande",
+    "serviceOffer": "Offre de Service",
     "vacanciesTitle": "Offres d'emploi",
     "postGig": "Publier une mission",
     "postVacancy": "Publier une offre d'emploi",

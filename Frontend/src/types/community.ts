@@ -1,7 +1,10 @@
 interface Poster {
   id: string;
   name: string;
-  role: 'Client' | 'SuperAdmin';
+  // Any authenticated, approved account can post a vacancy or gig (see
+  // Backend routes/vacancies.ts and routes/gigs.ts's POST / — no
+  // requireRole gate) — not just Client/SuperAdmin.
+  role: 'Student' | 'Mentor' | 'SuperAdmin' | 'Client';
   isVerifiedGraduate: boolean;
   averageRating: number | null;
   reviewCount: number;
@@ -71,6 +74,11 @@ export interface VacancyApplication {
 // ============================================================
 
 export type GigBudgetType = 'fixed' | 'hourly';
+// CLIENT_REQUEST: a client posting a "შეკვეთა" asking for a freelancer.
+// FREELANCER_OFFER: a freelancer posting a "მომსახურების შეთავაზება"
+// advertising their own service. Both live in the same Gig table — see the
+// GigOfferType comment in Backend/prisma/schema.prisma.
+export type GigOfferType = 'CLIENT_REQUEST' | 'FREELANCER_OFFER';
 export type GigStatus =
   | 'open'          // accepting applications
   | 'assigned'      // poster approved a freelancer; work not yet delivered
@@ -88,7 +96,11 @@ export interface Gig {
   currency: string;
   skillsRequired: string[];
   category: JobCategory | null;
+  offerType: GigOfferType;
   deadline: string | null;
+  // FREELANCER_OFFER only — see GigOfferType.
+  portfolioLinks: string[];
+  deliveryDays: number | null;
   status: GigStatus;
   assignedFreelancerId: string | null; // set only once an application is approved
   assignedFreelancer: AssignedFreelancer | null;
@@ -123,7 +135,10 @@ export interface MyGig {
   currency: string;
   skillsRequired: string[];
   category: JobCategory | null;
+  offerType: GigOfferType;
   deadline: string | null;
+  portfolioLinks: string[];
+  deliveryDays: number | null;
   status: GigStatus;
   assignedFreelancerId: string | null;
   assignedFreelancer: AssignedFreelancer | null;

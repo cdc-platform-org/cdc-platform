@@ -64,6 +64,8 @@
   },
   "marketplace": {
     "gigsTitle": "ფრილანს შეკვეთები",
+    "gigRequest": "შეკვეთა",
+    "serviceOffer": "მომსახურების შეთავაზება",
     "vacanciesTitle": "ვაკანსიები",
     "postGig": "შეკვეთის გამოქვეყნება",
     "postVacancy": "ვაკანსიის გამოქვეყნება",

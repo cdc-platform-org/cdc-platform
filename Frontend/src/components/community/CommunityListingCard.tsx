@@ -46,7 +46,14 @@ export default function CommunityListingCard({
     internship: t('marketplace.employmentInternship'),
   };
 
-  const badgeLabel = isVacancy ? employmentTypeLabels[(data as Vacancy).employmentType] : t('marketplace.gigsTitle');
+  // Gigs: distinguish a client's request ("შეკვეთა") from a freelancer's
+  // own service listing ("მომსახურების შეთავაზება") — see the GigOfferType
+  // comment in Backend/prisma/schema.prisma for why both share this model.
+  const badgeLabel = isVacancy
+    ? employmentTypeLabels[(data as Vacancy).employmentType]
+    : (data as Gig).offerType === 'FREELANCER_OFFER'
+    ? t('marketplace.serviceOffer')
+    : t('marketplace.gigRequest');
   const badgeColor = isVacancy
     ? darkMode
       ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'

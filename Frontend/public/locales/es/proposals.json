@@ -64,6 +64,8 @@
   },
   "marketplace": {
     "gigsTitle": "Encargos Freelance",
+    "gigRequest": "Encargo",
+    "serviceOffer": "Oferta de Servicio",
     "vacanciesTitle": "Vacantes",
     "postGig": "Publicar un Encargo",
     "postVacancy": "Publicar una Vacante",

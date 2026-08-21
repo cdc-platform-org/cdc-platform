@@ -82,6 +82,18 @@ enum GigBudgetType {
   hourly
 }
 
+// Two distinct postings share the Gig table because they're the same
+// underlying shape (title/description/budget/category) with different
+// directionality: CLIENT_REQUEST is a client asking for a freelancer
+// ("looking for a designer"); FREELANCER_OFFER is a freelancer advertising
+// their own service ("I design logos, hire me"). offerType picks which set
+// of fields (deadline vs portfolioLinks+deliveryDays) postGigSchema requires
+// — see Backend/src/schemas/gigSchemas.ts.
+enum GigOfferType {
+  CLIENT_REQUEST
+  FREELANCER_OFFER
+}
+
 // Professional job/project category — optional (nullable) so existing
 // gigs/vacancies posted before this field existed don't need backfilling.
 // Shown as a filter/badge on the marketplace; `other` is the deliberate
@@ -542,6 +554,11 @@ model Gig {
   skillsRequired        String[]
   category              JobCategory?
   deadline              DateTime?
+  // See GigOfferType. FREELANCER_OFFER postings use portfolioLinks +
+  // deliveryDays instead of deadline.
+  offerType             GigOfferType            @default(CLIENT_REQUEST)
+  portfolioLinks        String[]                @default([])
+  deliveryDays          Int?
   status                GigStatus               @default(open)
   assignedFreelancerId  String?
   assignedFreelancer    User?                   @relation("AssignedGigs", fields: [assignedFreelancerId], references: [id], onDelete: SetNull)

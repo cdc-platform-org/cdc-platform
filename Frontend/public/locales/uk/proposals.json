@@ -64,6 +64,8 @@
   },
   "marketplace": {
     "gigsTitle": "Фриланс-гіги",
+    "gigRequest": "Замовлення",
+    "serviceOffer": "Пропозиція послуги",
     "vacanciesTitle": "Вакансії",
     "postGig": "Опублікувати гіг",
     "postVacancy": "Опублікувати вакансію",

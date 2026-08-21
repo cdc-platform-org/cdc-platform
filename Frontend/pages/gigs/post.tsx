@@ -24,7 +24,7 @@ function PostGigPageContent() {
       <h1 className="text-2xl font-semibold text-gray-900 dark:text-white text-center mb-8">{t.title}</h1>
       {/* Open to any authenticated user — ProtectedRoute below already
           guarantees that; no additional role restriction. */}
-      <PostingForm initialType="gig" />
+      <PostingForm initialType="gig_request" />
     </div>
   );
 }

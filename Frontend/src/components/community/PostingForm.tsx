@@ -3,12 +3,21 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { postVacancy, VacancyFormPayload } from '../../services/vacancyService';
 import { postGig, PostGigPayload } from '../../services/gigService';
-import { EmploymentType, GigBudgetType, JobCategory } from '../../types/community';
+import { EmploymentType, GigBudgetType, GigOfferType, JobCategory } from '../../types/community';
 import { JOB_CATEGORIES, JOB_CATEGORY_LABEL } from '../../utils/jobCategory';
 import { resolveLocale } from '../../utils/locale';
 import RichTextEditor from '../shared/RichTextEditor';
 
-type PostType = 'vacancy' | 'gig';
+// Three distinct posting types, two directions:
+//   - 'vacancy'     Group A (employer): a long-term job opening.
+//   - 'gig_request' Group A (employer): "შეკვეთა" — a client asking for a
+//                    freelancer for a project (maps to Gig.offerType
+//                    CLIENT_REQUEST).
+//   - 'gig_offer'    Group B (freelancer): "მომსახურების შეთავაზება" — a
+//                    freelancer advertising their own service (maps to
+//                    Gig.offerType FREELANCER_OFFER). Same Gig table, see
+//                    the GigOfferType comment in Backend/prisma/schema.prisma.
+type PostType = 'vacancy' | 'gig_request' | 'gig_offer';
 
 interface FieldErrors {
   [key: string]: string;
@@ -45,6 +54,9 @@ const emptyGigForm = {
   skillsRequired: '',
   category: '' as JobCategory | '',
   deadline: '',
+  // FREELANCER_OFFER only:
+  portfolioLinks: '',
+  deliveryDays: '',
 };
 
 const DEFAULT_CLASS_NAME =
@@ -53,12 +65,16 @@ const DEFAULT_CLASS_NAME =
 const EN_STRINGS = {
   tutorial: '🎥 Watch tutorial',
   vacancy: 'Vacancy',
-  gig: 'Gig',
+  gigRequest: 'Freelance Order',
+  gigOffer: 'Service Offer',
   title: 'Title',
   titlePlaceholderVacancy: 'e.g. Senior Frontend Developer',
-  titlePlaceholderGig: 'e.g. Build a landing page in Next.js',
+  titlePlaceholderGigRequest: 'e.g. Looking for a designer to create a logo',
+  titlePlaceholderGigOffer: 'e.g. I design vector logos — hire me',
   description: 'Description',
+  descriptionOffer: 'Skill Description',
   descriptionPlaceholder: 'Describe the role or project in detail…',
+  descriptionOfferPlaceholder: 'Describe the service you offer and your experience…',
   skills: 'Required skills',
   skillsHint: '(comma-separated)',
   skillsPlaceholder: 'React, TypeScript, Figma',
@@ -81,8 +97,16 @@ const EN_STRINGS = {
   budgetFixed: 'Fixed price',
   budgetHourly: 'Hourly',
   budget: 'Budget',
+  startingPriceType: 'Starting price type',
+  startingPrice: 'Starting price / rate',
+  portfolioLinks: 'Portfolio links',
+  portfolioLinksHint: '(one per line or comma-separated)',
+  portfolioLinksPlaceholder: 'https://behance.net/yourprofile',
+  deliveryDays: 'Delivery time (days)',
+  deliveryDaysPlaceholder: 'e.g. 3',
   postVacancy: 'Post Vacancy',
-  postGig: 'Post Gig',
+  postGigRequest: 'Post Order',
+  postGigOffer: 'Post Service Offer',
   posting: 'Posting…',
   errTitle: 'Title must be at least 5 characters.',
   errDescription: 'Description must be at least 20 characters.',
@@ -94,20 +118,28 @@ const EN_STRINGS = {
   errSalaryMax: 'Maximum salary must be greater than or equal to minimum salary.',
   errDeadline: 'A deadline is required.',
   errBudget: 'Enter a budget greater than 0.',
+  errPortfolioLinks: 'Add at least one portfolio link.',
+  errPortfolioLinkInvalid: 'Enter valid links starting with http:// or https://.',
+  errDeliveryDays: 'Delivery time is required.',
   errSubmitVacancy: 'Unable to post this vacancy. Please try again.',
-  errSubmitGig: 'Unable to post this gig. Please try again.',
+  errSubmitGigRequest: 'Unable to post this order. Please try again.',
+  errSubmitGigOffer: 'Unable to post this service offer. Please try again.',
 };
 
 const dict = {
   ka: {
     tutorial: '🎥 ვიდეო ინსტრუქცია',
     vacancy: 'ვაკანსია',
-    gig: 'შეკვეთა',
+    gigRequest: 'შეკვეთა',
+    gigOffer: 'მომსახურების შეთავაზება',
     title: 'დასახელება',
     titlePlaceholderVacancy: 'მაგ. უფროსი Frontend დეველოპერი',
-    titlePlaceholderGig: 'მაგ. საიტის მთავარი გვერდის შექმნა Next.js-ზე',
+    titlePlaceholderGigRequest: 'მაგ. საჭიროა დიზაინერი ლოგოს შესაქმნელად',
+    titlePlaceholderGigOffer: 'მაგ. ვქმნი ვექტორულ ლოგოებს — დამიქირავეთ',
     description: 'აღწერა',
+    descriptionOffer: 'უნარების აღწერა',
     descriptionPlaceholder: 'დეტალურად აღწერეთ პოზიცია ან პროექტი…',
+    descriptionOfferPlaceholder: 'აღწერეთ თქვენი მომსახურება და გამოცდილება…',
     skills: 'საჭირო უნარები',
     skillsHint: '(მძიმით გამოყოფილი)',
     skillsPlaceholder: 'React, TypeScript, Figma',
@@ -130,8 +162,16 @@ const dict = {
     budgetFixed: 'ფიქსირებული ფასი',
     budgetHourly: 'საათობრივი',
     budget: 'ბიუჯეტი',
+    startingPriceType: 'საწყისი ფასის ტიპი',
+    startingPrice: 'საწყისი ფასი / განაკვეთი',
+    portfolioLinks: 'პორტფოლიოს ბმულები',
+    portfolioLinksHint: '(თითო ხაზზე ერთი ან მძიმით გამოყოფილი)',
+    portfolioLinksPlaceholder: 'https://behance.net/yourprofile',
+    deliveryDays: 'მიწოდების ვადა (დღეებში)',
+    deliveryDaysPlaceholder: 'მაგ. 3',
     postVacancy: 'ვაკანსიის გამოქვეყნება',
-    postGig: 'შეკვეთის გამოქვეყნება',
+    postGigRequest: 'შეკვეთის გამოქვეყნება',
+    postGigOffer: 'შეთავაზების გამოქვეყნება',
     posting: 'ქვეყნდება…',
     errTitle: 'დასახელება უნდა შეიცავდეს მინიმუმ 5 სიმბოლოს.',
     errDescription: 'აღწერა უნდა შეიცავდეს მინიმუმ 20 სიმბოლოს.',
@@ -143,8 +183,12 @@ const dict = {
     errSalaryMax: 'მაქსიმალური ხელფასი უნდა აღემატებოდეს ან უდრიდეს მინიმალურს.',
     errDeadline: 'ვადის მითითება სავალდებულოა.',
     errBudget: 'მიუთითეთ ბიუჯეტი, რომელიც 0-ზე მეტია.',
+    errPortfolioLinks: 'დაამატეთ მინიმუმ ერთი პორტფოლიოს ბმული.',
+    errPortfolioLinkInvalid: 'ბმულები უნდა იწყებოდეს http:// ან https://-ით.',
+    errDeliveryDays: 'მიწოდების ვადის მითითება სავალდებულოა.',
     errSubmitVacancy: 'ვაკანსიის გამოქვეყნება ვერ მოხერხდა. სცადეთ თავიდან.',
-    errSubmitGig: 'შეკვეთის გამოქვეყნება ვერ მოხერხდა. სცადეთ თავიდან.',
+    errSubmitGigRequest: 'შეკვეთის გამოქვეყნება ვერ მოხერხდა. სცადეთ თავიდან.',
+    errSubmitGigOffer: 'შეთავაზების გამოქვეყნება ვერ მოხერხდა. სცადეთ თავიდან.',
   },
   en: EN_STRINGS,
   de: EN_STRINGS,
@@ -152,6 +196,14 @@ const dict = {
   fr: EN_STRINGS,
   uk: EN_STRINGS,
 };
+
+function parsePortfolioLinks(raw: string): string[] {
+  return Array.from(new Set(raw.split(/[\n,]/).map((s) => s.trim()).filter(Boolean)));
+}
+
+function isHttpUrl(value: string): boolean {
+  return /^https?:\/\/.+/i.test(value);
+}
 
 export default function PostingForm({ initialType, allowTypeToggle = false, className }: PostingFormProps) {
   const router = useRouter();
@@ -169,6 +221,9 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
   const [attempted, setAttempted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const isGig = postType === 'gig_request' || postType === 'gig_offer';
+  const offerType: GigOfferType = postType === 'gig_offer' ? 'FREELANCER_OFFER' : 'CLIENT_REQUEST';
 
   const parseSkills = (raw: string) =>
     raw.split(',').map((s) => s.trim()).filter(Boolean);
@@ -202,6 +257,9 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
     return e;
   };
 
+  // Shared by both gig sub-types (see postGigSchema's matching refinements
+  // on the backend) — gig_request additionally requires a deadline,
+  // gig_offer additionally requires portfolioLinks + deliveryDays.
   const validateGig = (): FieldErrors => {
     const e: FieldErrors = {};
     if (gigForm.title.trim().length < 5) e.title = t.errTitle;
@@ -211,7 +269,20 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
     }
     if (parseSkills(gigForm.skillsRequired).length === 0) e.skillsRequired = t.errSkills;
     if (!gigForm.category) e.category = t.errCategory;
-    if (!gigForm.deadline) e.deadline = t.errDeadline;
+
+    if (postType === 'gig_request') {
+      if (!gigForm.deadline) e.deadline = t.errDeadline;
+    } else {
+      const links = parsePortfolioLinks(gigForm.portfolioLinks);
+      if (links.length === 0) {
+        e.portfolioLinks = t.errPortfolioLinks;
+      } else if (!links.every(isHttpUrl)) {
+        e.portfolioLinks = t.errPortfolioLinkInvalid;
+      }
+      if (!gigForm.deliveryDays || parseInt(gigForm.deliveryDays, 10) <= 0) {
+        e.deliveryDays = t.errDeliveryDays;
+      }
+    }
     return e;
   };
 
@@ -221,6 +292,9 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
   const currentErrors = postType === 'vacancy' ? validateVacancy() : validateGig();
   const isFormValid = Object.keys(currentErrors).length === 0;
   const errors = attempted ? currentErrors : {};
+
+  const submitErrorFallback =
+    postType === 'vacancy' ? t.errSubmitVacancy : postType === 'gig_request' ? t.errSubmitGigRequest : t.errSubmitGigOffer;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -254,13 +328,16 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
           currency: gigForm.currency,
           skillsRequired: parseSkills(gigForm.skillsRequired),
           category: gigForm.category || null,
-          deadline: toIsoDatetime(gigForm.deadline),
+          offerType,
+          deadline: postType === 'gig_request' ? toIsoDatetime(gigForm.deadline) : null,
+          portfolioLinks: postType === 'gig_offer' ? parsePortfolioLinks(gigForm.portfolioLinks) : [],
+          deliveryDays: postType === 'gig_offer' ? parseInt(gigForm.deliveryDays, 10) : null,
         };
         await postGig(payload);
         router.push('/gigs');
       }
     } catch (err: any) {
-      setSubmitError(err?.response?.data?.message || (postType === 'vacancy' ? t.errSubmitVacancy : t.errSubmitGig));
+      setSubmitError(err?.response?.data?.message || submitErrorFallback);
     } finally {
       setSubmitting(false);
     }
@@ -281,6 +358,12 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
     `${inputClass(hasError)} appearance-none pr-10 bg-no-repeat bg-[right_0.75rem_center] bg-[length:1rem] bg-[url('data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%2F%3E%3C%2Fsvg%3E')]`;
   const labelClass = 'block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5';
 
+  const titlePlaceholder =
+    postType === 'vacancy' ? t.titlePlaceholderVacancy : postType === 'gig_request' ? t.titlePlaceholderGigRequest : t.titlePlaceholderGigOffer;
+  const descriptionPlaceholder = postType === 'gig_offer' ? t.descriptionOfferPlaceholder : t.descriptionPlaceholder;
+  const postButtonLabel =
+    postType === 'vacancy' ? t.postVacancy : postType === 'gig_request' ? t.postGigRequest : t.postGigOffer;
+
   return (
     <div className={className ?? DEFAULT_CLASS_NAME}>
       <div className="flex justify-end mb-4">
@@ -289,25 +372,25 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
         </Link>
       </div>
       {allowTypeToggle && (
-        <div className="flex gap-2 mb-8 bg-gray-100 dark:bg-slate-800 rounded-lg p-1 w-fit">
-          <button
-            type="button"
-            onClick={() => setPostType('vacancy')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-              postType === 'vacancy' ? 'bg-white dark:bg-slate-700 text-cyan-700 dark:text-cyan-300 shadow-sm' : 'text-gray-500 dark:text-slate-400'
-            }`}
-          >
-            {t.vacancy}
-          </button>
-          <button
-            type="button"
-            onClick={() => setPostType('gig')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-              postType === 'gig' ? 'bg-white dark:bg-slate-700 text-cyan-700 dark:text-cyan-300 shadow-sm' : 'text-gray-500 dark:text-slate-400'
-            }`}
-          >
-            {t.gig}
-          </button>
+        <div className="flex flex-wrap gap-2 mb-8 bg-gray-100 dark:bg-slate-800 rounded-lg p-1 w-fit">
+          {(
+            [
+              ['vacancy', t.vacancy],
+              ['gig_request', t.gigRequest],
+              ['gig_offer', t.gigOffer],
+            ] as const
+          ).map(([type, label]) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => setPostType(type)}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
+                postType === type ? 'bg-white dark:bg-slate-700 text-cyan-700 dark:text-cyan-300 shadow-sm' : 'text-gray-500 dark:text-slate-400'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       )}
 
@@ -329,13 +412,13 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
                 : setGigForm({ ...gigForm, title: e.target.value })
             }
             className={inputClass(!!errors.title)}
-            placeholder={postType === 'vacancy' ? t.titlePlaceholderVacancy : t.titlePlaceholderGig}
+            placeholder={titlePlaceholder}
           />
           {errors.title && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.title}</p>}
         </div>
 
         <div>
-          <label className={labelClass}>{t.description}</label>
+          <label className={labelClass}>{postType === 'gig_offer' ? t.descriptionOffer : t.description}</label>
           <RichTextEditor
             rows={5}
             value={postType === 'vacancy' ? vacancyForm.description : gigForm.description}
@@ -345,7 +428,7 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
                 : setGigForm({ ...gigForm, description: v })
             }
             className={errors.description ? 'border-red-300' : ''}
-            placeholder={t.descriptionPlaceholder}
+            placeholder={descriptionPlaceholder}
           />
           {errors.description && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.description}</p>}
         </div>
@@ -476,11 +559,11 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
           </>
         )}
 
-        {postType === 'gig' && (
+        {isGig && (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className={labelClass}>{t.budgetType}</label>
+                <label className={labelClass}>{postType === 'gig_offer' ? t.startingPriceType : t.budgetType}</label>
                 <select
                   value={gigForm.budgetType}
                   onChange={(e) => setGigForm({ ...gigForm, budgetType: e.target.value as GigBudgetType })}
@@ -491,7 +574,7 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
                 </select>
               </div>
               <div>
-                <label className={labelClass}>{t.budget}</label>
+                <label className={labelClass}>{postType === 'gig_offer' ? t.startingPrice : t.budget}</label>
                 <input
                   type="number"
                   min="0"
@@ -517,16 +600,47 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
               </div>
             </div>
 
-            <div>
-              <label className={labelClass}>{t.deadline}</label>
-              <input
-                type="date"
-                value={gigForm.deadline}
-                onChange={(e) => setGigForm({ ...gigForm, deadline: e.target.value })}
-                className={inputClass(!!errors.deadline)}
-              />
-              {errors.deadline && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.deadline}</p>}
-            </div>
+            {postType === 'gig_request' ? (
+              <div>
+                <label className={labelClass}>{t.deadline}</label>
+                <input
+                  type="date"
+                  value={gigForm.deadline}
+                  onChange={(e) => setGigForm({ ...gigForm, deadline: e.target.value })}
+                  className={inputClass(!!errors.deadline)}
+                />
+                {errors.deadline && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.deadline}</p>}
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className={labelClass}>
+                    {t.portfolioLinks} <span className="text-gray-400 dark:text-slate-500 font-normal">{t.portfolioLinksHint}</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={gigForm.portfolioLinks}
+                    onChange={(e) => setGigForm({ ...gigForm, portfolioLinks: e.target.value })}
+                    className={inputClass(!!errors.portfolioLinks)}
+                    placeholder={t.portfolioLinksPlaceholder}
+                  />
+                  {errors.portfolioLinks && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.portfolioLinks}</p>}
+                </div>
+                <div>
+                  <label className={labelClass}>{t.deliveryDays}</label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={gigForm.deliveryDays}
+                    onChange={(e) => setGigForm({ ...gigForm, deliveryDays: e.target.value })}
+                    className={inputClass(!!errors.deliveryDays)}
+                    placeholder={t.deliveryDaysPlaceholder}
+                  />
+                  {errors.deliveryDays && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.deliveryDays}</p>}
+                </div>
+              </>
+            )}
           </>
         )}
 
@@ -535,7 +649,7 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
           disabled={submitting || (attempted && !isFormValid)}
           className="w-full rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 px-4 py-3.5 text-sm font-bold text-white transition-opacity disabled:opacity-60 disabled:cursor-not-allowed mt-2"
         >
-          {submitting ? t.posting : postType === 'vacancy' ? t.postVacancy : t.postGig}
+          {submitting ? t.posting : postButtonLabel}
         </button>
       </form>
     </div>

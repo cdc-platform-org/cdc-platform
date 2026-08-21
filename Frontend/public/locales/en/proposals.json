@@ -64,6 +64,8 @@
   },
   "marketplace": {
     "gigsTitle": "Freelance Gigs",
+    "gigRequest": "Order",
+    "serviceOffer": "Service Offer",
     "vacanciesTitle": "Vacancies",
     "postGig": "Post a Gig",
     "postVacancy": "Post a Vacancy",
