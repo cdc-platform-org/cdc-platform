@@ -34,7 +34,7 @@ const STRINGS = {
     addFailed: 'ბარათის დამატება ვერ მოხერხდა. სცადეთ თავიდან.',
     deleteFailed: 'ბარათის წაშლა ვერ მოხერხდა.',
     deleteConfirmAutoRenew:
-      'ამ ბარათით ფინანსდება აქტიური გამოწერა ავტომატური განახლებით — წაშლის შემთხვევაში ავტომატური განახლება გამოირთვება. გავაგრძელო წაშლა?',
+      'ამ ბარათით ფინანსდება აქტიური გამოწერა — წაშლის შემთხვევაში გამოწერა დაუყოვნებლივ გაუქმდება და ულიმიტო წვდომას დაკარგავთ. გავაგრძელო წაშლა?',
     confirmDeleteYes: 'დიახ, წაშლა',
     confirmDeleteNo: 'გაუქმება',
     termsPrefix: 'ვეთანხმები',
@@ -66,7 +66,7 @@ const STRINGS = {
     addFailed: 'Unable to add this card. Please try again.',
     deleteFailed: 'Unable to delete this card.',
     deleteConfirmAutoRenew:
-      'This card is funding an active auto-renewing subscription — removing it will turn auto-renew off. Continue removing it?',
+      'This card is funding an active subscription — removing it will immediately cancel that subscription and revoke your unlimited access. Continue removing it?',
     confirmDeleteYes: 'Yes, delete it',
     confirmDeleteNo: 'Cancel',
     termsPrefix: 'I agree to the',

@@ -66,6 +66,14 @@ export async function setSubscriptionAutoRenew(subscriptionId: string, autoRenew
   return response.data;
 }
 
+// Instant cancellation — flips status to CANCELED and revokes access
+// (Backend's billingService.cancelSubscription/revokeAccessAndNotify)
+// synchronously, before this resolves.
+export async function cancelMySubscription(subscriptionId: string, reason?: string): Promise<BillingSubscription> {
+  const response = await apiClient.post<BillingSubscription>(`/billing/subscriptions/${subscriptionId}/cancel`, { reason });
+  return response.data;
+}
+
 // Current-cycle PDF statement — an ESTIMATE, not a real paid invoice, since
 // no real payment gateway is wired up yet (see Backend's
 // paymentGatewayService.ts). Same blob-download pattern as

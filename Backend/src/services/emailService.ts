@@ -400,6 +400,21 @@ export async function sendPreDebitReminderEmail(email: string): Promise<void> {
   await sendEmail(email, 'მოახლოებული გადახდა თქვენს ანგარიშზე — CDC', html, link);
 }
 
+// Fired once per cancellation (see billingService.revokeAccessAndNotify) —
+// covers both triggers, the user's own "გამოწერის გაუქმება" button and a
+// removed payment method that instantly cancels the subscription it was
+// funding. Paired with an identical in-app Notification.
+export async function sendSubscriptionCanceledEmail(email: string, productLabel: string): Promise<void> {
+  const link = `${FRONTEND_URL}/dashboard/billing`;
+  const html = wrapTemplate(
+    'თქვენი გამოწერა გაუქმებულია',
+    `თქვენი გამოწერა <strong>${productLabel}</strong>-ზე გაუქმებულია და ულიმიტო წვდომა ამ სერვისზე შეწყდა დაუყოვნებლივ. თუ ეს შეცდომით მოხდა, შეგიძლიათ ნებისმიერ დროს ხელახლა გამოიწეროთ დაშბორდიდან.`,
+    'ბილინგის გვერდის ნახვა',
+    link
+  );
+  await sendEmail(email, 'თქვენი გამოწერა გაუქმებულია — CDC', html, link);
+}
+
 export async function sendPasswordResetEmail(email: string, token: string, lang: 'ka' | 'en' = 'ka'): Promise<void> {
   const link = `${FRONTEND_URL}/reset-password?token=${token}`;
   const html =

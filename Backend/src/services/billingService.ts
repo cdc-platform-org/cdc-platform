@@ -2,7 +2,7 @@ import { prisma } from '../lib/prisma';
 import { bindCard, BindCardParams } from './paymentGatewayService';
 import { detachStripePaymentMethod } from './stripePaymentService';
 import { BillingProductType } from '@prisma/client';
-import { sendTrialEndingWarningEmail, sendPreDebitReminderEmail } from './emailService';
+import { sendTrialEndingWarningEmail, sendPreDebitReminderEmail, sendSubscriptionCanceledEmail } from './emailService';
 
 // ============================================================
 // Unified SaaS billing — base fee + usage-based (token/event) charges per
@@ -50,14 +50,14 @@ export class PaymentMethodNotFoundError extends BillingError {
   }
 }
 
-// Blocks a card removal that would silently kill auto-renew on a live
-// subscription — the caller must re-send the request with
-// confirmCancelAutoRenew: true once the user has seen this warning.
+// Blocks a card removal that would instantly cancel a live subscription —
+// the caller must re-send the request with confirmCancelAutoRenew: true
+// once the user has seen this warning.
 export class CardRemovalRequiresConfirmationError extends BillingError {
   constructor(affected: { id: string; productType: BillingProductType; referenceId: string }[]) {
     super(
       409,
-      'Removing this card will turn off auto-renew for subscriptions currently billed to it. Resend with confirmCancelAutoRenew: true to proceed.',
+      'Removing this card will immediately cancel the subscription(s) currently billed to it and revoke access. Resend with confirmCancelAutoRenew: true to proceed.',
       { affectedSubscriptions: affected }
     );
     this.name = 'CardRemovalRequiresConfirmationError';
@@ -109,6 +109,48 @@ export async function getBillingSettings(): Promise<ResolvedBillingSettings> {
     bankTransferBankName: settings?.bankTransferBankName ?? null,
     bankTransferAccountName: settings?.bankTransferAccountName ?? null,
   };
+}
+
+const PRODUCT_LABEL_KA: Record<BillingProductType, string> = {
+  AI_AGENT_SUITE: 'AI აგენტების პაკეტი',
+  AI_EXAM_PROCTORING: 'AI საგამოცდო ზედამხედველობა',
+};
+
+// Instant-access-revocation commitment: called right after a subscription
+// is actually flipped to CANCELED (by the user's own cancel action, or as
+// a side effect of removing the card funding it) — never called
+// speculatively. Two things happen synchronously (must actually have
+// landed before the triggering request returns 2xx): the in-app
+// Notification, and — the part that makes "revoke access" real rather
+// than cosmetic — flipping User.aiSubscriptionActive off for
+// AI_AGENT_SUITE. That flag, not BillingSubscription.status, is what
+// Backend/src/utils/aiAgentsSuiteAccess.ts actually gates the Business AI
+// Agents Suite on; AI_EXAM_PROCTORING has no equivalent standalone access
+// flag anywhere in this codebase today, so there's nothing further to
+// revoke for that product type yet. The email send is fire-and-forget,
+// same posture as every other notification email in this file.
+async function revokeAccessAndNotify(
+  sub: { id: string; businessId: string; productType: BillingProductType },
+  reason: 'USER_CANCELED' | 'PAYMENT_METHOD_REMOVED'
+): Promise<void> {
+  const business = await prisma.user.findUnique({ where: { id: sub.businessId }, select: { email: true } });
+  const productLabel = PRODUCT_LABEL_KA[sub.productType];
+  const title = 'გამოწერა გაუქმებულია';
+  const message =
+    reason === 'PAYMENT_METHOD_REMOVED'
+      ? `ბარათის წაშლის გამო თქვენი გამოწერა „${productLabel}“-ზე გაუქმდა და ულიმიტო წვდომა შეწყდა დაუყოვნებლივ.`
+      : `თქვენი გამოწერა „${productLabel}“-ზე გაუქმებულია და ულიმიტო წვდომა შეწყდა დაუყოვნებლივ.`;
+  await prisma.notification.create({
+    data: { userId: sub.businessId, title, message, type: 'BILLING_SUBSCRIPTION_CANCELED' },
+  });
+  if (sub.productType === 'AI_AGENT_SUITE') {
+    await prisma.user.update({ where: { id: sub.businessId }, data: { aiSubscriptionActive: false } });
+  }
+  if (business?.email) {
+    sendSubscriptionCanceledEmail(business.email, productLabel).catch((err) =>
+      console.error(`[billingService] sendSubscriptionCanceledEmail failed for ${business.email}:`, err)
+    );
+  }
 }
 
 // ============================================================
@@ -177,7 +219,7 @@ export async function removePaymentMethod(
       autoRenew: true,
       status: { in: ['TRIALING', 'ACTIVE'] },
     },
-    select: { id: true, productType: true, referenceId: true },
+    select: { id: true, businessId: true, productType: true, referenceId: true },
   });
 
   if (liveSubscriptions.length > 0 && !opts.confirmCancelAutoRenew) {
@@ -186,9 +228,12 @@ export async function removePaymentMethod(
 
   await prisma.$transaction(async (tx) => {
     if (liveSubscriptions.length > 0) {
+      // Instant cancellation, not just autoRenew: false — a removed card
+      // means this subscription can never legitimately renew again, so it
+      // shouldn't linger as TRIALING/ACTIVE until the next sweep catches up.
       await tx.billingSubscription.updateMany({
         where: { id: { in: liveSubscriptions.map((s) => s.id) } },
-        data: { autoRenew: false },
+        data: { status: 'CANCELED', autoRenew: false, canceledAt: new Date(), cancellationReason: 'Payment method removed' },
       });
     }
     await tx.paymentMethod.delete({ where: { id: paymentMethodId } });
@@ -200,6 +245,12 @@ export async function removePaymentMethod(
   // resurrect it or fail this call.
   if (method.provider === 'STRIPE') {
     detachStripePaymentMethod(method.processorToken).catch(() => {});
+  }
+
+  for (const sub of liveSubscriptions) {
+    await revokeAccessAndNotify(sub, 'PAYMENT_METHOD_REMOVED').catch((err) =>
+      console.error(`[billingService] revokeAccessAndNotify failed for subscription ${sub.id}:`, err)
+    );
   }
 }
 
@@ -268,7 +319,12 @@ export async function setAutoRenew(businessId: string, subscriptionId: string, a
 export async function cancelSubscription(businessId: string, subscriptionId: string, reason?: string) {
   const subscription = await prisma.billingSubscription.findUnique({ where: { id: subscriptionId } });
   if (!subscription || subscription.businessId !== businessId) throw new SubscriptionNotFoundError();
-  return prisma.billingSubscription.update({
+  // Already canceled — return as-is rather than re-firing the
+  // notification/email and re-touching aiSubscriptionActive on a repeat
+  // call (the frontend hides the cancel button once CANCELED, but the API
+  // itself should still be idempotent).
+  if (subscription.status === 'CANCELED') return subscription;
+  const updated = await prisma.billingSubscription.update({
     where: { id: subscriptionId },
     data: {
       status: 'CANCELED',
@@ -277,6 +333,8 @@ export async function cancelSubscription(businessId: string, subscriptionId: str
       cancellationReason: reason ?? null,
     },
   });
+  await revokeAccessAndNotify(updated, 'USER_CANCELED');
+  return updated;
 }
 
 export async function listMySubscriptions(businessId: string) {

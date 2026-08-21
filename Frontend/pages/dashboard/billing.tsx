@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { CreditCard, Download, Clock, Zap, FileText } from 'lucide-react';
+import { CreditCard, Download, Clock, Zap, FileText, XCircle, AlertTriangle } from 'lucide-react';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import RoleGate from '../../src/components/auth/RoleGate';
 import SiteHeader from '../../src/components/layout/SiteHeader';
@@ -11,6 +11,7 @@ import { formatPrice } from '../../src/utils/coursePricing';
 import {
   getMySubscriptions,
   setSubscriptionAutoRenew,
+  cancelMySubscription,
   downloadSubscriptionInvoice,
 } from '../../src/services/billingService';
 import { BillingSubscription, BillingSubscriptionStatus } from '../../src/types/billing';
@@ -47,6 +48,14 @@ const dict = {
     downloading: 'იტვირთება…',
     invoiceEstimateNote: 'ეს არის მიმდინარე ციკლის შეფასება — რეალური გადახდის სისტემა ჯერ არ არის გააქტიურებული.',
     downloadFailed: 'ინვოისის ჩამოტვირთვა ვერ მოხერხდა.',
+    cancelSubscription: 'გამოწერის გაუქმება',
+    canceling: 'უქმდება…',
+    cancelModalTitle: 'გამოწერის გაუქმება',
+    cancelModalWarning: 'დარწმუნებული ხართ? გამოწერის გაუქმებით თქვენ მყისიერად დაჰკარგავთ ულიმიტო წვდომას აღნიშნულ სერვისზე.',
+    cancelModalConfirm: 'დიახ, გავაუქმო',
+    cancelModalBack: 'უკან დაბრუნება',
+    cancelFailed: 'გამოწერის გაუქმება ვერ მოხერხდა.',
+    canceledNote: 'გამოწერა გაუქმებულია — ულიმიტო წვდომა შეწყვეტილია.',
   },
   en: {
     title: 'Billing',
@@ -78,6 +87,14 @@ const dict = {
     downloading: 'Downloading…',
     invoiceEstimateNote: "This is an estimate for the current cycle — real charging isn't switched on yet.",
     downloadFailed: 'Could not download the invoice.',
+    cancelSubscription: 'Cancel Subscription',
+    canceling: 'Canceling…',
+    cancelModalTitle: 'Cancel Subscription',
+    cancelModalWarning: 'Are you sure? Canceling this subscription will immediately revoke your unlimited access to this service.',
+    cancelModalConfirm: 'Yes, cancel it',
+    cancelModalBack: 'Go back',
+    cancelFailed: 'Unable to cancel the subscription.',
+    canceledNote: 'Subscription canceled — unlimited access has been revoked.',
   },
   de: {
     title: 'Billing',
@@ -109,6 +126,14 @@ const dict = {
     downloading: 'Downloading…',
     invoiceEstimateNote: "This is an estimate for the current cycle — real charging isn't switched on yet.",
     downloadFailed: 'Could not download the invoice.',
+    cancelSubscription: 'Cancel Subscription',
+    canceling: 'Canceling…',
+    cancelModalTitle: 'Cancel Subscription',
+    cancelModalWarning: 'Are you sure? Canceling this subscription will immediately revoke your unlimited access to this service.',
+    cancelModalConfirm: 'Yes, cancel it',
+    cancelModalBack: 'Go back',
+    cancelFailed: 'Unable to cancel the subscription.',
+    canceledNote: 'Subscription canceled — unlimited access has been revoked.',
   },
   es: {
     title: 'Billing',
@@ -140,6 +165,14 @@ const dict = {
     downloading: 'Downloading…',
     invoiceEstimateNote: "This is an estimate for the current cycle — real charging isn't switched on yet.",
     downloadFailed: 'Could not download the invoice.',
+    cancelSubscription: 'Cancel Subscription',
+    canceling: 'Canceling…',
+    cancelModalTitle: 'Cancel Subscription',
+    cancelModalWarning: 'Are you sure? Canceling this subscription will immediately revoke your unlimited access to this service.',
+    cancelModalConfirm: 'Yes, cancel it',
+    cancelModalBack: 'Go back',
+    cancelFailed: 'Unable to cancel the subscription.',
+    canceledNote: 'Subscription canceled — unlimited access has been revoked.',
   },
   fr: {
     title: 'Billing',
@@ -171,6 +204,14 @@ const dict = {
     downloading: 'Downloading…',
     invoiceEstimateNote: "This is an estimate for the current cycle — real charging isn't switched on yet.",
     downloadFailed: 'Could not download the invoice.',
+    cancelSubscription: 'Cancel Subscription',
+    canceling: 'Canceling…',
+    cancelModalTitle: 'Cancel Subscription',
+    cancelModalWarning: 'Are you sure? Canceling this subscription will immediately revoke your unlimited access to this service.',
+    cancelModalConfirm: 'Yes, cancel it',
+    cancelModalBack: 'Go back',
+    cancelFailed: 'Unable to cancel the subscription.',
+    canceledNote: 'Subscription canceled — unlimited access has been revoked.',
   },
   uk: {
     title: 'Billing',
@@ -202,6 +243,14 @@ const dict = {
     downloading: 'Downloading…',
     invoiceEstimateNote: "This is an estimate for the current cycle — real charging isn't switched on yet.",
     downloadFailed: 'Could not download the invoice.',
+    cancelSubscription: 'Cancel Subscription',
+    canceling: 'Canceling…',
+    cancelModalTitle: 'Cancel Subscription',
+    cancelModalWarning: 'Are you sure? Canceling this subscription will immediately revoke your unlimited access to this service.',
+    cancelModalConfirm: 'Yes, cancel it',
+    cancelModalBack: 'Go back',
+    cancelFailed: 'Unable to cancel the subscription.',
+    canceledNote: 'Subscription canceled — unlimited access has been revoked.',
   },
 };
 
@@ -214,8 +263,11 @@ const STATUS_BADGE: Record<BillingSubscriptionStatus, string> = {
 
 function SubscriptionCard({ sub, lang, t }: { sub: BillingSubscription; lang: SupportedLocale; t: typeof dict['ka'] }) {
   const [autoRenew, setAutoRenew] = useState(sub.autoRenew);
+  const [status, setStatus] = useState(sub.status);
   const [togglingAutoRenew, setTogglingAutoRenew] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [canceling, setCanceling] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const usageTetri = sub.currentCycleUsageTetri;
@@ -232,6 +284,26 @@ function SubscriptionCard({ sub, lang, t }: { sub: BillingSubscription; lang: Su
       setError(t.downloadFailed);
     } finally {
       setTogglingAutoRenew(false);
+    }
+  };
+
+  // Instant revocation: the backend flips status to CANCELED and revokes
+  // access (aiSubscriptionActive off for AI_AGENT_SUITE) synchronously
+  // before this resolves — see billingService.cancelSubscription's own
+  // comment on revokeAccessAndNotify.
+  const handleCancel = async () => {
+    setCanceling(true);
+    setError(null);
+    try {
+      const updated = await cancelMySubscription(sub.id);
+      setStatus(updated.status);
+      setAutoRenew(updated.autoRenew);
+      setShowCancelModal(false);
+    } catch {
+      setError(t.cancelFailed);
+      setShowCancelModal(false);
+    } finally {
+      setCanceling(false);
     }
   };
 
@@ -260,15 +332,15 @@ function SubscriptionCard({ sub, lang, t }: { sub: BillingSubscription; lang: Su
       <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
         <div>
           <h3 className="text-base font-black tracking-wide">{t.productLabel[sub.productType]}</h3>
-          {sub.status === 'TRIALING' && (
+          {status === 'TRIALING' && (
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5" />
               {t.trialEndsAt(sub.trialEndsAt)}
             </p>
           )}
         </div>
-        <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border ${STATUS_BADGE[sub.status]}`}>
-          {t.status[sub.status]}
+        <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border ${STATUS_BADGE[status]}`}>
+          {t.status[status]}
         </span>
       </div>
 
@@ -302,19 +374,33 @@ function SubscriptionCard({ sub, lang, t }: { sub: BillingSubscription; lang: Su
             {sub.paymentMethod ? `${sub.paymentMethod.brand} •••• ${sub.paymentMethod.last4}` : t.noCard}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={handleToggleAutoRenew}
-          disabled={togglingAutoRenew || sub.status === 'CANCELED'}
-          className={`text-xs font-bold px-3 py-1.5 rounded-lg border cursor-pointer disabled:opacity-50 ${
-            autoRenew
-              ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-400'
-              : 'border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400'
-          }`}
-        >
-          {t.autoRenew}: {autoRenew ? t.on : t.off}
-        </button>
+        {status !== 'CANCELED' && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleToggleAutoRenew}
+              disabled={togglingAutoRenew}
+              className={`text-xs font-bold px-3 py-1.5 rounded-lg border cursor-pointer disabled:opacity-50 ${
+                autoRenew
+                  ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-400'
+                  : 'border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400'
+              }`}
+            >
+              {t.autoRenew}: {autoRenew ? t.on : t.off}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCancelModal(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-rose-300 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 cursor-pointer hover:bg-rose-100 dark:hover:bg-rose-500/20"
+            >
+              <XCircle className="w-3.5 h-3.5" />
+              {t.cancelSubscription}
+            </button>
+          </div>
+        )}
       </div>
+
+      {status === 'CANCELED' && <p className="text-[11px] text-slate-400 mb-4">{t.canceledNote}</p>}
 
       {error && <p className="text-[11px] text-rose-600 dark:text-rose-400 mb-3">{error}</p>}
 
@@ -328,6 +414,39 @@ function SubscriptionCard({ sub, lang, t }: { sub: BillingSubscription; lang: Su
         {downloading ? t.downloading : t.downloadInvoice}
       </button>
       <p className="text-[11px] text-slate-400 mt-2">{t.invoiceEstimateNote}</p>
+
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => !canceling && setShowCancelModal(false)}>
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 mb-3 text-rose-600 dark:text-rose-400">
+              <AlertTriangle className="w-5 h-5" />
+              <h3 className="text-sm font-black">{t.cancelModalTitle}</h3>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-5">{t.cancelModalWarning}</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={canceling}
+                className="flex-1 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 px-4 py-2.5 rounded-xl border-none cursor-pointer disabled:opacity-60"
+              >
+                {canceling ? t.canceling : t.cancelModalConfirm}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCancelModal(false)}
+                disabled={canceling}
+                className="flex-1 text-xs font-bold px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-60"
+              >
+                {t.cancelModalBack}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
