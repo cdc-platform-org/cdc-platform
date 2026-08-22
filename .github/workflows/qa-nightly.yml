@@ -14,6 +14,17 @@ name: Nightly QA
 # a PR that's still under review would be confusing); see qa-autofix's own
 # README-style comment in analyze-and-fix.mjs for exactly what it will and
 # won't touch.
+#
+# `unit-tests` runs Backend's Jest integration suite (escrow/billing/
+# commission logic, see Backend/src/services/__tests__) against its own
+# Postgres service container — separate from `e2e`'s container, since the
+# two would otherwise leave stray rows in each other's DB (e2e's seed step
+# assumes a specific set of fixed-ID fixtures). `prisma migrate deploy` runs
+# here too, so every push/PR re-validates the full migration history applies
+# cleanly to a fresh database, not just the day someone happened to test it
+# by hand. Both jobs gate the deploy equally — `main_cdc-api-prod.yml`
+# triggers on this whole workflow's conclusion, which is `failure` if either
+# job fails, no separate wiring needed there.
 on:
   schedule:
     - cron: '0 0 * * *' # midnight UTC
@@ -24,6 +35,52 @@ on:
   workflow_dispatch: {}
 
 jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: qa
+          POSTGRES_PASSWORD: qa
+          POSTGRES_DB: cdc_platform_qa_unit
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://qa:qa@localhost:5432/cdc_platform_qa_unit
+      TEST_DATABASE_URL: postgresql://qa:qa@localhost:5432/cdc_platform_qa_unit
+      JWT_SECRET: qa-nightly-ci-only-secret-not-used-anywhere-real
+      PORT: 4000
+      CRON_SECRET: qa-nightly-ci-only-secret
+      AZURE_STORAGE_ACCOUNT_URL: https://qa-ci-unused.blob.core.windows.net
+      AZURE_STORAGE_CONTAINER_NAME: qa-ci-unused
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: corepack enable
+
+      - name: Install Backend dependencies
+        working-directory: Backend
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations
+        working-directory: Backend
+        run: npx prisma migrate deploy
+
+      - name: Run Jest integration suite
+        working-directory: Backend
+        run: pnpm test
+
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 20
