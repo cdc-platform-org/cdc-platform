@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "WalletEntryType" ADD VALUE 'PAYOUT_REVERSAL';

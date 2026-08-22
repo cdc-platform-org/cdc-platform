@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { prisma } from '../lib/prisma';
 import { captureEscrow } from '../services/escrowService';
+import { generateIdempotencyKey } from '../services/bogPayoutService';
 import {
   GigBudgetType,
   GigStatus,
@@ -8,6 +9,8 @@ import {
   EmploymentType,
   BillingProductType,
   PaymentProvider,
+  PayoutRequestStatus,
+  PayoutRiskTier,
 } from '@prisma/client';
 
 // Test-only data builders for the escrow/billing integration suites. Every
@@ -181,6 +184,31 @@ export async function createBillingSubscription(params: {
       trialEndsAt: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
       autoRenew: params.autoRenew ?? true,
       paymentMethodId: params.paymentMethodId,
+    },
+  });
+}
+
+export async function createPayoutRequest(params: {
+  userId: string;
+  amount?: number;
+  iban?: string;
+  status?: PayoutRequestStatus;
+  riskTier?: PayoutRiskTier;
+  autoApproved?: boolean;
+  processingStartedAt?: Date;
+}) {
+  const id = randomUUID();
+  return prisma.payoutRequest.create({
+    data: {
+      id,
+      userId: params.userId,
+      amount: params.amount ?? 10000,
+      iban: params.iban ?? 'GE29NB0000000101904917',
+      status: params.status ?? PayoutRequestStatus.PENDING,
+      riskTier: params.riskTier ?? PayoutRiskTier.MANUAL_REVIEW,
+      autoApproved: params.autoApproved ?? false,
+      idempotencyKey: generateIdempotencyKey(id),
+      processingStartedAt: params.processingStartedAt,
     },
   });
 }

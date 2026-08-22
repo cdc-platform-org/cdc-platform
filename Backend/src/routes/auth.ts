@@ -32,7 +32,7 @@ import {
   FACEBOOK_CALLBACK_URL,
   SUPER_ADMIN_EMAILS,
 } from '../utils/env';
-import { sendVerificationEmail, sendPasswordResetEmail, sendBusinessVerifiedEmail } from '../services/emailService';
+import { sendVerificationEmail, sendPasswordResetEmail, sendBusinessVerifiedEmail, sendPayoutIbanChangedEmail } from '../services/emailService';
 import { uploadToBunnyStorage, isBunnyStorageConfigured, BunnyStorageUploadError, deleteBunnyStorageUrlIfManaged } from '../services/bunnyStorage';
 import { uploadImage, deleteManagedImage } from '../services/imageStorage';
 import { parseBusinessDocument, isBusinessKycParsingConfigured, shouldAutoApprove } from '../services/businessKycService';
@@ -1167,10 +1167,30 @@ router.put('/me', authenticate, async (req, res) => {
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
   const { payoutIban, websiteUrl, ...rest } = result.data;
+  const normalizedIban = payoutIban || null;
+
+  // Read the current value first so we can tell whether this request is
+  // actually changing it — payoutIban is the one field on this route real
+  // money follows, and bogPayoutService's risk engine treats a recent
+  // change to it as a mandatory manual-review trigger regardless of
+  // amount (see User.payoutIbanUpdatedAt's own schema comment). Only
+  // stamped — and only emailed — on a genuine change, not every PUT that
+  // happens to re-submit the same value.
+  const before = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { payoutIban: true, email: true } });
+  const ibanChanged = payoutIban !== undefined && normalizedIban !== (before?.payoutIban ?? null);
+
   const user = await prisma.user.update({
     where: { id: req.user!.id },
-    data: { ...rest, payoutIban: payoutIban || null, websiteUrl: websiteUrl || null },
+    data: {
+      ...rest,
+      payoutIban: normalizedIban,
+      websiteUrl: websiteUrl || null,
+      ...(ibanChanged ? { payoutIbanUpdatedAt: new Date() } : {}),
+    },
   });
+  if (ibanChanged && before?.email) {
+    sendPayoutIbanChangedEmail(before.email).catch((err) => console.error(`[auth] sendPayoutIbanChangedEmail failed for ${before.email}:`, err));
+  }
   res.json({ user: toUserResponse(user) });
 });
 

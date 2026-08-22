@@ -445,6 +445,25 @@ export async function sendSubscriptionCanceledEmail(email: string, productLabel:
   await sendEmail(email, 'თქვენი გამოწერა გაუქმებულია — CDC', html, link);
 }
 
+// Fired whenever PUT /auth/me actually changes User.payoutIban (see
+// routes/auth.ts) — the one security-sensitive field that route lets a
+// user change with nothing more than their existing session. This is the
+// account owner's only real-time signal that it happened, so an account-
+// takeover that quietly redirects future payouts doesn't go unnoticed
+// until money is already gone. Always sent, even to the email on file for
+// an account whose session was just hijacked — a legitimate change is a
+// harmless extra email; an illegitimate one is the whole point of sending it.
+export async function sendPayoutIbanChangedEmail(email: string): Promise<void> {
+  const link = `${FRONTEND_URL}/profile/settings`;
+  const html = wrapTemplate(
+    'თქვენი გადახდის IBAN შეიცვალა',
+    'თქვენს ანგარიშზე განახლდა თანხის გატანის საბანკო ანგარიშის ნომერი (IBAN). თუ ეს თქვენ არ გაგიკეთებიათ, დაუყოვნებლივ შეცვალეთ პაროლი და დაგვიკავშირდით.',
+    'ანგარიშის პარამეტრები',
+    link
+  );
+  await sendEmail(email, 'თქვენი გადახდის IBAN შეიცვალა — CDC', html, link);
+}
+
 export async function sendPasswordResetEmail(email: string, token: string, lang: 'ka' | 'en' = 'ka'): Promise<void> {
   const link = `${FRONTEND_URL}/reset-password?token=${token}`;
   const html =

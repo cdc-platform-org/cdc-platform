@@ -134,6 +134,13 @@ enum WalletEntryType {
   MENTORSHIP_SESSION_CREDIT
   HR_SUPPORT_CREDIT
   PAYOUT_DEBIT
+  // Restores the PAYOUT_DEBIT when a PROCESSING PayoutRequest ends in
+  // FAILED (BOG rejected the transfer, or its confirmation webhook never
+  // arrived within the timeout) — see bogPayoutService.markFailed. Kept
+  // distinct from ADJUSTMENT (an admin's manual balance correction) so a
+  // wallet history reader can tell "the system reversed its own debit"
+  // from "an admin changed this by hand" at a glance.
+  PAYOUT_REVERSAL
   ADJUSTMENT
 }
 
@@ -359,6 +366,16 @@ model User {
   // still stores its own snapshot, so changing this later doesn't alter
   // past requests.
   payoutIban                    String?
+  // Stamped by PUT /auth/me whenever payoutIban actually changes (null on
+  // an account that has never set one). The one input the bogPayoutService
+  // risk engine cannot derive from PayoutRequest alone — a session/account
+  // takeover that silently redirects payouts by editing this field, then
+  // immediately requests a payout, must never sail through auto-approval
+  // just because the amount is small and the account is old. See
+  // subscriptionStateService.ts-style "single source of truth" reasoning:
+  // this is the one place that decision is made, not re-derived ad hoc at
+  // review time.
+  payoutIbanUpdatedAt           DateTime?
   // Profile picture — set only via POST /api/auth/me/avatar (uploads
   // straight to Bunny Storage, see services/bunnyStorage.ts), never a
   // freely-settable URL, so a user's public-facing avatar can't be pointed
@@ -2857,17 +2874,41 @@ model Dispute {
 // PAYOUT REQUESTS — a student's ask to withdraw their earningsBalance to a
 // bank account. This only tracks the request/approval workflow; approving
 // one debits earningsBalance and writes a WalletEntry(PAYOUT_DEBIT), same
-// as every other wallet mutation, but the actual bank transfer happens
-// manually outside the platform (an admin wires the money via BOG's own
-// dashboard/banking), same posture as the BOG merchant credentials already
-// being admin-managed rather than fully automated end-to-end.
+// as every other wallet mutation. As of the bogPayoutService design (see
+// that file's own header comment), the actual transfer can now go one of
+// two ways: a LOW-risk request is wired automatically via BOG's Mass
+// Payout API, everything else still gets wired by hand outside the
+// platform exactly as before (an admin wires the money via BOG's own
+// dashboard/banking after approving).
 // ============================================================
 
 enum PayoutRequestStatus {
   PENDING
   APPROVED
+  // Funds are claimed (see bogPayoutService.claimForProcessing) and the BOG
+  // API call is either in flight or awaiting its confirmation webhook — a
+  // request sits here only ever as long as that one call/webhook round
+  // trip takes, never as a resting state. See bogPayoutService.ts's header
+  // comment for the full state machine.
+  PROCESSING
   REJECTED
   PAID
+  // BOG rejected the transfer or the webhook never confirmed within the
+  // timeout — earningsBalance has already been restored by the same
+  // transaction that set this status (see bogPayoutService.markFailed).
+  // Always routes to the Admin Review Queue; never silently retried.
+  FAILED
+}
+
+// LOW passes every current auto-approval rule at request-creation time and
+// is eligible for straight-through BOG Mass Payout processing.
+// MANUAL_REVIEW fails one or more rules (or the engine isn't configured/
+// enabled yet) and always requires a human SUPER_ADMIN approval, with no
+// upper amount that exempts it — this is the fail-safe default the whole
+// design leans on, see bogPayoutService.ts.
+enum PayoutRiskTier {
+  LOW
+  MANUAL_REVIEW
 }
 
 model PayoutRequest {
@@ -2883,6 +2924,33 @@ model PayoutRequest {
   reviewedById String?
   reviewedBy   User?               @relation("PayoutRequestsReviewed", fields: [reviewedById], references: [id], onDelete: SetNull)
   resolvedAt   DateTime?
+
+  // Evaluated and locked in at request-creation time (evaluateRiskTier in
+  // bogPayoutService.ts) — never re-derived later, same "lock in at capture
+  // time" convention as every commission rate elsewhere in this schema.
+  // A rule change only affects requests created after it, and the exact
+  // rule outcome for an already-resolved request stays auditable forever.
+  riskTier     PayoutRiskTier @default(MANUAL_REVIEW)
+  autoApproved Boolean        @default(false)
+
+  // Deterministic, generated once at creation as `payout_request_<id>` —
+  // sent as BOG's own idempotency key on every call attempt for this
+  // request, including retries, so a network timeout that actually
+  // succeeded bank-side can never be double-submitted. @unique makes a
+  // second PayoutRequest row physically incapable of reusing one, though
+  // in practice the id-derived scheme already guarantees that on its own.
+  idempotencyKey String @unique
+
+  // BOG's own transfer/transaction id, set once their API (or its
+  // confirmation webhook) actually returns one — the reconciliation anchor
+  // for any manual lookup in BOG's own dashboard.
+  providerRef String? @unique
+
+  // Set when claimForProcessing's atomic claim succeeds — i.e. exactly
+  // when funds left PENDING/APPROVED and got locked for the BOG call.
+  processingStartedAt DateTime?
+  failedAt            DateTime?
+  failureReason       String?
 
   createdAt DateTime @default(now())
 

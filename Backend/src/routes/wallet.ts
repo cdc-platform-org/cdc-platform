@@ -1,9 +1,11 @@
+import { randomUUID } from 'crypto';
 import { Router, Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireRole, requireApproved } from '../middleware/auth';
 import { createPayoutRequestSchema } from '../schemas/payoutSchemas';
 import { isIdentityVerified } from '../utils/freelancerVerification';
+import { evaluateRiskTier, hasOpenDisputesForUser, generateIdempotencyKey } from '../services/bogPayoutService';
 const router = Router();
 
 // Carries an HTTP status + message out of the Serializable transaction
@@ -59,7 +61,16 @@ router.post('/payout-requests', authenticate, requireRole('Student', 'Mentor'), 
       async (tx) => {
         const user = await tx.user.findUnique({
           where: { id: req.user!.id },
-          select: { earningsBalance: true, payoutIban: true, isVerifiedGraduate: true, verificationLevel: true, verificationStatus: true, isVerified: true },
+          select: {
+            earningsBalance: true,
+            payoutIban: true,
+            isVerifiedGraduate: true,
+            verificationLevel: true,
+            verificationStatus: true,
+            isVerified: true,
+            createdAt: true,
+            payoutIbanUpdatedAt: true,
+          },
         });
         if (!user) throw new PayoutRequestError(404, 'User not found.');
         // The one hard verification gate in the whole hybrid model — see
@@ -82,7 +93,31 @@ router.post('/payout-requests', authenticate, requireRole('Student', 'Mentor'), 
         if ((pendingTotal._sum.amount ?? 0) + result.data.amount > user.earningsBalance) {
           throw new PayoutRequestError(400, 'You already have pending payout requests that exceed your available balance.');
         }
-        return tx.payoutRequest.create({ data: { userId: req.user!.id, amount: result.data.amount, iban } });
+
+        // Locked in at creation time, same "decide once, never re-derive"
+        // convention as every commission rate elsewhere in this codebase —
+        // see bogPayoutService.evaluateRiskTier's own comment. Not acted on
+        // anywhere yet (see that file's header for the current wiring
+        // boundary); this only records what the engine would have decided.
+        const hasOpenDisputes = await hasOpenDisputesForUser(tx, req.user!.id);
+        const { tier } = evaluateRiskTier({
+          amount: result.data.amount,
+          createdAt: user.createdAt,
+          payoutIbanUpdatedAt: user.payoutIbanUpdatedAt,
+          isVerifiedGraduate: user.isVerifiedGraduate,
+          verificationLevel: user.verificationLevel,
+          verificationStatus: user.verificationStatus,
+          isVerified: user.isVerified,
+          hasOpenDisputes,
+        });
+
+        // Generated client-side (not left to the schema's @default(uuid()))
+        // so the payout_request_<id> idempotency key can be computed and
+        // stored in this same insert — see generateIdempotencyKey's own doc.
+        const id = randomUUID();
+        return tx.payoutRequest.create({
+          data: { id, userId: req.user!.id, amount: result.data.amount, iban, riskTier: tier, idempotencyKey: generateIdempotencyKey(id) },
+        });
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
