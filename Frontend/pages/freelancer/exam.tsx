@@ -272,9 +272,22 @@ function FreelancerExamContent() {
       const timeout = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('timeout')), GENERATE_TIMEOUT_MS);
       });
+      // 'other' has no checkbox of its own (see the category grid above,
+      // which explicitly filters it out — it's represented by this free-text
+      // field instead), so it was never actually added to `categories`
+      // here. A customProfession-only submission (no checkbox picked) sent
+      // categories: [] straight to a backend that requires at least one —
+      // that 400 has no `message` field (just `errors`), so it silently
+      // fell through to the generic failure text below instead of ever
+      // reaching the AI generator at all. Ensuring 'other' is included
+      // whenever a custom profession is actually typed is the fix.
+      const trimmedCustomProfession = customProfession.trim();
+      const effectiveCategories: JobCategory[] =
+        trimmedCustomProfession && !categories.includes('other') ? [...categories, 'other'] : categories;
+
       // The AI skill-exam generator only produces 'ka'/'en' exams.
       const exam = await Promise.race([
-        generateExam(categories, customProfession.trim() || undefined, lang === 'ka' ? 'ka' : 'en'),
+        generateExam(effectiveCategories, trimmedCustomProfession || undefined, lang === 'ka' ? 'ka' : 'en'),
         timeout,
       ]);
       setAttemptId(exam.attemptId);

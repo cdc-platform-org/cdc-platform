@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved, requireRole } from '../middleware/auth';
 import { generateExamQuestions, GeneratedQuestion } from '../services/aiExamService';
+import { isDigitalProfession, OUT_OF_SCOPE_MESSAGE } from '../utils/digitalProfessionScope';
 
 const router = Router();
 router.use(authenticate, requireApproved, requireRole('Student'));
@@ -46,11 +47,23 @@ const jobCategoryEnum = z.enum(['ui_ux_design', 'web_development', 'graphic_desi
 // CATEGORY_BRIEF topic lists get blended into a single 15-question prompt;
 // customProfession is the free-typed text shown when 'other' is selected,
 // folded into the same prompt as an additional topic.
-const generateSchema = z.object({
-  categories: z.array(jobCategoryEnum).min(1, 'Select at least one profession.').max(5),
-  customProfession: z.string().trim().max(80).optional(),
-  lang: z.enum(['ka', 'en']).optional(),
-});
+// categories may arrive empty when the request is customProfession-only
+// (the "Other profession" free-text field has no checkbox of its own — see
+// pages/freelancer/exam.tsx's category grid) — the frontend now always
+// includes 'other' itself when that field is used, but this schema stays
+// defensive independently of that, same "never trust the client" posture
+// as the rest of this codebase. The refine below is what actually still
+// requires *something* to be selected.
+const generateSchema = z
+  .object({
+    categories: z.array(jobCategoryEnum).max(5),
+    customProfession: z.string().trim().max(80).optional(),
+    lang: z.enum(['ka', 'en']).optional(),
+  })
+  .refine((data) => data.categories.length > 0 || !!data.customProfession, {
+    message: 'Select at least one profession, or type a custom one.',
+    path: ['categories'],
+  });
 
 type ClientQuestion = Omit<GeneratedQuestion, 'correctAnswer' | 'explanation'>;
 function stripAnswers(questions: GeneratedQuestion[]): ClientQuestion[] {
@@ -138,7 +151,21 @@ router.get('/status', async (req: Request, res: Response) => {
 router.post('/generate', async (req: Request, res: Response) => {
   const result = generateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
-  const { categories, customProfession, lang } = result.data;
+  const { customProfession, lang } = result.data;
+  // Defensive default independent of the frontend's own fix (see
+  // pages/freelancer/exam.tsx) — a customProfession-only request with no
+  // category checkbox picked is really an 'other' request; the refine on
+  // generateSchema above only guarantees *something* was provided, not
+  // that categories itself is non-empty.
+  const categories = result.data.categories.length > 0 ? result.data.categories : (['other'] as typeof result.data.categories);
+
+  // Digital/tech domain gate — CDC only verifies digital and technology
+  // skills (see utils/digitalProfessionScope.ts's own header). Only the
+  // free-typed customProfession needs checking; every fixed category in
+  // jobCategoryEnum is inherently in-scope by definition.
+  if (customProfession && !isDigitalProfession(customProfession)) {
+    return res.status(400).json({ message: OUT_OF_SCOPE_MESSAGE[lang ?? 'ka'] });
+  }
 
   const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { examLockedUntil: true } });
   if (user?.examLockedUntil && user.examLockedUntil > new Date()) {
