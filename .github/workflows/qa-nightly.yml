@@ -71,6 +71,10 @@ jobs:
         working-directory: Frontend
         run: pnpm run lint
 
+      - name: Check locale key parity
+        working-directory: Frontend
+        run: pnpm run check:locales
+
   unit-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10

@@ -217,6 +217,18 @@ Respond with strict JSON matching this shape:
   if (!result.success) {
     throw new ExamProctoringAiError('Gemini returned an unexpected question format.');
   }
+  // Same gap as aiExamService.generateExamQuestions had (found auditing
+  // that one): a schema-valid response with fewer than params.mcqCount
+  // questions previously passed straight through, silently shipping the
+  // employer a shorter exam than they configured. There's no static
+  // fallback bank for this business-exam-proctoring path (see this
+  // function's own header comment), so failing loudly here — caught by
+  // both routes/examProctoring.ts call sites already, which return a
+  // clean error response — is strictly better than silently degrading a
+  // paid, employer-configured screening exam.
+  if (result.data.mcqQuestions.length < params.mcqCount) {
+    throw new ExamProctoringAiError('Gemini returned fewer questions than requested.');
+  }
 
   const mcqQuestions: GeneratedMcqQuestion[] = result.data.mcqQuestions.map((q, i) => ({ type: 'MCQ', order: i, ...q }));
   const questions: GeneratedExamQuestion[] = [

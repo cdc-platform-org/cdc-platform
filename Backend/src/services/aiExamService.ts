@@ -99,7 +99,18 @@ Generate exactly ${params.questionCount} multiple-choice questions that test rea
   }
 
   const result = questionsResponseSchema.safeParse(parsed);
-  if (!result.success || result.data.questions.length === 0) {
+  // Previously only checked for exactly zero questions — a schema-valid
+  // response with, say, 9 of the 15 requested questions passed straight
+  // through (.slice(0, questionCount) is a no-op on a shorter array), so a
+  // scored exam could silently ship fewer questions than the platform's
+  // own "N questions, need X% correct" framing promised the student. Any
+  // shortfall is now treated the same as total generation failure — for
+  // freelancerExam.ts specifically (the caller QA found this against),
+  // that routes straight into the existing static-fallback bank, which
+  // always fills to exactly QUESTION_COUNT; other callers (course
+  // certification exams, business exam proctoring) already return a clean
+  // error to the client rather than crash — see their own route handlers.
+  if (!result.success || result.data.questions.length < params.questionCount) {
     throw new AiExamGenerationError('AI provider returned an unexpected question format.');
   }
 

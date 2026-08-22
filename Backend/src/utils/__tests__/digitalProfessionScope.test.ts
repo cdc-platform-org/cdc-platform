@@ -31,6 +31,41 @@ describe('isDigitalProfession', () => {
     });
   });
 
+  // Regression cases found by a QA audit probe: the short, generic tokens
+  // meant for "AI"/"IT"/"Tech"/"Motion" (as standalone words, e.g. "AI
+  // Engineer") were originally matched as plain substrings, which also
+  // matched them mid-word inside completely unrelated professions —
+  // rejecting these correctly is exactly what the digital-scope gate
+  // exists for, so a regression here would silently let real non-digital
+  // requests reach the AI exam generator again.
+  describe('word-boundary regression cases (ai/it/tech/motion false positives)', () => {
+    const cases = [
+      'Aircraft Mechanic', // contains "ai" mid-word
+      'Portrait Photographer', // contains "ai"/"it" mid-word
+      'Wait Staff', // contains "it" mid-word
+      'Nail Technician', // contains "tech" as a prefix of "technician", not the standalone word
+      'Air Conditioning Technician',
+      'Emotional Support Counselor', // contains "motion" mid-word ("e-MOTION-al")
+      'Promotion Coordinator', // contains "motion" mid-word ("pro-MOTION")
+    ];
+    it.each(cases)('rejects "%s"', (profession) => {
+      expect(isDigitalProfession(profession)).toBe(false);
+    });
+
+    const legitimateCases = [
+      'AI Engineer',
+      'IT Support Specialist',
+      'Tech Lead',
+      'Motion Designer',
+      'UI Designer',
+      'UX Researcher',
+      'QA Engineer',
+    ];
+    it.each(legitimateCases)('still accepts "%s" as a standalone word', (profession) => {
+      expect(isDigitalProfession(profession)).toBe(true);
+    });
+  });
+
   it('is case-insensitive', () => {
     expect(isDigitalProfession('WEB DEVELOPER')).toBe(true);
     expect(isDigitalProfession('plumber')).toBe(false);

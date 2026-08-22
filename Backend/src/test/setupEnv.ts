@@ -12,3 +12,12 @@ process.env.PORT = process.env.PORT || '4099';
 process.env.AZURE_STORAGE_ACCOUNT_URL = process.env.AZURE_STORAGE_ACCOUNT_URL || 'https://test-unused.blob.core.windows.net';
 process.env.AZURE_STORAGE_CONTAINER_NAME = process.env.AZURE_STORAGE_CONTAINER_NAME || 'test-unused';
 process.env.CRON_SECRET = process.env.CRON_SECRET || 'test-cron-secret';
+// A dummy, syntactically-arbitrary key — not used to make a real API call
+// in any test (every AI-provider-calling function is mocked at its own
+// module boundary, see e.g. services/__tests__/aiExamService.test.ts).
+// Needed so isAiExamConfigured()/isAiAgentConfigured()-style "not
+// configured" gates don't short-circuit tests before ever reaching the
+// mock. Set explicitly (not left to dotenv loading Backend/.env's real
+// key) so behavior is identical locally and in CI, where no .env file
+// exists at all.
+process.env.GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'test-gemini-key-not-real';
