@@ -174,6 +174,19 @@ export const AZURE_OPENAI_DEPLOYMENT_NAME = (process.env.AZURE_OPENAI_DEPLOYMENT
 // there's no "-latest" alias, so this is pinned to a known-GA version rather
 // than guessed. Override via env if your deployment needs a different one.
 export const AZURE_OPENAI_API_VERSION = (process.env.AZURE_OPENAI_API_VERSION || '2024-10-21').trim();
+// DALL-E 3 image generation — a separate Azure OpenAI deployment from
+// AZURE_OPENAI_DEPLOYMENT_NAME above (image and chat models are always
+// distinct deployments on the same resource), reusing the same
+// API_KEY/ENDPOINT. Deliberately NOT requireEnv() — same "optional until
+// configured" posture as every other AI provider here; see
+// aiAgentService.generateCoverImage's own comment for what it falls back
+// to when this is unset. The Images API requires its own api-version
+// (chat completions and image generation are versioned independently on
+// Azure OpenAI, and don't always share a GA date) — pinned separately
+// rather than reusing AZURE_OPENAI_API_VERSION so bumping one doesn't
+// silently risk breaking the other.
+export const AZURE_OPENAI_DALLE_DEPLOYMENT_NAME = (process.env.AZURE_OPENAI_DALLE_DEPLOYMENT_NAME || '').trim();
+export const AZURE_OPENAI_DALLE_API_VERSION = (process.env.AZURE_OPENAI_DALLE_API_VERSION || '2024-04-01-preview').trim();
 // Stripe Checkout — the international (USD/EUR) counterpart to BOG (GEL/ka
 // users), see services/stripePaymentService.ts. Deliberately NOT
 // requireEnv() — same "optional until configured" posture as BOG/Bunny/

@@ -4,7 +4,7 @@ import { z } from 'zod';
 import * as Sentry from '@sentry/node';
 import { GEMINI_API_KEY } from '../utils/env';
 import { uploadImage } from './imageStorage';
-import { isAzureOpenAiConfigured, generateJsonViaAzureOpenAI } from './azureOpenAiService';
+import { isAzureOpenAiConfigured, generateJsonViaAzureOpenAI, isAzureOpenAiDalleConfigured, generateImageViaDallE3 } from './azureOpenAiService';
 
 // ============================================================
 // CDC AUTONOMOUS OPERATIONS AGENT — central AI service wrapper.
@@ -15,9 +15,13 @@ import { isAzureOpenAiConfigured, generateJsonViaAzureOpenAI } from './azureOpen
 // exactly one place. Text generation is Gemini (same "flash only, 501
 // until configured" shape as services/aiExamService.ts,
 // services/aiTranslateService.ts and services/subtitleService.ts). Cover
-// images are Pollinations.ai (see generateCoverImage()) — unauthenticated
-// and free, deliberately NOT Gemini/Imagen, which needs Cloud Billing
-// enabled for any image model on this Google Cloud project.
+// images try DALL-E 3 (Azure OpenAI) first when configured, falling back
+// to Pollinations.ai (unauthenticated and free — deliberately NOT Gemini/
+// Imagen, which needs Cloud Billing enabled for any image model on this
+// Google Cloud project) — see generateCoverImage()'s own comment for the
+// full chain. Same "best available paid option first, always-available
+// free option second" shape as the Gemini→Azure OpenAI text chain above,
+// applied to images instead of text.
 // ============================================================
 
 export function isAiAgentConfigured(): boolean {
@@ -78,6 +82,10 @@ const POLLINATIONS_IMAGE_ENDPOINT = 'https://image.pollinations.ai/prompt';
 // stuck request surfaces as a null cover (never blocks the text draft)
 // instead of hanging the request indefinitely.
 const IMAGE_GENERATION_TIMEOUT_MS = 60_000;
+// DALL-E 3 at `quality: 'hd'` is slower than Pollinations' Flux model —
+// bounded longer for the same "never hang, just fall through" reason, not
+// because a slow response is expected to be the norm.
+const DALLE_TIMEOUT_MS = 90_000;
 
 export class AiAgentError extends Error {
   // HTTP status a route should respond with — see classifyGeminiErrorStatus.
@@ -291,6 +299,37 @@ function buildImagePrompt(concept: string): string {
   return `${subjectAndEnvironment}. ${graphicOverlay}. ${lightingAndStyle}. ${aspectRatio}. Avoid: ${negative}.`;
 }
 
+// The platform's fixed visual-identity signature for AI-generated blog
+// covers — injected verbatim into every DALL-E 3 request alongside the
+// topic-specific concept, so every AI-drafted post's cover matches the
+// same "high-end SaaS product" look regardless of what the article is
+// about. Deliberately a stable, literal string (not assembled from
+// clauses like buildImagePrompt above) — this exact wording is the
+// platform's agreed style guide, not a first draft to keep tuning.
+const DALLE_STYLE_SIGNATURE =
+  'High-end 3D SaaS/AI product landscape banner, dark mode interface mockup, glowing neon purple and cyan accents, sleek glassmorphism dashboard, developer tool aesthetic, clean composition, 16:9 aspect ratio, 8k render.';
+
+function buildDallePrompt(concept: string): string {
+  return `${concept}. ${DALLE_STYLE_SIGNATURE}`;
+}
+
+// Tries DALL-E 3 (Azure OpenAI) first — see azureOpenAiService.generateImageViaDallE3's
+// own comment for why it requests raw bytes rather than a URL. Returns
+// null (never throws) so the Pollinations fallback below always gets a
+// chance to run instead of the whole draft failing outright.
+async function generateCoverImageViaDallE3(concept: string, folderName: string): Promise<string | null> {
+  try {
+    const { buffer, mimeType } = await generateImageViaDallE3(buildDallePrompt(concept), DALLE_TIMEOUT_MS);
+    if (buffer.length === 0) return null;
+    const ext = mimeType.split('/')[1]?.replace(/[^a-z0-9]/gi, '') || 'png';
+    const filename = `ai-cover-${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    return await uploadImage({ buffer, mimetype: mimeType, folderName, filename });
+  } catch (err) {
+    console.warn('[aiAgentService] DALL-E 3 cover image generation failed:', err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
 // Generates a cover image from a short visual concept via Pollinations.ai
 // (image.pollinations.ai/prompt/<prompt> — unauthenticated, no API
 // key/billing) and uploads it to Bunny Storage (via the shared
@@ -300,7 +339,7 @@ function buildImagePrompt(concept: string): string {
 // Returns null (never throws) on any failure — a missing cover image must
 // never block or fail an otherwise-good text draft; the admin can always
 // attach one manually via the existing upload button.
-export async function generateCoverImage(concept: string, folderName = 'blog'): Promise<string | null> {
+async function generateCoverImageViaPollinations(concept: string, folderName: string): Promise<string | null> {
   try {
     // A fresh random seed per call — reusing a seed (or issuing a HEAD
     // request first) can return a cached empty body from Pollinations' edge
@@ -339,6 +378,23 @@ export async function generateCoverImage(concept: string, folderName = 'blog'): 
     console.warn('[aiAgentService] Cover image generation failed:', err instanceof Error ? err.message : err);
     return null;
   }
+}
+
+// Public entry point every caller (blogAgentService.ts today) uses — tries
+// DALL-E 3 first when an image deployment is actually configured, falling
+// back to Pollinations either when it isn't, or when the DALL-E 3 attempt
+// itself failed/timed out. Either branch already returns null (never
+// throws) on its own failure, so this function can never throw either —
+// the worst case is BlogPost.imageUrl stays null and the post renders
+// with the platform's default gradient placeholder (see Frontend's
+// pages/blog/index.tsx), exactly as if no cover had been requested at
+// all. A missing/failed cover must never block blog creation.
+export async function generateCoverImage(concept: string, folderName = 'blog'): Promise<string | null> {
+  if (isAzureOpenAiDalleConfigured()) {
+    const dalleResult = await generateCoverImageViaDallE3(concept, folderName);
+    if (dalleResult) return dalleResult;
+  }
+  return generateCoverImageViaPollinations(concept, folderName);
 }
 
 // ============================================================
