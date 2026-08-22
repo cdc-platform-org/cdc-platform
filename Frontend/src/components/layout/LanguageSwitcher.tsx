@@ -13,6 +13,8 @@ const locales = [
   { code: 'es', label: 'Español' },
   { code: 'fr', label: 'Français' },
   { code: 'uk', label: 'Українська' },
+  { code: 'tr', label: '🇹🇷 Türkçe' },
+  { code: 'hy', label: '🇦🇲 Հայերեն' },
 ];
 
 // Was 6 inline buttons before this file grew from 2 languages to 6 — that

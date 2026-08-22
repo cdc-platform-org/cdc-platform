@@ -1,0 +1,36 @@
+{
+  "pageTitle": "Ödemeler ve Faturalandırma",
+  "loading": "Yükleniyor…",
+  "loadError": "Faturalandırma bilgileriniz yüklenemedi. Lütfen tekrar deneyin.",
+  "removeError": "Bu ödeme yöntemi kaldırılamadı. Lütfen tekrar deneyin.",
+  "downloadError": "Bu fatura indirilemedi. Lütfen tekrar deneyin.",
+  "savedCards": {
+    "title": "Kayıtlı Ödeme Yöntemleri",
+    "empty": "Henüz kayıtlı bir ödeme yönteminiz yok.",
+    "default": "Varsayılan",
+    "remove": "Kaldır",
+    "removing": "Kaldırılıyor…",
+    "confirmRemove": "Bu kart kaldırılsın mı?",
+    "confirmYes": "Evet, kaldır",
+    "confirmNo": "İptal"
+  },
+  "billingHistory": {
+    "title": "Faturalandırma Geçmişi",
+    "empty": "Henüz bir faturanız yok.",
+    "download": "PDF İndir",
+    "columns": {
+      "invoice": "Fatura",
+      "description": "Açıklama",
+      "amount": "Tutar",
+      "status": "Durum",
+      "date": "Tarih",
+      "actions": "İşlemler"
+    },
+    "status": {
+      "paid": "Ödendi",
+      "pending": "Beklemede",
+      "failed": "Başarısız",
+      "refunded": "İade Edildi"
+    }
+  }
+}

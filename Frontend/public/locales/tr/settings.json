@@ -1,0 +1,45 @@
+{
+  "pageTitle": "Hesap Ayarları",
+  "backToHome": "← Ana Sayfaya Dön",
+  "paymentSection": {
+    "title": "Kayıtlı Ödeme Yöntemi",
+    "empty": "Henüz kayıtlı bir ödeme yönteminiz yok.",
+    "default": "Varsayılan",
+    "expires": "Son kullanma",
+    "deleteButton": "Kartı Sil",
+    "removing": "Kaldırılıyor…",
+    "removeError": "Bu ödeme yöntemi kaldırılamadı. Lütfen tekrar deneyin.",
+    "loading": "Yükleniyor…"
+  },
+  "removeCardModal": {
+    "title": "Bu kart silinsin mi?",
+    "body": "Bu, {{last4}} ile biten kartı hesabınızdan kalıcı olarak kaldıracaktır.",
+    "cancel": "İptal",
+    "confirm": "Kartı Sil",
+    "confirming": "Siliniyor…"
+  },
+  "dangerZone": {
+    "title": "Tehlikeli Bölge",
+    "description": "Hesabınızı silmek kalıcıdır — 60 günlük bekleme süresinden sonra geri alınamaz.",
+    "deleteAccountButton": "Hesabı Sil"
+  },
+  "deleteAccountModal": {
+    "title": "Hesabı Sil",
+    "warning": "Hesabınızı silmek istediğinizden emin misiniz? Profiliniz devre dışı bırakılacak ve 60 gün içinde sunucularımızdan kalıcı olarak silinecektir.",
+    "confirmMethodLabel": "Şifrenizle onaylayın veya aşağıya SİL yazın",
+    "passwordLabel": "Şifre",
+    "passwordPlaceholder": "Mevcut şifrenizi girin",
+    "orDivider": "VEYA",
+    "confirmTextLabel": "Onaylamak için SİL yazın",
+    "confirmTextPlaceholder": "SİL",
+    "cancel": "İptal",
+    "confirm": "Hesabımı Sil",
+    "confirming": "Siliniyor…",
+    "error": "Hesabınız silinemedi. Lütfen tekrar deneyin.",
+    "validation": "Onaylamak için şifrenizi girin veya SİL yazın.",
+    "wrongPassword": "Yanlış şifre."
+  },
+  "toast": {
+    "accountDeleted": "Hesabınız başarıyla silindi."
+  }
+}
