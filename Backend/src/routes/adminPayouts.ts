@@ -14,7 +14,31 @@ router.use(authenticate, requireAdminRole('SUPER_ADMIN'));
 // the race this route used to be vulnerable to, not a real server error.
 class PayoutAlreadyResolvedError extends Error {}
 
-const userSelect = { select: { id: true, name: true, email: true, earningsBalance: true } };
+// riskTier/riskReasons/requestIp/autoApproved are plain PayoutRequest
+// columns (see bogPayoutService.ts's own schema comments) — `include`
+// below only adds relations, so they're already present on every row
+// without needing an explicit select. What genuinely needs adding here is
+// the account-level context an admin needs to judge requestIp against:
+// payoutIbanUpdatedAt (the IBAN-change-cooldown rule's own input) and the
+// account's most recent known-good login IP as a "usual IP" reference
+// point (see sessionAnomalyService.ts — there's no single stored "usual
+// IP," it's derived from login history, so the most recent LoginEvent is
+// the lightest-weight useful proxy for an admin eyeballing the two side by
+// side; not a claim that this is the ONLY IP the account has ever used).
+const userSelect = {
+  select: {
+    id: true,
+    name: true,
+    email: true,
+    earningsBalance: true,
+    payoutIbanUpdatedAt: true,
+    loginEvents: {
+      orderBy: { createdAt: 'desc' as const },
+      take: 1,
+      select: { ip: true, userAgent: true, createdAt: true },
+    },
+  },
+};
 
 router.get('/', async (req: Request, res: Response) => {
   const status = typeof req.query.status === 'string' ? req.query.status : undefined;

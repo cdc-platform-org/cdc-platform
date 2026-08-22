@@ -6,6 +6,7 @@ import { authenticate, requireRole, requireApproved } from '../middleware/auth';
 import { createPayoutRequestSchema } from '../schemas/payoutSchemas';
 import { isIdentityVerified } from '../utils/freelancerVerification';
 import { evaluateRiskTier, hasOpenDisputesForUser, generateIdempotencyKey } from '../services/bogPayoutService';
+import { detectSessionAnomaly } from '../services/sessionAnomalyService';
 const router = Router();
 
 // Carries an HTTP status + message out of the Serializable transaction
@@ -96,11 +97,17 @@ router.post('/payout-requests', authenticate, requireRole('Student', 'Mentor'), 
 
         // Locked in at creation time, same "decide once, never re-derive"
         // convention as every commission rate elsewhere in this codebase —
-        // see bogPayoutService.evaluateRiskTier's own comment. Not acted on
-        // anywhere yet (see that file's header for the current wiring
-        // boundary); this only records what the engine would have decided.
-        const hasOpenDisputes = await hasOpenDisputesForUser(tx, req.user!.id);
-        const { tier } = evaluateRiskTier({
+        // see bogPayoutService.evaluateRiskTier's own comment. A LOW-risk
+        // row here becomes eligible for processAutoApprovedPayouts's sweep;
+        // that sweep itself isn't wired into a cron yet (see
+        // bogPayoutService.ts's header), but the risk decision is real and
+        // recorded the moment the request exists, not deferred to later.
+        const requestIp = req.ip ?? 'unknown';
+        const [hasOpenDisputes, sessionAnomalyCheck] = await Promise.all([
+          hasOpenDisputesForUser(tx, req.user!.id),
+          detectSessionAnomaly({ userId: req.user!.id, currentIp: requestIp, currentUserAgent: req.headers['user-agent'] }),
+        ]);
+        const { tier, reasons } = evaluateRiskTier({
           amount: result.data.amount,
           createdAt: user.createdAt,
           payoutIbanUpdatedAt: user.payoutIbanUpdatedAt,
@@ -109,6 +116,7 @@ router.post('/payout-requests', authenticate, requireRole('Student', 'Mentor'), 
           verificationStatus: user.verificationStatus,
           isVerified: user.isVerified,
           hasOpenDisputes,
+          sessionAnomaly: sessionAnomalyCheck.anomalous,
         });
 
         // Generated client-side (not left to the schema's @default(uuid()))
@@ -116,7 +124,16 @@ router.post('/payout-requests', authenticate, requireRole('Student', 'Mentor'), 
         // stored in this same insert — see generateIdempotencyKey's own doc.
         const id = randomUUID();
         return tx.payoutRequest.create({
-          data: { id, userId: req.user!.id, amount: result.data.amount, iban, riskTier: tier, idempotencyKey: generateIdempotencyKey(id) },
+          data: {
+            id,
+            userId: req.user!.id,
+            amount: result.data.amount,
+            iban,
+            riskTier: tier,
+            riskReasons: reasons,
+            requestIp,
+            idempotencyKey: generateIdempotencyKey(id),
+          },
         });
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }

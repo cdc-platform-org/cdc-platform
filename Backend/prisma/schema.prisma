@@ -540,6 +540,7 @@ model User {
   disputesResolved              Dispute[]                     @relation("DisputesResolved")
   payoutRequests                PayoutRequest[]               @relation("PayoutRequests")
   payoutRequestsReviewed        PayoutRequest[]               @relation("PayoutRequestsReviewed")
+  loginEvents                   LoginEvent[]
   auditLogs                     AuditLog[]
   siteContentUpdates            SiteContent[]
   studioInquiriesReviewed       StudioInquiry[]
@@ -2952,11 +2953,50 @@ model PayoutRequest {
   failedAt            DateTime?
   failureReason       String?
 
+  // The IP this specific request was made from (req.ip at creation time,
+  // see routes/wallet.ts) — sessionAnomalyService.ts compares this against
+  // the requester's LoginEvent history to decide riskTier. Stored so the
+  // Admin Review Queue can show it side by side with the account's usual
+  // IP without re-deriving it later from request logs that may not exist.
+  requestIp   String?
+  // Every reason evaluateRiskTier's decision produced for this request,
+  // stored verbatim at creation time (same "lock in, don't re-derive"
+  // convention as riskTier itself) — an empty array for a clean LOW-risk
+  // request, one or more human-readable strings for anything routed to
+  // manual review, surfaced directly in the Admin Review Queue.
+  riskReasons String[] @default([])
+
   createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([status])
   @@map("payout_requests")
+}
+
+// ============================================================
+// LOGIN EVENT — one row per successful authentication (password /login,
+// /register, and every OAuth callback — see routes/auth.ts's signToken
+// call sites), the history sessionAnomalyService.ts checks a financial
+// action's IP against. Deliberately NOT a general request-log — this only
+// exists to answer "has this user ever authenticated from around here
+// before," so it's written once per login, not once per request.
+// ============================================================
+model LoginEvent {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  ip        String
+  // Raw User-Agent header — a lightweight, zero-frontend-work device
+  // signal, not a true fingerprint (canvas/WebGL entropy etc., which would
+  // need a client-side library and is out of scope for this pass; see
+  // sessionAnomalyService.ts's own header comment).
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("login_events")
 }
 
 // ============================================================

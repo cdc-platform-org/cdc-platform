@@ -33,6 +33,7 @@ import {
   SUPER_ADMIN_EMAILS,
 } from '../utils/env';
 import { sendVerificationEmail, sendPasswordResetEmail, sendBusinessVerifiedEmail, sendPayoutIbanChangedEmail } from '../services/emailService';
+import { recordLoginEvent } from '../services/sessionAnomalyService';
 import { uploadToBunnyStorage, isBunnyStorageConfigured, BunnyStorageUploadError, deleteBunnyStorageUrlIfManaged } from '../services/bunnyStorage';
 import { uploadImage, deleteManagedImage } from '../services/imageStorage';
 import { parseBusinessDocument, isBusinessKycParsingConfigured, shouldAutoApprove } from '../services/businessKycService';
@@ -129,6 +130,21 @@ async function maybePromoteSuperAdmin(user: User): Promise<User> {
 
 function signToken(user: { id: string; role: string; email: string }) {
   return jwt.sign({ userId: user.id, role: user.role, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+}
+
+// Called at every one of this file's five successful-authentication points
+// (register, login, google, github/callback, facebook/callback) — builds
+// the history sessionAnomalyService.detectSessionAnomaly later compares a
+// financial action's IP/device against. Fire-and-forget: a login must
+// never fail (or even slow down) because this insert is momentarily slow,
+// same posture as every notification email send elsewhere in this file —
+// worst case, one login's history entry is missing, which only ever makes
+// a later risk check MORE cautious (see detectSessionAnomaly's fail-safe
+// default), never less.
+function trackLoginEvent(userId: string, req: Request): void {
+  recordLoginEvent(userId, req.ip ?? 'unknown', req.headers['user-agent']).catch((err) =>
+    console.error(`[auth] recordLoginEvent failed for user ${userId}:`, err)
+  );
 }
 
 function toUserResponse(user: {
@@ -248,6 +264,7 @@ router.post('/register', authRateLimit, async (req, res) => {
   user = await maybePromoteSuperAdmin(user);
 
   const token = signToken(user);
+  trackLoginEvent(user.id, req);
 
   res.status(201).json({
     token,
@@ -286,6 +303,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
 
   user = await maybePromoteSuperAdmin(user);
   const token = signToken(user);
+  trackLoginEvent(user.id, req);
 
   res.json({
     token,
@@ -549,6 +567,7 @@ router.post('/google', authRateLimit, async (req, res) => {
 
   user = await maybePromoteSuperAdmin(user);
   const token = signToken(user);
+  trackLoginEvent(user.id, req);
   res.json({ token, user: toUserResponse(user) });
 });
 
@@ -670,6 +689,7 @@ router.get('/github/callback', async (req: Request, res: Response) => {
 
     user = await maybePromoteSuperAdmin(user);
     const token = signToken(user);
+    trackLoginEvent(user.id, req);
     res.redirect(`${FRONTEND_URL}/auth/oauth-callback?token=${encodeURIComponent(token)}`);
   } catch (err) {
     console.error('[auth] GitHub OAuth callback failed:', err instanceof Error ? err.message : err);
@@ -770,6 +790,7 @@ router.get('/facebook/callback', async (req: Request, res: Response) => {
 
     user = await maybePromoteSuperAdmin(user);
     const token = signToken(user);
+    trackLoginEvent(user.id, req);
     res.redirect(`${FRONTEND_URL}/auth/oauth-callback?token=${encodeURIComponent(token)}`);
   } catch (err) {
     console.error('[auth] Facebook OAuth callback failed:', err instanceof Error ? err.message : err);

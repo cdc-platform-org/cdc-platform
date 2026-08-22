@@ -79,7 +79,18 @@ export interface RiskEvaluationInput {
   verificationStatus: string | null;
   isVerified: boolean;
   hasOpenDisputes: boolean;
+  // True when sessionAnomalyService.detectSessionAnomaly found this
+  // request's IP/device doesn't match the user's recent login history —
+  // computed by the caller (routes/wallet.ts), not by this function,
+  // same "look up what's true" / "decide what happens" split as
+  // hasOpenDisputes above.
+  sessionAnomaly: boolean;
 }
+
+// Exact wording contract — the Admin Review Queue and any downstream
+// alerting matches on this string, so treat it as a stable identifier, not
+// prose to casually reword.
+export const SESSION_ANOMALY_REASON = 'RED_FLAG: Payout requested from an unrecognized IP address or device';
 
 export interface RiskEvaluationResult {
   tier: 'LOW' | 'MANUAL_REVIEW';
@@ -124,6 +135,18 @@ export function evaluateRiskTier(input: RiskEvaluationInput): RiskEvaluationResu
     if (ibanAgeDays < AUTO_APPROVAL_IBAN_COOLDOWN_DAYS) {
       reasons.push(`Payout IBAN was changed ${ibanAgeDays.toFixed(1)}d ago, within the ${AUTO_APPROVAL_IBAN_COOLDOWN_DAYS}d cooldown.`);
     }
+  }
+  // PSD2/SCA + OWASP ATO-prevention rule: an IP/device that doesn't match
+  // the account's recent login history is grounds for manual review on
+  // its own, independent of every other rule above — a small, old,
+  // fully-verified, dispute-free account can still be the victim of a
+  // session/account takeover, and amount/age/verification alone would
+  // auto-approve straight through it. This rule cannot be bypassed by
+  // clearing every other rule; it strictly forces MANUAL_REVIEW whenever
+  // it fires (see the function's return below — reasons.length > 0 always
+  // means MANUAL_REVIEW, no rule is ever "soft").
+  if (input.sessionAnomaly) {
+    reasons.push(SESSION_ANOMALY_REASON);
   }
 
   return { tier: reasons.length === 0 ? 'LOW' : 'MANUAL_REVIEW', reasons };

@@ -13,6 +13,7 @@ import {
   AUTO_APPROVAL_MIN_ACCOUNT_AGE_DAYS,
   AUTO_APPROVAL_IBAN_COOLDOWN_DAYS,
   BogPayoutNotConfiguredError,
+  SESSION_ANOMALY_REASON,
 } from '../bogPayoutService';
 import { randomUUID } from 'crypto';
 import { createUser, createPayoutRequest, createGig, createGigApplication } from '../../test/factories';
@@ -30,6 +31,7 @@ function baseInput(overrides: Partial<Parameters<typeof evaluateRiskTier>[0]> = 
     createdAt: OLD_ACCOUNT,
     payoutIbanUpdatedAt: null,
     hasOpenDisputes: false,
+    sessionAnomaly: false,
     ...VERIFIED_GRADUATE,
     ...overrides,
   };
@@ -94,6 +96,36 @@ describe('evaluateRiskTier', () => {
       })
     );
     expect(result.reasons.length).toBeGreaterThanOrEqual(3);
+  });
+
+  describe('sessionAnomaly (PSD2/SCA, OWASP ATO prevention)', () => {
+    it('strictly forces MANUAL_REVIEW on a session/IP anomaly, with the exact required reason string', () => {
+      const result = evaluateRiskTier(baseInput({ sessionAnomaly: true }));
+      expect(result.tier).toBe('MANUAL_REVIEW');
+      expect(result.reasons).toContain(SESSION_ANOMALY_REASON);
+    });
+
+    it('cannot be bypassed by an otherwise-perfect request — every other rule passing does not override it', () => {
+      // Same as the LOW-risk baseline in the very first test above, plus
+      // only sessionAnomaly:true — proves the anomaly rule alone is
+      // sufficient to block auto-approval, not just contributory.
+      const result = evaluateRiskTier(baseInput({ sessionAnomaly: true }));
+      expect(result.tier).not.toBe('LOW');
+      expect(result.reasons).toEqual([SESSION_ANOMALY_REASON]); // the ONLY failing rule, and it's still enough
+    });
+
+    it('does not itself block a request when false and every other rule passes', () => {
+      const result = evaluateRiskTier(baseInput({ sessionAnomaly: false }));
+      expect(result.tier).toBe('LOW');
+      expect(result.reasons).not.toContain(SESSION_ANOMALY_REASON);
+    });
+
+    it('compounds with other failing rules rather than replacing them', () => {
+      const result = evaluateRiskTier(baseInput({ sessionAnomaly: true, hasOpenDisputes: true }));
+      expect(result.reasons).toEqual(
+        expect.arrayContaining([SESSION_ANOMALY_REASON, expect.stringContaining('open dispute')])
+      );
+    });
   });
 });
 
