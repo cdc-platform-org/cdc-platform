@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireRole, requireApproved } from '../middleware/auth';
 import { postGigSchema, applyToGigSchema, submitGigWorkSchema } from '../schemas/gigSchemas';
@@ -43,14 +43,14 @@ declare global {
   }
 }
 
-async function loadGig(req: Request, res: Response, next: Function) {
+async function loadGig(req: Request, res: Response, next: NextFunction) {
   const gig = await prisma.gig.findUnique({ where: { id: req.params.id } });
   if (!gig) return res.status(404).json({ message: 'Gig not found.' });
   req.gig = gig;
   next();
 }
 
-function requireGigOwnerOrAdmin(req: Request, res: Response, next: Function) {
+function requireGigOwnerOrAdmin(req: Request, res: Response, next: NextFunction) {
   if (!req.user || !req.gig) return res.status(401).json({ message: 'Authentication required.' });
   const isOwner = req.gig.postedById === req.user.id;
   const isAdmin = req.user.role === 'SuperAdmin';

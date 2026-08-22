@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireRole, requireApproved } from '../middleware/auth';
 import { postVacancySchema, updateVacancySchema, applyToVacancySchema, reviewVacancyApplicationSchema } from '../schemas/vacancySchemas';
@@ -34,13 +34,13 @@ declare global {
     }
   }
 }
-async function loadVacancy(req: Request, res: Response, next: Function) {
+async function loadVacancy(req: Request, res: Response, next: NextFunction) {
   const vacancy = await prisma.vacancy.findUnique({ where: { id: req.params.id } });
   if (!vacancy) return res.status(404).json({ message: 'Vacancy not found.' });
   req.vacancy = vacancy;
   next();
 }
-function requireVacancyOwnerOrAdmin(req: Request, res: Response, next: Function) {
+function requireVacancyOwnerOrAdmin(req: Request, res: Response, next: NextFunction) {
   if (!req.user || !req.vacancy) return res.status(401).json({ message: 'Authentication required.' });
   const isOwner = req.vacancy.postedById === req.user.id;
   const isAdmin = req.user.role === 'SuperAdmin';

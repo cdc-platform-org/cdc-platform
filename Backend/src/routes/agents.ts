@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved, requireRole } from '../middleware/auth';
@@ -22,7 +22,7 @@ declare global {
   }
 }
 
-async function loadOwnedAgent(req: Request, res: Response, next: Function) {
+async function loadOwnedAgent(req: Request, res: Response, next: NextFunction) {
   const agent = await prisma.agent.findUnique({ where: { id: req.params.id } });
   if (!agent) return res.status(404).json({ message: 'Agent not found.' });
   const isOwner = agent.businessId === req.user!.id;

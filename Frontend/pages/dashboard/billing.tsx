@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import Link from 'next/link';
 import { CreditCard, Download, Clock, Zap, FileText, XCircle, AlertTriangle } from 'lucide-react';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import RoleGate from '../../src/components/auth/RoleGate';
@@ -507,12 +508,12 @@ function BillingContent() {
           ) : subscriptions.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center">
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t.empty}</p>
-              <a
+              <Link
                 href="/dashboard/ai-tools"
                 className="inline-flex text-sm font-bold text-cyan-600 dark:text-cyan-400 no-underline hover:underline"
               >
                 {t.emptyCta}
-              </a>
+              </Link>
             </div>
           ) : (
             <>

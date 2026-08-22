@@ -1,9 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved } from '../middleware/auth';
 import { isAiAgentConfigured, generateAiAgentSuiteResponse, AiAgentSuiteTool, AiAgentError } from '../services/aiAgentService';
-import { hasAiAgentsSuiteAccess } from '../utils/aiAgentsSuiteAccess';
+import { getSubscriptionState } from '../services/subscriptionStateService';
 import { logAiGeneration } from '../services/aiGenerationLogService';
 
 const router = Router();
@@ -28,11 +27,8 @@ router.post('/generate', async (req: Request, res: Response) => {
   const result = generateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
-  const user = await prisma.user.findUnique({
-    where: { id: req.user!.id },
-    select: { role: true, aiTrialEndsAt: true, aiSubscriptionActive: true },
-  });
-  if (!hasAiAgentsSuiteAccess(user)) {
+  const { hasAccess } = await getSubscriptionState(req.user!.id);
+  if (!hasAccess) {
     return res.status(403).json({ message: 'Your AI Agents Suite trial has expired. Upgrade to keep using these tools.' });
   }
 

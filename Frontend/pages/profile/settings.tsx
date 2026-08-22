@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { GetServerSideProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
@@ -57,9 +58,9 @@ function SettingsContent() {
         <BackButton fallbackHref="/" className="mb-4 dark:text-slate-400 dark:hover:text-slate-100" />
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{t('pageTitle')}</h1>
-          <a href="/" className="text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200">
+          <Link href="/" className="text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200">
             {t('backToHome')}
-          </a>
+          </Link>
         </div>
 
         {/* --- Saved payment method --- */}

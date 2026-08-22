@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
@@ -94,7 +95,7 @@ function CartContent() {
               <button type="button" onClick={() => switchLocale('en')} className={`px-3 py-1 rounded-lg transition border-none cursor-pointer font-bold ${lang === 'en' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400 bg-transparent'}`}>EN</button>
             </div>
             <button type="button" onClick={() => { setDarkMode(!darkMode); localStorage.setItem('darkMode', String(!darkMode)); }} className={`p-2 rounded-xl transition text-base border-none bg-transparent cursor-pointer ${darkMode ? 'text-yellow-400' : 'text-slate-500'}`}>{darkMode ? '☀️' : '🌙'}</button>
-            <a href="/" className={`text-xs font-bold uppercase tracking-wider transition no-underline px-4 py-2 rounded-xl border ${darkMode ? 'text-slate-300 bg-slate-800 border-slate-700 hover:bg-slate-700' : 'text-slate-700 bg-slate-100 border-slate-200 hover:bg-slate-200'}`}>{t('btnMain')}</a>
+            <Link href="/" className={`text-xs font-bold uppercase tracking-wider transition no-underline px-4 py-2 rounded-xl border ${darkMode ? 'text-slate-300 bg-slate-800 border-slate-700 hover:bg-slate-700' : 'text-slate-700 bg-slate-100 border-slate-200 hover:bg-slate-200'}`}>{t('btnMain')}</Link>
           </div>
         </div>
       </nav>

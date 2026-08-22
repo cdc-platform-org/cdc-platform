@@ -25,6 +25,14 @@ name: Nightly QA
 # by hand. Both jobs gate the deploy equally — `main_cdc-api-prod.yml`
 # triggers on this whole workflow's conclusion, which is `failure` if either
 # job fails, no separate wiring needed there.
+#
+# `lint` runs ESLint on both apps (Backend/eslint.config.mjs,
+# Frontend/.eslintrc.json — both typescript-eslint-backed). No database
+# needed, so it's its own fast job rather than piggybacking on unit-tests or
+# e2e. Both configs deliberately downgrade a handful of pre-existing,
+# non-functional findings (no-explicit-any, unescaped-entities in JSX copy)
+# to warnings rather than blocking on a first-pass repo-wide cleanup — see
+# each config's own comments — so this job fails only on real errors.
 on:
   schedule:
     - cron: '0 0 * * *' # midnight UTC
@@ -35,6 +43,34 @@ on:
   workflow_dispatch: {}
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: corepack enable
+
+      - name: Install Backend dependencies
+        working-directory: Backend
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Frontend dependencies
+        working-directory: Frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint Backend
+        working-directory: Backend
+        run: pnpm run lint
+
+      - name: Lint Frontend
+        working-directory: Frontend
+        run: pnpm run lint
+
   unit-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10

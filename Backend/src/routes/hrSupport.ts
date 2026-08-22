@@ -127,7 +127,7 @@ router.get('/assigned-to-me', authenticate, requireApproved, requireHrAccess, as
 router.get('/:id', authenticate, requireApproved, loadHRRequest, async (req: Request, res: Response) => {
   const isOwner = req.hrRequest!.requestedById === req.user!.id;
   const isAdmin = req.user!.role === 'SuperAdmin';
-  let isAssignedSpecialist = req.hrRequest!.assignedSpecialistId === req.user!.id;
+  const isAssignedSpecialist = req.hrRequest!.assignedSpecialistId === req.user!.id;
   if (!isOwner && !isAdmin && !isAssignedSpecialist) {
     // Could still be a non-SuperAdmin admin-team member (MANAGER/MODERATOR)
     // or a genuine isHrSpecialist account that just isn't assigned to this
