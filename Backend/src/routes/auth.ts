@@ -33,7 +33,8 @@ import {
   SUPER_ADMIN_EMAILS,
 } from '../utils/env';
 import { sendVerificationEmail, sendPasswordResetEmail, sendBusinessVerifiedEmail, sendPayoutIbanChangedEmail } from '../services/emailService';
-import { recordLoginEvent } from '../services/sessionAnomalyService';
+import { recordLoginEvent, detectSessionAnomaly } from '../services/sessionAnomalyService';
+import { verifyStepUp, StepUpRequiredError } from '../utils/stepUpAuth';
 import { uploadToBunnyStorage, isBunnyStorageConfigured, BunnyStorageUploadError, deleteBunnyStorageUrlIfManaged } from '../services/bunnyStorage';
 import { uploadImage, deleteManagedImage } from '../services/imageStorage';
 import { parseBusinessDocument, isBusinessKycParsingConfigured, shouldAutoApprove } from '../services/businessKycService';
@@ -1187,7 +1188,7 @@ router.put('/me', authenticate, async (req, res) => {
   const result = updateProfileSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
-  const { payoutIban, websiteUrl, ...rest } = result.data;
+  const { payoutIban, websiteUrl, currentPassword, ...rest } = result.data;
   const normalizedIban = payoutIban || null;
 
   // Read the current value first so we can tell whether this request is
@@ -1197,8 +1198,36 @@ router.put('/me', authenticate, async (req, res) => {
   // amount (see User.payoutIbanUpdatedAt's own schema comment). Only
   // stamped — and only emailed — on a genuine change, not every PUT that
   // happens to re-submit the same value.
-  const before = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { payoutIban: true, email: true } });
-  const ibanChanged = payoutIban !== undefined && normalizedIban !== (before?.payoutIban ?? null);
+  const before = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { payoutIban: true, email: true, password: true, googleId: true },
+  });
+  if (!before) return res.status(404).json({ message: 'Account no longer exists.' });
+  const ibanChanged = payoutIban !== undefined && normalizedIban !== (before.payoutIban ?? null);
+
+  // Step-up gate: changing payoutIban from a session
+  // sessionAnomalyService flags as anomalous (unrecognized IP/device)
+  // additionally requires proving the request really is the account
+  // owner, not just a valid JWT — see utils/stepUpAuth.ts's own header
+  // comment for why. Every other profile field on this route is
+  // unaffected; this only ever runs when payoutIban is actually changing.
+  if (ibanChanged) {
+    const anomaly = await detectSessionAnomaly({
+      userId: req.user!.id,
+      currentIp: req.ip ?? 'unknown',
+      currentUserAgent: req.headers['user-agent'],
+    });
+    if (anomaly.anomalous) {
+      try {
+        await verifyStepUp(before, currentPassword);
+      } catch (err) {
+        if (err instanceof StepUpRequiredError) {
+          return res.status(403).json({ code: 'STEP_UP_REQUIRED', message: err.message });
+        }
+        throw err;
+      }
+    }
+  }
 
   const user = await prisma.user.update({
     where: { id: req.user!.id },
@@ -1209,7 +1238,7 @@ router.put('/me', authenticate, async (req, res) => {
       ...(ibanChanged ? { payoutIbanUpdatedAt: new Date() } : {}),
     },
   });
-  if (ibanChanged && before?.email) {
+  if (ibanChanged && before.email) {
     sendPayoutIbanChangedEmail(before.email).catch((err) => console.error(`[auth] sendPayoutIbanChangedEmail failed for ${before.email}:`, err));
   }
   res.json({ user: toUserResponse(user) });

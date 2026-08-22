@@ -77,6 +77,11 @@ export const updateProfileSchema = z.object({
     .union([z.string().trim().toUpperCase().regex(/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/, 'Enter a valid IBAN.'), z.literal('')])
     .optional()
     .nullable(),
+  // Only actually required when changing payoutIban from an anomalous
+  // session (see routes/auth.ts's step-up gate) — optional here since the
+  // vast majority of profile updates never touch payoutIban at all and
+  // must not be forced to carry a password.
+  currentPassword: z.string().optional(),
   // Business/employer profile — only meaningful for role Client, but not
   // schema-restricted to it (same posture as the legal-identity fields).
   companyName: z.string().trim().max(200).optional().nullable(),

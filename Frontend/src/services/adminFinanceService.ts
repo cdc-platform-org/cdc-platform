@@ -43,11 +43,30 @@ export interface PayoutRequestRow {
   id: string;
   amount: number;
   iban: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAID';
+  status: 'PENDING' | 'APPROVED' | 'PROCESSING' | 'REJECTED' | 'PAID' | 'FAILED';
   adminNote: string | null;
   createdAt: string;
   resolvedAt: string | null;
-  user: { id: string; name: string; email: string; earningsBalance: number };
+  // Locked in at creation time by bogPayoutService.evaluateRiskTier (see
+  // Backend/src/services/bogPayoutService.ts) — riskTier/riskReasons never
+  // change after the request is created, autoApproved only flips true if
+  // the (not yet cron-wired) auto-approval sweep actually claims it.
+  riskTier: 'LOW' | 'MANUAL_REVIEW';
+  riskReasons: string[];
+  autoApproved: boolean;
+  requestIp: string | null;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    earningsBalance: number;
+    payoutIbanUpdatedAt: string | null;
+    // Most recent LoginEvent on record for this account — a lightweight
+    // "usual IP" reference point for comparing against requestIp, not a
+    // claim that it's the ONLY IP this account has ever used from (see
+    // Backend/src/routes/adminPayouts.ts's own comment).
+    loginEvents: { ip: string; userAgent: string | null; createdAt: string }[];
+  };
   reviewedBy: { id: string; name: string } | null;
 }
 

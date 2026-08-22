@@ -10,6 +10,11 @@ export const createPayoutRequestSchema = z.object({
     .toUpperCase()
     .regex(/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/, 'Enter a valid IBAN.')
     .optional(),
+  // Only actually required when the request is made from a session
+  // sessionAnomalyService.detectSessionAnomaly flags as anomalous — see
+  // routes/wallet.ts's step-up gate. Optional here since most payout
+  // requests come from a perfectly ordinary, recognized session.
+  currentPassword: z.string().optional(),
 });
 
 export const reviewPayoutRequestSchema = z.object({

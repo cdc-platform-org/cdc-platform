@@ -7,6 +7,7 @@ import { createPayoutRequestSchema } from '../schemas/payoutSchemas';
 import { isIdentityVerified } from '../utils/freelancerVerification';
 import { evaluateRiskTier, hasOpenDisputesForUser, generateIdempotencyKey } from '../services/bogPayoutService';
 import { detectSessionAnomaly } from '../services/sessionAnomalyService';
+import { verifyStepUp, StepUpRequiredError } from '../utils/stepUpAuth';
 const router = Router();
 
 // Carries an HTTP status + message out of the Serializable transaction
@@ -71,6 +72,8 @@ router.post('/payout-requests', authenticate, requireRole('Student', 'Mentor'), 
             isVerified: true,
             createdAt: true,
             payoutIbanUpdatedAt: true,
+            password: true,
+            googleId: true,
           },
         });
         if (!user) throw new PayoutRequestError(404, 'User not found.');
@@ -119,6 +122,17 @@ router.post('/payout-requests', authenticate, requireRole('Student', 'Mentor'), 
           sessionAnomaly: sessionAnomalyCheck.anomalous,
         });
 
+        // Step-up gate: requesting a payout is inherently a financial
+        // action, so unlike PUT /auth/me (gated only when payoutIban is
+        // actually changing) this runs on every request made from a
+        // session sessionAnomalyService flags as anomalous — see
+        // utils/stepUpAuth.ts's own header comment. A thrown
+        // StepUpRequiredError propagates out of this transaction to the
+        // outer catch below, mapped to 403 STEP_UP_REQUIRED.
+        if (sessionAnomalyCheck.anomalous) {
+          await verifyStepUp(user, result.data.currentPassword);
+        }
+
         // Generated client-side (not left to the schema's @default(uuid()))
         // so the payout_request_<id> idempotency key can be computed and
         // stored in this same insert — see generateIdempotencyKey's own doc.
@@ -140,6 +154,9 @@ router.post('/payout-requests', authenticate, requireRole('Student', 'Mentor'), 
     );
     res.status(201).json({ data: request });
   } catch (err) {
+    if (err instanceof StepUpRequiredError) {
+      return res.status(403).json({ code: 'STEP_UP_REQUIRED', message: err.message });
+    }
     if (err instanceof PayoutRequestError) {
       return res.status(err.status).json({ message: err.message });
     }

@@ -17,9 +17,15 @@ function formatGel(minorUnits: number): string {
 const STATUS_BADGE: Record<string, string> = {
   PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
   APPROVED: 'bg-sky-50 text-sky-700 border-sky-200',
+  PROCESSING: 'bg-indigo-50 text-indigo-700 border-indigo-200',
   REJECTED: 'bg-red-50 text-red-700 border-red-200',
   PAID: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  FAILED: 'bg-red-50 text-red-700 border-red-200',
 };
+
+function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString();
+}
 
 function AdminPayoutsDashboard() {
   const [requests, setRequests] = useState<PayoutRequestRow[]>([]);
@@ -89,7 +95,7 @@ function AdminPayoutsDashboard() {
         </div>
 
         <div className="flex items-center gap-2 mb-4">
-          {['PENDING', 'APPROVED', 'PAID', 'REJECTED', ''].map((s) => (
+          {['PENDING', 'APPROVED', 'PROCESSING', 'PAID', 'FAILED', 'REJECTED', ''].map((s) => (
             <button
               key={s}
               type="button"
@@ -107,55 +113,103 @@ function AdminPayoutsDashboard() {
           <p className="text-sm text-gray-500">No payout requests here.</p>
         ) : (
           <div className="space-y-3">
-            {requests.map((r) => (
-              <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-5 flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-gray-900">{r.user.name}</span>
-                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${STATUS_BADGE[r.status]}`}>{r.status}</span>
+            {requests.map((r) => {
+              // Same OR condition the risk engine's own enforcement is
+              // built on (see bogPayoutService.processAutoApprovedPayouts —
+              // it only ever touches riskTier=LOW rows): today, with the
+              // auto-approval sweep not yet cron-wired, this flags nearly
+              // every request, since none has actually been auto-approved
+              // yet. That's expected, not a bug — it becomes a genuinely
+              // selective signal once the sweep runs regularly.
+              const isFlagged = !r.autoApproved || r.riskTier === 'MANUAL_REVIEW';
+              const usualIp = r.user.loginEvents[0]?.ip ?? null;
+              const ipMismatch = usualIp !== null && r.requestIp !== null && usualIp !== r.requestIp;
+
+              return (
+                <div
+                  key={r.id}
+                  className={`bg-white border rounded-xl p-5 ${isFlagged ? 'border-red-300 ring-1 ring-red-100' : 'border-gray-200'}`}
+                >
+                  {isFlagged && (
+                    <div className="mb-3 -mt-1 -mx-1 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                      <p className="text-xs font-bold text-red-700 uppercase tracking-wide">⚠ Manual review required</p>
+                      {r.riskReasons.length > 0 && (
+                        <ul className="mt-1 space-y-0.5">
+                          {r.riskReasons.map((reason, i) => (
+                            <li key={i} className="text-xs text-red-700">
+                              • {reason}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold text-gray-900">{r.user.name}</span>
+                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${STATUS_BADGE[r.status]}`}>{r.status}</span>
+                        {isFlagged && (
+                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded border bg-red-100 text-red-700 border-red-300">
+                            Red flag
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500">{r.user.email}</p>
+                      <p className="text-xs text-gray-500 mt-1 font-mono">IBAN: {r.iban}</p>
+                      <p className="text-xs text-gray-400 mt-1">Requested {formatDateTime(r.createdAt)}</p>
+                      {r.adminNote && <p className="text-xs text-gray-500 mt-1 italic">Note: {r.adminNote}</p>}
+
+                      <div className="mt-2 pt-2 border-t border-gray-100 space-y-0.5">
+                        <p className={`text-xs font-mono ${ipMismatch ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
+                          Request IP: {r.requestIp ?? 'unknown'}
+                          {usualIp && <span className="text-gray-400 font-sans"> · usual IP: {usualIp}</span>}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          IBAN last changed:{' '}
+                          {r.user.payoutIbanUpdatedAt ? formatDateTime(r.user.payoutIbanUpdatedAt) : 'never (or predates tracking)'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-xl font-black text-gray-900 mb-2">{formatGel(r.amount)}</div>
+                      <div className="flex gap-2 justify-end">
+                        {r.status === 'PENDING' && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={busyId === r.id}
+                              onClick={() => handleApprove(r.id)}
+                              className="text-xs font-medium text-white bg-emerald-600 px-3 py-1.5 rounded-lg hover:bg-emerald-700 disabled:opacity-60"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busyId === r.id}
+                              onClick={() => handleReject(r.id)}
+                              className="text-xs font-medium text-red-600 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 disabled:opacity-60"
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+                        {r.status === 'APPROVED' && (
+                          <button
+                            type="button"
+                            disabled={busyId === r.id}
+                            onClick={() => handleMarkPaid(r.id)}
+                            className="text-xs font-medium text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60"
+                          >
+                            Mark as Paid
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-500">{r.user.email}</p>
-                  <p className="text-xs text-gray-500 mt-1 font-mono">IBAN: {r.iban}</p>
-                  <p className="text-xs text-gray-400 mt-1">Requested {new Date(r.createdAt).toLocaleString()}</p>
-                  {r.adminNote && <p className="text-xs text-gray-500 mt-1 italic">Note: {r.adminNote}</p>}
                 </div>
-                <div className="text-right shrink-0">
-                  <div className="text-xl font-black text-gray-900 mb-2">{formatGel(r.amount)}</div>
-                  <div className="flex gap-2 justify-end">
-                    {r.status === 'PENDING' && (
-                      <>
-                        <button
-                          type="button"
-                          disabled={busyId === r.id}
-                          onClick={() => handleApprove(r.id)}
-                          className="text-xs font-medium text-white bg-emerald-600 px-3 py-1.5 rounded-lg hover:bg-emerald-700 disabled:opacity-60"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busyId === r.id}
-                          onClick={() => handleReject(r.id)}
-                          className="text-xs font-medium text-red-600 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 disabled:opacity-60"
-                        >
-                          Reject
-                        </button>
-                      </>
-                    )}
-                    {r.status === 'APPROVED' && (
-                      <button
-                        type="button"
-                        disabled={busyId === r.id}
-                        onClick={() => handleMarkPaid(r.id)}
-                        className="text-xs font-medium text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60"
-                      >
-                        Mark as Paid
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
