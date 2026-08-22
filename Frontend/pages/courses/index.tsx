@@ -5,20 +5,23 @@ import Head from 'next/head';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Calendar, PlayCircle } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
 import { Course, CourseLanguage } from '../../src/types/lms';
+import { LiveTraining } from '../../src/types/liveTraining';
 import { getCourses } from '../../src/services/courseService';
+import { getLiveTrainings } from '../../src/services/liveTrainingService';
 import { checkoutCourse } from '../../src/services/paymentService';
 import { formatPrice, getSaleCountdownLabel } from '../../src/utils/coursePricing';
 import { courseLanguageBadge } from '../../src/utils/courseLanguage';
 
 type SortMode = 'recommended' | 'price_asc' | 'price_desc';
 type PriceFilter = 'all' | 'free' | 'paid';
+type ContentTab = 'all' | 'courses' | 'live';
 
 export default function CoursesPage() {
   const router = useRouter();
@@ -31,14 +34,17 @@ export default function CoursesPage() {
   const { openAuthModal } = useAuthModal();
 
   const [courses, setCourses] = useState<Course[]>([]);
+  const [liveTrainings, setLiveTrainings] = useState<LiveTraining[]>([]);
   const [loading, setLoading] = useState(true);
   const [enrollingId, setEnrollingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [contentTab, setContentTab] = useState<ContentTab>('all');
 
-  // Client-side search/filter/sort over the same getCourses() fetch this
-  // page always made — no new backend endpoint, no new query params. Course
-  // count on this platform is small enough that this is genuinely simpler
-  // and just as fast as a server-side filter would be.
+  // Client-side search/filter/sort over the same getCourses()/
+  // getLiveTrainings() fetches this page always made (the latter newly
+  // added) — no new backend endpoint, no new query params. Catalog size on
+  // this platform is small enough that this is genuinely simpler and just
+  // as fast as a server-side filter would be.
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [language, setLanguage] = useState<CourseLanguage | null>(null);
@@ -50,8 +56,16 @@ export default function CoursesPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getCourses();
-      setCourses(data.filter((c) => c.published));
+      const [courseData, liveTrainingData] = await Promise.all([getCourses(), getLiveTrainings()]);
+      setCourses(courseData.filter((c) => c.published));
+      // "Active" = published (already server-filtered — GET /live-trainings
+      // only returns published rows for an unauthenticated/non-admin
+      // visitor) AND not yet happened. A past session has nothing left to
+      // register for, so it has no place in a "browse what's available"
+      // listing even though the row itself is still published for
+      // historical/admin reference.
+      const now = Date.now();
+      setLiveTrainings(liveTrainingData.filter((tr) => new Date(tr.scheduledAt).getTime() >= now));
     } finally {
       setLoading(false);
     }
@@ -63,11 +77,18 @@ export default function CoursesPage() {
 
   // Real categories/languages actually present in the catalog — never a
   // hardcoded list, so a filter option never appears for something with
-  // zero matching courses.
-  const categories = useMemo(() => Array.from(new Set(courses.map((c) => c.category))).sort(), [courses]);
+  // zero matching courses. Categories are pooled across both content types
+  // (a live training's category is just as real a filter target as a
+  // course's) — language has no live-training equivalent, so it stays
+  // course-only.
+  const categories = useMemo(
+    () => Array.from(new Set([...courses.map((c) => c.category), ...liveTrainings.map((t) => t.category)])).sort(),
+    [courses, liveTrainings]
+  );
   const languagesPresent = useMemo(() => Array.from(new Set(courses.map((c) => c.language))), [courses]);
 
   const filteredCourses = useMemo(() => {
+    if (contentTab === 'live') return [];
     const q = search.trim().toLowerCase();
     let result = courses.filter((c) => {
       if (category && c.category !== category) return false;
@@ -87,7 +108,26 @@ export default function CoursesPage() {
     if (sort === 'price_asc') result = [...result].sort((a, b) => a.currentPrice - b.currentPrice);
     else if (sort === 'price_desc') result = [...result].sort((a, b) => b.currentPrice - a.currentPrice);
     return result;
-  }, [courses, search, category, language, discountedOnly, priceFilter, sort]);
+  }, [courses, search, category, language, discountedOnly, priceFilter, sort, contentTab]);
+
+  // No `language` or `sort` handling — a live training has no language
+  // field, and stays in the server's soonest-first order (discountedOnly
+  // is also a course-only concept, so it's skipped here too) rather than
+  // being force-fit through filters/sorts that don't semantically apply.
+  const filteredLiveTrainings = useMemo(() => {
+    if (contentTab === 'courses') return [];
+    const q = search.trim().toLowerCase();
+    return liveTrainings.filter((tr) => {
+      if (category && tr.category !== category) return false;
+      const price = tr.price ?? 0;
+      if (priceFilter === 'free' && price > 0) return false;
+      if (priceFilter === 'paid' && price === 0) return false;
+      if (q && !tr.title.toLowerCase().includes(q) && !tr.description.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [liveTrainings, search, category, priceFilter, contentTab]);
+
+  const totalResultsCount = filteredCourses.length + filteredLiveTrainings.length;
 
   const hasActiveFilters = !!search || !!category || !!language || discountedOnly || priceFilter !== 'all';
   const clearFilters = () => {
@@ -145,13 +185,34 @@ export default function CoursesPage() {
             {t('filtersToggle')}
           </button>
         </div>
-        <p className="text-slate-500 dark:text-slate-400 mb-10">{t('subtitle')}</p>
+        <p className="text-slate-500 dark:text-slate-400 mb-6">{t('subtitle')}</p>
+
+        <div className="flex flex-wrap gap-2 mb-8">
+          {([
+            ['all', t('tabAll')],
+            ['courses', t('tabVideoCourses')],
+            ['live', t('tabLiveTrainings')],
+          ] as [ContentTab, string][]).map(([tab, label]) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setContentTab(tab)}
+              className={`text-xs font-bold uppercase tracking-widest px-3.5 py-2 rounded-full border transition-colors ${
+                contentTab === tab
+                  ? 'bg-cyan-600 text-white border-cyan-600'
+                  : 'bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:border-cyan-400/50'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
         {error && <div className="mb-6 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-600 dark:text-red-300">{error}</div>}
 
         {loading ? (
           <p className="text-slate-500 dark:text-slate-400 text-sm">{t('loading')}</p>
-        ) : courses.length === 0 ? (
+        ) : courses.length === 0 && liveTrainings.length === 0 ? (
           <p className="text-slate-500 dark:text-slate-400 text-sm">{t('empty')}</p>
         ) : (
           <div className="flex flex-col lg:flex-row gap-8">
@@ -290,9 +351,9 @@ export default function CoursesPage() {
                     onClick={() => setFiltersOpen(false)}
                     className="w-full text-center text-sm font-black text-white px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600"
                   >
-                    {filteredCourses.length === 1
-                      ? t('showResults', { count: filteredCourses.length })
-                      : t('showResultsPlural', { count: filteredCourses.length })}
+                    {totalResultsCount === 1
+                      ? t('showResults', { count: totalResultsCount })
+                      : t('showResultsPlural', { count: totalResultsCount })}
                   </button>
                 </div>
               </div>
@@ -301,11 +362,11 @@ export default function CoursesPage() {
             {/* RESULTS */}
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-4">
-                {filteredCourses.length === 1
-                  ? t('resultsCount', { count: filteredCourses.length })
-                  : t('resultsCountPlural', { count: filteredCourses.length })}
+                {totalResultsCount === 1
+                  ? t('resultsCount', { count: totalResultsCount })
+                  : t('resultsCountPlural', { count: totalResultsCount })}
               </p>
-              {filteredCourses.length === 0 ? (
+              {totalResultsCount === 0 ? (
                 <p className="text-slate-500 dark:text-slate-400 text-sm">{t('noResults')}</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -314,13 +375,27 @@ export default function CoursesPage() {
                     return (
                       <div
                         key={course.id}
-                        className="relative h-full overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 flex flex-col justify-between"
+                        className="relative h-full overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 flex flex-col justify-between"
                       >
                         {course.saleActive && (
                           <span className="absolute top-3 right-3 z-10 text-xs font-black text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg shadow-rose-500/30">
                             -{course.discountPercent}% {t('saleOffSuffix')}
                           </span>
                         )}
+                        <Link href={`/courses/${course.id}`} className="block relative w-full aspect-video overflow-hidden bg-slate-900 no-underline">
+                          {course.thumbnailUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={course.thumbnailUrl} alt="" className="w-full h-full object-cover object-center" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
+                              <PlayCircle className="w-8 h-8 text-cyan-500/40" />
+                            </div>
+                          )}
+                          <span className="absolute top-3 left-3 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md bg-cyan-600/90 text-white shadow">
+                            {t('badgeVideoCourse')}
+                          </span>
+                        </Link>
+                        <div className="p-6 flex-1 flex flex-col justify-between">
                         <div>
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex flex-wrap gap-1.5">
@@ -381,6 +456,67 @@ export default function CoursesPage() {
                             >
                               {enrollingId === course.id ? t('listEnrolling') : t('enroll')}
                             </button>
+                          </div>
+                        </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {filteredLiveTrainings.map((tr) => {
+                    const seatsLabel =
+                      tr.seatsRemaining === 1
+                        ? t('liveTrainingSeatsLeft', { count: tr.seatsRemaining })
+                        : t('liveTrainingSeatsLeftPlural', { count: tr.seatsRemaining });
+                    return (
+                      <div
+                        key={tr.id}
+                        className="relative h-full overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 flex flex-col justify-between"
+                      >
+                        <Link href={`/live-trainings/${tr.id}`} className="block relative w-full aspect-video overflow-hidden bg-slate-900 no-underline">
+                          {tr.thumbnailUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={tr.thumbnailUrl} alt="" className="w-full h-full object-cover object-center" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
+                              <Calendar className="w-8 h-8 text-cyan-500/40" />
+                            </div>
+                          )}
+                          <span className="absolute top-3 left-3 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md bg-rose-600/90 text-white shadow">
+                            {t('badgeLiveTraining')}
+                          </span>
+                        </Link>
+                        <div className="p-6 flex-1 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-600 dark:text-purple-300 bg-purple-500/10 border-purple-500/20">
+                                {tr.category}
+                              </span>
+                              <span className="text-sm font-black text-cyan-600 dark:text-cyan-300 whitespace-nowrap">
+                                {tr.price ? formatPrice(tr.price) : t('priceFree')}
+                              </span>
+                            </div>
+                            <Link href={`/live-trainings/${tr.id}`} className="block no-underline text-current">
+                              <h3 className="text-lg font-black mt-4 mb-2 text-slate-900 dark:text-white hover:text-cyan-600 dark:hover:text-cyan-300 transition-colors">{tr.title}</h3>
+                            </Link>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-4 line-clamp-3">{tr.description}</p>
+                            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mb-6">
+                              <Calendar className="w-3.5 h-3.5 text-cyan-500" />
+                              {new Date(tr.scheduledAt).toLocaleString(lang === 'ka' ? 'ka-GE' : 'en-US', {
+                                dateStyle: 'medium',
+                                timeStyle: 'short',
+                              })}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-2">
+                              {tr.isFull ? t('liveTrainingFull') : seatsLabel}
+                            </p>
+                            <Link
+                              href={`/live-trainings/${tr.id}`}
+                              className="block text-center whitespace-nowrap text-sm font-semibold text-white px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:shadow-lg hover:shadow-cyan-500/30 transition-all no-underline"
+                            >
+                              {t('viewDetails')}
+                            </Link>
                           </div>
                         </div>
                       </div>

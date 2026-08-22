@@ -129,5 +129,14 @@
   "error": "დაფიქსირდა შეცდომა. სცადეთ თავიდან.",
   "checkoutError": "გადახდის დაწყება ვერ მოხერხდა. სცადეთ თავიდან.",
   "saleOffSuffix": "",
-  "signInToEnroll": "გთხოვთ გაიაროთ ავტორიზაცია კურსზე ჩასარიცხად"
+  "signInToEnroll": "გთხოვთ გაიაროთ ავტორიზაცია კურსზე ჩასარიცხად",
+
+  "tabAll": "ყველა",
+  "tabVideoCourses": "ვიდეო კურსები",
+  "tabLiveTrainings": "ლაივ ტრენინგები",
+  "badgeVideoCourse": "ვიდეო კურსი",
+  "badgeLiveTraining": "ლაივ ტრენინგი",
+  "liveTrainingSeatsLeft": "დარჩა {{count}} ადგილი",
+  "liveTrainingSeatsLeftPlural": "დარჩა {{count}} ადგილი",
+  "liveTrainingFull": "ადგილები შევსებულია"
 }

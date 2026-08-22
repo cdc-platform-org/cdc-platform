@@ -129,5 +129,14 @@
   "error": "Щось пішло не так. Спробуйте ще раз.",
   "checkoutError": "Не вдалося розпочати оплату. Спробуйте ще раз.",
   "saleOffSuffix": "ЗНИЖКА",
-  "signInToEnroll": "Будь ласка, увійдіть, щоб записатися на курс"
+  "signInToEnroll": "Будь ласка, увійдіть, щоб записатися на курс",
+
+  "tabAll": "Усі",
+  "tabVideoCourses": "Відеокурси",
+  "tabLiveTrainings": "Наживі тренінги",
+  "badgeVideoCourse": "ВІДЕОКУРС",
+  "badgeLiveTraining": "НАЖИВО ТРЕНІНГ",
+  "liveTrainingSeatsLeft": "Залишилось {{count}} місце",
+  "liveTrainingSeatsLeftPlural": "Залишилось {{count}} місць",
+  "liveTrainingFull": "Місць немає"
 }

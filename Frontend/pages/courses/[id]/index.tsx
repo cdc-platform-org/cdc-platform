@@ -24,6 +24,7 @@ import SocialShareButtons from '../../../src/components/shared/SocialShareButton
 import SuccessStoriesCarousel from '../../../src/components/shared/SuccessStoriesCarousel';
 import CourseLeaderboard from '../../../src/components/shared/CourseLeaderboard';
 import CourseHeroBanner from '../../../src/components/shared/CourseHeroBanner';
+import VideoEmbed from '../../../src/components/shared/VideoEmbed';
 
 function formatTotalDuration(totalSeconds: number, lang: 'ka' | 'en'): string {
   const totalMinutes = Math.round(totalSeconds / 60);
@@ -225,6 +226,12 @@ export default function CourseDetailPage() {
           <SocialShareButtons title={course.title} lang={lang} />
         </div>
         <MarkdownContent content={(lang === 'en' && course.descriptionEn) || course.description} className="mb-8" />
+
+        {course.introVideoUrl && (
+          <div className="mb-8">
+            <VideoEmbed url={course.introVideoUrl} title={course.title} />
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-4 mb-8">
           {course.mentorName && (

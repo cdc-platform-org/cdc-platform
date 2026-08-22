@@ -129,5 +129,14 @@
   "error": "Algo salió mal. Inténtelo de nuevo.",
   "checkoutError": "No se pudo iniciar el proceso de pago. Inténtelo de nuevo.",
   "saleOffSuffix": "OFERTA",
-  "signInToEnroll": "Inicia sesión para inscribirte en un curso"
+  "signInToEnroll": "Inicia sesión para inscribirte en un curso",
+
+  "tabAll": "Todos",
+  "tabVideoCourses": "Cursos en Video",
+  "tabLiveTrainings": "Formación en Vivo",
+  "badgeVideoCourse": "CURSO EN VIDEO",
+  "badgeLiveTraining": "FORMACIÓN EN VIVO",
+  "liveTrainingSeatsLeft": "Queda {{count}} plaza",
+  "liveTrainingSeatsLeftPlural": "Quedan {{count}} plazas",
+  "liveTrainingFull": "Completo"
 }

@@ -129,5 +129,14 @@
   "error": "Something went wrong. Please try again.",
   "checkoutError": "Unable to start checkout. Please try again.",
   "saleOffSuffix": "OFF",
-  "signInToEnroll": "Please sign in to enroll in a course"
+  "signInToEnroll": "Please sign in to enroll in a course",
+
+  "tabAll": "All",
+  "tabVideoCourses": "Video Courses",
+  "tabLiveTrainings": "Live Trainings",
+  "badgeVideoCourse": "VIDEO COURSE",
+  "badgeLiveTraining": "LIVE TRAINING",
+  "liveTrainingSeatsLeft": "{{count}} seat left",
+  "liveTrainingSeatsLeftPlural": "{{count}} seats left",
+  "liveTrainingFull": "Full"
 }

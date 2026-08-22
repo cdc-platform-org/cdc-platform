@@ -49,6 +49,7 @@ const emptyForm = {
   mentorTitle: '',
   thumbnailUrl: '',
   coverImageUrl: '',
+  introVideoUrl: '',
   mentorAvatarUrl: '',
   language: 'GEORGIAN' as CourseLanguage,
   skillsTaught: [] as string[],
@@ -110,6 +111,7 @@ function CourseForm({
         mentorTitle: editingCourse.mentorTitle ?? '',
         thumbnailUrl: editingCourse.thumbnailUrl ?? '',
         coverImageUrl: editingCourse.coverImageUrl ?? '',
+        introVideoUrl: editingCourse.introVideoUrl ?? '',
         mentorAvatarUrl: editingCourse.mentorAvatarUrl ?? '',
         language: editingCourse.language ?? 'GEORGIAN',
         skillsTaught: editingCourse.skillsTaught ?? [],
@@ -182,6 +184,7 @@ function CourseForm({
         mentorTitle: form.mentorTitle.trim() || undefined,
         thumbnailUrl: form.thumbnailUrl.trim() || undefined,
         coverImageUrl: form.coverImageUrl.trim() || undefined,
+        introVideoUrl: form.introVideoUrl.trim() || undefined,
         mentorAvatarUrl: form.mentorAvatarUrl.trim() || undefined,
         language: form.language,
         skillsTaught: form.skillsTaught,
@@ -385,6 +388,18 @@ function CourseForm({
             <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Save the course first, then you can upload a cover image directly.</p>
           )}
         </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Intro / Preview Video (YouTube, Vimeo, or direct link)</label>
+        <input
+          value={form.introVideoUrl}
+          onChange={(e) => setForm({ ...form, introVideoUrl: e.target.value })}
+          placeholder="e.g. https://www.youtube.com/watch?v=..."
+          className={inputClass}
+        />
+        <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
+          Shown as an embedded player on the course detail page. Leave blank to show no preview.
+        </p>
       </div>
       <div className="grid md:grid-cols-2 gap-5">
         <div>

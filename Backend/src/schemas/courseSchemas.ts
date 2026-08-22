@@ -32,6 +32,7 @@ export const courseCreateSchema = z
     mentorTitle: z.string().trim().max(200).optional(),
     thumbnailUrl: z.string().trim().max(2000).optional(),
     coverImageUrl: z.string().trim().max(2000).optional(),
+    introVideoUrl: z.string().trim().max(2000).optional(),
     mentorAvatarUrl: z.string().trim().max(2000).optional(),
     language: z.enum(['GEORGIAN', 'ENGLISH', 'BOTH']).optional(),
     // Freelancer skills this course teaches (src/data/freelancerSkills.ts
@@ -61,6 +62,7 @@ export const courseUpdateSchema = z
     mentorTitle: z.string().trim().max(200).optional(),
     thumbnailUrl: z.string().trim().max(2000).optional(),
     coverImageUrl: z.string().trim().max(2000).optional(),
+    introVideoUrl: z.string().trim().max(2000).optional(),
     mentorAvatarUrl: z.string().trim().max(2000).optional(),
     language: z.enum(['GEORGIAN', 'ENGLISH', 'BOTH']).optional(),
     skillsTaught: z.array(z.string().trim().min(1).max(80)).max(20).optional(),

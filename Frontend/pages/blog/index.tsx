@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Head from 'next/head';
-import { Search, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Clock, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import BackButton from '../../src/components/common/BackButton';
 import { BlogPost } from '../../src/types/blog';
@@ -217,9 +217,13 @@ export default function BlogIndexPage() {
                   href={`/blog/${post.slug}`}
                   className="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm overflow-hidden flex flex-col transition-all duration-300 hover:border-cyan-400/50 hover:shadow-[0_0_25px_rgba(34,211,238,0.15)] no-underline text-current"
                 >
-                  {post.imageUrl && (
+                  {post.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={resolveBlogImageUrl(post.imageUrl)} alt={blogTitle(post, contentLang)} onError={onImageErrorFallback} className="w-full h-40 object-cover" />
+                  ) : (
+                    <div className="w-full h-40 flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
+                      <FileText className="w-8 h-8 text-cyan-500/40" />
+                    </div>
                   )}
                   <div className="p-6 flex-1 flex flex-col">
                     <div className="flex flex-wrap gap-2 mb-4">

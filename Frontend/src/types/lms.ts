@@ -64,6 +64,10 @@ export interface Course {
   mentorTitle: string | null;
   thumbnailUrl: string | null;
   coverImageUrl: string | null;
+  // Promo/trailer clip (YouTube/Vimeo/direct file link) rendered via
+  // VideoEmbed.tsx on the course detail page — see Backend's schema
+  // comment on Course.introVideoUrl.
+  introVideoUrl: string | null;
   mentorAvatarUrl: string | null;
   // Freelancer skills this course teaches (see
   // src/data/freelancerSkills.ts) — auto-verifies each on a student's
@@ -101,6 +105,7 @@ export interface CoursePayload {
   mentorTitle?: string;
   thumbnailUrl?: string;
   coverImageUrl?: string;
+  introVideoUrl?: string;
   mentorAvatarUrl?: string;
   language?: CourseLanguage;
   skillsTaught?: string[];

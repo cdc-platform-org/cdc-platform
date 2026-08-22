@@ -956,6 +956,11 @@ model Course {
   // thumbnailUrl (card/list thumbnail). Optional; falls back to no hero
   // image when unset.
   coverImageUrl   String?
+  // Promo/trailer clip for the course detail page — same pasted-link
+  // convention (YouTube/Vimeo/direct file) and rendering (VideoEmbed.tsx)
+  // as LiveTraining.videoUrl. No upload path — always a plain URL, never
+  // required.
+  introVideoUrl   String?
   // Rendered as a vertical portrait next to mentorName/mentorTitle on the
   // landing page — falls back to initials when unset.
   mentorAvatarUrl String?

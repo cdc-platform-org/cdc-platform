@@ -129,5 +129,14 @@
   "error": "Une erreur est survenue. Veuillez réessayer.",
   "checkoutError": "Impossible de démarrer le paiement. Veuillez réessayer.",
   "saleOffSuffix": "PROMO",
-  "signInToEnroll": "Veuillez vous connecter pour vous inscrire à un cours"
+  "signInToEnroll": "Veuillez vous connecter pour vous inscrire à un cours",
+
+  "tabAll": "Tous",
+  "tabVideoCourses": "Cours Vidéo",
+  "tabLiveTrainings": "Formations en Direct",
+  "badgeVideoCourse": "COURS VIDÉO",
+  "badgeLiveTraining": "FORMATION EN DIRECT",
+  "liveTrainingSeatsLeft": "{{count}} place restante",
+  "liveTrainingSeatsLeftPlural": "{{count}} places restantes",
+  "liveTrainingFull": "Complet"
 }

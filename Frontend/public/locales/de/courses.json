@@ -129,5 +129,14 @@
   "error": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
   "checkoutError": "Der Bezahlvorgang konnte nicht gestartet werden. Bitte versuchen Sie es erneut.",
   "saleOffSuffix": "RABATT",
-  "signInToEnroll": "Bitte melden Sie sich an, um sich für einen Kurs einzuschreiben"
+  "signInToEnroll": "Bitte melden Sie sich an, um sich für einen Kurs einzuschreiben",
+
+  "tabAll": "Alle",
+  "tabVideoCourses": "Video-Kurse",
+  "tabLiveTrainings": "Live-Schulungen",
+  "badgeVideoCourse": "VIDEO-KURS",
+  "badgeLiveTraining": "LIVE-SCHULUNG",
+  "liveTrainingSeatsLeft": "Noch {{count}} Platz frei",
+  "liveTrainingSeatsLeftPlural": "Noch {{count}} Plätze frei",
+  "liveTrainingFull": "Ausgebucht"
 }
