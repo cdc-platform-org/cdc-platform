@@ -15,6 +15,24 @@ const nextConfig = {
   // instrumentation.ts for the Sentry server/edge init this enables.
   experimental: {
     instrumentationHook: true,
+    // Sentry's server SDK (via @sentry/server-utils) pulls in
+    // @apm-js-collab/tracing-hooks, which ships ESM-only .mjs files for its
+    // Node diagnostics_channel auto-instrumentation. Next 14.2.5's webpack
+    // server bundle tries to require() these like any other node_modules
+    // dependency and fails with "ESM packages need to be imported instead
+    // of required" (surfaces as a Vercel build warning/error). Listing
+    // these here tells Next to leave them external and let Node's own
+    // module loader resolve them at runtime instead of bundling them —
+    // `transpilePackages` is the wrong knob for this: it would force
+    // webpack to bundle the ESM code through the CJS pipeline and hit the
+    // same mismatch, rather than avoiding it.
+    serverComponentsExternalPackages: [
+      '@sentry/nextjs',
+      '@sentry/node',
+      '@sentry/core',
+      '@sentry/server-utils',
+      '@apm-js-collab/tracing-hooks',
+    ],
   },
   // Next 14.2.5's webpack config only auto-derives the "@/*" alias from
   // tsconfig.json when moduleResolution is "node"/"node10"/etc — it doesn't
