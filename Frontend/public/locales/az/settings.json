@@ -1,0 +1,45 @@
+{
+  "pageTitle": "Hesab Ayarları",
+  "backToHome": "← Ana Səhifəyə Qayıt",
+  "paymentSection": {
+    "title": "Yadda Saxlanılmış Ödəniş Metodu",
+    "empty": "Hələ heç bir yadda saxlanılmış ödəniş metodunuz yoxdur.",
+    "default": "Əsas",
+    "expires": "Bitmə tarixi",
+    "deleteButton": "Kartı Sil",
+    "removing": "Silinir…",
+    "removeError": "Bu ödəniş metodunu silmək mümkün olmadı. Zəhmət olmasa yenidən cəhd edin.",
+    "loading": "Yüklənir…"
+  },
+  "removeCardModal": {
+    "title": "Bu kart silinsin?",
+    "body": "Bu, {{last4}} ilə bitən kartı hesabınızdan həmişəlik siləcək.",
+    "cancel": "Ləğv et",
+    "confirm": "Kartı Sil",
+    "confirming": "Silinir…"
+  },
+  "dangerZone": {
+    "title": "Təhlükə Zonası",
+    "description": "Hesabınızı silmək qalıcıdır — 60 günlük güzəşt müddətindən sonra bu geri qaytarıla bilməz.",
+    "deleteAccountButton": "Hesabı Sil"
+  },
+  "deleteAccountModal": {
+    "title": "Hesabı Sil",
+    "warning": "Hesabınızı silmək istədiyinizə əminsiniz? Profiliniz deaktiv ediləcək və 60 gün ərzində serverlərimizdən həmişəlik silinəcək.",
+    "confirmMethodLabel": "Parolunuzla təsdiqləyin və ya aşağıda DELETE yazın",
+    "passwordLabel": "Parol",
+    "passwordPlaceholder": "Cari parolunuzu daxil edin",
+    "orDivider": "VƏ YA",
+    "confirmTextLabel": "Təsdiqləmək üçün DELETE yazın",
+    "confirmTextPlaceholder": "DELETE",
+    "cancel": "Ləğv et",
+    "confirm": "Hesabımı Sil",
+    "confirming": "Silinir…",
+    "error": "Hesabınızı silmək mümkün olmadı. Zəhmət olmasa yenidən cəhd edin.",
+    "validation": "Təsdiqləmək üçün parolunuzu daxil edin və ya DELETE yazın.",
+    "wrongPassword": "Yanlış parol."
+  },
+  "toast": {
+    "accountDeleted": "Hesabınız uğurla silindi."
+  }
+}

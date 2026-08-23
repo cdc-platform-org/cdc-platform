@@ -1,0 +1,36 @@
+{
+  "pageTitle": "Ödənişlər və Hesablaşmalar",
+  "loading": "Yüklənir…",
+  "loadError": "Hesablaşma məlumatlarınızı yükləmək mümkün olmadı. Zəhmət olmasa yenidən cəhd edin.",
+  "removeError": "Bu ödəniş üsulunu silmək mümkün olmadı. Zəhmət olmasa yenidən cəhd edin.",
+  "downloadError": "Bu hesab-fakturanı yükləmək mümkün olmadı. Zəhmət olmasa yenidən cəhd edin.",
+  "savedCards": {
+    "title": "Saxlanılan Ödəniş Üsulları",
+    "empty": "Hələ heç bir ödəniş üsulu əlavə etməmisiniz.",
+    "default": "Əsas",
+    "remove": "Sil",
+    "removing": "Silinir…",
+    "confirmRemove": "Bu kart silinsin?",
+    "confirmYes": "Bəli, sil",
+    "confirmNo": "Ləğv et"
+  },
+  "billingHistory": {
+    "title": "Hesablaşma Tarixçəsi",
+    "empty": "Hələ heç bir hesab-fakturanız yoxdur.",
+    "download": "PDF Yüklə",
+    "columns": {
+      "invoice": "Hesab-faktura",
+      "description": "Təsvir",
+      "amount": "Məbləğ",
+      "status": "Status",
+      "date": "Tarix",
+      "actions": "Əməliyyatlar"
+    },
+    "status": {
+      "paid": "Ödənilib",
+      "pending": "Gözləmədə",
+      "failed": "Uğursuz",
+      "refunded": "Geri qaytarılıb"
+    }
+  }
+}

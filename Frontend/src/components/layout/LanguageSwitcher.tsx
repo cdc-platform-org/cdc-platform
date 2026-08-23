@@ -5,16 +5,20 @@ import { LOCALE_COOKIE, LOCALE_STORAGE_KEY } from '../../utils/locale';
 
 // Each language labeled in its own script/name (matching how "ქართული"/
 // "English" already worked before this was a dropdown) — never translate a
-// language's own name into another language.
+// language's own name into another language. Every entry carries its own
+// flag now (trigger button included, not just the dropdown) — flag and
+// label kept as separate fields rather than baked into one string so the
+// trigger button can show just the flag without re-parsing label text.
 const locales = [
-  { code: 'ka', label: 'ქართული' },
-  { code: 'en', label: 'English' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'es', label: 'Español' },
-  { code: 'fr', label: 'Français' },
-  { code: 'uk', label: 'Українська' },
-  { code: 'tr', label: '🇹🇷 Türkçe' },
-  { code: 'hy', label: '🇦🇲 Հայերեն' },
+  { code: 'ka', flag: '🇬🇪', label: 'ქართული' },
+  { code: 'en', flag: '🇬🇧', label: 'English' },
+  { code: 'de', flag: '🇩🇪', label: 'Deutsch' },
+  { code: 'es', flag: '🇪🇸', label: 'Español' },
+  { code: 'fr', flag: '🇫🇷', label: 'Français' },
+  { code: 'uk', flag: '🇺🇦', label: 'Українська' },
+  { code: 'tr', flag: '🇹🇷', label: 'Türkçe' },
+  { code: 'hy', flag: '🇦🇲', label: 'Հայերեն' },
+  { code: 'az', flag: '🇦🇿', label: 'Azərbaycan' },
 ];
 
 // Was 6 inline buttons before this file grew from 2 languages to 6 — that
@@ -65,16 +69,16 @@ export default function LanguageSwitcher() {
         aria-label="Change language"
         className="flex items-center gap-1 px-2 py-1.5 rounded-lg border-none bg-transparent cursor-pointer text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
       >
-        <span aria-hidden="true">🌐</span>
+        <span aria-hidden="true">{current.flag}</span>
         <span className="uppercase">{current.code}</span>
       </button>
 
       {open && (
         <div
           role="menu"
-          className="absolute right-0 mt-2 w-40 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0e1422] shadow-xl py-1 z-50"
+          className="absolute right-0 mt-2 w-44 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0e1422] shadow-xl py-1 z-50"
         >
-          {locales.map(({ code, label }) => (
+          {locales.map(({ code, flag, label }) => (
             <button
               key={code}
               type="button"
@@ -83,11 +87,12 @@ export default function LanguageSwitcher() {
               disabled={currentLocale === code}
               className={
                 currentLocale === code
-                  ? 'w-full text-left px-4 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border-none cursor-default'
-                  : 'w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-transparent border-none cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800'
+                  ? 'w-full flex items-center gap-2 text-left px-4 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border-none cursor-default'
+                  : 'w-full flex items-center gap-2 text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-transparent border-none cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800'
               }
             >
-              {label}
+              <span aria-hidden="true">{flag}</span>
+              <span>{label}</span>
             </button>
           ))}
         </div>

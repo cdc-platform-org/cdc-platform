@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { loadStripe, Stripe, StripeCardElement } from '@stripe/stripe-js';
-import { Plus, Trash2, CreditCard, ShieldCheck, Landmark } from 'lucide-react';
+import { Plus, CreditCard, ShieldCheck, Landmark } from 'lucide-react';
 import {
   getPaymentMethods,
   createCardSetupIntent,
@@ -216,10 +216,36 @@ function brandLabel(brand: string): string {
 }
 
 let stripePromise: Promise<Stripe | null> | null = null;
+// Every caller treats this as "never rejects, null means unusable" (see the
+// mounting effect below, which only has a .then()) — that contract has to
+// be enforced here, not assumed. loadStripe() itself CAN reject (a genuine
+// script-load failure, as opposed to just resolving null), which previously
+// meant a caller with no .catch() of its own would just... never fire,
+// leaving the Card Element stuck on its loading spinner forever with no
+// error shown at all — silently broken in a different way than the
+// missing-key case, and much harder to notice.
 function getStripe(): Promise<Stripe | null> {
   if (!stripePromise) {
     const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-    stripePromise = key ? loadStripe(key) : Promise.resolve(null);
+    if (!key) {
+      // NEXT_PUBLIC_* vars are inlined into the browser bundle at BUILD
+      // time, not read at runtime — the single most common way to see this
+      // locally is adding the key to .env.local while `next dev` is
+      // already running (a plain Fast Refresh does not pick it up; the dev
+      // server needs a full restart) or deploying to a host (Vercel, etc.)
+      // where the variable was never actually set in ITS OWN dashboard,
+      // .env.local being git-ignored and local-only.
+      console.warn(
+        '[PaymentMethodsCard] NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set — card binding stays disabled until it is. ' +
+          'If you just added it locally, restart `next dev` (env vars are inlined at build time, Fast Refresh will not pick it up).'
+      );
+      stripePromise = Promise.resolve(null);
+    } else {
+      stripePromise = loadStripe(key).catch((err) => {
+        console.warn('[PaymentMethodsCard] Stripe.js failed to load:', err);
+        return null;
+      });
+    }
   }
   return stripePromise;
 }
