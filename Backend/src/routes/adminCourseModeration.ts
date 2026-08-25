@@ -151,14 +151,14 @@ router.post('/:id/reject', async (req: Request, res: Response) => {
   const result = courseRejectSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
   try {
-    const updated = await claimTransition(req.params.id, ['PENDING_REVIEW'], 'ARCHIVED');
+    const updated = await claimTransition(req.params.id, ['PENDING_REVIEW'], 'REJECTED');
     await prisma.courseReviewHistory.create({
       data: {
         courseId: updated.id,
         action: 'REJECTED',
         feedback: result.data.reason,
         fromStatus: 'PENDING_REVIEW',
-        toStatus: 'ARCHIVED',
+        toStatus: 'REJECTED',
         actedById: req.user!.id,
       },
     });

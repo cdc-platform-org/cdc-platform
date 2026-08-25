@@ -11,9 +11,19 @@ import {
   requestCourseRevision,
   rejectCourseSubmission,
 } from '../../../src/services/adminCourseModerationService';
-import { InstructorCourseDetail, ModerationCourseRow } from '../../../src/types/instructor';
+import { InstructorCourseDetail, ModerationCourseRow, CourseStatus } from '../../../src/types/instructor';
 
 type Detail = InstructorCourseDetail & { instructor: ModerationCourseRow['instructor'] };
+
+const STATUS_BADGE_CLASS: Record<CourseStatus, string> = {
+  DRAFT: 'text-slate-600 bg-slate-100 border-slate-200 dark:text-slate-400 dark:bg-slate-800 dark:border-slate-700',
+  PENDING_REVIEW: 'text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-500/10 dark:border-amber-500/30',
+  NEEDS_REVISION: 'text-orange-700 bg-orange-50 border-orange-200 dark:text-orange-400 dark:bg-orange-500/10 dark:border-orange-500/30',
+  APPROVED: 'text-cyan-700 bg-cyan-50 border-cyan-200 dark:text-cyan-400 dark:bg-cyan-500/10 dark:border-cyan-500/30',
+  PUBLISHED: 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-500/10 dark:border-emerald-500/30',
+  REJECTED: 'text-red-700 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/30',
+  ARCHIVED: 'text-slate-600 bg-slate-100 border-slate-200 dark:text-slate-400 dark:bg-slate-800 dark:border-slate-700',
+};
 
 function AdminCourseReviewDashboard({ courseId }: { courseId: string }) {
   const router = useRouter();
@@ -87,7 +97,7 @@ function AdminCourseReviewDashboard({ courseId }: { courseId: string }) {
             by {course.instructor.name} ({course.instructor.email}) · {course.category} · {course.originalPrice / 100} GEL
           </p>
         </div>
-        <span className="text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-500/10 dark:border-amber-500/30">
+        <span className={`text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border ${STATUS_BADGE_CLASS[course.status]}`}>
           {course.status.replace('_', ' ')}
         </span>
       </div>

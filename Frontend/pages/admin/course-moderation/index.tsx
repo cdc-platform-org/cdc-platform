@@ -5,14 +5,15 @@ import AdminLayout from '../../../src/components/admin/AdminLayout';
 import { getModerationQueue } from '../../../src/services/adminCourseModerationService';
 import { ModerationCourseRow, CourseStatus } from '../../../src/types/instructor';
 
-const STATUS_TABS: CourseStatus[] = ['PENDING_REVIEW', 'NEEDS_REVISION', 'PUBLISHED', 'ARCHIVED'];
+const STATUS_TABS: CourseStatus[] = ['PENDING_REVIEW', 'NEEDS_REVISION', 'PUBLISHED', 'REJECTED', 'ARCHIVED'];
 const STATUS_LABEL: Record<CourseStatus, string> = {
   DRAFT: 'Draft',
   PENDING_REVIEW: 'Pending Review',
   NEEDS_REVISION: 'Needs Revision',
   APPROVED: 'Approved',
   PUBLISHED: 'Published',
-  ARCHIVED: 'Archived / Rejected',
+  REJECTED: 'Rejected',
+  ARCHIVED: 'Archived',
 };
 
 function AdminCourseModerationDashboard() {

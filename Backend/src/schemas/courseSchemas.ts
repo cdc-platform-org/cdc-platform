@@ -33,7 +33,7 @@ export const courseCreateSchema = z
     // Studio (routes/instructorCourses.ts) courses never accept `status`
     // through this field — they progress only via submit-for-review /
     // admin-moderation actions.
-    status: z.enum(['DRAFT', 'PENDING_REVIEW', 'NEEDS_REVISION', 'APPROVED', 'PUBLISHED', 'ARCHIVED']).optional().default('DRAFT'),
+    status: z.enum(['DRAFT', 'PENDING_REVIEW', 'NEEDS_REVISION', 'APPROVED', 'PUBLISHED', 'REJECTED', 'ARCHIVED']).optional().default('DRAFT'),
     mentorName: z.string().trim().max(200).optional(),
     mentorTitle: z.string().trim().max(200).optional(),
     thumbnailUrl: z.string().trim().max(2000).optional(),
@@ -63,7 +63,7 @@ export const courseUpdateSchema = z
     descriptionEn: z.string().trim().optional(),
     category: z.string().min(2).max(100).optional(),
     lessons: z.array(lessonSchema).min(1).optional(),
-    status: z.enum(['DRAFT', 'PENDING_REVIEW', 'NEEDS_REVISION', 'APPROVED', 'PUBLISHED', 'ARCHIVED']).optional(),
+    status: z.enum(['DRAFT', 'PENDING_REVIEW', 'NEEDS_REVISION', 'APPROVED', 'PUBLISHED', 'REJECTED', 'ARCHIVED']).optional(),
     mentorName: z.string().trim().max(200).optional(),
     mentorTitle: z.string().trim().max(200).optional(),
     thumbnailUrl: z.string().trim().max(2000).optional(),

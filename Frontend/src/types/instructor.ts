@@ -26,7 +26,7 @@ export interface MentorApplicationPayload {
   teachingTopics: string[];
 }
 
-export type CourseStatus = 'DRAFT' | 'PENDING_REVIEW' | 'NEEDS_REVISION' | 'APPROVED' | 'PUBLISHED' | 'ARCHIVED';
+export type CourseStatus = 'DRAFT' | 'PENDING_REVIEW' | 'NEEDS_REVISION' | 'APPROVED' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED';
 
 export interface InstructorCourse {
   id: string;

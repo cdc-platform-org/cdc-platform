@@ -940,13 +940,16 @@ enum CourseLanguage {
 //                     publish later" step; today APPROVE and PUBLISH happen
 //                     as one admin action straight to PUBLISHED).
 //   PUBLISHED       - live on the platform, purchasable/enrollable.
-//   ARCHIVED        - withdrawn from the catalog. Also the target status for
-//                     an admin's outright "Reject" moderation action (see
-//                     adminCourseModeration.ts) — the specified lifecycle
-//                     has no separate REJECTED state, and unlike
-//                     NEEDS_REVISION (meant to be fixed and resubmitted), a
-//                     reject is terminal for that course row; the mentor
-//                     would create a new one to try again.
+//   REJECTED        - the target status for an admin's outright "Reject"
+//                     moderation action (adminCourseModeration.ts) —
+//                     terminal for that course row, distinct from
+//                     NEEDS_REVISION (meant to be fixed and resubmitted);
+//                     the mentor sees an explicit "rejected" state rather
+//                     than a generic archived one, and would create a new
+//                     course to try again.
+//   ARCHIVED        - withdrawn from the catalog (a PUBLISHED course an
+//                     admin later took down) — unrelated to moderation
+//                     rejection; see REJECTED above for that.
 // Admin-authored courses (instructorId null) are NOT forced through this
 // pipeline — an admin can move status freely via the existing course
 // editor, same as the old published boolean's simple toggle.
@@ -956,6 +959,7 @@ enum CourseStatus {
   NEEDS_REVISION
   APPROVED
   PUBLISHED
+  REJECTED
   ARCHIVED
 }
 

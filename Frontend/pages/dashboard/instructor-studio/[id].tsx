@@ -36,7 +36,11 @@ const STATUS_BANNER: Record<CourseStatus, { text: string; className: string }> =
   },
   APPROVED: { text: 'Approved.', className: 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400' },
   PUBLISHED: { text: '✓ Published — live and purchasable on the platform.', className: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' },
-  ARCHIVED: { text: 'Archived / rejected — see the admin feedback below.', className: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400' },
+  REJECTED: {
+    text: '✕ Rejected — see the admin feedback below. This submission cannot be resubmitted; create a new course to try again.',
+    className: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/30',
+  },
+  ARCHIVED: { text: 'Archived — withdrawn from the catalog.', className: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400' },
 };
 
 function SectionEditor({ course, onChanged }: { course: InstructorCourseDetail; onChanged: () => void }) {
