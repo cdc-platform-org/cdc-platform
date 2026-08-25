@@ -24,6 +24,8 @@ export interface AdminSidebarBadgeCounts {
   businessVerifications: number;
   pendingProducts: number;
   highSeverityChatFlags: number;
+  pendingMentorApplications: number;
+  pendingCourseReviews: number;
 }
 
 export async function getSidebarBadgeCounts(): Promise<AdminSidebarBadgeCounts> {

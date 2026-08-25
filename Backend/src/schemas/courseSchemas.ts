@@ -27,7 +27,13 @@ export const courseCreateSchema = z
     descriptionEn: z.string().trim().optional(),
     category: z.string().min(2).max(100),
     lessons: z.array(lessonSchema).min(1),
-    published: z.boolean().optional().default(false),
+    // Admin-authored courses only (see Course.instructorId's schema comment)
+    // — an admin can move status freely, including straight to PUBLISHED,
+    // bypassing the Mentor Course QA review pipeline entirely. Instructor
+    // Studio (routes/instructorCourses.ts) courses never accept `status`
+    // through this field — they progress only via submit-for-review /
+    // admin-moderation actions.
+    status: z.enum(['DRAFT', 'PENDING_REVIEW', 'NEEDS_REVISION', 'APPROVED', 'PUBLISHED', 'ARCHIVED']).optional().default('DRAFT'),
     mentorName: z.string().trim().max(200).optional(),
     mentorTitle: z.string().trim().max(200).optional(),
     thumbnailUrl: z.string().trim().max(2000).optional(),
@@ -57,7 +63,7 @@ export const courseUpdateSchema = z
     descriptionEn: z.string().trim().optional(),
     category: z.string().min(2).max(100).optional(),
     lessons: z.array(lessonSchema).min(1).optional(),
-    published: z.boolean().optional(),
+    status: z.enum(['DRAFT', 'PENDING_REVIEW', 'NEEDS_REVISION', 'APPROVED', 'PUBLISHED', 'ARCHIVED']).optional(),
     mentorName: z.string().trim().max(200).optional(),
     mentorTitle: z.string().trim().max(200).optional(),
     thumbnailUrl: z.string().trim().max(2000).optional(),

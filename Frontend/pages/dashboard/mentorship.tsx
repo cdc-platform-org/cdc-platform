@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { Calendar, Wallet, Settings, Plus, Trash2, ArrowRight, CalendarOff, Check } from 'lucide-react';
+import { Calendar, Wallet, Settings, Plus, Trash2, ArrowRight, CalendarOff, Check, PlayCircle } from 'lucide-react';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import RoleGate from '../../src/components/auth/RoleGate';
 import SiteHeader from '../../src/components/layout/SiteHeader';
@@ -260,6 +260,20 @@ function MentorshipWorkspaceContent() {
             <div>
               <p className="font-bold text-sm">{t('sessionsLink')}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">{t('sessionsHint')}</p>
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-slate-400" />
+        </Link>
+
+        <Link
+          href="/dashboard/instructor-studio"
+          className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 p-6 mb-6 no-underline text-current hover:border-cyan-400/50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <PlayCircle className="w-6 h-6 text-cyan-500" />
+            <div>
+              <p className="font-bold text-sm">Instructor Studio</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Create and manage your own video courses</p>
             </div>
           </div>
           <ArrowRight className="w-4 h-4 text-slate-400" />

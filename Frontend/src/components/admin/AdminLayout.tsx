@@ -80,6 +80,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/studio-cases', labelKey: 'studioCases', icon: Layers, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
   { href: '/admin/cyber-sentinel', labelKey: 'cyberSentinel', icon: Bug, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
   { href: '/admin/courses', labelKey: 'courses', icon: GraduationCap, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },
+  { href: '/admin/mentor-applications', labelKey: 'mentorApplications', icon: UserCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic', badgeKey: 'pendingMentorApplications' },
+  { href: '/admin/course-moderation', labelKey: 'courseModeration', icon: ClipboardList, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic', badgeKey: 'pendingCourseReviews' },
   { href: '/admin/assignments', labelKey: 'assignments', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },
   { href: '/admin/candidate-verifications', labelKey: 'candidateVerifications', icon: UserCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },
   { href: '/admin/analytics', labelKey: 'analytics', icon: BarChart3, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },

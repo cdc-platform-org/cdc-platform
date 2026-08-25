@@ -577,6 +577,10 @@ model User {
   chatFlagsReviewed             ChatFlag[]                    @relation("ChatFlagsReviewed")
   hrSupportRequestsAsClient     HRSupportRequest[]            @relation("HRSupportRequestsAsClient")
   hrSupportRequestsAsSpecialist HRSupportRequest[]            @relation("HRSupportRequestsAsSpecialist")
+  instructorCourses             Course[]                      @relation("InstructorCourses")
+  mentorApplications            MentorApplication[]           @relation("MentorApplications")
+  mentorApplicationsReviewed    MentorApplication[]           @relation("MentorApplicationsReviewed")
+  courseReviewsActed            CourseReviewHistory[]         @relation("CourseReviewsActed")
 
   @@index([status, createdAt])
   @@map("users")
@@ -925,6 +929,105 @@ enum CourseLanguage {
   BOTH
 }
 
+// Mentor Course QA Approval System — see Course.status/instructorId and
+// routes/instructorCourses.ts, routes/adminCourseModeration.ts.
+//   DRAFT           - being authored by the instructor, not yet submitted.
+//   PENDING_REVIEW  - submitted, awaiting admin moderation.
+//   NEEDS_REVISION  - admin sent it back with feedback (CourseReviewHistory);
+//                     editable again by the instructor, resubmittable.
+//   APPROVED        - admin approved the content but hasn't flipped it live
+//                     yet (reserved for a future "approve now, schedule
+//                     publish later" step; today APPROVE and PUBLISH happen
+//                     as one admin action straight to PUBLISHED).
+//   PUBLISHED       - live on the platform, purchasable/enrollable.
+//   ARCHIVED        - withdrawn from the catalog. Also the target status for
+//                     an admin's outright "Reject" moderation action (see
+//                     adminCourseModeration.ts) — the specified lifecycle
+//                     has no separate REJECTED state, and unlike
+//                     NEEDS_REVISION (meant to be fixed and resubmitted), a
+//                     reject is terminal for that course row; the mentor
+//                     would create a new one to try again.
+// Admin-authored courses (instructorId null) are NOT forced through this
+// pipeline — an admin can move status freely via the existing course
+// editor, same as the old published boolean's simple toggle.
+enum CourseStatus {
+  DRAFT
+  PENDING_REVIEW
+  NEEDS_REVISION
+  APPROVED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum MentorApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Self-serve "apply to become a mentor" flow — distinct from the older,
+// still-supported admin-only promote path (adminMentorship.ts's
+// POST /mentors/promote, used when an admin wants to grant Mentor status
+// with no application on file). Approving an application here performs the
+// exact same User.role update as that path.
+model MentorApplication {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("MentorApplications", fields: [userId], references: [id], onDelete: Cascade)
+
+  background     String   // professional background / experience, free text
+  linkedinUrl    String?
+  bio            String
+  teachingTopics String[] @default([])
+
+  status          MentorApplicationStatus @default(PENDING)
+  rejectionReason String?
+  reviewedById    String?
+  reviewedBy      User?                   @relation("MentorApplicationsReviewed", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Not a hard DB constraint (a user can have multiple historical rows —
+  // e.g. rejected, then reapplied later) — "only one PENDING at a time" is
+  // enforced in routes/mentorApplications.ts at submit time instead.
+  @@index([userId])
+  @@index([status])
+  @@map("mentor_applications")
+}
+
+enum CourseReviewAction {
+  SUBMITTED
+  APPROVED_PUBLISHED
+  REQUESTED_REVISION
+  REJECTED
+}
+
+// Audit trail for every status-changing moderation event on a mentor-authored
+// course — what an admin told the instructor (structural/audio/video notes,
+// or a rejection reason) and exactly which transition it caused, so both
+// sides can see the full review history rather than just the current
+// feedback (Course itself does not store fields for "latest feedback").
+model CourseReviewHistory {
+  id       String @id @default(uuid())
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  action     CourseReviewAction
+  feedback   String?
+  fromStatus CourseStatus
+  toStatus   CourseStatus
+
+  actedById String
+  actedBy   User   @relation("CourseReviewsActed", fields: [actedById], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([courseId])
+  @@map("course_review_history")
+}
+
 model Course {
   id              String         @id @default(uuid())
   title           String
@@ -961,7 +1064,22 @@ model Course {
   discountPercent Int?
   discountEndDate DateTime?
   isOnSale        Boolean        @default(false)
-  published       Boolean        @default(false)
+  // Replaces the old plain `published` boolean with the full Mentor Course
+  // QA lifecycle (DRAFT -> PENDING_REVIEW -> NEEDS_REVISION -> APPROVED ->
+  // PUBLISHED -> ARCHIVED — see CourseStatus). Every pre-existing row is
+  // backfilled from its old `published` value at migration time
+  // (true -> PUBLISHED, false -> DRAFT) so admin-authored catalog behavior
+  // is unchanged. Checkout-initiation (payments.ts/stripePayments.ts) still
+  // gates on `status === 'PUBLISHED'`, same enforcement point as before.
+  status          CourseStatus   @default(DRAFT)
+  // Null = admin-authored (the original, still-supported catalog flow —
+  // instructorId-less courses skip the mentor review pipeline entirely and
+  // an admin can move `status` freely, including straight to PUBLISHED, via
+  // the existing admin course editor). Set = a Mentor's own Instructor
+  // Studio course, subject to the full review lifecycle and the
+  // ownership/status edit guards in routes/instructorCourses.ts.
+  instructorId    String?
+  instructor      User?          @relation("InstructorCourses", fields: [instructorId], references: [id], onDelete: SetNull)
   mentorName      String?
   mentorTitle     String?
   thumbnailUrl    String?
@@ -1003,7 +1121,10 @@ model Course {
   // rather than a merge.
   liveTrainingSource LiveTraining?
   launchKits         LaunchKit[]
+  reviewHistory      CourseReviewHistory[]
 
+  @@index([status])
+  @@index([instructorId])
   @@map("courses")
 }
 

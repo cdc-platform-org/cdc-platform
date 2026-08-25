@@ -106,7 +106,7 @@ async function createStripeSessionOrRespond(
 // ============================================================
 router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requireApproved, async (req: Request, res: Response) => {
   const course = await prisma.course.findUnique({ where: { id: req.params.courseId } });
-  if (!course || !course.published) return res.status(404).json({ message: 'Course not found.' });
+  if (!course || course.status !== 'PUBLISHED') return res.status(404).json({ message: 'Course not found.' });
   const existingEnrollment = await prisma.courseEnrollment.findUnique({
     where: { userId_courseId: { userId: req.user!.id, courseId: course.id } },
   });

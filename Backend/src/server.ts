@@ -45,6 +45,10 @@ import adminPayoutsRoutes from './routes/adminPayouts';
 import adminDisputesRoutes from './routes/adminDisputes';
 import adminExamProctoringRoutes from './routes/adminExamProctoring';
 import adminMentorshipRoutes from './routes/adminMentorship';
+import mentorApplicationRoutes from './routes/mentorApplications';
+import adminMentorApplicationRoutes from './routes/adminMentorApplications';
+import instructorCourseRoutes from './routes/instructorCourses';
+import adminCourseModerationRoutes from './routes/adminCourseModeration';
 import hrSupportRoutes from './routes/hrSupport';
 import adminHRSupportRoutes from './routes/adminHRSupport';
 import adminMessagesRoutes from './routes/adminMessages';
@@ -288,6 +292,10 @@ app.use('/api/admin/product-reviews', adminProductReviewRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/promos', promoRoutes);
 app.use('/api/ai-agents', aiAgentsSuiteRoutes);
+app.use('/api/mentor-applications', mentorApplicationRoutes);
+app.use('/api/admin/mentor-applications', adminMentorApplicationRoutes);
+app.use('/api/instructor/courses', instructorCourseRoutes);
+app.use('/api/admin/course-moderation', adminCourseModerationRoutes);
 
 const swaggerDocument = {
   openapi: '3.0.3',

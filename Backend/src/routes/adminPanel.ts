@@ -123,18 +123,28 @@ router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODER
 // that only the /admin dashboard page itself needs once per visit.
 // ============================================================
 router.get('/sidebar-badges', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'), async (_req, res) => {
-  const [studioInquiries, businessVerifications, pendingProducts, highSeverityChatFlags] = await Promise.all([
-    prisma.studioInquiry.count({ where: { status: { in: ['PENDING', 'IN_REVIEW'] } } }),
-    // Mirrors adminCompanies.ts's own "under_review" filter exactly — a
-    // business account that uploaded a verification doc but isn't verified
-    // yet — rather than trusting the separate verificationStatus enum,
-    // which that route's own list filter doesn't use as the source of truth.
-    prisma.user.count({ where: { role: 'Client', verificationDocUrl: { not: null }, isVerified: false } }),
-    prisma.digitalProduct.count({ where: { status: 'PENDING' } }),
-    prisma.chatFlag.count({ where: { reviewedAt: null, severity: 'HIGH' } }),
-  ]);
+  const [studioInquiries, businessVerifications, pendingProducts, highSeverityChatFlags, pendingMentorApplications, pendingCourseReviews] =
+    await Promise.all([
+      prisma.studioInquiry.count({ where: { status: { in: ['PENDING', 'IN_REVIEW'] } } }),
+      // Mirrors adminCompanies.ts's own "under_review" filter exactly — a
+      // business account that uploaded a verification doc but isn't verified
+      // yet — rather than trusting the separate verificationStatus enum,
+      // which that route's own list filter doesn't use as the source of truth.
+      prisma.user.count({ where: { role: 'Client', verificationDocUrl: { not: null }, isVerified: false } }),
+      prisma.digitalProduct.count({ where: { status: 'PENDING' } }),
+      prisma.chatFlag.count({ where: { reviewedAt: null, severity: 'HIGH' } }),
+      prisma.mentorApplication.count({ where: { status: 'PENDING' } }),
+      prisma.course.count({ where: { instructorId: { not: null }, status: 'PENDING_REVIEW' } }),
+    ]);
 
-  res.json({ studioInquiries, businessVerifications, pendingProducts, highSeverityChatFlags });
+  res.json({
+    studioInquiries,
+    businessVerifications,
+    pendingProducts,
+    highSeverityChatFlags,
+    pendingMentorApplications,
+    pendingCourseReviews,
+  });
 });
 
 // ============================================================
