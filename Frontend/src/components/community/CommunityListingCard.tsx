@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { Vacancy, Gig } from '../../types/community';
-import VerifiedGraduateBadge from './VerifiedGraduateBadge';
+import VerificationBadges from './VerificationBadges';
 import SocialShareButtons from '../shared/SocialShareButtons';
 import StarRating from './StarRating';
 import { jobCategoryLabel } from '../../utils/jobCategory';
@@ -116,7 +116,7 @@ export default function CommunityListingCard({
               {assignedFreelancer && (
                 <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-normal opacity-70">
                   → {assignedFreelancer.name}
-                  {assignedFreelancer.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
+                  <VerificationBadges user={assignedFreelancer} size="sm" />
                 </span>
               )}
               <span className="text-[10px] text-slate-400 font-normal">· {postedDate}</span>

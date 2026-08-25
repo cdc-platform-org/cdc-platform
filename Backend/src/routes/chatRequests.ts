@@ -47,9 +47,31 @@ router.post('/', async (req: Request, res: Response) => {
 
   const sanitizedIntro = introMessage ? sanitizeChatMessage(introMessage).sanitized : null;
 
-  const chatRequest = await prisma.chatRequest.create({
-    data: { senderId: req.user!.id, recipientId, introMessage: sanitizedIntro },
-  });
+  let chatRequest;
+  try {
+    chatRequest = await prisma.chatRequest.create({
+      data: { senderId: req.user!.id, recipientId, introMessage: sanitizedIntro },
+    });
+  } catch (err: any) {
+    // The findFirst check above is not atomic with this create — a
+    // concurrent duplicate request for the exact same (senderId,
+    // recipientId) direction (@@unique in schema.prisma) can race past it.
+    // Without this catch, the loser's P2002 reached the generic error
+    // handler and returned an opaque 500 instead of the same clean
+    // "already exists" response the check above was meant to guarantee.
+    if (err.code === 'P2002') {
+      const existingRow = await prisma.chatRequest.findFirst({
+        where: {
+          OR: [
+            { senderId: req.user!.id, recipientId },
+            { senderId: recipientId, recipientId: req.user!.id },
+          ],
+        },
+      });
+      if (existingRow) return res.status(200).json({ data: existingRow, alreadyExists: true });
+    }
+    throw err;
+  }
 
   await prisma.notification.create({
     data: {

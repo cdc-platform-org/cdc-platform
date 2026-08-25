@@ -6,6 +6,9 @@ interface Poster {
   // requireRole gate) — not just Client/SuperAdmin.
   role: 'Student' | 'Mentor' | 'SuperAdmin' | 'Client';
   isVerifiedGraduate: boolean;
+  verificationLevel: 'NONE' | 'INDIVIDUAL' | 'BUSINESS';
+  verificationStatus: 'UNVERIFIED' | 'PENDING' | 'APPROVED' | 'REJECTED';
+  isVerified: boolean;
   averageRating: number | null;
   reviewCount: number;
   // Drives the "სტუდენტი" badge — see the hasPurchasedCourse comment on
@@ -20,6 +23,9 @@ interface AssignedFreelancer {
   name: string;
   role: 'Student';
   isVerifiedGraduate: boolean;
+  verificationLevel: 'NONE' | 'INDIVIDUAL' | 'BUSINESS';
+  verificationStatus: 'UNVERIFIED' | 'PENDING' | 'APPROVED' | 'REJECTED';
+  isVerified: boolean;
 }
 
 // ============================================================
@@ -64,6 +70,7 @@ export interface VacancyApplication {
     isVerifiedGraduate: boolean;
     verificationLevel: 'NONE' | 'INDIVIDUAL' | 'BUSINESS';
     verificationStatus: 'UNVERIFIED' | 'PENDING' | 'APPROVED' | 'REJECTED';
+    isVerified: boolean;
     averageRating: number | null;
     reviewCount: number;
     cvUrl: string | null;
@@ -160,6 +167,9 @@ interface GigParticipant {
   name: string;
   role: 'Student' | 'Mentor' | 'SuperAdmin' | 'Client';
   isVerifiedGraduate: boolean;
+  verificationLevel: 'NONE' | 'INDIVIDUAL' | 'BUSINESS';
+  verificationStatus: 'UNVERIFIED' | 'PENDING' | 'APPROVED' | 'REJECTED';
+  isVerified: boolean;
 }
 
 // Freelancer-side counterpart to MyGig — gigs the current user is assigned
@@ -193,6 +203,7 @@ export interface GigApplication {
     isVerifiedGraduate: boolean;
     verificationLevel: 'NONE' | 'INDIVIDUAL' | 'BUSINESS';
     verificationStatus: 'UNVERIFIED' | 'PENDING' | 'APPROVED' | 'REJECTED';
+    isVerified: boolean;
     averageRating: number | null;
     reviewCount: number;
     cvUrl: string | null;

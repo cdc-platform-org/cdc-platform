@@ -45,6 +45,12 @@ const proctoringEventRateLimit = rateLimit({
   message: 'Too many events reported. Please try again shortly.',
 });
 
+// Grace window added on top of ExamSession.durationMinutes before a
+// late submission is treated as a timeout — covers real network/render
+// latency between the candidate's client-side timer hitting zero and this
+// request actually arriving, not an invitation to keep working past time.
+const SUBMIT_GRACE_MS = 2 * 60 * 1000;
+
 // Violations at or above this count force-submits the attempt as FLAGGED —
 // same "disqualified" concept as freelancerExam.ts's strike limit, just
 // named for what a business reviewing candidate reports needs to see.
@@ -165,8 +171,42 @@ router.post('/submissions/:submissionToken/submit', candidateRateLimit, async (r
   const tabSwitches = eventCounts.find((e) => e.type === 'TAB_SWITCH')?._count._all ?? 0;
   const copyPasteCount = eventCounts.find((e) => e.type === 'COPY_PASTE')?._count._all ?? 0;
   const proctoringViolations = tabSwitches + copyPasteCount;
-  const disqualified = proctoringViolations >= PROCTORING_FLAG_THRESHOLD;
+  // Server-side timer enforcement — startedAt/durationMinutes, not anything
+  // client-supplied, so stopping the browser's JS countdown (or simply
+  // taking hours to call this endpoint) can no longer buy unlimited extra
+  // time. Routed into the same FLAGGED/disqualified path as a proctoring
+  // violation, for manual business review, rather than a hard rejection —
+  // an attempt made under a real network hiccup still gets recorded instead
+  // of losing the candidate's answers outright.
+  const deadline = submission.startedAt.getTime() + session.durationMinutes * 60_000 + SUBMIT_GRACE_MS;
+  const timedOut = Date.now() > deadline;
+  const disqualified = proctoringViolations >= PROCTORING_FLAG_THRESHOLD || timedOut;
   const integrityScore = Math.max(0, 100 - proctoringViolations * INTEGRITY_PENALTY_PER_VIOLATION);
+
+  // Atomically claim this submission for grading/completion before doing
+  // any AI work — a concurrent submit call (double-click, client retry, or
+  // a scripted replay) racing this one can no longer both pass the
+  // `status !== 'IN_PROGRESS'` check above before either writes: only one
+  // of them will match `status: 'IN_PROGRESS'` here and actually flip it,
+  // so the loser aborts immediately (before spending any billed AI grading
+  // calls) instead of both grading independently and the last write
+  // silently overwriting the other's score.
+  const claim = await prisma.examSubmission.updateMany({
+    where: { id: submission.id, status: 'IN_PROGRESS' },
+    data: {
+      answers,
+      mcqScore,
+      proctoringViolations,
+      tabSwitches,
+      copyPasteCount,
+      integrityScore,
+      status: disqualified ? 'FLAGGED' : 'COMPLETED',
+      completedAt: new Date(),
+    },
+  });
+  if (claim.count === 0) {
+    return res.status(400).json({ message: 'This exam attempt was already submitted.' });
+  }
 
   // Per-question grading detail — the basis for both totalScore and
   // AdaptiveStudyGuide.weakTopics (see that model's own schema comment on
@@ -271,22 +311,17 @@ router.post('/submissions/:submissionToken/submit', candidateRateLimit, async (r
   const scores = [mcqScore, practicalScore].filter((s): s is number => s != null);
   const totalScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
 
+  // Plain update, not another atomic claim — this submission was already
+  // exclusively claimed above (status flipped out of IN_PROGRESS), so no
+  // concurrent submit call can still be racing us here.
   await prisma.examSubmission.update({
     where: { id: submission.id },
     data: {
-      answers,
-      mcqScore,
       practicalScore,
       totalScore,
       aiEvaluation: answerGrades.find((g) => g.aiFeedback)?.aiFeedback ?? null,
       answerGrades: answerGrades as unknown as Prisma.InputJsonValue,
-      proctoringViolations,
-      tabSwitches,
-      copyPasteCount,
-      integrityScore,
       aiTextScore,
-      status: disqualified ? 'FLAGGED' : 'COMPLETED',
-      completedAt: new Date(),
     },
   });
 

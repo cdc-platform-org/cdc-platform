@@ -19,7 +19,21 @@ function startOfCurrentMonth(): Date {
   return d;
 }
 
-const authorSelect = { select: { id: true, name: true, role: true, isVerifiedGraduate: true } };
+// verificationLevel/verificationStatus/isVerified alongside isVerifiedGraduate
+// so thread/comment authors can render the full multi-role verification
+// badge set (Student/Freelancer/Business — see Frontend's
+// VerificationBadges.tsx), not just the graduate badge.
+const authorSelect = {
+  select: {
+    id: true,
+    name: true,
+    role: true,
+    isVerifiedGraduate: true,
+    verificationLevel: true,
+    verificationStatus: true,
+    isVerified: true,
+  },
+};
 
 // Marketplace-role moderators (Mentor/SuperAdmin, the original community
 // moderation capability) OR any admin-team member (adminRole set, the newer

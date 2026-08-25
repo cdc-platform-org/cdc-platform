@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "PlatformFeeServiceType" ADD VALUE 'DIGITAL_PRODUCT_UNVERIFIED';

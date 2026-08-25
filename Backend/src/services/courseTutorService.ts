@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GEMINI_API_KEY } from '../utils/env';
+import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
 
 // ============================================================
 // In-course AI Tutor — powers POST /api/ai/course-tutor. Same provider/
@@ -75,7 +76,7 @@ export async function generateTutorReply(params: GenerateTutorReplyParams): Prom
     model: 'gemini-flash-latest',
     systemInstruction,
     generationConfig: { temperature: 0.5, maxOutputTokens: 2048 },
-  });
+  }, GEMINI_REQUEST_OPTIONS);
 
   const chat = model.startChat({
     history: params.history.slice(-HISTORY_TURN_LIMIT).map((turn) => ({

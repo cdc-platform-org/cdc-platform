@@ -7,12 +7,11 @@ import StarRating from '../../src/components/community/StarRating';
 import DirectHireModal from '../../src/components/community/DirectHireModal';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import BackButton from '../../src/components/common/BackButton';
-import VerifiedGraduateBadge from '../../src/components/community/VerifiedGraduateBadge';
+import VerificationBadges, { hasAnyVerificationBadge } from '../../src/components/community/VerificationBadges';
 import { ShieldCheck, GraduationCap } from 'lucide-react';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
 import { UserRatingSummary, UserReview, PublicVerifiedSkill } from '../../src/types/review';
-import { isFreelancerVerified } from '../../src/types/auth';
 import { Gig } from '../../src/types/community';
 import { getUserReviews } from '../../src/services/reviewService';
 import { getGigs } from '../../src/services/gigService';
@@ -120,12 +119,8 @@ function ProfileContent() {
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-xl font-semibold text-gray-900 dark:text-white">{profileUser.name}</h1>
-                  {profileUser.isVerifiedGraduate ? (
-                    <VerifiedGraduateBadge />
-                  ) : isFreelancerVerified(profileUser) ? (
-                    <span className="inline-flex items-center text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-500/10 dark:border-emerald-500/30">
-                      {t('profilePage.verified')}
-                    </span>
+                  {hasAnyVerificationBadge(profileUser) ? (
+                    <VerificationBadges user={profileUser} />
                   ) : profileUser.hasPurchasedCourse ? (
                     <span className="inline-flex items-center text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border text-cyan-700 bg-cyan-50 border-cyan-200 dark:text-cyan-400 dark:bg-cyan-500/10 dark:border-cyan-500/30">
                       {t('profilePage.studentBadge')}

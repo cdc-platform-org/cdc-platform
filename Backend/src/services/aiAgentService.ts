@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
 import * as Sentry from '@sentry/node';
 import { GEMINI_API_KEY } from '../utils/env';
+import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
 import { uploadImage } from './imageStorage';
 import { isAzureOpenAiConfigured, generateJsonViaAzureOpenAI, isAzureOpenAiDalleConfigured, generateImageViaDallE3 } from './azureOpenAiService';
 
@@ -136,7 +137,7 @@ export async function callTextModel(prompt: string, temperature: number, imagePa
         const model = client.getGenerativeModel({
           model: modelName,
           generationConfig: { responseMimeType: 'application/json', temperature },
-        });
+        }, GEMINI_REQUEST_OPTIONS);
         const result = await model.generateContent(parts);
         const raw = result.response.text();
         if (!raw) throw new AiAgentError('Gemini returned an empty response.');

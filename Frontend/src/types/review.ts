@@ -26,6 +26,7 @@ export interface UserRatingSummary {
   isVerifiedGraduate: boolean;
   verificationLevel: 'NONE' | 'INDIVIDUAL' | 'BUSINESS';
   verificationStatus: 'UNVERIFIED' | 'PENDING' | 'APPROVED' | 'REJECTED';
+  isVerified: boolean;
   // Digital Store seller/creator reputation — separate rollup from the
   // gig-marketplace averageRating/reviewCount above (see ProductReview).
   sellerRating: number | null;

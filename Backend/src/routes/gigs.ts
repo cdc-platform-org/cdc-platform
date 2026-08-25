@@ -14,8 +14,24 @@ const router = Router();
 // see the hasPurchasedCourse comment on routes/reviews.ts's profile route.
 // Reused across every endpoint below, so adding it here is the one edit
 // that surfaces it everywhere postedBy/assignedFreelancer is returned.
+// verificationLevel/verificationStatus/isVerified alongside isVerifiedGraduate
+// so listing cards can render the full multi-role verification badge set
+// (Student/Freelancer/Business — see Frontend's VerificationBadges.tsx) —
+// isVerifiedGraduate alone would miss an INDIVIDUAL-verified freelancer or
+// a BUSINESS-verified poster entirely.
 const posterSelect = {
-  select: { id: true, name: true, role: true, isVerifiedGraduate: true, averageRating: true, reviewCount: true, _count: { select: { courseEnrollments: true } } },
+  select: {
+    id: true,
+    name: true,
+    role: true,
+    isVerifiedGraduate: true,
+    verificationLevel: true,
+    verificationStatus: true,
+    isVerified: true,
+    averageRating: true,
+    reviewCount: true,
+    _count: { select: { courseEnrollments: true } },
+  },
 };
 // verificationLevel/verificationStatus alongside isVerifiedGraduate so the
 // client-facing proposal list can render the full Verified/Standard badge
@@ -28,6 +44,7 @@ const applicantSelect = {
     isVerifiedGraduate: true,
     verificationLevel: true,
     verificationStatus: true,
+    isVerified: true,
     averageRating: true,
     reviewCount: true,
     cvUrl: true,

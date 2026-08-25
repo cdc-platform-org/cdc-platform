@@ -239,28 +239,43 @@ router.post('/register', authRateLimit, async (req, res) => {
   }
 
   const hashed = await bcrypt.hash(password, 12);
-  let user = await prisma.user.create({
-    data: {
-      name,
-      email: normalizedEmail,
-      password: hashed,
-      role,
-      primaryIntent,
-      freelancerSkills: freelancerSkills ?? [],
-      // registerSchema only ever grants Student or Client (see its comment) —
-      // both are self-serve roles with no vetting step, so manual admin
-      // approval (UserStatus's PENDING_APPROVAL default, reserved for
-      // roles like Mentor that DO need vetting) would just be a pointless
-      // wall between a normal signup and their dashboard.
-      status: 'APPROVED',
-      // Email verification is not required — see requireApproved in
-      // middleware/auth.ts.
-      emailVerifiedAt: new Date(),
-      // registerSchema.acceptedTerms is z.literal(true) — reaching this line
-      // already guarantees explicit consent, so it's safe to timestamp now.
-      termsAcceptedAt: new Date(),
-    },
-  });
+  let user;
+  try {
+    user = await prisma.user.create({
+      data: {
+        name,
+        email: normalizedEmail,
+        password: hashed,
+        role,
+        primaryIntent,
+        freelancerSkills: freelancerSkills ?? [],
+        // registerSchema only ever grants Student or Client (see its comment) —
+        // both are self-serve roles with no vetting step, so manual admin
+        // approval (UserStatus's PENDING_APPROVAL default, reserved for
+        // roles like Mentor that DO need vetting) would just be a pointless
+        // wall between a normal signup and their dashboard.
+        status: 'APPROVED',
+        // Email verification is not required — see requireApproved in
+        // middleware/auth.ts.
+        emailVerifiedAt: new Date(),
+        // registerSchema.acceptedTerms is z.literal(true) — reaching this line
+        // already guarantees explicit consent, so it's safe to timestamp now.
+        termsAcceptedAt: new Date(),
+      },
+    });
+  } catch (err: any) {
+    // The findUnique check above is not atomic with this create — two
+    // concurrent registrations for the same email (double-submit, or a
+    // scripted duplicate) can both pass it before either writes. Without
+    // this catch, the loser's P2002 reached the generic error handler and
+    // returned an opaque 500 instead of the same clean 409 the check above
+    // was meant to guarantee on this, the highest-traffic unauthenticated
+    // write route in the app.
+    if (err.code === 'P2002') {
+      return res.status(409).json({ message: 'Email already registered.' });
+    }
+    throw err;
+  }
 
   user = await maybePromoteSuperAdmin(user);
 

@@ -394,5 +394,5 @@ export default function Community() {
 }
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'ka', ['proposals'])) },
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['proposals', 'common'])) },
 });

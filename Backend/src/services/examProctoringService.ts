@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
 import * as Sentry from '@sentry/node';
 import { GEMINI_API_KEY } from '../utils/env';
+import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
 import { isAzureOpenAiConfigured, generateJsonViaAzureOpenAI } from './azureOpenAiService';
 
 // AI question generation + practical-answer grading for the AI Proctored
@@ -87,7 +88,7 @@ async function generateJson(prompt: string, temperature: number): Promise<Gemini
         const model = client.getGenerativeModel({
           model: modelName,
           generationConfig: { responseMimeType: 'application/json', temperature },
-        });
+        }, GEMINI_REQUEST_OPTIONS);
         const result = await model.generateContent(prompt);
         const raw = result.response.text();
         if (!raw) throw new ExamProctoringAiError('Gemini returned an empty response.');

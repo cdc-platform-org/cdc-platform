@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
 import { GEMINI_API_KEY } from '../utils/env';
+import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
 
 // ============================================================
 // Business KYC document parsing — reads an uploaded business registration
@@ -104,7 +105,7 @@ Respond with strict JSON only, matching this shape:
     // headroom on this account; the Pro family returns a hard 0 quota.
     model: 'gemini-flash-latest',
     generationConfig: { responseMimeType: 'application/json', temperature: 0 },
-  });
+  }, GEMINI_REQUEST_OPTIONS);
 
   let raw: string;
   try {

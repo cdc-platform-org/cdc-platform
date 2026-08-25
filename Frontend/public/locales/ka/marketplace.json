@@ -67,5 +67,6 @@
   "reviewsSelectRating": "გთხოვთ აირჩიოთ ვარსკვლავების რაოდენობა.",
   "reviewsAddPhoto": "დაამატეთ ფოტო (არასავალდებულო)",
   "sellerRatingLabel": "გამყიდველის რეიტინგი",
-  "sellerNoReviews": "გამყიდველს ჯერ არ ჰყავს შემფასებელი."
+  "sellerNoReviews": "გამყიდველს ჯერ არ ჰყავს შემფასებელი.",
+  "securedBadge": "დაცულია"
 }

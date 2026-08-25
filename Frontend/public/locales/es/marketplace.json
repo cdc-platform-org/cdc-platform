@@ -67,5 +67,6 @@
   "reviewsSelectRating": "Please select a star rating.",
   "reviewsAddPhoto": "Add a photo (optional)",
   "sellerRatingLabel": "Seller Rating",
-  "sellerNoReviews": "No seller reviews yet."
+  "sellerNoReviews": "No seller reviews yet.",
+  "securedBadge": "SEGURO"
 }

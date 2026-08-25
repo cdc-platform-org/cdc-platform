@@ -1,1 +1,7 @@
-{}
+{
+  "verificationBadges": {
+    "student": "Студент",
+    "freelancer": "Фрілансер",
+    "business": "Бізнес"
+  }
+}

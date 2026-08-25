@@ -1,1 +1,7 @@
-{}
+{
+  "verificationBadges": {
+    "student": "Ուսանող",
+    "freelancer": "Ֆրիլանսեր",
+    "business": "Բիզնես"
+  }
+}

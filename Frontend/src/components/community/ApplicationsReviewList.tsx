@@ -2,9 +2,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { FileText, Check, X } from 'lucide-react';
 import { VacancyApplication, GigApplication, ApplicationStatus } from '../../types/community';
-import { isFreelancerVerified } from '../../types/auth';
 import { resolveLocale } from '../../utils/locale';
-import VerifiedGraduateBadge from './VerifiedGraduateBadge';
+import VerificationBadges, { hasAnyVerificationBadge } from './VerificationBadges';
 import StarRating from './StarRating';
 
 type ReviewableApplication = VacancyApplication | GigApplication;
@@ -144,12 +143,8 @@ export default function ApplicationsReviewList({
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">
                       {app.applicant.name}
                     </p>
-                    {app.applicant.isVerifiedGraduate ? (
-                      <VerifiedGraduateBadge size="sm" />
-                    ) : isFreelancerVerified(app.applicant) ? (
-                      <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-500/10 dark:border-emerald-500/30">
-                        {t.verified}
-                      </span>
+                    {hasAnyVerificationBadge(app.applicant) ? (
+                      <VerificationBadges user={app.applicant} size="sm" />
                     ) : app.applicant._count.courseEnrollments > 0 ? (
                       <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border text-cyan-700 bg-cyan-50 border-cyan-200 dark:text-cyan-400 dark:bg-cyan-500/10 dark:border-cyan-500/30">
                         {t.studentBadge}

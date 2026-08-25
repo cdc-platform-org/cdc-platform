@@ -11,7 +11,10 @@ const FALLBACK_PERCENTAGE: Record<PlatformFeeServiceType, number> = {
   GIG_VERIFIED: 20,
   MENTORSHIP: 20,
   HR_SUPPORT: 40,
-  DIGITAL_PRODUCT: 20,
+  // +5% Unverified Tier Surcharge over DIGITAL_PRODUCT_VERIFIED, same gap
+  // as GIG_UNVERIFIED/GIG_VERIFIED above.
+  DIGITAL_PRODUCT_UNVERIFIED: 25,
+  DIGITAL_PRODUCT_VERIFIED: 20,
 };
 
 // Called at capture time by all 4 escrow/sale services — returns a 0-1

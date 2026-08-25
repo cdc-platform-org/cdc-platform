@@ -28,7 +28,6 @@
   "policyPoint1": "Cancelar con 12 horas o más de antelación a la sesión le da derecho a un reembolso del 100% (menos la comisión bancaria del 10%).",
   "policyPoint2": "Cancelar con menos de 12 horas de antelación reembolsa el 50%, para compensar el tiempo reservado del mentor.",
   "policyPoint3": "Si el mentor no se presenta, recibe un reembolso completo del 100%.",
-
   "workspaceTitle": "Espacio de Trabajo del Mentor",
   "sessionsLink": "Mis Sesiones",
   "sessionsHint": "Lista de sesiones reservadas, calendario y gestión de enlaces de reunión",
@@ -66,7 +65,6 @@
   "payoutHistory": "Historial de Pagos",
   "noPayouts": "Aún no hay solicitudes de pago.",
   "workspaceError": "Algo salió mal. Inténtelo de nuevo.",
-
   "sessionsTitle": "Mis Sesiones de Mentoría",
   "sessionsSubtitle": "Todas las sesiones que ha reservado o que le han reservado.",
   "sessionsEmpty": "Aún no ha reservado ninguna sesión.",
@@ -115,5 +113,6 @@
   "reportProblemPlaceholder": "Describe lo que ocurrió…",
   "submitDispute": "Enviar",
   "disputeFailed": "No se pudo enviar el reporte.",
-  "disputePending": "En revisión"
+  "disputePending": "En revisión",
+  "mentorOnlyPage": "Esta página solo está disponible para cuentas de Mentor."
 }

@@ -34,6 +34,7 @@
     }
   },
   "directHireModal": {
+    "currencyLabel": "Արժույթ",
     "title": "Կապվել {{name}}-ի հետ",
     "optionOffer": "Ուղարկել Ուղղակի Նախագծի Առաջարկ",
     "optionChat": "Սկսել Ուղղակի Չաթ",

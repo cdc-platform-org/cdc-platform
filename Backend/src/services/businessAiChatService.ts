@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GEMINI_API_KEY } from '../utils/env';
+import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
 
 // ============================================================
 // CDC Business AI — the actual model call behind POST /api/v1/chat. Same
@@ -64,7 +65,7 @@ export async function generateAgentReply(params: GenerateAgentReplyParams): Prom
     model: 'gemini-flash-latest',
     systemInstruction,
     generationConfig: { temperature: 0.6, maxOutputTokens: 1024 },
-  });
+  }, GEMINI_REQUEST_OPTIONS);
 
   const chat = model.startChat({
     history: params.history.map((turn) => ({

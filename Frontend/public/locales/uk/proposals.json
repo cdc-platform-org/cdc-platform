@@ -34,6 +34,7 @@
     }
   },
   "directHireModal": {
+    "currencyLabel": "Валюта",
     "title": "Зв'язатися з {{name}}",
     "optionOffer": "Надіслати пряму пропозицію проєкту",
     "optionChat": "Почати прямий чат",

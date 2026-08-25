@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { z } from 'zod';
 import { GEMINI_API_KEY } from '../utils/env';
+import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
 
 const client = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
@@ -50,7 +51,7 @@ post: ${text}`;
       model: 'gemini-flash-latest',
       safetySettings: MODERATION_SAFETY_SETTINGS,
       generationConfig: { responseMimeType: 'application/json', temperature: 0 },
-    });
+    }, GEMINI_REQUEST_OPTIONS);
     const result = await model.generateContent(prompt);
 
     // The built-in safety layer can still block the classification prompt

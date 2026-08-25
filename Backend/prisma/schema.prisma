@@ -263,6 +263,10 @@ model User {
   // non-Mentor account, and for any Mentor promoted before this field
   // existed (demote falls back to Student for those).
   preMentorRole                 Role?
+  // GET /admin/users filters on this directly, ordered by createdAt, on
+  // every admin panel load — the User model previously had zero @@index
+  // declarations beyond the implicit unique indexes, forcing a full-table
+  // scan+sort as the user table grows.
   status                        UserStatus          @default(PENDING_APPROVAL)
   rejectionReason               String?
   earningsBalance               Int                 @default(0)
@@ -574,6 +578,7 @@ model User {
   hrSupportRequestsAsClient     HRSupportRequest[]            @relation("HRSupportRequestsAsClient")
   hrSupportRequestsAsSpecialist HRSupportRequest[]            @relation("HRSupportRequestsAsSpecialist")
 
+  @@index([status, createdAt])
   @@map("users")
 }
 
@@ -639,6 +644,12 @@ model Gig {
   @@index([status])
   @@index([status, skillsRequired])
   @@index([moderationStatus])
+  // GET /gigs/mine (postedById) and GET /gigs/assigned-to-me +
+  // adminMentorship.ts's mentorship queue (assignedFreelancerId, often
+  // combined with a status filter) all scan on these — neither had an
+  // index before, forcing a full-table scan as the gigs table grows.
+  @@index([postedById])
+  @@index([assignedFreelancerId, status])
   @@map("gigs")
 }
 
@@ -753,6 +764,8 @@ model Vacancy {
 
   @@index([status])
   @@index([moderationStatus])
+  // GET /vacancies/mine filters on this directly — previously unindexed.
+  @@index([postedById])
   @@map("vacancies")
 }
 
@@ -1487,6 +1500,11 @@ model DigitalProduct {
   reviewCount        Int                @default(0)
   reviews            ProductReview[]
 
+  // The public storefront (GET /products) filters status+category together,
+  // and the admin dashboard's pending-review badge counts status alone on
+  // every admin page load — this model had zero indexes before, forcing a
+  // full-table scan on both.
+  @@index([status, category])
   @@map("digital_products")
 }
 
@@ -2123,9 +2141,20 @@ enum PlatformFeeServiceType {
   MENTORSHIP
   // hrSupportEscrowService.ts — flat rate.
   HR_SUPPORT
-  // productSaleService.ts — flat rate, only charged when the product has a
-  // real external creator (submittedById).
-  DIGITAL_PRODUCT
+  // productSaleService.ts — only charged when the product has a real
+  // external creator (submittedById). Split into a verified/unverified pair
+  // (the +5% Unverified Tier Surcharge — see Frontend's Terms & Conditions,
+  // "Unverified Tier Surcharge" clause), same shape as GIG_VERIFIED/
+  // GIG_UNVERIFIED above, keyed off the creator's own verification status
+  // (isIdentityVerified — see utils/freelancerVerification.ts), not the
+  // buyer's.
+  DIGITAL_PRODUCT_UNVERIFIED
+  // Renamed from the old single flat DIGITAL_PRODUCT value when the
+  // verified/unverified split was added — @map keeps the underlying
+  // Postgres enum label and any existing admin-customized
+  // PlatformFeeSchedule row exactly as "DIGITAL_PRODUCT" (see the row this
+  // maps to), so this is a pure rename with zero data migration needed.
+  DIGITAL_PRODUCT_VERIFIED @map("DIGITAL_PRODUCT")
 }
 
 enum BillingProductType {

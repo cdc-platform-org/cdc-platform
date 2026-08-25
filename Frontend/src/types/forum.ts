@@ -3,6 +3,9 @@ interface Author {
   name: string;
   role: 'Student' | 'Mentor' | 'SuperAdmin' | 'Client';
   isVerifiedGraduate: boolean;
+  verificationLevel: 'NONE' | 'INDIVIDUAL' | 'BUSINESS';
+  verificationStatus: 'UNVERIFIED' | 'PENDING' | 'APPROVED' | 'REJECTED';
+  isVerified: boolean;
 }
 
 // ============================================================

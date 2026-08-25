@@ -117,6 +117,7 @@ router.get('/user/:userId', async (req: Request, res: Response) => {
       isVerifiedGraduate: true,
       verificationLevel: true,
       verificationStatus: true,
+      isVerified: true,
       sellerRating: true,
       sellerReviewCount: true,
       // Drives the "სტუდენტი" (Student) badge — anyone who's purchased at

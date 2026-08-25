@@ -67,5 +67,6 @@
   "reviewsSelectRating": "Lütfen bir yıldız puanı seçin.",
   "reviewsAddPhoto": "Fotoğraf ekle (isteğe bağlı)",
   "sellerRatingLabel": "Satıcı Puanı",
-  "sellerNoReviews": "Henüz satıcı değerlendirmesi yok."
+  "sellerNoReviews": "Henüz satıcı değerlendirmesi yok.",
+  "securedBadge": "GÜVENLİ"
 }

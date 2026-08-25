@@ -6,7 +6,7 @@ import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useAuthModal } from '../../../src/context/AuthModalContext';
-import VerifiedGraduateBadge from '../../../src/components/community/VerifiedGraduateBadge';
+import VerificationBadges from '../../../src/components/community/VerificationBadges';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SocialShareButtons from '../../../src/components/shared/SocialShareButtons';
 import { ForumThread, ForumComment } from '../../../src/types/forum';
@@ -157,7 +157,7 @@ function ThreadDetailContent() {
             <span>
               {thread.author.name} · {new Date(thread.createdAt).toLocaleDateString()}
             </span>
-            {thread.author.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
+            <VerificationBadges user={thread.author} size="sm" />
           </p>
           <p className="text-sm text-gray-700 dark:text-slate-300 mt-4 whitespace-pre-wrap">{thread.content}</p>
           <div className="flex items-center gap-4 mt-6 pt-4 border-t border-gray-100 dark:border-slate-800">
@@ -226,7 +226,7 @@ function ThreadDetailContent() {
                       {comment.author.role}
                     </span>
                   )}
-                  {comment.author.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
+                  <VerificationBadges user={comment.author} size="sm" />
                   <span className="text-xs text-gray-400 dark:text-slate-500">
                     {new Date(comment.createdAt).toLocaleDateString()}
                   </span>
@@ -281,5 +281,5 @@ export default function ThreadDetailPage() {
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'ka', ['forum'])) },
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['forum', 'common'])) },
 });

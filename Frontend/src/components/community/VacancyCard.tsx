@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { Vacancy } from '../../types/community';
 import SocialShareButtons from '../shared/SocialShareButtons';
-import VerifiedGraduateBadge from './VerifiedGraduateBadge';
+import VerificationBadges from './VerificationBadges';
 import StarRating from './StarRating';
 import { jobCategoryLabel } from '../../utils/jobCategory';
 import { resolveLocale } from '../../utils/locale';
@@ -38,7 +38,7 @@ export default function VacancyCard({ vacancy, onApply, canApply, isOwnerOrAdmin
           </h3>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
             {vacancy.postedBy.name}
-            {vacancy.postedBy.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
+            <VerificationBadges user={vacancy.postedBy} size="sm" />
             {vacancy.postedBy.averageRating !== null && (
               <span className="inline-flex items-center gap-1">
                 <StarRating value={vacancy.postedBy.averageRating} size="sm" />

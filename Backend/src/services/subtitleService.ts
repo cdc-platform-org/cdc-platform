@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
 import { GEMINI_API_KEY, BUNNY_CDN_HOSTNAME } from '../utils/env';
+import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
 import { isFfmpegAvailable } from './videoCompressionService';
 import { prisma } from '../lib/prisma';
 import { uploadBunnyCaption } from './bunnyStreamService';
@@ -163,7 +164,7 @@ interface TranscriptionResult {
 // structural checks below (real WEBVTT header, at least one cue) are the
 // safety net against a malformed response, not against imprecise timing.
 async function transcribeAudioToVtt(fileUri: string): Promise<TranscriptionResult> {
-  const model = client!.getGenerativeModel({ model: MODEL_NAME, generationConfig: { temperature: 0.2 } });
+  const model = client!.getGenerativeModel({ model: MODEL_NAME, generationConfig: { temperature: 0.2 } }, GEMINI_REQUEST_OPTIONS);
   const prompt =
     `Listen to this audio and produce a complete, accurate transcript formatted as a valid WebVTT file. ` +
     `Break the transcript into natural speech-based cues (roughly 3-10 seconds each) with accurate timestamps ` +
@@ -197,7 +198,7 @@ async function transcribeAudioToVtt(fileUri: string): Promise<TranscriptionResul
 // before this is trusted. A model that reformats/merges/drops cues would
 // otherwise silently desync the captions from the audio.
 async function translateVtt(baseVtt: string, targetCode: 'ka' | 'en' | 'ru'): Promise<string> {
-  const model = client!.getGenerativeModel({ model: MODEL_NAME, generationConfig: { temperature: 0.2 } });
+  const model = client!.getGenerativeModel({ model: MODEL_NAME, generationConfig: { temperature: 0.2 } }, GEMINI_REQUEST_OPTIONS);
   const prompt =
     `You are a professional subtitle translator. Below is a complete WebVTT file. Translate ONLY the spoken ` +
     `caption text into ${LANGUAGE_NAMES[targetCode]}. Do not change the "WEBVTT" header line. Do not change, ` +
@@ -244,7 +245,7 @@ const CONSPECTUS_FIELD: Record<'ka' | 'en' | 'ru', 'conspectusKa' | 'conspectusE
 // digressions, and small talk are deliberately excluded, per the "clean
 // conspectus" requirement.
 async function extractConspectus(transcriptText: string, languageName: string): Promise<string> {
-  const model = client!.getGenerativeModel({ model: MODEL_NAME, generationConfig: { temperature: 0.2 } });
+  const model = client!.getGenerativeModel({ model: MODEL_NAME, generationConfig: { temperature: 0.2 } }, GEMINI_REQUEST_OPTIONS);
   const prompt =
     `The following is a raw speech transcript (in ${languageName}) of a course lesson video. Produce a clean, ` +
     `well-organized "conspectus" (study notes) from it: extract ONLY actionable takeaways, step-by-step ` +
@@ -263,7 +264,7 @@ async function extractConspectus(transcriptText: string, languageName: string): 
 // Simple prose translation — unlike translateVtt, there's no cue structure
 // to preserve, just meaning and the same heading/bullet formatting.
 async function translateConspectus(baseConspectus: string, targetCode: 'ka' | 'en' | 'ru'): Promise<string> {
-  const model = client!.getGenerativeModel({ model: MODEL_NAME, generationConfig: { temperature: 0.2 } });
+  const model = client!.getGenerativeModel({ model: MODEL_NAME, generationConfig: { temperature: 0.2 } }, GEMINI_REQUEST_OPTIONS);
   const prompt =
     `Translate the following study notes ("conspectus") into ${LANGUAGE_NAMES[targetCode]}. Preserve the ` +
     `heading/bullet structure. Keep standard technical/IT terms that are normally used in English even in ` +

@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
 import { GEMINI_API_KEY } from '../utils/env';
+import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
 
 // Reuses the same Gemini client/model/JSON-validation posture as
 // aiExamService.ts (the course-certification exam generator) — see that
@@ -85,7 +86,7 @@ Respond with strict JSON matching this shape:
   const model = client.getGenerativeModel({
     model: 'gemini-flash-latest',
     generationConfig: { responseMimeType: 'application/json', temperature: 0.7 },
-  });
+  }, GEMINI_REQUEST_OPTIONS);
 
   let raw: string;
   try {
@@ -155,7 +156,7 @@ Respond with strict JSON matching this shape:
   const model = client.getGenerativeModel({
     model: 'gemini-flash-latest',
     generationConfig: { responseMimeType: 'application/json', temperature: 0.3 },
-  });
+  }, GEMINI_REQUEST_OPTIONS);
 
   let raw: string;
   try {

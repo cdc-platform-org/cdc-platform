@@ -842,7 +842,10 @@ router.get('/:id/certificate', authenticate, requireCourseAccess, async (req: Re
 router.get('/verify/:code', async (req: Request, res: Response) => {
   const certificate = await prisma.courseCertificate.findUnique({
     where: { verificationCode: req.params.code },
-    include: { user: { select: { name: true } }, course: { select: { title: true, mentorName: true, mentorTitle: true } } },
+    include: {
+      user: { select: { name: true, legalFirstNameEn: true, legalLastNameEn: true } },
+      course: { select: { title: true, titleEn: true, mentorName: true, mentorTitle: true } },
+    },
   });
   if (!certificate) {
     // Not a real CourseCertificate — fall back to a manually-issued one
@@ -854,19 +857,33 @@ router.get('/verify/:code', async (req: Request, res: Response) => {
     return res.json({
       data: {
         verificationCode: manual.verificationCode,
-        studentName: manual.studentNameEn ? `${manual.studentNameKa} / ${manual.studentNameEn}` : manual.studentNameKa,
-        courseTitle: manual.courseTitleEn ? `${manual.courseTitleKa} / ${manual.courseTitleEn}` : manual.courseTitleKa,
+        // ka/en returned separately (not pre-concatenated) so the bilingual
+        // verification card can render whichever language the visitor has
+        // selected instead of always showing both at once.
+        studentName: manual.studentNameKa,
+        studentNameEn: manual.studentNameEn,
+        courseTitle: manual.courseTitleKa,
+        courseTitleEn: manual.courseTitleEn,
         instructorName: manual.instructorName,
         instructorTitle: null,
         issuedAt: manual.issueDate,
       },
     });
   }
+  const studentNameEn =
+    certificate.user.legalFirstNameEn && certificate.user.legalLastNameEn
+      ? `${certificate.user.legalFirstNameEn} ${certificate.user.legalLastNameEn}`
+      : null;
   res.json({
     data: {
       verificationCode: certificate.verificationCode,
       studentName: certificate.user.name,
+      studentNameEn,
       courseTitle: certificate.course.title,
+      courseTitleEn: certificate.course.titleEn,
+      // No English variant exists for a course's mentorName/mentorTitle in
+      // the schema (unlike title/titleEn) — the card falls back to the same
+      // value in both languages rather than fabricating a translation.
       instructorName: certificate.course.mentorName,
       instructorTitle: certificate.course.mentorTitle,
       issuedAt: certificate.issuedAt,

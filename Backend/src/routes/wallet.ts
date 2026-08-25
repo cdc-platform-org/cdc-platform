@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { Router, Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
-import { authenticate, requireRole, requireApproved } from '../middleware/auth';
+import { authenticate, requireRole, requireApproved, requireNotBannedOrDeleted } from '../middleware/auth';
 import { createPayoutRequestSchema } from '../schemas/payoutSchemas';
 import { isIdentityVerified } from '../utils/freelancerVerification';
 import { evaluateRiskTier, hasOpenDisputesForUser, generateIdempotencyKey } from '../services/bogPayoutService';
@@ -19,7 +19,7 @@ class PayoutRequestError extends Error {
     super(message);
   }
 }
-router.get('/me', authenticate, requireRole('Student', 'Mentor'), async (req: Request, res: Response) => {
+router.get('/me', authenticate, requireNotBannedOrDeleted, requireRole('Student', 'Mentor'), async (req: Request, res: Response) => {
   const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10));
   const pageSize = Math.min(50, Math.max(1, parseInt(String(req.query.pageSize ?? '20'), 10)));
   const user = await prisma.user.findUnique({
@@ -170,7 +170,7 @@ router.post('/payout-requests', authenticate, requireRole('Student', 'Mentor'), 
   }
 });
 
-router.get('/payout-requests', authenticate, requireRole('Student', 'Mentor'), async (req: Request, res: Response) => {
+router.get('/payout-requests', authenticate, requireNotBannedOrDeleted, requireRole('Student', 'Mentor'), async (req: Request, res: Response) => {
   const requests = await prisma.payoutRequest.findMany({
     where: { userId: req.user!.id },
     orderBy: { createdAt: 'desc' },

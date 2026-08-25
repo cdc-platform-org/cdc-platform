@@ -28,7 +28,6 @@
   "policyPoint1": "Une annulation 12 heures ou plus avant la session vous donne droit à un remboursement de 100 % (moins des frais bancaires de 10 %).",
   "policyPoint2": "Une annulation moins de 12 heures avant la session est remboursée à 50 %, afin de compenser le temps réservé par le mentor.",
   "policyPoint3": "Si le mentor ne se présente pas, vous êtes intégralement remboursé (100 %).",
-
   "workspaceTitle": "Espace mentor",
   "sessionsLink": "Mes sessions",
   "sessionsHint": "Liste des sessions réservées, calendrier et gestion des liens de visioconférence",
@@ -66,7 +65,6 @@
   "payoutHistory": "Historique des retraits",
   "noPayouts": "Aucune demande de retrait pour l'instant.",
   "workspaceError": "Une erreur est survenue. Veuillez réessayer.",
-
   "sessionsTitle": "Mes sessions de mentorat",
   "sessionsSubtitle": "Toutes les sessions que vous avez réservées ou qui ont été réservées avec vous.",
   "sessionsEmpty": "Vous n'avez encore réservé aucune session.",
@@ -115,5 +113,6 @@
   "reportProblemPlaceholder": "Décrivez ce qui s'est passé…",
   "submitDispute": "Envoyer",
   "disputeFailed": "Impossible d'envoyer le signalement.",
-  "disputePending": "En cours d'examen"
+  "disputePending": "En cours d'examen",
+  "mentorOnlyPage": "Cette page est disponible uniquement pour les comptes Mentor."
 }

@@ -243,7 +243,7 @@ export default function DirectHireModal({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Currency</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('directHireModal.currencyLabel')}</label>
                     <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputClass}>
                       <option value="GEL">GEL</option>
                       <option value="USD">USD</option>

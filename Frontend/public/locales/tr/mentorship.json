@@ -28,7 +28,6 @@
   "policyPoint1": "Seanstan 12+ saat önce iptal ederseniz %100 iade alırsınız (%10 banka işlem ücreti hariç).",
   "policyPoint2": "Seanstan 12 saatten daha az bir süre önce iptal ederseniz, mentorun ayrılmış zamanını telafi etmek için %50 iade alırsınız.",
   "policyPoint3": "Mentor seansa katılmazsa, %100 tam iade alırsınız.",
-
   "workspaceTitle": "Mentor Çalışma Alanı",
   "sessionsLink": "Seanslarım",
   "sessionsHint": "Rezerve edilen seans listesi, takvim ve görüşme bağlantısı yönetimi",
@@ -66,7 +65,6 @@
   "payoutHistory": "Ödeme Geçmişi",
   "noPayouts": "Henüz ödeme talebi yok.",
   "workspaceError": "Bir şeyler ters gitti. Lütfen tekrar deneyin.",
-
   "sessionsTitle": "Mentorluk Seanslarım",
   "sessionsSubtitle": "Rezerve ettiğiniz veya sizin için rezerve edilen tüm seanslar.",
   "sessionsEmpty": "Henüz bir seans rezervasyonu yapmadınız.",
@@ -115,5 +113,6 @@
   "reportProblemPlaceholder": "Ne olduğunu açıklayın…",
   "submitDispute": "Gönder",
   "disputeFailed": "Bildirim gönderilemedi.",
-  "disputePending": "İnceleniyor"
+  "disputePending": "İnceleniyor",
+  "mentorOnlyPage": "Bu sayfa yalnızca Mentor hesapları için kullanılabilir."
 }

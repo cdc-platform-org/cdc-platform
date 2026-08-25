@@ -12,8 +12,22 @@ const router = Router();
 // Reused across every endpoint below (list/mine/detail/applications), so
 // adding it here is the one edit that surfaces it everywhere postedBy is
 // returned, no per-handler changes needed.
+// verificationLevel/verificationStatus/isVerified alongside isVerifiedGraduate
+// so listing cards can render the full multi-role verification badge set
+// (Student/Freelancer/Business — see Frontend's VerificationBadges.tsx).
 const posterSelect = {
-  select: { id: true, name: true, role: true, isVerifiedGraduate: true, averageRating: true, reviewCount: true, _count: { select: { courseEnrollments: true } } },
+  select: {
+    id: true,
+    name: true,
+    role: true,
+    isVerifiedGraduate: true,
+    verificationLevel: true,
+    verificationStatus: true,
+    isVerified: true,
+    averageRating: true,
+    reviewCount: true,
+    _count: { select: { courseEnrollments: true } },
+  },
 };
 const applicantSelect = {
   select: {
@@ -21,6 +35,7 @@ const applicantSelect = {
     isVerifiedGraduate: true,
     verificationLevel: true,
     verificationStatus: true,
+    isVerified: true,
     averageRating: true,
     reviewCount: true,
     cvUrl: true,

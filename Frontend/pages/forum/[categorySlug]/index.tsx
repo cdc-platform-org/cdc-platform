@@ -196,5 +196,5 @@ export default function ThreadListingPage() {
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'ka', ['forum'])) },
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['forum', 'common'])) },
 });

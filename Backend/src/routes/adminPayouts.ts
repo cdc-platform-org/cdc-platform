@@ -112,13 +112,22 @@ router.post('/:id/reject', async (req: Request, res: Response) => {
   const result = reviewPayoutRequestSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
-  const request = await prisma.payoutRequest
-    .update({
-      where: { id: req.params.id },
-      data: { status: 'REJECTED', adminNote: result.data.adminNote, reviewedById: req.user!.id, resolvedAt: new Date() },
-    })
-    .catch(() => null);
-  if (!request) return res.status(404).json({ message: 'Payout request not found.' });
+  const existing = await prisma.payoutRequest.findUnique({ where: { id: req.params.id } });
+  if (!existing) return res.status(404).json({ message: 'Payout request not found.' });
+
+  // Atomically claim PENDING -> REJECTED, same idiom as /approve above —
+  // without this, a plain unconditional .update() could force-reject a
+  // request a concurrent /approve had already moved to APPROVED/PAID,
+  // leaving the earningsBalance debit (and any wired bank transfer) in
+  // place while the request itself displays as REJECTED.
+  const claim = await prisma.payoutRequest.updateMany({
+    where: { id: existing.id, status: 'PENDING' },
+    data: { status: 'REJECTED', adminNote: result.data.adminNote, reviewedById: req.user!.id, resolvedAt: new Date() },
+  });
+  if (claim.count === 0) {
+    return res.status(400).json({ message: 'This request has already been reviewed.' });
+  }
+  const request = await prisma.payoutRequest.findUniqueOrThrow({ where: { id: existing.id } });
 
   await logAdminAction({ action: 'payout.reject', targetType: 'PayoutRequest', targetId: request.id, performedById: req.user!.id });
   res.json({ data: request });

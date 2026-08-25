@@ -134,7 +134,7 @@ function CartContent() {
         <div className={`border rounded-2xl p-6 shadow-sm h-fit space-y-6 transition-all duration-300 ${darkMode ? 'bg-[#0e1422] border-slate-800 hover:border-slate-700' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
           <div className="flex justify-between items-center">
             <div className={`flex items-center gap-1.5 border px-3 py-1 rounded-xl text-[10px] font-bold ${darkMode ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`}>
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>SECURED</span>
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>{t('securedBadge')}</span>
             </div>
             <div className={`flex border rounded-xl p-1 text-[10px] font-bold ${darkMode ? 'bg-[#161f30] border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
               {(['GEL', 'USD', 'EUR'] as const).map((cur) => (

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { Gig } from '../../types/community';
-import VerifiedGraduateBadge from './VerifiedGraduateBadge';
+import VerificationBadges from './VerificationBadges';
 import SocialShareButtons from '../shared/SocialShareButtons';
 import StarRating from './StarRating';
 import { jobCategoryLabel } from '../../utils/jobCategory';
@@ -47,7 +47,7 @@ export default function GigCard({
             >
               {gig.postedBy.name}
             </Link>
-            {gig.postedBy.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
+            <VerificationBadges user={gig.postedBy} size="sm" />
             {gig.postedBy.averageRating !== null && (
               <span className="inline-flex items-center gap-1">
                 <StarRating value={gig.postedBy.averageRating} size="sm" />
@@ -69,7 +69,7 @@ export default function GigCard({
           >
             👤 {gig.assignedFreelancer.name}
           </Link>
-          {gig.assignedFreelancer.isVerifiedGraduate && <VerifiedGraduateBadge size="sm" />}
+          <VerificationBadges user={gig.assignedFreelancer} size="sm" />
         </div>
       )}
       <p className="relative text-sm text-slate-600 dark:text-slate-400 mt-3 line-clamp-2">{gig.description}</p>

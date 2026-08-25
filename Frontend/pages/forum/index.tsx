@@ -145,5 +145,5 @@ export default function ForumIndexPage() {
 }
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'ka', ['forum'])) },
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['forum', 'common'])) },
 });

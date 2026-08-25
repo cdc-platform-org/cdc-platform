@@ -28,7 +28,6 @@
   "policyPoint1": "Sessiyadan 12+ saat əvvəl ləğv etsəniz 100% geri qaytarma alırsınız (10% bank xidmət haqqı çıxılmaqla).",
   "policyPoint2": "Sessiyadan 12 saatdan az əvvəl ləğv etsəniz, mentorun ayrılmış vaxtını kompensasiya etmək üçün 50% geri qaytarma alırsınız.",
   "policyPoint3": "Əgər mentor iştirak etməzsə, 100% tam geri qaytarma alırsınız.",
-
   "workspaceTitle": "Mentor İş Sahəsi",
   "sessionsLink": "Mənim Sessiyalarım",
   "sessionsHint": "Rezerv edilmiş sessiya siyahısı, təqvim və görüş linki idarəetməsi",
@@ -66,7 +65,6 @@
   "payoutHistory": "Ödəniş Tarixçəsi",
   "noPayouts": "Hələ ödəniş sorğusu yoxdur.",
   "workspaceError": "Nəsə səhv getdi. Zəhmət olmasa yenidən cəhd edin.",
-
   "sessionsTitle": "Mentorluq Sessiyalarım",
   "sessionsSubtitle": "Rezerv etdiyiniz və ya sizin üçün rezerv edilmiş bütün sessiyalar.",
   "sessionsEmpty": "Hələ heç bir sessiya rezerv etməmisiniz.",
@@ -115,5 +113,6 @@
   "reportProblemPlaceholder": "Nə baş verdiyini təsvir edin…",
   "submitDispute": "Göndər",
   "disputeFailed": "Bildirişi göndərmək mümkün olmadı.",
-  "disputePending": "Nəzərdən Keçirilir"
+  "disputePending": "Nəzərdən Keçirilir",
+  "mentorOnlyPage": "Bu səhifə yalnız Mentor hesabları üçün əlçatandır."
 }

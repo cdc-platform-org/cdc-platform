@@ -180,7 +180,13 @@ export interface MyCourseWithProgress {
 export interface CertificateVerification {
   verificationCode: string;
   studentName: string;
+  // English variants — null when no translation exists (e.g. a course with
+  // no titleEn set, or a student with no legal English name on file). The
+  // verification card falls back to the Georgian value whenever these are
+  // null, regardless of the selected display language.
+  studentNameEn: string | null;
   courseTitle: string;
+  courseTitleEn: string | null;
   instructorName: string | null;
   instructorTitle: string | null;
   issuedAt: string;

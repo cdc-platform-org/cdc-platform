@@ -122,6 +122,23 @@ router.post('/:attemptId/submit', async (req: Request, res: Response) => {
   const correctCount = mcqQuestions.filter((q) => mcqAnswers[q.id] === q.correctAnswer).length;
   const mcqScore = mcqQuestions.length > 0 ? (correctCount / mcqQuestions.length) * 100 : 0;
 
+  // Atomically claim this attempt before grading — a concurrent submit call
+  // racing this one (double-click, client retry) can no longer both pass
+  // the `attempt.completedAt` check above before either writes: only one
+  // request's updateMany actually matches `completedAt: null` and flips it,
+  // so a genuine concurrent duplicate is rejected immediately here instead
+  // of both calling the billed AI grader and one silently overwriting the
+  // other's score/VerifiedSkill result. If grading below fails, the claim
+  // is released (completedAt reset to null) so the existing "try again"
+  // retry flow still works exactly as before.
+  const claim = await prisma.skillTestAttempt.updateMany({
+    where: { id: attempt.id, completedAt: null },
+    data: { completedAt: new Date() },
+  });
+  if (claim.count === 0) {
+    return res.status(400).json({ message: 'This test attempt was already submitted.' });
+  }
+
   let practicalScore = 0;
   let practicalFeedback: string | null = null;
   if (practicalQuestion) {
@@ -139,8 +156,11 @@ router.post('/:attemptId/submit', async (req: Request, res: Response) => {
       // Unlike question generation, there is no non-AI fallback for grading
       // free text — guessing a score here would make a public credential
       // meaningless. Surface a clear, retryable error instead of silently
-      // passing/failing the practical portion.
+      // passing/failing the practical portion. Release the claim above so
+      // the attempt is submittable again, same as before this attempt ever
+      // reached the claim.
       console.error('[skillTests] Failed to grade practical answer:', err);
+      await prisma.skillTestAttempt.update({ where: { id: attempt.id }, data: { completedAt: null } });
       return res.status(502).json({ message: 'პასუხის შეფასება ვერ მოხერხდა. გთხოვთ სცადოთ ხელახლა.' });
     }
   }
@@ -159,7 +179,6 @@ router.post('/:attemptId/submit', async (req: Request, res: Response) => {
           practicalScore,
           totalScore,
           passed,
-          completedAt: new Date(),
         },
       });
       if (passed) {
