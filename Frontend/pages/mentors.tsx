@@ -16,6 +16,7 @@ import { checkoutMentorship } from '../src/services/paymentService';
 import { checkoutMentorshipStripe } from '../src/services/stripePaymentService';
 import { formatPrice } from '../src/utils/coursePricing';
 import { resolveLocale, SupportedLocale } from '@/src/utils/locale';
+import VideoTutorialLink from '../src/components/shared/VideoTutorialLink';
 
 function MentorAvatar({ mentor, size = 56 }: { mentor: PublicMentor; size?: number }) {
   return mentor.avatarUrl ? (
@@ -158,6 +159,10 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: S
           >
             {t('close')}
           </button>
+        </div>
+
+        <div className="flex justify-end mb-3">
+          <VideoTutorialLink lang={lang} />
         </div>
 
         {error && (

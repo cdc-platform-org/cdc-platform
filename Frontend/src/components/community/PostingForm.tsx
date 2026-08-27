@@ -1,6 +1,5 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/router';
-import Link from 'next/link';
 import { postVacancy, VacancyFormPayload } from '../../services/vacancyService';
 import { postGig, PostGigPayload } from '../../services/gigService';
 import { EmploymentType, GigBudgetType, GigOfferType, JobCategory } from '../../types/community';
@@ -9,6 +8,7 @@ import { resolveLocale } from '../../utils/locale';
 import { classifyApiError, ApiErrorReason } from '../../utils/apiErrorMessages';
 import PermissionDeniedModal from '../shared/PermissionDeniedModal';
 import RichTextEditor from '../shared/RichTextEditor';
+import VideoTutorialLink from '../shared/VideoTutorialLink';
 
 // Three distinct posting types, two directions:
 //   - 'vacancy'     Group A (employer): a long-term job opening.
@@ -67,7 +67,6 @@ const DEFAULT_CLASS_NAME =
   'max-w-2xl mx-auto bg-white dark:bg-slate-900/60 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-800 p-8';
 
 const EN_STRINGS = {
-  tutorial: '🎥 Watch tutorial',
   vacancy: 'Vacancy',
   gigRequest: 'Freelance Order',
   gigOffer: 'Service Offer',
@@ -135,7 +134,6 @@ const EN_STRINGS = {
 
 const dict = {
   ka: {
-    tutorial: '🎥 ვიდეო ინსტრუქცია',
     vacancy: 'ვაკანსია',
     gigRequest: 'შეკვეთა',
     gigOffer: 'მომსახურების შეთავაზება',
@@ -392,9 +390,7 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
   return (
     <div className={className ?? DEFAULT_CLASS_NAME}>
       <div className="flex justify-end mb-4">
-        <Link href="/tutorials" target="_blank" className="text-xs font-semibold text-cyan-600 dark:text-cyan-400 hover:underline whitespace-nowrap">
-          {t.tutorial}
-        </Link>
+        <VideoTutorialLink lang={lang} />
       </div>
       {allowTypeToggle && (
         <div className="flex flex-wrap gap-2 mb-8 bg-gray-100 dark:bg-slate-800 rounded-lg p-1 w-fit">

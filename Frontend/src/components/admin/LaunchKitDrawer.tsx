@@ -3,6 +3,7 @@ import { X, Copy, Check, RefreshCw, Sparkles } from 'lucide-react';
 import { generateLaunchKit, getLaunchKits, deleteLaunchKit } from '../../services/marketingService';
 import { generateMyLaunchKit, getMyLaunchKits, deleteMyLaunchKit } from '../../services/creatorMarketingService';
 import { LaunchKit } from '../../types/marketing';
+import VideoTutorialLink from '../shared/VideoTutorialLink';
 
 type Target = { productId: string } | { courseId: string };
 
@@ -125,6 +126,10 @@ export default function LaunchKitDrawer({
             <p className="text-xs text-gray-400 mt-0.5">{title}</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer text-xl leading-none">×</button>
+        </div>
+
+        <div className="flex justify-end mb-3">
+          <VideoTutorialLink lang="ka" />
         </div>
 
         {error && <div className="mb-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}

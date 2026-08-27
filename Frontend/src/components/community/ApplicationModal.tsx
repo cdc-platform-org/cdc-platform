@@ -1,11 +1,14 @@
 import { useState, useRef, FormEvent, ChangeEvent } from 'react';
+import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { FileText, Upload } from 'lucide-react';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { useAuth } from '../../context/AuthContext';
 import { uploadCv } from '../../services/authService';
 import { classifyApiError, ApiErrorReason } from '../../utils/apiErrorMessages';
+import { resolveLocale } from '../../utils/locale';
 import PermissionDeniedModal from '../shared/PermissionDeniedModal';
+import VideoTutorialLink from '../shared/VideoTutorialLink';
 
 interface ApplicationModalProps {
   title: string;
@@ -16,6 +19,7 @@ interface ApplicationModalProps {
 
 export default function ApplicationModal({ title, includeBid, onSubmit, onClose }: ApplicationModalProps) {
   const { t } = useTranslation('proposals');
+  const lang = resolveLocale(useRouter().locale);
   const { user, refreshUser } = useAuth();
   const [note, setNote] = useState('');
   const [bidAmount, setBidAmount] = useState('');
@@ -71,8 +75,11 @@ export default function ApplicationModal({ title, includeBid, onSubmit, onClose 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">{title}</h2>
-        
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+          <VideoTutorialLink lang={lang} />
+        </div>
+
         {error && (
           <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
             {error}

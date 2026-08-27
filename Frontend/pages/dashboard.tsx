@@ -61,6 +61,7 @@ import {
 import RichTextEditor from '../src/components/shared/RichTextEditor';
 import FileDropzone from '../src/components/shared/FileDropzone';
 import ImageGalleryUploader from '../src/components/shared/ImageGalleryUploader';
+import VideoTutorialLink from '../src/components/shared/VideoTutorialLink';
 import { assetFilenameFromUrl } from '../src/utils/assetFilename';
 import { User } from '../src/types/auth';
 import { resolveLocale } from '@/src/utils/locale';
@@ -1913,13 +1914,7 @@ function DashboardContent() {
                     >
                       <div className="flex items-center justify-between gap-3 flex-wrap">
                         <h3 className="text-sm font-bold">{editingSubmissionId ? t.editSubmissionTitle : t.submitProductTitle}</h3>
-                        <Link
-                          href="/tutorials"
-                          target="_blank"
-                          className="text-xs font-semibold text-cyan-600 dark:text-cyan-400 hover:underline whitespace-nowrap"
-                        >
-                          🎥 {lang === 'ka' ? 'ვიდეო ინსტრუქცია' : 'Watch tutorial'}
-                        </Link>
+                        <VideoTutorialLink lang={lang} />
                       </div>
                       {submitError && (
                         <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-xs text-red-600 dark:text-red-300">

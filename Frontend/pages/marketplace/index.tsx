@@ -6,7 +6,7 @@ import { useRouter } from 'next/router';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { ShoppingBag, CheckCircle2, Tag, Star } from 'lucide-react';
+import { ShoppingBag, CheckCircle2, Tag, Star, Plus } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
@@ -14,10 +14,14 @@ import { getProducts, productTitle, productDescription, DigitalProduct } from '.
 import { formatPrice } from '../../src/utils/coursePricing';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
 import { MARKETPLACE_CATEGORIES } from '../../src/data/marketplaceCategories';
+import { useAuth } from '../../src/context/AuthContext';
+import { useAuthModal } from '../../src/context/AuthModalContext';
 
 function MarketplaceContent() {
   const { t } = useTranslation('marketplace');
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
+  const { openAuthModal } = useAuthModal();
   // MARKETPLACE_CATEGORIES.value only carries ka/en fields (it's the literal
   // ?category= filter value, matching DigitalProduct.category as sellers
   // typed it) — falls back to English for de/es/fr/uk visitors rather than
@@ -63,6 +67,18 @@ function MarketplaceContent() {
     router.push({ pathname: '/marketplace', query }, undefined, { shallow: true });
   };
 
+  // Same "sign in, then resume" pattern as this page's own product cards
+  // (store/[id].tsx's handleBuy/handleClaim) — a guest lands in the auth
+  // modal and, on success, is carried straight into the submission tab
+  // instead of being dropped back on the marketplace with nothing continued.
+  const goToUpload = () => {
+    if (!isAuthenticated) {
+      openAuthModal({ onSuccess: () => router.push('/dashboard?tab=products') });
+      return;
+    }
+    router.push('/dashboard?tab=products');
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       <Head>
@@ -81,7 +97,15 @@ function MarketplaceContent() {
             CDC Marketplace
           </span>
           <h1 className="text-3xl md:text-4xl font-black tracking-wide mb-3">{t('title')}</h1>
-          <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 leading-relaxed">{t('subtitle')}</p>
+          <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 leading-relaxed mb-6">{t('subtitle')}</p>
+          <button
+            type="button"
+            onClick={goToUpload}
+            className="inline-flex items-center gap-2 text-sm font-black text-white bg-gradient-to-r from-purple-500 to-cyan-600 px-6 py-3.5 rounded-xl shadow-lg shadow-purple-500/20 hover:shadow-xl transition-all border-none cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            {t('uploadCta')}
+          </button>
         </div>
 
         {categoryChips.length > 0 && (

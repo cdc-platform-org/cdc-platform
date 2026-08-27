@@ -7,6 +7,7 @@ import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
+import VideoTutorialLink from '../../src/components/shared/VideoTutorialLink';
 import { useAuth } from '../../src/context/AuthContext';
 import { useEscapeToClose } from '../../src/hooks/useEscapeToClose';
 import { MyCourseWithProgress } from '../../src/types/lms';
@@ -251,12 +252,15 @@ function CertificatesContent() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 md:py-12 flex-1 w-full">
-        <div className="mb-8">
-          <h1 className="text-2xl font-black tracking-wide flex items-center gap-2">
-            <GraduationCap className="w-6 h-6 text-amber-500" />
-            {t.title}
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t.subtitle}</p>
+        <div className="mb-8 flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-black tracking-wide flex items-center gap-2">
+              <GraduationCap className="w-6 h-6 text-amber-500" />
+              {t.title}
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t.subtitle}</p>
+          </div>
+          <VideoTutorialLink lang={lang} />
         </div>
 
         {loading ? (

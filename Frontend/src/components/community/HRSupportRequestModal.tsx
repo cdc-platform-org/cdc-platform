@@ -6,6 +6,7 @@ import { getHRSupportQuote } from '../../services/hrSupportService';
 import { checkoutHRSupport } from '../../services/paymentService';
 import { resolveLocale } from '../../utils/locale';
 import { HRSupportQuote } from '../../types/hrSupport';
+import VideoTutorialLink from '../shared/VideoTutorialLink';
 
 interface HRSupportRequestModalProps {
   vacancyId: string;
@@ -121,7 +122,10 @@ export default function HRSupportRequestModal({ vacancyId, vacancyTitle, onClose
         className="max-w-lg w-full max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-black text-slate-900 dark:text-white mb-1">{t.title}</h2>
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-lg font-black text-slate-900 dark:text-white mb-1">{t.title}</h2>
+          <VideoTutorialLink lang={lang} />
+        </div>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-5 truncate">{vacancyTitle}</p>
 
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 p-4 mb-5">

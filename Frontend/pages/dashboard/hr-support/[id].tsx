@@ -8,6 +8,7 @@ import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
 import BackButton from '../../../src/components/common/BackButton';
+import VideoTutorialLink from '../../../src/components/shared/VideoTutorialLink';
 import { getHRSupportRequest, confirmHRSupportRequest, disputeHRSupportRequest } from '../../../src/services/hrSupportService';
 import { HRSupportRequest, HRSupportRequestStatus } from '../../../src/types/hrSupport';
 import { resolveLocale } from '../../../src/utils/locale';
@@ -197,9 +198,12 @@ function HRSupportDetailContent() {
               {t.candidates(request.candidateCount)} · {formatGel(request.grossAmount, request.currency)}
             </p>
           </div>
-          <span className="text-[11px] font-black uppercase tracking-wide px-3 py-1.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-            {t.status[request.status]}
-          </span>
+          <div className="flex flex-col items-end gap-2">
+            <span className="text-[11px] font-black uppercase tracking-wide px-3 py-1.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+              {t.status[request.status]}
+            </span>
+            <VideoTutorialLink lang={lang} />
+          </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 mb-6">

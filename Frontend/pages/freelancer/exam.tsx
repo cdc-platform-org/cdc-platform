@@ -7,6 +7,7 @@ import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import Toast from '../../src/components/shared/Toast';
+import VideoTutorialLink from '../../src/components/shared/VideoTutorialLink';
 import { JOB_CATEGORIES, JOB_CATEGORY_LABEL } from '../../src/utils/jobCategory';
 import { JobCategory } from '../../src/types/community';
 import { generateExam, submitExam, getExamStatus, ExamQuestion, ExamAttemptResult } from '../../src/services/freelancerExamService';
@@ -345,7 +346,14 @@ function FreelancerExamContent() {
       <SiteHeader />
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 flex-1 w-full">
         {phase !== 'in-progress' && <BackButton fallbackHref="/dashboard" className="mb-6" />}
-        <h1 className="text-2xl font-black mb-2">CDC Verified Freelancer — უნარების შემოწმება</h1>
+        <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+          <h1 className="text-2xl font-black">CDC Verified Freelancer — უნარების შემოწმება</h1>
+          {/* Never rendered once the timed exam is running — a target="_blank"
+              click would blur this tab and the anti-cheat listener below
+              would count it as a strike (registerStrike on document blur/
+              hidden), so this is deliberately gated to the pre-start phases. */}
+          {(phase === 'select' || phase === 'rules') && <VideoTutorialLink lang={lang} />}
+        </div>
 
         {error && phase !== 'rules' && (
           <div className="mb-6 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-600 dark:text-red-300">{error}</div>
