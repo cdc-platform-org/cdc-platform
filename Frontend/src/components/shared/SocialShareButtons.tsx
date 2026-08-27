@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { SupportedLocale } from '../../utils/locale';
+import { SupportedLocale, pickText } from '../../utils/locale';
 
 interface SocialShareButtonsProps {
   // Absolute URL to share. Falls back to window.location.href when omitted
@@ -21,21 +21,18 @@ const dictBase = {
   en: { share: 'Share', copied: 'Link copied!', copyLink: 'Copy Link', nativeShare: 'Share...' },
 };
 
-// English fallback for locales without a translation yet.
-const dict: Record<SupportedLocale, typeof dictBase.en> = {
-  ...dictBase,
-  de: dictBase.en,
-  es: dictBase.en,
-  fr: dictBase.en,
-  uk: dictBase.en,
-};
+// pickText's fallback (exact locale if present, else English, never
+// Georgian for a non-ka locale) means this dict only needs entries for the
+// locales with real copy — de/es/fr/uk/tr/hy/az all resolve to dictBase.en
+// automatically without listing them here.
+const dict = dictBase;
 
 // Facebook/LinkedIn/X/copy-link (+ native share sheet on mobile, which
 // covers WhatsApp/Instagram/etc. without a per-network integration) — used
 // on blog posts, course details, gigs/vacancies cards, and forum threads so
 // visitors can share a listing without an account.
 export default function SocialShareButtons({ url, title, lang = 'ka', className = '', variant = 'auto' }: SocialShareButtonsProps) {
-  const t = dict[lang];
+  const t = pickText(dict, lang);
   const [copied, setCopied] = useState(false);
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 

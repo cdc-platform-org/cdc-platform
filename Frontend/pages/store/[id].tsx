@@ -241,7 +241,7 @@ function StoreProductContent() {
                 </span>
               )}
             </div>
-            <h1 className="text-2xl md:text-3xl font-black tracking-wide mb-3">{productTitle(product, contentLang)}</h1>
+            <h1 className="blog-heading-safe text-2xl md:text-3xl font-black tracking-wide mb-3">{productTitle(product, contentLang)}</h1>
             {product.reviewCount > 0 && (
               <div className="flex items-center gap-2 mb-3">
                 <StarRating value={product.averageRating ?? 0} size="sm" />

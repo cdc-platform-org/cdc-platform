@@ -20,6 +20,8 @@ import {
 } from '../services/bogPaymentService';
 import { captureEscrow } from '../services/escrowService';
 import { completeProductPurchase } from '../services/productSaleService';
+import { completeCoursePurchase } from '../services/courseSaleService';
+import { paymentModelForPurpose } from '../services/paymentModel';
 import { getCurrentPrice, computeCoursePriceWithPromo } from '../services/coursePricing';
 import { getCurrentProductPrice } from '../services/productPricing';
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
@@ -202,6 +204,7 @@ router.post(
           bogOrderId: `promo-${crypto.randomUUID()}`,
           userId: req.user!.id,
           purpose: 'COURSE',
+          paymentModel: paymentModelForPurpose('COURSE'),
           referenceId: course.id,
           amount: 0,
           currency: 'GEL',
@@ -210,11 +213,11 @@ router.post(
           promoCodeId: appliedPromo?.id ?? null,
         },
       });
-      await prisma.courseEnrollment.create({ data: { userId: req.user!.id, courseId: course.id } });
+      const { isNewEnrollment } = await completeCoursePurchase({ userId: req.user!.id, courseId: course.id, amount: 0 });
       if (appliedPromo) {
         await prisma.promoCode.update({ where: { id: appliedPromo.id }, data: { currentUses: { increment: 1 } } });
       }
-      await notifyCourseEnrollment(req.user!.id, course);
+      if (isNewEnrollment) await notifyCourseEnrollment(req.user!.id, course);
       return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
     }
 
@@ -223,6 +226,7 @@ router.post(
         bogOrderId: `pending-${crypto.randomUUID()}`,
         userId: req.user!.id,
         purpose: 'COURSE',
+        paymentModel: paymentModelForPurpose('COURSE'),
         referenceId: course.id,
         amount: chargeAmount,
         currency: 'GEL',
@@ -284,6 +288,7 @@ async function createMentorshipCheckoutRecords(params: {
               bogOrderId: `pending-${crypto.randomUUID()}`,
               userId: params.studentId,
               purpose: 'MENTORSHIP',
+              paymentModel: paymentModelForPurpose('MENTORSHIP'),
               referenceId: params.mentorId,
               amount: params.chargeAmount,
               currency: params.currency,
@@ -430,6 +435,7 @@ router.post(
         bogOrderId: `pending-${crypto.randomUUID()}`,
         userId: req.user!.id,
         purpose: 'GIG_ESCROW_FUNDING',
+        paymentModel: paymentModelForPurpose('GIG_ESCROW_FUNDING'),
         referenceId: gig.id,
         amount: application.bidAmount,
         currency: 'GEL',
@@ -505,6 +511,7 @@ router.post(
         bogOrderId: `pending-${crypto.randomUUID()}`,
         userId: req.user!.id,
         purpose: 'HR_SUPPORT',
+        paymentModel: paymentModelForPurpose('HR_SUPPORT'),
         referenceId: hrRequest.id,
         amount: grossAmount,
         currency: 'GEL',
@@ -581,6 +588,7 @@ router.post(
           bogOrderId: `admin-test-${crypto.randomUUID()}`,
           userId: req.user!.id,
           purpose: 'PRODUCT',
+          paymentModel: paymentModelForPurpose('PRODUCT'),
           referenceId: product.id,
           amount: 0,
           currency: 'GEL',
@@ -597,6 +605,7 @@ router.post(
         bogOrderId: `pending-${crypto.randomUUID()}`,
         userId: req.user!.id,
         purpose: 'PRODUCT',
+        paymentModel: paymentModelForPurpose('PRODUCT'),
         referenceId: product.id,
         amount: chargeAmount,
         currency: 'GEL',
@@ -720,20 +729,16 @@ export async function applyBogPaymentResult(
   });
 
   if (bogPayment.purpose === 'COURSE') {
-    const existingEnrollment = await prisma.courseEnrollment.findUnique({
-      where: { userId_courseId: { userId: bogPayment.userId, courseId: bogPayment.referenceId } },
-    });
-    await prisma.courseEnrollment.upsert({
-      where: { userId_courseId: { userId: bogPayment.userId, courseId: bogPayment.referenceId } },
-      update: {},
-      create: { userId: bogPayment.userId, courseId: bogPayment.referenceId },
-    });
     // Only notify on the genuine first completion — a retried/duplicate
-    // webhook delivery for an already-enrolled purchase must not resend it.
-    if (!existingEnrollment) {
-      const course = await prisma.course.findUnique({ where: { id: bogPayment.referenceId }, select: { id: true, title: true } });
-      if (course) await notifyCourseEnrollment(bogPayment.userId, course);
-    }
+    // webhook delivery for an already-enrolled purchase must not resend it,
+    // and must not double-credit the instructor either (see
+    // courseSaleService.ts's atomic claim).
+    const { isNewEnrollment, course } = await completeCoursePurchase({
+      userId: bogPayment.userId,
+      courseId: bogPayment.referenceId,
+      amount: bogPayment.amount,
+    });
+    if (isNewEnrollment && course) await notifyCourseEnrollment(bogPayment.userId, course);
   } else if (bogPayment.purpose === 'GIG_ESCROW_FUNDING') {
     const gig = await prisma.gig.findUnique({ where: { id: bogPayment.referenceId } });
     if (!gig || !gig.assignedFreelancerId) return;

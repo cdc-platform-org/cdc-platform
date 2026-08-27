@@ -26,7 +26,7 @@ import Lightbox, { LightboxImage } from '../../src/components/shared/Lightbox';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import { isHtmlContent, HTML_CONTENT_ALLOWED_TAGS, HTML_CONTENT_ALLOWED_ATTR } from '../../src/utils/richContent';
-import { resolveLocale, SupportedLocale } from '@/src/utils/locale';
+import { resolveLocale, contentLocale, pickText, SupportedLocale } from '@/src/utils/locale';
 
 const dict = {
   ka: {
@@ -377,9 +377,9 @@ function CommentThread({
 export default function BlogPostPage() {
   const router = useRouter();
   const lang = resolveLocale(router.locale);
-  const t = dict[lang];
+  const t = pickText(dict, lang);
   // Blog posts only store ka/en text (title/titleEn etc.) — collapse for content lookups.
-  const contentLang = lang === 'ka' ? 'ka' : 'en';
+  const contentLang = contentLocale(lang);
   const { user, isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
   const slug = typeof router.query.slug === 'string' ? router.query.slug : null;
@@ -655,7 +655,7 @@ export default function BlogPostPage() {
                 </span>
               )}
             </div>
-            <h1 className="text-3xl md:text-4xl font-black mt-4 mb-4">{title}</h1>
+            <h1 className="blog-heading-safe text-3xl md:text-4xl font-black mt-4 mb-4">{title}</h1>
 
             <div className="flex flex-wrap items-center gap-3 mb-8">
               {post.author.avatarUrl ? (
@@ -724,6 +724,7 @@ export default function BlogPostPage() {
                 color: #cbd5e1;
               }
               .blog-article-content :global(h2) {
+                font-family: var(--font-georgian-safe), 'Noto Sans Georgian', sans-serif !important;
                 font-size: 1.5rem;
                 font-weight: 900;
                 color: #ffffff;
@@ -735,6 +736,7 @@ export default function BlogPostPage() {
                 margin-top: 0;
               }
               .blog-article-content :global(h3) {
+                font-family: var(--font-georgian-safe), 'Noto Sans Georgian', sans-serif !important;
                 font-size: 1.2rem;
                 font-weight: 800;
                 color: #ffffff;

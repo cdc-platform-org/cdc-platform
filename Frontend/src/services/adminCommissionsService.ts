@@ -1,6 +1,13 @@
 import apiClient from './apiClient';
 
-export type PlatformFeeServiceType = 'GIG_UNVERIFIED' | 'GIG_VERIFIED' | 'MENTORSHIP' | 'HR_SUPPORT' | 'DIGITAL_PRODUCT';
+export type PlatformFeeServiceType =
+  | 'GIG_UNVERIFIED'
+  | 'GIG_VERIFIED'
+  | 'MENTORSHIP'
+  | 'HR_SUPPORT'
+  | 'DIGITAL_PRODUCT_UNVERIFIED'
+  | 'DIGITAL_PRODUCT_VERIFIED'
+  | 'COURSE';
 
 export interface FeeScheduleRow {
   serviceType: PlatformFeeServiceType;

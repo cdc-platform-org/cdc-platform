@@ -296,18 +296,29 @@ export async function startTrialSubscription(
     });
   }
 
-  return prisma.billingSubscription.create({
-    data: {
-      businessId,
-      productType,
-      referenceId,
-      status: 'TRIALING',
-      baseFeeTetri: settings.baseFeeTetri,
-      trialEndsAt: new Date(Date.now() + settings.trialDays * 24 * 60 * 60 * 1000),
-      autoRenew: true,
-      paymentMethodId: defaultCard.id,
-    },
-  });
+  try {
+    return await prisma.billingSubscription.create({
+      data: {
+        businessId,
+        productType,
+        referenceId,
+        status: 'TRIALING',
+        baseFeeTetri: settings.baseFeeTetri,
+        trialEndsAt: new Date(Date.now() + settings.trialDays * 24 * 60 * 60 * 1000),
+        autoRenew: true,
+        paymentMethodId: defaultCard.id,
+      },
+    });
+  } catch (err: any) {
+    // The findUnique above found nothing, but a concurrent duplicate
+    // request (a double-click on "start trial") can still race past that
+    // check and hit the (businessId, productType, referenceId) unique
+    // constraint here — same AlreadySubscribedError the earlier, slower
+    // check throws, instead of an unhandled P2002 reaching the client as a
+    // raw 500.
+    if (err.code === 'P2002') throw new AlreadySubscribedError();
+    throw err;
+  }
 }
 
 export async function setAutoRenew(businessId: string, subscriptionId: string, autoRenew: boolean) {

@@ -16,6 +16,8 @@ import {
 import { STRIPE_GEL_TO_USD_RATE, STRIPE_GEL_TO_EUR_RATE } from '../utils/env';
 import { captureEscrow } from '../services/escrowService';
 import { completeProductPurchase } from '../services/productSaleService';
+import { completeCoursePurchase } from '../services/courseSaleService';
+import { paymentModelForPurpose } from '../services/paymentModel';
 import { getCurrentPrice, computeCoursePriceWithPromo } from '../services/coursePricing';
 import { getCurrentProductPrice } from '../services/productPricing';
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
@@ -142,17 +144,19 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
         stripeSessionId: `promo-${crypto.randomUUID()}`,
         userId: req.user!.id,
         purpose: 'COURSE',
+        paymentModel: paymentModelForPurpose('COURSE'),
         referenceId: course.id,
         amount: 0,
+        amountGel: chargeAmountGel,
         currency: 'USD',
         status: 'COMPLETED',
         completedAt: new Date(),
         promoCodeId: appliedPromo?.id ?? null,
       },
     });
-    await prisma.courseEnrollment.create({ data: { userId: req.user!.id, courseId: course.id } });
+    const { isNewEnrollment } = await completeCoursePurchase({ userId: req.user!.id, courseId: course.id, amount: chargeAmountGel });
     if (appliedPromo) await prisma.promoCode.update({ where: { id: appliedPromo.id }, data: { currentUses: { increment: 1 } } });
-    await notifyCourseEnrollment(req.user!.id, course);
+    if (isNewEnrollment) await notifyCourseEnrollment(req.user!.id, course);
     return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
   }
 
@@ -163,8 +167,10 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
       stripeSessionId: `pending-${crypto.randomUUID()}`,
       userId: req.user!.id,
       purpose: 'COURSE',
+      paymentModel: paymentModelForPurpose('COURSE'),
       referenceId: course.id,
       amount,
+      amountGel: chargeAmountGel,
       currency,
       status: 'PENDING',
       promoCodeId: appliedPromo?.id ?? null,
@@ -199,6 +205,7 @@ async function createMentorshipCheckoutRecordsStripe(params: {
   studentId: string;
   scheduledAt: Date;
   amount: number;
+  amountGel: number;
   currency: string;
   studentPhone: string;
   consultationDescription?: string;
@@ -213,8 +220,10 @@ async function createMentorshipCheckoutRecordsStripe(params: {
               stripeSessionId: `pending-${crypto.randomUUID()}`,
               userId: params.studentId,
               purpose: 'MENTORSHIP',
+              paymentModel: paymentModelForPurpose('MENTORSHIP'),
               referenceId: params.mentorId,
               amount: params.amount,
+              amountGel: params.amountGel,
               currency: params.currency,
               status: 'PENDING',
             },
@@ -269,6 +278,7 @@ router.post('/checkout/mentorship', checkoutRateLimit, authenticate, requireAppr
       studentId: req.user!.id,
       scheduledAt,
       amount,
+      amountGel: mentor.mentorHourlyRate,
       currency,
       studentPhone: result.data.studentPhone,
       consultationDescription: result.data.consultationDescription,
@@ -324,8 +334,10 @@ router.post('/checkout/gig/:gigId', checkoutRateLimit, authenticate, requireAppr
       stripeSessionId: `pending-${crypto.randomUUID()}`,
       userId: req.user!.id,
       purpose: 'GIG_ESCROW_FUNDING',
+      paymentModel: paymentModelForPurpose('GIG_ESCROW_FUNDING'),
       referenceId: gig.id,
       amount,
+      amountGel: application.bidAmount,
       currency,
       status: 'PENDING',
     },
@@ -377,8 +389,10 @@ router.post('/checkout/product/:productId', checkoutRateLimit, authenticate, req
         stripeSessionId: `admin-test-${crypto.randomUUID()}`,
         userId: req.user!.id,
         purpose: 'PRODUCT',
+        paymentModel: paymentModelForPurpose('PRODUCT'),
         referenceId: product.id,
         amount: 0,
+        amountGel: 0,
         currency: 'USD',
         status: 'COMPLETED',
         completedAt: new Date(),
@@ -392,14 +406,17 @@ router.post('/checkout/product/:productId', checkoutRateLimit, authenticate, req
   // The actual charged amount when a discount is active — same reasoning as
   // routes/payments.ts's BOG checkout: the platform's commission applies to
   // whatever this converts to, never the original price.
-  const amount = convertGelToStripeMinorUnits(getCurrentProductPrice(product), currency);
+  const productPriceGel = getCurrentProductPrice(product);
+  const amount = convertGelToStripeMinorUnits(productPriceGel, currency);
   const stripePayment = await prisma.stripePayment.create({
     data: {
       stripeSessionId: `pending-${crypto.randomUUID()}`,
       userId: req.user!.id,
       purpose: 'PRODUCT',
+      paymentModel: paymentModelForPurpose('PRODUCT'),
       referenceId: product.id,
       amount,
+      amountGel: productPriceGel,
       currency,
       status: 'PENDING',
     },
@@ -465,20 +482,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
 
   try {
     if (event.type === 'checkout.session.expired') {
-      await prisma.stripePayment.update({
-        where: { id: stripePayment.id },
-        data: { status: 'FAILED', rawEvent: event as any },
-      });
-      // Same "free the slot back up" fix as the BOG failure path in
-      // payments.ts's applyBogPaymentResult — an abandoned Stripe Checkout
-      // session must not leave a SCHEDULED-but-unpaid booking permanently
-      // blocking the mentor's slot.
-      if (stripePayment.purpose === 'MENTORSHIP') {
-        await prisma.mentorshipBooking.updateMany({
-          where: { stripePaymentId: stripePayment.id, status: 'SCHEDULED' },
-          data: { status: 'CANCELLED' },
-        });
-      }
+      await markStripeCheckoutExpired(stripePayment.id, event);
     } else {
       await applyStripePaymentResult(stripePayment.id, session, event);
     }
@@ -492,6 +496,26 @@ router.post('/webhook', async (req: Request, res: Response) => {
   res.status(200).json({ received: true });
 });
 
+// Shared by the webhook's checkout.session.expired branch and the /status
+// poll + paymentReconciliationService's own expired handling — an abandoned
+// Stripe Checkout session must not leave a SCHEDULED-but-unpaid
+// MentorshipBooking permanently blocking the mentor's slot, regardless of
+// which of those three paths is the one that notices the expiry first. Same
+// "free the slot back up" fix as the BOG failure path in
+// payments.ts's applyBogPaymentResult.
+export async function markStripeCheckoutExpired(stripePaymentId: string, rawEvent: unknown) {
+  const stripePayment = await prisma.stripePayment.update({
+    where: { id: stripePaymentId },
+    data: { status: 'FAILED', rawEvent: rawEvent as any },
+  });
+  if (stripePayment.purpose === 'MENTORSHIP') {
+    await prisma.mentorshipBooking.updateMany({
+      where: { stripePaymentId: stripePayment.id, status: 'SCHEDULED' },
+      data: { status: 'CANCELLED' },
+    });
+  }
+}
+
 export async function applyStripePaymentResult(stripePaymentId: string, session: Stripe.Checkout.Session, rawEvent: unknown) {
   const stripePayment = await prisma.stripePayment.update({
     where: { id: stripePaymentId },
@@ -504,18 +528,14 @@ export async function applyStripePaymentResult(stripePaymentId: string, session:
   });
 
   if (stripePayment.purpose === 'COURSE') {
-    const existingEnrollment = await prisma.courseEnrollment.findUnique({
-      where: { userId_courseId: { userId: stripePayment.userId, courseId: stripePayment.referenceId } },
+    const { isNewEnrollment, course } = await completeCoursePurchase({
+      userId: stripePayment.userId,
+      courseId: stripePayment.referenceId,
+      // GEL, not stripePayment.amount (USD/EUR cents) — see amountGel's own
+      // schema comment. The instructor's earningsBalance is GEL tetri.
+      amount: stripePayment.amountGel,
     });
-    await prisma.courseEnrollment.upsert({
-      where: { userId_courseId: { userId: stripePayment.userId, courseId: stripePayment.referenceId } },
-      update: {},
-      create: { userId: stripePayment.userId, courseId: stripePayment.referenceId },
-    });
-    if (!existingEnrollment) {
-      const course = await prisma.course.findUnique({ where: { id: stripePayment.referenceId }, select: { id: true, title: true } });
-      if (course) await notifyCourseEnrollment(stripePayment.userId, course);
-    }
+    if (isNewEnrollment && course) await notifyCourseEnrollment(stripePayment.userId, course);
   } else if (stripePayment.purpose === 'GIG_ESCROW_FUNDING') {
     const gig = await prisma.gig.findUnique({ where: { id: stripePayment.referenceId } });
     if (!gig || !gig.assignedFreelancerId) return;
@@ -530,7 +550,12 @@ export async function applyStripePaymentResult(stripePaymentId: string, session:
       gigApplicationId: application.id,
       clientId: gig.postedById,
       freelancerId: gig.assignedFreelancerId,
-      grossAmount: stripePayment.amount,
+      // GEL, not stripePayment.amount (USD/EUR cents) — see amountGel's own
+      // schema comment. `currency` below stays what the client was actually
+      // charged in, for the audit trail; grossAmount is always GEL tetri,
+      // same as the BOG-funded path, since that's what the freelancer's
+      // earningsBalance is denominated in.
+      grossAmount: stripePayment.amountGel,
       currency: stripePayment.currency,
       providerRef: stripePayment.stripeSessionId,
     });
@@ -546,7 +571,9 @@ export async function applyStripePaymentResult(stripePaymentId: string, session:
       // See mentorshipEscrowService.ts's own comment for the full release
       // lifecycle (student confirmation, 24h auto-release, or admin
       // dispute resolution).
-      await captureMentorshipEscrow({ bookingId: booking.id, grossAmount: stripePayment.amount });
+      // GEL, not stripePayment.amount (USD/EUR cents) — see amountGel's own
+      // schema comment.
+      await captureMentorshipEscrow({ bookingId: booking.id, grossAmount: stripePayment.amountGel });
     } catch (err) {
       console.error('[stripe-webhook] Failed to capture mentorship escrow:', err);
     }
@@ -594,7 +621,9 @@ export async function applyStripePaymentResult(stripePaymentId: string, session:
     await completeProductPurchase({
       userId: stripePayment.userId,
       productId: stripePayment.referenceId,
-      amount: stripePayment.amount,
+      // GEL, not stripePayment.amount (USD/EUR cents) — see amountGel's own
+      // schema comment. The creator's earningsBalance is GEL tetri.
+      amount: stripePayment.amountGel,
     });
   }
 }
@@ -615,7 +644,7 @@ router.get('/status/:paymentId', authenticate, async (req: Request, res: Respons
       if (session.status === 'complete' && session.payment_status === 'paid') {
         await applyStripePaymentResult(stripePayment.id, session, { reconciledFrom: 'status-poll' });
       } else if (session.status === 'expired') {
-        await prisma.stripePayment.update({ where: { id: stripePayment.id }, data: { status: 'FAILED' } });
+        await markStripeCheckoutExpired(stripePayment.id, { reconciledFrom: 'status-poll' });
       }
     } catch (err) {
       console.error('[stripe-status] reconciliation fetch failed:', err);

@@ -126,6 +126,9 @@ function InstructorStudioContent() {
           <div>
             <h1 className="text-2xl font-black mb-1">Instructor Studio</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">Create and manage your own video courses.</p>
+            <Link href="/instructor/marketing" className="text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline no-underline">
+              ✨ AI Marketing & Launch Kits →
+            </Link>
           </div>
           <NewCourseForm onCreated={(course) => router.push(`/dashboard/instructor-studio/${course.id}`)} />
         </div>

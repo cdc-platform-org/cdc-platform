@@ -148,7 +148,7 @@ export default function LiveTrainingDetailPage() {
         <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-cyan-300 bg-cyan-500/10 border-cyan-500/20 self-start mb-4 inline-block">
           {training.category}
         </span>
-        <h1 className="text-3xl font-black mb-3">{title}</h1>
+        <h1 className="blog-heading-safe text-3xl font-black mb-3">{title}</h1>
         <p className="text-slate-400 leading-relaxed mb-6 whitespace-pre-line">{description}</p>
 
         {training.videoUrl && (

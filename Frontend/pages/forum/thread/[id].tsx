@@ -152,7 +152,7 @@ function ThreadDetailContent() {
               </span>
             )}
           </div>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">{thread.title}</h1>
+          <h1 className="blog-heading-safe text-xl font-semibold text-gray-900 dark:text-white">{thread.title}</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400 dark:text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
             <span>
               {thread.author.name} · {new Date(thread.createdAt).toLocaleDateString()}

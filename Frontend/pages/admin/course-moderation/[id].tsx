@@ -92,7 +92,7 @@ function AdminCourseReviewDashboard({ courseId }: { courseId: string }) {
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">{course.title}</h1>
+          <h1 className="blog-heading-safe text-xl font-bold text-gray-900 dark:text-white">{course.title}</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400">
             by {course.instructor.name} ({course.instructor.email}) · {course.category} · {course.originalPrice / 100} GEL
           </p>

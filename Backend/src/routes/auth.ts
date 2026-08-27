@@ -392,7 +392,11 @@ router.post('/verify-email', authRateLimit, async (req, res) => {
   res.json({ message: 'Email verified successfully.', user: toUserResponse(updated) });
 });
 
-router.post('/resend-verification', authenticate, async (req, res) => {
+// Was previously unrated-limited despite every other credential-adjacent
+// route in this file (register/forgot-password/reset-password/verify-email)
+// using authRateLimit — an authenticated-but-unverified user could otherwise
+// trigger unlimited verification emails to themselves.
+router.post('/resend-verification', authenticate, authRateLimit, async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
   if (!user) {
     return res.status(401).json({ message: 'Account no longer exists.' });

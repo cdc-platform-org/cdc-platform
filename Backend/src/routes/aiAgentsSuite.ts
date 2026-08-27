@@ -1,12 +1,24 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { authenticate, requireApproved } from '../middleware/auth';
+import { rateLimit } from '../middleware/rateLimit';
 import { isAiAgentConfigured, generateAiAgentSuiteResponse, AiAgentSuiteTool, AiAgentError } from '../services/aiAgentService';
 import { getSubscriptionState } from '../services/subscriptionStateService';
 import { logAiGeneration } from '../services/aiGenerationLogService';
 
 const router = Router();
 router.use(authenticate, requireApproved);
+
+// This was previously unrated-limited despite every call spending real
+// Gemini API quota — the active-subscription check gates who can call it,
+// not how often, so a subscribed user (or a compromised subscribed
+// account) could otherwise hammer it with no cap. Same window/cap shape as
+// routes/ai.ts's courseTutorRateLimit for the equivalent AI-cost endpoint.
+const aiAgentGenerateRateLimit = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 20,
+  message: 'Too many requests. Please wait a moment before trying again.',
+});
 
 const generateSchema = z.object({
   tool: z.enum(['content', 'analytics', 'assistant']),
@@ -19,7 +31,7 @@ const generateSchema = z.object({
 // regardless of what the frontend banner already shows — the frontend gate
 // is UX only (same "never trust the client for enforcement" pattern as
 // utils/marketplaceCategories.ts's Business Tools purchase gate).
-router.post('/generate', async (req: Request, res: Response) => {
+router.post('/generate', aiAgentGenerateRateLimit, async (req: Request, res: Response) => {
   if (!isAiAgentConfigured()) {
     return res.status(501).json({ message: 'AI agent is not configured yet (GEMINI_API_KEY).' });
   }

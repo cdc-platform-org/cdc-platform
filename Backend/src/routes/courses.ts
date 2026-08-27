@@ -80,30 +80,53 @@ router.get('/mine', authenticate, async (req: Request, res: Response) => {
     include: { course: true },
     orderBy: { grantedAt: 'desc' },
   });
+  const courseIds = enrollments.map((e) => e.courseId);
 
-  const data = await Promise.all(
-    enrollments.map(async (enrollment) => {
-      const [totalLessons, completedLessons, certificate] = await Promise.all([
-        prisma.lesson.count({ where: { section: { courseId: enrollment.courseId } } }),
-        prisma.lessonProgress.count({
-          where: { completed: true, userId: req.user!.id, lesson: { section: { courseId: enrollment.courseId } } },
-        }),
-        prisma.courseCertificate.findUnique({
-          where: { userId_courseId: { userId: req.user!.id, courseId: enrollment.courseId } },
-        }),
-      ]);
-      const percent = totalLessons === 0 ? 0 : Math.round((completedLessons / totalLessons) * 100);
-      return {
-        course: withCurrentPrice(enrollment.course),
-        progress: { totalLessons, completedLessons, percent },
-        hasCertificate: !!certificate,
-        grantedAt: enrollment.grantedAt,
-        verificationCode: certificate?.verificationCode ?? null,
-        certificateIssuedAt: certificate?.issuedAt ?? null,
-        certificateDownloadCount: certificate?.downloadCount ?? 0,
-      };
-    })
-  );
+  // Previously 3 queries PER enrollment (lesson count, completed-lesson
+  // count, certificate lookup) — 3N+1 total for a student with N courses.
+  // Batched below into 3 queries total regardless of N: one for every
+  // lesson id in every enrolled course, one for which of those this user
+  // has completed, one for certificates across all of them at once.
+  const [sections, certificates] = await Promise.all([
+    prisma.courseSection.findMany({
+      where: { courseId: { in: courseIds } },
+      select: { courseId: true, lessons: { select: { id: true } } },
+    }),
+    prisma.courseCertificate.findMany({ where: { userId: req.user!.id, courseId: { in: courseIds } } }),
+  ]);
+
+  const lessonIdsByCourse = new Map<string, string[]>();
+  for (const section of sections) {
+    const ids = lessonIdsByCourse.get(section.courseId) ?? [];
+    ids.push(...section.lessons.map((l) => l.id));
+    lessonIdsByCourse.set(section.courseId, ids);
+  }
+  const allLessonIds = sections.flatMap((s) => s.lessons.map((l) => l.id));
+  const completedProgress = allLessonIds.length
+    ? await prisma.lessonProgress.findMany({
+        where: { completed: true, userId: req.user!.id, lessonId: { in: allLessonIds } },
+        select: { lessonId: true },
+      })
+    : [];
+  const completedLessonIds = new Set(completedProgress.map((p) => p.lessonId));
+  const certificateByCourse = new Map(certificates.map((c) => [c.courseId, c]));
+
+  const data = enrollments.map((enrollment) => {
+    const lessonIds = lessonIdsByCourse.get(enrollment.courseId) ?? [];
+    const totalLessons = lessonIds.length;
+    const completedLessons = lessonIds.filter((id) => completedLessonIds.has(id)).length;
+    const percent = totalLessons === 0 ? 0 : Math.round((completedLessons / totalLessons) * 100);
+    const certificate = certificateByCourse.get(enrollment.courseId);
+    return {
+      course: withCurrentPrice(enrollment.course),
+      progress: { totalLessons, completedLessons, percent },
+      hasCertificate: !!certificate,
+      grantedAt: enrollment.grantedAt,
+      verificationCode: certificate?.verificationCode ?? null,
+      certificateIssuedAt: certificate?.issuedAt ?? null,
+      certificateDownloadCount: certificate?.downloadCount ?? 0,
+    };
+  });
 
   res.json({ data });
 });
@@ -500,9 +523,24 @@ async function getCourseCompletion(courseId: string, userId: string) {
 async function getOrCreateCertificate(userId: string, courseId: string) {
   const existing = await prisma.courseCertificate.findUnique({ where: { userId_courseId: { userId, courseId } } });
   if (existing) return existing;
-  const certificate = await prisma.courseCertificate.create({
-    data: { userId, courseId, verificationCode: generateVerificationCode(new Date()) },
-  });
+  let certificate;
+  try {
+    certificate = await prisma.courseCertificate.create({
+      data: { userId, courseId, verificationCode: generateVerificationCode(new Date()) },
+    });
+  } catch (err: any) {
+    // The findUnique above found nothing, but the exam-pass auto-issue path
+    // and an explicit GET /:id/certificate download can race here — a
+    // concurrent call already won and inserted the row first. Return that
+    // one instead of throwing, and skip autoVerifySkillsForCourse below:
+    // the winning call already ran it for this exact (userId, courseId)
+    // pair, and it's not safe to call twice (see its own "fires exactly
+    // once" comment).
+    if (err.code === 'P2002') {
+      return prisma.courseCertificate.findUniqueOrThrow({ where: { userId_courseId: { userId, courseId } } });
+    }
+    throw err;
+  }
   // Fires exactly once, on first-ever certificate issuance for this
   // (userId, courseId) pair — never on a later re-fetch of an already-issued
   // certificate. Covers both certificate paths: the exam-pass auto-issue

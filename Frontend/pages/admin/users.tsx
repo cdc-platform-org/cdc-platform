@@ -10,8 +10,6 @@ import { adminDict } from '../../src/data/adminDict';
 import { AdminUser } from '../../src/types/admin';
 import {
   getAdminUsers,
-  approveUser,
-  rejectUser,
   verifyGraduate,
   unverifyGraduate,
   setHrSpecialist,
@@ -19,6 +17,8 @@ import {
   banUser,
   unbanUser,
   sendAdminPasswordReset,
+  updateUserRole,
+  updateUserStatus,
 } from '../../src/services/adminService';
 import { promoteToMentor, demoteFromMentor } from '../../src/services/adminMentorshipService';
 
@@ -77,6 +77,14 @@ const PAGE_DICT = {
     noUsers: 'მომხმარებელი ვერ მოიძებნა.',
     loadError: 'მომხმარებლების ჩატვირთვა ვერ მოხერხდა. სცადეთ ხელახლა.',
     actionError: 'მოქმედება ვერ შესრულდა. სცადეთ ხელახლა.',
+    roleChangeConfirm: (name: string, role: string) => `შეეცვალოს „${name}“-ს როლი — ${role}?`,
+    roleChangeSuccess: 'როლი განახლდა',
+    statusChangeSuccess: 'სტატუსი განახლდა',
+    rejectReasonPrompt: 'უარყოფის მიზეზი (არასავალდებულო):',
+    // Mentor is deliberately not selectable from this generic dropdown — see
+    // the JSX comment above the role <select> for why (preMentorRole
+    // reversibility, handled only by the dedicated Promote/Demote buttons).
+    roleMentorNote: 'მენტორის სტატუსის მისანიჭებლად გამოიყენეთ ქვედა ღილაკი',
   },
   en: {
     title: 'User Management',
@@ -112,6 +120,11 @@ const PAGE_DICT = {
     noUsers: 'No users match your search.',
     loadError: 'Unable to load users. Please try again.',
     actionError: 'Action failed. Please try again.',
+    roleChangeConfirm: (name: string, role: string) => `Change "${name}"'s role to ${role}?`,
+    roleChangeSuccess: 'Role updated',
+    statusChangeSuccess: 'Status updated',
+    rejectReasonPrompt: 'Rejection reason (optional):',
+    roleMentorNote: 'Use the button below to grant/remove Mentor status',
   },
 } as const;
 
@@ -127,12 +140,21 @@ function UserManagement() {
   const [statusFilter, setStatusFilter] = useState<AdminUser['status'] | ''>('');
   const [roleTab, setRoleTab] = useState<'all' | 'Student' | 'Client' | 'Admin'>('all');
   const [actioningId, setActioningId] = useState<string | null>(null);
-  const [showResetToast, setShowResetToast] = useState(false);
-  const resetToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Generalized from the password-reset-only toast this replaced — any
+  // action that wants a brief confirmation (reset link sent, role/status
+  // updated) sets a message here instead of each having its own boolean.
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => setToastMessage(null), 4000);
+  };
 
   useEffect(() => {
     return () => {
-      if (resetToastTimeoutRef.current) clearTimeout(resetToastTimeoutRef.current);
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     };
   }, []);
 
@@ -249,11 +271,45 @@ function UserManagement() {
     setError(null);
     try {
       await sendAdminPasswordReset(u.id);
-      setShowResetToast(true);
-      if (resetToastTimeoutRef.current) clearTimeout(resetToastTimeoutRef.current);
-      resetToastTimeoutRef.current = setTimeout(() => setShowResetToast(false), 4000);
+      showToast(p.resetPasswordSuccess);
     } catch (err: any) {
       console.error('[admin] password reset failed for', u.id, '—', err?.response?.status, err?.response?.data ?? err);
+      setError(err?.response?.data?.message ?? p.actionError);
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  // Role dropdown — Mentor is deliberately excluded from the selectable
+  // options (see the <select> JSX comment below): promoteToMentor/
+  // demoteFromMentor track preMentorRole for a reversible demote, which a
+  // raw role write here would silently lose.
+  const handleRoleChange = async (u: AdminUser, role: AdminUser['role']) => {
+    if (role === u.role) return;
+    if (!window.confirm(p.roleChangeConfirm(u.name, role))) return;
+    setActioningId(u.id);
+    setError(null);
+    try {
+      const updated = await updateUserRole(u.id, role);
+      setUsers((prev) => prev.map((row) => (row.id === u.id ? updated : row)));
+      showToast(p.roleChangeSuccess);
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? p.actionError);
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  const handleStatusChange = async (u: AdminUser, status: AdminUser['status']) => {
+    if (status === u.status) return;
+    const reason = status === 'REJECTED' ? window.prompt(p.rejectReasonPrompt) ?? undefined : undefined;
+    setActioningId(u.id);
+    setError(null);
+    try {
+      const updated = await updateUserStatus(u.id, status, reason);
+      setUsers((prev) => prev.map((row) => (row.id === u.id ? updated : row)));
+      showToast(p.statusChangeSuccess);
+    } catch (err: any) {
       setError(err?.response?.data?.message ?? p.actionError);
     } finally {
       setActioningId(null);
@@ -350,13 +406,52 @@ function UserManagement() {
                           <div className="font-medium text-gray-900 dark:text-white">{u.name}</div>
                           <div className="text-xs text-gray-400 dark:text-slate-500">{u.email}</div>
                         </td>
-                        <td className="px-4 py-3 text-gray-600 dark:text-slate-300">{u.role}</td>
+                        <td className="px-4 py-3 text-gray-600 dark:text-slate-300">
+                          {/* Mentor is never a selectable option here — promoteToMentor/
+                              demoteFromMentor track preMentorRole so a later demote can
+                              restore Student/Client correctly; a raw role write from this
+                              generic dropdown would silently lose that. Granting/revoking
+                              SuperAdmin is also only ever offered to a SUPER_ADMIN viewer,
+                              matching the backend's own extra gate on that specific value. */}
+                          {canManageContent && u.id !== viewer?.id && u.role !== 'Mentor' && (u.role !== 'SuperAdmin' || viewer?.adminRole === 'SUPER_ADMIN') ? (
+                            <select
+                              disabled={isActioning}
+                              value={u.role}
+                              onChange={(e) => handleRoleChange(u, e.target.value as AdminUser['role'])}
+                              className="rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50"
+                            >
+                              <option value="Student">Student</option>
+                              <option value="Client">Client</option>
+                              {viewer?.adminRole === 'SUPER_ADMIN' && <option value="SuperAdmin">SuperAdmin</option>}
+                            </select>
+                          ) : (
+                            <>
+                              {u.role}
+                              {canManageContent && u.role === 'Mentor' && (
+                                <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">{p.roleMentorNote}</p>
+                              )}
+                            </>
+                          )}
+                        </td>
                         <td className="px-4 py-3">
-                          <span
-                            className={`text-xs font-medium px-2 py-0.5 rounded-full border shadow-[0_0_10px_-3px] ${STATUS_BADGE[u.status]}`}
-                          >
-                            {u.status === 'PENDING_APPROVAL' ? p.statusPending : u.status === 'APPROVED' ? p.statusApproved : p.statusRejected}
-                          </span>
+                          {canManageContent && u.id !== viewer?.id ? (
+                            <select
+                              disabled={isActioning}
+                              value={u.status}
+                              onChange={(e) => handleStatusChange(u, e.target.value as AdminUser['status'])}
+                              className={`text-xs font-medium px-2 py-1 rounded-full border shadow-[0_0_10px_-3px] focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 ${STATUS_BADGE[u.status]}`}
+                            >
+                              <option value="PENDING_APPROVAL">{p.statusPending}</option>
+                              <option value="APPROVED">{p.statusApproved}</option>
+                              <option value="REJECTED">{p.statusRejected}</option>
+                            </select>
+                          ) : (
+                            <span
+                              className={`text-xs font-medium px-2 py-0.5 rounded-full border shadow-[0_0_10px_-3px] ${STATUS_BADGE[u.status]}`}
+                            >
+                              {u.status === 'PENDING_APPROVAL' ? p.statusPending : u.status === 'APPROVED' ? p.statusApproved : p.statusRejected}
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-1">
@@ -384,24 +479,6 @@ function UserManagement() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-2 justify-end">
-                            {canManageContent && u.status === 'PENDING_APPROVAL' && (
-                              <>
-                                <button
-                                  disabled={isActioning}
-                                  onClick={() => runAction(u.id, () => approveUser(u.id))}
-                                  className="text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg disabled:opacity-50"
-                                >
-                                  {t.common.approve}
-                                </button>
-                                <button
-                                  disabled={isActioning}
-                                  onClick={() => runAction(u.id, () => rejectUser(u.id))}
-                                  className="text-xs font-medium text-gray-600 dark:text-slate-300 hover:text-gray-800 dark:hover:text-white bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 px-2.5 py-1 rounded-lg disabled:opacity-50"
-                                >
-                                  {t.common.reject}
-                                </button>
-                              </>
-                            )}
                             {canManageContent && u.role === 'Student' && (
                               <button
                                 disabled={isActioning}
@@ -470,7 +547,7 @@ function UserManagement() {
           </div>
         )}
       </div>
-      {showResetToast && <Toast message={p.resetPasswordSuccess} />}
+      {toastMessage && <Toast message={toastMessage} />}
     </>
   );
 }

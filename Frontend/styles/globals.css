@@ -23,6 +23,29 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   font-family: var(--font-heading), var(--font-fallback), sans-serif !important;
 }
 
+/* Verified-safe Georgian heading override — see pages/_app.tsx's
+   georgianSafeFont comment for the full explanation. The rule above forces
+   BPG ExtraSquare Mtavruli onto every heading site-wide, but that font has
+   only been spot-checked for 3 Georgian letters and has been observed to
+   render other real Georgian words as garbled Latin-lookalike glyphs (e.g.
+   "ნოიმანის" -> "6MOIMA60U") — a wrong glyph in its cmap, not a missing
+   one, so no amount of appending fonts after it in a plain font-family list
+   can recover from it (the browser already "resolved" *a* glyph and never
+   tries the next font). Apply this class instead of relying on the bare
+   h1-h6 selector above wherever a heading element renders arbitrary,
+   never-spot-checked Georgian text — despite the "blog" name (kept to avoid
+   a sitewide rename churn once it stopped being blog-only) this now covers
+   every page that renders a live/dynamic title in a real heading tag:
+   blog, course detail/learn/instructor-studio editor, forum threads, gig/
+   vacancy applications, DMs, profiles, success stories, studio cases, the
+   store, live trainings, exams, and their admin-side equivalents. Needs its
+   own !important to win: among two conflicting !important declarations the
+   browser falls back to normal specificity, and this selector is already at
+   least as specific as the bare "h1, h2, h3..." one above. */
+.blog-heading-safe {
+  font-family: var(--font-georgian-safe), 'Noto Sans Georgian', sans-serif !important;
+}
+
 /* ============================================================
    VIP DESIGN SYSTEM — global foundation
    Applied once here so every page/component gets it automatically,

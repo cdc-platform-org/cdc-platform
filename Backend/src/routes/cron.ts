@@ -9,6 +9,7 @@ import { cancelAbandonedMentorshipBookings } from '../services/mentorAvailabilit
 import { autoReleaseMentorshipEscrows } from '../services/mentorshipEscrowService';
 import { autoReleaseHRSupportEscrows } from '../services/hrSupportEscrowService';
 import { expireOverdueVacancies } from '../services/listingExpiryService';
+import { reconcilePendingPayments } from '../services/paymentReconciliationService';
 import { generateAndSaveBlogDraft, BlogAgentError } from '../services/blogAgentService';
 import { AiAgentError } from '../services/aiAgentService';
 import { scanAllActiveSources } from '../services/grantScoutService';
@@ -152,6 +153,18 @@ router.post('/auto-release-hr-support-escrow', requireCronSecret, async (_req: R
 router.post('/expire-overdue-vacancies', requireCronSecret, async (_req: Request, res: Response) => {
   const result = await expireOverdueVacancies();
   res.json({ message: `${result.closedIds.length} vacancy(ies) closed.`, ...result });
+});
+
+// Recovers a payment stuck PENDING for 30+ minutes (a user who closed their
+// tab mid-checkout, so BOG's/Stripe's own callback/webhook never fired) by
+// asking the gateway itself for the order/session's real current status —
+// see paymentReconciliationService.reconcilePendingPayments.
+router.post('/reconcile-pending-payments', requireCronSecret, async (_req: Request, res: Response) => {
+  const result = await reconcilePendingPayments();
+  res.json({
+    message: `BOG: ${result.bogCompletedIds.length} completed, ${result.bogFailedIds.length} failed. Stripe: ${result.stripeCompletedIds.length} completed, ${result.stripeFailedIds.length} failed. ${result.errorIds.length} error(s).`,
+    ...result,
+  });
 });
 
 export default router;

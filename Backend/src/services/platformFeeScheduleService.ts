@@ -15,6 +15,9 @@ const FALLBACK_PERCENTAGE: Record<PlatformFeeServiceType, number> = {
   // as GIG_UNVERIFIED/GIG_VERIFIED above.
   DIGITAL_PRODUCT_UNVERIFIED: 25,
   DIGITAL_PRODUCT_VERIFIED: 20,
+  // courseSaleService.ts — flat rate, no verified/unverified split (a Mentor
+  // is already vetted through the MentorApplication approval gate).
+  COURSE: 20,
 };
 
 // Called at capture time by all 4 escrow/sale services — returns a 0-1

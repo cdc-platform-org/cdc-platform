@@ -11,6 +11,26 @@ import { getCommissionRate } from './platformFeeScheduleService';
 // utils/freelancerVerification.ts). Admin-editable at /admin/commissions.
 // Same split shown in the frontend Proposal Calculator (ProposalModal.tsx).
 
+// Safe to call more than once for the same gig — a BOG webhook retry and the
+// /bog/status poll fallback (or, on the Stripe side, its own webhook +
+// status-poll pair) are expected to race here by design, same as this
+// codebase's other seller-credit paths. Previously a plain `create()`
+// relying only on the caller's own pre-check (a separate findUnique) plus
+// GigTransaction.gigId's unique constraint as the last line of defense — a
+// real check-then-act race: two concurrent callers could both pass the
+// pre-check, and the loser's create() would throw an unhandled P2002
+// instead of the graceful no-op every other capture function in this
+// codebase gives. `createMany({ skipDuplicates: true })` makes the "am I
+// first" check itself atomic (compiles to `INSERT ... ON CONFLICT DO
+// NOTHING`, so a losing concurrent call reports a 0-row insert rather than
+// throwing) — the loser just reads back the row the winner created.
+//
+// Deliberately not wrapped in a $transaction: unlike releaseEscrow (which
+// conditionally credits earningsBalance and so needs its claim + credit to
+// commit atomically together), this function never moves money — it only
+// locks in a commission split — so there's nothing that needs to roll back
+// together with the insert, and createMany's ON CONFLICT DO NOTHING is
+// already atomic as a single SQL statement on its own.
 export async function captureEscrow(params: {
   gigId: string;
   gigApplicationId: string;
@@ -32,22 +52,28 @@ export async function captureEscrow(params: {
   const commissionRate = await getCommissionRate(verified ? 'GIG_VERIFIED' : 'GIG_UNVERIFIED');
   const commissionAmount = Math.round(params.grossAmount * commissionRate);
   const netAmount = params.grossAmount - commissionAmount;
-  return prisma.gigTransaction.create({
-    data: {
-      gigId: params.gigId,
-      gigApplicationId: params.gigApplicationId,
-      clientId: params.clientId,
-      freelancerId: params.freelancerId,
-      grossAmount: params.grossAmount,
-      currency: params.currency,
-      providerRef: params.providerRef,
-      commissionRate,
-      commissionAmount,
-      netAmount,
-      status: 'HELD_IN_ESCROW',
-      capturedAt: new Date(),
-    },
+
+  await prisma.gigTransaction.createMany({
+    data: [
+      {
+        gigId: params.gigId,
+        gigApplicationId: params.gigApplicationId,
+        clientId: params.clientId,
+        freelancerId: params.freelancerId,
+        grossAmount: params.grossAmount,
+        currency: params.currency,
+        providerRef: params.providerRef,
+        commissionRate,
+        commissionAmount,
+        netAmount,
+        status: 'HELD_IN_ESCROW',
+        capturedAt: new Date(),
+      },
+    ],
+    skipDuplicates: true,
   });
+
+  return prisma.gigTransaction.findUniqueOrThrow({ where: { gigId: params.gigId } });
 }
 // Dispute resolved in the client's favor — marks escrow REFUNDED and does
 // NOT credit the freelancer. Same posture as the course-payment refund

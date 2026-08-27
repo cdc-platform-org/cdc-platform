@@ -15,14 +15,20 @@ function AdminDisputeDetail() {
   const disputeId = typeof router.query.id === 'string' ? router.query.id : null;
   const [dispute, setDispute] = useState<DisputeDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [resolutionNote, setResolutionNote] = useState('');
   const [resolving, setResolving] = useState(false);
 
   const load = useCallback(async () => {
     if (!disputeId) return;
     setLoading(true);
+    setLoadError(false);
     try {
       setDispute(await getDispute(disputeId));
+    } catch {
+      // 404 (bad id) or 403 (not an admin route the caller has access to) —
+      // never leaves the page stuck on an infinite "Loading…" spinner.
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -47,6 +53,16 @@ function AdminDisputeDetail() {
     }
   };
 
+  if (loadError) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-red-600 dark:text-red-400">This dispute could not be found.</p>
+        <Link href="/admin/disputes" className="text-sm text-cyan-600 dark:text-cyan-400 hover:underline">
+          ← Back to disputes
+        </Link>
+      </div>
+    );
+  }
   if (loading || !dispute) {
     return <p className="text-sm text-gray-400 dark:text-slate-500">Loading…</p>;
   }
@@ -60,7 +76,7 @@ function AdminDisputeDetail() {
         <Link href="/admin/disputes" className="text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200">
           ← All disputes
         </Link>
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mt-3 mb-1">{dispute.gig.title}</h1>
+        <h1 className="blog-heading-safe text-2xl font-semibold text-gray-900 dark:text-white mt-3 mb-1">{dispute.gig.title}</h1>
         <p className="text-sm text-gray-500 dark:text-slate-400 mb-6">
           Raised by {dispute.raisedBy.name} ({dispute.raisedBy.email}) · {new Date(dispute.createdAt).toLocaleString()}
         </p>

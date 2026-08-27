@@ -26,17 +26,25 @@ router.get('/queue', async (_req: Request, res: Response) => {
     orderBy: { mentorHelpRequestedAt: 'desc' },
   });
 
-  // First-order flag, computed the same way as GET /gigs/:id.
-  const withFirstOrder = await Promise.all(
-    gigs.map(async (gig) => {
-      const priorCompletedCount = gig.assignedFreelancerId
-        ? await prisma.gig.count({
-            where: { assignedFreelancerId: gig.assignedFreelancerId, status: 'completed', id: { not: gig.id } },
-          })
-        : 0;
-      return { ...gig, isFirstOrder: priorCompletedCount === 0 };
-    })
-  );
+  // First-order flag, same underlying rule as GET /gigs/:id (has this
+  // freelancer ever completed a gig before) but computed as one batched
+  // groupBy instead of a per-gig count() — was previously N+1 queries for
+  // an N-gig queue. None of these gigs can themselves be 'completed' (the
+  // queue is already scoped to assigned/submitted), so there's no need to
+  // exclude the current gig's own id from its freelancer's count.
+  const freelancerIds = Array.from(new Set(gigs.map((g) => g.assignedFreelancerId).filter((id): id is string => !!id)));
+  const completedCounts = freelancerIds.length
+    ? await prisma.gig.groupBy({
+        by: ['assignedFreelancerId'],
+        where: { assignedFreelancerId: { in: freelancerIds }, status: 'completed' },
+        _count: { _all: true },
+      })
+    : [];
+  const completedCountByFreelancer = new Map(completedCounts.map((c) => [c.assignedFreelancerId, c._count._all]));
+  const withFirstOrder = gigs.map((gig) => ({
+    ...gig,
+    isFirstOrder: gig.assignedFreelancerId ? (completedCountByFreelancer.get(gig.assignedFreelancerId) ?? 0) === 0 : true,
+  }));
 
   res.json({ data: withFirstOrder });
 });

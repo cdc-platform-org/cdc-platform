@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
-import { authenticate, requireApproved } from '../middleware/auth';
+import { authenticate, requireApproved, requireNotBannedOrDeleted } from '../middleware/auth';
 import { sendMessageSchema } from '../schemas/messageSchemas';
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
 import { requiresChatRequestConsent, hasAcceptedChatRequest } from '../services/chatConsentService';
@@ -105,7 +105,12 @@ router.post('/', authenticate, requireApproved, async (req: Request, res: Respon
   res.status(201).json({ data: message });
 });
 
-router.get('/:otherUserId', authenticate, async (req: Request, res: Response) => {
+// requireApproved + requireNotBannedOrDeleted, matching this file's own
+// POST / route just above — reading a full private DM thread is at least
+// as sensitive as sending one, and a banned/self-deleted user's still-valid
+// JWT must not keep working here just because this specific route never
+// re-checked account standing.
+router.get('/:otherUserId', authenticate, requireApproved, requireNotBannedOrDeleted, async (req: Request, res: Response) => {
   const { otherUserId } = req.params;
   const messages = await prisma.message.findMany({
     where: {

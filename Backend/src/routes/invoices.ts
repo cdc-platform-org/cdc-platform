@@ -1,12 +1,18 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireNotBannedOrDeleted } from '../middleware/auth';
 import { generateInvoicePdf, InvoiceData } from '../services/invoiceService';
 import { getCurrentCycleUsageTetri } from '../services/billingService';
 
 const router = Router();
-router.use(authenticate);
+// requireNotBannedOrDeleted, not just authenticate: these routes hand back
+// PDFs containing tax ID, national ID, email, and payment amounts — a
+// banned/self-deleted user's still-valid JWT (up to 7 days old) must not
+// keep working here just because nothing else in this file re-checked
+// account standing (see requireNotBannedOrDeleted's own comment in
+// middleware/auth.ts for why authenticate() alone isn't enough).
+router.use(authenticate, requireNotBannedOrDeleted);
 
 // CDC-INV-YYYY-XXXXXX — deterministic from the source record's own id, so
 // re-downloading the same payment's invoice always yields the identical
@@ -30,61 +36,126 @@ function sendPdf(res: Response, buffer: Buffer, filename: string) {
   res.send(buffer);
 }
 
-// Course / Digital Product / Mentorship / Gig-escrow-funding purchase
-// invoice — one BogPayment is one completed checkout, see routes/payments.ts.
-router.get('/payment/:bogPaymentId/download', async (req: Request, res: Response) => {
-  const payment = await prisma.bogPayment.findUnique({
-    where: { id: req.params.bogPaymentId },
-    include: { user: { select: { name: true, email: true, companyName: true, taxId: true, nationalId: true } } },
-  });
-  if (!payment) return res.status(404).json({ message: 'Payment not found.' });
-  const isOwner = payment.userId === req.user!.id;
-  const isAdmin = req.user!.role === 'SuperAdmin';
-  if (!isOwner && !isAdmin) return res.status(403).json({ message: 'You do not have access to this invoice.' });
-  if (payment.status !== 'COMPLETED') {
-    return res.status(400).json({ message: 'An invoice is only available for a completed payment.' });
-  }
+const userInvoiceSelect = { select: { name: true, email: true, companyName: true, taxId: true, nationalId: true } };
 
+// Shared by both gateway branches below — same purpose→description mapping,
+// only the "how much of this went to a creator" breakdown differs (see
+// includeCommissionBreakdown's own comment on the Stripe branch).
+export async function describePurchase(
+  purpose: string,
+  referenceId: string,
+  userId: string,
+  includeCommissionBreakdown: boolean
+): Promise<{ description: string; platformFee: number | null; netAmount: number | null }> {
   let description = 'CDC Platform purchase';
   let platformFee: number | null = null;
   let netAmount: number | null = null;
 
-  if (payment.purpose === 'COURSE') {
-    const course = await prisma.course.findUnique({ where: { id: payment.referenceId }, select: { title: true } });
+  if (purpose === 'COURSE') {
+    const course = await prisma.course.findUnique({ where: { id: referenceId }, select: { title: true } });
     description = course ? `Course enrollment: ${course.title}` : 'Course enrollment';
-  } else if (payment.purpose === 'PRODUCT') {
-    const [product, purchase] = await Promise.all([
-      prisma.digitalProduct.findUnique({ where: { id: payment.referenceId }, select: { title: true } }),
-      prisma.productPurchase.findUnique({
-        where: { userId_productId: { userId: payment.userId, productId: payment.referenceId } },
-        select: { commissionAmount: true, netAmount: true },
-      }),
-    ]);
+  } else if (purpose === 'PRODUCT') {
+    const product = await prisma.digitalProduct.findUnique({ where: { id: referenceId }, select: { title: true } });
     description = product ? `Digital Store purchase: ${product.title}` : 'Digital Store purchase';
-    // Only a real external creator's sale has a commission split at all —
-    // admin-catalog products keep 100% with no split, see productSaleService.ts.
-    platformFee = purchase?.commissionAmount ?? null;
-    netAmount = purchase?.netAmount ?? null;
-  } else if (payment.purpose === 'MENTORSHIP') {
-    const mentor = await prisma.user.findUnique({ where: { id: payment.referenceId }, select: { name: true } });
+    if (includeCommissionBreakdown) {
+      // Only a real external creator's sale has a commission split at all —
+      // admin-catalog products keep 100% with no split, see productSaleService.ts.
+      const purchase = await prisma.productPurchase.findUnique({
+        where: { userId_productId: { userId, productId: referenceId } },
+        select: { commissionAmount: true, netAmount: true },
+      });
+      platformFee = purchase?.commissionAmount ?? null;
+      netAmount = purchase?.netAmount ?? null;
+    }
+  } else if (purpose === 'MENTORSHIP') {
+    const mentor = await prisma.user.findUnique({ where: { id: referenceId }, select: { name: true } });
     description = mentor ? `Mentorship session with ${mentor.name}` : 'Mentorship session';
-  } else if (payment.purpose === 'GIG_ESCROW_FUNDING') {
-    const gig = await prisma.gig.findUnique({ where: { id: payment.referenceId }, select: { title: true } });
+  } else if (purpose === 'GIG_ESCROW_FUNDING') {
+    const gig = await prisma.gig.findUnique({ where: { id: referenceId }, select: { title: true } });
     description = gig ? `Escrow funding: ${gig.title}` : 'Escrow funding';
   }
+  return { description, platformFee, netAmount };
+}
 
-  const invoiceNumber = invoiceNumberFor(payment.id, payment.completedAt ?? payment.createdAt);
+// Course / Digital Product / Mentorship / Gig-escrow-funding purchase
+// invoice. One completed BogPayment (GEL, routes/payments.ts) or
+// StripePayment (USD/EUR, routes/stripePayments.ts) is one completed
+// checkout — the frontend's payment-history table merges both gateways
+// into one list and sends every "Download Invoice" click here regardless
+// of which one it was, so this route tries BogPayment first and falls back
+// to StripePayment rather than 404ing every international buyer's invoice
+// (the gap a pre-launch review flagged as still live).
+router.get('/payment/:bogPaymentId/download', async (req: Request, res: Response) => {
+  const bogPayment = await prisma.bogPayment.findUnique({
+    where: { id: req.params.bogPaymentId },
+    include: { user: userInvoiceSelect },
+  });
+
+  if (bogPayment) {
+    const isOwner = bogPayment.userId === req.user!.id;
+    const isAdmin = req.user!.role === 'SuperAdmin';
+    if (!isOwner && !isAdmin) return res.status(403).json({ message: 'You do not have access to this invoice.' });
+    if (bogPayment.status !== 'COMPLETED') {
+      return res.status(400).json({ message: 'An invoice is only available for a completed payment.' });
+    }
+
+    const { description, platformFee, netAmount } = await describePurchase(
+      bogPayment.purpose,
+      bogPayment.referenceId,
+      bogPayment.userId,
+      true
+    );
+    const invoiceNumber = invoiceNumberFor(bogPayment.id, bogPayment.completedAt ?? bogPayment.createdAt);
+    const data: InvoiceData = {
+      invoiceNumber,
+      issueDate: bogPayment.completedAt ?? bogPayment.createdAt,
+      buyerName: bogPayment.user.companyName || bogPayment.user.name,
+      buyerEmail: bogPayment.user.email,
+      buyerTaxId: buyerTaxId(bogPayment.user),
+      lineItems: [{ description, amount: bogPayment.amount }],
+      totalAmount: bogPayment.amount,
+      platformFee,
+      netAmount,
+      currency: bogPayment.currency,
+      status: 'PAID',
+    };
+    const pdf = await generateInvoicePdf(data);
+    return sendPdf(res, pdf, `${invoiceNumber}.pdf`);
+  }
+
+  const stripePayment = await prisma.stripePayment.findUnique({
+    where: { id: req.params.bogPaymentId },
+    include: { user: userInvoiceSelect },
+  });
+  if (!stripePayment) return res.status(404).json({ message: 'Payment not found.' });
+  const isOwner = stripePayment.userId === req.user!.id;
+  const isAdmin = req.user!.role === 'SuperAdmin';
+  if (!isOwner && !isAdmin) return res.status(403).json({ message: 'You do not have access to this invoice.' });
+  if (stripePayment.status !== 'COMPLETED') {
+    return res.status(400).json({ message: 'An invoice is only available for a completed payment.' });
+  }
+
+  // false: never show a platformFee/netAmount breakdown here — those stored
+  // values (ProductPurchase.commissionAmount/netAmount) are computed from
+  // amountGel (GEL tetri, see that field's own schema comment), while this
+  // invoice's totalAmount/currency below is stripePayment.amount in USD/EUR
+  // minor units. Printing a GEL fee figure next to a USD total on the same
+  // line would misrepresent the split, not just look odd — omitting it
+  // entirely is the same "don't fabricate a number we can't stand behind"
+  // posture the null-platformFee case already uses for admin-catalog sales.
+  const { description } = await describePurchase(stripePayment.purpose, stripePayment.referenceId, stripePayment.userId, false);
+  const invoiceNumber = invoiceNumberFor(stripePayment.id, stripePayment.completedAt ?? stripePayment.createdAt);
   const data: InvoiceData = {
     invoiceNumber,
-    issueDate: payment.completedAt ?? payment.createdAt,
-    buyerName: payment.user.companyName || payment.user.name,
-    buyerEmail: payment.user.email,
-    buyerTaxId: buyerTaxId(payment.user),
-    lineItems: [{ description, amount: payment.amount }],
-    totalAmount: payment.amount,
-    platformFee,
-    netAmount,
-    currency: payment.currency,
+    issueDate: stripePayment.completedAt ?? stripePayment.createdAt,
+    buyerName: stripePayment.user.companyName || stripePayment.user.name,
+    buyerEmail: stripePayment.user.email,
+    buyerTaxId: buyerTaxId(stripePayment.user),
+    lineItems: [{ description, amount: stripePayment.amount }],
+    totalAmount: stripePayment.amount,
+    platformFee: null,
+    netAmount: null,
+    currency: stripePayment.currency,
     status: 'PAID',
   };
   const pdf = await generateInvoicePdf(data);

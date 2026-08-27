@@ -108,6 +108,37 @@ export async function setupHeldGigEscrow(params: {
   return { gig, application, transaction };
 }
 
+export async function createCourse(params: { instructorId?: string; originalPrice?: number }) {
+  const suffix = randomUUID();
+  return prisma.course.create({
+    data: {
+      title: `Test Course ${suffix.slice(0, 8)}`,
+      description: 'Integration test fixture course.',
+      category: 'Web Development',
+      lessons: [],
+      originalPrice: params.originalPrice ?? 10000,
+      status: 'PUBLISHED',
+      instructorId: params.instructorId,
+    },
+  });
+}
+
+export async function createDigitalProduct(params: { submittedById?: string; price?: number }) {
+  const suffix = randomUUID();
+  return prisma.digitalProduct.create({
+    data: {
+      title: `Test Product ${suffix.slice(0, 8)}`,
+      description: 'Integration test fixture product.',
+      price: params.price ?? 10000,
+      category: 'UI Kit',
+      imageUrl: 'https://example.test/image.png',
+      fileUrl: 'https://example.test/file.zip',
+      status: 'APPROVED',
+      submittedById: params.submittedById,
+    },
+  });
+}
+
 export async function createVacancy(params: { postedById: string }) {
   const suffix = randomUUID();
   return prisma.vacancy.create({

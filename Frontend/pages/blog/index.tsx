@@ -8,7 +8,7 @@ import BackButton from '../../src/components/common/BackButton';
 import { BlogPost } from '../../src/types/blog';
 import { getBlogPosts, resolveBlogImageUrl, blogTitle, blogDescription, blogContent, estimateReadingMinutes, isSuccessStory } from '../../src/services/blogService';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
-import { resolveLocale } from '@/src/utils/locale';
+import { resolveLocale, contentLocale, pickText } from '@/src/utils/locale';
 
 const POSTS_PER_PAGE = 9;
 
@@ -102,9 +102,9 @@ const dict = {
 export default function BlogIndexPage() {
   const router = useRouter();
   const lang = resolveLocale(router.locale);
-  const t = dict[lang];
+  const t = pickText(dict, lang);
   // Blog posts only store ka/en text (title/titleEn etc.) — collapse for content lookups.
-  const contentLang = lang === 'ka' ? 'ka' : 'en';
+  const contentLang = contentLocale(lang);
 
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -236,7 +236,7 @@ export default function BlogIndexPage() {
                         </span>
                       )}
                     </div>
-                    <h3 className="text-lg font-black mb-2 text-white line-clamp-2 break-words">{blogTitle(post, contentLang)}</h3>
+                    <h3 className="blog-heading-safe text-lg font-black mb-2 text-white line-clamp-2 break-words">{blogTitle(post, contentLang)}</h3>
                     <p className="text-sm text-slate-400 leading-relaxed line-clamp-3 mb-4 flex-1">{blogDescription(post, contentLang)}</p>
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-cyan-400">{t.readMore}</span>

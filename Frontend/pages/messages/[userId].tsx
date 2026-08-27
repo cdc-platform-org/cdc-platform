@@ -254,7 +254,7 @@ function MessagesThreadContent() {
             {t.home}
           </Link>
         </div>
-        <h1 className="text-2xl font-black mt-4 mb-6">{loading ? t.loading : `💬 ${otherUserName ?? t.fallbackName}`}</h1>
+        <h1 className="blog-heading-safe text-2xl font-black mt-4 mb-6">{loading ? t.loading : `💬 ${otherUserName ?? t.fallbackName}`}</h1>
         {loading ? null : gateRequired ? (
           <ChatRequestGate otherUserId={otherUserId} otherUserName={otherUserName ?? t.fallbackName} chatRequest={chatRequest} onChanged={load} t={t} />
         ) : (

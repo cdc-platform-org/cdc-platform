@@ -26,6 +26,7 @@ import ProtectedRoute from '../src/components/auth/ProtectedRoute';
 import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
 import BackButton from '../src/components/common/BackButton';
+import LaunchKitDrawer from '../src/components/admin/LaunchKitDrawer';
 import { useAuth } from '../src/context/AuthContext';
 import { MyCourseWithProgress } from '../src/types/lms';
 import { getMyCourses, downloadCertificate } from '../src/services/courseService';
@@ -75,7 +76,7 @@ const dict = {
     tabCourses: 'კურსები & სერტიფიკატები',
     tabWallet: 'საფულე & გადახდები',
     tabGigs: 'ჩემი პროექტები',
-    tabProducts: 'ჩემი ციფრული ინსტრუმენტები',
+    tabProducts: 'ჩემი ციფრული პროდუქტები',
     tabSettings: 'პარამეტრები',
     tabMentorshipSessions: 'მენტორის სესიები',
     mentorWorkspace: 'მენტორის პანელი',
@@ -97,6 +98,9 @@ const dict = {
     unlockFreelancerTitle: 'ფრილანსის შესაძლებლობები',
     unlockFreelancerDesc: 'დაათვალიერეთ შეკვეთები და განავითარეთ ფრილანსერული კარიერა.',
     unlockCta: 'გადასვლა →',
+    digitalStoreTitle: 'ციფრული მაღაზია',
+    digitalStoreDesc: 'განათავსე შენი ციფრული პროდუქტები უფასოდ, გამოიყენე AI Launch Kit და გაზარდე გაყიდვები.',
+    digitalStoreCta: 'პროდუქტის დამატება →',
     // Courses tab
     coursesTitle: 'ჩემი კურსები & სერტიფიკატები',
     viewAllCertificates: 'ყველა სერტიფიკატი',
@@ -130,7 +134,7 @@ const dict = {
     mentorRequested: 'მენტორის დახმარება მოთხოვნილია',
     firstOrderBadge: 'პირველი შეკვეთა',
     // Products tab
-    productsTitle: 'ჩემი ციფრული ინსტრუმენტები',
+    productsTitle: 'ჩემი ციფრული პროდუქტები',
     noProducts: 'თქვენ ჯერ არცერთი ციფრული პროდუქტი არ გაქვთ შეძენილი.',
     browseProducts: 'მაღაზიის დათვალიერება',
     downloadProduct: 'ჩამოტვირთვა',
@@ -210,7 +214,7 @@ const dict = {
     tabCourses: 'My Courses & Certificates',
     tabWallet: 'Wallet & Payouts',
     tabGigs: 'My Projects / Workspace',
-    tabProducts: 'My Digital Tools',
+    tabProducts: 'My Digital Products',
     tabSettings: 'Account Settings',
     tabMentorshipSessions: 'Mentorship Sessions',
     mentorWorkspace: 'Mentor Workspace',
@@ -231,6 +235,9 @@ const dict = {
     unlockFreelancerTitle: 'Explore Freelancing',
     unlockFreelancerDesc: 'Browse gigs and grow your freelance career.',
     unlockCta: 'Go →',
+    digitalStoreTitle: 'Digital Store',
+    digitalStoreDesc: 'List your digital products for free, use the AI Launch Kit, and grow your sales.',
+    digitalStoreCta: 'Add a Product →',
     coursesTitle: 'My Courses & Certificates',
     viewAllCertificates: 'View all certificates',
     progress: 'Progress',
@@ -260,7 +267,7 @@ const dict = {
     mentorHelp: 'Request CDC Mentor Help',
     mentorRequested: 'Mentor help requested',
     firstOrderBadge: 'First Order',
-    productsTitle: 'My Digital Tools',
+    productsTitle: 'My Digital Products',
     noProducts: "You haven't purchased any digital products yet.",
     browseProducts: 'Browse Store',
     downloadProduct: 'Download',
@@ -336,7 +343,7 @@ const dict = {
     tabCourses: 'My Courses & Certificates',
     tabWallet: 'Wallet & Payouts',
     tabGigs: 'My Projects / Workspace',
-    tabProducts: 'My Digital Tools',
+    tabProducts: 'My Digital Products',
     tabSettings: 'Account Settings',
     tabMentorshipSessions: 'Mentorship Sessions',
     mentorWorkspace: 'Mentor Workspace',
@@ -357,6 +364,9 @@ const dict = {
     unlockFreelancerTitle: 'Explore Freelancing',
     unlockFreelancerDesc: 'Browse gigs and grow your freelance career.',
     unlockCta: 'Go →',
+    digitalStoreTitle: 'Digital Store',
+    digitalStoreDesc: 'List your digital products for free, use the AI Launch Kit, and grow your sales.',
+    digitalStoreCta: 'Add a Product →',
     coursesTitle: 'My Courses & Certificates',
     viewAllCertificates: 'View all certificates',
     progress: 'Progress',
@@ -386,7 +396,7 @@ const dict = {
     mentorHelp: 'Request CDC Mentor Help',
     mentorRequested: 'Mentor help requested',
     firstOrderBadge: 'First Order',
-    productsTitle: 'My Digital Tools',
+    productsTitle: 'My Digital Products',
     noProducts: "You haven't purchased any digital products yet.",
     browseProducts: 'Browse Store',
     downloadProduct: 'Download',
@@ -462,7 +472,7 @@ const dict = {
     tabCourses: 'My Courses & Certificates',
     tabWallet: 'Wallet & Payouts',
     tabGigs: 'My Projects / Workspace',
-    tabProducts: 'My Digital Tools',
+    tabProducts: 'My Digital Products',
     tabSettings: 'Account Settings',
     tabMentorshipSessions: 'Mentorship Sessions',
     mentorWorkspace: 'Mentor Workspace',
@@ -483,6 +493,9 @@ const dict = {
     unlockFreelancerTitle: 'Explore Freelancing',
     unlockFreelancerDesc: 'Browse gigs and grow your freelance career.',
     unlockCta: 'Go →',
+    digitalStoreTitle: 'Digital Store',
+    digitalStoreDesc: 'List your digital products for free, use the AI Launch Kit, and grow your sales.',
+    digitalStoreCta: 'Add a Product →',
     coursesTitle: 'My Courses & Certificates',
     viewAllCertificates: 'View all certificates',
     progress: 'Progress',
@@ -512,7 +525,7 @@ const dict = {
     mentorHelp: 'Request CDC Mentor Help',
     mentorRequested: 'Mentor help requested',
     firstOrderBadge: 'First Order',
-    productsTitle: 'My Digital Tools',
+    productsTitle: 'My Digital Products',
     noProducts: "You haven't purchased any digital products yet.",
     browseProducts: 'Browse Store',
     downloadProduct: 'Download',
@@ -588,7 +601,7 @@ const dict = {
     tabCourses: 'My Courses & Certificates',
     tabWallet: 'Wallet & Payouts',
     tabGigs: 'My Projects / Workspace',
-    tabProducts: 'My Digital Tools',
+    tabProducts: 'My Digital Products',
     tabSettings: 'Account Settings',
     tabMentorshipSessions: 'Mentorship Sessions',
     mentorWorkspace: 'Mentor Workspace',
@@ -609,6 +622,9 @@ const dict = {
     unlockFreelancerTitle: 'Explore Freelancing',
     unlockFreelancerDesc: 'Browse gigs and grow your freelance career.',
     unlockCta: 'Go →',
+    digitalStoreTitle: 'Digital Store',
+    digitalStoreDesc: 'List your digital products for free, use the AI Launch Kit, and grow your sales.',
+    digitalStoreCta: 'Add a Product →',
     coursesTitle: 'My Courses & Certificates',
     viewAllCertificates: 'View all certificates',
     progress: 'Progress',
@@ -638,7 +654,7 @@ const dict = {
     mentorHelp: 'Request CDC Mentor Help',
     mentorRequested: 'Mentor help requested',
     firstOrderBadge: 'First Order',
-    productsTitle: 'My Digital Tools',
+    productsTitle: 'My Digital Products',
     noProducts: "You haven't purchased any digital products yet.",
     browseProducts: 'Browse Store',
     downloadProduct: 'Download',
@@ -714,7 +730,7 @@ const dict = {
     tabCourses: 'My Courses & Certificates',
     tabWallet: 'Wallet & Payouts',
     tabGigs: 'My Projects / Workspace',
-    tabProducts: 'My Digital Tools',
+    tabProducts: 'My Digital Products',
     tabSettings: 'Account Settings',
     tabMentorshipSessions: 'Mentorship Sessions',
     mentorWorkspace: 'Mentor Workspace',
@@ -735,6 +751,9 @@ const dict = {
     unlockFreelancerTitle: 'Explore Freelancing',
     unlockFreelancerDesc: 'Browse gigs and grow your freelance career.',
     unlockCta: 'Go →',
+    digitalStoreTitle: 'Digital Store',
+    digitalStoreDesc: 'List your digital products for free, use the AI Launch Kit, and grow your sales.',
+    digitalStoreCta: 'Add a Product →',
     coursesTitle: 'My Courses & Certificates',
     viewAllCertificates: 'View all certificates',
     progress: 'Progress',
@@ -764,7 +783,7 @@ const dict = {
     mentorHelp: 'Request CDC Mentor Help',
     mentorRequested: 'Mentor help requested',
     firstOrderBadge: 'First Order',
-    productsTitle: 'My Digital Tools',
+    productsTitle: 'My Digital Products',
     noProducts: "You haven't purchased any digital products yet.",
     browseProducts: 'Browse Store',
     downloadProduct: 'Download',
@@ -961,6 +980,30 @@ function FreelancerExamCard({ user, t }: { user: User; t: typeof dict['ka']; }) 
   );
 }
 
+// Promo card pointing Students at the Digital Store submission flow — shown
+// unconditionally like DashboardUnlockCards/FreelancerExamCard (never gates
+// on canSubmitProduct; the Products tab itself decides whether the actual
+// "Add Product" button renders, based on isVerifiedGraduate/adminRole).
+function DigitalStoreCTACard({ t }: { t: typeof dict['ka'] }) {
+  return (
+    <Link
+      href="/dashboard?tab=products"
+      className="flex items-center gap-4 rounded-2xl border border-purple-400/40 dark:border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 backdrop-blur-md p-5 no-underline text-current transition-all duration-300 hover:border-purple-400/60 hover:shadow-lg hover:shadow-purple-500/10"
+    >
+      <div className="shrink-0 w-11 h-11 rounded-xl bg-gradient-to-tr from-purple-500 to-cyan-600 flex items-center justify-center">
+        <ShoppingBag className="w-5 h-5 text-white" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-black text-slate-900 dark:text-white">{t.digitalStoreTitle}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.digitalStoreDesc}</p>
+      </div>
+      <span className="shrink-0 text-xs font-bold text-purple-600 dark:text-purple-400 whitespace-nowrap hidden sm:inline">
+        {t.digitalStoreCta}
+      </span>
+    </Link>
+  );
+}
+
 function DashboardContent() {
   const router = useRouter();
   const lang = resolveLocale(router.locale);
@@ -980,6 +1023,7 @@ function DashboardContent() {
   const [downloadingProductId, setDownloadingProductId] = useState<string | null>(null);
   const [productDownloadError, setProductDownloadError] = useState<string | null>(null);
   const [mySubmissions, setMySubmissions] = useState<DigitalProduct[]>([]);
+  const [launchKitTarget, setLaunchKitTarget] = useState<{ productId: string; title: string } | null>(null);
   const [showSubmitForm, setShowSubmitForm] = useState(false);
   const [submitTitle, setSubmitTitle] = useState('');
   const [submitDescription, setSubmitDescription] = useState('');
@@ -999,13 +1043,19 @@ function DashboardContent() {
   const [submittingProduct, setSubmittingProduct] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   // Fallback only (matches productSaleService.ts's own FALLBACK_PERCENTAGE
-  // for DIGITAL_PRODUCT) — used until GET /commissions resolves, so the
-  // commission banner below never shows a stale/wrong rate while loading.
+  // for DIGITAL_PRODUCT_VERIFIED) — used until GET /commissions resolves, so
+  // the commission banner below never shows a stale/wrong rate while loading.
+  // NOTE: always looks up the VERIFIED rate, not the +5% Unverified Tier
+  // Surcharge one — this component's `user` doesn't carry
+  // verificationLevel/verificationStatus/isVerified (only isVerifiedGraduate),
+  // so it can't reproduce the backend's full isIdentityVerified() check.
+  // An unverified uploader will see a lower estimate here than they're
+  // actually charged at sale time; flagged, not fixed, in this pass.
   const [digitalProductCommissionPct, setDigitalProductCommissionPct] = useState(20);
   useEffect(() => {
     getFeeSchedule()
       .then((schedule) => {
-        const pct = findRate(schedule, 'DIGITAL_PRODUCT');
+        const pct = findRate(schedule, 'DIGITAL_PRODUCT_VERIFIED');
         if (pct != null) setDigitalProductCommissionPct(pct);
       })
       .catch(() => {
@@ -1513,6 +1563,8 @@ function DashboardContent() {
                   {user?.role === 'Student' && <DashboardUnlockCards user={user} t={t} />}
 
                   {user?.role === 'Student' && <FreelancerExamCard user={user} t={t} />}
+
+                  {user?.role === 'Student' && <DigitalStoreCTACard t={t} />}
 
                   {inProgressCourse && (
                     <Link
@@ -2061,6 +2113,13 @@ function DashboardContent() {
                                 {t.editAndResubmit}
                               </button>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => setLaunchKitTarget({ productId: s.id, title: s.title })}
+                              className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline bg-transparent border-none cursor-pointer"
+                            >
+                              Launch Kit
+                            </button>
                             <span
                               className={`text-[10px] font-bold uppercase px-2 py-1 rounded border whitespace-nowrap ${
                                 s.status === 'APPROVED'
@@ -2269,6 +2328,15 @@ function DashboardContent() {
       )}
 
       <SiteFooter />
+
+      {launchKitTarget && (
+        <LaunchKitDrawer
+          target={{ productId: launchKitTarget.productId }}
+          title={launchKitTarget.title}
+          scope="creator"
+          onClose={() => setLaunchKitTarget(null)}
+        />
+      )}
     </div>
   );
 }

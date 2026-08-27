@@ -352,7 +352,7 @@ function LearnContent() {
           </div>
           <CourseVideoPlayer embedUrl={activeLesson?.embedUrl ?? null} title={activeLesson?.title ?? course.title} />
 
-          <h1 className="text-xl font-bold mt-6">{activeLesson?.title ?? course.title}</h1>
+          <h1 className="blog-heading-safe text-xl font-bold mt-6">{activeLesson?.title ?? course.title}</h1>
 
           <div className="flex gap-2 mt-6 border-b border-slate-800">
             {(['overview', 'conspectus', 'resources', 'assignment', 'discussion'] as const).map((tab) => (

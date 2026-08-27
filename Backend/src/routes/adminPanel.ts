@@ -33,6 +33,7 @@ router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODER
     vacanciesByStatus,
     volumeAgg,
     salesVolumeAgg,
+    stripeSalesVolumeAgg,
     openDisputes,
     pendingPayouts,
     examSubmissionsByStatus,
@@ -55,6 +56,17 @@ router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODER
     prisma.bogPayment.aggregate({
       where: { status: 'COMPLETED', purpose: { in: ['COURSE', 'MENTORSHIP', 'PRODUCT'] } },
       _sum: { amount: true },
+      _count: { _all: true },
+    }),
+    // Stripe-funded course/product/mentorship sales — previously omitted
+    // entirely, so international (USD/EUR) revenue never showed up in this
+    // dashboard's totals. Summed via amountGel (the real pre-FX-conversion
+    // GEL amount — see StripePayment.amountGel's own schema comment), never
+    // the raw `amount` column, which is in USD/EUR minor units and would
+    // silently mix currencies into this GEL-denominated total.
+    prisma.stripePayment.aggregate({
+      where: { status: 'COMPLETED', purpose: { in: ['COURSE', 'MENTORSHIP', 'PRODUCT'] } },
+      _sum: { amountGel: true },
       _count: { _all: true },
     }),
     prisma.dispute.count({ where: { status: 'OPEN' } }),
@@ -92,10 +104,10 @@ router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODER
       // Commission/net splits are freelancer-marketplace-specific (no
       // equivalent for a straight course/product sale), so those two stay
       // gig-transaction-only — only the gross total blends both sources.
-      totalGrossAmount: (volumeAgg._sum.grossAmount ?? 0) + (salesVolumeAgg._sum.amount ?? 0),
+      totalGrossAmount: (volumeAgg._sum.grossAmount ?? 0) + (salesVolumeAgg._sum.amount ?? 0) + (stripeSalesVolumeAgg._sum.amountGel ?? 0),
       totalCommissionAmount: volumeAgg._sum.commissionAmount ?? 0,
       totalNetAmount: volumeAgg._sum.netAmount ?? 0,
-      transactionCount: volumeAgg._count._all + salesVolumeAgg._count._all,
+      transactionCount: volumeAgg._count._all + salesVolumeAgg._count._all + stripeSalesVolumeAgg._count._all,
     },
     disputes: {
       open: openDisputes,

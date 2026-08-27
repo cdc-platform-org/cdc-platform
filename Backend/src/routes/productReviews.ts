@@ -175,16 +175,31 @@ router.post('/:id/helpful', authenticate, async (req: Request, res: Response) =>
     where: { reviewId_userId: { reviewId: review.id, userId: req.user!.id } },
   });
 
-  const updated = await prisma.$transaction(async (tx) => {
-    if (existingVote) {
-      await tx.productReviewHelpfulVote.delete({ where: { id: existingVote.id } });
-      return tx.productReview.update({ where: { id: review.id }, data: { helpfulCount: { decrement: 1 } } });
-    }
-    await tx.productReviewHelpfulVote.create({ data: { reviewId: review.id, userId: req.user!.id } });
-    return tx.productReview.update({ where: { id: review.id }, data: { helpfulCount: { increment: 1 } } });
-  });
+  try {
+    const updated = await prisma.$transaction(async (tx) => {
+      if (existingVote) {
+        await tx.productReviewHelpfulVote.delete({ where: { id: existingVote.id } });
+        return tx.productReview.update({ where: { id: review.id }, data: { helpfulCount: { decrement: 1 } } });
+      }
+      await tx.productReviewHelpfulVote.create({ data: { reviewId: review.id, userId: req.user!.id } });
+      return tx.productReview.update({ where: { id: review.id }, data: { helpfulCount: { increment: 1 } } });
+    });
 
-  res.json({ data: { helpfulCount: updated.helpfulCount, helpfulVoted: !existingVote } });
+    res.json({ data: { helpfulCount: updated.helpfulCount, helpfulVoted: !existingVote } });
+  } catch (err: any) {
+    // The existingVote read above found nothing, but a second fast click
+    // (or a duplicate request) from the same user can still race past that
+    // check and hit ProductReviewHelpfulVote's unique constraint inside the
+    // transaction — which aborts cleanly (no partial increment lands), but
+    // previously surfaced as an unhandled 500. The vote genuinely exists at
+    // that point, so report the current, already-correct count instead of
+    // erroring.
+    if (err.code === 'P2002') {
+      const current = await prisma.productReview.findUniqueOrThrow({ where: { id: review.id }, select: { helpfulCount: true } });
+      return res.json({ data: { helpfulCount: current.helpfulCount, helpfulVoted: true } });
+    }
+    throw err;
+  }
 });
 
 export default router;

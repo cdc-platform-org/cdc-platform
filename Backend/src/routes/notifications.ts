@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireNotBannedOrDeleted } from '../middleware/auth';
 
 const router = Router();
-router.use(authenticate);
+router.use(authenticate, requireNotBannedOrDeleted);
 
 // Header bell dropdown — most recent first, capped so the dropdown stays
 // scannable rather than becoming a full inbox.

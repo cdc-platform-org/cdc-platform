@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, Copy, Check, RefreshCw, Sparkles } from 'lucide-react';
-import { generateLaunchKit, getLaunchKits } from '../../services/marketingService';
+import { generateLaunchKit, getLaunchKits, deleteLaunchKit } from '../../services/marketingService';
+import { generateMyLaunchKit, getMyLaunchKits, deleteMyLaunchKit } from '../../services/creatorMarketingService';
 import { LaunchKit } from '../../types/marketing';
 
 type Target = { productId: string } | { courseId: string };
@@ -39,21 +40,50 @@ const TABS = ['social', 'b2b', 'audience'] as const;
 type Tab = (typeof TABS)[number];
 const TAB_LABEL: Record<Tab, string> = { social: 'სოც. მედია', b2b: 'B2B აუთრიჩი', audience: 'აუდიტორია' };
 
-export default function LaunchKitDrawer({ target, title, onClose }: { target: Target; title: string; onClose: () => void }) {
+export default function LaunchKitDrawer({
+  target,
+  title,
+  onClose,
+  scope = 'admin',
+}: {
+  target: Target;
+  title: string;
+  onClose: () => void;
+  // 'admin' (default) hits /admin/marketing — any SUPER_ADMIN/MANAGER may
+  // target any product/course. 'creator' hits /instructor/marketing — the
+  // backend restricts it to the calling user's own product (submittedById)
+  // or course (instructorId); a non-owner gets a 404 the caller should
+  // never be able to trigger in the first place, since creator call sites
+  // only ever render this drawer for the current user's own items. Same
+  // modal UI either way — only which endpoints it calls differs.
+  scope?: 'admin' | 'creator';
+}) {
   const [kits, setKits] = useState<LaunchKit[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('social');
+  const [lang, setLang] = useState<'ka' | 'en'>('ka');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const fetchKits = scope === 'creator' ? getMyLaunchKits : getLaunchKits;
+  const doGenerate = scope === 'creator' ? generateMyLaunchKit : generateLaunchKit;
+  const doDelete = scope === 'creator' ? deleteMyLaunchKit : deleteLaunchKit;
 
   const load = useCallback(() => {
     setLoading(true);
-    getLaunchKits(target)
-      .then(setKits)
+    fetchKits(target)
+      .then((data) => {
+        setKits(data);
+        // Keep the current selection if it still exists (e.g. after a
+        // delete elsewhere in the list); otherwise default to the newest.
+        setSelectedId((current) => (current && data.some((k) => k.id === current) ? current : data[0]?.id ?? null));
+      })
       .catch(() => setError('კომპლექტების ჩატვირთვა ვერ მოხერხდა.'))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(target)]);
+  }, [JSON.stringify(target), scope]);
 
   useEffect(() => load(), [load]);
 
@@ -61,8 +91,9 @@ export default function LaunchKitDrawer({ target, title, onClose }: { target: Ta
     setGenerating(true);
     setError(null);
     try {
-      await generateLaunchKit(target, 'ka');
-      load();
+      const created = await doGenerate(target, lang);
+      await load();
+      setSelectedId(created.id);
     } catch (err: any) {
       setError(err?.response?.data?.message || 'გენერაცია ვერ მოხერხდა — სცადეთ თავიდან.');
     } finally {
@@ -70,7 +101,20 @@ export default function LaunchKitDrawer({ target, title, onClose }: { target: Ta
     }
   };
 
-  const latest = kits[0];
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    setError(null);
+    try {
+      await doDelete(id);
+      await load();
+    } catch {
+      setError('წაშლა ვერ მოხერხდა — სცადეთ თავიდან.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const latest = kits.find((k) => k.id === selectedId) ?? kits[0];
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex justify-end" onClick={onClose}>
@@ -84,6 +128,22 @@ export default function LaunchKitDrawer({ target, title, onClose }: { target: Ta
         </div>
 
         {error && <div className="mb-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}
+
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <span className="text-xs font-bold text-gray-400">სამიზნე ბაზრის ენა</span>
+          <div className="flex rounded-lg border border-gray-200 dark:border-slate-700 overflow-hidden">
+            {(['ka', 'en'] as const).map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setLang(l)}
+                className={`px-3 py-1 text-xs font-bold ${lang === l ? 'bg-cyan-500 text-white' : 'bg-transparent text-gray-500 dark:text-slate-400'} border-none cursor-pointer`}
+              >
+                {l.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <button
           onClick={handleGenerate}
@@ -100,6 +160,35 @@ export default function LaunchKitDrawer({ target, title, onClose }: { target: Ta
           <div className="text-sm text-gray-400 text-center py-8">ჯერ არ არის გენერირებული. დააჭირეთ ღილაკს ზემოთ.</div>
         ) : (
           <div>
+            {kits.length > 1 && (
+              <div className="space-y-1.5 mb-4">
+                {kits.map((k) => (
+                  <div
+                    key={k.id}
+                    className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs ${
+                      k.id === selectedId ? 'border-cyan-400/60 bg-cyan-50 dark:bg-cyan-500/10' : 'border-gray-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(k.id)}
+                      className="flex-1 text-left bg-transparent border-none cursor-pointer text-gray-600 dark:text-slate-300"
+                    >
+                      {new Date(k.createdAt).toLocaleString('ka-GE')} · {k.lang.toUpperCase()}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(k.id)}
+                      disabled={deletingId === k.id}
+                      className="shrink-0 text-red-500 hover:text-red-600 bg-transparent border-none cursor-pointer disabled:opacity-50"
+                    >
+                      {deletingId === k.id ? 'იშლება…' : 'წაშლა'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="text-[11px] text-gray-400 mb-3">გენერირებულია: {new Date(latest.createdAt).toLocaleString('ka-GE')} · {kits.length > 1 ? `${kits.length} ვერსია ისტორიაში` : 'პირველი ვერსია'}</div>
 
             <div className="flex gap-1 mb-4 border-b border-gray-200 dark:border-slate-700">

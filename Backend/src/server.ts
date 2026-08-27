@@ -83,6 +83,7 @@ import productRoutes from './routes/products';
 import adminProductRoutes from './routes/adminProducts';
 import adminOpportunitiesRoutes from './routes/adminOpportunities';
 import adminMarketingRoutes from './routes/adminMarketing';
+import creatorMarketingRoutes from './routes/creatorMarketing';
 import productReviewRoutes from './routes/productReviews';
 import adminProductReviewRoutes from './routes/adminProductReviews';
 import promoRoutes from './routes/promos';
@@ -98,6 +99,7 @@ import { cancelAbandonedMentorshipBookings } from './services/mentorAvailability
 import { autoReleaseMentorshipEscrows } from './services/mentorshipEscrowService';
 import { autoReleaseHRSupportEscrows } from './services/hrSupportEscrowService';
 import { expireOverdueVacancies } from './services/listingExpiryService';
+import { reconcilePendingPayments } from './services/paymentReconciliationService';
 
 // ============================================================
 // PROCESS-LEVEL SAFETY NET
@@ -295,6 +297,7 @@ app.use('/api/ai-agents', aiAgentsSuiteRoutes);
 app.use('/api/mentor-applications', mentorApplicationRoutes);
 app.use('/api/admin/mentor-applications', adminMentorApplicationRoutes);
 app.use('/api/instructor/courses', instructorCourseRoutes);
+app.use('/api/instructor/marketing', creatorMarketingRoutes);
 app.use('/api/admin/course-moderation', adminCourseModerationRoutes);
 
 const swaggerDocument = {
@@ -489,3 +492,24 @@ setInterval(() => {
     })
     .catch((err) => console.error('[vacancy-auto-expiry] run failed:', err));
 }, VACANCY_EXPIRY_POLL_INTERVAL_MS);
+
+// Same in-process-fallback caveat as above — production should prefer a
+// single external scheduler hitting POST /api/cron/reconcile-pending-payments.
+// Every 15 minutes (same cadence as the mentorship-abandonment sweep above)
+// against a 30-minute staleness threshold (STALE_PENDING_MS in
+// paymentReconciliationService.ts) — a stuck payment is directly user-facing
+// (a paid buyer stuck without their course/booking/product) so this can't
+// wait for an hourly pass the way the escrow/vacancy sweeps above can.
+const PAYMENT_RECONCILIATION_POLL_INTERVAL_MS = 15 * 60 * 1000;
+setInterval(() => {
+  reconcilePendingPayments()
+    .then(({ bogCompletedIds, bogFailedIds, stripeCompletedIds, stripeFailedIds, errorIds }) => {
+      const total = bogCompletedIds.length + bogFailedIds.length + stripeCompletedIds.length + stripeFailedIds.length;
+      if (total > 0 || errorIds.length > 0) {
+        console.log(
+          `[payment-reconciliation] bogCompleted=${bogCompletedIds.length} bogFailed=${bogFailedIds.length} stripeCompleted=${stripeCompletedIds.length} stripeFailed=${stripeFailedIds.length} errors=${errorIds.length}`
+        );
+      }
+    })
+    .catch((err) => console.error('[payment-reconciliation] run failed:', err));
+}, PAYMENT_RECONCILIATION_POLL_INTERVAL_MS);

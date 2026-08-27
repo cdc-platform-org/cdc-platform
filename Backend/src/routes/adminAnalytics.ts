@@ -7,12 +7,23 @@ router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
 
 router.get('/overview', async (_req: Request, res: Response) => {
   const completedCourseWhere = { purpose: 'COURSE' as const, status: 'COMPLETED' as const };
+  // totalRevenue/totalSalesCount below stay genuinely all-time (DB-side
+  // aggregate/count, cheap regardless of table size). This row-level fetch
+  // is different: it used to pull every completed COURSE payment ever, with
+  // no bound, just to compute a 12-month trend chart and a "top courses"
+  // ranking in JS — bounding it to the same 12-month window the trend chart
+  // actually needs keeps this query flat as the table grows, and reframes
+  // "top courses" as a rolling last-12-months ranking rather than an
+  // ever-more-expensive all-time one.
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+  const recentCourseWhere = { ...completedCourseWhere, completedAt: { gte: twelveMonthsAgo } };
 
   const [totalRevenueAgg, totalSalesCount, activeStudents, allCompletedPayments, courses] = await Promise.all([
     prisma.bogPayment.aggregate({ where: completedCourseWhere, _sum: { amount: true } }),
     prisma.bogPayment.count({ where: completedCourseWhere }),
     prisma.courseEnrollment.findMany({ select: { userId: true }, distinct: ['userId'] }),
-    prisma.bogPayment.findMany({ where: completedCourseWhere, select: { amount: true, referenceId: true, completedAt: true } }),
+    prisma.bogPayment.findMany({ where: recentCourseWhere, select: { amount: true, referenceId: true, completedAt: true } }),
     prisma.course.findMany({ select: { id: true, title: true } }),
   ]);
 

@@ -221,7 +221,7 @@ export default function CourseDetailPage() {
             <span className="text-lg font-black text-cyan-600 dark:text-cyan-300">{formatPrice(course.currentPrice)}</span>
           </div>
         </div>
-        <h1 className="text-3xl md:text-4xl font-black mt-4 mb-4">{course.title}</h1>
+        <h1 className="blog-heading-safe text-3xl md:text-4xl font-black mt-4 mb-4">{course.title}</h1>
         <div className="mb-6">
           <SocialShareButtons title={course.title} lang={lang} />
         </div>

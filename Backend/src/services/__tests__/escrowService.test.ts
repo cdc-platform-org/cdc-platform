@@ -1,7 +1,15 @@
+import { randomUUID } from 'crypto';
 import { prisma } from '../../lib/prisma';
 import { captureEscrow, releaseEscrow, refundEscrow } from '../escrowService';
 import { upsertCommissionPercentage } from '../platformFeeScheduleService';
-import { createUser, createVerifiedFreelancer, createUnverifiedFreelancer, setupHeldGigEscrow, createGig } from '../../test/factories';
+import {
+  createUser,
+  createVerifiedFreelancer,
+  createUnverifiedFreelancer,
+  setupHeldGigEscrow,
+  createGig,
+  createGigApplication,
+} from '../../test/factories';
 
 afterAll(async () => {
   await prisma.$disconnect();
@@ -54,6 +62,42 @@ describe('escrowService', () => {
 
       const reloaded = await prisma.gigTransaction.findUniqueOrThrow({ where: { id: transaction.id } });
       expect(reloaded.commissionAmount).toBe(25000); // unchanged, not 40000
+    });
+
+    it('atomic claim: two concurrent captures of the same gig create exactly one transaction, both calls resolve (no unhandled P2002)', async () => {
+      await upsertCommissionPercentage('GIG_UNVERIFIED', 25, 'test');
+      const client = await createUser();
+      const freelancer = await createUnverifiedFreelancer();
+      const gig = await createGig({ postedById: client.id, assignedFreelancerId: freelancer.id });
+      const application = await createGigApplication({ gigId: gig.id, applicantId: freelancer.id, bidAmount: 100000 });
+
+      // Simulates a BOG/Stripe webhook retry racing the /status poll
+      // fallback, both calling captureEscrow for the same gig at nearly the
+      // same time — this used to throw an unhandled P2002 on the loser.
+      // providerRef must be randomized (not a fixed literal): this suite's
+      // integration DB is never truncated between runs, and providerRef has
+      // its own unique constraint — a fixed value would collide with the
+      // previous run's leftover row and fail for an unrelated reason.
+      const results = await Promise.all(
+        [0, 1].map(() =>
+          captureEscrow({
+            gigId: gig.id,
+            gigApplicationId: application.id,
+            clientId: client.id,
+            freelancerId: freelancer.id,
+            grossAmount: 100000,
+            currency: 'GEL',
+            providerRef: `test-ref-${randomUUID()}`,
+          })
+        )
+      );
+
+      // Both calls resolve (neither throws) and agree on the same row.
+      expect(results[0].id).toBe(results[1].id);
+
+      const transactions = await prisma.gigTransaction.findMany({ where: { gigId: gig.id } });
+      expect(transactions).toHaveLength(1);
+      expect(transactions[0].netAmount).toBe(75000);
     });
   });
 

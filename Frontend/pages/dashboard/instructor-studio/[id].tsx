@@ -6,6 +6,7 @@ import RoleGate from '../../../src/components/auth/RoleGate';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
 import BackButton from '../../../src/components/common/BackButton';
+import LaunchKitDrawer from '../../../src/components/admin/LaunchKitDrawer';
 import {
   getInstructorCourse,
   updateInstructorCourse,
@@ -207,20 +208,38 @@ function QualityChecklist({ courseId, status, onReadyChange }: { courseId: strin
 
 function InstructorCourseEditorContent({ courseId }: { courseId: string }) {
   const [course, setCourse] = useState<InstructorCourseDetail | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [ready, setReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showLaunchKit, setShowLaunchKit] = useState(false);
   const thumbInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
-    setCourse(await getInstructorCourse(courseId));
+    try {
+      setCourse(await getInstructorCourse(courseId));
+    } catch {
+      // Not found, or not yours — never leaves the page stuck on a silent
+      // "Loading…" spinner forever.
+      setLoadError(true);
+    }
   }, [courseId]);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-100 flex flex-col items-center justify-center gap-4 text-center px-6">
+        <p className="text-sm text-slate-500">This course could not be found.</p>
+        <Link href="/dashboard/instructor-studio" className="text-sm font-semibold text-cyan-500 hover:underline">
+          ← Back to Instructor Studio
+        </Link>
+      </div>
+    );
+  }
   if (!course) return <div className="p-12 text-center text-sm text-slate-500">Loading…</div>;
 
   const editable = EDITABLE_STATUSES.includes(course.status);
@@ -248,12 +267,25 @@ function InstructorCourseEditorContent({ courseId }: { courseId: string }) {
       <main className="max-w-3xl mx-auto px-6 py-12 space-y-6">
         <BackButton fallbackHref="/dashboard/instructor-studio" className="text-slate-400 hover:text-slate-100" />
 
-        <div>
-          <h1 className="text-2xl font-black mb-2">{course.title}</h1>
-          <div className={`inline-block text-xs font-semibold px-3 py-1.5 rounded-lg ${STATUS_BANNER[course.status].className}`}>
-            {STATUS_BANNER[course.status].text}
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="blog-heading-safe text-2xl font-black mb-2">{course.title}</h1>
+            <div className={`inline-block text-xs font-semibold px-3 py-1.5 rounded-lg ${STATUS_BANNER[course.status].className}`}>
+              {STATUS_BANNER[course.status].text}
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setShowLaunchKit(true)}
+            className="flex items-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-cyan-500 to-purple-600 px-3.5 py-2.5 rounded-lg border-none cursor-pointer hover:opacity-90 shrink-0"
+          >
+            Generate Sales Launch Kit
+          </button>
         </div>
+
+        {showLaunchKit && (
+          <LaunchKitDrawer target={{ courseId: course.id }} title={course.title} scope="creator" onClose={() => setShowLaunchKit(false)} />
+        )}
 
         {course.reviewHistory.some((h) => h.feedback) && (
           <div className="space-y-2">

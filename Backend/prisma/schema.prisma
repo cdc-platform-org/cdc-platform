@@ -133,6 +133,11 @@ enum WalletEntryType {
   PRODUCT_SALE_CREDIT
   MENTORSHIP_SESSION_CREDIT
   HR_SUPPORT_CREDIT
+  // courseSaleService.ts's completeCoursePurchase — a Mentor's net share of
+  // a course sale, credited the moment the purchase completes (courses are
+  // an instant digital-content sale like DigitalProduct, not a held escrow
+  // like MENTORSHIP/HR_SUPPORT/gigs, so there is no separate "release" step).
+  COURSE_SALE_CREDIT
   PAYOUT_DEBIT
   // Restores the PAYOUT_DEBIT when a PROCESSING PayoutRequest ends in
   // FAILED (BOG rejected the transfer, or its confirmation webhook never
@@ -228,6 +233,18 @@ enum BogPaymentPurpose {
   GIG_ESCROW_FUNDING
   PRODUCT
   HR_SUPPORT
+}
+
+// Whether a payment settles straight to its destination the moment it
+// completes (DIRECT — COURSE, PRODUCT) or first sits in a held escrow with
+// its own separate release trigger (ESCROW — MENTORSHIP, HR_SUPPORT,
+// GIG_ESCROW_FUNDING; see escrowService.ts/mentorshipEscrowService.ts/
+// hrSupportEscrowService.ts for each one's release conditions). One value
+// per BogPaymentPurpose — see services/paymentModel.ts's
+// paymentModelForPurpose(), the single place this mapping is defined.
+enum PaymentModel {
+  DIRECT
+  ESCROW
 }
 
 // Mirrors BOG's own order_status.key values (see GET /payments/v1/receipt/:id)
@@ -1761,8 +1778,24 @@ model CourseEnrollment {
   courseId  String
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Restrict)
   grantedAt DateTime @default(now())
+  // Mentor payout split, same convention as ProductPurchase's own
+  // commissionRate/commissionAmount/netAmount — set only when the course has
+  // a real Mentor author (Course.instructorId; admin-authored catalog
+  // courses have none and keep the full amount with the platform, same as
+  // an admin-catalog product). Null for enrollments granted before this
+  // field existed (nothing to backfill from) and for every admin-authored
+  // course. See services/courseSaleService.ts.
+  commissionRate   Float?
+  commissionAmount Int?
+  netAmount        Int?
 
   @@unique([userId, courseId])
+  // The (userId, courseId) unique index above leads with userId, so it can't
+  // serve a courseId-only lookup — and courseId-only is exactly what the
+  // capacity check on every course checkout (routes/payments.ts,
+  // routes/stripePayments.ts) and the leaderboard/cohort routes in
+  // routes/courses.ts run, on every request, not just occasionally.
+  @@index([courseId])
   @@map("course_enrollments")
 }
 
@@ -2280,6 +2313,13 @@ enum PlatformFeeServiceType {
   // PlatformFeeSchedule row exactly as "DIGITAL_PRODUCT" (see the row this
   // maps to), so this is a pure rename with zero data migration needed.
   DIGITAL_PRODUCT_VERIFIED @map("DIGITAL_PRODUCT")
+  // courseSaleService.ts — flat rate, charged only when the course has a
+  // real Mentor author (Course.instructorId; admin-authored catalog courses
+  // have none and keep the full sale price, same "no external creator, no
+  // split" posture as DIGITAL_PRODUCT/GIG above). No verified/unverified
+  // split — a Mentor is already vetted through the MentorApplication
+  // approval gate before they can publish anything.
+  COURSE
 }
 
 enum BillingProductType {
@@ -2650,6 +2690,15 @@ model BogPayment {
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Restrict)
   purpose           BogPaymentPurpose
+  // Derived 1:1 from `purpose` at creation time (paymentModelForPurpose() in
+  // services/paymentModel.ts) — COURSE/PRODUCT settle instantly (DIRECT);
+  // MENTORSHIP/HR_SUPPORT/GIG_ESCROW_FUNDING sit in a held escrow first (see
+  // mentorshipEscrowService.ts/hrSupportEscrowService.ts/escrowService.ts).
+  // A stored column rather than a computed lookup so a report/query can
+  // filter by it directly without joining purpose back to a hardcoded map,
+  // and so it stays correct even if a future purpose is added with the
+  // opposite settlement shape.
+  paymentModel      PaymentModel
   // COURSE -> Course.id, MENTORSHIP -> Mentor's User.id (see
   // MentorshipBooking for the actual scheduling details), GIG_ESCROW_FUNDING -> Gig.id
   referenceId       String
@@ -2692,8 +2741,33 @@ model StripePayment {
   userId                String
   user                  User               @relation(fields: [userId], references: [id], onDelete: Restrict)
   purpose               BogPaymentPurpose
+  // See BogPayment.paymentModel's own comment — identical derivation from
+  // `purpose`, same DIRECT/ESCROW split, just the Stripe-funded counterpart.
+  paymentModel          PaymentModel
   referenceId           String
-  amount                Int // minor units
+  // What Stripe actually charged the buyer — minor units of `currency`
+  // (USD/EUR cents), post-FX-conversion (see routes/stripePayments.ts's
+  // convertGelToStripeMinorUnits). NEVER pass this to a commission/payout
+  // calculation directly — every other money figure in this codebase
+  // (User.earningsBalance, WalletEntry.amount, GigTransaction.grossAmount,
+  // MentorshipBooking's escrow fields) is GEL tetri, and crediting a seller
+  // with the raw USD/EUR-cents number would under-credit them by roughly
+  // the GEL exchange rate (a real bug this field's sibling, amountGel, was
+  // added to fix — see amountGel's own comment).
+  amount                Int
+  // The real GEL-tetri gross amount BEFORE the FX conversion above — this,
+  // not `amount`, is what every completion branch in
+  // routes/stripePayments.ts's applyStripePaymentResult passes as
+  // grossAmount/amount into completeCoursePurchase/completeProductPurchase/
+  // captureEscrow/captureMentorshipEscrow, so a Stripe-funded sale computes
+  // and credits the seller's GEL-denominated earningsBalance from the same
+  // unit every BOG-funded sale already uses. Backfilled for pre-existing
+  // rows by reversing `amount` through today's default conversion rate
+  // (utils/env.ts's STRIPE_GEL_TO_USD_RATE/STRIPE_GEL_TO_EUR_RATE) — an
+  // approximation only, since the rate actually in effect at the original
+  // checkout time was never recorded; see migration
+  // 20260825210956_add_stripe_payment_amount_gel's own comment.
+  amountGel             Int
   currency              String             @db.Char(3)
   status                BogPaymentStatus   @default(PENDING)
   checkoutUrl           String?

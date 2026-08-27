@@ -130,7 +130,7 @@ export default function StudioCaseDetailPage() {
             )}
 
             <span className="text-[11px] font-black uppercase tracking-widest block mb-3 text-cyan-500">{caseStudy.category}</span>
-            <h1 className="text-3xl font-black mb-6">{displayTitle}</h1>
+            <h1 className="blog-heading-safe text-3xl font-black mb-6">{displayTitle}</h1>
 
             <div className="flex flex-wrap gap-6 mb-8 text-sm">
               <div>

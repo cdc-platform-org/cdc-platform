@@ -15,7 +15,14 @@ const SERVICE_TYPE_LABEL: Record<PlatformFeeServiceType, string> = {
   GIG_VERIFIED: 'შეკვეთა/გიგი — ვერიფიცირებული ფრილანსერი',
   MENTORSHIP: 'მენტორობა',
   HR_SUPPORT: 'HR მხარდაჭერა',
-  DIGITAL_PRODUCT: 'ციფრული პროდუქტი',
+  // Was a single "DIGITAL_PRODUCT" key here, stale since the backend split
+  // this into a verified/unverified pair (20260823114509_add_digital_
+  // product_unverified_surcharge) — the API has returned these two exact
+  // keys since that migration, so this page silently rendered a blank label
+  // for both rows until now.
+  DIGITAL_PRODUCT_UNVERIFIED: 'ციფრული პროდუქტი — არავერიფიცირებული შემქმნელი',
+  DIGITAL_PRODUCT_VERIFIED: 'ციფრული პროდუქტი — ვერიფიცირებული შემქმნელი',
+  COURSE: 'კურსი (მენტორის ავტორობით)',
 };
 
 // Fixed display order — matches the enum declaration order in schema.prisma.
@@ -24,7 +31,9 @@ const SERVICE_TYPE_ORDER: PlatformFeeServiceType[] = [
   'GIG_VERIFIED',
   'MENTORSHIP',
   'HR_SUPPORT',
-  'DIGITAL_PRODUCT',
+  'DIGITAL_PRODUCT_UNVERIFIED',
+  'DIGITAL_PRODUCT_VERIFIED',
+  'COURSE',
 ];
 
 function FeeScheduleRowForm({ row, onSaved }: { row: FeeScheduleRow; onSaved: (row: FeeScheduleRow) => void }) {

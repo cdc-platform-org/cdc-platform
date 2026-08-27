@@ -162,7 +162,7 @@ export default function SuccessStoriesPage() {
                     </div>
                   )}
                   <div className="min-w-0">
-                    <h3 className="text-base font-black truncate">{item.studentName}</h3>
+                    <h3 className="blog-heading-safe text-base font-black truncate">{item.studentName}</h3>
                     <p className="text-xs font-bold text-cyan-500 truncate">{successStoryRoleTitle(item, contentLang)}</p>
                   </div>
                 </div>

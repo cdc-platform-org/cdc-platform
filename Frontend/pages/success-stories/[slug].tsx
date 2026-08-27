@@ -126,7 +126,7 @@ export default function SuccessStoryDetailPage() {
                 </div>
               )}
               <div>
-                <h1 className="text-2xl font-black mb-1">{story.studentName}</h1>
+                <h1 className="blog-heading-safe text-2xl font-black mb-1">{story.studentName}</h1>
                 <p className="text-sm font-bold text-cyan-500">{successStoryRoleTitle(story, contentLang)}</p>
                 {story.hiredBy && (
                   <span className="inline-block mt-1.5 text-[11px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">

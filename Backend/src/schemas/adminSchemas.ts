@@ -8,6 +8,25 @@ export const banUserSchema = z.object({
 export const setAdminRoleSchema = z.object({
   adminRole: z.enum(['SUPER_ADMIN', 'MANAGER', 'MODERATOR']).nullable(),
 });
+// Generic counterpart to POST /users/:id/approve|reject — same two real
+// transitions, but as one PATCH so the admin UI can offer a single Status
+// dropdown instead of two separate buttons. `reason` only applies going to
+// REJECTED (mirrors rejectUserSchema above); harmless if sent otherwise,
+// since the route only reads it for that one transition.
+export const updateUserStatusSchema = z.object({
+  status: z.enum(['PENDING_APPROVAL', 'APPROVED', 'REJECTED']),
+  reason: z.string().trim().max(500).optional(),
+});
+// Base platform Role (Student/Mentor/SuperAdmin/Client) — distinct from
+// AdminRole above, which gates the separate admin-panel-access tier
+// (see /admin-panel/team). `role: 'SuperAdmin'` is its own independent
+// privilege check used across ~14 route files (invoices.ts, hrSupport.ts,
+// gigs.ts, vacancies.ts, etc.), so the route applying this schema adds an
+// extra SUPER_ADMIN-only gate specifically around that value — this schema
+// only validates shape/membership, not who's allowed to set what.
+export const updateUserRoleSchema = z.object({
+  role: z.enum(['Student', 'Mentor', 'SuperAdmin', 'Client']),
+});
 export const addTeamMemberSchema = z.object({
   email: z.string().email(),
   adminRole: z.enum(['SUPER_ADMIN', 'MANAGER', 'MODERATOR']),

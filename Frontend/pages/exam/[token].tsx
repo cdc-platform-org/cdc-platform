@@ -323,7 +323,7 @@ export default function CandidateExamPage() {
 
         {phase === 'landing' && info && (
           <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-8">
-            <h1 className="text-xl font-black mb-1">{info.title}</h1>
+            <h1 className="blog-heading-safe text-xl font-black mb-1">{info.title}</h1>
             {info.description && <p className="text-sm text-slate-400 mb-3">{info.description}</p>}
             <p className="text-xs text-cyan-400 font-bold flex items-center gap-1.5 mb-6">
               <Clock className="w-3.5 h-3.5" />

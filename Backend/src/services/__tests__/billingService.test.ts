@@ -5,6 +5,7 @@ import {
   startTrialSubscription,
   CardRemovalRequiresConfirmationError,
   PaymentMethodRequiredError,
+  AlreadySubscribedError,
 } from '../billingService';
 import { createUser, createVerifiedPaymentMethod, createBillingSubscription } from '../../test/factories';
 import { BillingProductType } from '@prisma/client';
@@ -119,6 +120,31 @@ describe('billingService', () => {
       const subscription = await startTrialSubscription(business.id, BillingProductType.AI_AGENT_SUITE, 'agent-1');
       expect(subscription.status).toBe('TRIALING');
       expect(subscription.trialEndsAt.getTime()).toBeGreaterThan(Date.now());
+    });
+
+    it('a double-click race (two concurrent calls) throws AlreadySubscribedError on the loser, not an unhandled P2002', async () => {
+      const business = await createUser();
+      await createVerifiedPaymentMethod({ userId: business.id, isDefault: true });
+
+      // Both calls pass the findUnique pre-check before either has committed
+      // — the loser must hit the (businessId, productType, referenceId)
+      // unique constraint at create() and translate it to the same clean
+      // error the earlier, slower check would have thrown.
+      const results = await Promise.allSettled([
+        startTrialSubscription(business.id, BillingProductType.AI_AGENT_SUITE, 'agent-1'),
+        startTrialSubscription(business.id, BillingProductType.AI_AGENT_SUITE, 'agent-1'),
+      ]);
+
+      const fulfilled = results.filter((r) => r.status === 'fulfilled');
+      const rejected = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+      expect(fulfilled).toHaveLength(1);
+      expect(rejected).toHaveLength(1);
+      expect(rejected[0].reason).toBeInstanceOf(AlreadySubscribedError);
+
+      const subscriptions = await prisma.billingSubscription.findMany({
+        where: { businessId: business.id, productType: BillingProductType.AI_AGENT_SUITE, referenceId: 'agent-1' },
+      });
+      expect(subscriptions).toHaveLength(1); // not double-created
     });
   });
 });

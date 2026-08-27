@@ -46,6 +46,16 @@ export async function unbanUser(userId: string): Promise<AdminUser> {
   return response.data;
 }
 
+export async function updateUserRole(userId: string, role: AdminUser['role']): Promise<AdminUser> {
+  const response = await apiClient.patch<AdminUser>(`/admin/users/${userId}/role`, { role });
+  return response.data;
+}
+
+export async function updateUserStatus(userId: string, status: AdminUser['status'], reason?: string): Promise<AdminUser> {
+  const response = await apiClient.patch<AdminUser>(`/admin/users/${userId}/status`, { status, reason });
+  return response.data;
+}
+
 // Sends the user the same password-reset email their own "Forgot password?"
 // flow would — support-initiated, never sets/reveals an actual password.
 export async function sendAdminPasswordReset(userId: string): Promise<void> {
