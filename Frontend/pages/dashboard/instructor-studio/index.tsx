@@ -8,6 +8,7 @@ import SiteFooter from '../../../src/components/layout/SiteFooter';
 import BackButton from '../../../src/components/common/BackButton';
 import { getMyInstructorCourses, createInstructorCourse } from '../../../src/services/instructorCourseService';
 import { InstructorCourse, CourseStatus } from '../../../src/types/instructor';
+import { CourseLanguage } from '../../../src/types/lms';
 
 const STATUS_BADGE: Record<CourseStatus, string> = {
   DRAFT: 'text-slate-600 bg-slate-100 border-slate-200 dark:text-slate-400 dark:bg-slate-800 dark:border-slate-700',
@@ -25,6 +26,7 @@ function NewCourseForm({ onCreated }: { onCreated: (course: InstructorCourse) =>
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [price, setPrice] = useState('');
+  const [language, setLanguage] = useState<CourseLanguage>('GEORGIAN');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,7 +49,13 @@ function NewCourseForm({ onCreated }: { onCreated: (course: InstructorCourse) =>
     setSubmitting(true);
     setError(null);
     try {
-      const course = await createInstructorCourse({ title: title.trim(), description: description.trim(), category: category.trim(), originalPrice: priceInt });
+      const course = await createInstructorCourse({
+        title: title.trim(),
+        description: description.trim(),
+        category: category.trim(),
+        originalPrice: priceInt,
+        language,
+      });
       onCreated(course);
     } catch {
       setError('Could not create the course. Please try again.');
@@ -87,6 +95,18 @@ function NewCourseForm({ onCreated }: { onCreated: (course: InstructorCourse) =>
           placeholder="Price (GEL)"
           className="rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Instruction Language</label>
+        <select
+          value={language}
+          onChange={(e) => setLanguage(e.target.value as CourseLanguage)}
+          className="w-full rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="GEORGIAN">🇬🇪 Georgian</option>
+          <option value="ENGLISH">🇬🇧 English</option>
+          <option value="BOTH">🇬🇪🇬🇧 Both</option>
+        </select>
       </div>
       {error && <p className="text-xs text-red-500">{error}</p>}
       <div className="flex items-center gap-2">

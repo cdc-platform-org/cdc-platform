@@ -85,7 +85,10 @@ export default function CoursesPage() {
     () => Array.from(new Set([...courses.map((c) => c.category), ...liveTrainings.map((t) => t.category)])).sort(),
     [courses, liveTrainings]
   );
-  const languagesPresent = useMemo(() => Array.from(new Set(courses.map((c) => c.language))), [courses]);
+  const languagesPresent = useMemo(
+    () => Array.from(new Set([...courses.map((c) => c.language), ...liveTrainings.map((t) => t.language)])),
+    [courses, liveTrainings]
+  );
 
   const filteredCourses = useMemo(() => {
     if (contentTab === 'live') return [];
@@ -110,22 +113,24 @@ export default function CoursesPage() {
     return result;
   }, [courses, search, category, language, discountedOnly, priceFilter, sort, contentTab]);
 
-  // No `language` or `sort` handling — a live training has no language
-  // field, and stays in the server's soonest-first order (discountedOnly
-  // is also a course-only concept, so it's skipped here too) rather than
-  // being force-fit through filters/sorts that don't semantically apply.
+  // No `sort` handling — a live training stays in the server's
+  // soonest-first order (discountedOnly is also a course-only concept, so
+  // it's skipped here too) rather than being force-fit through a sort that
+  // doesn't semantically apply. `language` now applies to both (LiveTraining
+  // gained its own `language` column alongside Course's).
   const filteredLiveTrainings = useMemo(() => {
     if (contentTab === 'courses') return [];
     const q = search.trim().toLowerCase();
     return liveTrainings.filter((tr) => {
       if (category && tr.category !== category) return false;
+      if (language && tr.language !== language) return false;
       const price = tr.price ?? 0;
       if (priceFilter === 'free' && price > 0) return false;
       if (priceFilter === 'paid' && price === 0) return false;
       if (q && !tr.title.toLowerCase().includes(q) && !tr.description.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [liveTrainings, search, category, priceFilter, contentTab]);
+  }, [liveTrainings, search, category, language, priceFilter, contentTab]);
 
   const totalResultsCount = filteredCourses.length + filteredLiveTrainings.length;
 
@@ -488,9 +493,14 @@ export default function CoursesPage() {
                         <div className="p-6 flex-1 flex flex-col justify-between">
                           <div>
                             <div className="flex items-center justify-between gap-2">
-                              <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-600 dark:text-purple-300 bg-purple-500/10 border-purple-500/20">
-                                {tr.category}
-                              </span>
+                              <div className="flex flex-wrap gap-1.5">
+                                <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-600 dark:text-purple-300 bg-purple-500/10 border-purple-500/20">
+                                  {tr.category}
+                                </span>
+                                <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-slate-600 dark:text-slate-300 bg-slate-500/10 border-slate-500/20 whitespace-nowrap">
+                                  {courseLanguageBadge(tr.language, lang)}
+                                </span>
+                              </div>
                               <span className="text-sm font-black text-cyan-600 dark:text-cyan-300 whitespace-nowrap">
                                 {tr.price ? formatPrice(tr.price) : t('priceFree')}
                               </span>

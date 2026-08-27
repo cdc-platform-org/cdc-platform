@@ -5,6 +5,7 @@ import { Users } from 'lucide-react';
 import AdminGuard from '../../../src/components/admin/AdminGuard';
 import AdminLayout from '../../../src/components/admin/AdminLayout';
 import { LiveTraining } from '../../../src/types/liveTraining';
+import { CourseLanguage } from '../../../src/types/lms';
 import {
   getAdminLiveTrainings,
   createLiveTraining,
@@ -41,6 +42,7 @@ const emptyForm: LiveTrainingPayload & { scheduledAtLocal: string } = {
   minCapacity: 0,
   maxCapacity: 15,
   published: true,
+  language: 'GEORGIAN' as CourseLanguage,
 };
 
 function AdminLiveTrainingsDashboard() {
@@ -109,6 +111,7 @@ function AdminLiveTrainingsDashboard() {
       minCapacity: t.minCapacity,
       maxCapacity: t.maxCapacity,
       published: t.published,
+      language: t.language,
     });
     setActiveLangTab('ka');
     setFormError(null);
@@ -142,6 +145,7 @@ function AdminLiveTrainingsDashboard() {
         minCapacity: form.minCapacity ?? 0,
         maxCapacity: form.maxCapacity,
         published: form.published,
+        language: form.language,
       };
       if (editingId) {
         const updated = await updateLiveTraining(editingId, payload);
@@ -191,7 +195,7 @@ function AdminLiveTrainingsDashboard() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">კატეგორია</label>
                 <input
@@ -210,6 +214,18 @@ function AdminLiveTrainingsDashboard() {
                   onChange={(e) => setForm({ ...form, scheduledAtLocal: e.target.value })}
                   className={inputClass}
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">ტრენინგის ენა</label>
+                <select
+                  value={form.language}
+                  onChange={(e) => setForm({ ...form, language: e.target.value as CourseLanguage })}
+                  className={inputClass}
+                >
+                  <option value="GEORGIAN">🇬🇪 ქართული</option>
+                  <option value="ENGLISH">🇬🇧 ინგლისური</option>
+                  <option value="BOTH">🇬🇪🇬🇧 ორივე</option>
+                </select>
               </div>
             </div>
 

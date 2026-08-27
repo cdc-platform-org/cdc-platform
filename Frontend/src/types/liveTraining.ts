@@ -1,3 +1,5 @@
+import { CourseLanguage } from './lms';
+
 export interface LiveTraining {
   id: string;
   title: string;
@@ -12,6 +14,9 @@ export interface LiveTraining {
   minCapacity: number;
   maxCapacity: number;
   published: boolean;
+  // Same enum/meaning as Course.language — see src/utils/courseLanguage.ts's
+  // courseLanguageBadge(), shared by both types.
+  language: CourseLanguage;
   convertedToCourseId: string | null;
   createdAt: string;
   updatedAt: string;

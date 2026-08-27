@@ -1184,6 +1184,11 @@ model LiveTraining {
   minCapacity         Int      @default(0)
   maxCapacity         Int
   published           Boolean  @default(false)
+  // Same enum/meaning as Course.language — which language(s) the live
+  // session itself is conducted in, shown via the same courseLanguageBadge()
+  // helper. Defaults to GEORGIAN (this platform's primary audience), same
+  // default as Course.language.
+  language            CourseLanguage @default(GEORGIAN)
   // Set once an admin turns the recording into a real Course. A link, not a
   // merge: the new Course still needs real sections/lessons authored by
   // hand, this just lets past leads be notified and traced back to the

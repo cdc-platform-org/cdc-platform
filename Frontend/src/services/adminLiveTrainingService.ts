@@ -1,5 +1,6 @@
 import apiClient from './apiClient';
 import { LiveTraining, LiveTrainingLead, LiveTrainingLeadStatus } from '../types/liveTraining';
+import { CourseLanguage } from '../types/lms';
 
 export async function getAdminLiveTrainings(): Promise<LiveTraining[]> {
   const response = await apiClient.get<{ data: LiveTraining[] }>('/admin/live-trainings');
@@ -19,6 +20,7 @@ export interface LiveTrainingPayload {
   minCapacity?: number;
   maxCapacity: number;
   published?: boolean;
+  language?: CourseLanguage;
 }
 
 export async function createLiveTraining(payload: LiveTrainingPayload): Promise<LiveTraining> {

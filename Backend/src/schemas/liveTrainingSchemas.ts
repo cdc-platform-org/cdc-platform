@@ -13,6 +13,7 @@ export const liveTrainingCreateSchema = z.object({
   minCapacity: z.number().int().min(0).optional().default(0),
   maxCapacity: z.number().int().min(1),
   published: z.boolean().optional().default(true),
+  language: z.enum(['GEORGIAN', 'ENGLISH', 'BOTH']).optional(),
 }).refine((data) => data.minCapacity === undefined || data.minCapacity <= data.maxCapacity, {
   message: 'minCapacity cannot exceed maxCapacity.',
   path: ['minCapacity'],
@@ -31,6 +32,7 @@ export const liveTrainingUpdateSchema = z.object({
   minCapacity: z.number().int().min(0).optional(),
   maxCapacity: z.number().int().min(1).optional(),
   published: z.boolean().optional(),
+  language: z.enum(['GEORGIAN', 'ENGLISH', 'BOTH']).optional(),
 });
 
 // Public, no-login registration — same shape as createStudioInquirySchema,
