@@ -1108,15 +1108,23 @@ function DashboardContent() {
   }, [user?.role, router]);
 
   // Deep-link support for SiteHeader's "My Courses" menu item
-  // (/dashboard?tab=courses) — only reads the query on the initial mount so
-  // it doesn't fight the tab buttons' own setActiveTab afterwards.
+  // (/dashboard?tab=courses) and same-page CTA cards like
+  // DigitalStoreCTACard (/dashboard?tab=products) — re-syncs whenever the
+  // query param itself changes, not just on initial mount. A cross-page
+  // link makes router.isReady flip false->true, which used to be the only
+  // thing that re-ran this; but a card ALREADY on /dashboard linking to
+  // /dashboard?tab=products is a same-page query-only transition that never
+  // changes router.isReady, so that alone silently no-opped (URL updated,
+  // visible tab didn't). router.query.tab is now also a dependency, and
+  // that's safe against fighting the tab buttons' own setActiveTab — a
+  // button click never changes the URL, so it can never retrigger this.
   useEffect(() => {
     const queryTab = router.query.tab;
     if (queryTab === 'courses' || queryTab === 'wallet' || queryTab === 'gigs' || queryTab === 'products') {
       setActiveTab(queryTab);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router.isReady]);
+  }, [router.isReady, router.query.tab]);
 
   const load = useCallback(async () => {
     setLoading(true);
