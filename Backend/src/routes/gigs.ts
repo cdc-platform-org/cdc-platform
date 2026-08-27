@@ -92,6 +92,12 @@ router.get('/', async (req: Request, res: Response) => {
     where,
     include: { postedBy: posterSelect, assignedFreelancer: posterSelect },
     orderBy: { createdAt: 'desc' },
+    // Defensive cap, not real pagination — this is the public browse route
+    // with no skip/limit query param support today, so the response shape
+    // callers already depend on (a plain array) stays unchanged. Without
+    // this, the query cost and response size grow unboundedly with every
+    // gig ever posted rather than with what a visitor is actually browsing.
+    take: 300,
   });
   res.json(gigs);
 });

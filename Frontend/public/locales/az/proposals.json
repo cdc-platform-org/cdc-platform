@@ -63,6 +63,19 @@
       "job": "Açıq işlərinizdən birini seçin."
     }
   },
+  "reviewModal": {
+    "title": "Rəy bildir",
+    "subtitle": "{{name}} ilə \"{{title}}\" üzrə təcrübənizi qiymətləndirin.",
+    "tapToRate": "Qiymətləndirmək üçün ulduza toxunun",
+    "commentLabel": "Şərh",
+    "commentPlaceholder": "Birgə iş təcrübəniz necə idi?",
+    "cancel": "Ləğv et",
+    "submit": "Rəyi göndər",
+    "submitting": "Göndərilir…",
+    "minRatingError": "Zəhmət olmasa ulduz reytinqi seçin.",
+    "minLengthError": "Şərh ən azı 10 simvoldan ibarət olmalıdır.",
+    "genericError": "Rəyiniz göndərilə bilmədi. Yenidən cəhd edin."
+  },
   "marketplace": {
     "gigsTitle": "Freelance İşlər",
     "gigRequest": "Sifariş",

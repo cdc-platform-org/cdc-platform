@@ -217,6 +217,13 @@ function InstructorCourseEditorContent({ courseId }: { courseId: string }) {
   const coverInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
+    // Reset from whatever the PREVIOUS courseId left behind — the page
+    // component is reused across course-id changes (no `key={id}` on the
+    // parent), so without this, opening one invalid/not-owned course and
+    // then navigating to a valid one left loadError stuck true even after
+    // the new course loaded successfully.
+    setLoadError(false);
+    setCourse(null);
     try {
       setCourse(await getInstructorCourse(courseId));
     } catch {

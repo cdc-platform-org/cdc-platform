@@ -63,6 +63,19 @@
       "job": "Select one of your open jobs."
     }
   },
+  "reviewModal": {
+    "title": "Leave a review",
+    "subtitle": "Rate your experience with {{name}} on \"{{title}}\".",
+    "tapToRate": "Tap a star to rate",
+    "commentLabel": "Comment",
+    "commentPlaceholder": "How was your experience working together?",
+    "cancel": "Cancel",
+    "submit": "Submit review",
+    "submitting": "Submitting…",
+    "minRatingError": "Please select a star rating.",
+    "minLengthError": "Comment must be at least 10 characters.",
+    "genericError": "Unable to submit your review. Please try again."
+  },
   "marketplace": {
     "gigsTitle": "Freelance Gigs",
     "gigRequest": "Order",

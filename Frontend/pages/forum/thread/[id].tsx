@@ -44,6 +44,10 @@ function ThreadDetailContent() {
 
   const loadThread = useCallback(async () => {
     if (typeof id !== 'string') return;
+    // Reset from whatever the PREVIOUS id left behind — without this,
+    // client-navigating from an invalid/deleted thread to a valid one left
+    // notFound stuck true even after the new thread loaded successfully.
+    setNotFound(false);
     try {
       const data = await getThreadById(id);
       setThread(data);

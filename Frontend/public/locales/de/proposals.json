@@ -63,6 +63,19 @@
       "job": "Wählen Sie einen Ihrer offenen Aufträge aus."
     }
   },
+  "reviewModal": {
+    "title": "Bewertung abgeben",
+    "subtitle": "Bewerten Sie Ihre Erfahrung mit {{name}} bei „{{title}}“.",
+    "tapToRate": "Tippen Sie auf einen Stern zur Bewertung",
+    "commentLabel": "Kommentar",
+    "commentPlaceholder": "Wie war die Zusammenarbeit?",
+    "cancel": "Abbrechen",
+    "submit": "Bewertung abschicken",
+    "submitting": "Wird gesendet…",
+    "minRatingError": "Bitte wählen Sie eine Sternebewertung.",
+    "minLengthError": "Der Kommentar muss mindestens 10 Zeichen lang sein.",
+    "genericError": "Bewertung konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
+  },
   "marketplace": {
     "gigsTitle": "Freelance-Aufträge",
     "gigRequest": "Auftrag",

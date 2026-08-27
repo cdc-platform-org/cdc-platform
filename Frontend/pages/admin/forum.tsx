@@ -17,6 +17,7 @@ function ModerationQueue() {
   const [queue, setQueue] = useState<PendingForumThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -34,9 +35,12 @@ function ModerationQueue() {
   const handleModerate = async (threadId: string, status: 'APPROVED' | 'REJECTED') => {
     const reason = status === 'REJECTED' ? window.prompt('Reason for rejection (optional):') ?? undefined : undefined;
     setBusyId(threadId);
+    setActionError(null);
     try {
       await moderateForumThread(threadId, status, reason);
       setQueue((prev) => prev.filter((t) => t.id !== threadId));
+    } catch {
+      setActionError('Could not update this thread. Please try again.');
     } finally {
       setBusyId(null);
     }
@@ -45,19 +49,25 @@ function ModerationQueue() {
   const handleDelete = async (threadId: string) => {
     if (!window.confirm('Permanently delete this thread?')) return;
     setBusyId(threadId);
+    setActionError(null);
     try {
       await adminDeleteForumThread(threadId);
       setQueue((prev) => prev.filter((t) => t.id !== threadId));
+    } catch {
+      setActionError('Could not delete this thread. Please try again.');
     } finally {
       setBusyId(null);
     }
   };
 
   if (loading) return <p className="text-sm text-gray-400">Loading…</p>;
-  if (queue.length === 0) return <p className="text-sm text-gray-500">No posts pending approval.</p>;
 
   return (
     <div className="space-y-4">
+      {actionError && (
+        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-2.5 text-xs text-red-700">{actionError}</div>
+      )}
+      {queue.length === 0 && <p className="text-sm text-gray-500">No posts pending approval.</p>}
       {queue.map((thread) => (
         <div key={thread.id} className="bg-white border border-gray-200 rounded-xl p-5">
           <div className="flex items-center justify-between gap-3 mb-2">
@@ -134,8 +144,13 @@ function CategoryManager() {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this category and all its threads?')) return;
-    await deleteForumCategory(id);
-    load();
+    setError(null);
+    try {
+      await deleteForumCategory(id);
+      load();
+    } catch {
+      setError('Unable to delete this category.');
+    }
   };
 
   return (

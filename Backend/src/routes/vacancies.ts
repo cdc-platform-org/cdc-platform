@@ -86,6 +86,10 @@ router.get('/', async (req: Request, res: Response) => {
     where,
     include: { postedBy: posterSelect },
     orderBy: { createdAt: 'desc' },
+    // Defensive cap, not real pagination — see gigs.ts's identical public
+    // browse route for the same reasoning; response shape (a plain array)
+    // stays unchanged for existing callers.
+    take: 300,
   });
   res.json(vacancies);
 });

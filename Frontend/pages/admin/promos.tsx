@@ -55,9 +55,12 @@ function AdminPromosDashboard() {
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this promo code?')) return;
     setBusyId(id);
+    setError(null);
     try {
       await deletePromoCode(id);
       load();
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? 'Unable to delete this promo code.');
     } finally {
       setBusyId(null);
     }

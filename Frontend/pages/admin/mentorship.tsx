@@ -624,6 +624,7 @@ function GeneralHelpRequests() {
   const [requests, setRequests] = useState<MentorshipHelpRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [resolveError, setResolveError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -640,9 +641,12 @@ function GeneralHelpRequests() {
 
   const handleResolve = async (id: string) => {
     setBusyId(id);
+    setResolveError(null);
     try {
       await resolveMentorshipRequest(id);
       setRequests((prev) => prev.filter((r) => r.id !== id));
+    } catch {
+      setResolveError('Could not mark this request as resolved. Please try again.');
     } finally {
       setBusyId(null);
     }
@@ -656,6 +660,9 @@ function GeneralHelpRequests() {
           Submitted via the graduate-only &quot;დახმარება / მენტორობა&quot; button on the student Dashboard.
         </p>
       </div>
+      {resolveError && (
+        <div className="mb-3 rounded-lg bg-red-50 border border-red-200 px-4 py-2.5 text-xs text-red-700">{resolveError}</div>
+      )}
       {loading ? (
         <p className="text-sm text-gray-400">Loading…</p>
       ) : requests.length === 0 ? (

@@ -80,6 +80,12 @@ function StoreProductContent() {
 
   useEffect(() => {
     if (typeof id !== 'string') return;
+    // Resets stale flags from whatever the PREVIOUS id showed — without
+    // this, client-navigating from a deleted/invalid product straight to a
+    // valid one left notFound stuck true (and the old product's stale
+    // title/price rendered until the new fetch resolved).
+    setLoading(true);
+    setNotFound(false);
     getProduct(id)
       .then(setProduct)
       .catch(() => setNotFound(true))

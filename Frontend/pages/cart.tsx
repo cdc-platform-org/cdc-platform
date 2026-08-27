@@ -86,7 +86,9 @@ function CartContent() {
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="bg-gradient-to-tr from-cyan-500 to-purple-600 text-white px-4 py-1.5 rounded-xl font-black text-sm tracking-wider">CDC</div>
-            <span className={`font-bold text-xs uppercase tracking-widest ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Cart Ecosystem</span>
+            <span className={`font-bold text-xs uppercase tracking-widest ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              {lang === 'ka' ? 'კალათის ეკოსისტემა' : 'Cart Ecosystem'}
+            </span>
           </div>
           
           <div className="flex items-center gap-4">

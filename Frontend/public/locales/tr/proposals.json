@@ -63,6 +63,19 @@
       "job": "Açık ilanlarınızdan birini seçin."
     }
   },
+  "reviewModal": {
+    "title": "Değerlendirme bırak",
+    "subtitle": "{{name}} ile \"{{title}}\" üzerindeki deneyiminizi değerlendirin.",
+    "tapToRate": "Değerlendirmek için bir yıldıza dokunun",
+    "commentLabel": "Yorum",
+    "commentPlaceholder": "Birlikte çalışma deneyiminiz nasıldı?",
+    "cancel": "İptal",
+    "submit": "Değerlendirmeyi gönder",
+    "submitting": "Gönderiliyor…",
+    "minRatingError": "Lütfen bir yıldız derecelendirmesi seçin.",
+    "minLengthError": "Yorum en az 10 karakter olmalıdır.",
+    "genericError": "Değerlendirmeniz gönderilemedi. Lütfen tekrar deneyin."
+  },
   "marketplace": {
     "gigsTitle": "Serbest Çalışma İlanları",
     "gigRequest": "Sipariş",

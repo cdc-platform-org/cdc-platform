@@ -423,6 +423,7 @@ function AdminCompaniesDashboard() {
   const [statusFilter, setStatusFilter] = useState<'' | 'unverified' | 'under_review' | 'verified' | 'rejected'>('under_review');
   const [aiTrialCompanyId, setAiTrialCompanyId] = useState<string | null>(null);
   const [inspectingCompanyId, setInspectingCompanyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const { user } = useAuth();
   // Matches the backend's requireAdminRole('SUPER_ADMIN') on PATCH
   // /admin/users/:id/ai-trial — hidden for MANAGER rather than shown as a
@@ -444,10 +445,13 @@ function AdminCompaniesDashboard() {
 
   const handleVerify = async (id: string) => {
     setBusyId(id);
+    setActionError(null);
     try {
       await verifyCompany(id);
       setInspectingCompanyId(null);
       load();
+    } catch {
+      setActionError('Could not verify this business. Please try again.');
     } finally {
       setBusyId(null);
     }
@@ -455,9 +459,12 @@ function AdminCompaniesDashboard() {
 
   const handleUnverify = async (id: string) => {
     setBusyId(id);
+    setActionError(null);
     try {
       await unverifyCompany(id);
       load();
+    } catch {
+      setActionError('Could not unverify this business. Please try again.');
     } finally {
       setBusyId(null);
     }
@@ -465,10 +472,13 @@ function AdminCompaniesDashboard() {
 
   const handleReject = async (id: string, reason: string) => {
     setBusyId(id);
+    setActionError(null);
     try {
       await rejectCompany(id, reason);
       setInspectingCompanyId(null);
       load();
+    } catch {
+      setActionError('Could not reject this business. Please try again.');
     } finally {
       setBusyId(null);
     }
@@ -486,6 +496,12 @@ function AdminCompaniesDashboard() {
             Review uploaded Public Registry Extracts / registration documents and approve or revoke Business accounts.
           </p>
         </div>
+
+        {actionError && (
+          <div className="mb-4 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+            {actionError}
+          </div>
+        )}
 
         <div className="flex items-center gap-2 mb-4">
           {(['under_review', 'unverified', 'verified', 'rejected', ''] as const).map((s) => (

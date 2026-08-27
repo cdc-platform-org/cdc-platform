@@ -63,6 +63,19 @@
       "job": "Sélectionnez l'une de vos offres d'emploi ouvertes."
     }
   },
+  "reviewModal": {
+    "title": "Laisser un avis",
+    "subtitle": "Évaluez votre expérience avec {{name}} sur « {{title}} ».",
+    "tapToRate": "Touchez une étoile pour noter",
+    "commentLabel": "Commentaire",
+    "commentPlaceholder": "Comment s'est passée la collaboration ?",
+    "cancel": "Annuler",
+    "submit": "Envoyer l'avis",
+    "submitting": "Envoi…",
+    "minRatingError": "Veuillez sélectionner une note en étoiles.",
+    "minLengthError": "Le commentaire doit contenir au moins 10 caractères.",
+    "genericError": "Impossible d'envoyer votre avis. Veuillez réessayer."
+  },
   "marketplace": {
     "gigsTitle": "Missions freelance",
     "gigRequest": "Commande",

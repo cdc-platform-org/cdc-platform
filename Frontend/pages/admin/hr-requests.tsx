@@ -145,15 +145,19 @@ function CandidateRow({ evaluation, requestId, canEdit, t, onSaved }: CandidateR
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
     setSaved(false);
+    setSaveError(false);
     try {
       const updated = await updateCandidateEvaluation(requestId, evaluation.id, form);
       onSaved(updated as CandidateEvaluation);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+    } catch {
+      setSaveError(true);
     } finally {
       setSaving(false);
     }
@@ -227,9 +231,12 @@ function CandidateRow({ evaluation, requestId, canEdit, t, onSaved }: CandidateR
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline disabled:opacity-50"
+            title={saveError ? 'Save failed — try again' : undefined}
+            className={`text-xs font-bold hover:underline disabled:opacity-50 ${
+              saveError ? 'text-red-600 dark:text-red-400' : 'text-cyan-600 dark:text-cyan-400'
+            }`}
           >
-            {saved ? t.saved : saving ? '…' : t.save}
+            {saveError ? 'Failed — retry' : saved ? t.saved : saving ? '…' : t.save}
           </button>
         </td>
       )}

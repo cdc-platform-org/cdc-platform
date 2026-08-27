@@ -63,6 +63,19 @@
       "job": "Seleccione uno de sus trabajos abiertos."
     }
   },
+  "reviewModal": {
+    "title": "Dejar una reseña",
+    "subtitle": "Califica tu experiencia con {{name}} en «{{title}}».",
+    "tapToRate": "Toca una estrella para calificar",
+    "commentLabel": "Comentario",
+    "commentPlaceholder": "¿Cómo fue la experiencia de trabajar juntos?",
+    "cancel": "Cancelar",
+    "submit": "Enviar reseña",
+    "submitting": "Enviando…",
+    "minRatingError": "Selecciona una calificación de estrellas.",
+    "minLengthError": "El comentario debe tener al menos 10 caracteres.",
+    "genericError": "No se pudo enviar tu reseña. Inténtalo de nuevo."
+  },
   "marketplace": {
     "gigsTitle": "Encargos Freelance",
     "gigRequest": "Encargo",
