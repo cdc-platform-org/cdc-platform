@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
-import { optionalAuthenticate } from '../middleware/auth';
+import { authenticate, optionalAuthenticate } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { liveTrainingRegisterSchema } from '../schemas/liveTrainingSchemas';
 
@@ -23,13 +23,18 @@ async function canViewDrafts(req: Request): Promise<boolean> {
   return user?.adminRole === 'SUPER_ADMIN' || user?.adminRole === 'MANAGER';
 }
 
-// registeredCount is always the live lead count (via _count), never a
-// stored counter — a training only ever has a handful of registrations, so
-// counting on every read is cheap and can't drift out of sync the way a
-// manually-maintained counter could.
-function withCapacity<T extends { minCapacity: number; maxCapacity: number; _count: { leads: number } }>(training: T) {
+// registeredCount is always the live lead + active-enrollment count (via
+// _count), never a stored counter — a training only ever has a handful of
+// registrations, so counting on every read is cheap and can't drift out of
+// sync the way a manually-maintained counter could. Leads and enrollments
+// are two independent registration paths (anonymous phone callback vs.
+// authenticated self-serve, see LiveTrainingEnrollment's own comment) that
+// both consume real seats, so capacity has to account for both.
+const enrollmentCountSelect = { where: { status: 'ACTIVE' as const } };
+
+function withCapacity<T extends { minCapacity: number; maxCapacity: number; _count: { leads: number; enrollments: number } }>(training: T) {
   const { _count, ...rest } = training;
-  const registeredCount = _count.leads;
+  const registeredCount = _count.leads + _count.enrollments;
   return {
     ...rest,
     registeredCount,
@@ -39,6 +44,46 @@ function withCapacity<T extends { minCapacity: number; maxCapacity: number; _cou
   };
 }
 
+// A meeting link is only ever worth showing shortly before the session
+// starts through its end — never the moment it's pasted in, days early.
+// endDate is optional (a single-instant session), so a fallback window
+// covers that case rather than requiring every training to set one.
+const MEETING_LINK_VISIBLE_BEFORE_MS = 2 * 60 * 60 * 1000; // 2h before startDate
+const MEETING_LINK_VISIBLE_FALLBACK_MS = 6 * 60 * 60 * 1000; // used when endDate is unset
+
+function isMeetingLinkVisible(training: { startDate: Date | null; endDate: Date | null }): boolean {
+  if (!training.startDate) return false;
+  const now = Date.now();
+  const start = training.startDate.getTime();
+  const end = training.endDate ? training.endDate.getTime() : start + MEETING_LINK_VISIBLE_FALLBACK_MS;
+  return now >= start - MEETING_LINK_VISIBLE_BEFORE_MS && now <= end;
+}
+
+// Registered ahead of GET /:id below — "mine" would otherwise be swallowed
+// by that route as if it were a training id.
+router.get('/mine', authenticate, async (req: Request, res: Response) => {
+  const enrollments = await prisma.liveTrainingEnrollment.findMany({
+    where: { userId: req.user!.id, status: 'ACTIVE' },
+    include: { liveTraining: true },
+    orderBy: { liveTraining: { scheduledAt: 'asc' } },
+  });
+
+  res.json({
+    data: enrollments.map((e) => ({
+      enrollmentId: e.id,
+      enrolledAt: e.enrolledAt,
+      liveTrainingId: e.liveTraining.id,
+      title: e.liveTraining.title,
+      titleEn: e.liveTraining.titleEn,
+      scheduledAt: e.liveTraining.scheduledAt,
+      startDate: e.liveTraining.startDate,
+      endDate: e.liveTraining.endDate,
+      meetingUrl: isMeetingLinkVisible(e.liveTraining) ? e.liveTraining.meetingUrl : null,
+      recordingUrl: e.liveTraining.recordingUrl,
+    })),
+  });
+});
+
 router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
   const { category } = req.query;
   const includeDrafts = await canViewDrafts(req);
@@ -47,7 +92,7 @@ router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
       ...(category ? { category: String(category) } : {}),
       ...(includeDrafts ? {} : { published: true }),
     },
-    include: { _count: { select: { leads: true } } },
+    include: { _count: { select: { leads: true, enrollments: enrollmentCountSelect } } },
     orderBy: { scheduledAt: 'asc' },
   });
   res.json({ data: trainings.map(withCapacity) });
@@ -57,7 +102,7 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
   const includeDrafts = await canViewDrafts(req);
   const training = await prisma.liveTraining.findFirst({
     where: { id: req.params.id, ...(includeDrafts ? {} : { published: true }) },
-    include: { _count: { select: { leads: true } } },
+    include: { _count: { select: { leads: true, enrollments: enrollmentCountSelect } } },
   });
   if (!training) return res.status(404).json({ message: 'Live training not found.' });
   res.json({ data: withCapacity(training) });
@@ -85,10 +130,10 @@ router.post('/:id/register', registerRateLimit, async (req: Request, res: Respon
 
   const training = await prisma.liveTraining.findFirst({
     where: { id: req.params.id, published: true },
-    include: { _count: { select: { leads: true } } },
+    include: { _count: { select: { leads: true, enrollments: enrollmentCountSelect } } },
   });
   if (!training) return res.status(404).json({ message: 'Live training not found.' });
-  if (training._count.leads >= training.maxCapacity) {
+  if (training._count.leads + training._count.enrollments >= training.maxCapacity) {
     return res.status(409).json({ message: 'This training is fully booked.' });
   }
 
@@ -101,6 +146,51 @@ router.post('/:id/register', registerRateLimit, async (req: Request, res: Respon
   );
 
   res.status(201).json({ data: { id: lead.id } });
+});
+
+// ============================================================
+// ENROLLMENTS — authenticated self-serve alternative to the anonymous
+// lead-capture form above. Independent registration paths on purpose (see
+// LiveTrainingEnrollment's own schema comment); both consume the same
+// capacity pool. GET /mine is registered earlier, above GET /:id.
+// ============================================================
+
+router.post('/:id/enroll', authenticate, async (req: Request, res: Response) => {
+  const training = await prisma.liveTraining.findFirst({
+    where: { id: req.params.id, published: true },
+    include: { _count: { select: { leads: true, enrollments: enrollmentCountSelect } } },
+  });
+  if (!training) return res.status(404).json({ message: 'Live training not found.' });
+
+  const existing = await prisma.liveTrainingEnrollment.findUnique({
+    where: { userId_liveTrainingId: { userId: req.user!.id, liveTrainingId: training.id } },
+  });
+  if (existing?.status === 'ACTIVE') {
+    return res.status(400).json({ message: 'You are already enrolled in this training.' });
+  }
+  if (!existing && training._count.leads + training._count.enrollments >= training.maxCapacity) {
+    return res.status(409).json({ message: 'This training is fully booked.' });
+  }
+
+  // Re-enrolling after a prior cancellation flips the same row back to
+  // ACTIVE (the unique constraint on [userId, liveTrainingId] means a
+  // second row can never exist) rather than creating a new one.
+  const enrollment = existing
+    ? await prisma.liveTrainingEnrollment.update({ where: { id: existing.id }, data: { status: 'ACTIVE', enrolledAt: new Date() } })
+    : await prisma.liveTrainingEnrollment.create({ data: { userId: req.user!.id, liveTrainingId: training.id } });
+
+  res.status(201).json({ data: enrollment });
+});
+
+router.delete('/:id/enroll', authenticate, async (req: Request, res: Response) => {
+  const existing = await prisma.liveTrainingEnrollment.findUnique({
+    where: { userId_liveTrainingId: { userId: req.user!.id, liveTrainingId: req.params.id } },
+  });
+  if (!existing || existing.status === 'CANCELLED') {
+    return res.status(404).json({ message: 'You are not enrolled in this training.' });
+  }
+  await prisma.liveTrainingEnrollment.update({ where: { id: existing.id }, data: { status: 'CANCELLED' } });
+  res.status(204).send();
 });
 
 export default router;

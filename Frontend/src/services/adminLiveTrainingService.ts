@@ -1,5 +1,5 @@
 import apiClient from './apiClient';
-import { LiveTraining, LiveTrainingLead, LiveTrainingLeadStatus } from '../types/liveTraining';
+import { LiveTraining, LiveTrainingLead, LiveTrainingLeadStatus, LiveTrainingEnrollment } from '../types/liveTraining';
 import { CourseLanguage } from '../types/lms';
 
 export async function getAdminLiveTrainings(): Promise<LiveTraining[]> {
@@ -21,6 +21,10 @@ export interface LiveTrainingPayload {
   maxCapacity: number;
   published?: boolean;
   language?: CourseLanguage;
+  meetingUrl?: string;
+  recordingUrl?: string;
+  startDate?: string | null;
+  endDate?: string | null;
 }
 
 export async function createLiveTraining(payload: LiveTrainingPayload): Promise<LiveTraining> {
@@ -62,4 +66,11 @@ export async function updateLiveTrainingLead(
 export async function exportLiveTrainingLeadsCsv(trainingId: string): Promise<Blob> {
   const response = await apiClient.get(`/admin/live-trainings/${trainingId}/leads/export`, { responseType: 'blob' });
   return response.data;
+}
+
+// The real, account-based cohort roster — distinct from the anonymous
+// leads queue above.
+export async function getLiveTrainingEnrollments(trainingId: string): Promise<LiveTrainingEnrollment[]> {
+  const response = await apiClient.get<{ data: LiveTrainingEnrollment[] }>(`/admin/live-trainings/${trainingId}/enrollments`);
+  return response.data.data;
 }

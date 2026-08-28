@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { ChevronLeft, Download } from 'lucide-react';
 import AdminGuard from '../../../../src/components/admin/AdminGuard';
 import AdminLayout from '../../../../src/components/admin/AdminLayout';
-import { LiveTraining, LiveTrainingLead, LiveTrainingLeadStatus } from '../../../../src/types/liveTraining';
+import { LiveTraining, LiveTrainingLead, LiveTrainingLeadStatus, LiveTrainingEnrollment } from '../../../../src/types/liveTraining';
 import { getLiveTraining } from '../../../../src/services/liveTrainingService';
 import {
   getLiveTrainingLeads,
   updateLiveTrainingLead,
   exportLiveTrainingLeadsCsv,
+  getLiveTrainingEnrollments,
 } from '../../../../src/services/adminLiveTrainingService';
 
 const STATUS_LABEL: Record<LiveTrainingLeadStatus, string> = {
@@ -33,6 +34,7 @@ function AdminLiveTrainingLeadsDashboard() {
 
   const [training, setTraining] = useState<LiveTraining | null>(null);
   const [leads, setLeads] = useState<LiveTrainingLead[]>([]);
+  const [enrollments, setEnrollments] = useState<LiveTrainingEnrollment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<LiveTrainingLeadStatus | ''>('');
@@ -44,9 +46,14 @@ function AdminLiveTrainingLeadsDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const [t, l] = await Promise.all([getLiveTraining(trainingId), getLiveTrainingLeads(trainingId)]);
+      const [t, l, e] = await Promise.all([
+        getLiveTraining(trainingId),
+        getLiveTrainingLeads(trainingId),
+        getLiveTrainingEnrollments(trainingId),
+      ]);
       setTraining(t);
       setLeads(l);
+      setEnrollments(e.filter((row) => row.status === 'ACTIVE'));
     } catch {
       setError('მონაცემების ჩატვირთვა ვერ მოხერხდა.');
     } finally {
@@ -125,6 +132,36 @@ function AdminLiveTrainingLeadsDashboard() {
           </button>
         </div>
 
+        {!loading && enrollments.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-8">
+            <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+              <h2 className="text-sm font-semibold text-gray-900">ჩარიცხული სტუდენტები — რეალური ანგარიშები ({enrollments.length})</h2>
+              <p className="text-xs text-gray-500 mt-0.5">ეს არის კოჰორტის რეალური სია — მათ დაშბორდზე ავტომატურად უჩნდებათ მიერთების ბმული და ჩანაწერი.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500 border-b border-gray-100 bg-gray-50">
+                    <th className="px-4 py-3 font-medium">სახელი</th>
+                    <th className="px-4 py-3 font-medium">ელ. ფოსტა</th>
+                    <th className="px-4 py-3 font-medium">ჩარიცხვის დრო</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {enrollments.map((e) => (
+                    <tr key={e.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 font-medium text-gray-900">{e.user.name}</td>
+                      <td className="px-4 py-3 text-gray-600">{e.user.email}</td>
+                      <td className="px-4 py-3 text-gray-500 text-xs">{new Date(e.enrolledAt).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        <h2 className="text-sm font-semibold text-gray-900 mb-3">ანონიმური ლიდები — სატელეფონო კონტაქტის რიგი</h2>
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           {(['', 'NOT_CONTACTED', 'CONTACTED', 'SCHEDULED', 'DECLINED'] as const).map((s) => (
             <button

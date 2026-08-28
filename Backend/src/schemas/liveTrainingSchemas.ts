@@ -14,9 +14,16 @@ export const liveTrainingCreateSchema = z.object({
   maxCapacity: z.number().int().min(1),
   published: z.boolean().optional().default(true),
   language: z.enum(['GEORGIAN', 'ENGLISH', 'BOTH']).optional(),
+  meetingUrl: z.string().url().optional().or(z.literal('')),
+  recordingUrl: z.string().url().optional().or(z.literal('')),
+  startDate: z.string().datetime().optional().nullable(),
+  endDate: z.string().datetime().optional().nullable(),
 }).refine((data) => data.minCapacity === undefined || data.minCapacity <= data.maxCapacity, {
   message: 'minCapacity cannot exceed maxCapacity.',
   path: ['minCapacity'],
+}).refine((data) => !data.startDate || !data.endDate || new Date(data.endDate) >= new Date(data.startDate), {
+  message: 'endDate cannot be before startDate.',
+  path: ['endDate'],
 });
 
 export const liveTrainingUpdateSchema = z.object({
@@ -33,6 +40,13 @@ export const liveTrainingUpdateSchema = z.object({
   maxCapacity: z.number().int().min(1).optional(),
   published: z.boolean().optional(),
   language: z.enum(['GEORGIAN', 'ENGLISH', 'BOTH']).optional(),
+  meetingUrl: z.string().url().optional().or(z.literal('')),
+  recordingUrl: z.string().url().optional().or(z.literal('')),
+  startDate: z.string().datetime().optional().nullable(),
+  endDate: z.string().datetime().optional().nullable(),
+}).refine((data) => !data.startDate || !data.endDate || new Date(data.endDate) >= new Date(data.startDate), {
+  message: 'endDate cannot be before startDate.',
+  path: ['endDate'],
 });
 
 // Public, no-login registration — same shape as createStudioInquirySchema,

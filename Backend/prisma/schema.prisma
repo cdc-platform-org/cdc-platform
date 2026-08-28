@@ -588,6 +588,7 @@ model User {
   reviewedGrantOpportunities    GrantOpportunity[]
   generatedLaunchKits           LaunchKit[]
   digitalMarketingGenerations   DigitalMarketingGeneration[]
+  liveTrainingEnrollments       LiveTrainingEnrollment[]
   chatRequestsSent              ChatRequest[]                 @relation("ChatRequestsSent")
   chatRequestsReceived          ChatRequest[]                 @relation("ChatRequestsReceived")
   chatFlagsAsSender             ChatFlag[]                    @relation("ChatFlagsAsSender")
@@ -1190,6 +1191,27 @@ model LiveTraining {
   // helper. Defaults to GEORGIAN (this platform's primary audience), same
   // default as Course.language.
   language            CourseLanguage @default(GEORGIAN)
+  // Pasted join link (Zoom/Meet/etc.) for the actual live session — same
+  // plain-URL convention as HRSupportRequest.meetingUrl, not a real
+  // Zoom/Meet API integration. Null until an admin sets it once the cohort
+  // is confirmed; the dashboard only ever shows it to an ACTIVE
+  // LiveTrainingEnrollment, gated by startDate/endDate below.
+  meetingUrl          String?
+  // Pasted external URL (Drive/Bunny/MP4, etc.) to the session recording —
+  // same convention and admin-attaches-after-the-fact posture as
+  // MentorshipBooking.recordingUrl. Shown to every enrolled student once
+  // set, with no time gating (unlike meetingUrl).
+  recordingUrl        String?
+  // The actual confirmed session window, set once a cohort's admin-run
+  // phone scheduling (see LiveTrainingLead.status) settles on a real
+  // date/time — deliberately separate from `scheduledAt` above, which stays
+  // the originally-advertised date shown on the public marketing page and
+  // is never edited after leads have already registered against it.
+  // startDate/endDate exist purely to gate meetingUrl's dashboard
+  // visibility window (see liveTrainings.ts's GET /mine); a single-instant
+  // session can leave endDate null.
+  startDate           DateTime?
+  endDate             DateTime?
   // Set once an admin turns the recording into a real Course. A link, not a
   // merge: the new Course still needs real sections/lessons authored by
   // hand, this just lets past leads be notified and traced back to the
@@ -1199,7 +1221,8 @@ model LiveTraining {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  leads LiveTrainingLead[]
+  leads       LiveTrainingLead[]
+  enrollments LiveTrainingEnrollment[]
 
   @@index([published])
   @@map("live_trainings")
@@ -1230,6 +1253,37 @@ model LiveTrainingLead {
   @@index([liveTrainingId])
   @@index([status])
   @@map("live_training_leads")
+}
+
+enum LiveTrainingEnrollmentStatus {
+  ACTIVE
+  CANCELLED
+}
+
+// A real account's confirmed seat in a LiveTraining — the roster
+// LiveTrainingLead was never designed to be (that model has no `userId`
+// at all, see its own comment). This is what a "cohort" concretely is on
+// this platform: every later piece (the dashboard's meeting-link/
+// recording surface, and a future cohort exam) reads its list of students
+// from here, not from leads. Independent of LiveTrainingLead — an
+// enrollment isn't required to originate from one, so a logged-in user can
+// self-enroll directly (see POST /live-trainings/:id/enroll) without the
+// anonymous phone-callback flow existing at all.
+model LiveTrainingEnrollment {
+  id             String                        @id @default(uuid())
+  userId         String
+  user           User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  liveTrainingId String
+  liveTraining   LiveTraining                  @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  status         LiveTrainingEnrollmentStatus  @default(ACTIVE)
+  enrolledAt     DateTime                      @default(now())
+
+  // One active-or-cancelled row per (user, training) — re-enrolling after a
+  // cancellation flips this same row back to ACTIVE rather than creating a
+  // second one (see the route handler).
+  @@unique([userId, liveTrainingId])
+  @@index([liveTrainingId])
+  @@map("live_training_enrollments")
 }
 
 // ============================================================

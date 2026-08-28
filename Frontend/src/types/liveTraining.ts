@@ -17,6 +17,14 @@ export interface LiveTraining {
   // Same enum/meaning as Course.language — see src/utils/courseLanguage.ts's
   // courseLanguageBadge(), shared by both types.
   language: CourseLanguage;
+  meetingUrl: string | null;
+  recordingUrl: string | null;
+  // The actual confirmed session window — separate from scheduledAt, which
+  // stays the originally-advertised public marketing date. Null until an
+  // admin sets it once a cohort is confirmed. See Backend's LiveTraining
+  // model comment.
+  startDate: string | null;
+  endDate: string | null;
   convertedToCourseId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -26,6 +34,32 @@ export interface LiveTraining {
   seatsRemaining: number;
   isFull: boolean;
   minThresholdMet: boolean;
+}
+
+// One row per active enrollment, as returned by GET /live-trainings/mine —
+// meetingUrl is already visibility-gated server-side (see
+// isMeetingLinkVisible in Backend's routes/liveTrainings.ts), so the
+// frontend never needs to re-derive the time window itself.
+export interface MyLiveTrainingEnrollment {
+  enrollmentId: string;
+  enrolledAt: string;
+  liveTrainingId: string;
+  title: string;
+  titleEn: string | null;
+  scheduledAt: string;
+  startDate: string | null;
+  endDate: string | null;
+  meetingUrl: string | null;
+  recordingUrl: string | null;
+}
+
+export interface LiveTrainingEnrollment {
+  id: string;
+  userId: string;
+  liveTrainingId: string;
+  status: 'ACTIVE' | 'CANCELLED';
+  enrolledAt: string;
+  user: { id: string; name: string; email: string };
 }
 
 export type LiveTrainingLeadStatus = 'NOT_CONTACTED' | 'CONTACTED' | 'SCHEDULED' | 'DECLINED';

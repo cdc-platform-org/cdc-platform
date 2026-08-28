@@ -51,9 +51,14 @@ router.post(
   }
 );
 
-function withCapacity<T extends { minCapacity: number; maxCapacity: number; _count: { leads: number } }>(training: T) {
+// Counts leads + active enrollments together — same reasoning as the
+// public liveTrainings.ts's own withCapacity (two independent registration
+// paths, one seat pool).
+const enrollmentCountSelect = { where: { status: 'ACTIVE' as const } };
+
+function withCapacity<T extends { minCapacity: number; maxCapacity: number; _count: { leads: number; enrollments: number } }>(training: T) {
   const { _count, ...rest } = training;
-  const registeredCount = _count.leads;
+  const registeredCount = _count.leads + _count.enrollments;
   return {
     ...rest,
     registeredCount,
@@ -65,7 +70,7 @@ function withCapacity<T extends { minCapacity: number; maxCapacity: number; _cou
 
 router.get('/', async (_req: Request, res: Response) => {
   const trainings = await prisma.liveTraining.findMany({
-    include: { _count: { select: { leads: true } } },
+    include: { _count: { select: { leads: true, enrollments: enrollmentCountSelect } } },
     orderBy: { scheduledAt: 'desc' },
   });
   res.json({ data: trainings.map(withCapacity) });
@@ -74,10 +79,19 @@ router.get('/', async (_req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   const result = liveTrainingCreateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
-  const { thumbnailUrl, videoUrl, ...rest } = result.data;
+  const { thumbnailUrl, videoUrl, meetingUrl, recordingUrl, startDate, endDate, ...rest } = result.data;
   const training = await prisma.liveTraining.create({
-    data: { ...rest, thumbnailUrl: thumbnailUrl || null, videoUrl: videoUrl || null, scheduledAt: new Date(result.data.scheduledAt) },
-    include: { _count: { select: { leads: true } } },
+    data: {
+      ...rest,
+      thumbnailUrl: thumbnailUrl || null,
+      videoUrl: videoUrl || null,
+      meetingUrl: meetingUrl || null,
+      recordingUrl: recordingUrl || null,
+      startDate: startDate ? new Date(startDate) : null,
+      endDate: endDate ? new Date(endDate) : null,
+      scheduledAt: new Date(result.data.scheduledAt),
+    },
+    include: { _count: { select: { leads: true, enrollments: enrollmentCountSelect } } },
   });
   await logAdminAction({ action: 'liveTraining.create', targetType: 'LiveTraining', targetId: training.id, performedById: req.user!.id });
   res.status(201).json({ data: withCapacity(training) });
@@ -86,7 +100,7 @@ router.post('/', async (req: Request, res: Response) => {
 router.put('/:id', async (req: Request, res: Response) => {
   const result = liveTrainingUpdateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
-  const { thumbnailUrl, videoUrl, scheduledAt, ...rest } = result.data;
+  const { thumbnailUrl, videoUrl, meetingUrl, recordingUrl, startDate, endDate, scheduledAt, ...rest } = result.data;
   try {
     const training = await prisma.liveTraining.update({
       where: { id: req.params.id },
@@ -94,9 +108,13 @@ router.put('/:id', async (req: Request, res: Response) => {
         ...rest,
         ...(thumbnailUrl !== undefined ? { thumbnailUrl: thumbnailUrl || null } : {}),
         ...(videoUrl !== undefined ? { videoUrl: videoUrl || null } : {}),
+        ...(meetingUrl !== undefined ? { meetingUrl: meetingUrl || null } : {}),
+        ...(recordingUrl !== undefined ? { recordingUrl: recordingUrl || null } : {}),
+        ...(startDate !== undefined ? { startDate: startDate ? new Date(startDate) : null } : {}),
+        ...(endDate !== undefined ? { endDate: endDate ? new Date(endDate) : null } : {}),
         ...(scheduledAt !== undefined ? { scheduledAt: new Date(scheduledAt) } : {}),
       },
-      include: { _count: { select: { leads: true } } },
+      include: { _count: { select: { leads: true, enrollments: enrollmentCountSelect } } },
     });
     await logAdminAction({ action: 'liveTraining.update', targetType: 'LiveTraining', targetId: training.id, performedById: req.user!.id });
     res.json({ data: withCapacity(training) });
@@ -140,6 +158,24 @@ router.patch('/leads/:leadId', async (req: Request, res: Response) => {
     if (err.code === 'P2025') return res.status(404).json({ message: 'Lead not found.' });
     throw err;
   }
+});
+
+// ============================================================
+// ENROLLMENTS — the real, account-based cohort roster (distinct from the
+// anonymous leads queue above). This is what a future cohort-exam builder
+// or any other roster-scoped feature should read from.
+// ============================================================
+
+router.get('/:id/enrollments', async (req: Request, res: Response) => {
+  const training = await prisma.liveTraining.findUnique({ where: { id: req.params.id }, select: { id: true } });
+  if (!training) return res.status(404).json({ message: 'Live training not found.' });
+
+  const enrollments = await prisma.liveTrainingEnrollment.findMany({
+    where: { liveTrainingId: req.params.id },
+    include: { user: { select: { id: true, name: true, email: true } } },
+    orderBy: { enrolledAt: 'desc' },
+  });
+  res.json({ data: enrollments });
 });
 
 // Minimal hand-rolled CSV — the export is always name/email/phone/status/

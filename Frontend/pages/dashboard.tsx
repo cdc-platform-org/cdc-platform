@@ -22,6 +22,7 @@ import {
   Mail,
   Users,
   Crown,
+  Video,
 } from 'lucide-react';
 import ProtectedRoute from '../src/components/auth/ProtectedRoute';
 import SiteHeader from '../src/components/layout/SiteHeader';
@@ -150,7 +151,7 @@ const dict = {
     formTitle: 'სათაური',
     formDescription: 'აღწერა',
     formPrice: 'ფასი (GEL, 0 = უფასო)',
-    commissionBannerText: 'პლატფორმის საკომისიო შეადგენს {{rate}}%-ს.',
+    commissionBannerText: 'პლატფორმის საკომისიო შეადგენს {{rate}}%-ს საბანკო ტრანზაქციების მომსახურების საკომისიოს ჩათვლით.',
     commissionBannerNet: 'თქვენი წილი: {{amount}} GEL',
     formCategory: 'კატეგორია',
     formCoverImage: 'მთავარი ფოტო (გარეკანი)',
@@ -283,7 +284,7 @@ const dict = {
     formTitle: 'Title',
     formDescription: 'Description',
     formPrice: 'Price (GEL, 0 = free)',
-    commissionBannerText: 'The platform fee is {{rate}}%.',
+    commissionBannerText: 'The platform fee is {{rate}}%, including bank transaction processing fees.',
     commissionBannerNet: 'Your share: {{amount}} GEL',
     formCategory: 'Category',
     formCoverImage: 'Main Cover Image',
@@ -412,7 +413,7 @@ const dict = {
     formTitle: 'Title',
     formDescription: 'Description',
     formPrice: 'Price (GEL, 0 = free)',
-    commissionBannerText: 'The platform fee is {{rate}}%.',
+    commissionBannerText: 'The platform fee is {{rate}}%, including bank transaction processing fees.',
     commissionBannerNet: 'Your share: {{amount}} GEL',
     formCategory: 'Category',
     formCoverImage: 'Main Cover Image',
@@ -541,7 +542,7 @@ const dict = {
     formTitle: 'Title',
     formDescription: 'Description',
     formPrice: 'Price (GEL, 0 = free)',
-    commissionBannerText: 'The platform fee is {{rate}}%.',
+    commissionBannerText: 'The platform fee is {{rate}}%, including bank transaction processing fees.',
     commissionBannerNet: 'Your share: {{amount}} GEL',
     formCategory: 'Category',
     formCoverImage: 'Main Cover Image',
@@ -670,7 +671,7 @@ const dict = {
     formTitle: 'Title',
     formDescription: 'Description',
     formPrice: 'Price (GEL, 0 = free)',
-    commissionBannerText: 'The platform fee is {{rate}}%.',
+    commissionBannerText: 'The platform fee is {{rate}}%, including bank transaction processing fees.',
     commissionBannerNet: 'Your share: {{amount}} GEL',
     formCategory: 'Category',
     formCoverImage: 'Main Cover Image',
@@ -799,7 +800,7 @@ const dict = {
     formTitle: 'Title',
     formDescription: 'Description',
     formPrice: 'Price (GEL, 0 = free)',
-    commissionBannerText: 'The platform fee is {{rate}}%.',
+    commissionBannerText: 'The platform fee is {{rate}}%, including bank transaction processing fees.',
     commissionBannerNet: 'Your share: {{amount}} GEL',
     formCategory: 'Category',
     formCoverImage: 'Main Cover Image',
@@ -1518,6 +1519,13 @@ function DashboardContent() {
           >
             <CalendarClock className="w-4 h-4 shrink-0" />
             {t.tabMentorshipSessions}
+          </Link>
+          <Link
+            href="/dashboard/live-trainings"
+            className="flex items-center gap-2.5 w-full text-left p-3.5 rounded-xl text-xs font-bold transition border bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 no-underline"
+          >
+            <Video className="w-4 h-4 shrink-0" />
+            {lang === 'ka' ? 'ლაივ ტრენინგები' : 'Live Trainings'}
           </Link>
           <Link
             href="/dashboard/settings"

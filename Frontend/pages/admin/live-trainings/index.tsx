@@ -28,7 +28,7 @@ function toLocalInput(iso: string): string {
   return iso ? iso.slice(0, 16) : '';
 }
 
-const emptyForm: LiveTrainingPayload & { scheduledAtLocal: string } = {
+const emptyForm: LiveTrainingPayload & { scheduledAtLocal: string; startDateLocal: string; endDateLocal: string } = {
   title: '',
   description: '',
   category: '',
@@ -43,6 +43,10 @@ const emptyForm: LiveTrainingPayload & { scheduledAtLocal: string } = {
   maxCapacity: 15,
   published: true,
   language: 'GEORGIAN' as CourseLanguage,
+  meetingUrl: '',
+  recordingUrl: '',
+  startDateLocal: '',
+  endDateLocal: '',
 };
 
 function AdminLiveTrainingsDashboard() {
@@ -112,6 +116,10 @@ function AdminLiveTrainingsDashboard() {
       maxCapacity: t.maxCapacity,
       published: t.published,
       language: t.language,
+      meetingUrl: t.meetingUrl ?? '',
+      recordingUrl: t.recordingUrl ?? '',
+      startDateLocal: t.startDate ? toLocalInput(t.startDate) : '',
+      endDateLocal: t.endDate ? toLocalInput(t.endDate) : '',
     });
     setActiveLangTab('ka');
     setFormError(null);
@@ -146,6 +154,10 @@ function AdminLiveTrainingsDashboard() {
         maxCapacity: form.maxCapacity,
         published: form.published,
         language: form.language,
+        meetingUrl: form.meetingUrl?.trim() || undefined,
+        recordingUrl: form.recordingUrl?.trim() || undefined,
+        startDate: form.startDateLocal ? toIsoDatetime(form.startDateLocal) : null,
+        endDate: form.endDateLocal ? toIsoDatetime(form.endDateLocal) : null,
       };
       if (editingId) {
         const updated = await updateLiveTraining(editingId, payload);
@@ -263,6 +275,53 @@ function AdminLiveTrainingsDashboard() {
                   onChange={(e) => setForm({ ...form, maxCapacity: Number(e.target.value) || 1 })}
                   className={inputClass}
                 />
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-cyan-200 bg-cyan-50/50 p-4 space-y-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-cyan-700">სესიის მართვა — მიერთება, ჩანაწერი და კონფირმირებული თარიღი</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">დაწყების დრო (კონფირმირებული)</label>
+                  <input
+                    type="datetime-local"
+                    value={form.startDateLocal}
+                    onChange={(e) => setForm({ ...form, startDateLocal: e.target.value })}
+                    className={inputClass}
+                  />
+                  <p className="text-xs text-gray-400 mt-1">ცალკეა საჯარო „თარიღი და დრო“-სგან — მიერთების ბმული სტუდენტების დაშბორდზე ამ დროის მიხედვით ჩნდება.</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">დასრულების დრო</label>
+                  <input
+                    type="datetime-local"
+                    value={form.endDateLocal}
+                    onChange={(e) => setForm({ ...form, endDateLocal: e.target.value })}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">მიერთების ბმული (Zoom / Google Meet)</label>
+                  <input
+                    type="text"
+                    value={form.meetingUrl ?? ''}
+                    onChange={(e) => setForm({ ...form, meetingUrl: e.target.value })}
+                    placeholder="https://..."
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">ჩანაწერის ბმული</label>
+                  <input
+                    type="text"
+                    value={form.recordingUrl ?? ''}
+                    onChange={(e) => setForm({ ...form, recordingUrl: e.target.value })}
+                    placeholder="https://..."
+                    className={inputClass}
+                  />
+                </div>
               </div>
             </div>
 
@@ -397,7 +456,7 @@ function AdminLiveTrainingsDashboard() {
                         href={`/admin/live-trainings/${t.id}/leads`}
                         className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50"
                       >
-                        <Users size={13} /> ლიდები ({t.registeredCount})
+                        <Users size={13} /> ლიდები და რეგისტრირებულები ({t.registeredCount})
                       </Link>
                       <button type="button" onClick={() => startEdit(t)} className="text-xs font-medium text-indigo-600 hover:text-indigo-800 px-3 py-1.5 rounded-lg hover:bg-indigo-50">
                         რედაქტირება

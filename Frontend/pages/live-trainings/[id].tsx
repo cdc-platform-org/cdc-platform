@@ -2,13 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { Calendar, Users, CheckCircle2 } from 'lucide-react';
+import Link from 'next/link';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import BackButton from '../../src/components/common/BackButton';
 import VideoEmbed from '../../src/components/shared/VideoEmbed';
 import { LiveTraining } from '../../src/types/liveTraining';
-import { getLiveTraining, registerForLiveTraining } from '../../src/services/liveTrainingService';
+import { getLiveTraining, registerForLiveTraining, enrollInLiveTraining } from '../../src/services/liveTrainingService';
 import { resolveLocale } from '@/src/utils/locale';
 import { courseLanguageBadge } from '@/src/utils/courseLanguage';
+import { useAuth } from '../../src/context/AuthContext';
 
 const EN_STRINGS = {
   loading: 'Loading…',
@@ -26,6 +28,11 @@ const EN_STRINGS = {
   success: 'Thanks! We\'ll call you shortly to confirm your spot.',
   genericError: 'Registration failed. Please try again.',
   free: 'Free',
+  enroll: 'Enroll — I have an account',
+  enrolling: 'Enrolling…',
+  enrollSuccess: 'You\'re enrolled! Find the join link and recording on your dashboard closer to the session.',
+  goToDashboard: 'Go to My Live Trainings',
+  orDivider: 'or',
 };
 
 const dict = {
@@ -51,6 +58,11 @@ const dict = {
     success: 'გმადლობთ! მალე დაგირეკავთ ადგილის დასადასტურებლად.',
     genericError: 'რეგისტრაცია ვერ მოხერხდა. სცადეთ თავიდან.',
     free: 'უფასო',
+    enroll: 'ჩარიცხვა — მაქვს ანგარიში',
+    enrolling: 'ჩარიცხვა მიმდინარეობს…',
+    enrollSuccess: 'თქვენ ჩარიცხული ხართ! მიერთების ბმული და ჩანაწერი სესიასთან ახლოს დაშბორდზე გამოჩნდება.',
+    goToDashboard: 'ჩემი ლაივ ტრენინგები',
+    orDivider: 'ან',
   },
   en: EN_STRINGS,
   de: EN_STRINGS,
@@ -65,6 +77,7 @@ export default function LiveTrainingDetailPage() {
   const lang = resolveLocale(router.locale);
   const t = dict[lang];
   const contentLang = lang === 'ka' ? 'ka' : 'en';
+  const { isAuthenticated } = useAuth();
 
   const [training, setTraining] = useState<LiveTraining | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,6 +87,9 @@ export default function LiveTrainingDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
+  const [enrollError, setEnrollError] = useState<string | null>(null);
+  const [enrolled, setEnrolled] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -104,6 +120,28 @@ export default function LiveTrainingDetailPage() {
       setError(err?.response?.data?.message ?? t.genericError);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleEnroll = async () => {
+    if (!id) return;
+    setEnrollError(null);
+    setEnrolling(true);
+    try {
+      await enrollInLiveTraining(id);
+      setEnrolled(true);
+      load(); // refresh capacity counters
+    } catch (err: any) {
+      // "already enrolled" is functionally the same outcome as a fresh
+      // success from this button's point of view — no reason to surface it
+      // as an error.
+      if (err?.response?.status === 400 && err.response.data?.message?.includes('already enrolled')) {
+        setEnrolled(true);
+      } else {
+        setEnrollError(err?.response?.data?.message ?? t.genericError);
+      }
+    } finally {
+      setEnrolling(false);
     }
   };
 
@@ -206,10 +244,18 @@ export default function LiveTrainingDetailPage() {
           )}
         </div>
 
-        {success ? (
+        {success || enrolled ? (
           <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center">
             <CheckCircle2 className="mx-auto mb-2 text-emerald-400" size={28} />
-            <p className="text-sm text-emerald-300">{t.success}</p>
+            <p className="text-sm text-emerald-300">{enrolled ? t.enrollSuccess : t.success}</p>
+            {enrolled && (
+              <Link
+                href="/dashboard/live-trainings"
+                className="inline-block mt-4 text-xs font-bold px-4 py-2.5 rounded-lg bg-emerald-500/20 text-emerald-300 no-underline"
+              >
+                {t.goToDashboard}
+              </Link>
+            )}
           </div>
         ) : training.isFull ? (
           <button
@@ -220,7 +266,28 @@ export default function LiveTrainingDetailPage() {
             {t.full}
           </button>
         ) : (
-          <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm p-6 space-y-4">
+          <>
+            {isAuthenticated && (
+              <div className="mb-4">
+                {enrollError && (
+                  <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-xs text-red-300 mb-3">{enrollError}</div>
+                )}
+                <button
+                  type="button"
+                  onClick={handleEnroll}
+                  disabled={enrolling}
+                  className="w-full rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-3 text-sm font-bold text-white hover:opacity-90 disabled:opacity-60"
+                >
+                  {enrolling ? t.enrolling : t.enroll}
+                </button>
+                <div className="flex items-center gap-3 my-4 text-slate-600 text-xs">
+                  <div className="flex-1 h-px bg-slate-800" />
+                  {t.orDivider}
+                  <div className="flex-1 h-px bg-slate-800" />
+                </div>
+              </div>
+            )}
+            <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm p-6 space-y-4">
             {error && (
               <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-xs text-red-300">{error}</div>
             )}
@@ -261,7 +328,8 @@ export default function LiveTrainingDetailPage() {
             >
               {submitting ? t.registering : t.register}
             </button>
-          </form>
+            </form>
+          </>
         )}
       </div>
     </div>
