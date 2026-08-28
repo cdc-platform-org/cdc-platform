@@ -1,19 +1,27 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
 import { GEMINI_API_KEY } from '../utils/env';
-import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
+import { callTextModel, AiAgentError } from './aiAgentService';
+import { isAzureOpenAiConfigured } from './azureOpenAiService';
 
-// Reuses the same Gemini client/model/JSON-validation posture as
-// aiExamService.ts (the course-certification exam generator) — see that
-// file's comments for why gemini-flash-latest specifically. Kept as a
-// separate service rather than extending aiExamService.ts because the
-// question shape here is different (adds a practical/open-ended question)
-// and this also grades free-text answers, which aiExamService.ts never does.
+// Reuses the same JSON-validation posture as aiExamService.ts (the
+// course-certification exam generator) — see that file's comments for why
+// gemini-flash-latest specifically. Kept as a separate service rather than
+// extending aiExamService.ts because the question shape here is different
+// (adds a practical/open-ended question) and this also grades free-text
+// answers, which aiExamService.ts never does.
+//
+// Previously called the Gemini SDK directly with a single hardcoded model
+// and no fallback — unlike every other AI feature in this codebase, a
+// single Gemini hiccup here had no retry and no cross-vendor fallback,
+// landing straight in the static GENERIC_FALLBACK_QUESTIONS bank (still
+// usable, but skips the AI-generated, skill-specific test unnecessarily
+// often). Now routed through aiAgentService.callTextModel(), the same
+// resilience chain (gemini-flash-latest -> gemini-flash-lite-latest ->
+// gemini-3.5-flash, then Azure OpenAI if configured) aiExamService.ts and
+// every other text-generation AI feature already uses.
 export function isSkillTestConfigured(): boolean {
-  return !!GEMINI_API_KEY;
+  return !!GEMINI_API_KEY || isAzureOpenAiConfigured();
 }
-
-const client = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
 export interface SkillMcqQuestion {
   id: string;
@@ -70,8 +78,8 @@ function languageLine(lang: 'ka' | 'en'): string {
 // way it's just a string the prompt reads, no enum/lookup needed, which is
 // what makes this work for arbitrary custom skills too.
 export async function generateSkillTestQuestions(skillName: string, lang: 'ka' | 'en'): Promise<SkillQuestion[]> {
-  if (!client) {
-    throw new SkillTestGenerationError('Gemini is not configured (GEMINI_API_KEY missing).');
+  if (!isSkillTestConfigured()) {
+    throw new SkillTestGenerationError('AI skill test generation is not configured (GEMINI_API_KEY/AZURE_OPENAI_* missing).');
   }
 
   const prompt = `You are building a professional skill-verification test for a freelance marketplace. The skill being tested is: "${skillName}".${languageLine(lang)}
@@ -83,30 +91,24 @@ Then generate exactly 1 open-ended practical question that asks the candidate to
 Respond with strict JSON matching this shape:
 {"mcqQuestions": [{"question": string, "options": {"A": string, "B": string, "C": string, "D": string}, "correctAnswer": "A"|"B"|"C"|"D", "explanation": string}], "practicalQuestion": {"question": string, "rubric": string}}`;
 
-  const model = client.getGenerativeModel({
-    model: 'gemini-flash-latest',
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.7 },
-  }, GEMINI_REQUEST_OPTIONS);
-
   let raw: string;
   try {
-    const result = await model.generateContent(prompt);
-    raw = result.response.text();
+    raw = await callTextModel(prompt, 0.7);
   } catch (err) {
-    throw new SkillTestGenerationError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');
+    throw new SkillTestGenerationError(err instanceof AiAgentError ? err.message : 'AI skill test generation request failed.');
   }
-  if (!raw) throw new SkillTestGenerationError('Gemini returned an empty response.');
+  if (!raw) throw new SkillTestGenerationError('AI provider returned an empty response.');
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new SkillTestGenerationError('Gemini returned malformed JSON.');
+    throw new SkillTestGenerationError('AI provider returned malformed JSON.');
   }
 
   const result = skillTestResponseSchema.safeParse(parsed);
   if (!result.success) {
-    throw new SkillTestGenerationError('Gemini returned an unexpected question format.');
+    throw new SkillTestGenerationError('AI provider returned an unexpected question format.');
   }
 
   const mcqQuestions: SkillMcqQuestion[] = result.data.mcqQuestions.map((q, i) => ({ id: `mcq${i + 1}`, type: 'mcq', ...q }));
@@ -138,8 +140,8 @@ export async function gradePracticalAnswer(params: {
   answer: string;
   lang: 'ka' | 'en';
 }): Promise<PracticalGradeResult> {
-  if (!client) {
-    throw new SkillTestGenerationError('Gemini is not configured (GEMINI_API_KEY missing).');
+  if (!isSkillTestConfigured()) {
+    throw new SkillTestGenerationError('AI skill test grading is not configured (GEMINI_API_KEY/AZURE_OPENAI_* missing).');
   }
 
   const prompt = `You are grading a freelancer's answer to a practical skill-verification question for the skill "${params.skillName}".
@@ -153,30 +155,24 @@ Score the answer from 0 to 100 based on how well it demonstrates real competence
 Respond with strict JSON matching this shape:
 {"score": number, "feedback": string}`;
 
-  const model = client.getGenerativeModel({
-    model: 'gemini-flash-latest',
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.3 },
-  }, GEMINI_REQUEST_OPTIONS);
-
   let raw: string;
   try {
-    const result = await model.generateContent(prompt);
-    raw = result.response.text();
+    raw = await callTextModel(prompt, 0.3);
   } catch (err) {
-    throw new SkillTestGenerationError(err instanceof Error ? `Gemini grading request failed: ${err.message}` : 'Gemini grading request failed.');
+    throw new SkillTestGenerationError(err instanceof AiAgentError ? err.message : 'AI grading request failed.');
   }
-  if (!raw) throw new SkillTestGenerationError('Gemini returned an empty grading response.');
+  if (!raw) throw new SkillTestGenerationError('AI provider returned an empty grading response.');
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new SkillTestGenerationError('Gemini returned a malformed grading response.');
+    throw new SkillTestGenerationError('AI provider returned a malformed grading response.');
   }
 
   const result = gradeResponseSchema.safeParse(parsed);
   if (!result.success) {
-    throw new SkillTestGenerationError('Gemini returned an unexpected grading format.');
+    throw new SkillTestGenerationError('AI provider returned an unexpected grading format.');
   }
   return result.data;
 }

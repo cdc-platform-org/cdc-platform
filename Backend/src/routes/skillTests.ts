@@ -12,6 +12,8 @@ import {
   SkillPracticalQuestion,
   GENERIC_FALLBACK_QUESTIONS,
 } from '../services/skillTestService';
+import { isDigitalProfession, OUT_OF_SCOPE_MESSAGE } from '../utils/digitalProfessionScope';
+import { isPredefinedSkill } from '../data/freelancerSkills';
 
 const router = Router();
 router.use(authenticate, requireApproved, requireRole('Student'));
@@ -28,6 +30,21 @@ const PASS_THRESHOLD = 80;
 const SECONDS_PER_QUESTION = 90;
 
 const GENERIC_FAILURE_MESSAGE = 'ტესტის ჩატვირთვა ვერ მოხერხდა. გთხოვთ სცადოთ მოგვიანებით.';
+
+// CDC's curated skill taxonomy (src/data/freelancerSkills.ts) is always in
+// scope — it's already a deliberately-chosen digital/remote-work skill
+// list, and several of its own entries ("WordPress", "Photography",
+// "Virtual Assistance", ...) don't literally contain any of
+// digitalProfessionScope.ts's tech-keyword substrings, so gating on that
+// keyword list alone would wrongly reject legitimate pre-approved skills.
+// Only a free-typed "Other" skill (not in the curated list) needs the same
+// out-of-scope gate routes/freelancerExam.ts already applies to its own
+// free-typed customProfession field — this is exactly the gap that let a
+// skill like "ელექტრიკი" reach AI exam generation and public verification
+// with zero restriction.
+export function isSkillNameInScope(skillName: string): boolean {
+  return isPredefinedSkill(skillName) || isDigitalProfession(skillName);
+}
 
 type ClientMcqQuestion = Omit<SkillMcqQuestion, 'correctAnswer' | 'explanation'>;
 type ClientPracticalQuestion = Omit<SkillPracticalQuestion, 'rubric'>;
@@ -53,6 +70,10 @@ router.post('/generate', async (req: Request, res: Response) => {
   const result = generateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
   const { skillName, lang } = result.data;
+
+  if (!isSkillNameInScope(skillName)) {
+    return res.status(400).json({ message: OUT_OF_SCOPE_MESSAGE[lang ?? 'ka'] });
+  }
 
   const alreadyVerified = await prisma.verifiedSkill.findUnique({
     where: { userId_skillName: { userId: req.user!.id, skillName } },
