@@ -331,7 +331,11 @@ const digitalStoreMarketingRateLimit = rateLimit({
 const digitalStoreMarketingSchema = z.object({
   title: z.string().trim().min(1).max(200),
   description: z.string().trim().min(1).max(5000),
-  category: z.string().trim().min(1).max(100),
+  // Optional — a blank category (e.g. mid-draft, before the category
+  // picker has a selection) should never block a quick-assist generation;
+  // generateProductMarketingCopy() falls back to a generic category
+  // context when this is left out rather than rejecting the request.
+  category: z.string().trim().max(100).optional(),
   lang: z.enum(['ka', 'en']).default('ka'),
   // Optional — the button also works while drafting a brand-new,
   // not-yet-saved listing, which has no productId yet. When present, must
@@ -374,7 +378,7 @@ router.post('/digital-store-marketing', authenticate, digitalStoreMarketingRateL
   }
 
   try {
-    const copy = await generateProductMarketingCopy({ title, description, category, lang });
+    const copy = await generateProductMarketingCopy({ title, description, category: category || undefined, lang });
     await recordMarketingGeneration(req.user!.id, productId);
     const usage = await getDailyMarketingGenerationUsage(req.user!.id);
     logAiGeneration({

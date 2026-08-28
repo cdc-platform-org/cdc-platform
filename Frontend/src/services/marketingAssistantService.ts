@@ -29,7 +29,9 @@ export async function getMarketingAssistantUsage(): Promise<MarketingGenerationU
 export async function generateProductMarketingCopy(params: {
   title: string;
   description: string;
-  category: string;
+  // Optional — the backend falls back to a generic category context when
+  // this is blank (e.g. a brand-new draft with no category picked yet).
+  category?: string;
   lang: 'ka' | 'en';
   productId?: string;
 }): Promise<GenerateProductMarketingCopyResult> {

@@ -30,14 +30,24 @@ export type ProductMarketingCopy = z.infer<typeof marketingCopySchema>;
 export interface GenerateProductMarketingCopyParams {
   title: string;
   description: string;
-  category: string;
+  // Optional — a mid-draft listing may not have a category selected yet.
+  // Falls back to a generic "digital product" framing rather than
+  // rejecting the request; the caller (routes/ai.ts) already made this
+  // field optional for exactly that reason.
+  category?: string;
   lang: 'ka' | 'en';
 }
+
+const FALLBACK_CATEGORY_LABEL: Record<'ka' | 'en', string> = {
+  ka: 'ციფრული პროდუქტი (კატეგორია არჩეული არ არის)',
+  en: 'Digital product (no category selected yet)',
+};
 
 export async function generateProductMarketingCopy(
   params: GenerateProductMarketingCopyParams
 ): Promise<ProductMarketingCopy> {
   const languageName = params.lang === 'ka' ? 'Georgian' : 'English';
+  const category = params.category?.trim() || FALLBACK_CATEGORY_LABEL[params.lang];
   const prompt = `You are a marketing copywriter for CDC, an online SaaS/education platform's digital-products marketplace. A creator is listing a digital product for sale and wants AI-generated marketing copy to speed up their listing. Given the product's current title/description/category below, generate improved, compelling marketing copy in natural, fluent ${languageName}.
 
 Respond with strict JSON matching this shape:
@@ -48,7 +58,7 @@ Respond with strict JSON matching this shape:
 - "socialCopy": a short, scroll-stopping social-media promo post (under 280 characters) a creator could paste directly to Instagram/Facebook/LinkedIn, including 1-2 relevant hashtags.
 - "tags": 3-8 short lowercase keyword tags a buyer might search for, relevant to the product's category and content.
 
-Product category: ${params.category}
+Product category: ${category}
 Current title: ${params.title}
 Current description: ${params.description}`;
 

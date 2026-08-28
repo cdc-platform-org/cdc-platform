@@ -32,9 +32,11 @@ const DICT_BASE = {
     regenerate: 'ხელახლა გენერირება',
     generating: 'იქმნება…',
     loadingUsage: 'იტვირთება…',
+    usageUnavailable: 'ხელმისაწვდომი არ არის',
     limitReached: 'დღიური ლიმიტი ამოწურულია — სცადეთ ხვალ.',
-    needTitle: 'გენერაციისთვის საჭიროა სათაური, აღწერა და კატეგორია.',
+    needTitle: 'გენერაციისთვის საჭიროა სათაური და აღწერა.',
     genericError: 'გენერაცია ვერ მოხერხდა — სცადეთ თავიდან.',
+    authError: 'საჭიროა ავტორიზაცია — გთხოვთ, თავიდან შეხვიდეთ სისტემაში.',
     fieldTitle: 'სათაური',
     fieldDescription: 'აღწერა',
     fieldSocial: 'სოც. მედია პოსტი',
@@ -54,9 +56,11 @@ const DICT_BASE = {
     regenerate: 'Regenerate',
     generating: 'Generating…',
     loadingUsage: 'Loading…',
+    usageUnavailable: 'unavailable',
     limitReached: 'Daily limit reached — try again tomorrow.',
-    needTitle: 'Title, description and category are required to generate.',
+    needTitle: 'Title and description are required to generate.',
     genericError: 'Generation failed — please try again.',
+    authError: 'Please sign in again to continue.',
     fieldTitle: 'Title',
     fieldDescription: 'Description',
     fieldSocial: 'Social post',
@@ -114,6 +118,7 @@ export default function AiMarketingAssistantDrawer({
   const d = dict(lang);
   const requestLang: 'ka' | 'en' = lang === 'ka' ? 'ka' : 'en';
   const [usage, setUsage] = useState<MarketingGenerationUsage | null>(null);
+  const [usageError, setUsageError] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ProductMarketingCopy | null>(null);
@@ -121,15 +126,46 @@ export default function AiMarketingAssistantDrawer({
   const [appliedDescription, setAppliedDescription] = useState(false);
 
   useEffect(() => {
+    // Distinguish "fetch failed" from "still fetching" — an unguarded
+    // `.catch(() => {})` here previously left the badge reading "Loading…"
+    // forever on any failure, with no way to tell the two states apart.
+    let cancelled = false;
     getMarketingAssistantUsage()
-      .then(setUsage)
-      .catch(() => {});
+      .then((u) => {
+        if (!cancelled) setUsage(u);
+      })
+      .catch(() => {
+        if (!cancelled) setUsageError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const atLimit = !!usage && usage.used >= usage.limit;
 
+  // Builds a readable message from a plain zod-validation 400 (`{errors}`,
+  // no `.message`) — e.g. category left blank server-side too, or a title/
+  // description length violation — rather than always falling through to
+  // the generic failure string, which gave no clue what was actually wrong.
+  const describeError = useCallback(
+    (err: any): string => {
+      if (err?.response?.data?.message) return err.response.data.message;
+      const zodErrors = err?.response?.data?.errors;
+      if (Array.isArray(zodErrors) && zodErrors.length > 0) {
+        return zodErrors.map((e: any) => e.message).filter(Boolean).join(' ');
+      }
+      if (err?.response?.status === 401 || err?.response?.status === 403) return d.authError;
+      return d.genericError;
+    },
+    [d]
+  );
+
   const handleGenerate = useCallback(async () => {
-    if (!title.trim() || !description.trim() || !category.trim()) {
+    // category is intentionally not required here — the backend now
+    // falls back to a generic category context when it's left blank, so a
+    // brand-new draft (title + description only) can still generate.
+    if (!title.trim() || !description.trim()) {
       setError(d.needTitle);
       return;
     }
@@ -141,17 +177,18 @@ export default function AiMarketingAssistantDrawer({
       const response = await generateProductMarketingCopy({ title, description, category, lang: requestLang, productId });
       setResult(response.data);
       setUsage(response.usage);
+      setUsageError(false);
     } catch (err: any) {
       if (err?.response?.status === 429) {
         setUsage(err.response.data?.usage ?? usage);
         setError(err.response.data?.message || d.limitReached);
       } else {
-        setError(err?.response?.data?.message || d.genericError);
+        setError(describeError(err));
       }
     } finally {
       setGenerating(false);
     }
-  }, [title, description, category, requestLang, productId, d, usage]);
+  }, [title, description, category, requestLang, productId, d, usage, describeError]);
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex justify-end" onClick={onClose}>
@@ -184,7 +221,7 @@ export default function AiMarketingAssistantDrawer({
             <Crown className="w-3.5 h-3.5" /> {d.usageLabel}
           </span>
           <span className="text-xs font-bold text-white">
-            {usage ? `${usage.used}/${usage.limit} ${d.usageToday}` : d.loadingUsage}
+            {usage ? `${usage.used}/${usage.limit} ${d.usageToday}` : usageError ? d.usageUnavailable : d.loadingUsage}
           </span>
         </div>
 
