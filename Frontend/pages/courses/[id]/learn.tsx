@@ -14,6 +14,7 @@ import BackButton from '../../../src/components/common/BackButton';
 import CourseVideoPlayer from '../../../src/components/courses/CourseVideoPlayer';
 import CourseDiscussionPanel from '../../../src/components/shared/CourseDiscussionPanel';
 import MarkdownContent from '../../../src/components/shared/MarkdownContent';
+import VIPAudioNarrator from '../../../src/components/ui/VIPAudioNarrator';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useEscapeToClose } from '../../../src/hooks/useEscapeToClose';
 import { LmsSection, LmsLesson, CourseProgressSummary, Course, ExamStatus, AssignmentSubmission } from '../../../src/types/lms';
@@ -373,7 +374,17 @@ function LearnContent() {
             {activeTab === 'overview' && <p>{course.description}</p>}
             {activeTab === 'conspectus' &&
               (conspectusText ? (
-                <MarkdownContent content={conspectusText} className="!text-slate-300" />
+                <>
+                  <div className="mb-4">
+                    <VIPAudioNarrator
+                      text={conspectusText}
+                      speechLang={lang === 'ka' ? 'ka-GE' : 'en-US'}
+                      lang={lang}
+                      stripMarkdown
+                    />
+                  </div>
+                  <MarkdownContent content={conspectusText} className="!text-slate-300" />
+                </>
               ) : activeLesson?.conspectusStatus === 'PENDING' || activeLesson?.conspectusStatus === 'PROCESSING' ? (
                 <p className="flex items-center gap-2 text-slate-500">
                   <Loader2 className="w-4 h-4 animate-spin" />

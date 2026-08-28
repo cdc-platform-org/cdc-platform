@@ -587,6 +587,7 @@ model User {
   cyberSentinelDevices          CyberSentinelDevice[]         @relation("CyberSentinelDevices")
   reviewedGrantOpportunities    GrantOpportunity[]
   generatedLaunchKits           LaunchKit[]
+  digitalMarketingGenerations   DigitalMarketingGeneration[]
   chatRequestsSent              ChatRequest[]                 @relation("ChatRequestsSent")
   chatRequestsReceived          ChatRequest[]                 @relation("ChatRequestsReceived")
   chatFlagsAsSender             ChatFlag[]                    @relation("ChatFlagsAsSender")
@@ -3916,4 +3917,23 @@ model LaunchKit {
   @@index([productId])
   @@index([courseId])
   @@map("launch_kits")
+}
+
+// One row per successful "AI Marketing Assistant" generation (see
+// productMarketingAssistantService.ts / POST /api/ai/digital-store-marketing)
+// — unlike LaunchKit above (a deliberately unmetered creator tool), this
+// quick-assist generator is capped at 5/user/24h, and this table's only
+// reason to exist is that count query
+// (hasReachedDailyMarketingGenerationLimit), same rolling-window-via-count
+// pattern as postingLimitService.hasReachedDailyPostLimit — not an audit
+// log (see AiGenerationLog for that).
+model DigitalMarketingGeneration {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("digital_marketing_generations")
 }

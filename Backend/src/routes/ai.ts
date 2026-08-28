@@ -16,6 +16,16 @@ import {
   AiTranslateError,
 } from '../services/aiTranslateService';
 import { generateTutorReply, isCourseTutorConfigured, CourseTutorError } from '../services/courseTutorService';
+import { isAiAgentConfigured } from '../services/aiAgentService';
+import { generateProductMarketingCopy, ProductMarketingError } from '../services/productMarketingAssistantService';
+import {
+  getDailyMarketingGenerationUsage,
+  hasReachedDailyMarketingGenerationLimit,
+  recordMarketingGeneration,
+} from '../services/marketingAssistantQuotaService';
+import { logAiGeneration } from '../services/aiGenerationLogService';
+import { assertOwnedTarget, OwnershipError } from './creatorMarketing';
+import { LaunchKitTargetType } from '@prisma/client';
 
 const router = Router();
 
@@ -300,6 +310,88 @@ router.post('/course-tutor', authenticate, courseTutorRateLimit, async (req: Req
     if (err instanceof CourseTutorError) {
       return res.status(502).json({ message: err.message });
     }
+    throw err;
+  }
+});
+
+// Every approved user (not admin-only) — quick-assist marketing-copy
+// generator for the digital-products dashboard tab
+// (/dashboard?tab=products). Two independent layers, same "abuse-prevention
+// rate limit + real quota check inside the handler" shape as
+// aiAgentsSuite.ts's /generate: the IP rate limit below just stops a burst
+// of requests; the actual 5/24h budget is
+// hasReachedDailyMarketingGenerationLimit, DB-backed so it survives
+// restarts/multiple instances (see marketingAssistantQuotaService.ts).
+const digitalStoreMarketingRateLimit = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 10,
+  message: 'Too many requests. Please wait a moment before trying again.',
+});
+
+const digitalStoreMarketingSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().min(1).max(5000),
+  category: z.string().trim().min(1).max(100),
+  lang: z.enum(['ka', 'en']).default('ka'),
+  // Optional — the button also works while drafting a brand-new,
+  // not-yet-saved listing, which has no productId yet. When present, must
+  // be owned by the caller (see assertOwnedTarget below).
+  productId: z.string().uuid().optional(),
+});
+
+// Lets the frontend show an accurate "X/5 today" badge before the user has
+// generated anything this session, rather than only learning usage from a
+// prior POST's response.
+router.get('/digital-store-marketing/usage', authenticate, async (req: Request, res: Response) => {
+  const usage = await getDailyMarketingGenerationUsage(req.user!.id);
+  res.json({ usage });
+});
+
+router.post('/digital-store-marketing', authenticate, digitalStoreMarketingRateLimit, async (req: Request, res: Response) => {
+  if (!isAiAgentConfigured()) {
+    return res.status(501).json({ message: 'AI Marketing Assistant is not configured yet (GEMINI_API_KEY).' });
+  }
+
+  const result = digitalStoreMarketingSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+  const { title, description, category, lang, productId } = result.data;
+
+  if (productId) {
+    try {
+      await assertOwnedTarget(LaunchKitTargetType.DIGITAL_PRODUCT, productId, req.user!.id);
+    } catch (err) {
+      if (err instanceof OwnershipError) return res.status(err.status).json({ message: err.message });
+      throw err;
+    }
+  }
+
+  if (await hasReachedDailyMarketingGenerationLimit(req.user!.id)) {
+    const usage = await getDailyMarketingGenerationUsage(req.user!.id);
+    return res.status(429).json({
+      message: `Daily AI Marketing Assistant limit reached (${usage.limit}/24h). Try again tomorrow.`,
+      usage,
+    });
+  }
+
+  try {
+    const copy = await generateProductMarketingCopy({ title, description, category, lang });
+    await recordMarketingGeneration(req.user!.id, productId);
+    const usage = await getDailyMarketingGenerationUsage(req.user!.id);
+    logAiGeneration({
+      module: 'digital_store_marketing',
+      status: 'success',
+      inputContext: { userId: req.user!.id, productId },
+      outputSummary: copy.title,
+    }).catch(() => {});
+    res.json({ data: copy, usage });
+  } catch (err) {
+    logAiGeneration({
+      module: 'digital_store_marketing',
+      status: 'failed',
+      inputContext: { userId: req.user!.id, productId },
+      errorMessage: err instanceof Error ? err.message : 'Unknown error',
+    }).catch(() => {});
+    if (err instanceof ProductMarketingError) return res.status(err.status).json({ message: err.message });
     throw err;
   }
 });

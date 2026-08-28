@@ -6,6 +6,7 @@ import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { Bot, Sparkles, Send, X, RotateCcw, ChevronLeft } from 'lucide-react';
 import { askCourseTutor, TutorChatTurn } from '../../services/courseService';
 import { SupportedLocale } from '../../utils/locale';
+import VIPAudioNarrator from '../ui/VIPAudioNarrator';
 
 interface CourseTutorPanelProps {
   courseId: string;
@@ -222,6 +223,15 @@ export default function CourseTutorPanel({ courseId, lessonId, courseTitle, less
               </div>
               <div className="rounded-2xl rounded-tl-sm bg-white/5 border border-white/10 px-3.5 py-2.5 text-sm text-slate-200 max-w-[85%] overflow-x-auto">
                 <ReactMarkdown components={markdownComponents}>{m.content}</ReactMarkdown>
+                <div className="mt-2 flex justify-end">
+                  <VIPAudioNarrator
+                    text={m.content}
+                    speechLang={lang === 'ka' ? 'ka-GE' : 'en-US'}
+                    lang={lang}
+                    stripMarkdown
+                    compact
+                  />
+                </div>
               </div>
             </div>
           )

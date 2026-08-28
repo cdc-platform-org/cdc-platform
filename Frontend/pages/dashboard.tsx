@@ -21,12 +21,14 @@ import {
   Sparkles,
   Mail,
   Users,
+  Crown,
 } from 'lucide-react';
 import ProtectedRoute from '../src/components/auth/ProtectedRoute';
 import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
 import BackButton from '../src/components/common/BackButton';
 import LaunchKitDrawer from '../src/components/admin/LaunchKitDrawer';
+import AiMarketingAssistantDrawer from '../src/components/dashboard/AiMarketingAssistantDrawer';
 import { useAuth } from '../src/context/AuthContext';
 import { MyCourseWithProgress } from '../src/types/lms';
 import { getMyCourses, downloadCertificate } from '../src/services/courseService';
@@ -1025,6 +1027,7 @@ function DashboardContent() {
   const [productDownloadError, setProductDownloadError] = useState<string | null>(null);
   const [mySubmissions, setMySubmissions] = useState<DigitalProduct[]>([]);
   const [launchKitTarget, setLaunchKitTarget] = useState<{ productId: string; title: string } | null>(null);
+  const [showAiMarketingAssistant, setShowAiMarketingAssistant] = useState(false);
   const [showSubmitForm, setShowSubmitForm] = useState(false);
   const [submitTitle, setSubmitTitle] = useState('');
   const [submitDescription, setSubmitDescription] = useState('');
@@ -1922,7 +1925,17 @@ function DashboardContent() {
                     >
                       <div className="flex items-center justify-between gap-3 flex-wrap">
                         <h3 className="text-sm font-bold">{editingSubmissionId ? t.editSubmissionTitle : t.submitProductTitle}</h3>
-                        <VideoTutorialLink lang={lang} />
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowAiMarketingAssistant(true)}
+                            className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-400 via-purple-500 to-cyan-500 text-white border-none cursor-pointer shadow-md shadow-purple-500/30 hover:shadow-purple-500/50 transition-shadow"
+                          >
+                            <Crown className="w-3.5 h-3.5" />
+                            {lang === 'ka' ? 'AI მარკეტინგული ასისტენტი' : 'AI Marketing Assistant'}
+                          </button>
+                          <VideoTutorialLink lang={lang} />
+                        </div>
                       </div>
                       {submitError && (
                         <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-xs text-red-600 dark:text-red-300">
@@ -2338,6 +2351,19 @@ function DashboardContent() {
           title={launchKitTarget.title}
           scope="creator"
           onClose={() => setLaunchKitTarget(null)}
+        />
+      )}
+
+      {showAiMarketingAssistant && (
+        <AiMarketingAssistantDrawer
+          title={submitTitle}
+          description={submitDescription}
+          category={submitCategory}
+          productId={editingSubmissionId ?? undefined}
+          lang={lang}
+          onApplyTitle={setSubmitTitle}
+          onApplyDescription={setSubmitDescription}
+          onClose={() => setShowAiMarketingAssistant(false)}
         />
       )}
     </div>

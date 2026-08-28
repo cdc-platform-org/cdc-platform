@@ -20,6 +20,7 @@ import {
   unlikeComment,
 } from '../../../src/services/forumService';
 import { resolveLocale } from '@/src/utils/locale';
+import VIPAudioNarrator from '../../../src/components/ui/VIPAudioNarrator';
 
 const COMMENTS_PAGE_SIZE = 20;
 
@@ -157,6 +158,14 @@ function ThreadDetailContent() {
             )}
           </div>
           <h1 className="blog-heading-safe text-xl font-semibold text-gray-900 dark:text-white">{thread.title}</h1>
+          <div className="mt-2.5">
+            <VIPAudioNarrator
+              text={thread.content}
+              speechLang={lang === 'ka' ? 'ka-GE' : 'en-US'}
+              lang={lang}
+              label={lang === 'ka' ? '🎧 სტატიის მოსმენა (Audio Reader)' : '🎧 Listen to Article (Audio Reader)'}
+            />
+          </div>
           <p className="text-sm text-gray-500 dark:text-slate-400 dark:text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
             <span>
               {thread.author.name} · {new Date(thread.createdAt).toLocaleDateString()}
