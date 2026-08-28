@@ -1,0 +1,83 @@
+# Weekly automated i18n maintenance: patches any locale string that's
+# missing or empty via Backend/scripts/auto-translate-locales.ts ->
+# aiTranslateService.translateLocaleBatch (same Gemini fallback chain as
+# every other AI feature in this codebase). Opens a DRAFT PR rather than
+# committing straight to main — batch AI-translated copy for a platform
+# handling real payments (see the script's own REVIEW_FLAGGED_NAMESPACES)
+# needs a human glance before it ships, same posture as this repo's other
+# auto-drafted-PR flow (qa-nightly.yml's `autofix` job).
+#
+# check:locales runs after the patch as a structural sanity check (key
+# parity) and the Backend Jest suite runs too, but neither is a substitute
+# for that human review — they can't tell a bad translation from a good
+# one, only a missing key or a broken build.
+#
+# Mirrors qa-nightly.yml's install convention (pnpm, per-workspace
+# directory) rather than root `npm ci` — this repo's actual package
+# manager is pnpm (see Backend/package.json's "packageManager" field and
+# pnpm-lock.yaml at the repo root); root package.json's npm-workspace
+# scripts are a separate, older convention only used for local dev
+# shortcuts, not what CI installs with.
+name: i18n Auto Sync
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # every Sunday at 00:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: Install Backend dependencies
+        working-directory: Backend
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Frontend dependencies
+        working-directory: Frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Run locale translation sync
+        working-directory: Backend
+        run: pnpm run translate:locales
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Verify locale key parity
+        working-directory: Frontend
+        run: pnpm run check:locales
+
+      - name: Run backend test suite
+        working-directory: Backend
+        run: pnpm run test
+
+      - name: Open draft PR if anything changed
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: "chore(i18n): weekly automated locale translation sync"
+          title: "chore(i18n): Weekly automated locale translation sync"
+          body: |
+            Automated run of `Backend/scripts/auto-translate-locales.ts` against `Frontend/public/locales/`.
+
+            This patches missing/empty translation strings via Gemini — **please read through the diff before merging**, especially any `billing.json`/`settings.json` entries (payment/legal-adjacent copy), which the script flags in its own log output but does not skip.
+          branch: i18n/auto-sync
+          delete-branch: true
+          draft: true
+          labels: i18n, automated
+          add-paths: |
+            Frontend/public/locales/**

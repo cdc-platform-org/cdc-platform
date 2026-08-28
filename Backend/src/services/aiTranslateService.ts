@@ -275,6 +275,75 @@ bio: ${params.bio}`;
   return result.data;
 }
 
+// --- UI locale-string translation (public/locales/<lang>/*.json) ---
+//
+// Used by Backend/scripts/auto-translate-locales.ts to patch missing/empty
+// i18next strings, not by anything in the running app itself. Deliberately
+// separate from translateTitleAndDescription et al. above (which translate
+// one fixed record's prose fields) — this one takes an arbitrary flat batch
+// of short UI strings for a single namespace file and must preserve i18next
+// interpolation tokens (e.g. {{count}}) and HTML byte-for-byte, which none
+// of the prose-field translators above need to worry about.
+const LOCALE_LANGUAGE_NAMES: Record<string, string> = {
+  de: 'German',
+  es: 'Spanish',
+  fr: 'French',
+  uk: 'Ukrainian',
+  tr: 'Turkish',
+  hy: 'Armenian',
+  az: 'Azerbaijani',
+};
+
+export function localeLanguageName(locale: string): string {
+  return LOCALE_LANGUAGE_NAMES[locale] || locale;
+}
+
+const localeBatchTranslationSchema = z.record(z.string(), z.string());
+
+// entries: dot-path i18next key -> English source string, all from the same
+// namespace file. Returns the same keys mapped to their target-language
+// translation. Throws AiTranslateError (caught by the caller script, which
+// leaves that key untouched rather than writing a partial/garbled result)
+// if Gemini's response is malformed or drops a key.
+export async function translateLocaleBatch(
+  entries: Record<string, string>,
+  targetLocale: string
+): Promise<Record<string, string>> {
+  const languageName = localeLanguageName(targetLocale);
+  const prompt = `Translate the following UI strings for a SaaS + online-education platform from English into natural, fluent, native-sounding ${languageName} (locale code "${targetLocale}"). Use terminology conventional for modern SaaS product UI (buttons, form labels, tooltips, error messages, navigation items).
+
+Rules:
+- Respond with strict JSON: a single object with EXACTLY the same keys as the input, each value replaced by its ${languageName} translation.
+- Preserve i18next interpolation placeholders (e.g. {{count}}, {{name}}) and any HTML tags exactly as written, in the position they'd naturally occur in the translated sentence.
+- Match the English string's punctuation/emphasis style (e.g. keep a trailing "!" or "?" if present).
+- Do not translate brand names ("CDC") or tokens that are already language-neutral (e.g. "PDF", "OK") unless natural ${languageName} UI convention normally localizes them.
+- Do not add, remove, or rename keys. Do not add commentary outside the JSON object.
+
+Input (JSON object, key -> English source text):
+${JSON.stringify(entries, null, 2)}`;
+
+  const raw = await generateTranslationJson(prompt);
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new AiTranslateError('Gemini returned malformed JSON.');
+  }
+
+  const result = localeBatchTranslationSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new AiTranslateError('Gemini returned an unexpected translation format.');
+  }
+
+  const missing = Object.keys(entries).filter((k) => !(k in result.data));
+  if (missing.length > 0) {
+    throw new AiTranslateError(`Gemini response is missing translations for: ${missing.join(', ')}`);
+  }
+
+  return result.data;
+}
+
 const titleDescriptionTranslationSchema = z.object({
   titleEn: z.string(),
   descriptionEn: z.string(),

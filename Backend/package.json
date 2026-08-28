@@ -13,6 +13,7 @@
     "db:seed": "prisma db seed",
     "db:seed:forum": "ts-node prisma/seedForum.ts",
     "db:seed:e2e": "ts-node prisma/seedE2E.ts",
+    "translate:locales": "ts-node scripts/auto-translate-locales.ts",
     "test": "jest",
     "lint": "eslint ."
   },
