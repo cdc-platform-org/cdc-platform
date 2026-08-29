@@ -49,6 +49,8 @@
   "paywallTitle": "Bu dərs bağlıdır",
   "paywallBody": "Bütün videolara, yüklənə bilən materiallara və tapşırıq təqdimatlarına ani giriş üçün kursun tamamını satın alın.",
   "buyCourse": "Kursu Satın Al",
+  "refundGuarantee": "🔄 3 günlük pul geri qaytarma təminatı",
+  "refundGuaranteeDetail": "İstifadəçi kursu satın aldıqdan sonra 3 gün ərzində vəsaitin tam qaytarılmasını tələb etmək hüququna malikdir.",
   "promoLabel": "Promo kodunuz var?",
   "promoPlaceholder": "Promo kod",
   "promoApply": "Tətbiq et",

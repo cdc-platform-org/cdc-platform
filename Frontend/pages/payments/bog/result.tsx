@@ -18,6 +18,8 @@ const dict = {
     pendingLong:
       'გადახდა ჯერ კიდევ მუშავდება. თუ ეს გვერდი დიდხანს არ განახლდება, დაუკავშირდით მხარდაჭერას.',
     redirectingToCourse: 'გადამისამართება კურსზე…',
+    refundGuarantee: '🔄 3-დღიანი თანხის დაბრუნების გარანტია',
+    refundGuaranteeDetail: 'მომხმარებელს უფლება აქვს მოითხოვოს თანხის სრული დაბრუნება კურსის შეძენიდან 3 დღის ვადაში.',
     redirectingToProduct: 'გადამისამართება პროდუქტზე…',
     course: 'კურსზე წვდომა',
     mentorship: 'მენტორის სესია',
@@ -41,6 +43,8 @@ const dict = {
     pendingLong:
       'Your payment is still being processed. If this page doesn’t update soon, please contact support.',
     redirectingToCourse: 'Redirecting to your course…',
+    refundGuarantee: '🔄 3-Day Money-Back Guarantee',
+    refundGuaranteeDetail: 'You may request a full refund within 3 days of purchasing the course.',
     redirectingToProduct: 'Redirecting to your product…',
     course: 'Course access',
     mentorship: 'Mentorship session',
@@ -64,6 +68,8 @@ const dict = {
     pendingLong:
       'Your payment is still being processed. If this page doesn’t update soon, please contact support.',
     redirectingToCourse: 'Redirecting to your course…',
+    refundGuarantee: '🔄 3-Day Money-Back Guarantee',
+    refundGuaranteeDetail: 'You may request a full refund within 3 days of purchasing the course.',
     redirectingToProduct: 'Redirecting to your product…',
     course: 'Course access',
     mentorship: 'Mentorship session',
@@ -87,6 +93,8 @@ const dict = {
     pendingLong:
       'Your payment is still being processed. If this page doesn’t update soon, please contact support.',
     redirectingToCourse: 'Redirecting to your course…',
+    refundGuarantee: '🔄 3-Day Money-Back Guarantee',
+    refundGuaranteeDetail: 'You may request a full refund within 3 days of purchasing the course.',
     redirectingToProduct: 'Redirecting to your product…',
     course: 'Course access',
     mentorship: 'Mentorship session',
@@ -110,6 +118,8 @@ const dict = {
     pendingLong:
       'Your payment is still being processed. If this page doesn’t update soon, please contact support.',
     redirectingToCourse: 'Redirecting to your course…',
+    refundGuarantee: '🔄 3-Day Money-Back Guarantee',
+    refundGuaranteeDetail: 'You may request a full refund within 3 days of purchasing the course.',
     redirectingToProduct: 'Redirecting to your product…',
     course: 'Course access',
     mentorship: 'Mentorship session',
@@ -133,6 +143,8 @@ const dict = {
     pendingLong:
       'Your payment is still being processed. If this page doesn’t update soon, please contact support.',
     redirectingToCourse: 'Redirecting to your course…',
+    refundGuarantee: '🔄 3-Day Money-Back Guarantee',
+    refundGuaranteeDetail: 'You may request a full refund within 3 days of purchasing the course.',
     redirectingToProduct: 'Redirecting to your product…',
     course: 'Course access',
     mentorship: 'Mentorship session',
@@ -260,7 +272,12 @@ function BogResultContent() {
                 : t.failed}
             </p>
             {status.status === 'COMPLETED' && status.purpose === 'COURSE' && (
-              <p className="text-xs text-gray-400 dark:text-slate-500">{t.redirectingToCourse}</p>
+              <>
+                <p className="text-xs text-gray-400 dark:text-slate-500">{t.redirectingToCourse}</p>
+                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400" title={t.refundGuaranteeDetail}>
+                  {t.refundGuarantee}
+                </p>
+              </>
             )}
             {status.status === 'COMPLETED' && status.purpose === 'PRODUCT' && (
               <p className="text-xs text-gray-400 dark:text-slate-500">{t.redirectingToProduct}</p>

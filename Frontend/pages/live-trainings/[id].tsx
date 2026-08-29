@@ -37,6 +37,31 @@ const EN_STRINGS = {
   registerAndPay: (price: string) => `Register & Pay (${price})`,
   redirectingToPayment: 'Redirecting to secure payment…',
   alreadyEnrolled: 'You are already enrolled in this training.',
+  refundGuarantee: '🛡️ 100% refund guarantee if the group doesn\'t fill or the training is cancelled',
+  refundGuaranteeDetail: 'If the minimum group size isn\'t reached or the training is cancelled for any reason, you\'ll receive a 100% refund.',
+};
+
+// Real short translations for the refund-guarantee badge specifically
+// (unlike the rest of this file's de/es/fr/uk, which alias EN_STRINGS
+// wholesale) — see live-trainings/[id].tsx's own git history/PR
+// description for why: this is money-back-guarantee copy, worth the extra
+// per-language accuracy even though the surrounding page stays
+// English-fallback for now.
+const DE_REFUND_GUARANTEE = {
+  refundGuarantee: '🛡️ 100 % Geld-zurück-Garantie bei Nichterreichen der Mindestteilnehmerzahl oder Absage',
+  refundGuaranteeDetail: 'Falls die Mindestteilnehmerzahl nicht erreicht wird oder die Schulung aus irgendeinem Grund abgesagt wird, erhalten Sie eine 100%ige Rückerstattung.',
+};
+const ES_REFUND_GUARANTEE = {
+  refundGuarantee: '🛡️ Garantía de reembolso del 100 % si no se completa el grupo o se cancela',
+  refundGuaranteeDetail: 'Si no se alcanza el número mínimo de participantes o la capacitación se cancela por cualquier motivo, recibirá un reembolso del 100 %.',
+};
+const FR_REFUND_GUARANTEE = {
+  refundGuarantee: '🛡️ Garantie de remboursement à 100 % en cas de groupe incomplet ou d\'annulation',
+  refundGuaranteeDetail: 'Si le nombre minimum de participants n\'est pas atteint ou si la formation est annulée pour une raison quelconque, vous serez remboursé à 100 %.',
+};
+const UK_REFUND_GUARANTEE = {
+  refundGuarantee: '🛡️ 100% гарантія повернення коштів у разі недобору групи або скасування',
+  refundGuaranteeDetail: 'Якщо не набереться мінімальна група або тренінг буде скасовано з будь-якої причини, кошти повертаються в розмірі 100%.',
 };
 
 const dict = {
@@ -70,12 +95,14 @@ const dict = {
     registerAndPay: (price: string) => `რეგისტრაცია და გადახდა (${price})`,
     redirectingToPayment: 'გადამისამართება უსაფრთხო გადახდაზე…',
     alreadyEnrolled: 'თქვენ უკვე ჩარიცხული ხართ ამ ტრენინგზე.',
+    refundGuarantee: '🛡️ 100% თანხის დაბრუნების გარანტია ჯგუფის შეუვსებლობის ან ჩაშლის შემთხვევაში',
+    refundGuaranteeDetail: 'თუ ლაივ ტრენინგზე არ შეგროვდა მინიმალური ჯგუფი ან ტრენინგი ჩაიშალა რაიმე მიზეზით, გადახდილი თანხა მომხმარებელს დაუბრუნდება 100%-ით.',
   },
   en: EN_STRINGS,
-  de: EN_STRINGS,
-  es: EN_STRINGS,
-  fr: EN_STRINGS,
-  uk: EN_STRINGS,
+  de: { ...EN_STRINGS, ...DE_REFUND_GUARANTEE },
+  es: { ...EN_STRINGS, ...ES_REFUND_GUARANTEE },
+  fr: { ...EN_STRINGS, ...FR_REFUND_GUARANTEE },
+  uk: { ...EN_STRINGS, ...UK_REFUND_GUARANTEE },
 };
 
 export default function LiveTrainingDetailPage() {
@@ -310,6 +337,14 @@ export default function LiveTrainingDetailPage() {
                     ? t.registerAndPay(`${(training.price / 100).toFixed(2)} ₾`)
                     : t.enroll}
                 </button>
+                {!!training.price && training.price > 0 && (
+                  <p
+                    className="mt-2.5 flex items-center justify-center gap-1.5 text-center text-[11px] font-bold text-emerald-400"
+                    title={t.refundGuaranteeDetail}
+                  >
+                    {t.refundGuarantee}
+                  </p>
+                )}
                 <div className="flex items-center gap-3 my-4 text-slate-600 text-xs">
                   <div className="flex-1 h-px bg-slate-800" />
                   {t.orDivider}

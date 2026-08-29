@@ -5,7 +5,7 @@ import Head from 'next/head';
 import { GetServerSideProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { Play, Lock, X } from 'lucide-react';
+import { Play, Lock, X, RefreshCw } from 'lucide-react';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
 import BackButton from '../../../src/components/common/BackButton';
@@ -318,6 +318,16 @@ export default function CourseDetailPage() {
             )}
           </div>
 
+          {!enrolled && effectivePrice > 0 && (
+            <p
+              className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400"
+              title={t('refundGuaranteeDetail') as string}
+            >
+              <RefreshCw className="w-3.5 h-3.5 shrink-0" />
+              {t('refundGuarantee')}
+            </p>
+          )}
+
           {!enrolled && (
             <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
               {appliedPromo ? (
@@ -457,6 +467,15 @@ export default function CourseDetailPage() {
               >
                 {processing ? t('detailEnrolling') : t('buyCourse')}
               </button>
+            )}
+            {!course.isFull && (
+              <p
+                className="mt-3 inline-flex items-center justify-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400"
+                title={t('refundGuaranteeDetail') as string}
+              >
+                <RefreshCw className="w-3.5 h-3.5 shrink-0" />
+                {t('refundGuarantee')}
+              </p>
             )}
           </div>
         </div>
