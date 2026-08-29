@@ -7,6 +7,8 @@ import { BogPaymentPurpose, PaymentModel } from '@prisma/client';
 const PAYMENT_MODEL_BY_PURPOSE: Record<BogPaymentPurpose, PaymentModel> = {
   COURSE: 'DIRECT',
   PRODUCT: 'DIRECT',
+  LIVE_TRAINING: 'DIRECT',
+  ENGLISH_TUTOR_SUBSCRIPTION: 'DIRECT',
   MENTORSHIP: 'ESCROW',
   HR_SUPPORT: 'ESCROW',
   GIG_ESCROW_FUNDING: 'ESCROW',

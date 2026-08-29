@@ -43,6 +43,10 @@ export interface LiveTraining {
   seatsRemaining: number;
   isFull: boolean;
   minThresholdMet: boolean;
+  // Server-verified against the caller's own LiveTrainingEnrollment row
+  // (ACTIVE status) — see Backend's GET /live-trainings/:id. False for an
+  // anonymous visitor, never inferred client-side.
+  isEnrolled: boolean;
 }
 
 // One row per active enrollment, as returned by GET /live-trainings/mine —

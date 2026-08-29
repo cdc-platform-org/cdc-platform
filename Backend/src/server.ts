@@ -89,6 +89,8 @@ import productReviewRoutes from './routes/productReviews';
 import adminProductReviewRoutes from './routes/adminProductReviews';
 import promoRoutes from './routes/promos';
 import aiAgentsSuiteRoutes from './routes/aiAgentsSuite';
+import englishTutorRoutes from './routes/englishTutor';
+import adminEnglishTutorRoutes from './routes/adminEnglishTutor';
 import examProctoringRoutes from './routes/examProctoring';
 import { errorHandler } from './middleware/errorHandler';
 import { PORT } from './utils/env';
@@ -96,6 +98,7 @@ import { autoApproveOverdueGigs } from './services/gigApprovalService';
 import { cleanupExpiredDeletedAccounts } from './services/accountCleanupService';
 import { pauseExpiredTrialAgents } from './services/agentBillingService';
 import { rolloverActiveBillingPeriods, sweepTrialEndingWarnings, sweepRenewalReminders } from './services/billingService';
+import { sweepExpiredTutorSubscriptions } from './services/englishTutorSubscriptionService';
 import { cancelAbandonedMentorshipBookings } from './services/mentorAvailabilityService';
 import { autoReleaseMentorshipEscrows } from './services/mentorshipEscrowService';
 import { autoReleaseHRSupportEscrows } from './services/hrSupportEscrowService';
@@ -296,6 +299,8 @@ app.use('/api/admin/product-reviews', adminProductReviewRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/promos', promoRoutes);
 app.use('/api/ai-agents', aiAgentsSuiteRoutes);
+app.use('/api/english-tutor', englishTutorRoutes);
+app.use('/api/admin/english-tutor', adminEnglishTutorRoutes);
 app.use('/api/mentor-applications', mentorApplicationRoutes);
 app.use('/api/admin/mentor-applications', adminMentorApplicationRoutes);
 app.use('/api/instructor/courses', instructorCourseRoutes);
@@ -515,3 +520,16 @@ setInterval(() => {
     })
     .catch((err) => console.error('[payment-reconciliation] run failed:', err));
 }, PAYMENT_RECONCILIATION_POLL_INTERVAL_MS);
+
+// Same in-process-fallback caveat as above — production should prefer a
+// single external scheduler hitting POST /api/cron/sweep-expired-tutor-
+// subscriptions. Hourly is precise enough for a 30-day access period —
+// see sweepExpiredTutorSubscriptions's own comment.
+const TUTOR_SUBSCRIPTION_SWEEP_INTERVAL_MS = 60 * 60 * 1000;
+setInterval(() => {
+  sweepExpiredTutorSubscriptions()
+    .then((count) => {
+      if (count > 0) console.log(`[tutor-subscription-sweep] reverted=${count}`);
+    })
+    .catch((err) => console.error('[tutor-subscription-sweep] run failed:', err));
+}, TUTOR_SUBSCRIPTION_SWEEP_INTERVAL_MS);

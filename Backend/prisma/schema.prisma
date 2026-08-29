@@ -233,6 +233,24 @@ enum BogPaymentPurpose {
   GIG_ESCROW_FUNDING
   PRODUCT
   HR_SUPPORT
+  // A paid LiveTraining seat (referenceId -> LiveTraining.id) — added to
+  // close a real bug: POST /live-trainings/:id/enroll used to grant an
+  // ACTIVE LiveTrainingEnrollment unconditionally, with no payment check at
+  // all, so a priced training could be "enrolled" into for free. That route
+  // is now free-trainings-only; a priced training must go through this
+  // checkout purpose instead (routes/payments.ts /checkout/live-training,
+  // routes/stripePayments.ts's mirror) before completeLiveTrainingPurchase
+  // ever flips the enrollment ACTIVE.
+  LIVE_TRAINING
+  // A flat 50 GEL/month AI English Tutor (IMIAKO) access purchase
+  // (referenceId -> the purchasing User.id — there is no separate
+  // subscription/product row, unlike every other purpose here). See
+  // services/englishTutorSubscriptionService.ts for fulfillment
+  // (completeTutorSubscriptionPurchase extends/sets
+  // User.tutorSubscriptionPeriodEnd) and its own comment for why this is a
+  // real recurring-charge-free purchase, not the full BillingSubscription
+  // engine.
+  ENGLISH_TUTOR_SUBSCRIPTION
 }
 
 // Whether a payment settles straight to its destination the moment it
@@ -268,11 +286,11 @@ enum BogPaymentStatus {
 // ============================================================
 
 model User {
-  id                            String              @id @default(uuid())
-  email                         String              @unique
+  id                            String                @id @default(uuid())
+  email                         String                @unique
   password                      String
   name                          String
-  role                          Role                @default(Student)
+  role                          Role                  @default(Student)
   // Captures `role` at the moment POST /admin/mentorship/mentors/promote
   // overwrites it with `Mentor` — the only way to know which of Student/
   // Client to revert to on POST /admin/mentorship/mentors/:userId/demote,
@@ -284,14 +302,14 @@ model User {
   // every admin panel load — the User model previously had zero @@index
   // declarations beyond the implicit unique indexes, forcing a full-table
   // scan+sort as the user table grows.
-  status                        UserStatus          @default(PENDING_APPROVAL)
+  status                        UserStatus            @default(PENDING_APPROVAL)
   rejectionReason               String?
-  earningsBalance               Int                 @default(0)
+  earningsBalance               Int                   @default(0)
   // Denormalized rollup of `reviewsReceived`, recomputed on every new review —
   // avoids an AVG() aggregate query every time a rating needs to be displayed
   // (profile pages, gig/vacancy cards, etc).
   averageRating                 Float?
-  reviewCount                   Int                 @default(0)
+  reviewCount                   Int                   @default(0)
   // Same denormalized-rollup pattern as averageRating/reviewCount above, but
   // for this user's Digital Store listings as a seller/creator (ProductReview,
   // recomputed on every product review create/delete) — deliberately a
@@ -300,11 +318,11 @@ model User {
   // for users who have never had a product reviewed (including anyone who
   // has never submitted a product at all).
   sellerRating                  Float?
-  sellerReviewCount             Int                 @default(0)
+  sellerReviewCount             Int                   @default(0)
   // Set only by a SuperAdmin (POST /api/admin/users/:id/verify-graduate) once
   // they've confirmed the user actually completed a CDC course — there is no
   // automated course-completion pipeline yet, so this is a manual gate.
-  isVerifiedGraduate            Boolean             @default(false)
+  isVerifiedGraduate            Boolean               @default(false)
   // Grants access to /admin/hr-requests's specialist-facing screens
   // (assigned requests, candidate scoring matrix) — deliberately NOT part
   // of AdminRoleTier/requireAdminRole: an HR specialist is very likely an
@@ -312,7 +330,7 @@ model User {
   // assigned to them, never the general admin panel a SUPER_ADMIN/MANAGER/
   // MODERATOR gets. Set manually by a SuperAdmin for now (no self-serve
   // application flow yet).
-  isHrSpecialist                Boolean             @default(false)
+  isHrSpecialist                Boolean               @default(false)
   // Set when a freelancer skill exam attempt is force-submitted for
   // repeated anti-cheat violations (tab switch/fullscreen exit, see
   // routes/freelancerExam.ts) — blocks starting a new attempt until this
@@ -324,7 +342,7 @@ model User {
   // per-skill system from isVerifiedGraduate above: a skill here only shows
   // a "Verified" badge (see VerifiedSkill) once the freelancer passes an
   // AI-generated test for it, or a completed course auto-verifies it.
-  freelancerSkills              String[]            @default([])
+  freelancerSkills              String[]              @default([])
   // Soft-delete: set the moment the user confirms account deletion. The
   // account is deactivated immediately (blocked from logging in or taking
   // marketplace actions). 60 days later, the cleanup cron either hard-deletes
@@ -340,18 +358,18 @@ model User {
   // Existing rows are backfilled to their createdAt at migration time so this
   // new gate doesn't retroactively lock out accounts that predate it.
   emailVerifiedAt               DateTime?
-  emailVerificationToken        String?             @unique
+  emailVerificationToken        String?               @unique
   emailVerificationTokenExpires DateTime?
   // Self-service password reset (POST /api/auth/forgot-password + /reset-password).
-  passwordResetToken            String?             @unique
+  passwordResetToken            String?               @unique
   passwordResetTokenExpires     DateTime?
   // Set for accounts created (or later linked) via Google/GitHub/Facebook
   // Sign-In. Such accounts get a random unusable password hash — there is
   // no password-based login path for them unless they later set one (see
   // routes/auth.ts).
-  googleId                      String?             @unique
-  githubId                      String?             @unique
-  facebookId                    String?             @unique
+  googleId                      String?               @unique
+  githubId                      String?               @unique
+  facebookId                    String?               @unique
   // Internal admin-team tier (see AdminRole) — null means "not on the admin
   // team." Independent of `role`; set only via the admin Team Management
   // panel (SUPER_ADMIN-only) or the one-off seed utility.
@@ -360,7 +378,7 @@ model User {
   // self-service account deletion). A banned user is blocked from logging in
   // and from every requireApproved-gated action, same enforcement points as
   // deletion, but reversible and admin-controlled.
-  isBanned                      Boolean             @default(false)
+  isBanned                      Boolean               @default(false)
   bannedAt                      DateTime?
   banReason                     String?
   // Legal identity fields — self-reported by the student under
@@ -381,7 +399,7 @@ model User {
   // any number of NULLs (users who haven't submitted individual
   // verification yet) but rejects a second account claiming the same
   // number — see routes/auth.ts's /me/individual-verification-doc.
-  personalNumber                String?             @unique
+  personalNumber                String?               @unique
   phone                         String?
   // Default IBAN pre-filled into new payout requests — the request itself
   // still stores its own snapshot, so changing this later doesn't alter
@@ -423,12 +441,12 @@ model User {
   // publish the profile via PUT /mentors/:mentorId/profile. No mentor-facing
   // route ever writes this field; only the admin one does, same posture as
   // course pricing/catalog content.
-  mentorPublished               Boolean             @default(false)
-  mentorSkills                  String[]            @default([])
+  mentorPublished               Boolean               @default(false)
+  mentorSkills                  String[]              @default([])
   // Spoken languages, e.g. ["ქართული", "English"] — free-text tags picked
   // from a curated checklist in the admin UI, not a DB enum (same posture
   // as mentorSkills).
-  mentorLanguages               String[]            @default([])
+  mentorLanguages               String[]              @default([])
   // CV/résumé (PDF/DOCX), uploaded via POST /admin/mentorship/mentors/:id/cv
   // — a public CDN URL like the other Bunny-Storage-backed uploads in this
   // codebase; there's nothing sensitive in a mentor's own public CV.
@@ -450,9 +468,9 @@ model User {
   // submissions. Uploading a new doc after rejection resets status back to
   // PENDING so a resubmission always lands back in the review queue.
   verificationDocUrl            String?
-  verificationLevel             VerificationLevel   @default(NONE)
-  isVerified                    Boolean             @default(false)
-  verificationStatus            VerificationStatus? @default(UNVERIFIED)
+  verificationLevel             VerificationLevel     @default(NONE)
+  isVerified                    Boolean               @default(false)
+  verificationStatus            VerificationStatus?   @default(UNVERIFIED)
   // Self-reported identification code (ს/კ) — compared against whatever
   // ID the AI parser extracts from the uploaded document (see
   // services/businessKycService.ts) to auto-verify on an exact match.
@@ -513,8 +531,64 @@ model User {
   // this model).
   trialStartDate                DateTime?
   aiTrialEndsAt                 DateTime?
-  aiSubscriptionActive          Boolean             @default(false)
-  createdAt                     DateTime            @default(now())
+  aiSubscriptionActive          Boolean               @default(false)
+  // AI English Tutor (Frontend's /dashboard/english-tutor) — a fully
+  // separate B2C product from the Business AI Agents Suite fields directly
+  // above (this one is Student-facing, gates individual lesson generation,
+  // not a Client-only trial). Deliberately its own field rather than
+  // reusing aiSubscriptionActive, which already has defined meaning (and
+  // its own Client-role-gated access-check function, utils/
+  // aiAgentsSuiteAccess.ts) for that unrelated product — this codebase
+  // already has three loosely-related trial/subscription systems that need
+  // reconciling one day; giving a fourth, unrelated product the exact same
+  // boolean would only make that worse. See utils/englishTutorAccess.ts.
+  tutorSubscriptionTier         TutorSubscriptionTier @default(FREE)
+  // The student's chosen native/support language for AI English Tutor
+  // lessons (e.g. "ka", "az", "hy", "ru") — remembered across sessions so
+  // they don't have to re-pick every time, but deliberately decoupled from
+  // router.locale/next-i18next's SUPPORTED_LOCALES (utils/locale.ts): a
+  // learner can be on the ka or en site UI while practicing English *from*
+  // Azerbaijani/Armenian/Russian/etc., and this tool needs to support that
+  // without a site-wide i18n rollout for every language a learner might
+  // natively speak. Free-text, not an enum — see TutorLesson.nativeLang's
+  // own comment. Null until the student's first lesson generation.
+  tutorNativeLang               String?
+  // Continuous-learning-loop state — the goal the student is currently
+  // working through. Null until onboarding's goal-selection step. Switching
+  // goals after finishing one just overwrites this; each generated
+  // TutorLesson's own `learningGoal` (set at generation time) is the
+  // historical record, not this field.
+  tutorLearningGoal             TutorLearningGoal?
+  // Cardless 5-day trial — every account gets exactly one, started
+  // explicitly via POST /english-tutor/trial/start, never auto-granted.
+  // tutorTrialStartDate double as the "already used their one trial" check
+  // (never reset once set) so a second call is a no-op rather than
+  // extending it. Deliberately separate from trialStartDate/aiTrialEndsAt
+  // above (the unrelated Business AI Agents Suite's own trial) for the same
+  // collision-avoidance reason tutorSubscriptionTier itself exists — see
+  // that field's comment.
+  tutorTrialStartDate           DateTime?
+  tutorTrialEndDate             DateTime?
+  // Whether a real ENGLISH_TUTOR_SUBSCRIPTION purchase (see
+  // services/englishTutorSubscriptionService.ts) should be nudged to renew
+  // as tutorSubscriptionPeriodEnd approaches — POST .../subscription/cancel
+  // flips this false. There is no real recurring-charge engine wired to
+  // this product (the RFC deliberately ruled out the complex
+  // BillingSubscription engine for this B2C tool, same reasoning as
+  // tutorSubscriptionTier's own comment), so this flag does NOT by itself
+  // keep access alive or end it — sweepExpiredTutorSubscriptions() always
+  // reverts tutorSubscriptionTier to FREE once tutorSubscriptionPeriodEnd
+  // passes, renewed or not, since nothing here ever actually re-charges a
+  // card. Its only real effect is whether a "your access is ending soon,
+  // renew now" reminder fires before that happens — same
+  // reminder-not-silent-auto-charge posture as this codebase's other
+  // manually-driven money flows.
+  tutorSubscriptionAutoRenew    Boolean               @default(true)
+  // Set (or extended, on an early renewal) by
+  // completeTutorSubscriptionPurchase — null until the student's first real
+  // purchase.
+  tutorSubscriptionPeriodEnd    DateTime?
+  createdAt                     DateTime              @default(now())
 
   postedGigs                    Gig[]                         @relation("PostedGigs")
   assignedGigs                  Gig[]                         @relation("AssignedGigs")
@@ -600,6 +674,14 @@ model User {
   mentorApplications            MentorApplication[]           @relation("MentorApplications")
   mentorApplicationsReviewed    MentorApplication[]           @relation("MentorApplicationsReviewed")
   courseReviewsActed            CourseReviewHistory[]         @relation("CourseReviewsActed")
+  tutorLessons                  TutorLesson[]
+  tutorProgress                 UserTutorProgress[]
+  tutorLessonGenerations        TutorLessonGeneration[]
+  tutorResumeState              UserTutorResumeState?
+  tutorContentFlagsRaised       TutorContentFlag[]            @relation("TutorContentFlagsRaised")
+  tutorContentFlagsReviewed     TutorContentFlag[]            @relation("TutorContentFlagsReviewed")
+  tutorLessonsApproved          TutorLesson[]                 @relation("TutorLessonsApproved")
+  tutorPromptOverridesUpdated   TutorPromptOverride[]         @relation("TutorPromptOverridesUpdated")
 
   @@index([status, createdAt])
   @@map("users")
@@ -998,7 +1080,7 @@ model MentorApplication {
   userId String
   user   User   @relation("MentorApplications", fields: [userId], references: [id], onDelete: Cascade)
 
-  background     String   // professional background / experience, free text
+  background     String // professional background / experience, free text
   linkedinUrl    String?
   bio            String
   teachingTopics String[] @default([])
@@ -1163,7 +1245,7 @@ model Course {
 // ============================================================
 
 model LiveTraining {
-  id                  String   @id @default(uuid())
+  id                  String           @id @default(uuid())
   title               String
   titleEn             String?
   description         String
@@ -1183,14 +1265,14 @@ model LiveTraining {
   // Group-viability floor — see LiveTrainingLead's registeredCount-derived
   // "min threshold met" badge on both the admin and public pages. 0 means
   // no minimum is enforced.
-  minCapacity         Int      @default(0)
+  minCapacity         Int              @default(0)
   maxCapacity         Int
-  published           Boolean  @default(false)
+  published           Boolean          @default(false)
   // Same enum/meaning as Course.language — which language(s) the live
   // session itself is conducted in, shown via the same courseLanguageBadge()
   // helper. Defaults to GEORGIAN (this platform's primary audience), same
   // default as Course.language.
-  language            CourseLanguage @default(GEORGIAN)
+  language            CourseLanguage   @default(GEORGIAN)
   // Pasted join link (Zoom/Meet/etc.) for the actual live session — same
   // plain-URL convention as HRSupportRequest.meetingUrl, not a real
   // Zoom/Meet API integration. Null until an admin sets it once the cohort
@@ -1229,10 +1311,10 @@ model LiveTraining {
   // merge: the new Course still needs real sections/lessons authored by
   // hand, this just lets past leads be notified and traced back to the
   // session that originated the course.
-  convertedToCourseId String?  @unique
-  convertedToCourse   Course?  @relation(fields: [convertedToCourseId], references: [id])
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  convertedToCourseId String?          @unique
+  convertedToCourse   Course?          @relation(fields: [convertedToCourseId], references: [id])
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
 
   leads       LiveTrainingLead[]
   enrollments LiveTrainingEnrollment[]
@@ -1283,13 +1365,13 @@ enum LiveTrainingEnrollmentStatus {
 // self-enroll directly (see POST /live-trainings/:id/enroll) without the
 // anonymous phone-callback flow existing at all.
 model LiveTrainingEnrollment {
-  id             String                        @id @default(uuid())
+  id             String                       @id @default(uuid())
   userId         String
-  user           User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
   liveTrainingId String
-  liveTraining   LiveTraining                  @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
-  status         LiveTrainingEnrollmentStatus  @default(ACTIVE)
-  enrolledAt     DateTime                      @default(now())
+  liveTraining   LiveTraining                 @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  status         LiveTrainingEnrollmentStatus @default(ACTIVE)
+  enrolledAt     DateTime                     @default(now())
 
   // One active-or-cancelled row per (user, training) — re-enrolling after a
   // cancellation flips this same row back to ACTIVE rather than creating a
@@ -1845,12 +1927,12 @@ model ProductPurchase {
 // ============================================================
 
 model CourseEnrollment {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
-  courseId  String
-  course    Course   @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  grantedAt DateTime @default(now())
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  courseId         String
+  course           Course   @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  grantedAt        DateTime @default(now())
   // Mentor payout split, same convention as ProductPurchase's own
   // commissionRate/commissionAmount/netAmount — set only when the course has
   // a real Mentor author (Course.instructorId; admin-authored catalog
@@ -2385,7 +2467,7 @@ enum PlatformFeeServiceType {
   // Postgres enum label and any existing admin-customized
   // PlatformFeeSchedule row exactly as "DIGITAL_PRODUCT" (see the row this
   // maps to), so this is a pure rename with zero data migration needed.
-  DIGITAL_PRODUCT_VERIFIED @map("DIGITAL_PRODUCT")
+  DIGITAL_PRODUCT_VERIFIED   @map("DIGITAL_PRODUCT")
   // courseSaleService.ts — flat rate, charged only when the course has a
   // real Mentor author (Course.instructorId; admin-authored catalog courses
   // have none and keep the full sale price, same "no external creator, no
@@ -4003,4 +4085,282 @@ model DigitalMarketingGeneration {
 
   @@index([userId, createdAt])
   @@map("digital_marketing_generations")
+}
+
+// ============================================================
+// AI ENGLISH TUTOR (Frontend's /dashboard/english-tutor) — Phase 1 & 2 per
+// the RFC: on-demand AI-generated lessons across 6 core task types plus a
+// Dialogue/Roleplay panel, gated by a lightweight FREE/PRO tier (see
+// User.tutorSubscriptionTier's own comment for why this is a dedicated
+// field rather than reusing aiSubscriptionActive/BillingSubscription).
+// Phase 3 (Azure Pronunciation Assessment for Speaking) is intentionally
+// not modeled here yet.
+// ============================================================
+
+enum TutorTaskType {
+  READING
+  WRITING
+  GRAMMAR
+  VOCABULARY
+  QUIZ
+  LISTENING
+  // Roleplay/dialogue practice — the "Dialogue/Roleplay panel" the RFC
+  // scoped alongside (not as one of) the 6 core task types above. Modeled
+  // as just another taskType since both are the same underlying shape —
+  // "AI-generated content + a completion record" — via the same
+  // TutorLesson/UserTutorProgress pair; only the content/grading prompt in
+  // services/englishTutorService.ts differs per type.
+  DIALOGUE
+}
+
+enum CefrLevel {
+  A1
+  A2
+  B1
+  B2
+  C1
+  C2
+}
+
+enum TutorSubscriptionTier {
+  FREE
+  PRO
+}
+
+enum TutorProgressStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+// The continuous-learning-loop's target — set on User.tutorLearningGoal
+// (the student's current goal) and stamped onto each TutorLesson generated
+// while that goal was active, so per-goal analytics (admin's Curriculum/
+// Analytics dashboard) can be computed straight off TutorLesson/
+// UserTutorProgress without a separate "goal history" table.
+enum TutorLearningGoal {
+  TRAVEL
+  TECHNICAL_IT
+  BUSINESS
+  ACADEMIC
+  GENERAL_DAILY
+  INTERVIEW_PREP
+}
+
+// One AI-generated English Tutor lesson — Gemini output for a single
+// taskType/level/nativeLang(/topic) combination, persisted as its own row
+// so a student's lesson is reproducible (reopening it or reviewing past
+// UserTutorProgress reloads the exact content they were graded against)
+// rather than being silently regenerated on every page load. Always
+// generated for one specific user (like LaunchKit.generatedByUserId /
+// DigitalMarketingGeneration) — there is no shared/admin-curated lesson
+// bank in this phase.
+model TutorLesson {
+  id       String        @id @default(uuid())
+  taskType TutorTaskType
+  level    CefrLevel
+
+  // The student's own native/support language for this lesson's
+  // instructions/translations/glosses — see User.tutorNativeLang's own
+  // comment for why this is decoupled from router.locale. Free-text (not
+  // an enum) since the set of supported native languages is a
+  // prompt-engineering/product concern, not a schema one — new languages
+  // need no migration.
+  nativeLang   String
+  // Optional free-text topic/focus the student typed when generating this
+  // lesson (e.g. "job interviews", "travel") — null for a lesson generated
+  // with no topic narrowing, same optional-context shape as
+  // aiExamService.GenerateExamParams.aiPromptContext.
+  topic        String?
+  // The learning goal active when this lesson was generated (mirrors
+  // User.tutorLearningGoal at generation time) — null for a lesson
+  // generated before goal-selection existed, or with no goal set. Drives
+  // per-goal completion-rate/average-score analytics on the admin
+  // dashboard; see routes/adminEnglishTutor.ts's /analytics.
+  learningGoal TutorLearningGoal?
+
+  // The generated lesson body — shape depends on taskType (validated
+  // against the matching zod schema in englishTutorService.ts before this
+  // row is ever created, same "validate before persisting" posture as
+  // GeneratedQuestion in aiExamService.ts). e.g. READING:
+  // { passage, questions: [...] }; QUIZ: { questions: [...] }; DIALOGUE:
+  // { scenario, turns: [...] }.
+  content Json
+
+  // Pro-gated lessons (advanced levels / topic-narrowed generations, see
+  // utils/englishTutorAccess.ts) — checked before this lesson is ever
+  // served to a FREE-tier user. Distinct from the daily free-generation
+  // cap (TutorLessonGeneration below), which limits HOW MANY lessons a
+  // FREE user can create per day, not WHICH ones they're allowed to see.
+  isPro Boolean @default(false)
+
+  // Curriculum Inspector's "approve" action (admin/tutor.tsx) — purely a
+  // quality-review marker, never itself an access gate (isPro/level already
+  // control who can see a lesson regardless of this flag). Null/false is
+  // the default for every AI-generated lesson; an admin's "regenerate"
+  // action on this lesson resets both back to unreviewed, since a
+  // regenerated lesson has new, unreviewed content.
+  adminApproved     Boolean   @default(false)
+  adminReviewedAt   DateTime?
+  adminReviewedById String?
+  adminReviewedBy   User?     @relation("TutorLessonsApproved", fields: [adminReviewedById], references: [id], onDelete: SetNull)
+  // Set (with the original AI-generated content preserved via history in
+  // application logs, not a second column) whenever an admin edits
+  // `content` directly through the Curriculum Inspector's override — lets
+  // the admin UI show "manually edited" distinctly from "AI-generated,
+  // unreviewed" or "AI-generated, approved as-is".
+  adminEdited       Boolean   @default(false)
+
+  generatedForUserId String
+  generatedForUser   User     @relation(fields: [generatedForUserId], references: [id], onDelete: Cascade)
+  createdAt          DateTime @default(now())
+
+  progress UserTutorProgress[]
+  flags    TutorContentFlag[]
+
+  @@index([generatedForUserId, taskType, createdAt])
+  @@index([learningGoal])
+  @@map("tutor_lessons")
+}
+
+// A student's attempt against one TutorLesson — kept separate from
+// TutorLesson itself so the same generated content can be resumed,
+// reviewed, or retried without ever needing to regenerate it. One row per
+// attempt, never upserted onto a single mutable row — same "attempts, not
+// one row that gets overwritten" shape as ExamAttempt/SkillTestAttempt, so
+// a student redoing a lesson can see their improvement rather than lose
+// their first score.
+model UserTutorProgress {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tutorLessonId String
+  tutorLesson   TutorLesson @relation(fields: [tutorLessonId], references: [id], onDelete: Cascade)
+
+  status TutorProgressStatus @default(IN_PROGRESS)
+  // 0-100 — null until the task is actually graded. Free-text tasks
+  // (WRITING, DIALOGUE) are scored by the same AI-grading call that
+  // produces `feedback` below, not hand-graded.
+  score  Int?
+
+  // What the student actually submitted — shape depends on the parent
+  // lesson's taskType, same per-type-shape posture as TutorLesson.content
+  // (e.g. QUIZ: { answers: { questionId: choice } }; WRITING: { text };
+  // DIALOGUE: { turns: [...] }). Null until first submitted.
+  responseData Json?
+  // AI-generated feedback on the submission — { summary, corrections?,
+  // strengths? } shape, produced by the taskType's grading prompt in
+  // englishTutorService.ts. Null until submitted.
+  feedback     Json?
+
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  flags TutorContentFlag[]
+
+  @@index([userId, status])
+  @@index([tutorLessonId])
+  @@map("user_tutor_progress")
+}
+
+// A student's exact resume point — one row per user (not per lesson),
+// overwritten on every save. "Granular progress saving" only needs the
+// LATEST position (there is nothing to browse a history of, unlike
+// UserTutorProgress's per-attempt rows), so this is a 1:1 upsert target
+// rather than an append-only log — same shape as e.g. a single
+// "last read position" bookmark. Written from the frontend on every
+// task-runner step change / panel exit (PUT /english-tutor/resume-state),
+// read back once on load so IMIAKO can resume from the exact sentence/task
+// the student left off at instead of restarting.
+model UserTutorResumeState {
+  userId            String   @id
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastLessonId      String?
+  // Position within the lesson — meaning depends on taskType (e.g. the
+  // index of the question/turn/paragraph currently in view). Free-form Int
+  // rather than a per-taskType shape since this is a pure UI bookmark, not
+  // graded state (UserTutorProgress.responseData already holds the actual
+  // submitted answers).
+  stepIndex         Int      @default(0)
+  // Playback position for a LISTENING lesson's narration, in seconds —
+  // null when not applicable to the current lastLessonId's taskType.
+  audioTimestampSec Float?
+  updatedAt         DateTime @updatedAt
+
+  @@map("user_tutor_resume_state")
+}
+
+enum TutorContentFlagStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+// A report against a specific TutorLesson (bad/hallucinated content) or
+// UserTutorProgress (bad AI grading/feedback) — same reviewedAt/
+// reviewedByAdminId-nullable-until-reviewed shape as ChatFlag. Exactly one
+// of tutorLessonId/userTutorProgressId is set, matching which surface the
+// flag was raised from (enforced in routes/englishTutor.ts, same posture as
+// LaunchKit.productId/courseId's own XOR comment — Prisma has no schema-level
+// XOR constraint).
+model TutorContentFlag {
+  id                  String                 @id @default(uuid())
+  tutorLessonId       String?
+  tutorLesson         TutorLesson?           @relation(fields: [tutorLessonId], references: [id], onDelete: Cascade)
+  userTutorProgressId String?
+  userTutorProgress   UserTutorProgress?     @relation(fields: [userTutorProgressId], references: [id], onDelete: Cascade)
+  flaggedByUserId     String
+  flaggedByUser       User                   @relation("TutorContentFlagsRaised", fields: [flaggedByUserId], references: [id], onDelete: Cascade)
+  reason              String
+  status              TutorContentFlagStatus @default(OPEN)
+  adminNote           String?
+  reviewedAt          DateTime?
+  reviewedByAdminId   String?
+  reviewedByAdmin     User?                  @relation("TutorContentFlagsReviewed", fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
+  createdAt           DateTime               @default(now())
+
+  @@index([status, createdAt])
+  @@map("tutor_content_flags")
+}
+
+// Admin-editable override for one taskType's generation prompt/temperature
+// — the "Agent Prompt & Parameter Configurator". englishTutorService.ts
+// stays Prisma-free (same architectural boundary as aiAgentService.ts/
+// aiExamService.ts — see aiAgentService.ts's own file comment), so the
+// route layer (routes/englishTutor.ts) reads this row and passes its
+// fields into generateTutorLesson() as plain params rather than the
+// service querying the DB itself. Null systemPromptOverride/
+// temperatureOverride (the default, before any admin has touched a given
+// taskType) means "use the hardcoded default" — this table only ever holds
+// deviations, not a full copy of every prompt.
+model TutorPromptOverride {
+  id                   String        @id @default(uuid())
+  taskType             TutorTaskType @unique
+  // Appended to the hardcoded system prompt for this taskType (not a
+  // replacement) — lets an admin add extra constraints/tone/strictness
+  // without needing to reproduce (and risk breaking) the JSON-shape
+  // instructions the hardcoded prompt already guarantees.
+  systemPromptOverride String?
+  temperatureOverride  Float?
+  updatedAt            DateTime      @updatedAt
+  updatedByAdminId     String
+  updatedByAdmin       User          @relation("TutorPromptOverridesUpdated", fields: [updatedByAdminId], references: [id])
+
+  @@map("tutor_prompt_overrides")
+}
+
+// One row per AI lesson generation — same reason to exist as
+// DigitalMarketingGeneration's own comment: a rolling-24h count query is
+// how the FREE-tier daily generation cap
+// (englishTutorQuotaService.hasReachedDailyLessonGenerationLimit) is
+// enforced, needing no cron/reset job and staying correct across multiple
+// server instances. PRO-tier generations are still recorded here (for
+// usage visibility) but never counted against the FREE cap.
+model TutorLessonGeneration {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("tutor_lesson_generations")
 }

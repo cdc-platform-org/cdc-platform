@@ -69,6 +69,19 @@ export async function checkoutProductStripe(productId: string, currency: StripeC
   return response.data;
 }
 
+// `enrolled` (not `purchased`) — same shape as StripeCourseCheckoutResult,
+// since the admin test-mode free bypass grants enrollment directly rather
+// than a product purchase.
+export async function checkoutLiveTrainingStripe(id: string, currency: StripeCurrency = 'usd'): Promise<StripeCourseCheckoutResult> {
+  const response = await apiClient.post<StripeCourseCheckoutResult>(`/payments/stripe/checkout/live-training/${id}`, { currency });
+  return response.data;
+}
+
+export async function checkoutEnglishTutorSubscriptionStripe(currency: StripeCurrency = 'usd'): Promise<StripeCourseCheckoutResult> {
+  const response = await apiClient.post<StripeCourseCheckoutResult>('/payments/stripe/checkout/english-tutor', { currency });
+  return response.data;
+}
+
 export async function getStripePaymentStatus(paymentId: string): Promise<StripePaymentStatusData> {
   const response = await apiClient.get<{ data: StripePaymentStatusData }>(`/payments/stripe/status/${paymentId}`);
   return response.data.data;

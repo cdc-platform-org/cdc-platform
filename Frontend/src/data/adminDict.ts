@@ -46,6 +46,7 @@ export const adminDict = {
       certificates: 'სერტიფიკატის გაცემა',
       opportunities: 'გრანტები & ტენდერები',
       marketing: 'AI მარკეტინგის მენეჯერი',
+      tutor: 'IMIAKO ტუტორი',
     },
     navSections: {
       core: 'ძირითადი მართვა',
@@ -128,6 +129,7 @@ export const adminDict = {
       certificates: 'Issue Certificate',
       opportunities: 'Grants & Tenders',
       marketing: 'AI Marketing Manager',
+      tutor: 'IMIAKO Tutor',
     },
     navSections: {
       core: 'Core Management',

@@ -26,6 +26,8 @@ import { captureMentorshipEscrow } from '../services/mentorshipEscrowService';
 import { isBusinessToolsCategory, canPurchaseBusinessTools } from '../utils/marketplaceCategories';
 import { sendMentorshipBookingEmails } from '../services/emailService';
 import { notifyCourseEnrollment } from '../services/courseEnrollmentNotification';
+import { completeLiveTrainingPurchase } from '../services/liveTrainingSaleService';
+import { completeTutorSubscriptionPurchase, TUTOR_SUBSCRIPTION_PRICE_GEL } from '../services/englishTutorSubscriptionService';
 
 // ============================================================
 // Stripe Checkout routes — the international-currency (USD/EUR) sibling of
@@ -51,7 +53,7 @@ const checkoutRateLimit = rateLimit({
   message: 'Too many checkout attempts. Please wait a moment and try again.',
 });
 
-type StripePurpose = 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT';
+type StripePurpose = 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT' | 'LIVE_TRAINING' | 'ENGLISH_TUTOR_SUBSCRIPTION';
 type StripeCurrency = 'USD' | 'EUR';
 
 function resultRedirects(paymentId: string) {
@@ -188,6 +190,155 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
   });
   if (!session) return;
   if (appliedPromo) await prisma.promoCode.update({ where: { id: appliedPromo.id }, data: { currentUses: { increment: 1 } } });
+  const updated = await prisma.stripePayment.update({
+    where: { id: stripePayment.id },
+    data: { stripeSessionId: session.stripeSessionId, checkoutUrl: session.checkoutUrl },
+  });
+  res.status(201).json({ paymentId: updated.id, redirectUrl: session.checkoutUrl });
+});
+
+// ============================================================
+// CHECKOUT — LIVE TRAINING
+// International-currency counterpart to payments.ts's /checkout/live-training
+// — see that route's own comment for why this exists (closing the "enroll
+// grants a paid seat for free" bug). No promo codes, no instructor payout,
+// same shape as CHECKOUT — COURSE above otherwise.
+// ============================================================
+router.post('/checkout/live-training/:id', checkoutRateLimit, authenticate, requireApproved, async (req: Request, res: Response) => {
+  const training = await prisma.liveTraining.findFirst({
+    where: { id: req.params.id, published: true },
+    include: { _count: { select: { leads: true, enrollments: { where: { status: 'ACTIVE' } } } } },
+  });
+  if (!training) return res.status(404).json({ message: 'Live training not found.' });
+  if (!training.price || training.price <= 0) {
+    return res.status(400).json({ message: 'This training is free — enroll directly instead of checking out.' });
+  }
+
+  const existingEnrollment = await prisma.liveTrainingEnrollment.findUnique({
+    where: { userId_liveTrainingId: { userId: req.user!.id, liveTrainingId: training.id } },
+  });
+  if (existingEnrollment?.status === 'ACTIVE') {
+    return res.status(400).json({ message: 'You are already enrolled in this training.' });
+  }
+  if (!existingEnrollment && training._count.leads + training._count.enrollments >= training.maxCapacity) {
+    return res.status(409).json({ message: 'This training is fully booked.' });
+  }
+
+  const reusable = await findReusablePendingOrder(req.user!.id, 'LIVE_TRAINING', training.id);
+  if (reusable) return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.checkoutUrl });
+
+  const requesterAdminRole = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } }))?.adminRole;
+  const chargeAmountGel = requesterAdminRole ? 0 : training.price;
+
+  if (chargeAmountGel <= 0) {
+    const freePayment = await prisma.stripePayment.create({
+      data: {
+        stripeSessionId: `admin-test-${crypto.randomUUID()}`,
+        userId: req.user!.id,
+        purpose: 'LIVE_TRAINING',
+        paymentModel: paymentModelForPurpose('LIVE_TRAINING'),
+        referenceId: training.id,
+        amount: 0,
+        amountGel: 0,
+        currency: 'USD',
+        status: 'COMPLETED',
+        completedAt: new Date(),
+      },
+    });
+    await completeLiveTrainingPurchase({ userId: req.user!.id, liveTrainingId: training.id });
+    return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
+  }
+
+  const currency = checkoutCurrency(req);
+  const amount = convertGelToStripeMinorUnits(chargeAmountGel, currency);
+  const stripePayment = await prisma.stripePayment.create({
+    data: {
+      stripeSessionId: `pending-${crypto.randomUUID()}`,
+      userId: req.user!.id,
+      purpose: 'LIVE_TRAINING',
+      paymentModel: paymentModelForPurpose('LIVE_TRAINING'),
+      referenceId: training.id,
+      amount,
+      amountGel: chargeAmountGel,
+      currency,
+      status: 'PENDING',
+    },
+  });
+  const { successUrl, cancelUrl } = resultRedirects(stripePayment.id);
+  const session = await createStripeSessionOrRespond(res, {
+    externalOrderId: stripePayment.id,
+    amount,
+    currency: currency.toLowerCase() as 'usd' | 'eur',
+    productName: training.title,
+    successUrl,
+    cancelUrl,
+    customerEmail: req.user!.email,
+  });
+  if (!session) return;
+  const updated = await prisma.stripePayment.update({
+    where: { id: stripePayment.id },
+    data: { stripeSessionId: session.stripeSessionId, checkoutUrl: session.checkoutUrl },
+  });
+  res.status(201).json({ paymentId: updated.id, redirectUrl: session.checkoutUrl });
+});
+
+// ============================================================
+// CHECKOUT — ENGLISH TUTOR (IMIAKO) SUBSCRIPTION
+// International-currency counterpart to payments.ts's /checkout/english-tutor
+// — see that route's own comment.
+// ============================================================
+router.post('/checkout/english-tutor', checkoutRateLimit, authenticate, requireApproved, async (req: Request, res: Response) => {
+  const reusable = await findReusablePendingOrder(req.user!.id, 'ENGLISH_TUTOR_SUBSCRIPTION', req.user!.id);
+  if (reusable) return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.checkoutUrl });
+
+  const requesterAdminRole = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } }))?.adminRole;
+  const chargeAmountGel = requesterAdminRole ? 0 : TUTOR_SUBSCRIPTION_PRICE_GEL;
+
+  if (chargeAmountGel <= 0) {
+    const freePayment = await prisma.stripePayment.create({
+      data: {
+        stripeSessionId: `admin-test-${crypto.randomUUID()}`,
+        userId: req.user!.id,
+        purpose: 'ENGLISH_TUTOR_SUBSCRIPTION',
+        paymentModel: paymentModelForPurpose('ENGLISH_TUTOR_SUBSCRIPTION'),
+        referenceId: req.user!.id,
+        amount: 0,
+        amountGel: 0,
+        currency: 'USD',
+        status: 'COMPLETED',
+        completedAt: new Date(),
+      },
+    });
+    await completeTutorSubscriptionPurchase(req.user!.id);
+    return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
+  }
+
+  const currency = checkoutCurrency(req);
+  const amount = convertGelToStripeMinorUnits(chargeAmountGel, currency);
+  const stripePayment = await prisma.stripePayment.create({
+    data: {
+      stripeSessionId: `pending-${crypto.randomUUID()}`,
+      userId: req.user!.id,
+      purpose: 'ENGLISH_TUTOR_SUBSCRIPTION',
+      paymentModel: paymentModelForPurpose('ENGLISH_TUTOR_SUBSCRIPTION'),
+      referenceId: req.user!.id,
+      amount,
+      amountGel: chargeAmountGel,
+      currency,
+      status: 'PENDING',
+    },
+  });
+  const { successUrl, cancelUrl } = resultRedirects(stripePayment.id);
+  const session = await createStripeSessionOrRespond(res, {
+    externalOrderId: stripePayment.id,
+    amount,
+    currency: currency.toLowerCase() as 'usd' | 'eur',
+    productName: 'IMIAKO — AI English Tutor (1 month)',
+    successUrl,
+    cancelUrl,
+    customerEmail: req.user!.email,
+  });
+  if (!session) return;
   const updated = await prisma.stripePayment.update({
     where: { id: stripePayment.id },
     data: { stripeSessionId: session.stripeSessionId, checkoutUrl: session.checkoutUrl },
@@ -625,6 +776,10 @@ export async function applyStripePaymentResult(stripePaymentId: string, session:
       // schema comment. The creator's earningsBalance is GEL tetri.
       amount: stripePayment.amountGel,
     });
+  } else if (stripePayment.purpose === 'LIVE_TRAINING') {
+    await completeLiveTrainingPurchase({ userId: stripePayment.userId, liveTrainingId: stripePayment.referenceId });
+  } else if (stripePayment.purpose === 'ENGLISH_TUTOR_SUBSCRIPTION') {
+    await completeTutorSubscriptionPurchase(stripePayment.userId);
   }
 }
 

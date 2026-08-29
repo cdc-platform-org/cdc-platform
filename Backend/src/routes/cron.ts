@@ -13,6 +13,7 @@ import { reconcilePendingPayments } from '../services/paymentReconciliationServi
 import { generateAndSaveBlogDraft, BlogAgentError } from '../services/blogAgentService';
 import { AiAgentError } from '../services/aiAgentService';
 import { scanAllActiveSources } from '../services/grantScoutService';
+import { sweepExpiredTutorSubscriptions } from '../services/englishTutorSubscriptionService';
 
 const router = Router();
 const expectedSecretBuffer = Buffer.from(CRON_SECRET);
@@ -165,6 +166,15 @@ router.post('/reconcile-pending-payments', requireCronSecret, async (_req: Reque
     message: `BOG: ${result.bogCompletedIds.length} completed, ${result.bogFailedIds.length} failed. Stripe: ${result.stripeCompletedIds.length} completed, ${result.stripeFailedIds.length} failed. ${result.errorIds.length} error(s).`,
     ...result,
   });
+});
+
+// Reverts a lapsed AI English Tutor (IMIAKO) subscription back to FREE
+// once tutorSubscriptionPeriodEnd has passed — see
+// sweepExpiredTutorSubscriptions's own comment for why this fires
+// regardless of tutorSubscriptionAutoRenew.
+router.post('/sweep-expired-tutor-subscriptions', requireCronSecret, async (_req: Request, res: Response) => {
+  const count = await sweepExpiredTutorSubscriptions();
+  res.json({ message: `${count} subscription(s) reverted to FREE.`, count });
 });
 
 export default router;

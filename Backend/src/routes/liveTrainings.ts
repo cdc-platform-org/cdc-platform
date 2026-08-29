@@ -105,7 +105,21 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
     include: { _count: { select: { leads: true, enrollments: enrollmentCountSelect } } },
   });
   if (!training) return res.status(404).json({ message: 'Live training not found.' });
-  res.json({ data: withCapacity(training) });
+
+  // Server-verified, not inferred from any client-side action — the
+  // frontend used to only ever know "enrolled" from its own in-session
+  // button click, so reloading this page (or a real payment landing via a
+  // separate BOG/Stripe redirect round-trip) never showed the true state.
+  // False for an anonymous visitor.
+  let isEnrolled = false;
+  if (req.user) {
+    const enrollment = await prisma.liveTrainingEnrollment.findUnique({
+      where: { userId_liveTrainingId: { userId: req.user.id, liveTrainingId: training.id } },
+    });
+    isEnrolled = enrollment?.status === 'ACTIVE';
+  }
+
+  res.json({ data: { ...withCapacity(training), isEnrolled } });
 });
 
 // Broadcasts to every admin-team member — same pattern as blogAgentService's
@@ -155,12 +169,24 @@ router.post('/:id/register', registerRateLimit, async (req: Request, res: Respon
 // capacity pool. GET /mine is registered earlier, above GET /:id.
 // ============================================================
 
+// FREE trainings only — this used to grant an ACTIVE LiveTrainingEnrollment
+// (and the frontend's "You are enrolled!" banner) unconditionally, with no
+// price/payment check at all, so a priced training (e.g. 300 GEL) could be
+// "enrolled" into for free with one click. A priced training must go
+// through POST /payments/checkout/live-training/:id (BOG) or
+// /payments/stripe/checkout/live-training/:id (Stripe) instead — the
+// LiveTrainingEnrollment there is only ever created by
+// liveTrainingSaleService.completeLiveTrainingPurchase, once the gateway
+// actually confirms payment.
 router.post('/:id/enroll', authenticate, async (req: Request, res: Response) => {
   const training = await prisma.liveTraining.findFirst({
     where: { id: req.params.id, published: true },
     include: { _count: { select: { leads: true, enrollments: enrollmentCountSelect } } },
   });
   if (!training) return res.status(404).json({ message: 'Live training not found.' });
+  if (training.price && training.price > 0) {
+    return res.status(400).json({ message: 'This training requires payment. Please use the registration & payment option.' });
+  }
 
   const existing = await prisma.liveTrainingEnrollment.findUnique({
     where: { userId_liveTrainingId: { userId: req.user!.id, liveTrainingId: training.id } },

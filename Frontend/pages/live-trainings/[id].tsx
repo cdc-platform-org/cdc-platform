@@ -7,7 +7,8 @@ import SiteHeader from '../../src/components/layout/SiteHeader';
 import BackButton from '../../src/components/common/BackButton';
 import VideoEmbed from '../../src/components/shared/VideoEmbed';
 import { LiveTraining } from '../../src/types/liveTraining';
-import { getLiveTraining, registerForLiveTraining, enrollInLiveTraining } from '../../src/services/liveTrainingService';
+import { getLiveTraining, registerForLiveTraining, enrollInLiveTraining, checkoutLiveTraining } from '../../src/services/liveTrainingService';
+import { checkoutLiveTrainingStripe } from '../../src/services/stripePaymentService';
 import { resolveLocale } from '@/src/utils/locale';
 import { courseLanguageBadge } from '@/src/utils/courseLanguage';
 import { useAuth } from '../../src/context/AuthContext';
@@ -33,6 +34,9 @@ const EN_STRINGS = {
   enrollSuccess: 'You\'re enrolled! Find the join link and recording on your dashboard closer to the session.',
   goToDashboard: 'Go to My Live Trainings',
   orDivider: 'or',
+  registerAndPay: (price: string) => `Register & Pay (${price})`,
+  redirectingToPayment: 'Redirecting to secure payment…',
+  alreadyEnrolled: 'You are already enrolled in this training.',
 };
 
 const dict = {
@@ -63,6 +67,9 @@ const dict = {
     enrollSuccess: 'თქვენ ჩარიცხული ხართ! მიერთების ბმული და ჩანაწერი სესიასთან ახლოს დაშბორდზე გამოჩნდება.',
     goToDashboard: 'ჩემი ლაივ ტრენინგები',
     orDivider: 'ან',
+    registerAndPay: (price: string) => `რეგისტრაცია და გადახდა (${price})`,
+    redirectingToPayment: 'გადამისამართება უსაფრთხო გადახდაზე…',
+    alreadyEnrolled: 'თქვენ უკვე ჩარიცხული ხართ ამ ტრენინგზე.',
   },
   en: EN_STRINGS,
   de: EN_STRINGS,
@@ -124,10 +131,27 @@ export default function LiveTrainingDetailPage() {
   };
 
   const handleEnroll = async () => {
-    if (!id) return;
+    if (!id || !training) return;
     setEnrollError(null);
     setEnrolling(true);
     try {
+      if (training.price && training.price > 0) {
+        // Priced training — real payment required. Georgian users pay via
+        // BOG (GEL); everyone else via Stripe (USD/EUR), same gateway split
+        // as courses/[id]/index.tsx's startCheckout. Never sets `enrolled`
+        // locally here — the real LiveTrainingEnrollment is only created
+        // once the gateway confirms payment (see
+        // liveTrainingSaleService.completeLiveTrainingPurchase), so the
+        // success banner is only ever shown from training.isEnrolled
+        // (server-verified) after that round-trip, not from this click.
+        const result = lang === 'ka' ? await checkoutLiveTraining(id, 'ka') : await checkoutLiveTrainingStripe(id, 'usd');
+        if (result.enrolled) {
+          setEnrolled(true);
+        } else if (result.redirectUrl) {
+          window.location.href = result.redirectUrl;
+        }
+        return;
+      }
       await enrollInLiveTraining(id);
       setEnrolled(true);
       load(); // refresh capacity counters
@@ -244,11 +268,11 @@ export default function LiveTrainingDetailPage() {
           )}
         </div>
 
-        {success || enrolled ? (
+        {success || enrolled || training.isEnrolled ? (
           <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center">
             <CheckCircle2 className="mx-auto mb-2 text-emerald-400" size={28} />
-            <p className="text-sm text-emerald-300">{enrolled ? t.enrollSuccess : t.success}</p>
-            {enrolled && (
+            <p className="text-sm text-emerald-300">{enrolled || training.isEnrolled ? t.enrollSuccess : t.success}</p>
+            {(enrolled || training.isEnrolled) && (
               <Link
                 href="/dashboard/live-trainings"
                 className="inline-block mt-4 text-xs font-bold px-4 py-2.5 rounded-lg bg-emerald-500/20 text-emerald-300 no-underline"
@@ -278,7 +302,13 @@ export default function LiveTrainingDetailPage() {
                   disabled={enrolling}
                   className="w-full rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-3 text-sm font-bold text-white hover:opacity-90 disabled:opacity-60"
                 >
-                  {enrolling ? t.enrolling : t.enroll}
+                  {enrolling
+                    ? training.price && training.price > 0
+                      ? t.redirectingToPayment
+                      : t.enrolling
+                    : training.price && training.price > 0
+                    ? t.registerAndPay(`${(training.price / 100).toFixed(2)} ₾`)
+                    : t.enroll}
                 </button>
                 <div className="flex items-center gap-3 my-4 text-slate-600 text-xs">
                   <div className="flex-1 h-px bg-slate-800" />

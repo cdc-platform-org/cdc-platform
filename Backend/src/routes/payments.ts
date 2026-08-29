@@ -30,6 +30,8 @@ import { captureMentorshipEscrow } from '../services/mentorshipEscrowService';
 import { isBusinessToolsCategory, canPurchaseBusinessTools } from '../utils/marketplaceCategories';
 import { sendMentorshipBookingEmails, sendHRSupportRequestAlertEmail } from '../services/emailService';
 import { notifyCourseEnrollment } from '../services/courseEnrollmentNotification';
+import { completeLiveTrainingPurchase } from '../services/liveTrainingSaleService';
+import { completeTutorSubscriptionPurchase, TUTOR_SUBSCRIPTION_PRICE_GEL } from '../services/englishTutorSubscriptionService';
 
 const router = Router();
 
@@ -93,7 +95,7 @@ const PENDING_ORDER_REUSE_WINDOW_MS = 15 * 60 * 1000;
 
 async function findReusablePendingOrder(
   userId: string,
-  purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT' | 'HR_SUPPORT',
+  purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT' | 'HR_SUPPORT' | 'LIVE_TRAINING' | 'ENGLISH_TUTOR_SUBSCRIPTION',
   referenceId: string
 ) {
   const existing = await prisma.bogPayment.findFirst({
@@ -249,6 +251,175 @@ router.post(
     if (appliedPromo) {
       await prisma.promoCode.update({ where: { id: appliedPromo.id }, data: { currentUses: { increment: 1 } } });
     }
+    const updated = await prisma.bogPayment.update({
+      where: { id: bogPayment.id },
+      data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },
+    });
+    res.status(201).json({ paymentId: updated.id, redirectUrl: order.redirectUrl });
+  }
+);
+
+// ============================================================
+// CHECKOUT — LIVE TRAINING
+// Authenticated self-serve alternative to the anonymous phone-lead form
+// (POST /live-trainings/:id/register) for a PRICED training. Added to fix
+// a real bug: POST /live-trainings/:id/enroll used to grant an ACTIVE
+// LiveTrainingEnrollment (and the frontend's "You are enrolled!" banner)
+// unconditionally, with no price/payment check at all — that route is now
+// free-trainings-only (see liveTrainings.ts), and a priced training must
+// go through this checkout instead. No promo-code support (live trainings
+// have no promo system) and no instructor payout (see
+// liveTrainingSaleService.ts's own comment) — otherwise the same shape as
+// CHECKOUT — COURSE above.
+// ============================================================
+router.post(
+  '/checkout/live-training/:id',
+  checkoutRateLimit,
+  authenticate,
+  requireApproved,
+  async (req: Request, res: Response) => {
+    const training = await prisma.liveTraining.findFirst({
+      where: { id: req.params.id, published: true },
+      include: { _count: { select: { leads: true, enrollments: { where: { status: 'ACTIVE' } } } } },
+    });
+    if (!training) return res.status(404).json({ message: 'Live training not found.' });
+    if (!training.price || training.price <= 0) {
+      return res.status(400).json({ message: 'This training is free — enroll directly instead of checking out.' });
+    }
+
+    const existingEnrollment = await prisma.liveTrainingEnrollment.findUnique({
+      where: { userId_liveTrainingId: { userId: req.user!.id, liveTrainingId: training.id } },
+    });
+    if (existingEnrollment?.status === 'ACTIVE') {
+      return res.status(400).json({ message: 'You are already enrolled in this training.' });
+    }
+    if (!existingEnrollment && training._count.leads + training._count.enrollments >= training.maxCapacity) {
+      return res.status(409).json({ message: 'This training is fully booked.' });
+    }
+
+    const reusable = await findReusablePendingOrder(req.user!.id, 'LIVE_TRAINING', training.id);
+    if (reusable) return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.redirectUrl });
+
+    // Same admin/manager/moderator free test-mode bypass as CHECKOUT — COURSE
+    // above — never a client-sent flag, always derived from the DB's own
+    // adminRole.
+    let chargeAmount = training.price;
+    const requesterAdminRole = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } }))?.adminRole;
+    if (requesterAdminRole) chargeAmount = 0;
+
+    if (chargeAmount <= 0) {
+      const freePayment = await prisma.bogPayment.create({
+        data: {
+          bogOrderId: `admin-test-${crypto.randomUUID()}`,
+          userId: req.user!.id,
+          purpose: 'LIVE_TRAINING',
+          paymentModel: paymentModelForPurpose('LIVE_TRAINING'),
+          referenceId: training.id,
+          amount: 0,
+          currency: 'GEL',
+          status: 'COMPLETED',
+          completedAt: new Date(),
+        },
+      });
+      await completeLiveTrainingPurchase({ userId: req.user!.id, liveTrainingId: training.id });
+      return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
+    }
+
+    const bogPayment = await prisma.bogPayment.create({
+      data: {
+        bogOrderId: `pending-${crypto.randomUUID()}`,
+        userId: req.user!.id,
+        purpose: 'LIVE_TRAINING',
+        paymentModel: paymentModelForPurpose('LIVE_TRAINING'),
+        referenceId: training.id,
+        amount: chargeAmount,
+        currency: 'GEL',
+        status: 'PENDING',
+      },
+    });
+    const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
+    const order = await createBogOrderOrRespond(res, {
+      externalOrderId: bogPayment.id,
+      amount: chargeAmount,
+      currency: 'GEL',
+      basketItemName: training.title,
+      callbackUrl: CALLBACK_URL,
+      successRedirectUrl,
+      failRedirectUrl,
+      lang: checkoutLang(req),
+    });
+    if (!order) return;
+    const updated = await prisma.bogPayment.update({
+      where: { id: bogPayment.id },
+      data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },
+    });
+    res.status(201).json({ paymentId: updated.id, redirectUrl: order.redirectUrl });
+  }
+);
+
+// ============================================================
+// CHECKOUT — ENGLISH TUTOR (IMIAKO) SUBSCRIPTION
+// A flat 50 GEL/month access purchase — no target row to look up (unlike
+// every other purpose above), referenceId is just the buyer's own User.id.
+// No promo codes, no capacity check, no instructor payout — the simplest
+// checkout in this file. See englishTutorSubscriptionService.ts's own
+// comment for why this is a plain one-time purchase, not a real recurring
+// charge.
+// ============================================================
+router.post(
+  '/checkout/english-tutor',
+  checkoutRateLimit,
+  authenticate,
+  requireApproved,
+  async (req: Request, res: Response) => {
+    const reusable = await findReusablePendingOrder(req.user!.id, 'ENGLISH_TUTOR_SUBSCRIPTION', req.user!.id);
+    if (reusable) return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.redirectUrl });
+
+    const requesterAdminRole = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } }))?.adminRole;
+    const chargeAmount = requesterAdminRole ? 0 : TUTOR_SUBSCRIPTION_PRICE_GEL;
+
+    if (chargeAmount <= 0) {
+      const freePayment = await prisma.bogPayment.create({
+        data: {
+          bogOrderId: `admin-test-${crypto.randomUUID()}`,
+          userId: req.user!.id,
+          purpose: 'ENGLISH_TUTOR_SUBSCRIPTION',
+          paymentModel: paymentModelForPurpose('ENGLISH_TUTOR_SUBSCRIPTION'),
+          referenceId: req.user!.id,
+          amount: 0,
+          currency: 'GEL',
+          status: 'COMPLETED',
+          completedAt: new Date(),
+        },
+      });
+      await completeTutorSubscriptionPurchase(req.user!.id);
+      return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
+    }
+
+    const bogPayment = await prisma.bogPayment.create({
+      data: {
+        bogOrderId: `pending-${crypto.randomUUID()}`,
+        userId: req.user!.id,
+        purpose: 'ENGLISH_TUTOR_SUBSCRIPTION',
+        paymentModel: paymentModelForPurpose('ENGLISH_TUTOR_SUBSCRIPTION'),
+        referenceId: req.user!.id,
+        amount: chargeAmount,
+        currency: 'GEL',
+        status: 'PENDING',
+      },
+    });
+    const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
+    const order = await createBogOrderOrRespond(res, {
+      externalOrderId: bogPayment.id,
+      amount: chargeAmount,
+      currency: 'GEL',
+      basketItemName: 'IMIAKO — AI English Tutor (1 month)',
+      callbackUrl: CALLBACK_URL,
+      successRedirectUrl,
+      failRedirectUrl,
+      lang: checkoutLang(req),
+    });
+    if (!order) return;
     const updated = await prisma.bogPayment.update({
       where: { id: bogPayment.id },
       data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },
@@ -834,6 +1005,11 @@ export async function applyBogPaymentResult(
       productId: bogPayment.referenceId,
       amount: bogPayment.amount,
     });
+  } else if (bogPayment.purpose === 'LIVE_TRAINING') {
+    // Idempotent on retry — see completeLiveTrainingPurchase's own comment.
+    await completeLiveTrainingPurchase({ userId: bogPayment.userId, liveTrainingId: bogPayment.referenceId });
+  } else if (bogPayment.purpose === 'ENGLISH_TUTOR_SUBSCRIPTION') {
+    await completeTutorSubscriptionPurchase(bogPayment.userId);
   } else if (bogPayment.purpose === 'HR_SUPPORT') {
     // Places the payment into escrow — does NOT credit a specialist yet
     // (none is assigned at this point). See hrSupportEscrowService.ts's own

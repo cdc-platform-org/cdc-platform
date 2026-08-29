@@ -1,6 +1,6 @@
 import apiClient from './apiClient';
 
-export type BogPaymentPurpose = 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT' | 'HR_SUPPORT';
+export type BogPaymentPurpose = 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT' | 'HR_SUPPORT' | 'LIVE_TRAINING' | 'ENGLISH_TUTOR_SUBSCRIPTION';
 export type BogPaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
 export interface BogCheckoutResult {
@@ -99,6 +99,17 @@ export async function checkoutHRSupport(vacancyId: string, lang?: 'ka' | 'en'): 
 
 export async function checkoutProduct(productId: string, lang?: 'ka' | 'en'): Promise<ProductCheckoutResult> {
   const response = await apiClient.post<ProductCheckoutResult>(`/payments/checkout/product/${productId}`, { lang });
+  return response.data;
+}
+
+export interface TutorSubscriptionCheckoutResult {
+  paymentId: string;
+  redirectUrl: string | null;
+  enrolled?: boolean;
+}
+
+export async function checkoutEnglishTutorSubscription(lang?: 'ka' | 'en'): Promise<TutorSubscriptionCheckoutResult> {
+  const response = await apiClient.post<TutorSubscriptionCheckoutResult>('/payments/checkout/english-tutor', { lang });
   return response.data;
 }
 
