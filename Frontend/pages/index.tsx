@@ -278,6 +278,24 @@ export default function Home() {
     return <span className="font-sans inline-block font-bold tracking-normal">{text}</span>;
   };
 
+  // One request/response round trip — returns the reply text, or throws.
+  // No UI state touched here, so the caller can retry it silently without
+  // flickering chatSending/chatError between attempts.
+  const requestChatReply = async (userText: string, history: { role: 'user' | 'model'; text: string }[]): Promise<string> => {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: userText, lang: legacyLang, history }),
+    });
+    const data = await response.json();
+    // /api/chat already retries transient Gemini failures server-side,
+    // across every model in its own fallback sequence (see
+    // pages/api/chat.ts / lib/gemini.ts) — a non-2xx response here means
+    // that whole chain was exhausted, not just a single hiccup.
+    if (!response.ok) throw new Error(data?.reply || 'Request failed');
+    return data.reply as string;
+  };
+
   const sendChatMessage = async (rawText: string) => {
     const userText = rawText.trim();
     if (!userText || chatSending) return;
@@ -295,19 +313,23 @@ export default function Home() {
     setChatSending(true);
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userText, lang: legacyLang, history }),
-      });
-      const data = await response.json();
-      // /api/chat already retries transient Gemini failures server-side
-      // (see pages/api/chat.ts) — a non-2xx response here means that was
-      // exhausted, so this is treated as a genuine connection error rather
-      // than dropped into the chat as a dead-end bot message.
-      if (!response.ok) throw new Error(data?.reply || 'Request failed');
-
-      setChatMessages([...updatedMessages, { sender: 'bot', text: data.reply }]);
+      let reply: string;
+      try {
+        reply = await requestChatReply(userText, history);
+      } catch {
+        // One silent automatic retry, after a short pause — covers a
+        // transient failure reaching THIS specific request (a dropped
+        // connection, the serverless function briefly recycling, etc.),
+        // distinct from Gemini itself being unavailable (that's already
+        // handled server-side, see requestChatReply's own comment). Only
+        // the manual "try again" error UI below is shown if this also
+        // fails. chatSending intentionally stays true across both
+        // attempts, so the UI shows one continuous "sending", not a
+        // flicker between two separate ones.
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        reply = await requestChatReply(userText, history);
+      }
+      setChatMessages([...updatedMessages, { sender: 'bot', text: reply }]);
     } catch (error) {
       setChatError(t('chatConnectionError'));
       setLastFailedInput(userText);

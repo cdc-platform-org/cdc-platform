@@ -51,20 +51,23 @@ const fallbackFont = Inter({
   display: 'swap',
 });
 
-// Verified-safe Georgian heading fallback — real Google-hosted Unicode
-// Georgian coverage (self-hosted by next/font at build time, same as Inter
-// above), for anywhere blog content renders arbitrary, never-spot-checked
-// Georgian text as an actual heading element. headingFont (BPG ExtraSquare
-// Mtavruli) has only been spot-checked for 3 Georgian letters (see its own
-// comment above) and has been observed to render other real Georgian words
-// as garbled Latin-lookalike glyphs — a wrong glyph in its cmap, not a
+// Verified-safe Georgian font — real Google-hosted Unicode Georgian
+// coverage (self-hosted by next/font at build time, same as Inter above).
+// Originally loaded at weight 700 only, for headings (see .blog-heading-safe
+// below — BPG ExtraSquare Mtavruli has only been spot-checked for 3
+// Georgian letters and has been observed to render other real Georgian
+// words as garbled Latin-lookalike glyphs, a wrong glyph in its cmap, not a
 // missing one, so a plain CSS font-family fallback chain can never recover
-// from it (the browser already "resolved" a glyph in headingFont and never
-// tries the next font in the list). See styles/globals.css's
-// .blog-heading-safe, which uses this instead of the sitewide h1-h6 rule.
+// from it once the browser has "resolved" a glyph in it).
+//
+// Now also the sitewide BODY-text font (see globals.css's .app-shell) —
+// GL-Kirovi (the previous body/nav font, plain @font-face in globals.css)
+// is documented there as corrupted; regular/medium/semibold weights are
+// pulled in alongside the existing 700 so this one family can cover both
+// roles without a second Google Fonts request.
 const georgianSafeFont = Noto_Sans_Georgian({
   subsets: ['georgian'],
-  weight: '700',
+  weight: ['400', '500', '600', '700'],
   variable: '--font-georgian-safe',
   display: 'swap',
 });
@@ -162,7 +165,7 @@ function App({ Component, pageProps }: AppProps) {
         // script actually becomes available instead of silently giving up.
         onLoad={() => window.dispatchEvent(new Event('google-gsi-ready'))}
       />
-      <div className={`${headingFont.variable} ${fallbackFont.variable} ${georgianSafeFont.variable}`}>
+      <div className={`app-shell ${headingFont.variable} ${fallbackFont.variable} ${georgianSafeFont.variable}`}>
         <AuthProvider>
           <AuthModalProvider>
             <VerificationDrawerProvider>

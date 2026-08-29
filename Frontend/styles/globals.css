@@ -14,6 +14,28 @@
   font-display: swap;
 }
 
+/* Sitewide body-text font — supersedes the GL-Kirovi @font-face above for
+   everything rendered inside pages/_app.tsx's wrapper div (i.e. virtually
+   the entire app: nav, buttons, forms, paragraphs). GL-Kirovi is corrupted
+   (see the comment on its @font-face above) — regardless of font-weight,
+   it renders thin/malformed, which is what made navbar labels like
+   "ვაკანსიები"/"მენტორები" and BackButton's "უკან დაბრუნება" read as too
+   thin even where the component already requested font-bold/font-medium.
+   Reuses georgianSafeFont (next/font/google Noto Sans Georgian,
+   --font-georgian-safe in pages/_app.tsx), the same verified-correct
+   family already used for headings via .blog-heading-safe below, now
+   loaded with a wider weight range so it covers body text too. A class on
+   the wrapper div (not the bare `html` selector Tailwind's own base layer
+   uses) — next/font's CSS variables are only defined on the element they're
+   applied to and its descendants, not on `html` itself, which sits above
+   that div in the DOM. Wins over the older `html { font-family: GL-Kirovi,
+   ... }` Tailwind rule on ordinary specificity (class beats type selector),
+   so that rule doesn't need to be touched — it's simply superseded here,
+   left in place as an inert deeper fallback. */
+.app-shell {
+  font-family: var(--font-georgian-safe), 'Noto Sans Georgian', var(--font-fallback), 'Inter', sans-serif;
+}
+
 /* Headings: BPG ExtraSquare Mtavruli (next/font/local, --font-heading)
    with a self-hosted Inter (next/font/google, --font-fallback) as the
    fallback — both variables set on the wrapper div in pages/_app.tsx, see

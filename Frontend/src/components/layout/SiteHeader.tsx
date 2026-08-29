@@ -175,14 +175,18 @@ export default function SiteHeader() {
         </Link>
 
         {/* The nav-links block below is sized to genuinely fit (tight gap +
-            text-xs) rather than relying on overflow-hidden to clip it —
-            overflow-hidden here previously also clipped the About/
-            Marketplace dropdown panels, which are absolutely-positioned
-            descendants that extend below the row. The actions group at the
-            end (lang/theme/login/burger) stays shrink-0 so it's always
-            fully visible regardless of how long the KA nav labels get. */}
+            a small text size) rather than relying on overflow-hidden to
+            clip it — overflow-hidden here previously also clipped the
+            About/Marketplace dropdown panels, which are absolutely-
+            positioned descendants that extend below the row. The actions
+            group at the end (lang/theme/login/burger) stays shrink-0 so
+            it's always fully visible regardless of how long the KA nav
+            labels get. Bumped text-xs -> text-sm for Georgian legibility;
+            still just as reliant on that tight gap/shrink-0 layout as
+            before, watch this row first if a future viewport ever needs
+            the nav links to fit tighter again. */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <div className="hidden md:flex items-center gap-2 lg:gap-3 text-xs font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
+          <div className="hidden md:flex items-center gap-2 lg:gap-3 text-sm font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
             <Link href="/community" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
               {t.community}
             </Link>

@@ -144,14 +144,25 @@ export async function askCdcAssistant(
       } catch (err) {
         lastError = err;
         console.error(`[gemini] ${modelName} attempt ${attempt}/${ATTEMPTS_PER_MODEL} failed:`, err instanceof Error ? err.message : err);
-        if (!isRetryableGeminiError(err)) throw err;
+        // Unlike Backend's aiAgentService.ts (which also aborts its Gemini
+        // loop on a non-retryable error), this file has no cross-vendor
+        // rung to fall through to afterward — it's Gemini-only, a
+        // deliberate choice documented above. So a non-retryable error on
+        // ONE model moves on to the NEXT model instead of giving up
+        // outright: a different model isn't guaranteed to share the same
+        // failure (a malformed-response quirk or a per-model outage isn't
+        // necessarily true of its siblings), and trying is strictly better
+        // than a guaranteed dead end. Only exhausting every model actually
+        // fails the request now.
+        if (!isRetryableGeminiError(err)) break;
         if (attempt < ATTEMPTS_PER_MODEL) {
           await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
         }
       }
     }
-    // Retries exhausted for this model (still 503/429) — try the next model
-    // immediately, no added delay (a different model has its own capacity).
+    // Retries exhausted (or a non-retryable error hit) for this model —
+    // try the next model immediately, no added delay (a different model
+    // has its own capacity).
   }
   throw lastError;
 }
