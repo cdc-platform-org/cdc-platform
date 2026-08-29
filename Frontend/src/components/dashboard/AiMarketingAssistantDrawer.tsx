@@ -20,6 +20,13 @@ import {
 // (from-cyan-500 to-purple-600, see CourseTutorPanel/LaunchKitDrawer) so it
 // still reads as "an AI feature" while standing out as the premium one.
 
+// Mirrors Backend/src/services/marketingAssistantQuotaService.ts's
+// DAILY_MARKETING_GENERATION_LIMIT — used only as the optimistic display
+// value before the real GET /usage response lands (or if it fails), so the
+// badge never sits on a bare "Loading…" state. The server remains the only
+// real enforcement point regardless of what this shows.
+const DAILY_LIMIT_FALLBACK = 5;
+
 const DICT_BASE = {
   ka: {
     trigger: 'AI მარკეტინგული ასისტენტი',
@@ -31,8 +38,6 @@ const DICT_BASE = {
     generate: 'გენერირება',
     regenerate: 'ხელახლა გენერირება',
     generating: 'იქმნება…',
-    loadingUsage: 'იტვირთება…',
-    usageUnavailable: 'ხელმისაწვდომი არ არის',
     limitReached: 'დღიური ლიმიტი ამოწურულია — სცადეთ ხვალ.',
     needTitle: 'გენერაციისთვის საჭიროა სათაური და აღწერა.',
     genericError: 'გენერაცია ვერ მოხერხდა — სცადეთ თავიდან.',
@@ -55,8 +60,6 @@ const DICT_BASE = {
     generate: 'Generate',
     regenerate: 'Regenerate',
     generating: 'Generating…',
-    loadingUsage: 'Loading…',
-    usageUnavailable: 'unavailable',
     limitReached: 'Daily limit reached — try again tomorrow.',
     needTitle: 'Title and description are required to generate.',
     genericError: 'Generation failed — please try again.',
@@ -118,7 +121,6 @@ export default function AiMarketingAssistantDrawer({
   const d = dict(lang);
   const requestLang: 'ka' | 'en' = lang === 'ka' ? 'ka' : 'en';
   const [usage, setUsage] = useState<MarketingGenerationUsage | null>(null);
-  const [usageError, setUsageError] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ProductMarketingCopy | null>(null);
@@ -126,23 +128,33 @@ export default function AiMarketingAssistantDrawer({
   const [appliedDescription, setAppliedDescription] = useState(false);
 
   useEffect(() => {
-    // Distinguish "fetch failed" from "still fetching" — an unguarded
-    // `.catch(() => {})` here previously left the badge reading "Loading…"
-    // forever on any failure, with no way to tell the two states apart.
+    // The badge shows the DAILY_LIMIT_FALLBACK optimistic default (see
+    // `remaining` below) until this resolves — never a bare "Loading…"
+    // state. A failed fetch just leaves that same optimistic default in
+    // place rather than freezing or showing an error string; the server
+    // remains the real enforcement point either way.
     let cancelled = false;
     getMarketingAssistantUsage()
       .then((u) => {
         if (!cancelled) setUsage(u);
       })
-      .catch(() => {
-        if (!cancelled) setUsageError(true);
-      });
+      // A failed fetch just leaves `usage` null — `remaining`/`displayLimit`
+      // below already fall back to DAILY_LIMIT_FALLBACK for that case, so
+      // there's nothing further to do here beyond not crashing.
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, []);
 
   const atLimit = !!usage && usage.used >= usage.limit;
+  // Displayed as "remaining/limit" (e.g. "5/5" full, "4/5" after one
+  // generation) — the VIP badge shows how many are left today, not how many
+  // have been used. Falls back to a full DAILY_LIMIT_FALLBACK/
+  // DAILY_LIMIT_FALLBACK before the real usage has loaded (or if the fetch
+  // failed) so the badge always reads as a real number, never "Loading…".
+  const remaining = usage ? Math.max(0, usage.limit - usage.used) : DAILY_LIMIT_FALLBACK;
+  const displayLimit = usage?.limit ?? DAILY_LIMIT_FALLBACK;
 
   // Builds a readable message from a plain zod-validation 400 (`{errors}`,
   // no `.message`) — e.g. category left blank server-side too, or a title/
@@ -177,7 +189,6 @@ export default function AiMarketingAssistantDrawer({
       const response = await generateProductMarketingCopy({ title, description, category, lang: requestLang, productId });
       setResult(response.data);
       setUsage(response.usage);
-      setUsageError(false);
     } catch (err: any) {
       if (err?.response?.status === 429) {
         setUsage(err.response.data?.usage ?? usage);
@@ -221,7 +232,7 @@ export default function AiMarketingAssistantDrawer({
             <Crown className="w-3.5 h-3.5" /> {d.usageLabel}
           </span>
           <span className="text-xs font-bold text-white">
-            {usage ? `${usage.used}/${usage.limit} ${d.usageToday}` : usageError ? d.usageUnavailable : d.loadingUsage}
+            {remaining}/{displayLimit} {d.usageToday}
           </span>
         </div>
 
