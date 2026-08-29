@@ -191,14 +191,14 @@ jobs:
         run: |
           pnpm run build
           nohup pnpm run start > backend.log 2>&1 &
-          npx wait-on -t 60000 http://localhost:4000/api/products
+          npx wait-on -t 60000 http-get://127.0.0.1:4000/api/products
 
       - name: Build and start Frontend
         working-directory: Frontend
         run: |
           pnpm run build
           nohup pnpm run start -- -p 3000 > frontend.log 2>&1 &
-          npx wait-on -t 120000 http://localhost:3000
+          npx wait-on -t 180000 http-get://127.0.0.1:3000
 
       - name: Install Playwright browsers
         working-directory: Frontend
