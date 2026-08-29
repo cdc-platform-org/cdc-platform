@@ -30,6 +30,7 @@ const DICT_BASE = {
     overloaded: 'AI ასისტენტი დროებით გადატვირთულია. გთხოვთ, სცადოთ ხელახლა 1-2 წუთში.',
     retry: 'თავიდან ცდა',
     chips: ['ამიხსენი ეს გაკვეთილი მარტივად', 'დამეხმარე დავალების გაგებაში', 'კოდის შემოწმება / Debugging'],
+    poweredBy: 'Powered by CDC Studio',
   },
   en: {
     title: 'AI Course Tutor',
@@ -44,6 +45,7 @@ const DICT_BASE = {
     overloaded: 'AI Assistant is experiencing high traffic. Please try again in a moment.',
     retry: 'Retry',
     chips: ['Explain this lesson simply', 'Help me understand the assignment', 'Code review / Debugging'],
+    poweredBy: 'Powered by CDC Studio',
   },
 } as const;
 
@@ -174,6 +176,14 @@ export default function CourseTutorPanel({ courseId, lessonId, courseTitle, less
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
               {t.online}
             </p>
+            <a
+              href="https://www.cdc.org.ge/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[10px] text-slate-500 hover:text-cyan-400 truncate transition-colors"
+            >
+              {t.poweredBy}
+            </a>
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">

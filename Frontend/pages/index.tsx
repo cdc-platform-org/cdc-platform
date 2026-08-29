@@ -1177,7 +1177,14 @@ export default function Home() {
                 <Image src="/images/cdc-logo.png" alt="CDC" width={28} height={28} className="w-7 h-7 rounded-full object-cover shrink-0" />
                 <div className="min-w-0">
                   <span className="block text-sm font-bold text-slate-900 truncate">{t('chatTitle')}</span>
-                  <span className="block text-[10px] font-semibold text-slate-400 truncate">{t('poweredBy')}</span>
+                  <a
+                    href="https://www.cdc.org.ge/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400 hover:text-cyan-500 truncate transition-colors"
+                  >
+                    {t('poweredBy')}
+                  </a>
                 </div>
               </div>
               <button

@@ -89,6 +89,7 @@ const dict = {
     verificationRequiredDesc: 'AI ხელსაწყოების გამოსაყენებლად საჭიროა თქვენი ბიზნეს ანგარიშის ვერიფიკაცია. გაიარეთ ვერიფიკაცია პირად კაბინეტში და სცადეთ ხელახლა.',
     verificationRequiredCta: 'ვერიფიკაციის გავლა',
     modalClose: 'დახურვა',
+    poweredBy: 'Powered by CDC Studio',
   },
   en: {
     title: 'Digital AI Tools',
@@ -140,6 +141,7 @@ const dict = {
     verificationRequiredDesc: 'Using the AI tools requires your Business account to be verified. Complete verification in your dashboard and try again.',
     verificationRequiredCta: 'Complete verification',
     modalClose: 'Close',
+    poweredBy: 'Powered by CDC Studio',
   },
   de: {
     title: 'Digital AI Tools',
@@ -191,6 +193,7 @@ const dict = {
     verificationRequiredDesc: 'Using the AI tools requires your Business account to be verified. Complete verification in your dashboard and try again.',
     verificationRequiredCta: 'Complete verification',
     modalClose: 'Close',
+    poweredBy: 'Powered by CDC Studio',
   },
   es: {
     title: 'Digital AI Tools',
@@ -242,6 +245,7 @@ const dict = {
     verificationRequiredDesc: 'Using the AI tools requires your Business account to be verified. Complete verification in your dashboard and try again.',
     verificationRequiredCta: 'Complete verification',
     modalClose: 'Close',
+    poweredBy: 'Powered by CDC Studio',
   },
   fr: {
     title: 'Digital AI Tools',
@@ -293,6 +297,7 @@ const dict = {
     verificationRequiredDesc: 'Using the AI tools requires your Business account to be verified. Complete verification in your dashboard and try again.',
     verificationRequiredCta: 'Complete verification',
     modalClose: 'Close',
+    poweredBy: 'Powered by CDC Studio',
   },
   uk: {
     title: 'Digital AI Tools',
@@ -344,6 +349,7 @@ const dict = {
     verificationRequiredDesc: 'Using the AI tools requires your Business account to be verified. Complete verification in your dashboard and try again.',
     verificationRequiredCta: 'Complete verification',
     modalClose: 'Close',
+    poweredBy: 'Powered by CDC Studio',
   },
 };
 
@@ -395,7 +401,15 @@ export default function ToolsPage() {
             CDC AI
           </span>
           <h1 className="text-3xl md:text-4xl font-black tracking-wide mb-3">{t.title}</h1>
-          <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 leading-relaxed">{t.subtitle}</p>
+          <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 leading-relaxed mb-3">{t.subtitle}</p>
+          <a
+            href="https://www.cdc.org.ge/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors"
+          >
+            {t.poweredBy}
+          </a>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
