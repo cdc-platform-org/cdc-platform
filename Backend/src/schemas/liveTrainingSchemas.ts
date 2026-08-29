@@ -44,6 +44,12 @@ export const liveTrainingUpdateSchema = z.object({
   recordingUrl: z.string().url().optional().or(z.literal('')),
   startDate: z.string().datetime().optional().nullable(),
   endDate: z.string().datetime().optional().nullable(),
+  // Only ever AI-generated before now (services/liveTrainingSynopsisService.ts)
+  // — an admin editing/polishing it is a plain field update, same posture
+  // as courseSchemas.ts's lessonUpdateSchema conspectus fields.
+  synopsisKa: z.string().trim().max(20000).optional().nullable(),
+  synopsisEn: z.string().trim().max(20000).optional().nullable(),
+  synopsisRu: z.string().trim().max(20000).optional().nullable(),
 }).refine((data) => !data.startDate || !data.endDate || new Date(data.endDate) >= new Date(data.startDate), {
   message: 'endDate cannot be before startDate.',
   path: ['endDate'],

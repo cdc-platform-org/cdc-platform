@@ -4,10 +4,9 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import crypto from 'crypto';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
 import { GEMINI_API_KEY, BUNNY_CDN_HOSTNAME } from '../utils/env';
-import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
+import { callTextModelPlain, AiAgentError } from './aiAgentService';
 import { isFfmpegAvailable } from './videoCompressionService';
 import { prisma } from '../lib/prisma';
 import { uploadBunnyCaption } from './bunnyStreamService';
@@ -46,28 +45,29 @@ import { uploadBunnyCaption } from './bunnyStreamService';
 
 if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath as string);
 
-const client = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+// Only needed for the File API upload/polling now — every actual text
+// generation call (transcription, translation, conspectus) goes through
+// aiAgentService.callTextModelPlain(), which owns its own client/model-name/
+// retry-sequence config in exactly one place (see that file's own comment).
+// A temporary Gemini overload used to fail this entire pipeline outright;
+// now each of those four calls gets the same 3-model retry chain the rest
+// of the codebase's AI features already rely on.
 const fileManager = GEMINI_API_KEY ? new GoogleAIFileManager(GEMINI_API_KEY) : null;
-
-// "gemini-1.5-flash" (the model this pipeline was originally specced with)
-// no longer exists on this Google Cloud project's API — confirmed via a
-// live ListModels call and a direct generateContent 404. "gemini-2.5-pro"/
-// "gemini-pro-latest" also return a hard 0 free-tier quota here (see
-// aiExamService.ts). gemini-flash-latest is the same model already proven
-// working (and multimodal — accepts audio input) for exam generation.
-const MODEL_NAME = 'gemini-flash-latest';
 
 export function isSubtitlePipelineConfigured(): boolean {
   return !!GEMINI_API_KEY && isFfmpegAvailable;
 }
 
-const TARGET_LANGUAGES: { code: 'ka' | 'en' | 'ru'; label: string }[] = [
+// Exported — liveTrainingSynopsisService.ts reuses this exact language set/
+// naming for its own per-language synopsis, so both features stay in sync
+// if a language is ever added or renamed.
+export const TARGET_LANGUAGES: { code: 'ka' | 'en' | 'ru'; label: string }[] = [
   { code: 'ka', label: 'ქართული' },
   { code: 'en', label: 'English' },
   { code: 'ru', label: 'Русский' },
 ];
 
-const LANGUAGE_NAMES: Record<'ka' | 'en' | 'ru', string> = {
+export const LANGUAGE_NAMES: Record<'ka' | 'en' | 'ru', string> = {
   ka: 'Georgian',
   en: 'English',
   ru: 'Russian',
@@ -90,14 +90,21 @@ function releaseSlot(): void {
   if (next) next();
 }
 
-async function unlinkSafe(filePath: string): Promise<void> {
+export async function unlinkSafe(filePath: string): Promise<void> {
   await fs.promises.unlink(filePath).catch(() => {});
+}
+
+// Exported so liveTrainingSynopsisService.ts can release its own Gemini
+// File API upload the same way this file's own pipeline does.
+export async function deleteGeminiFile(name: string): Promise<void> {
+  await fileManager!.deleteFile(name).catch(() => {});
 }
 
 // Extracts the video's audio track as a single low-bitrate mono MP3 — small
 // enough to upload quickly, and speech-recognition accuracy doesn't need
-// more than this.
-async function extractAudio(videoBuffer: Buffer, jobId: string): Promise<string> {
+// more than this. Exported — liveTrainingSynopsisService.ts reuses this
+// exact extraction for a LiveTraining's recordingUrl.
+export async function extractAudio(videoBuffer: Buffer, jobId: string): Promise<string> {
   const inputPath = path.join(os.tmpdir(), `subtitle-in-${jobId}`);
   const outputPath = path.join(os.tmpdir(), `subtitle-audio-${jobId}.mp3`);
   await fs.promises.writeFile(inputPath, videoBuffer);
@@ -121,8 +128,9 @@ async function extractAudio(videoBuffer: Buffer, jobId: string): Promise<string>
 
 // Uploads the audio to Gemini's File API and waits for it to leave
 // PROCESSING state — files are typically ready within a few seconds for
-// audio this size, but the API is async so this can't be assumed.
-async function uploadAudioAndWaitActive(audioPath: string): Promise<{ uri: string; name: string }> {
+// audio this size, but the API is async so this can't be assumed. Exported
+// — liveTrainingSynopsisService.ts reuses this for its own recording audio.
+export async function uploadAudioAndWaitActive(audioPath: string): Promise<{ uri: string; name: string }> {
   const uploaded = await fileManager!.uploadFile(audioPath, { mimeType: 'audio/mpeg' });
   let file = uploaded.file;
   const deadline = Date.now() + 60_000;
@@ -164,7 +172,6 @@ interface TranscriptionResult {
 // structural checks below (real WEBVTT header, at least one cue) are the
 // safety net against a malformed response, not against imprecise timing.
 async function transcribeAudioToVtt(fileUri: string): Promise<TranscriptionResult> {
-  const model = client!.getGenerativeModel({ model: MODEL_NAME, generationConfig: { temperature: 0.2 } }, GEMINI_REQUEST_OPTIONS);
   const prompt =
     `Listen to this audio and produce a complete, accurate transcript formatted as a valid WebVTT file. ` +
     `Break the transcript into natural speech-based cues (roughly 3-10 seconds each) with accurate timestamps ` +
@@ -177,10 +184,9 @@ async function transcribeAudioToVtt(fileUri: string): Promise<TranscriptionResul
 
   let raw: string;
   try {
-    const result = await model.generateContent([{ fileData: { mimeType: 'audio/mpeg', fileUri } }, { text: prompt }]);
-    raw = result.response.text().trim();
+    raw = (await callTextModelPlain(prompt, 0.2, { mimeType: 'audio/mpeg', fileUri })).trim();
   } catch (err) {
-    throw new Error(err instanceof Error ? `Gemini transcription request failed: ${err.message}` : 'Gemini transcription request failed.');
+    throw new Error(err instanceof AiAgentError ? `Gemini transcription request failed: ${err.message}` : 'Gemini transcription request failed.');
   }
 
   const lines = raw.split('\n');
@@ -198,7 +204,6 @@ async function transcribeAudioToVtt(fileUri: string): Promise<TranscriptionResul
 // before this is trusted. A model that reformats/merges/drops cues would
 // otherwise silently desync the captions from the audio.
 async function translateVtt(baseVtt: string, targetCode: 'ka' | 'en' | 'ru'): Promise<string> {
-  const model = client!.getGenerativeModel({ model: MODEL_NAME, generationConfig: { temperature: 0.2 } }, GEMINI_REQUEST_OPTIONS);
   const prompt =
     `You are a professional subtitle translator. Below is a complete WebVTT file. Translate ONLY the spoken ` +
     `caption text into ${LANGUAGE_NAMES[targetCode]}. Do not change the "WEBVTT" header line. Do not change, ` +
@@ -210,10 +215,9 @@ async function translateVtt(baseVtt: string, targetCode: 'ka' | 'en' | 'ru'): Pr
 
   let translated: string;
   try {
-    const result = await model.generateContent(prompt);
-    translated = result.response.text().trim().replace(/^```(?:vtt)?|```$/g, '').trim();
+    translated = (await callTextModelPlain(prompt, 0.2)).trim().replace(/^```(?:vtt)?|```$/g, '').trim();
   } catch (err) {
-    throw new Error(err instanceof Error ? `Gemini translation request failed: ${err.message}` : 'Gemini translation request failed.');
+    throw new Error(err instanceof AiAgentError ? `Gemini translation request failed: ${err.message}` : 'Gemini translation request failed.');
   }
   if (!translated.startsWith('WEBVTT') || countCues(translated) !== countCues(baseVtt)) {
     throw new Error(`Translated VTT for "${targetCode}" failed structural validation (cue count mismatch).`);
@@ -245,7 +249,6 @@ const CONSPECTUS_FIELD: Record<'ka' | 'en' | 'ru', 'conspectusKa' | 'conspectusE
 // digressions, and small talk are deliberately excluded, per the "clean
 // conspectus" requirement.
 async function extractConspectus(transcriptText: string, languageName: string): Promise<string> {
-  const model = client!.getGenerativeModel({ model: MODEL_NAME, generationConfig: { temperature: 0.2 } }, GEMINI_REQUEST_OPTIONS);
   const prompt =
     `The following is a raw speech transcript (in ${languageName}) of a course lesson video. Produce a clean, ` +
     `well-organized "conspectus" (study notes) from it: extract ONLY actionable takeaways, step-by-step ` +
@@ -255,23 +258,48 @@ async function extractConspectus(transcriptText: string, languageName: string): 
     `Respond with ONLY the conspectus text (plain text or simple markdown — headings/bullets only, no code ` +
     `fences), no preamble, no explanation of what you did.\n\n${transcriptText}`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text().trim();
+  const text = (await callTextModelPlain(prompt, 0.2)).trim();
   if (!text) throw new Error('Gemini returned an empty conspectus.');
   return text;
 }
 
+// Same extraction prompt as extractConspectus above, but reads the audio
+// directly via the Gemini File API instead of a pre-made transcript —
+// liveTrainingSynopsisService.ts's own pipeline has no WebVTT/captions step
+// to produce a transcript from (a LiveTraining isn't captioned), so this
+// combines "transcribe" and "summarize" into the single call it actually
+// needs, the same "LANGUAGE: xx" first-line convention as
+// transcribeAudioToVtt for detecting the spoken language.
+export async function extractConspectusFromAudio(fileUri: string): Promise<{ conspectus: string; detectedCode: 'ka' | 'en' | 'ru' | null }> {
+  const prompt =
+    `Listen to this audio recording of a live training session. Produce a clean, well-organized "conspectus" ` +
+    `(study notes/synopsis) from it: extract ONLY actionable takeaways, step-by-step instructions, and core ` +
+    `concept/feature explanations. Completely omit filler talk, small talk, verbal digressions, and anything not ` +
+    `substantively teaching the listener something. Use clear headings and bullet points where that helps ` +
+    `readability. Write the conspectus in the same language the audio is spoken in.\n\n` +
+    `Respond with EXACTLY this shape and nothing else (no markdown code fences around the whole response, no ` +
+    `explanation):\n` +
+    `LANGUAGE: <two-letter ISO 639-1 code of the spoken language>\n` +
+    `<conspectus text>`;
+
+  const raw = (await callTextModelPlain(prompt, 0.2, { mimeType: 'audio/mpeg', fileUri })).trim();
+  const lines = raw.split('\n');
+  const detectedCode = parseLanguageCode(lines[0] ?? '');
+  const conspectus = lines.slice(1).join('\n').trim();
+  if (!conspectus) throw new Error('Gemini returned an empty conspectus.');
+  return { conspectus, detectedCode };
+}
+
 // Simple prose translation — unlike translateVtt, there's no cue structure
 // to preserve, just meaning and the same heading/bullet formatting.
-async function translateConspectus(baseConspectus: string, targetCode: 'ka' | 'en' | 'ru'): Promise<string> {
-  const model = client!.getGenerativeModel({ model: MODEL_NAME, generationConfig: { temperature: 0.2 } }, GEMINI_REQUEST_OPTIONS);
+// Exported — liveTrainingSynopsisService.ts reuses this verbatim.
+export async function translateConspectus(baseConspectus: string, targetCode: 'ka' | 'en' | 'ru'): Promise<string> {
   const prompt =
     `Translate the following study notes ("conspectus") into ${LANGUAGE_NAMES[targetCode]}. Preserve the ` +
     `heading/bullet structure. Keep standard technical/IT terms that are normally used in English even in ` +
     `translated text (e.g. "API", "SEO", "component"). Respond with ONLY the translated text, no preamble.\n\n${baseConspectus}`;
 
-  const result = await model.generateContent(prompt);
-  const translated = result.response.text().trim();
+  const translated = (await callTextModelPlain(prompt, 0.2)).trim();
   if (!translated) throw new Error(`Gemini returned an empty conspectus translation for "${targetCode}".`);
   return translated;
 }

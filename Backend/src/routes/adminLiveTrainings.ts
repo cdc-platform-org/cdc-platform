@@ -12,6 +12,7 @@ import {
   liveTrainingUpdateSchema,
   liveTrainingLeadUpdateSchema,
 } from '../schemas/liveTrainingSchemas';
+import { processLiveTrainingSynopsis } from '../services/liveTrainingSynopsisService';
 
 const router = Router();
 router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
@@ -94,6 +95,15 @@ router.post('/', async (req: Request, res: Response) => {
     include: { _count: { select: { leads: true, enrollments: enrollmentCountSelect } } },
   });
   await logAdminAction({ action: 'liveTraining.create', targetType: 'LiveTraining', targetId: training.id, performedById: req.user!.id });
+  // Fire-and-forget — never blocks this response. See
+  // liveTrainingSynopsisService.ts for the pipeline; a create with a
+  // recordingUrl already attached (rare, but the schema allows it) still
+  // gets a synopsis without a separate edit-and-save round trip.
+  if (training.recordingUrl) {
+    processLiveTrainingSynopsis(training.id, training.recordingUrl).catch((err) =>
+      console.error(`[adminLiveTrainings] synopsis kickoff failed for ${training.id}:`, err)
+    );
+  }
   res.status(201).json({ data: withCapacity(training) });
 });
 
@@ -102,6 +112,10 @@ router.put('/:id', async (req: Request, res: Response) => {
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
   const { thumbnailUrl, videoUrl, meetingUrl, recordingUrl, startDate, endDate, scheduledAt, ...rest } = result.data;
   try {
+    const existing = recordingUrl !== undefined
+      ? await prisma.liveTraining.findUnique({ where: { id: req.params.id }, select: { recordingUrl: true } })
+      : null;
+
     const training = await prisma.liveTraining.update({
       where: { id: req.params.id },
       data: {
@@ -117,11 +131,35 @@ router.put('/:id', async (req: Request, res: Response) => {
       include: { _count: { select: { leads: true, enrollments: enrollmentCountSelect } } },
     });
     await logAdminAction({ action: 'liveTraining.update', targetType: 'LiveTraining', targetId: training.id, performedById: req.user!.id });
+    // Fire-and-forget, only when recordingUrl actually changed to a new
+    // truthy value — never blocks this response, and never re-runs the
+    // (real Gemini cost, real time) pipeline just because an admin re-saved
+    // the form with the same link or edited an unrelated field.
+    if (training.recordingUrl && training.recordingUrl !== existing?.recordingUrl) {
+      processLiveTrainingSynopsis(training.id, training.recordingUrl).catch((err) =>
+        console.error(`[adminLiveTrainings] synopsis kickoff failed for ${training.id}:`, err)
+      );
+    }
     res.json({ data: withCapacity(training) });
   } catch (err: any) {
     if (err.code === 'P2025') return res.status(404).json({ message: 'Live training not found.' });
     throw err;
   }
+});
+
+// Explicit re-run, independent of the auto-trigger in PUT above — for the
+// admin UI's "✨ Regenerate AI Synopsis" button (e.g. after editing the
+// recording, or retrying a FAILED run without having to re-paste the same
+// URL to trip the change-detection in PUT).
+router.post('/:id/regenerate-synopsis', async (req: Request, res: Response) => {
+  const training = await prisma.liveTraining.findUnique({ where: { id: req.params.id }, select: { id: true, recordingUrl: true } });
+  if (!training) return res.status(404).json({ message: 'Live training not found.' });
+  if (!training.recordingUrl) return res.status(400).json({ message: 'This training has no recording URL set yet.' });
+
+  processLiveTrainingSynopsis(training.id, training.recordingUrl).catch((err) =>
+    console.error(`[adminLiveTrainings] synopsis regenerate failed for ${training.id}:`, err)
+  );
+  res.status(202).json({ data: { synopsisStatus: 'PROCESSING' } });
 });
 
 router.delete('/:id', async (req: Request, res: Response) => {

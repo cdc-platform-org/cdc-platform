@@ -108,6 +108,14 @@ export const lessonUpdateSchema = lessonCreateSchema.partial().extend({
   // — accepts either a raw Bunny Stream video GUID or a full embed URL
   // (the URL is parsed down to just the ID before saving, see routes/courses.ts).
   bunnyVideoId: z.string().trim().max(500).optional().nullable(),
+  // Only ever AI-generated before now (services/subtitleService.ts) — an
+  // admin editing/polishing the generated notes is a plain field update,
+  // same as any other lesson field on this route. Deliberately no length
+  // cap matching a specific AI output size; a hand-edited conspectus can
+  // reasonably run longer than the source transcript-derived one.
+  conspectusKa: z.string().trim().max(20000).optional().nullable(),
+  conspectusEn: z.string().trim().max(20000).optional().nullable(),
+  conspectusRu: z.string().trim().max(20000).optional().nullable(),
 });
 
 export const lessonProgressUpdateSchema = z.object({

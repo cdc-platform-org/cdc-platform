@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Users } from 'lucide-react';
 import AdminGuard from '../../../src/components/admin/AdminGuard';
 import AdminLayout from '../../../src/components/admin/AdminLayout';
+import RichTextEditor from '../../../src/components/shared/RichTextEditor';
 import { LiveTraining } from '../../../src/types/liveTraining';
 import { CourseLanguage } from '../../../src/types/lms';
 import {
@@ -12,6 +13,7 @@ import {
   updateLiveTraining,
   deleteLiveTraining,
   uploadLiveTrainingImage,
+  regenerateLiveTrainingSynopsis,
   LiveTrainingPayload,
 } from '../../../src/services/adminLiveTrainingService';
 
@@ -60,6 +62,18 @@ function AdminLiveTrainingsDashboard() {
   const [activeLangTab, setActiveLangTab] = useState<'ka' | 'en'>('ka');
   const [imageUploading, setImageUploading] = useState(false);
 
+  // Kept alongside `form`/`editingId` rather than folded into `form` itself
+  // — synopsis text has its own save action and a "Regenerate" trigger, not
+  // part of the main title/description/etc. submit, same separation
+  // admin/courses.tsx's lesson conspectus editor uses.
+  const [editingTraining, setEditingTraining] = useState<LiveTraining | null>(null);
+  const [synopsisLang, setSynopsisLang] = useState<'Ka' | 'En' | 'Ru'>('Ka');
+  const [synopsisKa, setSynopsisKa] = useState('');
+  const [synopsisEn, setSynopsisEn] = useState('');
+  const [synopsisRu, setSynopsisRu] = useState('');
+  const [savingSynopsis, setSavingSynopsis] = useState(false);
+  const [regeneratingSynopsis, setRegeneratingSynopsis] = useState(false);
+
   const handleCoverImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -95,12 +109,18 @@ function AdminLiveTrainingsDashboard() {
   const resetForm = () => {
     setForm(emptyForm);
     setEditingId(null);
+    setEditingTraining(null);
     setFormError(null);
     setActiveLangTab('ka');
   };
 
   const startEdit = (t: LiveTraining) => {
     setEditingId(t.id);
+    setEditingTraining(t);
+    setSynopsisKa(t.synopsisKa ?? '');
+    setSynopsisEn(t.synopsisEn ?? '');
+    setSynopsisRu(t.synopsisRu ?? '');
+    setSynopsisLang('Ka');
     setForm({
       title: t.title,
       description: t.description,
@@ -125,6 +145,43 @@ function AdminLiveTrainingsDashboard() {
     setFormError(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  const handleSaveSynopsis = async () => {
+    if (!editingId) return;
+    setSavingSynopsis(true);
+    try {
+      const updated = await updateLiveTraining(editingId, {
+        synopsisKa: synopsisKa.trim() || null,
+        synopsisEn: synopsisEn.trim() || null,
+        synopsisRu: synopsisRu.trim() || null,
+      });
+      setTrainings((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      setEditingTraining(updated);
+    } catch {
+      setFormError('სინოფსისის შენახვა ვერ მოხერხდა.');
+    } finally {
+      setSavingSynopsis(false);
+    }
+  };
+
+  const handleRegenerateSynopsis = async () => {
+    if (!editingId) return;
+    setRegeneratingSynopsis(true);
+    try {
+      await regenerateLiveTrainingSynopsis(editingId);
+      // Fire-and-forget on the backend — reflect PROCESSING immediately so
+      // the admin sees it started, without waiting on a full re-fetch.
+      setEditingTraining((prev) => (prev ? { ...prev, synopsisStatus: 'PROCESSING', synopsisError: null } : prev));
+      setTrainings((prev) => prev.map((t) => (t.id === editingId ? { ...t, synopsisStatus: 'PROCESSING', synopsisError: null } : t)));
+    } catch (err: any) {
+      setFormError(err?.response?.data?.message || 'სინოფსისის თავიდან გენერირება ვერ დაიწყო.');
+    } finally {
+      setRegeneratingSynopsis(false);
+    }
+  };
+
+  const SYNOPSIS_VALUE: Record<'Ka' | 'En' | 'Ru', string> = { Ka: synopsisKa, En: synopsisEn, Ru: synopsisRu };
+  const SYNOPSIS_SETTER: Record<'Ka' | 'En' | 'Ru', (v: string) => void> = { Ka: setSynopsisKa, En: setSynopsisEn, Ru: setSynopsisRu };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -323,6 +380,58 @@ function AdminLiveTrainingsDashboard() {
                   />
                 </div>
               </div>
+
+              {editingId && editingTraining && (
+                <div className="border-t border-cyan-200 pt-4">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-sm font-medium text-gray-700">
+                      AI სინოფსისი (კონსპექტი) {editingTraining.synopsisStatus === 'FAILED' && editingTraining.synopsisError && (
+                        <span className="text-red-500 font-normal">— {editingTraining.synopsisError}</span>
+                      )}
+                      {editingTraining.synopsisStatus === 'PROCESSING' && <span className="text-amber-600 font-normal"> — გენერირდება…</span>}
+                    </label>
+                    {form.recordingUrl && (
+                      <button
+                        type="button"
+                        onClick={handleRegenerateSynopsis}
+                        disabled={regeneratingSynopsis || editingTraining.synopsisStatus === 'PROCESSING'}
+                        className="shrink-0 text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-lg disabled:opacity-50"
+                      >
+                        {regeneratingSynopsis ? 'იწყება…' : '✨ სინოფსისის თავიდან გენერირება'}
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex gap-1 mb-1.5">
+                    {(['Ka', 'En', 'Ru'] as const).map((l) => (
+                      <button
+                        key={l}
+                        type="button"
+                        onClick={() => setSynopsisLang(l)}
+                        className={`text-[11px] font-semibold px-2.5 py-1 rounded ${
+                          synopsisLang === l ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'
+                        }`}
+                      >
+                        {l.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                  <RichTextEditor
+                    rows={5}
+                    value={SYNOPSIS_VALUE[synopsisLang]}
+                    onChange={SYNOPSIS_SETTER[synopsisLang]}
+                    placeholder="ავტომატურად გენერირდება ჩანაწერის ატვირთვისას — ან დაწერეთ/დაარედაქტირეთ ხელით."
+                    className="text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveSynopsis}
+                    disabled={savingSynopsis}
+                    className="mt-1.5 text-xs font-medium text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60"
+                  >
+                    {savingSynopsis ? 'ინახება…' : 'სინოფსისის შენახვა'}
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

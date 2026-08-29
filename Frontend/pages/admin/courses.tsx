@@ -544,6 +544,11 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
   const [titleEn, setTitleEn] = useState(lesson.titleEn ?? '');
   const [assignmentPromptEn, setAssignmentPromptEn] = useState(lesson.assignmentPromptEn ?? '');
   const [savingTranslations, setSavingTranslations] = useState(false);
+  const [conspectusLang, setConspectusLang] = useState<'Ka' | 'En' | 'Ru'>('Ka');
+  const [conspectusKa, setConspectusKa] = useState(lesson.conspectusKa ?? '');
+  const [conspectusEn, setConspectusEn] = useState(lesson.conspectusEn ?? '');
+  const [conspectusRu, setConspectusRu] = useState(lesson.conspectusRu ?? '');
+  const [savingConspectus, setSavingConspectus] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Unlike the other local-only form fields above, these two need to pick up
@@ -555,6 +560,16 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
     setTitleEn(lesson.titleEn ?? '');
     setAssignmentPromptEn(lesson.assignmentPromptEn ?? '');
   }, [lesson.titleEn, lesson.assignmentPromptEn]);
+
+  // Same staleness reasoning as the useEffect above — a "🔁 Regenerate"
+  // click re-runs the AI pipeline asynchronously and this row never
+  // remounts, so the freshly-generated text has to be picked up from the
+  // next curriculum refetch rather than a plain useState initializer.
+  useEffect(() => {
+    setConspectusKa(lesson.conspectusKa ?? '');
+    setConspectusEn(lesson.conspectusEn ?? '');
+    setConspectusRu(lesson.conspectusRu ?? '');
+  }, [lesson.conspectusKa, lesson.conspectusEn, lesson.conspectusRu]);
 
   const handleTogglePreview = async () => {
     setTogglingPreview(true);
@@ -674,6 +689,28 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
     onChanged();
   };
 
+  // Saves all three languages together — simpler than a per-language save
+  // button, and an admin polishing the AI draft is realistically editing
+  // more than one language's text in the same sitting anyway.
+  const handleSaveConspectus = async () => {
+    setSavingConspectus(true);
+    try {
+      await updateLesson(lesson.id, {
+        conspectusKa: conspectusKa.trim() || null,
+        conspectusEn: conspectusEn.trim() || null,
+        conspectusRu: conspectusRu.trim() || null,
+      });
+      onChanged();
+    } catch {
+      alert('Unable to save the conspectus.');
+    } finally {
+      setSavingConspectus(false);
+    }
+  };
+
+  const CONSPECTUS_VALUE: Record<'Ka' | 'En' | 'Ru', string> = { Ka: conspectusKa, En: conspectusEn, Ru: conspectusRu };
+  const CONSPECTUS_SETTER: Record<'Ka' | 'En' | 'Ru', (v: string) => void> = { Ka: setConspectusKa, En: setConspectusEn, Ru: setConspectusRu };
+
   return (
     <div className="border-t border-gray-100">
       <div className="flex items-center gap-3 px-4 py-2.5 text-sm">
@@ -720,6 +757,27 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
               : lesson.subtitlesStatus === 'FAILED'
               ? '✕'
               : lesson.subtitlesStatus === 'PROCESSING'
+              ? '…'
+              : '⏳'}
+          </span>
+        )}
+        {lesson.conspectusStatus && (
+          <span
+            title={lesson.conspectusStatus === 'FAILED' ? lesson.conspectusError ?? undefined : 'Auto-generated ka/en/ru study notes'}
+            className={`shrink-0 text-[11px] font-semibold px-2 py-1 rounded border ${
+              lesson.conspectusStatus === 'COMPLETED'
+                ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                : lesson.conspectusStatus === 'FAILED'
+                ? 'text-red-600 bg-red-50 border-red-200'
+                : 'text-amber-600 bg-amber-50 border-amber-200'
+            }`}
+          >
+            📝{' '}
+            {lesson.conspectusStatus === 'COMPLETED'
+              ? '✓'
+              : lesson.conspectusStatus === 'FAILED'
+              ? '✕'
+              : lesson.conspectusStatus === 'PROCESSING'
               ? '…'
               : '⏳'}
           </span>
@@ -814,6 +872,56 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
                 {savingPrompt ? 'Saving…' : 'Save'}
               </button>
             </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs font-medium text-gray-700">
+                Conspectus (AI study notes) {lesson.conspectusStatus === 'FAILED' && lesson.conspectusError && (
+                  <span className="text-red-500 font-normal">— {lesson.conspectusError}</span>
+                )}
+              </p>
+              {lesson.bunnyVideoId && (
+                <button
+                  type="button"
+                  onClick={handleRegenerateSubtitles}
+                  disabled={regeneratingSubtitles || lesson.subtitlesStatus === 'PROCESSING'}
+                  title="Re-runs the same AI pass that also regenerates captions"
+                  className="shrink-0 text-[11px] font-medium text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-2 py-1 rounded disabled:opacity-50"
+                >
+                  {regeneratingSubtitles ? 'Regenerating…' : '✨ Regenerate'}
+                </button>
+              )}
+            </div>
+            <div className="flex gap-1 mb-1.5">
+              {(['Ka', 'En', 'Ru'] as const).map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setConspectusLang(l)}
+                  className={`text-[11px] font-semibold px-2.5 py-1 rounded ${
+                    conspectusLang === l ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'
+                  }`}
+                >
+                  {l.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <RichTextEditor
+              rows={4}
+              value={CONSPECTUS_VALUE[conspectusLang]}
+              onChange={CONSPECTUS_SETTER[conspectusLang]}
+              placeholder="Generated automatically once a video is uploaded — or write/edit it by hand here."
+              className="text-xs"
+            />
+            <button
+              type="button"
+              onClick={handleSaveConspectus}
+              disabled={savingConspectus}
+              className="mt-1.5 text-xs font-medium text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60"
+            >
+              {savingConspectus ? 'Saving…' : 'Save conspectus'}
+            </button>
           </div>
         </div>
       )}

@@ -1,4 +1,4 @@
-import { CourseLanguage } from './lms';
+import { CourseLanguage, SubtitlesStatus } from './lms';
 
 export interface LiveTraining {
   id: string;
@@ -25,6 +25,15 @@ export interface LiveTraining {
   // model comment.
   startDate: string | null;
   endDate: string | null;
+  // AI-generated "conspectus" (study notes/synopsis) extracted from
+  // recordingUrl's audio — see Backend's liveTrainingSynopsisService.ts.
+  // Same status/error/per-language shape as AdminLesson's own conspectus
+  // fields (courses.tsx already has this exact editor pattern).
+  synopsisStatus: SubtitlesStatus | null;
+  synopsisError: string | null;
+  synopsisKa: string | null;
+  synopsisEn: string | null;
+  synopsisRu: string | null;
   convertedToCourseId: string | null;
   createdAt: string;
   updatedAt: string;

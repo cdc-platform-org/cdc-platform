@@ -210,6 +210,11 @@ export interface AdminLesson {
   assignmentPromptEn: string | null;
   subtitlesStatus: SubtitlesStatus | null;
   subtitlesError: string | null;
+  conspectusStatus: SubtitlesStatus | null;
+  conspectusError: string | null;
+  conspectusKa: string | null;
+  conspectusEn: string | null;
+  conspectusRu: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -265,6 +270,9 @@ export interface LessonPayload {
   isFreePreview?: boolean;
   assignmentPrompt?: string | null;
   assignmentPromptEn?: string | null;
+  conspectusKa?: string | null;
+  conspectusEn?: string | null;
+  conspectusRu?: string | null;
 }
 
 // --- AI Exam & Certification Gate ---

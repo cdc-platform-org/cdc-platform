@@ -25,6 +25,9 @@ export interface LiveTrainingPayload {
   recordingUrl?: string;
   startDate?: string | null;
   endDate?: string | null;
+  synopsisKa?: string | null;
+  synopsisEn?: string | null;
+  synopsisRu?: string | null;
 }
 
 export async function createLiveTraining(payload: LiveTrainingPayload): Promise<LiveTraining> {
@@ -73,4 +76,13 @@ export async function exportLiveTrainingLeadsCsv(trainingId: string): Promise<Bl
 export async function getLiveTrainingEnrollments(trainingId: string): Promise<LiveTrainingEnrollment[]> {
   const response = await apiClient.get<{ data: LiveTrainingEnrollment[] }>(`/admin/live-trainings/${trainingId}/enrollments`);
   return response.data.data;
+}
+
+// "✨ Regenerate AI Synopsis" — re-runs the recordingUrl -> audio -> Gemini
+// pipeline on demand (Backend/src/services/liveTrainingSynopsisService.ts),
+// independent of the auto-trigger that fires when recordingUrl itself
+// changes. 202 — the pipeline runs fire-and-forget server-side; poll
+// getAdminLiveTrainings()/re-fetch to see synopsisStatus flip to COMPLETED.
+export async function regenerateLiveTrainingSynopsis(trainingId: string): Promise<void> {
+  await apiClient.post(`/admin/live-trainings/${trainingId}/regenerate-synopsis`);
 }

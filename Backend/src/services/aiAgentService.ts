@@ -105,6 +105,67 @@ export interface InlineImagePart {
   data: string; // base64
 }
 
+// A Gemini File API reference (see subtitleService.ts's uploadAudioAndWaitActive)
+// — distinct from InlineImagePart, which is base64 bytes inlined into the
+// request. A File API upload is how audio (and anything too large to inline)
+// gets into a generateContent call.
+export interface GeminiFileRef {
+  mimeType: string;
+  fileUri: string;
+}
+
+type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } } | { fileData: { mimeType: string; fileUri: string } };
+
+// Shared by callTextModel/callTextModelPlain below — runs the same
+// gemini-flash-latest -> gemini-flash-lite-latest -> gemini-3.5-flash
+// retry sequence (2 attempts each on a retryable 503/429) so this behavior
+// lives in exactly one place regardless of which response mode a caller
+// needs. Returns null (not a throw) when every model failed, so each public
+// function above can decide its own fallback/error behavior — this helper
+// doesn't know about Azure OpenAI or AiAgentError construction.
+async function runGeminiFallbackSequence(
+  parts: GeminiPart[],
+  temperature: number,
+  responseMimeType: 'application/json' | 'text/plain'
+): Promise<{ raw: string; lastError: null } | { raw: null; lastError: unknown }> {
+  let lastError: unknown;
+  for (const modelName of TEXT_MODEL_FALLBACK_SEQUENCE) {
+    for (let attempt = 1; attempt <= ATTEMPTS_PER_MODEL; attempt++) {
+      try {
+        const model = client!.getGenerativeModel({
+          model: modelName,
+          generationConfig: { responseMimeType, temperature },
+        }, GEMINI_REQUEST_OPTIONS);
+        const result = await model.generateContent(parts);
+        const raw = result.response.text();
+        if (!raw) throw new AiAgentError('Gemini returned an empty response.');
+        return { raw, lastError: null };
+      } catch (err) {
+        lastError = err;
+        console.error(`[aiAgentService] ${modelName} attempt ${attempt}/${ATTEMPTS_PER_MODEL} failed:`, err instanceof Error ? err.message : err);
+        if (!isRetryableGeminiError(err)) return { raw: null, lastError };
+        if (attempt < ATTEMPTS_PER_MODEL) {
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+        }
+      }
+      // Retries exhausted for this model (still 503/429) — try the next
+      // model in the sequence immediately, no added delay (a different
+      // model has its own capacity, so there's nothing to wait out here).
+    }
+  }
+  return { raw: null, lastError };
+}
+
+function throwGeminiFailure(lastError: unknown): never {
+  Sentry.captureException(lastError);
+  throw lastError instanceof AiAgentError
+    ? lastError
+    : new AiAgentError(
+        lastError instanceof Error ? `Gemini request failed: ${lastError.message}` : 'Gemini request failed.',
+        classifyGeminiErrorStatus(lastError)
+      );
+}
+
 // Exported for other operational modules that need raw Gemini JSON output
 // but don't fit this file's existing MODULE N shape (currently
 // productModerationService.ts) — keeps the "exactly one place" model/retry
@@ -124,37 +185,11 @@ export async function callTextModel(prompt: string, temperature: number, imagePa
     throw new AiAgentError('Gemini is not configured (GEMINI_API_KEY missing).');
   }
 
-  const parts = [{ text: prompt }, ...(imageParts ?? []).map((img) => ({ inlineData: { mimeType: img.mimeType, data: img.data } }))];
+  const parts: GeminiPart[] = [{ text: prompt }, ...(imageParts ?? []).map((img) => ({ inlineData: { mimeType: img.mimeType, data: img.data } }))];
 
-  let lastError: unknown;
-  // Same reasoning as examProctoringService.ts's identical labeled break —
-  // a non-retryable error stops the Gemini side immediately (all 3 models
-  // share a key/client, so it would just repeat) but still has to reach the
-  // Azure attempt below rather than throw from inside this loop.
-  geminiLoop: for (const modelName of TEXT_MODEL_FALLBACK_SEQUENCE) {
-    for (let attempt = 1; attempt <= ATTEMPTS_PER_MODEL; attempt++) {
-      try {
-        const model = client.getGenerativeModel({
-          model: modelName,
-          generationConfig: { responseMimeType: 'application/json', temperature },
-        }, GEMINI_REQUEST_OPTIONS);
-        const result = await model.generateContent(parts);
-        const raw = result.response.text();
-        if (!raw) throw new AiAgentError('Gemini returned an empty response.');
-        return raw;
-      } catch (err) {
-        lastError = err;
-        console.error(`[aiAgentService] ${modelName} attempt ${attempt}/${ATTEMPTS_PER_MODEL} failed:`, err instanceof Error ? err.message : err);
-        if (!isRetryableGeminiError(err)) break geminiLoop;
-        if (attempt < ATTEMPTS_PER_MODEL) {
-          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
-        }
-      }
-    }
-    // Retries exhausted for this model (still 503/429) — try the next model
-    // in the sequence immediately, no added delay (a different model has
-    // its own capacity, so there's nothing to wait out here).
-  }
+  const geminiResult = await runGeminiFallbackSequence(parts, temperature, 'application/json');
+  if (geminiResult.raw !== null) return geminiResult.raw;
+  let lastError = geminiResult.lastError;
 
   // Every Gemini model failed — same cross-vendor 4th rung as
   // examProctoringService.ts's generateJson(), same reasoning for why it's
@@ -171,13 +206,31 @@ export async function callTextModel(prompt: string, temperature: number, imagePa
   // Same reasoning as examProctoringService.ts's identical capture point —
   // callers of callTextModel() catch this and respond directly, so it never
   // reaches Sentry.setupExpressErrorHandler in server.ts on its own.
-  Sentry.captureException(lastError);
-  throw lastError instanceof AiAgentError
-    ? lastError
-    : new AiAgentError(
-        lastError instanceof Error ? `Gemini request failed: ${lastError.message}` : 'Gemini request failed.',
-        classifyGeminiErrorStatus(lastError)
-      );
+  throwGeminiFailure(lastError);
+}
+
+// Plain-text sibling of callTextModel() — for callers whose output is NOT
+// JSON (WebVTT, markdown prose, ...), where forcing
+// responseMimeType: 'application/json' would corrupt the response. Same
+// 3-model Gemini retry sequence; deliberately NO Azure OpenAI fallback rung
+// — generateJsonViaAzureOpenAI is JSON-only, and building a plain-text Azure
+// completion path has no caller yet, so (like callTextModel's own
+// imageParts/Azure boundary above) this is an explicit scope boundary, not
+// an oversight. `fileRef` is a Gemini File API reference (audio, or anything
+// too large to inline — see GeminiFileRef) for multimodal calls that read an
+// uploaded file rather than inline bytes.
+export async function callTextModelPlain(prompt: string, temperature: number, fileRef?: GeminiFileRef): Promise<string> {
+  if (!client) {
+    throw new AiAgentError('Gemini is not configured (GEMINI_API_KEY missing).');
+  }
+
+  const parts: GeminiPart[] = fileRef
+    ? [{ fileData: { mimeType: fileRef.mimeType, fileUri: fileRef.fileUri } }, { text: prompt }]
+    : [{ text: prompt }];
+
+  const geminiResult = await runGeminiFallbackSequence(parts, temperature, 'text/plain');
+  if (geminiResult.raw !== null) return geminiResult.raw;
+  throwGeminiFailure(geminiResult.lastError);
 }
 
 // ============================================================

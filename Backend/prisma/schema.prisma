@@ -1202,6 +1202,19 @@ model LiveTraining {
   // MentorshipBooking.recordingUrl. Shown to every enrolled student once
   // set, with no time gating (unlike meetingUrl).
   recordingUrl        String?
+  // AI-generated "conspectus" (study notes / synopsis) extracted from
+  // recordingUrl's audio — same status/error/per-language shape as
+  // Lesson.conspectusStatus/conspectusKa/En/Ru (see subtitleService.ts's
+  // extractConspectusFromAudio, reused for this) so an admin who already
+  // knows that pattern recognizes this one. Deliberately no
+  // synopsisRuStatus-per-language granularity, matching Lesson's own
+  // single-status-covers-all-three-languages posture. Regenerated (not
+  // merged) whenever recordingUrl changes — see routes/adminLiveTrainings.ts.
+  synopsisStatus      SubtitlesStatus?
+  synopsisError       String?
+  synopsisKa          String?
+  synopsisEn          String?
+  synopsisRu          String?
   // The actual confirmed session window, set once a cohort's admin-run
   // phone scheduling (see LiveTrainingLead.status) settles on a real
   // date/time — deliberately separate from `scheduledAt` above, which stays
