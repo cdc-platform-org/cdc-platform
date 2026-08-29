@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Volume2, Play, Pause, Sparkles } from 'lucide-react';
+import { Play, Pause, Sparkles } from 'lucide-react';
 
 // Reusable narration button built on the native Web Speech API
 // (window.speechSynthesis) — no backend call, no API cost, works offline.
@@ -14,6 +14,42 @@ import { Volume2, Play, Pause, Sparkles } from 'lucide-react';
 // router.locale — narrating English fallback text with a Turkish/Armenian/
 // etc. voice would mispronounce it.
 const SPEEDS = [1, 1.25, 1.5, 2] as const;
+
+// translate.google.com/translate_tts is the undocumented endpoint the
+// Google Translate web UI itself calls for its speaker-icon button — not a
+// real API (no key, no SLA, not sanctioned for automated use by Google's
+// ToS). Used here only as a client-side, no-credentials stopgap for the
+// large share of browsers that ship zero Georgian speechSynthesis voices;
+// it can be rate-limited or blocked without notice. A real TTS API (Google
+// Cloud Text-to-Speech, Azure Speech) is the durable replacement if this
+// ever needs to be production-load-bearing rather than a fallback.
+// The endpoint silently truncates/fails past ~200 chars per request, so
+// long text (lesson conspectus, forum posts) is split into sentence-sized
+// chunks and played back-to-back rather than as one request.
+const GOOGLE_TTS_CHUNK_LIMIT = 190;
+
+function splitForGoogleTts(input: string): string[] {
+  const sentences = input.match(/[^.!?։\n]+[.!?։]*\s*/g) ?? [input];
+  const chunks: string[] = [];
+  let current = '';
+  for (const sentence of sentences) {
+    if ((current + sentence).length > GOOGLE_TTS_CHUNK_LIMIT) {
+      if (current.trim()) chunks.push(current.trim());
+      if (sentence.length > GOOGLE_TTS_CHUNK_LIMIT) {
+        for (let i = 0; i < sentence.length; i += GOOGLE_TTS_CHUNK_LIMIT) {
+          chunks.push(sentence.slice(i, i + GOOGLE_TTS_CHUNK_LIMIT).trim());
+        }
+        current = '';
+      } else {
+        current = sentence;
+      }
+    } else {
+      current += sentence;
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks.filter(Boolean);
+}
 
 function stripMarkdownForSpeech(input: string): string {
   return input
@@ -97,8 +133,19 @@ export default function VIPAudioNarrator({
   const [paused, setPaused] = useState(false);
   const [rate, setRate] = useState<number>(1);
   const [progress, setProgress] = useState(0);
-  const [voiceWarning, setVoiceWarning] = useState(false);
+  const [audioUnavailable, setAudioUnavailable] = useState(false);
   const cleanTextRef = useRef('');
+  // Non-null while narrating via the Google Translate TTS fallback instead
+  // of native speechSynthesis — toggle()/handleRateChange() branch on this
+  // so the same play/pause/speed controls drive whichever engine is active.
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fallbackChunksRef = useRef<string[]>([]);
+  const fallbackIndexRef = useRef(0);
+  // Explicit flag rather than checking audio.src truthiness — an emptied
+  // `audio.src = ''` resolves back to the page's own URL (a truthy string),
+  // not an empty one, so that check would stay "true" forever after the
+  // first fallback use.
+  const fallbackActiveRef = useRef(false);
 
   useEffect(() => {
     setSupported(
@@ -112,35 +159,106 @@ export default function VIPAudioNarrator({
     cleanTextRef.current = stripMarkdown ? stripMarkdownForSpeech(text) : text;
   }, [text, stripMarkdown]);
 
+  const stopFallbackAudio = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.src = '';
+    }
+    fallbackChunksRef.current = [];
+    fallbackIndexRef.current = 0;
+    fallbackActiveRef.current = false;
+  }, []);
+
   // Stop narration when the underlying content changes (e.g. the student
   // switches lessons) or this button unmounts — never leave a stale
-  // utterance talking over new content.
+  // utterance/audio chunk talking over new content.
   useEffect(() => {
     return () => {
       if (supported) window.speechSynthesis.cancel();
+      stopFallbackAudio();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supported, text]);
 
+  // Plays fallbackChunksRef sequentially from fallbackIndexRef through one
+  // <audio> element — Google's translate_tts endpoint only accepts short
+  // text per request (see the module comment above), so long narrations are
+  // stitched together chunk-by-chunk rather than sent as one request.
+  const playFallbackChunk = useCallback(
+    (atRate: number) => {
+      const chunks = fallbackChunksRef.current;
+      const index = fallbackIndexRef.current;
+      if (index >= chunks.length) {
+        setPlaying(false);
+        setPaused(false);
+        setProgress(1);
+        return;
+      }
+      if (!audioRef.current) audioRef.current = new Audio();
+      const audio = audioRef.current;
+      audio.src = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ka&client=tw-ob&q=${encodeURIComponent(chunks[index])}`;
+      audio.playbackRate = atRate;
+      audio.ontimeupdate = () => {
+        const chunkProgress = audio.duration ? audio.currentTime / audio.duration : 0;
+        setProgress(Math.min(1, (index + chunkProgress) / chunks.length));
+      };
+      audio.onended = () => {
+        fallbackIndexRef.current += 1;
+        playFallbackChunk(atRate);
+      };
+      audio.onerror = () => {
+        setPlaying(false);
+        setPaused(false);
+        setAudioUnavailable(true);
+        setTimeout(() => setAudioUnavailable(false), 4000);
+      };
+      audio.play().catch(() => {
+        setPlaying(false);
+        setPaused(false);
+        setAudioUnavailable(true);
+        setTimeout(() => setAudioUnavailable(false), 4000);
+      });
+    },
+    []
+  );
+
+  const startFallback = useCallback(
+    (atRate: number) => {
+      const chunks = splitForGoogleTts(cleanTextRef.current);
+      if (chunks.length === 0) return;
+      fallbackActiveRef.current = true;
+      fallbackChunksRef.current = chunks;
+      fallbackIndexRef.current = 0;
+      setPlaying(true);
+      setPaused(false);
+      setProgress(0);
+      playFallbackChunk(atRate);
+    },
+    [playFallbackChunk]
+  );
+
   const speak = useCallback(
     async (atRate: number) => {
-      if (!supported || !cleanTextRef.current.trim()) return;
-      window.speechSynthesis.cancel();
+      if (!cleanTextRef.current.trim()) return;
+      if (supported) window.speechSynthesis.cancel();
+      stopFallbackAudio();
 
-      const voices = await getVoicesAsync();
-      const voice = pickVoice(voices, speechLang);
+      const voice = supported ? pickVoice(await getVoicesAsync(), speechLang) : null;
 
       // Never let the platform fall back to whatever default voice it picks
       // for an unmatched lang — for Georgian specifically that's typically
       // an English voice attempting Georgian text letter-by-letter, which
-      // reads as broken rather than merely accented. Skip speaking and say
-      // so instead.
-      if (speechLang.split('-')[0] === 'ka' && !voice) {
-        setVoiceWarning(true);
-        setTimeout(() => setVoiceWarning(false), 4000);
+      // reads as broken rather than merely accented. Seamlessly hand off to
+      // the Google Translate audio fallback instead of just erroring out —
+      // most browsers ship zero Georgian speechSynthesis voices, so this is
+      // the common path for `ka`, not a rare edge case.
+      if (!supported || (speechLang.split('-')[0] === 'ka' && !voice)) {
+        startFallback(atRate);
         return;
       }
 
+      fallbackActiveRef.current = false;
       const utterance = new SpeechSynthesisUtterance(cleanTextRef.current);
       utterance.lang = speechLang;
       utterance.rate = atRate;
@@ -163,11 +281,25 @@ export default function VIPAudioNarrator({
       setPaused(false);
       setProgress(0);
     },
-    [supported, speechLang]
+    [supported, speechLang, stopFallbackAudio, startFallback]
   );
 
+  const usingFallback = () => fallbackActiveRef.current;
+
   const toggle = () => {
-    if (!supported) return;
+    if (usingFallback()) {
+      const audio = audioRef.current!;
+      if (playing && !paused) {
+        audio.pause();
+        setPaused(true);
+      } else if (playing && paused) {
+        audio.play();
+        setPaused(false);
+      } else {
+        startFallback(rate);
+      }
+      return;
+    }
     if (playing && !paused) {
       window.speechSynthesis.pause();
       setPaused(true);
@@ -181,28 +313,29 @@ export default function VIPAudioNarrator({
 
   const handleRateChange = (next: number) => {
     setRate(next);
+    if (!playing) return;
+    if (usingFallback()) {
+      // Unlike SpeechSynthesisUtterance, HTMLAudioElement.playbackRate can
+      // change live without restarting the current chunk.
+      if (audioRef.current) audioRef.current.playbackRate = next;
+      return;
+    }
     // Most browsers can't change an in-flight utterance's rate — restart
     // from the beginning at the new rate rather than silently ignoring the
     // change, the platform's actual limitation, not a bug to hide.
-    if (playing) speak(next);
+    speak(next);
   };
 
   const defaultLabel = lang === 'ka' ? '🔊 ტექსტის მოსმენა' : '🔊 Listen to Text';
   const displayLabel = label ?? defaultLabel;
   const isActive = playing && !paused;
-  const noVoiceMessage = 'თქვენს ბრაუზერს ქართული ხმის მხარდაჭერა არ აქვს';
-
-  if (!supported) {
-    return (
-      <div
-        className={`inline-flex items-center gap-2 rounded-full border border-slate-300/50 dark:border-slate-700 bg-slate-100/60 dark:bg-slate-800/40 px-3 py-1.5 text-xs font-semibold text-slate-400 opacity-60 cursor-not-allowed ${className}`}
-        title={lang === 'ka' ? 'ხმოვანი წაკითხვა ამ ბრაუზერში მიუწვდომელია' : 'Audio narration is unavailable in this browser'}
-      >
-        <Volume2 className="w-3.5 h-3.5" />
-        {!compact && <span>{displayLabel}</span>}
-      </div>
-    );
-  }
+  // Only shown when BOTH native speechSynthesis and the Google Translate
+  // audio fallback have failed (e.g. the fallback request itself is
+  // network-blocked) — no longer the old "browser has no Georgian voice"
+  // message, since that case is now handled seamlessly via the fallback
+  // instead of surfacing a warning.
+  const unavailableMessage =
+    lang === 'ka' ? 'ხმოვანი წაკითხვა დროებით მიუწვდომელია' : 'Audio narration is temporarily unavailable';
 
   if (compact) {
     return (
@@ -211,11 +344,11 @@ export default function VIPAudioNarrator({
           type="button"
           onClick={toggle}
           className={`inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-tr from-amber-400 via-purple-500 to-cyan-500 text-white border-none cursor-pointer shadow-sm shadow-purple-500/30 hover:shadow-purple-500/50 transition-shadow ${className}`}
-          title={voiceWarning ? noVoiceMessage : displayLabel}
+          title={audioUnavailable ? unavailableMessage : displayLabel}
         >
           {isActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
         </button>
-        {voiceWarning && <span className="text-[10px] text-amber-500 dark:text-amber-400">{noVoiceMessage}</span>}
+        {audioUnavailable && <span className="text-[10px] text-amber-500 dark:text-amber-400">{unavailableMessage}</span>}
       </span>
     );
   }
@@ -282,7 +415,7 @@ export default function VIPAudioNarrator({
         }
       `}</style>
     </div>
-      {voiceWarning && <span className="text-[11px] text-amber-500 dark:text-amber-400 px-1">{noVoiceMessage}</span>}
+      {audioUnavailable && <span className="text-[11px] text-amber-500 dark:text-amber-400 px-1">{unavailableMessage}</span>}
     </div>
   );
 }
