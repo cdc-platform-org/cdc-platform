@@ -14,7 +14,6 @@ import FloatingButtons from '@/src/components/layout/FloatingButtons';
 import CookieConsentBanner from '@/src/components/layout/CookieConsentBanner';
 import TermsConsentModal from '@/src/components/auth/TermsConsentModal';
 import AdminModeBar from '@/src/components/layout/AdminModeBar';
-import TextToSpeechReader from '@/src/components/shared/TextToSpeechReader';
 import { resolveLocale } from '@/src/utils/locale';
 import type { AppProps } from 'next/app';
 import '@/styles/globals.css';
@@ -175,7 +174,6 @@ function App({ Component, pageProps }: AppProps) {
               <CookieConsentBanner />
               <TermsConsentModal />
               <AdminModeBar />
-              <TextToSpeechReader />
             </VerificationDrawerProvider>
           </AuthModalProvider>
         </AuthProvider>

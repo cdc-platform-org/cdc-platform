@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Head from 'next/head';
 import ReactMarkdown from 'react-markdown';
+import VIPAudioNarrator from '../../src/components/ui/VIPAudioNarrator';
 import DOMPurify from 'dompurify';
 import { List, Clock, Reply, Trash2 } from 'lucide-react';
 import { useAuth } from '../../src/context/AuthContext';
@@ -466,6 +467,14 @@ export default function BlogPostPage() {
 
   const markdownContentImages = useMemo(() => (isHtml ? [] : extractContentImages(content)), [content, isHtml]);
   const contentImages = isHtml ? htmlArticle?.images ?? [] : markdownContentImages;
+  // Plain-text source for narration — VIPAudioNarrator's stripMarkdown only
+  // strips Markdown syntax, not HTML tags, so the isHtml branch needs its
+  // own tag strip first (good enough for narration; entities/edge cases are
+  // an acceptable tradeoff here, not a content-integrity concern).
+  const narrationText = useMemo(
+    () => (isHtml ? content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : content),
+    [content, isHtml]
+  );
   // Cover image (when present) occupies index 0; content images follow in
   // document order — contentImageIndexRef mirrors headingIndexRef's trick of
   // re-deriving the same order while ReactMarkdown renders (Markdown path
@@ -708,6 +717,15 @@ export default function BlogPostPage() {
                 </ul>
               </div>
             )}
+
+            <div className="mb-4">
+              <VIPAudioNarrator
+                text={narrationText}
+                speechLang={contentLang === 'ka' ? 'ka-GE' : 'en-US'}
+                lang={contentLang}
+                stripMarkdown={!isHtml}
+              />
+            </div>
 
             <div className="blog-article-content rounded-3xl border border-slate-800/70 bg-gradient-to-b from-slate-900/50 to-slate-900/10 backdrop-blur-sm px-5 py-7 sm:px-10 sm:py-10">
               {isHtml ? (

@@ -26,6 +26,7 @@ import SuccessStoriesCarousel from '../../../src/components/shared/SuccessStorie
 import CourseLeaderboard from '../../../src/components/shared/CourseLeaderboard';
 import CourseHeroBanner from '../../../src/components/shared/CourseHeroBanner';
 import VideoEmbed from '../../../src/components/shared/VideoEmbed';
+import VIPAudioNarrator from '../../../src/components/ui/VIPAudioNarrator';
 
 function formatTotalDuration(totalSeconds: number, lang: 'ka' | 'en'): string {
   const totalMinutes = Math.round(totalSeconds / 60);
@@ -225,6 +226,14 @@ export default function CourseDetailPage() {
         <h1 className="blog-heading-safe text-3xl md:text-4xl font-black mt-4 mb-4">{course.title}</h1>
         <div className="mb-6">
           <SocialShareButtons title={course.title} lang={lang} />
+        </div>
+        <div className="mb-4">
+          <VIPAudioNarrator
+            text={(lang === 'en' && course.descriptionEn) || course.description}
+            speechLang={lang === 'ka' ? 'ka-GE' : 'en-US'}
+            lang={lang}
+            stripMarkdown
+          />
         </div>
         <MarkdownContent content={(lang === 'en' && course.descriptionEn) || course.description} className="mb-8" />
 

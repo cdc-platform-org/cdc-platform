@@ -28,6 +28,47 @@ function stripMarkdownForSpeech(input: string): string {
     .trim();
 }
 
+// getVoices() can return an empty list on the very first call in Chrome —
+// the real list only exists once the async 'voiceschanged' event fires.
+// Waits for that (with a short timeout fallback for browsers that never
+// fire it, e.g. some Safari versions) rather than reading an empty list
+// and concluding no voice is available.
+function getVoicesAsync(): Promise<SpeechSynthesisVoice[]> {
+  return new Promise((resolve) => {
+    const existing = window.speechSynthesis.getVoices();
+    if (existing.length > 0) {
+      resolve(existing);
+      return;
+    }
+    const handler = () => {
+      window.speechSynthesis.removeEventListener('voiceschanged', handler);
+      resolve(window.speechSynthesis.getVoices());
+    };
+    window.speechSynthesis.addEventListener('voiceschanged', handler);
+    setTimeout(() => {
+      window.speechSynthesis.removeEventListener('voiceschanged', handler);
+      resolve(window.speechSynthesis.getVoices());
+    }, 500);
+  });
+}
+
+// Matches on the language's primary subtag only ('ka' out of 'ka-GE') since
+// installed voices report their own lang tag inconsistently across OSes/
+// browsers. For non-Georgian languages, prefers a voice whose name signals
+// a higher-quality engine (Chrome/Edge label these "Google ..."/
+// "Microsoft ... Natural/Neural") over a generic platform default, since
+// those are audibly better for long-form narration.
+function pickVoice(voices: SpeechSynthesisVoice[], bcp47Lang: string): SpeechSynthesisVoice | null {
+  const primary = bcp47Lang.split('-')[0].toLowerCase();
+  const candidates = voices.filter((v) => v.lang.toLowerCase().startsWith(primary));
+  if (candidates.length === 0) return null;
+  if (primary !== 'ka') {
+    const highQuality = candidates.find((v) => /natural|neural|google/i.test(v.name));
+    if (highQuality) return highQuality;
+  }
+  return candidates[0];
+}
+
 interface VIPAudioNarratorProps {
   text: string;
   speechLang: string;
@@ -56,6 +97,7 @@ export default function VIPAudioNarrator({
   const [paused, setPaused] = useState(false);
   const [rate, setRate] = useState<number>(1);
   const [progress, setProgress] = useState(0);
+  const [voiceWarning, setVoiceWarning] = useState(false);
   const cleanTextRef = useRef('');
 
   useEffect(() => {
@@ -81,12 +123,28 @@ export default function VIPAudioNarrator({
   }, [supported, text]);
 
   const speak = useCallback(
-    (atRate: number) => {
+    async (atRate: number) => {
       if (!supported || !cleanTextRef.current.trim()) return;
       window.speechSynthesis.cancel();
+
+      const voices = await getVoicesAsync();
+      const voice = pickVoice(voices, speechLang);
+
+      // Never let the platform fall back to whatever default voice it picks
+      // for an unmatched lang — for Georgian specifically that's typically
+      // an English voice attempting Georgian text letter-by-letter, which
+      // reads as broken rather than merely accented. Skip speaking and say
+      // so instead.
+      if (speechLang.split('-')[0] === 'ka' && !voice) {
+        setVoiceWarning(true);
+        setTimeout(() => setVoiceWarning(false), 4000);
+        return;
+      }
+
       const utterance = new SpeechSynthesisUtterance(cleanTextRef.current);
       utterance.lang = speechLang;
       utterance.rate = atRate;
+      if (voice) utterance.voice = voice;
       utterance.onboundary = (e) => {
         const len = cleanTextRef.current.length;
         if (len > 0) setProgress(Math.min(1, e.charIndex / len));
@@ -129,9 +187,10 @@ export default function VIPAudioNarrator({
     if (playing) speak(next);
   };
 
-  const defaultLabel = lang === 'ka' ? '🎧 მოსმენა (Audio Reader)' : '🎧 Listen (Audio Reader)';
+  const defaultLabel = lang === 'ka' ? '🔊 ტექსტის მოსმენა' : '🔊 Listen to Text';
   const displayLabel = label ?? defaultLabel;
   const isActive = playing && !paused;
+  const noVoiceMessage = 'თქვენს ბრაუზერს ქართული ხმის მხარდაჭერა არ აქვს';
 
   if (!supported) {
     return (
@@ -147,18 +206,22 @@ export default function VIPAudioNarrator({
 
   if (compact) {
     return (
-      <button
-        type="button"
-        onClick={toggle}
-        className={`inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-tr from-amber-400 via-purple-500 to-cyan-500 text-white border-none cursor-pointer shadow-sm shadow-purple-500/30 hover:shadow-purple-500/50 transition-shadow ${className}`}
-        title={displayLabel}
-      >
-        {isActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
-      </button>
+      <span className="inline-flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={toggle}
+          className={`inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-tr from-amber-400 via-purple-500 to-cyan-500 text-white border-none cursor-pointer shadow-sm shadow-purple-500/30 hover:shadow-purple-500/50 transition-shadow ${className}`}
+          title={voiceWarning ? noVoiceMessage : displayLabel}
+        >
+          {isActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
+        </button>
+        {voiceWarning && <span className="text-[10px] text-amber-500 dark:text-amber-400">{noVoiceMessage}</span>}
+      </span>
     );
   }
 
   return (
+    <div className="inline-flex flex-col gap-1">
     <div
       className={`inline-flex items-center gap-3 rounded-full border border-amber-400/30 bg-gradient-to-r from-amber-400/10 via-purple-500/10 to-cyan-500/10 px-3.5 py-2 shadow-sm shadow-purple-500/10 ${className}`}
     >
@@ -218,6 +281,8 @@ export default function VIPAudioNarrator({
           }
         }
       `}</style>
+    </div>
+      {voiceWarning && <span className="text-[11px] text-amber-500 dark:text-amber-400 px-1">{noVoiceMessage}</span>}
     </div>
   );
 }
