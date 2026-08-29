@@ -258,26 +258,48 @@ router.post(
 // Grants/revokes access to /admin/hr-requests's specialist-facing screens
 // (see the isHrSpecialist comment on the User model) — set manually for now,
 // no self-serve application flow.
+//
+// Wrapped in try/catch (unlike the sibling verify-graduate routes above)
+// because this specific route came in as a live bug report: an admin
+// clicking it saw only a generic "action failed" toast with no detail. The
+// most likely concrete cause of an unhandled throw here — a malformed
+// :id reaching prisma.user.findUnique before the friendly 404 check even
+// runs, since Postgres rejects a non-UUID string for this column outright
+// — previously fell straight through to errorHandler.ts's blanket "Server
+// error" mask. This at least turns that into a clean 400 the frontend can
+// actually show, instead of an opaque 500.
 router.post('/users/:id/set-hr-specialist', requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
-  const user = await prisma.user.findUnique({ where: { id: req.params.id } });
-  if (!user) return res.status(404).json({ message: 'User not found.' });
-  const updated = await prisma.user.update({
-    where: { id: req.params.id },
-    data: { isHrSpecialist: true },
-    omit: { password: true },
-  });
-  res.json(updated);
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+    const updated = await prisma.user.update({
+      where: { id: req.params.id },
+      data: { isHrSpecialist: true },
+      omit: { password: true },
+    });
+    res.json(updated);
+  } catch (err: any) {
+    console.error('[admin] set-hr-specialist failed:', err);
+    if (err.code === 'P2025') return res.status(404).json({ message: 'User not found.' });
+    res.status(400).json({ message: 'Could not grant HR access — the user id looks invalid. Please refresh and try again.' });
+  }
 });
 
 router.post('/users/:id/unset-hr-specialist', requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
-  const user = await prisma.user.findUnique({ where: { id: req.params.id } });
-  if (!user) return res.status(404).json({ message: 'User not found.' });
-  const updated = await prisma.user.update({
-    where: { id: req.params.id },
-    data: { isHrSpecialist: false },
-    omit: { password: true },
-  });
-  res.json(updated);
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+    const updated = await prisma.user.update({
+      where: { id: req.params.id },
+      data: { isHrSpecialist: false },
+      omit: { password: true },
+    });
+    res.json(updated);
+  } catch (err: any) {
+    console.error('[admin] unset-hr-specialist failed:', err);
+    if (err.code === 'P2025') return res.status(404).json({ message: 'User not found.' });
+    res.status(400).json({ message: 'Could not revoke HR access — the user id looks invalid. Please refresh and try again.' });
+  }
 });
 
 // Ban/unban: available to all three admin tiers (this is the "Support/Report
