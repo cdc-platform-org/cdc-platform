@@ -753,7 +753,13 @@ export default function Home() {
       {/* 📊 BENTO GRID SECTION */}
       <section id="about" className="max-w-7xl mx-auto pt-28 px-6">
         <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('achievementsHeading')}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 auto-rows-[240px]">
+        {/* auto-rows only pins to a fixed 240px on md+, where the bento
+            layout needs it for the row-span-2 HEKS card's math. Below that,
+            a fixed row height clipped the HEKS card's image+text (which is
+            taller than 240px once row-span-2 collapses to row-span-1 on a
+            single mobile column) and the stat cards' wrapped labels — rows
+            now size to their own content on mobile instead. */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 auto-rows-auto md:auto-rows-[240px]">
           <div className={`md:col-span-2 md:row-span-2 rounded-3xl border backdrop-blur-md overflow-hidden flex flex-col transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422]/60 border-slate-800' : 'bg-white/60 border-slate-200'}`}>
             <img
               src={cms?.heksCard?.imageUrl ? resolveBlogImageUrl(cms.heksCard.imageUrl) : '/images/heks-eper.jpg'}
@@ -794,7 +800,7 @@ export default function Home() {
               <span className={`text-5xl font-black ${i % 2 === 0 ? 'text-cyan-500' : 'text-purple-500'}`}>
                 {translate(stat.valueKa, stat.valueEn)}
               </span>
-              <span className="text-sm font-black uppercase tracking-wider text-slate-400">{translate(stat.labelKa, stat.labelEn)}</span>
+              <span className="text-sm font-black uppercase tracking-wider text-slate-400 leading-relaxed">{translate(stat.labelKa, stat.labelEn)}</span>
             </div>
           ))}
         </div>
@@ -809,10 +815,23 @@ export default function Home() {
               <Link
                 key={i}
                 href="/gallery"
-                className={`relative aspect-square rounded-2xl overflow-hidden border transition-all duration-300 transform hover:scale-[1.02] no-underline ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}
+                className={`relative aspect-square rounded-2xl overflow-hidden border transition-all duration-300 transform hover:scale-[1.02] no-underline ${darkMode ? 'bg-slate-800 border-slate-800' : 'bg-slate-100 border-slate-200'}`}
               >
+                {/* bg-slate-800/100 on the wrapper above (rather than
+                    leaving it transparent) is the actual fix for the "empty
+                    white block" report — on a slow mobile connection an
+                    unloaded <img> shows nothing but its background until it
+                    decodes, and a transparent one over a light section reads
+                    as a blank white card. loading="lazy" so off-screen
+                    gallery tiles don't compete with above-the-fold requests. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={resolveBlogImageUrl(img.url)} alt={img.captionKa ?? img.captionEn ?? ''} onError={onImageErrorFallback} className="w-full h-full object-cover" />
+                <img
+                  src={resolveBlogImageUrl(img.url)}
+                  alt={img.captionKa ?? img.captionEn ?? ''}
+                  onError={onImageErrorFallback}
+                  loading="lazy"
+                  className="w-full h-full object-cover"
+                />
               </Link>
             ))}
           </div>
