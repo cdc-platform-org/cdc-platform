@@ -1144,20 +1144,34 @@ export default function Home() {
 
       {/* 🤖 AI ASSISTANT CHAT PANEL */}
       <div className="fixed bottom-56 sm:bottom-60 right-4 md:right-6 z-50 flex flex-col gap-3 items-end">
+        {/* h-[700px] is the "spacious" target the panel grows to on tall
+            screens, but it's anchored via `bottom-56 sm:bottom-60` (see the
+            wrapper above) — a plain `max-h-[85vh]` ignores that offset and
+            still pushes the header off the top of the viewport on anything
+            shorter than ~1050px tall. max-h subtracts the larger (sm:bottom-60
+            = 15rem) of the two anchor offsets plus a 1rem top margin, so the
+            panel always stays fully on-screen instead. */}
         {isChatOpen && (
-          <div ref={chatPanelRef} className="w-[calc(100vw-2rem)] sm:w-[480px] md:w-[520px] border rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[380px] sm:h-[70vh] sm:max-h-[650px] md:h-[80vh] md:max-h-[700px] bg-white dark:bg-[#0e1422] text-slate-900 dark:text-white border-slate-200 dark:border-slate-800">
-            <div className="bg-slate-900 text-white p-4 flex flex-col gap-2">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-xs font-bold truncate">{t('chatTitle')}</span>
-                <button type="button" onClick={() => setIsChatOpen(false)} aria-label={t('close')} className="shrink-0 text-white font-bold border-none bg-transparent cursor-pointer hover:text-slate-300 transition-colors"><X className="w-4 h-4" /></button>
+          <div ref={chatPanelRef} className="w-[400px] max-w-full border rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[700px] max-h-[calc(100vh-16rem)] bg-white dark:bg-[#0e1422] text-slate-900 dark:text-white border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white rounded-t-2xl">
+              <div className="flex items-center gap-2 min-w-0">
+                <Image src="/images/cdc-logo.png" alt="CDC" width={28} height={28} className="w-7 h-7 rounded-full object-cover shrink-0" />
+                <div className="min-w-0">
+                  <span className="block text-sm font-bold text-slate-900 truncate">{t('chatTitle')}</span>
+                  <span className="block text-[10px] font-semibold text-slate-400 truncate">{t('poweredBy')}</span>
+                </div>
               </div>
-              <div className="inline-flex items-center gap-1.5 self-start px-2.5 py-1 rounded-full bg-white/10 border border-white/15">
-                <Image src="/images/cdc-logo.png" alt="CDC" width={14} height={14} className="w-3.5 h-3.5 rounded-full object-cover shrink-0" />
-                <span className="text-[10px] font-bold text-white/70 whitespace-nowrap">{t('poweredBy')}</span>
-              </div>
+              <button
+                type="button"
+                onClick={() => setIsChatOpen(false)}
+                aria-label={t('close')}
+                className="shrink-0 p-1.5 hover:bg-gray-100 rounded-full text-gray-500 hover:text-gray-800 transition-colors border-none bg-transparent cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            
-            <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs bg-slate-50 dark:bg-[#0b0f17]">
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs bg-slate-50 dark:bg-[#0b0f17]">
               {chatMessages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`p-3 rounded-xl max-w-[85%] ${msg.sender === 'user' ? 'bg-cyan-500 text-white' : 'bg-white dark:bg-[#161f30] border border-slate-200 dark:border-slate-800'}`}>
