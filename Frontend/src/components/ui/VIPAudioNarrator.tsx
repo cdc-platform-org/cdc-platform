@@ -15,29 +15,30 @@ import { Play, Pause, Sparkles } from 'lucide-react';
 // etc. voice would mispronounce it.
 const SPEEDS = [1, 1.25, 1.5, 2] as const;
 
-// translate.google.com/translate_tts is the undocumented endpoint the
-// Google Translate web UI itself calls for its speaker-icon button — not a
-// real API (no key, no SLA, not sanctioned for automated use by Google's
-// ToS). Used here only as a client-side, no-credentials stopgap for the
-// large share of browsers that ship zero Georgian speechSynthesis voices;
-// it can be rate-limited or blocked without notice. A real TTS API (Google
-// Cloud Text-to-Speech, Azure Speech) is the durable replacement if this
-// ever needs to be production-load-bearing rather than a fallback.
-// The endpoint silently truncates/fails past ~200 chars per request, so
-// long text (lesson conspectus, forum posts) is split into sentence-sized
-// chunks and played back-to-back rather than as one request.
-const GOOGLE_TTS_CHUNK_LIMIT = 190;
+// Georgian narration fallback, for the large share of browsers that ship
+// zero Georgian speechSynthesis voices — proxied server-side through
+// /api/tts to Azure Cognitive Services Speech (see that route's own
+// comment for why: a real, documented TTS API with genuine Georgian neural
+// voices, unlike an earlier attempt at Google Translate's undocumented
+// translate_tts endpoint, which turned out to reject Georgian outright).
+// Azure's REST TTS endpoint accepts thousands of characters per request,
+// comfortably more than any single lesson conspectus/forum post here, but
+// text is still split on sentence boundaries and played back-to-back —
+// mainly so the progress bar has more than one waypoint on long narrations,
+// not because of a hard per-request limit like the old Google endpoint had.
+const TTS_CHUNK_LIMIT = 1500;
+const AZURE_VOICE = 'ka-GE-EkaNeural';
 
-function splitForGoogleTts(input: string): string[] {
+function splitForTts(input: string): string[] {
   const sentences = input.match(/[^.!?։\n]+[.!?։]*\s*/g) ?? [input];
   const chunks: string[] = [];
   let current = '';
   for (const sentence of sentences) {
-    if ((current + sentence).length > GOOGLE_TTS_CHUNK_LIMIT) {
+    if ((current + sentence).length > TTS_CHUNK_LIMIT) {
       if (current.trim()) chunks.push(current.trim());
-      if (sentence.length > GOOGLE_TTS_CHUNK_LIMIT) {
-        for (let i = 0; i < sentence.length; i += GOOGLE_TTS_CHUNK_LIMIT) {
-          chunks.push(sentence.slice(i, i + GOOGLE_TTS_CHUNK_LIMIT).trim());
+      if (sentence.length > TTS_CHUNK_LIMIT) {
+        for (let i = 0; i < sentence.length; i += TTS_CHUNK_LIMIT) {
+          chunks.push(sentence.slice(i, i + TTS_CHUNK_LIMIT).trim());
         }
         current = '';
       } else {
@@ -133,14 +134,24 @@ export default function VIPAudioNarrator({
   const [paused, setPaused] = useState(false);
   const [rate, setRate] = useState<number>(1);
   const [progress, setProgress] = useState(0);
-  const [audioUnavailable, setAudioUnavailable] = useState(false);
+  // null = no failure. Distinguished so the UI can tell "Azure isn't
+  // configured/the key is bad" (an operator problem) apart from a plain
+  // transient failure, per the explicit ask.
+  const [fallbackFailure, setFallbackFailure] = useState<'not_configured' | 'unauthorized' | 'error' | null>(null);
   const cleanTextRef = useRef('');
-  // Non-null while narrating via the Google Translate TTS fallback instead
-  // of native speechSynthesis — toggle()/handleRateChange() branch on this
-  // so the same play/pause/speed controls drive whichever engine is active.
+  // Non-null while narrating via the /api/tts (Azure Speech) fallback
+  // instead of native speechSynthesis — toggle()/handleRateChange() branch
+  // on this so the same play/pause/speed controls drive whichever engine is
+  // active.
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fallbackChunksRef = useRef<string[]>([]);
   const fallbackIndexRef = useRef(0);
+  // The <audio> element plays a blob: URL (from the fetched response), not
+  // the /api/tts URL directly — fetching first lets us read the actual HTTP
+  // status (401/403/501/etc.) to distinguish failure reasons, which an
+  // <audio src> load's onerror alone can't expose. Revoked on every chunk
+  // change/stop to avoid leaking one blob URL per sentence.
+  const objectUrlRef = useRef<string | null>(null);
   // Explicit flag rather than checking audio.src truthiness — an emptied
   // `audio.src = ''` resolves back to the page's own URL (a truthy string),
   // not an empty one, so that check would stay "true" forever after the
@@ -165,6 +176,10 @@ export default function VIPAudioNarrator({
       audio.pause();
       audio.src = '';
     }
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
     fallbackChunksRef.current = [];
     fallbackIndexRef.current = 0;
     fallbackActiveRef.current = false;
@@ -181,51 +196,68 @@ export default function VIPAudioNarrator({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supported, text]);
 
+  const reportFallbackFailure = (reason: 'not_configured' | 'unauthorized' | 'error') => {
+    setPlaying(false);
+    setPaused(false);
+    setFallbackFailure(reason);
+    setTimeout(() => setFallbackFailure(null), 4000);
+  };
+
   // Plays fallbackChunksRef sequentially from fallbackIndexRef through one
-  // <audio> element — Google's translate_tts endpoint only accepts short
-  // text per request (see the module comment above), so long narrations are
-  // stitched together chunk-by-chunk rather than sent as one request.
-  const playFallbackChunk = useCallback(
-    (atRate: number) => {
-      const chunks = fallbackChunksRef.current;
-      const index = fallbackIndexRef.current;
-      if (index >= chunks.length) {
-        setPlaying(false);
-        setPaused(false);
-        setProgress(1);
-        return;
-      }
-      if (!audioRef.current) audioRef.current = new Audio();
-      const audio = audioRef.current;
-      audio.src = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ka&client=tw-ob&q=${encodeURIComponent(chunks[index])}`;
-      audio.playbackRate = atRate;
-      audio.ontimeupdate = () => {
-        const chunkProgress = audio.duration ? audio.currentTime / audio.duration : 0;
-        setProgress(Math.min(1, (index + chunkProgress) / chunks.length));
-      };
-      audio.onended = () => {
-        fallbackIndexRef.current += 1;
-        playFallbackChunk(atRate);
-      };
-      audio.onerror = () => {
-        setPlaying(false);
-        setPaused(false);
-        setAudioUnavailable(true);
-        setTimeout(() => setAudioUnavailable(false), 4000);
-      };
-      audio.play().catch(() => {
-        setPlaying(false);
-        setPaused(false);
-        setAudioUnavailable(true);
-        setTimeout(() => setAudioUnavailable(false), 4000);
-      });
-    },
-    []
-  );
+  // <audio> element, fetching each chunk from /api/tts first (rather than
+  // pointing audio.src at it directly) so a non-2xx response's actual
+  // status is visible to JS — an <audio src> load failure's onerror alone
+  // doesn't expose the HTTP status, which is what reportFallbackFailure
+  // needs to distinguish "not configured" from "bad key" from "other".
+  const playFallbackChunk = useCallback(async (atRate: number) => {
+    const chunks = fallbackChunksRef.current;
+    const index = fallbackIndexRef.current;
+    if (index >= chunks.length) {
+      setPlaying(false);
+      setPaused(false);
+      setProgress(1);
+      return;
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(`/api/tts?text=${encodeURIComponent(chunks[index])}&voice=${encodeURIComponent(AZURE_VOICE)}`);
+    } catch {
+      reportFallbackFailure('error');
+      return;
+    }
+
+    if (!response.ok) {
+      if (response.status === 501) reportFallbackFailure('not_configured');
+      else if (response.status === 401 || response.status === 403) reportFallbackFailure('unauthorized');
+      else reportFallbackFailure('error');
+      return;
+    }
+
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    const objectUrl = URL.createObjectURL(await response.blob());
+    objectUrlRef.current = objectUrl;
+
+    if (!audioRef.current) audioRef.current = new Audio();
+    const audio = audioRef.current;
+    audio.src = objectUrl;
+    audio.playbackRate = atRate;
+    audio.onplay = () => setFallbackFailure(null);
+    audio.ontimeupdate = () => {
+      const chunkProgress = audio.duration ? audio.currentTime / audio.duration : 0;
+      setProgress(Math.min(1, (index + chunkProgress) / chunks.length));
+    };
+    audio.onended = () => {
+      fallbackIndexRef.current += 1;
+      playFallbackChunk(atRate);
+    };
+    audio.onerror = () => reportFallbackFailure('error');
+    audio.play().catch(() => reportFallbackFailure('error'));
+  }, []);
 
   const startFallback = useCallback(
     (atRate: number) => {
-      const chunks = splitForGoogleTts(cleanTextRef.current);
+      const chunks = splitForTts(cleanTextRef.current);
       if (chunks.length === 0) return;
       fallbackActiveRef.current = true;
       fallbackChunksRef.current = chunks;
@@ -245,16 +277,24 @@ export default function VIPAudioNarrator({
       stopFallbackAudio();
 
       const voice = supported ? pickVoice(await getVoicesAsync(), speechLang) : null;
+      const isGeorgian = speechLang.split('-')[0].toLowerCase() === 'ka';
 
       // Never let the platform fall back to whatever default voice it picks
       // for an unmatched lang — for Georgian specifically that's typically
       // an English voice attempting Georgian text letter-by-letter, which
       // reads as broken rather than merely accented. Seamlessly hand off to
-      // the Google Translate audio fallback instead of just erroring out —
-      // most browsers ship zero Georgian speechSynthesis voices, so this is
-      // the common path for `ka`, not a rare edge case.
-      if (!supported || (speechLang.split('-')[0] === 'ka' && !voice)) {
+      // the Azure Speech fallback instead of just erroring out — most
+      // browsers ship zero Georgian speechSynthesis voices, so this is the
+      // common path for `ka`, not a rare edge case. /api/tts only knows a
+      // Georgian voice, so a non-Georgian text on a browser with no
+      // speechSynthesis support at all has no working engine either way —
+      // reported directly rather than attempted against the wrong voice.
+      if (isGeorgian && !voice) {
         startFallback(atRate);
+        return;
+      }
+      if (!supported) {
+        reportFallbackFailure('error');
         return;
       }
 
@@ -329,13 +369,19 @@ export default function VIPAudioNarrator({
   const defaultLabel = lang === 'ka' ? '🔊 ტექსტის მოსმენა' : '🔊 Listen to Text';
   const displayLabel = label ?? defaultLabel;
   const isActive = playing && !paused;
-  // Only shown when BOTH native speechSynthesis and the Google Translate
-  // audio fallback have failed (e.g. the fallback request itself is
-  // network-blocked) — no longer the old "browser has no Georgian voice"
-  // message, since that case is now handled seamlessly via the fallback
-  // instead of surfacing a warning.
+  // 'not_configured'/'unauthorized' mean /api/tts itself is unusable
+  // (AZURE_SPEECH_KEY/REGION missing, or a bad key returning 401/403) — an
+  // operator problem, distinct from 'error' (a plain transient failure:
+  // network blip, Azure outage, or no engine at all for a non-Georgian
+  // narration with no native voice — see speak()'s `!supported` branch).
   const unavailableMessage =
-    lang === 'ka' ? 'ხმოვანი წაკითხვა დროებით მიუწვდომელია' : 'Audio narration is temporarily unavailable';
+    fallbackFailure === 'not_configured' || fallbackFailure === 'unauthorized'
+      ? lang === 'ka'
+        ? 'ხმოვანი წაკითხვა საჭიროებს Azure API გასაღებს'
+        : 'Audio narration requires an Azure API key to be configured'
+      : lang === 'ka'
+        ? 'ხმოვანი წაკითხვა დროებით მიუწვდომელია'
+        : 'Audio narration is temporarily unavailable';
 
   if (compact) {
     return (
@@ -344,11 +390,11 @@ export default function VIPAudioNarrator({
           type="button"
           onClick={toggle}
           className={`inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-tr from-amber-400 via-purple-500 to-cyan-500 text-white border-none cursor-pointer shadow-sm shadow-purple-500/30 hover:shadow-purple-500/50 transition-shadow ${className}`}
-          title={audioUnavailable ? unavailableMessage : displayLabel}
+          title={fallbackFailure !== null ? unavailableMessage : displayLabel}
         >
           {isActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
         </button>
-        {audioUnavailable && <span className="text-[10px] text-amber-500 dark:text-amber-400">{unavailableMessage}</span>}
+        {fallbackFailure !== null && <span className="text-[10px] text-amber-500 dark:text-amber-400">{unavailableMessage}</span>}
       </span>
     );
   }
@@ -415,7 +461,7 @@ export default function VIPAudioNarrator({
         }
       `}</style>
     </div>
-      {audioUnavailable && <span className="text-[11px] text-amber-500 dark:text-amber-400 px-1">{unavailableMessage}</span>}
+      {fallbackFailure !== null && <span className="text-[11px] text-amber-500 dark:text-amber-400 px-1">{unavailableMessage}</span>}
     </div>
   );
 }
