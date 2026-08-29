@@ -916,13 +916,67 @@ export default function Home() {
       {/* 📚 COURSES CATALOG */}
       <section id="courses" className="max-w-7xl mx-auto py-28 px-6">
         <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('coursesHeading')}</h2>
-        {coursesLoading ? (
-          <p className="text-center text-slate-400 text-sm">{t('coursesLoading')}</p>
-        ) : courses.length === 0 ? (
-          <p className="text-center text-slate-400 text-sm">{t('coursesEmpty')}</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {courses.map((course) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {/* IMIAKO — the AI English Tutor is its own always-on product, not
+              a row from the `courses` API, so it's hand-placed as the first
+              grid cell (== top of the grid, first grid child, no CSS
+              reordering needed) rather than living inside courses.map below.
+              Rendered unconditionally, independent of coursesLoading/
+              courses.length, so it's never hidden behind the loading state
+              and is still the one course-like card shown when the real
+              catalog is empty. */}
+          <Link
+            href="/dashboard/english-tutor"
+            className={`relative overflow-hidden rounded-3xl p-8 flex flex-col justify-between no-underline text-current transition-all duration-300 transform hover:scale-[1.02] border-2 border-transparent bg-origin-border shadow-[0_0_30px_rgba(168,85,247,0.25)] hover:shadow-[0_0_40px_rgba(168,85,247,0.4)] ${darkMode ? 'bg-[#0e1422]' : 'bg-white'}`}
+            style={{
+              backgroundImage: `linear-gradient(${darkMode ? '#0e1422' : '#ffffff'}, ${darkMode ? '#0e1422' : '#ffffff'}), linear-gradient(135deg, #fbbf24, #a855f7, #06b6d4)`,
+              backgroundOrigin: 'border-box',
+              backgroundClip: 'padding-box, border-box',
+            }}
+          >
+            <span className="absolute top-3 right-3 z-10 text-[10px] font-black uppercase tracking-widest text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-400 via-purple-500 to-cyan-500 shadow-lg shadow-purple-500/30">
+              {t('imiakoBadgeFreeTrial')}
+            </span>
+            <div>
+              <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-400 bg-purple-500/10 border-purple-500/20">
+                <Bot className="w-3 h-3" />
+                {t('imiakoBadgeAiCourse')}
+              </span>
+              <h3 className="text-lg font-black mt-5 mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                {t('imiakoCardTitle')}
+              </h3>
+              <ul className="text-xs md:text-sm text-slate-400 leading-relaxed font-medium mb-6 space-y-2 list-none pl-0">
+                <li className="flex gap-2">
+                  <span className="text-cyan-400 shrink-0">✓</span>
+                  {t('imiakoFeature1')}
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-cyan-400 shrink-0">✓</span>
+                  {t('imiakoFeature2')}
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-cyan-400 shrink-0">✓</span>
+                  {t('imiakoFeature3')}
+                </li>
+              </ul>
+            </div>
+            <div>
+              <p className="text-sm font-black mb-4 bg-gradient-to-r from-amber-400 via-purple-500 to-cyan-500 bg-clip-text text-transparent">
+                {t('imiakoPricing')}
+              </p>
+              <span className="block text-center py-3.5 bg-gradient-to-r from-amber-400 via-purple-500 to-cyan-500 text-white rounded-xl font-black text-xs shadow-md">
+                {t('imiakoCta')}
+              </span>
+            </div>
+          </Link>
+
+          {coursesLoading ? (
+            <p className="col-span-full text-center text-slate-400 text-sm">{t('coursesLoading')}</p>
+          ) : courses.length === 0 ? (
+            <p className="col-span-full text-center text-slate-400 text-sm">{t('coursesEmpty')}</p>
+          ) : (
+            courses.map((course) => {
               const countdown = course.saleActive ? getSaleCountdownLabel(course.discountEndDate, contentLang) : null;
               return (
                 <div
@@ -994,9 +1048,9 @@ export default function Home() {
                   </div>
                 </div>
               );
-            })}
-          </div>
-        )}
+            })
+          )}
+        </div>
       </section>
 
       {/* 🎤 LIVE TRAININGS & WORKSHOPS — scheduled one-off sessions, separate
