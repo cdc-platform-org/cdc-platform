@@ -377,7 +377,7 @@ export default function VIPAudioNarrator({
   const unavailableMessage =
     fallbackFailure === 'not_configured' || fallbackFailure === 'unauthorized'
       ? lang === 'ka'
-        ? 'ხმოვანი წაკითხვა საჭიროებს Azure API გასაღებს'
+        ? 'ხმოვანი წაკითხვებისთვის საჭიროა Azure API გასაღები'
         : 'Audio narration requires an Azure API key to be configured'
       : lang === 'ka'
         ? 'ხმოვანი წაკითხვა დროებით მიუწვდომელია'
