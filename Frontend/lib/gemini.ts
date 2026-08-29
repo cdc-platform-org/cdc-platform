@@ -95,12 +95,19 @@ export function isRetryableGeminiError(err: unknown): boolean {
   return /\b(503|429)\b/.test(message) || /overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand/i.test(message);
 }
 
-// Helper for the homepage's "CDC Career Assistant" chat widget
+// Streaming helper for the homepage's "CDC Career Assistant" chat widget
 // (pages/api/chat.ts) — `lang` steers the reply language, matching the
 // widget's GEO/ENG toggle. `history` carries prior turns so multi-step
 // flows (like the career quiz) have the context to know which question
 // comes next instead of treating every message as a fresh conversation.
-export async function askCdcAssistant(
+//
+// Yields text deltas as they arrive from Gemini instead of collecting the
+// full reply first — pages/api/chat.ts forwards each yielded chunk to the
+// browser over SSE the moment it's produced, so the widget shows the first
+// words well under a second in rather than waiting for the complete
+// response to generate server-side first (which for a multi-paragraph
+// career-quiz-result reply could take several seconds on its own).
+export async function* askCdcAssistantStream(
   message: string,
   lang: 'GEO' | 'ENG',
   history: ChatTurn[] = [],
@@ -112,7 +119,7 @@ export async function askCdcAssistant(
   // Undefined (the common case, no homepage default agent configured)
   // keeps today's behavior exactly as it was before this parameter existed.
   systemPromptOverride?: string
-): Promise<string> {
+): AsyncGenerator<string, void, unknown> {
   if (!client) throw new GeminiNotConfiguredError();
 
   // Admin-uploaded knowledge (routes/adminKnowledge.ts, converted to
@@ -136,14 +143,29 @@ export async function askCdcAssistant(
   let lastError: unknown;
   for (const modelName of MODEL_FALLBACK_SEQUENCE) {
     for (let attempt = 1; attempt <= ATTEMPTS_PER_MODEL; attempt++) {
+      // Tracks whether THIS attempt already streamed any real content to
+      // the caller before failing — once true, falling through to a
+      // different model/attempt is no longer safe (the caller has already
+      // forwarded partial text to the browser; retrying would duplicate or
+      // contradict it). A failure before any chunk went out is exactly the
+      // same "nothing user-visible happened yet, safe to retry" case the
+      // old non-streaming version handled.
+      let yieldedAny = false;
       try {
         const model = client.getGenerativeModel({ model: modelName, systemInstruction });
         const chat = model.startChat({ history: geminiHistory });
-        const result = await chat.sendMessage(message);
-        return result.response.text();
+        const result = await chat.sendMessageStream(message);
+        for await (const chunk of result.stream) {
+          const text = chunk.text();
+          if (!text) continue;
+          yieldedAny = true;
+          yield text;
+        }
+        return; // Fully streamed — done.
       } catch (err) {
         lastError = err;
         console.error(`[gemini] ${modelName} attempt ${attempt}/${ATTEMPTS_PER_MODEL} failed:`, err instanceof Error ? err.message : err);
+        if (yieldedAny) throw err; // Already user-visible — no safe fallback left, see comment above.
         // Unlike Backend's aiAgentService.ts (which also aborts its Gemini
         // loop on a non-retryable error), this file has no cross-vendor
         // rung to fall through to afterward — it's Gemini-only, a

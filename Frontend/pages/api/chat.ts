@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { askCdcAssistant, isGeminiConfigured, ChatTurn } from '../../lib/gemini';
+import { askCdcAssistantStream, isGeminiConfigured, ChatTurn } from '../../lib/gemini';
 import { getCdcKnowledgeContext } from '../../lib/cdcKnowledgeBase';
 import { getHomepageAgentConfig } from '../../lib/platformAgentConfig';
 
@@ -42,24 +42,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
+  // From here on the response is Server-Sent Events, not a single JSON
+  // body — headers go out immediately (the browser sees the connection
+  // open right away) and each Gemini text chunk is written to the client
+  // the moment askCdcAssistantStream yields it, rather than buffering the
+  // full reply server-side first. The two early-exit branches above (bad
+  // method, missing message, not configured) intentionally stay plain
+  // JSON with a real HTTP status — they fail before any generation starts,
+  // so there is nothing to stream yet and no reason to give up a normal
+  // status code for those cases. `X-Accel-Buffering: no` asks any
+  // reverse-proxy in front of this (Vercel's routing layer included) not
+  // to buffer the response, which would otherwise defeat the whole point
+  // by holding chunks until the connection closes.
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+
+  const send = (payload: Record<string, unknown>) => {
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  };
+
   try {
     // A PlatformAgent set as the homepage default (Admin Panel's "AI Agents"
     // tab) replaces both the persona and the knowledge scope; when none is
     // set (the common case) this is null and behavior is exactly what it
     // was before this feature existed — full knowledge base, hardcoded
-    // SYSTEM_PROMPT.
+    // SYSTEM_PROMPT. Resolved before the stream starts (a config lookup,
+    // not generation) so a slow DB read here can't be mistaken for slow
+    // Gemini output.
     const homepageAgent = await getHomepageAgentConfig();
     const knowledgeContext = await getCdcKnowledgeContext(homepageAgent?.knowledgeSourceFilenames);
 
-    // askCdcAssistant already retries across its own model-fallback sequence
-    // (gemini-flash-latest → gemini-1.5-flash → gemini-1.5-pro, 2 attempts
-    // each — see lib/gemini.ts) before ever throwing, so this only needs a
-    // single call, not its own retry loop on top of that.
-    const reply = await askCdcAssistant(message, effectiveLang, sanitizeHistory(history), knowledgeContext, homepageAgent?.systemPrompt);
-    return res.status(200).json({ reply });
+    for await (const chunk of askCdcAssistantStream(message, effectiveLang, sanitizeHistory(history), knowledgeContext, homepageAgent?.systemPrompt)) {
+      send({ type: 'chunk', text: chunk });
+    }
+    send({ type: 'done' });
   } catch (error) {
-    console.error('[api/chat] Gemini chat error (all attempts exhausted):', describeGeminiError(error));
-    return res.status(500).json({
+    console.error('[api/chat] Gemini chat stream error (all attempts exhausted):', describeGeminiError(error));
+    send({
+      type: 'error',
       reply: effectiveLang === 'GEO' ? '❌ ასისტენტთან კავშირის ხარვეზი.' : '❌ Error connecting to the assistant.',
       // Non-sensitive classification only (never the raw Gemini error text,
       // which can echo back request content) — lets the browser network tab
@@ -67,6 +91,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // needing server log access.
       reason: classifyGeminiError(error),
     });
+  } finally {
+    res.end();
   }
 }
 

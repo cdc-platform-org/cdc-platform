@@ -302,22 +302,60 @@ export default function Home() {
     return <span className="font-sans inline-block font-bold tracking-normal">{text}</span>;
   };
 
-  // One request/response round trip — returns the reply text, or throws.
-  // No UI state touched here, so the caller can retry it silently without
-  // flickering chatSending/chatError between attempts.
-  const requestChatReply = async (userText: string, history: { role: 'user' | 'model'; text: string }[]): Promise<string> => {
+  // Streams one request/response round trip, forwarding each Gemini text
+  // delta to `onChunk` as soon as it arrives over SSE (see pages/api/chat.ts)
+  // instead of waiting for the full reply to buffer. Resolves once the
+  // stream ends cleanly, or throws on a pre-flight JSON error (bad request/
+  // not configured — never started streaming) or a mid-stream error frame
+  // from the server (every model in the fallback chain failed, or one
+  // failed after already streaming some content — see askCdcAssistantStream's
+  // own comment for why that specific case can't safely retry itself).
+  const requestChatReplyStream = async (
+    userText: string,
+    history: { role: 'user' | 'model'; text: string }[],
+    onChunk: (text: string) => void
+  ): Promise<void> => {
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: userText, lang: legacyLang, history }),
     });
-    const data = await response.json();
-    // /api/chat already retries transient Gemini failures server-side,
-    // across every model in its own fallback sequence (see
-    // pages/api/chat.ts / lib/gemini.ts) — a non-2xx response here means
-    // that whole chain was exhausted, not just a single hiccup.
-    if (!response.ok) throw new Error(data?.reply || 'Request failed');
-    return data.reply as string;
+    if (!response.ok) {
+      // A pre-flight failure (missing message, GEMINI_API_KEY unset) never
+      // switches the response over to SSE at all — it's the same plain
+      // JSON body/status this always returned, from before streaming.
+      const data = await response.json().catch(() => null);
+      throw new Error(data?.reply || 'Request failed');
+    }
+    if (!response.body) throw new Error('Streaming is not supported by this browser.');
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) return;
+      buffer += decoder.decode(value, { stream: true });
+
+      // SSE frames are separated by a blank line; one fetch chunk can
+      // contain zero, one, or several complete frames, so split on that
+      // and keep any trailing partial frame in the buffer for next read.
+      const frames = buffer.split('\n\n');
+      buffer = frames.pop() ?? '';
+      for (const frame of frames) {
+        const dataLine = frame.split('\n').find((line) => line.startsWith('data: '));
+        if (!dataLine) continue;
+        const payload = JSON.parse(dataLine.slice('data: '.length));
+        if (payload.type === 'chunk' && typeof payload.text === 'string') {
+          onChunk(payload.text);
+        } else if (payload.type === 'error') {
+          throw new Error(payload.reply || 'Request failed');
+        }
+        // 'done' needs no handling — the server closes the connection right
+        // after it, which surfaces here as reader.read() returning done:true.
+      }
+    }
   };
 
   const sendChatMessage = async (rawText: string) => {
@@ -330,33 +368,62 @@ export default function Home() {
     const history = chatMessages
       .slice(1)
       .map((m) => ({ role: m.sender === 'user' ? ('user' as const) : ('model' as const), text: m.text }));
-    const updatedMessages = [...chatMessages, { sender: 'user' as const, text: userText }];
-    setChatMessages(updatedMessages);
+    const withUserMessage = [...chatMessages, { sender: 'user' as const, text: userText }];
+    // An empty placeholder bot message that streamed chunks append into as
+    // they arrive — its presence with still-empty text is also what keeps
+    // the typing-dots indicator showing below (see the render condition),
+    // so there's no separate "loading" flag to keep in sync with this one:
+    // the moment the first chunk lands, the text stops being empty and the
+    // dots are naturally replaced by the real, growing reply.
+    const placeholderIndex = withUserMessage.length;
+    setChatMessages([...withUserMessage, { sender: 'bot' as const, text: '' }]);
     setUserInput('');
     setChatError(null);
     setChatSending(true);
 
+    // Set directly by onChunk below rather than inferred from how/where a
+    // later failure happened — the one thing that actually determines
+    // whether a silent retry is safe is whether the browser has already
+    // rendered real assistant text for this turn, not the shape of the
+    // error that eventually surfaced.
+    let receivedAnyChunk = false;
+    const appendChunk = (text: string) => {
+      receivedAnyChunk = true;
+      setChatMessages((prev) => {
+        const next = [...prev];
+        const current = next[placeholderIndex];
+        if (!current) return prev;
+        next[placeholderIndex] = { ...current, text: current.text + text };
+        return next;
+      });
+    };
+    const attempt = () => requestChatReplyStream(userText, history, appendChunk);
+
     try {
-      let reply: string;
       try {
-        reply = await requestChatReply(userText, history);
+        await attempt();
       } catch {
+        if (receivedAnyChunk) throw new Error('Stream interrupted after partial content.');
         // One silent automatic retry, after a short pause — covers a
         // transient failure reaching THIS specific request (a dropped
-        // connection, the serverless function briefly recycling, etc.),
-        // distinct from Gemini itself being unavailable (that's already
-        // handled server-side, see requestChatReply's own comment). Only
-        // the manual "try again" error UI below is shown if this also
-        // fails. chatSending intentionally stays true across both
-        // attempts, so the UI shows one continuous "sending", not a
-        // flicker between two separate ones.
+        // connection, the serverless function briefly recycling, etc.)
+        // before any real content reached the browser. chatSending
+        // intentionally stays true across both attempts, so the UI shows
+        // one continuous "sending", not a flicker between two separate ones.
         await new Promise((resolve) => setTimeout(resolve, 1200));
-        reply = await requestChatReply(userText, history);
+        await attempt();
       }
-      setChatMessages([...updatedMessages, { sender: 'bot', text: reply }]);
-    } catch (error) {
+    } catch {
       setChatError(t('chatConnectionError'));
       setLastFailedInput(userText);
+      // Drop the placeholder only if it never received any content — a
+      // partial reply that broke mid-stream stays visible (the user did
+      // get *something*), with the error banner explaining the connection
+      // dropped and offering to send the message again as a fresh turn.
+      setChatMessages((prev) => {
+        const current = prev[placeholderIndex];
+        return current && current.text === '' ? prev.filter((_, i) => i !== placeholderIndex) : prev;
+      });
     } finally {
       setChatSending(false);
     }
@@ -1198,19 +1265,25 @@ export default function Home() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs bg-slate-50 dark:bg-[#0b0f17]">
-              {chatMessages.map((msg, i) => (
-                <div key={i} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`p-3 rounded-xl max-w-[85%] ${msg.sender === 'user' ? 'bg-cyan-500 text-white' : 'bg-white dark:bg-[#161f30] border border-slate-200 dark:border-slate-800'}`}>
-                    {msg.sender === 'bot' ? (
-                      <ReactMarkdown components={chatMarkdownComponents}>{msg.text}</ReactMarkdown>
-                    ) : (
-                      msg.text
-                    )}
+              {chatMessages.map((msg, i) =>
+                // The still-empty streaming placeholder (see sendChatMessage)
+                // renders as the typing-dots indicator below instead of an
+                // empty bubble of its own — skipping it here avoids showing
+                // both at once for the instant before the first chunk lands.
+                msg.sender === 'bot' && msg.text === '' ? null : (
+                  <div key={i} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`p-3 rounded-xl max-w-[85%] ${msg.sender === 'user' ? 'bg-cyan-500 text-white' : 'bg-white dark:bg-[#161f30] border border-slate-200 dark:border-slate-800'}`}>
+                      {msg.sender === 'bot' ? (
+                        <ReactMarkdown components={chatMarkdownComponents}>{msg.text}</ReactMarkdown>
+                      ) : (
+                        msg.text
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              )}
 
-              {chatSending && (
+              {chatSending && chatMessages[chatMessages.length - 1]?.sender === 'bot' && chatMessages[chatMessages.length - 1]?.text === '' && (
                 <div className="flex justify-start">
                   <div className="p-3 rounded-xl bg-white dark:bg-[#161f30] border border-slate-200 dark:border-slate-800 flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.3s]" />
