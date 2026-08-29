@@ -197,7 +197,15 @@ jobs:
         working-directory: Frontend
         run: |
           pnpm run build
-          nohup pnpm run start -- -p 3000 > frontend.log 2>&1 &
+          # No `--` before `-p`: Next 14's `next start` CLI treats a literal
+          # `--` as "stop parsing flags", so `pnpm run start -- -p 3000`
+          # forwards `-p`/`3000` as two positional args instead of a flag —
+          # `next start` then reads "-p" itself as the project directory and
+          # exits 1 immediately ("Invalid project directory provided").
+          # Reproduced locally against the pinned pnpm@9.15.0: this exact
+          # step has been failing before Playwright ever runs, which is why
+          # every recent Nightly QA run failed with no E2E test involved.
+          nohup pnpm run start -p 3000 > frontend.log 2>&1 &
           npx wait-on -t 180000 http-get://127.0.0.1:3000
 
       - name: Install Playwright browsers
