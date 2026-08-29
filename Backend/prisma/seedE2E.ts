@@ -57,7 +57,7 @@ async function main() {
 
   const course = await prisma.course.upsert({
     where: { id: COURSE_ID },
-    update: { published: true },
+    update: { status: 'PUBLISHED' },
     create: {
       id: COURSE_ID,
       title: 'QA E2E Test Course',
@@ -65,7 +65,7 @@ async function main() {
       category: 'QA Fixtures',
       lessons: [],
       originalPrice: 10000,
-      published: true,
+      status: 'PUBLISHED',
     },
   });
 
