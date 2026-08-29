@@ -2,6 +2,7 @@
   "name": "cdc-platform-frontend",
   "private": true,
   "version": "1.0.0",
+  "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
