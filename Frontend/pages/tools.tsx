@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
+import { GetStaticProps } from 'next';
+import { useTranslation } from 'next-i18next';
+import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import Head from 'next/head';
 import Link from 'next/link';
 import {
@@ -19,6 +22,7 @@ import {
   EyeOff,
   Info,
   KeyRound,
+  Mic,
 } from 'lucide-react';
 import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
@@ -357,6 +361,12 @@ export default function ToolsPage() {
   const router = useRouter();
   const lang = resolveLocale(router.locale);
   const t = dict[lang];
+  // The AI Voice & Video Media Studio card below is newly authored content
+  // with real translations in all 9 site locales (not just the 6 this
+  // page's own `dict` above covers) — a dedicated next-i18next namespace
+  // gives it genuine tr/hy/az text instead of resolveLocale()'s English
+  // fallback, without retranslating this file's older cards.
+  const { t: tm } = useTranslation('mediaStudio');
   const { isAuthenticated, user } = useAuth();
   const { openAuthModal } = useAuthModal();
   const [infoModal, setInfoModal] = useState<'studentBlocked' | 'verificationRequired' | null>(null);
@@ -528,6 +538,34 @@ export default function ToolsPage() {
                   {t.learnMore}
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* Card 2.5: AI Voice & Video Media Studio — real, available
+              product, open to any logged-in user (not Business-gated like
+              Cards 1/2 above, since it's a general productivity tool, not
+              an enterprise feature) — the CTA links straight into
+              ProtectedRoute, which handles the login redirect itself. */}
+          <div className="lg:col-span-3 rounded-3xl border border-cyan-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-cyan-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
+            <div className="shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
+              <Mic className="w-7 h-7 text-white" />
+            </div>
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <h2 className="text-xl font-black tracking-wide">{tm('catalogTitle')}</h2>
+                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                  {t.aiAvailable}
+                </span>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-2">{tm('catalogDesc')}</p>
+              <p className="text-xs font-bold text-purple-600 dark:text-purple-400 mb-5">{tm('catalogTag')}</p>
+              <Link
+                href="/dashboard/tools/media-studio"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+              >
+                <Mic className="w-4 h-4" />
+                {tm('catalogCta')}
+              </Link>
             </div>
           </div>
 
@@ -755,3 +793,7 @@ export default function ToolsPage() {
     </div>
   );
 }
+
+export const getStaticProps: GetStaticProps = async ({ locale }) => ({
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['mediaStudio'])) },
+});

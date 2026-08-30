@@ -110,11 +110,17 @@ export interface InlineImagePart {
 // request. A File API upload is how audio (and anything too large to inline)
 // gets into a generateContent call.
 export interface GeminiFileRef {
-  mimeType: string;
+  // Optional — omitted for a YouTube URL fileUri. Gemini's file_data.mime_type
+  // is only meaningful for a File API upload reference (audio/video bytes);
+  // a public YouTube watch/shorts URL is recognized by Gemini's own video-
+  // understanding feature purely from the fileUri shape (see
+  // mediaStudioService.ts), and sending a mimeType alongside one is not part
+  // of that documented contract, so it's left out rather than guessed at.
+  mimeType?: string;
   fileUri: string;
 }
 
-type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } } | { fileData: { mimeType: string; fileUri: string } };
+type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } } | { fileData: { mimeType?: string; fileUri: string } };
 
 // Shared by callTextModel/callTextModelPlain below — runs the same
 // gemini-flash-latest -> gemini-flash-lite-latest -> gemini-3.5-flash
@@ -136,7 +142,12 @@ async function runGeminiFallbackSequence(
           model: modelName,
           generationConfig: { responseMimeType, temperature },
         }, GEMINI_REQUEST_OPTIONS);
-        const result = await model.generateContent(parts);
+        // The installed SDK's own FileData type requires mimeType: string
+        // (no optional variant) — stricter than the actual REST contract,
+        // which treats it as optional (confirmed live: a YouTube fileUri
+        // with mime_type omitted is accepted and processed correctly). Cast
+        // narrowly here rather than loosening GeminiPart's public shape.
+        const result = await model.generateContent(parts as any);
         const raw = result.response.text();
         if (!raw) throw new AiAgentError('Gemini returned an empty response.');
         return { raw, lastError: null };
@@ -225,7 +236,10 @@ export async function callTextModelPlain(prompt: string, temperature: number, fi
   }
 
   const parts: GeminiPart[] = fileRef
-    ? [{ fileData: { mimeType: fileRef.mimeType, fileUri: fileRef.fileUri } }, { text: prompt }]
+    ? [
+        { fileData: fileRef.mimeType ? { mimeType: fileRef.mimeType, fileUri: fileRef.fileUri } : { fileUri: fileRef.fileUri } },
+        { text: prompt },
+      ]
     : [{ text: prompt }];
 
   const geminiResult = await runGeminiFallbackSequence(parts, temperature, 'text/plain');

@@ -19,6 +19,7 @@
     "@stripe/stripe-js": "^9.13.0",
     "axios": "^1.6.5",
     "canvas-confetti": "^1.9.4",
+    "docx": "^9.7.1",
     "dompurify": "^3.4.13",
     "i18next": "23.14.0",
     "lucide-react": "^1.27.0",

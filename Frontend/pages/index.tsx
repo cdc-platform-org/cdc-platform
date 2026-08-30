@@ -626,6 +626,7 @@ export default function Home() {
             <Link href="/agency" className="hover:text-cyan-500 transition no-underline text-current">{safeText(t('studio'))}</Link>
             <Link href="/community" className="hover:text-cyan-500 transition no-underline text-current">{t('jobs')}</Link>
             <Link href="/forum" className="hover:text-cyan-500 transition no-underline text-current">{t('forum')}</Link>
+            <Link href="/tools" className="hover:text-cyan-500 transition no-underline text-current">{t('toolsHeading')}</Link>
           </div>
 
           <div className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-4 shrink-0">
@@ -695,6 +696,7 @@ export default function Home() {
             <Link href="/agency" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{safeText(t('studio'))}</Link>
             <Link href="/community" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('jobs')}</Link>
             <Link href="/forum" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('forum')}</Link>
+            <Link href="/tools" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('toolsHeading')}</Link>
             <UserMenu
               className="sm:hidden mt-2"
               loginFallback={

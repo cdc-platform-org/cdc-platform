@@ -209,3 +209,12 @@ export const STRIPE_WEBHOOK_SECRET = cleanEnv(process.env.STRIPE_WEBHOOK_SECRET)
 // wire in a real rate provider before this sees meaningful volume.
 export const STRIPE_GEL_TO_USD_RATE = Number(process.env.STRIPE_GEL_TO_USD_RATE || '0.36');
 export const STRIPE_GEL_TO_EUR_RATE = Number(process.env.STRIPE_GEL_TO_EUR_RATE || '0.33');
+// Azure AI Speech (Cognitive Services) — text-to-speech for the Media
+// Studio tool's voice narration feature (services/azureSpeechService.ts).
+// Deliberately NOT requireEnv() — same "optional until configured, 501
+// until set" posture as every other paid AI provider above; the /api/tts
+// routes respond 501 until both of these are set. A Speech resource's
+// region (e.g. "westeurope") is required alongside the key — unlike
+// Gemini's single global endpoint, Azure Speech is called per-region.
+export const AZURE_SPEECH_KEY = cleanEnv(process.env.AZURE_SPEECH_KEY);
+export const AZURE_SPEECH_REGION = cleanEnv(process.env.AZURE_SPEECH_REGION);

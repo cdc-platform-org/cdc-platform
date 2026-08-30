@@ -62,6 +62,8 @@ import adminCompaniesRoutes from './routes/adminCompanies';
 import adminVerificationsRoutes from './routes/adminVerifications';
 import aiRoutes from './routes/ai';
 import agentsRoutes from './routes/agents';
+import ttsRoutes from './routes/tts';
+import mediaStudioRoutes from './routes/mediaStudio';
 import chatApiRoutes from './routes/chatApi';
 import adminPromosRoutes from './routes/adminPromos';
 import successStoriesRoutes from './routes/successStories';
@@ -259,6 +261,8 @@ app.use('/api/admin/cyber-sentinel', adminCyberSentinelRoutes);
 app.use('/api/admin/companies', adminCompaniesRoutes);
 app.use('/api/admin/individual-verifications', adminVerificationsRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/tts', ttsRoutes);
+app.use('/api/media-studio', mediaStudioRoutes);
 // CDC Business AI — /api/agents is the authenticated dashboard-facing CRUD
 // (config, knowledge base, analytics); /api/v1/chat is the public,
 // unauthenticated endpoint the embeddable widget calls directly from

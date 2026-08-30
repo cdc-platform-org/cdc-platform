@@ -464,6 +464,80 @@ export async function sendPayoutIbanChangedEmail(email: string): Promise<void> {
   await sendEmail(email, 'თქვენი გადახდის IBAN შეიცვალა — CDC', html, link);
 }
 
+// Basic HTML-escaping for AI-generated + user-edited free text landing
+// inside an HTML email body — without this, transcript/notes content
+// containing "<", ">", or "&" would corrupt the surrounding markup (at
+// best) or inject arbitrary HTML into an email sent from CDC's own
+// domain (at worst). ka+en only, same precedent as this file's other
+// dashboard-feature emails (sendRecordingReadyEmail, sendRecordingReady*
+// siblings) — not the full 9-locale sweep, since this is a one-off
+// user-triggered export, not site-wide UI copy.
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Very long AI transcripts are still useful in full, but an unbounded
+// email body risks provider size limits / being clipped by the reader's
+// inbox — capped generously (roughly 15-20 printed pages) with the export
+// buttons on the page itself as the real way to get the complete text
+// past this point.
+const MEDIA_STUDIO_EMAIL_MAX_CHARS = 60_000;
+function truncateForEmail(text: string, lang: 'ka' | 'en'): string {
+  if (text.length <= MEDIA_STUDIO_EMAIL_MAX_CHARS) return escapeHtml(text);
+  const notice = lang === 'en' ? '\n\n[Truncated — download the full text from the Media Studio page.]' : '\n\n[შემოკლებულია — სრული ტექსტი ჩამოტვირთეთ Media Studio გვერდიდან.]';
+  return escapeHtml(text.slice(0, MEDIA_STUDIO_EMAIL_MAX_CHARS) + notice);
+}
+
+// "Send via Email" action on the AI Voice & Video Media Studio's
+// transcript/notes editor (Frontend's MediaStudioPage) — a user-composed
+// destination address, unlike every other email in this file (which target
+// a fixed system-known recipient). Kept safe to expose despite that by the
+// route's own authentication + tight per-user rate limit (see
+// routes/mediaStudio.ts), not by restricting the recipient here.
+export async function sendMediaStudioExport(params: {
+  to: string;
+  senderEmail: string;
+  transcript?: string;
+  notes?: string;
+  lang?: 'ka' | 'en';
+}): Promise<void> {
+  const { to, senderEmail, transcript, notes, lang = 'ka' } = params;
+  const link = `${FRONTEND_URL}/dashboard/tools/media-studio`;
+
+  const sections: string[] = [];
+  if (notes) {
+    sections.push(
+      `<h3 style="margin:24px 0 8px;font-size:15px;color:#0f172a;">${lang === 'en' ? 'Notes & Summary' : 'კონსპექტი და შეჯამება'}</h3>` +
+        `<div style="white-space:pre-wrap;font-size:13px;line-height:1.7;color:#334155;">${truncateForEmail(notes, lang)}</div>`
+    );
+  }
+  if (transcript) {
+    sections.push(
+      `<h3 style="margin:24px 0 8px;font-size:15px;color:#0f172a;">${lang === 'en' ? 'Full Transcript' : 'სრული ტრანსკრიპტი'}</h3>` +
+        `<div style="white-space:pre-wrap;font-size:13px;line-height:1.7;color:#334155;">${truncateForEmail(transcript, lang)}</div>`
+    );
+  }
+
+  const intro =
+    lang === 'en'
+      ? `<strong>${escapeHtml(senderEmail)}</strong> shared this from CDC's AI Voice &amp; Video Media Studio.`
+      : `<strong>${escapeHtml(senderEmail)}</strong>-მა გაგიზიარათ ეს მასალა CDC-ის AI ხმოვანი და ვიდეო სტუდიიდან.`;
+
+  const html = wrapTemplate(
+    lang === 'en' ? 'AI Voice & Video Studio — Export' : 'AI ხმოვანი და ვიდეო სტუდია — ექსპორტი',
+    `<p>${intro}</p>${sections.join('')}`,
+    lang === 'en' ? 'Open Media Studio' : 'Media Studio-ს გახსნა',
+    link
+  );
+  const subject = lang === 'en' ? 'AI Voice & Video Studio — shared export' : 'AI ხმოვანი და ვიდეო სტუდია — გაზიარებული მასალა';
+
+  if (!resend) {
+    console.log(`[DEV EMAIL] To: ${to} | Subject: ${subject} | From: ${senderEmail} | (not actually sent — RESEND_API_KEY unset)`);
+    return;
+  }
+  await resend.emails.send({ from: EMAIL_FROM, to, subject, html, replyTo: senderEmail });
+}
+
 export async function sendPasswordResetEmail(email: string, token: string, lang: 'ka' | 'en' = 'ka'): Promise<void> {
   const link = `${FRONTEND_URL}/reset-password?token=${token}`;
   const html =
