@@ -3,13 +3,13 @@ import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import Head from 'next/head';
 import { Mic, Video, Link2, Download, Copy, Mail, FileText, FileDown, Loader2, X, AlertCircle } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
 import BackButton from '../../../src/components/common/BackButton';
 import FileDropzone from '../../../src/components/shared/FileDropzone';
+import SEOHead from '../../../src/components/seo/SEOHead';
 import { useAuth } from '../../../src/context/AuthContext';
 import {
   getTtsVoices,
@@ -237,10 +237,6 @@ function MediaStudioContent() {
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
-      <Head>
-        <title>{`${t('pageTitle')} | CDC Platform`}</title>
-      </Head>
-
       <SiteHeader />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 md:py-12 flex-1 w-full">
@@ -560,10 +556,17 @@ function MediaStudioContent() {
 }
 
 export default function MediaStudioPage() {
+  const { t } = useTranslation('mediaStudio');
   return (
-    <ProtectedRoute>
-      <MediaStudioContent />
-    </ProtectedRoute>
+    <>
+      {/* See english-tutor/index.tsx's identical comment: rendered above
+          ProtectedRoute, not inside it, so the noindex tag actually reaches
+          an unauthenticated crawler's DOM. */}
+      <SEOHead title={t('pageTitle')} description={t('catalogDesc')} noIndex />
+      <ProtectedRoute>
+        <MediaStudioContent />
+      </ProtectedRoute>
+    </>
   );
 }
 

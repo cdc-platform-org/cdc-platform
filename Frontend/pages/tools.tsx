@@ -3,7 +3,6 @@ import { useRouter } from 'next/router';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import Head from 'next/head';
 import Link from 'next/link';
 import {
   Bot,
@@ -33,6 +32,24 @@ import { PRODUCT_OVERVIEW } from '../src/data/productOverviews';
 import { useAuth } from '../src/context/AuthContext';
 import { useAuthModal } from '../src/context/AuthModalContext';
 import { resolveLocale } from '@/src/utils/locale';
+import SEOHead from '@/src/components/seo/SEOHead';
+import { buildSoftwareApplicationSchema } from '@/src/utils/seo';
+
+// Real per-locale copy for all 9 site locales (not the 6-locale `dict`
+// below, which still aliases de/es/fr/uk to English strings) — meta
+// descriptions are short enough to translate properly for every locale
+// rather than following that older fallback pattern.
+const META_DESCRIPTION: Record<string, string> = {
+  ka: 'გაეცანით CDC-ის AI ციფრულ ხელსაწყოებს — Enterprise AI ასისტენტი, საგამოცდო სისტემა, ხმისა და ვიდეოს სტუდია და სხვა, შექმნილი ბიზნესებისა და დამსაქმებლებისთვის.',
+  en: "Explore CDC's AI-powered digital tools — Enterprise AI Assistant, Proctored Exams, Voice & Video Studio, and more, built for businesses and employers.",
+  de: 'Entdecken Sie die KI-gestützten Tools von CDC — Enterprise AI Assistant, überwachte Prüfungen, Sprach- und Videostudio und mehr, entwickelt für Unternehmen und Arbeitgeber.',
+  es: 'Descubre las herramientas digitales con IA de CDC — Asistente de IA empresarial, exámenes supervisados, estudio de voz y vídeo y más, creadas para empresas y empleadores.',
+  fr: "Découvrez les outils numériques IA de CDC — Assistant IA d'entreprise, examens surveillés, studio voix et vidéo, et plus encore, conçus pour les entreprises et les employeurs.",
+  uk: 'Ознайомтеся з цифровими AI-інструментами CDC — корпоративний AI-асистент, іспити з проктерингом, студія голосу та відео й інше, створені для бізнесу та роботодавців.',
+  tr: "CDC'nin yapay zeka destekli dijital araçlarını keşfedin — Kurumsal AI Asistanı, gözetimli sınavlar, Ses ve Video Stüdyosu ve daha fazlası, işletmeler ve işverenler için tasarlandı.",
+  hy: 'Բացահայտեք CDC-ի AI-ով աշխատող թվային գործիքները՝ կորպորատիվ AI օգնական, վերահսկվող քննություններ, ձայնի և տեսանյութի ստուդիա և ավելին՝ ստեղծված բիզնեսների և գործատուների համար։',
+  az: 'CDC-nin süni intellekt əsaslı rəqəmsal alətlərini kəşf edin — Korporativ AI Assistenti, nəzarətli imtahanlar, Səs və Video Studiyası və digərləri, biznes və işəgötürənlər üçün hazırlanıb.',
+};
 
 const dict = {
   ka: {
@@ -394,9 +411,17 @@ export default function ToolsPage() {
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
-      <Head>
-        <title>{`${t.title} | CDC Platform`}</title>
-      </Head>
+      <SEOHead
+        title={t.title}
+        description={META_DESCRIPTION[router.locale ?? 'ka'] ?? META_DESCRIPTION.en}
+        jsonLd={buildSoftwareApplicationSchema({
+          type: 'SoftwareApplication',
+          name: tm('catalogTitle'),
+          description: tm('catalogDesc'),
+          path: '/dashboard/tools/media-studio',
+          applicationCategory: 'MultimediaApplication',
+        })}
+      />
 
       <SiteHeader />
 

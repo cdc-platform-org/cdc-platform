@@ -1,0 +1,33 @@
+# cdc.org.ge — see pages/sitemap.xml.ts for the generated sitemap and
+# src/components/seo/SEOHead.tsx for the per-page <meta name="robots">
+# (noindex) applied to every route below, so this file and that component
+# stay in agreement rather than drifting apart. Disallow entries here mirror
+# the exact set of pages/*.tsx wrapped in <ProtectedRoute> or <AdminGuard>
+# (verified against the current pages/ tree, not guessed) plus /api/.
+
+User-agent: *
+Allow: /
+
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /account/
+Disallow: /payments/
+Disallow: /wallet
+Disallow: /orders/
+Disallow: /onboarding
+Disallow: /messages/
+Disallow: /profile/settings
+Disallow: /gigs/post
+Disallow: /gigs/*/applications
+Disallow: /vacancies/post
+Disallow: /vacancies/*/applications
+Disallow: /instructor/marketing
+Disallow: /freelancer/exam
+Disallow: /forum/*/new
+Disallow: /courses/*/learn
+Disallow: /courses/*/exam
+Disallow: /auth/oauth-callback
+Disallow: /auth/pending-approval
+
+Sitemap: https://cdc.org.ge/sitemap.xml

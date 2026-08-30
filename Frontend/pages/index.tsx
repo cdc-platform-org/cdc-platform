@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
@@ -33,6 +32,8 @@ import { formatPrice, getSaleCountdownLabel } from '../src/utils/coursePricing';
 import { Tutorial } from '../src/types/tutorial';
 import { getFeaturedTutorial, tutorialTitle } from '../src/services/tutorialService';
 import TutorialVideoModal from '../src/components/shared/TutorialVideoModal';
+import SEOHead from '../src/components/seo/SEOHead';
+import { ORGANIZATION_SCHEMA, buildSoftwareApplicationSchema, buildWebSiteSchema } from '../src/utils/seo';
 
 const DEFAULT_HOMEPAGE_STATS: HomepageStat[] = [
   { valueKa: '200+', labelKa: 'კურსდამთავრებული', valueEn: '200+', labelEn: 'Graduates' },
@@ -436,9 +437,20 @@ export default function Home() {
 
   return (
     <div className={`min-h-screen font-sans antialiased transition-colors duration-300 relative overflow-hidden ${darkMode ? 'text-slate-200 bg-[#0b0f19]' : 'text-slate-800 bg-[#f1f5f9]'}`}>
-      <Head>
-        <title>CDC | ციფრული პროფესიების ცენტრი</title>
-      </Head>
+      <SEOHead
+        description={t('metaDescription')}
+        jsonLd={[
+          ORGANIZATION_SCHEMA,
+          buildWebSiteSchema(),
+          buildSoftwareApplicationSchema({
+            type: 'EducationalApplication',
+            name: t('imiakoCardTitle'),
+            description: t('imiakoFeature1'),
+            path: '/dashboard/english-tutor',
+            applicationCategory: 'EducationalApplication',
+          }),
+        ]}
+      />
 
       {/* Business-only gate modals for the Enterprise AI Assistant trial CTA */}
       {aiInfoModal && (
