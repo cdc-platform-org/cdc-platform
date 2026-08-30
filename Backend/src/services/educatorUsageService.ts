@@ -22,7 +22,9 @@ export interface EducatorUsageStatus {
 export async function getEducatorUsage(userId: string): Promise<EducatorUsageStatus> {
   const since = new Date(Date.now() - WINDOW_MS);
   const [generationsUsed, gradingsUsed] = await Promise.all([
-    prisma.educatorGeneration.count({ where: { userId, type: { in: ['TEST_GENERATOR', 'RUBRIC'] }, createdAt: { gte: since } } }),
+    prisma.educatorGeneration.count({
+      where: { userId, type: { in: ['TEST_GENERATOR', 'RUBRIC', 'SEN', 'LESSON_PLAN', 'BUREAUCRACY', 'PARENT_REPORT'] }, createdAt: { gte: since } },
+    }),
     prisma.educatorGeneration.count({ where: { userId, type: 'GRADING', createdAt: { gte: since } } }),
   ]);
   return {

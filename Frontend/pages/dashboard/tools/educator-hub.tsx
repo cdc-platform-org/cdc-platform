@@ -45,6 +45,8 @@ import {
   GeneratedRubric,
   GradedHomework,
   QuizSubmissionSummary,
+  generateDifferentiatedTask,
+  GeneratedDifferentiatedTask,
 } from '../../../src/services/educatorHubService';
 
 type TabId = 'test' | 'rubric' | 'grading' | 'sen' | 'lessonPlan' | 'bureaucracy' | 'parentReports';
@@ -53,10 +55,10 @@ const REAL_TABS: { id: TabId; icon: typeof FileText }[] = [
   { id: 'test', icon: FileText },
   { id: 'rubric', icon: ClipboardList },
   { id: 'grading', icon: PenSquare },
+  { id: 'sen', icon: Puzzle },
 ];
 
-const COMING_SOON_TABS: { id: TabId; icon: typeof Puzzle }[] = [
-  { id: 'sen', icon: Puzzle },
+const COMING_SOON_TABS: { id: TabId; icon: typeof BookOpen }[] = [
   { id: 'lessonPlan', icon: BookOpen },
   { id: 'bureaucracy', icon: FolderKanban },
   { id: 'parentReports', icon: Mail },
@@ -385,6 +387,36 @@ function EducatorHubContent() {
     }
   };
 
+  // ---- Module 4: Differentiated assignments & SEN adaptations ----
+  const [senSubject, setSenSubject] = useState('');
+  const [senGrade, setSenGrade] = useState('');
+  const [senTopic, setSenTopic] = useState('');
+  const [senAdaptations, setSenAdaptations] = useState(false);
+  const [senGenerating, setSenGenerating] = useState(false);
+  const [senError, setSenError] = useState<string | null>(null);
+  const [senResult, setSenResult] = useState<GeneratedDifferentiatedTask | null>(null);
+
+  const handleGenerateSen = async () => {
+    if (!senSubject.trim() || !senGrade.trim() || !senTopic.trim()) return;
+    setSenGenerating(true);
+    setSenError(null);
+    try {
+      const result = await generateDifferentiatedTask({
+        subject: senSubject,
+        grade: senGrade,
+        topic: senTopic,
+        senAdaptations,
+        language: lang,
+      });
+      setSenResult(result);
+      refreshState();
+    } catch (err) {
+      handleModuleError(err, t('genericError'), setSenError);
+    } finally {
+      setSenGenerating(false);
+    }
+  };
+
   const hasAccess = hubState?.hasAccess ?? false;
   const usage = hubState?.usage;
 
@@ -490,7 +522,7 @@ function EducatorHubContent() {
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
-              {t(`tab${id === 'test' ? 'TestGenerator' : id === 'rubric' ? 'Rubric' : 'Grading'}`)}
+              {t(`tab${id === 'test' ? 'TestGenerator' : id === 'rubric' ? 'Rubric' : id === 'grading' ? 'Grading' : 'Sen'}`)}
             </button>
           ))}
           {COMING_SOON_TABS.map(({ id, icon: Icon }) => (
@@ -505,9 +537,7 @@ function EducatorHubContent() {
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
-              {t(
-                `tab${id === 'sen' ? 'Sen' : id === 'lessonPlan' ? 'LessonPlan' : id === 'bureaucracy' ? 'Bureaucracy' : 'ParentReports'}`
-              )}
+              {t(`tab${id === 'lessonPlan' ? 'LessonPlan' : id === 'bureaucracy' ? 'Bureaucracy' : 'ParentReports'}`)}
             </button>
           ))}
         </div>
@@ -848,7 +878,75 @@ function EducatorHubContent() {
           </div>
         )}
 
-        {tab === 'sen' && <ComingSoonPanel title={t('tabSen')} desc={t('comingSoonSenDesc')} badge={t('comingSoonBadge')} />}
+        {/* Module 4: Differentiated assignments & SEN adaptations */}
+        {tab === 'sen' && (
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
+            <div className="grid sm:grid-cols-2 gap-4 mb-4 no-print">
+              <div>
+                <label className={labelClass}>{t('senSubjectLabel')}</label>
+                <input className={inputClass} value={senSubject} onChange={(e) => setSenSubject(e.target.value)} placeholder={t('senSubjectPlaceholder')} disabled={!hasAccess} />
+              </div>
+              <div>
+                <label className={labelClass}>{t('senGradeLabel')}</label>
+                <input className={inputClass} value={senGrade} onChange={(e) => setSenGrade(e.target.value)} placeholder={t('senGradePlaceholder')} disabled={!hasAccess} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelClass}>{t('senTopicLabel')}</label>
+                <input className={inputClass} value={senTopic} onChange={(e) => setSenTopic(e.target.value)} placeholder={t('senTopicPlaceholder')} disabled={!hasAccess} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <input type="checkbox" checked={senAdaptations} onChange={(e) => setSenAdaptations(e.target.checked)} disabled={!hasAccess} />
+                  {t('senAdaptationsToggle')}
+                </label>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={!hasAccess || senGenerating}
+              onClick={handleGenerateSen}
+              className="no-print inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-amber-500/30 transition-all disabled:opacity-50"
+            >
+              {senGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Puzzle className="w-4 h-4" />}
+              {senGenerating ? t('senGenerating') : t('senGenerateButton')}
+            </button>
+            {senError && <p className="text-xs text-rose-600 dark:text-rose-400 mt-3 no-print">{senError}</p>}
+
+            <div id="print-sen" className="mt-6">
+              {senResult ? (
+                <>
+                  <h3 className="text-base font-black mb-2">{t('senBasicHeading')}</h3>
+                  <RichTextEditor value={senResult.basicLevel} onChange={(v) => setSenResult((prev) => (prev ? { ...prev, basicLevel: v } : prev))} rows={8} />
+                  <h3 className="text-base font-black mb-2 mt-6">{t('senStandardHeading')}</h3>
+                  <RichTextEditor value={senResult.standardLevel} onChange={(v) => setSenResult((prev) => (prev ? { ...prev, standardLevel: v } : prev))} rows={8} />
+                  <h3 className="text-base font-black mb-2 mt-6">{t('senAdvancedHeading')}</h3>
+                  <RichTextEditor value={senResult.advancedLevel} onChange={(v) => setSenResult((prev) => (prev ? { ...prev, advancedLevel: v } : prev))} rows={8} />
+                  {senResult.senAdaptations && (
+                    <>
+                      <h3 className="text-base font-black mb-2 mt-6">{t('senAdaptationsHeading')}</h3>
+                      <RichTextEditor value={senResult.senAdaptations} onChange={(v) => setSenResult((prev) => (prev ? { ...prev, senAdaptations: v } : prev))} rows={8} />
+                    </>
+                  )}
+                  <div className="no-print">
+                    <ExportBar
+                      t={t}
+                      sections={[
+                        { heading: t('senBasicHeading'), body: senResult.basicLevel },
+                        { heading: t('senStandardHeading'), body: senResult.standardLevel },
+                        { heading: t('senAdvancedHeading'), body: senResult.advancedLevel },
+                        ...(senResult.senAdaptations ? [{ heading: t('senAdaptationsHeading'), body: senResult.senAdaptations }] : []),
+                      ]}
+                      filenameBase="differentiated-task"
+                      printAreaId="print-sen"
+                    />
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-slate-400 dark:text-slate-500 italic no-print">{t('senEmptyState')}</p>
+              )}
+            </div>
+          </div>
+        )}
         {tab === 'lessonPlan' && <ComingSoonPanel title={t('tabLessonPlan')} desc={t('comingSoonLessonPlanDesc')} badge={t('comingSoonBadge')} />}
         {tab === 'bureaucracy' && <ComingSoonPanel title={t('tabBureaucracy')} desc={t('comingSoonBureaucracyDesc')} badge={t('comingSoonBadge')} />}
         {tab === 'parentReports' && <ComingSoonPanel title={t('tabParentReports')} desc={t('comingSoonParentReportsDesc')} badge={t('comingSoonBadge')} />}
@@ -873,12 +971,15 @@ function EducatorHubContent() {
           body[data-print-target='print-rubric'] #print-rubric,
           body[data-print-target='print-rubric'] #print-rubric *,
           body[data-print-target='print-grading'] #print-grading,
-          body[data-print-target='print-grading'] #print-grading * {
+          body[data-print-target='print-grading'] #print-grading *,
+          body[data-print-target='print-sen'] #print-sen,
+          body[data-print-target='print-sen'] #print-sen * {
             visibility: visible;
           }
           #print-test,
           #print-rubric,
-          #print-grading {
+          #print-grading,
+          #print-sen {
             position: absolute;
             top: 0;
             left: 0;

@@ -118,6 +118,26 @@ export async function gradeHomework(payload: GradeHomeworkPayload): Promise<Grad
   return response.data.data;
 }
 
+export interface GenerateDifferentiatedTaskPayload {
+  subject: string;
+  grade: string;
+  topic: string;
+  senAdaptations: boolean;
+  language: 'ka' | 'en';
+}
+
+export interface GeneratedDifferentiatedTask {
+  basicLevel: string;
+  standardLevel: string;
+  advancedLevel: string;
+  senAdaptations?: string;
+}
+
+export async function generateDifferentiatedTask(payload: GenerateDifferentiatedTaskPayload): Promise<GeneratedDifferentiatedTask> {
+  const response = await apiClient.post<{ data: GeneratedDifferentiatedTask }>('/educator-hub/generate-differentiated-task', payload, { timeout: 90 * 1000 });
+  return response.data.data;
+}
+
 // ---- Sharing a generated test as a no-login student quiz ----
 
 export interface CreateQuizPayload {

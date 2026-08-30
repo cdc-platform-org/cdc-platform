@@ -4492,4 +4492,12 @@ enum EducatorGenerationType {
   TEST_GENERATOR
   RUBRIC
   GRADING
+  // Added alongside the original 3 — all four count toward the same
+  // "generations" budget as TEST_GENERATOR/RUBRIC (see
+  // educatorUsageService.ts's getEducatorUsage), since none of them involve
+  // grading a student's work the way GRADING does.
+  SEN
+  LESSON_PLAN
+  BUREAUCRACY
+  PARENT_REPORT
 }

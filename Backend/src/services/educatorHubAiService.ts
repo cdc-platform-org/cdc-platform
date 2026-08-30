@@ -2,13 +2,13 @@ import { z } from 'zod';
 import { callTextModel, isAiAgentConfigured, AiAgentError, InlineImagePart } from './aiAgentService';
 
 // ============================================================
-// AI Educator VIP Hub — the top 3 survey-ranked modules (56% combined
-// demand), built for real generation now; the other 4 (SEN adaptations,
-// ESG lesson planner, bureaucracy automation, parent reports) ship as
-// "coming soon" cards on the frontend with no backend here yet — see
+// AI Educator VIP Hub — Module 4 (SEN/differentiated adaptations) below
+// joins the original top-3 survey-ranked modules; ESG lesson planner,
+// bureaucracy automation, and parent reports still ship as "coming soon"
+// cards on the frontend with no backend here yet — see
 // pages/dashboard/tools/educator-hub.tsx's own comment for that split.
 //
-// All three reuse aiAgentService.ts's callTextModel (3-model Gemini
+// All of these reuse aiAgentService.ts's callTextModel (3-model Gemini
 // fallback + Azure OpenAI 4th rung for text, inline base64 images for the
 // grading module) rather than a new model-calling implementation — same
 // "exactly one place owns the model/retry config" reasoning as every other
@@ -196,4 +196,44 @@ Respond with strict JSON matching this shape:
 
   const raw = await callTextModel(prompt, 0.4, params.studentWorkImage ? [params.studentWorkImage] : undefined);
   return parseOrThrow(raw, gradingResultSchema);
+}
+
+// ---- Module 4: Differentiated Assignments & SEN Adaptations ----
+
+export interface GenerateDifferentiatedTaskParams {
+  subject: string;
+  grade: string;
+  topic: string;
+  senAdaptations: boolean;
+  language: 'ka' | 'en';
+}
+
+const differentiatedTaskSchema = z.object({
+  basicLevel: z.string().min(1),
+  standardLevel: z.string().min(1),
+  advancedLevel: z.string().min(1),
+  senAdaptations: z.string().min(1).optional(),
+});
+
+export type GeneratedDifferentiatedTask = z.infer<typeof differentiatedTaskSchema>;
+
+export async function generateDifferentiatedTask(params: GenerateDifferentiatedTaskParams): Promise<GeneratedDifferentiatedTask> {
+  const lang = LANGUAGE_NAME[params.language];
+  const senClause = params.senAdaptations
+    ? ` Also include a separate "senAdaptations" section: specific, concrete individual adaptations for students with special educational needs (სსსმ) working on this same topic — adjusted format, pacing, scaffolding, sensory/communication supports, and alternative ways to demonstrate understanding. Be concrete and actionable, not generic advice.`
+    : '';
+
+  const prompt = `You are an experienced ${params.subject} teacher in Georgia creating differentiated assignments for grade ${params.grade} students on the topic: "${params.topic}".
+
+Write ${lang}, formatted as clean Markdown. Create THREE separate versions of the same assignment, each targeting a different readiness level, all covering the same core topic/skill so every student learns the same thing at their own level:
+1. Basic — simplified language/scope, more scaffolding, for students who need extra support.
+2. Standard — grade-level expectations.
+3. Advanced — extended, more complex or open-ended, for students ready for a challenge.
+${senClause}
+
+Respond with strict JSON matching this shape, where every field is a Markdown string${params.senAdaptations ? '' : ' (omit "senAdaptations" entirely)'}:
+{"basicLevel": string, "standardLevel": string, "advancedLevel": string${params.senAdaptations ? ', "senAdaptations": string' : ''}}`;
+
+  const raw = await callTextModel(prompt, 0.6);
+  return parseOrThrow(raw, differentiatedTaskSchema);
 }
