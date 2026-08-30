@@ -17,6 +17,7 @@
   "sessionSupersededDesc": "Hesabınıza başqa bir cihazdan giriş edilib, bu da bu cihazdakı AI Educator VIP sessiyasını sonlandırır (saytın qalan hissəsi burada normal işləməyə davam edir). AI Educator VIP-dən istifadəni davam etdirmək üçün yenidən daxil olun.",
   "notConfigured": "Süni intellekt generasiyası hələ konfiqurasiya edilməyib. Zəhmət olmasa sonra cəhd edin.",
   "genericError": "Nəsə səhv getdi. Yenidən cəhd edin.",
+  "retry": "Yenidən cəhd et",
 
   "tabTestGenerator": "📝 Testlər və Cavab Açarları",
   "tabRubric": "📊 Qiymətləndirmə Rubrikləri və Matrisləri",

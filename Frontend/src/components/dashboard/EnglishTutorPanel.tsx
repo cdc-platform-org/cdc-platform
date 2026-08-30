@@ -439,7 +439,15 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
                   <button
                     key={lvl}
                     type="button"
-                    onClick={() => setLevel(lvl)}
+                    // Was selectable regardless of `locked` — the backend
+                    // correctly rejects a non-PRO generate-lesson request
+                    // for a PRO level (403, routes/englishTutor.ts), so this
+                    // was never an actual authorization gap, but the button
+                    // itself let a free student "select" B2-C2, see it
+                    // highlighted as chosen, then only discover it was
+                    // locked after clicking Generate and hitting the
+                    // paywall modal. Now the paywall opens immediately.
+                    onClick={() => (locked ? setShowPaywall(true) : setLevel(lvl))}
                     title={locked ? t.proLocked : undefined}
                     className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold ${
                       level === lvl
@@ -592,7 +600,13 @@ function LessonView({ lesson, lang, t, grading, onGraded }: LessonViewProps) {
   }
 }
 
-function speechLangFor(nativeLang: string): string {
+// Every lesson's actual reading/listening/dialogue content is always
+// English regardless of the student's nativeLang (which only picks the
+// EXPLANATION language, not the practice-content language — see
+// TutorLesson.nativeLang's own comment) — so the narrator voice is
+// unconditionally en-US, same as the raw 'en-US' literal DialogueTaskView
+// passes VIPAudioNarrator directly below.
+function speechLangFor(): string {
   return 'en-US';
 }
 
@@ -627,7 +641,7 @@ function QuestionsTaskView({ lesson, lang, t, grading, onGraded }: LessonViewPro
       )}
       {'script' in content && (
         <div className="flex flex-col gap-2">
-          <VIPAudioNarrator text={content.script} speechLang={speechLangFor(lesson.nativeLang)} lang={lang} label={t.listenTo} />
+          <VIPAudioNarrator text={content.script} speechLang={speechLangFor()} lang={lang} label={t.listenTo} />
           <p className="whitespace-pre-wrap text-sm text-slate-500 dark:text-slate-400">{content.script}</p>
         </div>
       )}

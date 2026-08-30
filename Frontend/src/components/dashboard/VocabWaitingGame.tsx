@@ -151,6 +151,23 @@ export default function VocabWaitingGame({ lang, loading, onContinue }: VocabWai
     };
   }, []);
 
+  // The 900ms "advance to next round" timer scheduled in handleAnswer isn't
+  // cancelled by anything else once loading flips to false (the parent
+  // keeps this component mounted to show the "ready" banner below, rather
+  // than unmounting it — see EnglishTutorPanel's own comment on
+  // showWaitingGame) — without this, a stray nextRound() could still fire
+  // and mutate round/selected/feedback state in the background after the
+  // game has visually frozen on the ready banner. Harmless to what's on
+  // screen (the banner replaces the whole game UI) but a real "this timer
+  // should have been done" cleanup gap.
+  useEffect(() => {
+    if (loading) return;
+    if (advanceTimerRef.current) {
+      clearTimeout(advanceTimerRef.current);
+      advanceTimerRef.current = null;
+    }
+  }, [loading]);
+
   const showReadyBanner = !loading;
 
   return (

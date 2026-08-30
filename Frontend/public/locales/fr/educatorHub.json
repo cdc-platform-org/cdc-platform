@@ -17,6 +17,7 @@
   "sessionSupersededDesc": "Votre compte s'est connecté depuis un autre appareil, ce qui met fin à la session AI Educator VIP sur cet appareil (le reste du site continue de fonctionner normalement ici). Reconnectez-vous pour continuer à utiliser AI Educator VIP.",
   "notConfigured": "La génération IA n'est pas encore configurée. Réessayez plus tard.",
   "genericError": "Une erreur s'est produite. Veuillez réessayer.",
+  "retry": "Réessayer",
 
   "tabTestGenerator": "📝 Tests & corrigés",
   "tabRubric": "📊 Grilles et matrices d'évaluation",

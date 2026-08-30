@@ -169,12 +169,24 @@ function EducatorHubContent() {
 
   const [hubState, setHubState] = useState<EducatorHubState | null>(null);
   const [stateLoading, setStateLoading] = useState(true);
+  // Distinct from "no VIP access" — a fetch failure (network/backend down)
+  // previously fell through to the exact same "VIP Required" upsell banner
+  // with no indication anything had actually gone wrong, silently hiding
+  // real access from a paying VIP if their very first load happened to hit
+  // a transient network error. Now surfaced with its own retry affordance.
+  const [stateError, setStateError] = useState(false);
   const [trialStarting, setTrialStarting] = useState(false);
   const [trialError, setTrialError] = useState<string | null>(null);
   const [sessionSuperseded, setSessionSuperseded] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>('test');
 
-  const refreshState = () => getEducatorHubState().then(setHubState).catch(() => {});
+  const refreshState = () =>
+    getEducatorHubState()
+      .then((s) => {
+        setHubState(s);
+        setStateError(false);
+      })
+      .catch(() => setStateError(true));
 
   useEffect(() => {
     refreshState().finally(() => setStateLoading(false));
@@ -358,7 +370,26 @@ function EducatorHubContent() {
           <h1 className="text-2xl md:text-3xl font-black tracking-wide mb-2">{t('pageTitle')}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">{t('pageSubtitle')}</p>
 
-          {!stateLoading && !hasAccess && (
+          {!stateLoading && stateError && (
+            <div className="mt-5 rounded-2xl border border-rose-300 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 p-5 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-black text-rose-700 dark:text-rose-300">{t('genericError')}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStateLoading(true);
+                    refreshState().finally(() => setStateLoading(false));
+                  }}
+                  className="mt-2 text-xs font-bold text-rose-700 dark:text-rose-300 underline bg-transparent border-none cursor-pointer p-0"
+                >
+                  {t('retry')}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!stateLoading && !stateError && !hasAccess && (
             <div className="mt-5 rounded-2xl border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-5">
               <h3 className="text-sm font-black text-amber-800 dark:text-amber-300 mb-1">{t('vipRequiredTitle')}</h3>
               <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">{t('vipRequiredDesc')}</p>
@@ -459,7 +490,24 @@ function EducatorHubContent() {
               </div>
               <div>
                 <label className={labelClass}>{t('testQuestionCountLabel')}</label>
-                <input type="number" min={1} max={30} className={inputClass} value={testCount} onChange={(e) => setTestCount(Number(e.target.value))} disabled={!hasAccess} />
+                <input
+                  type="number"
+                  min={1}
+                  max={30}
+                  className={inputClass}
+                  value={testCount}
+                  onChange={(e) => {
+                    // A cleared field evaluates Number('') as 0, not NaN —
+                    // silently sending questionCount:0 to a schema that
+                    // requires >=1, which surfaced as a generic "something
+                    // went wrong" instead of a clear reason. Clamped here
+                    // instead of relying on the disabled-button guard below,
+                    // since nothing else in this form validates testCount.
+                    const parsed = Number(e.target.value);
+                    setTestCount(Number.isFinite(parsed) ? Math.min(30, Math.max(1, parsed)) : 1);
+                  }}
+                  disabled={!hasAccess}
+                />
               </div>
             </div>
             <button

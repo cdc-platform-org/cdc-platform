@@ -17,6 +17,7 @@
   "sessionSupersededDesc": "Tu cuenta inició sesión en otro dispositivo, lo que finaliza la sesión de AI Educator VIP en este dispositivo (el resto del sitio sigue funcionando con normalidad aquí). Vuelve a iniciar sesión para seguir usando AI Educator VIP.",
   "notConfigured": "La generación de IA aún no está configurada. Inténtalo más tarde.",
   "genericError": "Algo salió mal. Inténtalo de nuevo.",
+  "retry": "Reintentar",
 
   "tabTestGenerator": "📝 Exámenes y claves de respuestas",
   "tabRubric": "📊 Rúbricas y matrices de evaluación",

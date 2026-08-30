@@ -17,6 +17,7 @@
   "sessionSupersededDesc": "Hesabınıza başka bir cihazdan giriş yapıldı, bu da bu cihazdaki AI Educator VIP oturumunu sonlandırır (sitenin geri kalanı burada normal şekilde çalışmaya devam eder). AI Educator VIP'i kullanmaya devam etmek için tekrar giriş yapın.",
   "notConfigured": "Yapay zeka üretimi henüz yapılandırılmadı. Lütfen daha sonra tekrar deneyin.",
   "genericError": "Bir şeyler ters gitti. Lütfen tekrar deneyin.",
+  "retry": "Tekrar Dene",
 
   "tabTestGenerator": "📝 Sınavlar & Cevap Anahtarları",
   "tabRubric": "📊 Değerlendirme Rubrikleri & Matrisleri",

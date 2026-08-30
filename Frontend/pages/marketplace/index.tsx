@@ -120,6 +120,20 @@ function MarketplaceContent() {
     router.push('/dashboard?tab=products');
   };
 
+  // Same pattern as goToUpload above — a guest clicking a SaaS tool card
+  // gets the auth modal (continuing straight into the tool on success)
+  // rather than a plain <Link> that would silently full-navigate into
+  // ProtectedRoute's own redirect-to-/auth/login dance on the destination
+  // page. Kept as its own handler (not goToUpload) since the destination
+  // varies per card.
+  const goToSaasTool = (href: string) => {
+    if (!isAuthenticated) {
+      openAuthModal({ onSuccess: () => router.push(href) });
+      return;
+    }
+    router.push(href);
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       <Head>
@@ -189,10 +203,18 @@ function MarketplaceContent() {
               {SAAS_TOOLS.map(({ id, href, icon: Icon, accent }) => {
                 const copy = saasToolCopy[id];
                 return (
-                  <Link
+                  <div
                     key={id}
-                    href={href}
-                    className="group rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden no-underline text-current p-5 flex gap-4 items-start"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => goToSaasTool(href)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        goToSaasTool(href);
+                      }
+                    }}
+                    className="group cursor-pointer rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden p-5 flex gap-4 items-start"
                   >
                     <div className={`shrink-0 w-12 h-12 rounded-xl bg-gradient-to-tr ${accent} flex items-center justify-center`}>
                       <Icon className="w-6 h-6 text-white" />
@@ -207,7 +229,7 @@ function MarketplaceContent() {
                       <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 mb-2">{copy.desc}</p>
                       <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">{copy.cta} →</span>
                     </div>
-                  </Link>
+                  </div>
                 );
               })}
             </div>
