@@ -83,33 +83,75 @@ function handleAiError(err: unknown, res: Response) {
 
 // ---- Module 1: Smart Test & Answer Key Generator ----
 
+// multipart/form-data (not JSON) since an optional source photo/PDF page can
+// ride along — same shape as Module 3's homeworkUpload below, just a wider
+// mimetype allowlist since Gemini's vision input natively reads PDF pages
+// (including scanned ones) the same way it reads an image, no separate
+// OCR/text-extraction step needed.
+const testSourceUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Only JPG, PNG, WEBP images or PDF files are allowed.'));
+  },
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB
+});
+
+function handleTestSourceUpload(req: Request, res: Response, next: NextFunction) {
+  testSourceUpload.single('sourceFile')(req, res, (err: any) => multerErrorHandler(req, res, err, next));
+}
+
 const generateTestSchema = z.object({
   subject: z.string().min(1).max(200),
   grade: z.string().min(1).max(50),
   topic: z.string().min(1).max(500),
-  questionTypes: z.array(z.enum(['MULTIPLE_CHOICE', 'OPEN', 'MATCHING'])).min(1),
+  // Sent as a JSON-encoded string since this is now a multipart form body,
+  // not JSON — every field arrives as a string.
+  questionTypes: z
+    .string()
+    .transform((raw, ctx) => {
+      try {
+        return JSON.parse(raw);
+      } catch {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'questionTypes must be a JSON array.' });
+        return z.NEVER;
+      }
+    })
+    .pipe(z.array(z.enum(['MULTIPLE_CHOICE', 'OPEN', 'MATCHING'])).min(1)),
   difficulty: z.enum(['EASY', 'MEDIUM', 'HARD', 'MIXED']),
-  questionCount: z.number().int().min(1).max(30),
+  questionCount: z.coerce.number().int().min(1).max(30),
   language: z.enum(['ka', 'en']),
+  sourceText: z.string().max(12000).optional(),
 });
 
-router.post('/generate-test', generateRateLimit, requireCurrentEducatorSession, requireEducatorVipAccess, async (req: Request, res: Response) => {
-  if (!isAiAgentConfigured()) return res.status(501).json({ message: 'AI generation is not configured yet.' });
-  const parsed = generateTestSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
+router.post(
+  '/generate-test',
+  generateRateLimit,
+  requireCurrentEducatorSession,
+  requireEducatorVipAccess,
+  handleTestSourceUpload,
+  async (req: Request, res: Response) => {
+    if (!isAiAgentConfigured()) return res.status(501).json({ message: 'AI generation is not configured yet.' });
+    const parsed = generateTestSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
 
-  if (await hasReachedGenerationLimit(req.user!.id)) {
-    return res.status(429).json({ code: 'QUOTA_EXCEEDED', message: 'ამ თვის გენერაციების ლიმიტი ამოწურულია.' });
-  }
+    if (await hasReachedGenerationLimit(req.user!.id)) {
+      return res.status(429).json({ code: 'QUOTA_EXCEEDED', message: 'ამ თვის გენერაციების ლიმიტი ამოწურულია.' });
+    }
 
-  try {
-    const result = await generateTestAndAnswerKey(parsed.data);
-    await recordEducatorGeneration(req.user!.id, 'TEST_GENERATOR');
-    res.json({ data: result });
-  } catch (err) {
-    handleAiError(err, res);
+    try {
+      const result = await generateTestAndAnswerKey({
+        ...parsed.data,
+        sourceFile: req.file ? { mimeType: req.file.mimetype, data: req.file.buffer.toString('base64') } : undefined,
+      });
+      await recordEducatorGeneration(req.user!.id, 'TEST_GENERATOR');
+      res.json({ data: result });
+    } catch (err) {
+      handleAiError(err, res);
+    }
   }
-});
+);
 
 // ---- Module 2: Assessment Rubrics & Matrix Builder ----
 

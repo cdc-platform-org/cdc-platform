@@ -41,6 +41,8 @@ export interface GenerateTestPayload {
   difficulty: Difficulty;
   questionCount: number;
   language: 'ka' | 'en';
+  sourceText?: string;
+  sourceFile?: File;
 }
 
 export interface GeneratedTest {
@@ -49,7 +51,17 @@ export interface GeneratedTest {
 }
 
 export async function generateTest(payload: GenerateTestPayload): Promise<GeneratedTest> {
-  const response = await apiClient.post<{ data: GeneratedTest }>('/educator-hub/generate-test', payload, { timeout: 90 * 1000 });
+  const formData = new FormData();
+  formData.append('subject', payload.subject);
+  formData.append('grade', payload.grade);
+  formData.append('topic', payload.topic);
+  formData.append('questionTypes', JSON.stringify(payload.questionTypes));
+  formData.append('difficulty', payload.difficulty);
+  formData.append('questionCount', String(payload.questionCount));
+  formData.append('language', payload.language);
+  if (payload.sourceText) formData.append('sourceText', payload.sourceText);
+  if (payload.sourceFile) formData.append('sourceFile', payload.sourceFile);
+  const response = await apiClient.post<{ data: GeneratedTest }>('/educator-hub/generate-test', formData, { timeout: 90 * 1000 });
   return response.data.data;
 }
 

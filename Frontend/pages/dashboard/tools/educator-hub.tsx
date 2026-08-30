@@ -234,6 +234,8 @@ function EducatorHubContent() {
   const [testTypes, setTestTypes] = useState<QuestionType[]>(['MULTIPLE_CHOICE']);
   const [testDifficulty, setTestDifficulty] = useState<Difficulty>('MIXED');
   const [testCount, setTestCount] = useState(10);
+  const [testSourceText, setTestSourceText] = useState('');
+  const [testSourceFile, setTestSourceFile] = useState<File | null>(null);
   const [testGenerating, setTestGenerating] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<GeneratedTest | null>(null);
@@ -255,6 +257,8 @@ function EducatorHubContent() {
         difficulty: testDifficulty,
         questionCount: testCount,
         language: lang,
+        sourceText: testSourceText.trim() || undefined,
+        sourceFile: testSourceFile ?? undefined,
       });
       setTestResult(result);
       refreshState();
@@ -472,6 +476,29 @@ function EducatorHubContent() {
               <div className="sm:col-span-2">
                 <label className={labelClass}>{t('testTopicLabel')}</label>
                 <input className={inputClass} value={testTopic} onChange={(e) => setTestTopic(e.target.value)} placeholder={t('testTopicPlaceholder')} disabled={!hasAccess} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelClass}>{t('testSourceUploadLabel')}</label>
+                <FileDropzone
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  uploading={false}
+                  selectedFileName={testSourceFile?.name ?? null}
+                  onFile={setTestSourceFile}
+                  label={t('testSourceUploadCta')}
+                  hint={t('testSourceUploadHint')}
+                  uploadingLabel={t('testSourceUploading')}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelClass}>{t('testSourceTextLabel')}</label>
+                <textarea
+                  className={inputClass}
+                  rows={3}
+                  value={testSourceText}
+                  onChange={(e) => setTestSourceText(e.target.value)}
+                  placeholder={t('testSourceTextPlaceholder')}
+                  disabled={!hasAccess}
+                />
               </div>
               <div className="sm:col-span-2">
                 <label className={labelClass}>{t('testQuestionTypesLabel')}</label>

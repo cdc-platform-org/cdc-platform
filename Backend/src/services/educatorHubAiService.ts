@@ -49,6 +49,15 @@ export interface GenerateTestParams {
   difficulty: 'EASY' | 'MEDIUM' | 'HARD' | 'MIXED';
   questionCount: number;
   language: 'ka' | 'en';
+  // Optional grounding material — a textbook page/paragraph (as text) or a
+  // photo/scanned PDF page (as an inline part, sent straight to Gemini's
+  // vision input same as gradeHomework's studentWorkImage — no separate
+  // OCR/pdf-parse step needed, since the Gemini models in
+  // TEXT_MODEL_FALLBACK_SEQUENCE natively read image and PDF bytes). When
+  // provided, the test is generated strictly from this material rather than
+  // from subject/topic alone.
+  sourceText?: string;
+  sourceFile?: InlineImagePart;
 }
 
 const testGenerationSchema = z.object({
@@ -72,7 +81,13 @@ export async function generateTestAndAnswerKey(params: GenerateTestParams): Prom
       ? 'a mix of easy, medium, and hard questions'
       : `${params.difficulty.toLowerCase()}-difficulty questions throughout`;
 
-  const prompt = `You are an experienced ${params.subject} teacher writing a real classroom test for grade ${params.grade} students, on the topic: "${params.topic}".
+  const sourceBlock = params.sourceFile
+    ? '\n\nA source page (textbook photo or scanned PDF page) is attached as an image — read its content carefully, and base every question strictly on the material it actually contains, not on the topic in general.'
+    : params.sourceText
+    ? `\n\nBase every question strictly on this source material, not on the topic in general:\n${params.sourceText.slice(0, 12000)}`
+    : '';
+
+  const prompt = `You are an experienced ${params.subject} teacher writing a real classroom test for grade ${params.grade} students, on the topic: "${params.topic}".${sourceBlock}
 
 Write ${lang}, formatted as clean Markdown. Generate exactly ${params.questionCount} questions total, using these question type(s): ${types}. Use ${difficultyClause}. Number every question. For multiple-choice questions, label options A/B/C/D on their own lines. For matching questions, present two clearly labeled columns. Leave visible blank space (an underscored line or empty space) for students to write answers on the test sheet itself — this is a printable document a teacher hands to students.
 
@@ -81,7 +96,7 @@ Then write a SEPARATE teacher's answer key: the correct answer for every questio
 Respond with strict JSON matching this shape, where both fields are Markdown strings:
 {"testSheet": string, "answerKey": string}`;
 
-  const raw = await callTextModel(prompt, 0.6);
+  const raw = await callTextModel(prompt, 0.6, params.sourceFile ? [params.sourceFile] : undefined);
   return parseOrThrow(raw, testGenerationSchema);
 }
 
