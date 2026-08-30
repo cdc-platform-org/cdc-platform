@@ -23,6 +23,8 @@
   "sortPriceDesc": "Price: High to Low",
   "resultsCount": "{{count}} course",
   "resultsCountPlural": "{{count}} courses",
+  "resultsCountCombined": "{{count}} course / tool",
+  "resultsCountCombinedPlural": "{{count}} courses / tools",
   "filtersToggle": "Filters",
   "discountedOnly": "On Sale",
   "priceLabel": "Price",
@@ -32,6 +34,8 @@
   "filtersDrawerTitle": "Filter Courses",
   "showResults": "Show {{count}} result",
   "showResultsPlural": "Show {{count}} results",
+  "showResultsCombined": "Show {{count}} course / tool",
+  "showResultsCombinedPlural": "Show {{count}} courses / tools",
 
   "notFound": "Course not found.",
   "enrollFree": "Start Learning For Free →",

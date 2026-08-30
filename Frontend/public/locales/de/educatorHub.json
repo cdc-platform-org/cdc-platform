@@ -62,6 +62,8 @@
   "rubricAssessmentTypeLabel": "Bewertungsart",
   "assessmentFormative": "Formativ",
   "assessmentSummative": "Summativ",
+  "assessmentDiagnostic": "Diagnostisch (Eingangsbewertung)",
+  "assessmentProject": "Projekt- / Praxisaufgabe",
   "rubricSkillLabel": "Zu bewertende Fähigkeit oder Thema",
   "rubricSkillPlaceholder": "z. B. Analyse historischer Primärquellen",
   "rubricScaleLabel": "Bewertungsskala",

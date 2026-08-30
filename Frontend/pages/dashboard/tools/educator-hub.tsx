@@ -161,6 +161,11 @@ function ComingSoonPanel({ title, desc, badge }: { title: string; desc: string; 
 const inputClass =
   'w-full px-3.5 py-2.5 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900/40 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500';
 const labelClass = 'block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5';
+// Native <select> renders its <option> popup via the OS, outside the page's
+// own light/dark styling — without an explicit color here, dark mode's
+// light-on-dark <select> text can end up illegible (or invisible) against
+// the option list's default background in some browsers.
+const optionClass = 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white';
 
 function EducatorHubContent() {
   const router = useRouter();
@@ -263,7 +268,7 @@ function EducatorHubContent() {
   // ---- Module 2: Rubric builder ----
   const [rubricSubject, setRubricSubject] = useState('');
   const [rubricGrade, setRubricGrade] = useState('');
-  const [rubricAssessmentType, setRubricAssessmentType] = useState<'FORMATIVE' | 'SUMMATIVE'>('SUMMATIVE');
+  const [rubricAssessmentType, setRubricAssessmentType] = useState<'FORMATIVE' | 'SUMMATIVE' | 'DIAGNOSTIC' | 'PROJECT'>('SUMMATIVE');
   const [rubricSkill, setRubricSkill] = useState('');
   const [rubricScale, setRubricScale] = useState('0–10');
   const [rubricGenerating, setRubricGenerating] = useState(false);
@@ -482,10 +487,10 @@ function EducatorHubContent() {
               <div>
                 <label className={labelClass}>{t('testDifficultyLabel')}</label>
                 <select className={inputClass} value={testDifficulty} onChange={(e) => setTestDifficulty(e.target.value as Difficulty)} disabled={!hasAccess}>
-                  <option value="EASY">{t('difficultyEasy')}</option>
-                  <option value="MEDIUM">{t('difficultyMedium')}</option>
-                  <option value="HARD">{t('difficultyHard')}</option>
-                  <option value="MIXED">{t('difficultyMixed')}</option>
+                  <option className={optionClass} value="EASY">{t('difficultyEasy')}</option>
+                  <option className={optionClass} value="MEDIUM">{t('difficultyMedium')}</option>
+                  <option className={optionClass} value="HARD">{t('difficultyHard')}</option>
+                  <option className={optionClass} value="MIXED">{t('difficultyMixed')}</option>
                 </select>
               </div>
               <div>
@@ -561,9 +566,16 @@ function EducatorHubContent() {
               </div>
               <div>
                 <label className={labelClass}>{t('rubricAssessmentTypeLabel')}</label>
-                <select className={inputClass} value={rubricAssessmentType} onChange={(e) => setRubricAssessmentType(e.target.value as 'FORMATIVE' | 'SUMMATIVE')} disabled={!hasAccess}>
-                  <option value="FORMATIVE">{t('assessmentFormative')}</option>
-                  <option value="SUMMATIVE">{t('assessmentSummative')}</option>
+                <select
+                  className={inputClass}
+                  value={rubricAssessmentType}
+                  onChange={(e) => setRubricAssessmentType(e.target.value as 'FORMATIVE' | 'SUMMATIVE' | 'DIAGNOSTIC' | 'PROJECT')}
+                  disabled={!hasAccess}
+                >
+                  <option className={optionClass} value="SUMMATIVE">{t('assessmentSummative')}</option>
+                  <option className={optionClass} value="FORMATIVE">{t('assessmentFormative')}</option>
+                  <option className={optionClass} value="DIAGNOSTIC">{t('assessmentDiagnostic')}</option>
+                  <option className={optionClass} value="PROJECT">{t('assessmentProject')}</option>
                 </select>
               </div>
               <div>

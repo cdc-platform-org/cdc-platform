@@ -62,6 +62,8 @@
   "rubricAssessmentTypeLabel": "Tipo de evaluación",
   "assessmentFormative": "Formativa",
   "assessmentSummative": "Sumativa",
+  "assessmentDiagnostic": "Diagnóstica (evaluación inicial)",
+  "assessmentProject": "Proyecto / tarea práctica",
   "rubricSkillLabel": "Habilidad o tema a evaluar",
   "rubricSkillPlaceholder": "p. ej. Análisis de fuentes históricas primarias",
   "rubricScaleLabel": "Escala de puntuación",

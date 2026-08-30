@@ -62,6 +62,8 @@
   "rubricAssessmentTypeLabel": "Değerlendirme türü",
   "assessmentFormative": "Biçimlendirici",
   "assessmentSummative": "Değerlendirici (final)",
+  "assessmentDiagnostic": "Tanılayıcı (başlangıç değerlendirmesi)",
+  "assessmentProject": "Proje / uygulamalı görev",
   "rubricSkillLabel": "Değerlendirilecek beceri veya konu",
   "rubricSkillPlaceholder": "örn. Birincil tarihi kaynakların analizi",
   "rubricScaleLabel": "Puanlama ölçeği",

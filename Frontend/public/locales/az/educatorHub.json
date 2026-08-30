@@ -62,6 +62,8 @@
   "rubricAssessmentTypeLabel": "Qiymətləndirmə növü",
   "assessmentFormative": "Formativ",
   "assessmentSummative": "Summativ",
+  "assessmentDiagnostic": "Diaqnostik (ilkin qiymətləndirmə)",
+  "assessmentProject": "Layihə / praktiki tapşırıq",
   "rubricSkillLabel": "Qiymətləndirilən bacarıq və ya mövzu",
   "rubricSkillPlaceholder": "məs. İlkin tarixi mənbələrin təhlili",
   "rubricScaleLabel": "Qiymətləndirmə şkalası",

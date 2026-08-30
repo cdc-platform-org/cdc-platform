@@ -23,6 +23,8 @@
   "sortPriceDesc": "ფასი: მაღლიდან დაბლა",
   "resultsCount": "{{count}} კურსი",
   "resultsCountPlural": "{{count}} კურსი",
+  "resultsCountCombined": "{{count}} კურსი / ინსტრუმენტი",
+  "resultsCountCombinedPlural": "{{count}} კურსი / ინსტრუმენტი",
   "filtersToggle": "ფილტრები",
   "discountedOnly": "ფასდაკლებული",
   "priceLabel": "ფასი",
@@ -32,6 +34,8 @@
   "filtersDrawerTitle": "ფილტრები",
   "showResults": "{{count}} შედეგის ჩვენება",
   "showResultsPlural": "{{count}} შედეგის ჩვენება",
+  "showResultsCombined": "{{count}} კურსის / ინსტრუმენტის ჩვენება",
+  "showResultsCombinedPlural": "{{count}} კურსის / ინსტრუმენტის ჩვენება",
 
   "notFound": "კურსი ვერ მოიძებნა.",
   "enrollFree": "კურსის უფასოდ გააქტიურება →",

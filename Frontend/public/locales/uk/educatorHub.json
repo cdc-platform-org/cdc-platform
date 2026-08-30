@@ -62,6 +62,8 @@
   "rubricAssessmentTypeLabel": "Тип оцінювання",
   "assessmentFormative": "Формувальне",
   "assessmentSummative": "Підсумкове",
+  "assessmentDiagnostic": "Діагностичне (початкове оцінювання)",
+  "assessmentProject": "Проєктне / практичне завдання",
   "rubricSkillLabel": "Навичка або тема оцінювання",
   "rubricSkillPlaceholder": "напр. Аналіз історичних першоджерел",
   "rubricScaleLabel": "Шкала оцінювання",

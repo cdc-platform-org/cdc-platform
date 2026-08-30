@@ -56,7 +56,7 @@ export async function generateTest(payload: GenerateTestPayload): Promise<Genera
 export interface GenerateRubricPayload {
   subject: string;
   grade: string;
-  assessmentType: 'FORMATIVE' | 'SUMMATIVE';
+  assessmentType: 'FORMATIVE' | 'SUMMATIVE' | 'DIAGNOSTIC' | 'PROJECT';
   skillOrTopic: string;
   scoringScale: string;
   language: 'ka' | 'en';

@@ -62,6 +62,8 @@
   "rubricAssessmentTypeLabel": "Type d'évaluation",
   "assessmentFormative": "Formative",
   "assessmentSummative": "Sommative",
+  "assessmentDiagnostic": "Diagnostique (évaluation initiale)",
+  "assessmentProject": "Projet / tâche pratique",
   "rubricSkillLabel": "Compétence ou sujet évalué",
   "rubricSkillPlaceholder": "ex. Analyse de sources historiques primaires",
   "rubricScaleLabel": "Échelle de notation",

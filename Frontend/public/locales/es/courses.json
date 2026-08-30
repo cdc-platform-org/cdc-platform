@@ -23,6 +23,8 @@
   "sortPriceDesc": "Precio: de Mayor a Menor",
   "resultsCount": "{{count}} curso",
   "resultsCountPlural": "{{count}} cursos",
+  "resultsCountCombined": "{{count}} curso / herramienta",
+  "resultsCountCombinedPlural": "{{count}} cursos / herramientas",
   "filtersToggle": "Filtros",
   "discountedOnly": "En Oferta",
   "priceLabel": "Precio",
@@ -32,6 +34,8 @@
   "filtersDrawerTitle": "Filtrar Cursos",
   "showResults": "Mostrar {{count}} resultado",
   "showResultsPlural": "Mostrar {{count}} resultados",
+  "showResultsCombined": "Mostrar {{count}} curso / herramienta",
+  "showResultsCombinedPlural": "Mostrar {{count}} cursos / herramientas",
 
   "notFound": "Curso no encontrado.",
   "enrollFree": "Empezar a Aprender Gratis →",

@@ -120,6 +120,23 @@ export default function CoursesPage() {
     [courses, liveTrainings]
   );
 
+  // AI teachers have no category/language/discount of their own, so they
+  // only join the combined ALL grid when no category/language/discount
+  // filter is narrowing the catalog to something they can't match — same
+  // rule a real course would be held to if it had none of those fields.
+  // They're priced as free, so a "paid" filter excludes them the same way
+  // a free course would be excluded.
+  const filteredAiTeachers = useMemo(() => {
+    if (contentTab !== 'all') return [];
+    if (category || language || discountedOnly || priceFilter === 'paid') return [];
+    const q = search.trim().toLowerCase();
+    return AI_TEACHERS.filter(({ id }) => {
+      const copy = aiTeacherCopy[id];
+      if (q && !copy.title.toLowerCase().includes(q) && !copy.desc.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [contentTab, category, language, discountedOnly, priceFilter, search, aiTeacherCopy]);
+
   const filteredCourses = useMemo(() => {
     if (contentTab === 'live') return [];
     const q = search.trim().toLowerCase();
@@ -162,7 +179,7 @@ export default function CoursesPage() {
     });
   }, [liveTrainings, search, category, language, priceFilter, contentTab]);
 
-  const totalResultsCount = filteredCourses.length + filteredLiveTrainings.length;
+  const totalResultsCount = filteredCourses.length + filteredLiveTrainings.length + filteredAiTeachers.length;
 
   const hasActiveFilters = !!search || !!category || !!language || discountedOnly || priceFilter !== 'all';
   const clearFilters = () => {
@@ -286,7 +303,7 @@ export default function CoursesPage() {
           </div>
         ) : loading ? (
           <p className="text-slate-500 dark:text-slate-400 text-sm">{t('loading')}</p>
-        ) : courses.length === 0 && liveTrainings.length === 0 ? (
+        ) : courses.length === 0 && liveTrainings.length === 0 && contentTab !== 'all' ? (
           <p className="text-slate-500 dark:text-slate-400 text-sm">{t('empty')}</p>
         ) : (
           <div className="flex flex-col lg:flex-row gap-8">
@@ -425,7 +442,11 @@ export default function CoursesPage() {
                     onClick={() => setFiltersOpen(false)}
                     className="w-full text-center text-sm font-black text-white px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600"
                   >
-                    {totalResultsCount === 1
+                    {contentTab === 'all'
+                      ? totalResultsCount === 1
+                        ? t('showResultsCombined', { count: totalResultsCount })
+                        : t('showResultsCombinedPlural', { count: totalResultsCount })
+                      : totalResultsCount === 1
                       ? t('showResults', { count: totalResultsCount })
                       : t('showResultsPlural', { count: totalResultsCount })}
                   </button>
@@ -436,7 +457,11 @@ export default function CoursesPage() {
             {/* RESULTS */}
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-4">
-                {totalResultsCount === 1
+                {contentTab === 'all'
+                  ? totalResultsCount === 1
+                    ? t('resultsCountCombined', { count: totalResultsCount })
+                    : t('resultsCountCombinedPlural', { count: totalResultsCount })
+                  : totalResultsCount === 1
                   ? t('resultsCount', { count: totalResultsCount })
                   : t('resultsCountPlural', { count: totalResultsCount })}
               </p>
@@ -597,6 +622,44 @@ export default function CoursesPage() {
                               {t('viewDetails')}
                             </Link>
                           </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {filteredAiTeachers.map(({ id, href, icon: Icon, accent }) => {
+                    const copy = aiTeacherCopy[id];
+                    return (
+                      <div
+                        key={id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => goToAiTeacher(href)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            goToAiTeacher(href);
+                          }
+                        }}
+                        className="group cursor-pointer relative h-full overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 flex flex-col justify-between"
+                      >
+                        <div className={`w-full aspect-video flex items-center justify-center bg-gradient-to-br ${accent}`}>
+                          <Icon className="w-10 h-10 text-white" />
+                          <span className="absolute top-3 left-3 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md bg-black/30 text-white shadow">
+                            {t('tabAiTeachers')}
+                          </span>
+                        </div>
+                        <div className="p-6 flex-1 flex flex-col justify-between">
+                          <div>
+                            <span className="inline-block text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 mb-2">
+                              {copy.badge}
+                            </span>
+                            <h3 className="text-lg font-black mt-2 mb-2 text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">{copy.title}</h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6 line-clamp-3">{copy.desc}</p>
+                          </div>
+                          <div className="flex items-baseline gap-2 mb-3">
+                            <span className="text-xl font-black text-slate-900 dark:text-white shrink-0">{t('priceFree')}</span>
+                          </div>
+                          <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">{t('aiTeachersLaunchCta')} →</span>
                         </div>
                       </div>
                     );

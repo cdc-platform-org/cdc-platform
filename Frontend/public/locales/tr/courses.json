@@ -23,6 +23,8 @@
   "sortPriceDesc": "Fiyat: Yüksekten Düşüğe",
   "resultsCount": "{{count}} kurs",
   "resultsCountPlural": "{{count}} kurs",
+  "resultsCountCombined": "{{count}} kurs / araç",
+  "resultsCountCombinedPlural": "{{count}} kurs / araç",
   "filtersToggle": "Filtreler",
   "discountedOnly": "İndirimde",
   "priceLabel": "Fiyat",
@@ -32,6 +34,8 @@
   "filtersDrawerTitle": "Kursları Filtrele",
   "showResults": "{{count}} sonucu göster",
   "showResultsPlural": "{{count}} sonucu göster",
+  "showResultsCombined": "{{count}} kurs / aracı göster",
+  "showResultsCombinedPlural": "{{count}} kurs / aracı göster",
 
   "notFound": "Kurs bulunamadı.",
   "enrollFree": "Ücretsiz Öğrenmeye Başla →",

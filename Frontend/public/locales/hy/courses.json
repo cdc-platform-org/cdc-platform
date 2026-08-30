@@ -23,6 +23,8 @@
   "sortPriceDesc": "Գին՝ բարձրից ցածր",
   "resultsCount": "{{count}} դասընթաց",
   "resultsCountPlural": "{{count}} դասընթաց",
+  "resultsCountCombined": "{{count}} դասընթաց / գործիք",
+  "resultsCountCombinedPlural": "{{count}} դասընթաց / գործիք",
   "filtersToggle": "Ֆիլտրեր",
   "discountedOnly": "Զեղչված",
   "priceLabel": "Գին",
@@ -32,6 +34,8 @@
   "filtersDrawerTitle": "Ֆիլտրել Դասընթացները",
   "showResults": "Ցուցադրել {{count}} արդյունք",
   "showResultsPlural": "Ցուցադրել {{count}} արդյունք",
+  "showResultsCombined": "Ցուցադրել {{count}} դասընթաց / գործիք",
+  "showResultsCombinedPlural": "Ցուցադրել {{count}} դասընթաց / գործիք",
 
   "notFound": "Դասընթացը չի գտնվել։",
   "enrollFree": "Սկսել Ուսուցումն Անվճար →",

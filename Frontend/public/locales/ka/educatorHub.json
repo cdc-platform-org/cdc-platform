@@ -62,6 +62,8 @@
   "rubricAssessmentTypeLabel": "შეფასების ტიპი",
   "assessmentFormative": "მიმდინარე (ფორმატიული)",
   "assessmentSummative": "საბოლოო (სუმატიური)",
+  "assessmentDiagnostic": "დიაგნოსტიკური (საწყისი შეფასება)",
+  "assessmentProject": "პროექტული / პრაქტიკული დავალება",
   "rubricSkillLabel": "შეფასების საგანი/უნარი",
   "rubricSkillPlaceholder": "მაგ. ისტორიული წყაროების ანალიზი",
   "rubricScaleLabel": "შეფასების სკალა",

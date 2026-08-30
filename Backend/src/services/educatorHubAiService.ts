@@ -90,7 +90,7 @@ Respond with strict JSON matching this shape, where both fields are Markdown str
 export interface GenerateRubricParams {
   subject: string;
   grade: string;
-  assessmentType: 'FORMATIVE' | 'SUMMATIVE';
+  assessmentType: 'FORMATIVE' | 'SUMMATIVE' | 'DIAGNOSTIC' | 'PROJECT';
   skillOrTopic: string;
   scoringScale: string; // e.g. "0-10", "1-5", "ვერ აკმაყოფილებს / ნაწილობრივ / სრულად"
   language: 'ka' | 'en';
@@ -104,7 +104,12 @@ export type GeneratedRubric = z.infer<typeof rubricGenerationSchema>;
 
 export async function generateRubric(params: GenerateRubricParams): Promise<GeneratedRubric> {
   const lang = LANGUAGE_NAME[params.language];
-  const assessmentLabel = params.assessmentType === 'FORMATIVE' ? 'formative (ongoing, low-stakes)' : 'summative (final, graded)';
+  const assessmentLabel = {
+    FORMATIVE: 'formative (ongoing, low-stakes)',
+    SUMMATIVE: 'summative (final, graded)',
+    DIAGNOSTIC: 'diagnostic (baseline, taken before instruction to surface prior knowledge and gaps)',
+    PROJECT: 'project/practical task-based (evaluating a hands-on deliverable or performance, not a written test)',
+  }[params.assessmentType];
 
   const prompt = `You are an experienced ${params.subject} teacher in Georgia, building a ${assessmentLabel} evaluation rubric for grade ${params.grade} students, assessing: "${params.skillOrTopic}". Align the rubric's structure and criteria with Georgia's National Curriculum (ესგ) assessment approach — clear, observable criteria rather than vague labels.
 

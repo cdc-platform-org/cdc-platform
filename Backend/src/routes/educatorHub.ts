@@ -116,7 +116,7 @@ router.post('/generate-test', generateRateLimit, requireCurrentEducatorSession, 
 const generateRubricSchema = z.object({
   subject: z.string().min(1).max(200),
   grade: z.string().min(1).max(50),
-  assessmentType: z.enum(['FORMATIVE', 'SUMMATIVE']),
+  assessmentType: z.enum(['FORMATIVE', 'SUMMATIVE', 'DIAGNOSTIC', 'PROJECT']),
   skillOrTopic: z.string().min(1).max(500),
   scoringScale: z.string().min(1).max(200),
   language: z.enum(['ka', 'en']),

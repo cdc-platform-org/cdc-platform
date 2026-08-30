@@ -23,6 +23,8 @@
   "sortPriceDesc": "Qiymət: Yuxarıdan Aşağı",
   "resultsCount": "{{count}} kurs",
   "resultsCountPlural": "{{count}} kurs",
+  "resultsCountCombined": "{{count}} kurs / alət",
+  "resultsCountCombinedPlural": "{{count}} kurs / alət",
   "filtersToggle": "Filtrlər",
   "discountedOnly": "Endirimdə",
   "priceLabel": "Qiymət",
@@ -32,6 +34,8 @@
   "filtersDrawerTitle": "Kursları Filtrlə",
   "showResults": "{{count}} nəticəni göstər",
   "showResultsPlural": "{{count}} nəticəni göstər",
+  "showResultsCombined": "{{count}} kurs / aləti göstər",
+  "showResultsCombinedPlural": "{{count}} kurs / aləti göstər",
 
   "notFound": "Kurs tapılmadı.",
   "enrollFree": "Pulsuz Öyrənməyə Başla →",

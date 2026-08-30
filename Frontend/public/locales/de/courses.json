@@ -23,6 +23,8 @@
   "sortPriceDesc": "Preis: absteigend",
   "resultsCount": "{{count}} Kurs",
   "resultsCountPlural": "{{count}} Kurse",
+  "resultsCountCombined": "{{count}} Kurs / Tool",
+  "resultsCountCombinedPlural": "{{count}} Kurse / Tools",
   "filtersToggle": "Filter",
   "discountedOnly": "Im Angebot",
   "priceLabel": "Preis",
@@ -32,6 +34,8 @@
   "filtersDrawerTitle": "Kurse filtern",
   "showResults": "{{count}} Ergebnis anzeigen",
   "showResultsPlural": "{{count}} Ergebnisse anzeigen",
+  "showResultsCombined": "{{count}} Kurs / Tool anzeigen",
+  "showResultsCombinedPlural": "{{count}} Kurse / Tools anzeigen",
 
   "notFound": "Kurs nicht gefunden.",
   "enrollFree": "Kostenlos mit dem Lernen beginnen →",

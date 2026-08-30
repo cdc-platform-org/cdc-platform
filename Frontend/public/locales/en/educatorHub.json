@@ -62,6 +62,8 @@
   "rubricAssessmentTypeLabel": "Assessment type",
   "assessmentFormative": "Formative",
   "assessmentSummative": "Summative",
+  "assessmentDiagnostic": "Diagnostic (baseline assessment)",
+  "assessmentProject": "Project / practical task",
   "rubricSkillLabel": "Skill or topic being assessed",
   "rubricSkillPlaceholder": "e.g. Analyzing primary historical sources",
   "rubricScaleLabel": "Scoring scale",

@@ -23,6 +23,8 @@
   "sortPriceDesc": "Ціна: від високої до низької",
   "resultsCount": "{{count}} курс",
   "resultsCountPlural": "{{count}} курсів",
+  "resultsCountCombined": "{{count}} курс / інструмент",
+  "resultsCountCombinedPlural": "{{count}} курсів / інструментів",
   "filtersToggle": "Фільтри",
   "discountedOnly": "Зі знижкою",
   "priceLabel": "Ціна",
@@ -32,6 +34,8 @@
   "filtersDrawerTitle": "Фільтрувати курси",
   "showResults": "Показати {{count}} результат",
   "showResultsPlural": "Показати {{count}} результатів",
+  "showResultsCombined": "Показати {{count}} курс / інструмент",
+  "showResultsCombinedPlural": "Показати {{count}} курсів / інструментів",
 
   "notFound": "Курс не знайдено.",
   "enrollFree": "Почати навчання безкоштовно →",

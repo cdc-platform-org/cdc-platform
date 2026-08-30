@@ -62,6 +62,8 @@
   "rubricAssessmentTypeLabel": "Գնահատման տեսակ",
   "assessmentFormative": "Ընթացիկ (ձևավորող)",
   "assessmentSummative": "Եզրափակիչ",
+  "assessmentDiagnostic": "Ախտորոշիչ (նախնական գնահատում)",
+  "assessmentProject": "Նախագծային / գործնական առաջադրանք",
   "rubricSkillLabel": "Գնահատվող հմտություն կամ թեմա",
   "rubricSkillPlaceholder": "օր. Պատմական սկզբնաղբյուրների վերլուծություն",
   "rubricScaleLabel": "Գնահատման սանդղակ",
