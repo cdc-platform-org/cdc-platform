@@ -3,6 +3,7 @@ import { BookOpen, PenLine, SpellCheck, Layers, ListChecks, Headphones, Messages
 import VIPAudioNarrator from '../ui/VIPAudioNarrator';
 import TutorOnboardingFlow from './TutorOnboardingFlow';
 import TutorPaywallModal from './TutorPaywallModal';
+import VocabWaitingGame from './VocabWaitingGame';
 import {
   TutorTaskType,
   CefrLevel,
@@ -203,6 +204,21 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
   const [grading, setGrading] = useState<TutorGradingResult | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
   const [savingGoal, setSavingGoal] = useState(false);
+  // Bridges the real gap between "onboarding UI finished" and "the server
+  // actually knows tutorNativeLang" — that field is only ever persisted as
+  // a side effect of the student's FIRST real lesson generation (see
+  // TutorLesson.nativeLang's schema comment), never by onboarding itself.
+  // Without this, handleOnboardingComplete's refresh() re-fetched the same
+  // tutorState with tutorNativeLang still null, needsOnboarding stayed
+  // true, and the "Start Learning" button appeared to do nothing — it was
+  // actually unmounting and remounting a BRAND NEW TutorOnboardingFlow
+  // (which resets to step 'lang'), not stalling on a slow request.
+  const [onboardingJustCompleted, setOnboardingJustCompleted] = useState(false);
+  // Drives the "Vocab Rush" waiting mini-game — separate from `generating`
+  // itself so the game can stay mounted long enough to show its own
+  // "lesson ready" banner (with the score just earned) after the request
+  // finishes, rather than unmounting the instant generating flips false.
+  const [showWaitingGame, setShowWaitingGame] = useState(false);
 
   const refresh = useCallback(() => {
     getTutorState()
@@ -226,11 +242,14 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
 
   const isPro = !!tutorState?.isPro;
   // Onboarding gate — a brand-new student has never set a native language
-  // yet (tutorNativeLang stays null until the first lesson generation or
-  // onboarding completes it directly). `tutorState === null` is the
+  // yet (tutorNativeLang stays null server-side until the first lesson
+  // generation actually happens). `tutorState === null` is the
   // still-loading case, deliberately not treated as "needs onboarding" to
   // avoid a flash of the onboarding flow before the real state arrives.
-  const needsOnboarding = tutorState !== null && !tutorState.tutorNativeLang;
+  // `!onboardingJustCompleted` is what actually lets the student through to
+  // the lesson-generation form right after finishing onboarding, before
+  // that first generation has run — see its own declaration above.
+  const needsOnboarding = tutorState !== null && !tutorState.tutorNativeLang && !onboardingJustCompleted;
 
   const handleGenerate = async (overrideTaskType?: TutorTaskType, overrideLevel?: CefrLevel, overrideNativeLang?: string) => {
     const effectiveNativeLang = (overrideNativeLang ?? nativeLang).trim();
@@ -240,6 +259,7 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
     }
     setError(null);
     setGenerating(true);
+    setShowWaitingGame(true);
     setGrading(null);
     try {
       const newLesson = await generateTutorLesson({
@@ -252,6 +272,9 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
       saveTutorResumeState({ lastLessonId: newLesson.id, stepIndex: 0 }).catch(() => {});
       refresh();
     } catch (err: any) {
+      // No "lesson ready" banner to show on failure — dismiss the game
+      // immediately so the error message below is what the student sees.
+      setShowWaitingGame(false);
       if (err?.response?.status === 403) {
         setShowPaywall(true);
       } else {
@@ -278,6 +301,7 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
   const handleOnboardingComplete = ({ nativeLang: onboardNativeLang, level: onboardLevel }: { nativeLang: string; learningGoal: TutorLearningGoal; level: CefrLevel }) => {
     setNativeLang(onboardNativeLang);
     setLevel(onboardLevel);
+    setOnboardingJustCompleted(true);
     refresh();
   };
 
@@ -492,6 +516,12 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
           {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
           {generating ? t.generating : t.generate}
         </button>
+
+        {showWaitingGame && (
+          <div className="mt-4">
+            <VocabWaitingGame lang={lang} loading={generating} onContinue={() => setShowWaitingGame(false)} />
+          </div>
+        )}
       </div>
 
       {lesson && (

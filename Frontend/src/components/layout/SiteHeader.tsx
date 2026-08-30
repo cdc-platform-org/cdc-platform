@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { Menu, X, LayoutDashboard, GraduationCap, LogOut, ShieldCheck, ChevronDown, ShoppingBag, CalendarClock, PlayCircle } from 'lucide-react';
+import { Menu, X, LayoutDashboard, GraduationCap, LogOut, ShieldCheck, ChevronDown, ShoppingBag, CalendarClock, PlayCircle, Users, GalleryHorizontal } from 'lucide-react';
 import LanguageSwitcher from './LanguageSwitcher';
 import UserMenu from './UserMenu';
 import NotificationBell from './NotificationBell';
@@ -31,6 +31,7 @@ const dict = {
     myCourses: 'ჩემი კურსები',
     admin: 'ადმინ პანელი',
     mentorPanel: 'მენტორის პანელი',
+    more: 'მეტი',
     logout: 'გამოსვლა',
   },
   en: {
@@ -48,6 +49,7 @@ const dict = {
     myCourses: 'My Courses',
     admin: 'Admin Panel',
     mentorPanel: 'Mentor Panel',
+    more: 'More',
     logout: 'Log Out',
   },
   de: {
@@ -65,6 +67,7 @@ const dict = {
     myCourses: 'Meine Kurse',
     admin: 'Admin-Panel',
     mentorPanel: 'Mentoren-Panel',
+    more: 'Mehr',
     logout: 'Abmelden',
   },
   es: {
@@ -82,6 +85,7 @@ const dict = {
     myCourses: 'Mis Cursos',
     admin: 'Panel de Administración',
     mentorPanel: 'Panel de Mentor',
+    more: 'Más',
     logout: 'Cerrar Sesión',
   },
   fr: {
@@ -99,6 +103,7 @@ const dict = {
     myCourses: 'Mes cours',
     admin: 'Panneau admin',
     mentorPanel: 'Panneau mentor',
+    more: 'Plus',
     logout: 'Déconnexion',
   },
   uk: {
@@ -116,6 +121,7 @@ const dict = {
     myCourses: 'Мої курси',
     admin: 'Панель адміністратора',
     mentorPanel: 'Панель ментора',
+    more: 'Більше',
     logout: 'Вийти',
   },
 };
@@ -187,20 +193,58 @@ export default function SiteHeader() {
             the nav links to fit tighter again. */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <div className="hidden md:flex items-center gap-2 lg:gap-3 text-sm font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
-            <Link href="/community" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
-              {t.community}
-            </Link>
-            <Link href="/mentors" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
-              {t.mentors}
-            </Link>
-            {canSeeMentorPanel && (
-              <Link
-                href="/dashboard/mentorship-sessions"
-                className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors"
-              >
-                {t.mentorPanel}
-              </Link>
-            )}
+            {/* Community/Mentors/MentorPanel/About all collapsed into one
+                "More" dropdown (same hover-dropdown mechanics as
+                Marketplace/About already used below) instead of sitting as
+                separate always-visible items — at viewports between the
+                md breakpoint and ~1440px, the previous flat list of ~6-7
+                items plus the Marketplace/About dropdown triggers could
+                add up to wider than the space actually available between
+                the logo and the shrink-0 actions cluster, overflowing the
+                row horizontally and pushing the avatar/actions off-screen
+                under the scrollbar. Only Marketplace and Tools (this
+                site's two primary traffic drivers) stay always-visible. */}
+            <div className="relative group py-2 -my-2">
+              <button type="button" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-1 bg-transparent border-none cursor-pointer font-bold text-sm p-0 text-inherit">
+                {t.more}
+                <ChevronDown className="w-3 h-3" />
+              </button>
+              <div className="absolute left-0 top-full pt-2 w-56 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150">
+                <div className="rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-sm bg-white/95 backdrop-blur-md border-slate-200 dark:bg-[#0e1422]/95 dark:border-white/10">
+                  <Link href="/community" className="block px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                    {t.community}
+                  </Link>
+                  <Link href="/mentors" className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                    <Users className="w-4 h-4 shrink-0" />
+                    {t.mentors}
+                  </Link>
+                  {canSeeMentorPanel && (
+                    <Link
+                      href="/dashboard/mentorship-sessions"
+                      className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                    >
+                      <CalendarClock className="w-4 h-4 shrink-0" />
+                      {t.mentorPanel}
+                    </Link>
+                  )}
+                  {!(isAuthenticated && user) && (
+                    <>
+                      <Link href="/about" className="block px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                        {t.about}
+                      </Link>
+                      <Link href="/gallery" className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                        <GalleryHorizontal className="w-4 h-4 shrink-0" />
+                        {t.gallery}
+                      </Link>
+                    </>
+                  )}
+                  <Link href="/tutorials" className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                    <PlayCircle className="w-4 h-4 shrink-0" />
+                    {t.tutorials}
+                  </Link>
+                </div>
+              </div>
+            </div>
             <div className="relative group py-2 -my-2">
               <Link
                 href="/marketplace"
@@ -245,34 +289,6 @@ export default function SiteHeader() {
                 HOT
               </span>
             </Link>
-            {!(isAuthenticated && user) && (
-              <div className="relative group py-2 -my-2">
-                <Link
-                  href="/about"
-                  className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-1"
-                >
-                  {t.about}
-                  <ChevronDown className="w-3 h-3" />
-                </Link>
-                <div className="absolute left-0 top-full pt-2 w-48 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150">
-                  <div className="rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-sm bg-white/95 backdrop-blur-md border-slate-200 dark:bg-[#0e1422]/95 dark:border-white/10">
-                    <Link
-                      href="/gallery"
-                      className="block px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
-                    >
-                      {t.gallery}
-                    </Link>
-                    <Link
-                      href="/tutorials"
-                      className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
-                    >
-                      <PlayCircle className="w-4 h-4 shrink-0" />
-                      {t.tutorials}
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Actions cluster — deliberately shrink-0 (see the comment on

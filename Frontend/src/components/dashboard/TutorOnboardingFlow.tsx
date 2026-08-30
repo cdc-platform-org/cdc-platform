@@ -39,20 +39,37 @@ const GOAL_OPTIONS: { value: TutorLearningGoal; ka: string; en: string }[] = [
   { value: 'INTERVIEW_PREP', ka: '🤝 გასაუბრებისთვის მომზადება', en: '🤝 Interview Prep' },
 ];
 
+// Parenthetical level descriptions — same ka/en content-locale boundary as
+// every other string in this component (see utils/locale.ts's
+// contentLocale: Georgian only for the ka site locale, English for every
+// other of the 9 site locales, never a per-string next-i18next namespace
+// here). Shown on the new 'level' step below.
+const LEVEL_DESCRIPTIONS: Record<CefrLevel, { ka: string; en: string }> = {
+  A1: { ka: 'დამწყები — მარტივი სიტყვები და ყოველდღიური ფრაზები', en: 'Beginner — simple words and everyday phrases' },
+  A2: { ka: 'ელემენტარული — მარტივი დიალოგი და საბაზისო ტექსტები', en: 'Elementary — simple dialogue and basic texts' },
+  B1: { ka: 'საშუალო — თავისუფალი საუბარი ნაცნობ თემებზე', en: 'Intermediate — comfortable conversation on familiar topics' },
+  B2: { ka: 'საშუალოზე მაღალი — კომპლექსური დისკუსიები და პროფესიული თემები', en: 'Upper-Intermediate — complex discussions and professional topics' },
+  C1: { ka: 'მაღალი / პროფესიონალური — თავისუფალი ენობრივი ფლობა', en: 'Advanced — fluent, professional command of the language' },
+  C2: { ka: 'ექსპერტი / მშობლიური ენის დონე — სრული ოსტატობა', en: 'Expert — near-native fluency, full mastery' },
+};
+const ALL_LEVELS: CefrLevel[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+
 const dict = {
   ka: {
     welcome: 'გამარჯობა! მე ვარ IMIAKO 👋',
     welcomeSubtitle: 'თქვენი პირადი AI ინგლისურის რეპეტიტორი. დავიწყოთ სამი მოკლე ნაბიჯით.',
     step1Title: 'რომელია თქვენი მშობლიური ენა?',
     step2Title: 'რა არის თქვენი მიზანი?',
-    step3Title: 'სწრაფი დიაგნოსტიკური ტესტი',
-    step3Subtitle: 'პასუხი გაეცით რამდენიმე კითხვას, რომ IMIAKO-მ განსაზღვროს თქვენი დონე (A1-C1).',
+    step3Title: 'აირჩიეთ თქვენი დონე',
+    step3Subtitle: 'თუ იცით თქვენი დონე CEFR სკალით, აირჩიეთ პირდაპირ — ან ჩააბარეთ მოკლე ტესტი, თუ არ ხართ დარწმუნებული.',
+    testStepTitle: 'სწრაფი დიაგნოსტიკური ტესტი',
+    testStepSubtitle: 'პასუხი გაეცით რამდენიმე კითხვას, რომ IMIAKO-მ განსაზღვროს თქვენი დონე (A1-C1).',
     next: 'შემდეგი',
-    startTest: 'ტესტის დაწყება',
+    startTest: 'არ ვიცი — მოკლე ტესტის ჩაბარება',
     loadingTest: 'იტვირთება…',
     finish: 'დასრულება',
     submitting: 'მოწმდება…',
-    skip: 'ან გამოტოვე — დავიწყოთ A1-დან',
+    backToLevels: '← უკან დონის არჩევანთან',
     resultTitle: 'თქვენი დონეა',
     resultBody: 'IMIAKO ახლა მოამზადებს გაკვეთილებს ზუსტად თქვენი დონისთვის.',
     startLearning: 'სწავლის დაწყება →',
@@ -62,21 +79,23 @@ const dict = {
     welcomeSubtitle: 'Your personal AI English Tutor. Let\'s get started in three quick steps.',
     step1Title: 'What is your native language?',
     step2Title: 'What is your goal?',
-    step3Title: 'Quick diagnostic test',
-    step3Subtitle: 'Answer a few questions so IMIAKO can figure out your level (A1-C1).',
+    step3Title: 'Choose your level',
+    step3Subtitle: "If you already know your CEFR level, pick it directly — or take a short test if you're not sure.",
+    testStepTitle: 'Quick diagnostic test',
+    testStepSubtitle: 'Answer a few questions so IMIAKO can figure out your level (A1-C1).',
     next: 'Next',
-    startTest: 'Start Test',
+    startTest: "I'm not sure — take a short test",
     loadingTest: 'Loading…',
     finish: 'Finish',
     submitting: 'Checking…',
-    skip: 'Or skip — start from A1',
+    backToLevels: '← Back to level selection',
     resultTitle: 'Your level is',
     resultBody: 'IMIAKO will now prepare lessons exactly for your level.',
     startLearning: 'Start Learning →',
   },
 };
 
-type Step = 'lang' | 'goal' | 'test' | 'result';
+type Step = 'lang' | 'goal' | 'level' | 'test' | 'result';
 
 export default function TutorOnboardingFlow({ lang, onComplete }: TutorOnboardingFlowProps) {
   const t = dict[lang];
@@ -130,8 +149,6 @@ export default function TutorOnboardingFlow({ lang, onComplete }: TutorOnboardin
       setSubmittingTest(false);
     }
   };
-
-  const handleSkipTest = () => finishWithLevel('A1');
 
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8">
@@ -191,11 +208,46 @@ export default function TutorOnboardingFlow({ lang, onComplete }: TutorOnboardin
           {error && <p className="text-sm text-red-500">{error}</p>}
           <button
             type="button"
-            disabled={!goal || loadingTest}
-            onClick={handleStartTest}
+            disabled={!goal}
+            onClick={() => setStep('level')}
             className="self-end inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400 via-purple-500 to-cyan-500 text-white font-bold px-5 py-2.5 text-sm disabled:opacity-50"
           >
-            {loadingTest ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {t.next} <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {step === 'level' && (
+        <div className="flex flex-col gap-5">
+          <div>
+            <p className="text-sm font-bold">{t.step3Title}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t.step3Subtitle}</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {ALL_LEVELS.map((lvl) => (
+              <button
+                key={lvl}
+                type="button"
+                onClick={() => finishWithLevel(lvl)}
+                className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-left hover:border-purple-400 dark:hover:border-purple-500 transition-colors"
+              >
+                <span className="shrink-0 w-11 h-11 rounded-lg bg-gradient-to-tr from-amber-400 via-purple-500 to-cyan-500 flex items-center justify-center text-white font-black text-sm">
+                  {lvl}
+                </span>
+                <span className="text-xs font-medium text-slate-600 dark:text-slate-300 leading-snug">
+                  {lang === 'ka' ? LEVEL_DESCRIPTIONS[lvl].ka : LEVEL_DESCRIPTIONS[lvl].en}
+                </span>
+              </button>
+            ))}
+          </div>
+          {error && <p className="text-sm text-red-500">{error}</p>}
+          <button
+            type="button"
+            disabled={loadingTest}
+            onClick={handleStartTest}
+            className="self-center inline-flex items-center gap-1.5 text-xs font-bold text-purple-600 dark:text-purple-400 bg-transparent border-none cursor-pointer hover:underline disabled:opacity-50"
+          >
+            {loadingTest ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
             {loadingTest ? t.loadingTest : t.startTest}
           </button>
         </div>
@@ -204,8 +256,8 @@ export default function TutorOnboardingFlow({ lang, onComplete }: TutorOnboardin
       {step === 'test' && (
         <div className="flex flex-col gap-5">
           <div>
-            <p className="text-sm font-bold">{t.step3Title}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{t.step3Subtitle}</p>
+            <p className="text-sm font-bold">{t.testStepTitle}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t.testStepSubtitle}</p>
           </div>
           <div className="flex flex-col gap-4 max-h-[420px] overflow-y-auto pr-1">
             {questions.map((q, i) => (
@@ -238,8 +290,8 @@ export default function TutorOnboardingFlow({ lang, onComplete }: TutorOnboardin
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
           <div className="flex items-center justify-between">
-            <button type="button" onClick={handleSkipTest} className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-              {t.skip}
+            <button type="button" onClick={() => setStep('level')} className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+              {t.backToLevels}
             </button>
             <button
               type="button"
