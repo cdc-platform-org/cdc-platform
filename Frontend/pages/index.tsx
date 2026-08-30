@@ -7,7 +7,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import type { GetStaticProps } from 'next';
-import { CheckCircle2, AlertTriangle, Sun, Moon, User, X, Menu, Link as LinkIcon, Rocket, Clock, Bot, ShieldCheck, Users, Sparkles, Lock, MessageSquareText, BookOpen, Code2, BarChart3, Building2, Calendar, Play } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Sun, Moon, User, X, Menu, Link as LinkIcon, Rocket, Clock, Bot, ShieldCheck, Users, Sparkles, Lock, MessageSquareText, BookOpen, Code2, BarChart3, Building2, Calendar, Play, GraduationCap, Gift, Globe, Target } from 'lucide-react';
 import { useAuthModal } from '../src/context/AuthModalContext';
 import { useAuth } from '../src/context/AuthContext';
 import SiteFooter from '../src/components/layout/SiteFooter';
@@ -1179,6 +1179,49 @@ export default function Home() {
                     {t('sevenDaysFree')}
                   </button>
                 )}
+              </div>
+            </div>
+
+            {/* IMIAKO — AI English Tutor, a Student-facing product shown
+                alongside the Business-facing AI Assistant above (same
+                full-width "flagship" card treatment, gradient-badged as its
+                own distinct brand rather than reusing the cyan/purple
+                Business-tools palette). Deliberately NOT added to the
+                B2B-only /tools catalog or its nav link — that page is
+                explicitly Business-account-scoped (see pages/tools.tsx's
+                own subtitle) and its header link is hidden once a Student/
+                Mentor is logged in, so putting IMIAKO there would hide it
+                from the exact users it's for. */}
+            <div className="lg:col-span-3 rounded-3xl border border-purple-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-amber-400/5 via-purple-500/5 to-cyan-500/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
+              <div className="shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-400 via-purple-500 to-cyan-500 flex items-center justify-center">
+                <GraduationCap className="w-7 h-7 text-white" />
+              </div>
+              <div className="flex-1">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <h3 className="text-xl font-black tracking-wide">{t('imiakoHeroTitle')}</h3>
+                  <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                    {t('availableNow')}
+                  </span>
+                </div>
+                <ul className="grid sm:grid-cols-2 gap-3 mb-6">
+                  {[
+                    { icon: Gift, key: 'imiakoHeroFeature1' as const },
+                    { icon: Globe, key: 'imiakoHeroFeature2' as const },
+                    { icon: Target, key: 'imiakoHeroFeature3' as const },
+                  ].map(({ icon: Icon, key }) => (
+                    <li key={key} className="flex items-center gap-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                      <Icon className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                      {t(key)}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href="/dashboard/english-tutor"
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-400 via-purple-500 to-cyan-500 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-purple-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {t('imiakoCta')}
+                </Link>
               </div>
             </div>
 
