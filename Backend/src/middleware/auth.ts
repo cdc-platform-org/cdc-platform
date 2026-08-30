@@ -7,6 +7,11 @@ export interface AuthenticatedUser {
   id: string;
   role: 'Student' | 'Mentor' | 'SuperAdmin' | 'Client';
   email: string;
+  // The session id this JWT was issued with (routes/auth.ts's signToken) —
+  // undefined for any token signed before this field existed, which
+  // requireCurrentEducatorSession below treats as "stale, reject" rather
+  // than crashing on a missing claim.
+  sid?: string;
 }
 
 declare global {
@@ -25,6 +30,7 @@ interface JwtPayload {
   userId: string;
   role: AuthenticatedUser['role'];
   email: string;
+  sid?: string;
 }
 
 export function authenticate(req: Request, res: Response, next: NextFunction) {
@@ -35,7 +41,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
   const token = authHeader.slice('Bearer '.length);
   try {
     const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as JwtPayload;
-    req.user = { id: payload.userId, role: payload.role, email: payload.email };
+    req.user = { id: payload.userId, role: payload.role, email: payload.email, sid: payload.sid };
     next();
   } catch {
     return res.status(401).json({ message: 'Invalid or expired token.' });
@@ -119,6 +125,32 @@ export async function requireNotBannedOrDeleted(req: Request, res: Response, nex
   }
   if (user.deletionRequestedAt) {
     return res.status(403).json({ message: 'This account has been deactivated.' });
+  }
+  next();
+}
+
+// Single-active-session lock for the AI Educator VIP Hub — anti
+// account-sharing measure (see User.currentSessionId's own schema comment
+// for why this is scoped to just these routes rather than wired into
+// authenticate() itself). currentSessionId is rotated on every login
+// (routes/auth.ts's signToken → services/educatorVipService.ts's
+// issueSessionId), so a token whose `sid` claim no longer matches the DB
+// value was issued to a session a LATER login has since superseded —
+// reject it distinctly (409, not 401) so the frontend can show "signed in
+// elsewhere" rather than a generic "please log in again".
+export async function requireCurrentEducatorSession(req: Request, res: Response, next: NextFunction) {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required.' });
+  }
+  const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { currentSessionId: true } });
+  if (!user) {
+    return res.status(401).json({ message: 'Account no longer exists.' });
+  }
+  if (!req.user.sid || !user.currentSessionId || req.user.sid !== user.currentSessionId) {
+    return res.status(409).json({
+      code: 'SESSION_SUPERSEDED',
+      message: 'თქვენი ანგარიშით შესვლა დაფიქსირდა სხვა მოწყობილობიდან.',
+    });
   }
   next();
 }

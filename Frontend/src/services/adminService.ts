@@ -31,6 +31,15 @@ export async function setHrSpecialist(userId: string): Promise<AdminUser> {
   return response.data;
 }
 
+// Returns only the two changed fields (Backend/routes/admin.ts's PATCH
+// .../educator-vip response shape), not a full AdminUser — callers must
+// merge this into existing row state rather than passing it to runAction's
+// wholesale-replace helper (see admin/users.tsx's handleToggleEducatorVip).
+export async function updateEducatorVip(userId: string, active: boolean): Promise<{ id: string; educatorVipActive: boolean }> {
+  const response = await apiClient.patch<{ data: { id: string; educatorVipActive: boolean } }>(`/admin/users/${userId}/educator-vip`, { active });
+  return response.data.data;
+}
+
 export async function unsetHrSpecialist(userId: string): Promise<AdminUser> {
   const response = await apiClient.post<AdminUser>(`/admin/users/${userId}/unset-hr-specialist`);
   return response.data;

@@ -21,6 +21,7 @@ import {
 } from '../schemas/authSchemas';
 import { authenticate } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
+import { issueSessionId } from '../services/educatorVipService';
 import {
   JWT_SECRET,
   GOOGLE_CLIENT_ID,
@@ -129,8 +130,13 @@ async function maybePromoteSuperAdmin(user: User): Promise<User> {
   });
 }
 
-function signToken(user: { id: string; role: string; email: string }) {
-  return jwt.sign({ userId: user.id, role: user.role, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+// Rotates the caller's currentSessionId (services/educatorVipService.ts's
+// issueSessionId) and embeds it as the `sid` claim — see
+// middleware/auth.ts's requireCurrentEducatorSession for what this
+// actually enforces (Educator VIP Hub routes only, not sitewide).
+async function signToken(user: { id: string; role: string; email: string }) {
+  const sid = await issueSessionId(user.id);
+  return jwt.sign({ userId: user.id, role: user.role, email: user.email, sid }, JWT_SECRET, { expiresIn: '7d' });
 }
 
 // Called at every one of this file's five successful-authentication points
@@ -279,7 +285,7 @@ router.post('/register', authRateLimit, async (req, res) => {
 
   user = await maybePromoteSuperAdmin(user);
 
-  const token = signToken(user);
+  const token = await signToken(user);
   trackLoginEvent(user.id, req);
 
   res.status(201).json({
@@ -318,7 +324,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
   }
 
   user = await maybePromoteSuperAdmin(user);
-  const token = signToken(user);
+  const token = await signToken(user);
   trackLoginEvent(user.id, req);
 
   res.json({
@@ -586,7 +592,7 @@ router.post('/google', authRateLimit, async (req, res) => {
   }
 
   user = await maybePromoteSuperAdmin(user);
-  const token = signToken(user);
+  const token = await signToken(user);
   trackLoginEvent(user.id, req);
   res.json({ token, user: toUserResponse(user) });
 });
@@ -708,7 +714,7 @@ router.get('/github/callback', async (req: Request, res: Response) => {
     }
 
     user = await maybePromoteSuperAdmin(user);
-    const token = signToken(user);
+    const token = await signToken(user);
     trackLoginEvent(user.id, req);
     res.redirect(`${FRONTEND_URL}/auth/oauth-callback?token=${encodeURIComponent(token)}`);
   } catch (err) {
@@ -809,7 +815,7 @@ router.get('/facebook/callback', async (req: Request, res: Response) => {
     }
 
     user = await maybePromoteSuperAdmin(user);
-    const token = signToken(user);
+    const token = await signToken(user);
     trackLoginEvent(user.id, req);
     res.redirect(`${FRONTEND_URL}/auth/oauth-callback?token=${encodeURIComponent(token)}`);
   } catch (err) {

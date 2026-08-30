@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
 import crypto from 'crypto';
 import { Role, UserStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma';
@@ -399,6 +400,35 @@ router.patch('/users/:id/ai-trial', requireAdminRole('SUPER_ADMIN'), async (req:
     data,
     select: { id: true, aiTrialEndsAt: true, aiSubscriptionActive: true },
   });
+  res.json({ data: updated });
+});
+
+const updateEducatorVipSchema = z.object({ active: z.boolean() });
+
+// AI Educator VIP Hub grant/revoke — flag-based access, no card/billing
+// engine (see User.educatorVipActive's own schema comment). Open to any
+// role, unlike the AI Agents Suite trial above which is Client-only, so
+// this deliberately skips that route's role check.
+router.patch('/users/:id/educator-vip', requireAdminRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  const result = updateEducatorVipSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const user = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true } });
+  if (!user) return res.status(404).json({ message: 'User not found.' });
+
+  const updated = await prisma.user.update({
+    where: { id: req.params.id },
+    data: { educatorVipActive: result.data.active },
+    select: { id: true, educatorVipActive: true },
+  });
+
+  await logAdminAction({
+    action: result.data.active ? 'educator_vip.grant' : 'educator_vip.revoke',
+    targetType: 'User',
+    targetId: req.params.id,
+    performedById: req.user!.id,
+  });
+
   res.json({ data: updated });
 });
 

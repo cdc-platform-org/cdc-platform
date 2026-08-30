@@ -19,6 +19,7 @@ import {
   sendAdminPasswordReset,
   updateUserRole,
   updateUserStatus,
+  updateEducatorVip,
 } from '../../src/services/adminService';
 import { promoteToMentor, demoteFromMentor } from '../../src/services/adminMentorshipService';
 
@@ -85,6 +86,9 @@ const PAGE_DICT = {
     // the JSX comment above the role <select> for why (preMentorRole
     // reversibility, handled only by the dedicated Promote/Demote buttons).
     roleMentorNote: 'მენტორის სტატუსის მისანიჭებლად გამოიყენეთ ქვედა ღილაკი',
+    grantEducatorVip: '👑 Educator VIP მინიჭება',
+    revokeEducatorVip: 'Educator VIP-ის მოხსნა',
+    educatorVipBadge: 'Educator VIP',
   },
   en: {
     title: 'User Management',
@@ -125,6 +129,9 @@ const PAGE_DICT = {
     statusChangeSuccess: 'Status updated',
     rejectReasonPrompt: 'Rejection reason (optional):',
     roleMentorNote: 'Use the button below to grant/remove Mentor status',
+    grantEducatorVip: '👑 Grant Educator VIP',
+    revokeEducatorVip: 'Revoke Educator VIP',
+    educatorVipBadge: 'Educator VIP',
   },
 } as const;
 
@@ -221,6 +228,22 @@ function UserManagement() {
     try {
       const updated = await action();
       setUsers((prev) => prev.map((u) => (u.id === userId ? updated : u)));
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? p.actionError);
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  // Same "merge one field, don't replace the row" reasoning as
+  // handlePromote below — updateEducatorVip only returns {id,
+  // educatorVipActive}, not a full AdminUser.
+  const handleToggleEducatorVip = async (u: AdminUser) => {
+    setActioningId(u.id);
+    setError(null);
+    try {
+      const { educatorVipActive } = await updateEducatorVip(u.id, !u.educatorVipActive);
+      setUsers((prev) => prev.map((row) => (row.id === u.id ? { ...row, educatorVipActive } : row)));
     } catch (err: any) {
       setError(err?.response?.data?.message ?? p.actionError);
     } finally {
@@ -470,6 +493,11 @@ function UserManagement() {
                                 🧑‍🏫 {p.mentorBadge}
                               </span>
                             )}
+                            {u.educatorVipActive && (
+                              <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400">
+                                👑 {p.educatorVipBadge}
+                              </span>
+                            )}
                             {u.adminRole && (
                               <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 text-indigo-700 dark:text-indigo-300">
                                 {u.adminRole.replace('_', ' ')}
@@ -529,6 +557,17 @@ function UserManagement() {
                                 {u.isBanned ? p.unban : p.ban}
                               </button>
                             )}
+                            <button
+                              disabled={isActioning}
+                              onClick={() => handleToggleEducatorVip(u)}
+                              className={`text-xs font-medium px-2.5 py-1 rounded-lg disabled:opacity-50 ${
+                                u.educatorVipActive
+                                  ? 'text-rose-700 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20'
+                                  : 'text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20'
+                              }`}
+                            >
+                              {u.educatorVipActive ? p.revokeEducatorVip : p.grantEducatorVip}
+                            </button>
                             <button
                               disabled={isActioning}
                               onClick={() => handleResetPassword(u)}

@@ -588,6 +588,39 @@ model User {
   // completeTutorSubscriptionPurchase — null until the student's first real
   // purchase.
   tutorSubscriptionPeriodEnd    DateTime?
+  // ============================================================
+  // AI Educator VIP Hub (Frontend's /dashboard/tools/educator-hub) — a
+  // fourth, deliberately separate flag/trial pair from the three above
+  // (Business AI Agents Suite, AI English Tutor), same collision-avoidance
+  // reasoning as tutorSubscriptionTier's own comment: this is a Teacher-
+  // facing B2C product with its own price point, open to any role (no
+  // dedicated Teacher role exists), so it can't safely reuse
+  // aiSubscriptionActive (Client-only by utils/aiAgentsSuiteAccess.ts) or
+  // tutorSubscriptionTier (a different product's Student-facing tool).
+  // No BillingSubscription/Stripe engine here either — same reasoning as
+  // tutorSubscriptionTier: post-trial access is admin-granted (see
+  // routes/admin.ts's PATCH /users/:id/educator-vip), matching
+  // aiSubscriptionActive's own admin-grant model, while the trial itself is
+  // cardless and self-service (see educatorVipTrialStartDate below),
+  // matching tutorTrialStartDate's model. See utils/educatorVipAccess.ts.
+  educatorVipActive             Boolean               @default(false)
+  // Cardless 5-day trial, one account-lifetime use — same
+  // "trialStartDate already set = already used" check as
+  // tutorTrialStartDate, started explicitly via POST
+  // /educator-hub/trial/start, never auto-granted.
+  educatorVipTrialStartDate     DateTime?
+  educatorVipTrialEndDate       DateTime?
+  // DB-backed single-active-session lock — anti account-sharing measure,
+  // enforced ONLY on Educator Hub routes (see middleware/auth.ts's
+  // requireCurrentEducatorSession), not sitewide: a second login rotates
+  // this to a fresh id (routes/auth.ts's signToken/issueSessionId), which
+  // invalidates the FIRST device's Educator Hub access (still an active,
+  // otherwise-fully-functional site session everywhere else) the next time
+  // it calls an Educator Hub endpoint. Scoped deliberately narrow — this
+  // column is written on every login regardless of product, but only ever
+  // CHECKED by that one feature's routes, so it can't accidentally lock out
+  // legitimate multi-device use of the rest of the site for a non-VIP user.
+  currentSessionId              String?
   createdAt                     DateTime              @default(now())
 
   postedGigs                    Gig[]                         @relation("PostedGigs")
@@ -645,6 +678,7 @@ model User {
   agents                        Agent[]
   examSessions                  ExamSession[]
   billingSubscriptions          BillingSubscription[]
+  educatorGenerations           EducatorGeneration[]
   blogComments                  BlogComment[]
   mentorshipRequestsMade        MentorshipRequest[]           @relation("MentorshipRequestsMade")
   mentorshipRequestsResolved    MentorshipRequest[]           @relation("MentorshipRequestsResolved")
@@ -4363,4 +4397,30 @@ model TutorLessonGeneration {
 
   @@index([userId, createdAt])
   @@map("tutor_lesson_generations")
+}
+
+// AI Educator VIP Hub usage log — same rolling-window row-count pattern as
+// TutorLessonGeneration above (see educatorUsageService.ts) rather than a
+// resettable monthly counter field/model, which has no precedent anywhere
+// in this schema (verified before choosing this shape): counting rows
+// created in the last 30 days needs no cron/reset job and stays correct
+// across multiple server instances. `type` splits the two independently-
+// limited quotas the product spec calls for (300 generations/mo vs 50
+// gradings/mo) — TEST_GENERATOR and RUBRIC both count toward the
+// "generations" quota, GRADING counts toward its own separate quota.
+model EducatorGeneration {
+  id        String                 @id @default(uuid())
+  userId    String
+  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      EducatorGenerationType
+  createdAt DateTime               @default(now())
+
+  @@index([userId, type, createdAt])
+  @@map("educator_generations")
+}
+
+enum EducatorGenerationType {
+  TEST_GENERATOR
+  RUBRIC
+  GRADING
 }

@@ -22,6 +22,7 @@ import {
   Info,
   KeyRound,
   Mic,
+  Crown,
 } from 'lucide-react';
 import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
@@ -384,6 +385,7 @@ export default function ToolsPage() {
   // gives it genuine tr/hy/az text instead of resolveLocale()'s English
   // fallback, without retranslating this file's older cards.
   const { t: tm } = useTranslation('mediaStudio');
+  const { t: tEdu } = useTranslation('educatorHub');
   const { isAuthenticated, user } = useAuth();
   const { openAuthModal } = useAuthModal();
   const [infoModal, setInfoModal] = useState<'studentBlocked' | 'verificationRequired' | null>(null);
@@ -590,6 +592,34 @@ export default function ToolsPage() {
               >
                 <Mic className="w-4 h-4" />
                 {tm('catalogCta')}
+              </Link>
+            </div>
+          </div>
+
+          {/* Card 2.6: AI Educator VIP Hub — real, available product, same
+              open-to-any-logged-in-user posture as Media Studio above (no
+              dedicated Teacher role exists). VIP badge + 5-day trial hook
+              replace the plain "Available now" pill Cards 1/2/2.5 use,
+              since this one is paid — the page itself (not this card)
+              handles trial-start/VIP-required/quota state. */}
+          <div className="lg:col-span-3 rounded-3xl border border-amber-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-amber-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
+            <div className="shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-purple-600 flex items-center justify-center">
+              <Crown className="w-7 h-7 text-white" />
+            </div>
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <h2 className="text-xl font-black tracking-wide">{tEdu('pageTitle')}</h2>
+                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                  {tEdu('vipBadge')}
+                </span>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{tEdu('pageSubtitle')}</p>
+              <Link
+                href="/dashboard/tools/educator-hub"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-amber-500/30 transition-all"
+              >
+                <Crown className="w-4 h-4" />
+                {tEdu('trialCta')}
               </Link>
             </div>
           </div>
@@ -820,5 +850,5 @@ export default function ToolsPage() {
 }
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'ka', ['mediaStudio'])) },
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['mediaStudio', 'educatorHub'])) },
 });
