@@ -45,9 +45,19 @@ export interface GenerateTestPayload {
   sourceFile?: File;
 }
 
+export type StructuredQuestionType = 'MULTIPLE_CHOICE' | 'FREE_TEXT';
+
+export interface StructuredTestQuestion {
+  question: string;
+  type: StructuredQuestionType;
+  options?: Record<string, string>;
+  correctAnswer: string;
+}
+
 export interface GeneratedTest {
   testSheet: string;
   answerKey: string;
+  questions: StructuredTestQuestion[];
 }
 
 export async function generateTest(payload: GenerateTestPayload): Promise<GeneratedTest> {
@@ -105,5 +115,30 @@ export async function gradeHomework(payload: GradeHomeworkPayload): Promise<Grad
   if (payload.studentWorkText) formData.append('studentWorkText', payload.studentWorkText);
   if (payload.studentWorkImage) formData.append('studentWork', payload.studentWorkImage);
   const response = await apiClient.post<{ data: GradedHomework }>('/educator-hub/grade-homework', formData, { timeout: 90 * 1000 });
+  return response.data.data;
+}
+
+// ---- Sharing a generated test as a no-login student quiz ----
+
+export interface CreateQuizPayload {
+  title: string;
+  language: 'ka' | 'en';
+  questions: StructuredTestQuestion[];
+}
+
+export async function createQuiz(payload: CreateQuizPayload): Promise<{ id: string; shareToken: string }> {
+  const response = await apiClient.post<{ data: { id: string; shareToken: string } }>('/educator-hub/quizzes', payload);
+  return response.data.data;
+}
+
+export interface QuizSubmissionSummary {
+  id: string;
+  studentName: string;
+  score: number;
+  submittedAt: string;
+}
+
+export async function getQuizSubmissions(quizId: string): Promise<QuizSubmissionSummary[]> {
+  const response = await apiClient.get<{ data: QuizSubmissionSummary[] }>(`/educator-hub/quizzes/${quizId}/submissions`);
   return response.data.data;
 }

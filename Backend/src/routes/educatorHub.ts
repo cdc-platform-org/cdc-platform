@@ -15,6 +15,7 @@ import {
   gradeHomework,
   EducatorAiError,
 } from '../services/educatorHubAiService';
+import { createTeacherQuiz, getQuizSubmissionsForTeacher, TeacherQuizError } from '../services/teacherQuizService';
 
 const router = Router();
 router.use(authenticate, requireApproved);
@@ -152,6 +153,46 @@ router.post(
     }
   }
 );
+
+// ---- Module 1b: Share a generated test as a no-login student quiz ----
+// The public student-facing routes (fetch quiz / submit answers) live in
+// routes/teacherQuiz.ts, mounted separately at /api/quiz — outside this
+// router's router.use(authenticate, ...) above, since a student never logs
+// in. These two stay here since creating/viewing results is a normal
+// authenticated Educator Hub action, same gate as the other modules.
+
+const createQuizSchema = z.object({
+  title: z.string().min(1).max(200),
+  language: z.enum(['ka', 'en']),
+  questions: z
+    .array(
+      z.object({
+        question: z.string().min(1),
+        type: z.enum(['MULTIPLE_CHOICE', 'FREE_TEXT']),
+        options: z.record(z.string()).optional(),
+        correctAnswer: z.string().min(1),
+      })
+    )
+    .min(1),
+});
+
+router.post('/quizzes', requireCurrentEducatorSession, requireEducatorVipAccess, async (req: Request, res: Response) => {
+  const parsed = createQuizSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
+
+  const quiz = await createTeacherQuiz({ teacherId: req.user!.id, ...parsed.data });
+  res.json({ data: { id: quiz.id, shareToken: quiz.shareToken } });
+});
+
+router.get('/quizzes/:quizId/submissions', requireCurrentEducatorSession, requireEducatorVipAccess, async (req: Request, res: Response) => {
+  try {
+    const submissions = await getQuizSubmissionsForTeacher(req.user!.id, req.params.quizId);
+    res.json({ data: submissions });
+  } catch (err) {
+    if (err instanceof TeacherQuizError) return res.status(err.status).json({ message: err.message });
+    throw err;
+  }
+});
 
 // ---- Module 2: Assessment Rubrics & Matrix Builder ----
 

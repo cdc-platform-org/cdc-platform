@@ -60,6 +60,10 @@
   "testOutputSheetHeading": "📝 Sınav Kağıdı",
   "testOutputKeyHeading": "🔑 Cevap Anahtarı",
   "testEmptyState": "Ders, sınıf ve konuyu doldurun, ardından ayrı bir cevap anahtarıyla sınav oluşturun.",
+  "quizShareButton": "🔗 Çevrimiçi testi öğrencilerle paylaş",
+  "quizShareLinkLabel": "Öğrenciler için bağlantı",
+  "quizResultsRefresh": "Sonuçları yenile",
+  "quizResultsEmpty": "Henüz kimse cevap vermedi.",
 
   "rubricSubjectLabel": "Ders",
   "rubricSubjectPlaceholder": "örn. Tarih",

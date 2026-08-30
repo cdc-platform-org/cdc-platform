@@ -60,6 +60,10 @@
   "testOutputSheetHeading": "📝 Testblatt",
   "testOutputKeyHeading": "🔑 Lösungsschlüssel",
   "testEmptyState": "Geben Sie Fach, Klasse und Thema ein und erstellen Sie einen Test mit separatem Lösungsschlüssel.",
+  "quizShareButton": "🔗 Online-Quiz mit Schülern teilen",
+  "quizShareLinkLabel": "Link für Schüler",
+  "quizResultsRefresh": "Ergebnisse aktualisieren",
+  "quizResultsEmpty": "Noch niemand hat geantwortet.",
 
   "rubricSubjectLabel": "Fach",
   "rubricSubjectPlaceholder": "z. B. Geschichte",

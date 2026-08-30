@@ -60,6 +60,10 @@
   "testOutputSheetHeading": "📝 Test Sheet",
   "testOutputKeyHeading": "🔑 Answer Key",
   "testEmptyState": "Fill in the subject, grade, and topic, then generate a test with a separate answer key.",
+  "quizShareButton": "🔗 Share Online Quiz with Students",
+  "quizShareLinkLabel": "Link for students",
+  "quizResultsRefresh": "Refresh results",
+  "quizResultsEmpty": "No one has answered yet.",
 
   "rubricSubjectLabel": "Subject",
   "rubricSubjectPlaceholder": "e.g. History",

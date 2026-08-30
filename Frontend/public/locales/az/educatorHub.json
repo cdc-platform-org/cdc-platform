@@ -60,6 +60,10 @@
   "testOutputSheetHeading": "📝 Test Vərəqi",
   "testOutputKeyHeading": "🔑 Cavab Açarı",
   "testEmptyState": "Fənni, sinfi və mövzunu doldurun, sonra ayrı cavab açarı ilə test yaradın.",
+  "quizShareButton": "🔗 Onlayn testi şagirdlərlə paylaşın",
+  "quizShareLinkLabel": "Şagirdlər üçün keçid",
+  "quizResultsRefresh": "Nəticələri yeniləyin",
+  "quizResultsEmpty": "Hələ heç kim cavab verməyib.",
 
   "rubricSubjectLabel": "Fənn",
   "rubricSubjectPlaceholder": "məs. Tarix",

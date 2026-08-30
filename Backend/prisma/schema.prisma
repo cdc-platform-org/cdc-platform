@@ -679,6 +679,7 @@ model User {
   examSessions                  ExamSession[]
   billingSubscriptions          BillingSubscription[]
   educatorGenerations           EducatorGeneration[]
+  teacherQuizzes                TeacherQuiz[]
   blogComments                  BlogComment[]
   mentorshipRequestsMade        MentorshipRequest[]           @relation("MentorshipRequestsMade")
   mentorshipRequestsResolved    MentorshipRequest[]           @relation("MentorshipRequestsResolved")
@@ -2807,6 +2808,74 @@ model ProctoringEvent {
 
   @@index([submissionId])
   @@map("proctoring_events")
+}
+
+// ---- AI Educator VIP Hub — shareable student quizzes ----
+// A teacher-generated test (Module 1 of educator-hub.tsx) turned into a
+// no-login, link-shareable quiz for students. Deliberately NOT built on
+// ExamSession/ExamSubmission above — those model a proctored recruiting
+// exam (required candidateEmail, tab-switch/copy-paste tracking, AI
+// cheating-likelihood scoring) that doesn't fit a classroom quiz a student
+// opens by typing just their name. This reuses only the *pattern* — an
+// unguessable token-based public link, no account required — with a much
+// smaller shape.
+model TeacherQuiz {
+  id         String   @id @default(uuid())
+  teacherId  String
+  teacher    User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  title      String
+  language   String
+  shareToken String   @unique @default(uuid())
+  createdAt  DateTime @default(now())
+
+  questions   TeacherQuizQuestion[]
+  submissions TeacherQuizSubmission[]
+
+  @@index([teacherId])
+  @@map("teacher_quizzes")
+}
+
+enum TeacherQuizQuestionType {
+  MULTIPLE_CHOICE
+  // Covers both the original OPEN and MATCHING question types from
+  // GenerateTestParams.questionTypes — both ask the student for free-text
+  // input and are graded by an AI comparison against the stored model
+  // answer/key points, rather than a dedicated drag-and-drop pairing UI for
+  // MATCHING.
+  FREE_TEXT
+}
+
+model TeacherQuizQuestion {
+  id            String                  @id @default(uuid())
+  quizId        String
+  quiz          TeacherQuiz             @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  order         Int
+  type          TeacherQuizQuestionType
+  question      String
+  // MULTIPLE_CHOICE only: {"A": "...", "B": "...", "C": "...", "D": "..."}.
+  options       Json?
+  // MULTIPLE_CHOICE: the correct letter. FREE_TEXT: the model answer / key
+  // points an AI grader compares the student's answer against. Never sent
+  // to the public quiz-fetch route — only read server-side at grading time.
+  correctAnswer String
+
+  @@index([quizId])
+  @@map("teacher_quiz_questions")
+}
+
+model TeacherQuizSubmission {
+  id          String      @id @default(uuid())
+  quizId      String
+  quiz        TeacherQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  studentName String
+  // { [questionId]: studentAnswer } — same one-JSON-blob convention as
+  // ExamSubmission.answers above.
+  answers     Json
+  score       Float
+  submittedAt DateTime    @default(now())
+
+  @@index([quizId])
+  @@map("teacher_quiz_submissions")
 }
 
 // Generated once a COMPLETED/FLAGGED submission scores below the pass mark

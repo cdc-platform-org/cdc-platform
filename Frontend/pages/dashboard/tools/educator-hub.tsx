@@ -19,6 +19,8 @@ import {
   Loader2,
   AlertCircle,
   X,
+  Link2,
+  Users,
 } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
@@ -34,12 +36,15 @@ import {
   generateTest,
   generateRubric,
   gradeHomework,
+  createQuiz,
+  getQuizSubmissions,
   EducatorHubState,
   QuestionType,
   Difficulty,
   GeneratedTest,
   GeneratedRubric,
   GradedHomework,
+  QuizSubmissionSummary,
 } from '../../../src/services/educatorHubService';
 
 type TabId = 'test' | 'rubric' | 'grading' | 'sen' | 'lessonPlan' | 'bureaucracy' | 'parentReports';
@@ -240,6 +245,17 @@ function EducatorHubContent() {
   const [testError, setTestError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<GeneratedTest | null>(null);
 
+  // Quiz-sharing — a generated test's structured `questions` (see
+  // GeneratedTest) turned into a no-login student link. Reset whenever a
+  // fresh test is generated, since a previously shared link refers to the
+  // old question set, not whatever testResult currently holds.
+  const [quizSharing, setQuizSharing] = useState(false);
+  const [quizShareError, setQuizShareError] = useState<string | null>(null);
+  const [quizShareLink, setQuizShareLink] = useState<string | null>(null);
+  const [quizId, setQuizId] = useState<string | null>(null);
+  const [quizSubmissions, setQuizSubmissions] = useState<QuizSubmissionSummary[] | null>(null);
+  const [quizSubmissionsLoading, setQuizSubmissionsLoading] = useState(false);
+
   const toggleTestType = (type: QuestionType) => {
     setTestTypes((prev) => (prev.includes(type) ? prev.filter((x) => x !== type) : [...prev, type]));
   };
@@ -261,11 +277,46 @@ function EducatorHubContent() {
         sourceFile: testSourceFile ?? undefined,
       });
       setTestResult(result);
+      setQuizShareLink(null);
+      setQuizId(null);
+      setQuizSubmissions(null);
+      setQuizShareError(null);
       refreshState();
     } catch (err) {
       handleModuleError(err, t('genericError'), setTestError);
     } finally {
       setTestGenerating(false);
+    }
+  };
+
+  const handleShareQuiz = async () => {
+    if (!testResult) return;
+    setQuizSharing(true);
+    setQuizShareError(null);
+    try {
+      const { id, shareToken } = await createQuiz({
+        title: `${testSubject} — ${testTopic}`,
+        language: lang,
+        questions: testResult.questions,
+      });
+      setQuizId(id);
+      setQuizShareLink(`${window.location.origin}/quiz/${shareToken}`);
+    } catch (err) {
+      handleModuleError(err, t('genericError'), setQuizShareError);
+    } finally {
+      setQuizSharing(false);
+    }
+  };
+
+  const handleLoadSubmissions = async () => {
+    if (!quizId) return;
+    setQuizSubmissionsLoading(true);
+    try {
+      setQuizSubmissions(await getQuizSubmissions(quizId));
+    } catch {
+      setQuizSubmissions([]);
+    } finally {
+      setQuizSubmissionsLoading(false);
     }
   };
 
@@ -570,6 +621,63 @@ function EducatorHubContent() {
                       filenameBase="test"
                       printAreaId="print-test"
                     />
+                  </div>
+                  <div className="no-print mt-6 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
+                    {!quizShareLink ? (
+                      <button
+                        type="button"
+                        disabled={quizSharing}
+                        onClick={handleShareQuiz}
+                        className="inline-flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all disabled:opacity-50"
+                      >
+                        {quizSharing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
+                        {t('quizShareButton')}
+                      </button>
+                    ) : (
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2">{t('quizShareLinkLabel')}</p>
+                        <div className="flex flex-wrap items-center gap-2 mb-4">
+                          <input
+                            readOnly
+                            value={quizShareLink}
+                            onClick={(e) => e.currentTarget.select()}
+                            className="flex-1 min-w-[16rem] rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 px-3 py-2 text-sm text-slate-900 dark:text-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => navigator.clipboard.writeText(quizShareLink)}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-none cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            {t('exportCopy')}
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleLoadSubmissions}
+                          disabled={quizSubmissionsLoading}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-none cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50"
+                        >
+                          <Users className="w-3.5 h-3.5" />
+                          {t('quizResultsRefresh')}
+                        </button>
+                        {quizSubmissions && (
+                          <div className="mt-3 space-y-1.5">
+                            {quizSubmissions.length === 0 ? (
+                              <p className="text-xs text-slate-400 dark:text-slate-500 italic">{t('quizResultsEmpty')}</p>
+                            ) : (
+                              quizSubmissions.map((s) => (
+                                <div key={s.id} className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/40">
+                                  <span className="font-bold">{s.studentName}</span>
+                                  <span>{s.score}%</span>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {quizShareError && <p className="text-xs text-rose-600 dark:text-rose-400 mt-2">{quizShareError}</p>}
                   </div>
                 </>
               ) : (

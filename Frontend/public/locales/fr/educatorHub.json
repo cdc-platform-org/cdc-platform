@@ -60,6 +60,10 @@
   "testOutputSheetHeading": "📝 Feuille de test",
   "testOutputKeyHeading": "🔑 Corrigé",
   "testEmptyState": "Renseignez la matière, le niveau et le sujet, puis générez un test avec son corrigé séparé.",
+  "quizShareButton": "🔗 Partager le quiz en ligne avec les élèves",
+  "quizShareLinkLabel": "Lien pour les élèves",
+  "quizResultsRefresh": "Actualiser les résultats",
+  "quizResultsEmpty": "Personne n'a encore répondu.",
 
   "rubricSubjectLabel": "Matière",
   "rubricSubjectPlaceholder": "ex. Histoire",

@@ -60,9 +60,25 @@ export interface GenerateTestParams {
   sourceFile?: InlineImagePart;
 }
 
+// Machine-readable sibling of testSheet/answerKey — same question set,
+// structured for the shareable no-login student quiz (see
+// teacherQuizService.ts) rather than for printing. MATCHING questions are
+// folded into FREE_TEXT here (student types an answer, graded by AI
+// comparison against correctAnswer) since a drag-and-drop pairing UI is out
+// of scope — see TeacherQuizQuestionType's own comment in schema.prisma.
+const structuredQuestionSchema = z.object({
+  question: z.string().min(1),
+  type: z.enum(['MULTIPLE_CHOICE', 'FREE_TEXT']),
+  options: z.record(z.string()).optional(),
+  correctAnswer: z.string().min(1),
+});
+
+export type StructuredTestQuestion = z.infer<typeof structuredQuestionSchema>;
+
 const testGenerationSchema = z.object({
   testSheet: z.string().min(1),
   answerKey: z.string().min(1),
+  questions: z.array(structuredQuestionSchema).min(1),
 });
 
 export type GeneratedTest = z.infer<typeof testGenerationSchema>;
@@ -93,8 +109,10 @@ Write ${lang}, formatted as clean Markdown. Generate exactly ${params.questionCo
 
 Then write a SEPARATE teacher's answer key: the correct answer for every question, plus a one-line explanation of why it's correct (for multiple-choice/matching) or a model answer / key points expected (for open questions).
 
-Respond with strict JSON matching this shape, where both fields are Markdown strings:
-{"testSheet": string, "answerKey": string}`;
+Finally, also produce the exact same ${params.questionCount} questions again as structured data (same order, same content as the printable sheet above) for an interactive online version: for each question, give its type as "MULTIPLE_CHOICE" (for multiple-choice) or "FREE_TEXT" (for open-ended AND matching questions — for a matching question, phrase it so a student can answer it by typing, e.g. "Match each term to its definition: write pairs like A-1, B-2..."). "options" is an object like {"A": "...", "B": "...", "C": "...", "D": "..."} for MULTIPLE_CHOICE only (omit for FREE_TEXT). "correctAnswer" is the correct letter for MULTIPLE_CHOICE, or the model answer / key points for FREE_TEXT.
+
+Respond with strict JSON matching this shape, where testSheet and answerKey are Markdown strings:
+{"testSheet": string, "answerKey": string, "questions": [{"question": string, "type": "MULTIPLE_CHOICE" | "FREE_TEXT", "options"?: {"A": string, "B": string, "C": string, "D": string}, "correctAnswer": string}]}`;
 
   const raw = await callTextModel(prompt, 0.6, params.sourceFile ? [params.sourceFile] : undefined);
   return parseOrThrow(raw, testGenerationSchema);

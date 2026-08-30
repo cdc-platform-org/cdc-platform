@@ -60,6 +60,10 @@
   "testOutputSheetHeading": "📝 Аркуш тесту",
   "testOutputKeyHeading": "🔑 Ключ відповідей",
   "testEmptyState": "Заповніть предмет, клас і тему, потім створіть тест з окремим ключем відповідей.",
+  "quizShareButton": "🔗 Поділитися онлайн-тестом з учнями",
+  "quizShareLinkLabel": "Посилання для учнів",
+  "quizResultsRefresh": "Оновити результати",
+  "quizResultsEmpty": "Ще ніхто не відповів.",
 
   "rubricSubjectLabel": "Предмет",
   "rubricSubjectPlaceholder": "напр. Історія",

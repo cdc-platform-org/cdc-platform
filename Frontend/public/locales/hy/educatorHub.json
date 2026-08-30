@@ -60,6 +60,10 @@
   "testOutputSheetHeading": "📝 Թեստի թերթիկ",
   "testOutputKeyHeading": "🔑 Պատասխանների բանալի",
   "testEmptyState": "Լրացրեք առարկան, դասարանը և թեման, ապա ստեղծեք թեստ առանձին պատասխանների բանալիով։",
+  "quizShareButton": "🔗 Կիսվել առցանց թեստով աշակերտների հետ",
+  "quizShareLinkLabel": "Հղում աշակերտների համար",
+  "quizResultsRefresh": "Թարմացնել արդյունքները",
+  "quizResultsEmpty": "Դեռ ոչ ոք չի պատասխանել։",
 
   "rubricSubjectLabel": "Առարկա",
   "rubricSubjectPlaceholder": "օր. Պատմություն",

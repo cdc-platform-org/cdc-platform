@@ -60,6 +60,10 @@
   "testOutputSheetHeading": "📝 Hoja de examen",
   "testOutputKeyHeading": "🔑 Clave de respuestas",
   "testEmptyState": "Completa asignatura, curso y tema, y genera un examen con su clave de respuestas por separado.",
+  "quizShareButton": "🔗 Compartir cuestionario en línea con los alumnos",
+  "quizShareLinkLabel": "Enlace para los alumnos",
+  "quizResultsRefresh": "Actualizar resultados",
+  "quizResultsEmpty": "Nadie ha respondido todavía.",
 
   "rubricSubjectLabel": "Asignatura",
   "rubricSubjectPlaceholder": "p. ej. Historia",

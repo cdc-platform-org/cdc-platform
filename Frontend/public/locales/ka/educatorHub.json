@@ -60,6 +60,10 @@
   "testOutputSheetHeading": "📝 სატესტო ფურცელი",
   "testOutputKeyHeading": "🔑 პასუხების ფურცელი",
   "testEmptyState": "შეავსეთ საგანი, კლასი და თემა, შემდეგ შექმენით ტესტი ცალკე პასუხების ფურცლით.",
+  "quizShareButton": "🔗 ონლაინ ტესტის გაზიარება მოსწავლეებისთვის",
+  "quizShareLinkLabel": "ბმული მოსწავლეებისთვის",
+  "quizResultsRefresh": "შედეგების განახლება",
+  "quizResultsEmpty": "ჯერ არავის უპასუხია.",
 
   "rubricSubjectLabel": "საგანი",
   "rubricSubjectPlaceholder": "მაგ. ისტორია",
