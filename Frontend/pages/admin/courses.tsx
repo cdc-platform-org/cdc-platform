@@ -267,7 +267,22 @@ function CourseForm({
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Category</label>
-          <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={inputClass} />
+          {/* Still free text (category has no DB enum — see /courses' own
+              comment on why it derives filter chips from whatever values
+              are actually present), but suggested via a native datalist —
+              same pattern as englishTutor's NATIVE_LANG_SUGGESTIONS — so an
+              admin can quickly pick the new "🤖 AI ციფრული მასწავლებლები"
+              category (which drives the AI Teachers tab on /courses) rather
+              than having to type it exactly. */}
+          <input
+            value={form.category}
+            onChange={(e) => setForm({ ...form, category: e.target.value })}
+            list="admin-course-category-suggestions"
+            className={inputClass}
+          />
+          <datalist id="admin-course-category-suggestions">
+            <option value="🤖 AI ციფრული მასწავლებლები" />
+          </datalist>
         </div>
       </div>
       <div>

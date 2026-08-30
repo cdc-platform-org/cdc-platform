@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
@@ -35,6 +35,9 @@ import { useAuthModal } from '../src/context/AuthModalContext';
 import { resolveLocale } from '@/src/utils/locale';
 import SEOHead from '@/src/components/seo/SEOHead';
 import { buildSoftwareApplicationSchema } from '@/src/utils/seo';
+import { getSiteContent } from '@/src/services/siteContentService';
+import { ToolCatalogContent } from '@/src/types/siteContent';
+import { findToolEntry, overrideText } from '@/src/utils/toolCatalog';
 
 // Real per-locale copy for all 9 site locales (not the 6-locale `dict`
 // below, which still aliases de/es/fr/uk to English strings) — meta
@@ -112,6 +115,10 @@ const dict = {
     verificationRequiredCta: 'ვერიფიკაციის გავლა',
     modalClose: 'დახურვა',
     poweredBy: 'Powered by CDC Studio',
+    proctoringLiveBadge: '🛡️ AI PROCTOR LIVE',
+    proctoringPracticeTitle: 'AI პროქტორინგის სავარჯიშო გამოცდა',
+    proctoringPracticeDesc: 'შექმენით პერსონალური AI გამოცდა ნებისმიერ საგანში, ივარჯიშეთ რეალურ დროში მონიტორინგის ქვეშ და მიიღეთ მყისიერი კომპეტენციის ანგარიში.',
+    proctoringPracticeCta: 'გამოცდის დაწყება',
   },
   en: {
     title: 'Digital AI Tools',
@@ -164,6 +171,10 @@ const dict = {
     verificationRequiredCta: 'Complete verification',
     modalClose: 'Close',
     poweredBy: 'Powered by CDC Studio',
+    proctoringLiveBadge: '🛡️ AI PROCTOR LIVE',
+    proctoringPracticeTitle: 'AI Proctored Practice Exam',
+    proctoringPracticeDesc: 'Build a personalized AI exam on any subject, practice under real-time monitoring, and get an instant competency report.',
+    proctoringPracticeCta: 'Start Exam',
   },
   de: {
     title: 'Digital AI Tools',
@@ -216,6 +227,10 @@ const dict = {
     verificationRequiredCta: 'Complete verification',
     modalClose: 'Close',
     poweredBy: 'Powered by CDC Studio',
+    proctoringLiveBadge: '🛡️ AI PROCTOR LIVE',
+    proctoringPracticeTitle: 'AI Proctored Practice Exam',
+    proctoringPracticeDesc: 'Build a personalized AI exam on any subject, practice under real-time monitoring, and get an instant competency report.',
+    proctoringPracticeCta: 'Start Exam',
   },
   es: {
     title: 'Digital AI Tools',
@@ -268,6 +283,10 @@ const dict = {
     verificationRequiredCta: 'Complete verification',
     modalClose: 'Close',
     poweredBy: 'Powered by CDC Studio',
+    proctoringLiveBadge: '🛡️ AI PROCTOR LIVE',
+    proctoringPracticeTitle: 'AI Proctored Practice Exam',
+    proctoringPracticeDesc: 'Build a personalized AI exam on any subject, practice under real-time monitoring, and get an instant competency report.',
+    proctoringPracticeCta: 'Start Exam',
   },
   fr: {
     title: 'Digital AI Tools',
@@ -320,6 +339,10 @@ const dict = {
     verificationRequiredCta: 'Complete verification',
     modalClose: 'Close',
     poweredBy: 'Powered by CDC Studio',
+    proctoringLiveBadge: '🛡️ AI PROCTOR LIVE',
+    proctoringPracticeTitle: 'AI Proctored Practice Exam',
+    proctoringPracticeDesc: 'Build a personalized AI exam on any subject, practice under real-time monitoring, and get an instant competency report.',
+    proctoringPracticeCta: 'Start Exam',
   },
   uk: {
     title: 'Digital AI Tools',
@@ -372,6 +395,10 @@ const dict = {
     verificationRequiredCta: 'Complete verification',
     modalClose: 'Close',
     poweredBy: 'Powered by CDC Studio',
+    proctoringLiveBadge: '🛡️ AI PROCTOR LIVE',
+    proctoringPracticeTitle: 'AI Proctored Practice Exam',
+    proctoringPracticeDesc: 'Build a personalized AI exam on any subject, practice under real-time monitoring, and get an instant competency report.',
+    proctoringPracticeCta: 'Start Exam',
   },
 };
 
@@ -392,6 +419,20 @@ export default function ToolsPage() {
   const [showWaitlistModal, setShowWaitlistModal] = useState(false);
   const [overviewModal, setOverviewModal] = useState<'enterpriseAi' | 'examProctoring' | 'agsaia' | null>(null);
   const overview = PRODUCT_OVERVIEW[lang];
+
+  // Admin-editable overrides for the Media Studio / Educator Hub / self-
+  // service Proctoring cards below (pages/admin/tools.tsx) — same pattern
+  // as marketplace/index.tsx's own toolCatalog fetch.
+  const [toolCatalog, setToolCatalog] = useState<ToolCatalogContent | null>(null);
+  useEffect(() => {
+    getSiteContent<ToolCatalogContent>('tool-catalog')
+      .then((row) => setToolCatalog(row?.content ?? {}))
+      .catch(() => setToolCatalog({}));
+  }, []);
+  const catLang: 'ka' | 'en' = lang === 'ka' ? 'ka' : 'en';
+  const mediaStudioCms = findToolEntry(toolCatalog?.tools, 'media-studio');
+  const educatorHubCms = findToolEntry(toolCatalog?.tools, 'educator-hub');
+  const proctoringCms = findToolEntry(toolCatalog?.tools, 'proctoring');
 
   // Enterprise AI tools are Business-only, and only for a *verified* Business
   // account — SuperAdmin (internal staff) bypasses the verification check.
@@ -579,12 +620,12 @@ export default function ToolsPage() {
             </div>
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                <h2 className="text-xl font-black tracking-wide">{tm('catalogTitle')}</h2>
+                <h2 className="text-xl font-black tracking-wide">{overrideText(tm('catalogTitle'), catLang === 'ka' ? mediaStudioCms?.titleKa : mediaStudioCms?.titleEn)}</h2>
                 <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                  {t.aiAvailable}
+                  {overrideText(t.aiAvailable, catLang === 'ka' ? mediaStudioCms?.badgeKa : mediaStudioCms?.badgeEn)}
                 </span>
               </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-2">{tm('catalogDesc')}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-2">{overrideText(tm('catalogDesc'), catLang === 'ka' ? mediaStudioCms?.descriptionKa : mediaStudioCms?.descriptionEn)}</p>
               <p className="text-xs font-bold text-purple-600 dark:text-purple-400 mb-5">{tm('catalogTag')}</p>
               <Link
                 href="/dashboard/tools/media-studio"
@@ -608,18 +649,47 @@ export default function ToolsPage() {
             </div>
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                <h2 className="text-xl font-black tracking-wide">{tEdu('pageTitle')}</h2>
+                <h2 className="text-xl font-black tracking-wide">{overrideText(tEdu('pageTitle'), catLang === 'ka' ? educatorHubCms?.titleKa : educatorHubCms?.titleEn)}</h2>
                 <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                  {tEdu('vipBadge')}
+                  {overrideText(tEdu('vipBadge'), catLang === 'ka' ? educatorHubCms?.badgeKa : educatorHubCms?.badgeEn)}
                 </span>
               </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{tEdu('pageSubtitle')}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{overrideText(tEdu('pageSubtitle'), catLang === 'ka' ? educatorHubCms?.descriptionKa : educatorHubCms?.descriptionEn)}</p>
               <Link
                 href="/dashboard/tools/educator-hub"
                 className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-amber-500/30 transition-all"
               >
                 <Crown className="w-4 h-4" />
                 {tEdu('trialCta')}
+              </Link>
+            </div>
+          </div>
+
+          {/* Card 2.7: AI Proctored Practice Exam — self-service, open to
+              any logged-in user, same posture as Media Studio/Educator Hub
+              above. Deliberately distinct from Card 2 above (the real
+              Business-gated candidate-screening product at
+              /dashboard/ai-tools) — this is an individual practice/skill-
+              assessment tool, not an employer screening tool, so it gets
+              its own card and copy rather than overwriting Card 2. */}
+          <div className="lg:col-span-3 rounded-3xl border border-cyan-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-cyan-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
+            <div className="shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
+              <ShieldCheck className="w-7 h-7 text-white" />
+            </div>
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <h2 className="text-xl font-black tracking-wide">{overrideText(t.proctoringPracticeTitle, catLang === 'ka' ? proctoringCms?.titleKa : proctoringCms?.titleEn)}</h2>
+                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                  {overrideText(t.proctoringLiveBadge, catLang === 'ka' ? proctoringCms?.badgeKa : proctoringCms?.badgeEn)}
+                </span>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{overrideText(t.proctoringPracticeDesc, catLang === 'ka' ? proctoringCms?.descriptionKa : proctoringCms?.descriptionEn)}</p>
+              <Link
+                href="/dashboard/tools/proctored-exam"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                {t.proctoringPracticeCta}
               </Link>
             </div>
           </div>

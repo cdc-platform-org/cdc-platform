@@ -70,3 +70,35 @@ export interface AgencyPortfolioItem {
 export interface AgencyContent {
   portfolio?: AgencyPortfolioItem[];
 }
+
+// --- Tool Catalog CMS (page: "tool-catalog") ---
+// Admin-editable overrides for the SaaS tool cards on /tools and
+// /marketplace (pages/admin/tools.tsx). `slug` matches each tool's own
+// stable id (see marketplace/index.tsx's SAAS_TOOLS and tools.tsx's own
+// card keys) — the public pages look up by slug and only override a field
+// when its value here is a non-empty string, otherwise falling back to
+// that page's existing static/i18n copy. Same ka/en-pair convention as
+// AgencyPortfolioItem above; features are longer so they're an array
+// rather than one field.
+export type ToolCatalogStatus = 'ACTIVE' | 'COMING_SOON' | 'DISABLED';
+
+export interface ToolCatalogEntry {
+  slug: string;
+  status: ToolCatalogStatus;
+  titleKa?: string;
+  titleEn?: string;
+  subtitleKa?: string;
+  subtitleEn?: string;
+  badgeKa?: string;
+  badgeEn?: string;
+  pricingLabelKa?: string;
+  pricingLabelEn?: string;
+  descriptionKa?: string;
+  descriptionEn?: string;
+  featuresKa?: string[];
+  featuresEn?: string[];
+}
+
+export interface ToolCatalogContent {
+  tools?: ToolCatalogEntry[];
+}

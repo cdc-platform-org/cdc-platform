@@ -16,6 +16,9 @@ import { onImageErrorFallback } from '../../src/utils/imageFallback';
 import { MARKETPLACE_CATEGORIES } from '../../src/data/marketplaceCategories';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
+import { getSiteContent } from '../../src/services/siteContentService';
+import { ToolCatalogContent } from '../../src/types/siteContent';
+import { findToolEntry, overrideText } from '../../src/utils/toolCatalog';
 
 // The 4 CDC-built AI SaaS tools cross-listed under the "Business Tools"
 // marketplace category (see the section below the filter chips) — these are
@@ -33,13 +36,9 @@ const SAAS_TOOLS = [
   { id: 'educator-hub', href: '/dashboard/tools/educator-hub', icon: Crown, accent: 'from-amber-500 to-purple-600' },
   { id: 'media-studio', href: '/dashboard/tools/media-studio', icon: Mic, accent: 'from-cyan-500 to-purple-600' },
   { id: 'english-tutor', href: '/dashboard/english-tutor', icon: GraduationCap, accent: 'from-purple-500 to-cyan-600' },
-  // The task that requested this cross-listing named a
-  // `/dashboard/tools/proctored-exam` route that doesn't exist in this
-  // codebase — the real AI Proctored Exam feature lives at
-  // /dashboard/ai-tools (see tools.tsx's Card 2), Business-account-gated.
-  // Linking the nonexistent route would ship a dead link, so this points
-  // at the real one instead.
-  { id: 'proctoring', href: '/dashboard/ai-tools', icon: ShieldCheck, accent: 'from-cyan-500 to-purple-600' },
+  // Self-service practice version — distinct from the Business-gated
+  // candidate-screening system at /dashboard/ai-tools (tools.tsx's Card 2).
+  { id: 'proctoring', href: '/dashboard/tools/proctored-exam', icon: ShieldCheck, accent: 'from-cyan-500 to-purple-600' },
 ] as const;
 
 function MarketplaceContent() {
@@ -61,6 +60,16 @@ function MarketplaceContent() {
   const [products, setProducts] = useState<DigitalProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  // Admin-editable overrides for the SaaS tool cards below (pages/admin/tools.tsx)
+  // — null until loaded, at which point findToolEntry/overrideText below
+  // fall back to each card's existing static/i18n copy for any unset field.
+  const [toolCatalog, setToolCatalog] = useState<ToolCatalogContent | null>(null);
+
+  useEffect(() => {
+    getSiteContent<ToolCatalogContent>('tool-catalog')
+      .then((row) => setToolCatalog(row?.content ?? {}))
+      .catch(() => setToolCatalog({}));
+  }, []);
 
   const load = useCallback(async (category: string | null) => {
     setLoading(true);
@@ -101,12 +110,31 @@ function MarketplaceContent() {
   // an enum), not under "All" — keeps the main catalog view unchanged.
   const showSaasTools = categoryParam === MARKETPLACE_CATEGORIES[0].value.ka || categoryParam === MARKETPLACE_CATEGORIES[0].value.en;
 
-  const saasToolCopy: Record<(typeof SAAS_TOOLS)[number]['id'], { title: string; desc: string; badge: string; cta: string }> = {
+  const saasToolDefaults: Record<(typeof SAAS_TOOLS)[number]['id'], { title: string; desc: string; badge: string; cta: string }> = {
     'educator-hub': { title: tEdu('pageTitle'), desc: tEdu('pageSubtitle'), badge: tEdu('vipBadge'), cta: tEdu('trialCta') },
     'media-studio': { title: tm('catalogTitle'), desc: tm('catalogDesc'), badge: tm('catalogTag'), cta: t('saasLaunchCta') },
     'english-tutor': { title: th('imiakoCardTitle'), desc: th('imiakoFeature1'), badge: th('imiakoBadgeFreeTrial'), cta: t('saasLaunchCta') },
     proctoring: { title: t('proctoringTitle'), desc: t('proctoringDesc'), badge: t('proctoringBadge'), cta: t('saasLaunchCta') },
   };
+
+  type SaasToolCopy = { title: string; desc: string; badge: string; cta: string; status: 'ACTIVE' | 'COMING_SOON' | 'DISABLED' };
+
+  // Layers pages/admin/tools.tsx's saved overrides on top of the defaults
+  // above — a DISABLED entry is hidden entirely, COMING_SOON swaps the CTA
+  // for a non-clickable badge instead of launching the (not yet ready)
+  // tool.
+  const saasToolCopy = SAAS_TOOLS.reduce((acc, { id }) => {
+    const fallback = saasToolDefaults[id];
+    const cms = findToolEntry(toolCatalog?.tools, id);
+    acc[id] = {
+      title: overrideText(fallback.title, lang === 'ka' ? cms?.titleKa : cms?.titleEn),
+      desc: overrideText(fallback.desc, lang === 'ka' ? cms?.descriptionKa : cms?.descriptionEn),
+      badge: overrideText(fallback.badge, lang === 'ka' ? cms?.badgeKa : cms?.badgeEn),
+      cta: fallback.cta,
+      status: cms?.status ?? 'ACTIVE',
+    };
+    return acc;
+  }, {} as Record<(typeof SAAS_TOOLS)[number]['id'], SaasToolCopy>);
 
   // Same "sign in, then resume" pattern as this page's own product cards
   // (store/[id].tsx's handleBuy/handleClaim) — a guest lands in the auth
@@ -200,21 +228,24 @@ function MarketplaceContent() {
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('saasToolsSubheading')}</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {SAAS_TOOLS.map(({ id, href, icon: Icon, accent }) => {
+              {SAAS_TOOLS.filter(({ id }) => saasToolCopy[id].status !== 'DISABLED').map(({ id, href, icon: Icon, accent }) => {
                 const copy = saasToolCopy[id];
+                const comingSoon = copy.status === 'COMING_SOON';
                 return (
                   <div
                     key={id}
                     role="button"
                     tabIndex={0}
-                    onClick={() => goToSaasTool(href)}
+                    onClick={() => !comingSoon && goToSaasTool(href)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
+                      if (!comingSoon && (e.key === 'Enter' || e.key === ' ')) {
                         e.preventDefault();
                         goToSaasTool(href);
                       }
                     }}
-                    className="group cursor-pointer rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden p-5 flex gap-4 items-start"
+                    className={`group rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 overflow-hidden p-5 flex gap-4 items-start ${
+                      comingSoon ? 'opacity-80' : 'cursor-pointer hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10'
+                    }`}
                   >
                     <div className={`shrink-0 w-12 h-12 rounded-xl bg-gradient-to-tr ${accent} flex items-center justify-center`}>
                       <Icon className="w-6 h-6 text-white" />
@@ -224,10 +255,10 @@ function MarketplaceContent() {
                         <h3 className="text-sm font-black tracking-wide group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">{copy.title}</h3>
                       </div>
                       <span className="inline-block text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 mb-2">
-                        {copy.badge}
+                        {comingSoon ? t('comingSoonBadge') : copy.badge}
                       </span>
                       <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 mb-2">{copy.desc}</p>
-                      <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">{copy.cta} →</span>
+                      {!comingSoon && <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">{copy.cta} →</span>}
                     </div>
                   </div>
                 );

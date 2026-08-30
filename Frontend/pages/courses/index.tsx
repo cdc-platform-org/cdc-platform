@@ -5,7 +5,7 @@ import Head from 'next/head';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { Search, SlidersHorizontal, X, Calendar, PlayCircle } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Calendar, PlayCircle, GraduationCap, Crown } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
@@ -21,7 +21,19 @@ import { courseLanguageBadge } from '../../src/utils/courseLanguage';
 
 type SortMode = 'recommended' | 'price_asc' | 'price_desc';
 type PriceFilter = 'all' | 'free' | 'paid';
-type ContentTab = 'all' | 'courses' | 'live';
+type ContentTab = 'all' | 'courses' | 'live' | 'ai-teachers';
+
+// AI tutors/assistants shown under the "AI Digital Teachers" tab — not
+// Course/LiveTraining DB rows (they're live dashboard tools, same concept
+// as marketplace/index.tsx's SAAS_TOOLS), so this is a small fixed list
+// rendered directly here rather than fetched, reusing each tool's own
+// already-translated copy the same way marketplace/index.tsx and tools.tsx
+// do. Deliberately excludes Media Studio/Proctoring — those aren't
+// teaching tools, they don't belong in a course catalog.
+const AI_TEACHERS = [
+  { id: 'english-tutor', href: '/dashboard/english-tutor', icon: GraduationCap, accent: 'from-purple-500 to-cyan-600' },
+  { id: 'educator-hub', href: '/dashboard/tools/educator-hub', icon: Crown, accent: 'from-amber-500 to-purple-600' },
+] as const;
 
 export default function CoursesPage() {
   const router = useRouter();
@@ -30,8 +42,26 @@ export default function CoursesPage() {
   // rather than Georgian.
   const lang = router.locale === 'ka' ? 'ka' : 'en';
   const { t } = useTranslation('courses');
+  const { t: th } = useTranslation('home');
+  const { t: tEdu } = useTranslation('educatorHub');
   const { isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
+
+  const aiTeacherCopy: Record<(typeof AI_TEACHERS)[number]['id'], { title: string; desc: string; badge: string }> = {
+    'english-tutor': { title: th('imiakoCardTitle'), desc: th('imiakoFeature1'), badge: th('imiakoBadgeFreeTrial') },
+    'educator-hub': { title: tEdu('pageTitle'), desc: tEdu('pageSubtitle'), badge: tEdu('vipBadge') },
+  };
+
+  // Same "guest -> auth modal -> resume" pattern as marketplace/index.tsx's
+  // goToSaasTool — a plain <Link> here would just full-navigate into
+  // ProtectedRoute's own redirect-to-login on the destination page.
+  const goToAiTeacher = (href: string) => {
+    if (!isAuthenticated) {
+      openAuthModal({ onSuccess: () => router.push(href) });
+      return;
+    }
+    router.push(href);
+  };
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [liveTrainings, setLiveTrainings] = useState<LiveTraining[]>([]);
@@ -197,6 +227,7 @@ export default function CoursesPage() {
             ['all', t('tabAll')],
             ['courses', t('tabVideoCourses')],
             ['live', t('tabLiveTrainings')],
+            ['ai-teachers', t('tabAiTeachers')],
           ] as [ContentTab, string][]).map(([tab, label]) => (
             <button
               key={tab}
@@ -215,7 +246,45 @@ export default function CoursesPage() {
 
         {error && <div className="mb-6 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-600 dark:text-red-300">{error}</div>}
 
-        {loading ? (
+        {contentTab === 'ai-teachers' ? (
+          <div>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-2xl">{t('aiTeachersSubtitle')}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {AI_TEACHERS.map(({ id, href, icon: Icon, accent }) => {
+                const copy = aiTeacherCopy[id];
+                return (
+                  <div
+                    key={id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => goToAiTeacher(href)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        goToAiTeacher(href);
+                      }
+                    }}
+                    className="group cursor-pointer rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden p-6 flex gap-4 items-start"
+                  >
+                    <div className={`shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr ${accent} flex items-center justify-center`}>
+                      <Icon className="w-7 h-7 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                        <h3 className="text-base font-black tracking-wide group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">{copy.title}</h3>
+                      </div>
+                      <span className="inline-block text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 mb-2">
+                        {copy.badge}
+                      </span>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-3 mb-3">{copy.desc}</p>
+                      <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">{t('aiTeachersLaunchCta')} →</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : loading ? (
           <p className="text-slate-500 dark:text-slate-400 text-sm">{t('loading')}</p>
         ) : courses.length === 0 && liveTrainings.length === 0 ? (
           <p className="text-slate-500 dark:text-slate-400 text-sm">{t('empty')}</p>
@@ -544,5 +613,5 @@ export default function CoursesPage() {
 }
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'ka', ['courses'])) },
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['courses', 'home', 'educatorHub'])) },
 });
