@@ -69,5 +69,11 @@
   "reviewsAddPhoto": "Add a photo (optional)",
   "sellerRatingLabel": "Seller Rating",
   "sellerNoReviews": "No seller reviews yet.",
-  "securedBadge": "ЗАХИЩЕНО"
+  "securedBadge": "ЗАХИЩЕНО",
+  "saasToolsHeading": "AI SaaS-інструменти",
+  "saasToolsSubheading": "Власні AI-продукти CDC — відкривайте напряму, без покупки.",
+  "saasLaunchCta": "Відкрити інструмент",
+  "proctoringTitle": "Система іспитів з AI-проктерингом",
+  "proctoringDesc": "Онлайн-моніторинг іспитів і запобігання шахрайству на основі AI.",
+  "proctoringBadge": "🛡️ AI Proctoring"
 }

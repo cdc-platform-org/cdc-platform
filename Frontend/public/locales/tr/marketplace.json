@@ -69,5 +69,11 @@
   "reviewsAddPhoto": "Fotoğraf ekle (isteğe bağlı)",
   "sellerRatingLabel": "Satıcı Puanı",
   "sellerNoReviews": "Henüz satıcı değerlendirmesi yok.",
-  "securedBadge": "GÜVENLİ"
+  "securedBadge": "GÜVENLİ",
+  "saasToolsHeading": "AI SaaS Araçları",
+  "saasToolsSubheading": "CDC'nin kendi yapay zeka ürünleri — satın almaya gerek kalmadan doğrudan açın.",
+  "saasLaunchCta": "Aracı Aç",
+  "proctoringTitle": "AI Gözetimli Sınav Sistemi",
+  "proctoringDesc": "Yapay zeka destekli çevrimiçi sınav izleme ve hile önleme.",
+  "proctoringBadge": "🛡️ AI Proctoring"
 }

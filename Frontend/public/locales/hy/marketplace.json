@@ -69,5 +69,11 @@
   "reviewsAddPhoto": "Ավելացնել լուսանկար (ընտրովի)",
   "sellerRatingLabel": "Վաճառողի Գնահատական",
   "sellerNoReviews": "Դեռ վաճառողի կարծիքներ չկան։",
-  "securedBadge": "ԱՊԱՀՈՎ"
+  "securedBadge": "ԱՊԱՀՈՎ",
+  "saasToolsHeading": "AI SaaS գործիքներ",
+  "saasToolsSubheading": "CDC-ի սեփական AI արտադրանքները՝ բացեք ուղղակիորեն, առանց գնման։",
+  "saasLaunchCta": "Բացել գործիքը",
+  "proctoringTitle": "AI վերահսկվող քննությունների համակարգ",
+  "proctoringDesc": "Առցանց քննությունների մոնիտորինգ և խարդախության կանխարգելում՝ ամրապնդված AI-ով։",
+  "proctoringBadge": "🛡️ AI Proctoring"
 }

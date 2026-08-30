@@ -6,7 +6,7 @@ import { useRouter } from 'next/router';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { ShoppingBag, CheckCircle2, Tag, Star, Plus } from 'lucide-react';
+import { ShoppingBag, CheckCircle2, Tag, Star, Plus, Crown, Mic, GraduationCap, ShieldCheck } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
@@ -17,8 +17,36 @@ import { MARKETPLACE_CATEGORIES } from '../../src/data/marketplaceCategories';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
 
+// The 4 CDC-built AI SaaS tools cross-listed under the "Business Tools"
+// marketplace category (see the section below the filter chips) — these are
+// NOT DigitalProduct rows (no price, no file, no seller — they're live
+// dashboard tools, not downloadable purchases), so they're a small fixed
+// list rendered directly here rather than seeded into the real product
+// catalog, which would misrepresent them as purchasable/reviewable items
+// and risk colliding with the real checkout flow. Each pulls its
+// title/description/badge from that tool's OWN existing namespace (already
+// real-translated across all 9 locales) rather than duplicating fresh copy
+// here — only the AI Proctoring system had no reusable 9-locale source
+// (its only existing text lives in tools.tsx's own 6-locale inline dict),
+// so that one gets new keys directly in marketplace.json instead.
+const SAAS_TOOLS = [
+  { id: 'educator-hub', href: '/dashboard/tools/educator-hub', icon: Crown, accent: 'from-amber-500 to-purple-600' },
+  { id: 'media-studio', href: '/dashboard/tools/media-studio', icon: Mic, accent: 'from-cyan-500 to-purple-600' },
+  { id: 'english-tutor', href: '/dashboard/english-tutor', icon: GraduationCap, accent: 'from-purple-500 to-cyan-600' },
+  // The task that requested this cross-listing named a
+  // `/dashboard/tools/proctored-exam` route that doesn't exist in this
+  // codebase — the real AI Proctored Exam feature lives at
+  // /dashboard/ai-tools (see tools.tsx's Card 2), Business-account-gated.
+  // Linking the nonexistent route would ship a dead link, so this points
+  // at the real one instead.
+  { id: 'proctoring', href: '/dashboard/ai-tools', icon: ShieldCheck, accent: 'from-cyan-500 to-purple-600' },
+] as const;
+
 function MarketplaceContent() {
   const { t } = useTranslation('marketplace');
+  const { t: tEdu } = useTranslation('educatorHub');
+  const { t: tm } = useTranslation('mediaStudio');
+  const { t: th } = useTranslation('home');
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
@@ -65,6 +93,19 @@ function MarketplaceContent() {
   const setCategory = (category: string | null) => {
     const query = category ? { category } : {};
     router.push({ pathname: '/marketplace', query }, undefined, { shallow: true });
+  };
+
+  // Shown only under the "Business Tools" filter (matches either the ka or
+  // en literal value products are actually tagged with — see
+  // MARKETPLACE_CATEGORIES' own comment on why category is free text, not
+  // an enum), not under "All" — keeps the main catalog view unchanged.
+  const showSaasTools = categoryParam === MARKETPLACE_CATEGORIES[0].value.ka || categoryParam === MARKETPLACE_CATEGORIES[0].value.en;
+
+  const saasToolCopy: Record<(typeof SAAS_TOOLS)[number]['id'], { title: string; desc: string; badge: string; cta: string }> = {
+    'educator-hub': { title: tEdu('pageTitle'), desc: tEdu('pageSubtitle'), badge: tEdu('vipBadge'), cta: tEdu('trialCta') },
+    'media-studio': { title: tm('catalogTitle'), desc: tm('catalogDesc'), badge: tm('catalogTag'), cta: t('saasLaunchCta') },
+    'english-tutor': { title: th('imiakoCardTitle'), desc: th('imiakoFeature1'), badge: th('imiakoBadgeFreeTrial'), cta: t('saasLaunchCta') },
+    proctoring: { title: t('proctoringTitle'), desc: t('proctoringDesc'), badge: t('proctoringBadge'), cta: t('saasLaunchCta') },
   };
 
   // Same "sign in, then resume" pattern as this page's own product cards
@@ -135,6 +176,41 @@ function MarketplaceContent() {
                 {cat}
               </button>
             ))}
+          </div>
+        )}
+
+        {showSaasTools && (
+          <div className="mb-10">
+            <div className="text-center mb-5">
+              <h2 className="text-lg font-black tracking-wide">{t('saasToolsHeading')}</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('saasToolsSubheading')}</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {SAAS_TOOLS.map(({ id, href, icon: Icon, accent }) => {
+                const copy = saasToolCopy[id];
+                return (
+                  <Link
+                    key={id}
+                    href={href}
+                    className="group rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden no-underline text-current p-5 flex gap-4 items-start"
+                  >
+                    <div className={`shrink-0 w-12 h-12 rounded-xl bg-gradient-to-tr ${accent} flex items-center justify-center`}>
+                      <Icon className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                        <h3 className="text-sm font-black tracking-wide group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">{copy.title}</h3>
+                      </div>
+                      <span className="inline-block text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 mb-2">
+                        {copy.badge}
+                      </span>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 mb-2">{copy.desc}</p>
+                      <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">{copy.cta} →</span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -223,5 +299,5 @@ export default function MarketplacePage() {
 }
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'ka', ['marketplace'])) },
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['marketplace', 'educatorHub', 'mediaStudio', 'home'])) },
 });

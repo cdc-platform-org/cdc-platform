@@ -69,5 +69,11 @@
   "reviewsAddPhoto": "Add a photo (optional)",
   "sellerRatingLabel": "Seller Rating",
   "sellerNoReviews": "No seller reviews yet.",
-  "securedBadge": "GESICHERT"
+  "securedBadge": "GESICHERT",
+  "saasToolsHeading": "AI SaaS Tools",
+  "saasToolsSubheading": "CDCs eigene KI-Produkte — direkt öffnen, kein Kauf nötig.",
+  "saasLaunchCta": "Tool öffnen",
+  "proctoringTitle": "KI-Prüfungsaufsichtssystem",
+  "proctoringDesc": "Online-Prüfungsüberwachung und Betrugsprävention, unterstützt durch KI.",
+  "proctoringBadge": "🛡️ AI Proctoring"
 }

@@ -69,5 +69,11 @@
   "reviewsAddPhoto": "Şəkil əlavə et (istəyə bağlı)",
   "sellerRatingLabel": "Satıcı Reytinqi",
   "sellerNoReviews": "Hələ satıcı rəyi yoxdur.",
-  "securedBadge": "TƏHLÜKƏSİZ"
+  "securedBadge": "TƏHLÜKƏSİZ",
+  "saasToolsHeading": "AI SaaS Alətləri",
+  "saasToolsSubheading": "CDC-nin öz süni intellekt məhsulları — satın almaya ehtiyac olmadan birbaşa açın.",
+  "saasLaunchCta": "Aləti Aç",
+  "proctoringTitle": "AI Nəzarətli İmtahan Sistemi",
+  "proctoringDesc": "Süni intellektlə gücləndirilmiş onlayn imtahan monitorinqi və fırıldaqçılığın qarşısının alınması.",
+  "proctoringBadge": "🛡️ AI Proctoring"
 }

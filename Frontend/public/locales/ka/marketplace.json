@@ -69,5 +69,11 @@
   "reviewsAddPhoto": "დაამატეთ ფოტო (არასავალდებულო)",
   "sellerRatingLabel": "გამყიდველის რეიტინგი",
   "sellerNoReviews": "გამყიდველს ჯერ არ ჰყავს შემფასებელი.",
-  "securedBadge": "დაცულია"
+  "securedBadge": "დაცულია",
+  "saasToolsHeading": "AI SaaS ხელსაწყოები",
+  "saasToolsSubheading": "CDC-ის საკუთარი AI პროდუქტები — გახსენით პირდაპირ, შეძენის გარეშე.",
+  "saasLaunchCta": "ხელსაწყოს გახსნა",
+  "proctoringTitle": "AI პროქტორინგის საგამოცდო სისტემა",
+  "proctoringDesc": "გამოცდების ონლაინ მონიტორინგი და თაღლითობის პრევენცია, AI-ზე დაფუძნებული.",
+  "proctoringBadge": "🛡️ AI Proctoring"
 }

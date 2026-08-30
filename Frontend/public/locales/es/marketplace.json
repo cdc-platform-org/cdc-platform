@@ -69,5 +69,11 @@
   "reviewsAddPhoto": "Add a photo (optional)",
   "sellerRatingLabel": "Seller Rating",
   "sellerNoReviews": "No seller reviews yet.",
-  "securedBadge": "SEGURO"
+  "securedBadge": "SEGURO",
+  "saasToolsHeading": "Herramientas de IA SaaS",
+  "saasToolsSubheading": "Productos de IA propios de CDC — ábrelos directamente, sin necesidad de compra.",
+  "saasLaunchCta": "Abrir herramienta",
+  "proctoringTitle": "Sistema de exámenes con supervisión por IA",
+  "proctoringDesc": "Supervisión de exámenes en línea y prevención de fraude, impulsada por IA.",
+  "proctoringBadge": "🛡️ AI Proctoring"
 }
