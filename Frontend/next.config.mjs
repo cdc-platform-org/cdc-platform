@@ -10,6 +10,15 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const nextConfig = {
   i18n,
   reactStrictMode: true,
+  // Azure Web App (Linux container) deployment — see Frontend/Dockerfile —
+  // needs the self-contained server bundle standalone mode produces
+  // (.next/standalone/server.js + only the node_modules it actually
+  // traces as used) rather than shipping the full node_modules tree into
+  // the image. Vercel's own build pipeline ignores this setting entirely
+  // (it has its own packaging), so this is additive, not a Vercel-breaking
+  // change — the app still deploys identically there if it's ever used
+  // again.
+  output: 'standalone',
   // Required on Next 14 for instrumentation.ts's register()/onRequestError
   // hooks to actually run (stable-by-default from Next 15 on) — see
   // instrumentation.ts for the Sentry server/edge init this enables.

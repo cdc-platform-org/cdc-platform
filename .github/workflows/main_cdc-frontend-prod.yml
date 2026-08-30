@@ -1,0 +1,95 @@
+# Docs: https://github.com/Azure/login (OIDC), https://github.com/Azure/acr-build (az acr build)
+#
+# Frontend counterpart to main_cdc-api-prod.yml — same container-image-via-
+# ACR-then-point-the-Web-App-at-it shape, same "only deploy what Nightly QA
+# actually tested" gate, reusing the SAME Azure OIDC service-principal
+# secrets the Backend workflow already uses (AZURE_CLIENT_ID/TENANT_ID/
+# SUBSCRIPTION_ID). Two things this workflow needs that don't exist yet —
+# see this repo's Azure-migration notes:
+#   1. The `cdc-frontend-prod` Web App itself (Linux, custom container) —
+#      provision it in resource group CDC-Prod-RG, then grant the existing
+#      service principal a role (e.g. Website Contributor) scoped to it if
+#      its current role assignment doesn't already cover the whole
+#      resource group.
+#   2. NEXT_PUBLIC_* build-time secrets (see the "Build and push image"
+#      step below) as GitHub Actions repo secrets — these get baked into
+#      the client bundle at build time (see Frontend/Dockerfile's own
+#      comment on why they're build ARGs, not just runtime env), so they
+#      must be set here even though they're also needed as plain values
+#      (not secrets, they're public by nature) if this app is ever built
+#      anywhere else.
+# Everything else the app reads at runtime (GEMINI_API_KEY, CRON_SECRET,
+# SENTRY_AUTH_TOKEN, etc.) belongs in the Web App's own Application
+# Settings instead — never baked into the image.
+name: Build and deploy container to Azure Web App - cdc-frontend-prod
+
+on:
+  workflow_run:
+    workflows: ["Nightly QA"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  ACR_NAME: cdcplatformacr
+  ACR_LOGIN_SERVER: cdcplatformacr.azurecr.io
+  IMAGE_NAME: cdc-platform-frontend
+  WEBAPP_NAME: cdc-frontend-prod
+  RESOURCE_GROUP: CDC-Prod-RG
+
+jobs:
+  build-and-deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # required for actions/checkout
+      id-token: write # required for Azure OIDC login
+    env:
+      # Same workflow_run gotcha as the Backend deploy — github.sha on a
+      # workflow_run trigger is NOT the tested commit, it's main's latest at
+      # trigger time. head_sha is the actual SHA Nightly QA ran against.
+      DEPLOY_SHA: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Build args become part of the client bundle (see Dockerfile) — real
+      # values must be set as repo secrets even though they're public by
+      # nature (shipped to every browser regardless); using secrets here
+      # just keeps them out of plain workflow-file text.
+      - name: Build and push image via ACR Tasks
+        working-directory: Frontend
+        run: |
+          az acr build \
+            --registry ${{ env.ACR_NAME }} \
+            --image ${{ env.IMAGE_NAME }}:${{ env.DEPLOY_SHA }} \
+            --image ${{ env.IMAGE_NAME }}:latest \
+            --build-arg NEXT_PUBLIC_API_URL="${{ secrets.NEXT_PUBLIC_API_URL }}" \
+            --build-arg NEXT_PUBLIC_GOOGLE_CLIENT_ID="${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}" \
+            --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}" \
+            --build-arg NEXT_PUBLIC_SENTRY_DSN="${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}" \
+            .
+
+      - name: Point Web App at the new image
+        run: |
+          az webapp config container set \
+            --name ${{ env.WEBAPP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --container-image-name ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.DEPLOY_SHA }} \
+            --container-registry-url https://${{ env.ACR_LOGIN_SERVER }}
+
+      - name: Restart Web App to pull new image
+        run: az webapp restart --name ${{ env.WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}
+
+      - name: Azure logout
+        if: always()
+        run: az logout

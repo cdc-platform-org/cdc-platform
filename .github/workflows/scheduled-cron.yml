@@ -1,0 +1,60 @@
+# Azure-native replacement for Vercel Cron (Frontend/vercel.json's `crons`
+# block) — GitHub Actions' own `schedule:` trigger calls the Backend's
+# cron endpoints DIRECTLY (Backend/src/routes/cron.ts), skipping the
+# Frontend's pages/api/cron/* relay routes entirely: those only existed
+# because Vercel Cron can only trigger routes within the same Vercel
+# project, not arbitrary external URLs. An external scheduler has no such
+# restriction, so this is one network hop shorter and one fewer thing that
+# breaks if the Frontend deploy has issues.
+#
+# NOT YET ACTIVE: needs a `CRON_SECRET` repo secret matching Backend's real
+# production CRON_SECRET (Web App Application Settings) before these will
+# return anything but 401. Frontend/vercel.json's `crons` block and the
+# pages/api/cron/* relay routes are deliberately left in place until this
+# is confirmed working — removing Vercel's scheduling before this fires
+# successfully at least once would leave both the twice-weekly blog draft
+# and the daily grant scan with nothing actually triggering them. Once
+# confirmed, retire Frontend/vercel.json's `crons` block and the two relay
+# routes; they'll have no remaining purpose.
+name: Scheduled Backend Cron Jobs
+
+on:
+  schedule:
+    # Mirrors vercel.json's generate-blog schedule exactly (Mon/Wed/Fri, 10:00 UTC).
+    - cron: '0 10 * * 1,3,5'
+    # Mirrors vercel.json's scan-grants schedule exactly (daily, 06:00 UTC).
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'Which job to run manually'
+        required: true
+        type: choice
+        options: [generate-blog-draft, scan-grant-opportunities]
+
+jobs:
+  generate-blog-draft:
+    # On the real schedule, only the matching cron expression's own trigger
+    # fires this — GitHub doesn't tell a job which schedule entry matched,
+    # so both scheduled jobs below would otherwise run on EITHER cron.
+    # github.event.schedule carries the exact expression that fired.
+    if: github.event_name == 'workflow_dispatch' && inputs.job == 'generate-blog-draft' || github.event.schedule == '0 10 * * 1,3,5'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger Backend blog-draft generation
+        run: |
+          curl -sf -X POST "${{ secrets.NEXT_PUBLIC_API_URL }}/cron/generate-blog-draft" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json"
+
+  scan-grant-opportunities:
+    if: github.event_name == 'workflow_dispatch' && inputs.job == 'scan-grant-opportunities' || github.event.schedule == '0 6 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger Backend grant-opportunity scan
+        run: |
+          curl -sf -X POST "${{ secrets.NEXT_PUBLIC_API_URL }}/cron/scan-grant-opportunities" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json"
