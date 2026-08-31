@@ -17,3 +17,6 @@ stitch-export/
 # nightly QA workflow's autofix job — feeds the PR body for that run only.
 qa-autofix-summary.md
 "
+.aider*
+
+*.bat
