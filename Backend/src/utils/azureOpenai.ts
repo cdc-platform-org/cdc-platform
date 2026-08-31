@@ -5,4 +5,6 @@ export const azureOpenai = new AzureOpenAI({
   apiKey: process.env.AZURE_OPENAI_API_KEY || "",
   apiVersion: process.env.AZURE_OPENAI_API_VERSION || "2024-08-01-preview",
   deployment: process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-4o",
+  maxTokens: 4096, // Ensure token bounds
+  timeout: 30000, // Set timeout for requests
 });
