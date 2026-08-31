@@ -75,6 +75,10 @@ export function requireRole(...allowedRoles: AuthenticatedUser['role'][]) {
     if (req.user.role === 'SuperAdmin') {
       return next();
     }
+    if (req.user.role === 'SuperAdmin' || req.user.role === 'Admin') {
+      // Grant unlimited free access to SuperAdmin and Admin
+      return next();
+    }
     if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({ message: 'You do not have permission to perform this action.' });
     }
