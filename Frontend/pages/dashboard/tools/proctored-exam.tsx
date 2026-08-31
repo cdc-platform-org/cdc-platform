@@ -315,14 +315,14 @@ function ProctoredExamContent() {
                 <ShieldCheck className="w-3.5 h-3.5" />
                 {t('liveBadge')}
               </span>
-              <h1 className="text-2xl md:text-3xl font-black tracking-wide mb-2">{t('pageTitle')}</h1>
+              <h1 className="text-2xl md:text-3xl font-black tracking-wide mb-2">{t('examTitle', { defaultValue: 'გამოცდის სათაური' })}</h1>
               <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">{t('pageSubtitle')}</p>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 no-print">
+            <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 shadow-xl backdrop-blur-md bg-opacity-30">
               <div className="grid sm:grid-cols-2 gap-4 mb-4">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">{t('setupSubjectLabel')}</label>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">{t('setupSubjectLabel', { defaultValue: 'საგანი / თემა' })}</label>
                   <input
                     className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900/40 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     value={subject}
@@ -344,6 +344,7 @@ function ProctoredExamContent() {
                             : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
                         }`}
                       >
+                        <span className="flex-shrink-0">{lvl === 'JUNIOR' ? <ShieldCheck className="w-4 h-4" /> : lvl === 'MID' ? <Camera className="w-4 h-4" /> : lvl === 'SENIOR' ? <Maximize className="w-4 h-4" /> : <Loader2 className="w-4 h-4" />}</span>
                         {t(`level${lvl.charAt(0)}${lvl.slice(1).toLowerCase()}`)}
                       </button>
                     ))}
@@ -405,10 +406,10 @@ function ProctoredExamContent() {
                 type="button"
                 disabled={!subject.trim() || generating}
                 onClick={handleGenerate}
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all disabled:opacity-50"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-indigo-600 text-white font-black text-lg px-8 py-4 rounded-3xl border-none cursor-pointer hover:shadow-lg hover:shadow-emerald-500/30 transition-all disabled:opacity-50"
               >
                 {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-                {generating ? t('setupGenerating') : t('setupStartButton')}
+                {generating ? t('setupGenerating', { defaultValue: 'გენერირება...' }) : t('setupStartButton', { defaultValue: 'გამოცდის დაწყება' })}
               </button>
             </div>
           </>

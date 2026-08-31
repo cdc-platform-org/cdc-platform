@@ -1,5 +1,12 @@
 {
   "verificationBadges": {
+    "examTitle": "გამოცდის სათაური",
+    "setupSubjectLabel": "საგანი / თემა",
+    "setupStartButton": "გამოცდის დაწყება",
+    "setupLevelLabel": "სირთულე",
+    "setupQuestionCountLabel": "კითხვების რაოდენობა",
+    "setupCameraLabel": "კამერის ჩართვა",
+    "setupFullscreenLabel": "სრული ეკრანი",
     "student": "სტუდენტი",
     "freelancer": "ფრილანსერი",
     "business": "ბიზნესი"
