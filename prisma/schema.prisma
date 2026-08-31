@@ -1,0 +1,35 @@
+model HRDocument {
+  id          String   @id @default(cuid())
+  title       String
+  filePath    String
+  uploadedAt  DateTime @default(now())
+  processed   Boolean  @default(false)
+  embeddings  Json?
+  quizzes     KnowledgeQuiz[]
+}
+
+model KnowledgeQuiz {
+  id          String   @id @default(cuid())
+  title       String
+  questions   Json     // Array of questions
+  lessonId    String
+  createdAt   DateTime @default(now())
+  employees   EmployeeProgress[]
+}
+
+model EmployeeProgress {
+  id          String   @id @default(cuid())
+  employeeId  String
+  quizId      String
+  score       Int
+  completedAt DateTime?
+  streak      Int      @default(0)
+}
+
+model GapAnalytics {
+  id          String   @id @default(cuid())
+  employeeId  String
+  gaps        Json     // Knowledge gaps
+  competency  Float
+  generatedAt DateTime @default(now())
+}
