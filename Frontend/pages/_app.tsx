@@ -165,7 +165,7 @@ function App({ Component, pageProps }: AppProps) {
         // script actually becomes available instead of silently giving up.
         onLoad={() => window.dispatchEvent(new Event('google-gsi-ready'))}
       />
-      <div className={`app-shell ${headingFont.variable} ${fallbackFont.variable} ${georgianSafeFont.variable}`}>
+      <div className={`app-shell ${headingFont.variable} ${fallbackFont.variable} ${georgianSafeFont.variable} overflow-x-hidden`}>
         <AuthProvider>
           <AuthModalProvider>
             <VerificationDrawerProvider>
