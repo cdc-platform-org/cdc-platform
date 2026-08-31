@@ -1,5 +1,4 @@
-import crypto from 'crypto';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { azureOpenai } from "../utils/azureOpenai";
 import { z } from 'zod';
 import * as Sentry from '@sentry/node';
 import { GEMINI_API_KEY } from '../utils/env';
