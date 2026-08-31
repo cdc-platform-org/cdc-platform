@@ -277,6 +277,13 @@ function MarketplaceContent() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="mb-4">
+                  <input
+                      type="text"
+                      placeholder={t('searchPlaceholder', 'ძებნა')}
+                      className="w-full p-2 rounded-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/60 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  />
+              </div>
             {products.map((product) => (
               <Link
                 key={product.id}
@@ -305,7 +312,7 @@ function MarketplaceContent() {
                   {product.purchased && (
                     <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500 text-white shadow">
                       <CheckCircle2 className="w-3 h-3" />
-                      {t('owned')}
+                      {t('owned', 'შეძენილი')}
                     </span>
                   )}
                 </div>
