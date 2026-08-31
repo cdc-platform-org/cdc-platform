@@ -3,12 +3,7 @@ import { callTextModel, AiAgentError } from './aiAgentService';
 import { isAzureOpenAiConfigured } from './azureOpenAiService';
 import { GEMINI_API_KEY } from '../utils/env';
 
-// Configured if EITHER provider is — callTextModel() (aiAgentService.ts)
-// already falls through Gemini's 3-model chain to the cross-vendor Azure
-// OpenAI rung (azureOpenAiService.ts) on its own, so this only needs to
-// gate the fully-unconfigured case.
-export function isAiExamConfigured(): boolean {
-  return !!GEMINI_API_KEY || isAzureOpenAiConfigured();
+const DIFFICULTY_LEVEL = 'BEGINNER_A1'; // Set difficulty level to Beginner A1
 }
 
 export interface GeneratedQuestion {

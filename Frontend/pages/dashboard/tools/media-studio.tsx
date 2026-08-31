@@ -389,7 +389,21 @@ function MediaStudioContent() {
                   <input type="range" min={0.5} max={2} step={0.05} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="w-full" />
                 </div>
 
-                {ttsError && <p className="text-sm text-red-600 dark:text-red-400 mt-3">{ttsError}</p>}
+                <div className="mt-4">
+                  <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">
+                    {t('ttsSpeedLabel')}: {speed.toFixed(2)}x
+                  </label>
+                  <input type="range" min={0.5} max={2} step={0.05} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="w-full" />
+                </div>
+                <div className="mt-4 flex flex-col items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={toggleSlowPlayback}
+                    className="mt-6 inline-flex items-center justify-center w-20 h-20 bg-cyan-500 text-white rounded-full shadow-lg hover:bg-cyan-600 transition-all"
+                  >
+                    {isSlowPlayback ? 'Normal Speed' : 'Slow Speed'}
+                  </button>
+                </div>
 
                 <div className="mt-6 flex flex-wrap items-center gap-3">
                   <button
@@ -403,7 +417,26 @@ function MediaStudioContent() {
                   </button>
                 </div>
 
-                {audioUrl && (
+                const LoadingGame: React.FC = () => {
+                  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+                
+                  useEffect(() => {
+                    const canvas = canvasRef.current;
+                    if (!canvas) return;
+                    const context = canvas.getContext('2d');
+                    if (!context) return;
+                
+                    // Game logic and rendering goes here
+                    const draw = () => {
+                      context.clearRect(0, 0, canvas.width, canvas.height);
+                      // Draw CDC logo girl and other game elements
+                      requestAnimationFrame(draw);
+                    };
+                    draw();
+                  }, []);
+                
+                  return <canvas ref={canvasRef} width={800} height={600} />;
+                };
                   <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
                     <audio controls src={audioUrl} className="w-full sm:w-auto" />
                     <button
