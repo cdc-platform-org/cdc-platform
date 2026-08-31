@@ -3,5 +3,11 @@
     "student": "Ուսանող",
     "freelancer": "Ֆրիլանսեր",
     "business": "Բիզնես"
+  },
+  "menu": {
+    "home": "Գլխավոր",
+    "profile": "Պրոֆիլ",
+    "settings": "Կարգավորումներ",
+    "logout": "Ելք"
   }
 }

@@ -3,5 +3,11 @@
     "student": "Студент",
     "freelancer": "Фрілансер",
     "business": "Бізнес"
+  },
+  "menu": {
+    "home": "Головна",
+    "profile": "Профіль",
+    "settings": "Налаштування",
+    "logout": "Вийти"
   }
 }

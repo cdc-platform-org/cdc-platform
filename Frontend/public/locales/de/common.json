@@ -3,5 +3,11 @@
     "student": "Student",
     "freelancer": "Freelancer",
     "business": "Unternehmen"
+  },
+  "menu": {
+    "home": "Startseite",
+    "profile": "Profil",
+    "settings": "Einstellungen",
+    "logout": "Abmelden"
   }
 }

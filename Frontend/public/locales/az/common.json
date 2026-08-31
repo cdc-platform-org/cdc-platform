@@ -3,5 +3,11 @@
     "student": "Tələbə",
     "freelancer": "Freelancer",
     "business": "Biznes"
+  },
+  "menu": {
+    "home": "Ana Səhifə",
+    "profile": "Profil",
+    "settings": "Parametrlər",
+    "logout": "Çıxış"
   }
 }
