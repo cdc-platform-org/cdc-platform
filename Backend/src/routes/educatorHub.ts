@@ -16,6 +16,7 @@ import {
   generateDifferentiatedTask,
   generateLessonPlan,
   generateBureaucracyDoc,
+  generateParentLetter,
   EducatorAiError,
 } from '../services/educatorHubAiService';
 import { createTeacherQuiz, getQuizSubmissionsForTeacher, TeacherQuizError } from '../services/teacherQuizService';
@@ -362,6 +363,34 @@ router.post('/generate-bureaucracy-doc', generateRateLimit, requireCurrentEducat
   try {
     const result = await generateBureaucracyDoc(parsed.data);
     await recordEducatorGeneration(req.user!.id, 'BUREAUCRACY');
+    res.json({ data: result });
+  } catch (err) {
+    handleAiError(err, res);
+  }
+});
+
+// ---- Module 7: Student Reports & Parent Letters ----
+
+const generateParentLetterSchema = z.object({
+  studentName: z.string().min(1).max(200),
+  grade: z.string().min(1).max(50),
+  letterPurpose: z.enum(['PRAISE', 'ACADEMIC_IMPROVEMENT', 'BEHAVIORAL_NOTE', 'ATTENDANCE']),
+  teacherNotes: z.string().min(1).max(4000),
+  language: z.enum(['ka', 'en']),
+});
+
+router.post('/generate-parent-letter', generateRateLimit, requireCurrentEducatorSession, requireEducatorVipAccess, async (req: Request, res: Response) => {
+  if (!isAiAgentConfigured()) return res.status(501).json({ message: 'AI generation is not configured yet.' });
+  const parsed = generateParentLetterSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
+
+  if (await hasReachedGenerationLimit(req.user!.id)) {
+    return res.status(429).json({ code: 'QUOTA_EXCEEDED', message: 'ამ თვის გენერაციების ლიმიტი ამოწურულია.' });
+  }
+
+  try {
+    const result = await generateParentLetter(parsed.data);
+    await recordEducatorGeneration(req.user!.id, 'PARENT_REPORT');
     res.json({ data: result });
   } catch (err) {
     handleAiError(err, res);

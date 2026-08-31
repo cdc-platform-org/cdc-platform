@@ -2,11 +2,10 @@ import { z } from 'zod';
 import { callTextModel, isAiAgentConfigured, AiAgentError, InlineImagePart } from './aiAgentService';
 
 // ============================================================
-// AI Educator VIP Hub — Modules 4-6 (SEN/differentiated adaptations, ESG
-// lesson planner, school bureaucracy docs) below join the original top-3
-// survey-ranked modules; parent reports still ship as a "coming soon" card
-// on the frontend with no backend here yet — see
-// pages/dashboard/tools/educator-hub.tsx's own comment for that split.
+// AI Educator VIP Hub — all 7 modules (test generator, rubric builder,
+// homework grading, SEN/differentiated adaptations, ESG lesson planner,
+// school bureaucracy docs, parent letters) are real generation now — none
+// ship as "coming soon" cards on the frontend any more.
 //
 // All of these reuse aiAgentService.ts's callTextModel (3-model Gemini
 // fallback + Azure OpenAI 4th rung for text, inline base64 images for the
@@ -323,4 +322,44 @@ Respond with strict JSON matching this shape, where the field is a single Markdo
 
   const raw = await callTextModel(prompt, 0.5);
   return parseOrThrow(raw, bureaucracyDocSchema);
+}
+
+// ---- Module 7: Student Reports & Parent Letters ----
+
+export type ParentLetterPurpose = 'PRAISE' | 'ACADEMIC_IMPROVEMENT' | 'BEHAVIORAL_NOTE' | 'ATTENDANCE';
+
+export interface GenerateParentLetterParams {
+  studentName: string;
+  grade: string;
+  letterPurpose: ParentLetterPurpose;
+  teacherNotes: string;
+  language: 'ka' | 'en';
+}
+
+const parentLetterSchema = z.object({
+  letter: z.string().min(1),
+});
+
+export type GeneratedParentLetter = z.infer<typeof parentLetterSchema>;
+
+const PARENT_LETTER_PURPOSE_LABEL: Record<ParentLetterPurpose, string> = {
+  PRAISE: 'praise/commendation — celebrating something the student did well',
+  ACADEMIC_IMPROVEMENT: 'a note about needed academic improvement — honest but supportive, not alarming',
+  BEHAVIORAL_NOTE: 'a behavioral note — describing a concern about conduct while staying respectful and solution-oriented',
+  ATTENDANCE: 'an attendance report — informing the parent about the student\'s attendance record',
+};
+
+export async function generateParentLetter(params: GenerateParentLetterParams): Promise<GeneratedParentLetter> {
+  const lang = LANGUAGE_NAME[params.language];
+  const purposeLabel = PARENT_LETTER_PURPOSE_LABEL[params.letterPurpose];
+
+  const prompt = `You are ${params.grade ? `grade ${params.grade}'s` : 'a'} teacher writing a letter to the parent(s) of student "${params.studentName}". The letter's purpose is: ${purposeLabel}. The teacher's specific notes to base it on: "${params.teacherNotes}".
+
+Write ${lang}, formatted as clean Markdown. The letter should be polished, warm, and professional — ready for the teacher to copy, print, or send directly via email/chat with no further editing. Address the parent respectfully, reference the specific notes given (don't be generic), and close with an appropriate, professional sign-off placeholder for the teacher's name.
+
+Respond with strict JSON matching this shape, where the field is a single Markdown string containing the full letter:
+{"letter": string}`;
+
+  const raw = await callTextModel(prompt, 0.6);
+  return parseOrThrow(raw, parentLetterSchema);
 }

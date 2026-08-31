@@ -177,6 +177,25 @@ export async function generateBureaucracyDoc(payload: GenerateBureaucracyDocPayl
   return response.data.data;
 }
 
+export type ParentLetterPurpose = 'PRAISE' | 'ACADEMIC_IMPROVEMENT' | 'BEHAVIORAL_NOTE' | 'ATTENDANCE';
+
+export interface GenerateParentLetterPayload {
+  studentName: string;
+  grade: string;
+  letterPurpose: ParentLetterPurpose;
+  teacherNotes: string;
+  language: 'ka' | 'en';
+}
+
+export interface GeneratedParentLetter {
+  letter: string;
+}
+
+export async function generateParentLetter(payload: GenerateParentLetterPayload): Promise<GeneratedParentLetter> {
+  const response = await apiClient.post<{ data: GeneratedParentLetter }>('/educator-hub/generate-parent-letter', payload, { timeout: 90 * 1000 });
+  return response.data.data;
+}
+
 // ---- Sharing a generated test as a no-login student quiz ----
 
 export interface CreateQuizPayload {

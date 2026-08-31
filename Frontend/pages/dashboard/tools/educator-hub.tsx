@@ -11,7 +11,6 @@ import {
   BookOpen,
   FolderKanban,
   Mail,
-  Lock,
   Crown,
   Copy,
   Printer,
@@ -53,10 +52,14 @@ import {
   generateBureaucracyDoc,
   GeneratedBureaucracyDoc,
   BureaucracyDocumentType,
+  generateParentLetter,
+  GeneratedParentLetter,
+  ParentLetterPurpose,
 } from '../../../src/services/educatorHubService';
 
 type TabId = 'test' | 'rubric' | 'grading' | 'sen' | 'lessonPlan' | 'bureaucracy' | 'parentReports';
 
+// All 7 modules are real generation now — no more "coming soon" tier.
 const REAL_TABS: { id: TabId; icon: typeof FileText }[] = [
   { id: 'test', icon: FileText },
   { id: 'rubric', icon: ClipboardList },
@@ -64,9 +67,8 @@ const REAL_TABS: { id: TabId; icon: typeof FileText }[] = [
   { id: 'sen', icon: Puzzle },
   { id: 'lessonPlan', icon: BookOpen },
   { id: 'bureaucracy', icon: FolderKanban },
+  { id: 'parentReports', icon: Mail },
 ];
-
-const COMING_SOON_TABS: { id: TabId; icon: typeof Mail }[] = [{ id: 'parentReports', icon: Mail }];
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -149,22 +151,6 @@ function UsageMeter({ label, used, limit }: { label: string; used: number; limit
       <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
         <div className="h-full bg-gradient-to-r from-amber-400 to-purple-600 rounded-full" style={{ width: `${pct}%` }} />
       </div>
-    </div>
-  );
-}
-
-function ComingSoonPanel({ title, desc, badge }: { title: string; desc: string; badge: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-8 flex flex-col items-center text-center gap-3 max-w-xl mx-auto">
-      <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-        <Lock className="w-6 h-6 text-slate-400 dark:text-slate-500" />
-      </div>
-      <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-        <Lock className="w-3 h-3" />
-        {badge}
-      </span>
-      <h3 className="text-base font-black tracking-wide">{title}</h3>
-      <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{desc}</p>
     </div>
   );
 }
@@ -483,6 +469,36 @@ function EducatorHubContent() {
     }
   };
 
+  // ---- Module 7: Student reports & parent letters ----
+  const [letterStudentName, setLetterStudentName] = useState('');
+  const [letterGrade, setLetterGrade] = useState('');
+  const [letterPurpose, setLetterPurpose] = useState<ParentLetterPurpose>('PRAISE');
+  const [letterTeacherNotes, setLetterTeacherNotes] = useState('');
+  const [letterGenerating, setLetterGenerating] = useState(false);
+  const [letterError, setLetterError] = useState<string | null>(null);
+  const [letterResult, setLetterResult] = useState<GeneratedParentLetter | null>(null);
+
+  const handleGenerateParentLetter = async () => {
+    if (!letterStudentName.trim() || !letterGrade.trim() || !letterTeacherNotes.trim()) return;
+    setLetterGenerating(true);
+    setLetterError(null);
+    try {
+      const result = await generateParentLetter({
+        studentName: letterStudentName,
+        grade: letterGrade,
+        letterPurpose,
+        teacherNotes: letterTeacherNotes,
+        language: lang,
+      });
+      setLetterResult(result);
+      refreshState();
+    } catch (err) {
+      handleModuleError(err, t('genericError'), setLetterError);
+    } finally {
+      setLetterGenerating(false);
+    }
+  };
+
   const hasAccess = hubState?.hasAccess ?? false;
   const usage = hubState?.usage;
 
@@ -600,24 +616,11 @@ function EducatorHubContent() {
                     ? 'Sen'
                     : id === 'lessonPlan'
                     ? 'LessonPlan'
-                    : 'Bureaucracy'
+                    : id === 'bureaucracy'
+                    ? 'Bureaucracy'
+                    : 'ParentReports'
                 }`
               )}
-            </button>
-          ))}
-          {COMING_SOON_TABS.map(({ id, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setTab(id)}
-              className={`inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-full border cursor-pointer transition-colors opacity-80 ${
-                tab === id
-                  ? 'bg-slate-700 text-white border-transparent'
-                  : 'bg-white dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-400'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {t('tabParentReports')}
             </button>
           ))}
         </div>
@@ -1152,7 +1155,65 @@ function EducatorHubContent() {
             </div>
           </div>
         )}
-        {tab === 'parentReports' && <ComingSoonPanel title={t('tabParentReports')} desc={t('comingSoonParentReportsDesc')} badge={t('comingSoonBadge')} />}
+        {/* Module 7: Student reports & parent letters */}
+        {tab === 'parentReports' && (
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
+            <div className="grid sm:grid-cols-2 gap-4 mb-4 no-print">
+              <div>
+                <label className={labelClass}>{t('letterStudentNameLabel')}</label>
+                <input className={inputClass} value={letterStudentName} onChange={(e) => setLetterStudentName(e.target.value)} placeholder={t('letterStudentNamePlaceholder')} disabled={!hasAccess} />
+              </div>
+              <div>
+                <label className={labelClass}>{t('letterGradeLabel')}</label>
+                <input className={inputClass} value={letterGrade} onChange={(e) => setLetterGrade(e.target.value)} placeholder={t('letterGradePlaceholder')} disabled={!hasAccess} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelClass}>{t('letterPurposeLabel')}</label>
+                <select className={inputClass} value={letterPurpose} onChange={(e) => setLetterPurpose(e.target.value as ParentLetterPurpose)} disabled={!hasAccess}>
+                  <option className={optionClass} value="PRAISE">{t('letterPurposePraise')}</option>
+                  <option className={optionClass} value="ACADEMIC_IMPROVEMENT">{t('letterPurposeAcademicImprovement')}</option>
+                  <option className={optionClass} value="BEHAVIORAL_NOTE">{t('letterPurposeBehavioralNote')}</option>
+                  <option className={optionClass} value="ATTENDANCE">{t('letterPurposeAttendance')}</option>
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelClass}>{t('letterTeacherNotesLabel')}</label>
+                <textarea
+                  className={inputClass}
+                  rows={4}
+                  value={letterTeacherNotes}
+                  onChange={(e) => setLetterTeacherNotes(e.target.value)}
+                  placeholder={t('letterTeacherNotesPlaceholder')}
+                  disabled={!hasAccess}
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={!hasAccess || letterGenerating}
+              onClick={handleGenerateParentLetter}
+              className="no-print inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-amber-500/30 transition-all disabled:opacity-50"
+            >
+              {letterGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+              {letterGenerating ? t('letterGenerating') : t('letterGenerateButton')}
+            </button>
+            {letterError && <p className="text-xs text-rose-600 dark:text-rose-400 mt-3 no-print">{letterError}</p>}
+
+            <div id="print-letter" className="mt-6">
+              {letterResult ? (
+                <>
+                  <h3 className="text-base font-black mb-2">{t('letterOutputHeading')}</h3>
+                  <RichTextEditor value={letterResult.letter} onChange={(v) => setLetterResult({ letter: v })} rows={14} />
+                  <div className="no-print">
+                    <ExportBar t={t} sections={[{ heading: t('letterOutputHeading'), body: letterResult.letter }]} filenameBase="parent-letter" printAreaId="print-letter" />
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-slate-400 dark:text-slate-500 italic no-print">{t('letterEmptyState')}</p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="no-print">
@@ -1180,7 +1241,9 @@ function EducatorHubContent() {
           body[data-print-target='print-lesson'] #print-lesson,
           body[data-print-target='print-lesson'] #print-lesson *,
           body[data-print-target='print-bureaucracy'] #print-bureaucracy,
-          body[data-print-target='print-bureaucracy'] #print-bureaucracy * {
+          body[data-print-target='print-bureaucracy'] #print-bureaucracy *,
+          body[data-print-target='print-letter'] #print-letter,
+          body[data-print-target='print-letter'] #print-letter * {
             visibility: visible;
           }
           #print-test,
@@ -1188,7 +1251,8 @@ function EducatorHubContent() {
           #print-grading,
           #print-sen,
           #print-lesson,
-          #print-bureaucracy {
+          #print-bureaucracy,
+          #print-letter {
             position: absolute;
             top: 0;
             left: 0;
