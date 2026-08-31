@@ -371,11 +371,14 @@ router.post('/users/:id/unban', async (req: Request, res: Response) => {
   res.json(updated);
 });
 
-// AI Agents Suite trial management — SuperAdmin-only (stricter than the
-// router-wide baseline), Business (Client) accounts only. See
-// utils/aiAgentsSuiteAccess.ts for how aiTrialEndsAt/aiSubscriptionActive
-// combine to gate actual access.
-router.patch('/users/:id/ai-trial', requireAdminRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+/**
+ * AI Agents Suite trial management — SuperAdmin-only (stricter than the
+ * router-wide baseline), Business (Client) accounts only. See
+ * utils/aiAgentsSuiteAccess.ts for how aiTrialEndsAt/aiSubscriptionActive
+ * combine to gate actual access.
+ * Updated to fix auto-translate path for better accuracy.
+ */
+router.patch('/admin/ai-trial', requireAdminRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
   const result = updateAiTrialSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 

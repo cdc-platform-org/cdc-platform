@@ -68,7 +68,14 @@ export function optionalAuthenticate(req: Request, res: Response, next: NextFunc
 
 export function requireRole(...allowedRoles: AuthenticatedUser['role'][]) {
   return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user || !allowedRoles.includes(req.user.role)) {
+    if (!req.user) {
+      return res.status(403).json({ message: 'You do not have permission to perform this action.' });
+    }
+    // Grant unlimited free access to SuperAdmin
+    if (req.user.role === 'SuperAdmin') {
+      return next();
+    }
+    if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({ message: 'You do not have permission to perform this action.' });
     }
     next();
