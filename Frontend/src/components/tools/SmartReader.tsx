@@ -20,6 +20,8 @@ export const SmartReader: React.FC = () => {
   const [selectedText, setSelectedText] = useState<string>('');
   const [popupPos, setPopupPos] = useState<{ x: number; y: number } | null>(null);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [cefrLevel, setCefrLevel] = useState<string | null>(null);
   const [loadingAi, setLoadingAi] = useState<boolean>(false);
 
   const [isListening, setIsListening] = useState<boolean>(false);
@@ -44,6 +46,51 @@ export const SmartReader: React.FC = () => {
   };
 
   const togglePlay = () => {
+    if (!('speechSynthesis' in window)) return;
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = playbackSpeed;
+
+    utterance.onboundary = (event) => {
+      const wordIndex = words.findIndex((word) => text.indexOf(word) === event.charIndex);
+      setCurrentWordIdx(wordIndex);
+    };
+
+    utterance.onend = () => {
+      setIsPlaying(false);
+      setCurrentWordIdx(-1);
+    };
+
+    if (isPlaying) {
+      window.speechSynthesis.cancel();
+      setIsPlaying(false);
+    } else {
+      window.speechSynthesis.speak(utterance);
+      setIsPlaying(true);
+    }
+  };
+
+  const handleSummarize = async () => {
+    setLoadingAi(true);
+    setSummary(null);
+    setCefrLevel(null);
+
+    try {
+      const res = await fetch('/api/language-teacher/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      const [summaryText, cefr] = data.summary.split('CEFR Level:');
+      setSummary(summaryText.trim());
+      setCefrLevel(cefr.trim());
+    } catch {
+      setSummary('Error summarizing text.');
+    } finally {
+      setLoadingAi(false);
+    }
+  };
     if (!('speechSynthesis' in window)) return;
 
     if (isPlaying) {
@@ -162,6 +209,55 @@ export const SmartReader: React.FC = () => {
       </div>
 
       <div className="space-y-3">
+        <button
+          onClick={handleSummarize}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+        >
+          Summarize & CEFR Analysis
+        </button>
+
+        {summary && (
+          <div className="bg-slate-800 p-4 rounded-lg mt-4">
+            <p className="text-slate-200">{summary}</p>
+            {cefrLevel && (
+              <span
+                className={`inline-block px-3 py-1 mt-2 text-sm font-semibold rounded-full ${
+                  cefrLevel.startsWith('A')
+                    ? 'bg-green-500 text-white'
+                    : cefrLevel.startsWith('B')
+                    ? 'bg-yellow-500 text-black'
+                    : 'bg-red-500 text-white'
+                }`}
+              >
+                CEFR Level: {cefrLevel}
+              </span>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-center space-x-4 mt-4">
+          <button
+            onClick={togglePlay}
+            className={`px-4 py-2 rounded-lg ${
+              isPlaying ? 'bg-red-600' : 'bg-green-600'
+            } text-white hover:opacity-90 transition`}
+          >
+            {isPlaying ? 'Stop' : 'Play'}
+          </button>
+          <label className="text-slate-400">
+            Speed:
+            <input
+              type="range"
+              min="0.5"
+              max="2.0"
+              step="0.1"
+              value={playbackSpeed}
+              onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
+              className="ml-2"
+            />
+          </label>
+        </div>
+
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}

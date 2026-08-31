@@ -56,4 +56,23 @@ router.post('/analyze-pronunciation', async (req, res) => {
   }
 });
 
+router.post('/summarize', async (req, res) => {
+  const { text } = req.body;
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        {
+          role: 'user',
+          content: `Summarize the following text and provide its CEFR complexity level (A1, A2, B1, B2, C1, C2): "${text}"`,
+        },
+      ],
+    });
+    const summary = response.choices[0].message.content;
+    res.json({ summary });
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
 export default router;
