@@ -381,18 +381,18 @@ app.listen(PORT, () => {
 // second attempt on an already-released escrow transaction just fails and is
 // caught), but the real production trigger should be POST /api/cron/auto-approve
 // from a single external scheduler, not this timer.
-const AUTO_APPROVE_POLL_INTERVAL_MS = 60 * 60 * 1000; // hourly
-setInterval(() => {
-  autoApproveOverdueGigs()
-    .then(({ processedGigIds, failures }) => {
-      if (processedGigIds.length > 0 || failures.length > 0) {
-        console.log(
-          `[auto-approve] processed=${processedGigIds.length} failures=${failures.length}`
-        );
-      }
-    })
-    .catch((err) => console.error('[auto-approve] run failed:', err));
-}, AUTO_APPROVE_POLL_INTERVAL_MS);
+import { scheduleJob } from './utils/scheduler';
+
+scheduleJob('autoApproveOverdueGigs', '0 * * * *', async () => {
+  try {
+    const { processedGigIds, failures } = await autoApproveOverdueGigs();
+    if (processedGigIds.length > 0 || failures.length > 0) {
+      console.log(`[auto-approve] processed=${processedGigIds.length} failures=${failures.length}`);
+    }
+  } catch (err) {
+    console.error('[auto-approve] run failed:', err);
+  }
+});
 
 // Same in-process-fallback caveat as above applies here: fine on a single
 // instance, would run redundantly per-instance if ever scaled horizontally.
