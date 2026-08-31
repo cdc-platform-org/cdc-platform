@@ -21,3 +21,20 @@ async function sendTelegramNotification(message: string): Promise<void> {
     console.error('Failed to send Telegram notification:', error);
   }
 }
+export async function submitDisputeFeedback(req: Request, res: Response): Promise<void> {
+  const { userEmail, userName, problemDescription, lessonId } = req.body;
+
+  // Format the notification message
+  const timestamp = new Date().toISOString();
+  const message = `*New Dispute/Feedback Submission*\n\n` +
+                  `*User:* ${userName} (${userEmail})\n` +
+                  `*Lesson/Task ID:* ${lessonId}\n` +
+                  `*Description:* ${problemDescription}\n` +
+                  `*Timestamp:* ${timestamp}`;
+
+  // Send the notification to Telegram
+  await sendTelegramNotification(message);
+
+  // Respond to the client
+  res.status(200).json({ message: 'Dispute/Feedback submitted successfully.' });
+}
