@@ -177,11 +177,35 @@ function MediaStudioContent() {
     setTtsLoading(true);
     setTtsError(null);
     try {
-      const blob = await synthesizeSpeech({ text: text.trim(), voiceShortName: selectedVoice.shortName, voiceLocale: selectedVoice.locale, speed });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8-second timeout
+
+      let blob;
+      try {
+        blob = await synthesizeSpeech(
+          { text: text.trim(), voiceShortName: selectedVoice.shortName, voiceLocale: selectedVoice.locale, speed },
+          { signal: controller.signal }
+        );
+      } catch (err) {
+        if (controller.signal.aborted) {
+          setTtsError(t('ttsTimeoutError')); // User-friendly timeout error
+        } else {
+          setTtsError(await extractErrorMessage(err, t('ttsError')));
+        }
+        return;
+      } finally {
+        clearTimeout(timeoutId);
+      }
       if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
-      const url = URL.createObjectURL(blob);
-      audioUrlRef.current = url;
-      setAudioUrl(url);
+      if (audioBlob && text.trim() === audioBlob.text) {
+        // Reuse cached audio if the text matches
+        setAudioUrl(audioUrlRef.current);
+      } else {
+        const url = URL.createObjectURL(blob);
+        audioUrlRef.current = url;
+        setAudioUrl(url);
+        setAudioBlob({ blob, text: text.trim() }); // Cache the blob and text
+      }
       setAudioBlob(blob);
       // Update progress on successful task completion
       const newXp = xp + 10; // Example XP increment
