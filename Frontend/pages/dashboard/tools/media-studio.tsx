@@ -440,6 +440,9 @@ function MediaStudioContent() {
                 
                   return <canvas ref={canvasRef} width={800} height={600} />;
                 };
+                  <div className="text-center mb-4">
+                    <p className="text-sm text-slate-500">{t('loadingNotice')}</p>
+                  </div>
                   <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
                     <audio controls src={audioUrl} className="w-full sm:w-auto" />
                     <button
