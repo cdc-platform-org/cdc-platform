@@ -315,14 +315,14 @@ function ProctoredExamContent() {
                 <ShieldCheck className="w-3.5 h-3.5" />
                 {t('liveBadge')}
               </span>
-              <h1 className="text-2xl md:text-3xl font-black tracking-wide mb-2">{t('examTitle', { defaultValue: 'გამოცდის სათაური' })}</h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">{t('pageSubtitle')}</p>
+              <h1 className="text-2xl md:text-3xl font-black tracking-wide mb-2">{t('examTitle', 'გამოცდის სათაური')}</h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">{t('pageSubtitle', 'გამოცდის აღწერა')}</p>
             </div>
 
             <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 shadow-xl backdrop-blur-md bg-opacity-30">
               <div className="grid sm:grid-cols-2 gap-4 mb-4">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">{t('setupSubjectLabel', { defaultValue: 'საგანი / თემა' })}</label>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">{t('setupSubjectLabel', 'საგანი / თემა')}</label>
                   <input
                     className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900/40 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     value={subject}
@@ -447,7 +447,7 @@ function ProctoredExamContent() {
               </div>
             )}
 
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
+            <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 shadow-xl">
               <p className="text-base font-bold mb-4">{currentQuestion.question}</p>
               {currentQuestion.type === 'MCQ' ? (
                 <div className="flex flex-col gap-2">
@@ -493,6 +493,10 @@ function ProctoredExamContent() {
                 </button>
                 {currentIndex < questions.length - 1 ? (
                   <button
+                    className="bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-bold rounded-3xl px-8 py-4"
+                    className="bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-bold rounded-3xl px-8 py-4"
+                    className="bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-bold rounded-3xl px-8 py-4"
+                    className="bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-bold rounded-3xl px-8 py-4"
                     type="button"
                     onClick={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
                     className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold px-5 py-2.5 text-sm"
@@ -571,7 +575,7 @@ function ProctoredExamContent() {
                 )}
               </div>
 
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
+              <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 shadow-xl">
                 <h3 className="text-sm font-black mb-4">{t('reportQuestionsHeading')}</h3>
                 <div className="flex flex-col gap-4">
                   {questions.map((q, i) => {
