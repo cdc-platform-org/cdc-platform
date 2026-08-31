@@ -67,15 +67,20 @@ export async function generateExamQuestions(params: GenerateExamParams): Promise
       ? '\nWrite the "topic", "question", "options", and "explanation" fields in Georgian (ქართული). Keep standard IT/design terminology that is normally used in English even in Georgian technical speech in English (e.g. "Checkout flow", "Wireframe", "API", "SEO").'
       : '\nWrite the "topic", "question", "options", and "explanation" fields entirely in English.';
 
-  const prompt = `You are generating a certification exam for the online course "${params.courseTitle}".
-Course description: ${params.courseDescription}
-Lesson topics covered: ${params.lessonTitles.join(', ') || '(no lessons listed)'}${focusLine}${contextLine}${languageLine}
+  const prompt = `You are evaluating a student's response for an online course exam.
 
-Ensure that all questions align with CEFR levels (A1-C2) and Bloom's Taxonomy cognitive depths (e.g., Remember, Analyze, Evaluate). Clearly indicate the CEFR level and cognitive depth for each question.
-If the course title, description, or topics name an unrecognized, unclear, or overly narrow custom profession (e.g. a free-typed "Other" field), do not attempt to invent implausible profession-specific trivia — instead generate general freelancing, logical reasoning, and project management questions for that portion of the test.
+The student's response must be evaluated strictly based on the following JSON schema:
+{
+  "score": number, // 0 to 100
+  "isCorrect": boolean,
+  "grammarCorrections": [
+    { "original": string, "correction": string, "reason": string }
+  ],
+  "pronunciationFeedback": string,
+  "duolingoFeedback": string // Short, encouraging Duolingo-style text (e.g., "Great job! Watch out for past tense.")
+}
 
-Generate exactly ${params.questionCount} multiple-choice questions that test real understanding of the course material (not trivia). Each question must have exactly 4 options (A, B, C, D), one correct answer, and a short explanation of why it's correct. Vary the topics across the course's lessons. Respond with strict JSON matching this shape:
-{"questions": [{"topic": string, "question": string, "options": {"A": string, "B": string, "C": string, "D": string}, "correctAnswer": "A"|"B"|"C"|"D", "explanation": string}]}`;
+Evaluate the response based on grammar, pronunciation, and correctness. Provide constructive feedback in the "duolingoFeedback" field. Respond with strict JSON matching the schema above.`;
 
   // callTextModel() (aiAgentService.ts) already runs the full resilience
   // chain: gemini-flash-latest → gemini-flash-lite-latest → gemini-3.5-flash
@@ -95,7 +100,7 @@ Generate exactly ${params.questionCount} multiple-choice questions that test rea
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(raw.replace(/```json|```/g, '').trim()); // Remove extra backticks if present
   } catch {
     throw new AiExamGenerationError('AI provider returned malformed JSON.');
   }
