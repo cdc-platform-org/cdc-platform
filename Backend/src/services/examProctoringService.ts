@@ -1,4 +1,5 @@
 import { azureOpenai } from "../utils/azureOpenai";
+import crypto from 'crypto';
 
 import { z } from 'zod';
 import * as Sentry from '@sentry/node';
