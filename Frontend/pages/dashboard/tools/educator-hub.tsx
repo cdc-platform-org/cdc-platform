@@ -109,6 +109,11 @@ function extractErrorMessage(err: any, fallback: string): { message: string; cod
 }
 
 function ExportBar({ t, sections, filenameBase, printAreaId }: { t: (k: string) => string; sections: { heading: string; body: string }[]; filenameBase: string; printAreaId: string }) {
+  const handleTextToSpeech = (text: string) => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    window.speechSynthesis.speak(utterance);
+  };
   const [copied, setCopied] = useState(false);
   const handleCopy = async () => {
     await navigator.clipboard.writeText(sections.map((s) => `${s.heading}\n\n${s.body}`).join('\n\n---\n\n'));
@@ -137,6 +142,13 @@ function ExportBar({ t, sections, filenameBase, printAreaId }: { t: (k: string) 
         <Printer className="w-3.5 h-3.5" />
         {t('exportPrint')}
       </button>
+      <button type="button" onClick={() => handleTextToSpeech(sections.map((s) => `${s.heading}\n\n${s.body}`).join('\n\n'))} className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-none cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700">
+        <FileText className="w-3.5 h-3.5" />
+        {t('listenToExplanation')}
+      </button>
+        <Printer className="w-3.5 h-3.5" />
+        {t('exportPrint')}
+      </button>
     </div>
   );
 }
@@ -158,6 +170,42 @@ function UsageMeter({ label, used, limit }: { label: string; used: number; limit
 
 const inputClass =
   'w-full px-3.5 py-2.5 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900/40 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500';
+
+function useSpeechToText(onResult: (text: string) => void) {
+  const [listening, setListening] = useState(false);
+  const recognition = useRef<SpeechRecognition | null>(null);
+
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window) {
+      recognition.current = new (window as any).webkitSpeechRecognition();
+      recognition.current.continuous = false;
+      recognition.current.interimResults = false;
+      recognition.current.lang = 'en-US';
+      recognition.current.onresult = (event: SpeechRecognitionEvent) => {
+        const transcript = event.results[0][0].transcript;
+        onResult(transcript);
+      };
+      recognition.current.onerror = () => setListening(false);
+      recognition.current.onend = () => setListening(false);
+    }
+  }, [onResult]);
+
+  const startListening = () => {
+    if (recognition.current) {
+      setListening(true);
+      recognition.current.start();
+    }
+  };
+
+  const stopListening = () => {
+    if (recognition.current) {
+      setListening(false);
+      recognition.current.stop();
+    }
+  };
+
+  return { listening, startListening, stopListening };
+}
 const labelClass = 'block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5';
 // Native <select> renders its <option> popup via the OS, outside the page's
 // own light/dark styling — without an explicit color here, dark mode's
@@ -232,6 +280,7 @@ function EducatorHubContent() {
   const [testTypes, setTestTypes] = useState<QuestionType[]>(['MULTIPLE_CHOICE']);
   const [testDifficulty, setTestDifficulty] = useState<Difficulty>('MIXED');
   const [testCount, setTestCount] = useState(10);
+  const [quizTimer, setQuizTimer] = useState(60); // Default timer in seconds
   const [testSourceText, setTestSourceText] = useState('');
   const [testSourceFile, setTestSourceFile] = useState<File | null>(null);
   const [testGenerating, setTestGenerating] = useState(false);
@@ -640,6 +689,18 @@ function EducatorHubContent() {
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
             <div className="grid sm:grid-cols-2 gap-4 mb-4 no-print">
               <div>
+                <label className={labelClass}>{t('quizTimerLabel')}</label>
+                <input
+                  type="number"
+                  min={30}
+                  max={300}
+                  className={inputClass}
+                  value={quizTimer}
+                  onChange={(e) => setQuizTimer(Number(e.target.value))}
+                  placeholder={t('quizTimerPlaceholder')}
+                  disabled={!hasAccess}
+                />
+              </div>
                 <label className={labelClass}>{t('testSubjectLabel')}</label>
                 <input className={inputClass} value={testSubject} onChange={(e) => setTestSubject(e.target.value)} placeholder={t('testSubjectPlaceholder')} disabled={!hasAccess} />
               </div>
@@ -665,14 +726,25 @@ function EducatorHubContent() {
               </div>
               <div className="sm:col-span-2">
                 <label className={labelClass}>{t('testSourceTextLabel')}</label>
-                <textarea
-                  className={inputClass}
-                  rows={3}
-                  value={testSourceText}
-                  onChange={(e) => setTestSourceText(e.target.value)}
-                  placeholder={t('testSourceTextPlaceholder')}
-                  disabled={!hasAccess}
-                />
+                <div className="relative">
+                  <textarea
+                    className={inputClass}
+                    rows={3}
+                    value={testSourceText}
+                    onChange={(e) => setTestSourceText(e.target.value)}
+                    placeholder={t('testSourceTextPlaceholder')}
+                    disabled={!hasAccess}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => (listening ? stopListening() : startListening())}
+                    className={`absolute right-3 top-3 text-sm font-bold px-3 py-1.5 rounded-full border cursor-pointer ${
+                      listening ? 'bg-red-500 text-white' : 'bg-amber-500 text-white'
+                    }`}
+                  >
+                    {listening ? t('stopListening') : t('startListening')}
+                  </button>
+                </div>
               </div>
               <div className="sm:col-span-2">
                 <label className={labelClass}>{t('testQuestionTypesLabel')}</label>
