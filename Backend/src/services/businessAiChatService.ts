@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { azureOpenai } from '../utils/azureOpenai';
 import { GEMINI_API_KEY } from '../utils/env';
 import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
 
@@ -12,7 +12,7 @@ export function isBusinessAiChatConfigured(): boolean {
   return !!GEMINI_API_KEY;
 }
 
-const client = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+const client = azureOpenai;
 
 export class BusinessAiChatError extends Error {
   constructor(message: string) {
@@ -58,26 +58,12 @@ export async function generateAgentReply(params: GenerateAgentReplyParams): Prom
     ? `${params.systemPrompt}\n\nUse the following context to answer questions when relevant. If the context doesn't cover the visitor's question, answer helpfully from general knowledge, but never contradict the context:\n\n${params.knowledgeContext}`
     : params.systemPrompt;
 
-  const model = client.getGenerativeModel({
-    // Same model as aiExamService.ts/businessKycService.ts — confirmed real
-    // free-tier headroom on this account; the Pro family returns a hard 0
-    // quota.
-    model: 'gemini-flash-latest',
-    systemInstruction,
-    generationConfig: { temperature: 0.6, maxOutputTokens: 1024 },
-  }, GEMINI_REQUEST_OPTIONS);
-
-  const chat = model.startChat({
-    history: params.history.map((turn) => ({
-      role: turn.role === 'USER' ? 'user' : 'model',
-      parts: [{ text: turn.content }],
-    })),
-  });
+  
 
   let reply: string;
   let usage: GenerateAgentReplyResult['usage'];
   try {
-    const result = await chat.sendMessage(params.message);
+    const response = await azureOpenai.chat.completions.create({ model: process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-4o", messages: [{ role: "user", content: params.message }] }); const result = { response: { text: () => response.choices[0]?.message?.content || "" } };
     reply = result.response.text();
     const usageMetadata = result.response.usageMetadata;
     if (usageMetadata) {

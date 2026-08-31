@@ -28,7 +28,7 @@ export function isAiAgentConfigured(): boolean {
   return !!GEMINI_API_KEY;
 }
 
-const client = GEMINI_API_KEY ? azureOpenai : null;
+const client = azureOpenai;
 
 // "gemini-2.5-pro"/"gemini-pro-latest" return a hard 0 free-tier quota on
 // this account (see aiExamService.ts) — same reasoning applies here, so
@@ -137,16 +137,12 @@ async function runGeminiFallbackSequence(
   for (const modelName of TEXT_MODEL_FALLBACK_SEQUENCE) {
     for (let attempt = 1; attempt <= ATTEMPTS_PER_MODEL; attempt++) {
       try {
-        const model = client!.getGenerativeModel({
-          model: modelName,
-          generationConfig: { responseMimeType, temperature },
-        }, GEMINI_REQUEST_OPTIONS);
         // The installed SDK's own FileData type requires mimeType: string
         // (no optional variant) — stricter than the actual REST contract,
         // which treats it as optional (confirmed live: a YouTube fileUri
         // with mime_type omitted is accepted and processed correctly). Cast
         // narrowly here rather than loosening GeminiPart's public shape.
-        const result = await model.generateContent(parts as any);
+        const response = await azureOpenai.chat.completions.create({ model: process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-4o", messages: [{ role: "user", content: typeof parts as any === "string" ? parts as any : JSON.stringify(parts as any) }] }); const result = { response: { text: () => response.choices[0]?.message?.content || "" } };
         const raw = result.response.text();
         if (!raw) throw new AiAgentError('Gemini returned an empty response.');
         return { raw, lastError: null };

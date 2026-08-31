@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { azureOpenai } from '../utils/azureOpenai';
 import { GEMINI_API_KEY } from '../utils/env';
 import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
 
@@ -14,7 +14,7 @@ export function isCourseTutorConfigured(): boolean {
   return !!GEMINI_API_KEY;
 }
 
-const client = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+const client = azureOpenai;
 
 export class CourseTutorError extends Error {
   constructor(message: string) {
@@ -68,26 +68,11 @@ export async function generateTutorReply(params: GenerateTutorReplyParams): Prom
     `asked something unrelated, gently redirect the student back to the lesson.\n\n` +
     `Lesson context:\n${contextLines.join('\n')}`;
 
-  const model = client.getGenerativeModel({
-    // gemini-flash-latest, not a pinned version — this Google Cloud project
-    // has repeatedly deprecated pinned model names (see aiAgentService.ts's
-    // comment on Imagen 3/4) while gemini-flash-latest keeps working across
-    // every other AI feature in this codebase.
-    model: 'gemini-flash-latest',
-    systemInstruction,
-    generationConfig: { temperature: 0.5, maxOutputTokens: 2048 },
-  }, GEMINI_REQUEST_OPTIONS);
-
-  const chat = model.startChat({
-    history: params.history.slice(-HISTORY_TURN_LIMIT).map((turn) => ({
-      role: turn.role === 'USER' ? 'user' : 'model',
-      parts: [{ text: turn.content }],
-    })),
-  });
+  
 
   let reply: string;
   try {
-    const result = await chat.sendMessage(params.message);
+    const response = await azureOpenai.chat.completions.create({ model: process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-4o", messages: [{ role: "user", content: params.message }] }); const result = { response: { text: () => response.choices[0]?.message?.content || "" } };
     reply = result.response.text();
   } catch (err) {
     throw new CourseTutorError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');

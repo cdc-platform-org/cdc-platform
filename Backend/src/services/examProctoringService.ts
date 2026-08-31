@@ -1,4 +1,5 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { azureOpenai } from "../utils/azureOpenai";
+
 import { z } from 'zod';
 import * as Sentry from '@sentry/node';
 import { GEMINI_API_KEY } from '../utils/env';
@@ -17,7 +18,7 @@ export function isExamProctoringConfigured(): boolean {
   return !!GEMINI_API_KEY;
 }
 
-const client = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+const client = azureOpenai;
 
 // Same model fallback sequence as aiAgentService.callTextModel() — kept as
 // a local copy rather than calling that shared helper directly because this
@@ -85,14 +86,10 @@ async function generateJson(prompt: string, temperature: number): Promise<Gemini
   geminiLoop: for (const modelName of MODEL_FALLBACK_SEQUENCE) {
     for (let attempt = 1; attempt <= ATTEMPTS_PER_MODEL; attempt++) {
       try {
-        const model = client.getGenerativeModel({
-          model: modelName,
-          generationConfig: { responseMimeType: 'application/json', temperature },
-        }, GEMINI_REQUEST_OPTIONS);
-        const result = await model.generateContent(prompt);
+        const response = await azureOpenai.chat.completions.create({ model: process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-4o", messages: [{ role: "user", content: typeof prompt === "string" ? prompt : JSON.stringify(prompt) }] }); const result = { response: { text: () => response.choices[0]?.message?.content || "" } };
         const raw = result.response.text();
         if (!raw) throw new ExamProctoringAiError('Gemini returned an empty response.');
-        const usageMetadata = result.response.usageMetadata;
+        const usageMetadata = undefined;
         return {
           raw,
           usage: usageMetadata

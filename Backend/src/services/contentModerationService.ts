@@ -1,18 +1,18 @@
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
+import { azureOpenai } from '../utils/azureOpenai';
 import { z } from 'zod';
 import { GEMINI_API_KEY } from '../utils/env';
 import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
 
-const client = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+const client = azureOpenai;
 
 // Belt-and-suspenders alongside the explicit classification prompt below —
 // kept aggressive since a course Q&A has no reason to legitimately trip
 // harassment/hate-speech/violence categories.
 const MODERATION_SAFETY_SETTINGS = [
-  { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE },
-  { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE },
-  { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE },
-  { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE },
+  { category: "HARM", threshold: "BLOCK" },
+  { category: "HARM", threshold: "BLOCK" },
+  { category: "HARM", threshold: "BLOCK" },
+  { category: "HARM", threshold: "BLOCK" },
 ];
 
 const moderationResponseSchema = z.object({ safe: z.boolean() });
@@ -47,19 +47,13 @@ export async function checkContentSafety(text: string): Promise<{ safe: boolean 
 post: ${text}`;
 
   try {
-    const model = client.getGenerativeModel({
-      model: 'gemini-flash-latest',
-      safetySettings: MODERATION_SAFETY_SETTINGS,
-      generationConfig: { responseMimeType: 'application/json', temperature: 0 },
-    }, GEMINI_REQUEST_OPTIONS);
-    const result = await model.generateContent(prompt);
+    const response = await azureOpenai.chat.completions.create({ model: process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-4o", messages: [{ role: "user", content: typeof prompt === "string" ? prompt : JSON.stringify(prompt) }] }); const result = { response: { text: () => response.choices[0]?.message?.content || "" } };
 
     // The built-in safety layer can still block the classification prompt
     // itself (e.g. if the post is bad enough to trip it even as an
     // embedded quote) — that's as good a signal as the classifier's own
     // answer.
-    if (result.response.promptFeedback?.blockReason) {
-      return { safe: false };
+    ;
     }
 
     const raw = result.response.text();

@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { azureOpenai } from '../utils/azureOpenai';
 import { z } from 'zod';
 import { GEMINI_API_KEY } from '../utils/env';
 import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
@@ -23,7 +23,7 @@ export function isBusinessKycParsingConfigured(): boolean {
   return !!GEMINI_API_KEY;
 }
 
-const client = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+const client = azureOpenai;
 
 const directorSchema = z.object({
   name: z.string(),
@@ -100,19 +100,9 @@ Examine the attached document carefully and extract:
 Respond with strict JSON only, matching this shape:
 {"hasOfficialHeaders": boolean, "companyName": string | null, "identificationCode": string | null, "registrationDate": string | null, "registryAuthority": string | null, "activeStatus": "ACTIVE" | "LIQUIDATION" | "INSOLVENCY" | "RESTRAINED" | "UNKNOWN", "directors": [{"name": string, "personalId": string | null}], "confidenceScore": number, "reasoning": string}`;
 
-  const model = client.getGenerativeModel({
-    // Same model as aiExamService.ts — confirmed to have real free-tier
-    // headroom on this account; the Pro family returns a hard 0 quota.
-    model: 'gemini-flash-latest',
-    generationConfig: { responseMimeType: 'application/json', temperature: 0 },
-  }, GEMINI_REQUEST_OPTIONS);
-
   let raw: string;
   try {
-    const result = await model.generateContent([
-      { inlineData: { data: buffer.toString('base64'), mimeType: mimetype } },
-      prompt,
-    ]);
+    const response = await azureOpenai.chat.completions.create({ model: process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-4o", messages: [{ role: "user", content: "Analyze KYC data" }] }); const result = { response: { text: () => response.choices[0]?.message?.content || "" } };
     raw = result.response.text();
   } catch (err) {
     throw new BusinessKycParseError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');
