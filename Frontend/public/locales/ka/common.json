@@ -3,5 +3,11 @@
     "student": "სტუდენტი",
     "freelancer": "ფრილანსერი",
     "business": "ბიზნესი"
+  },
+  "menu": {
+    "home": "მთავარი",
+    "profile": "პროფილი",
+    "settings": "პარამეტრები",
+    "logout": "გასვლა"
   }
 }

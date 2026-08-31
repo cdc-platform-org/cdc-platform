@@ -1,4 +1,11 @@
 import { appWithTranslation } from 'next-i18next';
+import i18next from 'i18next';
+
+// Ensure all required locales are loaded
+i18next.init({
+  lng: 'en', // Default language
+  fallbackLng: ['en', 'ka', 'de', 'es', 'fr', 'uk', 'tr', 'hy', 'az'],
+});
 import Head from 'next/head';
 import Script from 'next/script';
 import localFont from 'next/font/local';
