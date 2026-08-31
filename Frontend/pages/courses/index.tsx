@@ -18,6 +18,10 @@ import { getLiveTrainings } from '../../src/services/liveTrainingService';
 import { checkoutCourse } from '../../src/services/paymentService';
 import { formatPrice, getSaleCountdownLabel } from '../../src/utils/coursePricing';
 import { courseLanguageBadge } from '../../src/utils/courseLanguage';
+import { getSiteContent } from '../../src/services/siteContentService';
+import { resolveBlogImageUrl } from '../../src/services/blogService';
+import { ToolCatalogContent } from '../../src/types/siteContent';
+import { findToolEntry } from '../../src/utils/toolCatalog';
 
 type SortMode = 'recommended' | 'price_asc' | 'price_desc';
 type PriceFilter = 'all' | 'free' | 'paid';
@@ -69,6 +73,18 @@ export default function CoursesPage() {
   const [enrollingId, setEnrollingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [contentTab, setContentTab] = useState<ContentTab>('all');
+  // Admin-editable cover image override for each AI teacher card (see
+  // pages/admin/tools.tsx) — null until loaded, at which point a missing
+  // imageUrl for a given slug just falls back to that card's existing
+  // gradient/icon header, same "layer overrides on top of defaults"
+  // convention as marketplace/index.tsx's own toolCatalog fetch.
+  const [toolCatalog, setToolCatalog] = useState<ToolCatalogContent | null>(null);
+
+  useEffect(() => {
+    getSiteContent<ToolCatalogContent>('tool-catalog')
+      .then((row) => setToolCatalog(row?.content ?? {}))
+      .catch(() => setToolCatalog({}));
+  }, []);
 
   // Client-side search/filter/sort over the same getCourses()/
   // getLiveTrainings() fetches this page always made (the latter newly
@@ -269,6 +285,7 @@ export default function CoursesPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {AI_TEACHERS.map(({ id, href, icon: Icon, accent }) => {
                 const copy = aiTeacherCopy[id];
+                const cmsImageUrl = findToolEntry(toolCatalog?.tools, id)?.imageUrl;
                 return (
                   <div
                     key={id}
@@ -283,9 +300,14 @@ export default function CoursesPage() {
                     }}
                     className="group cursor-pointer rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden p-6 flex gap-4 items-start"
                   >
-                    <div className={`shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr ${accent} flex items-center justify-center`}>
-                      <Icon className="w-7 h-7 text-white" />
-                    </div>
+                    {cmsImageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={resolveBlogImageUrl(cmsImageUrl)} alt="" className="shrink-0 w-14 h-14 rounded-2xl object-cover" />
+                    ) : (
+                      <div className={`shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr ${accent} flex items-center justify-center`}>
+                        <Icon className="w-7 h-7 text-white" />
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
                         <h3 className="text-base font-black tracking-wide group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">{copy.title}</h3>
@@ -628,6 +650,7 @@ export default function CoursesPage() {
                   })}
                   {filteredAiTeachers.map(({ id, href, icon: Icon, accent }) => {
                     const copy = aiTeacherCopy[id];
+                    const cmsImageUrl = findToolEntry(toolCatalog?.tools, id)?.imageUrl;
                     return (
                       <div
                         key={id}
@@ -642,12 +665,22 @@ export default function CoursesPage() {
                         }}
                         className="group cursor-pointer relative h-full overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 flex flex-col justify-between"
                       >
-                        <div className={`w-full aspect-video flex items-center justify-center bg-gradient-to-br ${accent}`}>
-                          <Icon className="w-10 h-10 text-white" />
-                          <span className="absolute top-3 left-3 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md bg-black/30 text-white shadow">
-                            {t('tabAiTeachers')}
-                          </span>
-                        </div>
+                        {cmsImageUrl ? (
+                          <div className="relative w-full aspect-video">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={resolveBlogImageUrl(cmsImageUrl)} alt="" className="w-full h-full object-cover" />
+                            <span className="absolute top-3 left-3 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md bg-black/30 text-white shadow">
+                              {t('tabAiTeachers')}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className={`w-full aspect-video flex items-center justify-center bg-gradient-to-br ${accent}`}>
+                            <Icon className="w-10 h-10 text-white" />
+                            <span className="absolute top-3 left-3 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md bg-black/30 text-white shadow">
+                              {t('tabAiTeachers')}
+                            </span>
+                          </div>
+                        )}
                         <div className="p-6 flex-1 flex flex-col justify-between">
                           <div>
                             <span className="inline-block text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 mb-2">

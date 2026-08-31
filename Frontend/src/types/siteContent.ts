@@ -97,6 +97,11 @@ export interface ToolCatalogEntry {
   descriptionEn?: string;
   featuresKa?: string[];
   featuresEn?: string[];
+  // Cover/banner image for this tool's card — absolute URL or a path
+  // relative to the API origin (see blogService.ts's resolveBlogImageUrl).
+  // Empty/undefined means the reading page falls back to its own default
+  // gradient/icon header.
+  imageUrl?: string;
 }
 
 export interface ToolCatalogContent {

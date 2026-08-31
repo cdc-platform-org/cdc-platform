@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
 import Head from 'next/head';
 import { Trash2 } from 'lucide-react';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
 import { ToolCatalogContent, ToolCatalogEntry, ToolCatalogStatus } from '../../src/types/siteContent';
-import { getAdminSiteContent, updateSiteContent } from '../../src/services/siteContentService';
+import { getAdminSiteContent, updateSiteContent, uploadCmsImage } from '../../src/services/siteContentService';
+import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../src/utils/imageUpload';
+import { resolveBlogImageUrl } from '../../src/services/blogService';
 
 // The 4 real, live self-service SaaS tools this CMS currently covers (see
 // marketplace/index.tsx's SAAS_TOOLS and tools.tsx's own cards for where
@@ -52,6 +54,29 @@ function ToolEntryEditor({
 }) {
   const known = KNOWN_TOOLS.find((k) => k.slug === entry.slug);
 
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (isImageTooLarge(file)) {
+      setImageUploadError(IMAGE_SIZE_ERROR.ka);
+      return;
+    }
+    setUploadingImage(true);
+    setImageUploadError(null);
+    try {
+      const url = await uploadCmsImage(file);
+      onChange({ imageUrl: url });
+    } catch (err: any) {
+      setImageUploadError(err?.response?.data?.message ?? 'სურათის ატვირთვა ვერ მოხერხდა.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   return (
     <div className="border border-gray-100 rounded-lg p-4 space-y-3">
       <div className="flex items-center justify-between gap-3">
@@ -70,6 +95,29 @@ function ToolEntryEditor({
             ))}
           </select>
         </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Cover image — shown at the top of the tool&apos;s card in place of the default gradient/icon header</label>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            value={entry.imageUrl ?? ''}
+            onChange={(e) => onChange({ imageUrl: e.target.value })}
+            className={`${inputClass} flex-1`}
+            placeholder="https://... (leave empty for the default gradient/icon)"
+          />
+          <label className="shrink-0 inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-gray-300 text-sm font-medium text-gray-600 cursor-pointer hover:bg-gray-50">
+            {uploadingImage ? 'იტვირთება…' : '📁 Upload'}
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" disabled={uploadingImage} />
+          </label>
+        </div>
+        {imageUploadError && <p className="text-[11px] text-red-600 mt-1.5">{imageUploadError}</p>}
+        {entry.imageUrl && (
+          <div className="mt-2 w-40 h-24 rounded-lg overflow-hidden border border-gray-200">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={resolveBlogImageUrl(entry.imageUrl)} alt="" className="w-full h-full object-cover" />
+          </div>
+        )}
       </div>
 
       <div className="grid md:grid-cols-2 gap-2">
