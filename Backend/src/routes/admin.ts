@@ -379,6 +379,10 @@ router.post('/users/:id/unban', async (req: Request, res: Response) => {
  * Updated to fix auto-translate path for better accuracy.
  */
 router.patch('/admin/ai-trial', requireAdminRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  const localePath = process.cwd() + '/public/locales/en';
+  if (!localePath) {
+    return res.status(500).json({ message: 'Reference locale directory not found.' });
+  }
   const result = updateAiTrialSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
