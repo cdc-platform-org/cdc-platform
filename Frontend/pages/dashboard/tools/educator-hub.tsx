@@ -68,6 +68,7 @@ const REAL_TABS: { id: TabId; icon: typeof FileText }[] = [
   { id: 'lessonPlan', icon: BookOpen },
   { id: 'bureaucracy', icon: FolderKanban },
   { id: 'parentReports', icon: Mail },
+  { id: 'certificates', icon: Crown }, // New tab for certificates
 ];
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -521,6 +522,15 @@ function EducatorHubContent() {
             <button type="button" onClick={() => setSessionSuperseded(null)} aria-label="Close" className="p-1 bg-transparent border-none cursor-pointer text-rose-400 hover:text-rose-600">
               <X className="w-4 h-4" />
             </button>
+          </div>
+        )}
+
+        {/* Module 8: Student Certificate & Diploma Builder */}
+        {tab === 'certificates' && (
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
+            <h2 className="text-xl font-bold mb-4">{t('certificatesTitle')}</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{t('certificatesDescription')}</p>
+            <CertificateBuilder />
           </div>
         )}
 
