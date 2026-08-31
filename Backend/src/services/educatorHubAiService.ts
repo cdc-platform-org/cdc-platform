@@ -2,10 +2,10 @@ import { z } from 'zod';
 import { callTextModel, isAiAgentConfigured, AiAgentError, InlineImagePart } from './aiAgentService';
 
 // ============================================================
-// AI Educator VIP Hub — Modules 4-5 (SEN/differentiated adaptations, ESG
-// lesson planner) below join the original top-3 survey-ranked modules;
-// bureaucracy automation and parent reports still ship as "coming soon"
-// cards on the frontend with no backend here yet — see
+// AI Educator VIP Hub — Modules 4-6 (SEN/differentiated adaptations, ESG
+// lesson planner, school bureaucracy docs) below join the original top-3
+// survey-ranked modules; parent reports still ship as a "coming soon" card
+// on the frontend with no backend here yet — see
 // pages/dashboard/tools/educator-hub.tsx's own comment for that split.
 //
 // All of these reuse aiAgentService.ts's callTextModel (3-model Gemini
@@ -283,4 +283,44 @@ Respond with strict JSON matching this shape, where the field is a single Markdo
 
   const raw = await callTextModel(prompt, 0.6);
   return parseOrThrow(raw, lessonPlanSchema);
+}
+
+// ---- Module 6: School Bureaucracy & Documentation ----
+
+export type BureaucracyDocumentType = 'ACTIVITY_REPORT' | 'SELF_ASSESSMENT' | 'CLUB_PLAN' | 'PROJECT_APPLICATION';
+
+export interface GenerateBureaucracyDocParams {
+  documentType: BureaucracyDocumentType;
+  subject: string;
+  grade: string;
+  keyPoints: string;
+  language: 'ka' | 'en';
+}
+
+const bureaucracyDocSchema = z.object({
+  document: z.string().min(1),
+});
+
+export type GeneratedBureaucracyDoc = z.infer<typeof bureaucracyDocSchema>;
+
+const BUREAUCRACY_DOC_LABEL: Record<BureaucracyDocumentType, string> = {
+  ACTIVITY_REPORT: 'a teacher\'s pedagogical/professional activity report (პედაგოგიური საქმიანობის ანგარიში)',
+  SELF_ASSESSMENT: 'a teacher self-assessment questionnaire (თვითშეფასების კითხვარი)',
+  CLUB_PLAN: 'a school club/circle work plan (კლუბის/წრის მუშაობის გეგმა)',
+  PROJECT_APPLICATION: 'a school project application/proposal (სასკოლო პროექტის განაცხადი)',
+};
+
+export async function generateBureaucracyDoc(params: GenerateBureaucracyDocParams): Promise<GeneratedBureaucracyDoc> {
+  const lang = LANGUAGE_NAME[params.language];
+  const docLabel = BUREAUCRACY_DOC_LABEL[params.documentType];
+
+  const prompt = `You are an experienced ${params.subject} teacher in Georgia preparing ${docLabel} for grade ${params.grade}, for submission to school administration. Base it on these key points from the teacher: "${params.keyPoints}".
+
+Write ${lang}, formatted as clean Markdown structured as a formal, ready-to-print document matching the conventions Georgian public/private school administration expects for this document type — appropriate headings/sections, a formal register, and administratively complete (nothing a reviewer would send back asking to be filled in). Expand the given key points into full, well-organized prose/sections rather than just restating them as a list.
+
+Respond with strict JSON matching this shape, where the field is a single Markdown string containing the full document:
+{"document": string}`;
+
+  const raw = await callTextModel(prompt, 0.5);
+  return parseOrThrow(raw, bureaucracyDocSchema);
 }

@@ -50,6 +50,9 @@ import {
   generateLessonPlan,
   GeneratedLessonPlan,
   LessonType,
+  generateBureaucracyDoc,
+  GeneratedBureaucracyDoc,
+  BureaucracyDocumentType,
 } from '../../../src/services/educatorHubService';
 
 type TabId = 'test' | 'rubric' | 'grading' | 'sen' | 'lessonPlan' | 'bureaucracy' | 'parentReports';
@@ -60,12 +63,10 @@ const REAL_TABS: { id: TabId; icon: typeof FileText }[] = [
   { id: 'grading', icon: PenSquare },
   { id: 'sen', icon: Puzzle },
   { id: 'lessonPlan', icon: BookOpen },
+  { id: 'bureaucracy', icon: FolderKanban },
 ];
 
-const COMING_SOON_TABS: { id: TabId; icon: typeof FolderKanban }[] = [
-  { id: 'bureaucracy', icon: FolderKanban },
-  { id: 'parentReports', icon: Mail },
-];
+const COMING_SOON_TABS: { id: TabId; icon: typeof Mail }[] = [{ id: 'parentReports', icon: Mail }];
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -452,6 +453,36 @@ function EducatorHubContent() {
     }
   };
 
+  // ---- Module 6: School bureaucracy & documentation ----
+  const [bureaucracyDocType, setBureaucracyDocType] = useState<BureaucracyDocumentType>('ACTIVITY_REPORT');
+  const [bureaucracySubject, setBureaucracySubject] = useState('');
+  const [bureaucracyGrade, setBureaucracyGrade] = useState('');
+  const [bureaucracyKeyPoints, setBureaucracyKeyPoints] = useState('');
+  const [bureaucracyGenerating, setBureaucracyGenerating] = useState(false);
+  const [bureaucracyError, setBureaucracyError] = useState<string | null>(null);
+  const [bureaucracyResult, setBureaucracyResult] = useState<GeneratedBureaucracyDoc | null>(null);
+
+  const handleGenerateBureaucracyDoc = async () => {
+    if (!bureaucracySubject.trim() || !bureaucracyGrade.trim() || !bureaucracyKeyPoints.trim()) return;
+    setBureaucracyGenerating(true);
+    setBureaucracyError(null);
+    try {
+      const result = await generateBureaucracyDoc({
+        documentType: bureaucracyDocType,
+        subject: bureaucracySubject,
+        grade: bureaucracyGrade,
+        keyPoints: bureaucracyKeyPoints,
+        language: lang,
+      });
+      setBureaucracyResult(result);
+      refreshState();
+    } catch (err) {
+      handleModuleError(err, t('genericError'), setBureaucracyError);
+    } finally {
+      setBureaucracyGenerating(false);
+    }
+  };
+
   const hasAccess = hubState?.hasAccess ?? false;
   const usage = hubState?.usage;
 
@@ -558,7 +589,19 @@ function EducatorHubContent() {
             >
               <Icon className="w-3.5 h-3.5" />
               {t(
-                `tab${id === 'test' ? 'TestGenerator' : id === 'rubric' ? 'Rubric' : id === 'grading' ? 'Grading' : id === 'sen' ? 'Sen' : 'LessonPlan'}`
+                `tab${
+                  id === 'test'
+                    ? 'TestGenerator'
+                    : id === 'rubric'
+                    ? 'Rubric'
+                    : id === 'grading'
+                    ? 'Grading'
+                    : id === 'sen'
+                    ? 'Sen'
+                    : id === 'lessonPlan'
+                    ? 'LessonPlan'
+                    : 'Bureaucracy'
+                }`
               )}
             </button>
           ))}
@@ -574,7 +617,7 @@ function EducatorHubContent() {
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
-              {t(`tab${id === 'bureaucracy' ? 'Bureaucracy' : 'ParentReports'}`)}
+              {t('tabParentReports')}
             </button>
           ))}
         </div>
@@ -1050,7 +1093,65 @@ function EducatorHubContent() {
             </div>
           </div>
         )}
-        {tab === 'bureaucracy' && <ComingSoonPanel title={t('tabBureaucracy')} desc={t('comingSoonBureaucracyDesc')} badge={t('comingSoonBadge')} />}
+        {/* Module 6: School bureaucracy & documentation */}
+        {tab === 'bureaucracy' && (
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
+            <div className="grid sm:grid-cols-2 gap-4 mb-4 no-print">
+              <div className="sm:col-span-2">
+                <label className={labelClass}>{t('bureaucracyDocTypeLabel')}</label>
+                <select className={inputClass} value={bureaucracyDocType} onChange={(e) => setBureaucracyDocType(e.target.value as BureaucracyDocumentType)} disabled={!hasAccess}>
+                  <option className={optionClass} value="ACTIVITY_REPORT">{t('bureaucracyDocActivityReport')}</option>
+                  <option className={optionClass} value="SELF_ASSESSMENT">{t('bureaucracyDocSelfAssessment')}</option>
+                  <option className={optionClass} value="CLUB_PLAN">{t('bureaucracyDocClubPlan')}</option>
+                  <option className={optionClass} value="PROJECT_APPLICATION">{t('bureaucracyDocProjectApplication')}</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>{t('bureaucracySubjectLabel')}</label>
+                <input className={inputClass} value={bureaucracySubject} onChange={(e) => setBureaucracySubject(e.target.value)} placeholder={t('bureaucracySubjectPlaceholder')} disabled={!hasAccess} />
+              </div>
+              <div>
+                <label className={labelClass}>{t('bureaucracyGradeLabel')}</label>
+                <input className={inputClass} value={bureaucracyGrade} onChange={(e) => setBureaucracyGrade(e.target.value)} placeholder={t('bureaucracyGradePlaceholder')} disabled={!hasAccess} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelClass}>{t('bureaucracyKeyPointsLabel')}</label>
+                <textarea
+                  className={inputClass}
+                  rows={4}
+                  value={bureaucracyKeyPoints}
+                  onChange={(e) => setBureaucracyKeyPoints(e.target.value)}
+                  placeholder={t('bureaucracyKeyPointsPlaceholder')}
+                  disabled={!hasAccess}
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={!hasAccess || bureaucracyGenerating}
+              onClick={handleGenerateBureaucracyDoc}
+              className="no-print inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-amber-500/30 transition-all disabled:opacity-50"
+            >
+              {bureaucracyGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FolderKanban className="w-4 h-4" />}
+              {bureaucracyGenerating ? t('bureaucracyGenerating') : t('bureaucracyGenerateButton')}
+            </button>
+            {bureaucracyError && <p className="text-xs text-rose-600 dark:text-rose-400 mt-3 no-print">{bureaucracyError}</p>}
+
+            <div id="print-bureaucracy" className="mt-6">
+              {bureaucracyResult ? (
+                <>
+                  <h3 className="text-base font-black mb-2">{t('bureaucracyOutputHeading')}</h3>
+                  <RichTextEditor value={bureaucracyResult.document} onChange={(v) => setBureaucracyResult({ document: v })} rows={20} />
+                  <div className="no-print">
+                    <ExportBar t={t} sections={[{ heading: t('bureaucracyOutputHeading'), body: bureaucracyResult.document }]} filenameBase="school-document" printAreaId="print-bureaucracy" />
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-slate-400 dark:text-slate-500 italic no-print">{t('bureaucracyEmptyState')}</p>
+              )}
+            </div>
+          </div>
+        )}
         {tab === 'parentReports' && <ComingSoonPanel title={t('tabParentReports')} desc={t('comingSoonParentReportsDesc')} badge={t('comingSoonBadge')} />}
       </div>
 
@@ -1077,14 +1178,17 @@ function EducatorHubContent() {
           body[data-print-target='print-sen'] #print-sen,
           body[data-print-target='print-sen'] #print-sen *,
           body[data-print-target='print-lesson'] #print-lesson,
-          body[data-print-target='print-lesson'] #print-lesson * {
+          body[data-print-target='print-lesson'] #print-lesson *,
+          body[data-print-target='print-bureaucracy'] #print-bureaucracy,
+          body[data-print-target='print-bureaucracy'] #print-bureaucracy * {
             visibility: visible;
           }
           #print-test,
           #print-rubric,
           #print-grading,
           #print-sen,
-          #print-lesson {
+          #print-lesson,
+          #print-bureaucracy {
             position: absolute;
             top: 0;
             left: 0;

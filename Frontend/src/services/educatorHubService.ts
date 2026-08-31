@@ -158,6 +158,25 @@ export async function generateLessonPlan(payload: GenerateLessonPlanPayload): Pr
   return response.data.data;
 }
 
+export type BureaucracyDocumentType = 'ACTIVITY_REPORT' | 'SELF_ASSESSMENT' | 'CLUB_PLAN' | 'PROJECT_APPLICATION';
+
+export interface GenerateBureaucracyDocPayload {
+  documentType: BureaucracyDocumentType;
+  subject: string;
+  grade: string;
+  keyPoints: string;
+  language: 'ka' | 'en';
+}
+
+export interface GeneratedBureaucracyDoc {
+  document: string;
+}
+
+export async function generateBureaucracyDoc(payload: GenerateBureaucracyDocPayload): Promise<GeneratedBureaucracyDoc> {
+  const response = await apiClient.post<{ data: GeneratedBureaucracyDoc }>('/educator-hub/generate-bureaucracy-doc', payload, { timeout: 90 * 1000 });
+  return response.data.data;
+}
+
 // ---- Sharing a generated test as a no-login student quiz ----
 
 export interface CreateQuizPayload {

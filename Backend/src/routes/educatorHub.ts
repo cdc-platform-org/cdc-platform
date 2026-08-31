@@ -15,6 +15,7 @@ import {
   gradeHomework,
   generateDifferentiatedTask,
   generateLessonPlan,
+  generateBureaucracyDoc,
   EducatorAiError,
 } from '../services/educatorHubAiService';
 import { createTeacherQuiz, getQuizSubmissionsForTeacher, TeacherQuizError } from '../services/teacherQuizService';
@@ -333,6 +334,34 @@ router.post('/generate-lesson-plan', generateRateLimit, requireCurrentEducatorSe
   try {
     const result = await generateLessonPlan(parsed.data);
     await recordEducatorGeneration(req.user!.id, 'LESSON_PLAN');
+    res.json({ data: result });
+  } catch (err) {
+    handleAiError(err, res);
+  }
+});
+
+// ---- Module 6: School Bureaucracy & Documentation ----
+
+const generateBureaucracyDocSchema = z.object({
+  documentType: z.enum(['ACTIVITY_REPORT', 'SELF_ASSESSMENT', 'CLUB_PLAN', 'PROJECT_APPLICATION']),
+  subject: z.string().min(1).max(200),
+  grade: z.string().min(1).max(50),
+  keyPoints: z.string().min(1).max(4000),
+  language: z.enum(['ka', 'en']),
+});
+
+router.post('/generate-bureaucracy-doc', generateRateLimit, requireCurrentEducatorSession, requireEducatorVipAccess, async (req: Request, res: Response) => {
+  if (!isAiAgentConfigured()) return res.status(501).json({ message: 'AI generation is not configured yet.' });
+  const parsed = generateBureaucracyDocSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
+
+  if (await hasReachedGenerationLimit(req.user!.id)) {
+    return res.status(429).json({ code: 'QUOTA_EXCEEDED', message: 'ამ თვის გენერაციების ლიმიტი ამოწურულია.' });
+  }
+
+  try {
+    const result = await generateBureaucracyDoc(parsed.data);
+    await recordEducatorGeneration(req.user!.id, 'BUREAUCRACY');
     res.json({ data: result });
   } catch (err) {
     handleAiError(err, res);
