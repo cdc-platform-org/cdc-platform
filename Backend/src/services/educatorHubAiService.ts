@@ -2,9 +2,9 @@ import { z } from 'zod';
 import { callTextModel, isAiAgentConfigured, AiAgentError, InlineImagePart } from './aiAgentService';
 
 // ============================================================
-// AI Educator VIP Hub — Module 4 (SEN/differentiated adaptations) below
-// joins the original top-3 survey-ranked modules; ESG lesson planner,
-// bureaucracy automation, and parent reports still ship as "coming soon"
+// AI Educator VIP Hub — Modules 4-5 (SEN/differentiated adaptations, ESG
+// lesson planner) below join the original top-3 survey-ranked modules;
+// bureaucracy automation and parent reports still ship as "coming soon"
 // cards on the frontend with no backend here yet — see
 // pages/dashboard/tools/educator-hub.tsx's own comment for that split.
 //
@@ -236,4 +236,51 @@ Respond with strict JSON matching this shape, where every field is a Markdown st
 
   const raw = await callTextModel(prompt, 0.6);
   return parseOrThrow(raw, differentiatedTaskSchema);
+}
+
+// ---- Module 5: ESG (National Curriculum) Lesson Planner ----
+
+export interface GenerateLessonPlanParams {
+  subject: string;
+  grade: string;
+  topic: string;
+  durationMinutes: number;
+  lessonType: 'STANDARD' | 'STEM' | 'PROJECT_BASED';
+  language: 'ka' | 'en';
+}
+
+const lessonPlanSchema = z.object({
+  lessonPlan: z.string().min(1),
+});
+
+export type GeneratedLessonPlan = z.infer<typeof lessonPlanSchema>;
+
+const LESSON_TYPE_LABEL: Record<GenerateLessonPlanParams['lessonType'], string> = {
+  STANDARD: 'a standard subject lesson',
+  STEM: 'a STEM-integrated lesson (connecting science/tech/engineering/math concepts)',
+  PROJECT_BASED: 'a project-based lesson (students work toward a concrete deliverable)',
+};
+
+export async function generateLessonPlan(params: GenerateLessonPlanParams): Promise<GeneratedLessonPlan> {
+  const lang = LANGUAGE_NAME[params.language];
+  const lessonTypeLabel = LESSON_TYPE_LABEL[params.lessonType];
+
+  const prompt = `You are an experienced ${params.subject} teacher in Georgia planning ${lessonTypeLabel} for grade ${params.grade} students on the topic: "${params.topic}". The lesson is ${params.durationMinutes} minutes long.
+
+Write ${lang}, formatted as clean Markdown, aligned with Georgia's National Curriculum (ესგ) approach. Structure the plan as:
+1. **Learning Outcomes** — 2-4 concrete, observable outcomes for this lesson.
+2. **Lesson Structure** — the standard three-phase ესგ structure, with an approximate time allocation for each phase that sums to ${params.durationMinutes} minutes:
+   - Evocation (გამოწვევა) — activates prior knowledge, hooks interest.
+   - Realization of Meaning (მნიშვნელობის გააზრება) — the main teaching/learning activity.
+   - Reflection (რეფლექსია) — consolidates and checks understanding.
+3. **Formative Assessment Strategy** — how the teacher checks understanding during/after the lesson.
+4. **Resources** — materials/resources needed.
+
+Be specific and classroom-ready, not generic filler a teacher would have to rewrite before using.
+
+Respond with strict JSON matching this shape, where the field is a single Markdown string containing the full plan:
+{"lessonPlan": string}`;
+
+  const raw = await callTextModel(prompt, 0.6);
+  return parseOrThrow(raw, lessonPlanSchema);
 }

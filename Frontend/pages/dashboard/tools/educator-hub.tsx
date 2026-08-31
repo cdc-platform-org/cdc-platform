@@ -47,6 +47,9 @@ import {
   QuizSubmissionSummary,
   generateDifferentiatedTask,
   GeneratedDifferentiatedTask,
+  generateLessonPlan,
+  GeneratedLessonPlan,
+  LessonType,
 } from '../../../src/services/educatorHubService';
 
 type TabId = 'test' | 'rubric' | 'grading' | 'sen' | 'lessonPlan' | 'bureaucracy' | 'parentReports';
@@ -56,10 +59,10 @@ const REAL_TABS: { id: TabId; icon: typeof FileText }[] = [
   { id: 'rubric', icon: ClipboardList },
   { id: 'grading', icon: PenSquare },
   { id: 'sen', icon: Puzzle },
+  { id: 'lessonPlan', icon: BookOpen },
 ];
 
-const COMING_SOON_TABS: { id: TabId; icon: typeof BookOpen }[] = [
-  { id: 'lessonPlan', icon: BookOpen },
+const COMING_SOON_TABS: { id: TabId; icon: typeof FolderKanban }[] = [
   { id: 'bureaucracy', icon: FolderKanban },
   { id: 'parentReports', icon: Mail },
 ];
@@ -417,6 +420,38 @@ function EducatorHubContent() {
     }
   };
 
+  // ---- Module 5: ESG lesson planner ----
+  const [lessonSubject, setLessonSubject] = useState('');
+  const [lessonGrade, setLessonGrade] = useState('');
+  const [lessonTopic, setLessonTopic] = useState('');
+  const [lessonDuration, setLessonDuration] = useState(45);
+  const [lessonType, setLessonType] = useState<LessonType>('STANDARD');
+  const [lessonGenerating, setLessonGenerating] = useState(false);
+  const [lessonError, setLessonError] = useState<string | null>(null);
+  const [lessonResult, setLessonResult] = useState<GeneratedLessonPlan | null>(null);
+
+  const handleGenerateLessonPlan = async () => {
+    if (!lessonSubject.trim() || !lessonGrade.trim() || !lessonTopic.trim()) return;
+    setLessonGenerating(true);
+    setLessonError(null);
+    try {
+      const result = await generateLessonPlan({
+        subject: lessonSubject,
+        grade: lessonGrade,
+        topic: lessonTopic,
+        durationMinutes: lessonDuration,
+        lessonType,
+        language: lang,
+      });
+      setLessonResult(result);
+      refreshState();
+    } catch (err) {
+      handleModuleError(err, t('genericError'), setLessonError);
+    } finally {
+      setLessonGenerating(false);
+    }
+  };
+
   const hasAccess = hubState?.hasAccess ?? false;
   const usage = hubState?.usage;
 
@@ -522,7 +557,9 @@ function EducatorHubContent() {
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
-              {t(`tab${id === 'test' ? 'TestGenerator' : id === 'rubric' ? 'Rubric' : id === 'grading' ? 'Grading' : 'Sen'}`)}
+              {t(
+                `tab${id === 'test' ? 'TestGenerator' : id === 'rubric' ? 'Rubric' : id === 'grading' ? 'Grading' : id === 'sen' ? 'Sen' : 'LessonPlan'}`
+              )}
             </button>
           ))}
           {COMING_SOON_TABS.map(({ id, icon: Icon }) => (
@@ -537,7 +574,7 @@ function EducatorHubContent() {
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
-              {t(`tab${id === 'lessonPlan' ? 'LessonPlan' : id === 'bureaucracy' ? 'Bureaucracy' : 'ParentReports'}`)}
+              {t(`tab${id === 'bureaucracy' ? 'Bureaucracy' : 'ParentReports'}`)}
             </button>
           ))}
         </div>
@@ -947,7 +984,72 @@ function EducatorHubContent() {
             </div>
           </div>
         )}
-        {tab === 'lessonPlan' && <ComingSoonPanel title={t('tabLessonPlan')} desc={t('comingSoonLessonPlanDesc')} badge={t('comingSoonBadge')} />}
+        {/* Module 5: ESG lesson planner */}
+        {tab === 'lessonPlan' && (
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
+            <div className="grid sm:grid-cols-2 gap-4 mb-4 no-print">
+              <div>
+                <label className={labelClass}>{t('lessonSubjectLabel')}</label>
+                <input className={inputClass} value={lessonSubject} onChange={(e) => setLessonSubject(e.target.value)} placeholder={t('lessonSubjectPlaceholder')} disabled={!hasAccess} />
+              </div>
+              <div>
+                <label className={labelClass}>{t('lessonGradeLabel')}</label>
+                <input className={inputClass} value={lessonGrade} onChange={(e) => setLessonGrade(e.target.value)} placeholder={t('lessonGradePlaceholder')} disabled={!hasAccess} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelClass}>{t('lessonTopicLabel')}</label>
+                <input className={inputClass} value={lessonTopic} onChange={(e) => setLessonTopic(e.target.value)} placeholder={t('lessonTopicPlaceholder')} disabled={!hasAccess} />
+              </div>
+              <div>
+                <label className={labelClass}>{t('lessonDurationLabel')}</label>
+                <input
+                  type="number"
+                  min={5}
+                  max={180}
+                  className={inputClass}
+                  value={lessonDuration}
+                  onChange={(e) => {
+                    const parsed = Number(e.target.value);
+                    setLessonDuration(Number.isFinite(parsed) ? Math.min(180, Math.max(5, parsed)) : 45);
+                  }}
+                  disabled={!hasAccess}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>{t('lessonTypeLabel')}</label>
+                <select className={inputClass} value={lessonType} onChange={(e) => setLessonType(e.target.value as LessonType)} disabled={!hasAccess}>
+                  <option className={optionClass} value="STANDARD">{t('lessonTypeStandard')}</option>
+                  <option className={optionClass} value="STEM">{t('lessonTypeStem')}</option>
+                  <option className={optionClass} value="PROJECT_BASED">{t('lessonTypeProjectBased')}</option>
+                </select>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={!hasAccess || lessonGenerating}
+              onClick={handleGenerateLessonPlan}
+              className="no-print inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-amber-500/30 transition-all disabled:opacity-50"
+            >
+              {lessonGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}
+              {lessonGenerating ? t('lessonGenerating') : t('lessonGenerateButton')}
+            </button>
+            {lessonError && <p className="text-xs text-rose-600 dark:text-rose-400 mt-3 no-print">{lessonError}</p>}
+
+            <div id="print-lesson" className="mt-6">
+              {lessonResult ? (
+                <>
+                  <h3 className="text-base font-black mb-2">{t('lessonOutputHeading')}</h3>
+                  <RichTextEditor value={lessonResult.lessonPlan} onChange={(v) => setLessonResult({ lessonPlan: v })} rows={20} />
+                  <div className="no-print">
+                    <ExportBar t={t} sections={[{ heading: t('lessonOutputHeading'), body: lessonResult.lessonPlan }]} filenameBase="lesson-plan" printAreaId="print-lesson" />
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-slate-400 dark:text-slate-500 italic no-print">{t('lessonEmptyState')}</p>
+              )}
+            </div>
+          </div>
+        )}
         {tab === 'bureaucracy' && <ComingSoonPanel title={t('tabBureaucracy')} desc={t('comingSoonBureaucracyDesc')} badge={t('comingSoonBadge')} />}
         {tab === 'parentReports' && <ComingSoonPanel title={t('tabParentReports')} desc={t('comingSoonParentReportsDesc')} badge={t('comingSoonBadge')} />}
       </div>
@@ -973,13 +1075,16 @@ function EducatorHubContent() {
           body[data-print-target='print-grading'] #print-grading,
           body[data-print-target='print-grading'] #print-grading *,
           body[data-print-target='print-sen'] #print-sen,
-          body[data-print-target='print-sen'] #print-sen * {
+          body[data-print-target='print-sen'] #print-sen *,
+          body[data-print-target='print-lesson'] #print-lesson,
+          body[data-print-target='print-lesson'] #print-lesson * {
             visibility: visible;
           }
           #print-test,
           #print-rubric,
           #print-grading,
-          #print-sen {
+          #print-sen,
+          #print-lesson {
             position: absolute;
             top: 0;
             left: 0;

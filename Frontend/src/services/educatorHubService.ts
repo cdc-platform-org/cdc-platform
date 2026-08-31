@@ -138,6 +138,26 @@ export async function generateDifferentiatedTask(payload: GenerateDifferentiated
   return response.data.data;
 }
 
+export type LessonType = 'STANDARD' | 'STEM' | 'PROJECT_BASED';
+
+export interface GenerateLessonPlanPayload {
+  subject: string;
+  grade: string;
+  topic: string;
+  durationMinutes: number;
+  lessonType: LessonType;
+  language: 'ka' | 'en';
+}
+
+export interface GeneratedLessonPlan {
+  lessonPlan: string;
+}
+
+export async function generateLessonPlan(payload: GenerateLessonPlanPayload): Promise<GeneratedLessonPlan> {
+  const response = await apiClient.post<{ data: GeneratedLessonPlan }>('/educator-hub/generate-lesson-plan', payload, { timeout: 90 * 1000 });
+  return response.data.data;
+}
+
 // ---- Sharing a generated test as a no-login student quiz ----
 
 export interface CreateQuizPayload {
