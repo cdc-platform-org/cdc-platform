@@ -7,7 +7,7 @@ import './instrument';
 // promises in async route handlers reach errorHandler below instead of
 // crashing the process.
 import 'express-async-errors';
-import express from 'express';
+import languageTeacherRoutes from './routes/languageTeacher'; // Add this import
 import cors from 'cors';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
@@ -304,6 +304,7 @@ app.use('/api/admin/product-reviews', adminProductReviewRoutes);
 // above — including their public, no-auth-required routes (adminKnowledge's
 // GET / and adminAiAgents' GET /homepage-config, both fetched by anonymous
 // homepage visitors) — before Express ever got to try them.
+app.use('/api/language-teacher', languageTeacherRoutes); // Add this line
 app.use('/api/admin', adminRoutes);
 app.use('/api/promos', promoRoutes);
 app.use('/api/ai-agents', aiAgentsSuiteRoutes);
