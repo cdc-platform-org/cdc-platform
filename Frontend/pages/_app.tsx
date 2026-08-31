@@ -157,7 +157,7 @@ function App({ Component, pageProps }: AppProps) {
         // itself. Without it the button falls back to the browser/OS
         // locale, which is why it was rendering in Russian for some users
         // regardless of the site's own ka/en language switcher.
-        src={`https://accounts.google.com/gsi/client?hl=${resolveLocale(router.locale)}`}
+        src={`https://accounts.google.com/gsi/client?hl=${resolveLocale(router.locale || 'en')}`}
         strategy="afterInteractive"
         // Google's script loads async — if AuthModal.tsx opens before this
         // fires, window.google is still undefined and its render-button

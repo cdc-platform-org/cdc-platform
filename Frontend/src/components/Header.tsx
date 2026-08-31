@@ -16,7 +16,7 @@ function MobileMenu() {
         className="lg:hidden p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <span className="sr-only">Open menu</span>
+        <span className="sr-only">{t('header.openMenu', 'Open menu')}</span>
         <svg
           className="w-6 h-6 text-gray-700 dark:text-gray-300"
           xmlns="http://www.w3.org/2000/svg"
@@ -44,7 +44,7 @@ function MobileMenu() {
           className="absolute top-4 right-4 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
           onClick={() => setIsOpen(false)}
         >
-          <span className="sr-only">Close menu</span>
+          <span className="sr-only">{t('header.closeMenu', 'Close menu')}</span>
           <svg
             className="w-6 h-6 text-gray-700 dark:text-gray-300"
             xmlns="http://www.w3.org/2000/svg"
@@ -62,13 +62,13 @@ function MobileMenu() {
         </button>
         <nav className="mt-10 space-y-4">
           <a href="/" className="block px-4 py-2 text-gray-700 dark:text-gray-300">
-            Home
+            {t('header.home', 'Home')}
           </a>
           <a href="/profile" className="block px-4 py-2 text-gray-700 dark:text-gray-300">
-            Profile
+            {t('header.profile', 'Profile')}
           </a>
           <a href="/settings" className="block px-4 py-2 text-gray-700 dark:text-gray-300">
-            Settings
+            {t('header.settings', 'Settings')}
           </a>
         </nav>
       </div>
@@ -90,7 +90,10 @@ function MobileMenu() {
     <div className={`relative ${glow ? 'animate-pulse' : ''}`}>
       <BellIcon className="w-6 h-6 text-gray-500 dark:text-gray-300" />
       {unreadCount > 0 && (
-        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+        <span
+          className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+          aria-label={t('header.unreadNotifications', 'Unread notifications')}
+        >
           {unreadCount}
         </span>
       )}
