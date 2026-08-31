@@ -25,6 +25,7 @@ export const SmartReader: React.FC = () => {
   const [loadingAi, setLoadingAi] = useState<boolean>(false);
 
   const [isListening, setIsListening] = useState<boolean>(false);
+  const [recordingError, setRecordingError] = useState<string | null>(null);
   const [wordScores, setWordScores] = useState<WordAnalysis[]>([]);
   const [teacherAdvice, setTeacherAdvice] = useState<string | null>(null);
 
@@ -140,6 +141,7 @@ export const SmartReader: React.FC = () => {
     recognition.interimResults = false;
 
     setIsListening(true);
+    setRecordingError(null);
     setWordScores([]);
 
     recognition.onresult = async (event: any) => {
@@ -165,7 +167,10 @@ export const SmartReader: React.FC = () => {
       }
     };
 
-    recognition.onerror = () => setIsListening(false);
+    recognition.onerror = (event: any) => {
+      setIsListening(false);
+      setRecordingError(event.error || 'An error occurred during recording.');
+    };
     recognition.start();
   };
 
@@ -209,6 +214,52 @@ export const SmartReader: React.FC = () => {
       </div>
 
       <div className="space-y-3">
+        {isListening && (
+          <div className="flex items-center justify-center space-x-2">
+            <div className="w-4 h-4 bg-red-500 rounded-full animate-pulse"></div>
+            <p className="text-sm text-red-500">Recording...</p>
+          </div>
+        )}
+
+        {recordingError && (
+          <div className="bg-red-100 text-red-700 p-3 rounded-lg">
+            <p>{recordingError}</p>
+            <button
+              onClick={startListening}
+              className="mt-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {wordScores.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-4">
+            {wordScores.map((word, index) => (
+              <span
+                key={index}
+                className={`px-2 py-1 rounded-lg text-sm ${
+                  word.status === 'GREEN'
+                    ? 'bg-green-500 text-white'
+                    : word.status === 'YELLOW'
+                    ? 'bg-yellow-500 text-black'
+                    : 'bg-red-500 text-white'
+                }`}
+                title={word.feedback}
+              >
+                {word.word}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {loadingAi && (
+          <div className="space-y-2">
+            <div className="w-full h-6 bg-slate-700 rounded-lg animate-pulse"></div>
+            <div className="w-3/4 h-6 bg-slate-700 rounded-lg animate-pulse"></div>
+            <div className="w-1/2 h-6 bg-slate-700 rounded-lg animate-pulse"></div>
+          </div>
+        )}
         <button
           onClick={handleSummarize}
           className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"

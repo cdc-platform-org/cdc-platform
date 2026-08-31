@@ -46,11 +46,22 @@ router.post('/translate', async (req, res) => {
 router.post('/analyze-pronunciation', async (req, res) => {
   const { referenceText, transcribedText, learningLanguage, nativeLanguage } = req.body;
   try {
-    // Implement your pronunciation analysis logic here
-    // This is a placeholder for the actual implementation
-    const feedback = []; // Replace with actual feedback logic
-    const overallAdvice = "Overall advice based on analysis"; // Replace with actual advice logic
-    res.json({ feedback, overallAdvice });
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        {
+          role: 'user',
+          content: `Compare the following reference text and transcribed text word by word. 
+                    Score each word as GREEN (correct), YELLOW (minor mistake), or RED (incorrect). 
+                    Provide specific feedback for each word and generate constructive teacher advice in ${nativeLanguage}:
+                    Reference Text: "${referenceText}"
+                    Transcribed Text: "${transcribedText}"`,
+        },
+      ],
+    });
+
+    const { feedback, teacherAdvice } = JSON.parse(response.choices[0].message.content);
+    res.json({ feedback, teacherAdvice });
   } catch (error) {
     handleError(res, error);
   }
