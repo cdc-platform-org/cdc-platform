@@ -43,8 +43,22 @@ router.post('/translate', async (req, res) => {
   }
 });
 
-router.post('/analyze-pronunciation', async (req, res) => {
-  const { referenceText, transcribedText, learningLanguage, nativeLanguage } = req.body;
+import { body, validationResult } from 'express-validator';
+
+router.post(
+  '/analyze-pronunciation',
+  [
+    body('referenceText').isString().notEmpty().withMessage('referenceText must be a non-empty string'),
+    body('transcribedText').isString().notEmpty().withMessage('transcribedText must be a non-empty string'),
+    body('learningLanguage').isString().notEmpty().withMessage('learningLanguage must be a non-empty string'),
+    body('nativeLanguage').isString().notEmpty().withMessage('nativeLanguage must be a non-empty string'),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    const { referenceText, transcribedText, learningLanguage, nativeLanguage } = req.body;
   try {
     const response = await openai.chat.completions.create({
       model: 'gpt-4',

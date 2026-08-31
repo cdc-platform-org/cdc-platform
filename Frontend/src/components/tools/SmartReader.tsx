@@ -1,35 +1,32 @@
-import React, { useState } from 'react';
-
-interface WordAnalysis {
-  word: string;
-  status: 'GREEN' | 'YELLOW' | 'RED';
-  feedback?: string;
-}
+import React from 'react';
+import { useSmartReader } from '@/src/hooks/useSmartReader';
 
 export const SmartReader: React.FC = () => {
-  const [text, setText] = useState<string>(
-    'Learning a new language opens up doors to different cultures and ways of thinking.'
-  );
-  const [learningLang, setLearningLang] = useState<string>('English');
-  const [nativeLang, setNativeLang] = useState<string>('Georgian');
-  
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
-  const [currentWordIdx, setCurrentWordIdx] = useState<number>(-1);
-
-  const [selectedText, setSelectedText] = useState<string>('');
-  const [popupPos, setPopupPos] = useState<{ x: number; y: number } | null>(null);
-  const [aiResponse, setAiResponse] = useState<string | null>(null);
-  const [summary, setSummary] = useState<string | null>(null);
-  const [cefrLevel, setCefrLevel] = useState<string | null>(null);
-  const [loadingAi, setLoadingAi] = useState<boolean>(false);
-
-  const [isListening, setIsListening] = useState<boolean>(false);
-  const [recordingError, setRecordingError] = useState<string | null>(null);
-  const [wordScores, setWordScores] = useState<WordAnalysis[]>([]);
-  const [teacherAdvice, setTeacherAdvice] = useState<string | null>(null);
-
-  const words = text.split(/(\s+)/);
+  const {
+    text,
+    setText,
+    learningLang,
+    setLearningLang,
+    nativeLang,
+    setNativeLang,
+    isPlaying,
+    togglePlay,
+    playbackSpeed,
+    setPlaybackSpeed,
+    currentWordIdx,
+    selectedText,
+    handleTextSelection,
+    aiResponse,
+    summary,
+    cefrLevel,
+    loadingAi,
+    handleSummarize,
+    isListening,
+    startListening,
+    recordingError,
+    wordScores,
+    teacherAdvice,
+  } = useSmartReader('Learning a new language opens up doors to different cultures and ways of thinking.');
 
   const handleTextSelection = () => {
     const selection = window.getSelection();
