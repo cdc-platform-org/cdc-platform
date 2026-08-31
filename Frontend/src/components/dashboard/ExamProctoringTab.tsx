@@ -396,6 +396,19 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
 
   useEffect(() => {
     loadSessions();
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log('Tab switch detected');
+        // Log tab switch event to backend
+        fetch('/api/log-tab-switch', { method: 'POST', body: JSON.stringify({ timestamp: new Date() }) });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [loadSessions]);
 
   useEffect(() => {

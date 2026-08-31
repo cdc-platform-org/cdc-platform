@@ -70,6 +70,8 @@ export async function generateExamQuestions(params: GenerateExamParams): Promise
   const prompt = `You are generating a certification exam for the online course "${params.courseTitle}".
 Course description: ${params.courseDescription}
 Lesson topics covered: ${params.lessonTitles.join(', ') || '(no lessons listed)'}${focusLine}${contextLine}${languageLine}
+
+Ensure that all questions align with CEFR levels (A1-C2) and Bloom's Taxonomy cognitive depths (e.g., Remember, Analyze, Evaluate). Clearly indicate the CEFR level and cognitive depth for each question.
 If the course title, description, or topics name an unrecognized, unclear, or overly narrow custom profession (e.g. a free-typed "Other" field), do not attempt to invent implausible profession-specific trivia — instead generate general freelancing, logical reasoning, and project management questions for that portion of the test.
 
 Generate exactly ${params.questionCount} multiple-choice questions that test real understanding of the course material (not trivia). Each question must have exactly 4 options (A, B, C, D), one correct answer, and a short explanation of why it's correct. Vary the topics across the course's lessons. Respond with strict JSON matching this shape:

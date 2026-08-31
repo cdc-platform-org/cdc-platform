@@ -264,7 +264,12 @@ export async function gradePracticalAnswer(params: {
   question: string;
   rubric: string;
   answer: string;
+  examEndTime: Date; // New parameter for server-side timer validation
 }): Promise<PracticalGradeResult> {
+  const now = new Date();
+  if (now > params.examEndTime) {
+    throw new ExamProctoringAiError('Submission rejected: Exam time has expired.', 403);
+  }
   const framing =
     params.questionType === 'CODE'
       ? 'a coding question — evaluate correctness, structure, and whether it actually solves the problem, not just style'
