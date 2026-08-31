@@ -105,14 +105,16 @@ function AiToolCard({
   };
 
   return (
-    <div className="rounded-2xl border border-white/10 backdrop-blur-md bg-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.12)] transition-all duration-300 hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-500/20 p-5 flex flex-col">
-      <div className="flex items-center gap-2.5 mb-2">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center shrink-0">
-          <Icon className="w-4 h-4 text-white" />
+    <div className="rounded-2xl border border-white/10 backdrop-blur-md bg-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.12)] p-6 hover:border-purple-500/40 transition-all flex flex-col">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-500 via-pink-500 to-cyan-500 flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(168,85,247,0.3)]">
+          <Icon className="w-5 h-5 text-white" />
         </div>
-        <h3 className="text-sm font-black tracking-wide">{title}</h3>
+        <h3 className="text-sm font-extrabold tracking-wide text-white">{t.assistantTitle}</h3>
       </div>
-      <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{description}</p>
+      <p className="text-xs text-slate-400 mb-4">
+        {t.assistantDesc}
+      </p>
 
       {locked ? (
         <div className="mt-auto flex items-center gap-2 text-xs text-slate-400 bg-slate-50 dark:bg-slate-800/60 rounded-xl px-3.5 py-3">
@@ -126,7 +128,7 @@ function AiToolCard({
             onChange={(e) => setPrompt(e.target.value)}
             placeholder={placeholder}
             rows={3}
-            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-cyan-500/60 mb-3"
+            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-purple-500/60 mb-3"
           />
           {error && <p className="text-[11px] text-rose-600 dark:text-rose-400 mb-2">{error}</p>}
           <button
