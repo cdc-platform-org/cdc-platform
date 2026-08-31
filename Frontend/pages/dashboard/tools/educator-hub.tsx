@@ -84,7 +84,37 @@ function downloadBlob(blob: Blob, filename: string) {
 
 async function exportDocx(sections: { heading: string; body: string }[], filename: string) {
   const { Document, Packer, Paragraph, HeadingLevel, TextRun } = await import('docx');
-  const toParagraphs = (text: string) => text.split('\n').map((line) => new Paragraph({ children: [new TextRun(line)] }));
+  const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
+
+  async function exportPdf(sections: { heading: string; body: string }[], filename: string) {
+    const pdfDoc = await PDFDocument.create();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const page = pdfDoc.addPage([595.28, 841.89]); // A4 dimensions in points
+    const { width, height } = page.getSize();
+    const fontSize = 12;
+
+    let y = height - 50; // Start 50 points from the top
+    sections.forEach(({ heading, body }) => {
+      page.drawText(heading, { x: 50, y, size: fontSize + 2, font, color: rgb(0, 0, 0) });
+      y -= fontSize + 10;
+      body.split('\n').forEach((line) => {
+        page.drawText(line, { x: 50, y, size: fontSize, font, color: rgb(0, 0, 0) });
+        y -= fontSize + 5;
+      });
+      y -= 20; // Add spacing between sections
+    });
+
+    const pdfBytes = await pdfDoc.save();
+    downloadBlob(new Blob([pdfBytes], { type: 'application/pdf' }), filename);
+  }
+  const toParagraphs = (text: string) =>
+    text.split('\n').map(
+      (line) =>
+        new Paragraph({
+          children: [new TextRun({ text: line, font: 'Times New Roman', size: 24 })],
+          spacing: { after: 200 },
+        })
+    );
   const children: any[] = [];
   sections.forEach(({ heading, body }) => {
     children.push(new Paragraph({ text: heading, heading: HeadingLevel.HEADING_1 }));
@@ -130,11 +160,33 @@ function ExportBar({ t, sections, filenameBase, printAreaId }: { t: (k: string) 
         <Copy className="w-3.5 h-3.5" />
         {copied ? t('exportCopied') : t('exportCopy')}
       </button>
-      <button type="button" onClick={() => exportDocx(sections, `${filenameBase}.docx`)} className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-none cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700">
+      <button
+        type="button"
+        onClick={async () => {
+          setLoading(true);
+          await exportDocx(sections, `${filenameBase}.docx`);
+          setLoading(false);
+        }}
+        className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg ${
+          loading ? 'bg-gray-300 dark:bg-gray-700' : 'bg-slate-100 dark:bg-slate-800'
+        } text-slate-700 dark:text-slate-200 border-none cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700`}
+        disabled={loading}
+      >
         <FileDown className="w-3.5 h-3.5" />
         {t('exportDocx')}
       </button>
-      <button type="button" onClick={() => exportTxt(sections, `${filenameBase}.txt`)} className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-none cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700">
+      <button
+        type="button"
+        onClick={async () => {
+          setLoading(true);
+          await exportPdf(sections, `${filenameBase}.pdf`);
+          setLoading(false);
+        }}
+        className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg ${
+          loading ? 'bg-gray-300 dark:bg-gray-700' : 'bg-slate-100 dark:bg-slate-800'
+        } text-slate-700 dark:text-slate-200 border-none cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700`}
+        disabled={loading}
+      >
         <FileDown className="w-3.5 h-3.5" />
         {t('exportTxt')}
       </button>
