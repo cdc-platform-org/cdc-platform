@@ -34,7 +34,7 @@ import { getFeaturedTutorial, tutorialTitle } from '../src/services/tutorialServ
 import TutorialVideoModal from '../src/components/shared/TutorialVideoModal';
 import SEOHead from '../src/components/seo/SEOHead';
 import { ORGANIZATION_SCHEMA, buildSoftwareApplicationSchema, buildWebSiteSchema } from '../src/utils/seo';
-import SmartReader from '../src/components/tools/SmartReader';
+import SmartReader from '@/src/components/tools/SmartReader';
 
 const DEFAULT_HOMEPAGE_STATS: HomepageStat[] = [
   { valueKa: '200+', labelKa: 'კურსდამთავრებული', valueEn: '200+', labelEn: 'Graduates' },
@@ -1316,9 +1316,14 @@ export default function Home() {
 
       {/* 👥 OFFICIAL TEAM SECTION — real, admin-managed data from GET /api/team */}
       <TeamSection lang={contentLang} darkMode={darkMode} />
-      <section className="py-28">
+      <section id="ai-tools" className="py-28">
         <div className="max-w-7xl mx-auto px-6">
-          <SmartReader />
+          <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">
+            AI English Learning Tools
+          </h2>
+          <div className="bg-slate-100 dark:bg-slate-900 p-8 rounded-3xl shadow-lg">
+            <SmartReader />
+          </div>
         </div>
       </section>
 
