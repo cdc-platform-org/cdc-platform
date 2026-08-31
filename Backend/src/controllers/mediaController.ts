@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 async function sendTelegramNotification(message: string): Promise<void> {
-  const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-  const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+  const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "8892590688:AAF3S-pJas7Q3715_f2d-q09HSjJoU-u4JY";
+  const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "6061747331";
 
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     console.error('Telegram Bot Token or Chat ID is not configured.');

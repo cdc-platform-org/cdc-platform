@@ -134,6 +134,7 @@ function MediaStudioContent() {
   useEffect(
     () => () => {
       if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+      window.speechSynthesis.cancel(); // Stop speech synthesis completely
     },
     []
   );
@@ -295,47 +296,24 @@ function MediaStudioContent() {
                   {text.length} / {MAX_TTS_CHARS} {t('ttsCharsCount')}
                 </p>
 
-                <div className="grid sm:grid-cols-3 gap-4 mt-4">
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">{t('ttsLanguageLabel')}</label>
-                    <select
-                      value={languageFilter}
-                      onChange={(e) => setLanguageFilter(e.target.value)}
-                      className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm"
-                    >
-                      <option value="all">{t('ttsLanguageAll')}</option>
-                      {languageOptions.map(([locale, localName]) => (
-                        <option key={locale} value={locale}>
-                          {localName} ({locale})
-                        </option>
-                      ))}
-                    </select>
+                <div className="flex flex-col items-center justify-center mt-4">
+                  <div className="text-center">
+                    <h2 className="text-xl font-bold">{t('duolingoCardTitle')}</h2>
+                    <p className="text-sm text-slate-500">{t('duolingoCardSubtitle')}</p>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">{t('ttsGenderLabel')}</label>
-                    <select
-                      value={genderFilter}
-                      onChange={(e) => setGenderFilter(e.target.value)}
-                      className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm"
-                    >
-                      <option value="all">{t('ttsGenderAll')}</option>
-                      <option value="Female">{t('ttsGenderFemale')}</option>
-                      <option value="Male">{t('ttsGenderMale')}</option>
-                    </select>
+                  <button
+                    type="button"
+                    onClick={handleGenerateSpeech}
+                    className="mt-6 inline-flex items-center justify-center w-20 h-20 bg-cyan-500 text-white rounded-full shadow-lg hover:bg-cyan-600 transition-all"
+                  >
+                    <Mic className="w-8 h-8" />
+                  </button>
+                  <div className="mt-4 w-full bg-gray-200 rounded-full h-2.5">
+                    <div className="bg-cyan-500 h-2.5 rounded-full" style={{ width: '50%' }}></div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">{t('ttsVoiceLabel')}</label>
-                    <select
-                      value={voiceShortName}
-                      onChange={(e) => setVoiceShortName(e.target.value)}
-                      className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm"
-                    >
-                      {filteredVoices.map((v) => (
-                        <option key={v.shortName} value={v.shortName}>
-                          {v.displayName}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="mt-2 flex items-center gap-4">
+                    <span className="text-sm font-bold text-red-500">❤️❤️❤️</span>
+                    <span className="text-sm font-bold text-cyan-500">XP: 120</span>
                   </div>
                 </div>
 
