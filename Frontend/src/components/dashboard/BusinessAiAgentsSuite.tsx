@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { Sparkles, FileText, TrendingUp, MessageCircle, Clock, Lock } from 'lucide-react';
+import { ReactComponent as AssistantIcon } from '@/src/assets/icons/assistant-icon.svg';
+import { ReactComponent as KnowledgeBaseIcon } from '@/src/assets/icons/knowledge-base-icon.svg';
+import { ReactComponent as WidgetIcon } from '@/src/assets/icons/widget-icon.svg';
+import { ReactComponent as AnalyticsIcon } from '@/src/assets/icons/analytics-icon.svg';
 import { useAuth } from '../../context/AuthContext';
 import { hasAiAgentsSuiteAccess, aiTrialDaysRemaining, generateWithAiAgent, AiAgentSuiteTool } from '../../services/aiAgentsSuiteService';
 import { SupportedLocale } from '../../utils/locale';
@@ -102,7 +105,7 @@ function AiToolCard({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-5 flex flex-col">
+    <div className="rounded-2xl border border-white/10 backdrop-blur-md bg-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.12)] transition-all duration-300 hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-500/20 p-5 flex flex-col">
       <div className="flex items-center gap-2.5 mb-2">
         <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center shrink-0">
           <Icon className="w-4 h-4 text-white" />
@@ -130,11 +133,17 @@ function AiToolCard({
             type="button"
             onClick={handleGenerate}
             disabled={loading || !prompt.trim()}
-            className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-2.5 rounded-xl border-none cursor-pointer hover:opacity-90 disabled:opacity-50 mb-3"
+            className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-2.5 rounded-xl border-none cursor-pointer hover:opacity-90 disabled:opacity-50 mb-3 shadow-[0_4px_12px_rgba(168,85,247,0.3)]"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            {loading ? t.generating : t.generate}
+            <AssistantIcon className="w-4 h-4" />
+            {loading ? t('Generating...') : t('7 დღე უფასო')}
           </button>
+          <a
+            href="/learn-more"
+            className="text-xs font-bold text-purple-500 hover:underline"
+          >
+            {t('გაიგეთ მეტი')}
+          </a>
           {result && (
             <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 px-3.5 py-3 text-xs text-slate-700 dark:text-slate-200 whitespace-pre-wrap">
               {result}
