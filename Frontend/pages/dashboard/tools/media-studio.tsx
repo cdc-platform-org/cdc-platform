@@ -76,6 +76,26 @@ function MediaStudioContent() {
   const router = useRouter();
 
   const [tab, setTab] = useState<'tts' | 'video'>('tts');
+  const [xp, setXp] = useState(0);
+  const [hearts, setHearts] = useState(3);
+  const [streak, setStreak] = useState(0);
+
+  useEffect(() => {
+    // Fetch initial progress on component mount
+    const fetchProgress = async () => {
+      try {
+        const response = await fetch('/api/progress');
+        const data = await response.json();
+        setXp(data.xp);
+        setHearts(data.hearts);
+        setStreak(data.streak);
+      } catch (error) {
+        console.error('Failed to fetch progress:', error);
+      }
+    };
+
+    fetchProgress();
+  }, []);
 
   // ---------------- Feature A: Text to Speech ----------------
   const [voices, setVoices] = useState<TtsVoice[] | null>(null);
@@ -142,6 +162,17 @@ function MediaStudioContent() {
   const selectedVoice = voices?.find((v) => v.shortName === voiceShortName) ?? null;
 
   const handleGenerateSpeech = async () => {
+    const updateProgress = async (newXp: number, newHearts: number, newStreak: number) => {
+      try {
+        await fetch('/api/progress', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user?.id, xp: newXp, hearts: newHearts, streak: newStreak }),
+        });
+      } catch (error) {
+        console.error('Failed to update progress:', error);
+      }
+    };
     if (!selectedVoice || !text.trim()) return;
     setTtsLoading(true);
     setTtsError(null);
@@ -152,7 +183,17 @@ function MediaStudioContent() {
       audioUrlRef.current = url;
       setAudioUrl(url);
       setAudioBlob(blob);
+      // Update progress on successful task completion
+      const newXp = xp + 10; // Example XP increment
+      const newStreak = streak + 1;
+      setXp(newXp);
+      setStreak(newStreak);
+      await updateProgress(newXp, hearts, newStreak);
     } catch (err) {
+      // Update progress on error (lose a heart)
+      const newHearts = hearts - 1;
+      setHearts(newHearts);
+      await updateProgress(xp, newHearts, streak);
       setTtsError(await extractErrorMessage(err, t('ttsError')));
     } finally {
       setTtsLoading(false);

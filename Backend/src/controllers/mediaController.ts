@@ -38,3 +38,21 @@ export async function submitDisputeFeedback(req: Request, res: Response): Promis
   // Respond to the client
   res.status(200).json({ message: 'Dispute/Feedback submitted successfully.' });
 }
+import { prisma } from '../prismaClient';
+
+export async function updateUserProgress(req: Request, res: Response): Promise<void> {
+  const { userId, xp, hearts, streak } = req.body;
+
+  try {
+    const updatedProgress = await prisma.employeeProgress.upsert({
+      where: { employeeId: userId },
+      update: { xp, hearts, streak },
+      create: { employeeId: userId, xp, hearts, streak },
+    });
+
+    res.status(200).json({ message: 'Progress updated successfully.', progress: updatedProgress });
+  } catch (error) {
+    console.error('Error updating user progress:', error);
+    res.status(500).json({ message: 'Failed to update progress.' });
+  }
+}
