@@ -28,7 +28,7 @@ export function isAiAgentConfigured(): boolean {
   return !!GEMINI_API_KEY;
 }
 
-const client = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+const client = GEMINI_API_KEY ? azureOpenai : null;
 
 // "gemini-2.5-pro"/"gemini-pro-latest" return a hard 0 free-tier quota on
 // this account (see aiExamService.ts) — same reasoning applies here, so
