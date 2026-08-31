@@ -449,14 +449,14 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
                     // paywall modal. Now the paywall opens immediately.
                     onClick={() => (locked ? setShowPaywall(true) : setLevel(lvl))}
                     title={locked ? t.proLocked : undefined}
-                    className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold ${
+                    className={`flex items-center gap-1 rounded-lg border border-white/10 backdrop-blur-md px-3 py-2 text-xs font-bold transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-cyan-500/30 ${
                       level === lvl
-                        ? 'border-cyan-500 bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300'
-                        : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                        ? 'border-cyan-500 bg-cyan-500/20 text-cyan-300'
+                        : 'text-slate-400'
                     } ${locked ? 'opacity-60' : ''}`}
                   >
                     {lvl}
-                    {locked && <Lock className="w-3 h-3" />}
+                    {locked && <Lock className="w-4 h-4 text-cyan-400" />}
                   </button>
                 );
               })}
