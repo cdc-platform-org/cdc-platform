@@ -607,9 +607,9 @@ function EducatorHubContent() {
               key={id}
               type="button"
               onClick={() => setTab(id)}
-              className={`inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-full border cursor-pointer transition-colors ${
+              className={`inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-full border cursor-pointer transition-all duration-300 ${
                 tab === id
-                  ? 'bg-gradient-to-r from-amber-500 to-purple-600 text-white border-transparent'
+                  ? 'bg-gradient-to-r from-amber-500 to-purple-600 text-white border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.15)] backdrop-blur-md'
                   : 'bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-amber-400'
               }`}
             >
