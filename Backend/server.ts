@@ -1,7 +1,34 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 
+import cors from 'cors';
+
 const app = express();
+
+const allowedOrigins = (process.env.FRONTEND_URL || '').split(',').map((origin) => origin.trim());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  })
+);
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+
+app.use(helmet());
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again later.',
+  })
+);
 app.use(bodyParser.json());
 
 const groupTrainingRequests: any[] = [];

@@ -28,7 +28,7 @@ export async function generateDocx(content: { title: string; sections: { heading
 }
 
 export async function generatePdf(content: { title: string; sections: { heading: string; body: string[] }[] }, filePath: string) {
-  const doc = new PDFDocument({ size: 'A4', margin: 50 });
+  const doc = new PDFDocument({ size: 'A4', margin: 50, ownerPassword: process.env.PDF_OWNER_PASSWORD || undefined });
   const stream = fs.createWriteStream(filePath);
 
   doc.pipe(stream);
