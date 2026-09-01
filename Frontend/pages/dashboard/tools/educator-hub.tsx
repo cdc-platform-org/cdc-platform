@@ -638,24 +638,6 @@ function EducatorHubContent() {
           <h1 className="text-2xl md:text-3xl font-black tracking-wide mb-2">{t('pageTitle')}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">{t('pageSubtitle')}</p>
 
-          {!stateLoading && stateError && (
-            <div className="mt-5 rounded-2xl border border-rose-300 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 p-5 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm font-black text-rose-700 dark:text-rose-300">{t('genericError')}</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStateLoading(true);
-                    refreshState().finally(() => setStateLoading(false));
-                  }}
-                  className="mt-2 text-xs font-bold text-rose-700 dark:text-rose-300 underline bg-transparent border-none cursor-pointer p-0"
-                >
-                  {t('retry')}
-                </button>
-              </div>
-            </div>
-          )}
 
           {!stateLoading && !stateError && !hasAccess && (
             <div className="mt-5 rounded-2xl border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-5">
