@@ -280,7 +280,6 @@ function EducatorHubContent() {
   const [stateError, setStateError] = useState(false);
   const [trialStarting, setTrialStarting] = useState(false);
   const [trialError, setTrialError] = useState<string | null>(null);
-  const [sessionSuperseded, setSessionSuperseded] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>('test');
 
   const refreshState = () =>
@@ -315,10 +314,6 @@ function EducatorHubContent() {
   // shown as a dismissible banner rather than inline per-tab.
   const handleModuleError = (err: any, fallback: string, setError: (msg: string) => void) => {
     const { message, code } = extractErrorMessage(err, fallback);
-    if (code === 'SESSION_SUPERSEDED') {
-      setSessionSuperseded(message);
-      return;
-    }
     if (code === 'VIP_REQUIRED' || code === 'QUOTA_EXCEEDED') {
       refreshState();
     }
@@ -613,18 +608,6 @@ function EducatorHubContent() {
           <BackButton fallbackHref="/tools" className="dark:text-slate-400 dark:hover:text-slate-100" />
         </div>
 
-        {sessionSuperseded && (
-          <div className="mb-6 rounded-xl border border-rose-300 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 p-4 flex items-start gap-3 no-print">
-            <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <h3 className="text-sm font-black text-rose-700 dark:text-rose-300">{t('sessionSupersededTitle')}</h3>
-              <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{sessionSuperseded || t('sessionSupersededDesc')}</p>
-            </div>
-            <button type="button" onClick={() => setSessionSuperseded(null)} aria-label="Close" className="p-1 bg-transparent border-none cursor-pointer text-rose-400 hover:text-rose-600">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
 
         {/* Module 8: Student Certificate & Diploma Builder */}
         {tab === 'certificates' && (
