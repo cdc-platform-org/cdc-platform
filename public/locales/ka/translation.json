@@ -1,7 +1,8 @@
-"educatorHub": {
-  "pageTitle": "პედაგოგის ჰაბი",
-  "pageSubtitle": "მართეთ და შექმენით სასწავლო რესურსები ხელოვნური ინტელექტით",
-  "usageMeterGenerationsLabel": "გენერაციები",
+{
+  "educatorHub": {
+    "pageTitle": "პედაგოგის ჰაბი",
+    "pageSubtitle": "მართეთ და შექმენით სასწავლო რესურსები ხელოვნური ინტელექტით",
+    "usageMeterGenerationsLabel": "გენერაციები",
   "usageMeterGradingsLabel": "შეფასებები",
   "tabTestGenerator": "ტესტის გენერატორი",
   "tabRubric": "რუბრიკა",

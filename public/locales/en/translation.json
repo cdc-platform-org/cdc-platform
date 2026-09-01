@@ -1,7 +1,8 @@
-"educatorHub": {
-  "pageTitle": "Educator Hub",
-  "pageSubtitle": "Manage and create teaching resources with AI",
-  "usageMeterGenerationsLabel": "Generations",
+{
+  "educatorHub": {
+    "pageTitle": "Educator Hub",
+    "pageSubtitle": "Manage and create teaching resources with AI",
+    "usageMeterGenerationsLabel": "Generations",
   "usageMeterGradingsLabel": "Gradings",
   "tabTestGenerator": "Test Generator",
   "tabRubric": "Rubric",
