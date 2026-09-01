@@ -150,19 +150,7 @@ export async function requireNotBannedOrDeleted(req: Request, res: Response, nex
 // reject it distinctly (409, not 401) so the frontend can show "signed in
 // elsewhere" rather than a generic "please log in again".
 export async function requireCurrentEducatorSession(req: Request, res: Response, next: NextFunction) {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Authentication required.' });
-  }
-  const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { currentSessionId: true } });
-  if (!user) {
-    return res.status(401).json({ message: 'Account no longer exists.' });
-  }
-  if (!req.user.sid || !user.currentSessionId || req.user.sid !== user.currentSessionId) {
-    return res.status(409).json({
-      code: 'SESSION_SUPERSEDED',
-      message: 'თქვენი ანგარიშით შესვლა დაფიქსირდა სხვა მოწყობილობიდან.',
-    });
-  }
+  // Concurrent login restriction disabled. Allow multiple sessions.
   next();
 }
 
