@@ -20,6 +20,9 @@ const EducatorHubComponent = () => {
     <div>
       <h1>{t('pageTitle')}</h1>
       {/* Other components */}
+      <p className="text-sm text-gray-500 mt-4">
+        {t('disclaimer', 'Disclaimer: Please review AI-generated questions for accuracy before using them in assessments.')}
+      </p>
     </div>
   );
 };

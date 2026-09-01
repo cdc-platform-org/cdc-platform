@@ -24,6 +24,23 @@ const Dashboard: React.FC = () => {
                     <a href="/tool3" className="text-blue-500 hover:underline">{t('learnMore', 'მეტი ინფორმაცია')}</a>
                 </div>
             </div>
+            <div className="mt-8">
+                <h2 className="text-xl font-bold mb-4">{t('activeTools', 'Active Subscribed Tools')}</h2>
+                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/60 dark:border-slate-800 rounded-3xl shadow-xl p-4">
+                    <p>{t('aiEducatorVipStatus', 'AI Educator VIP Status')}: <span className="font-semibold">Active</span></p>
+                    <p>{t('remainingDays', 'Remaining Days')}: <span className="font-semibold">15</span></p>
+                    <button className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all">
+                        {t('renew', 'Renew')}
+                    </button>
+                </div>
+            </div>
+            <div className="mt-8">
+                <h2 className="text-xl font-bold mb-4">{t('quizSummary', 'Quiz Results Summary')}</h2>
+                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/60 dark:border-slate-800 rounded-3xl shadow-xl p-4">
+                    <p>{t('totalQuizzes', 'Total Quizzes Taken')}: <span className="font-semibold">10</span></p>
+                    <p>{t('averageScore', 'Average Score')}: <span className="font-semibold">85%</span></p>
+                </div>
+            </div>
         </div>
     );
 };
