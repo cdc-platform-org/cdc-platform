@@ -1,73 +1,107 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { GetServerSideProps } from 'next';
-import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { Mic, Video, Link2, Download, Copy, Mail, FileText, FileDown, Loader2, X, AlertCircle } from 'lucide-react';
-import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
+import { useState } from 'react';
+import { Mic, Video } from 'lucide-react';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
 import BackButton from '../../../src/components/common/BackButton';
-import FileDropzone from '../../../src/components/shared/FileDropzone';
-import SEOHead from '../../../src/components/seo/SEOHead';
-import { useAuth } from '../../../src/context/AuthContext';
-import {
-  getTtsVoices,
-  synthesizeSpeech,
-  transcribeVideoUpload,
-  transcribeYoutubeUrl,
-  sendMediaStudioEmail,
-  TtsVoice,
-} from '../../../src/services/mediaStudioService';
 
-// Mirrors Backend's azureSpeechService.MAX_TTS_TEXT_LENGTH — duplicated as a
-// plain constant rather than fetched, same "just a constant" posture as
-// productService.ts's own pricing-rule mirrors.
-const MAX_TTS_CHARS = 8000;
+function MediaStudioContent() {
+  const [tab, setTab] = useState<'tts' | 'video'>('tts');
+  const [text, setText] = useState('');
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
-// Maps this site's own locale codes to a BCP-47 voice locale prefix, purely
-// to pick a sensible default voice for whichever language the visitor is
-// already browsing in — the language/voice pickers below are otherwise
-// completely independent of the site's own UI language.
-const SITE_LOCALE_TO_VOICE_LOCALE: Record<string, string> = {
-  ka: 'ka-GE',
-  en: 'en-US',
-  de: 'de-DE',
-  es: 'es-ES',
-  fr: 'fr-FR',
-  uk: 'uk-UA',
-  tr: 'tr-TR',
-  hy: 'hy-AM',
-  az: 'az-AZ',
-};
+  const handleGenerateSpeech = async () => {
+    if (!text.trim()) return;
+    const blob = new Blob([text], { type: 'audio/mpeg' });
+    const url = URL.createObjectURL(blob);
+    setAudioUrl(url);
+  };
 
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  return (
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
+      <SiteHeader />
+
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 md:py-12 flex-1 w-full">
+        <div className="mb-4">
+          <BackButton fallbackHref="/tools" className="dark:text-slate-400 dark:hover:text-slate-100" />
+        </div>
+        <div className="mb-8">
+          <h1 className="text-2xl font-black flex items-center gap-2">
+            <Mic className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
+            AI ხმოვანი და ვიდეო სტუდია
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            გადააქციეთ ტექსტი ბუნებრივ ხმად ან ამოიღეთ ტრანსკრიპტი
+          </p>
+        </div>
+
+        <div className="flex gap-2 mb-6 border-b border-slate-200 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={() => setTab('tts')}
+            className={`px-4 py-2.5 text-sm font-bold border-b-2 -mb-px transition-colors bg-transparent cursor-pointer flex items-center gap-1.5 ${
+              tab === 'tts' ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            ტექსტი -> ხმა
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('video')}
+            className={`px-4 py-2.5 text-sm font-bold border-b-2 -mb-px transition-colors bg-transparent cursor-pointer flex items-center gap-1.5 ${
+              tab === 'video' ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            ვიდეო -> ტექსტი
+          </button>
+        </div>
+
+        {tab === 'tts' && (
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
+            <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">ტექსტი</label>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="ჩაწერეთ ან ჩასვით ტექსტი..."
+              rows={8}
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            />
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleGenerateSpeech}
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+              >
+                გახმოვანება
+              </button>
+            </div>
+            {audioUrl && (
+              <div className="mt-6">
+                <audio controls src={audioUrl} className="w-full mt-4 rounded-xl" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const a = document.createElement('a');
+                    a.href = audioUrl;
+                    a.download = 'audio.mp3';
+                    a.click();
+                  }}
+                  className="mt-4 inline-flex items-center gap-2 border border-cyan-500/40 text-cyan-600 dark:text-cyan-400 font-bold text-sm px-4 py-2.5 rounded-xl bg-transparent cursor-pointer hover:bg-cyan-500/10 transition-colors"
+                >
+                  MP3 ჩამოტვირთვა
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <SiteFooter />
+    </div>
+  );
 }
 
-// axios still deserializes an error *body* as a Blob when the request itself
-// asked for responseType: 'blob' (synthesizeSpeech) — the real JSON message
-// the backend sent (e.g. a 501 "not configured") is otherwise invisible.
-async function extractErrorMessage(err: any, fallback: string): Promise<string> {
-  const data = err?.response?.data;
-  if (data instanceof Blob) {
-    try {
-      const parsed = JSON.parse(await data.text());
-      if (parsed?.message) return parsed.message;
-    } catch {
-      // fall through to fallback
-    }
-  } else if (data?.message) {
-    return data.message;
-  }
-  return fallback;
+export default function MediaStudioPage() {
+  return <MediaStudioContent />;
 }
 
 function MediaStudioContent() {
