@@ -177,7 +177,13 @@ export default function StudentQuizPage() {
                             type="radio"
                             name={q.id}
                             checked={answers[q.id] === letter}
-                            onChange={() => setAnswers((prev) => ({ ...prev, [q.id]: letter }))}
+                            onChange={() =>
+                              setAnswers((prev) => {
+                                const updatedAnswers = { ...prev, [q.id]: letter };
+                                localStorage.setItem(`quiz-${quizId}-answers`, JSON.stringify(updatedAnswers));
+                                return updatedAnswers;
+                              })
+                            }
                           />
                           <span className="pb-32 font-bold text-slate-500">{letter}.</span> {text}
                         </label>
@@ -187,7 +193,13 @@ export default function StudentQuizPage() {
                     <textarea
                       rows={4}
                       value={answers[q.id] ?? ''}
-                      onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                      onChange={(e) =>
+                        setAnswers((prev) => {
+                          const updatedAnswers = { ...prev, [q.id]: e.target.value };
+                          localStorage.setItem(`quiz-${quizId}-answers`, JSON.stringify(updatedAnswers));
+                          return updatedAnswers;
+                        })
+                      }
                       placeholder={t.freeTextPlaceholder}
                       className="pb-32 w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     />
