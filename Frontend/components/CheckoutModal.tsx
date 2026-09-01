@@ -26,7 +26,11 @@ const handleApplyPromoCode = async () => {
     }
   }
 };
-<div className="promo-code-section">
+import UsageMeter from './UsageMeter';
+
+<div className="usage-meter-section">
+  <UsageMeter used={user.usage.lessonCount} limit={user.freeLimit} />
+</div>
   <label htmlFor="promoCode">Promo Code</label>
   <input
     type="text"
