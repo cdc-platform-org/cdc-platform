@@ -8,7 +8,12 @@ interface QuizTimerProps {
 export default function QuizTimer({ duration, onExpire }: QuizTimerProps) {
   const [remainingTime, setRemainingTime] = useState(() => {
     const savedTime = localStorage.getItem('quiz-remaining-time');
-    return savedTime ? parseInt(savedTime, 10) : duration;
+    const savedDuration = localStorage.getItem('quiz-duration');
+    if (savedTime && savedDuration && parseInt(savedDuration, 10) === duration) {
+      return parseInt(savedTime, 10);
+    }
+    localStorage.setItem('quiz-duration', duration.toString());
+    return duration;
   });
 
   useEffect(() => {

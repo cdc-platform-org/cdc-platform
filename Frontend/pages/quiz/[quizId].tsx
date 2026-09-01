@@ -63,7 +63,11 @@ export default function StudentQuizPage() {
   const [result, setResult] = useState<QuizSubmitResult | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(() => {
     const savedStartTime = localStorage.getItem(`quiz-${quizId}-start-time`);
-    return savedStartTime ? Math.floor((Date.now() - parseInt(savedStartTime, 10)) / 1000) : 0;
+    const savedElapsed = localStorage.getItem(`quiz-${quizId}-elapsed-seconds`);
+    if (savedStartTime && savedElapsed) {
+      return Math.floor((Date.now() - parseInt(savedStartTime, 10)) / 1000) + parseInt(savedElapsed, 10);
+    }
+    return 0;
   });
 
   useEffect(() => {
@@ -84,7 +88,9 @@ export default function StudentQuizPage() {
     const interval = setInterval(() => {
       setElapsedSeconds((s) => {
         const newElapsed = s + 1;
-        localStorage.setItem(`quiz-${quizId}-start-time`, Date.now().toString());
+        const currentTime = Date.now();
+        localStorage.setItem(`quiz-${quizId}-start-time`, currentTime.toString());
+        localStorage.setItem(`quiz-${quizId}-elapsed-seconds`, newElapsed.toString());
         return newElapsed;
       });
     }, 1000);
