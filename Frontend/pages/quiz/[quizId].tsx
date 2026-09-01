@@ -169,7 +169,7 @@ export default function StudentQuizPage() {
               </span>
             </div>
 
-            <div className="pb-32 space-y-6">
+            <div className="pb-32 space-y-6 overflow-x-auto max-w-full">
               {quiz.questions.map((q, i) => (
                 <div key={q.id} className="pb-32 rounded-xl border border-slate-800 bg-slate-900/60 p-5">
                   <p className="pb-32 text-sm font-bold mb-3">

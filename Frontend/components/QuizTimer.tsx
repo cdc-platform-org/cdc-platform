@@ -37,7 +37,7 @@ export default function QuizTimer({ duration, onExpire }: QuizTimerProps) {
   const seconds = remainingTime % 60;
 
   return (
-    <div className="quiz-timer">
+    <div className="quiz-timer px-4 sm:px-6">
       {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
     </div>
   );
