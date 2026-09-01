@@ -82,7 +82,34 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-async function exportDocx(sections: { heading: string; body: string }[], filename: string) {
+async function exportPdf(sections: { heading: string; body: string }[], filename: string) {
+  const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
+
+  const pdfDoc = await PDFDocument.create();
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const page = pdfDoc.addPage([595.28, 841.89]); // A4 dimensions in points
+  const { width, height } = page.getSize();
+  const fontSize = 12;
+
+  let y = height - 50; // Start 50 points from the top
+  sections.forEach(({ heading, body }) => {
+    page.drawText(heading, { x: 50, y, size: fontSize + 2, font, color: rgb(0, 0, 0) });
+    y -= fontSize + 10;
+    body.split('\n').forEach((line) => {
+      page.drawText(line, { x: 50, y, size: fontSize, font, color: rgb(0, 0, 0) });
+      y -= fontSize + 5;
+    });
+    y -= 20; // Add spacing between sections
+  });
+
+  const pdfBytes = await pdfDoc.save();
+  downloadBlob(new Blob([pdfBytes], { type: 'application/pdf' }), filename);
+}
+
+async function exportSeparatePdfs(testSheet: string, answerKey: string) {
+  await exportPdf([{ heading: 'ტესტი', body: testSheet }], 'Testi_Sagan.pdf');
+  await exportPdf([{ heading: 'პასუხების ფურცელი', body: answerKey }], 'Pasukhebis_Furtseli.pdf');
+}
   const { Document, Packer, Paragraph, HeadingLevel, TextRun } = await import('docx');
   const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
 
@@ -164,7 +191,10 @@ function ExportBar({ t, sections, filenameBase, printAreaId }: { t: (k: string) 
         type="button"
         onClick={async () => {
           setLoading(true);
-          await exportDocx(sections, `${filenameBase}.docx`);
+          await exportSeparatePdfs(
+            sections.find((s) => s.heading === t('testOutputSheetHeading'))?.body || '',
+            sections.find((s) => s.heading === t('testOutputKeyHeading'))?.body || ''
+          );
           setLoading(false);
         }}
         className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg ${
@@ -346,6 +376,7 @@ function EducatorHubContent() {
   const [testCount, setTestCount] = useState(10);
   const [quizTimer, setQuizTimer] = useState(60); // Default timer in seconds
   const [testSourceText, setTestSourceText] = useState('');
+  const [teacherName, setTeacherName] = useState('');
   const [testSourceFile, setTestSourceFile] = useState<File | null>(null);
   const [testGenerating, setTestGenerating] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
@@ -371,7 +402,10 @@ function EducatorHubContent() {
     setTestGenerating(true);
     setTestError(null);
     try {
+      const currentDateTime = new Date().toLocaleString('ka-GE');
       const result = await generateTest({
+        teacherName: teacherName.trim() || undefined,
+        dateTime: currentDateTime,
         subject: testSubject,
         grade: testGrade,
         topic: testTopic,
@@ -759,6 +793,15 @@ function EducatorHubContent() {
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
             <div className="grid sm:grid-cols-2 gap-4 mb-4 no-print">
               <div>
+                <label className={labelClass}>{t('teacherNameLabel', 'მასწავლებლის სახელი და გვარი')}</label>
+                <input
+                  className={inputClass}
+                  value={teacherName}
+                  onChange={(e) => setTeacherName(e.target.value)}
+                  placeholder={t('teacherNamePlaceholder', 'შეიყვანეთ სახელი და გვარი')}
+                  disabled={!hasAccess}
+                />
+              </div>
                 <label className={labelClass}>{t('quizTimerLabel')}</label>
                 <input
                   type="number"
