@@ -1,5 +1,5 @@
-const [missingKeys, setMissingKeys] = useState<Record<string, string[]>>({});
-const [loading, setLoading] = useState(false);
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
 useEffect(() => {
   const fetchMissingKeys = async () => {
