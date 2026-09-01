@@ -109,6 +109,30 @@ export default function StudentQuizPage() {
       localStorage.removeItem(`quiz-${quizId}-answers`);
     }
     if (!quizId) return;
+
+    // Check for unanswered questions
+    const unansweredQuestions = quiz?.questions.filter((q) => !answers[q.id]);
+    if (unansweredQuestions && unansweredQuestions.length > 0) {
+      setError(t.errorGeneric);
+      // Highlight unanswered questions
+      unansweredQuestions.forEach((q) => {
+        const questionElement = document.getElementById(`question-${q.id}`);
+        if (questionElement) {
+          questionElement.classList.add('border-red-500', 'bg-red-100');
+          const warning = document.createElement('div');
+          warning.className = 'text-red-500 text-sm mb-2';
+          warning.textContent = '⚠️ გთხოვთ აუცილებლად აირჩიოთ პასუხი!';
+          questionElement.prepend(warning);
+        }
+      });
+      // Scroll to the first unanswered question
+      const firstUnanswered = document.getElementById(`question-${unansweredQuestions[0].id}`);
+      if (firstUnanswered) {
+        firstUnanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+
     setPhase('submitting');
     setError(null);
     try {
@@ -119,7 +143,7 @@ export default function StudentQuizPage() {
       setError(t.errorGeneric);
       setPhase('error');
     }
-  }, [quizId, studentName, answers, t.errorGeneric]);
+  }, [quizId, studentName, answers, t.errorGeneric, quiz]);
 
   const minutes = Math.floor(elapsedSeconds / 60);
   const seconds = elapsedSeconds % 60;
@@ -171,7 +195,11 @@ export default function StudentQuizPage() {
 
             <div className="pb-32 space-y-6 overflow-x-auto max-w-full">
               {quiz.questions.map((q, i) => (
-                <div key={q.id} className="pb-32 rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+                <div
+                  key={q.id}
+                  id={`question-${q.id}`}
+                  className="pb-32 rounded-xl border border-slate-800 bg-slate-900/60 p-5"
+                >
                   <p className="pb-32 text-sm font-bold mb-3">
                     {i + 1}. {q.question}
                   </p>
