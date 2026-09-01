@@ -56,9 +56,15 @@ export default function StudentQuizPage() {
   const [quiz, setQuiz] = useState<PublicQuiz | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [studentName, setStudentName] = useState('');
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string>>(() => {
+    const savedAnswers = localStorage.getItem(`quiz-${quizId}-answers`);
+    return savedAnswers ? JSON.parse(savedAnswers) : {};
+  });
   const [result, setResult] = useState<QuizSubmitResult | null>(null);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(() => {
+    const savedStartTime = localStorage.getItem(`quiz-${quizId}-start-time`);
+    return savedStartTime ? Math.floor((Date.now() - parseInt(savedStartTime, 10)) / 1000) : 0;
+  });
 
   useEffect(() => {
     if (!quizId) return;
@@ -75,7 +81,13 @@ export default function StudentQuizPage() {
 
   useEffect(() => {
     if (phase !== 'in-progress') return;
-    const interval = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
+    const interval = setInterval(() => {
+      setElapsedSeconds((s) => {
+        const newElapsed = s + 1;
+        localStorage.setItem(`quiz-${quizId}-start-time`, Date.now().toString());
+        return newElapsed;
+      });
+    }, 1000);
     return () => clearInterval(interval);
   }, [phase]);
 
@@ -85,7 +97,11 @@ export default function StudentQuizPage() {
     setPhase('in-progress');
   };
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(async (autoSubmit = false) => {
+    if (autoSubmit) {
+      localStorage.removeItem(`quiz-${quizId}-start-time`);
+      localStorage.removeItem(`quiz-${quizId}-answers`);
+    }
     if (!quizId) return;
     setPhase('submitting');
     setError(null);
@@ -137,6 +153,10 @@ export default function StudentQuizPage() {
         {phase === 'in-progress' && quiz && (
           <div>
             <div className="pb-32 sticky top-0 z-10 -mx-4 px-4 py-3 mb-6 bg-slate-950/95 backdrop-blur border-b border-slate-800">
+              <QuizTimer
+                duration={quiz.duration}
+                onExpire={() => handleSubmit(true)}
+              />
               <span className="pb-32 text-sm font-black flex items-center gap-1.5">
                 <Clock className="pb-32 w-4 h-4 text-cyan-400" />
                 {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
