@@ -622,7 +622,7 @@ function EducatorHubContent() {
           <div className="flex flex-wrap items-center gap-3 mb-2">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest px-3 py-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-full border border-amber-500/20">
               <Crown className="w-3.5 h-3.5" />
-              {t('vipBadge')}
+              {t('vipBadge', 'VIP 50 ₾/თვე')}
             </span>
             {hubState?.isVipActive && (
               <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{t('vipActiveLabel')}</span>
@@ -695,7 +695,20 @@ function EducatorHubContent() {
                     : id === 'bureaucracy'
                     ? 'Bureaucracy'
                     : 'ParentReports'
-                }`
+                }`,
+                id === 'test'
+                  ? 'ტესტები & პასუხები'
+                  : id === 'rubric'
+                  ? 'შეფასების რუბრიკები'
+                  : id === 'grading'
+                  ? 'დავალებების გასწორება'
+                  : id === 'sen'
+                  ? 'დიფერენცირებული & სსსმ'
+                  : id === 'lessonPlan'
+                  ? 'გაკვეთილის გეგმები'
+                  : id === 'bureaucracy'
+                  ? 'სკოლის დოკუმენტაცია'
+                  : 'მოსწავლის რეპორტები'
               )}
             </button>
           ))}
@@ -718,15 +731,15 @@ function EducatorHubContent() {
                   disabled={!hasAccess}
                 />
               </div>
-                <label className={labelClass}>{t('testSubjectLabel')}</label>
+                <label className={labelClass}>{t('testSubjectLabel', 'საგანი')}</label>
                 <input className={inputClass} value={testSubject} onChange={(e) => setTestSubject(e.target.value)} placeholder={t('testSubjectPlaceholder')} disabled={!hasAccess} />
               </div>
               <div>
-                <label className={labelClass}>{t('testGradeLabel')}</label>
+                <label className={labelClass}>{t('testGradeLabel', 'კლასი')}</label>
                 <input className={inputClass} value={testGrade} onChange={(e) => setTestGrade(e.target.value)} placeholder={t('testGradePlaceholder')} disabled={!hasAccess} />
               </div>
               <div className="sm:col-span-2">
-                <label className={labelClass}>{t('testTopicLabel')}</label>
+                <label className={labelClass}>{t('testTopicLabel', 'თემა')}</label>
                 <input className={inputClass} value={testTopic} onChange={(e) => setTestTopic(e.target.value)} placeholder={t('testTopicPlaceholder')} disabled={!hasAccess} />
               </div>
               <div className="sm:col-span-2">
@@ -1370,7 +1383,7 @@ export default function EducatorHubPage() {
       {/* Rendered above ProtectedRoute — see english-tutor/index.tsx's
           identical comment for why: an unauthenticated crawler never
           renders EducatorHubContent at all. */}
-      <SEOHead title={t('pageTitle')} description={t('pageSubtitle')} noIndex />
+      <SEOHead title={t('pageTitle', 'AI მასწავლებლის VIP ასისტენტი')} description={t('pageSubtitle', 'AI ხელსაწყოები თქვენი ყოველკვირეული დავალებებისთვის')} noIndex />
       <ProtectedRoute>
         <EducatorHubContent />
       </ProtectedRoute>
