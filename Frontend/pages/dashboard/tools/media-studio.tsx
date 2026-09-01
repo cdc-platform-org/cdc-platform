@@ -121,8 +121,13 @@ function MediaStudioContent() {
   const languageOptions = useMemo(() => {
     if (!voices) return [];
     const byLocale = new Map<string, string>();
-    for (const v of voices) if (!byLocale.has(v.locale)) byLocale.set(v.locale, v.localName);
-    return Array.from(byLocale.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    for (const v of voices) {
+      if (!byLocale.has(v.locale)) {
+        const humanReadableName = `${v.localName} (${v.locale})`;
+        byLocale.set(v.locale, humanReadableName);
+      }
+    }
+    return Array.from(byLocale.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [voices]);
 
   const filteredVoices = useMemo(() => {
@@ -353,12 +358,12 @@ function MediaStudioContent() {
                 <textarea
                   value={text}
                   onChange={(e) => setText(e.target.value.slice(0, MAX_TTS_CHARS))}
-                  placeholder={t('ttsTextareaPlaceholder') as string}
+                  placeholder={t('ttsTextareaPlaceholder', 'Enter text to convert to speech') as string}
                   rows={8}
                   className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 />
                 <p className="text-[11px] text-slate-400 mt-1 text-right">
-                  {text.length} / {MAX_TTS_CHARS} {t('ttsCharsCount')}
+                  {text.length} / {MAX_TTS_CHARS} {t('ttsCharsCount', 'characters')}
                 </p>
 
                 <div className="flex flex-col items-center justify-center mt-4">
@@ -394,7 +399,7 @@ function MediaStudioContent() {
 
                 <div className="mt-4">
                   <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">
-                    {t('ttsSpeedLabel')}: {speed.toFixed(2)}x
+                    {t('ttsSpeedLabel', 'Speech Speed')}: {speed.toFixed(2)}x
                   </label>
                   <input type="range" min={0.5} max={2} step={0.05} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="w-full" />
                 </div>
