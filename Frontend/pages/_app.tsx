@@ -1,5 +1,33 @@
 import { appWithTranslation } from 'next-i18next';
 import i18next from 'i18next';
+import { useEffect } from 'react';
+import { useRouter } from 'next/router';
+
+function App({ Component, pageProps }: AppProps) {
+  const router = useRouter();
+
+  useEffect(() => {
+    const handleLanguageChange = (lang: string) => {
+      i18next.changeLanguage(lang);
+    };
+
+    i18next.on('languageChanged', handleLanguageChange);
+
+    return () => {
+      i18next.off('languageChanged', handleLanguageChange);
+    };
+  }, []);
+
+  return (
+    <AuthProvider>
+      <AuthModalProvider>
+        <VerificationDrawerProvider>
+          <Component {...pageProps} />
+        </VerificationDrawerProvider>
+      </AuthModalProvider>
+    </AuthProvider>
+  );
+}
 
 // Ensure all required locales are loaded
 i18next.init({
