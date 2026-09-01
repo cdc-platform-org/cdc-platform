@@ -443,17 +443,23 @@ function MediaStudioContent() {
                   <div className="text-center mb-4">
                     <p className="text-sm text-slate-500">{t('loadingNotice')}</p>
                   </div>
-                  <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                    <audio controls src={audioUrl} className="w-full sm:w-auto" />
-                    <button
-                      type="button"
-                      onClick={() => audioBlob && downloadBlob(audioBlob, 'narration.mp3')}
-                      className="inline-flex items-center gap-2 border border-cyan-500/40 text-cyan-600 dark:text-cyan-400 font-bold text-sm px-4 py-2.5 rounded-xl bg-transparent cursor-pointer hover:bg-cyan-500/10 transition-colors whitespace-nowrap"
-                    >
-                      <Download className="w-4 h-4" />
-                      {t('ttsDownloadButton')}
-                    </button>
-                  </div>
+                  {audioUrl && (
+                    <div className="mt-6 flex flex-col items-center">
+                      <audio
+                        controls
+                        src={audioUrl}
+                        className="w-full mt-4 rounded-xl shadow-md bg-white/30 backdrop-blur-lg border border-white/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => audioBlob && downloadBlob(audioBlob, 'narration.mp3')}
+                        className="mt-4 inline-flex items-center gap-2 border border-cyan-500/40 text-cyan-600 dark:text-cyan-400 font-bold text-sm px-4 py-2.5 rounded-xl bg-transparent cursor-pointer hover:bg-cyan-500/10 transition-colors"
+                      >
+                        <Download className="w-4 h-4" />
+                        {t('ttsDownloadButton', 'Download')}
+                      </button>
+                    </div>
+                  )}
                 )}
               </>
             )}
