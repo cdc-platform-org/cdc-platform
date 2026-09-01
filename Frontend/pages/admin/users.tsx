@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import axios from 'axios'; // Add axios for API calls
 import Head from 'next/head';
 import { Users as UsersIcon, Clock, GraduationCap, Ban } from 'lucide-react';
 import AdminGuard from '../../src/components/admin/AdminGuard';
