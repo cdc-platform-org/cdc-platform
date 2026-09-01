@@ -144,3 +144,13 @@ export async function generateImageViaDallE3(prompt: string, timeoutMs: number):
   }
   throw new Error('DALL-E 3 returned no image data.');
 }
+import axios from 'axios';
+
+export async function translateText(text: string, targetLanguage: string): Promise<string> {
+  const response = await axios.post(
+    `${AZURE_OPENAI_ENDPOINT}/translate`,
+    { text, targetLanguage },
+    { headers: { 'Ocp-Apim-Subscription-Key': AZURE_OPENAI_KEY } }
+  );
+  return response.data.translation;
+}
