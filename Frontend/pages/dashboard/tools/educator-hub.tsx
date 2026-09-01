@@ -1394,3 +1394,15 @@ export default function EducatorHubPage() {
 export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({
   props: { ...(await serverSideTranslations(locale ?? 'ka', ['educatorHub'])) },
 });
+<div className="promo-code-section">
+  <label htmlFor="promoCode">Promo Code</label>
+  <input
+    type="text"
+    id="promoCode"
+    value={promoCode}
+    onChange={(e) => setPromoCode(e.target.value)}
+    placeholder="Enter promo code"
+  />
+  <button onClick={handleApplyPromoCode}>Apply</button>
+  {promoError && <p className="error">{promoError}</p>}
+</div>
