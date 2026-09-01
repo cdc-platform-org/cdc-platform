@@ -9,11 +9,21 @@ const handleApplyPromoCode = async () => {
       // Handle 100% discount logic
       console.log('Promo code applied: 100% discount');
       // Activate the product/course directly
+      try {
+        await axios.post('/api/activate-access', { promoCode });
+        window.location.href = '/success';
+      } catch (activationError) {
+        setPromoError('Failed to activate access. Please contact support.');
+      }
     } else {
       console.log('Promo code applied:', data);
     }
   } catch (error) {
-    setPromoError('Invalid promo code.');
+    if (error.response?.status === 400) {
+      setPromoError('Promo code expired or invalid.');
+    } else {
+      setPromoError('An unexpected error occurred. Please try again.');
+    }
   }
 };
 <div className="promo-code-section">
