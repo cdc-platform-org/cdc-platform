@@ -103,31 +103,31 @@ export default function StudentQuizPage() {
   const seconds = elapsedSeconds % 60;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+    <div className="pb-32 min-h-screen bg-slate-950 text-white flex flex-col">
       <Head>
         <title>{quiz ? `${quiz.title} | CDC Quiz` : 'CDC Quiz'}</title>
       </Head>
 
-      <div className="max-w-2xl mx-auto px-4 py-10 flex-1 w-full">
-        {error && <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-300 mb-6">{error}</div>}
+      <div className="pb-32 max-w-2xl mx-auto px-4 py-10 flex-1 w-full">
+        {error && <div className="pb-32 rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-300 mb-6">{error}</div>}
 
-        {phase === 'loading' && <p className="text-sm text-slate-400">…</p>}
+        {phase === 'loading' && <p className="pb-32 text-sm text-slate-400">…</p>}
 
         {phase === 'landing' && quiz && (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-8">
-            <h1 className="text-xl font-black mb-6">{quiz.title}</h1>
-            <form onSubmit={handleStart} className="space-y-4">
+          <div className="pb-32 rounded-2xl border border-slate-800 bg-slate-900/60 p-8">
+            <h1 className="pb-32 text-xl font-black mb-6">{quiz.title}</h1>
+            <form onSubmit={handleStart} className="pb-32 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1.5">{t.name}</label>
+                <label className="pb-32 block text-xs font-bold text-slate-400 mb-1.5">{t.name}</label>
                 <input
                   required
                   value={studentName}
                   onChange={(e) => setStudentName(e.target.value)}
                   placeholder={t.namePlaceholder}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  className="pb-32 w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 />
               </div>
-              <button type="submit" className="w-full rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-3 text-sm font-black text-white">
+              <button type="submit" className="pb-32 w-full rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-3 text-sm font-black text-white">
                 {t.start}
               </button>
             </form>
@@ -136,30 +136,30 @@ export default function StudentQuizPage() {
 
         {phase === 'in-progress' && quiz && (
           <div>
-            <div className="sticky top-0 z-10 -mx-4 px-4 py-3 mb-6 bg-slate-950/95 backdrop-blur border-b border-slate-800">
-              <span className="text-sm font-black flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-cyan-400" />
+            <div className="pb-32 sticky top-0 z-10 -mx-4 px-4 py-3 mb-6 bg-slate-950/95 backdrop-blur border-b border-slate-800">
+              <span className="pb-32 text-sm font-black flex items-center gap-1.5">
+                <Clock className="pb-32 w-4 h-4 text-cyan-400" />
                 {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
               </span>
             </div>
 
-            <div className="space-y-6">
+            <div className="pb-32 space-y-6">
               {quiz.questions.map((q, i) => (
-                <div key={q.id} className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
-                  <p className="text-sm font-bold mb-3">
+                <div key={q.id} className="pb-32 rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+                  <p className="pb-32 text-sm font-bold mb-3">
                     {i + 1}. {q.question}
                   </p>
                   {q.type === 'MULTIPLE_CHOICE' && q.options ? (
-                    <div className="space-y-2">
+                    <div className="pb-32 space-y-2">
                       {Object.entries(q.options).map(([letter, text]) => (
-                        <label key={letter} className="flex items-center gap-2.5 text-sm text-slate-300 cursor-pointer">
+                        <label key={letter} className="pb-32 flex items-center gap-2.5 text-sm text-slate-300 cursor-pointer">
                           <input
                             type="radio"
                             name={q.id}
                             checked={answers[q.id] === letter}
                             onChange={() => setAnswers((prev) => ({ ...prev, [q.id]: letter }))}
                           />
-                          <span className="font-bold text-slate-500">{letter}.</span> {text}
+                          <span className="pb-32 font-bold text-slate-500">{letter}.</span> {text}
                         </label>
                       ))}
                     </div>
@@ -169,7 +169,7 @@ export default function StudentQuizPage() {
                       value={answers[q.id] ?? ''}
                       onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
                       placeholder={t.freeTextPlaceholder}
-                      className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      className="pb-32 w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     />
                   )}
                 </div>
@@ -179,41 +179,41 @@ export default function StudentQuizPage() {
             <button
               type="button"
               onClick={() => handleSubmit()}
-              className="mt-6 w-full rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-3 text-sm font-black text-white"
+              className="pb-32 mt-6 w-full rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-3 text-sm font-black text-white"
             >
               {t.submit}
             </button>
           </div>
         )}
 
-        {phase === 'submitting' && <p className="text-sm text-slate-400">{t.submitting}</p>}
+        {phase === 'submitting' && <p className="pb-32 text-sm text-slate-400">{t.submitting}</p>}
 
         {phase === 'done' && quiz && result && (
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/5 p-8 text-center">
-              <h1 className="text-lg font-black mb-2">{t.doneTitle}</h1>
-              <p className="text-3xl font-black text-cyan-400 mb-1">{result.score}%</p>
-              <p className="text-sm text-slate-400">{t.scoreLabel(result.correctCount, result.total)}</p>
+          <div className="pb-32 space-y-4">
+            <div className="pb-32 rounded-2xl border border-cyan-500/30 bg-cyan-500/5 p-8 text-center">
+              <h1 className="pb-32 text-lg font-black mb-2">{t.doneTitle}</h1>
+              <p className="pb-32 text-3xl font-black text-cyan-400 mb-1">{result.score}%</p>
+              <p className="pb-32 text-sm text-slate-400">{t.scoreLabel(result.correctCount, result.total)}</p>
             </div>
             {result.results.map((r, i) => {
               const q = quiz.questions[i];
               if (!q) return null;
               return (
-                <div key={r.questionId} className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <p className="text-sm font-bold flex-1">
+                <div key={r.questionId} className="pb-32 rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+                  <div className="pb-32 flex items-start justify-between gap-3 mb-2">
+                    <p className="pb-32 text-sm font-bold flex-1">
                       {i + 1}. {q.question}
                     </p>
                     {r.correct ? (
-                      <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                      <CheckCircle2 className="pb-32 w-5 h-5 text-emerald-400 shrink-0" />
                     ) : (
-                      <XCircle className="w-5 h-5 text-rose-400 shrink-0" />
+                      <XCircle className="pb-32 w-5 h-5 text-rose-400 shrink-0" />
                     )}
                   </div>
-                  <p className="text-xs text-slate-400 mb-1">
-                    {t.perQuestionAnswer}: <span className="text-slate-200">{answers[q.id] || '—'}</span>
+                  <p className="pb-32 text-xs text-slate-400 mb-1">
+                    {t.perQuestionAnswer}: <span className="pb-32 text-slate-200">{answers[q.id] || '—'}</span>
                   </p>
-                  {r.feedback && <p className="text-xs text-slate-400 italic">{r.feedback}</p>}
+                  {r.feedback && <p className="pb-32 text-xs text-slate-400 italic">{r.feedback}</p>}
                 </div>
               );
             })}
