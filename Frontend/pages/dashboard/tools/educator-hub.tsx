@@ -272,6 +272,23 @@ function EducatorHubContent() {
 
   const [hubState, setHubState] = useState<EducatorHubState | null>(null);
   const [stateLoading, setStateLoading] = useState(true);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoError, setPromoError] = useState<string | null>(null);
+
+  const handleApplyPromoCode = async () => {
+    try {
+      const { data } = await axios.post('/api/apply-promo', { promoCode });
+      if (data.discount === 100) {
+        // Handle 100% discount logic
+        console.log('Promo code applied: 100% discount');
+        // Activate the product/course directly
+      } else {
+        console.log('Promo code applied:', data);
+      }
+    } catch (error) {
+      setPromoError('Invalid promo code.');
+    }
+  };
   // Distinct from "no VIP access" — a fetch failure (network/backend down)
   // previously fell through to the exact same "VIP Required" upsell banner
   // with no indication anything had actually gone wrong, silently hiding
@@ -664,6 +681,29 @@ function EducatorHubContent() {
               <UsageMeter label={t('usageMeterGradingsLabel')} used={usage.gradingsUsed} limit={usage.gradingsLimit} />
             </div>
           )}
+
+          <div className="promo-code-section mt-5">
+            <label htmlFor="promoCode" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              {t('promoCodeLabel', 'Promo Code')}
+            </label>
+            <div className="mt-1 flex">
+              <input
+                type="text"
+                id="promoCode"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value)}
+                placeholder={t('promoCodePlaceholder', 'Enter promo code')}
+                className="flex-1 block w-full rounded-md border-gray-300 dark:border-slate-700 dark:bg-slate-900/40 dark:text-white focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
+              />
+              <button
+                onClick={handleApplyPromoCode}
+                className="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+              >
+                {t('applyPromoCode', 'Apply')}
+              </button>
+            </div>
+            {promoError && <p className="mt-2 text-sm text-red-600">{promoError}</p>}
+          </div>
         </div>
 
         {/* Tabs */}
