@@ -132,7 +132,15 @@ export default function MediaStudioPage() {
 }
 
 function MediaStudioContent() {
-  const { t } = useTranslation('mediaStudio');
+  const { t, ready } = useTranslation('mediaStudio');
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950">
+        <div className="loader" />
+      </div>
+    );
+  }
   const { user } = useAuth();
   const router = useRouter();
 
@@ -725,5 +733,5 @@ export default function MediaStudioPage() {
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'ka', ['mediaStudio'])) },
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['common', 'mediaStudio'])) },
 });
