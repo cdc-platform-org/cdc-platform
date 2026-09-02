@@ -189,15 +189,46 @@ function MediaStudioContent() {
 
   const languageOptions = useMemo(() => {
     if (!voices) return [];
+    const primaryLanguages = ['Georgian', 'English', 'German', 'French', 'Spanish', 'Turkish'];
     const byLocale = new Map<string, string>();
+
     for (const v of voices) {
       if (!byLocale.has(v.locale)) {
-        const humanReadableName = `${v.localName} (${v.locale})`;
+        const humanReadableName = convertLocaleToLanguage(v.locale);
         byLocale.set(v.locale, humanReadableName);
       }
     }
-    return Array.from(byLocale.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+
+    const sortedLanguages = Array.from(byLocale.entries())
+      .sort(([_, nameA], [__, nameB]) => nameA.localeCompare(nameB))
+      .map(([locale, name]) => ({ locale, name }));
+
+    const pinnedLanguages = sortedLanguages.filter((lang) => primaryLanguages.includes(lang.name));
+    const otherLanguages = sortedLanguages.filter((lang) => !primaryLanguages.includes(lang.name));
+
+    return [...pinnedLanguages, ...otherLanguages];
   }, [voices]);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const filteredLanguageOptions = useMemo(() => {
+    return languageOptions.filter((option) =>
+      option.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [languageOptions, searchQuery]);
+
+  function convertLocaleToLanguage(locale: string): string {
+    const localeMap: Record<string, string> = {
+      'ka': 'Georgian',
+      'en-US': 'English (US)',
+      'en-GB': 'English (UK)',
+      'de': 'German',
+      'fr': 'French',
+      'es': 'Spanish',
+      'tr': 'Turkish',
+      // Add more mappings as needed
+    };
+    return localeMap[locale] || locale;
+  }
 
   const filteredVoices = useMemo(() => {
     if (!voices) return [];
