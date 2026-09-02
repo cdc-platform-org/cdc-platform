@@ -121,7 +121,32 @@ function App({ Component, pageProps }: AppProps) {
   return (
     <>
       <Head>
-        <style>{`
+        <meta name="description" content="ციფრული პროფესიების ცენტრი (CDC) გთავაზობთ ტოპ 10 პროფესიას საქართველოში, მათ შორის მაღალანაზღაურებადი პროფესიები, AI ტესტების გენერატორი და მასწავლებლის ასისტენტი." />
+        <meta name="keywords" content="ციფრული პროფესიები, ტოპ 10 პროფესია საქართველოში, მაღალანაზღაურებადი პროფესიები, ციფრული პროფესიების ცენტრი, CDC, მასწავლებლის ასისტენტი, AI ტესტების გენერატორი, ონლაინ სწავლება" />
+        <meta property="og:title" content="ციფრული პროფესიების ცენტრი (CDC) - საუკეთესო პროფესიები საქართველოში" />
+        <meta property="og:description" content="ციფრული პროფესიების ცენტრი (CDC) გთავაზობთ ტოპ 10 პროფესიას საქართველოში, მათ შორის მაღალანაზღაურებადი პროფესიები, AI ტესტების გენერატორი და მასწავლებლის ასისტენტი." />
+        <meta property="og:image" content="/logo.png" />
+        <meta property="og:url" content="https://www.cdc.ge" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="ციფრული პროფესიების ცენტრი (CDC) - საუკეთესო პროფესიები საქართველოში" />
+        <meta name="twitter:description" content="ციფრული პროფესიების ცენტრი (CDC) გთავაზობთ ტოპ 10 პროფესიას საქართველოში, მათ შორის მაღალანაზღაურებადი პროფესიები, AI ტესტების გენერატორი და მასწავლებლის ასისტენტი." />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              "name": "CDC - ციფრული პროფესიების ცენტრი",
+              "url": "https://www.cdc.ge",
+              "description": "ციფრული პროფესიების ცენტრი (CDC) გთავაზობთ ტოპ 10 პროფესიას საქართველოში, მათ შორის მაღალანაზღაურებადი პროფესიები, AI ტესტების გენერატორი და მასწავლებლის ასისტენტი.",
+              "potentialAction": {
+                "@type": "SearchAction",
+                "target": "https://www.cdc.ge/search?q={search_term_string}",
+                "query-input": "required name=search_term_string"
+              }
+            }),
+          }}
+        />
           /* Font-family itself (GL-Kirovi @font-face + the forced rule on
              html/body/inputs/headings) now lives in styles/globals.css —
              one canonical declaration instead of two copies drifting apart.

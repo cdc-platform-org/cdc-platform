@@ -63,6 +63,34 @@ export default class MyDocument extends Document {
             }}
           />
           <link rel="canonical" href="https://www.cdc.ge" />
+          <link rel="alternate" href="https://www.cdc.ge" hreflang="ka-GE" />
+          <link rel="alternate" href="https://www.cdc.ge/en" hreflang="en" />
+          <meta name="keywords" content="ციფრული პროფესიები, ტოპ 10 პროფესია საქართველოში, მაღალანაზღაურებადი პროფესიები, ციფრული პროფესიების ცენტრი, CDC, მასწავლებლის ასისტენტი, AI ტესტების გენერატორი, ონლაინ სწავლება" />
+          <meta property="og:title" content="ციფრული პროფესიების ცენტრი (CDC) - საუკეთესო პროფესიები საქართველოში" />
+          <meta property="og:description" content="ციფრული პროფესიების ცენტრი (CDC) გთავაზობთ ტოპ 10 პროფესიას საქართველოში, მათ შორის მაღალანაზღაურებადი პროფესიები, AI ტესტების გენერატორი და მასწავლებლის ასისტენტი." />
+          <meta property="og:image" content="/logo.png" />
+          <meta property="og:url" content="https://www.cdc.ge" />
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:title" content="ციფრული პროფესიების ცენტრი (CDC) - საუკეთესო პროფესიები საქართველოში" />
+          <meta name="twitter:description" content="ციფრული პროფესიების ცენტრი (CDC) გთავაზობთ ტოპ 10 პროფესიას საქართველოში, მათ შორის მაღალანაზღაურებადი პროფესიები, AI ტესტების გენერატორი და მასწავლებლის ასისტენტი." />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "EducationalOrganization",
+                "name": "CDC - ციფრული პროფესიების ცენტრი",
+                "url": "https://www.cdc.ge",
+                "logo": "https://www.cdc.ge/logo.png",
+                "sameAs": [
+                  "https://www.facebook.com/cdc",
+                  "https://www.instagram.com/cdc",
+                  "https://www.linkedin.com/company/cdc"
+                ],
+                "description": "ციფრული პროფესიების ცენტრი (CDC) გთავაზობთ ტოპ 10 პროფესიას საქართველოში, მათ შორის მაღალანაზღაურებადი პროფესიები, AI ტესტების გენერატორი და მასწავლებლის ასისტენტი."
+              }),
+            }}
+          />
         </Head>
         <body>
           <Main />
