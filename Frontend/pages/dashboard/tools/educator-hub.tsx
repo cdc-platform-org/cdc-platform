@@ -1475,7 +1475,7 @@ export default function EducatorHubPage() {
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'ka', ['educatorHub'])) },
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['common', 'educatorHub'])) },
 });
 <div className="promo-code-section">
   <label htmlFor="promoCode">Promo Code</label>

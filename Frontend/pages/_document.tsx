@@ -44,6 +44,25 @@ export default class MyDocument extends Document {
           <meta property="og:image:height" content="630" />
           <meta name="twitter:card" content="summary_large_image" />
           <meta name="twitter:image" content="/logo.png" />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "EducationalOrganization",
+                "name": "CDC - ციფრული პროფესიების ცენტრი",
+                "url": "https://www.cdc.ge",
+                "logo": "https://www.cdc.ge/logo.png",
+                "sameAs": [
+                  "https://www.facebook.com/cdc",
+                  "https://www.instagram.com/cdc",
+                  "https://www.linkedin.com/company/cdc"
+                ],
+                "description": "ციფრული პროფესიების ცენტრი (CDC) გთავაზობთ ტოპ 10 პროფესიას საქართველოში, მათ შორის მაღალანაზღაურებადი პროფესიები, AI ტესტების გენერატორი და მასწავლებლის ასისტენტი."
+              }),
+            }}
+          />
+          <link rel="canonical" href="https://www.cdc.ge" />
         </Head>
         <body>
           <Main />
