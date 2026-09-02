@@ -1,4 +1,4 @@
-import { appWithTranslation } from 'next-i18next';
+import { appWithTranslation, useTranslation } from 'next-i18next';
 import i18next from 'i18next';
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
@@ -18,7 +18,15 @@ function App({ Component, pageProps }: AppProps) {
     };
   }, []);
 
-  return (
+  const { ready } = useTranslation();
+
+  if (!ready) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500"></div>
+      </div>
+    );
+  }
     <AuthProvider>
       <AuthModalProvider>
         <VerificationDrawerProvider>
