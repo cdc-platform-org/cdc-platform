@@ -32,6 +32,18 @@ export default class MyDocument extends Document {
       <Html lang={locale}>
         <Head>
           <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+          <link rel="icon" href="/favicon.ico" />
+          <link rel="shortcut icon" href="/favicon.ico" />
+          <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+          <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+          <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+          <meta property="og:image" content="/logo.png" />
+          <meta property="og:image:alt" content="CDC Logo" />
+          <meta property="og:image:type" content="image/png" />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:image" content="/logo.png" />
         </Head>
         <body>
           <Main />
