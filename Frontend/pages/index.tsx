@@ -439,7 +439,10 @@ export default function Home() {
   return (
     <div className={`min-h-screen font-sans antialiased transition-colors duration-300 relative overflow-hidden ${darkMode ? 'text-slate-200 bg-[#0b0f19]' : 'text-slate-800 bg-[#f1f5f9]'}`}>
       <SEOHead
-        description={t('metaDescription')}
+        title="ციფრული პროფესიების ცენტრი (CDC) - საუკეთესო პროფესიები საქართველოში"
+        description="ციფრული პროფესიების ცენტრი (CDC) გთავაზობთ ტოპ 10 პროფესიას საქართველოში, მათ შორის მაღალანაზღაურებადი პროფესიები, AI ტესტების გენერატორი და მასწავლებლის ასისტენტი."
+        keywords="ციფრული პროფესიები, ტოპ 10 პროფესია საქართველოში, საუკეთესო პროფესიები, მაღალანაზღაურებადი პროფესიები საქართველოში, ციფრული პროფესიების ცენტრი, CDC, მასწავლებლის ასისტენტი, AI ტესტების გენერატორი, ონლაინ სწავლება"
+        canonical="https://www.cdc.ge"
         jsonLd={[
           ORGANIZATION_SCHEMA,
           buildWebSiteSchema(),
