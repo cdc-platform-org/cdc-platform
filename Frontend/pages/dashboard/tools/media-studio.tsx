@@ -1,184 +1,269 @@
-import { useState } from 'react';
-import { Mic, Video } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, SyntheticEvent } from 'react';
+import { GetServerSideProps } from 'next';
+import { useRouter } from 'next/router';
+import { useTranslation } from 'next-i18next';
+import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import {
+  Mic,
+  Video,
+  Link2,
+  Download,
+  Copy,
+  Mail,
+  FileText,
+  FileDown,
+  Loader2,
+  X,
+  AlertCircle,
+  ChevronDown,
+  Search,
+  Play,
+  Pause,
+  Square,
+} from 'lucide-react';
+import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
+import SEOHead from '../../../src/components/seo/SEOHead';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
 import BackButton from '../../../src/components/common/BackButton';
+import FileDropzone from '../../../src/components/shared/FileDropzone';
+import { useAuth } from '../../../src/context/AuthContext';
+import {
+  getTtsVoices,
+  synthesizeSpeech,
+  transcribeVideoUpload,
+  transcribeYoutubeUrl,
+  sendMediaStudioEmail,
+  TtsVoice,
+} from '../../../src/services/mediaStudioService';
 
-function MediaStudioContent() {
-  const [tab, setTab] = useState<'tts' | 'video'>('tts');
-  const [text, setText] = useState('');
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+// ============================================================
+// AI Voice & Video Media Studio.
+// Feature A (this page's "tts" tab) talks to Backend's routes/tts.ts;
+// Feature B ("video" tab) talks to routes/mediaStudio.ts.
+// ============================================================
 
-  const handleGenerateSpeech = async () => {
-    if (!text.trim()) return;
-    const blob = new Blob([text], { type: 'audio/mpeg' });
-    const url = URL.createObjectURL(blob);
-    setAudioUrl(url);
+// Mirrors Backend's azureSpeechService.MAX_TTS_TEXT_LENGTH — duplicated as a
+// plain constant rather than fetched, same "just a constant" posture as
+// productService.ts's own pricing-rule mirrors.
+const MAX_TTS_CHARS = 8000;
+
+// Maps this site's own locale codes to a BCP-47 voice locale, purely to pick
+// a sensible default voice for whichever language the visitor is already
+// browsing in — the pickers below are otherwise independent of the site's UI
+// language.
+const SITE_LOCALE_TO_VOICE_LOCALE: Record<string, string> = {
+  ka: 'ka-GE',
+  en: 'en-US',
+  de: 'de-DE',
+  es: 'es-ES',
+  fr: 'fr-FR',
+  uk: 'uk-UA',
+  tr: 'tr-TR',
+  hy: 'hy-AM',
+  az: 'az-AZ',
+};
+
+// Locales pinned to the top of the searchable language list, in this order —
+// the rest of Azure's ~140 voice locales are sorted alphabetically by their
+// human-readable label underneath. Hand-picked labels for these (and for any
+// other locale whose Intl.DisplayNames output wouldn't read naturally) live
+// in LOCALE_LABEL_OVERRIDES below.
+const PRIMARY_LOCALES = ['ka-GE', 'en-US', 'en-GB', 'de-DE', 'fr-FR', 'es-ES', 'tr-TR'];
+
+const LOCALE_LABEL_OVERRIDES: Record<string, string> = {
+  'ka-GE': 'ქართული (Georgian)',
+  'en-US': 'English (US)',
+  'en-GB': 'English (UK)',
+  'de-DE': 'German',
+  'fr-FR': 'French',
+  'es-ES': 'Spanish',
+  'tr-TR': 'Turkish',
+};
+
+// Everything outside the overrides above is derived from Intl.DisplayNames
+// so the rest of Azure's voice locales never fall back to a raw BCP-47 code
+// like "ar-EG" or "bn-IN" in the UI.
+let languageNames: Intl.DisplayNames | null = null;
+let regionNames: Intl.DisplayNames | null = null;
+try {
+  languageNames = new Intl.DisplayNames(['en'], { type: 'language' });
+  regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
+} catch {
+  // Intl.DisplayNames unsupported in this runtime — humanizeLocale falls
+  // back to the bare language subtag below instead of a full locale code.
+}
+
+function humanizeLocale(locale: string, showRegion: boolean): string {
+  if (LOCALE_LABEL_OVERRIDES[locale]) return LOCALE_LABEL_OVERRIDES[locale];
+  const [lang, region] = locale.split('-');
+  const langLabel = languageNames?.of(lang) ?? lang;
+  if (!showRegion || !region) return langLabel;
+  const regionLabel = regionNames?.of(region) ?? region;
+  return `${langLabel} (${regionLabel})`;
+}
+
+interface LanguageOption {
+  locale: string;
+  label: string;
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// axios still deserializes an error *body* as a Blob when the request itself
+// asked for responseType: 'blob' (synthesizeSpeech) — the real JSON message
+// the backend sent (e.g. a 501 "not configured") is otherwise invisible.
+async function extractErrorMessage(err: any, fallback: string): Promise<string> {
+  const data = err?.response?.data;
+  if (data instanceof Blob) {
+    try {
+      const parsed = JSON.parse(await data.text());
+      if (parsed?.message) return parsed.message;
+    } catch {
+      // fall through to fallback
+    }
+  } else if (data?.message) {
+    return data.message;
+  }
+  return fallback;
+}
+
+const PLAYBACK_RATES: Array<{ value: number; label: string }> = [
+  { value: 0.5, label: '0.5x' },
+  { value: 1, label: '1.0x' },
+  { value: 1.25, label: '1.25x' },
+  { value: 1.5, label: '1.5x' },
+  { value: 2, label: '2.0x' },
+];
+
+// Searchable, pinned-then-alphabetical language combobox — Azure exposes
+// ~140 voice locales, far too many for a plain <select> to stay usable, and
+// raw locale codes ("ar-EG") are never acceptable as a displayed label.
+function LanguageSelect({
+  options,
+  value,
+  onChange,
+  allLabel,
+  searchPlaceholder,
+}: {
+  options: LanguageOption[];
+  value: string;
+  onChange: (locale: string) => void;
+  allLabel: string;
+  searchPlaceholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((o) => o.label.toLowerCase().includes(q));
+  }, [options, query]);
+
+  const selectedLabel = value === 'all' ? allLabel : (options.find((o) => o.locale === value)?.label ?? value);
+
+  const selectOption = (locale: string) => {
+    onChange(locale);
+    setOpen(false);
+    setQuery('');
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
-      <SiteHeader />
-
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 md:py-12 flex-1 w-full">
-        <div className="mb-4">
-          <BackButton fallbackHref="/tools" className="dark:text-slate-400 dark:hover:text-slate-100" />
-        </div>
-        <div className="mb-8">
-          <h1 className="text-2xl font-black flex items-center gap-2">
-            <Mic className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
-            AI ხმოვანი და ვიდეო სტუდია
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            გადააქციეთ ტექსტი ბუნებრივ ხმად ან ამოიღეთ ტრანსკრიპტი
-          </p>
-        </div>
-
-        <div className="flex gap-2 mb-6 border-b border-slate-200 dark:border-slate-800">
-          <button
-            type="button"
-            onClick={() => setTab('tts')}
-            className={`px-4 py-2.5 text-sm font-bold border-b-2 -mb-px transition-colors bg-transparent cursor-pointer flex items-center gap-1.5 ${
-              tab === 'tts' ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-            }`}
-          >
-            ტექსტი -> ხმა
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('video')}
-            className={`px-4 py-2.5 text-sm font-bold border-b-2 -mb-px transition-colors bg-transparent cursor-pointer flex items-center gap-1.5 ${
-              tab === 'video' ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-            }`}
-          >
-            ვიდეო -> ტექსტი
-          </button>
-        </div>
-
-        {tab === 'tts' && (
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
-            <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">ტექსტი</label>
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onSelect={(e) => {
-                const target = e.target as HTMLTextAreaElement;
-                setSelectedText(target.value.substring(target.selectionStart, target.selectionEnd));
-              }}
-              placeholder="ჩაწერეთ ან ჩასვით ტექსტი..."
-              rows={8}
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm text-left cursor-pointer"
+      >
+        <span className="truncate">{selectedLabel}</span>
+        <ChevronDown className="w-4 h-4 shrink-0 text-slate-400" />
+      </button>
+      {open && (
+        <div className="absolute z-20 mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg flex flex-col overflow-hidden">
+          <div className="p-2 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
+            <Search className="w-4 h-4 text-slate-400 shrink-0" />
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={searchPlaceholder}
+              className="w-full bg-transparent text-sm focus:outline-none"
             />
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={handleGenerateSpeech}
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
-              >
-                გახმოვანება
-              </button>
-              <button
-                type="button"
-                onClick={handleSpeakSelected}
-                disabled={!selectedText.trim()}
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-cyan-500 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-purple-500/30 transition-all"
-              >
-                Speak Selected
-              </button>
-            </div>
-            {audioUrl && (
-              <div className="mt-6">
-                <div className="custom-audio-player">
-                  <button onClick={handlePlay}>Play</button>
-                  <button onClick={handlePause}>Pause</button>
-                  <button onClick={handleResume}>Resume</button>
-                  <button onClick={handleStop}>Stop</button>
-                  <label>
-                    Speed:
-                    <select value={playbackSpeed} onChange={(e) => setPlaybackSpeed(Number(e.target.value))}>
-                      <option value={0.5}>0.5x</option>
-                      <option value={1.0}>1.0x</option>
-                      <option value={1.25}>1.25x</option>
-                      <option value={1.5}>1.5x</option>
-                      <option value={2.0}>2.0x</option>
-                    </select>
-                  </label>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const a = document.createElement('a');
-                    a.href = audioUrl;
-                    a.download = 'audio.mp3';
-                    a.click();
-                  }}
-                  className="mt-4 inline-flex items-center gap-2 border border-cyan-500/40 text-cyan-600 dark:text-cyan-400 font-bold text-sm px-4 py-2.5 rounded-xl bg-transparent cursor-pointer hover:bg-cyan-500/10 transition-colors"
-                >
-                  MP3 ჩამოტვირთვა
-                </button>
-              </div>
-            )}
           </div>
-        )}
-      </div>
-
-      <SiteFooter />
+          <div className="max-h-64 overflow-y-auto py-1">
+            <button
+              type="button"
+              onClick={() => selectOption('all')}
+              className={`w-full text-left px-3 py-2 text-sm cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 ${
+                value === 'all' ? 'text-cyan-600 dark:text-cyan-400 font-bold' : ''
+              }`}
+            >
+              {allLabel}
+            </button>
+            {filtered.map((o) => (
+              <button
+                key={o.locale}
+                type="button"
+                onClick={() => selectOption(o.locale)}
+                className={`w-full text-left px-3 py-2 text-sm cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 truncate ${
+                  value === o.locale ? 'text-cyan-600 dark:text-cyan-400 font-bold' : ''
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+            {filtered.length === 0 && <p className="px-3 py-2 text-xs text-slate-400">—</p>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-export default function MediaStudioPage() {
-  return <MediaStudioContent />;
-}
-
 function MediaStudioContent() {
-  const { t, ready } = useTranslation('mediaStudio');
-
-  if (!ready) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950">
-        <div className="loader" />
-      </div>
-    );
-  }
+  const { t } = useTranslation('mediaStudio');
   const { user } = useAuth();
   const router = useRouter();
 
   const [tab, setTab] = useState<'tts' | 'video'>('tts');
-  const [xp, setXp] = useState(0);
-  const [hearts, setHearts] = useState(3);
-  const [streak, setStreak] = useState(0);
-
-  useEffect(() => {
-    // Fetch initial progress on component mount
-    const fetchProgress = async () => {
-      try {
-        const response = await fetch('/api/progress');
-        const data = await response.json();
-        setXp(data.xp);
-        setHearts(data.hearts);
-        setStreak(data.streak);
-      } catch (error) {
-        console.error('Failed to fetch progress:', error);
-      }
-    };
-
-    fetchProgress();
-  }, []);
 
   // ---------------- Feature A: Text to Speech ----------------
   const [voices, setVoices] = useState<TtsVoice[] | null>(null);
   const [voicesError, setVoicesError] = useState<string | null>(null);
   const [text, setText] = useState('');
+  const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [languageFilter, setLanguageFilter] = useState<string>('all');
   const [genderFilter, setGenderFilter] = useState<string>('all');
   const [voiceShortName, setVoiceShortName] = useState<string>('');
   const [speed, setSpeed] = useState(1);
-  const [ttsLoading, setTtsLoading] = useState(false);
+  const [ttsLoading, setTtsLoading] = useState<'main' | 'selection' | null>(null);
   const [ttsError, setTtsError] = useState<string | null>(null);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const audioElRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
 
   useEffect(() => {
     getTtsVoices()
@@ -187,62 +272,28 @@ function MediaStudioContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const languageOptions = useMemo(() => {
+  const languageOptions = useMemo<LanguageOption[]>(() => {
     if (!voices) return [];
-    const primaryLanguages = [
-      { locale: 'ka', name: 'Georgian (ქართული)' },
-      { locale: 'en-US', name: 'English (US)' },
-      { locale: 'en-GB', name: 'English (UK)' },
-      { locale: 'de', name: 'German' },
-      { locale: 'fr', name: 'French' },
-      { locale: 'es', name: 'Spanish' },
-      { locale: 'tr', name: 'Turkish' },
-      { locale: 'ru', name: 'Russian' },
-    ];
-
-    const byLocale = new Map<string, string>();
-    for (const v of voices) {
-      if (!byLocale.has(v.locale)) {
-        const humanReadableName = convertLocaleToLanguage(v.locale);
-        byLocale.set(v.locale, humanReadableName);
-      }
+    const locales = Array.from(new Set(voices.map((v) => v.locale)));
+    const baseLanguageCounts = new Map<string, number>();
+    for (const locale of locales) {
+      const base = locale.split('-')[0];
+      baseLanguageCounts.set(base, (baseLanguageCounts.get(base) ?? 0) + 1);
     }
+    const options = locales.map((locale) => {
+      const base = locale.split('-')[0];
+      const showRegion = (baseLanguageCounts.get(base) ?? 1) > 1;
+      return { locale, label: humanizeLocale(locale, showRegion) };
+    });
 
-    const sortedLanguages = Array.from(byLocale.entries())
-      .sort(([_, nameA], [__, nameB]) => nameA.localeCompare(nameB))
-      .map(([locale, name]) => ({ locale, name }));
-
-    const pinnedLanguages = primaryLanguages.filter((lang) =>
-      sortedLanguages.some((sortedLang) => sortedLang.locale === lang.locale)
+    const pinned = PRIMARY_LOCALES.map((locale) => options.find((o) => o.locale === locale)).filter(
+      (o): o is LanguageOption => !!o
     );
-    const otherLanguages = sortedLanguages.filter(
-      (lang) => !pinnedLanguages.some((pinnedLang) => pinnedLang.locale === lang.locale)
-    );
+    const pinnedSet = new Set(pinned.map((o) => o.locale));
+    const rest = options.filter((o) => !pinnedSet.has(o.locale)).sort((a, b) => a.label.localeCompare(b.label));
 
-    return [...pinnedLanguages, ...otherLanguages];
+    return [...pinned, ...rest];
   }, [voices]);
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const filteredLanguageOptions = useMemo(() => {
-    return languageOptions.filter((option) =>
-      option.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [languageOptions, searchQuery]);
-
-  function convertLocaleToLanguage(locale: string): string {
-    const localeMap: Record<string, string> = {
-      'ka': 'Georgian (ქართული)',
-      'en-US': 'English (US)',
-      'en-GB': 'English (UK)',
-      'de': 'German',
-      'fr': 'French',
-      'es': 'Spanish',
-      'tr': 'Turkish',
-      'ru': 'Russian',
-      // Add more mappings as needed
-    };
-    return localeMap[locale] || locale;
-  }
 
   const filteredVoices = useMemo(() => {
     if (!voices) return [];
@@ -273,74 +324,63 @@ function MediaStudioContent() {
   useEffect(
     () => () => {
       if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
-      window.speechSynthesis.cancel(); // Stop speech synthesis completely
     },
     []
   );
 
   const selectedVoice = voices?.find((v) => v.shortName === voiceShortName) ?? null;
+  const selectedText = text.slice(selection.start, selection.end);
 
-  const handleGenerateSpeech = async () => {
-    const updateProgress = async (newXp: number, newHearts: number, newStreak: number) => {
-      try {
-        await fetch('/api/progress', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user?.id, xp: newXp, hearts: newHearts, streak: newStreak }),
-        });
-      } catch (error) {
-        console.error('Failed to update progress:', error);
-      }
-    };
-    if (!selectedVoice || !text.trim()) return;
-    setTtsLoading(true);
+  const handleTextSelect = (e: SyntheticEvent<HTMLTextAreaElement>) => {
+    const target = e.currentTarget;
+    setSelection({ start: target.selectionStart, end: target.selectionEnd });
+  };
+
+  const runSynthesis = async (source: string, which: 'main' | 'selection') => {
+    if (!selectedVoice || !source.trim()) return;
+    setTtsLoading(which);
     setTtsError(null);
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8-second timeout
-
-      let blob;
-      try {
-        blob = await synthesizeSpeech(
-          { text: text.trim(), voiceShortName: selectedVoice.shortName, voiceLocale: selectedVoice.locale, speed },
-          { signal: controller.signal }
-        );
-      } catch (err) {
-        if (controller.signal.aborted) {
-          setTtsError(t('ttsTimeoutError')); // User-friendly timeout error
-        } else {
-          setTtsError(await extractErrorMessage(err, t('ttsError')));
-        }
-        return;
-      } finally {
-        clearTimeout(timeoutId);
-      }
+      const blob = await synthesizeSpeech({
+        text: source.trim(),
+        voiceShortName: selectedVoice.shortName,
+        voiceLocale: selectedVoice.locale,
+        speed,
+      });
       if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
-      if (audioBlob && text.trim() === audioBlob.text) {
-        // Reuse cached audio if the text matches
-        setAudioUrl(audioUrlRef.current);
-      } else {
-        const url = URL.createObjectURL(blob);
-        audioUrlRef.current = url;
-        setAudioUrl(url);
-        setAudioBlob({ blob, text: text.trim() }); // Cache the blob and text
-      }
+      const url = URL.createObjectURL(blob);
+      audioUrlRef.current = url;
+      setAudioUrl(url);
       setAudioBlob(blob);
-      // Update progress on successful task completion
-      const newXp = xp + 10; // Example XP increment
-      const newStreak = streak + 1;
-      setXp(newXp);
-      setStreak(newStreak);
-      await updateProgress(newXp, hearts, newStreak);
+      setPlaybackRate(1);
     } catch (err) {
-      // Update progress on error (lose a heart)
-      const newHearts = hearts - 1;
-      setHearts(newHearts);
-      await updateProgress(xp, newHearts, streak);
       setTtsError(await extractErrorMessage(err, t('ttsError')));
     } finally {
-      setTtsLoading(false);
+      setTtsLoading(null);
     }
+  };
+
+  const handleGenerateSpeech = () => runSynthesis(text, 'main');
+  const handleSpeakSelected = () => runSynthesis(selectedText, 'selection');
+
+  useEffect(() => {
+    if (audioElRef.current) audioElRef.current.playbackRate = playbackRate;
+  }, [playbackRate, audioUrl]);
+
+  const handlePlay = () => {
+    const el = audioElRef.current;
+    if (!el) return;
+    el.currentTime = 0;
+    el.play();
+  };
+  const handlePause = () => audioElRef.current?.pause();
+  const handleResume = () => audioElRef.current?.play();
+  const handleStop = () => {
+    const el = audioElRef.current;
+    if (!el) return;
+    el.pause();
+    el.currentTime = 0;
+    setIsPlaying(false);
   };
 
   // ---------------- Feature B: Video → Transcript + Notes ----------------
@@ -472,113 +512,152 @@ function MediaStudioContent() {
                 <textarea
                   value={text}
                   onChange={(e) => setText(e.target.value.slice(0, MAX_TTS_CHARS))}
-                  placeholder={t('ttsTextareaPlaceholder', 'Enter text to convert to speech') as string}
+                  onSelect={handleTextSelect}
+                  placeholder={t('ttsTextareaPlaceholder') as string}
                   rows={8}
                   className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 />
                 <p className="text-[11px] text-slate-400 mt-1 text-right">
-                  {text.length} / {MAX_TTS_CHARS} {t('ttsCharsCount', 'characters')}
+                  {text.length} / {MAX_TTS_CHARS} {t('ttsCharsCount')}
                 </p>
 
-                <div className="flex flex-col items-center justify-center mt-4">
-                  <div className="text-center">
-                    <h2 className="text-xl font-bold">{t('duolingoCardTitle')}</h2>
-                    <p className="text-sm text-slate-500">{t('duolingoCardSubtitle')}</p>
+                <div className="grid sm:grid-cols-3 gap-4 mt-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">{t('ttsLanguageLabel')}</label>
+                    <LanguageSelect
+                      options={languageOptions}
+                      value={languageFilter}
+                      onChange={setLanguageFilter}
+                      allLabel={t('ttsLanguageAll') as string}
+                      searchPlaceholder={t('ttsLanguageSearchPlaceholder') as string}
+                    />
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleGenerateSpeech}
-                    className="mt-6 inline-flex items-center justify-center w-20 h-20 bg-cyan-500 text-white rounded-full shadow-lg hover:bg-cyan-600 transition-all"
-                  >
-                    <Mic className="w-8 h-8" />
-                  </button>
-                  <div className="mt-4 w-full bg-gray-200 rounded-full h-2.5">
-                    <div className="bg-cyan-500 h-2.5 rounded-full" style={{ width: '50%' }}></div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">{t('ttsGenderLabel')}</label>
+                    <select
+                      value={genderFilter}
+                      onChange={(e) => setGenderFilter(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm"
+                    >
+                      <option value="all">{t('ttsGenderAll')}</option>
+                      <option value="Female">{t('ttsGenderFemale')}</option>
+                      <option value="Male">{t('ttsGenderMale')}</option>
+                    </select>
                   </div>
-                  <div className="mt-2 flex items-center gap-4">
-                    <span className="text-sm font-bold text-red-500">❤️❤️❤️</span>
-                    <span className="text-sm font-bold text-cyan-500">XP: 120</span>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">{t('ttsVoiceLabel')}</label>
+                    <select
+                      value={voiceShortName}
+                      onChange={(e) => setVoiceShortName(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm"
+                    >
+                      {filteredVoices.map((v) => (
+                        <option key={v.shortName} value={v.shortName}>
+                          {v.displayName} ({v.gender === 'Female' ? t('ttsGenderFemale') : t('ttsGenderMale')})
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                </div>
-
-                <div className="mt-4 flex flex-col items-center justify-center">
-                  <button
-                    type="button"
-                    onClick={toggleSlowPlayback}
-                    className="mt-6 inline-flex items-center justify-center w-20 h-20 bg-cyan-500 text-white rounded-full shadow-lg hover:bg-cyan-600 transition-all"
-                  >
-                    {isSlowPlayback ? 'Normal Speed' : 'Slow Speed'}
-                  </button>
                 </div>
 
                 <div className="mt-4">
                   <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">
-                    {t('ttsSpeedLabel', 'Speech Speed')}: {speed.toFixed(2)}x
+                    {t('ttsSpeedLabel')}: {speed.toFixed(2)}x
                   </label>
                   <input type="range" min={0.5} max={2} step={0.05} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="w-full" />
                 </div>
-                <div className="mt-4 flex flex-col items-center justify-center">
-                  <button
-                    type="button"
-                    onClick={toggleSlowPlayback}
-                    className="mt-6 inline-flex items-center justify-center w-20 h-20 bg-cyan-500 text-white rounded-full shadow-lg hover:bg-cyan-600 transition-all"
-                  >
-                    {isSlowPlayback ? 'Normal Speed' : 'Slow Speed'}
-                  </button>
-                </div>
+
+                {ttsError && <p className="text-sm text-red-600 dark:text-red-400 mt-3">{ttsError}</p>}
 
                 <div className="mt-6 flex flex-wrap items-center gap-3">
                   <button
                     type="button"
-                    disabled={!text.trim() || !selectedVoice || ttsLoading}
+                    disabled={!text.trim() || !selectedVoice || ttsLoading !== null}
                     onClick={handleGenerateSpeech}
                     className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
                   >
-                    {ttsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
-                    {ttsLoading ? t('ttsGenerating') : t('ttsGenerateButton')}
+                    {ttsLoading === 'main' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
+                    {ttsLoading === 'main' ? t('ttsGenerating') : t('ttsGenerateButton')}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedText.trim() || !selectedVoice || ttsLoading !== null}
+                    onClick={handleSpeakSelected}
+                    className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-cyan-500 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-purple-500/30 transition-all"
+                  >
+                    {ttsLoading === 'selection' ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    {t('ttsSpeakSelectedButton')}
                   </button>
                 </div>
 
-                const LoadingGame: React.FC = () => {
-                  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-                
-                  useEffect(() => {
-                    const canvas = canvasRef.current;
-                    if (!canvas) return;
-                    const context = canvas.getContext('2d');
-                    if (!context) return;
-                
-                    // Game logic and rendering goes here
-                    const draw = () => {
-                      context.clearRect(0, 0, canvas.width, canvas.height);
-                      // Draw CDC logo girl and other game elements
-                      requestAnimationFrame(draw);
-                    };
-                    draw();
-                  }, []);
-                
-                  return <canvas ref={canvasRef} width={800} height={600} />;
-                };
-                  <div className="text-center mb-4">
-                    <p className="text-sm text-slate-500">{t('loadingNotice')}</p>
-                  </div>
-                  {audioUrl && (
-                    <div className="mt-6 flex flex-col items-center">
-                      <audio
-                        controls
-                        src={audioUrl}
-                        className="w-full mt-4 rounded-xl shadow-md bg-white/30 backdrop-blur-lg border border-white/20"
-                      />
+                {audioUrl && (
+                  <div className="mt-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-4">
+                    <audio
+                      ref={audioElRef}
+                      src={audioUrl}
+                      className="hidden"
+                      onPlay={() => setIsPlaying(true)}
+                      onPause={() => setIsPlaying(false)}
+                      onEnded={() => setIsPlaying(false)}
+                    />
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-3">{t('playerTitle')}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handlePlay}
+                        className="inline-flex items-center gap-1.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs px-3 py-2 rounded-lg bg-white dark:bg-slate-800 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        <Play className="w-3.5 h-3.5" />
+                        {t('playerPlay')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handlePause}
+                        disabled={!isPlaying}
+                        className="inline-flex items-center gap-1.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs px-3 py-2 rounded-lg bg-white dark:bg-slate-800 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        <Pause className="w-3.5 h-3.5" />
+                        {t('playerPause')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleResume}
+                        disabled={isPlaying}
+                        className="inline-flex items-center gap-1.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs px-3 py-2 rounded-lg bg-white dark:bg-slate-800 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        <Play className="w-3.5 h-3.5" />
+                        {t('playerResume')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleStop}
+                        className="inline-flex items-center gap-1.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs px-3 py-2 rounded-lg bg-white dark:bg-slate-800 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        <Square className="w-3.5 h-3.5" />
+                        {t('playerStop')}
+                      </button>
+                      <select
+                        value={playbackRate}
+                        onChange={(e) => setPlaybackRate(Number(e.target.value))}
+                        className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-2 text-xs font-bold"
+                        aria-label={t('playerSpeedLabel') as string}
+                      >
+                        {PLAYBACK_RATES.map((rate) => (
+                          <option key={rate.value} value={rate.value}>
+                            {rate.label}
+                          </option>
+                        ))}
+                      </select>
                       <button
                         type="button"
                         onClick={() => audioBlob && downloadBlob(audioBlob, 'narration.mp3')}
-                        className="mt-4 inline-flex items-center gap-2 border border-cyan-500/40 text-cyan-600 dark:text-cyan-400 font-bold text-sm px-4 py-2.5 rounded-xl bg-transparent cursor-pointer hover:bg-cyan-500/10 transition-colors"
+                        className="ml-auto inline-flex items-center gap-2 border border-cyan-500/40 text-cyan-600 dark:text-cyan-400 font-bold text-xs px-3 py-2 rounded-lg bg-transparent cursor-pointer hover:bg-cyan-500/10 transition-colors whitespace-nowrap"
                       >
-                        <Download className="w-4 h-4" />
-                        {t('ttsDownloadButton', 'Download')}
+                        <Download className="w-3.5 h-3.5" />
+                        {t('ttsDownloadButton')}
                       </button>
                     </div>
-                  )}
+                  </div>
                 )}
               </>
             )}
@@ -620,7 +699,7 @@ function MediaStudioContent() {
               />
             ) : (
               <FileDropzone
-                accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm"
+                accept="video/*,audio/*,.mp4,.mov,.webm,.mp3,.wav,.m4a"
                 uploading={false}
                 selectedFileName={videoFile?.name ?? null}
                 onFile={setVideoFile}
@@ -766,7 +845,7 @@ export default function MediaStudioPage() {
   const { t } = useTranslation('mediaStudio');
   return (
     <>
-      {/* See english-tutor/index.tsx's identical comment: rendered above
+      {/* See educator-hub.tsx's identical comment: rendered above
           ProtectedRoute, not inside it, so the noindex tag actually reaches
           an unauthenticated crawler's DOM. */}
       <SEOHead title={t('pageTitle')} description={t('catalogDesc')} noIndex />
