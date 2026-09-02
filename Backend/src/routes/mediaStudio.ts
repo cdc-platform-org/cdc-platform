@@ -30,8 +30,8 @@ const router = Router();
 const mediaStudioVideoUpload = multer({
   storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
-    if (/^video\//.test(file.mimetype) || /\.(mp4|mov|webm)$/i.test(file.originalname)) cb(null, true);
-    else cb(new Error('Only MP4, MOV, or WEBM video files are allowed.'));
+    if (/^(video|audio)\//.test(file.mimetype) || /\.(mp4|mov|webm|mp3|wav|m4a)$/i.test(file.originalname)) cb(null, true);
+    else cb(new Error('Only MP4, MOV, WEBM, MP3, WAV, or M4A files are allowed.'));
   },
   limits: { fileSize: 300 * 1024 * 1024 },
 });

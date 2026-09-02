@@ -61,6 +61,10 @@ function MediaStudioContent() {
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
+              onSelect={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                setSelectedText(target.value.substring(target.selectionStart, target.selectionEnd));
+              }}
               placeholder="ჩაწერეთ ან ჩასვით ტექსტი..."
               rows={8}
               className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
@@ -73,10 +77,33 @@ function MediaStudioContent() {
               >
                 გახმოვანება
               </button>
+              <button
+                type="button"
+                onClick={handleSpeakSelected}
+                disabled={!selectedText.trim()}
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-cyan-500 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-purple-500/30 transition-all"
+              >
+                Speak Selected
+              </button>
             </div>
             {audioUrl && (
               <div className="mt-6">
-                <audio controls src={audioUrl} className="w-full mt-4 rounded-xl" />
+                <div className="custom-audio-player">
+                  <button onClick={handlePlay}>Play</button>
+                  <button onClick={handlePause}>Pause</button>
+                  <button onClick={handleResume}>Resume</button>
+                  <button onClick={handleStop}>Stop</button>
+                  <label>
+                    Speed:
+                    <select value={playbackSpeed} onChange={(e) => setPlaybackSpeed(Number(e.target.value))}>
+                      <option value={0.5}>0.5x</option>
+                      <option value={1.0}>1.0x</option>
+                      <option value={1.25}>1.25x</option>
+                      <option value={1.5}>1.5x</option>
+                      <option value={2.0}>2.0x</option>
+                    </select>
+                  </label>
+                </div>
                 <button
                   type="button"
                   onClick={() => {
