@@ -189,9 +189,18 @@ function MediaStudioContent() {
 
   const languageOptions = useMemo(() => {
     if (!voices) return [];
-    const primaryLanguages = ['Georgian', 'English', 'German', 'French', 'Spanish', 'Turkish'];
-    const byLocale = new Map<string, string>();
+    const primaryLanguages = [
+      { locale: 'ka', name: 'Georgian (ქართული)' },
+      { locale: 'en-US', name: 'English (US)' },
+      { locale: 'en-GB', name: 'English (UK)' },
+      { locale: 'de', name: 'German' },
+      { locale: 'fr', name: 'French' },
+      { locale: 'es', name: 'Spanish' },
+      { locale: 'tr', name: 'Turkish' },
+      { locale: 'ru', name: 'Russian' },
+    ];
 
+    const byLocale = new Map<string, string>();
     for (const v of voices) {
       if (!byLocale.has(v.locale)) {
         const humanReadableName = convertLocaleToLanguage(v.locale);
@@ -203,8 +212,12 @@ function MediaStudioContent() {
       .sort(([_, nameA], [__, nameB]) => nameA.localeCompare(nameB))
       .map(([locale, name]) => ({ locale, name }));
 
-    const pinnedLanguages = sortedLanguages.filter((lang) => primaryLanguages.includes(lang.name));
-    const otherLanguages = sortedLanguages.filter((lang) => !primaryLanguages.includes(lang.name));
+    const pinnedLanguages = primaryLanguages.filter((lang) =>
+      sortedLanguages.some((sortedLang) => sortedLang.locale === lang.locale)
+    );
+    const otherLanguages = sortedLanguages.filter(
+      (lang) => !pinnedLanguages.some((pinnedLang) => pinnedLang.locale === lang.locale)
+    );
 
     return [...pinnedLanguages, ...otherLanguages];
   }, [voices]);
@@ -218,13 +231,14 @@ function MediaStudioContent() {
 
   function convertLocaleToLanguage(locale: string): string {
     const localeMap: Record<string, string> = {
-      'ka': 'Georgian',
+      'ka': 'Georgian (ქართული)',
       'en-US': 'English (US)',
       'en-GB': 'English (UK)',
       'de': 'German',
       'fr': 'French',
       'es': 'Spanish',
       'tr': 'Turkish',
+      'ru': 'Russian',
       // Add more mappings as needed
     };
     return localeMap[locale] || locale;
