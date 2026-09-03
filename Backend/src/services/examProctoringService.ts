@@ -6,6 +6,7 @@ import * as Sentry from '@sentry/node';
 import { GEMINI_API_KEY } from '../utils/env';
 import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
 import { isAzureOpenAiConfigured, generateJsonViaAzureOpenAI } from './azureOpenAiService';
+import { callTextModel, isAiAgentConfigured, AiAgentError, InlineImagePart } from './aiAgentService';
 
 // AI question generation + practical-answer grading for the AI Proctored
 // Exam & Skill Assessment System (ExamSession/ExamQuestion/ExamSubmission).
@@ -17,6 +18,34 @@ import { isAzureOpenAiConfigured, generateJsonViaAzureOpenAI } from './azureOpen
 
 export function isExamProctoringConfigured(): boolean {
   return !!GEMINI_API_KEY;
+}
+
+// Extracts exam source material (photographed textbook page, slide,
+// whiteboard, scanned worksheet) straight from image bytes — Gemini reads
+// images natively, so this is a one-shot text-extraction call via
+// aiAgentService's shared helper rather than this file's own
+// exam-question-generation model/fallback/billing machinery below, which
+// is unrelated to this step. The extracted text then flows into
+// generateExamQuestions() as an ordinary `rawContent` string, same as a
+// parsed PDF/DOCX upload or a video transcript — see
+// routes/examProctoring.ts's /sessions/parse-source-image.
+export async function extractExamSourceFromImage(image: InlineImagePart): Promise<string> {
+  if (!isAiAgentConfigured()) {
+    throw new ExamProctoringAiError('AI is not configured yet.', 501);
+  }
+  const prompt =
+    'Extract and transcribe ALL educational content visible in this image — text, questions, diagrams (describe them in words), tables, code, formulas — as clean Markdown. This will be used as source material for generating exam questions, so be thorough and accurate; do not summarize or omit content. If the image contains no legible educational content, respond with exactly: NO_CONTENT_FOUND';
+  let text: string;
+  try {
+    text = (await callTextModel(prompt, 0.2, [image])).trim();
+  } catch (err) {
+    if (err instanceof AiAgentError) throw new ExamProctoringAiError(err.message, err.status);
+    throw new ExamProctoringAiError('Failed to extract content from this image.');
+  }
+  if (!text || text === 'NO_CONTENT_FOUND') {
+    throw new ExamProctoringAiError('No readable educational content was found in this image.', 400);
+  }
+  return text;
 }
 
 const client = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;

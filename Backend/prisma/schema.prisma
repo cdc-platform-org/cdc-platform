@@ -2755,6 +2755,11 @@ model ExamSubmission {
   proctoringViolations Int                  @default(0)
   tabSwitches          Int                  @default(0)
   copyPasteCount       Int                  @default(0)
+  // Combined count of FACE_MISSING/MULTIPLE_FACES/LOOKING_AWAY/
+  // BACKGROUND_VOICE ProctoringEvent rows — the camera/mic-based signals,
+  // broken out from tabSwitches/copyPasteCount the same way those are
+  // broken out from the plain total, for the business's report.
+  cameraAudioViolations Int                 @default(0)
   // 100 minus a penalty per proctoring violation, floored at 0 — a single
   // at-a-glance number for the business report; the raw counts above stay
   // available for detail. Null until the attempt is submitted.
@@ -2790,6 +2795,16 @@ model ExamSubmission {
 enum ProctoringEventType {
   TAB_SWITCH
   COPY_PASTE
+  // Camera-feed based signals from the candidate exam runner's face-api.js
+  // detection loop — see pages/exam/[token].tsx's useFaceMonitor.
+  FULLSCREEN_EXIT
+  FACE_MISSING
+  MULTIPLE_FACES
+  LOOKING_AWAY
+  // Web Audio API amplitude-threshold signal from the mic stream — a real
+  // voice-activity heuristic (sustained volume above a threshold), not
+  // speech-to-text or speaker identification.
+  BACKGROUND_VOICE
 }
 
 // One row per candidate-reported violation, timestamped by server receipt

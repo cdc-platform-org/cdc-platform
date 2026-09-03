@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, FormEvent, ChangeEvent } from 'react';
-import { ClipboardList, Plus, Trash2, Copy, Check, Lock, Unlock, Users, UploadCloud, Download, RefreshCw, ShieldAlert } from 'lucide-react';
+import { ClipboardList, Plus, Trash2, Copy, Check, Lock, Unlock, Users, UploadCloud, Download, RefreshCw, ShieldAlert, FileText, Type, Video, Link2, Image as ImageIcon } from 'lucide-react';
 import {
   getMyExamSessions,
   createExamSession,
@@ -7,6 +7,9 @@ import {
   updateExamSessionStatus,
   deleteExamSession,
   parseExamSourceFile,
+  parseExamSourceVideoFile,
+  parseExamSourceYoutube,
+  parseExamSourceImage,
   downloadExamReport,
   generateAdaptiveRetest,
   ExamSessionSummary,
@@ -14,6 +17,9 @@ import {
   ExamSubmissionRow,
 } from '../../services/examProctoringService';
 import { SupportedLocale } from '../../utils/locale';
+
+type SourceMode = 'file' | 'text' | 'video' | 'image';
+type VideoSourceMode = 'youtube' | 'upload';
 
 type SetupGuidePlatform = 'wordpress' | 'shopify' | 'html';
 type QuestionPreset = 'quick' | 'standard' | 'deep';
@@ -31,11 +37,24 @@ const dictBase = {
     topic: 'თემა / პოზიცია',
     topicPlaceholder: 'მაგ: Senior React დეველოპერი — hooks, state მართვა, წარმადობა',
     description: 'აღწერა (არასავალდებულო)',
-    sourceUpload: 'წყარო დოკუმენტი (არასავალდებულო): ვაკანსიის აღწერა, მასალა (PDF/DOCX)',
-    sourceUploadHint: 'AI გამოიყენებს ატვირთულ დოკუმენტს დამატებით კონტექსტად კითხვების გენერირებისას.',
+    sourceUpload: 'წყარო მასალა (არასავალდებულო)',
+    sourceUploadHint: 'AI გამოიყენებს ამ მასალას დამატებით კონტექსტად კითხვების გენერირებისას.',
     uploadFile: 'ფაილის ატვირთვა',
     uploadingFile: 'მუშავდება…',
-    sourceAttached: 'დოკუმენტი მიბმულია ✓',
+    sourceAttached: 'მასალა მიბმულია ✓',
+    sourceModeFile: 'ფაილი',
+    sourceModeText: 'ტექსტი',
+    sourceModeVideo: 'ვიდეო',
+    sourceModeImage: 'სურათი',
+    sourceTextPlaceholder: 'ჩასვით წყარო ტექსტი აქ — ვაკანსიის აღწერა, სასწავლო მასალა და ა.შ.',
+    sourceVideoYoutubeTab: 'YouTube ბმული',
+    sourceVideoUploadTab: 'ფაილის ატვირთვა',
+    sourceVideoYoutubePlaceholder: 'https://www.youtube.com/watch?v=...',
+    sourceVideoTranscribeButton: 'ტრანსკრიფციის გენერაცია',
+    sourceVideoTranscribing: 'მუშავდება… (შეიძლება რამდენიმე წუთი დასჭირდეს)',
+    sourceImageUploadCta: 'სურათის ატვირთვა',
+    sourceImageHint: 'ფოტო სახელმძღვანელოდან, სლაიდი ან სამუშაო ფურცელი — AI ამოიღებს ტექსტს ხედვის მეშვეობით.',
+    sourceImageProcessing: 'სურათის ანალიზი…',
     presetTitle: 'კითხვების რაოდენობა',
     presetQuick: 'სწრაფი ტესტი (3-5)',
     presetStandard: 'სტანდარტული (10-15)',
@@ -88,6 +107,7 @@ const dictBase = {
     integrityScore: 'მთლიანობის ქულა',
     tabSwitches: 'ტაბის გადართვა',
     copyPasteCount: 'კოპირება/ჩასმა',
+    cameraAudioViolations: 'კამერა/მიკროფონის დარღვევა',
     aiTextScore: 'AI-ტექსტის ალბათობა',
     status: 'სტატუსი',
     inProgress: 'მიმდინარეობს',
@@ -114,11 +134,24 @@ const dictBase = {
     topic: 'Topic / Role',
     topicPlaceholder: 'e.g. Senior React Developer — hooks, state management, performance',
     description: 'Description (optional)',
-    sourceUpload: 'Source Document (optional): job description or material (PDF/DOCX)',
-    sourceUploadHint: "AI will use the uploaded document as extra context when generating questions.",
+    sourceUpload: 'Source Material (optional)',
+    sourceUploadHint: 'AI will use this material as extra context when generating questions.',
     uploadFile: 'Upload File',
     uploadingFile: 'Processing…',
-    sourceAttached: 'Document attached ✓',
+    sourceAttached: 'Material attached ✓',
+    sourceModeFile: 'File',
+    sourceModeText: 'Text',
+    sourceModeVideo: 'Video',
+    sourceModeImage: 'Image',
+    sourceTextPlaceholder: 'Paste source text here — a job description, study material, etc.',
+    sourceVideoYoutubeTab: 'YouTube Link',
+    sourceVideoUploadTab: 'Upload File',
+    sourceVideoYoutubePlaceholder: 'https://www.youtube.com/watch?v=...',
+    sourceVideoTranscribeButton: 'Generate Transcript',
+    sourceVideoTranscribing: 'Processing… (this can take a few minutes)',
+    sourceImageUploadCta: 'Upload Image',
+    sourceImageHint: 'A textbook photo, slide, or worksheet — AI will extract the text via vision.',
+    sourceImageProcessing: 'Analyzing image…',
     presetTitle: 'Question Count',
     presetQuick: 'Quick Quiz (3-5)',
     presetStandard: 'Standard (10-15)',
@@ -171,6 +204,7 @@ const dictBase = {
     integrityScore: 'Integrity Score',
     tabSwitches: 'Tab Switches',
     copyPasteCount: 'Copy/Paste',
+    cameraAudioViolations: 'Camera/Mic Violations',
     aiTextScore: 'AI-Written Likelihood',
     status: 'Status',
     inProgress: 'In Progress',
@@ -281,7 +315,7 @@ function SubmissionCard({ sub, t, onError }: { sub: ExamSubmissionRow; t: typeof
       </div>
       {sub.status !== 'IN_PROGRESS' && (
         <>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center mb-2">
+          <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 text-center mb-2">
             <div>
               <p className="text-[10px] text-slate-400">{t.mcqScore}</p>
               <p className="text-sm font-black">{sub.mcqScore ?? '—'}</p>
@@ -301,6 +335,10 @@ function SubmissionCard({ sub, t, onError }: { sub: ExamSubmissionRow; t: typeof
             <div>
               <p className="text-[10px] text-slate-400">{t.tabSwitches}/{t.copyPasteCount}</p>
               <p className="text-sm font-black">{sub.tabSwitches}/{sub.copyPasteCount}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-400">{t.cameraAudioViolations}</p>
+              <p className="text-sm font-black">{sub.cameraAudioViolations}</p>
             </div>
             <div>
               <p className="text-[10px] text-slate-400">{t.aiTextScore}</p>
@@ -374,11 +412,16 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createForm, setCreateForm] = useState(emptyForm);
   const [preset, setPreset] = useState<QuestionPreset>('standard');
+  const [sourceMode, setSourceMode] = useState<SourceMode>('file');
+  const [videoSourceMode, setVideoSourceMode] = useState<VideoSourceMode>('youtube');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
   const [uploadingSource, setUploadingSource] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const loadSessions = useCallback(async () => {
     setLoading(true);
@@ -396,19 +439,6 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
 
   useEffect(() => {
     loadSessions();
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        console.log('Tab switch detected');
-        // Log tab switch event to backend
-        fetch('/api/log-tab-switch', { method: 'POST', body: JSON.stringify({ timestamp: new Date() }) });
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
   }, [loadSessions]);
 
   useEffect(() => {
@@ -444,6 +474,52 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
     }
   };
 
+  const handleVideoFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingSource(true);
+    setCreateError(null);
+    try {
+      const rawContent = await parseExamSourceVideoFile(file);
+      setCreateForm((f) => ({ ...f, rawContent }));
+    } catch (err: any) {
+      setCreateError(err?.response?.data?.message ?? 'Unable to transcribe this video.');
+    } finally {
+      setUploadingSource(false);
+      if (videoInputRef.current) videoInputRef.current.value = '';
+    }
+  };
+
+  const handleTranscribeYoutube = async () => {
+    if (!youtubeUrl.trim()) return;
+    setUploadingSource(true);
+    setCreateError(null);
+    try {
+      const rawContent = await parseExamSourceYoutube(youtubeUrl.trim());
+      setCreateForm((f) => ({ ...f, rawContent }));
+    } catch (err: any) {
+      setCreateError(err?.response?.data?.message ?? 'Unable to transcribe this video.');
+    } finally {
+      setUploadingSource(false);
+    }
+  };
+
+  const handleImageFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingSource(true);
+    setCreateError(null);
+    try {
+      const rawContent = await parseExamSourceImage(file);
+      setCreateForm((f) => ({ ...f, rawContent }));
+    } catch (err: any) {
+      setCreateError(err?.response?.data?.message ?? 'Unable to analyze this image.');
+    } finally {
+      setUploadingSource(false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
+  };
+
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault();
     setCreating(true);
@@ -462,6 +538,9 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
       setSelectedId(session.id);
       setShowCreateForm(false);
       setCreateForm(emptyForm);
+      setSourceMode('file');
+      setVideoSourceMode('youtube');
+      setYoutubeUrl('');
     } catch (err: any) {
       setCreateError(err?.response?.data?.message ?? 'Unable to create exam.');
     } finally {
@@ -507,7 +586,7 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
     : '';
 
   return (
-    <div className="mb-10">
+    <div id="exam-proctoring" className="mb-10 scroll-mt-24">
       <div className="mb-4">
         <h2 className="text-lg font-black tracking-wide flex items-center gap-2">
           <ClipboardList className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
@@ -565,6 +644,31 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
             <div>
               <label className={labelClass}>{t.sourceUpload}</label>
               <p className="text-[11px] text-slate-400 mb-2">{t.sourceUploadHint}</p>
+
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {([
+                  ['file', t.sourceModeFile, FileText],
+                  ['text', t.sourceModeText, Type],
+                  ['video', t.sourceModeVideo, Video],
+                  ['image', t.sourceModeImage, ImageIcon],
+                ] as [SourceMode, string, typeof FileText][]).map(([mode, label, Icon]) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setSourceMode(mode)}
+                    className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border ${
+                      sourceMode === mode
+                        ? 'bg-slate-900 dark:bg-cyan-600 text-white border-transparent'
+                        : 'border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {sourceMode === 'file' && (
               <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-3 flex items-center gap-3">
                 <UploadCloud className="w-5 h-5 text-slate-400 shrink-0" />
                 <div className="min-w-0 flex-1 text-xs text-slate-500 dark:text-slate-400">
@@ -575,6 +679,96 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
                   <input ref={fileInputRef} type="file" accept=".pdf,.docx,.md,.txt" onChange={handleFileChange} className="hidden" disabled={uploadingSource} />
                 </label>
               </div>
+              )}
+
+              {sourceMode === 'text' && (
+                <textarea
+                  rows={4}
+                  className={inputClass}
+                  value={createForm.rawContent}
+                  onChange={(e) => setCreateForm({ ...createForm, rawContent: e.target.value })}
+                  placeholder={t.sourceTextPlaceholder}
+                />
+              )}
+
+              {sourceMode === 'video' && (
+                <div>
+                  <div className="flex gap-2 mb-2">
+                    <button
+                      type="button"
+                      onClick={() => setVideoSourceMode('youtube')}
+                      className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border ${
+                        videoSourceMode === 'youtube' ? 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-500/30' : 'border-slate-200 dark:border-slate-700 text-slate-500'
+                      }`}
+                    >
+                      <Link2 className="w-3.5 h-3.5" />
+                      {t.sourceVideoYoutubeTab}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setVideoSourceMode('upload')}
+                      className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border ${
+                        videoSourceMode === 'upload' ? 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-500/30' : 'border-slate-200 dark:border-slate-700 text-slate-500'
+                      }`}
+                    >
+                      <Video className="w-3.5 h-3.5" />
+                      {t.sourceVideoUploadTab}
+                    </button>
+                  </div>
+                  {videoSourceMode === 'youtube' ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="url"
+                        className={inputClass}
+                        value={youtubeUrl}
+                        onChange={(e) => setYoutubeUrl(e.target.value)}
+                        placeholder={t.sourceVideoYoutubePlaceholder}
+                        disabled={uploadingSource}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleTranscribeYoutube}
+                        disabled={uploadingSource || !youtubeUrl.trim()}
+                        className="shrink-0 rounded-lg bg-slate-900 dark:bg-cyan-600 text-white text-xs font-bold px-3 py-2.5 disabled:opacity-50"
+                      >
+                        {t.sourceVideoTranscribeButton}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-3 flex items-center gap-3">
+                      <UploadCloud className="w-5 h-5 text-slate-400 shrink-0" />
+                      <div className="min-w-0 flex-1 text-xs text-slate-500 dark:text-slate-400">
+                        {createForm.rawContent ? t.sourceAttached : ' '}
+                      </div>
+                      <label className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 shrink-0">
+                        {t.uploadFile}
+                        <input
+                          ref={videoInputRef}
+                          type="file"
+                          accept="video/*,audio/*,.mp4,.mov,.webm,.mp3,.wav,.m4a"
+                          onChange={handleVideoFileChange}
+                          className="hidden"
+                          disabled={uploadingSource}
+                        />
+                      </label>
+                    </div>
+                  )}
+                  {uploadingSource && <p className="text-[11px] text-slate-400 mt-2">{t.sourceVideoTranscribing}</p>}
+                </div>
+              )}
+
+              {sourceMode === 'image' && (
+                <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-3 flex items-center gap-3">
+                  <ImageIcon className="w-5 h-5 text-slate-400 shrink-0" />
+                  <div className="min-w-0 flex-1 text-xs text-slate-500 dark:text-slate-400">
+                    {uploadingSource ? t.sourceImageProcessing : createForm.rawContent ? t.sourceAttached : t.sourceImageHint}
+                  </div>
+                  <label className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 shrink-0">
+                    {uploadingSource ? t.uploadingFile : t.sourceImageUploadCta}
+                    <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageFileChange} className="hidden" disabled={uploadingSource} />
+                  </label>
+                </div>
+              )}
             </div>
 
             <div>

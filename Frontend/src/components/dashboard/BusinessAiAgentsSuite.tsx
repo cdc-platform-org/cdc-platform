@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Link from 'next/link';
 import { Lock, Clock, FileText, TrendingUp, MessageCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { hasAiAgentsSuiteAccess, aiTrialDaysRemaining, generateWithAiAgent, AiAgentSuiteTool } from '../../services/aiAgentsSuiteService';
@@ -138,12 +139,12 @@ function AiToolCard({
           >
             {loading ? t.generating : t.generate}
           </button>
-          <a
-            href="/learn-more"
+          <Link
+            href="/about"
             className="text-xs font-bold text-purple-500 hover:underline"
           >
             {t.learnMore}
-          </a>
+          </Link>
           {result && (
             <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 px-3.5 py-3 text-xs text-slate-700 dark:text-slate-200 whitespace-pre-wrap">
               {result}

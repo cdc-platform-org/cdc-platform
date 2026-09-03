@@ -38,5 +38,5 @@ export const submitExamAttemptSchema = z.object({
 });
 
 export const proctoringEventSchema = z.object({
-  type: z.enum(['TAB_SWITCH', 'COPY_PASTE']),
+  type: z.enum(['TAB_SWITCH', 'COPY_PASTE', 'FULLSCREEN_EXIT', 'FACE_MISSING', 'MULTIPLE_FACES', 'LOOKING_AWAY', 'BACKGROUND_VOICE']),
 });

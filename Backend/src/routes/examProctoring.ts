@@ -1,9 +1,11 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
+import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved, requireRole } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
+import { multerErrorHandler } from '../middleware/productUploads';
 import {
   createExamSessionSchema,
   updateExamSessionSchema,
@@ -16,10 +18,19 @@ import {
   gradePracticalAnswer,
   estimateAiTextScore,
   generateAdaptiveStudyGuide,
+  extractExamSourceFromImage,
   ExamProctoringAiError,
   isExamProctoringConfigured,
 } from '../services/examProctoringService';
 import { parseDocumentToMarkdown, DocumentParseError } from '../services/documentParserService';
+import {
+  isMediaStudioUploadConfigured,
+  isMediaStudioYoutubeConfigured,
+  isValidYoutubeUrl,
+  transcribeFromUpload,
+  transcribeFromYoutube,
+  MediaStudioError,
+} from '../services/mediaStudioService';
 import { recordExamGradingUsage } from '../services/billingService';
 import { generateExamReportPdf } from '../services/examReportService';
 
@@ -168,9 +179,14 @@ router.post('/submissions/:submissionToken/submit', candidateRateLimit, async (r
     where: { submissionId: submission.id },
     _count: { _all: true },
   });
-  const tabSwitches = eventCounts.find((e) => e.type === 'TAB_SWITCH')?._count._all ?? 0;
-  const copyPasteCount = eventCounts.find((e) => e.type === 'COPY_PASTE')?._count._all ?? 0;
-  const proctoringViolations = tabSwitches + copyPasteCount;
+  const countOf = (type: string) => eventCounts.find((e) => e.type === type)?._count._all ?? 0;
+  // Fullscreen-exit is reported as the same "left the exam context" kind of
+  // violation as a tab-switch (see Frontend's registerStrike('tab')) — both
+  // roll into this one bucket.
+  const tabSwitches = countOf('TAB_SWITCH') + countOf('FULLSCREEN_EXIT');
+  const copyPasteCount = countOf('COPY_PASTE');
+  const cameraAudioViolations = countOf('FACE_MISSING') + countOf('MULTIPLE_FACES') + countOf('LOOKING_AWAY') + countOf('BACKGROUND_VOICE');
+  const proctoringViolations = tabSwitches + copyPasteCount + cameraAudioViolations;
   // Server-side timer enforcement — startedAt/durationMinutes, not anything
   // client-supplied, so stopping the browser's JS countdown (or simply
   // taking hours to call this endpoint) can no longer buy unlimited extra
@@ -199,6 +215,7 @@ router.post('/submissions/:submissionToken/submit', candidateRateLimit, async (r
       proctoringViolations,
       tabSwitches,
       copyPasteCount,
+      cameraAudioViolations,
       integrityScore,
       status: disqualified ? 'FLAGGED' : 'COMPLETED',
       completedAt: new Date(),
@@ -404,6 +421,85 @@ router.post(
     }
   }
 );
+
+// Video/YouTube source material — reuses Media Studio's own
+// transcription pipeline (Backend/src/services/mediaStudioService.ts)
+// rather than reimplementing ffmpeg extraction + Gemini File API upload;
+// the resulting transcript flows into `rawContent` exactly like a parsed
+// PDF/DOCX. Same "file OR youtubeUrl on one endpoint" shape as
+// routes/mediaStudio.ts's own /transcribe — multer only engages for an
+// actual multipart request, so a plain JSON {youtubeUrl} body passes
+// through untouched.
+const videoSourceUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    if (/^(video|audio)\//.test(file.mimetype) || /\.(mp4|mov|webm|mp3|wav|m4a)$/i.test(file.originalname)) cb(null, true);
+    else cb(new Error('Only MP4, MOV, WEBM, MP3, WAV, or M4A files are allowed.'));
+  },
+  limits: { fileSize: 300 * 1024 * 1024 },
+});
+
+function handleVideoSourceUpload(req: Request, res: Response, next: NextFunction) {
+  videoSourceUpload.single('video')(req, res, (err: any) => multerErrorHandler(req, res, err, next));
+}
+
+const videoSourceYoutubeSchema = z.object({ youtubeUrl: z.string().min(1) });
+
+router.post('/sessions/parse-source-video', handleVideoSourceUpload, async (req: Request, res: Response) => {
+  try {
+    if (req.file) {
+      if (!isMediaStudioUploadConfigured()) {
+        return res.status(501).json({ message: 'Video transcription is not configured yet (GEMINI_API_KEY / ffmpeg).' });
+      }
+      const result = await transcribeFromUpload(req.file.buffer);
+      return res.status(201).json({ data: { rawContent: result.transcript } });
+    }
+
+    const parsed = videoSourceYoutubeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: 'Provide either a video file upload or a youtubeUrl.' });
+    }
+    if (!isMediaStudioYoutubeConfigured()) {
+      return res.status(501).json({ message: 'Video transcription is not configured yet (GEMINI_API_KEY).' });
+    }
+    if (!isValidYoutubeUrl(parsed.data.youtubeUrl)) {
+      return res.status(400).json({ message: 'Please provide a valid YouTube video URL.' });
+    }
+    const result = await transcribeFromYoutube(parsed.data.youtubeUrl);
+    res.status(201).json({ data: { rawContent: result.transcript } });
+  } catch (err) {
+    if (err instanceof MediaStudioError) return res.status(err.status).json({ message: err.message });
+    throw err;
+  }
+});
+
+// Image source material (photographed textbook page, slide, worksheet) —
+// Gemini reads image bytes natively, so this is a one-shot vision
+// extraction call (see examProctoringService.extractExamSourceFromImage),
+// not a separate OCR step.
+const imageSourceUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    if (/^image\//.test(file.mimetype)) cb(null, true);
+    else cb(new Error('Only image files (JPG, PNG, WEBP) are allowed.'));
+  },
+  limits: { fileSize: 15 * 1024 * 1024 },
+});
+
+function handleImageSourceUpload(req: Request, res: Response, next: NextFunction) {
+  imageSourceUpload.single('image')(req, res, (err: any) => multerErrorHandler(req, res, err, next));
+}
+
+router.post('/sessions/parse-source-image', handleImageSourceUpload, async (req: Request, res: Response) => {
+  if (!req.file) return res.status(400).json({ message: 'No image was selected.' });
+  try {
+    const rawContent = await extractExamSourceFromImage({ mimeType: req.file.mimetype, data: req.file.buffer.toString('base64') });
+    res.status(201).json({ data: { rawContent } });
+  } catch (err) {
+    if (err instanceof ExamProctoringAiError) return res.status(err.status).json({ message: err.message });
+    throw err;
+  }
+});
 
 router.get('/sessions', async (req: Request, res: Response) => {
   const sessions = await prisma.examSession.findMany({

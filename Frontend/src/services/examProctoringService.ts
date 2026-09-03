@@ -58,6 +58,7 @@ export interface ExamSubmissionRow {
   proctoringViolations: number;
   tabSwitches: number;
   copyPasteCount: number;
+  cameraAudioViolations: number;
   integrityScore: number | null;
   aiTextScore: number | null;
   status: ExamSubmissionStatus;
@@ -98,6 +99,36 @@ export async function parseExamSourceFile(file: File): Promise<string> {
   formData.append('file', file);
   const response = await apiClient.post<{ data: { rawContent: string } }>('/exam-proctoring/sessions/parse-source', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data.data.rawContent;
+}
+
+// Same two-step shape as parseExamSourceFile above — a video upload can
+// genuinely take a couple of minutes (ffmpeg extraction + Gemini File API
+// processing), same reasoning as mediaStudioService.ts's own timeout.
+export async function parseExamSourceVideoFile(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('video', file);
+  const response = await apiClient.post<{ data: { rawContent: string } }>('/exam-proctoring/sessions/parse-source-video', formData, {
+    timeout: 6 * 60 * 1000,
+  });
+  return response.data.data.rawContent;
+}
+
+export async function parseExamSourceYoutube(youtubeUrl: string): Promise<string> {
+  const response = await apiClient.post<{ data: { rawContent: string } }>(
+    '/exam-proctoring/sessions/parse-source-video',
+    { youtubeUrl },
+    { timeout: 6 * 60 * 1000 }
+  );
+  return response.data.data.rawContent;
+}
+
+export async function parseExamSourceImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('image', file);
+  const response = await apiClient.post<{ data: { rawContent: string } }>('/exam-proctoring/sessions/parse-source-image', formData, {
+    timeout: 60 * 1000,
   });
   return response.data.data.rawContent;
 }
@@ -170,7 +201,14 @@ export async function submitCandidateExam(submissionToken: string, payload: { an
 // paste, ...) so the count is recorded server-side, timestamped by server
 // receipt, rather than only totalled up client-side and reported once at
 // submit — see the backend route's own comment for why that mattered.
-export type ProctoringEventType = 'TAB_SWITCH' | 'COPY_PASTE';
+export type ProctoringEventType =
+  | 'TAB_SWITCH'
+  | 'COPY_PASTE'
+  | 'FULLSCREEN_EXIT'
+  | 'FACE_MISSING'
+  | 'MULTIPLE_FACES'
+  | 'LOOKING_AWAY'
+  | 'BACKGROUND_VOICE';
 
 export async function logProctoringEvent(submissionToken: string, type: ProctoringEventType): Promise<void> {
   await apiClient.post(`/exam-proctoring/submissions/${submissionToken}/events`, { type });
