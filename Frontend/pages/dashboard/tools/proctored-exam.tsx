@@ -315,8 +315,8 @@ function ProctoredExamContent() {
                 <ShieldCheck className="w-3.5 h-3.5" />
                 {t('liveBadge')}
               </span>
-              <h1 className="text-2xl md:text-3xl font-black tracking-wide mb-2">{t('examTitle', 'გამოცდის სათაური')}</h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">{t('pageSubtitle', 'გამოცდის აღწერა')}</p>
+              <h1 className="text-2xl md:text-3xl font-black tracking-wide mb-2">{t('examTitle')}</h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">{t('pageSubtitle')}</p>
             </div>
 
             <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 shadow-xl backdrop-blur-md bg-opacity-30">
