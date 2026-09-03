@@ -33,6 +33,8 @@ const dict = {
   ka: {
     loading: 'იტვირთება…',
     notFound: 'სტატია ვერ მოიძებნა.',
+    loadError: 'სტატიის ჩატვირთვა ვერ მოხერხდა. შეამოწმეთ კავშირი და სცადეთ ხელახლა.',
+    retryButton: 'ხელახლა ცდა',
     back: '← ბლოგზე დაბრუნება',
     by: 'ავტორი',
     minRead: (n: number) => `${n} წთ კითხვა`,
@@ -52,6 +54,8 @@ const dict = {
   en: {
     loading: 'Loading…',
     notFound: 'Article not found.',
+    loadError: "Couldn't load this article. Check your connection and try again.",
+    retryButton: 'Try again',
     back: '← Back to blog',
     by: 'By',
     minRead: (n: number) => `${n} min read`,
@@ -71,6 +75,8 @@ const dict = {
   de: {
     loading: 'Loading…',
     notFound: 'Article not found.',
+    loadError: "Couldn't load this article. Check your connection and try again.",
+    retryButton: 'Try again',
     back: '← Back to blog',
     by: 'By',
     minRead: (n: number) => `${n} min read`,
@@ -90,6 +96,8 @@ const dict = {
   es: {
     loading: 'Loading…',
     notFound: 'Article not found.',
+    loadError: "Couldn't load this article. Check your connection and try again.",
+    retryButton: 'Try again',
     back: '← Back to blog',
     by: 'By',
     minRead: (n: number) => `${n} min read`,
@@ -109,6 +117,8 @@ const dict = {
   fr: {
     loading: 'Loading…',
     notFound: 'Article not found.',
+    loadError: "Couldn't load this article. Check your connection and try again.",
+    retryButton: 'Try again',
     back: '← Back to blog',
     by: 'By',
     minRead: (n: number) => `${n} min read`,
@@ -128,6 +138,8 @@ const dict = {
   uk: {
     loading: 'Loading…',
     notFound: 'Article not found.',
+    loadError: "Couldn't load this article. Check your connection and try again.",
+    retryButton: 'Try again',
     back: '← Back to blog',
     by: 'By',
     minRead: (n: number) => `${n} min read`,
@@ -388,6 +400,7 @@ export default function BlogPostPage() {
   const [post, setPost] = useState<BlogPost | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [relatedPosts, setRelatedPosts] = useState<BlogPost[]>([]);
   const [comments, setComments] = useState<BlogComment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -402,6 +415,7 @@ export default function BlogPostPage() {
     if (!slug) return;
     setLoading(true);
     setNotFound(false);
+    setLoadError(false);
     try {
       const data = await getBlogPostById(slug);
       if (!data.published) {
@@ -409,8 +423,17 @@ export default function BlogPostPage() {
       } else {
         setPost(data);
       }
-    } catch {
-      setNotFound(true);
+    } catch (err: any) {
+      // A real 404 (post doesn't exist / was removed) is a distinct, stable
+      // state from a transient failure (network blip, timeout, 5xx) — the
+      // former has no reason to ever change on its own, the latter is worth
+      // a retry affordance rather than telling the visitor the article is
+      // gone when it likely isn't.
+      if (err?.response?.status === 404) {
+        setNotFound(true);
+      } else {
+        setLoadError(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -610,6 +633,28 @@ export default function BlogPostPage() {
       <div className="min-h-screen bg-slate-950 text-slate-400 text-sm flex flex-col">
         <SiteHeader />
         <div className="flex-1 flex items-center justify-center">{t.loading}</div>
+      </div>
+    );
+  }
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-300 text-sm flex flex-col">
+        <SiteHeader />
+        <div className="flex-1 flex flex-col items-center justify-center gap-4">
+          <p>{t.loadError}</p>
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={load}
+              className="text-sm font-bold text-white bg-cyan-600 px-4 py-2 rounded-lg hover:bg-cyan-500 cursor-pointer border-none"
+            >
+              {t.retryButton}
+            </button>
+            <Link href="/blog" className="text-cyan-400 hover:underline">
+              {t.back}
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }

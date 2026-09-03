@@ -24,9 +24,19 @@ export function blogContent(post: BlogPost, lang: 'ka' | 'en'): string {
   return (lang === 'en' && post.contentEn) || post.content;
 }
 
+// Every read here gets an explicit bound — apiClient has no default timeout
+// (axios's own default is 0 = unbounded), so a stalled connection (network
+// blip, backend cold start, DB pool exhaustion) would otherwise never
+// settle the promise at all. On the post-detail page that's the single
+// call gating the whole page's `loading` state, so an unbounded hang there
+// means the page is stuck on its loading view forever — see
+// pages/blog/[slug].tsx's load().
+const BLOG_READ_TIMEOUT_MS = 15 * 1000;
+
 export async function getBlogPosts(category?: string): Promise<BlogPost[]> {
   const response = await apiClient.get<{ data: BlogPost[] }>('/blog', {
     params: category ? { category } : undefined,
+    timeout: BLOG_READ_TIMEOUT_MS,
   });
   return response.data.data;
 }
@@ -34,7 +44,7 @@ export async function getBlogPosts(category?: string): Promise<BlogPost[]> {
 // Accepts either the post's id or its slug — the backend route resolves
 // whichever was passed (see Backend's routes/blog.ts).
 export async function getBlogPostById(idOrSlug: string): Promise<BlogPost> {
-  const response = await apiClient.get<{ data: BlogPost }>(`/blog/${idOrSlug}`);
+  const response = await apiClient.get<{ data: BlogPost }>(`/blog/${idOrSlug}`, { timeout: BLOG_READ_TIMEOUT_MS });
   return response.data.data;
 }
 
@@ -49,7 +59,7 @@ export function estimateReadingMinutes(content: string): number {
 }
 
 export async function getBlogComments(idOrSlug: string): Promise<BlogComment[]> {
-  const response = await apiClient.get<{ data: BlogComment[] }>(`/blog/${idOrSlug}/comments`);
+  const response = await apiClient.get<{ data: BlogComment[] }>(`/blog/${idOrSlug}/comments`, { timeout: BLOG_READ_TIMEOUT_MS });
   return response.data.data;
 }
 
