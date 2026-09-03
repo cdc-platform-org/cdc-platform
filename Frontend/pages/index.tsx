@@ -1180,7 +1180,7 @@ export default function Home() {
                 </ul>
                 {canUseAiAssistant ? (
                   <Link
-                    href="/dashboard/ai-tools"
+                    href="/dashboard/tools/chatbot-builder"
                     className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all"
                   >
                     <Sparkles className="w-4 h-4" />
