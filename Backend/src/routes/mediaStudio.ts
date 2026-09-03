@@ -13,6 +13,7 @@ import {
   MediaStudioError,
 } from '../services/mediaStudioService';
 import { sendMediaStudioExport } from '../services/emailService';
+import { callTextModelPlain, AiAgentError } from '../services/aiAgentService';
 
 // ============================================================
 // AI Voice & Video Media Studio — Feature B routes (video/audio ->
@@ -110,6 +111,36 @@ router.post('/email', authenticate, emailExportRateLimit, async (req: Request, r
     lang: parsed.data.lang,
   });
   res.json({ message: 'Sent.' });
+});
+
+const translateSchema = z.object({
+  text: z.string().min(1).max(2000),
+  targetLanguage: z.string().min(1).max(60),
+});
+
+// Same login + per-IP budget shape as tts.ts's /synthesize — a real Gemini
+// call per request, sized for a visitor translating a few highlighted
+// selections while reading, not bulk translation.
+const translateRateLimit = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 20,
+  message: 'Too many translation requests. Please wait a few minutes before trying again.',
+});
+
+router.post('/translate', authenticate, translateRateLimit, async (req: Request, res: Response) => {
+  const parsed = translateSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
+
+  try {
+    const translation = await callTextModelPlain(
+      `Translate the following text into ${parsed.data.targetLanguage}. Respond with ONLY the translation — no explanation, no quotes, no original text:\n\n${parsed.data.text}`,
+      0.1
+    );
+    res.json({ data: { translation: translation.trim() } });
+  } catch (err) {
+    if (err instanceof AiAgentError) return res.status(err.status).json({ message: err.message });
+    throw err;
+  }
 });
 
 export default router;

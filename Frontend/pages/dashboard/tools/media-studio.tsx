@@ -34,6 +34,7 @@ import {
   transcribeVideoUpload,
   transcribeYoutubeUrl,
   sendMediaStudioEmail,
+  translateText,
   TtsVoice,
 } from '../../../src/services/mediaStudioService';
 
@@ -62,6 +63,22 @@ const SITE_LOCALE_TO_VOICE_LOCALE: Record<string, string> = {
   tr: 'tr-TR',
   hy: 'hy-AM',
   az: 'az-AZ',
+};
+
+// Target language name for the "translate selection" feature — the AI
+// translation prompt takes a plain language name, not a BCP-47 code, so
+// this is deliberately a separate map from SITE_LOCALE_TO_VOICE_LOCALE
+// above rather than deriving one from the other.
+const SITE_LOCALE_TO_LANGUAGE_NAME: Record<string, string> = {
+  ka: 'Georgian',
+  en: 'English',
+  de: 'German',
+  es: 'Spanish',
+  fr: 'French',
+  uk: 'Ukrainian',
+  tr: 'Turkish',
+  hy: 'Armenian',
+  az: 'Azerbaijani',
 };
 
 // Locales pinned to the top of the searchable language list, in this order —
@@ -258,6 +275,9 @@ function MediaStudioContent() {
   const [speed, setSpeed] = useState(1);
   const [ttsLoading, setTtsLoading] = useState<'main' | 'selection' | null>(null);
   const [ttsError, setTtsError] = useState<string | null>(null);
+  const [translating, setTranslating] = useState(false);
+  const [translatedText, setTranslatedText] = useState<string | null>(null);
+  const [translationError, setTranslationError] = useState<string | null>(null);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -362,6 +382,21 @@ function MediaStudioContent() {
 
   const handleGenerateSpeech = () => runSynthesis(text, 'main');
   const handleSpeakSelected = () => runSynthesis(selectedText, 'selection');
+
+  const handleTranslateSelected = async () => {
+    if (!selectedText.trim()) return;
+    setTranslating(true);
+    setTranslationError(null);
+    setTranslatedText(null);
+    try {
+      const targetLanguage = SITE_LOCALE_TO_LANGUAGE_NAME[router.locale ?? 'ka'] ?? 'English';
+      setTranslatedText(await translateText(selectedText.trim(), targetLanguage));
+    } catch (err) {
+      setTranslationError(await extractErrorMessage(err, t('ttsTranslationError')));
+    } finally {
+      setTranslating(false);
+    }
+  };
 
   useEffect(() => {
     if (audioElRef.current) audioElRef.current.playbackRate = playbackRate;
@@ -588,7 +623,25 @@ function MediaStudioContent() {
                     {ttsLoading === 'selection' ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                     {t('ttsSpeakSelectedButton')}
                   </button>
+                  <button
+                    type="button"
+                    disabled={!selectedText.trim() || translating}
+                    onClick={handleTranslateSelected}
+                    className="inline-flex items-center gap-2 border border-cyan-500/40 text-cyan-600 dark:text-cyan-400 font-black text-sm px-6 py-3 rounded-xl bg-transparent cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-cyan-500/10 transition-colors"
+                  >
+                    {translating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    {translating ? t('ttsTranslating') : t('ttsTranslateSelectedButton')}
+                  </button>
                 </div>
+
+                {translationError && <p className="text-sm text-red-600 dark:text-red-400 mt-3">{translationError}</p>}
+
+                {translatedText && (
+                  <div className="mt-4 rounded-xl border border-cyan-500/30 bg-cyan-500/5 px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-cyan-600 dark:text-cyan-400 mb-1">{t('ttsTranslationLabel')}</p>
+                    <p className="text-sm text-slate-700 dark:text-slate-200">{translatedText}</p>
+                  </div>
+                )}
 
                 {audioUrl && (
                   <div className="mt-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-4">

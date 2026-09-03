@@ -59,3 +59,8 @@ export async function transcribeYoutubeUrl(youtubeUrl: string): Promise<Transcri
 export async function sendMediaStudioEmail(payload: { to: string; transcript?: string; notes?: string; lang?: 'ka' | 'en' }): Promise<void> {
   await apiClient.post('/media-studio/email', payload);
 }
+
+export async function translateText(text: string, targetLanguage: string): Promise<string> {
+  const response = await apiClient.post<{ data: { translation: string } }>('/media-studio/translate', { text, targetLanguage });
+  return response.data.data.translation;
+}
