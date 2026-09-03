@@ -22,6 +22,7 @@
   "ttsTranslationLabel": "თარგმანი",
   "ttsTranslationError": "თარგმნა ვერ მოხერხდა.",
   "ttsDownloadButton": "📥 MP3 ჩამოტვირთვა",
+  "ttsVoicesLoading": "ხმების ჩატვირთვა…",
   "ttsNoVoicesConfigured": "ტექსტიდან ხმად გარდაქმნის სერვისი ჯერ არ არის კონფიგურირებული.",
   "ttsError": "ხმის გენერირება ვერ მოხერხდა.",
   "ttsCharsCount": "სიმბოლო",

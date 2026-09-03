@@ -14,7 +14,11 @@ export interface TtsVoice {
 }
 
 export async function getTtsVoices(): Promise<TtsVoice[]> {
-  const response = await apiClient.get<{ data: TtsVoice[] }>('/tts/voices');
+  // Backend's own Azure fetch is bounded at 20s (see azureSpeechService.ts's
+  // AZURE_SPEECH_REQUEST_TIMEOUT_MS) — this stays a bit above that so the
+  // backend's own clear timeout error reaches the UI instead of axios's
+  // generic one winning the race.
+  const response = await apiClient.get<{ data: TtsVoice[] }>('/tts/voices', { timeout: 25 * 1000 });
   return response.data.data;
 }
 
@@ -28,7 +32,9 @@ export interface SynthesizeSpeechPayload {
 // Returns a playable/downloadable Blob directly — the backend streams raw
 // MP3 bytes rather than a JSON envelope (see routes/tts.ts's Content-Type).
 export async function synthesizeSpeech(payload: SynthesizeSpeechPayload): Promise<Blob> {
-  const response = await apiClient.post('/tts/synthesize', payload, { responseType: 'blob' });
+  // Backend's own Azure fetch is bounded at 60s — see synthesize's comment
+  // in getTtsVoices() above for why the client stays a bit above that.
+  const response = await apiClient.post('/tts/synthesize', payload, { responseType: 'blob', timeout: 70 * 1000 });
   return response.data;
 }
 

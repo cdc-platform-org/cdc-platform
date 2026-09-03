@@ -22,6 +22,7 @@
   "ttsTranslationLabel": "Переклад",
   "ttsTranslationError": "Не вдалося перекласти текст.",
   "ttsDownloadButton": "📥 Завантажити MP3",
+  "ttsVoicesLoading": "Завантаження голосів…",
   "ttsNoVoicesConfigured": "Синтез мовлення ще не налаштовано.",
   "ttsError": "Не вдалося створити аудіо.",
   "ttsCharsCount": "символів",

@@ -22,6 +22,7 @@
   "ttsTranslationLabel": "Tərcümə",
   "ttsTranslationError": "Mətn tərcümə edilə bilmədi.",
   "ttsDownloadButton": "📥 MP3 yüklə",
+  "ttsVoicesLoading": "Səslər yüklənir…",
   "ttsNoVoicesConfigured": "Mətndən səsə çevirmə hələ konfiqurasiya edilməyib.",
   "ttsError": "Səs yaradıla bilmədi.",
   "ttsCharsCount": "simvol",

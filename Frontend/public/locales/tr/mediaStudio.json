@@ -22,6 +22,7 @@
   "ttsTranslationLabel": "Çeviri",
   "ttsTranslationError": "Metin çevrilemedi.",
   "ttsDownloadButton": "📥 MP3 indir",
+  "ttsVoicesLoading": "Sesler yükleniyor…",
   "ttsNoVoicesConfigured": "Metinden sese dönüştürme henüz yapılandırılmadı.",
   "ttsError": "Ses oluşturulamadı.",
   "ttsCharsCount": "karakter",

@@ -22,6 +22,7 @@
   "ttsTranslationLabel": "Traduction",
   "ttsTranslationError": "Impossible de traduire le texte.",
   "ttsDownloadButton": "📥 Télécharger le MP3",
+  "ttsVoicesLoading": "Chargement des voix…",
   "ttsNoVoicesConfigured": "La synthèse vocale n'est pas encore configurée.",
   "ttsError": "Impossible de générer l'audio.",
   "ttsCharsCount": "caractères",

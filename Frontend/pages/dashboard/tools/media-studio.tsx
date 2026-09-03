@@ -266,6 +266,7 @@ function MediaStudioContent() {
 
   // ---------------- Feature A: Text to Speech ----------------
   const [voices, setVoices] = useState<TtsVoice[] | null>(null);
+  const [voicesLoading, setVoicesLoading] = useState(true);
   const [voicesError, setVoicesError] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [selection, setSelection] = useState({ start: 0, end: 0 });
@@ -288,7 +289,8 @@ function MediaStudioContent() {
   useEffect(() => {
     getTtsVoices()
       .then(setVoices)
-      .catch(async (err) => setVoicesError(await extractErrorMessage(err, t('ttsNoVoicesConfigured'))));
+      .catch(async (err) => setVoicesError(await extractErrorMessage(err, t('ttsNoVoicesConfigured'))))
+      .finally(() => setVoicesLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -536,7 +538,12 @@ function MediaStudioContent() {
 
         {tab === 'tts' && (
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
-            {voicesError ? (
+            {voicesLoading ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                <Loader2 className="w-4 h-4 shrink-0 animate-spin" />
+                {t('ttsVoicesLoading')}
+              </p>
+            ) : voicesError ? (
               <p className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 {voicesError}

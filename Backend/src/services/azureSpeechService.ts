@@ -25,6 +25,17 @@ export class AzureSpeechError extends Error {
   }
 }
 
+// Plain fetch() never starts a timer on its own — if Azure accepts the TCP
+// connection but never responds (a real failure mode, distinct from a
+// prompt 4xx/5xx), the request hangs forever and ties up the Express
+// connection indefinitely. Same posture/reasoning as
+// utils/geminiRequestOptions.ts's GEMINI_REQUEST_TIMEOUT_MS.
+const AZURE_SPEECH_REQUEST_TIMEOUT_MS = 20_000;
+
+function isTimeoutError(err: unknown): boolean {
+  return err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
+}
+
 export function isTtsConfigured(): boolean {
   return !!AZURE_SPEECH_KEY && !!AZURE_SPEECH_REGION;
 }
@@ -70,9 +81,16 @@ export async function listVoices(): Promise<TtsVoice[]> {
     return voiceCache.voices;
   }
 
-  const response = await fetch(`https://${regionalHost()}/cognitiveservices/voices/list`, {
-    headers: { 'Ocp-Apim-Subscription-Key': AZURE_SPEECH_KEY },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`https://${regionalHost()}/cognitiveservices/voices/list`, {
+      headers: { 'Ocp-Apim-Subscription-Key': AZURE_SPEECH_KEY },
+      signal: AbortSignal.timeout(AZURE_SPEECH_REQUEST_TIMEOUT_MS),
+    });
+  } catch (err) {
+    if (isTimeoutError(err)) throw new AzureSpeechError('Azure Speech voices/list request timed out.', 503);
+    throw err;
+  }
   if (!response.ok) {
     throw new AzureSpeechError(`Azure Speech voices/list request failed (HTTP ${response.status}).`, response.status === 401 || response.status === 403 ? 502 : 503);
   }
@@ -122,16 +140,25 @@ export async function synthesizeSpeech(params: { text: string; voiceShortName: s
     `<prosody rate="${speedToProsodyRate(params.speed)}">${escapeSsml(params.text)}</prosody>` +
     `</voice></speak>`;
 
-  const response = await fetch(`https://${regionalHost()}/cognitiveservices/v1`, {
-    method: 'POST',
-    headers: {
-      'Ocp-Apim-Subscription-Key': AZURE_SPEECH_KEY,
-      'Content-Type': 'application/ssml+xml',
-      'X-Microsoft-OutputFormat': 'audio-16khz-128kbitrate-mono-mp3',
-      'User-Agent': 'cdc-platform-media-studio',
-    },
-    body: ssml,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`https://${regionalHost()}/cognitiveservices/v1`, {
+      method: 'POST',
+      headers: {
+        'Ocp-Apim-Subscription-Key': AZURE_SPEECH_KEY,
+        'Content-Type': 'application/ssml+xml',
+        'X-Microsoft-OutputFormat': 'audio-16khz-128kbitrate-mono-mp3',
+        'User-Agent': 'cdc-platform-media-studio',
+      },
+      body: ssml,
+      // Long-form narration genuinely takes longer to synthesize than a
+      // voices/list lookup — same reasoning, more generous bound.
+      signal: AbortSignal.timeout(AZURE_SPEECH_REQUEST_TIMEOUT_MS * 3),
+    });
+  } catch (err) {
+    if (isTimeoutError(err)) throw new AzureSpeechError('Azure Speech synthesis request timed out.', 503);
+    throw err;
+  }
 
   if (!response.ok) {
     const detail = await response.text().catch(() => '');

@@ -22,6 +22,7 @@
   "ttsTranslationLabel": "Թարգմանություն",
   "ttsTranslationError": "Տեքստը թարգմանել չհաջողվեց։",
   "ttsDownloadButton": "📥 Ներբեռնել MP3",
+  "ttsVoicesLoading": "Ձայները բեռնվում են…",
   "ttsNoVoicesConfigured": "Տեքստից ձայնի փոխակերպումը դեռ կարգավորված չէ։",
   "ttsError": "Ձայնը ստեղծել չհաջողվեց։",
   "ttsCharsCount": "նիշ",
