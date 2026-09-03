@@ -63,8 +63,8 @@ export default class MyDocument extends Document {
             }}
           />
           <link rel="canonical" href="https://www.cdc.ge" />
-          <link rel="alternate" href="https://www.cdc.ge" hreflang="ka-GE" />
-          <link rel="alternate" href="https://www.cdc.ge/en" hreflang="en" />
+          <link rel="alternate" href="https://www.cdc.ge" hrefLang="ka-GE" />
+          <link rel="alternate" href="https://www.cdc.ge/en" hrefLang="en" />
           <meta name="keywords" content="ციფრული პროფესიები, ტოპ 10 პროფესია საქართველოში, მაღალანაზღაურებადი პროფესიები, ციფრული პროფესიების ცენტრი, CDC, მასწავლებლის ასისტენტი, AI ტესტების გენერატორი, ონლაინ სწავლება" />
           <meta property="og:title" content="ციფრული პროფესიების ცენტრი (CDC) - საუკეთესო პროფესიები საქართველოში" />
           <meta property="og:description" content="ციფრული პროფესიების ცენტრი (CDC) გთავაზობთ ტოპ 10 პროფესიას საქართველოში, მათ შორის მაღალანაზღაურებადი პროფესიები, AI ტესტების გენერატორი და მასწავლებლის ასისტენტი." />

@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { useTranslation } from 'next-i18next';
 
 const SiteFooter = () => {
@@ -11,8 +12,8 @@ const SiteFooter = () => {
                     <div>
                         <h3 className="font-bold mb-2">{t('about', 'ჩვენს შესახებ')}</h3>
                         <ul>
-                            <li><a href="/about" className="text-slate-600 dark:text-slate-300 hover:underline">{t('aboutUs', 'ჩვენ შესახებ')}</a></li>
-                            <li><a href="/contact" className="text-slate-600 dark:text-slate-300 hover:underline">{t('contact', 'კონტაქტი')}</a></li>
+                            <li><Link href="/about" className="text-slate-600 dark:text-slate-300 hover:underline">{t('aboutUs', 'ჩვენ შესახებ')}</Link></li>
+                            <li><Link href="/contact" className="text-slate-600 dark:text-slate-300 hover:underline">{t('contact', 'კონტაქტი')}</Link></li>
                         </ul>
                     </div>
                     <div>

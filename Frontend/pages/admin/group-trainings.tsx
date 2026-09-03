@@ -18,7 +18,7 @@ const mockRequests = [
 export default function GroupTrainingsAdmin() {
     const [requests, setRequests] = useState(mockRequests);
 
-    const updateRequest = (id, updates) => {
+    const updateRequest = (id: number, updates: Partial<(typeof mockRequests)[number]>) => {
         setRequests((prev) =>
             prev.map((req) => (req.id === id ? { ...req, ...updates } : req))
         );

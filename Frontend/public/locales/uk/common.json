@@ -1,5 +1,12 @@
 {
   "verificationBadges": {
+    "examTitle": "Назва іспиту",
+    "setupSubjectLabel": "Предмет / Тема",
+    "setupStartButton": "Почати іспит",
+    "setupLevelLabel": "Складність",
+    "setupQuestionCountLabel": "Кількість запитань",
+    "setupCameraLabel": "Увімкнути камеру",
+    "setupFullscreenLabel": "Повний екран",
     "student": "Студент",
     "freelancer": "Фрілансер",
     "business": "Бізнес"

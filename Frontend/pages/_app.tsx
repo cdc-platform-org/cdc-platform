@@ -1,41 +1,6 @@
 import { appWithTranslation, useTranslation } from 'next-i18next';
 import i18next from 'i18next';
 import { useEffect } from 'react';
-import { useRouter } from 'next/router';
-
-function App({ Component, pageProps }: AppProps) {
-  const router = useRouter();
-
-  useEffect(() => {
-    const handleLanguageChange = (lang: string) => {
-      i18next.changeLanguage(lang);
-    };
-
-    i18next.on('languageChanged', handleLanguageChange);
-
-    return () => {
-      i18next.off('languageChanged', handleLanguageChange);
-    };
-  }, []);
-
-  const { ready } = useTranslation();
-
-  if (!ready) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500"></div>
-      </div>
-    );
-  }
-    <AuthProvider>
-      <AuthModalProvider>
-        <VerificationDrawerProvider>
-          <Component {...pageProps} />
-        </VerificationDrawerProvider>
-      </AuthModalProvider>
-    </AuthProvider>
-  );
-}
 
 // Ensure all required locales are loaded
 i18next.init({
@@ -117,6 +82,29 @@ const georgianSafeFont = Noto_Sans_Georgian({
 
 function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
+
+  useEffect(() => {
+    const handleLanguageChange = (lang: string) => {
+      i18next.changeLanguage(lang);
+    };
+
+    i18next.on('languageChanged', handleLanguageChange);
+
+    return () => {
+      i18next.off('languageChanged', handleLanguageChange);
+    };
+  }, []);
+
+  const { ready } = useTranslation();
+
+  if (!ready) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500"></div>
+      </div>
+    );
+  }
+
   // FloatingButtons only renders on the homepage (see FloatingButtons.tsx) —
   // a fixed bottom-6 right-6 stack of two 48px pills (96px + 12px gap =
   // 132px tall from the viewport edge) there. ScrollToTop is pushed above it
@@ -155,6 +143,7 @@ function App({ Component, pageProps }: AppProps) {
             }),
           }}
         />
+        <style>{`
           /* Font-family itself (GL-Kirovi @font-face + the forced rule on
              html/body/inputs/headings) now lives in styles/globals.css —
              one canonical declaration instead of two copies drifting apart.
@@ -194,24 +183,24 @@ function App({ Component, pageProps }: AppProps) {
           }
 
           /* ყველა ღილაკის გაცოცხლება */
-          button, 
-          a.bg-slate-900, 
+          button,
+          a.bg-slate-900,
           a.bg-gradient-to-r,
           .bg-cyan-500,
           button.bg-gradient-to-r {
             transition: all 0.25s ease !important;
           }
 
-          button:hover, 
-          a.bg-slate-900:hover, 
+          button:hover,
+          a.bg-slate-900:hover,
           a.bg-gradient-to-r:hover {
             transform: translateY(-2px) !important;
             opacity: 0.95;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15) !important;
           }
 
-          button:active, 
-          a.bg-slate-900:active, 
+          button:active,
+          a.bg-slate-900:active,
           a.bg-gradient-to-r:active {
             transform: translateY(1px) !important;
           }

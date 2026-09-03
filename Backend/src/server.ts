@@ -7,6 +7,7 @@ import './instrument';
 // promises in async route handlers reach errorHandler below instead of
 // crashing the process.
 import 'express-async-errors';
+import express from 'express';
 import languageTeacherRoutes from './routes/languageTeacher'; // Add this import
 import cors from 'cors';
 import path from 'path';

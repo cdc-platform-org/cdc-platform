@@ -183,10 +183,6 @@ export default function StudentQuizPage() {
         {phase === 'in-progress' && quiz && (
           <div>
             <div className="pb-32 sticky top-0 z-10 -mx-4 px-4 py-3 mb-6 bg-slate-950/95 backdrop-blur border-b border-slate-800">
-              <QuizTimer
-                duration={quiz.duration}
-                onExpire={() => handleSubmit(true)}
-              />
               <span className="pb-32 text-sm font-black flex items-center gap-1.5">
                 <Clock className="pb-32 w-4 h-4 text-cyan-400" />
                 {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}

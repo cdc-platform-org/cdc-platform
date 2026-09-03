@@ -24,6 +24,7 @@
   "playerTitle": "Audio player",
   "playerPlay": "Play",
   "playerPause": "Pause",
+  "playerResume": "Resume",
   "playerStop": "Stop",
   "playerSpeedLabel": "Speed",
   "videoSourceLabel": "Source",

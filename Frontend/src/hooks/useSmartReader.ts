@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import apiClient from '../services/apiClient';
 
 interface WordAnalysis {
   word: string;
@@ -65,15 +66,10 @@ export function useSmartReader(initialText: string) {
     setCefrLevel(null);
 
     try {
-      const res = await fetch('/api/language-teacher/summarize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      });
-      const data = await res.json();
+      const { data } = await apiClient.post<{ summary: string }>('/language-teacher/summarize', { text });
       const [summaryText, cefr] = data.summary.split('CEFR Level:');
       setSummary(summaryText.trim());
-      setCefrLevel(cefr.trim());
+      setCefrLevel((cefr ?? '').trim());
     } catch {
       setSummary('Error summarizing text.');
     } finally {
@@ -101,17 +97,10 @@ export function useSmartReader(initialText: string) {
       setIsListening(false);
 
       try {
-        const res = await fetch('/api/language-teacher/analyze-pronunciation', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            referenceText: text,
-            transcribedText: transcript,
-            learningLanguage: learningLang,
-            nativeLanguage: nativeLang
-          })
-        });
-        const data = await res.json();
+        const { data } = await apiClient.post<{ words: WordAnalysis[]; teacherAdvice: string }>(
+          '/language-teacher/analyze-pronunciation',
+          { referenceText: text, transcribedText: transcript, learningLanguage: learningLang, nativeLanguage: nativeLang }
+        );
         setWordScores(data.words || []);
         setTeacherAdvice(data.teacherAdvice || null);
       } catch {

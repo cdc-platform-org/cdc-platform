@@ -1,5 +1,12 @@
 {
   "verificationBadges": {
+    "examTitle": "Sınav Başlığı",
+    "setupSubjectLabel": "Konu / Ders",
+    "setupStartButton": "Sınavı Başlat",
+    "setupLevelLabel": "Zorluk",
+    "setupQuestionCountLabel": "Soru Sayısı",
+    "setupCameraLabel": "Kamerayı Etkinleştir",
+    "setupFullscreenLabel": "Tam Ekran",
     "student": "Öğrenci",
     "freelancer": "Freelancer",
     "business": "İşletme"

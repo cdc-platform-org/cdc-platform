@@ -16,8 +16,6 @@ import {
   Printer,
   FileDown,
   Loader2,
-  AlertCircle,
-  X,
   Link2,
   Users,
 } from 'lucide-react';
@@ -28,6 +26,7 @@ import BackButton from '../../../src/components/common/BackButton';
 import SEOHead from '../../../src/components/seo/SEOHead';
 import RichTextEditor from '../../../src/components/shared/RichTextEditor';
 import FileDropzone from '../../../src/components/shared/FileDropzone';
+import CertificateBuilder from '../../../src/components/certificates/CertificateBuilder';
 import { resolveLocale, contentLocale } from '../../../src/utils/locale';
 import {
   getEducatorHubState,
@@ -57,7 +56,7 @@ import {
   ParentLetterPurpose,
 } from '../../../src/services/educatorHubService';
 
-type TabId = 'test' | 'rubric' | 'grading' | 'sen' | 'lessonPlan' | 'bureaucracy' | 'parentReports';
+type TabId = 'test' | 'rubric' | 'grading' | 'sen' | 'lessonPlan' | 'bureaucracy' | 'parentReports' | 'certificates';
 
 // All 7 modules are real generation now — no more "coming soon" tier.
 const REAL_TABS: { id: TabId; icon: typeof FileText }[] = [
@@ -82,66 +81,9 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-async function exportPdf(sections: { heading: string; body: string }[], filename: string) {
-  const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
-
-  const pdfDoc = await PDFDocument.create();
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const page = pdfDoc.addPage([595.28, 841.89]); // A4 dimensions in points
-  const { width, height } = page.getSize();
-  const fontSize = 12;
-
-  let y = height - 50; // Start 50 points from the top
-  sections.forEach(({ heading, body }) => {
-    page.drawText(heading, { x: 50, y, size: fontSize + 2, font, color: rgb(0, 0, 0) });
-    y -= fontSize + 10;
-    body.split('\n').forEach((line) => {
-      page.drawText(line, { x: 50, y, size: fontSize, font, color: rgb(0, 0, 0) });
-      y -= fontSize + 5;
-    });
-    y -= 20; // Add spacing between sections
-  });
-
-  const pdfBytes = await pdfDoc.save();
-  downloadBlob(new Blob([pdfBytes], { type: 'application/pdf' }), filename);
-}
-
-async function exportSeparatePdfs(testSheet: string, answerKey: string) {
-  await exportPdf([{ heading: 'ტესტი', body: testSheet }], 'Testi_Sagan.pdf');
-  await exportPdf([{ heading: 'პასუხების ფურცელი', body: answerKey }], 'Pasukhebis_Furtseli.pdf');
-}
+async function exportDocx(sections: { heading: string; body: string }[], filename: string) {
   const { Document, Packer, Paragraph, HeadingLevel, TextRun } = await import('docx');
-  const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
-
-  async function exportPdf(sections: { heading: string; body: string }[], filename: string) {
-    const pdfDoc = await PDFDocument.create();
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const page = pdfDoc.addPage([595.28, 841.89]); // A4 dimensions in points
-    const { width, height } = page.getSize();
-    const fontSize = 12;
-
-    let y = height - 50; // Start 50 points from the top
-    sections.forEach(({ heading, body }) => {
-      page.drawText(heading, { x: 50, y, size: fontSize + 2, font, color: rgb(0, 0, 0) });
-      y -= fontSize + 10;
-      body.split('\n').forEach((line) => {
-        page.drawText(line, { x: 50, y, size: fontSize, font, color: rgb(0, 0, 0) });
-        y -= fontSize + 5;
-      });
-      y -= 20; // Add spacing between sections
-    });
-
-    const pdfBytes = await pdfDoc.save();
-    downloadBlob(new Blob([pdfBytes], { type: 'application/pdf' }), filename);
-  }
-  const toParagraphs = (text: string) =>
-    text.split('\n').map(
-      (line) =>
-        new Paragraph({
-          children: [new TextRun({ text: line, font: 'Times New Roman', size: 24 })],
-          spacing: { after: 200 },
-        })
-    );
+  const toParagraphs = (text: string) => text.split('\n').map((line) => new Paragraph({ children: [new TextRun(line)] }));
   const children: any[] = [];
   sections.forEach(({ heading, body }) => {
     children.push(new Paragraph({ text: heading, heading: HeadingLevel.HEADING_1 }));
@@ -166,11 +108,6 @@ function extractErrorMessage(err: any, fallback: string): { message: string; cod
 }
 
 function ExportBar({ t, sections, filenameBase, printAreaId }: { t: (k: string) => string; sections: { heading: string; body: string }[]; filenameBase: string; printAreaId: string }) {
-  const handleTextToSpeech = (text: string) => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-US';
-    window.speechSynthesis.speak(utterance);
-  };
   const [copied, setCopied] = useState(false);
   const handleCopy = async () => {
     await navigator.clipboard.writeText(sections.map((s) => `${s.heading}\n\n${s.body}`).join('\n\n---\n\n'));
@@ -187,47 +124,15 @@ function ExportBar({ t, sections, filenameBase, printAreaId }: { t: (k: string) 
         <Copy className="w-3.5 h-3.5" />
         {copied ? t('exportCopied') : t('exportCopy')}
       </button>
-      <button
-        type="button"
-        onClick={async () => {
-          setLoading(true);
-          await exportSeparatePdfs(
-            sections.find((s) => s.heading === t('testOutputSheetHeading'))?.body || '',
-            sections.find((s) => s.heading === t('testOutputKeyHeading'))?.body || ''
-          );
-          setLoading(false);
-        }}
-        className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg ${
-          loading ? 'bg-gray-300 dark:bg-gray-700' : 'bg-slate-100 dark:bg-slate-800'
-        } text-slate-700 dark:text-slate-200 border-none cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700`}
-        disabled={loading}
-      >
+      <button type="button" onClick={() => exportDocx(sections, `${filenameBase}.docx`)} className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-none cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700">
         <FileDown className="w-3.5 h-3.5" />
         {t('exportDocx')}
       </button>
-      <button
-        type="button"
-        onClick={async () => {
-          setLoading(true);
-          await exportPdf(sections, `${filenameBase}.pdf`);
-          setLoading(false);
-        }}
-        className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg ${
-          loading ? 'bg-gray-300 dark:bg-gray-700' : 'bg-slate-100 dark:bg-slate-800'
-        } text-slate-700 dark:text-slate-200 border-none cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700`}
-        disabled={loading}
-      >
+      <button type="button" onClick={() => exportTxt(sections, `${filenameBase}.txt`)} className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-none cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700">
         <FileDown className="w-3.5 h-3.5" />
         {t('exportTxt')}
       </button>
       <button type="button" onClick={handlePrint} className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-none cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700">
-        <Printer className="w-3.5 h-3.5" />
-        {t('exportPrint')}
-      </button>
-      <button type="button" onClick={() => handleTextToSpeech(sections.map((s) => `${s.heading}\n\n${s.body}`).join('\n\n'))} className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-none cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700">
-        <FileText className="w-3.5 h-3.5" />
-        {t('listenToExplanation')}
-      </button>
         <Printer className="w-3.5 h-3.5" />
         {t('exportPrint')}
       </button>
@@ -252,42 +157,6 @@ function UsageMeter({ label, used, limit }: { label: string; used: number; limit
 
 const inputClass =
   'w-full px-3.5 py-2.5 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900/40 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500';
-
-function useSpeechToText(onResult: (text: string) => void) {
-  const [listening, setListening] = useState(false);
-  const recognition = useRef<SpeechRecognition | null>(null);
-
-  useEffect(() => {
-    if ('webkitSpeechRecognition' in window) {
-      recognition.current = new (window as any).webkitSpeechRecognition();
-      recognition.current.continuous = false;
-      recognition.current.interimResults = false;
-      recognition.current.lang = 'en-US';
-      recognition.current.onresult = (event: SpeechRecognitionEvent) => {
-        const transcript = event.results[0][0].transcript;
-        onResult(transcript);
-      };
-      recognition.current.onerror = () => setListening(false);
-      recognition.current.onend = () => setListening(false);
-    }
-  }, [onResult]);
-
-  const startListening = () => {
-    if (recognition.current) {
-      setListening(true);
-      recognition.current.start();
-    }
-  };
-
-  const stopListening = () => {
-    if (recognition.current) {
-      setListening(false);
-      recognition.current.stop();
-    }
-  };
-
-  return { listening, startListening, stopListening };
-}
 const labelClass = 'block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5';
 // Native <select> renders its <option> popup via the OS, outside the page's
 // own light/dark styling — without an explicit color here, dark mode's
@@ -302,23 +171,6 @@ function EducatorHubContent() {
 
   const [hubState, setHubState] = useState<EducatorHubState | null>(null);
   const [stateLoading, setStateLoading] = useState(true);
-  const [promoCode, setPromoCode] = useState('');
-  const [promoError, setPromoError] = useState<string | null>(null);
-
-  const handleApplyPromoCode = async () => {
-    try {
-      const { data } = await axios.post('/api/apply-promo', { promoCode });
-      if (data.discount === 100) {
-        // Handle 100% discount logic
-        console.log('Promo code applied: 100% discount');
-        // Activate the product/course directly
-      } else {
-        console.log('Promo code applied:', data);
-      }
-    } catch (error) {
-      setPromoError('Invalid promo code.');
-    }
-  };
   // Distinct from "no VIP access" — a fetch failure (network/backend down)
   // previously fell through to the exact same "VIP Required" upsell banner
   // with no indication anything had actually gone wrong, silently hiding
@@ -356,9 +208,7 @@ function EducatorHubContent() {
 
   // Shared by all 3 real modules — VIP_REQUIRED/QUOTA_EXCEEDED refresh the
   // usage/access banner instead of just showing a toast, since both change
-  // what the header CTA should say; SESSION_SUPERSEDED is a distinct,
-  // sitewide-relevant state (see middleware/auth.ts's requireCurrentEducatorSession)
-  // shown as a dismissible banner rather than inline per-tab.
+  // what the header CTA should say.
   const handleModuleError = (err: any, fallback: string, setError: (msg: string) => void) => {
     const { message, code } = extractErrorMessage(err, fallback);
     if (code === 'VIP_REQUIRED' || code === 'QUOTA_EXCEEDED') {
@@ -374,9 +224,7 @@ function EducatorHubContent() {
   const [testTypes, setTestTypes] = useState<QuestionType[]>(['MULTIPLE_CHOICE']);
   const [testDifficulty, setTestDifficulty] = useState<Difficulty>('MIXED');
   const [testCount, setTestCount] = useState(10);
-  const [quizTimer, setQuizTimer] = useState(60); // Default timer in seconds
   const [testSourceText, setTestSourceText] = useState('');
-  const [teacherName, setTeacherName] = useState('');
   const [testSourceFile, setTestSourceFile] = useState<File | null>(null);
   const [testGenerating, setTestGenerating] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
@@ -402,10 +250,7 @@ function EducatorHubContent() {
     setTestGenerating(true);
     setTestError(null);
     try {
-      const currentDateTime = new Date().toLocaleString('ka-GE');
       const result = await generateTest({
-        teacherName: teacherName.trim() || undefined,
-        dateTime: currentDateTime,
         subject: testSubject,
         grade: testGrade,
         topic: testTopic,
@@ -659,7 +504,6 @@ function EducatorHubContent() {
           <BackButton fallbackHref="/tools" className="dark:text-slate-400 dark:hover:text-slate-100" />
         </div>
 
-
         {/* Module 8: Student Certificate & Diploma Builder */}
         {tab === 'certificates' && (
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
@@ -689,7 +533,6 @@ function EducatorHubContent() {
           <h1 className="text-2xl md:text-3xl font-black tracking-wide mb-2">{t('pageTitle')}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">{t('pageSubtitle')}</p>
 
-
           {!stateLoading && !stateError && !hasAccess && (
             <div className="mt-5 rounded-2xl border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-5">
               <h3 className="text-sm font-black text-amber-800 dark:text-amber-300 mb-1">{t('vipRequiredTitle')}</h3>
@@ -715,29 +558,6 @@ function EducatorHubContent() {
               <UsageMeter label={t('usageMeterGradingsLabel')} used={usage.gradingsUsed} limit={usage.gradingsLimit} />
             </div>
           )}
-
-          <div className="promo-code-section mt-5">
-            <label htmlFor="promoCode" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              {t('promoCodeLabel', 'Promo Code')}
-            </label>
-            <div className="mt-1 flex">
-              <input
-                type="text"
-                id="promoCode"
-                value={promoCode}
-                onChange={(e) => setPromoCode(e.target.value)}
-                placeholder={t('promoCodePlaceholder', 'Enter promo code')}
-                className="flex-1 block w-full rounded-md border-gray-300 dark:border-slate-700 dark:bg-slate-900/40 dark:text-white focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
-              />
-              <button
-                onClick={handleApplyPromoCode}
-                className="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
-              >
-                {t('applyPromoCode', 'Apply')}
-              </button>
-            </div>
-            {promoError && <p className="mt-2 text-sm text-red-600">{promoError}</p>}
-          </div>
         </div>
 
         {/* Tabs */}
@@ -793,27 +613,6 @@ function EducatorHubContent() {
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
             <div className="grid sm:grid-cols-2 gap-4 mb-4 no-print">
               <div>
-                <label className={labelClass}>{t('teacherNameLabel', 'მასწავლებლის სახელი და გვარი')}</label>
-                <input
-                  className={inputClass}
-                  value={teacherName}
-                  onChange={(e) => setTeacherName(e.target.value)}
-                  placeholder={t('teacherNamePlaceholder', 'შეიყვანეთ სახელი და გვარი')}
-                  disabled={!hasAccess}
-                />
-              </div>
-                <label className={labelClass}>{t('quizTimerLabel')}</label>
-                <input
-                  type="number"
-                  min={30}
-                  max={300}
-                  className={inputClass}
-                  value={quizTimer}
-                  onChange={(e) => setQuizTimer(Number(e.target.value))}
-                  placeholder={t('quizTimerPlaceholder')}
-                  disabled={!hasAccess}
-                />
-              </div>
                 <label className={labelClass}>{t('testSubjectLabel', 'საგანი')}</label>
                 <input className={inputClass} value={testSubject} onChange={(e) => setTestSubject(e.target.value)} placeholder={t('testSubjectPlaceholder')} disabled={!hasAccess} />
               </div>
@@ -839,25 +638,14 @@ function EducatorHubContent() {
               </div>
               <div className="sm:col-span-2">
                 <label className={labelClass}>{t('testSourceTextLabel')}</label>
-                <div className="relative">
-                  <textarea
-                    className={inputClass}
-                    rows={3}
-                    value={testSourceText}
-                    onChange={(e) => setTestSourceText(e.target.value)}
-                    placeholder={t('testSourceTextPlaceholder')}
-                    disabled={!hasAccess}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => (listening ? stopListening() : startListening())}
-                    className={`absolute right-3 top-3 text-sm font-bold px-3 py-1.5 rounded-full border cursor-pointer ${
-                      listening ? 'bg-red-500 text-white' : 'bg-amber-500 text-white'
-                    }`}
-                  >
-                    {listening ? t('stopListening') : t('startListening')}
-                  </button>
-                </div>
+                <textarea
+                  className={inputClass}
+                  rows={3}
+                  value={testSourceText}
+                  onChange={(e) => setTestSourceText(e.target.value)}
+                  placeholder={t('testSourceTextPlaceholder')}
+                  disabled={!hasAccess}
+                />
               </div>
               <div className="sm:col-span-2">
                 <label className={labelClass}>{t('testQuestionTypesLabel')}</label>
@@ -1477,15 +1265,3 @@ export default function EducatorHubPage() {
 export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({
   props: { ...(await serverSideTranslations(locale ?? 'ka', ['common', 'educatorHub'])) },
 });
-<div className="promo-code-section">
-  <label htmlFor="promoCode">Promo Code</label>
-  <input
-    type="text"
-    id="promoCode"
-    value={promoCode}
-    onChange={(e) => setPromoCode(e.target.value)}
-    placeholder="Enter promo code"
-  />
-  <button onClick={handleApplyPromoCode}>Apply</button>
-  {promoError && <p className="error">{promoError}</p>}
-</div>

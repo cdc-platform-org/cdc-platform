@@ -247,6 +247,7 @@ router.post('/submissions/:submissionToken/submit', candidateRateLimit, async (r
           question: q.question,
           rubric: q.correctAnswer ?? '',
           answer: answerText,
+          examEndTime: new Date(deadline),
         });
         let questionAiTextScore: number | null = null;
         if (answerText.trim().length >= 40) {

@@ -1,8 +1,5 @@
 import { useState } from 'react';
-import { ReactComponent as AssistantIcon } from '@/src/assets/icons/assistant-icon.svg';
-import { ReactComponent as KnowledgeBaseIcon } from '@/src/assets/icons/knowledge-base-icon.svg';
-import { ReactComponent as WidgetIcon } from '@/src/assets/icons/widget-icon.svg';
-import { ReactComponent as AnalyticsIcon } from '@/src/assets/icons/analytics-icon.svg';
+import { Lock, Clock, FileText, TrendingUp, MessageCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { hasAiAgentsSuiteAccess, aiTrialDaysRemaining, generateWithAiAgent, AiAgentSuiteTool } from '../../services/aiAgentsSuiteService';
 import { SupportedLocale } from '../../utils/locale';
@@ -30,6 +27,7 @@ const dictBase = {
     generating: 'მუშავდება…',
     locked: 'ხელმისაწვდომია აქტიური საცდელი/გამოწერით',
     error: 'დაფიქსირდა შეცდომა. სცადეთ თავიდან.',
+    learnMore: 'გაიგეთ მეტი',
   },
   en: {
     title: 'Business AI Agents',
@@ -53,6 +51,7 @@ const dictBase = {
     generating: 'Generating…',
     locked: 'Available with an active trial/subscription',
     error: 'Something went wrong. Please try again.',
+    learnMore: 'Learn more',
   },
 };
 
@@ -137,14 +136,13 @@ function AiToolCard({
             disabled={loading || !prompt.trim()}
             className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-2.5 rounded-xl border-none cursor-pointer hover:opacity-90 disabled:opacity-50 mb-3 shadow-[0_4px_12px_rgba(168,85,247,0.3)]"
           >
-            <AssistantIcon className="w-4 h-4" />
-            {loading ? t('Generating...') : t('7 დღე უფასო')}
+            {loading ? t.generating : t.generate}
           </button>
           <a
             href="/learn-more"
             className="text-xs font-bold text-purple-500 hover:underline"
           >
-            {t('გაიგეთ მეტი')}
+            {t.learnMore}
           </a>
           {result && (
             <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 px-3.5 py-3 text-xs text-slate-700 dark:text-slate-200 whitespace-pre-wrap">

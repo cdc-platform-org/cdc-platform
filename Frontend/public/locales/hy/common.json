@@ -1,5 +1,12 @@
 {
   "verificationBadges": {
+    "examTitle": "Քննության վերնագիր",
+    "setupSubjectLabel": "Առարկա / Թեմա",
+    "setupStartButton": "Սկսել քննությունը",
+    "setupLevelLabel": "Բարդություն",
+    "setupQuestionCountLabel": "Հարցերի քանակը",
+    "setupCameraLabel": "Միացնել տեսախցիկը",
+    "setupFullscreenLabel": "Ամբողջ էկրան",
     "student": "Ուսանող",
     "freelancer": "Ֆրիլանսեր",
     "business": "Բիզնես"

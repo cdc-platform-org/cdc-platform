@@ -1,5 +1,12 @@
 {
   "verificationBadges": {
+    "examTitle": "Prüfungstitel",
+    "setupSubjectLabel": "Fach / Thema",
+    "setupStartButton": "Prüfung starten",
+    "setupLevelLabel": "Schwierigkeit",
+    "setupQuestionCountLabel": "Anzahl der Fragen",
+    "setupCameraLabel": "Kamera aktivieren",
+    "setupFullscreenLabel": "Vollbild",
     "student": "Student",
     "freelancer": "Freelancer",
     "business": "Unternehmen"

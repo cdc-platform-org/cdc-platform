@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSmartReader } from '@/src/hooks/useSmartReader';
+import apiClient from '../../services/apiClient';
+
+type TeacherAction = 'pronounce' | 'explain' | 'translate';
 
 export const SmartReader: React.FC = () => {
   const {
@@ -13,10 +16,8 @@ export const SmartReader: React.FC = () => {
     togglePlay,
     playbackSpeed,
     setPlaybackSpeed,
-    currentWordIdx,
     selectedText,
     handleTextSelection,
-    aiResponse,
     summary,
     cefrLevel,
     loadingAi,
@@ -28,12 +29,16 @@ export const SmartReader: React.FC = () => {
     teacherAdvice,
   } = useSmartReader('Learning a new language opens up doors to different cultures and ways of thinking.');
 
-  const handleTextSelection = () => {
+  const [popupPos, setPopupPos] = useState<{ x: number; y: number } | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionResponse, setActionResponse] = useState<string | null>(null);
+
+  const onTextSelect = () => {
+    handleTextSelection();
     const selection = window.getSelection();
     if (selection && selection.toString().trim().length > 0) {
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
-      setSelectedText(selection.toString().trim());
       setPopupPos({
         x: rect.left + rect.width / 2,
         y: rect.top - 10
@@ -43,132 +48,34 @@ export const SmartReader: React.FC = () => {
     }
   };
 
-  const togglePlay = () => {
-    if (!('speechSynthesis' in window)) return;
+  const handleAction = async (action: TeacherAction) => {
+    setPopupPos(null);
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = playbackSpeed;
-
-    utterance.onboundary = (event) => {
-      const wordIndex = words.findIndex((word) => text.indexOf(word) === event.charIndex);
-      setCurrentWordIdx(wordIndex);
-    };
-
-    utterance.onend = () => {
-      setIsPlaying(false);
-      setCurrentWordIdx(-1);
-    };
-
-    if (isPlaying) {
-      window.speechSynthesis.cancel();
-      setIsPlaying(false);
-    } else {
+    if (action === 'pronounce') {
+      if (!('speechSynthesis' in window)) return;
+      const utterance = new SpeechSynthesisUtterance(selectedText);
+      utterance.rate = 0.8;
       window.speechSynthesis.speak(utterance);
-      setIsPlaying(true);
-    }
-  };
-
-  const handleSummarize = async () => {
-    setLoadingAi(true);
-    setSummary(null);
-    setCefrLevel(null);
-
-    try {
-      const res = await fetch('/api/language-teacher/summarize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      });
-      const data = await res.json();
-      const [summaryText, cefr] = data.summary.split('CEFR Level:');
-      setSummary(summaryText.trim());
-      setCefrLevel(cefr.trim());
-    } catch {
-      setSummary('Error summarizing text.');
-    } finally {
-      setLoadingAi(false);
-    }
-  };
-    if (!('speechSynthesis' in window)) return;
-
-    if (isPlaying) {
-      window.speechSynthesis.cancel();
-      setIsPlaying(false);
-      setCurrentWordIdx(-1);
-    } else {
-      const utterance, = new SpeechSynthesisUtterance(selectedText);
-      u.rate = 0.8;
-      window.speechSynthesis.speak(u);
       return;
     }
 
-    setLoadingAi(true);
-    setAiResponse(null);
+    setActionLoading(true);
+    setActionResponse(null);
 
     try {
-      const endpoint = action === 'explain' ? '/api/language-teacher/explain' : '/api/language-teacher/translate';
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          targetPhrase: selectedText,
-          learningLanguage: learningLang,
-          nativeLanguage: nativeLang
-        })
+      const endpoint = action === 'explain' ? '/language-teacher/explain' : '/language-teacher/translate';
+      const { data } = await apiClient.post<{ explanation?: string; translation?: string }>(endpoint, {
+        text,
+        targetPhrase: selectedText,
+        learningLanguage: learningLang,
+        nativeLanguage: nativeLang,
       });
-      const data = await res.json();
-      setAiResponse(data.explanation || data.translation || 'No response.');
+      setActionResponse(data.explanation || data.translation || 'No response.');
     } catch {
-      setAiResponse('Error reaching AI Teacher service.');
+      setActionResponse('Error reaching AI Teacher service.');
     } finally {
-      setLoadingAi(false);
+      setActionLoading(false);
     }
-  };
-
-  const startListening = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert('Speech recognition is not supported in this browser.');
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = learningLang === 'German' ? 'de-DE' : learningLang === 'Spanish' ? 'es-ES' : 'en-US';
-    recognition.interimResults = false;
-
-    setIsListening(true);
-    setRecordingError(null);
-    setWordScores([]);
-
-    recognition.onresult = async (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setIsListening(false);
-
-      try {
-        const res = await fetch('/api/language-teacher/analyze-pronunciation', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            referenceText: text,
-            transcribedText: transcript,
-            learningLanguage: learningLang,
-            nativeLanguage: nativeLang
-          })
-        });
-        const data = await res.json();
-        setWordScores(data.words || []);
-        setTeacherAdvice(data.teacherAdvice || null);
-      } catch {
-        console.error('Failed to analyze pronunciation');
-      }
-    };
-
-    recognition.onerror = (event: any) => {
-      setIsListening(false);
-      setRecordingError(event.error || 'An error occurred during recording.');
-    };
-    recognition.start();
   };
 
   return (
@@ -182,8 +89,8 @@ export const SmartReader: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-3 text-sm">
-          <select 
-            value={learningLang} 
+          <select
+            value={learningLang}
             onChange={(e) => setLearningLang(e.target.value)}
             className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200"
           >
@@ -195,8 +102,8 @@ export const SmartReader: React.FC = () => {
 
           <span className="text-slate-500">➔</span>
 
-          <select 
-            value={nativeLang} 
+          <select
+            value={nativeLang}
             onChange={(e) => setNativeLang(e.target.value)}
             className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200"
           >
@@ -309,54 +216,55 @@ export const SmartReader: React.FC = () => {
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onMouseUp={onTextSelect}
           placeholder="Paste or type any text here..."
           className="w-full h-24 p-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-300 focus:outline-none focus:border-indigo-500"
         />
 
-        <div 
-        powupPos && (
-          <div 
+        {popupPos && (
+          <div
             style={{ left: popupPos.x, top: popupPos.y }}
             className="fixed -translate-x-1/2 -translate-y-full z-50 bg-slate-800 text-white border border-indigo-500/50 shadow-2xl rounded-xl p-2 flex items-center space-x-2"
           >
-            <button 
+            <button
               onClick={() => handleAction('pronounce')}
               className="px-2.5 py-1 text-xs bg-slate-700 hover:bg-indigo-600 rounded-lg transition-colors flex items-center space-x-1"
             >
               <span>🔊</span> <span>Pronounce</span>
             </button>
-            <button 
+            <button
               onClick={() => handleAction('explain')}
               className="px-2.5 py-1 text-xs bg-slate-700 hover:bg-indigo-600 rounded-lg transition-colors flex items-center space-x-1"
             >
-              <span>�2</span> <span>Explain</span>
+              <span>📖</span> <span>Explain</span>
             </button>
-            <button 
+            <button
               onClick={() => handleAction('translate')}
               className="px-2.5 py-1 text-xs bg-slate-700 hover:bg-indigo-600 rounded-lg transition-colors flex items-center space-x-1"
             >
-              <span>🌐/span> <span>Translate</span>
+              <span>🌐</span> <span>Translate</span>
             </button>
           </div>
         )}
 
-        {(loadingAi || aiResponse || teacherAdvice) && (
+        {(actionLoading || actionResponse || teacherAdvice) && (
           <div className="bg-slate-800/90 border border-indigo-500/30 p-5 rounded-xl space-y-2">
             <div className="flex items-center justify-between text-xs text-indigo-400 font-semibold">
-              <span>🤦 AI Teacher Feedback</span>
-              <button onClick={() => { setAiResponse(null); setTeacherAdvice(null); }} className="hover:text-white">✕</button>
+              <span>🎓 AI Teacher Feedback</span>
+              <button onClick={() => setActionResponse(null)} className="hover:text-white">✕</button>
             </div>
-            {loadingAi ? (
+            {actionLoading ? (
               <p className="text-sm text-slate-400 animate-pulse">Analyzing context with Azure GPT-4o...</p>
             ) : (
               <div className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed">
-                {aiResponse || teacherAdvice}
+                {actionResponse || teacherAdvice}
               </div>
             )}
-          </divO
+          </div>
         )}
-      </divO
-    );
+      </div>
+    </div>
+  );
 };
 
 export default SmartReader;

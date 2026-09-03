@@ -493,10 +493,6 @@ function ProctoredExamContent() {
                 </button>
                 {currentIndex < questions.length - 1 ? (
                   <button
-                    className="bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-bold rounded-3xl px-8 py-4"
-                    className="bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-bold rounded-3xl px-8 py-4"
-                    className="bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-bold rounded-3xl px-8 py-4"
-                    className="bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-bold rounded-3xl px-8 py-4"
                     type="button"
                     onClick={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
                     className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold px-5 py-2.5 text-sm"

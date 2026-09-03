@@ -1,49 +1,48 @@
-import express from 'express';
-import { OpenAI } from 'openai'; // Assuming you have an OpenAI client set up
-import { handleError } from '../middleware/errorHandler'; // Adjust the import based on your structure
-
-const router = express.Router();
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY }); // Ensure your API key is set in the environment
-
-router.post('/explain', async (req, res) => {
-  const { text, targetPhrase, learningLanguage, nativeLanguage } = req.body;
-  try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'user',
-          content: `Explain the phrase "${targetPhrase}" in the context of "${text}". Include a definition, CEFR level, Georgian translation, and two example sentences.`,
-        },
-      ],
-    });
-    const explanation = response.choices[0].message.content;
-    res.json({ explanation });
-  } catch (error) {
-    handleError(res, error);
-  }
-});
-
-router.post('/translate', async (req, res) => {
-  const { text, targetPhrase, learningLanguage, nativeLanguage } = req.body;
-  try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'user',
-          content: `Translate the phrase "${targetPhrase}" from "${nativeLanguage}" to "${learningLanguage}".`,
-        },
-      ],
-    });
-    const translation = response.choices[0].message.content;
-    res.json({ translation });
-  } catch (error) {
-    handleError(res, error);
-  }
-});
-
+import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
+import { callTextModel, callTextModelPlain, AiAgentError } from '../services/aiAgentService';
+
+// ============================================================
+// AI Language Teacher — backs Frontend's SmartReader (src/components/tools/
+// SmartReader.tsx, rendered on the homepage): explain/translate a selected
+// word or phrase, and grade a recorded pronunciation attempt. Uses this
+// codebase's real AI provider chain (aiAgentService's Gemini-then-Azure-
+// OpenAI fallback), same as every other AI route here — no separate
+// provider/API key of its own.
+// ============================================================
+
+const router = Router();
+
+function respondAiError(res: Response, err: unknown) {
+  if (err instanceof AiAgentError) return res.status(err.status).json({ message: err.message });
+  throw err;
+}
+
+router.post('/explain', async (req: Request, res: Response) => {
+  const { text, targetPhrase, learningLanguage, nativeLanguage } = req.body;
+  try {
+    const explanation = await callTextModelPlain(
+      `Explain the phrase "${targetPhrase}" in the context of "${text}", for a student learning ${learningLanguage} whose native language is ${nativeLanguage}. Include a definition, its CEFR level, a ${nativeLanguage} translation, and two example sentences.`,
+      0.3
+    );
+    res.json({ explanation });
+  } catch (err) {
+    respondAiError(res, err);
+  }
+});
+
+router.post('/translate', async (req: Request, res: Response) => {
+  const { targetPhrase, learningLanguage, nativeLanguage } = req.body;
+  try {
+    const translation = await callTextModelPlain(
+      `Translate the phrase "${targetPhrase}" from ${learningLanguage} to ${nativeLanguage}. Respond with ONLY the translation, no explanation.`,
+      0.1
+    );
+    res.json({ translation });
+  } catch (err) {
+    respondAiError(res, err);
+  }
+});
 
 router.post(
   '/analyze-pronunciation',
@@ -53,50 +52,43 @@ router.post(
     body('learningLanguage').isString().notEmpty().withMessage('learningLanguage must be a non-empty string'),
     body('nativeLanguage').isString().notEmpty().withMessage('nativeLanguage must be a non-empty string'),
   ],
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
     const { referenceText, transcribedText, learningLanguage, nativeLanguage } = req.body;
-  try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4',
-      messages: [
-        {
-          role: 'user',
-          content: `Compare the following reference text and transcribed text word by word. 
-                    Score each word as GREEN (correct), YELLOW (minor mistake), or RED (incorrect). 
-                    Provide specific feedback for each word and generate constructive teacher advice in ${nativeLanguage}:
-                    Reference Text: "${referenceText}"
-                    Transcribed Text: "${transcribedText}"`,
-        },
-      ],
-    });
-
-    const { feedback, teacherAdvice } = JSON.parse(response.choices[0].message.content);
-    res.json({ feedback, teacherAdvice });
-  } catch (error) {
-    handleError(res, error);
+    try {
+      const raw = await callTextModel(
+        `Compare the following reference text and transcribed text word by word, for a student learning ${learningLanguage}.
+Score each word of the reference text as GREEN (correct), YELLOW (minor mistake), or RED (incorrect/missing), and generate constructive teacher advice in ${nativeLanguage}.
+Reference Text: "${referenceText}"
+Transcribed Text: "${transcribedText}"
+Respond with strict JSON matching this shape: {"words": [{"word": string, "status": "GREEN"|"YELLOW"|"RED", "feedback": string}], "teacherAdvice": string}`,
+        0.2
+      );
+      const { words, teacherAdvice } = JSON.parse(raw);
+      res.json({ words, teacherAdvice });
+    } catch (err) {
+      respondAiError(res, err);
+    }
   }
-});
+);
 
-router.post('/summarize', async (req, res) => {
+router.post('/summarize', async (req: Request, res: Response) => {
   const { text } = req.body;
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4',
-      messages: [
-        {
-          role: 'user',
-          content: `Summarize the following text and provide its CEFR complexity level (A1, A2, B1, B2, C1, C2): "${text}"`,
-        },
-      ],
-    });
-    const summary = response.choices[0].message.content;
+    const summary = await callTextModelPlain(
+      `Summarize the following text in 2-3 sentences, then give its CEFR complexity level (A1, A2, B1, B2, C1, or C2). Respond in EXACTLY this format, no markdown, no extra commentary:
+<summary text>
+CEFR Level: <level>
+
+Text: "${text}"`,
+      0.3
+    );
     res.json({ summary });
-  } catch (error) {
-    handleError(res, error);
+  } catch (err) {
+    respondAiError(res, err);
   }
 });
 

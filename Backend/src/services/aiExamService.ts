@@ -4,7 +4,6 @@ import { isAzureOpenAiConfigured } from './azureOpenAiService';
 import { GEMINI_API_KEY } from '../utils/env';
 
 const DIFFICULTY_LEVEL = 'BEGINNER_A1'; // Set difficulty level to Beginner A1
-}
 
 export interface GeneratedQuestion {
   id: string;
@@ -46,6 +45,10 @@ export class AiExamGenerationError extends Error {
     super(message);
     this.name = 'AiExamGenerationError';
   }
+}
+
+export function isAiExamConfigured(): boolean {
+  return !!GEMINI_API_KEY || isAzureOpenAiConfigured();
 }
 
 export async function generateExamQuestions(params: GenerateExamParams): Promise<GeneratedQuestion[]> {

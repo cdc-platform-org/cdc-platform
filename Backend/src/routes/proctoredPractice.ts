@@ -85,7 +85,11 @@ router.post('/grade-practical', practiceRateLimit, async (req: Request, res: Res
   if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
 
   try {
-    const result = await gradePracticalAnswer(parsed.data);
+    // This tool has no persistence of its own (see header comment) — there's
+    // no server-tracked start time to enforce a real deadline against, so
+    // the timer check gradePracticalAnswer applies for the real Business
+    // exam flow (routes/examProctoring.ts) simply never fires here.
+    const result = await gradePracticalAnswer({ ...parsed.data, examEndTime: new Date(Date.now() + 24 * 60 * 60 * 1000) });
     res.json({ data: { score: result.score, feedback: result.feedback } });
   } catch (err) {
     if (err instanceof ExamProctoringAiError) return res.status(err.status).json({ message: err.message });

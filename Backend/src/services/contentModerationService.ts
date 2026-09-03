@@ -47,14 +47,12 @@ export async function checkContentSafety(text: string): Promise<{ safe: boolean 
 post: ${text}`;
 
   try {
-    const response = await azureOpenai.chat.completions.create({ model: process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-4o", messages: [{ role: "user", content: typeof prompt === "string" ? prompt : JSON.stringify(prompt) }] }); const result = { response: { text: () => response.choices[0]?.message?.content || "" } };
-
-    // The built-in safety layer can still block the classification prompt
-    // itself (e.g. if the post is bad enough to trip it even as an
-    // embedded quote) — that's as good a signal as the classifier's own
-    // answer.
-    ;
-    }
+    const response = await azureOpenai.chat.completions.create({
+      model: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o',
+      messages: [{ role: 'user', content: typeof prompt === 'string' ? prompt : JSON.stringify(prompt) }],
+      response_format: { type: 'json_object' },
+    });
+    const result = { response: { text: () => response.choices[0]?.message?.content || '' } };
 
     const raw = result.response.text();
     if (!raw) return { safe: true };

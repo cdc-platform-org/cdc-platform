@@ -4,7 +4,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import crypto from 'crypto';
-import { azureOpenai } from "../utils/azureOpenai";
+import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
 import { GEMINI_API_KEY, BUNNY_CDN_HOSTNAME } from '../utils/env';
 import { callTextModelPlain, AiAgentError } from './aiAgentService';
 import { isFfmpegAvailable } from './videoCompressionService';
@@ -52,7 +52,7 @@ if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath as string);
 // A temporary Gemini overload used to fail this entire pipeline outright;
 // now each of those four calls gets the same 3-model retry chain the rest
 // of the codebase's AI features already rely on.
-const fileManager: any = { uploadFile: async () => ({ name: "" }), getFile: async () => ({ state: "SUCCEEDED" }), deleteFile: async () => {} };
+const fileManager = GEMINI_API_KEY ? new GoogleAIFileManager(GEMINI_API_KEY) : null;
 
 export function isSubtitlePipelineConfigured(): boolean {
   return !!GEMINI_API_KEY && isFfmpegAvailable;

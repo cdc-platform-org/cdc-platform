@@ -75,10 +75,10 @@ const LOCALE_LABEL_OVERRIDES: Record<string, string> = {
   'ka-GE': 'ქართული (Georgian)',
   'en-US': 'English (US)',
   'en-GB': 'English (UK)',
-  'de-DE': 'Deutsch',
-  'fr-FR': 'Français',
-  'es-ES': 'Español',
-  'tr-TR': 'Türkçe',
+  'de-DE': 'Deutsch (German)',
+  'fr-FR': 'Français (French)',
+  'es-ES': 'Español (Spanish)',
+  'tr-TR': 'Türkçe (Turkish)',
 };
 
 // Everything outside the overrides above is derived from Intl.DisplayNames
@@ -367,8 +367,14 @@ function MediaStudioContent() {
     if (audioElRef.current) audioElRef.current.playbackRate = playbackRate;
   }, [playbackRate, audioUrl]);
 
-  const handlePlay = () => audioElRef.current?.play();
+  const handlePlay = () => {
+    const el = audioElRef.current;
+    if (!el) return;
+    el.currentTime = 0;
+    el.play();
+  };
   const handlePause = () => audioElRef.current?.pause();
+  const handleResume = () => audioElRef.current?.play();
   const handleStop = () => {
     const el = audioElRef.current;
     if (!el) return;
@@ -614,6 +620,15 @@ function MediaStudioContent() {
                       >
                         <Pause className="w-3.5 h-3.5" />
                         {t('playerPause')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleResume}
+                        disabled={isPlaying}
+                        className="inline-flex items-center gap-1.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs px-3 py-2 rounded-lg bg-white dark:bg-slate-800 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        <Play className="w-3.5 h-3.5" />
+                        {t('playerResume')}
                       </button>
                       <button
                         type="button"

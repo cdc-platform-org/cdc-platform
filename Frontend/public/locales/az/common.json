@@ -1,5 +1,12 @@
 {
   "verificationBadges": {
+    "examTitle": "İmtahan Başlığı",
+    "setupSubjectLabel": "Fənn / Mövzu",
+    "setupStartButton": "İmtahana Başla",
+    "setupLevelLabel": "Çətinlik",
+    "setupQuestionCountLabel": "Sualların Sayı",
+    "setupCameraLabel": "Kameranı Aktivləşdir",
+    "setupFullscreenLabel": "Tam Ekran",
     "student": "Tələbə",
     "freelancer": "Freelancer",
     "business": "Biznes"

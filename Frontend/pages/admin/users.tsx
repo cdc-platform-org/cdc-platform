@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import axios from 'axios'; // Add axios for API calls
 import Head from 'next/head';
 import { Users as UsersIcon, Clock, GraduationCap, Ban } from 'lucide-react';
 import AdminGuard from '../../src/components/admin/AdminGuard';
@@ -601,17 +600,3 @@ export default function AdminUsersPage() {
     </AdminGuard>
   );
 }
-const [activeItems, setActiveItems] = useState<{ products: any[]; tools: any[]; courses: any[] } | null>(null);
-
-useEffect(() => {
-  const fetchActiveItems = async () => {
-    try {
-      const { data } = await axios.get('/api/admin/active-items');
-      setActiveItems(data);
-    } catch (error) {
-      console.error('Failed to fetch active items:', error);
-    }
-  };
-
-  fetchActiveItems();
-}, []);

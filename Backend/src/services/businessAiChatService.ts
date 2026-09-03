@@ -58,18 +58,21 @@ export async function generateAgentReply(params: GenerateAgentReplyParams): Prom
     ? `${params.systemPrompt}\n\nUse the following context to answer questions when relevant. If the context doesn't cover the visitor's question, answer helpfully from general knowledge, but never contradict the context:\n\n${params.knowledgeContext}`
     : params.systemPrompt;
 
-  
-
   let reply: string;
   let usage: GenerateAgentReplyResult['usage'];
   try {
-    const response = await azureOpenai.chat.completions.create({ model: process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-4o", messages: [{ role: "user", content: params.message }] }); const result = { response: { text: () => response.choices[0]?.message?.content || "" } };
-    reply = result.response.text();
-    const usageMetadata = result.response.usageMetadata;
-    if (usageMetadata) {
+    const response = await azureOpenai.chat.completions.create({
+      model: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o',
+      messages: [
+        { role: 'system', content: systemInstruction },
+        { role: 'user', content: params.message },
+      ],
+    });
+    reply = response.choices[0]?.message?.content || '';
+    if (response.usage) {
       usage = {
-        promptTokens: usageMetadata.promptTokenCount ?? 0,
-        completionTokens: usageMetadata.candidatesTokenCount ?? 0,
+        promptTokens: response.usage.prompt_tokens ?? 0,
+        completionTokens: response.usage.completion_tokens ?? 0,
       };
     }
   } catch (err) {
