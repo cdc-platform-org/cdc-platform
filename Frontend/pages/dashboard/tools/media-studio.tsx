@@ -75,10 +75,10 @@ const LOCALE_LABEL_OVERRIDES: Record<string, string> = {
   'ka-GE': 'ქართული (Georgian)',
   'en-US': 'English (US)',
   'en-GB': 'English (UK)',
-  'de-DE': 'German',
-  'fr-FR': 'French',
-  'es-ES': 'Spanish',
-  'tr-TR': 'Turkish',
+  'de-DE': 'Deutsch',
+  'fr-FR': 'Français',
+  'es-ES': 'Español',
+  'tr-TR': 'Türkçe',
 };
 
 // Everything outside the overrides above is derived from Intl.DisplayNames
@@ -367,14 +367,8 @@ function MediaStudioContent() {
     if (audioElRef.current) audioElRef.current.playbackRate = playbackRate;
   }, [playbackRate, audioUrl]);
 
-  const handlePlay = () => {
-    const el = audioElRef.current;
-    if (!el) return;
-    el.currentTime = 0;
-    el.play();
-  };
+  const handlePlay = () => audioElRef.current?.play();
   const handlePause = () => audioElRef.current?.pause();
-  const handleResume = () => audioElRef.current?.play();
   const handleStop = () => {
     const el = audioElRef.current;
     if (!el) return;
@@ -592,20 +586,22 @@ function MediaStudioContent() {
 
                 {audioUrl && (
                   <div className="mt-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-4">
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-3">{t('playerTitle')}</p>
                     <audio
                       ref={audioElRef}
                       src={audioUrl}
-                      className="hidden"
+                      controls
+                      className="w-full mb-3"
                       onPlay={() => setIsPlaying(true)}
                       onPause={() => setIsPlaying(false)}
                       onEnded={() => setIsPlaying(false)}
                     />
-                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-3">{t('playerTitle')}</p>
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
                         onClick={handlePlay}
-                        className="inline-flex items-center gap-1.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs px-3 py-2 rounded-lg bg-white dark:bg-slate-800 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                        disabled={isPlaying}
+                        className="inline-flex items-center gap-1.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs px-3 py-2 rounded-lg bg-white dark:bg-slate-800 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                       >
                         <Play className="w-3.5 h-3.5" />
                         {t('playerPlay')}
@@ -618,15 +614,6 @@ function MediaStudioContent() {
                       >
                         <Pause className="w-3.5 h-3.5" />
                         {t('playerPause')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleResume}
-                        disabled={isPlaying}
-                        className="inline-flex items-center gap-1.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs px-3 py-2 rounded-lg bg-white dark:bg-slate-800 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                      >
-                        <Play className="w-3.5 h-3.5" />
-                        {t('playerResume')}
                       </button>
                       <button
                         type="button"
