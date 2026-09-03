@@ -1,12 +1,4 @@
-import { appWithTranslation, useTranslation } from 'next-i18next';
-import i18next from 'i18next';
-import { useEffect } from 'react';
-
-// Ensure all required locales are loaded
-i18next.init({
-  lng: 'en', // Default language
-  fallbackLng: ['en', 'ka', 'de', 'es', 'fr', 'uk', 'tr', 'hy', 'az'],
-});
+import { appWithTranslation } from 'next-i18next';
 import Head from 'next/head';
 import Script from 'next/script';
 import localFont from 'next/font/local';
@@ -82,28 +74,6 @@ const georgianSafeFont = Noto_Sans_Georgian({
 
 function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
-
-  useEffect(() => {
-    const handleLanguageChange = (lang: string) => {
-      i18next.changeLanguage(lang);
-    };
-
-    i18next.on('languageChanged', handleLanguageChange);
-
-    return () => {
-      i18next.off('languageChanged', handleLanguageChange);
-    };
-  }, []);
-
-  const { ready } = useTranslation();
-
-  if (!ready) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500"></div>
-      </div>
-    );
-  }
 
   // FloatingButtons only renders on the homepage (see FloatingButtons.tsx) —
   // a fixed bottom-6 right-6 stack of two 48px pills (96px + 12px gap =
