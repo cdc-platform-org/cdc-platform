@@ -27,7 +27,6 @@ import { getCurrentProductPrice } from '../services/productPricing';
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
 import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
 import { captureMentorshipEscrow } from '../services/mentorshipEscrowService';
-import { isBusinessToolsCategory, canPurchaseBusinessTools } from '../utils/marketplaceCategories';
 import { sendMentorshipBookingEmails, sendHRSupportRequestAlertEmail } from '../services/emailService';
 import { notifyCourseEnrollment } from '../services/courseEnrollmentNotification';
 import { completeLiveTrainingPurchase } from '../services/liveTrainingSaleService';
@@ -727,15 +726,6 @@ router.post(
     // 20% commission (productSaleService.ts) applies to whatever this is,
     // never the original price, so a 5 GEL sale nets the creator 4 GEL.
     const chargeAmount = getCurrentProductPrice(product);
-    // The real enforcement boundary for the Business Tools purchase
-    // restriction — the frontend's identical check (pages/store/[id].tsx)
-    // is UX only and does not stop a direct API call.
-    if (isBusinessToolsCategory(product.category)) {
-      const requester = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { role: true, isVerified: true } });
-      if (!canPurchaseBusinessTools(requester)) {
-        return res.status(403).json({ message: 'This tool is available exclusively to verified Business accounts.' });
-      }
-    }
     const existingPurchase = await prisma.productPurchase.findUnique({
       where: { userId_productId: { userId: req.user!.id, productId: product.id } },
     });

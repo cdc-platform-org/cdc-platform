@@ -23,7 +23,6 @@ import { getCurrentProductPrice } from '../services/productPricing';
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
 import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
 import { captureMentorshipEscrow } from '../services/mentorshipEscrowService';
-import { isBusinessToolsCategory, canPurchaseBusinessTools } from '../utils/marketplaceCategories';
 import { sendMentorshipBookingEmails } from '../services/emailService';
 import { notifyCourseEnrollment } from '../services/courseEnrollmentNotification';
 import { completeLiveTrainingPurchase } from '../services/liveTrainingSaleService';
@@ -518,12 +517,6 @@ router.post('/checkout/product/:productId', checkoutRateLimit, authenticate, req
   const product = await prisma.digitalProduct.findUnique({ where: { id: req.params.productId } });
   if (!product) return res.status(404).json({ message: 'Product not found.' });
   if (product.price <= 0) return res.status(400).json({ message: 'This product is free — claim it directly instead of checking out.' });
-  if (isBusinessToolsCategory(product.category)) {
-    const requester = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { role: true, isVerified: true } });
-    if (!canPurchaseBusinessTools(requester)) {
-      return res.status(403).json({ message: 'This tool is available exclusively to verified Business accounts.' });
-    }
-  }
   const existingPurchase = await prisma.productPurchase.findUnique({
     where: { userId_productId: { userId: req.user!.id, productId: product.id } },
   });

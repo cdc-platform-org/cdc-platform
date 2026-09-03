@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import { GetServerSideProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag, Building2, X, Zap, Upload, Code2, ShieldCheck, Tag } from 'lucide-react';
+import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag, Zap, Upload, Code2, ShieldCheck, Tag } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
@@ -29,18 +29,7 @@ import {
 import { checkoutProduct } from '../../src/services/paymentService';
 import { checkoutProductStripe } from '../../src/services/stripePaymentService';
 import { formatPrice } from '../../src/utils/coursePricing';
-import { MARKETPLACE_CATEGORIES } from '../../src/data/marketplaceCategories';
 import { resolveLocale } from '@/src/utils/locale';
-
-// Canonical Business Tools category (see marketplaceCategories.ts) — matched
-// against either language's value since `category` is free text set at
-// product-creation time and may have been saved in either locale. Looked up
-// by value rather than array position so a future reorder of the taxonomy
-// can't silently break this check.
-const BUSINESS_TOOLS_CATEGORY = MARKETPLACE_CATEGORIES.find((c) => c.value.en === 'Business Tools');
-function isBusinessToolsCategory(category: string): boolean {
-  return !!BUSINESS_TOOLS_CATEGORY && (category === BUSINESS_TOOLS_CATEGORY.value.ka || category === BUSINESS_TOOLS_CATEGORY.value.en);
-}
 
 // Fixed id of the seeded "AI Business Assistant" trial listing (see
 // Backend's 20260807010000_seed_ai_business_trial_product migration) — a
@@ -75,7 +64,6 @@ function StoreProductContent() {
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [guideOpen, setGuideOpen] = useState(true);
-  const [showBusinessGate, setShowBusinessGate] = useState(false);
   const isAiBusinessTrial = product?.id === AI_BUSINESS_TRIAL_PRODUCT_ID;
 
   useEffect(() => {
@@ -91,18 +79,6 @@ function StoreProductContent() {
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [id]);
-
-  // Business Tools purchases are restricted to verified Business accounts —
-  // checked ahead of the normal auth prompt so a guest/individual/unverified
-  // user sees the "verified businesses only" explainer instead of a plain
-  // login modal that would otherwise let them log in only to hit the same
-  // wall immediately after.
-  const isBusinessTool = !!product && isBusinessToolsCategory(product.category);
-  // SuperAdmin bypasses the verification requirement (testing/support
-  // access) — same convention as the Enterprise AI Tools gate on /tools
-  // and the homepage (see pages/tools.tsx's canUseAiAssistant).
-  const canPurchaseBusinessTool =
-    isAuthenticated && (user?.role === 'SuperAdmin' || (user?.role === 'Client' && !!user.isVerified));
 
   // Pure actions — no auth check inside, unlike the gated handleBuy/
   // handleClaim below that call these. Passed directly as openAuthModal's
@@ -150,10 +126,6 @@ function StoreProductContent() {
 
   const handleBuy = () => {
     if (!product) return;
-    if (isBusinessTool && !canPurchaseBusinessTool) {
-      setShowBusinessGate(true);
-      return;
-    }
     if (!isAuthenticated) {
       openAuthModal({ onSuccess: startCheckout });
       return;
@@ -163,10 +135,6 @@ function StoreProductContent() {
 
   const handleClaim = () => {
     if (!product) return;
-    if (isBusinessTool && !canPurchaseBusinessTool) {
-      setShowBusinessGate(true);
-      return;
-    }
     if (!isAuthenticated) {
       openAuthModal({ onSuccess: startClaim });
       return;
@@ -348,38 +316,6 @@ function StoreProductContent() {
       </div>
 
       <SiteFooter />
-
-      {showBusinessGate && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={() => setShowBusinessGate(false)}>
-          <div
-            className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setShowBusinessGate(false)}
-              aria-label={t('modalClose')}
-              className="absolute top-4 right-4 p-2 cursor-pointer text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center mx-auto mb-4">
-              <Building2 className="w-7 h-7 text-white" />
-            </div>
-
-            <h3 className="text-base font-black tracking-wide mb-2">{t('businessGateTitle')}</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{t('businessGateBody')}</p>
-            <Link
-              href="/dashboard/client"
-              onClick={() => setShowBusinessGate(false)}
-              className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
-            >
-              {t('businessGateCta')}
-            </Link>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
