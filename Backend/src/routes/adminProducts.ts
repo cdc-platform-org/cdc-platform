@@ -130,6 +130,10 @@ const createSchema = z.object({
   discountedPrice: z.number().min(0).optional().nullable(),
   saleEndsAt: z.string().datetime().optional().nullable().or(z.literal('')),
   howItWorksSteps: howItWorksStepsSchema,
+  // Marks this as a web tool/SaaS product — /store/[id] shows "Launch Tool"
+  // linking here instead of the normal download flow. A plain in-app path
+  // (e.g. "/dashboard/tools/chatbot-builder"), not a full URL.
+  toolRoute: z.string().max(500).optional().nullable(),
 });
 
 // Admin-authored products skip moderation — there's no point an admin
@@ -211,6 +215,7 @@ const updateSchema = z.object({
   discountedPrice: z.number().min(0).optional().nullable(),
   saleEndsAt: z.string().datetime().optional().nullable().or(z.literal('')),
   howItWorksSteps: howItWorksStepsSchema,
+  toolRoute: z.string().max(500).optional().nullable(),
 });
 
 // Lets an admin fix typos/formatting on a graduate/freelancer submission

@@ -68,6 +68,7 @@ function ModerationProductCard({
   const [editPreviewImages, setEditPreviewImages] = useState<string[]>(p.previewImages);
   const [editVideoUrl, setEditVideoUrl] = useState(p.previewVideoUrl ?? '');
   const [editVideoUploading, setEditVideoUploading] = useState(false);
+  const [editToolRoute, setEditToolRoute] = useState(p.toolRoute ?? '');
   const [useCustomSteps, setUseCustomSteps] = useState(!!p.howItWorksSteps);
   const [steps, setSteps] = useState<HowItWorksStep[]>(
     p.howItWorksSteps ?? [emptyHowItWorksStep(), emptyHowItWorksStep(), emptyHowItWorksStep()]
@@ -100,6 +101,7 @@ function ModerationProductCard({
     setEditImageUrl(p.imageUrl);
     setEditPreviewImages(p.previewImages);
     setEditVideoUrl(p.previewVideoUrl ?? '');
+    setEditToolRoute(p.toolRoute ?? '');
     setUseCustomSteps(!!p.howItWorksSteps);
     setSteps(p.howItWorksSteps ?? [emptyHowItWorksStep(), emptyHowItWorksStep(), emptyHowItWorksStep()]);
     setEditing(true);
@@ -116,6 +118,7 @@ function ModerationProductCard({
         previewImages: editPreviewImages,
         previewVideoUrl: editVideoUrl || null,
         howItWorksSteps: useCustomSteps ? steps : null,
+        toolRoute: editToolRoute.trim() || null,
       });
       setEditing(false);
     } catch {
@@ -187,6 +190,19 @@ function ModerationProductCard({
                 hint="MP4 or MOV, up to 50MB"
                 uploadingLabel="Uploading…"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Tool Route (optional)</label>
+              <input
+                value={editToolRoute}
+                onChange={(e) => setEditToolRoute(e.target.value)}
+                placeholder="e.g. /dashboard/tools/chatbot-builder — leave blank for a normal downloadable file"
+                className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+              />
+              <p className="text-[11px] text-gray-400 mt-1">
+                If set, the storefront page shows a "Launch Tool" button linking here instead of a download, once purchased.
+              </p>
             </div>
 
             <div className="rounded-lg border border-gray-200 p-3">

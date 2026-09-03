@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import { GetServerSideProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag, Zap, Upload, Code2, ShieldCheck, Tag } from 'lucide-react';
+import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag, Zap, Upload, Code2, ShieldCheck, Tag, ExternalLink } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
@@ -231,15 +231,25 @@ function StoreProductContent() {
             )}
 
             {product.purchased ? (
-              <button
-                type="button"
-                onClick={handleDownload}
-                disabled={submitting}
-                className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-cyan-600 text-white font-black text-sm px-6 py-3.5 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-emerald-500/30 transition-all disabled:opacity-60"
-              >
-                <Download className="w-4 h-4" />
-                {submitting ? t('processing') : t('download')}
-              </button>
+              product.toolRoute ? (
+                <Link
+                  href={product.toolRoute}
+                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-cyan-600 text-white font-black text-sm px-6 py-3.5 rounded-xl no-underline hover:shadow-lg hover:shadow-emerald-500/30 transition-all"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  {t('launchTool')}
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleDownload}
+                  disabled={submitting}
+                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-cyan-600 text-white font-black text-sm px-6 py-3.5 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-emerald-500/30 transition-all disabled:opacity-60"
+                >
+                  <Download className="w-4 h-4" />
+                  {submitting ? t('processing') : t('download')}
+                </button>
+              )
             ) : (
               <div className="space-y-3">
                 <div className="flex items-baseline gap-2">

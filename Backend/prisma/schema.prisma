@@ -1778,6 +1778,14 @@ model DigitalProduct {
   // customize the panel for a specific listing (originally: the seeded AI
   // Business Assistant trial product) without a code change/deploy.
   howItWorksSteps    Json?
+  // Marks this listing as a web tool/SaaS product rather than a downloadable
+  // file — when set, /store/[id] renders a "Launch Tool" action (linking
+  // straight to this in-app dashboard route) instead of the normal buy-then-
+  // download flow, once the product is owned. Admin-only (adminProducts.ts),
+  // same "curated override, not seller-settable" posture as howItWorksSteps
+  // above. Safe to expose to the public GET response unlike fileUrl — it's
+  // just an internal route path, not a protected asset.
+  toolRoute          String?
   // Never exposed directly to the client until a completed purchase is
   // verified server-side — see routes/products.ts's /:id/download. Uploads
   // made through /upload-file store a `cdcblob://<blobName>` marker here

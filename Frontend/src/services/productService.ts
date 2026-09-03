@@ -78,6 +78,11 @@ export interface DigitalProduct {
   // Extension of the (never publicly exposed) fileUrl, e.g. "ZIP"/"PDF" —
   // safe to show as a format badge without revealing the real download link.
   fileFormat: string | null;
+  // Set only for web tool/SaaS listings (e.g. "/dashboard/tools/chatbot-builder")
+  // — /store/[id] shows a "Launch Tool" action linking here instead of the
+  // normal download flow once the product is owned. Null for a real
+  // downloadable file, the common case.
+  toolRoute?: string | null;
   licenseType: ProductLicenseType;
   downloadsCount: number;
   // Verified-purchase count only (COMPLETED ProductPurchase rows) — a free
@@ -222,6 +227,7 @@ export interface UpdateProductPayload {
   // Exactly 3 entries or omit/null to clear back to the page's generic
   // fallback copy — enforced server-side (adminProducts.ts).
   howItWorksSteps?: HowItWorksStep[] | null;
+  toolRoute?: string | null;
 }
 
 export async function updateProductAdmin(id: string, payload: UpdateProductPayload): Promise<DigitalProduct> {

@@ -120,6 +120,7 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
       previewImages: product.previewImages,
       previewVideoUrl: product.previewVideoUrl,
       fileFormat: fileFormatFromUrl(product.fileUrl),
+      toolRoute: product.toolRoute,
       licenseType: product.licenseType,
       downloadsCount: product.downloadsCount,
       salesCount: product.salesCount,
