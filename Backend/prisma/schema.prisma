@@ -1314,6 +1314,12 @@ model LiveTraining {
   // is confirmed; the dashboard only ever shows it to an ACTIVE
   // LiveTrainingEnrollment, gated by startDate/endDate below.
   meetingUrl          String?
+  // Pasted Google Classroom link (class code page, or the class's own URL)
+  // for assignments/materials over the course of a multi-session program —
+  // same plain-URL, admin-attaches-after-the-fact convention and same
+  // ACTIVE-enrollment gating as meetingUrl above, not a real Classroom API
+  // integration.
+  classroomUrl        String?
   // Pasted external URL (Drive/Bunny/MP4, etc.) to the session recording —
   // same convention and admin-attaches-after-the-fact posture as
   // MentorshipBooking.recordingUrl. Shown to every enrolled student once

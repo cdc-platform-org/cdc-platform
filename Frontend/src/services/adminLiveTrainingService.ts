@@ -22,6 +22,7 @@ export interface LiveTrainingPayload {
   published?: boolean;
   language?: CourseLanguage;
   meetingUrl?: string;
+  classroomUrl?: string;
   recordingUrl?: string;
   startDate?: string | null;
   endDate?: string | null;
@@ -85,4 +86,21 @@ export async function getLiveTrainingEnrollments(trainingId: string): Promise<Li
 // getAdminLiveTrainings()/re-fetch to see synopsisStatus flip to COMPLETED.
 export async function regenerateLiveTrainingSynopsis(trainingId: string): Promise<void> {
   await apiClient.post(`/admin/live-trainings/${trainingId}/regenerate-synopsis`);
+}
+
+// Manual roster grant — admin override for bank-transfer/offline payments
+// that never went through online checkout or the self-serve free enroll
+// flow. Same shape/posture as adminFinanceService.ts's grantCourseAccess.
+export interface GrantLiveTrainingEnrollmentPayload {
+  userEmail?: string;
+  userId?: string;
+  note?: string;
+}
+
+export async function grantLiveTrainingEnrollment(
+  trainingId: string,
+  payload: GrantLiveTrainingEnrollmentPayload
+): Promise<LiveTrainingEnrollment> {
+  const response = await apiClient.post<{ data: LiveTrainingEnrollment }>(`/admin/live-trainings/${trainingId}/grant`, payload);
+  return response.data.data;
 }

@@ -4,7 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { Video, Radio, PlayCircle, X } from 'lucide-react';
+import { Video, Radio, PlayCircle, X, GraduationCap } from 'lucide-react';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
@@ -21,6 +21,7 @@ const EN_STRINGS = {
   browse: 'Browse live trainings',
   joinNow: 'Join session',
   linkNotYet: 'The join link isn’t open yet — it appears here shortly before the session starts.',
+  classroom: 'Open Classroom',
   recording: 'Watch recording',
   recordingPending: 'No recording has been posted yet.',
   scheduledFor: 'Scheduled for',
@@ -39,6 +40,7 @@ const dict = {
     browse: 'ლაივ ტრენინგების ნახვა',
     joinNow: 'სესიაში შესვლა',
     linkNotYet: 'მიერთების ბმული ჯერ არ არის ღია — ის სესიის დაწყებამდე ცოტა ხნით ადრე გამოჩნდება.',
+    classroom: 'Classroom-ის გახსნა',
     recording: 'ჩანაწერის ნახვა',
     recordingPending: 'ჩანაწერი ჯერ არ არის ატვირთული.',
     scheduledFor: 'დაგეგმილია',
@@ -123,6 +125,18 @@ function EnrollmentCard({
           </a>
         ) : (
           <p className="text-xs text-slate-400 dark:text-slate-500 max-w-md">{t.linkNotYet}</p>
+        )}
+
+        {enrollment.classroomUrl && (
+          <a
+            href={enrollment.classroomUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 no-underline"
+          >
+            <GraduationCap className="w-3.5 h-3.5" />
+            {t.classroom}
+          </a>
         )}
 
         {enrollment.recordingUrl && (

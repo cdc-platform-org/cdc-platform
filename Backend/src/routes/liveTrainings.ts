@@ -79,6 +79,7 @@ router.get('/mine', authenticate, async (req: Request, res: Response) => {
       startDate: e.liveTraining.startDate,
       endDate: e.liveTraining.endDate,
       meetingUrl: isMeetingLinkVisible(e.liveTraining) ? e.liveTraining.meetingUrl : null,
+      classroomUrl: isMeetingLinkVisible(e.liveTraining) ? e.liveTraining.classroomUrl : null,
       recordingUrl: e.liveTraining.recordingUrl,
     })),
   });

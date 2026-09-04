@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, FormEvent } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
-import { ChevronLeft, Download } from 'lucide-react';
+import { ChevronLeft, Download, UserPlus } from 'lucide-react';
 import AdminGuard from '../../../../src/components/admin/AdminGuard';
 import AdminLayout from '../../../../src/components/admin/AdminLayout';
 import { LiveTraining, LiveTrainingLead, LiveTrainingLeadStatus, LiveTrainingEnrollment } from '../../../../src/types/liveTraining';
@@ -12,6 +12,7 @@ import {
   updateLiveTrainingLead,
   exportLiveTrainingLeadsCsv,
   getLiveTrainingEnrollments,
+  grantLiveTrainingEnrollment,
 } from '../../../../src/services/adminLiveTrainingService';
 
 const STATUS_LABEL: Record<LiveTrainingLeadStatus, string> = {
@@ -40,6 +41,11 @@ function AdminLiveTrainingLeadsDashboard() {
   const [statusFilter, setStatusFilter] = useState<LiveTrainingLeadStatus | ''>('');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [showGrantForm, setShowGrantForm] = useState(false);
+  const [grantEmail, setGrantEmail] = useState('');
+  const [grantNote, setGrantNote] = useState('');
+  const [granting, setGranting] = useState(false);
+  const [grantError, setGrantError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!trainingId) return;
@@ -99,6 +105,28 @@ function AdminLiveTrainingLeadsDashboard() {
     }
   };
 
+  // Manual roster grant — for a student who paid by bank transfer/offline
+  // and never went through online checkout or the self-serve free-enroll
+  // flow. Upserts straight to ACTIVE server-side, so re-running this for
+  // someone already enrolled is harmless.
+  const handleGrant = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!trainingId || !grantEmail.trim()) return;
+    setGranting(true);
+    setGrantError(null);
+    try {
+      await grantLiveTrainingEnrollment(trainingId, { userEmail: grantEmail.trim(), note: grantNote.trim() || undefined });
+      setGrantEmail('');
+      setGrantNote('');
+      setShowGrantForm(false);
+      await load();
+    } catch (err: any) {
+      setGrantError(err?.response?.data?.message ?? 'სტუდენტის დამატება ვერ მოხერხდა.');
+    } finally {
+      setGranting(false);
+    }
+  };
+
   return (
     <>
       <Head>
@@ -132,12 +160,58 @@ function AdminLiveTrainingLeadsDashboard() {
           </button>
         </div>
 
-        {!loading && enrollments.length > 0 && (
+        {!loading && (
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-8">
-            <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-              <h2 className="text-sm font-semibold text-gray-900">ჩარიცხული სტუდენტები — რეალური ანგარიშები ({enrollments.length})</h2>
-              <p className="text-xs text-gray-500 mt-0.5">ეს არის კოჰორტის რეალური სია — მათ დაშბორდზე ავტომატურად უჩნდებათ მიერთების ბმული და ჩანაწერი.</p>
+            <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">ჩარიცხული სტუდენტები — რეალური ანგარიშები ({enrollments.length})</h2>
+                <p className="text-xs text-gray-500 mt-0.5">ეს არის კოჰორტის რეალური სია — მათ დაშბორდზე ავტომატურად უჩნდებათ მიერთების ბმული და ჩანაწერი.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGrantForm((v) => !v)}
+                className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                სტუდენტის დამატება
+              </button>
             </div>
+
+            {showGrantForm && (
+              <form onSubmit={handleGrant} className="px-4 py-4 border-b border-gray-100 bg-indigo-50/40 space-y-2.5">
+                <p className="text-xs text-gray-500">
+                  ხელით ჩარიცხვა — ბანკის გადარიცხვით/ონლაინ გადახდის გარეშე გადახდილი სტუდენტისთვის. საჭიროა, რომ სტუდენტს უკვე ჰქონდეს რეგისტრირებული ანგარიში ამ ელფოსტით.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    type="email"
+                    required
+                    value={grantEmail}
+                    onChange={(e) => setGrantEmail(e.target.value)}
+                    placeholder="student@example.com"
+                    className="flex-1 min-w-[200px] rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                  <input
+                    value={grantNote}
+                    onChange={(e) => setGrantNote(e.target.value)}
+                    placeholder="შენიშვნა (არასავალდებულო) — მაგ. გადარიცხვის ნომერი"
+                    className="flex-1 min-w-[200px] rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                  <button
+                    type="submit"
+                    disabled={granting || !grantEmail.trim()}
+                    className="shrink-0 text-sm font-medium px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
+                  >
+                    {granting ? 'ემატება…' : 'დამატება'}
+                  </button>
+                </div>
+                {grantError && <p className="text-xs text-red-600">{grantError}</p>}
+              </form>
+            )}
+
+            {enrollments.length === 0 ? (
+              <p className="px-4 py-6 text-sm text-gray-400">ჯერ არცერთი სტუდენტი არ არის ჩარიცხული.</p>
+            ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -158,6 +232,7 @@ function AdminLiveTrainingLeadsDashboard() {
                 </tbody>
               </table>
             </div>
+            )}
           </div>
         )}
 

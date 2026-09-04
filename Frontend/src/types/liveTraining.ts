@@ -18,6 +18,7 @@ export interface LiveTraining {
   // courseLanguageBadge(), shared by both types.
   language: CourseLanguage;
   meetingUrl: string | null;
+  classroomUrl: string | null;
   recordingUrl: string | null;
   // The actual confirmed session window — separate from scheduledAt, which
   // stays the originally-advertised public marketing date. Null until an
@@ -63,6 +64,7 @@ export interface MyLiveTrainingEnrollment {
   startDate: string | null;
   endDate: string | null;
   meetingUrl: string | null;
+  classroomUrl: string | null;
   recordingUrl: string | null;
 }
 

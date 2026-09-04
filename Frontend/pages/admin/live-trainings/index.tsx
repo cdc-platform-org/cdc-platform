@@ -46,6 +46,7 @@ const emptyForm: LiveTrainingPayload & { scheduledAtLocal: string; startDateLoca
   published: true,
   language: 'GEORGIAN' as CourseLanguage,
   meetingUrl: '',
+  classroomUrl: '',
   recordingUrl: '',
   startDateLocal: '',
   endDateLocal: '',
@@ -137,6 +138,7 @@ function AdminLiveTrainingsDashboard() {
       published: t.published,
       language: t.language,
       meetingUrl: t.meetingUrl ?? '',
+      classroomUrl: t.classroomUrl ?? '',
       recordingUrl: t.recordingUrl ?? '',
       startDateLocal: t.startDate ? toLocalInput(t.startDate) : '',
       endDateLocal: t.endDate ? toLocalInput(t.endDate) : '',
@@ -212,6 +214,7 @@ function AdminLiveTrainingsDashboard() {
         published: form.published,
         language: form.language,
         meetingUrl: form.meetingUrl?.trim() || undefined,
+        classroomUrl: form.classroomUrl?.trim() || undefined,
         recordingUrl: form.recordingUrl?.trim() || undefined,
         startDate: form.startDateLocal ? toIsoDatetime(form.startDateLocal) : null,
         endDate: form.endDateLocal ? toIsoDatetime(form.endDateLocal) : null,
@@ -366,6 +369,16 @@ function AdminLiveTrainingsDashboard() {
                     value={form.meetingUrl ?? ''}
                     onChange={(e) => setForm({ ...form, meetingUrl: e.target.value })}
                     placeholder="https://..."
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Google Classroom ბმული</label>
+                  <input
+                    type="text"
+                    value={form.classroomUrl ?? ''}
+                    onChange={(e) => setForm({ ...form, classroomUrl: e.target.value })}
+                    placeholder="https://classroom.google.com/..."
                     className={inputClass}
                   />
                 </div>

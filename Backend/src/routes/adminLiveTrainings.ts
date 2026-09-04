@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
 import multer from 'multer';
 import path from 'path';
 import crypto from 'crypto';
@@ -80,13 +81,14 @@ router.get('/', async (_req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   const result = liveTrainingCreateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
-  const { thumbnailUrl, videoUrl, meetingUrl, recordingUrl, startDate, endDate, ...rest } = result.data;
+  const { thumbnailUrl, videoUrl, meetingUrl, classroomUrl, recordingUrl, startDate, endDate, ...rest } = result.data;
   const training = await prisma.liveTraining.create({
     data: {
       ...rest,
       thumbnailUrl: thumbnailUrl || null,
       videoUrl: videoUrl || null,
       meetingUrl: meetingUrl || null,
+      classroomUrl: classroomUrl || null,
       recordingUrl: recordingUrl || null,
       startDate: startDate ? new Date(startDate) : null,
       endDate: endDate ? new Date(endDate) : null,
@@ -110,7 +112,7 @@ router.post('/', async (req: Request, res: Response) => {
 router.put('/:id', async (req: Request, res: Response) => {
   const result = liveTrainingUpdateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
-  const { thumbnailUrl, videoUrl, meetingUrl, recordingUrl, startDate, endDate, scheduledAt, ...rest } = result.data;
+  const { thumbnailUrl, videoUrl, meetingUrl, classroomUrl, recordingUrl, startDate, endDate, scheduledAt, ...rest } = result.data;
   try {
     const existing = recordingUrl !== undefined
       ? await prisma.liveTraining.findUnique({ where: { id: req.params.id }, select: { recordingUrl: true } })
@@ -123,6 +125,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         ...(thumbnailUrl !== undefined ? { thumbnailUrl: thumbnailUrl || null } : {}),
         ...(videoUrl !== undefined ? { videoUrl: videoUrl || null } : {}),
         ...(meetingUrl !== undefined ? { meetingUrl: meetingUrl || null } : {}),
+        ...(classroomUrl !== undefined ? { classroomUrl: classroomUrl || null } : {}),
         ...(recordingUrl !== undefined ? { recordingUrl: recordingUrl || null } : {}),
         ...(startDate !== undefined ? { startDate: startDate ? new Date(startDate) : null } : {}),
         ...(endDate !== undefined ? { endDate: endDate ? new Date(endDate) : null } : {}),
@@ -214,6 +217,55 @@ router.get('/:id/enrollments', async (req: Request, res: Response) => {
     orderBy: { enrolledAt: 'desc' },
   });
   res.json({ data: enrollments });
+});
+
+// ============================================================
+// MANUAL ENROLLMENT GRANTING — admin override for bank-transfer/offline
+// payments that never went through online checkout or the self-serve free
+// enroll flow. Same posture as adminFinance.ts's course-access/grant: takes
+// either the student's email or their account id (whichever the admin has
+// on hand — a bank transfer receipt usually only has an email), upserts
+// straight to ACTIVE so re-granting a CANCELLED row reactivates it instead
+// of erroring on the unique (userId, liveTrainingId) constraint.
+// ============================================================
+const grantEnrollmentSchema = z
+  .object({
+    userEmail: z.string().email().optional(),
+    userId: z.string().min(1).optional(),
+    note: z.string().trim().max(500).optional(),
+  })
+  .refine((data) => !!data.userEmail || !!data.userId, {
+    message: 'Provide either userEmail or userId.',
+    path: ['userEmail'],
+  });
+
+router.post('/:id/grant', async (req: Request, res: Response) => {
+  const result = grantEnrollmentSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const [user, training] = await Promise.all([
+    result.data.userId
+      ? prisma.user.findUnique({ where: { id: result.data.userId } })
+      : prisma.user.findUnique({ where: { email: result.data.userEmail! } }),
+    prisma.liveTraining.findUnique({ where: { id: req.params.id } }),
+  ]);
+  if (!user) return res.status(404).json({ message: 'No user found with that email/id.' });
+  if (!training) return res.status(404).json({ message: 'Live training not found.' });
+
+  const enrollment = await prisma.liveTrainingEnrollment.upsert({
+    where: { userId_liveTrainingId: { userId: user.id, liveTrainingId: training.id } },
+    update: { status: 'ACTIVE' },
+    create: { userId: user.id, liveTrainingId: training.id, status: 'ACTIVE' },
+    include: { user: { select: { id: true, name: true, email: true } } },
+  });
+  await logAdminAction({
+    action: 'liveTraining.enrollment.manual-grant',
+    targetType: 'LiveTrainingEnrollment',
+    targetId: `${user.id}:${training.id}`,
+    performedById: req.user!.id,
+    metadata: { note: result.data.note, trainingTitle: training.title, userEmail: user.email },
+  });
+  res.status(201).json({ data: enrollment });
 });
 
 // Minimal hand-rolled CSV — the export is always name/email/phone/status/
