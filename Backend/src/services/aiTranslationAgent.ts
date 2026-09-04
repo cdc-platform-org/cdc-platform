@@ -27,8 +27,24 @@ import { isAiTranslateConfigured } from './aiTranslateService';
 // real GitHub API call is a separate follow-up once that credential exists.
 // ============================================================
 
+// AUDIT NOTE: __dirname-relative resolution (path.resolve(__dirname,
+// '../../..')) happened to land on the real monorepo root in local dev
+// (Backend/src/services and Backend/dist/services are both exactly 3 levels
+// under the repo root, so ts-node-dev and the compiled dist build agreed by
+// coincidence) — but Backend's own Dockerfile (see its own comments) COPYs
+// only Backend's files into the runtime image; there is no Frontend
+// directory anywhere in that container's filesystem at all. In production
+// this resolved to the container's actual filesystem root ('/'), producing
+// the exact "Reference locale directory not found: /Frontend/public/locales"
+// error this comment is fixing. No path-construction trick (process.cwd(),
+// __dirname, etc.) can fix this — the files genuinely don't exist in that
+// container. I18N_LOCALES_DIR lets a future deploy that DOES co-locate the
+// two apps' source (or a CI job with the full monorepo checked out, e.g.
+// qa-nightly.yml) point this at the real path explicitly; every other
+// environment gets a clear, honest "not available here" error instead of a
+// confusing raw filesystem path.
 const REPO_ROOT = path.resolve(__dirname, '../../..');
-const DEFAULT_LOCALES_DIR = path.join(REPO_ROOT, 'Frontend', 'public', 'locales');
+const DEFAULT_LOCALES_DIR = (process.env.I18N_LOCALES_DIR || '').trim() || path.join(REPO_ROOT, 'Frontend', 'public', 'locales');
 const SOURCE_LOCALE = 'en';
 
 export class I18nAgentError extends Error {
@@ -125,7 +141,9 @@ export async function scanMissingTranslations(localesDir: string = DEFAULT_LOCAL
   try {
     namespaceFiles = (await fs.readdir(sourceDir)).filter((f) => f.endsWith('.json'));
   } catch {
-    throw new I18nAgentError(`Reference locale directory not found: ${sourceDir}`);
+    throw new I18nAgentError(
+      `This tool needs the Frontend app's source checked out alongside the Backend's (looked for: ${sourceDir}) — it is not available in a production deployment, where the two apps run as separate containers with no shared filesystem. Run it in local dev, or set I18N_LOCALES_DIR to a real checkout if this environment does have one.`
+    );
   }
 
   const localeDirs = (await fs.readdir(localesDir, { withFileTypes: true }))
@@ -165,6 +183,54 @@ export async function scanMissingTranslations(localesDir: string = DEFAULT_LOCAL
       if (Object.keys(missingStringKeys).length > 0 || skippedNonStringKeys.length > 0) {
         groups.push({ locale, namespace, missingStringKeys, skippedNonStringKeys });
       }
+    }
+  }
+
+  return groups;
+}
+
+export interface OrphanedKeyGroup {
+  locale: string;
+  namespace: string;
+  // Keys present in this locale's file but absent from the en/ reference —
+  // almost always a stale leftover from a since-renamed/removed en/ key
+  // that a previous manual edit never cleaned up on the other locales.
+  orphanedKeys: string[];
+}
+
+// TOOL C (admin System Tools "Missing Locales Audit & Cleanup") — the
+// inverse check of scanMissingTranslations above: keys that exist in a
+// non-en locale file but were never in (or have since been removed from)
+// the en/ reference. check-locale-parity.js's CI gate only catches the
+// missing-key direction (a locale falling behind en/); an orphaned key is
+// harmless at runtime (next-i18next simply never reads it) but is dead
+// weight worth cleaning up. Read-only — reports locations, never deletes
+// anything itself, so an admin can review before hand-editing the files.
+export async function auditOrphanedKeys(localesDir: string = DEFAULT_LOCALES_DIR): Promise<OrphanedKeyGroup[]> {
+  const sourceDir = path.join(localesDir, SOURCE_LOCALE);
+  let namespaceFiles: string[];
+  try {
+    namespaceFiles = (await fs.readdir(sourceDir)).filter((f) => f.endsWith('.json'));
+  } catch {
+    throw new I18nAgentError(
+      `This tool needs the Frontend app's source checked out alongside the Backend's (looked for: ${sourceDir}) — it is not available in a production deployment, where the two apps run as separate containers with no shared filesystem. Run it in local dev, or set I18N_LOCALES_DIR to a real checkout if this environment does have one.`
+    );
+  }
+
+  const localeDirs = (await fs.readdir(localesDir, { withFileTypes: true }))
+    .filter((entry) => entry.isDirectory() && entry.name !== SOURCE_LOCALE && !entry.name.startsWith('.'))
+    .map((entry) => entry.name);
+
+  const groups: OrphanedKeyGroup[] = [];
+
+  for (const namespace of namespaceFiles) {
+    const sourceJson = await readJsonFile(path.join(sourceDir, namespace));
+    const sourceKeys = new Set(flattenKeys(sourceJson));
+
+    for (const locale of localeDirs) {
+      const targetJson = await readJsonFile(path.join(localesDir, locale, namespace));
+      const orphanedKeys = flattenKeys(targetJson).filter((key) => !sourceKeys.has(key));
+      if (orphanedKeys.length > 0) groups.push({ locale, namespace, orphanedKeys });
     }
   }
 

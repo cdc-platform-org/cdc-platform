@@ -169,7 +169,19 @@ export const GOOGLE_CALENDAR_ID = (process.env.GOOGLE_CALENDAR_ID || 'contact@cd
 // pattern as GEMINI_API_KEY itself.
 export const AZURE_OPENAI_API_KEY = (process.env.AZURE_OPENAI_API_KEY || '').trim();
 export const AZURE_OPENAI_ENDPOINT = (process.env.AZURE_OPENAI_ENDPOINT || '').trim().replace(/\/$/, '');
-export const AZURE_OPENAI_DEPLOYMENT_NAME = (process.env.AZURE_OPENAI_DEPLOYMENT_NAME || '').trim();
+// Falls back to the older AZURE_OPENAI_DEPLOYMENT name (no _NAME suffix) —
+// that was the var this platform's Azure App Service was actually
+// provisioned with before the naming was standardized to match
+// azureOpenAiService.ts's convention (see utils/azureOpenai.ts's own audit-
+// note comment). Without this fallback, a production environment whose
+// Azure App Service Configuration was never updated to add the new name
+// would have every Azure OpenAI call fail outright (empty deployment ->
+// every region 404s -> the "AI service temporarily overloaded" message the
+// admin blog generator surfaces) the moment this codebase started requiring
+// the new name — this is a defensive backward-compat shim, not a style
+// preference; do not remove it without confirming the real Azure resource's
+// App Service Configuration actually has AZURE_OPENAI_DEPLOYMENT_NAME set.
+export const AZURE_OPENAI_DEPLOYMENT_NAME = (process.env.AZURE_OPENAI_DEPLOYMENT_NAME || process.env.AZURE_OPENAI_DEPLOYMENT || '').trim();
 // Azure OpenAI requires an explicit API version per request — unlike Gemini,
 // there's no "-latest" alias, so this is pinned to a known-GA version rather
 // than guessed. Override via env if your deployment needs a different one.

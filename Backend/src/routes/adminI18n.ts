@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { logAdminAction } from '../services/auditLogService';
-import { runI18nAutoTranslateAgent } from '../services/aiTranslationAgent';
+import { runI18nAutoTranslateAgent, auditOrphanedKeys } from '../services/aiTranslationAgent';
 
 const router = Router();
 // SUPER_ADMIN only — this writes to source files on disk and creates a git
@@ -25,6 +25,19 @@ router.post('/auto-translate-and-push', async (req: Request, res: Response) => {
     res.json({ data: result });
   } catch (err: any) {
     res.status(502).json({ message: err?.message ?? 'The translation agent run failed.' });
+  }
+});
+
+// TOOL C — Missing Locales Audit & Cleanup. Read-only report of keys
+// present in a locale file but absent from en/ (the reference) — see
+// aiTranslationAgent.ts's auditOrphanedKeys for what this does and doesn't
+// check.
+router.get('/audit-orphaned-keys', async (req: Request, res: Response) => {
+  try {
+    const groups = await auditOrphanedKeys();
+    res.json({ data: { groups, totalOrphanedKeys: groups.reduce((sum, g) => sum + g.orphanedKeys.length, 0) } });
+  } catch (err: any) {
+    res.status(502).json({ message: err?.message ?? 'The locale audit failed.' });
   }
 });
 
