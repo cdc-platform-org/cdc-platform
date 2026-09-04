@@ -20,6 +20,7 @@ import {
   Users,
 } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
+import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
 import BackButton from '../../../src/components/common/BackButton';
@@ -1256,7 +1257,9 @@ export default function EducatorHubPage() {
           renders EducatorHubContent at all. */}
       <SEOHead title={t('pageTitle', 'AI მასწავლებლის VIP ასისტენტი')} description={t('pageSubtitle', 'AI ხელსაწყოები თქვენი ყოველკვირეული დავალებებისთვის')} noIndex />
       <ProtectedRoute>
-        <EducatorHubContent />
+        <ToolErrorBoundary>
+          <EducatorHubContent />
+        </ToolErrorBoundary>
       </ProtectedRoute>
     </>
   );

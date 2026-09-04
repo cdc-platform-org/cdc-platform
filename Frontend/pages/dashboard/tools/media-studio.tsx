@@ -22,6 +22,7 @@ import {
   Square,
 } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
+import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
 import SEOHead from '../../../src/components/seo/SEOHead';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
@@ -912,7 +913,9 @@ export default function MediaStudioPage() {
           an unauthenticated crawler's DOM. */}
       <SEOHead title={t('pageTitle')} description={t('catalogDesc')} noIndex />
       <ProtectedRoute>
-        <MediaStudioContent />
+        <ToolErrorBoundary>
+          <MediaStudioContent />
+        </ToolErrorBoundary>
       </ProtectedRoute>
     </>
   );

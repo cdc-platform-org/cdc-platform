@@ -2,6 +2,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { Bot } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
+import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
 import RoleGate from '../../../src/components/auth/RoleGate';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
@@ -87,7 +88,9 @@ function ChatbotBuilderContent() {
 export default function ChatbotBuilderPage() {
   return (
     <ProtectedRoute>
-      <ChatbotBuilderContent />
+      <ToolErrorBoundary>
+        <ChatbotBuilderContent />
+      </ToolErrorBoundary>
     </ProtectedRoute>
   );
 }
