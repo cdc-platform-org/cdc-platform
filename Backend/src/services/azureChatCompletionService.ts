@@ -155,3 +155,47 @@ export async function callAzureChatCompletion(options: CallAzureChatOptions): Pr
   const { content } = await callAzureChatCompletionFull(options);
   return content;
 }
+
+export interface RegionPingResult {
+  configured: boolean;
+  ok: boolean;
+  message: string;
+  latencyMs: number;
+}
+
+// Pings ONE region directly (never through the failover loop above, which
+// would mask a region's own failure by silently trying the other one) — the
+// admin System Health diagnostic (routes/adminSystemTools.ts) uses this to
+// show each region's real status independently.
+async function pingRegion(label: 'primary' | 'secondary'): Promise<RegionPingResult> {
+  const configured = label === 'primary' ? !!AZURE_OPENAI_DEPLOYMENT_NAME : isSecondaryAzureConfigured();
+  if (!configured) return { configured: false, ok: false, message: 'Not configured', latencyMs: 0 };
+
+  const t0 = Date.now();
+  try {
+    if (label === 'primary') {
+      await azureOpenai.chat.completions.create({
+        model: AZURE_OPENAI_DEPLOYMENT_NAME,
+        messages: [{ role: 'user', content: 'ping' }],
+        max_tokens: 5,
+      });
+    } else {
+      await getSecondaryClient().chat.completions.create({
+        model: AZURE_OPENAI_DEPLOYMENT_NAME_SECONDARY || AZURE_OPENAI_DEPLOYMENT_NAME,
+        messages: [{ role: 'user', content: 'ping' }],
+        max_tokens: 5,
+      });
+    }
+    return { configured: true, ok: true, message: 'OK', latencyMs: Date.now() - t0 };
+  } catch (err) {
+    return { configured: true, ok: false, message: err instanceof Error ? err.message : 'Unknown error', latencyMs: Date.now() - t0 };
+  }
+}
+
+export async function pingPrimaryAzure(): Promise<RegionPingResult> {
+  return pingRegion('primary');
+}
+
+export async function pingSecondaryAzure(): Promise<RegionPingResult> {
+  return pingRegion('secondary');
+}

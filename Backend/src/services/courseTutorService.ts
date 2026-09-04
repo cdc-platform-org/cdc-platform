@@ -149,6 +149,17 @@ function setCached(key: string, reply: string): void {
   responseCache.set(key, { reply, expiresAt: Date.now() + CACHE_TTL_MS });
 }
 
+// Admin "Clear Application Cache" tool (routes/adminSystemTools.ts) — wipes
+// every cached reply immediately, e.g. after editing a lesson whose stale
+// cached answer would otherwise keep serving for up to CACHE_TTL_MS. Returns
+// the number of entries actually cleared, purely for the admin's own
+// confirmation feedback.
+export function clearCourseTutorCache(): number {
+  const size = responseCache.size;
+  responseCache.clear();
+  return size;
+}
+
 export async function generateTutorReply(params: GenerateTutorReplyParams): Promise<string> {
   if (!isCourseTutorConfigured()) {
     throw new CourseTutorError('The AI tutor is not configured (GEMINI_API_KEY/AZURE_OPENAI_* missing).');
