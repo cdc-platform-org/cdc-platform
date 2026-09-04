@@ -22,6 +22,7 @@ const dict = {
     gallery: 'გალერეა',
     community: 'ვაკანსიები',
     mentors: 'მენტორები',
+    courses: 'კურსები',
     marketplace: 'ციფრული მაღაზია',
     categories: 'კატეგორიები',
     viewAllProducts: 'ყველა პროდუქტი',
@@ -40,6 +41,7 @@ const dict = {
     gallery: 'Gallery',
     community: 'Jobs',
     mentors: 'Mentors',
+    courses: 'Courses',
     marketplace: 'Marketplace',
     categories: 'Categories',
     viewAllProducts: 'View All Products',
@@ -58,6 +60,7 @@ const dict = {
     gallery: 'Galerie',
     community: 'Jobs',
     mentors: 'Mentoren',
+    courses: 'Kurse',
     marketplace: 'Marktplatz',
     categories: 'Kategorien',
     viewAllProducts: 'Alle Produkte ansehen',
@@ -76,6 +79,7 @@ const dict = {
     gallery: 'Galería',
     community: 'Empleos',
     mentors: 'Mentores',
+    courses: 'Cursos',
     marketplace: 'Mercado',
     categories: 'Categorías',
     viewAllProducts: 'Ver Todos los Productos',
@@ -94,6 +98,7 @@ const dict = {
     gallery: 'Galerie',
     community: 'Emplois',
     mentors: 'Mentors',
+    courses: 'Cours',
     marketplace: 'Marché',
     categories: 'Catégories',
     viewAllProducts: 'Voir tous les produits',
@@ -112,6 +117,7 @@ const dict = {
     gallery: 'Галерея',
     community: 'Вакансії',
     mentors: 'Ментори',
+    courses: 'Курси',
     marketplace: 'Маркетплейс',
     categories: 'Категорії',
     viewAllProducts: 'Переглянути всі товари',
@@ -245,6 +251,9 @@ export default function SiteHeader() {
                 </div>
               </div>
             </div>
+            <Link href="/courses" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-1 lg:gap-2 xl:gap-3">
+              {t.courses}
+            </Link>
             <div className="relative group py-2 -my-2">
               <Link
                 href="/marketplace"
@@ -377,6 +386,9 @@ export default function SiteHeader() {
             </Link>
             <Link href="/mentors" onClick={() => setMobileMenuOpen(false)} className="no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
               {t.mentors}
+            </Link>
+            <Link href="/courses" onClick={() => setMobileMenuOpen(false)} className="no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+              {t.courses}
             </Link>
             <Link href="/marketplace" onClick={() => setMobileMenuOpen(false)} className="no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
               {t.marketplace}

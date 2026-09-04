@@ -134,20 +134,51 @@ router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODER
 // dashboard-stats runs (gig/vacancy groupBys, payment volume sums, etc.)
 // that only the /admin dashboard page itself needs once per visit.
 // ============================================================
-router.get('/sidebar-badges', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'), async (_req, res) => {
-  const [studioInquiries, businessVerifications, pendingProducts, highSeverityChatFlags, pendingMentorApplications, pendingCourseReviews] =
-    await Promise.all([
-      prisma.studioInquiry.count({ where: { status: { in: ['PENDING', 'IN_REVIEW'] } } }),
-      // Mirrors adminCompanies.ts's own "under_review" filter exactly — a
-      // business account that uploaded a verification doc but isn't verified
-      // yet — rather than trusting the separate verificationStatus enum,
-      // which that route's own list filter doesn't use as the source of truth.
-      prisma.user.count({ where: { role: 'Client', verificationDocUrl: { not: null }, isVerified: false } }),
-      prisma.digitalProduct.count({ where: { status: 'PENDING' } }),
-      prisma.chatFlag.count({ where: { reviewedAt: null, severity: 'HIGH' } }),
-      prisma.mentorApplication.count({ where: { status: 'PENDING' } }),
-      prisma.course.count({ where: { instructorId: { not: null }, status: 'PENDING_REVIEW' } }),
-    ]);
+// BLUE ("new since I last looked") sections — inherently time-based, unlike
+// the RED/YELLOW badges below which just count PENDING-style rows and need
+// no seen-state. See AdminSectionSeen's own schema comment.
+const SEEN_TRACKED_SECTIONS = ['waitlist', 'liveTrainings', 'courses'] as const;
+type SeenTrackedSection = (typeof SEEN_TRACKED_SECTIONS)[number];
+
+router.get('/sidebar-badges', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'), async (req, res) => {
+  const seenRows = await prisma.adminSectionSeen.findMany({
+    where: { adminId: req.user!.id, section: { in: SEEN_TRACKED_SECTIONS as unknown as string[] } },
+  });
+  const lastSeenAt = (section: SeenTrackedSection): Date =>
+    seenRows.find((r) => r.section === section)?.lastSeenAt ?? new Date(0);
+
+  const [
+    studioInquiries,
+    businessVerifications,
+    pendingProducts,
+    highSeverityChatFlags,
+    pendingMentorApplications,
+    pendingCourseReviews,
+    reportedForumPosts,
+    waitlistEntries,
+    newLiveTrainingLeads,
+    newCourseEnrollments,
+  ] = await Promise.all([
+    prisma.studioInquiry.count({ where: { status: { in: ['PENDING', 'IN_REVIEW'] } } }),
+    // Mirrors adminCompanies.ts's own "under_review" filter exactly — a
+    // business account that uploaded a verification doc but isn't verified
+    // yet — rather than trusting the separate verificationStatus enum,
+    // which that route's own list filter doesn't use as the source of truth.
+    prisma.user.count({ where: { role: 'Client', verificationDocUrl: { not: null }, isVerified: false } }),
+    prisma.digitalProduct.count({ where: { status: 'PENDING' } }),
+    prisma.chatFlag.count({ where: { reviewedAt: null, severity: 'HIGH' } }),
+    prisma.mentorApplication.count({ where: { status: 'PENDING' } }),
+    prisma.course.count({ where: { instructorId: { not: null }, status: 'PENDING_REVIEW' } }),
+    prisma.forumThread.count({ where: { moderationStatus: 'PENDING' } }),
+    prisma.cyberSentinelWaitlistEntry.count({ where: { createdAt: { gt: lastSeenAt('waitlist') } } }),
+    prisma.liveTrainingLead.count({ where: { createdAt: { gt: lastSeenAt('liveTrainings') } } }).then(async (leadCount) => {
+      const enrollmentCount = await prisma.liveTrainingEnrollment.count({
+        where: { enrolledAt: { gt: lastSeenAt('liveTrainings') } },
+      });
+      return leadCount + enrollmentCount;
+    }),
+    prisma.courseEnrollment.count({ where: { grantedAt: { gt: lastSeenAt('courses') } } }),
+  ]);
 
   res.json({
     studioInquiries,
@@ -156,7 +187,27 @@ router.get('/sidebar-badges', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERA
     highSeverityChatFlags,
     pendingMentorApplications,
     pendingCourseReviews,
+    reportedForumPosts,
+    waitlistEntries,
+    newLiveTrainingLeads,
+    newCourseEnrollments,
   });
+});
+
+// Bumps this admin's "last seen" marker for one BLUE section to now — called
+// by AdminLayout when the admin navigates into that section's page, which is
+// what makes the badge count clear itself on the next poll.
+router.post('/sidebar-badges/seen', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'), async (req, res) => {
+  const section = req.body?.section;
+  if (typeof section !== 'string' || !SEEN_TRACKED_SECTIONS.includes(section as SeenTrackedSection)) {
+    return res.status(400).json({ message: 'Invalid section.' });
+  }
+  await prisma.adminSectionSeen.upsert({
+    where: { adminId_section: { adminId: req.user!.id, section } },
+    update: { lastSeenAt: new Date() },
+    create: { adminId: req.user!.id, section, lastSeenAt: new Date() },
+  });
+  res.status(204).send();
 });
 
 // ============================================================

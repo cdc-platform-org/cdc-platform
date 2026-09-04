@@ -26,11 +26,24 @@ export interface AdminSidebarBadgeCounts {
   highSeverityChatFlags: number;
   pendingMentorApplications: number;
   pendingCourseReviews: number;
+  reportedForumPosts: number;
+  waitlistEntries: number;
+  newLiveTrainingLeads: number;
+  newCourseEnrollments: number;
 }
 
 export async function getSidebarBadgeCounts(): Promise<AdminSidebarBadgeCounts> {
   const response = await apiClient.get<AdminSidebarBadgeCounts>('/admin-panel/sidebar-badges');
   return response.data;
+}
+
+// BLUE ("new since I last looked") sections only — see AdminSectionSeen's
+// schema comment. Bumps this admin's marker to now(), clearing that badge
+// on the next 60s poll.
+export type AdminSeenSection = 'waitlist' | 'liveTrainings' | 'courses';
+
+export async function markSidebarSectionSeen(section: AdminSeenSection): Promise<void> {
+  await apiClient.post('/admin-panel/sidebar-badges/seen', { section });
 }
 
 // --- Gigs & Vacancies moderation ---

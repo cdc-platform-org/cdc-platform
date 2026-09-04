@@ -40,7 +40,19 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { AdminLangProvider, useAdminLang } from '../../context/AdminLangContext';
 import { adminDict } from '../../data/adminDict';
-import { getSidebarBadgeCounts, AdminSidebarBadgeCounts } from '../../services/adminPanelService';
+import { getSidebarBadgeCounts, markSidebarSectionSeen, AdminSidebarBadgeCounts, AdminSeenSection } from '../../services/adminPanelService';
+
+// RED = action required (a queue only a human decision can clear — pending
+// applications/verifications/waitlist signups). BLUE = new
+// registrations/leads (informational, clears itself once the admin visits
+// the section — see AdminSeenSection). YELLOW = moderation/review queue
+// (published content waiting on a moderation decision).
+type BadgeColor = 'red' | 'blue' | 'yellow';
+const BADGE_COLOR_CLASS: Record<BadgeColor, string> = {
+  red: 'bg-red-500 text-white',
+  blue: 'bg-sky-500 text-white',
+  yellow: 'bg-amber-400 text-slate-900',
+};
 
 interface NavItem {
   href: string;
@@ -51,6 +63,13 @@ interface NavItem {
   // Pending-count badge sourced from GET /admin-panel/sidebar-badges — omit
   // for every nav item that has no "needs attention now" queue.
   badgeKey?: keyof AdminSidebarBadgeCounts;
+  badgeColor?: BadgeColor; // defaults to 'red' when badgeKey is set
+  // Set only for a BLUE (time-based "new since I last looked") badge —
+  // visiting this href calls POST .../sidebar-badges/seen with this section
+  // so the badge clears on the next poll. Omit for RED/YELLOW badges, which
+  // are status-based and clear themselves once the underlying row is acted
+  // on (no seen-state needed).
+  seenSection?: AdminSeenSection;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -64,7 +83,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/notifications', labelKey: 'notifications', icon: Bell, section: 'core' },
   { href: '/admin/products', labelKey: 'products', icon: ShoppingBag, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content', badgeKey: 'pendingProducts' },
   { href: '/admin/product-reviews', labelKey: 'productReviews', icon: Star, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
-  { href: '/admin/forum', labelKey: 'forum', icon: MessageSquare, section: 'content' },
+  { href: '/admin/forum', labelKey: 'forum', icon: MessageSquare, section: 'content', badgeKey: 'reportedForumPosts', badgeColor: 'yellow' },
   { href: '/admin/bot-knowledge', labelKey: 'botKnowledge', icon: BrainCircuit, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/cms/homepage', labelKey: 'cms', icon: PenTool, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/cms/gallery', labelKey: 'gallery', icon: ImageIcon, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
@@ -76,15 +95,15 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/tutorials', labelKey: 'tutorials', icon: PlayCircle, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
   { href: '/admin/opportunities', labelKey: 'opportunities', icon: Radar, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
   { href: '/admin/marketing', labelKey: 'marketing', icon: Megaphone, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
-  { href: '/admin/live-trainings', labelKey: 'liveTrainings', icon: Users, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },
+  { href: '/admin/live-trainings', labelKey: 'liveTrainings', icon: Users, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic', badgeKey: 'newLiveTrainingLeads', badgeColor: 'blue', seenSection: 'liveTrainings' },
   { href: '/admin/success-stories', labelKey: 'successStories', icon: Award, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
   { href: '/admin/team-trainers', labelKey: 'teamTrainers', icon: UsersRound, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
   { href: '/admin/studio-cases', labelKey: 'studioCases', icon: Layers, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
-  { href: '/admin/cyber-sentinel', labelKey: 'cyberSentinel', icon: Bug, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
-  { href: '/admin/courses', labelKey: 'courses', icon: GraduationCap, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },
+  { href: '/admin/cyber-sentinel', labelKey: 'cyberSentinel', icon: Bug, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business', badgeKey: 'waitlistEntries', seenSection: 'waitlist' },
+  { href: '/admin/courses', labelKey: 'courses', icon: GraduationCap, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic', badgeKey: 'newCourseEnrollments', badgeColor: 'blue', seenSection: 'courses' },
   { href: '/admin/tutor', labelKey: 'tutor', icon: BrainCircuit, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },
   { href: '/admin/mentor-applications', labelKey: 'mentorApplications', icon: UserCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic', badgeKey: 'pendingMentorApplications' },
-  { href: '/admin/course-moderation', labelKey: 'courseModeration', icon: ClipboardList, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic', badgeKey: 'pendingCourseReviews' },
+  { href: '/admin/course-moderation', labelKey: 'courseModeration', icon: ClipboardList, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic', badgeKey: 'pendingCourseReviews', badgeColor: 'yellow' },
   { href: '/admin/assignments', labelKey: 'assignments', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },
   { href: '/admin/candidate-verifications', labelKey: 'candidateVerifications', icon: UserCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },
   { href: '/admin/analytics', labelKey: 'analytics', icon: BarChart3, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },
@@ -143,6 +162,18 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
       window.removeEventListener('pageshow', onPageShow);
     };
   }, [loadBadgeCounts]);
+
+  // Visiting a BLUE-badged section's own page marks it seen — the next
+  // badgeCounts poll (up to 60s later) then shows 0 for it. Keyed off
+  // router.pathname (not mount) since AdminLayout remounts on every /admin/*
+  // navigation anyway (see the sidebar-scroll comment below).
+  useEffect(() => {
+    const item = NAV_ITEMS.find((i) => i.href === router.pathname && i.seenSection);
+    if (!item?.seenSection) return;
+    markSidebarSectionSeen(item.seenSection)
+      .then(loadBadgeCounts)
+      .catch(() => {});
+  }, [router.pathname, loadBadgeCounts]);
 
   // Each admin page mounts its own <AdminLayout>, so this <aside> is torn
   // down and rebuilt on every route change — losing its scrollTop even
@@ -212,7 +243,11 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
                       <Icon className="w-4 h-4 shrink-0" />
                       <span className="flex-1 min-w-0">{t.nav[item.labelKey]}</span>
                       {!!badgeCount && (
-                        <span className="shrink-0 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-black">
+                        <span
+                          className={`shrink-0 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-black ${
+                            BADGE_COLOR_CLASS[item.badgeColor ?? 'red']
+                          }`}
+                        >
                           {badgeCount > 9 ? '9+' : badgeCount}
                         </span>
                       )}
