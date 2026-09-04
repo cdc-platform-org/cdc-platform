@@ -25,7 +25,7 @@ env:
   ACR_LOGIN_SERVER: cdcplatformacr.azurecr.io
   IMAGE_NAME: cdc-platform-backend
   WEBAPP_NAME: cdc-api-prod
-  RESOURCE_GROUP: CDC-Prod-RG
+  RESOURCE_GROUP: cdc-platform-rg
 
 jobs:
   build-and-deploy:

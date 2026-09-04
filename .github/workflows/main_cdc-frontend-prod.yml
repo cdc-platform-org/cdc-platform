@@ -4,14 +4,12 @@
 # ACR-then-point-the-Web-App-at-it shape, same "only deploy what Nightly QA
 # actually tested" gate, reusing the SAME Azure OIDC service-principal
 # secrets the Backend workflow already uses (AZURE_CLIENT_ID/TENANT_ID/
-# SUBSCRIPTION_ID). Two things this workflow needs that don't exist yet —
-# see this repo's Azure-migration notes:
-#   1. The `cdc-frontend-prod` Web App itself (Linux, custom container) —
-#      provision it in resource group CDC-Prod-RG, then grant the existing
-#      service principal a role (e.g. Website Contributor) scoped to it if
-#      its current role assignment doesn't already cover the whole
-#      resource group.
-#   2. NEXT_PUBLIC_* build-time secrets (see the "Build and push image"
+# SUBSCRIPTION_ID). RESOURCE_GROUP below is cdc-platform-rg — confirmed
+# against the real Azure resource group name (a prior version of this
+# workflow had it wrong as "CDC-Prod-RG", which is what made
+# `az webapp config container set` fail with ResourceNotFound — not an
+# RBAC/permissions issue as this comment used to speculate).
+#   1. NEXT_PUBLIC_* build-time secrets (see the "Build and push image"
 #      step below) as GitHub Actions repo secrets — these get baked into
 #      the client bundle at build time (see Frontend/Dockerfile's own
 #      comment on why they're build ARGs, not just runtime env), so they
@@ -35,7 +33,7 @@ env:
   ACR_LOGIN_SERVER: cdcplatformacr.azurecr.io
   IMAGE_NAME: cdc-platform-frontend
   WEBAPP_NAME: cdc-frontend-prod
-  RESOURCE_GROUP: CDC-Prod-RG
+  RESOURCE_GROUP: cdc-platform-rg
 
 jobs:
   build-and-deploy:

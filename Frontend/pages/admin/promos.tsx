@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, FormEvent } from 'react';
+import { useState, useEffect, useCallback, useMemo, FormEvent } from 'react';
 import Head from 'next/head';
-import { Plus, Trash2, Tag, Power } from 'lucide-react';
+import { Plus, Trash2, Tag, Power, ChevronDown } from 'lucide-react';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
 import {
@@ -11,6 +11,9 @@ import {
   PromoCode,
   PromoApplicableType,
 } from '../../src/services/adminPromosService';
+import { getCourses } from '../../src/services/courseService';
+import { getAdminLiveTrainings } from '../../src/services/adminLiveTrainingService';
+import { getAdminProducts } from '../../src/services/productService';
 
 const inputClass = 'w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
 
@@ -22,15 +25,61 @@ const TYPE_LABEL: Record<PromoApplicableType, string> = {
   AI_TOOL: 'AI ხელსაწყო',
 };
 
+interface TargetOption {
+  id: string;
+  name: string;
+}
+
+// No unified paid AI-tool catalog exists in this codebase (Business AI
+// tools are free-access, Educator VIP is a trial+billing subscription, not
+// a one-off purchase) — English Tutor is the one flat-price AI-tool
+// checkout couponService.ts's resolveTargetPrice actually supports today.
+// Extend this list as more AI-tool checkouts gain promo support.
+const AI_TOOL_OPTIONS: TargetOption[] = [{ id: 'english-tutor', name: 'IMIAKO — AI English Tutor (1 month)' }];
+
 const emptyForm = {
   code: '',
   discountType: 'percent' as 'percent' | 'amount',
   discountValue: '',
   applicableType: 'ALL' as PromoApplicableType,
-  applicableTargetIds: '',
+  applicableTargetIds: [] as string[],
   expiresAt: '',
   maxUses: '',
 };
+
+// Interactive multi-select: a bordered, scrollable checkbox list rather
+// than a native <select multiple> (which needs ctrl/cmd-click knowledge
+// most admins won't have) or a text field of raw ids an admin would have
+// to look up by hand — titles are what's shown, ids are what's bound.
+function TargetMultiSelect({
+  options,
+  loading,
+  selected,
+  onChange,
+}: {
+  options: TargetOption[];
+  loading: boolean;
+  selected: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  const toggle = (id: string) => {
+    onChange(selected.includes(id) ? selected.filter((s) => s !== id) : [...selected, id]);
+  };
+
+  if (loading) return <p className="text-xs text-gray-400 py-2">იტვირთება…</p>;
+  if (options.length === 0) return <p className="text-xs text-gray-400 py-2">ჩამონათვალი ცარიელია.</p>;
+
+  return (
+    <div className="rounded-lg border border-gray-300 max-h-44 overflow-y-auto divide-y divide-gray-100">
+      {options.map((opt) => (
+        <label key={opt.id} className="flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50">
+          <input type="checkbox" checked={selected.includes(opt.id)} onChange={() => toggle(opt.id)} className="shrink-0" />
+          <span className="truncate">{opt.name}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
 
 function AdminPromosDashboard() {
   const [codes, setCodes] = useState<PromoCode[]>([]);
@@ -39,6 +88,14 @@ function AdminPromosDashboard() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Fetched once, up front — small catalogs (courses/trainings/products),
+  // reused both for the create-form picker and to render real titles (not
+  // raw ids) in the promo list below.
+  const [courseOptions, setCourseOptions] = useState<TargetOption[]>([]);
+  const [trainingOptions, setTrainingOptions] = useState<TargetOption[]>([]);
+  const [productOptions, setProductOptions] = useState<TargetOption[]>([]);
+  const [optionsLoading, setOptionsLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -49,9 +106,52 @@ function AdminPromosDashboard() {
     }
   }, []);
 
+  const loadOptions = useCallback(async () => {
+    setOptionsLoading(true);
+    try {
+      const [courses, trainings, products] = await Promise.all([
+        getCourses().catch(() => []),
+        getAdminLiveTrainings().catch(() => []),
+        getAdminProducts().catch(() => []),
+      ]);
+      setCourseOptions(courses.map((c) => ({ id: c.id, name: c.title })));
+      setTrainingOptions(trainings.map((t) => ({ id: t.id, name: t.title })));
+      setProductOptions(products.map((p) => ({ id: p.id, name: p.title })));
+    } finally {
+      setOptionsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadOptions();
+  }, [load, loadOptions]);
+
+  const optionsForType: TargetOption[] = useMemo(() => {
+    switch (form.applicableType) {
+      case 'COURSE':
+        return courseOptions;
+      case 'LIVE_TRAINING':
+        return trainingOptions;
+      case 'DIGITAL_PRODUCT':
+        return productOptions;
+      case 'AI_TOOL':
+        return AI_TOOL_OPTIONS;
+      default:
+        return [];
+    }
+  }, [form.applicableType, courseOptions, trainingOptions, productOptions]);
+
+  // One combined id -> name lookup across every catalog, so the promo list
+  // below can show a real title regardless of which type a given code
+  // targets, without re-fetching per row.
+  const targetNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const opt of [...courseOptions, ...trainingOptions, ...productOptions, ...AI_TOOL_OPTIONS]) {
+      map.set(opt.id, opt.name);
+    }
+    return map;
+  }, [courseOptions, trainingOptions, productOptions]);
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault();
@@ -63,13 +163,7 @@ function AdminPromosDashboard() {
         discountPercent: form.discountType === 'percent' ? Number(form.discountValue) : null,
         discountAmount: form.discountType === 'amount' ? Math.round(Number(form.discountValue) * 100) : null,
         applicableType: form.applicableType,
-        applicableTargetIds:
-          form.applicableType === 'ALL'
-            ? []
-            : form.applicableTargetIds
-                .split(',')
-                .map((id) => id.trim())
-                .filter(Boolean),
+        applicableTargetIds: form.applicableType === 'ALL' ? [] : form.applicableTargetIds,
         expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
         maxUses: form.maxUses ? Number(form.maxUses) : null,
       });
@@ -139,13 +233,13 @@ function AdminPromosDashboard() {
             <input type="number" min="1" placeholder="Max uses (optional)" className={inputClass} value={form.maxUses} onChange={(e) => setForm({ ...form, maxUses: e.target.value })} />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">ვის ეხება (Applicable To)</label>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">ვის ეხება (Applicable To)</label>
+            <div className="relative">
               <select
-                className={inputClass}
+                className={`${inputClass} appearance-none pr-9`}
                 value={form.applicableType}
-                onChange={(e) => setForm({ ...form, applicableType: e.target.value as PromoApplicableType })}
+                onChange={(e) => setForm({ ...form, applicableType: e.target.value as PromoApplicableType, applicableTargetIds: [] })}
               >
                 {(Object.keys(TYPE_LABEL) as PromoApplicableType[]).map((t) => (
                   <option key={t} value={t}>
@@ -153,24 +247,34 @@ function AdminPromosDashboard() {
                   </option>
                 ))}
               </select>
+              <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
-            {form.applicableType !== 'ALL' && (
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                  Target ID(s) — comma-separated{form.applicableType === 'AI_TOOL' ? ' (e.g. english-tutor)' : ''}
-                </label>
-                <input
-                  required
-                  className={inputClass}
-                  placeholder={form.applicableType === 'AI_TOOL' ? 'english-tutor' : 'id1, id2, ...'}
-                  value={form.applicableTargetIds}
-                  onChange={(e) => setForm({ ...form, applicableTargetIds: e.target.value })}
-                />
-              </div>
-            )}
           </div>
 
-          <button type="submit" disabled={creating} className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60">
+          {form.applicableType !== 'ALL' && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-medium text-gray-500">
+                  სად გამოიყენება — აირჩიეთ ერთი ან მეტი ({form.applicableTargetIds.length} არჩეული)
+                </label>
+              </div>
+              <TargetMultiSelect
+                options={optionsForType}
+                loading={optionsLoading}
+                selected={form.applicableTargetIds}
+                onChange={(ids) => setForm({ ...form, applicableTargetIds: ids })}
+              />
+              {form.applicableTargetIds.length === 0 && (
+                <p className="text-xs text-amber-600 mt-1">აირჩიეთ მინიმუმ ერთი — წინააღმდეგ შემთხვევაში კოდი არასდროს გამოყენებადი იქნება.</p>
+              )}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={creating || (form.applicableType !== 'ALL' && form.applicableTargetIds.length === 0)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+          >
             <Plus className="w-4 h-4" />
             {creating ? 'Creating…' : 'Create Promo Code'}
           </button>
@@ -202,7 +306,9 @@ function AdminPromosDashboard() {
                       {' · '}
                       {c.currentUses}
                       {c.maxUses ? `/${c.maxUses}` : ''} used
-                      {c.applicableType !== 'ALL' && c.applicableTargetIds.length > 0 ? ` · Targets: ${c.applicableTargetIds.join(', ')}` : ''}
+                      {c.applicableType !== 'ALL' && c.applicableTargetIds.length > 0
+                        ? ` · Targets: ${c.applicableTargetIds.map((id) => targetNameById.get(id) ?? id).join(', ')}`
+                        : ''}
                     </p>
                   </div>
                 </div>
