@@ -780,10 +780,10 @@ export default function Home() {
 
               {/* Heading — CMS override renders as plain text (no gradient
                   highlight word); the default keeps the styled version. */}
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black leading-tight tracking-tight text-white mb-4 sm:mb-6 outline-none hover:outline-none focus:outline-none border-none hover:border-none hover:shadow-none hover:ring-0">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black leading-snug tracking-tight text-white mb-4 sm:mb-6 outline-none hover:outline-none focus:outline-none border-none hover:border-none hover:shadow-none hover:ring-0">
                 {cms?.heroTitleKa || cms?.heroTitleEn
                   ? translate(cms.heroTitleKa || cms.heroTitleEn, cms.heroTitleEn || cms.heroTitleKa)
-                  : <>{t('heroHeadingBefore')} <span className="inline-block bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent leading-normal py-1">{t('heroHeadingHighlight')}</span> {t('heroHeadingAfter')}</>}
+                  : <>{t('heroHeadingBefore')} <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">{t('heroHeadingHighlight')}</span> {t('heroHeadingAfter')}</>}
               </h1>
 
               {/* Job placement subtitle */}
