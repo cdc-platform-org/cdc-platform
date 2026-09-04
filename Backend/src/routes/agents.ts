@@ -15,7 +15,13 @@ const router = Router();
 // requireGigOwnerOrAdmin pattern.
 router.use(authenticate, requireApproved);
 
-const TRIAL_PERIOD_MS = 60 * 24 * 60 * 60 * 1000; // 60 days
+// Starter Plan limits — see Frontend's data/productOverviews.ts (the
+// Product Overview tab this backs) for the exact copy shown to admins.
+const TRIAL_PERIOD_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
+// Only a TRIAL/ACTIVE agent counts against this — a PAUSED one (expired
+// trial or manually paused) doesn't block creating a fresh replacement,
+// so a lapsed trial always has a clear path forward rather than a dead end.
+const MAX_ACTIVE_AGENTS_PER_ACCOUNT = 1;
 
 declare global {
   namespace Express {
@@ -46,6 +52,14 @@ router.get('/', async (req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   const result = createAgentSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const activeCount = await prisma.agent.count({ where: { businessId: req.user!.id, status: { in: ['TRIAL', 'ACTIVE'] } } });
+  if (activeCount >= MAX_ACTIVE_AGENTS_PER_ACCOUNT) {
+    return res.status(403).json({
+      message: 'Starter Plan allows 1 active AI agent per account. Pause or delete your existing agent, or contact us to upgrade.',
+      code: 'AGENT_LIMIT_REACHED',
+    });
+  }
 
   const agent = await prisma.agent.create({
     data: {

@@ -67,7 +67,7 @@ import ImageGalleryUploader from '../src/components/shared/ImageGalleryUploader'
 import VideoTutorialLink from '../src/components/shared/VideoTutorialLink';
 import { assetFilenameFromUrl } from '../src/utils/assetFilename';
 import { User } from '../src/types/auth';
-import { resolveLocale } from '@/src/utils/locale';
+import { resolveLocale, SupportedLocale } from '@/src/utils/locale';
 import { DIGITAL_PRODUCT_CATEGORIES } from '../src/data/digitalProductCategories';
 
 const PRODUCT_ASSET_ACCEPT = '.zip,.pdf,.epub,.rar,.7z,.fig,.sketch,.psd,.ai,.doc,.docx,.mp4,.mov';
@@ -1009,6 +1009,33 @@ function DigitalStoreCTACard({ t }: { t: typeof dict['ka'] }) {
   );
 }
 
+// Links into the new /dashboard/tools "My Tools" page (chatbot agents/
+// English Tutor/Educator VIP/Media Studio/Cyber Sentinel, each with real
+// status) — a plain link card here rather than a full new dashboard tab,
+// since that page already owns the actual per-tool status logic.
+function MyToolsCard({ lang }: { lang: SupportedLocale }) {
+  const ka = lang === 'ka';
+  return (
+    <Link
+      href="/dashboard/tools"
+      className="flex items-center gap-4 rounded-2xl border border-cyan-400/40 dark:border-cyan-500/30 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 backdrop-blur-md p-5 no-underline text-current transition-all duration-300 hover:border-cyan-400/60 hover:shadow-lg hover:shadow-cyan-500/10"
+    >
+      <div className="shrink-0 w-11 h-11 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
+        <Sparkles className="w-5 h-5 text-white" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-black text-slate-900 dark:text-white">{ka ? 'ჩემი ხელსაწყოები' : 'My Tools'}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          {ka ? 'თქვენი AI ხელსაწყოების სტატუსი — Business AI, IMIAKO, Educator VIP და სხვა' : 'Your AI tools at a glance — Business AI, IMIAKO, Educator VIP, and more'}
+        </p>
+      </div>
+      <span className="shrink-0 text-xs font-bold text-cyan-600 dark:text-cyan-400 whitespace-nowrap hidden sm:inline">
+        {ka ? 'ნახვა →' : 'View →'}
+      </span>
+    </Link>
+  );
+}
+
 function DashboardContent() {
   const router = useRouter();
   const lang = resolveLocale(router.locale);
@@ -1586,6 +1613,8 @@ function DashboardContent() {
                   {user?.role === 'Student' && <FreelancerExamCard user={user} t={t} />}
 
                   {user?.role === 'Student' && <DigitalStoreCTACard t={t} />}
+
+                  <MyToolsCard lang={lang} />
 
                   {inProgressCourse && (
                     <Link

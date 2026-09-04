@@ -21,6 +21,21 @@ const chatRateLimit = rateLimit({
 // that actually matters (the last few exchanges).
 const HISTORY_TURN_LIMIT = 12;
 
+// Starter Plan limit — see Frontend's data/productOverviews.ts for the
+// exact copy shown to admins. Counted from AgentMessage rows (role
+// ASSISTANT — one per real LLM reply this agent has actually generated)
+// within the current calendar month, not a separate resettable counter
+// column, same "derive from real rows, never drift" posture as this
+// codebase's other usage checks (e.g. englishTutorQuotaService.ts).
+const MONTHLY_MESSAGE_LIMIT = 2000;
+
+function startOfCurrentMonth(): Date {
+  const d = new Date();
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 // Caps how many knowledge-base documents get concatenated into the system
 // instruction on every single chat turn — without this, a business that
 // keeps adding KB entries makes every request larger (and more expensive)
@@ -78,10 +93,31 @@ router.post('/chat', chatRateLimit, async (req: Request, res: Response) => {
   // or by the trial-expiry cron, see services/agentBillingService.ts).
   const trialExpired = agent.status === 'TRIAL' && agent.trialEndsAt.getTime() <= Date.now();
   if (agent.status === 'PAUSED' || trialExpired) {
+    // No LLM call is made — this is the actual "reject the completion
+    // request" enforcement, before any usage/cost is incurred. `reason`
+    // lets a business's own dashboard (or a future widget state) tell a
+    // trial lapsing apart from an admin explicitly pausing the agent,
+    // rather than only having the same generic message for both.
     return res.json({
       conversationId: conversationId ?? null,
       reply: 'This assistant is temporarily unavailable. Please try again later or contact us directly.',
       unavailable: true,
+      reason: trialExpired ? 'TRIAL_EXPIRED' : 'PAUSED',
+    });
+  }
+
+  // Starter Plan monthly message cap — same "reject before any LLM call is
+  // made" posture as the trial/paused guard above, so a business over its
+  // limit never incurs cost on requests that will be rejected anyway.
+  const messagesThisMonth = await prisma.agentMessage.count({
+    where: { role: 'ASSISTANT', createdAt: { gte: startOfCurrentMonth() }, conversation: { agentId: agent.id } },
+  });
+  if (messagesThisMonth >= MONTHLY_MESSAGE_LIMIT) {
+    return res.json({
+      conversationId: conversationId ?? null,
+      reply: 'This assistant has reached its monthly message limit. Please contact us to upgrade your plan.',
+      unavailable: true,
+      reason: 'MESSAGE_LIMIT_REACHED',
     });
   }
 
