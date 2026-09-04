@@ -60,25 +60,29 @@ export async function generateExamQuestions(params: GenerateExamParams): Promise
     ? `\nThe student failed a previous attempt with weak understanding of: ${params.focusTopics.join(', ')}. Weight the new questions toward these topics.`
     : '';
   const contextLine = params.aiPromptContext ? `\nAdditional instructions from the course admin: ${params.aiPromptContext}` : '';
-  const languageLine =
-    params.lang === 'ka'
-      ? '\nWrite the "topic", "question", "options", and "explanation" fields in Georgian (ქართული). Keep standard IT/design terminology that is normally used in English even in Georgian technical speech in English (e.g. "Checkout flow", "Wireframe", "API", "SEO").'
-      : '\nWrite the "topic", "question", "options", and "explanation" fields entirely in English.';
+  const targetLanguage = params.lang === 'ka' ? 'Georgian (ka)' : 'English (en)';
+  // AUDIT NOTE (fixed): this function's actual prompt body used to be a
+  // completely unrelated speaking-practice GRADING prompt (score/isCorrect/
+  // grammarCorrections/pronunciationFeedback/duolingoFeedback — no relation
+  // to courseTitle/lessonTitles/questionCount/lang at all, none of which
+  // were ever read). questionsResponseSchema below could never match that
+  // shape, so every call silently failed schema validation and every
+  // caller (freelancerExam.ts, courses.ts's course-certification exam)
+  // fell straight through to their static English-only fallback bank on
+  // every single attempt — which is what actually produced the reported
+  // "AI generates in English regardless of locale" symptom (there was no
+  // real AI-generated, locale-aware question ever being shown at all).
+  const languageLine = `\nGenerate questions in the target language: ${targetLanguage}. Ensure all question stems, options, and non-technical terms are written in the target language. Keep industry-standard code keywords, technical syntax, and framework terms (e.g. CSS properties, JavaScript function/method names, SQL keywords like "margin", "padding", "gap", "outline", "SELECT", "WHERE") in their original English technical form, exactly as written in real code — never translate or transliterate them. This applies equally to the "topic", "question", "explanation" fields and every one of the "options" (A-D): the surrounding language must match the target language, but any embedded code/technical value must stay unchanged.`;
 
-  const prompt = `You are evaluating a student's response for an online course exam.
+  const prompt = `You are creating a professional certification exam for an online course.
 
-The student's response must be evaluated strictly based on the following JSON schema:
-{
-  "score": number, // 0 to 100
-  "isCorrect": boolean,
-  "grammarCorrections": [
-    { "original": string, "correction": string, "reason": string }
-  ],
-  "pronunciationFeedback": string,
-  "duolingoFeedback": string // Short, encouraging Duolingo-style text (e.g., "Great job! Watch out for past tense.")
-}
+Course: ${params.courseTitle}
+Course description: ${params.courseDescription}${params.lessonTitles.length ? `\nLessons covered: ${params.lessonTitles.join(', ')}` : ''}${contextLine}${focusLine}
 
-Evaluate the response based on grammar, pronunciation, and correctness. Provide constructive feedback in the "duolingoFeedback" field. Respond with strict JSON matching the schema above.`;
+Generate exactly ${params.questionCount} multiple-choice questions that test real understanding of this course's material — a mix of theory and applied/scenario-based questions (not trivia), grounded in the actual course/lesson content above, never generic filler. Each question needs: a short "topic" label naming the specific lesson/concept it tests, exactly 4 options (A, B, C, D), one correct answer, and a short explanation of why it's correct.${languageLine}
+
+Respond with strict JSON matching this shape:
+{"questions": [{"topic": string, "question": string, "options": {"A": string, "B": string, "C": string, "D": string}, "correctAnswer": "A"|"B"|"C"|"D", "explanation": string}]}`;
 
   // callTextModel() (aiAgentService.ts) already runs the full resilience
   // chain: gemini-flash-latest → gemini-flash-lite-latest → gemini-3.5-flash
