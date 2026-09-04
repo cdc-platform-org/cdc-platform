@@ -15,7 +15,6 @@ import {
   Users,
   Sparkles,
   Lock,
-  Building2,
   X,
   Download,
   EyeOff,
@@ -415,7 +414,6 @@ export default function ToolsPage() {
   const { t: tEdu } = useTranslation('educatorHub');
   const { isAuthenticated, user } = useAuth();
   const { openAuthModal } = useAuthModal();
-  const [infoModal, setInfoModal] = useState<'studentBlocked' | 'verificationRequired' | null>(null);
   const [showWaitlistModal, setShowWaitlistModal] = useState(false);
   const [overviewModal, setOverviewModal] = useState<'enterpriseAi' | 'examProctoring' | 'agsaia' | null>(null);
   const overview = PRODUCT_OVERVIEW[lang];
@@ -434,22 +432,15 @@ export default function ToolsPage() {
   const educatorHubCms = findToolEntry(toolCatalog?.tools, 'educator-hub');
   const proctoringCms = findToolEntry(toolCatalog?.tools, 'proctoring');
 
-  // Enterprise AI tools are Business-only, and only for a *verified* Business
-  // account — SuperAdmin (internal staff) bypasses the verification check.
-  const canUseAiAssistant =
-    isAuthenticated && (user?.role === 'SuperAdmin' || (user?.role === 'Client' && user.isVerified));
+  // Every AI tool is full-access for any approved account, regardless of
+  // role or Business verification — the Employment Forum (forum.ts's
+  // isVerifiedGraduate gate) is the only tier-restricted feature on the
+  // platform. Only gate left here: must be logged in at all.
+  const canUseAiAssistant = isAuthenticated;
 
   const handleAiCtaClick = () => {
     if (canUseAiAssistant) return;
-    if (!isAuthenticated) {
-      openAuthModal({ mode: 'register', initialRole: 'Client' });
-      return;
-    }
-    if (user?.role !== 'Client') {
-      setInfoModal('studentBlocked');
-      return;
-    }
-    setInfoModal('verificationRequired');
+    openAuthModal({ mode: 'register', initialRole: 'Client' });
   };
 
   return (
@@ -822,54 +813,6 @@ export default function ToolsPage() {
       </div>
 
       <SiteFooter />
-
-      {infoModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={() => setInfoModal(null)}>
-          <div
-            className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setInfoModal(null)}
-              aria-label={t.modalClose}
-              className="absolute top-4 right-4 p-2 cursor-pointer text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center mx-auto mb-4">
-              <Building2 className="w-7 h-7 text-white" />
-            </div>
-
-            {infoModal === 'studentBlocked' ? (
-              <>
-                <h3 className="text-base font-black tracking-wide mb-2">{t.studentBlockedTitle}</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{t.studentBlockedDesc}</p>
-                <Link
-                  href="/contact"
-                  onClick={() => setInfoModal(null)}
-                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
-                >
-                  {t.studentBlockedCta}
-                </Link>
-              </>
-            ) : (
-              <>
-                <h3 className="text-base font-black tracking-wide mb-2">{t.verificationRequiredTitle}</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{t.verificationRequiredDesc}</p>
-                <Link
-                  href="/dashboard/client"
-                  onClick={() => setInfoModal(null)}
-                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
-                >
-                  {t.verificationRequiredCta}
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      )}
 
       {showWaitlistModal && <CyberSentinelWaitlistModal lang={lang} onClose={() => setShowWaitlistModal(false)} />}
 

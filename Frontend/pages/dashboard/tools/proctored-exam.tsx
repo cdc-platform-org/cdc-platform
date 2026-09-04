@@ -3,7 +3,6 @@ import Head from 'next/head';
 import { ShieldCheck } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
-import RoleGate from '../../../src/components/auth/RoleGate';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
 import BackButton from '../../../src/components/common/BackButton';
@@ -21,32 +20,26 @@ const dict = {
   ka: {
     title: 'AI გამოცდის პროქტორინგი',
     subtitle: 'შექმენით AI-გენერირებული სკრინინგ-გამოცდები კანდიდატებისთვის — უნიკალური ბმულით, კამერისა და მიკროფონის კონტროლით.',
-    fallback: 'AI გამოცდის პროქტორინგი ხელმისაწვდომია მხოლოდ დამკვეთებისა და ადმინისტრატორებისთვის.',
   },
   en: {
     title: 'AI Exam Proctoring',
     subtitle: 'Create AI-generated candidate screening exams — each with a unique link, camera and microphone monitoring.',
-    fallback: 'AI Exam Proctoring is available only to business clients and administrators.',
   },
   de: {
     title: 'AI Exam Proctoring',
     subtitle: 'Create AI-generated candidate screening exams — each with a unique link, camera and microphone monitoring.',
-    fallback: 'AI Exam Proctoring is available only to business clients and administrators.',
   },
   es: {
     title: 'AI Exam Proctoring',
     subtitle: 'Create AI-generated candidate screening exams — each with a unique link, camera and microphone monitoring.',
-    fallback: 'AI Exam Proctoring is available only to business clients and administrators.',
   },
   fr: {
     title: 'AI Exam Proctoring',
     subtitle: 'Create AI-generated candidate screening exams — each with a unique link, camera and microphone monitoring.',
-    fallback: 'AI Exam Proctoring is available only to business clients and administrators.',
   },
   uk: {
     title: 'AI Exam Proctoring',
     subtitle: 'Create AI-generated candidate screening exams — each with a unique link, camera and microphone monitoring.',
-    fallback: 'AI Exam Proctoring is available only to business clients and administrators.',
   },
 };
 
@@ -75,12 +68,7 @@ function ProctoredExamContent() {
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t.subtitle}</p>
         </div>
 
-        <RoleGate
-          allowedRoles={['Client', 'SuperAdmin']}
-          fallback={<p className="text-sm text-slate-500 dark:text-slate-400">{t.fallback}</p>}
-        >
-          <ExamProctoringTab lang={lang} />
-        </RoleGate>
+        <ExamProctoringTab lang={lang} />
       </div>
 
       <SiteFooter />

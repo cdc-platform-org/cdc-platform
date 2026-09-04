@@ -1,7 +1,6 @@
 import { azureOpenai } from '../utils/azureOpenai';
 import { z } from 'zod';
-import { GEMINI_API_KEY } from '../utils/env';
-import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
+import { AZURE_OPENAI_DEPLOYMENT_NAME } from '../utils/env';
 
 const client = azureOpenai;
 
@@ -48,7 +47,7 @@ post: ${text}`;
 
   try {
     const response = await azureOpenai.chat.completions.create({
-      model: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o',
+      model: AZURE_OPENAI_DEPLOYMENT_NAME,
       messages: [{ role: 'user', content: typeof prompt === 'string' ? prompt : JSON.stringify(prompt) }],
       response_format: { type: 'json_object' },
     });

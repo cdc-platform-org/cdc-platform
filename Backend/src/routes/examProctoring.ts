@@ -3,7 +3,7 @@ import multer from 'multer';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
-import { authenticate, requireApproved, requireRole } from '../middleware/auth';
+import { authenticate, requireApproved } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { multerErrorHandler } from '../middleware/productUploads';
 import {
@@ -383,7 +383,12 @@ router.post('/submissions/:submissionToken/submit', candidateRateLimit, async (r
 // BUSINESS — exam session management + candidate reports
 // ============================================================
 
-router.use(authenticate, requireApproved, requireRole('Client', 'SuperAdmin'));
+// Open to every approved account, not just Business (Client) — see
+// graduateStatusService/forum.ts's own comment: the Employment Forum is the
+// only platform feature gated by tier. Every session below is still scoped
+// to its own creator via loadOwnedSession's businessId check, not a role
+// gate.
+router.use(authenticate, requireApproved);
 
 // Parses an optional PDF/DOCX exam-source upload (job description, existing
 // test bank, etc.) into plain text — returned to the client, then passed

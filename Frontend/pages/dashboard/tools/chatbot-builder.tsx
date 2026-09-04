@@ -3,7 +3,6 @@ import Head from 'next/head';
 import { Bot } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
-import RoleGate from '../../../src/components/auth/RoleGate';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
 import BackButton from '../../../src/components/common/BackButton';
@@ -18,32 +17,26 @@ const dict = {
   ka: {
     title: 'CDC ბიზნეს AI',
     subtitle: 'შექმენით და მართეთ AI ჩატბოტი თქვენი საიტისთვის.',
-    fallback: 'AI ჩატბოტის კონფიგურაცია ხელმისაწვდომია მხოლოდ დამკვეთებისა და ადმინისტრატორებისთვის.',
   },
   en: {
     title: 'CDC Business AI',
     subtitle: 'Create and manage an AI chatbot for your website.',
-    fallback: 'AI chatbot configuration is available only to business clients and administrators.',
   },
   de: {
     title: 'CDC Business AI',
     subtitle: 'Create and manage an AI chatbot for your website.',
-    fallback: 'AI chatbot configuration is available only to business clients and administrators.',
   },
   es: {
     title: 'CDC Business AI',
     subtitle: 'Create and manage an AI chatbot for your website.',
-    fallback: 'AI chatbot configuration is available only to business clients and administrators.',
   },
   fr: {
     title: 'CDC Business AI',
     subtitle: 'Create and manage an AI chatbot for your website.',
-    fallback: 'AI chatbot configuration is available only to business clients and administrators.',
   },
   uk: {
     title: 'CDC Business AI',
     subtitle: 'Create and manage an AI chatbot for your website.',
-    fallback: 'AI chatbot configuration is available only to business clients and administrators.',
   },
 };
 
@@ -72,12 +65,7 @@ function ChatbotBuilderContent() {
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t.subtitle}</p>
         </div>
 
-        <RoleGate
-          allowedRoles={['Client', 'SuperAdmin']}
-          fallback={<p className="text-sm text-slate-500 dark:text-slate-400">{t.fallback}</p>}
-        >
-          <BusinessAiTab lang={lang} />
-        </RoleGate>
+        <BusinessAiTab lang={lang} />
       </div>
 
       <SiteFooter />

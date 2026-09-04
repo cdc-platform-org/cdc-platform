@@ -1,18 +1,15 @@
 import { azureOpenai } from '../utils/azureOpenai';
-import { GEMINI_API_KEY } from '../utils/env';
-import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
+import { GEMINI_API_KEY, AZURE_OPENAI_DEPLOYMENT_NAME } from '../utils/env';
+import { isAzureOpenAiConfigured } from './azureOpenAiService';
 
 // ============================================================
-// CDC Business AI — the actual model call behind POST /api/v1/chat. Same
-// provider as aiExamService.ts/businessKycService.ts (Gemini, already
-// configured — no new vendor/key for this feature).
+// CDC Business AI — the actual model call behind POST /api/v1/chat (the
+// embeddable chatbot widget).
 // ============================================================
 
 export function isBusinessAiChatConfigured(): boolean {
-  return !!GEMINI_API_KEY;
+  return !!GEMINI_API_KEY || isAzureOpenAiConfigured();
 }
-
-const client = azureOpenai;
 
 export class BusinessAiChatError extends Error {
   constructor(message: string) {
@@ -50,34 +47,53 @@ export interface GenerateAgentReplyResult {
 }
 
 export async function generateAgentReply(params: GenerateAgentReplyParams): Promise<GenerateAgentReplyResult> {
-  if (!client) {
-    throw new BusinessAiChatError('Gemini is not configured (GEMINI_API_KEY missing).');
+  if (!isBusinessAiChatConfigured()) {
+    throw new BusinessAiChatError('The chatbot is not configured (GEMINI_API_KEY/AZURE_OPENAI_* missing).');
   }
 
   const systemInstruction = params.knowledgeContext
     ? `${params.systemPrompt}\n\nUse the following context to answer questions when relevant. If the context doesn't cover the visitor's question, answer helpfully from general knowledge, but never contradict the context:\n\n${params.knowledgeContext}`
     : params.systemPrompt;
 
-  let reply: string;
+  // AUDIT NOTE (fixed): params.history was received but never sent — every
+  // reply was generated with zero memory of the conversation so far. Now
+  // included as proper prior turns ahead of the current message.
+  const messages = [
+    { role: 'system' as const, content: systemInstruction },
+    ...params.history.map((turn) => ({
+      role: (turn.role === 'USER' ? 'user' : 'assistant') as 'user' | 'assistant',
+      content: turn.content,
+    })),
+    { role: 'user' as const, content: params.message },
+  ];
+
+  let reply = '';
   let usage: GenerateAgentReplyResult['usage'];
-  try {
-    const response = await azureOpenai.chat.completions.create({
-      model: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o',
-      messages: [
-        { role: 'system', content: systemInstruction },
-        { role: 'user', content: params.message },
-      ],
-    });
-    reply = response.choices[0]?.message?.content || '';
-    if (response.usage) {
-      usage = {
-        promptTokens: response.usage.prompt_tokens ?? 0,
-        completionTokens: response.usage.completion_tokens ?? 0,
-      };
+  let lastErr: unknown;
+  const MAX_ATTEMPTS = 3;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await azureOpenai.chat.completions.create({ model: AZURE_OPENAI_DEPLOYMENT_NAME, messages });
+      reply = response.choices[0]?.message?.content || '';
+      if (!reply) throw new BusinessAiChatError('AI provider returned an empty response.');
+      if (response.usage) {
+        usage = {
+          promptTokens: response.usage.prompt_tokens ?? 0,
+          completionTokens: response.usage.completion_tokens ?? 0,
+        };
+      }
+      break;
+    } catch (err) {
+      lastErr = err;
+      reply = '';
+      console.error(`[businessAiChatService] attempt ${attempt}/${MAX_ATTEMPTS} failed:`, err instanceof Error ? err.message : err);
+      if (attempt < MAX_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, 1500));
     }
-  } catch (err) {
-    throw new BusinessAiChatError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');
   }
-  if (!reply) throw new BusinessAiChatError('Gemini returned an empty response.');
+  if (!reply) {
+    throw lastErr instanceof BusinessAiChatError
+      ? lastErr
+      : new BusinessAiChatError(lastErr instanceof Error ? `AI request failed: ${lastErr.message}` : 'AI request failed.');
+  }
   return { reply, usage };
 }

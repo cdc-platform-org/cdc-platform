@@ -1,20 +1,17 @@
 import { azureOpenai } from '../utils/azureOpenai';
-import { GEMINI_API_KEY } from '../utils/env';
-import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
+import { GEMINI_API_KEY, AZURE_OPENAI_DEPLOYMENT_NAME } from '../utils/env';
+import { isAzureOpenAiConfigured } from './azureOpenAiService';
 
 // ============================================================
 // In-course AI Tutor — powers POST /api/ai/course-tutor. Same provider/
-// pattern as services/businessAiChatService.ts (Gemini, model.startChat +
-// sendMessage for multi-turn history), but the "knowledge base" here is
-// the specific course/section/lesson the student is currently viewing
-// instead of an admin-configured KnowledgeDocument set.
+// pattern as services/businessAiChatService.ts, but the "knowledge base"
+// here is the specific course/section/lesson the student is currently
+// viewing instead of an admin-configured KnowledgeDocument set.
 // ============================================================
 
 export function isCourseTutorConfigured(): boolean {
-  return !!GEMINI_API_KEY;
+  return !!GEMINI_API_KEY || isAzureOpenAiConfigured();
 }
-
-const client = azureOpenai;
 
 export class CourseTutorError extends Error {
   constructor(message: string) {
@@ -46,8 +43,8 @@ export interface GenerateTutorReplyParams {
 const HISTORY_TURN_LIMIT = 12;
 
 export async function generateTutorReply(params: GenerateTutorReplyParams): Promise<string> {
-  if (!client) {
-    throw new CourseTutorError('Gemini is not configured (GEMINI_API_KEY missing).');
+  if (!isCourseTutorConfigured()) {
+    throw new CourseTutorError('The AI tutor is not configured (GEMINI_API_KEY/AZURE_OPENAI_* missing).');
   }
 
   const contextLines = [
@@ -68,15 +65,41 @@ export async function generateTutorReply(params: GenerateTutorReplyParams): Prom
     `asked something unrelated, gently redirect the student back to the lesson.\n\n` +
     `Lesson context:\n${contextLines.join('\n')}`;
 
-  
+  // AUDIT NOTE (fixed): systemInstruction (course/lesson context) and
+  // params.history (prior conversation turns) were both built/received but
+  // never actually sent — only the student's bare current message was, so
+  // the tutor answered with zero awareness of the course, lesson, or any
+  // earlier turns in the conversation. Now sent as a proper system + history
+  // + current-message chat array, with up to 3 retry attempts.
+  const messages = [
+    { role: 'system' as const, content: systemInstruction },
+    ...params.history.slice(-HISTORY_TURN_LIMIT).map((turn) => ({
+      role: (turn.role === 'USER' ? 'user' : 'assistant') as 'user' | 'assistant',
+      content: turn.content,
+    })),
+    { role: 'user' as const, content: params.message },
+  ];
 
-  let reply: string;
-  try {
-    const response = await azureOpenai.chat.completions.create({ model: process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-4o", messages: [{ role: "user", content: params.message }] }); const result = { response: { text: () => response.choices[0]?.message?.content || "" } };
-    reply = result.response.text();
-  } catch (err) {
-    throw new CourseTutorError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');
+  let reply = '';
+  let lastErr: unknown;
+  const MAX_ATTEMPTS = 3;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await azureOpenai.chat.completions.create({ model: AZURE_OPENAI_DEPLOYMENT_NAME, messages });
+      reply = response.choices[0]?.message?.content || '';
+      if (!reply) throw new CourseTutorError('AI provider returned an empty response.');
+      break;
+    } catch (err) {
+      lastErr = err;
+      reply = '';
+      console.error(`[courseTutorService] attempt ${attempt}/${MAX_ATTEMPTS} failed:`, err instanceof Error ? err.message : err);
+      if (attempt < MAX_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
   }
-  if (!reply) throw new CourseTutorError('Gemini returned an empty response.');
+  if (!reply) {
+    throw lastErr instanceof CourseTutorError
+      ? lastErr
+      : new CourseTutorError(lastErr instanceof Error ? `AI request failed: ${lastErr.message}` : 'AI request failed.');
+  }
   return reply;
 }

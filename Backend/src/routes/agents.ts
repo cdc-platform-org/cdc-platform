@@ -1,16 +1,19 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { prisma } from '../lib/prisma';
-import { authenticate, requireApproved, requireRole } from '../middleware/auth';
+import { authenticate, requireApproved } from '../middleware/auth';
 import { createAgentSchema, updateAgentSchema, knowledgeDocumentSchema } from '../schemas/agentSchemas';
 import { parseDocumentToMarkdown, chunkMarkdown, DocumentParseError } from '../services/documentParserService';
 
 const router = Router();
-// CDC Business AI is a Business (Client) feature — every route here is
-// scoped to the caller's own agents, so plain ownership checks (not just
-// the role gate) guard every :id route below, same posture as gigs.ts/
-// vacancies.ts's requireGigOwnerOrAdmin pattern.
-router.use(authenticate, requireApproved, requireRole('Client', 'SuperAdmin'));
+// Open to every approved account, not just Business (Client) — see
+// graduateStatusService/forum.ts's own comment: the Employment Forum is the
+// only platform feature gated by tier, everything else (including this
+// chatbot builder) is full-access for any approved user. Every route here
+// is still scoped to the caller's own agents via plain ownership checks
+// (not a role gate), same posture as gigs.ts/vacancies.ts's
+// requireGigOwnerOrAdmin pattern.
+router.use(authenticate, requireApproved);
 
 const TRIAL_PERIOD_MS = 60 * 24 * 60 * 60 * 1000; // 60 days
 

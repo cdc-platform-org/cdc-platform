@@ -1,7 +1,7 @@
 import { azureOpenai } from '../utils/azureOpenai';
 import { z } from 'zod';
-import { GEMINI_API_KEY } from '../utils/env';
-import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
+import { GEMINI_API_KEY, AZURE_OPENAI_DEPLOYMENT_NAME } from '../utils/env';
+import { isAzureOpenAiConfigured } from './azureOpenAiService';
 
 // ============================================================
 // Business KYC document parsing — reads an uploaded business registration
@@ -19,11 +19,13 @@ import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
 // or blocks an account (only an admin's explicit reject does that).
 // ============================================================
 
+// AUDIT NOTE (fixed): previously checked GEMINI_API_KEY alone, but the
+// actual call below always goes through Azure OpenAI — a server with only
+// AZURE_OPENAI_* configured used to incorrectly report this feature as
+// unavailable.
 export function isBusinessKycParsingConfigured(): boolean {
-  return !!GEMINI_API_KEY;
+  return !!GEMINI_API_KEY || isAzureOpenAiConfigured();
 }
-
-const client = azureOpenai;
 
 const directorSchema = z.object({
   name: z.string(),
@@ -74,12 +76,22 @@ export class BusinessKycParseError extends Error {
 
 const SUPPORTED_MIMETYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
 
+const AZURE_VISION_MIMETYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
 export async function parseBusinessDocument(buffer: Buffer, mimetype: string): Promise<BusinessDocumentParseResult> {
-  if (!client) {
-    throw new BusinessKycParseError('Gemini is not configured (GEMINI_API_KEY missing).');
+  if (!isBusinessKycParsingConfigured()) {
+    throw new BusinessKycParseError('KYC document parsing is not configured (GEMINI_API_KEY/AZURE_OPENAI_* missing).');
   }
   if (!SUPPORTED_MIMETYPES.includes(mimetype)) {
     throw new BusinessKycParseError(`Unsupported document type for parsing: ${mimetype}`);
+  }
+  // The Azure OpenAI chat.completions vision input only accepts image
+  // bytes (image_url data URIs) — a PDF would need converting to page
+  // images first (no such conversion exists in this codebase yet), so it
+  // falls straight to manual admin review rather than silently analyzing
+  // nothing, same conservative posture as every other failure mode here.
+  if (!AZURE_VISION_MIMETYPES.includes(mimetype)) {
+    throw new BusinessKycParseError(`Automatic PDF analysis is not supported yet — this document needs manual review.`);
   }
 
   const prompt = `You are verifying a business registration document for a KYC (Know Your Customer) check. This may be:
@@ -100,20 +112,55 @@ Examine the attached document carefully and extract:
 Respond with strict JSON only, matching this shape:
 {"hasOfficialHeaders": boolean, "companyName": string | null, "identificationCode": string | null, "registrationDate": string | null, "registryAuthority": string | null, "activeStatus": "ACTIVE" | "LIQUIDATION" | "INSOLVENCY" | "RESTRAINED" | "UNKNOWN", "directors": [{"name": string, "personalId": string | null}], "confidenceScore": number, "reasoning": string}`;
 
-  let raw: string;
-  try {
-    const response = await azureOpenai.chat.completions.create({ model: process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-4o", messages: [{ role: "user", content: "Analyze KYC data" }] }); const result = { response: { text: () => response.choices[0]?.message?.content || "" } };
-    raw = result.response.text();
-  } catch (err) {
-    throw new BusinessKycParseError(err instanceof Error ? `Gemini request failed: ${err.message}` : 'Gemini request failed.');
+  // AUDIT NOTE (fixed): this used to send the literal string "Analyze KYC
+  // data" as the entire message content — the real `prompt` above and the
+  // document `buffer` itself were both built/received but never actually
+  // sent to the model, so KYC analysis was silently a no-op returning
+  // whatever the model hallucinated from three words of context. Now sends
+  // the real prompt plus the document image, with JSON mode enforced and up
+  // to 3 attempts on a retryable/malformed-JSON response.
+  const imageDataUrl = `data:${mimetype};base64,${buffer.toString('base64')}`;
+  let raw = '';
+  let lastErr: unknown;
+  const MAX_ATTEMPTS = 3;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await azureOpenai.chat.completions.create({
+        model: AZURE_OPENAI_DEPLOYMENT_NAME,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: imageDataUrl } },
+            ] as any,
+          },
+        ],
+        response_format: { type: 'json_object' },
+      });
+      const content = response.choices[0]?.message?.content || '';
+      if (!content) throw new BusinessKycParseError('AI provider returned an empty response.');
+      raw = content.replace(/```json|```/g, '').trim();
+      JSON.parse(raw); // throws SyntaxError on invalid JSON — caught below, retried
+      break;
+    } catch (err) {
+      lastErr = err;
+      raw = '';
+      console.error(`[businessKycService] attempt ${attempt}/${MAX_ATTEMPTS} failed:`, err instanceof Error ? err.message : err);
+      if (attempt < MAX_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
   }
-  if (!raw) throw new BusinessKycParseError('Gemini returned an empty response.');
+  if (!raw) {
+    throw lastErr instanceof BusinessKycParseError
+      ? lastErr
+      : new BusinessKycParseError(lastErr instanceof Error ? `AI request failed: ${lastErr.message}` : 'AI request failed.');
+  }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new BusinessKycParseError('Gemini returned malformed JSON.');
+    throw new BusinessKycParseError('AI provider returned malformed JSON.');
   }
 
   const result = parseResultSchema.safeParse(parsed);

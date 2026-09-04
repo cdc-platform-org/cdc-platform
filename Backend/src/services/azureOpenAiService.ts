@@ -37,6 +37,15 @@ function getClient(): AzureOpenAI {
       endpoint: AZURE_OPENAI_ENDPOINT,
       deployment: AZURE_OPENAI_DEPLOYMENT_NAME,
       apiVersion: AZURE_OPENAI_API_VERSION,
+      // Bounded so a stuck request under high concurrent load fails fast
+      // enough for the caller's own retry loop to act, instead of tying up
+      // a connection for the SDK's much longer default. maxRetries: 0 — the
+      // SDK's own built-in retry is disabled because every caller already
+      // retries at the application layer (up to 3 attempts with backoff);
+      // leaving both on would compound into up to 3x longer waits on a
+      // genuine outage instead of failing over sooner.
+      timeout: 60_000,
+      maxRetries: 0,
     });
   }
   return client;

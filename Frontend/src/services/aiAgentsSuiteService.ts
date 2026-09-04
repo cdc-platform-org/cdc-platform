@@ -1,15 +1,13 @@
 import apiClient from './apiClient';
 import { User } from '../types/auth';
 
-// Mirrors Backend's utils/aiAgentsSuiteAccess.ts exactly — display-only
-// here (the real enforcement is server-side in routes/aiAgentsSuite.ts's
-// POST /generate, which re-checks this from scratch on every call).
+// Mirrors Backend's utils/aiAgentsSuiteAccess.ts exactly — every approved
+// account has full access, regardless of role or trial/subscription state.
+// Display-only here (the real enforcement is server-side in
+// routes/aiAgentsSuite.ts's POST /generate, which re-checks this from
+// scratch on every call).
 export function hasAiAgentsSuiteAccess(user: Pick<User, 'role' | 'aiTrialEndsAt' | 'aiSubscriptionActive'> | null | undefined): boolean {
-  if (!user) return false;
-  if (user.role === 'SuperAdmin') return true;
-  if (user.role !== 'Client') return false;
-  if (user.aiSubscriptionActive) return true;
-  return !!user.aiTrialEndsAt && new Date(user.aiTrialEndsAt).getTime() > Date.now();
+  return !!user;
 }
 
 // Whole days remaining until the trial expires — 0 once it's expired

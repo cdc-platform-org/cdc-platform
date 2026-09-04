@@ -11,14 +11,12 @@ export interface AiAgentsSuiteAccessUser {
   aiSubscriptionActive: boolean;
 }
 
+// Every approved account has full access, regardless of role or
+// trial/subscription state — the Employment Forum (forum.ts's
+// isVerifiedGraduate gate) is the only tier-restricted feature on the
+// platform. aiTrialEndsAt/aiSubscriptionActive are kept on the schema (and
+// still shown in the UI where set) for historical/display purposes only;
+// they no longer gate anything here.
 export function hasAiAgentsSuiteAccess(user: AiAgentsSuiteAccessUser | null | undefined): boolean {
-  if (!user) return false;
-  if (user.role === 'SuperAdmin') return true;
-  // Trial/subscription only ever grants access for a Business (Client)
-  // account — belt-and-suspenders on top of the fact that both write paths
-  // (setVerified, PATCH /admin/users/:id/ai-trial) already only ever touch
-  // a Client account's row.
-  if (user.role !== 'Client') return false;
-  if (user.aiSubscriptionActive) return true;
-  return !!user.aiTrialEndsAt && user.aiTrialEndsAt.getTime() > Date.now();
+  return !!user;
 }

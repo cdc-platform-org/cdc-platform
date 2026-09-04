@@ -677,6 +677,7 @@ model User {
   // a separate Subscription model for now.
   agents                        Agent[]
   examSessions                  ExamSession[]
+  adminSectionSeen              AdminSectionSeen[]
   billingSubscriptions          BillingSubscription[]
   educatorGenerations           EducatorGeneration[]
   teacherQuizzes                TeacherQuiz[]
@@ -3564,6 +3565,27 @@ model AuditLog {
   @@index([targetType, targetId])
   @@index([performedById])
   @@map("audit_logs")
+}
+
+// Per-admin "last checked this sidebar section" marker — backs the
+// BLUE (new registrations/leads) sidebar badges in adminPanel.ts's
+// /sidebar-badges, which are inherently time-based ("new since I last
+// looked") rather than status-based like the RED/YELLOW badges (those
+// just count PENDING-style rows and need no seen-state at all — see that
+// route's own comment). Visiting the section's page calls
+// POST /admin-panel/sidebar-badges/seen to bump this to now(), which is
+// what makes the badge count clear itself.
+model AdminSectionSeen {
+  id         String   @id @default(uuid())
+  adminId    String
+  admin      User     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  // Free-form key, not an enum — matches AdminSidebarBadgeCounts' key names
+  // on the frontend ("waitlist" | "liveTrainings" | "courses", currently).
+  section    String
+  lastSeenAt DateTime @default(now())
+
+  @@unique([adminId, section])
+  @@map("admin_section_seen")
 }
 
 // ============================================================

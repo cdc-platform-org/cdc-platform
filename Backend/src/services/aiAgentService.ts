@@ -1,7 +1,7 @@
 import { azureOpenai } from "../utils/azureOpenai";
 import { z } from 'zod';
 import * as Sentry from '@sentry/node';
-import { GEMINI_API_KEY } from '../utils/env';
+import { GEMINI_API_KEY, AZURE_OPENAI_DEPLOYMENT_NAME } from '../utils/env';
 import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
 import { uploadImage } from './imageStorage';
 import { isAzureOpenAiConfigured, generateJsonViaAzureOpenAI, isAzureOpenAiDalleConfigured, generateImageViaDallE3 } from './azureOpenAiService';
@@ -24,25 +24,16 @@ import { isAzureOpenAiConfigured, generateJsonViaAzureOpenAI, isAzureOpenAiDalle
 // applied to images instead of text.
 // ============================================================
 
+// Same "either provider counts" shape as aiExamService.ts's
+// isAiExamConfigured() — the actual text-generation path below (see
+// runGeminiFallbackSequence) always calls Azure OpenAI regardless of
+// GEMINI_API_KEY, so gating on that key alone previously reported "not
+// configured" for a server that only has AZURE_OPENAI_* set.
 export function isAiAgentConfigured(): boolean {
-  return !!GEMINI_API_KEY;
+  return !!GEMINI_API_KEY || isAzureOpenAiConfigured();
 }
 
-const client = azureOpenai;
-
-// "gemini-2.5-pro"/"gemini-pro-latest" return a hard 0 free-tier quota on
-// this account (see aiExamService.ts) — same reasoning applies here, so
-// text generation stays on the Flash family. gemini-flash-latest is tried
-// first (fastest, usual default); the other two are only reached when it's
-// actively overloaded (503/429 — see isRetryableGeminiError), since a
-// different model answering is far better than the admin seeing a raw error
-// and having to click Generate again themselves. All three confirmed live
-// via direct ListModels + generateContent probes against this project's API
-// key on 2026-08-17 — gemini-1.5-flash/gemini-1.5-pro and gemini-2.5-flash
-// (and its -lite variant) all now 404 ("no longer available to new users").
-const TEXT_MODEL_FALLBACK_SEQUENCE = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-3.5-flash'];
 const RETRY_DELAY_MS = 1500;
-const ATTEMPTS_PER_MODEL = 2;
 
 // The Gemini SDK doesn't expose a structured status code — API errors come
 // back as an Error whose .message embeds Google's REST status, e.g.
@@ -121,42 +112,101 @@ export interface GeminiFileRef {
 
 type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } } | { fileData: { mimeType?: string; fileUri: string } };
 
-// Shared by callTextModel/callTextModelPlain below — runs the same
-// gemini-flash-latest -> gemini-flash-lite-latest -> gemini-3.5-flash
-// retry sequence (2 attempts each on a retryable 503/429) so this behavior
-// lives in exactly one place regardless of which response mode a caller
-// needs. Returns null (not a throw) when every model failed, so each public
-// function above can decide its own fallback/error behavior — this helper
-// doesn't know about Azure OpenAI or AiAgentError construction.
+// Builds the OpenAI-compatible message content for one call. Plain string
+// when there's only text (the common case); a vision-style content array
+// (text + image_url data URIs) when inline image bytes are present — Azure
+// OpenAI's chat.completions API has no equivalent of Gemini's "parts" array,
+// so this is the real translation step that was previously missing entirely
+// (see the audit note below).
+//
+// `fileData` parts (a Gemini File API reference — an uploaded audio/video
+// blob or a YouTube URL, used by mediaStudioService.ts/subtitleService.ts's
+// transcription features) have no Azure OpenAI equivalent at all: there is
+// no "reference this previously-uploaded file" or "read this YouTube video"
+// capability on chat.completions. Rather than silently stringifying that
+// reference into garbage prompt text (the bug this replaces), this throws a
+// clear, honest error — transcription-by-fileRef genuinely requires a real
+// Gemini API key and is out of scope for this fix.
+function buildAzureMessageContent(parts: GeminiPart[]): string | Array<Record<string, unknown>> {
+  if (parts.some((p) => 'fileData' in p)) {
+    throw new AiAgentError(
+      'This request references an uploaded file/video (Gemini File API), which the Azure OpenAI fallback cannot process. Configure GEMINI_API_KEY for this feature.'
+    );
+  }
+  const textParts = parts.filter((p): p is { text: string } => 'text' in p).map((p) => p.text);
+  const imageParts = parts.filter((p): p is { inlineData: { mimeType: string; data: string } } => 'inlineData' in p);
+  if (imageParts.length === 0) return textParts.join('\n\n');
+  return [
+    ...textParts.map((text) => ({ type: 'text', text })),
+    ...imageParts.map((p) => ({ type: 'image_url', image_url: { url: `data:${p.inlineData.mimeType};base64,${p.inlineData.data}` } })),
+  ];
+}
+
+// AUDIT NOTE (fixed): this used to call azureOpenai.chat.completions.create
+// with `content: JSON.stringify(parts)` — since `parts` is always an array
+// object, `typeof parts === 'string'` was never true, so the model always
+// received a literal stringified array like `[{"text":"<real prompt>"}]` as
+// its ENTIRE input, and `responseMimeType` was accepted but never actually
+// applied (no response_format was ever sent). That combination — garbled
+// input, no JSON mode — is the root cause behind the "AI provider returned
+// malformed JSON" failures reported across every AI tool routed through
+// callTextModel/callTextModelPlain (exam generation, translation, skill
+// tests, English tutor, educator hub, etc.).
+//
+// Shared by callTextModel/callTextModelPlain below, so this fix and its
+// retry behavior live in exactly one place regardless of which response
+// mode a caller needs. Retries up to MAX_ATTEMPTS times (platform-wide
+// policy: up to 3 attempts) on a retryable API error (429/503-equivalent)
+// OR a malformed-JSON response when JSON mode was requested — a bad JSON
+// response is never surfaced to the caller on the first try anymore.
+// Returns null (not a throw) when every attempt failed, so each public
+// function above can decide its own fallback/error behavior.
+const MAX_ATTEMPTS = 3;
+
 async function runGeminiFallbackSequence(
   parts: GeminiPart[],
   temperature: number,
   responseMimeType: 'application/json' | 'text/plain'
 ): Promise<{ raw: string; lastError: null } | { raw: null; lastError: unknown }> {
+  const content = buildAzureMessageContent(parts);
   let lastError: unknown;
-  for (const modelName of TEXT_MODEL_FALLBACK_SEQUENCE) {
-    for (let attempt = 1; attempt <= ATTEMPTS_PER_MODEL; attempt++) {
-      try {
-        // The installed SDK's own FileData type requires mimeType: string
-        // (no optional variant) — stricter than the actual REST contract,
-        // which treats it as optional (confirmed live: a YouTube fileUri
-        // with mime_type omitted is accepted and processed correctly). Cast
-        // narrowly here rather than loosening GeminiPart's public shape.
-        const response = await azureOpenai.chat.completions.create({ model: process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-4o", messages: [{ role: "user", content: typeof parts as any === "string" ? parts as any : JSON.stringify(parts as any) }] }); const result = { response: { text: () => response.choices[0]?.message?.content || "" } };
-        const raw = result.response.text();
-        if (!raw) throw new AiAgentError('Gemini returned an empty response.');
-        return { raw, lastError: null };
-      } catch (err) {
-        lastError = err;
-        console.error(`[aiAgentService] ${modelName} attempt ${attempt}/${ATTEMPTS_PER_MODEL} failed:`, err instanceof Error ? err.message : err);
-        if (!isRetryableGeminiError(err)) return { raw: null, lastError };
-        if (attempt < ATTEMPTS_PER_MODEL) {
-          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
-        }
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await azureOpenai.chat.completions.create({
+        model: AZURE_OPENAI_DEPLOYMENT_NAME,
+        messages: [{ role: 'user', content: content as any }],
+        temperature,
+        ...(responseMimeType === 'application/json' ? { response_format: { type: 'json_object' as const } } : {}),
+      });
+      const raw = response.choices[0]?.message?.content || '';
+      if (!raw) throw new AiAgentError('AI provider returned an empty response.');
+
+      if (responseMimeType !== 'application/json') return { raw, lastError: null };
+
+      // JSON mode still occasionally wraps output in a ```json fence, or —
+      // rarely — returns text that isn't valid JSON at all. Stripped and
+      // validated right here (not left to the caller) so a bad response
+      // retries automatically instead of surfacing as "malformed JSON" on
+      // the very first try.
+      const cleaned = raw.replace(/```json|```/g, '').trim();
+      JSON.parse(cleaned); // throws SyntaxError on invalid JSON — caught below, retried
+      return { raw: cleaned, lastError: null };
+    } catch (err) {
+      lastError = err;
+      console.error(`[aiAgentService] Azure OpenAI attempt ${attempt}/${MAX_ATTEMPTS} failed:`, err instanceof Error ? err.message : err);
+      // A malformed-JSON parse failure (SyntaxError) always retries — it's
+      // never the same class of error isRetryableGeminiError checks for,
+      // but is exactly the case this fix exists to retry. A hard
+      // non-retryable API error (bad auth, bad request) fails fast instead
+      // of burning the remaining attempts on something that will repeat
+      // identically.
+      const isEmptyResponse = err instanceof AiAgentError && /empty response/i.test(err.message);
+      if (err instanceof SyntaxError || isRetryableGeminiError(err) || isEmptyResponse) {
+        if (attempt < MAX_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+        continue;
       }
-      // Retries exhausted for this model (still 503/429) — try the next
-      // model in the sequence immediately, no added delay (a different
-      // model has its own capacity, so there's nothing to wait out here).
+      break;
     }
   }
   return { raw: null, lastError };
@@ -172,13 +222,12 @@ function throwGeminiFailure(lastError: unknown): never {
       );
 }
 
-// Exported for other operational modules that need raw Gemini JSON output
-// but don't fit this file's existing MODULE N shape (currently
-// productModerationService.ts) — keeps the "exactly one place" model/retry
-// config promise from the file comment above even for those. `imageParts` is
-// optional inline (base64) image data for vision-capable calls — every
-// model in TEXT_MODEL_FALLBACK_SEQUENCE is a Gemini multimodal model, so no
-// separate vision-only model list is needed.
+// Exported for other operational modules that need raw AI JSON output but
+// don't fit this file's existing MODULE N shape (currently
+// productModerationService.ts) — keeps the "exactly one place" retry/JSON-
+// mode fix above in effect for those too. `imageParts` is optional inline
+// (base64) image data for vision-capable calls — see
+// buildAzureMessageContent.
 export async function callTextModel(prompt: string, temperature: number, imageParts?: InlineImagePart[]): Promise<string> {
   // Cross-vendor fallback (see azureOpenAiService.ts) only covers the
   // text-only path — GPT-4o supports vision too, but wiring inline image
@@ -186,9 +235,8 @@ export async function callTextModel(prompt: string, temperature: number, imagePa
   // caller here yet, so it's an explicit scope boundary, not a silent gap.
   const canUseAzureFallback = !imageParts || imageParts.length === 0;
 
-  if (!client) {
-    if (canUseAzureFallback && isAzureOpenAiConfigured()) return (await generateJsonViaAzureOpenAI(prompt, temperature)).raw;
-    throw new AiAgentError('Gemini is not configured (GEMINI_API_KEY missing).');
+  if (!isAiAgentConfigured()) {
+    throw new AiAgentError('AI text generation is not configured (GEMINI_API_KEY/AZURE_OPENAI_* missing).');
   }
 
   const parts: GeminiPart[] = [{ text: prompt }, ...(imageParts ?? []).map((img) => ({ inlineData: { mimeType: img.mimeType, data: img.data } }))];
@@ -197,9 +245,9 @@ export async function callTextModel(prompt: string, temperature: number, imagePa
   if (geminiResult.raw !== null) return geminiResult.raw;
   let lastError = geminiResult.lastError;
 
-  // Every Gemini model failed — same cross-vendor 4th rung as
-  // examProctoringService.ts's generateJson(), same reasoning for why it's
-  // last rather than first. No-op when AZURE_OPENAI_* isn't configured.
+  // Extra retry rung via the standalone, string-prompt-only implementation
+  // — a genuine second attempt for the (rare) case the first exhausted its
+  // own retries. No-op when AZURE_OPENAI_* isn't configured.
   if (canUseAzureFallback && isAzureOpenAiConfigured()) {
     try {
       return (await generateJsonViaAzureOpenAI(prompt, temperature)).raw;
@@ -218,16 +266,14 @@ export async function callTextModel(prompt: string, temperature: number, imagePa
 // Plain-text sibling of callTextModel() — for callers whose output is NOT
 // JSON (WebVTT, markdown prose, ...), where forcing
 // responseMimeType: 'application/json' would corrupt the response. Same
-// 3-model Gemini retry sequence; deliberately NO Azure OpenAI fallback rung
-// — generateJsonViaAzureOpenAI is JSON-only, and building a plain-text Azure
-// completion path has no caller yet, so (like callTextModel's own
-// imageParts/Azure boundary above) this is an explicit scope boundary, not
-// an oversight. `fileRef` is a Gemini File API reference (audio, or anything
-// too large to inline — see GeminiFileRef) for multimodal calls that read an
-// uploaded file rather than inline bytes.
+// retry sequence, minus the JSON-mode/parse-retry step. `fileRef` is a
+// Gemini File API reference (audio, or anything too large to inline — see
+// GeminiFileRef); buildAzureMessageContent throws a clear error for this
+// case since Azure OpenAI has no equivalent capability (see its own
+// comment) — a caller passing fileRef currently requires GEMINI_API_KEY.
 export async function callTextModelPlain(prompt: string, temperature: number, fileRef?: GeminiFileRef): Promise<string> {
-  if (!client) {
-    throw new AiAgentError('Gemini is not configured (GEMINI_API_KEY missing).');
+  if (!isAiAgentConfigured()) {
+    throw new AiAgentError('AI text generation is not configured (GEMINI_API_KEY/AZURE_OPENAI_* missing).');
   }
 
   const parts: GeminiPart[] = fileRef
