@@ -36,6 +36,7 @@ import {
   ShieldBan,
   Star,
   Wrench,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AdminLangProvider, useAdminLang } from '../../context/AdminLangContext';
@@ -88,6 +89,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/cms/homepage', labelKey: 'cms', icon: PenTool, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/cms/gallery', labelKey: 'gallery', icon: ImageIcon, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/cms/agency', labelKey: 'agencyCms', icon: Building2, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  { href: '/admin/projects', labelKey: 'projects', icon: Sparkles, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/tools', labelKey: 'toolsCms', icon: Wrench, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/studio', labelKey: 'studio', icon: ClipboardList, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content', badgeKey: 'studioInquiries' },
   { href: '/admin/companies', labelKey: 'companies', icon: ShieldCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business', badgeKey: 'businessVerifications' },
