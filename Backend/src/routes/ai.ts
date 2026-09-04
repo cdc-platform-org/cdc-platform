@@ -296,6 +296,7 @@ router.post('/course-tutor', authenticate, courseTutorRateLimit, async (req: Req
 
   try {
     const reply = await generateTutorReply({
+      lessonId,
       courseTitle: lesson.section.course.title,
       courseDescription: lesson.section.course.description,
       sectionTitle: lesson.section.title,

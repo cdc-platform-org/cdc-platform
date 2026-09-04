@@ -1,5 +1,7 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { azureOpenai } from '../utils/azureOpenai';
 import { GEMINI_API_KEY, AZURE_OPENAI_DEPLOYMENT_NAME } from '../utils/env';
+import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
 import { isAzureOpenAiConfigured } from './azureOpenAiService';
 
 // ============================================================
@@ -7,6 +9,14 @@ import { isAzureOpenAiConfigured } from './azureOpenAiService';
 // pattern as services/businessAiChatService.ts, but the "knowledge base"
 // here is the specific course/section/lesson the student is currently
 // viewing instead of an admin-configured KnowledgeDocument set.
+//
+// High-availability chain: Azure OpenAI (primary) -> up to 3 retries with
+// exponential backoff on a retryable error (429/503/timeout) -> Gemini
+// (cross-vendor fallback, only when GEMINI_API_KEY is configured) before
+// finally surfacing an error to the student. There is only one Azure
+// deployment configured on this platform (AZURE_OPENAI_DEPLOYMENT_NAME) —
+// "secondary deployment" isn't a real option without a second Azure
+// resource, so Gemini is the actual redundant provider here.
 // ============================================================
 
 export function isCourseTutorConfigured(): boolean {
@@ -26,6 +36,8 @@ export interface TutorChatTurn {
 }
 
 export interface GenerateTutorReplyParams {
+  // Cache key scope — see responseCache below. Not sent to the model.
+  lessonId: string;
   courseTitle: string;
   courseDescription: string;
   sectionTitle: string;
@@ -42,9 +54,141 @@ export interface GenerateTutorReplyParams {
 // businessAiChatService's HISTORY_TURN_LIMIT.
 const HISTORY_TURN_LIMIT = 12;
 
+const MAX_RETRIES = 3;
+const BASE_RETRY_DELAY_MS = 500;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Azure OpenAI SDK errors (the `openai` npm package) carry a `.status` —
+// 429 (rate limit / "overloaded"), 500/503 (transient upstream fault), or a
+// network-level timeout with no status at all. Anything else (400 bad
+// request, 401 bad key) fails fast — retrying an identical malformed
+// request 3 times just delays the same guaranteed failure.
+function isRetryableAzureError(err: unknown): boolean {
+  const status = (err as { status?: number })?.status;
+  if (status === 429 || status === 500 || status === 503) return true;
+  const message = err instanceof Error ? err.message : String(err);
+  return /timeout|ETIMEDOUT|ECONNABORTED|ECONNRESET/i.test(message);
+}
+
+type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+
+async function callAzureTutor(messages: ChatMessage[]): Promise<string> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const response = await azureOpenai.chat.completions.create({ model: AZURE_OPENAI_DEPLOYMENT_NAME, messages });
+      const reply = response.choices[0]?.message?.content || '';
+      if (!reply) throw new CourseTutorError('AI provider returned an empty response.');
+      return reply;
+    } catch (err) {
+      lastErr = err;
+      const retryable = isRetryableAzureError(err) || err instanceof CourseTutorError;
+      console.error(
+        `[courseTutorService] Azure attempt ${attempt + 1}/${MAX_RETRIES + 1} failed${retryable ? ', retrying' : ', not retryable'}:`,
+        err instanceof Error ? err.message : err
+      );
+      if (!retryable || attempt === MAX_RETRIES) break;
+      // Exponential backoff: 500ms, 1000ms, 2000ms.
+      await sleep(BASE_RETRY_DELAY_MS * 2 ** attempt);
+    }
+  }
+  throw lastErr;
+}
+
+const geminiClient = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+const GEMINI_FALLBACK_MODEL = 'gemini-flash-latest';
+
+// Cross-vendor fallback once every Azure attempt above is exhausted — a
+// single-shot generateContent call (not a chat session) with the
+// conversation flattened into the prompt, same "one string in, one string
+// out" shape every other Gemini caller in this codebase uses.
+async function callGeminiTutorFallback(systemInstruction: string, history: TutorChatTurn[], message: string): Promise<string> {
+  if (!geminiClient) throw new CourseTutorError('Gemini fallback is not configured (GEMINI_API_KEY missing).');
+
+  const historyText = history.length
+    ? `\n\nConversation so far:\n${history.map((t) => `${t.role === 'USER' ? 'Student' : 'Tutor'}: ${t.content}`).join('\n')}`
+    : '';
+  const prompt = `${systemInstruction}${historyText}\n\nStudent: ${message}`;
+
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= 1; attempt++) {
+    try {
+      const model = geminiClient.getGenerativeModel({ model: GEMINI_FALLBACK_MODEL, generationConfig: { temperature: 0.7 } }, GEMINI_REQUEST_OPTIONS);
+      const result = await model.generateContent(prompt);
+      const reply = result.response.text();
+      if (!reply) throw new CourseTutorError('Gemini fallback returned an empty response.');
+      return reply;
+    } catch (err) {
+      lastErr = err;
+      console.error(`[courseTutorService] Gemini fallback attempt ${attempt + 1}/2 failed:`, err instanceof Error ? err.message : err);
+      if (attempt < 1) await sleep(BASE_RETRY_DELAY_MS);
+    }
+  }
+  throw lastErr;
+}
+
+// ============================================================
+// IN-MEMORY RESPONSE CACHE — a fresh-conversation (no prior history) query
+// on the same lesson is very often the exact same canned question every
+// student asks first ("explain this lesson simply", "give me an example"),
+// and the answer only depends on the lesson content, never on who's
+// asking. Caching it means those repeat requests never trigger a real LLM
+// call at all. Deliberately NOT applied once history.length > 0 — a
+// follow-up message depends on the specific conversation so far and isn't
+// safely shareable across students.
+//
+// Plain in-memory Map, not Redis — this is a single-process Node backend
+// with no existing Redis infrastructure (no client, no connection config)
+// anywhere in the codebase, so adding a new stateful dependency for this
+// alone would be a disproportionate risk; a Map is lost on restart/across
+// instances, which is an acceptable tradeoff for a pure speed/cost
+// optimization that always has the real LLM call as a fallback.
+// ============================================================
+interface CacheEntry {
+  reply: string;
+  expiresAt: number;
+}
+const responseCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour — lesson content changes rarely.
+const CACHE_MAX_ENTRIES = 1000; // simple bound against unbounded growth on a long-running process.
+
+function cacheKey(lessonId: string, message: string): string {
+  return `${lessonId}::${message.trim().toLowerCase().replace(/\s+/g, ' ')}`;
+}
+
+function getCached(key: string): string | null {
+  const entry = responseCache.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt < Date.now()) {
+    responseCache.delete(key);
+    return null;
+  }
+  return entry.reply;
+}
+
+function setCached(key: string, reply: string): void {
+  if (responseCache.size >= CACHE_MAX_ENTRIES) {
+    // Oldest-inserted entry (Map preserves insertion order) — cheap
+    // approximate LRU without tracking access times separately.
+    const oldestKey = responseCache.keys().next().value;
+    if (oldestKey !== undefined) responseCache.delete(oldestKey);
+  }
+  responseCache.set(key, { reply, expiresAt: Date.now() + CACHE_TTL_MS });
+}
+
 export async function generateTutorReply(params: GenerateTutorReplyParams): Promise<string> {
   if (!isCourseTutorConfigured()) {
     throw new CourseTutorError('The AI tutor is not configured (GEMINI_API_KEY/AZURE_OPENAI_* missing).');
+  }
+
+  const cacheEligible = params.history.length === 0;
+  const key = cacheEligible ? cacheKey(params.lessonId, params.message) : null;
+  if (key) {
+    const cached = getCached(key);
+    if (cached) return cached;
   }
 
   const contextLines = [
@@ -65,41 +209,34 @@ export async function generateTutorReply(params: GenerateTutorReplyParams): Prom
     `asked something unrelated, gently redirect the student back to the lesson.\n\n` +
     `Lesson context:\n${contextLines.join('\n')}`;
 
-  // AUDIT NOTE (fixed): systemInstruction (course/lesson context) and
-  // params.history (prior conversation turns) were both built/received but
-  // never actually sent — only the student's bare current message was, so
-  // the tutor answered with zero awareness of the course, lesson, or any
-  // earlier turns in the conversation. Now sent as a proper system + history
-  // + current-message chat array, with up to 3 retry attempts.
-  const messages = [
-    { role: 'system' as const, content: systemInstruction },
+  const messages: ChatMessage[] = [
+    { role: 'system', content: systemInstruction },
     ...params.history.slice(-HISTORY_TURN_LIMIT).map((turn) => ({
       role: (turn.role === 'USER' ? 'user' : 'assistant') as 'user' | 'assistant',
       content: turn.content,
     })),
-    { role: 'user' as const, content: params.message },
+    { role: 'user', content: params.message },
   ];
 
-  let reply = '';
-  let lastErr: unknown;
-  const MAX_ATTEMPTS = 3;
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+  let reply: string;
+  try {
+    reply = await callAzureTutor(messages);
+  } catch (azureErr) {
+    console.error('[courseTutorService] Azure exhausted, trying Gemini fallback:', azureErr instanceof Error ? azureErr.message : azureErr);
     try {
-      const response = await azureOpenai.chat.completions.create({ model: AZURE_OPENAI_DEPLOYMENT_NAME, messages });
-      reply = response.choices[0]?.message?.content || '';
-      if (!reply) throw new CourseTutorError('AI provider returned an empty response.');
-      break;
-    } catch (err) {
-      lastErr = err;
-      reply = '';
-      console.error(`[courseTutorService] attempt ${attempt}/${MAX_ATTEMPTS} failed:`, err instanceof Error ? err.message : err);
-      if (attempt < MAX_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, 1500));
+      reply = await callGeminiTutorFallback(systemInstruction, params.history.slice(-HISTORY_TURN_LIMIT), params.message);
+    } catch (geminiErr) {
+      // Both providers failed — one graceful, honest error instead of a raw
+      // stack trace reaching the student.
+      const lastErr = geminiErr ?? azureErr;
+      throw lastErr instanceof CourseTutorError
+        ? lastErr
+        : new CourseTutorError(
+            'The AI tutor is temporarily overloaded. Please try again in a moment.'
+          );
     }
   }
-  if (!reply) {
-    throw lastErr instanceof CourseTutorError
-      ? lastErr
-      : new CourseTutorError(lastErr instanceof Error ? `AI request failed: ${lastErr.message}` : 'AI request failed.');
-  }
+
+  if (key) setCached(key, reply);
   return reply;
 }
