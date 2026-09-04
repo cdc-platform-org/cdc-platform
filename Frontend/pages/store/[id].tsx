@@ -26,7 +26,7 @@ import {
   LICENSE_LABELS,
   HowItWorksIcon,
 } from '../../src/services/productService';
-import { checkoutProduct } from '../../src/services/paymentService';
+import { checkoutProduct, validatePromoCode, PromoValidationResult } from '../../src/services/paymentService';
 import { checkoutProductStripe } from '../../src/services/stripePaymentService';
 import { formatPrice } from '../../src/utils/coursePricing';
 import { resolveLocale } from '@/src/utils/locale';
@@ -64,6 +64,10 @@ function StoreProductContent() {
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [guideOpen, setGuideOpen] = useState(true);
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [applyingPromo, setApplyingPromo] = useState(false);
   const isAiBusinessTrial = product?.id === AI_BUSINESS_TRIAL_PRODUCT_ID;
 
   useEffect(() => {
@@ -95,7 +99,10 @@ function StoreProductContent() {
     setSubmitting(true);
     try {
       // Georgian users pay via BOG (GEL); everyone else via Stripe (USD/EUR).
-      const result = lang === 'ka' ? await checkoutProduct(product.id, 'ka') : await checkoutProductStripe(product.id, 'usd');
+      const result =
+        lang === 'ka'
+          ? await checkoutProduct(product.id, appliedPromo?.code, 'ka')
+          : await checkoutProductStripe(product.id, appliedPromo?.code, 'usd');
       if (result.purchased) {
         // Admin test-mode bypass fired server-side — already owned, no
         // gateway redirect to follow. Reload so the page's own
@@ -131,6 +138,24 @@ function StoreProductContent() {
       return;
     }
     startCheckout();
+  };
+
+  const handleApplyPromo = async () => {
+    if (!product || !promoInput.trim()) return;
+    if (!isAuthenticated) {
+      openAuthModal({});
+      return;
+    }
+    setPromoError(null);
+    setApplyingPromo(true);
+    try {
+      const result = await validatePromoCode(promoInput.trim(), 'DIGITAL_PRODUCT', product.id);
+      setAppliedPromo(result);
+    } catch (err: any) {
+      setPromoError(err?.response?.data?.message ?? (lang === 'ka' ? 'პრომო კოდი არასწორია.' : 'Invalid promo code.'));
+    } finally {
+      setApplyingPromo(false);
+    }
   };
 
   const handleClaim = () => {
@@ -253,9 +278,42 @@ function StoreProductContent() {
             ) : (
               <div className="space-y-3">
                 <div className="flex items-baseline gap-2">
-                  {product.saleActive && <s className="text-base text-slate-500">{formatPrice(product.price)}</s>}
-                  <span className="text-2xl font-black block">{product.currentPrice === 0 ? t('free') : formatPrice(product.currentPrice)}</span>
+                  {(product.saleActive || appliedPromo) && <s className="text-base text-slate-500">{formatPrice(product.price)}</s>}
+                  <span className="text-2xl font-black block">
+                    {(appliedPromo ? appliedPromo.discountedAmount : product.currentPrice) === 0
+                      ? t('free')
+                      : formatPrice(appliedPromo ? appliedPromo.discountedAmount : product.currentPrice)}
+                  </span>
                 </div>
+
+                {product.price > 0 && (
+                  <div>
+                    {appliedPromo ? (
+                      <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        ✓ {lang === 'ka' ? 'პრომო კოდი გააქტიურდა' : 'Promo applied'}: {appliedPromo.code}
+                      </p>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          value={promoInput}
+                          onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                          placeholder={lang === 'ka' ? 'პრომო კოდი' : 'Promo code'}
+                          className="flex-1 min-w-0 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleApplyPromo}
+                          disabled={applyingPromo || !promoInput.trim()}
+                          className="shrink-0 text-xs font-bold px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-60"
+                        >
+                          {applyingPromo ? '…' : lang === 'ka' ? 'გამოყენება' : 'Apply'}
+                        </button>
+                      </div>
+                    )}
+                    {promoError && <p className="text-xs text-red-500 mt-1">{promoError}</p>}
+                  </div>
+                )}
+
                 <button
                   type="button"
                   onClick={product.price === 0 ? handleClaim : handleBuy}

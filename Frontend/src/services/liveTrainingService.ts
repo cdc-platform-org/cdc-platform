@@ -13,8 +13,8 @@ export interface LiveTrainingCheckoutResult {
 // Authenticated self-serve checkout for a PRICED training — see Backend's
 // routes/payments.ts's /checkout/live-training route comment for why this
 // exists (POST .../enroll below is free-trainings-only now).
-export async function checkoutLiveTraining(id: string, lang?: 'ka' | 'en'): Promise<LiveTrainingCheckoutResult> {
-  const response = await apiClient.post<LiveTrainingCheckoutResult>(`/payments/checkout/live-training/${id}`, { lang });
+export async function checkoutLiveTraining(id: string, promoCode?: string, lang?: 'ka' | 'en'): Promise<LiveTrainingCheckoutResult> {
+  const response = await apiClient.post<LiveTrainingCheckoutResult>(`/payments/checkout/live-training/${id}`, { promoCode, lang });
   return response.data;
 }
 

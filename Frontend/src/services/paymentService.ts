@@ -60,8 +60,14 @@ export interface PromoValidationResult {
   discountedAmount: number;
 }
 
-export async function validatePromoCode(code: string, courseId: string): Promise<PromoValidationResult> {
-  const response = await apiClient.post<{ data: PromoValidationResult }>('/promos/validate', { code, courseId });
+// targetType/targetId identify what the code is being applied against — the
+// backend re-checks that the code's own applicableType/applicableTargetIds
+// actually cover this specific item (see couponService.ts), returning the
+// exact Georgian mismatch message when it doesn't.
+export type PromoTargetType = 'COURSE' | 'LIVE_TRAINING' | 'DIGITAL_PRODUCT' | 'AI_TOOL';
+
+export async function validatePromoCode(code: string, targetType: PromoTargetType, targetId: string): Promise<PromoValidationResult> {
+  const response = await apiClient.post<{ data: PromoValidationResult }>('/promos/validate', { code, targetType, targetId });
   return response.data.data;
 }
 
@@ -97,8 +103,8 @@ export async function checkoutHRSupport(vacancyId: string, lang?: 'ka' | 'en'): 
   return response.data;
 }
 
-export async function checkoutProduct(productId: string, lang?: 'ka' | 'en'): Promise<ProductCheckoutResult> {
-  const response = await apiClient.post<ProductCheckoutResult>(`/payments/checkout/product/${productId}`, { lang });
+export async function checkoutProduct(productId: string, promoCode?: string, lang?: 'ka' | 'en'): Promise<ProductCheckoutResult> {
+  const response = await apiClient.post<ProductCheckoutResult>(`/payments/checkout/product/${productId}`, { promoCode, lang });
   return response.data;
 }
 

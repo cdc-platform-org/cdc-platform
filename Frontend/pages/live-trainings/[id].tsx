@@ -9,6 +9,7 @@ import VideoEmbed from '../../src/components/shared/VideoEmbed';
 import { LiveTraining } from '../../src/types/liveTraining';
 import { getLiveTraining, registerForLiveTraining, enrollInLiveTraining, checkoutLiveTraining } from '../../src/services/liveTrainingService';
 import { checkoutLiveTrainingStripe } from '../../src/services/stripePaymentService';
+import { validatePromoCode, PromoValidationResult } from '../../src/services/paymentService';
 import { resolveLocale } from '@/src/utils/locale';
 import { courseLanguageBadge } from '@/src/utils/courseLanguage';
 import { useAuth } from '../../src/context/AuthContext';
@@ -124,6 +125,10 @@ export default function LiveTrainingDetailPage() {
   const [enrolling, setEnrolling] = useState(false);
   const [enrollError, setEnrollError] = useState<string | null>(null);
   const [enrolled, setEnrolled] = useState(false);
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [applyingPromo, setApplyingPromo] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -140,6 +145,20 @@ export default function LiveTrainingDetailPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleApplyPromo = async () => {
+    if (!id || !promoInput.trim()) return;
+    setPromoError(null);
+    setApplyingPromo(true);
+    try {
+      const result = await validatePromoCode(promoInput.trim(), 'LIVE_TRAINING', id);
+      setAppliedPromo(result);
+    } catch (err: any) {
+      setPromoError(err?.response?.data?.message ?? (lang === 'ka' ? 'პრომო კოდი არასწორია.' : 'Invalid promo code.'));
+    } finally {
+      setApplyingPromo(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,7 +190,10 @@ export default function LiveTrainingDetailPage() {
         // liveTrainingSaleService.completeLiveTrainingPurchase), so the
         // success banner is only ever shown from training.isEnrolled
         // (server-verified) after that round-trip, not from this click.
-        const result = lang === 'ka' ? await checkoutLiveTraining(id, 'ka') : await checkoutLiveTrainingStripe(id, 'usd');
+        const result =
+          lang === 'ka'
+            ? await checkoutLiveTraining(id, appliedPromo?.code, 'ka')
+            : await checkoutLiveTrainingStripe(id, appliedPromo?.code, 'usd');
         if (result.enrolled) {
           setEnrolled(true);
         } else if (result.redirectUrl) {
@@ -323,6 +345,33 @@ export default function LiveTrainingDetailPage() {
                 {enrollError && (
                   <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-xs text-red-300 mb-3">{enrollError}</div>
                 )}
+                {!!training.price && training.price > 0 && (
+                  <div className="mb-3">
+                    {appliedPromo ? (
+                      <p className="text-xs font-bold text-emerald-400">
+                        ✓ {lang === 'ka' ? 'პრომო კოდი გააქტიურდა' : 'Promo applied'}: {appliedPromo.code}
+                      </p>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          value={promoInput}
+                          onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                          placeholder={lang === 'ka' ? 'პრომო კოდი' : 'Promo code'}
+                          className="flex-1 min-w-0 rounded-lg border border-slate-700 bg-transparent px-3 py-2 text-xs text-slate-100"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleApplyPromo}
+                          disabled={applyingPromo || !promoInput.trim()}
+                          className="shrink-0 text-xs font-bold px-3.5 py-2 rounded-lg border border-slate-700 text-slate-200 hover:bg-slate-800 disabled:opacity-60"
+                        >
+                          {applyingPromo ? '…' : lang === 'ka' ? 'გამოყენება' : 'Apply'}
+                        </button>
+                      </div>
+                    )}
+                    {promoError && <p className="text-xs text-red-400 mt-1">{promoError}</p>}
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={handleEnroll}
@@ -334,7 +383,7 @@ export default function LiveTrainingDetailPage() {
                       ? t.redirectingToPayment
                       : t.enrolling
                     : training.price && training.price > 0
-                    ? t.registerAndPay(`${(training.price / 100).toFixed(2)} ₾`)
+                    ? t.registerAndPay(`${((appliedPromo ? appliedPromo.discountedAmount : training.price) / 100).toFixed(2)} ₾`)
                     : t.enroll}
                 </button>
                 {!!training.price && training.price > 0 && (

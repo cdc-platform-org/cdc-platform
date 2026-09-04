@@ -22,8 +22,9 @@ import { captureEscrow } from '../services/escrowService';
 import { completeProductPurchase } from '../services/productSaleService';
 import { completeCoursePurchase } from '../services/courseSaleService';
 import { paymentModelForPurpose } from '../services/paymentModel';
-import { getCurrentPrice, computeCoursePriceWithPromo } from '../services/coursePricing';
+import { getCurrentPrice } from '../services/coursePricing';
 import { getCurrentProductPrice } from '../services/productPricing';
+import { applyPromoToCheckout, recordPromoRedemption, PromoCodeError } from '../services/couponService';
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
 import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
 import { captureMentorshipEscrow } from '../services/mentorshipEscrowService';
@@ -175,22 +176,25 @@ router.post(
 
     // Optional promo code — re-validated here rather than trusting whatever
     // discountedAmount the client saw from POST /promos/validate, so a
-    // tampered/stale client value can never under-charge. Discount is
-    // computed against originalPrice and never stacks with an active course
-    // sale — see computeCoursePriceWithPromo. currentUses is only
-    // incremented once the BOG order is actually created below (not just
-    // because a code was typed in); promoCodeId is recorded on the
-    // BogPayment itself now, so an abandoned checkout still "spends" a use
-    // but is at least traceable to the specific attempt.
-    const rawPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode.trim().toUpperCase() : null;
+    // tampered/stale client value can never under-charge. See
+    // couponService.ts's applyPromoToCheckout for the shared discount/
+    // targeting rule every checkout route (course/live-training/product/
+    // AI-tool, BOG + Stripe) now uses. currentUses is only incremented once
+    // the BOG order is actually created below (not just because a code was
+    // typed in); promoCodeId is recorded on the BogPayment itself, so an
+    // abandoned checkout still "spends" a use but is at least traceable to
+    // the specific attempt.
+    const rawPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode : null;
     let appliedPromo: { id: string } | null = null;
     if (rawPromoCode) {
-      const promo = await prisma.promoCode.findUnique({ where: { code: rawPromoCode } });
-      if (!promo) return res.status(400).json({ message: 'Invalid promo code.' });
-      if (promo.expiresAt && promo.expiresAt < new Date()) return res.status(400).json({ message: 'This promo code has expired.' });
-      if (promo.maxUses && promo.currentUses >= promo.maxUses) return res.status(400).json({ message: 'This promo code has reached its usage limit.' });
-      chargeAmount = computeCoursePriceWithPromo(course, promo);
-      appliedPromo = promo;
+      try {
+        const applied = await applyPromoToCheckout(rawPromoCode, 'COURSE', course.id, chargeAmount);
+        chargeAmount = applied.chargeAmount;
+        appliedPromo = applied.appliedPromo;
+      } catch (err) {
+        if (err instanceof PromoCodeError) return res.status(400).json({ message: err.message });
+        throw err;
+      }
     }
 
     // A 100% discount promo code can bring the charge to 0 — BOG's gateway
@@ -215,9 +219,7 @@ router.post(
         },
       });
       const { isNewEnrollment } = await completeCoursePurchase({ userId: req.user!.id, courseId: course.id, amount: 0 });
-      if (appliedPromo) {
-        await prisma.promoCode.update({ where: { id: appliedPromo.id }, data: { currentUses: { increment: 1 } } });
-      }
+      if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
       if (isNewEnrollment) await notifyCourseEnrollment(req.user!.id, course);
       return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
     }
@@ -247,9 +249,7 @@ router.post(
       lang: checkoutLang(req),
     });
     if (!order) return;
-    if (appliedPromo) {
-      await prisma.promoCode.update({ where: { id: appliedPromo.id }, data: { currentUses: { increment: 1 } } });
-    }
+    if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
     const updated = await prisma.bogPayment.update({
       where: { id: bogPayment.id },
       data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },
@@ -306,6 +306,21 @@ router.post(
     const requesterAdminRole = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } }))?.adminRole;
     if (requesterAdminRole) chargeAmount = 0;
 
+    // Same re-validated-server-side promo handling as CHECKOUT — COURSE —
+    // see couponService.ts's applyPromoToCheckout.
+    const rawPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode : null;
+    let appliedPromo: { id: string } | null = null;
+    if (rawPromoCode && chargeAmount > 0) {
+      try {
+        const applied = await applyPromoToCheckout(rawPromoCode, 'LIVE_TRAINING', training.id, chargeAmount);
+        chargeAmount = applied.chargeAmount;
+        appliedPromo = applied.appliedPromo;
+      } catch (err) {
+        if (err instanceof PromoCodeError) return res.status(400).json({ message: err.message });
+        throw err;
+      }
+    }
+
     if (chargeAmount <= 0) {
       const freePayment = await prisma.bogPayment.create({
         data: {
@@ -318,9 +333,11 @@ router.post(
           currency: 'GEL',
           status: 'COMPLETED',
           completedAt: new Date(),
+          promoCodeId: appliedPromo?.id ?? null,
         },
       });
       await completeLiveTrainingPurchase({ userId: req.user!.id, liveTrainingId: training.id });
+      if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
       return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
     }
 
@@ -334,6 +351,7 @@ router.post(
         amount: chargeAmount,
         currency: 'GEL',
         status: 'PENDING',
+        promoCodeId: appliedPromo?.id ?? null,
       },
     });
     const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
@@ -348,6 +366,7 @@ router.post(
       lang: checkoutLang(req),
     });
     if (!order) return;
+    if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
     const updated = await prisma.bogPayment.update({
       where: { id: bogPayment.id },
       data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },
@@ -375,7 +394,23 @@ router.post(
     if (reusable) return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.redirectUrl });
 
     const requesterAdminRole = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } }))?.adminRole;
-    const chargeAmount = requesterAdminRole ? 0 : TUTOR_SUBSCRIPTION_PRICE_GEL;
+    let chargeAmount = requesterAdminRole ? 0 : TUTOR_SUBSCRIPTION_PRICE_GEL;
+
+    // Same re-validated-server-side promo handling as CHECKOUT — COURSE —
+    // see couponService.ts's applyPromoToCheckout. AI_TOOL targetId
+    // 'english-tutor' — see couponService.ts's resolveTargetPrice.
+    const rawPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode : null;
+    let appliedPromo: { id: string } | null = null;
+    if (rawPromoCode && chargeAmount > 0) {
+      try {
+        const applied = await applyPromoToCheckout(rawPromoCode, 'AI_TOOL', 'english-tutor', chargeAmount);
+        chargeAmount = applied.chargeAmount;
+        appliedPromo = applied.appliedPromo;
+      } catch (err) {
+        if (err instanceof PromoCodeError) return res.status(400).json({ message: err.message });
+        throw err;
+      }
+    }
 
     if (chargeAmount <= 0) {
       const freePayment = await prisma.bogPayment.create({
@@ -389,9 +424,11 @@ router.post(
           currency: 'GEL',
           status: 'COMPLETED',
           completedAt: new Date(),
+          promoCodeId: appliedPromo?.id ?? null,
         },
       });
       await completeTutorSubscriptionPurchase(req.user!.id);
+      if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
       return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
     }
 
@@ -405,6 +442,7 @@ router.post(
         amount: chargeAmount,
         currency: 'GEL',
         status: 'PENDING',
+        promoCodeId: appliedPromo?.id ?? null,
       },
     });
     const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
@@ -419,6 +457,7 @@ router.post(
       lang: checkoutLang(req),
     });
     if (!order) return;
+    if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
     const updated = await prisma.bogPayment.update({
       where: { id: bogPayment.id },
       data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },
@@ -725,7 +764,7 @@ router.post(
     // The actual charged amount when a discount is active — the platform's
     // 20% commission (productSaleService.ts) applies to whatever this is,
     // never the original price, so a 5 GEL sale nets the creator 4 GEL.
-    const chargeAmount = getCurrentProductPrice(product);
+    let chargeAmount = getCurrentProductPrice(product);
     const existingPurchase = await prisma.productPurchase.findUnique({
       where: { userId_productId: { userId: req.user!.id, productId: product.id } },
     });
@@ -761,6 +800,41 @@ router.post(
       return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, purchased: true });
     }
 
+    // Same re-validated-server-side promo handling as CHECKOUT — COURSE —
+    // see couponService.ts's applyPromoToCheckout.
+    const rawPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode : null;
+    let appliedPromo: { id: string } | null = null;
+    if (rawPromoCode) {
+      try {
+        const applied = await applyPromoToCheckout(rawPromoCode, 'DIGITAL_PRODUCT', product.id, chargeAmount);
+        chargeAmount = applied.chargeAmount;
+        appliedPromo = applied.appliedPromo;
+      } catch (err) {
+        if (err instanceof PromoCodeError) return res.status(400).json({ message: err.message });
+        throw err;
+      }
+    }
+
+    if (chargeAmount <= 0) {
+      const freePayment = await prisma.bogPayment.create({
+        data: {
+          bogOrderId: `promo-${crypto.randomUUID()}`,
+          userId: req.user!.id,
+          purpose: 'PRODUCT',
+          paymentModel: paymentModelForPurpose('PRODUCT'),
+          referenceId: product.id,
+          amount: 0,
+          currency: 'GEL',
+          status: 'COMPLETED',
+          completedAt: new Date(),
+          promoCodeId: appliedPromo?.id ?? null,
+        },
+      });
+      await completeProductPurchase({ userId: req.user!.id, productId: product.id, amount: 0 });
+      if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
+      return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, purchased: true });
+    }
+
     const bogPayment = await prisma.bogPayment.create({
       data: {
         bogOrderId: `pending-${crypto.randomUUID()}`,
@@ -771,6 +845,7 @@ router.post(
         amount: chargeAmount,
         currency: 'GEL',
         status: 'PENDING',
+        promoCodeId: appliedPromo?.id ?? null,
       },
     });
     const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
@@ -785,6 +860,7 @@ router.post(
       lang: checkoutLang(req),
     });
     if (!order) return;
+    if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
     const updated = await prisma.bogPayment.update({
       where: { id: bogPayment.id },
       data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },

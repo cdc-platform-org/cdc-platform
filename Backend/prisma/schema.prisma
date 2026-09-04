@@ -678,6 +678,7 @@ model User {
   agents                        Agent[]
   examSessions                  ExamSession[]
   adminSectionSeen              AdminSectionSeen[]
+  projectsCreated                Project[]
   billingSubscriptions          BillingSubscription[]
   educatorGenerations           EducatorGeneration[]
   teacherQuizzes                TeacherQuiz[]
@@ -3854,15 +3855,28 @@ model PlatformAgentKnowledgeSource {
   @@map("platform_agent_knowledge_sources")
 }
 
-// Structural for now — validated and its discount computed at redemption
-// time, but not yet wired into a real checkout flow (see Agent's own
-// comment on why billing is deferred). currentUses is incremented
-// atomically by the redemption route once that exists.
+// Universal, product-targeted promo/discount code — wired into checkout for
+// Course, LiveTraining, DigitalProduct, and the flat-price AI-tool
+// subscriptions (English Tutor today; see couponService.ts). Validated and
+// its discount computed at checkout time (never trusting a client-supplied
+// discountedAmount), currentUses incremented atomically once an order is
+// actually created (see routes/payments.ts / routes/stripePayments.ts).
 model PromoCode {
   id              String          @id @default(uuid())
   code            String          @unique
   discountPercent Int?
   discountAmount  Int?
+  // ALL = valid for any purchase; every other value restricts redemption to
+  // exactly this product type AND one of applicableTargetIds (empty
+  // targetIds with a non-ALL type effectively disables the code, since
+  // nothing can ever match — the admin UI should always require at least
+  // one target id when a specific type is chosen).
+  applicableType      CouponApplicableType @default(ALL)
+  applicableTargetIds String[]             @default([])
+  // Quick admin on/off switch, independent of expiresAt/maxUses — lets an
+  // admin pause a code without losing its usage history or having to guess
+  // a new expiry date.
+  isActive        Boolean         @default(true)
   expiresAt       DateTime?
   maxUses         Int?
   currentUses     Int             @default(0)
@@ -3871,6 +3885,14 @@ model PromoCode {
   stripePayments  StripePayment[]
 
   @@map("promo_codes")
+}
+
+enum CouponApplicableType {
+  ALL
+  COURSE
+  LIVE_TRAINING
+  DIGITAL_PRODUCT
+  AI_TOOL
 }
 
 // ============================================================
@@ -4019,6 +4041,46 @@ model SuccessStory {
 
   @@index([isFeatured])
   @@map("success_stories")
+}
+
+// ============================================================
+// PROJECT / PAST EVENT — admin-curated showcase of CDC's own past events/
+// projects (workshops, hackathons, partner visits, etc.) for the public
+// /projects page. Admin-authored via the AI Vision Builder
+// (routes/adminProjects.ts's /ai-builder/parse) — an admin uploads raw
+// photos + freeform notes, the AI extracts structured fields for review
+// before Save, same "AI drafts, admin reviews and publishes" posture as
+// blogAgentService's blog drafts. No slug/detail page — the public page
+// shows the full story in a client-side modal (see pages/projects.tsx), so
+// there's nothing else to route to.
+// ============================================================
+enum ProjectStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model Project {
+  id               String        @id @default(uuid())
+  title            String
+  date             DateTime
+  location         String?
+  shortDescription String
+  fullContent      String
+  // Always galleryImages[0] once uploaded through the AI Builder's own
+  // upload step — a distinct field (not "just index 0") so a plain
+  // POST /admin/projects create/update call has an explicit, unambiguous
+  // cover choice rather than relying on array order.
+  coverImage       String
+  galleryImages    String[]      @default([])
+  status           ProjectStatus @default(DRAFT)
+  createdById      String
+  createdBy        User          @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([status])
+  @@index([date])
+  @@map("projects")
 }
 
 // ============================================================

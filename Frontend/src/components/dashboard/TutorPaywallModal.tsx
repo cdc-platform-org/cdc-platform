@@ -57,7 +57,7 @@ export default function TutorPaywallModal({ lang, trialAvailable, onClose, onTri
     setCheckingOut(true);
     setError(null);
     try {
-      const result = lang === 'ka' ? await checkoutEnglishTutorSubscription('ka') : await checkoutEnglishTutorSubscriptionStripe('usd');
+      const result = lang === 'ka' ? await checkoutEnglishTutorSubscription('ka') : await checkoutEnglishTutorSubscriptionStripe(undefined, 'usd');
       if (result.enrolled) {
         onTrialStarted(); // reuse the same "state changed, refetch" callback
         return;

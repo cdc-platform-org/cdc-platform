@@ -137,7 +137,7 @@ export default function CourseDetailPage() {
     setPromoError(null);
     setApplyingPromo(true);
     try {
-      const result = await validatePromoCode(promoInput.trim(), courseId);
+      const result = await validatePromoCode(promoInput.trim(), 'COURSE', courseId);
       setAppliedPromo(result);
     } catch (err: any) {
       setPromoError(err?.response?.data?.message ?? t('promoInvalid'));

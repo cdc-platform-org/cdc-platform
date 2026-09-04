@@ -18,8 +18,9 @@ import { captureEscrow } from '../services/escrowService';
 import { completeProductPurchase } from '../services/productSaleService';
 import { completeCoursePurchase } from '../services/courseSaleService';
 import { paymentModelForPurpose } from '../services/paymentModel';
-import { getCurrentPrice, computeCoursePriceWithPromo } from '../services/coursePricing';
+import { getCurrentPrice } from '../services/coursePricing';
 import { getCurrentProductPrice } from '../services/productPricing';
+import { applyPromoToCheckout, recordPromoRedemption, PromoCodeError } from '../services/couponService';
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
 import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
 import { captureMentorshipEscrow } from '../services/mentorshipEscrowService';
@@ -122,15 +123,17 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
   if (reusable) return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.checkoutUrl });
 
   let chargeAmountGel = getCurrentPrice(course);
-  const rawPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode.trim().toUpperCase() : null;
+  const rawPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode : null;
   let appliedPromo: { id: string } | null = null;
   if (rawPromoCode) {
-    const promo = await prisma.promoCode.findUnique({ where: { code: rawPromoCode } });
-    if (!promo) return res.status(400).json({ message: 'Invalid promo code.' });
-    if (promo.expiresAt && promo.expiresAt < new Date()) return res.status(400).json({ message: 'This promo code has expired.' });
-    if (promo.maxUses && promo.currentUses >= promo.maxUses) return res.status(400).json({ message: 'This promo code has reached its usage limit.' });
-    chargeAmountGel = computeCoursePriceWithPromo(course, promo);
-    appliedPromo = promo;
+    try {
+      const applied = await applyPromoToCheckout(rawPromoCode, 'COURSE', course.id, chargeAmountGel);
+      chargeAmountGel = applied.chargeAmount;
+      appliedPromo = applied.appliedPromo;
+    } catch (err) {
+      if (err instanceof PromoCodeError) return res.status(400).json({ message: err.message });
+      throw err;
+    }
   }
 
   // Admin/manager/moderator test-mode bypass — same posture as routes/
@@ -156,7 +159,7 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
       },
     });
     const { isNewEnrollment } = await completeCoursePurchase({ userId: req.user!.id, courseId: course.id, amount: chargeAmountGel });
-    if (appliedPromo) await prisma.promoCode.update({ where: { id: appliedPromo.id }, data: { currentUses: { increment: 1 } } });
+    if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
     if (isNewEnrollment) await notifyCourseEnrollment(req.user!.id, course);
     return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
   }
@@ -188,7 +191,7 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
     customerEmail: req.user!.email,
   });
   if (!session) return;
-  if (appliedPromo) await prisma.promoCode.update({ where: { id: appliedPromo.id }, data: { currentUses: { increment: 1 } } });
+  if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
   const updated = await prisma.stripePayment.update({
     where: { id: stripePayment.id },
     data: { stripeSessionId: session.stripeSessionId, checkoutUrl: session.checkoutUrl },
@@ -200,8 +203,8 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
 // CHECKOUT — LIVE TRAINING
 // International-currency counterpart to payments.ts's /checkout/live-training
 // — see that route's own comment for why this exists (closing the "enroll
-// grants a paid seat for free" bug). No promo codes, no instructor payout,
-// same shape as CHECKOUT — COURSE above otherwise.
+// grants a paid seat for free" bug). Same shape as CHECKOUT — COURSE above
+// otherwise, including promo-code support.
 // ============================================================
 router.post('/checkout/live-training/:id', checkoutRateLimit, authenticate, requireApproved, async (req: Request, res: Response) => {
   const training = await prisma.liveTraining.findFirst({
@@ -227,7 +230,20 @@ router.post('/checkout/live-training/:id', checkoutRateLimit, authenticate, requ
   if (reusable) return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.checkoutUrl });
 
   const requesterAdminRole = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } }))?.adminRole;
-  const chargeAmountGel = requesterAdminRole ? 0 : training.price;
+  let chargeAmountGel = requesterAdminRole ? 0 : training.price;
+
+  const rawPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode : null;
+  let appliedPromo: { id: string } | null = null;
+  if (rawPromoCode && chargeAmountGel > 0) {
+    try {
+      const applied = await applyPromoToCheckout(rawPromoCode, 'LIVE_TRAINING', training.id, chargeAmountGel);
+      chargeAmountGel = applied.chargeAmount;
+      appliedPromo = applied.appliedPromo;
+    } catch (err) {
+      if (err instanceof PromoCodeError) return res.status(400).json({ message: err.message });
+      throw err;
+    }
+  }
 
   if (chargeAmountGel <= 0) {
     const freePayment = await prisma.stripePayment.create({
@@ -242,9 +258,11 @@ router.post('/checkout/live-training/:id', checkoutRateLimit, authenticate, requ
         currency: 'USD',
         status: 'COMPLETED',
         completedAt: new Date(),
+        promoCodeId: appliedPromo?.id ?? null,
       },
     });
     await completeLiveTrainingPurchase({ userId: req.user!.id, liveTrainingId: training.id });
+    if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
     return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
   }
 
@@ -261,6 +279,7 @@ router.post('/checkout/live-training/:id', checkoutRateLimit, authenticate, requ
       amountGel: chargeAmountGel,
       currency,
       status: 'PENDING',
+      promoCodeId: appliedPromo?.id ?? null,
     },
   });
   const { successUrl, cancelUrl } = resultRedirects(stripePayment.id);
@@ -274,6 +293,7 @@ router.post('/checkout/live-training/:id', checkoutRateLimit, authenticate, requ
     customerEmail: req.user!.email,
   });
   if (!session) return;
+  if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
   const updated = await prisma.stripePayment.update({
     where: { id: stripePayment.id },
     data: { stripeSessionId: session.stripeSessionId, checkoutUrl: session.checkoutUrl },
@@ -291,7 +311,20 @@ router.post('/checkout/english-tutor', checkoutRateLimit, authenticate, requireA
   if (reusable) return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.checkoutUrl });
 
   const requesterAdminRole = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } }))?.adminRole;
-  const chargeAmountGel = requesterAdminRole ? 0 : TUTOR_SUBSCRIPTION_PRICE_GEL;
+  let chargeAmountGel = requesterAdminRole ? 0 : TUTOR_SUBSCRIPTION_PRICE_GEL;
+
+  const rawPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode : null;
+  let appliedPromo: { id: string } | null = null;
+  if (rawPromoCode && chargeAmountGel > 0) {
+    try {
+      const applied = await applyPromoToCheckout(rawPromoCode, 'AI_TOOL', 'english-tutor', chargeAmountGel);
+      chargeAmountGel = applied.chargeAmount;
+      appliedPromo = applied.appliedPromo;
+    } catch (err) {
+      if (err instanceof PromoCodeError) return res.status(400).json({ message: err.message });
+      throw err;
+    }
+  }
 
   if (chargeAmountGel <= 0) {
     const freePayment = await prisma.stripePayment.create({
@@ -306,9 +339,11 @@ router.post('/checkout/english-tutor', checkoutRateLimit, authenticate, requireA
         currency: 'USD',
         status: 'COMPLETED',
         completedAt: new Date(),
+        promoCodeId: appliedPromo?.id ?? null,
       },
     });
     await completeTutorSubscriptionPurchase(req.user!.id);
+    if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
     return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
   }
 
@@ -325,6 +360,7 @@ router.post('/checkout/english-tutor', checkoutRateLimit, authenticate, requireA
       amountGel: chargeAmountGel,
       currency,
       status: 'PENDING',
+      promoCodeId: appliedPromo?.id ?? null,
     },
   });
   const { successUrl, cancelUrl } = resultRedirects(stripePayment.id);
@@ -338,6 +374,7 @@ router.post('/checkout/english-tutor', checkoutRateLimit, authenticate, requireA
     customerEmail: req.user!.email,
   });
   if (!session) return;
+  if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
   const updated = await prisma.stripePayment.update({
     where: { id: stripePayment.id },
     data: { stripeSessionId: session.stripeSessionId, checkoutUrl: session.checkoutUrl },
@@ -546,11 +583,45 @@ router.post('/checkout/product/:productId', checkoutRateLimit, authenticate, req
     return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, purchased: true });
   }
 
-  const currency = checkoutCurrency(req);
   // The actual charged amount when a discount is active — same reasoning as
   // routes/payments.ts's BOG checkout: the platform's commission applies to
   // whatever this converts to, never the original price.
-  const productPriceGel = getCurrentProductPrice(product);
+  let productPriceGel = getCurrentProductPrice(product);
+  const rawPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode : null;
+  let appliedPromo: { id: string } | null = null;
+  if (rawPromoCode) {
+    try {
+      const applied = await applyPromoToCheckout(rawPromoCode, 'DIGITAL_PRODUCT', product.id, productPriceGel);
+      productPriceGel = applied.chargeAmount;
+      appliedPromo = applied.appliedPromo;
+    } catch (err) {
+      if (err instanceof PromoCodeError) return res.status(400).json({ message: err.message });
+      throw err;
+    }
+  }
+
+  if (productPriceGel <= 0) {
+    const freePayment = await prisma.stripePayment.create({
+      data: {
+        stripeSessionId: `promo-${crypto.randomUUID()}`,
+        userId: req.user!.id,
+        purpose: 'PRODUCT',
+        paymentModel: paymentModelForPurpose('PRODUCT'),
+        referenceId: product.id,
+        amount: 0,
+        amountGel: 0,
+        currency: 'USD',
+        status: 'COMPLETED',
+        completedAt: new Date(),
+        promoCodeId: appliedPromo?.id ?? null,
+      },
+    });
+    await completeProductPurchase({ userId: req.user!.id, productId: product.id, amount: 0 });
+    if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
+    return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, purchased: true });
+  }
+
+  const currency = checkoutCurrency(req);
   const amount = convertGelToStripeMinorUnits(productPriceGel, currency);
   const stripePayment = await prisma.stripePayment.create({
     data: {
@@ -563,6 +634,7 @@ router.post('/checkout/product/:productId', checkoutRateLimit, authenticate, req
       amountGel: productPriceGel,
       currency,
       status: 'PENDING',
+      promoCodeId: appliedPromo?.id ?? null,
     },
   });
   const { successUrl, cancelUrl } = resultRedirects(stripePayment.id);
@@ -576,6 +648,7 @@ router.post('/checkout/product/:productId', checkoutRateLimit, authenticate, req
     customerEmail: req.user!.email,
   });
   if (!session) return;
+  if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
   const updated = await prisma.stripePayment.update({
     where: { id: stripePayment.id },
     data: { stripeSessionId: session.stripeSessionId, checkoutUrl: session.checkoutUrl },

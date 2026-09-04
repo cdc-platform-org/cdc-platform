@@ -64,21 +64,21 @@ export async function checkoutGigEscrowStripe(gigId: string, currency: StripeCur
   return response.data;
 }
 
-export async function checkoutProductStripe(productId: string, currency: StripeCurrency = 'usd'): Promise<StripeProductCheckoutResult> {
-  const response = await apiClient.post<StripeProductCheckoutResult>(`/payments/stripe/checkout/product/${productId}`, { currency });
+export async function checkoutProductStripe(productId: string, promoCode?: string, currency: StripeCurrency = 'usd'): Promise<StripeProductCheckoutResult> {
+  const response = await apiClient.post<StripeProductCheckoutResult>(`/payments/stripe/checkout/product/${productId}`, { promoCode, currency });
   return response.data;
 }
 
 // `enrolled` (not `purchased`) — same shape as StripeCourseCheckoutResult,
 // since the admin test-mode free bypass grants enrollment directly rather
 // than a product purchase.
-export async function checkoutLiveTrainingStripe(id: string, currency: StripeCurrency = 'usd'): Promise<StripeCourseCheckoutResult> {
-  const response = await apiClient.post<StripeCourseCheckoutResult>(`/payments/stripe/checkout/live-training/${id}`, { currency });
+export async function checkoutLiveTrainingStripe(id: string, promoCode?: string, currency: StripeCurrency = 'usd'): Promise<StripeCourseCheckoutResult> {
+  const response = await apiClient.post<StripeCourseCheckoutResult>(`/payments/stripe/checkout/live-training/${id}`, { promoCode, currency });
   return response.data;
 }
 
-export async function checkoutEnglishTutorSubscriptionStripe(currency: StripeCurrency = 'usd'): Promise<StripeCourseCheckoutResult> {
-  const response = await apiClient.post<StripeCourseCheckoutResult>('/payments/stripe/checkout/english-tutor', { currency });
+export async function checkoutEnglishTutorSubscriptionStripe(promoCode?: string, currency: StripeCurrency = 'usd'): Promise<StripeCourseCheckoutResult> {
+  const response = await apiClient.post<StripeCourseCheckoutResult>('/payments/stripe/checkout/english-tutor', { promoCode, currency });
   return response.data;
 }
 
