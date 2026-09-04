@@ -1,7 +1,7 @@
-import { azureOpenai } from '../utils/azureOpenai';
 import { z } from 'zod';
-import { GEMINI_API_KEY, AZURE_OPENAI_DEPLOYMENT_NAME } from '../utils/env';
+import { GEMINI_API_KEY } from '../utils/env';
 import { isAzureOpenAiConfigured } from './azureOpenAiService';
+import { callAzureChatCompletion } from './azureChatCompletionService';
 
 // ============================================================
 // Business KYC document parsing — reads an uploaded business registration
@@ -117,29 +117,27 @@ Respond with strict JSON only, matching this shape:
   // document `buffer` itself were both built/received but never actually
   // sent to the model, so KYC analysis was silently a no-op returning
   // whatever the model hallucinated from three words of context. Now sends
-  // the real prompt plus the document image, with JSON mode enforced and up
-  // to 3 attempts on a retryable/malformed-JSON response.
+  // the real prompt plus the document image, with JSON mode enforced, a
+  // malformed-JSON retry, and primary/secondary Azure region failover (see
+  // azureChatCompletionService.ts).
   const imageDataUrl = `data:${mimetype};base64,${buffer.toString('base64')}`;
   let raw = '';
   let lastErr: unknown;
   const MAX_ATTEMPTS = 3;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      const response = await azureOpenai.chat.completions.create({
-        model: AZURE_OPENAI_DEPLOYMENT_NAME,
+      const content = await callAzureChatCompletion({
         messages: [
           {
             role: 'user',
             content: [
               { type: 'text', text: prompt },
               { type: 'image_url', image_url: { url: imageDataUrl } },
-            ] as any,
+            ],
           },
         ],
-        response_format: { type: 'json_object' },
+        jsonMode: true,
       });
-      const content = response.choices[0]?.message?.content || '';
-      if (!content) throw new BusinessKycParseError('AI provider returned an empty response.');
       raw = content.replace(/```json|```/g, '').trim();
       JSON.parse(raw); // throws SyntaxError on invalid JSON — caught below, retried
       break;

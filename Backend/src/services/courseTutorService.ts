@@ -1,8 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { azureOpenai } from '../utils/azureOpenai';
-import { GEMINI_API_KEY, AZURE_OPENAI_DEPLOYMENT_NAME } from '../utils/env';
+import { GEMINI_API_KEY } from '../utils/env';
 import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
 import { isAzureOpenAiConfigured } from './azureOpenAiService';
+import { callAzureChatCompletion } from './azureChatCompletionService';
 
 // ============================================================
 // In-course AI Tutor — powers POST /api/ai/course-tutor. Same provider/
@@ -10,13 +10,11 @@ import { isAzureOpenAiConfigured } from './azureOpenAiService';
 // here is the specific course/section/lesson the student is currently
 // viewing instead of an admin-configured KnowledgeDocument set.
 //
-// High-availability chain: Azure OpenAI (primary) -> up to 3 retries with
-// exponential backoff on a retryable error (429/503/timeout) -> Gemini
-// (cross-vendor fallback, only when GEMINI_API_KEY is configured) before
-// finally surfacing an error to the student. There is only one Azure
-// deployment configured on this platform (AZURE_OPENAI_DEPLOYMENT_NAME) —
-// "secondary deployment" isn't a real option without a second Azure
-// resource, so Gemini is the actual redundant provider here.
+// High-availability chain: Azure OpenAI primary region -> Azure OpenAI
+// secondary region (a fully separate resource, different key/region —
+// automatic failover on 429/5xx/timeout, see azureChatCompletionService.ts)
+// -> Gemini (cross-vendor fallback, only when GEMINI_API_KEY is configured)
+// before finally surfacing one graceful error to the student.
 // ============================================================
 
 export function isCourseTutorConfigured(): boolean {
@@ -54,48 +52,20 @@ export interface GenerateTutorReplyParams {
 // businessAiChatService's HISTORY_TURN_LIMIT.
 const HISTORY_TURN_LIMIT = 12;
 
-const MAX_RETRIES = 3;
 const BASE_RETRY_DELAY_MS = 500;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// Azure OpenAI SDK errors (the `openai` npm package) carry a `.status` —
-// 429 (rate limit / "overloaded"), 500/503 (transient upstream fault), or a
-// network-level timeout with no status at all. Anything else (400 bad
-// request, 401 bad key) fails fast — retrying an identical malformed
-// request 3 times just delays the same guaranteed failure.
-function isRetryableAzureError(err: unknown): boolean {
-  const status = (err as { status?: number })?.status;
-  if (status === 429 || status === 500 || status === 503) return true;
-  const message = err instanceof Error ? err.message : String(err);
-  return /timeout|ETIMEDOUT|ECONNABORTED|ECONNRESET/i.test(message);
-}
-
 type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
+// Primary/secondary Azure region failover (with its own internal retry) now
+// lives in azureChatCompletionService.ts, shared across every direct Azure
+// caller in this codebase — this is a thin pass-through so the rest of this
+// file (Gemini fallback, caching) doesn't need to know about it.
 async function callAzureTutor(messages: ChatMessage[]): Promise<string> {
-  let lastErr: unknown;
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const response = await azureOpenai.chat.completions.create({ model: AZURE_OPENAI_DEPLOYMENT_NAME, messages });
-      const reply = response.choices[0]?.message?.content || '';
-      if (!reply) throw new CourseTutorError('AI provider returned an empty response.');
-      return reply;
-    } catch (err) {
-      lastErr = err;
-      const retryable = isRetryableAzureError(err) || err instanceof CourseTutorError;
-      console.error(
-        `[courseTutorService] Azure attempt ${attempt + 1}/${MAX_RETRIES + 1} failed${retryable ? ', retrying' : ', not retryable'}:`,
-        err instanceof Error ? err.message : err
-      );
-      if (!retryable || attempt === MAX_RETRIES) break;
-      // Exponential backoff: 500ms, 1000ms, 2000ms.
-      await sleep(BASE_RETRY_DELAY_MS * 2 ** attempt);
-    }
-  }
-  throw lastErr;
+  return callAzureChatCompletion({ messages });
 }
 
 const geminiClient = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;

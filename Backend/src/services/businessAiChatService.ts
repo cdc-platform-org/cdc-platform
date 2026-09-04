@@ -1,6 +1,6 @@
-import { azureOpenai } from '../utils/azureOpenai';
-import { GEMINI_API_KEY, AZURE_OPENAI_DEPLOYMENT_NAME } from '../utils/env';
+import { GEMINI_API_KEY } from '../utils/env';
 import { isAzureOpenAiConfigured } from './azureOpenAiService';
+import { callAzureChatCompletionFull } from './azureChatCompletionService';
 
 // ============================================================
 // CDC Business AI — the actual model call behind POST /api/v1/chat (the
@@ -67,33 +67,18 @@ export async function generateAgentReply(params: GenerateAgentReplyParams): Prom
     { role: 'user' as const, content: params.message },
   ];
 
-  let reply = '';
-  let usage: GenerateAgentReplyResult['usage'];
-  let lastErr: unknown;
-  const MAX_ATTEMPTS = 3;
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    try {
-      const response = await azureOpenai.chat.completions.create({ model: AZURE_OPENAI_DEPLOYMENT_NAME, messages });
-      reply = response.choices[0]?.message?.content || '';
-      if (!reply) throw new BusinessAiChatError('AI provider returned an empty response.');
-      if (response.usage) {
-        usage = {
-          promptTokens: response.usage.prompt_tokens ?? 0,
-          completionTokens: response.usage.completion_tokens ?? 0,
-        };
-      }
-      break;
-    } catch (err) {
-      lastErr = err;
-      reply = '';
-      console.error(`[businessAiChatService] attempt ${attempt}/${MAX_ATTEMPTS} failed:`, err instanceof Error ? err.message : err);
-      if (attempt < MAX_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, 1500));
-    }
+  // Region failover (primary -> secondary Azure OpenAI resource) and retry
+  // now live in azureChatCompletionService.ts, shared across every direct
+  // Azure caller in this codebase.
+  try {
+    const { content, usage } = await callAzureChatCompletionFull({ messages });
+    return {
+      reply: content,
+      usage: usage ? { promptTokens: usage.promptTokens, completionTokens: usage.completionTokens } : undefined,
+    };
+  } catch (err) {
+    throw err instanceof BusinessAiChatError
+      ? err
+      : new BusinessAiChatError(err instanceof Error ? `AI request failed: ${err.message}` : 'AI request failed.');
   }
-  if (!reply) {
-    throw lastErr instanceof BusinessAiChatError
-      ? lastErr
-      : new BusinessAiChatError(lastErr instanceof Error ? `AI request failed: ${lastErr.message}` : 'AI request failed.');
-  }
-  return { reply, usage };
 }

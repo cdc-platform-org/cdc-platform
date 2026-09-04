@@ -187,6 +187,21 @@ export const AZURE_OPENAI_API_VERSION = (process.env.AZURE_OPENAI_API_VERSION ||
 // silently risk breaking the other.
 export const AZURE_OPENAI_DALLE_DEPLOYMENT_NAME = (process.env.AZURE_OPENAI_DALLE_DEPLOYMENT_NAME || '').trim();
 export const AZURE_OPENAI_DALLE_API_VERSION = (process.env.AZURE_OPENAI_DALLE_API_VERSION || '2024-04-01-preview').trim();
+
+// Secondary Azure OpenAI resource (a separate region/deployment) — see
+// services/azureChatCompletionService.ts's multi-region failover. On the
+// newer Azure OpenAI "v1" API surface, so it's addressed with the plain
+// OpenAI SDK client (baseURL + apiKey), not the AzureOpenAI class the
+// primary resource above uses (which needs a separate api-version/
+// deployment-binding config that surface doesn't use). Deliberately NOT
+// requireEnv() — same "optional until configured" posture as every other
+// AI provider here; failover is skipped (not an error) when unset.
+export const AZURE_OPENAI_KEY_SECONDARY = (process.env.AZURE_OPENAI_KEY_SECONDARY || '').trim();
+export const AZURE_OPENAI_ENDPOINT_SECONDARY = (process.env.AZURE_OPENAI_ENDPOINT_SECONDARY || '').trim().replace(/\/$/, '');
+// Deployment/model name on the secondary resource — falls back to the
+// primary's AZURE_OPENAI_DEPLOYMENT_NAME when unset, since a matching
+// multi-region setup commonly names both deployments the same.
+export const AZURE_OPENAI_DEPLOYMENT_NAME_SECONDARY = (process.env.AZURE_OPENAI_DEPLOYMENT_NAME_SECONDARY || '').trim();
 // Stripe Checkout — the international (USD/EUR) counterpart to BOG (GEL/ka
 // users), see services/stripePaymentService.ts. Deliberately NOT
 // requireEnv() — same "optional until configured" posture as BOG/Bunny/

@@ -1,8 +1,6 @@
-import { azureOpenai } from '../utils/azureOpenai';
 import { z } from 'zod';
-import { AZURE_OPENAI_DEPLOYMENT_NAME } from '../utils/env';
-
-const client = azureOpenai;
+import { callAzureChatCompletion } from './azureChatCompletionService';
+import { isAzureOpenAiConfigured } from './azureOpenAiService';
 
 // Belt-and-suspenders alongside the explicit classification prompt below —
 // kept aggressive since a course Q&A has no reason to legitimately trip
@@ -17,7 +15,7 @@ const MODERATION_SAFETY_SETTINGS = [
 const moderationResponseSchema = z.object({ safe: z.boolean() });
 
 export function isContentModerationConfigured(): boolean {
-  return !!client;
+  return isAzureOpenAiConfigured();
 }
 
 // Deliberately an explicit classification prompt, NOT just Gemini's
@@ -38,7 +36,7 @@ export function isContentModerationConfigured(): boolean {
 // DELETE /discussion/:postId), same backstop role human moderation already
 // plays for the site-wide forum's approved-after-the-fact comments.
 export async function checkContentSafety(text: string): Promise<{ safe: boolean }> {
-  if (!client) return { safe: true };
+  if (!isAzureOpenAiConfigured()) return { safe: true };
 
   const prompt = `You are a content moderation classifier for a CDC course discussion forum (students and mentors asking/answering questions). Determine whether the following user-submitted post contains hate speech, harassment, threats, violence, or other offensive/inappropriate language that must not be published. Ordinary technical frustration ("this bug is killing me") is NOT offensive. Respond with strict JSON matching this shape:
 {"safe": boolean}
@@ -46,14 +44,7 @@ export async function checkContentSafety(text: string): Promise<{ safe: boolean 
 post: ${text}`;
 
   try {
-    const response = await azureOpenai.chat.completions.create({
-      model: AZURE_OPENAI_DEPLOYMENT_NAME,
-      messages: [{ role: 'user', content: typeof prompt === 'string' ? prompt : JSON.stringify(prompt) }],
-      response_format: { type: 'json_object' },
-    });
-    const result = { response: { text: () => response.choices[0]?.message?.content || '' } };
-
-    const raw = result.response.text();
+    const raw = await callAzureChatCompletion({ messages: [{ role: 'user', content: prompt }], jsonMode: true });
     if (!raw) return { safe: true };
     const parsed = moderationResponseSchema.safeParse(JSON.parse(raw));
     // An unparseable/unexpected response is treated the same as "no

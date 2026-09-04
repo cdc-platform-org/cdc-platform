@@ -1,10 +1,10 @@
-import { azureOpenai } from "../utils/azureOpenai";
 import { z } from 'zod';
 import * as Sentry from '@sentry/node';
-import { GEMINI_API_KEY, AZURE_OPENAI_DEPLOYMENT_NAME } from '../utils/env';
+import { GEMINI_API_KEY } from '../utils/env';
 import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
 import { uploadImage } from './imageStorage';
 import { isAzureOpenAiConfigured, generateJsonViaAzureOpenAI, isAzureOpenAiDalleConfigured, generateImageViaDallE3 } from './azureOpenAiService';
+import { callAzureChatCompletion } from './azureChatCompletionService';
 
 // ============================================================
 // CDC AUTONOMOUS OPERATIONS AGENT — central AI service wrapper.
@@ -34,18 +34,6 @@ export function isAiAgentConfigured(): boolean {
 }
 
 const RETRY_DELAY_MS = 1500;
-
-// The Gemini SDK doesn't expose a structured status code — API errors come
-// back as an Error whose .message embeds Google's REST status, e.g.
-// "[503 Service Unavailable] The model is overloaded..." or "[429 Too Many
-// Requests] Resource has been exhausted...". Matched defensively since the
-// SDK gives no guarantee on this exact format across versions. A non-match
-// (e.g. a malformed-prompt 400) fails immediately rather than burning
-// through the whole model/retry sequence for an error no retry can fix.
-function isRetryableGeminiError(err: unknown): boolean {
-  const message = err instanceof Error ? err.message : String(err);
-  return /\b(503|429)\b/.test(message) || /overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand/i.test(message);
-}
 
 // Maps a Gemini failure to the HTTP status a route should actually respond
 // with — 429 for quota/rate-limit exhaustion (the caller should slow down
@@ -153,14 +141,14 @@ function buildAzureMessageContent(parts: GeminiPart[]): string | Array<Record<st
 // callTextModel/callTextModelPlain (exam generation, translation, skill
 // tests, English tutor, educator hub, etc.).
 //
-// Shared by callTextModel/callTextModelPlain below, so this fix and its
-// retry behavior live in exactly one place regardless of which response
-// mode a caller needs. Retries up to MAX_ATTEMPTS times (platform-wide
-// policy: up to 3 attempts) on a retryable API error (429/503-equivalent)
-// OR a malformed-JSON response when JSON mode was requested — a bad JSON
-// response is never surfaced to the caller on the first try anymore.
-// Returns null (not a throw) when every attempt failed, so each public
-// function above can decide its own fallback/error behavior.
+// The actual network call (including primary -> secondary Azure region
+// failover on a 429/5xx/timeout) now lives in azureChatCompletionService.ts,
+// shared by every direct Azure caller in this codebase. This loop's own job
+// is narrower: retry up to MAX_ATTEMPTS times (platform policy: up to 3)
+// specifically when a call SUCCEEDED but returned malformed JSON — a
+// concern that function doesn't know about since it's response-shape-
+// agnostic. Returns null (not a throw) when every attempt failed, so each
+// public function above can decide its own fallback/error behavior.
 const MAX_ATTEMPTS = 3;
 
 async function runGeminiFallbackSequence(
@@ -173,14 +161,11 @@ async function runGeminiFallbackSequence(
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      const response = await azureOpenai.chat.completions.create({
-        model: AZURE_OPENAI_DEPLOYMENT_NAME,
-        messages: [{ role: 'user', content: content as any }],
+      const raw = await callAzureChatCompletion({
+        messages: [{ role: 'user', content }],
         temperature,
-        ...(responseMimeType === 'application/json' ? { response_format: { type: 'json_object' as const } } : {}),
+        jsonMode: responseMimeType === 'application/json',
       });
-      const raw = response.choices[0]?.message?.content || '';
-      if (!raw) throw new AiAgentError('AI provider returned an empty response.');
 
       if (responseMimeType !== 'application/json') return { raw, lastError: null };
 
@@ -194,19 +179,13 @@ async function runGeminiFallbackSequence(
       return { raw: cleaned, lastError: null };
     } catch (err) {
       lastError = err;
-      console.error(`[aiAgentService] Azure OpenAI attempt ${attempt}/${MAX_ATTEMPTS} failed:`, err instanceof Error ? err.message : err);
-      // A malformed-JSON parse failure (SyntaxError) always retries — it's
-      // never the same class of error isRetryableGeminiError checks for,
-      // but is exactly the case this fix exists to retry. A hard
-      // non-retryable API error (bad auth, bad request) fails fast instead
-      // of burning the remaining attempts on something that will repeat
-      // identically.
-      const isEmptyResponse = err instanceof AiAgentError && /empty response/i.test(err.message);
-      if (err instanceof SyntaxError || isRetryableGeminiError(err) || isEmptyResponse) {
-        if (attempt < MAX_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
-        continue;
-      }
-      break;
+      console.error(`[aiAgentService] attempt ${attempt}/${MAX_ATTEMPTS} failed:`, err instanceof Error ? err.message : err);
+      // A malformed-JSON parse failure (SyntaxError) always retries — both
+      // Azure regions already failed over inside callAzureChatCompletion
+      // before this catch ever sees a network-level error, so what reaches
+      // here is either that exhaustion (retry — a fresh attempt cycles
+      // through both regions again) or a bad JSON response (also retry).
+      if (attempt < MAX_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
     }
   }
   return { raw: null, lastError };
