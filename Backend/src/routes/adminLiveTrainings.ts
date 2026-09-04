@@ -13,7 +13,10 @@ import {
   liveTrainingUpdateSchema,
   liveTrainingLeadUpdateSchema,
 } from '../schemas/liveTrainingSchemas';
+import { createExamSessionSchema, updateExamSessionSchema } from '../schemas/examProctoringSchemas';
 import { processLiveTrainingSynopsis } from '../services/liveTrainingSynopsisService';
+import { grantGraduateStatus } from '../services/graduateStatusService';
+import { generateExamQuestions, ExamProctoringAiError, isExamProctoringConfigured } from '../services/examProctoringService';
 
 const router = Router();
 router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
@@ -53,10 +56,11 @@ router.post(
   }
 );
 
-// Counts leads + active enrollments together — same reasoning as the
+// Counts leads + non-cancelled enrollments together — same reasoning as the
 // public liveTrainings.ts's own withCapacity (two independent registration
-// paths, one seat pool).
-const enrollmentCountSelect = { where: { status: 'ACTIVE' as const } };
+// paths, one seat pool). COMPLETED still counts: a finished cohort seat was
+// still used, only CANCELLED frees it back up.
+const enrollmentCountSelect = { where: { status: { not: 'CANCELLED' as const } } };
 
 function withCapacity<T extends { minCapacity: number; maxCapacity: number; _count: { leads: number; enrollments: number } }>(training: T) {
   const { _count, ...rest } = training;
@@ -266,6 +270,171 @@ router.post('/:id/grant', async (req: Request, res: Response) => {
     metadata: { note: result.data.note, trainingTitle: training.title, userEmail: user.email },
   });
   res.status(201).json({ data: enrollment });
+});
+
+// ============================================================
+// COMPLETION — marks a cohort seat as finished, and as a side effect grants
+// CDC Graduate status (isVerifiedGraduate — unlimited forum posting, the
+// Employment Forum) plus a congrats notification/email. See
+// graduateStatusService.grantGraduateStatus; idempotent for a student who
+// is already a graduate from an earlier course exam pass.
+// ============================================================
+async function completeEnrollment(
+  enrollment: { id: string; userId: string; liveTrainingId: string; status: string },
+  trainingTitle: string,
+  performedById: string
+) {
+  const updated = await prisma.liveTrainingEnrollment.update({
+    where: { id: enrollment.id },
+    data: { status: 'COMPLETED', completedAt: new Date() },
+    include: { user: { select: { id: true, name: true, email: true } } },
+  });
+  await logAdminAction({
+    action: 'liveTraining.enrollment.complete',
+    targetType: 'LiveTrainingEnrollment',
+    targetId: enrollment.id,
+    performedById,
+    metadata: { trainingTitle, userId: enrollment.userId },
+  });
+  await grantGraduateStatus(enrollment.userId, performedById, 'live_training_completed', {
+    liveTrainingId: enrollment.liveTrainingId,
+    trainingTitle,
+  });
+  return updated;
+}
+
+router.post('/:id/enrollments/:enrollmentId/complete', async (req: Request, res: Response) => {
+  const [enrollment, training] = await Promise.all([
+    prisma.liveTrainingEnrollment.findUnique({ where: { id: req.params.enrollmentId } }),
+    prisma.liveTraining.findUnique({ where: { id: req.params.id }, select: { title: true } }),
+  ]);
+  if (!enrollment || enrollment.liveTrainingId !== req.params.id) {
+    return res.status(404).json({ message: 'Enrollment not found.' });
+  }
+  if (!training) return res.status(404).json({ message: 'Live training not found.' });
+  if (enrollment.status === 'COMPLETED') {
+    return res.status(400).json({ message: 'This enrollment is already marked completed.' });
+  }
+
+  const updated = await completeEnrollment(enrollment, training.title, req.user!.id);
+  res.json({ data: updated });
+});
+
+// Bulk variant for the common case — a whole cohort finishes on the same
+// date. Only touches ACTIVE rows; a CANCELLED enrollment is never silently
+// resurrected into COMPLETED.
+router.post('/:id/complete-all', async (req: Request, res: Response) => {
+  const training = await prisma.liveTraining.findUnique({ where: { id: req.params.id }, select: { title: true } });
+  if (!training) return res.status(404).json({ message: 'Live training not found.' });
+
+  const active = await prisma.liveTrainingEnrollment.findMany({
+    where: { liveTrainingId: req.params.id, status: 'ACTIVE' },
+  });
+
+  const completed = [];
+  for (const enrollment of active) {
+    completed.push(await completeEnrollment(enrollment, training.title, req.user!.id));
+  }
+  res.json({ data: { completedCount: completed.length } });
+});
+
+// ============================================================
+// FINAL EXAM — reuses the same AI question generator and candidate-token
+// link mechanism as the standalone Business exam-proctoring tool
+// (routes/examProctoring.ts), just created here so a SUPER_ADMIN/MANAGER
+// admin (who has no Client-role account) can generate and share a cohort's
+// final exam directly from this panel. The public candidate-facing routes
+// under /exam-proctoring/candidate/:token already work unmodified for a
+// session created this way.
+// ============================================================
+router.get('/:id/exam-sessions', async (req: Request, res: Response) => {
+  const sessions = await prisma.examSession.findMany({
+    where: { liveTrainingId: req.params.id },
+    include: { _count: { select: { submissions: true } } },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json({ data: sessions });
+});
+
+router.post('/:id/exam-sessions', async (req: Request, res: Response) => {
+  if (!isExamProctoringConfigured()) {
+    return res.status(501).json({ message: 'AI Exam generation is not configured on this server.' });
+  }
+  const training = await prisma.liveTraining.findUnique({ where: { id: req.params.id }, select: { id: true } });
+  if (!training) return res.status(404).json({ message: 'Live training not found.' });
+
+  const result = createExamSessionSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  let generated;
+  try {
+    generated = await generateExamQuestions({
+      topic: result.data.topic,
+      mcqCount: result.data.mcqCount,
+      rawContent: result.data.rawContent,
+      includeCodeQuestion: result.data.includeCodeQuestion,
+    });
+  } catch (err) {
+    const message = err instanceof ExamProctoringAiError ? err.message : 'Failed to generate exam questions.';
+    const status = err instanceof ExamProctoringAiError ? err.status : 502;
+    return res.status(status).json({ message });
+  }
+
+  const session = await prisma.examSession.create({
+    data: {
+      businessId: req.user!.id,
+      liveTrainingId: training.id,
+      title: result.data.title,
+      description: result.data.description ?? null,
+      topic: result.data.topic,
+      rawContent: result.data.rawContent ?? null,
+      mcqCount: result.data.mcqCount,
+      durationMinutes: result.data.durationMinutes,
+      questions: {
+        create: generated.map((q) => ({
+          order: q.order,
+          type: q.type,
+          question: q.question,
+          options: q.type === 'MCQ' ? q.options : undefined,
+          correctAnswer: q.type === 'MCQ' ? q.correctAnswer : q.rubric,
+        })),
+      },
+    },
+    include: { questions: { orderBy: { order: 'asc' } } },
+  });
+  await logAdminAction({
+    action: 'liveTraining.examSession.create',
+    targetType: 'ExamSession',
+    targetId: session.id,
+    performedById: req.user!.id,
+    metadata: { liveTrainingId: training.id, title: session.title },
+  });
+  res.status(201).json({ data: session });
+});
+
+async function loadTrainingExamSession(trainingId: string, sessionId: string) {
+  const session = await prisma.examSession.findUnique({ where: { id: sessionId } });
+  if (!session || session.liveTrainingId !== trainingId) return null;
+  return session;
+}
+
+router.patch('/:id/exam-sessions/:sessionId', async (req: Request, res: Response) => {
+  const session = await loadTrainingExamSession(req.params.id, req.params.sessionId);
+  if (!session) return res.status(404).json({ message: 'Exam session not found.' });
+
+  const result = updateExamSessionSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const updated = await prisma.examSession.update({ where: { id: session.id }, data: result.data });
+  res.json({ data: updated });
+});
+
+router.delete('/:id/exam-sessions/:sessionId', async (req: Request, res: Response) => {
+  const session = await loadTrainingExamSession(req.params.id, req.params.sessionId);
+  if (!session) return res.status(404).json({ message: 'Exam session not found.' });
+
+  await prisma.examSession.delete({ where: { id: session.id } });
+  res.status(204).send();
 });
 
 // Minimal hand-rolled CSV — the export is always name/email/phone/status/

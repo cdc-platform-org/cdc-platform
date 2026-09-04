@@ -124,6 +124,21 @@ export async function sendStudioInquiryEmail(
   );
 }
 
+// Fired once from graduateStatusService.grantGraduateStatus — same
+// congratulations copy as the in-app Notification it's paired with, sent
+// once per user the first time isVerifiedGraduate flips true (course exam
+// pass or an admin marking a LiveTraining/cohort enrollment complete).
+export async function sendGraduateStatusEmail(email: string, name: string): Promise<void> {
+  const link = `${FRONTEND_URL}/forum`;
+  const html = wrapTemplate(
+    'გილოცავთ კურსდამთავრებას! 🎓',
+    `<strong>${name}</strong>, გილოცავთ კურსის წარმატებით დასრულებას! 🎓 თქვენ ავტომატურად მოგენიჭათ Graduate სტატუსი და გაგეხსნათ ულიმიტო წვდომა CDC-ის დასაქმების ფორუმზე!`,
+    'ფორუმზე გადასვლა',
+    link
+  );
+  await sendEmail(email, 'გილოცავთ! თქვენ ხართ CDC Graduate 🎓', html, link);
+}
+
 // Fired from routes/payments.ts's HR_SUPPORT callback branch once payment
 // completes and escrow is captured — recipients come from
 // HR_SUPPORT_NOTIFICATION_EMAILS (utils/env.ts), not hardcoded here, so

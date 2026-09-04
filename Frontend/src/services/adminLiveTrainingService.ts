@@ -1,5 +1,12 @@
 import apiClient from './apiClient';
-import { LiveTraining, LiveTrainingLead, LiveTrainingLeadStatus, LiveTrainingEnrollment } from '../types/liveTraining';
+import {
+  LiveTraining,
+  LiveTrainingLead,
+  LiveTrainingLeadStatus,
+  LiveTrainingEnrollment,
+  LiveTrainingExamSession,
+  ExamSessionStatus,
+} from '../types/liveTraining';
 import { CourseLanguage } from '../types/lms';
 
 export async function getAdminLiveTrainings(): Promise<LiveTraining[]> {
@@ -103,4 +110,66 @@ export async function grantLiveTrainingEnrollment(
 ): Promise<LiveTrainingEnrollment> {
   const response = await apiClient.post<{ data: LiveTrainingEnrollment }>(`/admin/live-trainings/${trainingId}/grant`, payload);
   return response.data.data;
+}
+
+// Marks one seat COMPLETED — the trigger for automatic Graduate status
+// (isVerifiedGraduate, unlimited forum posting) + a congrats
+// notification/email. See Backend's graduateStatusService.
+export async function completeLiveTrainingEnrollment(trainingId: string, enrollmentId: string): Promise<LiveTrainingEnrollment> {
+  const response = await apiClient.post<{ data: LiveTrainingEnrollment }>(
+    `/admin/live-trainings/${trainingId}/enrollments/${enrollmentId}/complete`
+  );
+  return response.data.data;
+}
+
+// Bulk variant — marks every currently-ACTIVE seat in this cohort COMPLETED
+// in one call (the common case: the whole intensive finishes together).
+export async function completeAllLiveTrainingEnrollments(trainingId: string): Promise<{ completedCount: number }> {
+  const response = await apiClient.post<{ data: { completedCount: number } }>(`/admin/live-trainings/${trainingId}/complete-all`);
+  return response.data.data;
+}
+
+// ============================================================
+// FINAL EXAM — same AI generator/candidate-link mechanism as the standalone
+// Business exam-proctoring tool, exposed here so a SUPER_ADMIN/MANAGER
+// admin can generate and share a cohort's final exam without needing a
+// separate Client account.
+// ============================================================
+export interface CreateLiveTrainingExamPayload {
+  title: string;
+  description?: string;
+  topic: string;
+  rawContent?: string;
+  mcqCount: number;
+  includeCodeQuestion?: boolean;
+  durationMinutes: number;
+}
+
+export async function getLiveTrainingExamSessions(trainingId: string): Promise<LiveTrainingExamSession[]> {
+  const response = await apiClient.get<{ data: LiveTrainingExamSession[] }>(`/admin/live-trainings/${trainingId}/exam-sessions`);
+  return response.data.data;
+}
+
+export async function createLiveTrainingExamSession(
+  trainingId: string,
+  payload: CreateLiveTrainingExamPayload
+): Promise<LiveTrainingExamSession> {
+  const response = await apiClient.post<{ data: LiveTrainingExamSession }>(`/admin/live-trainings/${trainingId}/exam-sessions`, payload);
+  return response.data.data;
+}
+
+export async function updateLiveTrainingExamSessionStatus(
+  trainingId: string,
+  sessionId: string,
+  status: ExamSessionStatus
+): Promise<LiveTrainingExamSession> {
+  const response = await apiClient.patch<{ data: LiveTrainingExamSession }>(
+    `/admin/live-trainings/${trainingId}/exam-sessions/${sessionId}`,
+    { status }
+  );
+  return response.data.data;
+}
+
+export async function deleteLiveTrainingExamSession(trainingId: string, sessionId: string): Promise<void> {
+  await apiClient.delete(`/admin/live-trainings/${trainingId}/exam-sessions/${sessionId}`);
 }

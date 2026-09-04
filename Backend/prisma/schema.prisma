@@ -1357,8 +1357,14 @@ model LiveTraining {
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
 
-  leads       LiveTrainingLead[]
-  enrollments LiveTrainingEnrollment[]
+  leads        LiveTrainingLead[]
+  enrollments  LiveTrainingEnrollment[]
+  // Final/graduation exam sessions generated for this cohort — see
+  // ExamSession.liveTrainingId. Reuses the same AI question generator and
+  // candidate-token link mechanism as the standalone Business exam
+  // proctoring tool, just created from the admin Live Training panel
+  // instead of a Client account.
+  examSessions ExamSession[]
 
   @@index([published])
   @@map("live_trainings")
@@ -1394,6 +1400,12 @@ model LiveTrainingLead {
 enum LiveTrainingEnrollmentStatus {
   ACTIVE
   CANCELLED
+  // Cohort finished — set by POST /admin/live-trainings/:id/enrollments/:id/complete
+  // (or the bulk .../complete-all), the trigger for grantGraduateStatus()
+  // (isVerifiedGraduate + forum unlimited-posting + congrats
+  // notification/email). Still counts toward registeredCount/seatsRemaining
+  // (a completed seat was still used) — only CANCELLED frees it.
+  COMPLETED
 }
 
 // A real account's confirmed seat in a LiveTraining — the roster
@@ -1413,10 +1425,14 @@ model LiveTrainingEnrollment {
   liveTraining   LiveTraining                 @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
   status         LiveTrainingEnrollmentStatus @default(ACTIVE)
   enrolledAt     DateTime                     @default(now())
+  // Set once, the first time this row flips to COMPLETED — never
+  // overwritten by a later call (same "sticky first-transition timestamp"
+  // convention as Notification.readAt).
+  completedAt    DateTime?
 
-  // One active-or-cancelled row per (user, training) — re-enrolling after a
-  // cancellation flips this same row back to ACTIVE rather than creating a
-  // second one (see the route handler).
+  // One active-or-cancelled-or-completed row per (user, training) —
+  // re-enrolling after a prior cancellation flips this same row back to
+  // ACTIVE rather than creating a second one (see the route handler).
   @@unique([userId, liveTrainingId])
   @@index([liveTrainingId])
   @@map("live_training_enrollments")
@@ -2660,6 +2676,13 @@ model ExamSession {
   id              String            @id @default(uuid())
   businessId      String
   business        User              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  // Set only when this session is a LiveTraining/cohort's final exam,
+  // created from the admin panel (routes/adminLiveTrainings.ts) rather than
+  // the standalone Business exam-proctoring tool — null for every other
+  // session. businessId above still points at the admin who generated it
+  // (ownership/audit trail), this is purely a "which cohort" tag.
+  liveTrainingId  String?
+  liveTraining    LiveTraining?     @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
   title           String
   description     String?
   // Free-text steer for the AI question generator, e.g. "Senior React
@@ -2690,6 +2713,7 @@ model ExamSession {
   retestFor   AdaptiveStudyGuide[] @relation("RetestExam")
 
   @@index([businessId])
+  @@index([liveTrainingId])
   @@map("exam_sessions")
 }
 

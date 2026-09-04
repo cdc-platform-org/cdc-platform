@@ -54,9 +54,13 @@ export interface LiveTraining {
 // meetingUrl is already visibility-gated server-side (see
 // isMeetingLinkVisible in Backend's routes/liveTrainings.ts), so the
 // frontend never needs to re-derive the time window itself.
+export type LiveTrainingEnrollmentStatus = 'ACTIVE' | 'CANCELLED' | 'COMPLETED';
+
 export interface MyLiveTrainingEnrollment {
   enrollmentId: string;
+  status: LiveTrainingEnrollmentStatus;
   enrolledAt: string;
+  completedAt: string | null;
   liveTrainingId: string;
   title: string;
   titleEn: string | null;
@@ -72,9 +76,30 @@ export interface LiveTrainingEnrollment {
   id: string;
   userId: string;
   liveTrainingId: string;
-  status: 'ACTIVE' | 'CANCELLED';
+  status: LiveTrainingEnrollmentStatus;
   enrolledAt: string;
+  completedAt: string | null;
   user: { id: string; name: string; email: string };
+}
+
+// A LiveTraining/cohort's final exam — see Backend's ExamSession.liveTrainingId.
+// Same shape as examProctoringService's ExamSessionSummary/Detail (this
+// reuses that exact backend model+generator, just created from the admin
+// Live Training panel instead of a Client business account).
+export type ExamSessionStatus = 'ACTIVE' | 'CLOSED';
+
+export interface LiveTrainingExamSession {
+  id: string;
+  title: string;
+  description: string | null;
+  topic: string;
+  mcqCount: number;
+  durationMinutes: number;
+  status: ExamSessionStatus;
+  candidateToken: string;
+  createdAt: string;
+  updatedAt: string;
+  _count: { submissions: number };
 }
 
 export type LiveTrainingLeadStatus = 'NOT_CONTACTED' | 'CONTACTED' | 'SCHEDULED' | 'DECLINED';

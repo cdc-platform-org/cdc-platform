@@ -4,7 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { Video, Radio, PlayCircle, X, GraduationCap } from 'lucide-react';
+import { Video, Radio, PlayCircle, X, GraduationCap, CheckCircle2 } from 'lucide-react';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
@@ -25,6 +25,7 @@ const EN_STRINGS = {
   recording: 'Watch recording',
   recordingPending: 'No recording has been posted yet.',
   scheduledFor: 'Scheduled for',
+  completed: 'Completed 🎓',
   cancel: 'Cancel enrollment',
   cancelling: 'Cancelling…',
   cancelConfirm: 'Cancel your enrollment in this training?',
@@ -44,6 +45,7 @@ const dict = {
     recording: 'ჩანაწერის ნახვა',
     recordingPending: 'ჩანაწერი ჯერ არ არის ატვირთული.',
     scheduledFor: 'დაგეგმილია',
+    completed: 'დასრულებული 🎓',
     cancel: 'ჩარიცხვის გაუქმება',
     cancelling: 'უქმდება…',
     cancelConfirm: 'გავაუქმოთ ჩარიცხვა ამ ტრენინგზე?',
@@ -99,15 +101,22 @@ function EnrollmentCard({
             {t.scheduledFor} {formatDateTime(enrollment.startDate ?? enrollment.scheduledAt, lang)}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleCancel}
-          disabled={cancelling}
-          className="flex items-center gap-1 text-[11px] font-bold text-red-500 hover:text-red-600 bg-transparent border-none cursor-pointer disabled:opacity-50"
-        >
-          <X className="w-3.5 h-3.5" />
-          {cancelling ? t.cancelling : t.cancel}
-        </button>
+        {enrollment.status === 'COMPLETED' ? (
+          <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            {t.completed}
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={cancelling}
+            className="flex items-center gap-1 text-[11px] font-bold text-red-500 hover:text-red-600 bg-transparent border-none cursor-pointer disabled:opacity-50"
+          >
+            <X className="w-3.5 h-3.5" />
+            {cancelling ? t.cancelling : t.cancel}
+          </button>
+        )}
       </div>
 
       {error && <p className="text-xs text-red-500 mt-2">{error}</p>}

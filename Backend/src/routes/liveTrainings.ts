@@ -30,7 +30,7 @@ async function canViewDrafts(req: Request): Promise<boolean> {
 // are two independent registration paths (anonymous phone callback vs.
 // authenticated self-serve, see LiveTrainingEnrollment's own comment) that
 // both consume real seats, so capacity has to account for both.
-const enrollmentCountSelect = { where: { status: 'ACTIVE' as const } };
+const enrollmentCountSelect = { where: { status: { not: 'CANCELLED' as const } } };
 
 function withCapacity<T extends { minCapacity: number; maxCapacity: number; _count: { leads: number; enrollments: number } }>(training: T) {
   const { _count, ...rest } = training;
@@ -63,7 +63,7 @@ function isMeetingLinkVisible(training: { startDate: Date | null; endDate: Date 
 // by that route as if it were a training id.
 router.get('/mine', authenticate, async (req: Request, res: Response) => {
   const enrollments = await prisma.liveTrainingEnrollment.findMany({
-    where: { userId: req.user!.id, status: 'ACTIVE' },
+    where: { userId: req.user!.id, status: { in: ['ACTIVE', 'COMPLETED'] } },
     include: { liveTraining: true },
     orderBy: { liveTraining: { scheduledAt: 'asc' } },
   });
@@ -71,7 +71,9 @@ router.get('/mine', authenticate, async (req: Request, res: Response) => {
   res.json({
     data: enrollments.map((e) => ({
       enrollmentId: e.id,
+      status: e.status,
       enrolledAt: e.enrolledAt,
+      completedAt: e.completedAt,
       liveTrainingId: e.liveTraining.id,
       title: e.liveTraining.title,
       titleEn: e.liveTraining.titleEn,
@@ -117,7 +119,7 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
     const enrollment = await prisma.liveTrainingEnrollment.findUnique({
       where: { userId_liveTrainingId: { userId: req.user.id, liveTrainingId: training.id } },
     });
-    isEnrolled = enrollment?.status === 'ACTIVE';
+    isEnrolled = enrollment?.status === 'ACTIVE' || enrollment?.status === 'COMPLETED';
   }
 
   res.json({ data: { ...withCapacity(training), isEnrolled } });
@@ -215,6 +217,9 @@ router.delete('/:id/enroll', authenticate, async (req: Request, res: Response) =
   });
   if (!existing || existing.status === 'CANCELLED') {
     return res.status(404).json({ message: 'You are not enrolled in this training.' });
+  }
+  if (existing.status === 'COMPLETED') {
+    return res.status(400).json({ message: 'This cohort is already complete — enrollment can no longer be cancelled.' });
   }
   await prisma.liveTrainingEnrollment.update({ where: { id: existing.id }, data: { status: 'CANCELLED' } });
   res.status(204).send();
