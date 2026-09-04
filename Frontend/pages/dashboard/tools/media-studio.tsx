@@ -113,6 +113,16 @@ try {
 }
 
 function humanizeLocale(locale: string, showRegion: boolean): string {
+  // `locale` ultimately comes from Azure's voices/list response (via
+  // TtsVoice.locale) — the TS type says `string`, but that's not a runtime
+  // guarantee for third-party API data. A missing/malformed value here
+  // (seen in practice with some newer multilingual/HD Azure voices) used to
+  // throw straight out of `locale.split('-')` during this component's
+  // languageOptions useMemo — a render-time crash, not something a try/catch
+  // around an event handler could ever catch. Guard at the one place every
+  // caller of this function funnels through, on top of the array being
+  // sanitized where it's fetched (see media-studio.tsx's getTtsVoices().then).
+  if (!locale || typeof locale !== 'string') return locale || '—';
   if (LOCALE_LABEL_OVERRIDES[locale]) return LOCALE_LABEL_OVERRIDES[locale];
   const [lang, region] = locale.split('-');
   const langLabel = languageNames?.of(lang) ?? lang;
@@ -289,7 +299,19 @@ function MediaStudioContent() {
 
   useEffect(() => {
     getTtsVoices()
-      .then(setVoices)
+      .then((result) => {
+        // Sanitize once, at the source, so every downstream consumer
+        // (languageOptions, filteredVoices, the voice <select>) can trust
+        // shortName/locale are real, non-empty strings without each having
+        // to re-guard the same third-party data shape — a malformed entry
+        // (seen in practice with newer multilingual/HD Azure voices missing
+        // `Locale`) is dropped here instead of throwing later inside a
+        // render-time useMemo.
+        const sanitized = Array.isArray(result)
+          ? result.filter((v): v is TtsVoice => !!v && typeof v.shortName === 'string' && v.shortName.length > 0 && typeof v.locale === 'string' && v.locale.length > 0)
+          : [];
+        setVoices(sanitized);
+      })
       .catch(async (err) => setVoicesError(await extractErrorMessage(err, t('ttsNoVoicesConfigured'))))
       .finally(() => setVoicesLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
