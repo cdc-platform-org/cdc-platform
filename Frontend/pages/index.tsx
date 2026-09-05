@@ -736,7 +736,13 @@ export default function Home() {
           compete with the nav's z-50 and the About Us dropdown's z-[60].
           Without it (position:relative + z-index:auto forms no stacking
           context) any future hero layer above z-50 would cover the dropdown. */}
-      <div className="relative z-0 w-full overflow-hidden min-h-[60vh] sm:min-h-[75vh] lg:min-h-[92vh] flex items-center bg-slate-950">
+      {/* -mx-4 sm:-mx-6 exactly cancels _app.tsx's app-shell px-4/sm:px-6 gutter
+          — every other page section respects that gutter, but a hero
+          background is expected to bleed to the true viewport edge. A plain
+          block element's default width already fills its container's content
+          box; negative margins here just extend that box back out past the
+          parent's padding, no `w-full`/width override needed. */}
+      <div className="relative z-0 -mx-4 sm:-mx-6 overflow-hidden min-h-[60vh] sm:min-h-[75vh] lg:min-h-[92vh] flex items-center bg-slate-950">
         {/* Background video — purely ambient (no controls, no pointer events, not
             focusable), always fills the full hero without letterboxing. On lg+ the
             scrim below only darkens the left text column, revealing it crisply on
@@ -766,11 +772,13 @@ export default function Home() {
             legibility insurance now that the scrim is this light. */}
         <div className="absolute inset-0 z-10 bg-slate-950/40 lg:bg-gradient-to-r lg:from-slate-950/55 lg:via-slate-950/10 lg:to-transparent" />
 
-        <header className="relative z-20 w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 py-8 sm:py-12 lg:py-16 text-center flex flex-col items-center justify-center">
-          <div className="grid grid-cols-1 lg:grid-cols-12 items-center gap-10">
-            <div className="lg:col-span-7 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] outline-none hover:outline-none focus:outline-none border-none hover:border-none hover:shadow-none hover:ring-0 mx-auto">
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full text-xs font-black tracking-wider mb-4 sm:mb-7 border border-white/20 bg-white/10 backdrop-blur-md text-white mx-auto">
+        <header className="relative z-20 w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 py-8 sm:py-12 lg:py-16 text-left flex flex-col justify-center">
+          <div className="w-full grid grid-cols-1 lg:grid-cols-12 items-center gap-10">
+            <div className="lg:col-span-7 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] outline-none hover:outline-none focus:outline-none border-none hover:border-none hover:shadow-none hover:ring-0">
+              {/* Badge — subtle glow ring added alongside the existing
+                  glassmorphism (backdrop-blur + translucent border/fill) for
+                  a more premium feel at rest, not just on hover. */}
+              <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full text-xs font-black tracking-wider mb-4 sm:mb-7 border border-white/20 bg-white/10 backdrop-blur-md text-white shadow-[0_0_20px_-4px_rgba(34,211,238,0.35)]">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
@@ -794,23 +802,25 @@ export default function Home() {
               </p>
 
               {/* Description */}
-              <p className="text-sm sm:text-base lg:text-lg text-slate-200/90 max-w-xl leading-relaxed mb-5 sm:mb-9 font-medium">
+              <p className="text-sm sm:text-base lg:text-lg text-slate-200/90 max-w-2xl text-left leading-relaxed mb-5 sm:mb-9 font-medium">
                 {t('heroDescription')}
               </p>
 
               {/* CTA — primary (browse courses) + secondary (register), matching
-                  the two-button hero pattern from the Stitch design reference. */}
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  the two-button hero pattern from the Stitch design reference.
+                  justify-start (not -center) keeps the row anchored to the
+                  same left edge as the heading/paragraphs above it. */}
+              <div className="flex flex-col sm:flex-row items-center sm:items-stretch justify-start gap-3">
                 <a
                   href="#courses"
-                  className="group inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl text-sm uppercase tracking-widest no-underline shadow-xl shadow-cyan-500/20 hover:shadow-2xl hover:shadow-cyan-500/40 hover:scale-105 transition-all duration-300 whitespace-nowrap"
+                  className="group inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl text-sm uppercase tracking-widest no-underline shadow-lg shadow-cyan-500/30 hover:shadow-2xl hover:shadow-cyan-500/40 hover:scale-105 transition-all duration-300 whitespace-nowrap"
                 >
                   {t('heroCtaCourses')}
                   <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
                 </a>
                 <Link
                   href="/auth/register"
-                  className="inline-flex items-center justify-center gap-2 bg-white/10 border border-white/20 backdrop-blur-md text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl text-sm uppercase tracking-widest no-underline hover:bg-white/20 hover:border-white/30 transition-all duration-300 whitespace-nowrap"
+                  className="inline-flex items-center justify-center gap-2 bg-white/10 border border-white/20 backdrop-blur-md text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl text-sm uppercase tracking-widest no-underline shadow-[0_0_20px_-6px_rgba(255,255,255,0.25)] hover:bg-white/20 hover:border-white/30 transition-all duration-300 whitespace-nowrap"
                 >
                   {t('heroCtaJoin')}
                 </Link>
