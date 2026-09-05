@@ -224,16 +224,18 @@ async function runGeminiFallbackSequence(
   temperature: number,
   responseMimeType: 'application/json' | 'text/plain'
 ): Promise<{ raw: string; lastError: null } | { raw: null; lastError: unknown }> {
-  let lastError: unknown;
-  let azureContent: string | Array<Record<string, unknown>> | null = null;
-  try {
-    azureContent = buildAzureMessageContent(parts);
-  } catch (err) {
-    // fileData parts (a Gemini File API reference) have no Azure equivalent
-    // at all — skip straight to the Gemini fallback below instead of
-    // "failing" on a translation error Azure was never going to satisfy.
-    lastError = err;
-  }
+  // fileData parts (a Gemini File API reference) have no Azure equivalent at
+  // all — buildAzureMessageContent throws for that case, so azureContent
+  // stays null and the loop below is skipped entirely, falling straight
+  // through to the real Gemini fallback instead of "failing" on a
+  // translation error Azure was never going to satisfy.
+  const azureContent: string | Array<Record<string, unknown>> | null = (() => {
+    try {
+      return buildAzureMessageContent(parts);
+    } catch {
+      return null;
+    }
+  })();
 
   if (azureContent !== null) {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -255,7 +257,6 @@ async function runGeminiFallbackSequence(
         JSON.parse(cleaned); // throws SyntaxError on invalid JSON — caught below, retried
         return { raw: cleaned, lastError: null };
       } catch (err) {
-        lastError = err;
         console.error(`[aiAgentService] Azure attempt ${attempt}/${MAX_ATTEMPTS} failed:`, err instanceof Error ? err.message : err);
         // A malformed-JSON parse failure (SyntaxError) always retries — both
         // Azure regions already failed over inside callAzureChatCompletion

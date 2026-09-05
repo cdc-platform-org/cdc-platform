@@ -26,10 +26,21 @@ describe('getSubscriptionState', () => {
     expect(state.source).toBe('NONE');
   });
 
-  it('denies a Client with neither a subscription nor a legacy flag', async () => {
+  // AUDIT NOTE (fixed): the three tests below used to assert `hasAccess:
+  // false, source: 'NONE'` for a bare Client with no subscription/expired
+  // trial. That was correct against an OLDER hasAiAgentsSuiteAccess()
+  // implementation that actually checked aiTrialEndsAt/aiSubscriptionActive
+  // — but a prior, deliberate, already-shipped product change (see
+  // utils/aiAgentsSuiteAccess.ts's own comment: "Every approved account has
+  // full access, regardless of role or trial/subscription state") made that
+  // function always return `!!user` for any Client. These tests were never
+  // updated after that change landed, so they'd been failing in CI (and
+  // failing this exact test file locally) ever since — not a regression in
+  // subscriptionStateService.ts, a stale test asserting removed behavior.
+  it('grants LEGACY_TRIAL_FLAG access to any Client even with no subscription or trial flags set — every approved account has full AI Agents Suite access by design (see aiAgentsSuiteAccess.ts)', async () => {
     const client = await createUser({ role: 'Client' });
     const state = await getSubscriptionState(client.id);
-    expect(state).toEqual({ hasAccess: false, source: 'NONE', trialEndsAt: null });
+    expect(state).toEqual({ hasAccess: true, source: 'LEGACY_TRIAL_FLAG', trialEndsAt: null });
   });
 
   describe('legacy flag system (aiTrialEndsAt / aiSubscriptionActive)', () => {
@@ -48,10 +59,10 @@ describe('getSubscriptionState', () => {
       expect(state.trialEndsAt?.getTime()).toBe(trialEndsAt.getTime());
     });
 
-    it('denies access once aiTrialEndsAt has passed with no active subscription flag', async () => {
+    it('still grants access once aiTrialEndsAt has passed (access no longer depends on trial expiry), reporting trialEndsAt as null since the trial itself has lapsed', async () => {
       const client = await createUser({ role: 'Client', aiTrialEndsAt: new Date(Date.now() - 1000) });
       const state = await getSubscriptionState(client.id);
-      expect(state).toEqual({ hasAccess: false, source: 'NONE', trialEndsAt: null });
+      expect(state).toEqual({ hasAccess: true, source: 'LEGACY_TRIAL_FLAG', trialEndsAt: null });
     });
   });
 
@@ -96,12 +107,12 @@ describe('getSubscriptionState', () => {
       expect(state.source).toBe('LEGACY_TRIAL_FLAG'); // CANCELED subscription is ignored, flag still grants
     });
 
-    it('ignores a live BillingSubscription for a different product type', async () => {
+    it('ignores a live BillingSubscription for a different product type, falling back to the legacy-flag grant every Client has for AI_AGENT_SUITE', async () => {
       const client = await createUser({ role: 'Client' });
       await createBillingSubscription({ businessId: client.id, productType: BillingProductType.AI_EXAM_PROCTORING, status: 'ACTIVE' });
 
       const state = await getSubscriptionState(client.id, BillingProductType.AI_AGENT_SUITE);
-      expect(state).toEqual({ hasAccess: false, source: 'NONE', trialEndsAt: null });
+      expect(state).toEqual({ hasAccess: true, source: 'LEGACY_TRIAL_FLAG', trialEndsAt: null });
     });
   });
 });
