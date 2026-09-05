@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import * as Sentry from '@sentry/node';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GEMINI_API_KEY } from '../utils/env';
 import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
 import { uploadImage } from './imageStorage';
-import { isAzureOpenAiConfigured, generateJsonViaAzureOpenAI, isAzureOpenAiDalleConfigured, generateImageViaDallE3 } from './azureOpenAiService';
+import { isAzureOpenAiConfigured, isAzureOpenAiDalleConfigured, generateImageViaDallE3 } from './azureOpenAiService';
 import { callAzureChatCompletion } from './azureChatCompletionService';
 
 // ============================================================
@@ -151,44 +152,134 @@ function buildAzureMessageContent(parts: GeminiPart[]): string | Array<Record<st
 // public function above can decide its own fallback/error behavior.
 const MAX_ATTEMPTS = 3;
 
+// SECOND AUDIT NOTE (fixed): despite this function's name and the file-header
+// comment above claiming "text generation is Gemini" with a 3-model cascade,
+// this used to ONLY ever call Azure OpenAI — there was no Gemini SDK import
+// anywhere in this file. callTextModel()'s old "cross-vendor 4th rung"
+// (generateJsonViaAzureOpenAI) made this worse, not better: that function
+// reads the exact same AZURE_OPENAI_API_KEY/ENDPOINT/DEPLOYMENT_NAME as the
+// "primary" region inside azureChatCompletionService.ts, so it silently
+// re-hit the same Azure resource a 3rd/4th time instead of ever reaching a
+// second vendor. Net effect: if both Azure regions were down, every caller of
+// callTextModel/callTextModelPlain (Blog Generator, Exam Generator via
+// aiExamService.ts, the Business AI Agent Suite, onboarding/digest emails)
+// had zero real fallback despite GEMINI_API_KEY being configured and healthy.
+// Fixed by adding a genuine Gemini call below (callGeminiFallback, same
+// gemini-flash-latest -> gemini-flash-lite-latest -> gemini-3.5-flash model
+// cascade as examProctoringService.ts's generateJson) as the real last rung,
+// replacing the fake same-resource "4th rung" in callTextModel entirely.
+const geminiClient = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+const GEMINI_MODEL_FALLBACK_SEQUENCE = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-3.5-flash'];
+const GEMINI_ATTEMPTS_PER_MODEL = 2;
+
+function isRetryableGeminiError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return /\b(503|429)\b/.test(message) || /overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand/i.test(message);
+}
+
+// Genuine cross-vendor fallback — only reached once every Azure region/retry
+// above is exhausted. `parts` already matches the Gemini SDK's own Part
+// shape (text/inlineData/fileData), so no translation is needed here (unlike
+// buildAzureMessageContent, which has to translate INTO Azure's shape and
+// can't represent fileData at all) — this is in fact the only path that can
+// ever satisfy a fileData (Gemini File API reference) request.
+async function callGeminiFallback(
+  parts: GeminiPart[],
+  temperature: number,
+  responseMimeType: 'application/json' | 'text/plain'
+): Promise<string> {
+  if (!geminiClient) throw new AiAgentError('Gemini fallback is not configured (GEMINI_API_KEY missing).');
+
+  let lastErr: unknown;
+  geminiLoop: for (const modelName of GEMINI_MODEL_FALLBACK_SEQUENCE) {
+    for (let attempt = 1; attempt <= GEMINI_ATTEMPTS_PER_MODEL; attempt++) {
+      try {
+        const model = geminiClient.getGenerativeModel(
+          {
+            model: modelName,
+            generationConfig: { temperature, ...(responseMimeType === 'application/json' ? { responseMimeType: 'application/json' } : {}) },
+          },
+          GEMINI_REQUEST_OPTIONS
+        );
+        const result = await model.generateContent({ contents: [{ role: 'user', parts: parts as any }] });
+        const raw = result.response.text();
+        if (!raw) throw new Error('Gemini returned an empty response.');
+        if (responseMimeType !== 'application/json') return raw;
+        const cleaned = raw.replace(/```json|```/g, '').trim();
+        JSON.parse(cleaned); // throws SyntaxError on invalid JSON — caught below, retried
+        return cleaned;
+      } catch (err) {
+        lastErr = err;
+        console.error(`[aiAgentService] Gemini ${modelName} attempt ${attempt}/${GEMINI_ATTEMPTS_PER_MODEL} failed:`, err instanceof Error ? err.message : err);
+        if (!isRetryableGeminiError(err) && !(err instanceof SyntaxError)) break geminiLoop;
+        if (attempt < GEMINI_ATTEMPTS_PER_MODEL) await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+      }
+    }
+  }
+  throw lastErr;
+}
+
 async function runGeminiFallbackSequence(
   parts: GeminiPart[],
   temperature: number,
   responseMimeType: 'application/json' | 'text/plain'
 ): Promise<{ raw: string; lastError: null } | { raw: null; lastError: unknown }> {
-  const content = buildAzureMessageContent(parts);
   let lastError: unknown;
+  let azureContent: string | Array<Record<string, unknown>> | null = null;
+  try {
+    azureContent = buildAzureMessageContent(parts);
+  } catch (err) {
+    // fileData parts (a Gemini File API reference) have no Azure equivalent
+    // at all — skip straight to the Gemini fallback below instead of
+    // "failing" on a translation error Azure was never going to satisfy.
+    lastError = err;
+  }
 
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    try {
-      const raw = await callAzureChatCompletion({
-        messages: [{ role: 'user', content }],
-        temperature,
-        jsonMode: responseMimeType === 'application/json',
-      });
+  if (azureContent !== null) {
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        const raw = await callAzureChatCompletion({
+          messages: [{ role: 'user', content: azureContent }],
+          temperature,
+          jsonMode: responseMimeType === 'application/json',
+        });
 
-      if (responseMimeType !== 'application/json') return { raw, lastError: null };
+        if (responseMimeType !== 'application/json') return { raw, lastError: null };
 
-      // JSON mode still occasionally wraps output in a ```json fence, or —
-      // rarely — returns text that isn't valid JSON at all. Stripped and
-      // validated right here (not left to the caller) so a bad response
-      // retries automatically instead of surfacing as "malformed JSON" on
-      // the very first try.
-      const cleaned = raw.replace(/```json|```/g, '').trim();
-      JSON.parse(cleaned); // throws SyntaxError on invalid JSON — caught below, retried
-      return { raw: cleaned, lastError: null };
-    } catch (err) {
-      lastError = err;
-      console.error(`[aiAgentService] attempt ${attempt}/${MAX_ATTEMPTS} failed:`, err instanceof Error ? err.message : err);
-      // A malformed-JSON parse failure (SyntaxError) always retries — both
-      // Azure regions already failed over inside callAzureChatCompletion
-      // before this catch ever sees a network-level error, so what reaches
-      // here is either that exhaustion (retry — a fresh attempt cycles
-      // through both regions again) or a bad JSON response (also retry).
-      if (attempt < MAX_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+        // JSON mode still occasionally wraps output in a ```json fence, or —
+        // rarely — returns text that isn't valid JSON at all. Stripped and
+        // validated right here (not left to the caller) so a bad response
+        // retries automatically instead of surfacing as "malformed JSON" on
+        // the very first try.
+        const cleaned = raw.replace(/```json|```/g, '').trim();
+        JSON.parse(cleaned); // throws SyntaxError on invalid JSON — caught below, retried
+        return { raw: cleaned, lastError: null };
+      } catch (err) {
+        lastError = err;
+        console.error(`[aiAgentService] Azure attempt ${attempt}/${MAX_ATTEMPTS} failed:`, err instanceof Error ? err.message : err);
+        // A malformed-JSON parse failure (SyntaxError) always retries — both
+        // Azure regions already failed over inside callAzureChatCompletion
+        // before this catch ever sees a network-level error, so what reaches
+        // here is either that exhaustion (retry — a fresh attempt cycles
+        // through both regions again) or a bad JSON response (also retry).
+        if (attempt < MAX_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+      }
     }
   }
-  return { raw: null, lastError };
+
+  // Azure exhausted (or skipped entirely for a fileData request) — the real
+  // cross-vendor fallback. Deliberately last, not interleaved: Azure is
+  // already proven reliable and metered on this account, so it should win
+  // whenever it's up at all; Gemini only needs to be here for the case Azure
+  // itself (not just one region) is down, or for a fileData request Azure
+  // can never satisfy in the first place.
+  try {
+    const raw = await callGeminiFallback(parts, temperature, responseMimeType);
+    return { raw, lastError: null };
+  } catch (geminiErr) {
+    console.error('[aiAgentService] Gemini fallback also failed:', geminiErr instanceof Error ? geminiErr.message : geminiErr);
+    return { raw: null, lastError: geminiErr };
+  }
 }
 
 function throwGeminiFailure(lastError: unknown): never {
@@ -208,38 +299,23 @@ function throwGeminiFailure(lastError: unknown): never {
 // (base64) image data for vision-capable calls — see
 // buildAzureMessageContent.
 export async function callTextModel(prompt: string, temperature: number, imageParts?: InlineImagePart[]): Promise<string> {
-  // Cross-vendor fallback (see azureOpenAiService.ts) only covers the
-  // text-only path — GPT-4o supports vision too, but wiring inline image
-  // parts into an OpenAI-shaped message is a separate piece of work with no
-  // caller here yet, so it's an explicit scope boundary, not a silent gap.
-  const canUseAzureFallback = !imageParts || imageParts.length === 0;
-
   if (!isAiAgentConfigured()) {
     throw new AiAgentError('AI text generation is not configured (GEMINI_API_KEY/AZURE_OPENAI_* missing).');
   }
 
   const parts: GeminiPart[] = [{ text: prompt }, ...(imageParts ?? []).map((img) => ({ inlineData: { mimeType: img.mimeType, data: img.data } }))];
 
-  const geminiResult = await runGeminiFallbackSequence(parts, temperature, 'application/json');
-  if (geminiResult.raw !== null) return geminiResult.raw;
-  let lastError = geminiResult.lastError;
-
-  // Extra retry rung via the standalone, string-prompt-only implementation
-  // — a genuine second attempt for the (rare) case the first exhausted its
-  // own retries. No-op when AZURE_OPENAI_* isn't configured.
-  if (canUseAzureFallback && isAzureOpenAiConfigured()) {
-    try {
-      return (await generateJsonViaAzureOpenAI(prompt, temperature)).raw;
-    } catch (azureErr) {
-      console.error('[aiAgentService] Azure OpenAI fallback also failed:', azureErr instanceof Error ? azureErr.message : azureErr);
-      lastError = azureErr;
-    }
-  }
+  // Azure primary -> Azure secondary -> Gemini (real cross-vendor fallback,
+  // see runGeminiFallbackSequence) — Gemini natively supports the same
+  // inlineData image parts Azure's vision path does, so this one call
+  // covers both the text-only and vision callers of this function.
+  const result = await runGeminiFallbackSequence(parts, temperature, 'application/json');
+  if (result.raw !== null) return result.raw;
 
   // Same reasoning as examProctoringService.ts's identical capture point —
   // callers of callTextModel() catch this and respond directly, so it never
   // reaches Sentry.setupExpressErrorHandler in server.ts on its own.
-  throwGeminiFailure(lastError);
+  throwGeminiFailure(result.lastError);
 }
 
 // Plain-text sibling of callTextModel() — for callers whose output is NOT
