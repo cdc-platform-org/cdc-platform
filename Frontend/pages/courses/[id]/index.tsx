@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import Head from 'next/head';
 import { GetServerSideProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
@@ -27,6 +26,7 @@ import CourseLeaderboard from '../../../src/components/shared/CourseLeaderboard'
 import CourseHeroBanner from '../../../src/components/shared/CourseHeroBanner';
 import VideoEmbed from '../../../src/components/shared/VideoEmbed';
 import VIPAudioNarrator from '../../../src/components/ui/VIPAudioNarrator';
+import SEOHead from '../../../src/components/seo/SEOHead';
 
 function formatTotalDuration(totalSeconds: number, lang: 'ka' | 'en'): string {
   const totalMinutes = Math.round(totalSeconds / 60);
@@ -189,9 +189,12 @@ export default function CourseDetailPage() {
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
-      <Head>
-        <title>{`${course.title} | CDC`}</title>
-      </Head>
+      <SEOHead
+        title={course.title}
+        description={course.description.replace(/[#*`_>-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 200)}
+        ogImage={course.thumbnailUrl ?? undefined}
+        ogType="product"
+      />
       <SiteHeader />
       <div className="max-w-3xl mx-auto px-6 py-16 flex-1 w-full">
         <Link href="/courses" className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white no-underline">

@@ -87,15 +87,22 @@ function App({ Component, pageProps }: AppProps) {
   return (
     <>
       <Head>
+        {/* AUDIT NOTE (fixed): this block used to also render og:title/
+            og:description/og:image/og:url and twitter:*, hardcoded to the
+            homepage's own content, in a <Head> that wraps EVERY page. Next's
+            next/head does NOT dedupe plain (un-keyed) <meta property="og:*">
+            tags across separate Head instances — this app-wide Head and a
+            page's own SEOHead (src/components/seo/SEOHead.tsx) both render
+            an og:url tag, so both landed in the final HTML, and og:url was
+            hardcoded to https://www.cdc.ge on every single page regardless.
+            A Facebook/LinkedIn share of e.g. a course or blog post could
+            then get attributed/cached under the homepage URL instead of the
+            actual page. Removed here — SEOHead is the single, correct
+            source for these on every page that renders it; a page that
+            doesn't yet use SEOHead simply has no og:* tags rather than
+            wrong ones. */}
         <meta name="description" content="ციფრული პროფესიების ცენტრი (CDC) გთავაზობთ ტოპ 10 პროფესიას საქართველოში, მათ შორის მაღალანაზღაურებადი პროფესიები, AI ტესტების გენერატორი და მასწავლებლის ასისტენტი." />
         <meta name="keywords" content="ციფრული პროფესიები, ტოპ 10 პროფესია საქართველოში, მაღალანაზღაურებადი პროფესიები, ციფრული პროფესიების ცენტრი, CDC, მასწავლებლის ასისტენტი, AI ტესტების გენერატორი, ონლაინ სწავლება" />
-        <meta property="og:title" content="ციფრული პროფესიების ცენტრი (CDC) - საუკეთესო პროფესიები საქართველოში" />
-        <meta property="og:description" content="ციფრული პროფესიების ცენტრი (CDC) გთავაზობთ ტოპ 10 პროფესიას საქართველოში, მათ შორის მაღალანაზღაურებადი პროფესიები, AI ტესტების გენერატორი და მასწავლებლის ასისტენტი." />
-        <meta property="og:image" content="/logo.png" />
-        <meta property="og:url" content="https://www.cdc.ge" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="ციფრული პროფესიების ცენტრი (CDC) - საუკეთესო პროფესიები საქართველოში" />
-        <meta name="twitter:description" content="ციფრული პროფესიების ცენტრი (CDC) გთავაზობთ ტოპ 10 პროფესიას საქართველოში, მათ შორის მაღალანაზღაურებადი პროფესიები, AI ტესტების გენერატორი და მასწავლებლის ასისტენტი." />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

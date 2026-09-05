@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
-import Head from 'next/head';
 import { ExternalLink } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import Lightbox from '../../src/components/shared/Lightbox';
 import MarkdownContent from '../../src/components/shared/MarkdownContent';
+import SEOHead from '../../src/components/seo/SEOHead';
 import { SuccessStory } from '../../src/types/successStory';
 import { getSuccessStoryBySlug, successStoryRoleTitle, successStoryTestimonial, successStoryContent } from '../../src/services/successStoryService';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
@@ -96,9 +96,13 @@ export default function SuccessStoryDetailPage() {
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
-      <Head>
-        <title>{`${story?.studentName ?? t.loading} | CDC Success Stories`}</title>
-      </Head>
+      <SEOHead
+        title={story ? story.studentName : t.loading}
+        description={story ? successStoryTestimonial(story, contentLang).slice(0, 200) : t.loading}
+        ogImage={story?.avatarUrl ?? undefined}
+        ogType="article"
+        noIndex={!story}
+      />
       <SiteHeader />
       <div className="max-w-4xl mx-auto px-6 py-16 flex-1 w-full">
         <div className="mb-4">

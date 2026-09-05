@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
-import Head from 'next/head';
 import { ExternalLink } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
@@ -8,6 +7,7 @@ import BackButton from '../../src/components/common/BackButton';
 import Lightbox from '../../src/components/shared/Lightbox';
 import VideoEmbed from '../../src/components/shared/VideoEmbed';
 import MarkdownContent from '../../src/components/shared/MarkdownContent';
+import SEOHead from '../../src/components/seo/SEOHead';
 import { StudioCaseStudy } from '../../src/types/studioCaseStudy';
 import { getStudioCaseBySlug, studioCaseTitle, studioCaseDescription, studioCaseFullStory } from '../../src/services/studioCaseService';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
@@ -104,9 +104,13 @@ export default function StudioCaseDetailPage() {
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
-      <Head>
-        <title>{`${displayTitle ?? t.loading} | CDC Studio`}</title>
-      </Head>
+      <SEOHead
+        title={displayTitle ?? t.loading}
+        description={caseStudy ? studioCaseDescription(caseStudy, contentLang).slice(0, 200) : t.loading}
+        ogImage={caseStudy?.coverImageUrl ?? undefined}
+        ogType="article"
+        noIndex={!caseStudy}
+      />
       <SiteHeader />
       <div className="max-w-4xl mx-auto px-6 py-16 flex-1 w-full">
         <div className="mb-4">

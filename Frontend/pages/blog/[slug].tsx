@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import Head from 'next/head';
 import ReactMarkdown from 'react-markdown';
 import VIPAudioNarrator from '../../src/components/ui/VIPAudioNarrator';
+import SEOHead from '../../src/components/seo/SEOHead';
 import DOMPurify from 'dompurify';
 import { List, Clock, Reply, Trash2 } from 'lucide-react';
 import { useAuth } from '../../src/context/AuthContext';
@@ -679,18 +679,7 @@ export default function BlogPostPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <Head>
-        <title>{`${title} | CDC Blog`}</title>
-        <meta name="description" content={description} />
-        <meta property="og:type" content="article" />
-        <meta property="og:title" content={title} />
-        <meta property="og:description" content={description} />
-        {ogImage && <meta property="og:image" content={ogImage} />}
-        <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
-        <meta name="twitter:title" content={title} />
-        <meta name="twitter:description" content={description} />
-        {ogImage && <meta name="twitter:image" content={ogImage} />}
-      </Head>
+      <SEOHead title={title} description={description} ogImage={ogImage} ogType="article" />
       <SiteHeader />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <Link href="/blog" className="text-sm text-slate-400 hover:text-white no-underline">
