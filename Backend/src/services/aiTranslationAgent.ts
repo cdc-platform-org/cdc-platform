@@ -47,6 +47,57 @@ const REPO_ROOT = path.resolve(__dirname, '../../..');
 const DEFAULT_LOCALES_DIR = (process.env.I18N_LOCALES_DIR || '').trim() || path.join(REPO_ROOT, 'Frontend', 'public', 'locales');
 const SOURCE_LOCALE = 'en';
 
+// AUDIT NOTE (added): auditOrphanedKeys (the read-only "Missing Locales
+// Audit" admin tool) doesn't need to WRITE anything, unlike
+// scanMissingTranslations/runI18nAutoTranslateAgent below — so unlike
+// those, it genuinely CAN work in production despite the "no Frontend
+// checkout in this container" limitation above: Next.js serves everything
+// under Frontend/public/ as plain static files at the site root (verified
+// directly: GET <FRONTEND_URL>/locales/en/common.json returns 200 with the
+// real file), so fetching the live locale JSON over HTTP reads the exact
+// same source of truth a local checkout would, just over the network
+// instead of disk. Used only as a fallback when the local directory read
+// fails — local dev/CI keep reading straight from disk, unchanged.
+//
+// FRONTEND_URL/FALLBACK_LOCALES/FALLBACK_NAMESPACES are a deliberate
+// trade-off: this is the one place in this function that can't discover
+// "what namespaces/locales exist" by listing a directory (there's no
+// directory to list over plain static HTTP), so it hardcodes the current
+// real list instead. A locale or namespace added after this list was last
+// updated is simply not covered by the HTTP fallback until this list is
+// refreshed — a silent gap, not a crash, same posture as this file's other
+// best-effort behavior. Local dev/CI's directory-listing path is
+// unaffected and always sees the true current list.
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://cdc.org.ge';
+const FALLBACK_LOCALES = ['ka', 'en', 'de', 'es', 'fr', 'uk', 'tr', 'hy', 'az'];
+const FALLBACK_NAMESPACES = [
+  'auth.json',
+  'billing.json',
+  'common.json',
+  'courses.json',
+  'educatorHub.json',
+  'forum.json',
+  'home.json',
+  'marketplace.json',
+  'mediaStudio.json',
+  'mentorship.json',
+  'proctoredExam.json',
+  'proposals.json',
+  'settings.json',
+];
+
+async function fetchLocaleJsonOverHttp(locale: string, namespace: string): Promise<JsonObject> {
+  const url = `${FRONTEND_URL.replace(/\/$/, '')}/locales/${locale}/${namespace}`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return {};
+    const parsed = await response.json();
+    return isPlainObject(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 export class I18nAgentError extends Error {
   constructor(message: string) {
     super(message);
@@ -209,26 +260,38 @@ export interface OrphanedKeyGroup {
 export async function auditOrphanedKeys(localesDir: string = DEFAULT_LOCALES_DIR): Promise<OrphanedKeyGroup[]> {
   const sourceDir = path.join(localesDir, SOURCE_LOCALE);
   let namespaceFiles: string[];
+  let useHttpFallback = false;
   try {
     namespaceFiles = (await fs.readdir(sourceDir)).filter((f) => f.endsWith('.json'));
   } catch {
-    throw new I18nAgentError(
-      `This tool needs the Frontend app's source checked out alongside the Backend's (looked for: ${sourceDir}) — it is not available in a production deployment, where the two apps run as separate containers with no shared filesystem. Run it in local dev, or set I18N_LOCALES_DIR to a real checkout if this environment does have one.`
-    );
+    // No local Frontend checkout — this is the expected, normal case in
+    // production (see this file's AUDIT NOTEs above). Falls back to the
+    // real, live, currently-deployed locale files over HTTP instead of
+    // failing outright — this tool is read-only, so unlike
+    // scanMissingTranslations/runI18nAutoTranslateAgent it has no
+    // write/git-commit step that would fail regardless of where the JSON
+    // comes from.
+    useHttpFallback = true;
+    namespaceFiles = FALLBACK_NAMESPACES;
   }
 
-  const localeDirs = (await fs.readdir(localesDir, { withFileTypes: true }))
-    .filter((entry) => entry.isDirectory() && entry.name !== SOURCE_LOCALE && !entry.name.startsWith('.'))
-    .map((entry) => entry.name);
+  const localeDirs = useHttpFallback
+    ? FALLBACK_LOCALES.filter((locale) => locale !== SOURCE_LOCALE)
+    : (await fs.readdir(localesDir, { withFileTypes: true }))
+        .filter((entry) => entry.isDirectory() && entry.name !== SOURCE_LOCALE && !entry.name.startsWith('.'))
+        .map((entry) => entry.name);
+
+  const readNamespaceFile = (locale: string, namespace: string): Promise<JsonObject> =>
+    useHttpFallback ? fetchLocaleJsonOverHttp(locale, namespace) : readJsonFile(path.join(localesDir, locale, namespace));
 
   const groups: OrphanedKeyGroup[] = [];
 
   for (const namespace of namespaceFiles) {
-    const sourceJson = await readJsonFile(path.join(sourceDir, namespace));
+    const sourceJson = await readNamespaceFile(SOURCE_LOCALE, namespace);
     const sourceKeys = new Set(flattenKeys(sourceJson));
 
     for (const locale of localeDirs) {
-      const targetJson = await readJsonFile(path.join(localesDir, locale, namespace));
+      const targetJson = await readNamespaceFile(locale, namespace);
       const orphanedKeys = flattenKeys(targetJson).filter((key) => !sourceKeys.has(key));
       if (orphanedKeys.length > 0) groups.push({ locale, namespace, orphanedKeys });
     }
