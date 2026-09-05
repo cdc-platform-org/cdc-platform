@@ -7,6 +7,7 @@ import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import confetti from 'canvas-confetti';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
+import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
 import { useAuth } from '../../../src/context/AuthContext';
 import { Course, ExamStatus, ExamQuestion, ExamSubmitResult, ExamAnswerLetter } from '../../../src/types/lms';
 import { getCourse, getExamStatus, startExam, submitExam } from '../../../src/services/courseService';
@@ -389,7 +390,9 @@ function ExamContent() {
 export default function ExamPage() {
   return (
     <ProtectedRoute>
-      <ExamContent />
+      <ToolErrorBoundary>
+        <ExamContent />
+      </ToolErrorBoundary>
     </ProtectedRoute>
   );
 }

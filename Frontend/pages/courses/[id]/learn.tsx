@@ -9,6 +9,7 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { ShieldAlert, Loader2 } from 'lucide-react';
 import type { TFunction } from 'next-i18next';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
+import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import BackButton from '../../../src/components/common/BackButton';
 import CourseVideoPlayer from '../../../src/components/courses/CourseVideoPlayer';
@@ -605,7 +606,9 @@ function LearnContent() {
 export default function LearnPage() {
   return (
     <ProtectedRoute>
-      <LearnContent />
+      <ToolErrorBoundary>
+        <LearnContent />
+      </ToolErrorBoundary>
     </ProtectedRoute>
   );
 }

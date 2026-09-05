@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { ShieldAlert, CheckCircle2, XCircle, Loader2, RefreshCw, Clock, HelpCircle, Target, AlertTriangle, Play } from 'lucide-react';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
+import ToolErrorBoundary from '../../src/components/common/ToolErrorBoundary';
 import RoleGate from '../../src/components/auth/RoleGate';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
@@ -620,7 +621,9 @@ export default function FreelancerExamPage() {
           </div>
         }
       >
-        <FreelancerExamContent />
+        <ToolErrorBoundary>
+          <FreelancerExamContent />
+        </ToolErrorBoundary>
       </RoleGate>
     </ProtectedRoute>
   );

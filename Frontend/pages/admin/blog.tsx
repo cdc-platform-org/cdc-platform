@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ExternalLink, MessageSquare, Trash2 } from 'lucide-react';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
+import ToolErrorBoundary from '../../src/components/common/ToolErrorBoundary';
 import RichTextEditor from '../../src/components/shared/RichTextEditor';
 import { BlogPost, BlogComment } from '../../src/types/blog';
 import {
@@ -663,7 +664,9 @@ export default function AdminBlogPage() {
   return (
     <AdminGuard requiredTiers={['SUPER_ADMIN', 'MANAGER']}>
       <AdminLayout>
-        <AdminBlogDashboard />
+        <ToolErrorBoundary>
+          <AdminBlogDashboard />
+        </ToolErrorBoundary>
       </AdminLayout>
     </AdminGuard>
   );
