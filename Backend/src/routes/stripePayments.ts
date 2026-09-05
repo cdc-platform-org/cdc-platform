@@ -20,7 +20,7 @@ import { completeCoursePurchase } from '../services/courseSaleService';
 import { paymentModelForPurpose } from '../services/paymentModel';
 import { getCurrentPrice } from '../services/coursePricing';
 import { getCurrentProductPrice } from '../services/productPricing';
-import { applyPromoToCheckout, recordPromoRedemption, PromoCodeError } from '../services/couponService';
+import { applyPromoToCheckout, PromoCodeError } from '../services/couponService';
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
 import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
 import { captureMentorshipEscrow } from '../services/mentorshipEscrowService';
@@ -159,7 +159,6 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
       },
     });
     const { isNewEnrollment } = await completeCoursePurchase({ userId: req.user!.id, courseId: course.id, amount: chargeAmountGel });
-    if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
     if (isNewEnrollment) await notifyCourseEnrollment(req.user!.id, course);
     return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
   }
@@ -191,7 +190,6 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
     customerEmail: req.user!.email,
   });
   if (!session) return;
-  if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
   const updated = await prisma.stripePayment.update({
     where: { id: stripePayment.id },
     data: { stripeSessionId: session.stripeSessionId, checkoutUrl: session.checkoutUrl },
@@ -262,7 +260,6 @@ router.post('/checkout/live-training/:id', checkoutRateLimit, authenticate, requ
       },
     });
     await completeLiveTrainingPurchase({ userId: req.user!.id, liveTrainingId: training.id });
-    if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
     return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
   }
 
@@ -293,7 +290,6 @@ router.post('/checkout/live-training/:id', checkoutRateLimit, authenticate, requ
     customerEmail: req.user!.email,
   });
   if (!session) return;
-  if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
   const updated = await prisma.stripePayment.update({
     where: { id: stripePayment.id },
     data: { stripeSessionId: session.stripeSessionId, checkoutUrl: session.checkoutUrl },
@@ -343,7 +339,6 @@ router.post('/checkout/english-tutor', checkoutRateLimit, authenticate, requireA
       },
     });
     await completeTutorSubscriptionPurchase(req.user!.id);
-    if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
     return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
   }
 
@@ -374,7 +369,6 @@ router.post('/checkout/english-tutor', checkoutRateLimit, authenticate, requireA
     customerEmail: req.user!.email,
   });
   if (!session) return;
-  if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
   const updated = await prisma.stripePayment.update({
     where: { id: stripePayment.id },
     data: { stripeSessionId: session.stripeSessionId, checkoutUrl: session.checkoutUrl },
@@ -617,7 +611,6 @@ router.post('/checkout/product/:productId', checkoutRateLimit, authenticate, req
       },
     });
     await completeProductPurchase({ userId: req.user!.id, productId: product.id, amount: 0 });
-    if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
     return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, purchased: true });
   }
 
@@ -648,7 +641,6 @@ router.post('/checkout/product/:productId', checkoutRateLimit, authenticate, req
     customerEmail: req.user!.email,
   });
   if (!session) return;
-  if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
   const updated = await prisma.stripePayment.update({
     where: { id: stripePayment.id },
     data: { stripeSessionId: session.stripeSessionId, checkoutUrl: session.checkoutUrl },
@@ -792,7 +784,11 @@ export async function applyStripePaymentResult(stripePaymentId: string, session:
       // schema comment.
       await captureMentorshipEscrow({ bookingId: booking.id, grossAmount: stripePayment.amountGel });
     } catch (err) {
+      // Same reasoning as payments.ts's identical BOG-path capture — a
+      // failure here leaves the booking paid-but-unescrowed with nothing
+      // alerting anyone to retry it.
       console.error('[stripe-webhook] Failed to capture mentorship escrow:', err);
+      Sentry.captureException(err, { extra: { stripePaymentId: stripePayment.id, bookingId: booking.id, stage: 'captureMentorshipEscrow' } });
     }
 
     let meetLink: string | null = null;

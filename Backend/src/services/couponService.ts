@@ -113,6 +113,22 @@ export async function resolveTargetPrice(targetType: CouponTargetType, targetId:
 // to charge. Never trusts a client-supplied discountedAmount. Returns the
 // unmodified baseChargeAmount and a null promo when no code was sent, so a
 // caller never needs its own separate "no promo" branch.
+// AUDIT NOTE (fixed): the usage claim used to be a separate step
+// (recordPromoRedemption), called by each checkout route only once its own
+// order/free-grant was created — a plain read-check here (findValidPromoCode)
+// followed, several lines and sometimes a network call later, by an
+// unconditional `currentUses: { increment: 1 }`. That's a check-then-act
+// race: two concurrent checkouts arriving near maxUses could both pass the
+// read check before either write landed, letting a capped/single-use code be
+// redeemed more times than maxUses allows. Fixed by claiming the slot
+// atomically right here, as part of applying the promo — every caller of
+// this function is already at the "about to create an order" point (the
+// separate /promos/validate preview endpoint calls findValidPromoCode
+// directly, never this function, so a plain preview still never spends a
+// use). `currentUses: { lt: promo.maxUses }` re-checks the cap as part of
+// the same atomic write; only one concurrent claim near the limit can ever
+// win, and the loser gets a clear, retriable error instead of silently
+// succeeding uncounted.
 export async function applyPromoToCheckout(
   rawPromoCode: string | null | undefined,
   targetType: CouponTargetType,
@@ -123,13 +139,16 @@ export async function applyPromoToCheckout(
   const promo = await findValidPromoCode(rawPromoCode, targetType, targetId);
   const { originalPrice } = await resolveTargetPrice(targetType, targetId);
   const chargeAmount = computePromoPrice(baseChargeAmount, originalPrice, promo);
-  return { chargeAmount, appliedPromo: promo };
-}
 
-// Atomic increment, called once an order/free-grant is actually created —
-// same "spend on order creation, not on validate" semantics the pre-
-// existing course-only flow already had (an abandoned checkout still
-// "spends" a use, but stays traceable via promoCodeId on the payment row).
-export async function recordPromoRedemption(promoId: string): Promise<void> {
-  await prisma.promoCode.update({ where: { id: promoId }, data: { currentUses: { increment: 1 } } });
+  if (promo.maxUses != null) {
+    const claim = await prisma.promoCode.updateMany({
+      where: { id: promo.id, currentUses: { lt: promo.maxUses } },
+      data: { currentUses: { increment: 1 } },
+    });
+    if (claim.count === 0) throw new PromoCodeError('This promo code has just reached its usage limit.');
+  } else {
+    await prisma.promoCode.update({ where: { id: promo.id }, data: { currentUses: { increment: 1 } } });
+  }
+
+  return { chargeAmount, appliedPromo: promo };
 }

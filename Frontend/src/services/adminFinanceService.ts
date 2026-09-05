@@ -2,6 +2,7 @@ import apiClient from './apiClient';
 
 export interface CoursePaymentRow {
   id: string;
+  gateway: 'BOG' | 'STRIPE';
   bogOrderId: string;
   user: { id: string; name: string; email: string };
   purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING';
@@ -26,6 +27,11 @@ export async function getCoursePayments(params?: { page?: number; pageSize?: num
 
 export async function reverifyCoursePayment(paymentId: string): Promise<CoursePaymentRow> {
   const response = await apiClient.post<{ data: CoursePaymentRow }>(`/admin/finance/course-payments/${paymentId}/reverify`);
+  return response.data.data;
+}
+
+export async function reverifyStripePayment(paymentId: string): Promise<CoursePaymentRow> {
+  const response = await apiClient.post<{ data: CoursePaymentRow }>(`/admin/finance/course-payments/${paymentId}/reverify-stripe`);
   return response.data.data;
 }
 

@@ -5,6 +5,7 @@ import AdminLayout from '../../src/components/admin/AdminLayout';
 import {
   getCoursePayments,
   reverifyCoursePayment,
+  reverifyStripePayment,
   refundCoursePayment,
   grantCourseAccess,
   getAdminBillingSettings,
@@ -166,9 +167,10 @@ const PURPOSE_LABEL: Record<CoursePaymentRow['purpose'], string> = {
 };
 
 function exportPaymentsCsv(payments: CoursePaymentRow[]) {
-  const header = ['Order ID', 'User', 'Email', 'Purpose', 'Reference', 'Amount', 'Currency', 'Status', 'Created At', 'Completed At'];
+  const header = ['Order ID', 'Gateway', 'User', 'Email', 'Purpose', 'Reference', 'Amount', 'Currency', 'Status', 'Created At', 'Completed At'];
   const rows = payments.map((p) => [
     p.bogOrderId,
+    p.gateway,
     p.user.name,
     p.user.email,
     PURPOSE_LABEL[p.purpose] ?? p.purpose,
@@ -211,13 +213,13 @@ function AdminFinanceDashboard() {
     load();
   }, [load]);
 
-  const handleReverify = async (id: string) => {
+  const handleReverify = async (id: string, gateway: CoursePaymentRow['gateway']) => {
     setBusyId(id);
     try {
-      const updated = await reverifyCoursePayment(id);
+      const updated = gateway === 'STRIPE' ? await reverifyStripePayment(id) : await reverifyCoursePayment(id);
       setPayments((prev) => prev.map((p) => (p.id === id ? updated : p)));
     } catch {
-      alert('Re-verification failed — could not reach BOG.');
+      alert(`Re-verification failed — could not reach ${gateway === 'STRIPE' ? 'Stripe' : 'BOG'}.`);
     } finally {
       setBusyId(null);
     }
@@ -243,7 +245,7 @@ function AdminFinanceDashboard() {
         <div className="mb-8 flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Payment Finance</h1>
-            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">BOG Pay transaction ledger — course sales, mentorship, and gig escrow funding.</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">BOG Pay + Stripe transaction ledger — course sales, mentorship, and gig escrow funding.</p>
           </div>
           <button
             type="button"
@@ -292,6 +294,7 @@ function AdminFinanceDashboard() {
               <thead>
                 <tr className="text-left text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wider border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/60">
                   <th className="px-4 py-3">Order ID</th>
+                  <th className="px-4 py-3">Gateway</th>
                   <th className="px-4 py-3">User</th>
                   <th className="px-4 py-3">Purpose</th>
                   <th className="px-4 py-3">Reference</th>
@@ -305,6 +308,7 @@ function AdminFinanceDashboard() {
                 {payments.map((p) => (
                   <tr key={p.id} className="border-b border-gray-100 dark:border-slate-800 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-800/40 transition-colors">
                     <td className="px-4 py-3 font-mono text-xs text-gray-500 dark:text-slate-400 max-w-[140px] truncate">{p.bogOrderId}</td>
+                    <td className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-slate-300">{p.gateway === 'STRIPE' ? 'Stripe' : 'BOG'}</td>
                     <td className="px-4 py-3">
                       <div className="text-gray-900 dark:text-white">{p.user.name}</div>
                       <div className="text-xs text-gray-400 dark:text-slate-500">{p.user.email}</div>
@@ -318,17 +322,18 @@ function AdminFinanceDashboard() {
                     <td className="px-4 py-3 text-xs text-gray-500 dark:text-slate-400">{new Date(p.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
-                        {p.status === 'PENDING' && (
+                        {(p.status === 'PENDING' || p.status === 'COMPLETED') && (
                           <button
                             type="button"
                             disabled={busyId === p.id}
-                            onClick={() => handleReverify(p.id)}
+                            onClick={() => handleReverify(p.id, p.gateway)}
+                            title={p.status === 'COMPLETED' ? 'Re-check with the gateway and retry fulfillment if it never completed (safe to run again — a no-op if everything already went through).' : undefined}
                             className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 disabled:opacity-60"
                           >
                             Re-verify
                           </button>
                         )}
-                        {p.status === 'COMPLETED' && p.purpose === 'COURSE' && (
+                        {p.status === 'COMPLETED' && p.purpose === 'COURSE' && p.gateway === 'BOG' && (
                           <button
                             type="button"
                             disabled={busyId === p.id}

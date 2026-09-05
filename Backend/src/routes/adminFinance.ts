@@ -3,7 +3,9 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { getBogOrderDetails } from '../services/bogPaymentService';
+import { getStripeCheckoutSession } from '../services/stripePaymentService';
 import { applyBogPaymentResult } from './payments';
+import { applyStripePaymentResult, markStripeCheckoutExpired } from './stripePayments';
 import { logAdminAction } from '../services/auditLogService';
 import { getBillingSettings } from '../services/billingService';
 import { updateBillingSettingsSchema } from '../schemas/billingSchemas';
@@ -15,13 +17,46 @@ router.use(authenticate, requireAdminRole('SUPER_ADMIN'));
 
 const userSelect = { select: { id: true, name: true, email: true } };
 
+// Single-row counterpart of the batched referenceLabel() inside the ledger
+// route below — used by both reverify endpoints so their response is
+// shaped identically to a normal ledger row (courseTitle/gateway/orderId
+// included), not a raw Prisma row missing those fields. A stale/missing
+// courseTitle after a reverify would otherwise blank out that column in
+// the admin table until the next full list reload.
+async function resolveReferenceLabel(purpose: string, referenceId: string): Promise<string> {
+  if (purpose === 'COURSE') {
+    const course = await prisma.course.findUnique({ where: { id: referenceId }, select: { title: true } });
+    return course?.title ?? '(deleted course)';
+  }
+  if (purpose === 'MENTORSHIP') {
+    const mentor = await prisma.user.findUnique({ where: { id: referenceId }, select: { name: true } });
+    return mentor?.name ?? '(deleted mentor)';
+  }
+  if (purpose === 'GIG_ESCROW_FUNDING') {
+    const gig = await prisma.gig.findUnique({ where: { id: referenceId }, select: { title: true } });
+    return gig?.title ?? '(deleted gig)';
+  }
+  return referenceId;
+}
+
 // ============================================================
-// BOG PAYMENT LEDGER — all BogPayment rows (COURSE/MENTORSHIP/
-// GIG_ESCROW_FUNDING), optionally filtered to one purpose. Distinct from
-// adminPanel.ts's /financials/transactions, which is the GigTransaction
-// (freelance-marketplace escrow payout) ledger downstream of this one.
-// Endpoint path kept as /course-payments for backward compatibility with
-// existing callers/bookmarks; it now covers every payment purpose by default.
+// PAYMENT LEDGER — merges BogPayment and StripePayment rows (COURSE/
+// MENTORSHIP/GIG_ESCROW_FUNDING/HR_SUPPORT) into one admin view, each
+// tagged with its `gateway` so the frontend calls the right
+// gateway-specific reverify endpoint. Distinct from adminPanel.ts's
+// /financials/transactions, which is the GigTransaction (freelance-
+// marketplace escrow payout) ledger downstream of this one. Endpoint path
+// kept as /course-payments for backward compatibility with existing
+// callers/bookmarks; it now covers every payment purpose AND both payment
+// gateways by default.
+//
+// AUDIT NOTE (fixed): this used to only ever query BogPayment — a Stripe
+// payment that completed on Stripe's side but failed mid-fulfillment (see
+// applyStripePaymentResult's own comment) was invisible to admins entirely,
+// with no ledger row to even notice the problem on, let alone a way to
+// retry it. Merged in-process (not a DB-level UNION) since both tables are
+// small at this platform's current scale — see the shared `where` filter
+// applied identically to both queries below.
 // ============================================================
 router.get('/course-payments', async (req: Request, res: Response) => {
   const page = Math.max(1, Number(req.query.page) || 1);
@@ -31,20 +66,26 @@ router.get('/course-payments', async (req: Request, res: Response) => {
 
   const where = { ...(purpose ? { purpose: purpose as any } : {}), ...(status ? { status: status as any } : {}) };
 
-  const [payments, totalCount] = await Promise.all([
-    prisma.bogPayment.findMany({
-      where,
-      include: { user: userSelect },
-      orderBy: { createdAt: 'desc' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
-    prisma.bogPayment.count({ where }),
+  const [bogPayments, stripePayments] = await Promise.all([
+    prisma.bogPayment.findMany({ where, include: { user: userSelect }, orderBy: { createdAt: 'desc' } }),
+    prisma.stripePayment.findMany({ where, include: { user: userSelect }, orderBy: { createdAt: 'desc' } }),
   ]);
 
-  const courseIds = [...new Set(payments.filter((p) => p.purpose === 'COURSE').map((p) => p.referenceId))];
-  const mentorIds = [...new Set(payments.filter((p) => p.purpose === 'MENTORSHIP').map((p) => p.referenceId))];
-  const gigIds = [...new Set(payments.filter((p) => p.purpose === 'GIG_ESCROW_FUNDING').map((p) => p.referenceId))];
+  type MergedRow = { id: string; gateway: 'BOG' | 'STRIPE'; orderId: string } & Pick<
+    (typeof bogPayments)[number],
+    'user' | 'purpose' | 'referenceId' | 'amount' | 'currency' | 'status' | 'createdAt' | 'completedAt'
+  >;
+  const merged: MergedRow[] = [
+    ...bogPayments.map((p) => ({ id: p.id, gateway: 'BOG' as const, orderId: p.bogOrderId, user: p.user, purpose: p.purpose, referenceId: p.referenceId, amount: p.amount, currency: p.currency, status: p.status, createdAt: p.createdAt, completedAt: p.completedAt })),
+    ...stripePayments.map((p) => ({ id: p.id, gateway: 'STRIPE' as const, orderId: p.stripeSessionId, user: p.user, purpose: p.purpose, referenceId: p.referenceId, amount: p.amount, currency: p.currency, status: p.status, createdAt: p.createdAt, completedAt: p.completedAt })),
+  ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+  const totalCount = merged.length;
+  const pageRows = merged.slice((page - 1) * pageSize, page * pageSize);
+
+  const courseIds = [...new Set(pageRows.filter((p) => p.purpose === 'COURSE').map((p) => p.referenceId))];
+  const mentorIds = [...new Set(pageRows.filter((p) => p.purpose === 'MENTORSHIP').map((p) => p.referenceId))];
+  const gigIds = [...new Set(pageRows.filter((p) => p.purpose === 'GIG_ESCROW_FUNDING').map((p) => p.referenceId))];
   const [courses, mentors, gigs] = await Promise.all([
     prisma.course.findMany({ where: { id: { in: courseIds } }, select: { id: true, title: true } }),
     prisma.user.findMany({ where: { id: { in: mentorIds } }, select: { id: true, name: true } }),
@@ -54,16 +95,18 @@ router.get('/course-payments', async (req: Request, res: Response) => {
   const mentorNameById = new Map(mentors.map((m) => [m.id, m.name]));
   const gigTitleById = new Map(gigs.map((g) => [g.id, g.title]));
 
-  function referenceLabel(p: (typeof payments)[number]): string {
+  function referenceLabel(p: MergedRow): string {
     if (p.purpose === 'COURSE') return courseTitleById.get(p.referenceId) ?? '(deleted course)';
     if (p.purpose === 'MENTORSHIP') return mentorNameById.get(p.referenceId) ?? '(deleted mentor)';
-    return gigTitleById.get(p.referenceId) ?? '(deleted gig)';
+    if (p.purpose === 'GIG_ESCROW_FUNDING') return gigTitleById.get(p.referenceId) ?? '(deleted gig)';
+    return p.referenceId;
   }
 
   res.json({
-    data: payments.map((p) => ({
+    data: pageRows.map((p) => ({
       id: p.id,
-      bogOrderId: p.bogOrderId,
+      gateway: p.gateway,
+      bogOrderId: p.orderId,
       user: p.user,
       purpose: p.purpose,
       courseId: p.referenceId,
@@ -81,7 +124,12 @@ router.get('/course-payments', async (req: Request, res: Response) => {
 });
 
 // Manual re-verification — re-queries BOG directly instead of waiting for
-// the webhook callback, for when it drops.
+// the webhook callback, for when it drops. Deliberately NOT restricted to
+// PENDING rows: applyBogPaymentResult's own fulfillment steps are each
+// idempotent (isNewEnrollment flag, existingTransaction check, etc.), so
+// re-running it on an already-COMPLETED row that failed mid-fulfillment
+// (payment succeeded on BOG's side, but e.g. enrollment never landed) is
+// exactly the recovery path this endpoint exists for, not just a status re-check.
 router.post('/course-payments/:id/reverify', async (req: Request, res: Response) => {
   const payment = await prisma.bogPayment.findUnique({ where: { id: req.params.id } });
   if (!payment) return res.status(404).json({ message: 'Payment not found.' });
@@ -95,8 +143,69 @@ router.post('/course-payments/:id/reverify', async (req: Request, res: Response)
     return res.status(502).json({ message: 'Failed to reach BOG for status re-verification.' });
   }
   await logAdminAction({ action: 'finance.payment.reverify', targetType: 'BogPayment', targetId: payment.id, performedById: req.user!.id });
-  const fresh = await prisma.bogPayment.findUnique({ where: { id: payment.id } });
-  res.json({ data: fresh });
+  const fresh = await prisma.bogPayment.findUnique({ where: { id: payment.id }, include: { user: userSelect } });
+  if (!fresh) return res.status(404).json({ message: 'Payment not found.' });
+  res.json({
+    data: {
+      id: fresh.id,
+      gateway: 'BOG' as const,
+      bogOrderId: fresh.bogOrderId,
+      user: fresh.user,
+      purpose: fresh.purpose,
+      courseId: fresh.referenceId,
+      courseTitle: await resolveReferenceLabel(fresh.purpose, fresh.referenceId),
+      amount: fresh.amount,
+      currency: fresh.currency,
+      status: fresh.status,
+      createdAt: fresh.createdAt,
+      completedAt: fresh.completedAt,
+    },
+  });
+});
+
+// Stripe counterpart of the BOG reverify above — the actual gap this audit
+// fixed: previously there was no admin recovery path at all for a Stripe
+// payment whose fulfillment failed after applyStripePaymentResult's status
+// write already flipped it to COMPLETED (which then makes the webhook's own
+// PENDING-only idempotency guard permanently skip re-processing it, and
+// paymentReconciliationService's cron sweep only ever looks at rows still
+// PENDING). Same "safe to re-run on a non-PENDING row" reasoning as BOG's
+// version — every fulfillment branch inside applyStripePaymentResult is
+// independently idempotent.
+router.post('/course-payments/:id/reverify-stripe', async (req: Request, res: Response) => {
+  const payment = await prisma.stripePayment.findUnique({ where: { id: req.params.id } });
+  if (!payment) return res.status(404).json({ message: 'Payment not found.' });
+
+  try {
+    const session = await getStripeCheckoutSession(payment.stripeSessionId);
+    if (session.status === 'complete' && session.payment_status === 'paid') {
+      await applyStripePaymentResult(payment.id, session, { reconciledFrom: 'admin-manual-reverify' });
+    } else if (session.status === 'expired') {
+      await markStripeCheckoutExpired(payment.id, { reconciledFrom: 'admin-manual-reverify' });
+    }
+    // else: session.status === 'open' — buyer hasn't finished checkout yet, nothing to reconcile.
+  } catch (err) {
+    return res.status(502).json({ message: 'Failed to reach Stripe for status re-verification.' });
+  }
+  await logAdminAction({ action: 'finance.payment.reverify', targetType: 'StripePayment', targetId: payment.id, performedById: req.user!.id });
+  const fresh = await prisma.stripePayment.findUnique({ where: { id: payment.id }, include: { user: userSelect } });
+  if (!fresh) return res.status(404).json({ message: 'Payment not found.' });
+  res.json({
+    data: {
+      id: fresh.id,
+      gateway: 'STRIPE' as const,
+      bogOrderId: fresh.stripeSessionId,
+      user: fresh.user,
+      purpose: fresh.purpose,
+      courseId: fresh.referenceId,
+      courseTitle: await resolveReferenceLabel(fresh.purpose, fresh.referenceId),
+      amount: fresh.amount,
+      currency: fresh.currency,
+      status: fresh.status,
+      createdAt: fresh.createdAt,
+      completedAt: fresh.completedAt,
+    },
+  });
 });
 
 // Refund & access revocation — marks the payment REFUNDED for bookkeeping

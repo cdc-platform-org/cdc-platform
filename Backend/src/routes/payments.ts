@@ -24,7 +24,7 @@ import { completeCoursePurchase } from '../services/courseSaleService';
 import { paymentModelForPurpose } from '../services/paymentModel';
 import { getCurrentPrice } from '../services/coursePricing';
 import { getCurrentProductPrice } from '../services/productPricing';
-import { applyPromoToCheckout, recordPromoRedemption, PromoCodeError } from '../services/couponService';
+import { applyPromoToCheckout, PromoCodeError } from '../services/couponService';
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
 import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
 import { captureMentorshipEscrow } from '../services/mentorshipEscrowService';
@@ -179,11 +179,12 @@ router.post(
     // tampered/stale client value can never under-charge. See
     // couponService.ts's applyPromoToCheckout for the shared discount/
     // targeting rule every checkout route (course/live-training/product/
-    // AI-tool, BOG + Stripe) now uses. currentUses is only incremented once
-    // the BOG order is actually created below (not just because a code was
-    // typed in); promoCodeId is recorded on the BogPayment itself, so an
-    // abandoned checkout still "spends" a use but is at least traceable to
-    // the specific attempt.
+    // AI-tool, BOG + Stripe) now uses — it also atomically claims the
+    // maxUses slot right here (not just because a code was typed in at
+    // /validate), so a concurrent checkout can never push a capped code
+    // past its usage limit; promoCodeId is recorded on the BogPayment
+    // itself, so an abandoned checkout still "spends" a use but is at least
+    // traceable to the specific attempt.
     const rawPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode : null;
     let appliedPromo: { id: string } | null = null;
     if (rawPromoCode) {
@@ -219,7 +220,6 @@ router.post(
         },
       });
       const { isNewEnrollment } = await completeCoursePurchase({ userId: req.user!.id, courseId: course.id, amount: 0 });
-      if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
       if (isNewEnrollment) await notifyCourseEnrollment(req.user!.id, course);
       return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
     }
@@ -249,7 +249,6 @@ router.post(
       lang: checkoutLang(req),
     });
     if (!order) return;
-    if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
     const updated = await prisma.bogPayment.update({
       where: { id: bogPayment.id },
       data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },
@@ -337,7 +336,6 @@ router.post(
         },
       });
       await completeLiveTrainingPurchase({ userId: req.user!.id, liveTrainingId: training.id });
-      if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
       return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
     }
 
@@ -366,7 +364,6 @@ router.post(
       lang: checkoutLang(req),
     });
     if (!order) return;
-    if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
     const updated = await prisma.bogPayment.update({
       where: { id: bogPayment.id },
       data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },
@@ -428,7 +425,6 @@ router.post(
         },
       });
       await completeTutorSubscriptionPurchase(req.user!.id);
-      if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
       return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
     }
 
@@ -457,7 +453,6 @@ router.post(
       lang: checkoutLang(req),
     });
     if (!order) return;
-    if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
     const updated = await prisma.bogPayment.update({
       where: { id: bogPayment.id },
       data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },
@@ -831,7 +826,6 @@ router.post(
         },
       });
       await completeProductPurchase({ userId: req.user!.id, productId: product.id, amount: 0 });
-      if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
       return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, purchased: true });
     }
 
@@ -860,7 +854,6 @@ router.post(
       lang: checkoutLang(req),
     });
     if (!order) return;
-    if (appliedPromo) await recordPromoRedemption(appliedPromo.id);
     const updated = await prisma.bogPayment.update({
       where: { id: bogPayment.id },
       data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },
@@ -1014,8 +1007,12 @@ export async function applyBogPaymentResult(
       // Never silently drop a real capture failure — the calendar/email
       // steps below are still best-effort, but the mentor's eventual
       // payout must not fail silently, so this is logged loudly for
-      // follow-up.
+      // follow-up. AUDIT NOTE (fixed): console.error alone means a
+      // transient DB hiccup here leaves the booking paid-but-unescrowed
+      // with nothing alerting anyone to retry it — Sentry now captures it
+      // the same way the outer callback handler does for a top-level failure.
       console.error('[bog-callback] Failed to capture mentorship escrow:', err);
+      Sentry.captureException(err, { extra: { bogPaymentId: bogPayment.id, bookingId: booking.id, stage: 'captureMentorshipEscrow' } });
     }
 
     let meetLink: string | null = null;
@@ -1083,7 +1080,11 @@ export async function applyBogPaymentResult(
     try {
       await captureHRSupportEscrow({ requestId: bogPayment.referenceId, grossAmount: bogPayment.amount });
     } catch (err) {
+      // Same reasoning as the mentorship capture above — a failure here
+      // leaves the request paid-but-unescrowed with no specialist payout
+      // ever able to happen, so it needs a real alert, not just a log line.
       console.error('[bog-callback] Failed to capture HR Assistance escrow:', err);
+      Sentry.captureException(err, { extra: { bogPaymentId: bogPayment.id, requestId: bogPayment.referenceId, stage: 'captureHRSupportEscrow' } });
     }
 
     const hrRequest = await prisma.hRSupportRequest.findUnique({
