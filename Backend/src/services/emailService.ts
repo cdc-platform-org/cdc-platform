@@ -424,7 +424,7 @@ export async function sendOfficialNotificationEmail(email: string): Promise<void
   const html = wrapTemplate(
     'თქვენ მიიღეთ ახალი შეტყობინება',
     'ადმინისტრაციისგან მიღებული გაქვთ ახალი ოფიციალური შეტყობინება. გთხოვთ გაეცნოთ მას პლატფორმაზე.' +
-      '<p style="margin-top:20px;font-size:12px;color:#94a3b8;">კითხვების შემთხვევაში მოგვწერეთ პირდაპირ: info@cdc.org.ge</p>',
+      '<p style="margin-top:20px;font-size:12px;color:#94a3b8;">კითხვების შემთხვევაში მოგვწერეთ პირდაპირ: contact@cdc.org.ge</p>',
     'შეტყობინების ნახვა პლატფორმაზე',
     link
   );
