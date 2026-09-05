@@ -12,6 +12,7 @@ import VerificationDrawer from '@/src/components/shared/VerificationDrawer';
 import ScrollToTop from '@/src/components/layout/ScrollToTop';
 import FloatingButtons from '@/src/components/layout/FloatingButtons';
 import CookieConsentBanner from '@/src/components/layout/CookieConsentBanner';
+import BetaModeBanner from '@/src/components/layout/BetaModeBanner';
 import TermsConsentModal from '@/src/components/auth/TermsConsentModal';
 import AdminModeBar from '@/src/components/layout/AdminModeBar';
 import { resolveLocale } from '@/src/utils/locale';
@@ -203,6 +204,7 @@ function App({ Component, pageProps }: AppProps) {
         <AuthProvider>
           <AuthModalProvider>
             <VerificationDrawerProvider>
+              <BetaModeBanner />
               <Component {...pageProps} />
               <ScrollToTop positionClassName={scrollToTopPosition} />
               <FloatingButtons />
