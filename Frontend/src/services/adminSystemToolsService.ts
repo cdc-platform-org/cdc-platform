@@ -44,3 +44,18 @@ export async function auditOrphanedLocaleKeys(): Promise<OrphanedKeysAuditResult
   const response = await apiClient.get<{ data: OrphanedKeysAuditResult }>('/admin/i18n/audit-orphaned-keys');
   return response.data.data;
 }
+
+export interface PurgeJunkResult {
+  deletedFilesCount: number;
+  freedSpaceMB: number;
+  message: string;
+}
+
+// Unlike the other tools on this page, purge-junk's response isn't wrapped
+// in { data: ... } — see adminSystemTools.ts's route, which returns
+// { success, deletedFilesCount, freedSpaceMB, message } directly at the top
+// level to match the exact shape this feature was specified with.
+export async function purgeSystemJunk(): Promise<PurgeJunkResult> {
+  const response = await apiClient.post<PurgeJunkResult>('/admin/system-tools/purge-junk');
+  return response.data;
+}

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
 import StatCard from '../../src/components/admin/StatCard';
+import Toast from '../../src/components/shared/Toast';
 import { useAuth } from '../../src/context/AuthContext';
 import { DashboardStats } from '../../src/types/adminPanel';
 import { getDashboardStats } from '../../src/services/adminPanelService';
@@ -15,6 +16,7 @@ import {
   HealthCheckResult,
   auditOrphanedLocaleKeys,
   OrphanedKeysAuditResult,
+  purgeSystemJunk,
 } from '../../src/services/adminSystemToolsService';
 
 function formatMoney(minorUnits: number): string {
@@ -41,6 +43,10 @@ function DashboardOverview() {
   const [localeAuditRunning, setLocaleAuditRunning] = useState(false);
   const [localeAuditResult, setLocaleAuditResult] = useState<OrphanedKeysAuditResult | null>(null);
   const [localeAuditError, setLocaleAuditError] = useState<string | null>(null);
+
+  const [junkPurging, setJunkPurging] = useState(false);
+  const [junkError, setJunkError] = useState<string | null>(null);
+  const [junkToast, setJunkToast] = useState<string | null>(null);
 
   const handleRunI18nAgent = async () => {
     setI18nAgentRunning(true);
@@ -93,6 +99,25 @@ function DashboardOverview() {
       setLocaleAuditRunning(false);
     }
   };
+
+  const handlePurgeJunk = async () => {
+    setJunkPurging(true);
+    setJunkError(null);
+    try {
+      const result = await purgeSystemJunk();
+      setJunkToast(`🧹 ${result.message}`);
+    } catch (err: any) {
+      setJunkError(err?.response?.data?.message ?? 'Purging system junk failed.');
+    } finally {
+      setJunkPurging(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!junkToast) return;
+    const timer = setTimeout(() => setJunkToast(null), 6000);
+    return () => clearTimeout(timer);
+  }, [junkToast]);
 
   const loadStats = useCallback(async () => {
     setLoading(true);
@@ -393,10 +418,36 @@ function DashboardOverview() {
                     </div>
                   )}
                 </div>
+
+                {/* TOOL D — System Junk & Temp Cleanup */}
+                <div className="rounded-xl border border-gray-200 bg-white p-5 mt-4">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">🧹 Purge Temporary Junk &amp; Cache</p>
+                      <p className="text-xs text-gray-500 mt-1 max-w-xl">
+                        Cleans temporary runtime cache, leftover log files, and OS junk to optimize server
+                        performance. Never touches .env files, the database, or uploaded user assets.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handlePurgeJunk}
+                      disabled={junkPurging}
+                      className="shrink-0 text-sm font-bold text-white bg-gradient-to-r from-slate-600 to-slate-800 px-4 py-2.5 rounded-lg border-none cursor-pointer disabled:opacity-60"
+                    >
+                      {junkPurging ? 'Purging…' : '🧹 Purge System Junk'}
+                    </button>
+                  </div>
+                  {junkError && (
+                    <div className="mt-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{junkError}</div>
+                  )}
+                </div>
               </section>
             )}
           </div>
         ) : null}
+
+        {junkToast && <Toast message={junkToast} />}
       </div>
     </>
   );

@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { clearCourseTutorCache } from '../services/courseTutorService';
 import { pingPrimaryAzure, pingSecondaryAzure, RegionPingResult } from '../services/azureChatCompletionService';
+import { purgeSystemJunk } from '../services/systemJunkCleanupService';
 import { GEMINI_API_KEY } from '../utils/env';
 import { logAdminAction } from '../services/auditLogService';
 
@@ -86,6 +87,40 @@ router.get('/health-check', async (_req: Request, res: Response) => {
   } catch (err) {
     console.error('[adminSystemTools] health-check failed:', err);
     res.status(500).json({ success: false, message: err instanceof Error ? err.message : 'Health check failed.' });
+  }
+});
+
+// ============================================================
+// TOOL D — System Junk & Temp Cleanup. Deletes only well-known, regenerable
+// build/runtime junk under this backend's own root (see
+// systemJunkCleanupService.ts for the exact allowlist and hard exclusions —
+// .env*, node_modules, .git, and public/uploads are never touched).
+// ============================================================
+router.post('/purge-junk', async (req: Request, res: Response) => {
+  try {
+    const { deletedFilesCount, freedBytes } = await purgeSystemJunk();
+    const freedSpaceMB = Math.round((freedBytes / (1024 * 1024)) * 100) / 100;
+
+    await logAdminAction({
+      action: 'systemTools.purgeJunk',
+      targetType: 'FileSystem',
+      targetId: 'backendRoot',
+      performedById: req.user!.id,
+      metadata: { deletedFilesCount, freedSpaceMB },
+    });
+
+    res.json({
+      success: true,
+      deletedFilesCount,
+      freedSpaceMB,
+      message:
+        deletedFilesCount > 0
+          ? `Removed ${deletedFilesCount} junk file${deletedFilesCount === 1 ? '' : 's'}, freeing ${freedSpaceMB} MB.`
+          : 'No junk files found — everything is already clean.',
+    });
+  } catch (err) {
+    console.error('[adminSystemTools] purge-junk failed:', err);
+    res.status(500).json({ success: false, message: err instanceof Error ? err.message : 'Failed to purge junk files.' });
   }
 });
 
