@@ -33,6 +33,13 @@ name: Nightly QA
 # non-functional findings (no-explicit-any, unescaped-entities in JSX copy)
 # to warnings rather than blocking on a first-pass repo-wide cleanup — see
 # each config's own comments — so this job fails only on real errors.
+#
+# node-version below is 24, not 20: GitHub deprecated Node 20 runners and
+# was already silently forcing every job here onto Node 24 regardless of
+# what was requested (confirmed via a real failed run's own annotations),
+# so this just makes the declared version match reality and removes the
+# resulting deprecation warning — it does not change what Node version
+# actually executes.
 on:
   schedule:
     - cron: '0 0 * * *' # midnight UTC
@@ -51,7 +58,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - run: corepack enable
 
@@ -105,7 +112,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - run: corepack enable
 
@@ -166,7 +173,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - run: corepack enable
 
@@ -263,7 +270,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - run: corepack enable
 
