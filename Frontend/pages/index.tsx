@@ -1370,7 +1370,12 @@ export default function Home() {
           mobile-only `inset-0` specifically (not just `sm:inset-auto`
           reverting it) so a CLOSED panel on mobile never leaves an invisible
           full-viewport div sitting over the page catching clicks. */}
-      <div className={`fixed z-50 flex flex-col gap-3 items-end ${isChatOpen ? 'inset-0' : 'bottom-56 right-4'} sm:inset-auto sm:bottom-60 sm:right-6 md:right-6`}>
+      {/* z-[60], not z-50: FloatingButtons (fixed, z-50) mounts in _app.tsx
+          AFTER <Component/>, so at equal z-index it paints on top of this
+          panel regardless of open state — on mobile that put the floating
+          WhatsApp/chat-trigger bubbles visibly over the full-screen overlay,
+          covering part of the message input. */}
+      <div className={`fixed z-[60] flex flex-col gap-3 items-end ${isChatOpen ? 'inset-0' : 'bottom-56 right-4'} sm:inset-auto sm:bottom-60 sm:right-6 md:right-6`}>
         {/* h-[700px] (sm and up only) is the "spacious" target the panel
             grows to on tall screens, anchored via `sm:bottom-60` — a plain
             `max-h-[85vh]` ignores that offset and still pushes the header
