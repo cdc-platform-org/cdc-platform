@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { prisma } from '../lib/prisma';
-import { authenticate, requireAdminRole, requireApproved } from '../middleware/auth';
+import { authenticate, requireAdminRole, requireApproved, requireNotBannedOrDeleted } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { uploadImage, deleteManagedImage } from '../services/imageStorage';
 import { BunnyStorageUploadError } from '../services/bunnyStorage';
@@ -395,15 +395,26 @@ export async function checkCourseAccess(
 // Attaches req.isAdminTeamMember so handlers can tell the two apart (e.g.
 // certificates only make sense for students who actually completed the
 // course).
+// AUDIT NOTE (fixed): authenticate() only verifies the JWT itself — it never
+// re-checks the account's current standing (see requireNotBannedOrDeleted's
+// own comment) — so a student banned or who self-requested deletion AFTER
+// their token was issued could keep watching lessons, sitting the
+// certification exam, and downloading a certificate for up to 7 more days
+// on every route this guards (curriculum, progress, exam status/start/
+// submit, certificate, discussion). Wrapping it here fixes every one of
+// those call sites in one place instead of threading a second middleware
+// through each route registration individually.
 async function requireCourseAccess(req: Request, res: Response, next: NextFunction) {
-  const courseId = req.params.id ?? req.params.courseId;
-  const course = await prisma.course.findUnique({ where: { id: courseId } });
-  if (!course) return res.status(404).json({ message: 'Course not found.' });
+  await requireNotBannedOrDeleted(req, res, async () => {
+    const courseId = req.params.id ?? req.params.courseId;
+    const course = await prisma.course.findUnique({ where: { id: courseId } });
+    if (!course) return res.status(404).json({ message: 'Course not found.' });
 
-  const { allowed, isAdminTeamMember } = await checkCourseAccess(req.user!.id, courseId);
-  if (!allowed) return res.status(403).json({ message: 'You are not enrolled in this course.' });
-  req.isAdminTeamMember = isAdminTeamMember;
-  next();
+    const { allowed, isAdminTeamMember } = await checkCourseAccess(req.user!.id, courseId);
+    if (!allowed) return res.status(403).json({ message: 'You are not enrolled in this course.' });
+    req.isAdminTeamMember = isAdminTeamMember;
+    next();
+  });
 }
 
 function lessonWithPlayback(lesson: { bunnyVideoId: string | null }) {
@@ -459,7 +470,7 @@ router.get('/:id/progress', authenticate, requireCourseAccess, async (req: Reque
   res.json({ data: { totalLessons, completedLessons, percent } });
 });
 
-router.post('/lessons/:lessonId/progress', authenticate, async (req: Request, res: Response) => {
+router.post('/lessons/:lessonId/progress', authenticate, requireNotBannedOrDeleted, async (req: Request, res: Response) => {
   const result = lessonProgressUpdateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
