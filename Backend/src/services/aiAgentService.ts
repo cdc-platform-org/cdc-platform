@@ -258,6 +258,17 @@ async function runGeminiFallbackSequence(
         return { raw: cleaned, lastError: null };
       } catch (err) {
         console.error(`[aiAgentService] Azure attempt ${attempt}/${MAX_ATTEMPTS} failed:`, err instanceof Error ? err.message : err);
+        // AUDIT NOTE (fixed): a 429 used to be treated like any other
+        // retryable error — retried up to MAX_ATTEMPTS more times, each
+        // attempt re-cycling both Azure regions internally with its own
+        // backoff (callAzureChatCompletionFull), before ever reaching
+        // Gemini. A 429 means Azure already said "too many requests" on
+        // BOTH regions this attempt just tried — waiting and asking the
+        // identical resource again is low-value, and burns several extra
+        // seconds an interactive "generate" click doesn't have to spare.
+        // Move straight to the real cross-vendor fallback below instead.
+        const status = (err as { status?: number })?.status;
+        if (status === 429) break;
         // A malformed-JSON parse failure (SyntaxError) always retries — both
         // Azure regions already failed over inside callAzureChatCompletion
         // before this catch ever sees a network-level error, so what reaches
