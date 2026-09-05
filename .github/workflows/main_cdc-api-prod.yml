@@ -24,7 +24,14 @@ env:
   ACR_NAME: cdcplatformacr
   ACR_LOGIN_SERVER: cdcplatformacr.azurecr.io
   IMAGE_NAME: cdc-platform-backend
-  WEBAPP_NAME: cdc-api-prod
+  # AUDIT NOTE (fixed): WEBAPP_NAME was "cdc-api-prod" — a real Azure Web App,
+  # but it lives in resource group CDC-Prod-RG, not cdc-platform-rg below.
+  # That (name, resource-group) pair doesn't exist, so
+  # `az webapp config container set`/`restart` failed with ResourceNotFound.
+  # Confirmed via `az webapp list` across the whole subscription: the real
+  # backend app IN cdc-platform-rg is named "cdc-platform-api" — "cdc-api-prod"
+  # is a separate, older app in a different resource group entirely.
+  WEBAPP_NAME: cdc-platform-api
   RESOURCE_GROUP: cdc-platform-rg
 
 jobs:
