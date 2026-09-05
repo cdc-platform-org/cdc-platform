@@ -235,12 +235,30 @@ function AdminLiveTrainingsDashboard() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('ნამდვილად გსურთ ტრენინგის წაშლა? ყველა რეგისტრაცია წაიშლება.')) return;
+    if (!window.confirm('ნამდვილად გსურთ ტრენინგის წაშლა?')) return;
     try {
       await deleteLiveTraining(id);
       setTrainings((prev) => prev.filter((t) => t.id !== id));
       if (editingId === id) resetForm();
-    } catch {
+    } catch (err: any) {
+      // Backend returns 409 + a real enrollment count when this training has
+      // actual registrations (including completion history) — the admin
+      // gets a second, specific confirmation naming exactly what's at stake
+      // before force-deleting, instead of a blanket "everything will be
+      // deleted" warning shown identically for a training with 0 or 50 sign-ups.
+      const enrollmentCount = err?.response?.data?.enrollmentCount;
+      if (err?.response?.status === 409 && typeof enrollmentCount === 'number') {
+        if (!window.confirm(`ამ ტრენინგს აქვს ${enrollmentCount} რეგისტრაცია (მათ შორის დასრულებული). წაშლა სამუდამოდ წაშლის მათ. ნამდვილად გსურთ გაგრძელება?`)) return;
+        try {
+          await deleteLiveTraining(id, true);
+          setTrainings((prev) => prev.filter((t) => t.id !== id));
+          if (editingId === id) resetForm();
+          return;
+        } catch {
+          setError('ტრენინგის წაშლა ვერ მოხერხდა.');
+          return;
+        }
+      }
       setError('ტრენინგის წაშლა ვერ მოხერხდა.');
     }
   };

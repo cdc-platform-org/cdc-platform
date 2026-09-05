@@ -169,7 +169,24 @@ router.post('/:id/regenerate-synopsis', async (req: Request, res: Response) => {
   res.status(202).json({ data: { synopsisStatus: 'PROCESSING' } });
 });
 
+// AUDIT NOTE (fixed): LiveTrainingEnrollment/LiveTrainingLead both cascade-
+// delete with their LiveTraining (unlike Course, where CourseEnrollment/
+// Certificate/CoursePurchase are all onDelete: Restrict — a course with
+// active students genuinely cannot be deleted). Deleting a training used to
+// silently wipe every enrollment record, including COMPLETED ones, with no
+// warning at all. Not changed to a schema-level Restrict (would need a
+// migration for what's otherwise a same-session safety pass) — an
+// application-level guard gets the same outcome: an admin who really wants
+// to delete a training with real enrollments can still do so with
+// `?force=true`, but the accidental/uninformed case is stopped cold.
 router.delete('/:id', async (req: Request, res: Response) => {
+  const enrollmentCount = await prisma.liveTrainingEnrollment.count({ where: { liveTrainingId: req.params.id } });
+  if (enrollmentCount > 0 && req.query.force !== 'true') {
+    return res.status(409).json({
+      message: `This training has ${enrollmentCount} enrollment(s), including completion history. Deleting it will permanently erase them. Pass ?force=true to confirm.`,
+      enrollmentCount,
+    });
+  }
   try {
     await prisma.liveTraining.delete({ where: { id: req.params.id } });
     await logAdminAction({ action: 'liveTraining.delete', targetType: 'LiveTraining', targetId: req.params.id, performedById: req.user!.id });

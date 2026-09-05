@@ -48,8 +48,11 @@ export async function updateLiveTraining(id: string, payload: Partial<LiveTraini
   return response.data.data;
 }
 
-export async function deleteLiveTraining(id: string): Promise<void> {
-  await apiClient.delete(`/admin/live-trainings/${id}`);
+// Throws an axios error with response.status === 409 and
+// response.data.enrollmentCount when the training has real enrollments and
+// `force` wasn't passed — see the backend route's own comment.
+export async function deleteLiveTraining(id: string, force = false): Promise<void> {
+  await apiClient.delete(`/admin/live-trainings/${id}`, { params: force ? { force: true } : undefined });
 }
 
 export async function uploadLiveTrainingImage(file: File): Promise<string> {
