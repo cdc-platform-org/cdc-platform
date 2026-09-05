@@ -54,8 +54,24 @@ function wrapTemplate(title: string, bodyHtml: string, ctaLabel: string, ctaUrl:
 </html>`;
 }
 
+// AUDIT NOTE (fixed): both fallback branches below used to log
+// devFallbackLink unconditionally — for a password-reset/email-verification
+// link, that link CONTAINS the live, unexpired token. This check is against
+// the env var (RESEND_API_KEY unset), not NODE_ENV, so if that key is ever
+// simply forgotten in a real production deploy, every reset/verification
+// email would have silently printed a full-account-takeover token straight
+// to stdout instead of erroring loudly. The dev-mode convenience (reading
+// the link from the console when no provider is configured locally) is
+// worth keeping, but only when NOT in production; in production, missing
+// config now surfaces as a redacted error instead of leaking the token.
+const isProduction = process.env.NODE_ENV === 'production';
+
 async function sendEmail(to: string, subject: string, html: string, devFallbackLink: string): Promise<void> {
   if (!resend) {
+    if (isProduction) {
+      console.error(`[emailService] RESEND_API_KEY is not configured — email to ${to} ("${subject}") was NOT sent.`);
+      return;
+    }
     // No RESEND_API_KEY configured — this stands in for actually sending
     // mail (same pattern as the pre-existing dev-mode verification email),
     // so the flow is fully testable end-to-end without a real provider.
@@ -66,10 +82,13 @@ async function sendEmail(to: string, subject: string, html: string, devFallbackL
     await resend.emails.send({ from: EMAIL_FROM, to, subject, html });
   } catch (err) {
     // Never let an email provider outage break the request that triggered
-    // it (registration, password reset) — log and fall back to the console
-    // link so the flow is still recoverable by reading server logs.
+    // it (registration, password reset) — log so the failure is visible,
+    // but only fall back to printing the actual link (with its live token)
+    // outside production, for the same reason as the branch above.
     console.error(`[emailService] Resend send failed for ${to}:`, err);
-    console.log(`[DEV EMAIL FALLBACK] To: ${to} | Subject: ${subject} | Link: ${devFallbackLink}`);
+    if (!isProduction) {
+      console.log(`[DEV EMAIL FALLBACK] To: ${to} | Subject: ${subject} | Link: ${devFallbackLink}`);
+    }
   }
 }
 
