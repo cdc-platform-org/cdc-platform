@@ -7,7 +7,7 @@ import { resolveLocale, pickText } from '../../utils/locale';
 // comes back on the visitor's next real session, matching "dismiss for the
 // current session" rather than "dismiss forever".
 const SESSION_KEY = 'cdc-beta-banner-dismissed';
-const SUPPORT_EMAIL = 'support@cdc.org.ge';
+const SUPPORT_EMAIL = 'info@cdc.org.ge';
 
 // Real ka/en copy; every other site locale (de/es/fr/uk/tr/hy/az) falls
 // back to English via pickText/resolveLocale — same "real ka/en, English
