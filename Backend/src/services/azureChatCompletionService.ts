@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { azureOpenai } from '../utils/azureOpenai';
+import { getAzureOpenaiClient } from '../utils/azureOpenai';
 import {
   AZURE_OPENAI_DEPLOYMENT_NAME,
   AZURE_OPENAI_KEY_SECONDARY,
@@ -101,7 +101,7 @@ export async function callAzureChatCompletionFull(options: CallAzureChatOptions)
   const regions: { label: string; call: () => Promise<AzureChatCompletionResult> }[] = [
     {
       label: 'primary',
-      call: async () => toResult(await azureOpenai.chat.completions.create(buildArgs(AZURE_OPENAI_DEPLOYMENT_NAME))),
+      call: async () => toResult(await getAzureOpenaiClient().chat.completions.create(buildArgs(AZURE_OPENAI_DEPLOYMENT_NAME))),
     },
   ];
   if (isSecondaryAzureConfigured()) {
@@ -174,7 +174,7 @@ async function pingRegion(label: 'primary' | 'secondary'): Promise<RegionPingRes
   const t0 = Date.now();
   try {
     if (label === 'primary') {
-      await azureOpenai.chat.completions.create({
+      await getAzureOpenaiClient().chat.completions.create({
         model: AZURE_OPENAI_DEPLOYMENT_NAME,
         messages: [{ role: 'user', content: 'ping' }],
         max_tokens: 5,
