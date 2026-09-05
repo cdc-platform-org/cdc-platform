@@ -49,7 +49,7 @@ function formatLessonDuration(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export default function CourseDetailPage() {
+export default function CourseDetailPage({ initialCourse }: { initialCourse: Course | null }) {
   const router = useRouter();
   // Drives ka/en-only data (checkoutCourse's receipt language, course.language
   // badges, sale countdown, formatTotalDuration) — falls back to English for
@@ -60,10 +60,10 @@ export default function CourseDetailPage() {
   const { isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
 
-  const [course, setCourse] = useState<Course | null>(null);
+  const [course, setCourse] = useState<Course | null>(initialCourse);
   const [syllabus, setSyllabus] = useState<SyllabusSection[]>([]);
   const [enrolled, setEnrolled] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialCourse);
   const [notFound, setNotFound] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +79,7 @@ export default function CourseDetailPage() {
 
   const load = useCallback(async () => {
     if (!courseId) return;
-    setLoading(true);
+    if (!initialCourse) setLoading(true);
     setNotFound(false);
     try {
       const [courseData, syllabusData] = await Promise.all([getCourse(courseId), getSyllabus(courseId).catch(() => [])]);
@@ -100,7 +100,7 @@ export default function CourseDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [courseId, isAuthenticated]);
+  }, [courseId, isAuthenticated, initialCourse]);
 
   useEffect(() => {
     load();
@@ -491,6 +491,17 @@ export default function CourseDetailPage() {
   );
 }
 
-export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'ka', ['courses'])) },
-});
+export const getServerSideProps: GetServerSideProps = async ({ locale, params }) => {
+  const courseId = typeof params?.id === 'string' ? params.id : null;
+  // Fetched here (not just client-side via `load()`) so SEOHead below renders
+  // real og:title/og:description/og:image in the initial server HTML —
+  // social-media crawlers (Facebook/LinkedIn/Slack/WhatsApp) don't execute
+  // client JS, so a client-only fetch left every share preview blank/generic.
+  const initialCourse = courseId ? await getCourse(courseId).catch(() => null) : null;
+  return {
+    props: {
+      initialCourse,
+      ...(await serverSideTranslations(locale ?? 'ka', ['courses'])),
+    },
+  };
+};

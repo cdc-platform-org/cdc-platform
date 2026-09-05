@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { GetServerSideProps } from 'next';
@@ -7,6 +6,8 @@ import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag, Zap, Upload, Code2, ShieldCheck, Tag, ExternalLink } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
+import SEOHead from '../../src/components/seo/SEOHead';
+import SocialShareButtons from '../../src/components/shared/SocialShareButtons';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import MarkdownContent from '../../src/components/shared/MarkdownContent';
@@ -48,7 +49,7 @@ const HOW_IT_WORKS_ICON_MAP: Record<HowItWorksIcon, typeof Download> = {
   Download, FolderOpen, Sparkles, Zap, Upload, Code2, ShieldCheck, Tag,
 };
 
-function StoreProductContent() {
+function StoreProductContent({ initialProduct }: { initialProduct: DigitalProduct | null }) {
   const { t } = useTranslation('marketplace');
   const router = useRouter();
   const { id } = router.query;
@@ -58,8 +59,8 @@ function StoreProductContent() {
   const { user, isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
 
-  const [product, setProduct] = useState<DigitalProduct | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [product, setProduct] = useState<DigitalProduct | null>(initialProduct);
+  const [loading, setLoading] = useState(!initialProduct);
   const [notFound, setNotFound] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -76,13 +77,13 @@ function StoreProductContent() {
     // this, client-navigating from a deleted/invalid product straight to a
     // valid one left notFound stuck true (and the old product's stale
     // title/price rendered until the new fetch resolved).
-    setLoading(true);
+    if (!initialProduct) setLoading(true);
     setNotFound(false);
     getProduct(id)
       .then(setProduct)
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, initialProduct]);
 
   // Pure actions — no auth check inside, unlike the gated handleBuy/
   // handleClaim below that call these. Passed directly as openAuthModal's
@@ -199,9 +200,12 @@ function StoreProductContent() {
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
-      <Head>
-        <title>{`${productTitle(product, contentLang)} | CDC Store`}</title>
-      </Head>
+      <SEOHead
+        title={productTitle(product, contentLang)}
+        description={productDescription(product, contentLang).replace(/[#*`_>[\]()-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 200)}
+        ogImage={product.imageUrl ?? undefined}
+        ogType="product"
+      />
       <SiteHeader />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 md:py-12 flex-1 w-full">
@@ -241,6 +245,9 @@ function StoreProductContent() {
               )}
             </div>
             <h1 className="blog-heading-safe text-2xl md:text-3xl font-black tracking-wide mb-3">{productTitle(product, contentLang)}</h1>
+            <div className="mb-3">
+              <SocialShareButtons title={productTitle(product, contentLang)} lang={lang} />
+            </div>
             {product.reviewCount > 0 && (
               <div className="flex items-center gap-2 mb-3">
                 <StarRating value={product.averageRating ?? 0} size="sm" />
@@ -388,10 +395,21 @@ function StoreProductContent() {
   );
 }
 
-export default function StoreProductPage() {
-  return <StoreProductContent />;
+export default function StoreProductPage({ initialProduct }: { initialProduct: DigitalProduct | null }) {
+  return <StoreProductContent initialProduct={initialProduct} />;
 }
 
-export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'ka', ['marketplace'])) },
-});
+export const getServerSideProps: GetServerSideProps = async ({ locale, params }) => {
+  const id = typeof params?.id === 'string' ? params.id : null;
+  // Fetched here (not just client-side via the effect above) so SEOHead
+  // below renders real og:title/og:description/og:image in the initial
+  // server HTML — social-media crawlers don't execute client JS, so a
+  // client-only fetch left every share preview blank/generic.
+  const initialProduct = id ? await getProduct(id).catch(() => null) : null;
+  return {
+    props: {
+      initialProduct,
+      ...(await serverSideTranslations(locale ?? 'ka', ['marketplace'])),
+    },
+  };
+};

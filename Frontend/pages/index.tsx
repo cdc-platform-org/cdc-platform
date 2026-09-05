@@ -437,7 +437,7 @@ export default function Home() {
   };
 
   return (
-    <div className={`min-h-screen font-sans antialiased transition-colors duration-300 relative overflow-hidden ${darkMode ? 'text-slate-200 bg-[#0b0f19]' : 'text-slate-800 bg-[#f1f5f9]'}`}>
+    <div className={`min-h-screen font-sans antialiased transition-colors duration-300 relative overflow-hidden ${darkMode ? 'text-slate-200 bg-[#0b0f19]' : 'text-slate-800 bg-[#f8fafc]'}`}>
       <SEOHead
         title="ციფრული პროფესიების ცენტრი (CDC) - საუკეთესო პროფესიები საქართველოში"
         description="ციფრული პროფესიების ცენტრი (CDC) გთავაზობთ ტოპ 10 პროფესიას საქართველოში, მათ შორის მაღალანაზღაურებადი პროფესიები, AI ტესტების გენერატორი და მასწავლებლის ასისტენტი."
@@ -1362,22 +1362,31 @@ export default function Home() {
         </section>
       )}
 
-      {/* 🤖 AI ASSISTANT CHAT PANEL */}
-      <div className="fixed bottom-56 sm:bottom-60 right-4 md:right-6 z-50 flex flex-col gap-3 items-end">
-        {/* h-[700px] is the "spacious" target the panel grows to on tall
-            screens, but it's anchored via `bottom-56 sm:bottom-60` (see the
-            wrapper above) — a plain `max-h-[85vh]` ignores that offset and
-            still pushes the header off the top of the viewport on anything
-            shorter than ~1050px tall. max-h subtracts the larger (sm:bottom-60
-            = 15rem) of the two anchor offsets plus a 1rem top margin, so the
-            panel always stays fully on-screen instead. */}
+      {/* 🤖 AI ASSISTANT CHAT PANEL — below `sm` (< 640px) this becomes a true
+          full-screen overlay (`inset-0` wrapper, `w-full h-full` borderless
+          panel) instead of the floating card, per this component's own
+          "don't block/obscure page content with an awkwardly-sized floating
+          card on a phone screen" requirement. `isChatOpen` gates the
+          mobile-only `inset-0` specifically (not just `sm:inset-auto`
+          reverting it) so a CLOSED panel on mobile never leaves an invisible
+          full-viewport div sitting over the page catching clicks. */}
+      <div className={`fixed z-50 flex flex-col gap-3 items-end ${isChatOpen ? 'inset-0' : 'bottom-56 right-4'} sm:inset-auto sm:bottom-60 sm:right-6 md:right-6`}>
+        {/* h-[700px] (sm and up only) is the "spacious" target the panel
+            grows to on tall screens, anchored via `sm:bottom-60` — a plain
+            `max-h-[85vh]` ignores that offset and still pushes the header
+            off the top of the viewport on anything shorter than ~1050px
+            tall. sm:max-h subtracts the larger (sm:bottom-60 = 15rem) of the
+            two anchor offsets plus a 1rem top margin, so the panel always
+            stays fully on-screen instead. Below sm, the panel is simply
+            w-full h-full inside the inset-0 wrapper above — full screen,
+            nothing to bound. */}
         {isChatOpen && (
-          <div ref={chatPanelRef} className="w-[400px] max-w-full border rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[700px] max-h-[calc(100vh-16rem)] bg-white dark:bg-[#0e1422] text-slate-900 dark:text-white border-slate-200 dark:border-slate-800">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white rounded-t-2xl">
+          <div ref={chatPanelRef} className="w-full h-full rounded-none border-0 sm:w-[400px] sm:h-[700px] sm:max-w-full sm:max-h-[calc(100vh-16rem)] sm:rounded-2xl sm:border shadow-2xl overflow-hidden flex flex-col bg-white dark:bg-[#0e1422] text-slate-900 dark:text-white border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-slate-800 bg-white dark:bg-[#0e1422] rounded-none sm:rounded-t-2xl">
               <div className="flex items-center gap-2 min-w-0">
                 <Image src="/images/cdc-logo.png" alt="CDC" width={28} height={28} className="w-7 h-7 rounded-full object-cover shrink-0" />
                 <div className="min-w-0">
-                  <span className="block text-sm font-bold text-slate-900 truncate">{t('chatTitle')}</span>
+                  <span className="block text-sm font-bold text-slate-900 dark:text-white truncate">{t('chatTitle')}</span>
                   <a
                     href="https://www.cdc.org.ge/"
                     target="_blank"
@@ -1392,7 +1401,7 @@ export default function Home() {
                 type="button"
                 onClick={() => setIsChatOpen(false)}
                 aria-label={t('close')}
-                className="shrink-0 p-1.5 hover:bg-gray-100 rounded-full text-gray-500 hover:text-gray-800 transition-colors border-none bg-transparent cursor-pointer"
+                className="shrink-0 p-1.5 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-white transition-colors border-none bg-transparent cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1461,7 +1470,7 @@ export default function Home() {
             )}
 
             <form onSubmit={handleSendMessage} className="p-3 border-t flex gap-2 bg-white dark:bg-[#0e1422] border-slate-100 dark:border-slate-800">
-              <input type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} disabled={chatSending} placeholder={t('chatInputPlaceholder') as string} className="flex-1 border rounded-xl px-3 py-2 text-xs focus:outline-none disabled:opacity-60" />
+              <input type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} disabled={chatSending} placeholder={t('chatInputPlaceholder') as string} className="flex-1 border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#161f30] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-400 disabled:opacity-60" />
               <button type="submit" disabled={chatSending || !userInput.trim()} className="bg-slate-900 text-white font-bold px-4 py-2 rounded-xl text-xs border-none cursor-pointer disabled:opacity-40">OK</button>
             </form>
           </div>

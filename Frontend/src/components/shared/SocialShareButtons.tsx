@@ -133,6 +133,30 @@ export default function SocialShareButtons({ url, title, lang = 'ka', className 
           <path d="M18.9 2H22l-7.6 8.68L23.3 22h-7.02l-5.5-7.19L4.46 22H1.35l8.13-9.29L.9 2h7.2l4.97 6.57L18.9 2Zm-1.23 18h1.74L6.4 3.9H4.53L17.67 20Z" />
         </svg>
       </a>
+      <a
+        href={`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(title)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={stop}
+        aria-label="Telegram"
+        className={`flex items-center justify-center w-8 h-8 rounded-lg border transition-colors no-underline hover:border-cyan-400 ${iconClass}`}
+      >
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+          <path d="M21.94 4.6 18.66 20.2c-.25 1.1-.9 1.38-1.83.86l-5.06-3.73-2.44 2.35c-.27.27-.5.5-1.02.5l.36-5.15 9.37-8.47c.41-.36-.09-.56-.63-.2L6.4 12.6l-5.02-1.57c-1.09-.34-1.11-1.09.23-1.61L20.5 3.4c.91-.34 1.7.2 1.44 1.2Z" />
+        </svg>
+      </a>
+      <a
+        href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`${title} ${shareUrl}`)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={stop}
+        aria-label="WhatsApp"
+        className={`flex items-center justify-center w-8 h-8 rounded-lg border transition-colors no-underline hover:border-cyan-400 ${iconClass}`}
+      >
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+          <path d="M12.02 2c-5.5 0-9.97 4.46-9.97 9.96 0 1.76.46 3.48 1.33 5L2 22l5.2-1.36a9.96 9.96 0 0 0 4.82 1.23h.01c5.5 0 9.97-4.46 9.97-9.96S17.52 2 12.02 2Zm5.84 14.24c-.25.7-1.24 1.28-2.02 1.44-.55.12-1.26.21-3.65-.78-3.06-1.27-5.03-4.38-5.18-4.58-.15-.2-1.24-1.65-1.24-3.15s.78-2.23 1.06-2.54c.28-.31.6-.38.8-.38.2 0 .4.002.57.01.18.008.43-.07.67.51.25.6.85 2.07.92 2.22.07.15.12.33.02.53-.1.2-.15.32-.3.5-.15.18-.31.4-.44.53-.15.15-.3.31-.13.6.17.3.77 1.27 1.65 2.06 1.13 1.01 2.09 1.33 2.38 1.48.3.15.47.13.64-.07.18-.2.75-.87.95-1.17.2-.3.4-.25.67-.15.28.1 1.75.83 2.05.98.3.15.5.23.57.35.08.13.08.72-.17 1.42Z" />
+        </svg>
+      </a>
       <button
         type="button"
         onClick={handleCopy}

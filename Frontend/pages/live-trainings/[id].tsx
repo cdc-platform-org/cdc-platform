@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
+import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
-import Head from 'next/head';
 import { Calendar, Users, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import BackButton from '../../src/components/common/BackButton';
 import VideoEmbed from '../../src/components/shared/VideoEmbed';
+import SEOHead from '../../src/components/seo/SEOHead';
+import SocialShareButtons from '../../src/components/shared/SocialShareButtons';
 import { LiveTraining } from '../../src/types/liveTraining';
 import { getLiveTraining, registerForLiveTraining, enrollInLiveTraining, checkoutLiveTraining } from '../../src/services/liveTrainingService';
 import { checkoutLiveTrainingStripe } from '../../src/services/stripePaymentService';
@@ -106,7 +108,7 @@ const dict = {
   uk: { ...EN_STRINGS, ...UK_REFUND_GUARANTEE },
 };
 
-export default function LiveTrainingDetailPage() {
+export default function LiveTrainingDetailPage({ initialTraining }: { initialTraining: LiveTraining | null }) {
   const router = useRouter();
   const id = typeof router.query.id === 'string' ? router.query.id : null;
   const lang = resolveLocale(router.locale);
@@ -114,8 +116,8 @@ export default function LiveTrainingDetailPage() {
   const contentLang = lang === 'ka' ? 'ka' : 'en';
   const { isAuthenticated } = useAuth();
 
-  const [training, setTraining] = useState<LiveTraining | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [training, setTraining] = useState<LiveTraining | null>(initialTraining);
+  const [loading, setLoading] = useState(!initialTraining);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -132,7 +134,7 @@ export default function LiveTrainingDetailPage() {
 
   const load = useCallback(async () => {
     if (!id) return;
-    setLoading(true);
+    if (!initialTraining) setLoading(true);
     try {
       setTraining(await getLiveTraining(id));
     } catch {
@@ -140,7 +142,7 @@ export default function LiveTrainingDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, initialTraining]);
 
   useEffect(() => {
     load();
@@ -241,9 +243,12 @@ export default function LiveTrainingDetailPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-16">
-      <Head>
-        <title>{`${title} | CDC`}</title>
-      </Head>
+      <SEOHead
+        title={title}
+        description={description.replace(/\s+/g, ' ').trim().slice(0, 200)}
+        ogImage={training.thumbnailUrl ?? undefined}
+        ogType="website"
+      />
       <SiteHeader />
       <div className="max-w-3xl mx-auto">
         <div className="mb-4">
@@ -266,6 +271,9 @@ export default function LiveTrainingDetailPage() {
           </span>
         </div>
         <h1 className="blog-heading-safe text-3xl font-black mb-3">{title}</h1>
+        <div className="mb-4">
+          <SocialShareButtons title={title} lang={lang} variant="dark" />
+        </div>
         <p className="text-slate-400 leading-relaxed mb-6 whitespace-pre-line">{description}</p>
 
         {training.videoUrl && (
@@ -449,3 +457,13 @@ export default function LiveTrainingDetailPage() {
     </div>
   );
 }
+
+export const getServerSideProps: GetServerSideProps = async ({ params }) => {
+  const id = typeof params?.id === 'string' ? params.id : null;
+  // Fetched here (not just client-side via `load()`) so SEOHead below renders
+  // real og:title/og:description/og:image in the initial server HTML —
+  // social-media crawlers don't execute client JS, so a client-only fetch
+  // left every share preview blank/generic.
+  const initialTraining = id ? await getLiveTraining(id).catch(() => null) : null;
+  return { props: { initialTraining } };
+};
