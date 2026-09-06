@@ -1,15 +1,14 @@
 import apiClient from './apiClient';
-import { CareerQuizSubmission, CareerQuizAudience } from '../types/careerQuiz';
+import { CareerQuizSubmission, CareerQuizAudience, CareerQuizGender } from '../types/careerQuiz';
 
 export interface CareerQuizSubmitPayload {
   fullName: string;
   email: string;
   phone: string;
   audience: CareerQuizAudience;
-  interests: string;
-  experience: string;
-  mainGoal: string;
-  age?: number | null;
+  gender: CareerQuizGender;
+  age: number;
+  answers: Record<string, string>;
   ref?: string | null;
   lang: 'ka' | 'en';
 }

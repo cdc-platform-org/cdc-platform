@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { Menu, X, LayoutDashboard, GraduationCap, LogOut, ShieldCheck, ChevronDown, ShoppingBag, CalendarClock, PlayCircle, Users, GalleryHorizontal } from 'lucide-react';
+import { Menu, X, LayoutDashboard, GraduationCap, LogOut, ShieldCheck, ChevronDown, ShoppingBag, CalendarClock, PlayCircle, Users, GalleryHorizontal, Sparkles } from 'lucide-react';
 import LanguageSwitcher from './LanguageSwitcher';
 import UserMenu from './UserMenu';
 import NotificationBell from './NotificationBell';
@@ -27,6 +27,7 @@ const dict = {
     categories: 'კატეგორიები',
     viewAllProducts: 'ყველა პროდუქტი',
     tools: 'ციფრული ხელსაწყოები',
+    careerTest: 'AI კარიერული ტესტი',
     tutorials: 'ვიდეო ინსტრუქციები',
     dashboard: 'ჩემი დაშბორდი',
     myCourses: 'ჩემი კურსები',
@@ -46,6 +47,7 @@ const dict = {
     categories: 'Categories',
     viewAllProducts: 'View All Products',
     tools: 'Digital Tools',
+    careerTest: 'AI Career Test',
     tutorials: 'Video Tutorials',
     dashboard: 'My Dashboard',
     myCourses: 'My Courses',
@@ -65,6 +67,7 @@ const dict = {
     categories: 'Kategorien',
     viewAllProducts: 'Alle Produkte ansehen',
     tools: 'Digitale Tools',
+    careerTest: 'KI-Karrieretest',
     tutorials: 'Video-Tutorials',
     dashboard: 'Mein Dashboard',
     myCourses: 'Meine Kurse',
@@ -84,6 +87,7 @@ const dict = {
     categories: 'Categorías',
     viewAllProducts: 'Ver Todos los Productos',
     tools: 'Herramientas Digitales',
+    careerTest: 'Test de Carrera IA',
     tutorials: 'Video Tutoriales',
     dashboard: 'Mi Panel',
     myCourses: 'Mis Cursos',
@@ -103,6 +107,7 @@ const dict = {
     categories: 'Catégories',
     viewAllProducts: 'Voir tous les produits',
     tools: 'Outils numériques',
+    careerTest: 'Test de Carrière IA',
     tutorials: 'Tutoriels vidéo',
     dashboard: 'Mon tableau de bord',
     myCourses: 'Mes cours',
@@ -122,6 +127,7 @@ const dict = {
     categories: 'Категорії',
     viewAllProducts: 'Переглянути всі товари',
     tools: 'Цифрові інструменти',
+    careerTest: 'AI Тест Кар\'єри',
     tutorials: 'Відеоуроки',
     dashboard: 'Моя панель',
     myCourses: 'Мої курси',
@@ -311,6 +317,10 @@ export default function SiteHeader() {
               HOT
             </span>
           </Link>
+          <Link href="/career-test" className="no-underline text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 dark:hover:text-cyan-300 transition-colors inline-flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4 shrink-0" />
+            {t.careerTest}
+          </Link>
         </div>
 
         {/* Actions cluster — deliberately shrink-0 so language/theme/
@@ -422,6 +432,10 @@ export default function SiteHeader() {
                 tools.tsx. */}
             <Link href="/tools" onClick={() => setMobileMenuOpen(false)} className="no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
               {t.tools}
+            </Link>
+            <Link href="/career-test" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5 no-underline px-3 py-3.5 rounded-xl text-cyan-600 dark:text-cyan-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+              <Sparkles className="w-5 h-5 shrink-0" />
+              {t.careerTest}
             </Link>
             <Link href="/tutorials" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5 no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
               <PlayCircle className="w-5 h-5 shrink-0" />

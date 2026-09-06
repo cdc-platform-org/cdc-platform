@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
-import { Sparkles, LogIn, UserPlus, RefreshCw } from 'lucide-react';
+import { Sparkles, LogIn, UserPlus, RefreshCw, ArrowLeft } from 'lucide-react';
 import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
 import BackButton from '../src/components/common/BackButton';
@@ -10,18 +10,31 @@ import SEOHead from '../src/components/seo/SEOHead';
 import { useAuth } from '../src/context/AuthContext';
 import { useAuthModal } from '../src/context/AuthModalContext';
 import { submitCareerQuiz } from '../src/services/careerQuizService';
-import { CareerQuizAudience } from '../src/types/careerQuiz';
+import { CareerQuizAudience, CareerQuizGender } from '../src/types/careerQuiz';
 import { resolveLocale, contentLocale } from '@/src/utils/locale';
+
+// Below this age the quiz shows KID_QUESTIONS (simplified, jargon-free)
+// instead of ADULT_QUESTIONS — re-derived identically server-side
+// (Backend's careerQuizService.ts resolveAgeGroup) so the AI prompt's
+// tone/vocabulary instructions always match what was actually asked.
+const KID_AGE_BOUNDARY = 16;
+
+interface QuizQuestion {
+  key: string;
+  question: string;
+  options: string[];
+}
 
 const dict = {
   ka: {
     title: 'AI კარიერული ტესტი',
-    subtitle: 'უპასუხეთ 3 კითხვას და მიიღეთ პერსონალიზებული, AI-ს მიერ გენერირებული კარიერული რეკომენდაცია.',
-    metaDescription: 'გაიარეთ CDC-ის AI კარიერული ტესტი და მიიღეთ პერსონალიზებული რეკომენდაცია საუკეთესო ციფრული პროფესიისა და კურსის შესარჩევად.',
+    subtitle: 'უპასუხეთ რამდენიმე კითხვას და მიიღეთ პერსონალიზებული, AI-ს მიერ გენერირებული კარიერული რეკომენდაცია.',
+    metaDescription: 'გაიარე 1-წუთიანი AI კარიერული ტესტი და მიიღე პერსონალიზებული რეკომენდაცია საუკეთესო ციფრული პროფესიისა და კურსის შესარჩევად.',
     gateMessage: 'ტესტის გასავლელად და პერსონალიზებული შედეგების შესანახად გაიარეთ ავტორიზაცია.',
     login: 'შესვლა',
     register: 'რეგისტრაცია',
-    contactHeading: 'საკონტაქტო ინფორმაცია',
+    stepOfTwo: (n: number) => `ნაბიჯი ${n} / 2`,
+    step1Heading: 'საკონტაქტო ინფორმაცია',
     fullName: 'სახელი და გვარი',
     email: 'ელ-ფოსტა',
     phoneSelf: 'ტელეფონის ნომერი',
@@ -29,37 +42,77 @@ const dict = {
     audienceLabel: 'ვისთვის გადის ტესტი?',
     audienceSelf: 'ჩემთვის',
     audienceChild: 'ჩემი შვილისთვის',
-    childAge: 'შვილის ასაკი',
-    q1: 'რომელი მიმართულება გხიბლავთ?',
-    q1a: 'შემოქმედებითი და ვიზუალური (დიზაინი, სოც. მედია)',
-    q1b: 'ლოგიკური და ტექნიკური (პროგრამირება, ვები, მონაცემები)',
-    q2: 'რა დონეზეა თქვენი გამოცდილება?',
-    q2a: 'სრული დამწყები',
-    q2b: 'თვითნასწავლი / გარკვეული გამოცდილება',
-    q2c: 'პროფესიული გამოცდილება უკვე მაქვს',
-    q3: 'რა არის თქვენი მთავარი მიზანი?',
-    q3a: 'პირველი სამსახურის შოვნა ტექში',
-    q3b: 'კარიერის შეცვლა',
-    q3c: 'ფრილანსინგი',
-    q3d: 'საკუთარი პროექტის/ბიზნესის შექმნა',
+    genderLabel: 'სქესი',
+    genderMale: 'მამრობითი',
+    genderFemale: 'მდედრობითი',
+    genderOther: 'სხვა',
+    ageLabel: 'ასაკი / კლასი',
+    next: 'შემდეგი',
+    back: 'უკან',
+    requiredStep1: 'გთხოვთ შეავსოთ ყველა ველი.',
     submit: 'შედეგის მიღება',
-    submitting: 'გენერირდება…',
-    resultHeading: 'თქვენი შედეგი',
+    submitting: 'გენერირდება… (შესაძლოა 20-30 წამი დასჭირდეს)',
+    resultHeading: 'თქვენი პერსონალური კარიერული რეპორტი',
     retake: 'ხელახლა გავლა',
     dashboardLink: 'ჩემი დაშბორდი',
     limitReached: (n: number) => `თითოეულ მომხმარებელს შეუძლია ტესტის გავლა დღეში მაქსიმუმ ${n}-ჯერ. სცადეთ ხვალ.`,
     genericError: 'ტესტის შედეგის გენერირება ვერ მოხერხდა. სცადეთ თავიდან.',
-    requiredField: 'გთხოვთ შეავსოთ ყველა ველი და უპასუხოთ ყველა კითხვას.',
+    requiredField: 'გთხოვთ უპასუხოთ ყველა კითხვას.',
     loading: 'იტვირთება…',
+    kidQuestions: [
+      {
+        key: 'თავისუფალი დროის საყვარელი საქმე',
+        question: 'რა გიყვარს ყველაზე მეტად თავისუფალ დროს?',
+        options: ['ხატვა და ციფრული ხელოვნება', 'ვიდეო თამაშების თამაში', 'ახალი რაღაცების აწყობა/შექმნა', 'ისტორიების მოყოლა ან წერა'],
+      },
+      {
+        key: 'თავსატეხთან მიდგომა',
+        question: 'როცა რთულ თავსატეხს აწყდები, რას აკეთებ?',
+        options: [
+          'მარტო ვფიქრობ და ეტაპობრივად ვცდი',
+          'მეგობრებთან ერთად ვცდილობთ გადაწყვეტას',
+          'ვხატავ ან ვაწყობ რაღაცას, რომ დავინახო',
+          'ვიგონებ ამბავს ამის შესახებ',
+        ],
+      },
+      {
+        key: 'ყველაზე სახალისო აქტივობა',
+        question: 'რომელი აქტივობა ყველაზე სახალისოა შენთვის?',
+        options: ['საკუთარი თამაშის ან აპლიკაციის შექმნა', 'ციფრული ხელოვნების დახატვა', 'ვიდეოების ან ანიმაციების გადაღება', 'რობოტების აწყობა ან თავსატეხების ამოხსნა'],
+      },
+    ] as QuizQuestion[],
+    adultQuestions: [
+      {
+        key: 'სამუშაო გარემოს პრეფერენცია',
+        question: 'როგორი სამუშაო გარემო გერჩევა?',
+        options: ['ფრილანსი — საკუთარი გრაფიკით, დისტანციურად', 'საოფისე გუნდური მუშაობა სტაბილური განაკვეთით'],
+      },
+      {
+        key: 'სამიზნე შემოსავალი',
+        question: 'რა შემოსავალი გინდა მიაღწიო უახლოეს წელში?',
+        options: ['500–1000 ₾ / თვეში', '1000–2500 ₾ / თვეში', '2500–5000 ₾ / თვეში', '5000+ ₾ / თვეში'],
+      },
+      {
+        key: 'დროის ხელმისაწვდომობა სწავლისთვის',
+        question: 'რამდენი დროის დათმობა შეგიძლია სწავლისთვის?',
+        options: ['სრული განაკვეთი (ინტენსიური)', 'ნახევარ განაკვეთი, სამუშაოს პარალელურად', 'მხოლოდ შაბათ-კვირას'],
+      },
+      {
+        key: 'მთავარი კარიერული მიზანი',
+        question: 'რა არის შენი მთავარი კარიერული მიზანი?',
+        options: ['პირველი სამსახურის შოვნა ტექში', 'კარიერის შეცვლა', 'საკუთარი ბიზნესის/პროექტის დაწყება', 'დამატებითი შემოსავალი გვერდითი საქმით'],
+      },
+    ] as QuizQuestion[],
   },
   en: {
     title: 'AI Career Test',
-    subtitle: 'Answer 3 questions and get a personalized, AI-generated career recommendation.',
-    metaDescription: "Take CDC's AI Career Test and get a personalized recommendation for the best digital profession and course for you.",
+    subtitle: 'Answer a few questions and get a personalized, AI-generated career recommendation.',
+    metaDescription: "Take CDC's 1-minute AI Career Test and get a personalized recommendation for the best digital profession and course for you.",
     gateMessage: 'Log in to take the test and save your personalized results.',
     login: 'Log In',
     register: 'Register',
-    contactHeading: 'Contact Information',
+    stepOfTwo: (n: number) => `Step ${n} / 2`,
+    step1Heading: 'Contact Information',
     fullName: 'Full name',
     email: 'Email',
     phoneSelf: 'Phone number',
@@ -67,30 +120,71 @@ const dict = {
     audienceLabel: 'Who is this test for?',
     audienceSelf: 'Myself',
     audienceChild: 'My child',
-    childAge: "Child's age",
-    q1: 'Which direction interests you more?',
-    q1a: 'Creative & visual work (design, social media)',
-    q1b: 'Logical & technical work (programming, web, data)',
-    q2: "What's your experience level?",
-    q2a: 'Complete beginner',
-    q2b: 'Self-taught / some exposure',
-    q2c: 'I already have professional experience',
-    q3: 'What is your main goal?',
-    q3a: 'Landing a first job in tech',
-    q3b: 'Switching careers',
-    q3c: 'Freelancing',
-    q3d: 'Building my own project/business',
+    genderLabel: 'Gender',
+    genderMale: 'Male',
+    genderFemale: 'Female',
+    genderOther: 'Other',
+    ageLabel: 'Age / Grade',
+    next: 'Next',
+    back: 'Back',
+    requiredStep1: 'Please fill in every field.',
     submit: 'Get My Result',
-    submitting: 'Generating…',
-    resultHeading: 'Your Result',
+    submitting: 'Generating… (can take 20-30 seconds)',
+    resultHeading: 'Your Personal Career Report',
     retake: 'Retake the Test',
     dashboardLink: 'My Dashboard',
     limitReached: (n: number) => `Each user can take the test a maximum of ${n} times per day. Please try again tomorrow.`,
     genericError: 'Could not generate your result. Please try again.',
-    requiredField: 'Please fill in every field and answer all 3 questions.',
+    requiredField: 'Please answer every question.',
     loading: 'Loading…',
+    kidQuestions: [
+      {
+        key: 'Favorite free-time activity',
+        question: 'What do you love doing most in your free time?',
+        options: ['Drawing / digital art', 'Playing video games', 'Building or making new things', 'Telling or writing stories'],
+      },
+      {
+        key: 'Approach to a tricky puzzle',
+        question: 'When you face a tricky puzzle, what do you do?',
+        options: [
+          'Figure it out alone, step by step',
+          'Team up with friends to solve it',
+          'Draw or build something to visualize it',
+          'Make up a story about it',
+        ],
+      },
+      {
+        key: 'Most fun activity',
+        question: 'Which activity sounds the most fun to you?',
+        options: ['Creating your own game or app', 'Drawing digital art', 'Making videos or animations', 'Building robots or solving puzzles'],
+      },
+    ] as QuizQuestion[],
+    adultQuestions: [
+      {
+        key: 'Work environment preference',
+        question: 'What kind of work environment do you prefer?',
+        options: ['Freelancing — own schedule, remote projects', 'Traditional office/team job with a stable schedule'],
+      },
+      {
+        key: 'Target income',
+        question: 'What income are you aiming for within the next year?',
+        options: ['$150-350 / month', '$350-800 / month', '$800-1500 / month', '$1500+ / month'],
+      },
+      {
+        key: 'Time available for learning',
+        question: 'How much time can you commit to learning?',
+        options: ['Full-time, intensive', 'Part-time, alongside work', 'Weekends only'],
+      },
+      {
+        key: 'Main career goal',
+        question: "What's your main career goal?",
+        options: ['Landing a first job in tech', 'Switching careers', 'Starting my own business/project', 'Extra income on the side'],
+      },
+    ] as QuizQuestion[],
   },
 };
+
+type Step = 'demographics' | 'questions' | 'result' | 'limit';
 
 export default function CareerTestPage() {
   const router = useRouter();
@@ -99,17 +193,17 @@ export default function CareerTestPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const { openAuthModal } = useAuthModal();
 
-  const ageParam = typeof router.query.age === 'string' ? Number(router.query.age) : undefined;
   const refParam = typeof router.query.ref === 'string' ? router.query.ref : undefined;
+  const ageParam = typeof router.query.age === 'string' ? Number(router.query.age) : undefined;
 
+  const [step, setStep] = useState<Step>('demographics');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [audience, setAudience] = useState<CareerQuizAudience>(ageParam ? 'CHILD' : 'SELF');
-  const [childAge, setChildAge] = useState<string>(ageParam ? String(ageParam) : '');
-  const [interests, setInterests] = useState('');
-  const [experience, setExperience] = useState('');
-  const [mainGoal, setMainGoal] = useState('');
+  const [gender, setGender] = useState<CareerQuizGender | ''>('');
+  const [age, setAge] = useState<string>(ageParam ? String(ageParam) : '');
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState(false);
@@ -137,13 +231,28 @@ export default function CareerTestPage() {
     });
   };
 
-  const canSubmit = useMemo(
-    () => !!(fullName.trim() && email.trim() && phone.trim() && interests && experience && mainGoal),
-    [fullName, email, phone, interests, experience, mainGoal]
+  const ageNum = Number(age);
+  const isKid = Number.isFinite(ageNum) && ageNum > 0 && ageNum < KID_AGE_BOUNDARY;
+  const questions = isKid ? t.kidQuestions : t.adultQuestions;
+
+  const canSubmitStep1 = useMemo(
+    () => !!(fullName.trim() && email.trim() && phone.trim() && gender && age && ageNum > 0),
+    [fullName, email, phone, gender, age, ageNum]
   );
+  const canSubmitQuiz = useMemo(() => questions.every((q) => !!answers[q.key]), [questions, answers]);
+
+  const handleNext = () => {
+    if (!canSubmitStep1) {
+      setError(t.requiredStep1);
+      return;
+    }
+    setError(null);
+    setAnswers({});
+    setStep('questions');
+  };
 
   const handleSubmit = async () => {
-    if (!canSubmit) {
+    if (!canSubmitQuiz || !gender) {
       setError(t.requiredField);
       return;
     }
@@ -155,17 +264,18 @@ export default function CareerTestPage() {
         email: email.trim(),
         phone: phone.trim(),
         audience,
-        interests,
-        experience,
-        mainGoal,
-        age: audience === 'CHILD' && childAge ? Number(childAge) : undefined,
+        gender,
+        age: ageNum,
+        answers,
         ref: refParam,
         lang,
       });
       setResultText(submission.resultText);
+      setStep('result');
     } catch (err: any) {
       if (err?.response?.status === 429 || err?.response?.data?.code === 'DAILY_LIMIT_REACHED') {
         setLimitReached(true);
+        setStep('limit');
       } else {
         setError(err?.response?.data?.message ?? t.genericError);
       }
@@ -176,10 +286,9 @@ export default function CareerTestPage() {
 
   const handleRetake = () => {
     setResultText(null);
-    setInterests('');
-    setExperience('');
-    setMainGoal('');
+    setAnswers({});
     setError(null);
+    setStep('demographics');
   };
 
   const choiceButtonClass = (active: boolean) =>
@@ -229,7 +338,7 @@ export default function CareerTestPage() {
               </button>
             </div>
           </div>
-        ) : limitReached ? (
+        ) : step === 'limit' ? (
           <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-8 text-center">
             <p className="text-sm text-amber-200 leading-relaxed mb-5">{t.limitReached(3)}</p>
             <Link
@@ -239,7 +348,7 @@ export default function CareerTestPage() {
               {t.dashboardLink}
             </Link>
           </div>
-        ) : resultText ? (
+        ) : step === 'result' && resultText ? (
           <div className="space-y-6">
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
               <h2 className="text-lg font-black mb-4 text-cyan-300">{t.resultHeading}</h2>
@@ -265,111 +374,131 @@ export default function CareerTestPage() {
             </div>
           </div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-6">
+            <p className="text-xs font-black uppercase tracking-widest text-cyan-400">{t.stepOfTwo(step === 'demographics' ? 1 : 2)}</p>
+
             {error && (
               <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-xs text-red-300">{error}</div>
             )}
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
-              <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">{t.contactHeading}</h2>
+            {step === 'demographics' ? (
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
+                <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">{t.step1Heading}</h2>
 
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAudience('SELF')}
-                  className={choiceButtonClass(audience === 'SELF')}
-                >
-                  {t.audienceSelf}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAudience('CHILD')}
-                  className={choiceButtonClass(audience === 'CHILD')}
-                >
-                  {t.audienceChild}
-                </button>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1.5">{t.fullName}</label>
-                <input
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-800/60 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1.5">{t.email}</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-800/60 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1.5">
-                  {audience === 'CHILD' ? t.phoneChild : t.phoneSelf}
-                </label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+995 5XX XX XX XX"
-                  className="w-full rounded-lg border border-slate-700 bg-slate-800/60 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                />
-              </div>
-              {audience === 'CHILD' && (
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5">{t.childAge}</label>
+                  <label className="block text-xs font-medium text-slate-400 mb-1.5">{t.audienceLabel}</label>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setAudience('SELF')} className={choiceButtonClass(audience === 'SELF')}>
+                      {t.audienceSelf}
+                    </button>
+                    <button type="button" onClick={() => setAudience('CHILD')} className={choiceButtonClass(audience === 'CHILD')}>
+                      {t.audienceChild}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1.5">{t.genderLabel}</label>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setGender('MALE')} className={choiceButtonClass(gender === 'MALE')}>
+                      {t.genderMale}
+                    </button>
+                    <button type="button" onClick={() => setGender('FEMALE')} className={choiceButtonClass(gender === 'FEMALE')}>
+                      {t.genderFemale}
+                    </button>
+                    <button type="button" onClick={() => setGender('OTHER')} className={choiceButtonClass(gender === 'OTHER')}>
+                      {t.genderOther}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1.5">{t.ageLabel}</label>
                   <input
                     type="number"
-                    min={1}
-                    max={120}
-                    value={childAge}
-                    onChange={(e) => setChildAge(e.target.value)}
+                    min={4}
+                    max={100}
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
                     className="w-full rounded-lg border border-slate-700 bg-slate-800/60 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   />
                 </div>
-              )}
-            </div>
 
-            <div className="space-y-3">
-              <h2 className="text-sm font-bold text-slate-200">{t.q1}</h2>
-              <button type="button" onClick={() => setInterests(t.q1a)} className={choiceButtonClass(interests === t.q1a)}>
-                {t.q1a}
-              </button>
-              <button type="button" onClick={() => setInterests(t.q1b)} className={choiceButtonClass(interests === t.q1b)}>
-                {t.q1b}
-              </button>
-            </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1.5">{t.fullName}</label>
+                  <input
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="w-full rounded-lg border border-slate-700 bg-slate-800/60 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1.5">{t.email}</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full rounded-lg border border-slate-700 bg-slate-800/60 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                    {audience === 'CHILD' ? t.phoneChild : t.phoneSelf}
+                  </label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+995 5XX XX XX XX"
+                    className="w-full rounded-lg border border-slate-700 bg-slate-800/60 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  />
+                </div>
 
-            <div className="space-y-3">
-              <h2 className="text-sm font-bold text-slate-200">{t.q2}</h2>
-              {[t.q2a, t.q2b, t.q2c].map((opt) => (
-                <button key={opt} type="button" onClick={() => setExperience(opt)} className={choiceButtonClass(experience === opt)}>
-                  {opt}
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  className="w-full rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-3.5 text-sm font-bold text-white hover:opacity-90"
+                >
+                  {t.next}
                 </button>
-              ))}
-            </div>
-
-            <div className="space-y-3">
-              <h2 className="text-sm font-bold text-slate-200">{t.q3}</h2>
-              {[t.q3a, t.q3b, t.q3c, t.q3d].map((opt) => (
-                <button key={opt} type="button" onClick={() => setMainGoal(opt)} className={choiceButtonClass(mainGoal === opt)}>
-                  {opt}
+              </div>
+            ) : (
+              <div className="space-y-8">
+                <button
+                  type="button"
+                  onClick={() => setStep('demographics')}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-slate-200 bg-transparent border-none cursor-pointer p-0"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  {t.back}
                 </button>
-              ))}
-            </div>
 
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="w-full rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-3.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-60"
-            >
-              {submitting ? t.submitting : t.submit}
-            </button>
+                {questions.map((q) => (
+                  <div key={q.key} className="space-y-3">
+                    <h2 className="text-sm font-bold text-slate-200">{q.question}</h2>
+                    {q.options.map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setAnswers((prev) => ({ ...prev, [q.key]: opt }))}
+                        className={choiceButtonClass(answers[q.key] === opt)}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="w-full rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-3.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-60"
+                >
+                  {submitting ? t.submitting : t.submit}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

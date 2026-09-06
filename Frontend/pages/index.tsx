@@ -949,6 +949,24 @@ export default function Home() {
         </section>
       )}
 
+      {/* 🎯 AI CAREER QUIZ PROMO — placed right before the course catalog so a
+          visitor who isn't sure which course fits them gets offered a
+          personalized recommendation before being asked to browse the full
+          list themselves. */}
+      <section className="max-w-5xl mx-auto px-6 -mt-4 mb-4">
+        <div className="rounded-3xl border border-cyan-500/30 bg-gradient-to-r from-cyan-500/10 via-purple-600/10 to-cyan-500/10 p-8 md:p-12 text-center">
+          <Sparkles className="w-8 h-8 text-cyan-400 mx-auto mb-4" />
+          <h2 className="text-xl md:text-2xl font-black tracking-wide mb-3">{t('careerQuizBannerTitle')}</h2>
+          <p className="text-sm md:text-base text-slate-400 mb-7 max-w-xl mx-auto">{t('careerQuizBannerSubtitle')}</p>
+          <Link
+            href="/career-test"
+            className="inline-flex items-center gap-2 font-black text-sm md:text-base px-7 py-3.5 rounded-xl text-white bg-gradient-to-r from-cyan-500 to-purple-600 no-underline hover:opacity-90 transition-opacity shadow-[0_0_25px_rgba(34,211,238,0.25)]"
+          >
+            {t('careerQuizBannerCta')} →
+          </Link>
+        </div>
+      </section>
+
       {/* 📚 COURSES CATALOG */}
       <section id="courses" className="max-w-7xl mx-auto py-28 px-6">
         <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('coursesHeading')}</h2>
