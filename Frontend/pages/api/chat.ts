@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { askCdcAssistantStream, isGeminiConfigured, ChatTurn } from '../../lib/gemini';
 import { getCdcKnowledgeContext } from '../../lib/cdcKnowledgeBase';
+import { getDynamicCourseAndTrainingContext } from '../../lib/cdcCourseContext';
 import { getHomepageAgentConfig } from '../../lib/platformAgentConfig';
 
 // `history` comes straight from the browser — untrusted input. Only well-
@@ -74,7 +75,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // not generation) so a slow DB read here can't be mistaken for slow
     // Gemini output.
     const homepageAgent = await getHomepageAgentConfig();
-    const knowledgeContext = await getCdcKnowledgeContext(homepageAgent?.knowledgeSourceFilenames);
+    const [uploadedKnowledge, courseContext] = await Promise.all([
+      getCdcKnowledgeContext(homepageAgent?.knowledgeSourceFilenames),
+      getDynamicCourseAndTrainingContext(),
+    ]);
+    // Real, live catalog data comes first — CAREER_ASSISTANT_SYSTEM_PROMPT's
+    // "ALWAYS CHECK DYNAMIC DATABASE COURSES FIRST" rule (lib/gemini.ts)
+    // depends on this actually being present and prioritized over
+    // admin-uploaded reference documents, not the other way around.
+    const knowledgeContext = [courseContext, uploadedKnowledge].filter(Boolean).join('\n\n');
 
     for await (const chunk of askCdcAssistantStream(message, effectiveLang, sanitizeHistory(history), knowledgeContext, homepageAgent?.systemPrompt)) {
       send({ type: 'chunk', text: chunk });
