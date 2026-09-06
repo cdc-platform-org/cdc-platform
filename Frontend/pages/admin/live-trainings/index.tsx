@@ -69,6 +69,10 @@ const emptyForm: LiveTrainingPayload & { scheduledAtLocal: string; startDateLoca
   recordingUrl: '',
   startDateLocal: '',
   endDateLocal: '',
+  priceType: 'MONTHLY',
+  durationMonths: null,
+  scheduleDays: '',
+  trainerVideoUrl: '',
 };
 
 function AdminLiveTrainingsDashboard() {
@@ -167,6 +171,10 @@ function AdminLiveTrainingsDashboard() {
       recordingUrl: t.recordingUrl ?? '',
       startDateLocal: t.startDate ? toLocalInput(t.startDate) : '',
       endDateLocal: t.endDate ? toLocalInput(t.endDate) : '',
+      priceType: t.priceType,
+      durationMonths: t.durationMonths,
+      scheduleDays: t.scheduleDays ?? '',
+      trainerVideoUrl: t.trainerVideoUrl ?? '',
     });
     setActiveLangTab('ka');
     setFormError(null);
@@ -281,6 +289,10 @@ function AdminLiveTrainingsDashboard() {
         recordingUrl: form.recordingUrl?.trim() || undefined,
         startDate: form.startDateLocal ? toIsoDatetime(form.startDateLocal) : null,
         endDate: form.endDateLocal ? toIsoDatetime(form.endDateLocal) : null,
+        priceType: form.priceType,
+        durationMonths: form.durationMonths,
+        scheduleDays: form.scheduleDays?.trim() || null,
+        trainerVideoUrl: form.trainerVideoUrl?.trim() || undefined,
       };
       if (editingId) {
         const updated = await updateLiveTraining(editingId, payload);
@@ -398,6 +410,33 @@ function AdminLiveTrainingsDashboard() {
                 <p className="text-xs text-gray-400 mt-1">შეიყვანეთ თანხა ლარებში (მაგ. 300 ₾)</p>
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">ფასის ტიპი</label>
+                <select
+                  value={form.priceType ?? 'MONTHLY'}
+                  onChange={(e) => setForm({ ...form, priceType: e.target.value as 'MONTHLY' | 'TOTAL' })}
+                  className={inputClass}
+                >
+                  <option value="MONTHLY">თვეში (განმეორებადი)</option>
+                  <option value="TOTAL">ჯამში (მთლიანი კურსი)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  ხანგრძლივობა (თვე) <span className="text-gray-400 font-normal">(არასავალდებულო)</span>
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={form.durationMonths ?? ''}
+                  onChange={(e) => setForm({ ...form, durationMonths: e.target.value ? Number(e.target.value) : null })}
+                  className={inputClass}
+                  placeholder="მაგ. 2"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">მინ. ჯგუფი</label>
                 <input
                   type="number"
@@ -414,6 +453,18 @@ function AdminLiveTrainingsDashboard() {
                   min={1}
                   value={form.maxCapacity}
                   onChange={(e) => setForm({ ...form, maxCapacity: Number(e.target.value) || 1 })}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  ჩატარების გრაფიკი <span className="text-gray-400 font-normal">(არასავალდებულო)</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.scheduleDays ?? ''}
+                  onChange={(e) => setForm({ ...form, scheduleDays: e.target.value })}
+                  placeholder="მაგ. ორშ - ოთხ | 19:00"
                   className={inputClass}
                 />
               </div>
@@ -573,6 +624,18 @@ function AdminLiveTrainingsDashboard() {
                   type="text"
                   value={form.videoUrl ?? ''}
                   onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
+                  placeholder="მაგ. https://www.youtube.com/watch?v=..."
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  ლექტორის ვიდეო <span className="text-gray-400 font-normal">(YouTube — გამოჩნდება საჯარო გვერდზე)</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.trainerVideoUrl ?? ''}
+                  onChange={(e) => setForm({ ...form, trainerVideoUrl: e.target.value })}
                   placeholder="მაგ. https://www.youtube.com/watch?v=..."
                   className={inputClass}
                 />

@@ -6,6 +6,7 @@ import {
   LiveTrainingEnrollment,
   LiveTrainingExamSession,
   ExamSessionStatus,
+  LiveTrainingPriceType,
 } from '../types/liveTraining';
 import { CourseLanguage } from '../types/lms';
 
@@ -33,6 +34,10 @@ export interface LiveTrainingPayload {
   recordingUrl?: string;
   startDate?: string | null;
   endDate?: string | null;
+  priceType?: LiveTrainingPriceType;
+  durationMonths?: number | null;
+  scheduleDays?: string | null;
+  trainerVideoUrl?: string;
   synopsisKa?: string | null;
   synopsisEn?: string | null;
   synopsisRu?: string | null;

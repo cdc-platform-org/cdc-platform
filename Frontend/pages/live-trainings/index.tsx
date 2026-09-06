@@ -8,6 +8,7 @@ import BackButton from '../../src/components/common/BackButton';
 import { LiveTraining } from '../../src/types/liveTraining';
 import { getLiveTrainings } from '../../src/services/liveTrainingService';
 import { resolveLocale } from '@/src/utils/locale';
+import { formatLiveTrainingPriceLabel } from '@/src/utils/liveTrainingPricing';
 
 const EN_STRINGS = {
   title: 'Live Trainings',
@@ -111,10 +112,13 @@ export default function LiveTrainingsIndexPage() {
                       <Calendar size={12} />
                       {new Date(tr.scheduledAt).toLocaleString()}
                     </div>
-                    <span className="text-xs font-black text-cyan-400 shrink-0">
-                      {tr.price ? `${(tr.price / 100).toFixed(2)} ₾` : t.free}
+                    <span className="text-xs font-black text-cyan-400 shrink-0 text-right">
+                      {formatLiveTrainingPriceLabel(tr, contentLang)}
                     </span>
                   </div>
+                  {tr.scheduleDays && (
+                    <div className="text-xs font-bold text-purple-300 mb-2">📅 {tr.scheduleDays}</div>
+                  )}
                   <div className={`flex items-center gap-1.5 text-xs font-bold ${tr.isFull ? 'text-red-400' : 'text-cyan-400'}`}>
                     <Users size={12} />
                     {tr.isFull ? t.full : t.seatsRemaining(tr.seatsRemaining, tr.maxCapacity)}

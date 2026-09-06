@@ -19,6 +19,10 @@ export const liveTrainingCreateSchema = z.object({
   recordingUrl: z.string().url().optional().or(z.literal('')),
   startDate: z.string().datetime().optional().nullable(),
   endDate: z.string().datetime().optional().nullable(),
+  priceType: z.enum(['MONTHLY', 'TOTAL']).optional().default('MONTHLY'),
+  durationMonths: z.number().int().min(1).max(60).optional().nullable(),
+  scheduleDays: z.string().trim().max(200).optional().nullable(),
+  trainerVideoUrl: z.string().url().optional().or(z.literal('')),
 }).refine((data) => data.minCapacity === undefined || data.minCapacity <= data.maxCapacity, {
   message: 'minCapacity cannot exceed maxCapacity.',
   path: ['minCapacity'],
@@ -46,6 +50,10 @@ export const liveTrainingUpdateSchema = z.object({
   recordingUrl: z.string().url().optional().or(z.literal('')),
   startDate: z.string().datetime().optional().nullable(),
   endDate: z.string().datetime().optional().nullable(),
+  priceType: z.enum(['MONTHLY', 'TOTAL']).optional(),
+  durationMonths: z.number().int().min(1).max(60).optional().nullable(),
+  scheduleDays: z.string().trim().max(200).optional().nullable(),
+  trainerVideoUrl: z.string().url().optional().or(z.literal('')),
   // Only ever AI-generated before now (services/liveTrainingSynopsisService.ts)
   // — an admin editing/polishing it is a plain field update, same posture
   // as courseSchemas.ts's lessonUpdateSchema conspectus fields.

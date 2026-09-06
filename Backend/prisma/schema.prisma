@@ -1067,6 +1067,17 @@ enum CourseLanguage {
   BOTH
 }
 
+// Whether LiveTraining.price is charged once per durationMonths (a
+// multi-month program billed monthly, e.g. "350 GEL/month") or as a single
+// total for the whole program — same nullable-price convention as
+// LiveTraining.price itself (a free/lead-gen session has no price to type
+// either way). Defaults to MONTHLY since that's this platform's more common
+// multi-month cohort pricing shape.
+enum LiveTrainingPriceType {
+  MONTHLY
+  TOTAL
+}
+
 // Mentor Course QA Approval System — see Course.status/instructorId and
 // routes/instructorCourses.ts, routes/adminCourseModeration.ts.
 //   DRAFT           - being authored by the instructor, not yet submitted.
@@ -1294,11 +1305,31 @@ model LiveTraining {
   // real payment collected on the follow-up call rather than through this
   // registration form.
   price               Int?
+  // How `price` above should be read — "350 GEL" alone is ambiguous for a
+  // multi-month cohort. Null-safe default of MONTHLY applied at the schema
+  // level (@default) so existing rows and any write that omits this field
+  // still render an unambiguous label rather than silently showing the
+  // wrong one.
+  priceType           LiveTrainingPriceType @default(MONTHLY)
+  // Program length in months (e.g. 2) — paired with priceType/price for the
+  // "350 GEL/month (2 months, 700 GEL total)" label; null for a single-
+  // session/short workshop where "duration in months" doesn't apply.
+  durationMonths      Int?
   thumbnailUrl        String?
   // Promo/demo clip — either a pasted YouTube/Vimeo link or a direct
   // .mp4/.webm/.ogg URL, same convention and rendering (VideoEmbed.tsx) as
   // StudioCaseStudy.videoUrl. No upload path — always a plain URL.
   videoUrl            String?
+  // Free-text recurring schedule shown as a badge on the public card/detail
+  // page (e.g. "ორშ-ოთხ 20:00") — same "admin types a plain descriptive
+  // string, not a real recurrence-rule engine" posture as this model's own
+  // meetingUrl/classroomUrl fields. Not used for any date math (scheduledAt/
+  // startDate/endDate already cover that); purely a human-readable label.
+  scheduleDays        String?
+  // Trainer intro/presentation clip — same plain-URL, no-upload convention
+  // as videoUrl above, just a distinct field so a training can show both
+  // (a program promo video AND a "meet your trainer" clip) independently.
+  trainerVideoUrl     String?
   // Group-viability floor — see LiveTrainingLead's registeredCount-derived
   // "min threshold met" badge on both the admin and public pages. 0 means
   // no minimum is enforced.
