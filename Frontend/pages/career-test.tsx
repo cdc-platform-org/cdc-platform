@@ -39,9 +39,6 @@ const dict = {
     email: 'ელ-ფოსტა',
     phoneSelf: 'ტელეფონის ნომერი',
     phoneChild: 'მშობლის ტელეფონის ნომერი',
-    audienceLabel: 'ვისთვის გადის ტესტი?',
-    audienceSelf: 'ჩემთვის',
-    audienceChild: 'ჩემი შვილისთვის',
     genderLabel: 'სქესი',
     genderMale: 'მამრობითი',
     genderFemale: 'მდედრობითი',
@@ -117,9 +114,6 @@ const dict = {
     email: 'Email',
     phoneSelf: 'Phone number',
     phoneChild: "Parent's phone number",
-    audienceLabel: 'Who is this test for?',
-    audienceSelf: 'Myself',
-    audienceChild: 'My child',
     genderLabel: 'Gender',
     genderMale: 'Male',
     genderFemale: 'Female',
@@ -200,7 +194,6 @@ export default function CareerTestPage() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [audience, setAudience] = useState<CareerQuizAudience>(ageParam ? 'CHILD' : 'SELF');
   const [gender, setGender] = useState<CareerQuizGender | ''>('');
   const [age, setAge] = useState<string>(ageParam ? String(ageParam) : '');
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -234,6 +227,10 @@ export default function CareerTestPage() {
   const ageNum = Number(age);
   const isKid = Number.isFinite(ageNum) && ageNum > 0 && ageNum < KID_AGE_BOUNDARY;
   const questions = isKid ? t.kidQuestions : t.adultQuestions;
+  // No more explicit "for myself / for my child" toggle — audience is
+  // silently derived from age alone (same boundary as the question-set
+  // and phone-label switch below) rather than asked as its own question.
+  const audience: CareerQuizAudience = isKid ? 'CHILD' : 'SELF';
 
   const canSubmitStep1 = useMemo(
     () => !!(fullName.trim() && email.trim() && phone.trim() && gender && age && ageNum > 0),
@@ -386,18 +383,6 @@ export default function CareerTestPage() {
                 <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">{t.step1Heading}</h2>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5">{t.audienceLabel}</label>
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => setAudience('SELF')} className={choiceButtonClass(audience === 'SELF')}>
-                      {t.audienceSelf}
-                    </button>
-                    <button type="button" onClick={() => setAudience('CHILD')} className={choiceButtonClass(audience === 'CHILD')}>
-                      {t.audienceChild}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
                   <label className="block text-xs font-medium text-slate-400 mb-1.5">{t.genderLabel}</label>
                   <div className="flex gap-2">
                     <button type="button" onClick={() => setGender('MALE')} className={choiceButtonClass(gender === 'MALE')}>
@@ -443,7 +428,7 @@ export default function CareerTestPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-400 mb-1.5">
-                    {audience === 'CHILD' ? t.phoneChild : t.phoneSelf}
+                    {isKid ? t.phoneChild : t.phoneSelf}
                   </label>
                   <input
                     type="tel"
