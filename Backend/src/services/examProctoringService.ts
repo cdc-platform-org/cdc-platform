@@ -77,6 +77,19 @@ function isRetryableGeminiError(err: unknown): boolean {
   return /\b(503|429)\b/.test(message) || /overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand/i.test(message);
 }
 
+// AUDIT NOTE (fixed): the "fail fast, don't burn through the other models"
+// reasoning above the loop below holds for a bad key/quota (identical
+// failure on every model, same client) but NOT for a retired/renamed
+// "-latest" alias 404ing — that's specific to one model name, and the loop
+// used to `break geminiLoop` on it anyway, aborting the whole cascade on the
+// very first model instead of trying the other two.
+function isModelNotFoundError(err: unknown): boolean {
+  const status = (err as { status?: number })?.status;
+  if (status === 404) return true;
+  const message = err instanceof Error ? err.message : String(err);
+  return /is not found for API version|not supported for generateContent/i.test(message);
+}
+
 // Maps a Gemini failure to the HTTP status a route should respond with —
 // same reasoning/thresholds as aiAgentService's identical classifier
 // (duplicated rather than imported, matching this file's own comment on
@@ -133,6 +146,7 @@ async function generateJson(prompt: string, temperature: number): Promise<Gemini
       } catch (err) {
         lastErr = err;
         console.error(`[examProctoringService] ${modelName} attempt ${attempt}/${ATTEMPTS_PER_MODEL} failed:`, err instanceof Error ? err.message : err);
+        if (isModelNotFoundError(err)) break;
         if (!isRetryableGeminiError(err)) break geminiLoop;
         if (attempt < ATTEMPTS_PER_MODEL) await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
       }

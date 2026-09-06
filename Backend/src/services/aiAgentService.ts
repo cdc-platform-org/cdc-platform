@@ -177,6 +177,24 @@ function isRetryableGeminiError(err: unknown): boolean {
   return /\b(503|429)\b/.test(message) || /overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand/i.test(message);
 }
 
+// AUDIT NOTE (fixed): Google periodically retires/renames a "-latest" model
+// alias (e.g. gemini-flash-latest returning "404 ... is not found for API
+// version v1beta, or is not supported for generateContent" — reproduced
+// live against the real API while investigating the English Tutor's
+// "Gemini request failed: 404 Resource not found" bug report). That 404 was
+// previously treated as a generic non-retryable failure and used to `break
+// geminiLoop` — aborting the ENTIRE Gemini fallback on the very first model
+// in GEMINI_MODEL_FALLBACK_SEQUENCE, even though the other two models in the
+// list were live and working. A model-not-found error is specific to THAT
+// model name, not the request, so it should advance to the next model in
+// the sequence instead of giving up on Gemini altogether.
+function isModelNotFoundError(err: unknown): boolean {
+  const status = (err as { status?: number })?.status;
+  if (status === 404) return true;
+  const message = err instanceof Error ? err.message : String(err);
+  return /is not found for API version|not supported for generateContent/i.test(message);
+}
+
 // Genuine cross-vendor fallback — only reached once every Azure region/retry
 // above is exhausted. `parts` already matches the Gemini SDK's own Part
 // shape (text/inlineData/fileData), so no translation is needed here (unlike
@@ -211,6 +229,10 @@ async function callGeminiFallback(
       } catch (err) {
         lastErr = err;
         console.error(`[aiAgentService] Gemini ${modelName} attempt ${attempt}/${GEMINI_ATTEMPTS_PER_MODEL} failed:`, err instanceof Error ? err.message : err);
+        // A plain `break` (not `break geminiLoop`) here moves straight to the
+        // next modelName — retrying the same nonexistent model wastes an
+        // attempt, but the OTHER models in the sequence deserve a real shot.
+        if (isModelNotFoundError(err)) break;
         if (!isRetryableGeminiError(err) && !(err instanceof SyntaxError)) break geminiLoop;
         if (attempt < GEMINI_ATTEMPTS_PER_MODEL) await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
       }

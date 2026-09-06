@@ -68,6 +68,16 @@ function isRetryableGeminiError(err: unknown): boolean {
   return /\b(503|429)\b/.test(message) || /overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand/i.test(message);
 }
 
+// AUDIT NOTE (fixed): see aiAgentService.ts's identical helper — a retired/
+// renamed "-latest" model alias 404s, which used to `break geminiLoop` and
+// abort the whole fallback on the FIRST model, never trying the other two.
+function isModelNotFoundError(err: unknown): boolean {
+  const status = (err as { status?: number })?.status;
+  if (status === 404) return true;
+  const message = err instanceof Error ? err.message : String(err);
+  return /is not found for API version|not supported for generateContent/i.test(message);
+}
+
 // Cross-vendor fallback — flattens the same system/history/message shape
 // Azure received into a single prompt string, same "one string in, one
 // string out" translation courseTutorService.ts's Gemini fallback uses.
@@ -91,6 +101,7 @@ async function callGeminiChatFallback(systemInstruction: string, history: ChatTu
       } catch (err) {
         lastErr = err;
         console.error(`[businessAiChatService] Gemini ${modelName} attempt ${attempt}/${GEMINI_ATTEMPTS_PER_MODEL} failed:`, err instanceof Error ? err.message : err);
+        if (isModelNotFoundError(err)) break;
         if (!isRetryableGeminiError(err)) break geminiLoop;
         if (attempt < GEMINI_ATTEMPTS_PER_MODEL) await new Promise((resolve) => setTimeout(resolve, GEMINI_RETRY_DELAY_MS));
       }

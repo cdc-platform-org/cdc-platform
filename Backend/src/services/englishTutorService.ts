@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { callTextModel, AiAgentError } from './aiAgentService';
+import { callTextModel } from './aiAgentService';
 import { isAzureOpenAiConfigured } from './azureOpenAiService';
 import { GEMINI_API_KEY } from '../utils/env';
 
@@ -44,7 +44,16 @@ async function callAndValidate<T>(prompt: string, temperature: number, schema: z
   try {
     raw = await callTextModel(prompt, temperature);
   } catch (err) {
-    throw new EnglishTutorError(err instanceof AiAgentError ? err.message : `${errorLabel} generation request failed.`);
+    // AUDIT NOTE (fixed): this used to forward AiAgentError's raw message
+    // straight to the client (e.g. "Gemini request failed: 404 Resource not
+    // found" — Google's own API error text, verbatim, in the student-facing
+    // UI). Every route calling into this file responds with err.message
+    // as-is on any EnglishTutorError (see routes/englishTutor.ts), so the
+    // client-facing message has to be clean at the source. Logged here for
+    // real debugging — aiAgentService's own throwGeminiFailure already
+    // reports the raw error to Sentry before it reaches this catch.
+    console.error(`[englishTutorService] ${errorLabel} generation failed:`, err instanceof Error ? err.message : err);
+    throw new EnglishTutorError(`${errorLabel} generation is temporarily unavailable. Please try again in a moment.`);
   }
   let parsed: unknown;
   try {
