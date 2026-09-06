@@ -558,8 +558,14 @@ export default function Home() {
           the page wrapper's own overflow-hidden (see the root div above), so
           nothing is needed here. The row is sized to FIT at every breakpoint
           (see the link/search sizing below) rather than relying on clipping. */}
-      <nav className={`sticky top-0 z-50 w-full max-w-full border-b px-4 sm:px-6 md:px-12 py-4 sm:py-5 ${darkMode ? 'border-slate-800 bg-[#0e1422]/90 backdrop-blur-md' : 'border-slate-200/60 bg-white/90 backdrop-blur-md'}`}>
-        <div className="max-w-7xl mx-auto flex justify-between items-center gap-2 sm:gap-4">
+      {/* -mx-4 sm:-mx-6 cancels _app.tsx's app-shell px-4 sm:px-6 (same
+          full-bleed technique as SiteHeader.tsx's <nav>) — this nav's own
+          horizontal padding moved to the inner row div below so cancelling
+          the app-shell's padding doesn't also strip this nav's own content
+          inset. Without it the header background rendered inset from the
+          real viewport edges, showing white gaps on wide screens. */}
+      <nav className={`sticky top-0 z-50 -mx-4 sm:-mx-6 border-b py-4 sm:py-5 ${darkMode ? 'border-slate-800 bg-[#0e1422]/90 backdrop-blur-md' : 'border-slate-200/60 bg-white/90 backdrop-blur-md'}`}>
+        <div className="max-w-7xl mx-auto flex justify-between items-center gap-2 sm:gap-4 px-4 sm:px-6 md:px-12">
           <Link href="/" className="flex items-center space-x-3 shrink-0 no-underline text-current">
             <Image
               src="/images/cdc-logo.png"
@@ -681,9 +687,13 @@ export default function Home() {
           </div>
         </div>
 
-        {/* MOBILE MENU PANEL */}
+        {/* MOBILE MENU PANEL — px-4 sm:px-6 re-added here since it's a
+            sibling of the row div above, not a descendant of it, so it
+            doesn't inherit the row div's own horizontal padding; without
+            this it sat flush against the nav's now-full-bleed edges (see
+            SiteHeader.tsx's own mobile drawer for the same fix). */}
         {isMobileMenuOpen && (
-          <div className={`lg:hidden max-w-full overflow-x-hidden mt-4 pt-4 border-t flex flex-col gap-1 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+          <div className={`lg:hidden max-w-full overflow-x-hidden mt-4 pt-4 px-4 sm:px-6 border-t flex flex-col gap-1 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
             <div className="px-2 pb-2">
               <HeaderSearch darkMode={darkMode} lang={legacyLang} />
             </div>

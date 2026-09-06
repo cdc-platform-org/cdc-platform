@@ -63,7 +63,19 @@ export default function BetaModeBanner() {
   if (!visible) return null;
 
   return (
-    <div role="status" className="relative z-40 w-full bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-b border-cyan-500/30">
+    <div
+      role="status"
+      // -mx-4 sm:-mx-6 cancels _app.tsx's app-shell px-4 sm:px-6 (the same
+      // full-bleed technique SiteHeader.tsx's <nav> uses) — without it this
+      // banner's background rendered inset from the real viewport edges by
+      // that padding, showing white gaps on either side on wide screens.
+      // Deliberately no `w-full` alongside it: a fixed width:100% is measured
+      // against the (still-padded) parent's content box, so it would only
+      // shift the box left without actually widening it to reach the real
+      // right edge too — confirmed live as a real, screenshot-visible bug on
+      // a sibling full-bleed element, not just a theoretical concern.
+      className="relative z-40 -mx-4 sm:-mx-6 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-b border-cyan-500/30"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex items-start sm:items-center justify-center gap-2 sm:gap-4">
         <p className="flex-1 text-center text-[11px] sm:text-xs font-medium text-slate-200 leading-snug">
           {t.message}{' '}
