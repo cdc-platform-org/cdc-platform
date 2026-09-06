@@ -77,5 +77,21 @@
   "proctoringTitle": "AI პროქტორინგის საგამოცდო სისტემა",
   "proctoringDesc": "გამოცდების ონლაინ მონიტორინგი და თაღლითობის პრევენცია, AI-ზე დაფუძნებული.",
   "proctoringBadge": "🛡️ AI PROCTOR LIVE",
-  "comingSoonBadge": "მალე"
+  "comingSoonBadge": "მალე",
+  "paid": "ფასიანი",
+  "searchPlaceholder": "ძებნა პროდუქტებში...",
+  "sortLabel": "დახარისხება",
+  "sortNewest": "ახლები (ახალი → ძველი)",
+  "sortAlphaAsc": "ანბანით: ა - ჰ",
+  "sortAlphaDesc": "ანბანით: ჰ - ა",
+  "sortPriceAsc": "ფასი: ზრდადობით",
+  "sortPriceDesc": "ფასი: კლებადობით",
+  "sortPopularity": "პოპულარობით",
+  "priceRangeLabel": "ფასის დიაპაზონი",
+  "minPricePlaceholder": "მინ. ფასი",
+  "maxPricePlaceholder": "მაქს. ფასი",
+  "resetFilters": "ფილტრების გასუფთავება",
+  "filtersButton": "ფილტრები",
+  "applyFilters": "გამოყენება",
+  "noResultsFiltered": "თქვენი ფილტრებით პროდუქტები ვერ მოიძებნა."
 }

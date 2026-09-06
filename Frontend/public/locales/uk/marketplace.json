@@ -77,5 +77,21 @@
   "proctoringTitle": "Система іспитів з AI-проктерингом",
   "proctoringDesc": "Онлайн-моніторинг іспитів і запобігання шахрайству на основі AI.",
   "proctoringBadge": "🛡️ AI PROCTOR LIVE",
-  "comingSoonBadge": "Скоро"
+  "comingSoonBadge": "Скоро",
+  "paid": "Paid",
+  "searchPlaceholder": "Search products...",
+  "sortLabel": "Sort by",
+  "sortNewest": "Newest First",
+  "sortAlphaAsc": "Alphabetical: A - Z",
+  "sortAlphaDesc": "Alphabetical: Z - A",
+  "sortPriceAsc": "Price: Low to High",
+  "sortPriceDesc": "Price: High to Low",
+  "sortPopularity": "Most Popular",
+  "priceRangeLabel": "Price Range",
+  "minPricePlaceholder": "Min price",
+  "maxPricePlaceholder": "Max price",
+  "resetFilters": "Reset All Filters",
+  "filtersButton": "Filters",
+  "applyFilters": "Apply",
+  "noResultsFiltered": "No products match your filters."
 }

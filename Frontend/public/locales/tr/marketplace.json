@@ -77,5 +77,21 @@
   "proctoringTitle": "AI Gözetimli Sınav Sistemi",
   "proctoringDesc": "Yapay zeka destekli çevrimiçi sınav izleme ve hile önleme.",
   "proctoringBadge": "🛡️ AI PROCTOR LIVE",
-  "comingSoonBadge": "Yakında"
+  "comingSoonBadge": "Yakında",
+  "paid": "Paid",
+  "searchPlaceholder": "Search products...",
+  "sortLabel": "Sort by",
+  "sortNewest": "Newest First",
+  "sortAlphaAsc": "Alphabetical: A - Z",
+  "sortAlphaDesc": "Alphabetical: Z - A",
+  "sortPriceAsc": "Price: Low to High",
+  "sortPriceDesc": "Price: High to Low",
+  "sortPopularity": "Most Popular",
+  "priceRangeLabel": "Price Range",
+  "minPricePlaceholder": "Min price",
+  "maxPricePlaceholder": "Max price",
+  "resetFilters": "Reset All Filters",
+  "filtersButton": "Filters",
+  "applyFilters": "Apply",
+  "noResultsFiltered": "No products match your filters."
 }
