@@ -106,3 +106,65 @@ export async function createMentorshipCalendarEvent(
   const data = (await response.json()) as { id: string; hangoutLink?: string };
   return { eventId: data.id, meetLink: data.hangoutLink ?? null };
 }
+
+// ============================================================
+// Same event+Meet-link pattern as createMentorshipCalendarEvent above, for
+// a Live Training's own session instead of a 1:1 mentorship slot — no
+// attendees invited individually (a training's real roster lives in
+// LiveTrainingEnrollment/LiveTrainingLead, not this calendar event; the
+// Meet link itself is what actually gates access, shared out via the
+// enrollment confirmation email/WhatsApp — see emailService.ts).
+// ============================================================
+export interface CreateLiveTrainingEventParams {
+  title: string;
+  scheduledAt: Date;
+  durationMinutes?: number;
+  description?: string | null;
+}
+
+export interface CreateLiveTrainingEventResult {
+  eventId: string;
+  meetLink: string | null;
+}
+
+export async function createLiveTrainingCalendarEvent(
+  params: CreateLiveTrainingEventParams
+): Promise<CreateLiveTrainingEventResult> {
+  if (!isGoogleCalendarConfigured()) {
+    throw new GoogleCalendarNotConfiguredError();
+  }
+
+  const accessToken = await getClient().getAccessToken();
+  if (!accessToken.token) {
+    throw new Error('Failed to obtain a Google Calendar access token.');
+  }
+
+  const start = params.scheduledAt;
+  const end = new Date(start.getTime() + (params.durationMinutes ?? 90) * 60_000);
+  const requestId = `cdc-live-training-${start.getTime()}-${Math.random().toString(36).slice(2, 10)}`;
+
+  const body = {
+    summary: `CDC Live Training: ${params.title}`,
+    description: params.description ?? undefined,
+    start: { dateTime: start.toISOString() },
+    end: { dateTime: end.toISOString() },
+    conferenceData: {
+      createRequest: { requestId, conferenceSolutionKey: { type: 'hangoutsMeet' } },
+    },
+  };
+
+  const response = await fetch(
+    `${CALENDAR_API_BASE}/calendars/${encodeURIComponent(GOOGLE_CALENDAR_ID)}/events?conferenceDataVersion=1`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken.token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }
+  );
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '');
+    throw new Error(`Google Calendar event creation failed (${response.status}): ${errText}`);
+  }
+  const data = (await response.json()) as { id: string; hangoutLink?: string };
+  return { eventId: data.id, meetLink: data.hangoutLink ?? null };
+}

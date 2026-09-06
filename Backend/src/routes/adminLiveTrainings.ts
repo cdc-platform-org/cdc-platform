@@ -19,6 +19,7 @@ import { createExamSessionSchema, updateExamSessionSchema } from '../schemas/exa
 import { processLiveTrainingSynopsis } from '../services/liveTrainingSynopsisService';
 import { grantGraduateStatus } from '../services/graduateStatusService';
 import { generateExamQuestions, ExamProctoringAiError, isExamProctoringConfigured } from '../services/examProctoringService';
+import { setupCourseWorkspace } from '../services/googleAgentService';
 
 const router = Router();
 router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
@@ -113,6 +114,42 @@ router.post('/', async (req: Request, res: Response) => {
     );
   }
   res.status(201).json({ data: withCapacity(training) });
+});
+
+// ============================================================
+// "✨ ავტომატური გენერაცია (AI Workspace)" — the admin form's on-demand
+// generate button (both for a brand-new, not-yet-saved training and for
+// re-generating an existing one). Deliberately takes the details straight
+// from the form rather than a training id: this only ever produces links
+// to PRE-FILL the form's own meetingUrl/classroomUrl inputs, which the
+// admin can still edit or clear before the normal create/save request
+// persists anything — no training record is read or written here, so a
+// training that doesn't exist yet (still being drafted) works identically
+// to editing an existing one.
+// ============================================================
+const generateWorkspaceSchema = z.object({
+  title: z.string().trim().min(3).max(200),
+  scheduledAt: z.string().datetime(),
+  category: z.string().trim().max(100).optional(),
+});
+
+router.post('/generate-workspace', async (req: Request, res: Response) => {
+  const result = generateWorkspaceSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+
+  const workspace = await setupCourseWorkspace({
+    title: result.data.title,
+    scheduledAt: new Date(result.data.scheduledAt),
+    category: result.data.category,
+  });
+  await logAdminAction({
+    action: 'liveTraining.workspace.generate',
+    targetType: 'LiveTraining',
+    targetId: 'draft',
+    performedById: req.user!.id,
+    metadata: { title: result.data.title, meetingUrlGenerated: !!workspace.meetingUrl, classroomUrlGenerated: !!workspace.classroomUrl, errors: workspace.errors },
+  });
+  res.json({ data: workspace });
 });
 
 router.put('/:id', async (req: Request, res: Response) => {

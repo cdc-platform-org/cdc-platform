@@ -48,6 +48,24 @@ export async function updateLiveTraining(id: string, payload: Partial<LiveTraini
   return response.data.data;
 }
 
+export interface GenerateWorkspaceResult {
+  meetingUrl: string | null;
+  classroomUrl: string | null;
+  errors: string[];
+}
+
+// Pre-fills the form's own meetingUrl/classroomUrl inputs — never persists
+// anything itself, works identically for a draft that hasn't been saved
+// yet and for an existing training (see the backend route's own comment).
+export async function generateLiveTrainingWorkspace(params: {
+  title: string;
+  scheduledAt: string;
+  category?: string;
+}): Promise<GenerateWorkspaceResult> {
+  const response = await apiClient.post<{ data: GenerateWorkspaceResult }>('/admin/live-trainings/generate-workspace', params);
+  return response.data.data;
+}
+
 // Throws an axios error with response.status === 409 and
 // response.data.enrollmentCount when the training has real enrollments and
 // `force` wasn't passed — see the backend route's own comment.

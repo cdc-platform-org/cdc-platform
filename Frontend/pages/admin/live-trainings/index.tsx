@@ -14,6 +14,7 @@ import {
   deleteLiveTraining,
   uploadLiveTrainingImage,
   regenerateLiveTrainingSynopsis,
+  generateLiveTrainingWorkspace,
   LiveTrainingPayload,
 } from '../../../src/services/adminLiveTrainingService';
 
@@ -28,6 +29,24 @@ function toIsoDatetime(local: string): string {
 }
 function toLocalInput(iso: string): string {
   return iso ? iso.slice(0, 16) : '';
+}
+
+// AUDIT NOTE (fixed): a validation failure on POST/PUT /admin/live-trainings
+// responds with { errors: ZodIssue[] } (see adminLiveTrainings.ts's
+// safeParse branches), never { message }. Reading only err.response.data
+// .message meant EVERY validation rejection — a malformed meetingUrl typed
+// by hand, a bad date, whatever the real cause — fell through to the same
+// generic "ტრენინგის შენახვა ვერ მოხერხდა" with no indication of what
+// was actually wrong. This surfaces the real field + reason instead.
+function extractSaveErrorMessage(err: any): string {
+  const zodIssues = err?.response?.data?.errors as { path?: (string | number)[]; message?: string }[] | undefined;
+  if (Array.isArray(zodIssues) && zodIssues.length > 0) {
+    return zodIssues
+      .map((issue) => (issue.path?.length ? `${issue.path.join('.')}: ${issue.message}` : issue.message))
+      .filter(Boolean)
+      .join(' | ');
+  }
+  return err?.response?.data?.message ?? 'ტრენინგის შენახვა ვერ მოხერხდა. სცადეთ თავიდან.';
 }
 
 const emptyForm: LiveTrainingPayload & { scheduledAtLocal: string; startDateLocal: string; endDateLocal: string } = {
@@ -62,6 +81,12 @@ function AdminLiveTrainingsDashboard() {
   const [formError, setFormError] = useState<string | null>(null);
   const [activeLangTab, setActiveLangTab] = useState<'ka' | 'en'>('ka');
   const [imageUploading, setImageUploading] = useState(false);
+
+  // AI Workspace generation — a pure "fill the two inputs below" action,
+  // independent of the main submit's own submitting/formError state, so
+  // generating doesn't disturb (or get disturbed by) an in-flight save.
+  const [generatingWorkspace, setGeneratingWorkspace] = useState(false);
+  const [workspaceStatus, setWorkspaceStatus] = useState<{ kind: 'success' | 'partial' | 'error'; message: string } | null>(null);
 
   // Kept alongside `form`/`editingId` rather than folded into `form` itself
   // — synopsis text has its own save action and a "Regenerate" trigger, not
@@ -185,6 +210,44 @@ function AdminLiveTrainingsDashboard() {
   const SYNOPSIS_VALUE: Record<'Ka' | 'En' | 'Ru', string> = { Ka: synopsisKa, En: synopsisEn, Ru: synopsisRu };
   const SYNOPSIS_SETTER: Record<'Ka' | 'En' | 'Ru', (v: string) => void> = { Ka: setSynopsisKa, En: setSynopsisEn, Ru: setSynopsisRu };
 
+  // "✨ ავტომატური გენერაცია (AI Workspace)" — only fills the two inputs
+  // below (setForm), never calls createLiveTraining/updateLiveTraining
+  // itself, so the admin can review/edit/clear either link and only the
+  // normal Save button actually persists anything.
+  const handleGenerateWorkspace = async () => {
+    if (form.title.trim().length < 3) return setWorkspaceStatus({ kind: 'error', message: 'ჯერ შეიყვანეთ სათაური (მინიმუმ 3 სიმბოლო).' });
+    if (!form.scheduledAtLocal) return setWorkspaceStatus({ kind: 'error', message: 'ჯერ აირჩიეთ თარიღი და დრო.' });
+
+    setGeneratingWorkspace(true);
+    setWorkspaceStatus(null);
+    try {
+      const result = await generateLiveTrainingWorkspace({
+        title: form.title.trim(),
+        scheduledAt: toIsoDatetime(form.scheduledAtLocal),
+        category: form.category.trim() || undefined,
+      });
+      setForm((prev) => ({
+        ...prev,
+        meetingUrl: result.meetingUrl ?? prev.meetingUrl,
+        classroomUrl: result.classroomUrl ?? prev.classroomUrl,
+      }));
+      if (result.meetingUrl && result.classroomUrl) {
+        setWorkspaceStatus({ kind: 'success', message: '✅ Google Meet და Classroom ბმულები დაგენერირდა და შეივსო ველებში.' });
+      } else if (result.meetingUrl || result.classroomUrl) {
+        setWorkspaceStatus({
+          kind: 'partial',
+          message: `⚠️ ნაწილობრივ წარმატებული: ${[!result.meetingUrl && 'Meet ბმული ვერ დაგენერირდა', !result.classroomUrl && 'Classroom ბმული ვერ დაგენერირდა'].filter(Boolean).join(', ')}. დეტალები: ${result.errors.join(' | ')}`,
+        });
+      } else {
+        setWorkspaceStatus({ kind: 'error', message: `❌ ვერცერთი ბმული ვერ დაგენერირდა: ${result.errors.join(' | ')}` });
+      }
+    } catch (err: any) {
+      setWorkspaceStatus({ kind: 'error', message: err?.response?.data?.message ?? '❌ Google Workspace-ის გენერაცია ვერ მოხერხდა.' });
+    } finally {
+      setGeneratingWorkspace(false);
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setFormError(null);
@@ -228,7 +291,7 @@ function AdminLiveTrainingsDashboard() {
       }
       resetForm();
     } catch (err: any) {
-      setFormError(err?.response?.data?.message ?? 'ტრენინგის შენახვა ვერ მოხერხდა. სცადეთ თავიდან.');
+      setFormError(extractSaveErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -378,6 +441,29 @@ function AdminLiveTrainingsDashboard() {
                     className={inputClass}
                   />
                 </div>
+              </div>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleGenerateWorkspace}
+                  disabled={generatingWorkspace}
+                  className="inline-flex items-center gap-2 text-xs font-bold text-white bg-gradient-to-r from-purple-500 to-cyan-600 px-4 py-2.5 rounded-lg border-none cursor-pointer disabled:opacity-60"
+                >
+                  {generatingWorkspace ? 'გენერირდება…' : '✨ ავტომატური გენერაცია (AI Workspace)'}
+                </button>
+                {workspaceStatus && (
+                  <p
+                    className={`text-xs font-semibold ${
+                      workspaceStatus.kind === 'success'
+                        ? 'text-emerald-600'
+                        : workspaceStatus.kind === 'partial'
+                          ? 'text-amber-600'
+                          : 'text-red-600'
+                    }`}
+                  >
+                    {workspaceStatus.message}
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
