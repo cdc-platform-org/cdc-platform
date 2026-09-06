@@ -25,7 +25,7 @@ router.post('/submit', authenticate, async (req: Request, res: Response) => {
   const lang = req.body?.lang === 'en' ? 'en' : 'ka';
   try {
     const resultText = await generateCareerQuizResult(
-      { interests: result.data.interests, experience: result.data.experience, mainGoal: result.data.mainGoal },
+      { gender: result.data.gender, age: result.data.age, answers: result.data.answers },
       lang
     );
 
@@ -36,11 +36,10 @@ router.post('/submit', authenticate, async (req: Request, res: Response) => {
         email: result.data.email,
         phone: result.data.phone,
         audience: result.data.audience,
-        interests: result.data.interests,
-        experience: result.data.experience,
-        mainGoal: result.data.mainGoal,
+        gender: result.data.gender,
+        age: result.data.age,
+        answers: result.data.answers,
         resultText,
-        age: result.data.age ?? null,
         ref: result.data.ref ?? null,
       },
     });
@@ -50,6 +49,11 @@ router.post('/submit', authenticate, async (req: Request, res: Response) => {
     if (err instanceof CareerQuizNotConfiguredError) {
       return res.status(501).json({ message: err.message });
     }
+    // Never leaks the raw AI/provider error to the client — same posture as
+    // the homepage assistant's chat API. A transient Gemini/Azure failure
+    // (rate limit, timeout, malformed response) is common enough on a cold
+    // production deploy that this must degrade to a clean, retryable
+    // message rather than a raw 500/stack trace reaching the browser.
     console.error('[careerQuiz] generateCareerQuizResult failed:', err instanceof Error ? err.message : err);
     res.status(502).json({ message: 'ტესტის შედეგის გენერირება ვერ მოხერხდა. სცადეთ თავიდან.' });
   }

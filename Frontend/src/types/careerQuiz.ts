@@ -1,4 +1,5 @@
 export type CareerQuizAudience = 'SELF' | 'CHILD';
+export type CareerQuizGender = 'MALE' | 'FEMALE' | 'OTHER';
 
 export interface CareerQuizSubmission {
   id: string;
@@ -7,11 +8,10 @@ export interface CareerQuizSubmission {
   email: string;
   phone: string;
   audience: CareerQuizAudience;
-  interests: string;
-  experience: string;
-  mainGoal: string;
+  gender: CareerQuizGender;
+  age: number;
+  answers: Record<string, string>;
   resultText: string;
-  age: number | null;
   ref: string | null;
   createdAt: string;
 }

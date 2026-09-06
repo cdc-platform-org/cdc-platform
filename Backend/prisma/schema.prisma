@@ -4681,25 +4681,42 @@ enum CareerQuizAudience {
   CHILD
 }
 
+enum CareerQuizGender {
+  MALE
+  FEMALE
+  OTHER
+}
+
 // One row per completed AI Career Quiz attempt — required to be
 // authenticated (routes/careerQuiz.ts), so unlike the old, purely-
 // conversational in-chat quiz this used to be (see Frontend's
 // lib/gemini.ts git history), every submission is durably tied to a real
 // account and can be re-viewed later from the dashboard
-// (/dashboard/career-quiz). `age`/`ref` are optional pass-through fields
-// from an admin-generated pre-filled link (e.g. /career-test?age=14&ref=sofi)
-// — kept for attribution/reporting, not used in any access-control decision.
+// (/dashboard/career-quiz). `ref` is an optional pass-through attribution
+// tag from an admin-generated pre-filled link (e.g. /career-test?ref=sofi)
+// — never used in any access-control decision.
 model CareerQuizSubmission {
-  id         String             @id @default(uuid())
-  userId     String
-  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fullName   String
-  email      String
-  phone      String
-  audience   CareerQuizAudience @default(SELF)
-  interests  String
-  experience String
-  mainGoal   String
+  id       String             @id @default(uuid())
+  userId   String
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName String
+  email    String
+  phone    String
+  audience CareerQuizAudience @default(SELF)
+  gender   CareerQuizGender
+  // Drives which question set the frontend showed (see career-test.tsx's
+  // KID_QUESTIONS/ADULT_QUESTIONS split at the <16 boundary) and is passed
+  // straight into the AI prompt for age-appropriate tone/vocabulary — always
+  // required now (a plain quiz answer, not the old admin-link pass-through
+  // it used to double as).
+  age Int
+  // Free-text question/answer pairs, e.g. {"interest": "...", "workStyle":
+  // "..."} — kept as JSON rather than one column per question because the
+  // kid and adult question sets are entirely different dimensions (see
+  // careerQuizService.ts's buildAnswersTranscript) that would otherwise mean
+  // half of a fixed column set is always null, and a schema migration every
+  // time a question is reworded.
+  answers Json
   // AI-generated (see careerQuizService.ts's generateCareerQuizResult) —
   // Markdown prose recommending specific course(s)/live training(s) from the
   // real, live catalog at the moment of submission. Kept verbatim rather
@@ -4707,7 +4724,6 @@ model CareerQuizSubmission {
   // time, and a stored result should keep reading the same as what the user
   // actually saw and acted on.
   resultText String
-  age        Int?
   ref        String?
   createdAt  DateTime           @default(now())
 
