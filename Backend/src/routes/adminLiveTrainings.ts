@@ -88,7 +88,7 @@ router.get('/', async (_req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   const result = liveTrainingCreateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
-  const { thumbnailUrl, videoUrl, meetingUrl, classroomUrl, recordingUrl, startDate, endDate, ...rest } = result.data;
+  const { thumbnailUrl, videoUrl, meetingUrl, classroomUrl, recordingUrl, trainerVideoUrl, startDate, endDate, ...rest } = result.data;
   const training = await prisma.liveTraining.create({
     data: {
       ...rest,
@@ -97,6 +97,7 @@ router.post('/', async (req: Request, res: Response) => {
       meetingUrl: meetingUrl || null,
       classroomUrl: classroomUrl || null,
       recordingUrl: recordingUrl || null,
+      trainerVideoUrl: trainerVideoUrl || null,
       startDate: startDate ? new Date(startDate) : null,
       endDate: endDate ? new Date(endDate) : null,
       scheduledAt: new Date(result.data.scheduledAt),
@@ -155,7 +156,7 @@ router.post('/generate-workspace', async (req: Request, res: Response) => {
 router.put('/:id', async (req: Request, res: Response) => {
   const result = liveTrainingUpdateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
-  const { thumbnailUrl, videoUrl, meetingUrl, classroomUrl, recordingUrl, startDate, endDate, scheduledAt, ...rest } = result.data;
+  const { thumbnailUrl, videoUrl, meetingUrl, classroomUrl, recordingUrl, trainerVideoUrl, startDate, endDate, scheduledAt, ...rest } = result.data;
   try {
     const existing = recordingUrl !== undefined
       ? await prisma.liveTraining.findUnique({ where: { id: req.params.id }, select: { recordingUrl: true } })
@@ -170,6 +171,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         ...(meetingUrl !== undefined ? { meetingUrl: meetingUrl || null } : {}),
         ...(classroomUrl !== undefined ? { classroomUrl: classroomUrl || null } : {}),
         ...(recordingUrl !== undefined ? { recordingUrl: recordingUrl || null } : {}),
+        ...(trainerVideoUrl !== undefined ? { trainerVideoUrl: trainerVideoUrl || null } : {}),
         ...(startDate !== undefined ? { startDate: startDate ? new Date(startDate) : null } : {}),
         ...(endDate !== undefined ? { endDate: endDate ? new Date(endDate) : null } : {}),
         ...(scheduledAt !== undefined ? { scheduledAt: new Date(scheduledAt) } : {}),

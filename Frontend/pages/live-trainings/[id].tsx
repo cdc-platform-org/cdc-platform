@@ -14,6 +14,7 @@ import { checkoutLiveTrainingStripe } from '../../src/services/stripePaymentServ
 import { validatePromoCode, PromoValidationResult } from '../../src/services/paymentService';
 import { resolveLocale } from '@/src/utils/locale';
 import { courseLanguageBadge } from '@/src/utils/courseLanguage';
+import { formatLiveTrainingPriceLabel } from '@/src/utils/liveTrainingPricing';
 import { useAuth } from '../../src/context/AuthContext';
 
 const EN_STRINGS = {
@@ -42,6 +43,7 @@ const EN_STRINGS = {
   alreadyEnrolled: 'You are already enrolled in this training.',
   refundGuarantee: '🛡️ 100% refund guarantee if the group doesn\'t fill or the training is cancelled',
   refundGuaranteeDetail: 'If the minimum group size isn\'t reached or the training is cancelled for any reason, you\'ll receive a 100% refund.',
+  trainerVideoHeading: 'Meet Your Trainer',
 };
 
 // Real short translations for the refund-guarantee badge specifically
@@ -100,6 +102,7 @@ const dict = {
     alreadyEnrolled: 'თქვენ უკვე ჩარიცხული ხართ ამ ტრენინგზე.',
     refundGuarantee: '🛡️ 100% თანხის დაბრუნების გარანტია ჯგუფის შეუვსებლობის ან ჩაშლის შემთხვევაში',
     refundGuaranteeDetail: 'თუ ლაივ ტრენინგზე არ შეგროვდა მინიმალური ჯგუფი ან ტრენინგი ჩაიშალა რაიმე მიზეზით, გადახდილი თანხა მომხმარებელს დაუბრუნდება 100%-ით.',
+    trainerVideoHeading: 'გაიცანით ლექტორი',
   },
   en: EN_STRINGS,
   de: { ...EN_STRINGS, ...DE_REFUND_GUARANTEE },
@@ -287,10 +290,20 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
             <Calendar size={15} className="text-cyan-400" />
             {new Date(training.scheduledAt).toLocaleString()}
           </span>
-          <span className="font-bold text-cyan-400">
-            {training.price ? `${(training.price / 100).toFixed(2)} ₾` : t.free}
-          </span>
+          <span className="font-bold text-cyan-400">{formatLiveTrainingPriceLabel(training, contentLang)}</span>
+          {training.scheduleDays && (
+            <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border text-purple-300 border-purple-500/30 bg-purple-500/10">
+              📅 {training.scheduleDays}
+            </span>
+          )}
         </div>
+
+        {training.trainerVideoUrl && (
+          <div className="mb-6">
+            <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-3">{t.trainerVideoHeading}</h2>
+            <VideoEmbed url={training.trainerVideoUrl} title={title} />
+          </div>
+        )}
 
         {/* Capacity block — seat counter, min-threshold badge, and the
             auto-cap that disables the form once isFull flips true (derived

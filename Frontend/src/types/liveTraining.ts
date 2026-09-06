@@ -1,5 +1,10 @@
 import { CourseLanguage, SubtitlesStatus } from './lms';
 
+// Whether `price` is charged once per durationMonths (a monthly rate) or as
+// a single flat total for the whole program — mirrors Backend's
+// LiveTrainingPriceType enum exactly.
+export type LiveTrainingPriceType = 'MONTHLY' | 'TOTAL';
+
 export interface LiveTraining {
   id: string;
   title: string;
@@ -26,6 +31,17 @@ export interface LiveTraining {
   // model comment.
   startDate: string | null;
   endDate: string | null;
+  priceType: LiveTrainingPriceType;
+  // Program length in months (e.g. 2) — paired with priceType/price to
+  // render a label like "350 ₾ / თვეში (ხანგრძლივობა: 2 თვე, ჯამში 700 ₾)".
+  durationMonths: number | null;
+  // Free-text schedule description (e.g. "ორშ - ოთხ | 19:00") — deliberately
+  // a plain string, not a structured days/time model: this only ever
+  // renders as a single badge, and every training's cadence is worded
+  // differently enough (some list days, some list a weekly count) that a
+  // fixed schema would just force admins to fight the input.
+  scheduleDays: string | null;
+  trainerVideoUrl: string | null;
   // AI-generated "conspectus" (study notes/synopsis) extracted from
   // recordingUrl's audio — see Backend's liveTrainingSynopsisService.ts.
   // Same status/error/per-language shape as AdminLesson's own conspectus
