@@ -1,4 +1,4 @@
-import { MapPin, Trophy, ExternalLink, GraduationCap, Briefcase, ShoppingBag, Building2, Bot } from 'lucide-react';
+import { MapPin, Trophy, ExternalLink, GraduationCap, Briefcase, ShoppingBag, Building2, Bot, Quote, Accessibility, Brain, Languages, Target, TrendingUp } from 'lucide-react';
 import SimpleSiteLayout from '@/src/components/layout/SimpleSiteLayout';
 import TeamTrainersSection from '@/src/components/shared/TeamTrainersSection';
 import { aboutContent } from '@/src/data/aboutContent';
@@ -49,6 +49,11 @@ const ECOSYSTEM_FEATURES = [
   },
 ] as const;
 
+// Paired by index with aboutContent.missionValues.pillars — icons are a
+// presentation concern kept in the page, same split as ECOSYSTEM_FEATURES
+// above vs. the plain-data aboutContent.ts.
+const MISSION_PILLAR_ICONS = [Accessibility, Brain, Languages, Target] as const;
+
 export default function AboutPage() {
   return (
     <SimpleSiteLayout titleKa={aboutContent.heading.ka} titleEn={aboutContent.heading.en}>
@@ -84,6 +89,56 @@ export default function AboutPage() {
                 </p>
               ))}
             </div>
+
+            {/* MISSION & VALUES — the actual mission statement + the four
+                pillars it stands on + why it matters to a business partner.
+                Distinct from aboutContent.mission above (that's the
+                founding/history blurb shown near the top of the page). */}
+            <section className="mb-16">
+              <h2 className="text-xl font-black mb-8">{aboutContent.missionValues.heading[l]}</h2>
+
+              <div className="relative rounded-2xl border border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 via-slate-900/60 to-purple-600/10 px-6 sm:px-10 py-8 sm:py-10 mb-8 overflow-hidden">
+                <Quote className="absolute top-4 left-4 sm:top-6 sm:left-6 w-8 h-8 text-cyan-500/25" aria-hidden="true" />
+                <p className="relative text-base sm:text-lg text-slate-100 leading-relaxed font-medium italic text-center max-w-3xl mx-auto">
+                  {aboutContent.missionValues.statement[l]}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                {aboutContent.missionValues.pillars.map((pillar, i) => {
+                  const Icon = MISSION_PILLAR_ICONS[i];
+                  return (
+                    <div
+                      key={i}
+                      className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 transition-all duration-300 hover:border-cyan-400/40 hover:shadow-[0_0_25px_rgba(34,211,238,0.15)]"
+                    >
+                      <div className="inline-flex bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 text-cyan-400 p-3.5 rounded-2xl shadow-lg shadow-cyan-500/10 mb-4">
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <h3 className="font-black text-sm mb-2 text-white">{pillar.title[l]}</h3>
+                      <p className="text-xs text-slate-400 leading-relaxed">{pillar.description[l]}</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 sm:p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="inline-flex bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 text-emerald-400 p-3 rounded-2xl shadow-lg shadow-emerald-500/10 shrink-0">
+                    <TrendingUp className="w-5 h-5" />
+                  </div>
+                  <h3 className="font-black text-base text-white">{aboutContent.missionValues.businessValue.heading[l]}</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {aboutContent.missionValues.businessValue.points.map((point, i) => (
+                    <div key={i}>
+                      <h4 className="font-black text-sm mb-1.5 text-cyan-300">{point.title[l]}</h4>
+                      <p className="text-xs text-slate-400 leading-relaxed">{point.description[l]}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
 
             <h2 className="text-xl font-black mb-8">{lang === 'GEO' ? 'CDC ეკოსისტემა' : 'The CDC Ecosystem'}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-16">

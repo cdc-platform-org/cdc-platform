@@ -18,6 +18,11 @@ export interface AboutAchievement {
   description: { ka: string; en: string };
 }
 
+export interface MissionPillar {
+  title: { ka: string; en: string };
+  description: { ka: string; en: string };
+}
+
 export const aboutContent = {
   heading: {
     ka: 'ჩვენ შესახებ',
@@ -70,6 +75,68 @@ export const aboutContent = {
     { value: '100%', label: { ka: 'პრაქტიკული დავალებები', en: 'Practical Tasks' } },
     { value: '2023', label: { ka: 'დაარსების წელი', en: 'Founded' } },
   ] as AboutStat[],
+  // Mission & Values section — distinct from `mission` above (that's the
+  // org's founding/history blurb; this is the actual mission STATEMENT +
+  // the four pillars it's built on + why it matters to a business partner).
+  missionValues: {
+    heading: {
+      ka: 'ციფრული პროფესიების ცენტრის (CDC) მისია',
+      en: 'The Mission of the Center for Digital Careers (CDC)',
+    },
+    statement: {
+      ka: 'შევქმნათ ხელმისაწვდომი, თანამედროვე და ავტომატიზებული ეკოსისტემა, რომელიც ნებისმიერ მსურველს აძლევს მოთხოვნადი ციფრული პროფესიებისა და თანამედროვე ციფრული ინსტრუმენტების ათვისების, პრაქტიკული უნარების განვითარებისა და დასაქმების რეალურ შესაძლებლობას.',
+      en: 'To build an accessible, modern, and automated ecosystem that gives anyone who wants it a real opportunity to master in-demand digital professions and modern digital tools, develop practical skills, and find employment.',
+    },
+    pillars: [
+      {
+        title: { ka: 'ხელმისაწვდომობა და გაძლიერება', en: 'Accessibility & Empowerment' },
+        description: {
+          ka: 'რეგიონებში მცხოვრები ახალგაზრდებისა და ქალების ციფრული წიგნიერების გაზრდა და პროფესიული ხელშეწყობა.',
+          en: 'Increasing digital literacy and providing professional support for young people and women living in the regions.',
+        },
+      },
+      {
+        title: { ka: 'ადაპტირებადი სასწავლო პროცესი', en: 'Adaptive Learning Process' },
+        description: {
+          ka: 'მოქნილი, ინდივიდუალურ საჭიროებებზე მორგებული სწავლება AI ასისტენტების, Google Classroom-ის, Live შეხვედრებისა და პრაქტიკული დავალებების ინტეგრაციით.',
+          en: 'Flexible, individually-tailored learning through the integration of AI assistants, Google Classroom, live sessions, and practical assignments.',
+        },
+      },
+      {
+        title: { ka: 'მრავალენოვანი ეკოსისტემა', en: 'Multilingual Ecosystem' },
+        description: {
+          ka: 'ქართულენოვანი და საერთაშორისო სტუდენტებისთვის სრულად ავტომატიზებული სასწავლო გარემო.',
+          en: 'A fully automated learning environment for both Georgian-speaking and international students.',
+        },
+      },
+      {
+        title: { ka: 'შედეგზე ორიენტირებულობა', en: 'Results-Oriented' },
+        description: {
+          ka: 'პრაქტიკული მომზადება CDC-ის პლატფორმასა და რეალურ ბაზარზე დასასაქმებლად.',
+          en: 'Practical preparation for employment on the CDC platform and in the real job market.',
+        },
+      },
+    ] as MissionPillar[],
+    businessValue: {
+      heading: { ka: 'ღირებულება ბიზნესისთვის', en: 'Value for Business' },
+      points: [
+        {
+          title: { ka: 'ბაზრის მოთხოვნებთან მყისიერი ადაპტაცია', en: 'Instant Adaptation to Market Demands' },
+          description: {
+            ka: 'ვქმნით დინამიურ, მოქნილ განათლებას, სადაც სტუდენტი სწავლობს დღესვე მოთხოვნად ციფრულ ინსტრუმენტებს და მარტივად ერგება კომპანიების რეალურ ამოცანებს.',
+            en: "We create dynamic, flexible education where students learn today's in-demand digital tools and easily adapt to companies' real-world tasks.",
+          },
+        },
+        {
+          title: { ka: 'მზა, პროდუქტიული კადრები', en: 'Ready, Productive Talent' },
+          description: {
+            ka: 'ბიზნესი იღებს თანამედროვე, აქტუალური უნარებით შეიარაღებულ პრაქტიკოსებს, რომლებსაც პირველივე დღიდან მოაქვთ რეალური შედეგი.',
+            en: 'Businesses gain practitioners equipped with modern, up-to-date skills who deliver real results from day one.',
+          },
+        },
+      ] as MissionPillar[],
+    },
+  },
   achievements: [
     {
       title: { ka: '180+ ბენეფიციარი გაწვრთნილია 2025 წელს', en: '180+ Beneficiaries Trained in 2025' },
