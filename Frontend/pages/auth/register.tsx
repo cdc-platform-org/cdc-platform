@@ -66,7 +66,16 @@ function RegisterPage() {
   };
 
   const postSignupRedirect = (status: string) => {
+    // A pending-approval account can't actually use whatever page it was
+    // trying to reach yet — this hard gate always wins over ?redirect=.
     if (status === 'PENDING_APPROVAL') return '/auth/pending-approval';
+    // An explicit ?redirect= (set by AuthModal.tsx's goToRegister when a
+    // guest chose "Register" instead of logging in, e.g. from /career-test)
+    // always wins next — the visitor had a specific destination in mind.
+    // Previously dropped entirely: registering never returned anyone to
+    // where they came from, unlike the equivalent login flow.
+    const explicitRedirect = typeof router.query.redirect === 'string' ? router.query.redirect : undefined;
+    if (explicitRedirect) return explicitRedirect;
     // Every Employer signup (role: Client) gets the company-KYC prompt —
     // previously only the "Business" sub-choice did; "Client" landed on
     // /courses instead. Collapsing that choice means always taking the

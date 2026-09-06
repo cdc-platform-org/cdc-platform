@@ -24,6 +24,14 @@ interface OpenAuthModalOptions {
   // (not the stale one captured in the closure that called openAuthModal)
   // for callers that need to branch on it, e.g. isVerifiedGraduate.
   onSuccess?: AuthModalSuccessHandler;
+  // Where to send the visitor back to if they choose Register instead of
+  // logging in — Register always navigates away to the full /auth/register
+  // wizard (see AuthModal.tsx's goToRegister), so the in-memory `onSuccess`
+  // callback above can't survive that trip; this becomes a real `?redirect=`
+  // query param on the register URL instead. Defaults to the current page's
+  // own `redirect` query param (the ProtectedRoute-bounced-here case) when
+  // omitted, same as the login form's own precedence.
+  redirectPath?: string;
 }
 
 interface AuthModalContextValue {
@@ -32,6 +40,7 @@ interface AuthModalContextValue {
   initialMode: 'login' | 'register';
   initialRole: 'Student' | 'Client';
   onSuccess: AuthModalSuccessHandler | null;
+  redirectPath: string | null;
   openAuthModal: (options?: OpenAuthModalOptions) => void;
   closeAuthModal: () => void;
 }
@@ -44,6 +53,7 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
   const [initialMode, setInitialMode] = useState<'login' | 'register'>('login');
   const [initialRole, setInitialRole] = useState<'Student' | 'Client'>('Student');
   const [onSuccess, setOnSuccess] = useState<AuthModalSuccessHandler | null>(null);
+  const [redirectPath, setRedirectPath] = useState<string | null>(null);
 
   const openAuthModal = (options?: OpenAuthModalOptions) => {
     setContextMessage(options?.message ?? null);
@@ -52,6 +62,7 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
     // Wrapped in an arrow function — useState's setter treats a bare function
     // value as an updater, not a value to store.
     setOnSuccess(options?.onSuccess ? () => options.onSuccess! : null);
+    setRedirectPath(options?.redirectPath ?? null);
     setIsOpen(true);
   };
 
@@ -59,11 +70,12 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
     setIsOpen(false);
     setContextMessage(null);
     setOnSuccess(null);
+    setRedirectPath(null);
   };
 
   return (
     <AuthModalContext.Provider
-      value={{ isOpen, contextMessage, initialMode, initialRole, onSuccess, openAuthModal, closeAuthModal }}
+      value={{ isOpen, contextMessage, initialMode, initialRole, onSuccess, redirectPath, openAuthModal, closeAuthModal }}
     >
       {children}
     </AuthModalContext.Provider>
