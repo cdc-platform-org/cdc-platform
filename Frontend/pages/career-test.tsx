@@ -43,7 +43,9 @@ const dict = {
     genderMale: 'მამრობითი',
     genderFemale: 'მდედრობითი',
     genderOther: 'სხვა',
-    ageLabel: 'ასაკი / კლასი',
+    ageLabel: 'ასაკი (წლები)',
+    agePlaceholder: 'მაგ. 14',
+    ageHelper: 'მიუთითეთ ასაკი წლებში (არა კლასი).',
     next: 'შემდეგი',
     back: 'უკან',
     requiredStep1: 'გთხოვთ შეავსოთ ყველა ველი.',
@@ -118,7 +120,9 @@ const dict = {
     genderMale: 'Male',
     genderFemale: 'Female',
     genderOther: 'Other',
-    ageLabel: 'Age / Grade',
+    ageLabel: 'Age (in years)',
+    agePlaceholder: 'e.g. 14',
+    ageHelper: 'Enter your age in years (not grade).',
     next: 'Next',
     back: 'Back',
     requiredStep1: 'Please fill in every field.',
@@ -422,8 +426,10 @@ export default function CareerTestPage() {
                     max={100}
                     value={age}
                     onChange={(e) => setAge(e.target.value)}
+                    placeholder={t.agePlaceholder}
                     className="w-full rounded-lg border border-slate-700 bg-slate-800/60 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   />
+                  <p className="text-[11px] text-slate-500 mt-1.5">{t.ageHelper}</p>
                 </div>
 
                 <div>
