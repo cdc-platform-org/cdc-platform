@@ -179,193 +179,205 @@ export default function SiteHeader() {
   const canSeeMentorPanel = isAuthenticated && (user?.role === 'Mentor' || !!user?.adminRole);
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-[#0e1422]/90 backdrop-blur-md px-4 sm:px-6 py-4">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-1 lg:gap-2 xl:gap-3">
-        <Link href="/" className="flex items-center gap-1 lg:gap-2 xl:gap-3.5 shrink-0 no-underline text-current">
+    // Full-bleed edge-to-edge (-mx-4 sm:-mx-6 cancels _app.tsx's app-shell
+    // wrapper padding, same technique as index.tsx's hero section) so the
+    // glass background/border spans the true viewport width — the header
+    // used to sit inside BOTH its own px-4 sm:px-6 AND the app-shell's
+    // identical padding, doubling up into a visible inset "band" on both
+    // sides compared to every other full-width section on the page. The
+    // px-4 sm:px-6 that used to live on <nav> moves to the inner
+    // max-w-7xl content row instead, so the CONTENT still gets the same
+    // margin from the edge, just without the double-count.
+    <nav className="sticky top-0 z-50 -mx-4 sm:-mx-6 border-b border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-[#0e1422]/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-[#0e1422]/60 py-3.5">
+      {/* grid-cols-[1fr_auto_1fr], not flex justify-between: the two outer
+          columns are forced to equal width (whichever of logo/actions is
+          wider sets both), which is what actually centers the middle nav
+          column on the true viewport center — a flex `flex-1 justify-
+          center` on the nav alone only centers it in the space left over
+          AFTER the logo, which visibly drifts off-center by however much
+          narrower the logo is than the actions cluster. Logo/actions are
+          explicitly pinned to col-start-1/3 (not left to DOM-order auto-
+          placement) because the middle nav column is `hidden` below lg —
+          a display:none grid item is dropped from placement entirely, so
+          without an explicit column the actions cluster would slide into
+          the vacated middle slot on every viewport under 1024px. */}
+      <div className="max-w-7xl mx-auto grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 sm:px-6">
+        <Link href="/" className="col-start-1 justify-self-start flex items-center gap-2 xl:gap-3 shrink-0 no-underline text-current">
           <Image src="/images/cdc-logo.png" alt="CDC" width={40} height={40} className="h-9 w-auto rounded-xl object-cover" />
-          <span className="hidden sm:inline font-bold text-xs xl:text-sm tracking-wide text-slate-900 dark:text-white">CDC</span>
+          <span className="hidden sm:inline font-bold text-sm tracking-wide text-slate-900 dark:text-white">CDC</span>
         </Link>
 
-        {/* The nav-links block below is sized to genuinely fit (tight gap +
-            a small text size) rather than relying on overflow-hidden to
-            clip it — overflow-hidden here previously also clipped the
-            About/Marketplace dropdown panels, which are absolutely-
-            positioned descendants that extend below the row. The actions
-            group at the end (lang/theme/login/burger) stays shrink-0 so
-            it's always fully visible regardless of how long the KA nav
-            labels get. Bumped text-xs -> text-xs xl:text-sm for Georgian legibility;
-            still just as reliant on that tight gap/shrink-0 layout as
-            before, watch this row first if a future viewport ever needs
-            the nav links to fit tighter again. */}
-        <div className="flex items-center gap-1 lg:gap-2 xl:gap-3 sm:gap-1 lg:gap-2 xl:gap-3 min-w-0">
-          <div className="hidden md:flex items-center gap-1 lg:gap-2 xl:gap-3 lg:gap-1 lg:gap-2 xl:gap-3 text-xs xl:text-sm font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
-            {/* Community/Mentors/MentorPanel/About all collapsed into one
-                "More" dropdown (same hover-dropdown mechanics as
-                Marketplace/About already used below) instead of sitting as
-                separate always-visible items — at viewports between the
-                md breakpoint and ~1440px, the previous flat list of ~6-7
-                items plus the Marketplace/About dropdown triggers could
-                add up to wider than the space actually available between
-                the logo and the shrink-0 actions cluster, overflowing the
-                row horizontally and pushing the avatar/actions off-screen
-                under the scrollbar. Only Marketplace and Tools (this
-                site's two primary traffic drivers) stay always-visible. */}
-            <div className="relative group py-2 -my-2">
-              <button type="button" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-1 lg:gap-2 xl:gap-3 bg-transparent border-none cursor-pointer font-bold text-xs xl:text-sm p-0 text-inherit">
-                {t.more}
-                <ChevronDown className="w-3 h-3" />
-              </button>
-              <div className="absolute left-0 top-full pt-2 w-56 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150">
-                <div className="rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-xs xl:text-sm bg-white/95 backdrop-blur-md border-slate-200 dark:bg-[#0e1422]/95 dark:border-white/10">
-                  <Link href="/community" className="block px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
-                    {t.community}
-                  </Link>
-                  <Link href="/mentors" className="flex items-center gap-1 lg:gap-2 xl:gap-3 px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
-                    <Users className="w-4 h-4 shrink-0" />
-                    {t.mentors}
-                  </Link>
-                  {canSeeMentorPanel && (
-                    <Link
-                      href="/dashboard/mentorship-sessions"
-                      className="flex items-center gap-1 lg:gap-2 xl:gap-3 px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
-                    >
-                      <CalendarClock className="w-4 h-4 shrink-0" />
-                      {t.mentorPanel}
-                    </Link>
-                  )}
-                  {!(isAuthenticated && user) && (
-                    <>
-                      <Link href="/about" className="block px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
-                        {t.about}
-                      </Link>
-                      <Link href="/gallery" className="flex items-center gap-1 lg:gap-2 xl:gap-3 px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
-                        <GalleryHorizontal className="w-4 h-4 shrink-0" />
-                        {t.gallery}
-                      </Link>
-                    </>
-                  )}
-                  <Link href="/tutorials" className="flex items-center gap-1 lg:gap-2 xl:gap-3 px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
-                    <PlayCircle className="w-4 h-4 shrink-0" />
-                    {t.tutorials}
-                  </Link>
-                </div>
-              </div>
-            </div>
-            <Link href="/courses" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-1 lg:gap-2 xl:gap-3">
-              {t.courses}
-            </Link>
-            <div className="relative group py-2 -my-2">
-              <Link
-                href="/marketplace"
-                className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-1 lg:gap-2 xl:gap-3"
-              >
-                {t.marketplace}
-                <ChevronDown className="w-3 h-3" />
-              </Link>
-              <div className="absolute left-0 top-full pt-2 w-64 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150">
-                <div className="rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-xs xl:text-sm bg-white/95 backdrop-blur-md border-slate-200 dark:bg-[#0e1422]/95 dark:border-white/10">
-                  <p className="px-4 pt-3 pb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">{t.categories}</p>
-                  {MARKETPLACE_CATEGORIES.map((cat) => (
-                    <Link
-                      key={cat.value.en}
-                      href={`/marketplace?category=${encodeURIComponent(cat.value[catLocale])}`}
-                      className="block px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
-                    >
-                      {cat.value[catLocale]}
-                    </Link>
-                  ))}
+        {/* Center nav — a true 3-column balance (logo / nav / actions):
+            flex-1 + justify-center on this middle group lets it center
+            itself in whatever space is left between the logo and the
+            actions cluster, rather than being pushed flush against the
+            logo the way a plain justify-between would. Shown from lg
+            (1024px) up, not md (768px) as before — that md-1024px tablet
+            band is exactly where the previous tight-gap/small-text version
+            of this row used to risk overflowing (see git history), so
+            widening the links (text-base, gap-6/8) needed the extra room
+            lg gives rather than fighting for space between 768-1024px.
+            Community/Mentors/MentorPanel/About/Gallery/Tutorials stay
+            grouped under "More" — not a spacing workaround anymore, just a
+            reasonable information-architecture choice now that there's
+            room to spare; Courses/Marketplace/Tools remain this site's
+            three primary always-visible traffic drivers. */}
+        <div className="col-start-2 hidden lg:flex items-center justify-center gap-6 xl:gap-8 text-base font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">
+          <div className="relative group py-2 -my-2">
+            <button type="button" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-1.5 bg-transparent border-none cursor-pointer font-medium text-base p-0 text-inherit">
+              {t.more}
+              <ChevronDown className="w-4 h-4" />
+            </button>
+            <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 w-56 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150">
+              <div className="rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-sm bg-white/95 backdrop-blur-md border-slate-200 dark:bg-[#0e1422]/95 dark:border-white/10">
+                <Link href="/community" className="block px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                  {t.community}
+                </Link>
+                <Link href="/mentors" className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                  <Users className="w-4 h-4 shrink-0" />
+                  {t.mentors}
+                </Link>
+                {canSeeMentorPanel && (
                   <Link
-                    href="/marketplace"
-                    className="flex items-center gap-1 lg:gap-2 xl:gap-3.5 px-4 py-2.5 no-underline font-bold text-cyan-600 dark:text-cyan-400 border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                    href="/dashboard/mentorship-sessions"
+                    className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
                   >
-                    <ShoppingBag className="w-3.5 h-3.5" />
-                    {t.viewAllProducts}
+                    <CalendarClock className="w-4 h-4 shrink-0" />
+                    {t.mentorPanel}
                   </Link>
-                </div>
+                )}
+                {!(isAuthenticated && user) && (
+                  <>
+                    <Link href="/about" className="block px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                      {t.about}
+                    </Link>
+                    <Link href="/gallery" className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                      <GalleryHorizontal className="w-4 h-4 shrink-0" />
+                      {t.gallery}
+                    </Link>
+                  </>
+                )}
+                <Link href="/tutorials" className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                  <PlayCircle className="w-4 h-4 shrink-0" />
+                  {t.tutorials}
+                </Link>
               </div>
             </div>
-            {/* Visible to every visitor/role — Students/Mentors should be
-                able to see and browse what's on offer here even though
-                the tools themselves are still Business-account-gated (see
-                tools.tsx's own canUseAiAssistant check and its "Business
-                Verification Required"/"Available for Business Accounts
-                Only" modals, both left fully intact). This is a
-                visibility fix, not a paywall removal — actually using a
-                tool still requires the same verification it always did. */}
-            <Link href="/tools" className="relative no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-1 lg:gap-2 xl:gap-3.5">
-              {t.tools}
-              <span className="inline-flex items-center rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-white shadow-[0_0_8px_rgba(34,211,238,0.6)] animate-pulse">
-                HOT
-              </span>
+          </div>
+          <Link href="/courses" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
+            {t.courses}
+          </Link>
+          <div className="relative group py-2 -my-2">
+            <Link
+              href="/marketplace"
+              className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-1.5"
+            >
+              {t.marketplace}
+              <ChevronDown className="w-4 h-4" />
             </Link>
+            <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 w-64 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150">
+              <div className="rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-sm bg-white/95 backdrop-blur-md border-slate-200 dark:bg-[#0e1422]/95 dark:border-white/10">
+                <p className="px-4 pt-3 pb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">{t.categories}</p>
+                {MARKETPLACE_CATEGORIES.map((cat) => (
+                  <Link
+                    key={cat.value.en}
+                    href={`/marketplace?category=${encodeURIComponent(cat.value[catLocale])}`}
+                    className="block px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                  >
+                    {cat.value[catLocale]}
+                  </Link>
+                ))}
+                <Link
+                  href="/marketplace"
+                  className="flex items-center gap-2 px-4 py-2.5 no-underline font-bold text-cyan-600 dark:text-cyan-400 border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                >
+                  <ShoppingBag className="w-3.5 h-3.5" />
+                  {t.viewAllProducts}
+                </Link>
+              </div>
+            </div>
           </div>
+          {/* Visible to every visitor/role — Students/Mentors should be
+              able to see and browse what's on offer here even though
+              the tools themselves are still Business-account-gated (see
+              tools.tsx's own canUseAiAssistant check and its "Business
+              Verification Required"/"Available for Business Accounts
+              Only" modals, both left fully intact). This is a
+              visibility fix, not a paywall removal — actually using a
+              tool still requires the same verification it always did. */}
+          <Link href="/tools" className="relative no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-2">
+            {t.tools}
+            <span className="inline-flex items-center rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-white shadow-[0_0_8px_rgba(34,211,238,0.6)] animate-pulse">
+              HOT
+            </span>
+          </Link>
+        </div>
 
-          {/* Actions cluster — deliberately shrink-0 (see the comment on
-              this row's parent) so language/theme/login/burger are always
-              fully rendered, never the thing that gets clipped when the KA
-              nav labels above run long. Order left-to-right: Language,
-              Theme, Bell (authenticated only), Login (mobile-only compact
-              pill, guests only — desktop guests get the same login button
-              via UserMenu's loginFallback below), Burger. */}
-          <div className="flex items-center gap-1 lg:gap-2 xl:gap-3.5 sm:gap-1 lg:gap-2 xl:gap-3 shrink-0">
-            <LanguageSwitcher />
-            <button
-              type="button"
-              onClick={toggleDarkMode}
-              aria-label="Toggle dark mode"
-              className="p-2 rounded-xl transition text-lg border-none bg-transparent cursor-pointer hover:rotate-12 duration-200"
-            >
-              {darkMode ? '☀️' : '🌙'}
-            </button>
-            <NotificationBell />
-            {/* Was `hidden md:block` — on mobile that left a logged-in user
-                with NO visible profile entry point in the header row at all
-                (their avatar only ever appeared after opening the hamburger
-                drawer below). UserMenu's own avatar-only-on-narrow-screens
-                sizing (name is `hidden sm:inline`) already made it compact
-                enough to sit directly in the actions cluster on every
-                viewport, same as the bell — it just hadn't been un-hidden. */}
-            <UserMenu
-              loginFallback={
-                <button type="button" onClick={() => openAuthModal()} className="vip-btn-secondary !px-4 !py-2 hidden md:inline-flex">
-                  👤 {t.login}
-                </button>
-              }
-            />
-            {!isAuthenticated && (
-              <button type="button" onClick={() => openAuthModal()} className="vip-btn-secondary md:hidden !px-3 !py-2 whitespace-nowrap">
-                {t.login}
+        {/* Actions cluster — deliberately shrink-0 so language/theme/
+            login/burger are always fully rendered regardless of how long
+            the KA nav labels above run. Order left-to-right: Language,
+            Theme, Bell (authenticated only), Login (mobile/tablet-only
+            compact pill, guests only — lg+ guests get the same login
+            button via UserMenu's loginFallback below), Burger (< lg). */}
+        <div className="col-start-3 flex items-center justify-self-end gap-1.5 xl:gap-2.5 shrink-0">
+          <LanguageSwitcher />
+          <button
+            type="button"
+            onClick={toggleDarkMode}
+            aria-label="Toggle dark mode"
+            className="p-2 rounded-xl transition text-lg border-none bg-transparent cursor-pointer hover:rotate-12 duration-200"
+          >
+            {darkMode ? '☀️' : '🌙'}
+          </button>
+          <NotificationBell />
+          {/* UserMenu's own avatar-only-on-narrow-screens sizing (name is
+              `hidden sm:inline`) keeps it compact enough to sit directly in
+              the actions cluster on every viewport, same as the bell. */}
+          <UserMenu
+            loginFallback={
+              <button type="button" onClick={() => openAuthModal()} className="vip-btn-secondary !px-4 !py-2 hidden lg:inline-flex">
+                👤 {t.login}
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen((open) => !open)}
-              aria-label="Toggle menu"
-              aria-expanded={mobileMenuOpen}
-              className="md:hidden p-2 rounded-xl border-none bg-transparent cursor-pointer text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            }
+          />
+          {!isAuthenticated && (
+            <button type="button" onClick={() => openAuthModal()} className="vip-btn-secondary lg:hidden !px-3 !py-2 whitespace-nowrap">
+              {t.login}
             </button>
-          </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            aria-label="Toggle menu"
+            aria-expanded={mobileMenuOpen}
+            className="lg:hidden p-2 rounded-xl border-none bg-transparent cursor-pointer text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
       </div>
 
       {mobileMenuOpen && (
-        <div className="md:hidden mt-4 border-t border-slate-200 dark:border-slate-800 pt-4">
+        // px-4 sm:px-6 re-applied here (not needed on the row above, which
+        // has its own) since <nav>'s -mx-4 sm:-mx-6 pulls this drawer full-
+        // bleed too — without it the links would run edge-to-edge with no
+        // margin. Larger gap/padding throughout vs. the old xs-text version
+        // for genuinely touch-friendly tap targets, not just denser text.
+        <div className="lg:hidden mt-3.5 px-4 sm:px-6 pb-2 border-t border-slate-200 dark:border-slate-800">
           {isAuthenticated && user ? (
             <Link
               href={dashboardHref}
               onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-1 lg:gap-2 xl:gap-3 px-2 pb-4 no-underline text-current"
+              className="flex items-center gap-3 px-2 py-4 no-underline text-current"
             >
               <div className="w-11 h-11 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shrink-0 flex items-center justify-center">
                 {user.avatarUrl ? (
                   <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-xs xl:text-sm font-black text-slate-400">{(user.name ?? '?').charAt(0).toUpperCase()}</span>
+                  <span className="text-sm font-black text-slate-400">{(user.name ?? '?').charAt(0).toUpperCase()}</span>
                 )}
               </div>
-              <span className="text-xs xl:text-sm font-bold text-slate-900 dark:text-white">{user.name}</span>
+              <span className="text-base font-bold text-slate-900 dark:text-white">{user.name}</span>
             </Link>
           ) : (
             <button
@@ -374,32 +386,32 @@ export default function SiteHeader() {
                 setMobileMenuOpen(false);
                 openAuthModal();
               }}
-              className="w-full mb-4 text-xs xl:text-sm font-bold px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-transparent cursor-pointer"
+              className="w-full my-4 text-base font-bold px-4 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-transparent cursor-pointer"
             >
               👤 {t.login}
             </button>
           )}
 
-          <div className="flex flex-col gap-1 lg:gap-2 xl:gap-3 text-xs xl:text-sm font-bold text-slate-700 dark:text-slate-300">
-            <Link href="/community" onClick={() => setMobileMenuOpen(false)} className="no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+          <div className="flex flex-col gap-1 text-base font-semibold text-slate-700 dark:text-slate-300">
+            <Link href="/community" onClick={() => setMobileMenuOpen(false)} className="no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
               {t.community}
             </Link>
-            <Link href="/mentors" onClick={() => setMobileMenuOpen(false)} className="no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+            <Link href="/mentors" onClick={() => setMobileMenuOpen(false)} className="no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
               {t.mentors}
             </Link>
-            <Link href="/courses" onClick={() => setMobileMenuOpen(false)} className="no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+            <Link href="/courses" onClick={() => setMobileMenuOpen(false)} className="no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
               {t.courses}
             </Link>
-            <Link href="/marketplace" onClick={() => setMobileMenuOpen(false)} className="no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+            <Link href="/marketplace" onClick={() => setMobileMenuOpen(false)} className="no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
               {t.marketplace}
             </Link>
-            <div className="pl-4 flex flex-col gap-1 lg:gap-2 xl:gap-3.5">
+            <div className="pl-4 flex flex-col gap-1">
               {MARKETPLACE_CATEGORIES.map((cat) => (
                 <Link
                   key={cat.value.en}
                   href={`/marketplace?category=${encodeURIComponent(cat.value[catLocale])}`}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="no-underline px-2 py-2 rounded-lg text-xs font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="no-underline px-3 py-3 rounded-xl text-sm font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   {cat.value[catLocale]}
                 </Link>
@@ -408,22 +420,22 @@ export default function SiteHeader() {
             {/* Same visibility-for-everyone fix as the desktop nav above —
                 the tools themselves stay Business-account-gated inside
                 tools.tsx. */}
-            <Link href="/tools" onClick={() => setMobileMenuOpen(false)} className="no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+            <Link href="/tools" onClick={() => setMobileMenuOpen(false)} className="no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
               {t.tools}
             </Link>
-            <Link href="/tutorials" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-1 lg:gap-2 xl:gap-3 no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
-              <PlayCircle className="w-4 h-4 shrink-0" />
+            <Link href="/tutorials" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5 no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
+              <PlayCircle className="w-5 h-5 shrink-0" />
               {t.tutorials}
             </Link>
             {!(isAuthenticated && user) && (
               <>
-                <Link href="/about" onClick={() => setMobileMenuOpen(false)} className="no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                <Link href="/about" onClick={() => setMobileMenuOpen(false)} className="no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
                   {t.about}
                 </Link>
                 <Link
                   href="/gallery"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="no-underline pl-6 pr-2 py-2 rounded-lg text-xs font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="no-underline pl-7 pr-3 py-3 rounded-xl text-sm font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   {t.gallery}
                 </Link>
@@ -432,33 +444,33 @@ export default function SiteHeader() {
 
             {isAuthenticated && user && (
               <>
-                <div className="border-t border-slate-200 dark:border-slate-800 my-1" />
-                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-1 lg:gap-2 xl:gap-3.5 no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
-                  <LayoutDashboard className="w-4 h-4" /> {t.dashboard}
+                <div className="border-t border-slate-200 dark:border-slate-800 my-2" />
+                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5 no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
+                  <LayoutDashboard className="w-5 h-5" /> {t.dashboard}
                 </Link>
-                <Link href="/dashboard?tab=courses" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-1 lg:gap-2 xl:gap-3.5 no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
-                  <GraduationCap className="w-4 h-4" /> {t.myCourses}
+                <Link href="/dashboard?tab=courses" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5 no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
+                  <GraduationCap className="w-5 h-5" /> {t.myCourses}
                 </Link>
                 {canSeeMentorPanel && (
                   <Link
                     href="/dashboard/mentorship-sessions"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-1 lg:gap-2 xl:gap-3.5 no-underline px-2 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="flex items-center gap-2.5 no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
-                    <CalendarClock className="w-4 h-4" /> {t.mentorPanel}
+                    <CalendarClock className="w-5 h-5" /> {t.mentorPanel}
                   </Link>
                 )}
                 {user.adminRole && (
-                  <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-1 lg:gap-2 xl:gap-3.5 no-underline px-2 py-2.5 rounded-lg text-cyan-600 dark:text-cyan-400 hover:bg-slate-100 dark:hover:bg-slate-800">
-                    <ShieldCheck className="w-4 h-4" /> {t.admin}
+                  <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5 no-underline px-3 py-3.5 rounded-xl text-cyan-600 dark:text-cyan-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <ShieldCheck className="w-5 h-5" /> {t.admin}
                   </Link>
                 )}
                 <button
                   type="button"
                   onClick={handleMobileLogout}
-                  className="flex items-center gap-1 lg:gap-2 xl:gap-3.5 text-left px-2 py-2.5 rounded-lg border-none bg-transparent cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="flex items-center gap-2.5 text-left px-3 py-3.5 rounded-xl border-none bg-transparent cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
-                  <LogOut className="w-4 h-4" /> {t.logout}
+                  <LogOut className="w-5 h-5" /> {t.logout}
                 </button>
               </>
             )}
