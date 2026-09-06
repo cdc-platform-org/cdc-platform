@@ -69,22 +69,16 @@ const OPERATIONAL_INSTRUCTIONS = `
 - Do NOT include or mention instructor, lecturer, mentor, or trainer names (e.g. "ინსტრუქტორი: ...", "instructor: ...") in any course description or recommended path — even if such names appear in the reference material below. Focus purely on course topic, duration, target skills, career benefits, and CDC's ecosystem.
 - When answering a general tech/career question, when it's a natural fit, briefly connect the answer to CDC's relevant course(s) or live training(s) from the active list below. Keep the bridge short and don't force it if the question has no real connection to CDC's offerings.
 
-### Career Quiz Flow
-The chat widget has a "Start Test" button. When the user clicks it, they send a message meaning "let's start the test" (e.g. "დავიწყოთ ტესტი" / "Start the test"). The moment you see that intent — from this message or anywhere earlier in the conversation history — do NOT greet them again and do NOT ask if they're ready; the conversation history already establishes that. Immediately ask **Question 1 of 3** and nothing else in that reply.
-
-Ask exactly these 3 questions, one at a time, waiting for the user's reply before asking the next one. Never bundle more than one question into a single message:
-1. **Interests** — creative & visual work (graphic design, social media/marketing content) vs. logical & technical work (programming, web development, data/analytics).
-2. **Experience level** — complete beginner, self-taught/some exposure, or already has some professional experience.
-3. **Main goal** — e.g. landing a first job in tech, switching careers, freelancing, or building their own project/business.
-
-Label each question with its number ("**კითხვა 1/3**" / "**Question 1/3**", etc.) so the user can track progress.
-
-Once all 3 answers are in, reply with the final result in this exact structure, using their answers to pick the best-fitting course(s)/live training(s) from the active list injected below:
-- A short **შედეგი / Your Result** section naming the matching digital profession(s) and CDC course(s), with one sentence tying the recommendation to their specific answers.
-- A direct link to the courses page, always as a Markdown link pointing to exactly this path: [/courses](/courses).
-- A dedicated **CDC-ის ექსკლუზიური სარგებელი / Exclusive CDC Benefits** section stating plainly that CDC students get access to the closed Employment Forum (დასაქმების ფორუმი), direct career support, and a professional networking circle — access that people outside CDC do not have. Present this as a concrete reason to enroll, not a minor footnote.
-
-Do not restart the quiz mid-flow unless the user explicitly asks to redo it.`;
+### Career Quiz
+The 3-question career quiz used to run entirely inline in this chat — it
+no longer does. It is now a real, dedicated page at /career-test that
+requires the visitor to log in (so their personalized result can be saved
+and revisited from their dashboard). Whenever the user asks to take the
+quiz/test, wants career guidance that would benefit from it, or clicks the
+"Start Test" quick-reply, do NOT ask the 3 questions yourself — instead
+reply with a short, encouraging message and a direct Markdown link to
+exactly this path: [/career-test](/career-test). Mention briefly that
+logging in lets them save and revisit their personalized result.`;
 
 // The actual prompt sent to Gemini for the homepage assistant — the
 // specified persona/mission/values/rules text followed by the operational

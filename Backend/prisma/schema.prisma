@@ -700,6 +700,7 @@ model User {
   generatedLaunchKits           LaunchKit[]
   digitalMarketingGenerations   DigitalMarketingGeneration[]
   liveTrainingEnrollments       LiveTrainingEnrollment[]
+  careerQuizSubmissions         CareerQuizSubmission[]
   chatRequestsSent              ChatRequest[]                 @relation("ChatRequestsSent")
   chatRequestsReceived          ChatRequest[]                 @relation("ChatRequestsReceived")
   chatFlagsAsSender             ChatFlag[]                    @relation("ChatFlagsAsSender")
@@ -4668,4 +4669,52 @@ enum EducatorGenerationType {
   LESSON_PLAN
   BUREAUCRACY
   PARENT_REPORT
+}
+
+// Who the quiz result is actually for — a parent can take it on behalf of
+// their child, which changes the "phone number" field's label on the
+// frontend form (`careerQuiz.ts` schemas) from "your phone" to "parent's
+// phone" but otherwise doesn't change anything about how the quiz itself
+// runs or how the result is generated.
+enum CareerQuizAudience {
+  SELF
+  CHILD
+}
+
+// One row per completed AI Career Quiz attempt — required to be
+// authenticated (routes/careerQuiz.ts), so unlike the old, purely-
+// conversational in-chat quiz this used to be (see Frontend's
+// lib/gemini.ts git history), every submission is durably tied to a real
+// account and can be re-viewed later from the dashboard
+// (/dashboard/career-quiz). `age`/`ref` are optional pass-through fields
+// from an admin-generated pre-filled link (e.g. /career-test?age=14&ref=sofi)
+// — kept for attribution/reporting, not used in any access-control decision.
+model CareerQuizSubmission {
+  id         String             @id @default(uuid())
+  userId     String
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName   String
+  email      String
+  phone      String
+  audience   CareerQuizAudience @default(SELF)
+  interests  String
+  experience String
+  mainGoal   String
+  // AI-generated (see careerQuizService.ts's generateCareerQuizResult) —
+  // Markdown prose recommending specific course(s)/live training(s) from the
+  // real, live catalog at the moment of submission. Kept verbatim rather
+  // than re-generated on every dashboard view: the catalog changes over
+  // time, and a stored result should keep reading the same as what the user
+  // actually saw and acted on.
+  resultText String
+  age        Int?
+  ref        String?
+  createdAt  DateTime           @default(now())
+
+  // Powers the "max 3 attempts per day" limit (careerQuizService.ts) via a
+  // plain row-count query over a rolling day window — same pattern as
+  // EducatorGeneration/TutorLessonGeneration above, no separate
+  // resettable counter field needed.
+  @@index([userId, createdAt])
+  @@map("career_quiz_submissions")
 }

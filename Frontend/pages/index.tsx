@@ -110,7 +110,6 @@ export default function Home() {
 
   // 🤖 ჩატბოტის ინტერაქტიული სთეითები
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
-  const [testStep, setTestStep] = useState<number>(0);
   const [chatMessages, setChatMessages] = useState<Array<{ sender: 'bot' | 'user'; text: string }>>([
     { sender: 'bot', text: 'გამარჯობა! მე იაკო ვარ, CDC-ის ციფრული ასისტენტი. 🌟 გსურთ გაიაროთ სწრაფი ტესტირება, რომ კურსის სწორად შერჩევაში დაგეხმაროთ?' }
   ]);
@@ -1457,22 +1456,19 @@ export default function Home() {
               )}
             </div>
 
-            {/* QUICK REPLY: kicks off the interactive career quiz (hidden once used) */}
-            {testStep === 0 && (
-              <div className="flex gap-2 p-2 justify-center bg-slate-50 dark:bg-[#0b0f17]">
-                <button
-                  type="button"
-                  disabled={chatSending}
-                  onClick={() => {
-                    setTestStep(1);
-                    sendChatMessage(t('startTestMessage'));
-                  }}
-                  className="flex items-center gap-1.5 bg-cyan-500 text-white px-4 py-1.5 rounded-full text-[11px] font-black cursor-pointer hover:bg-cyan-600 transition border-none shadow disabled:opacity-40"
-                >
-                  <Rocket className="w-3.5 h-3.5" />{t('startTest')}
-                </button>
-              </div>
-            )}
+            {/* QUICK REPLY: links to the real, auth-gated /career-test page —
+                the quiz used to run entirely inline in this chat, but a
+                dedicated page is what actually saves results to the user's
+                account and lets them revisit recommendations from the
+                dashboard (see /career-test and /dashboard/career-quiz). */}
+            <div className="flex gap-2 p-2 justify-center bg-slate-50 dark:bg-[#0b0f17]">
+              <Link
+                href="/career-test"
+                className="flex items-center gap-1.5 bg-cyan-500 text-white px-4 py-1.5 rounded-full text-[11px] font-black no-underline hover:bg-cyan-600 transition shadow"
+              >
+                <Rocket className="w-3.5 h-3.5" />{t('startTest')}
+              </Link>
+            </div>
 
             <form onSubmit={handleSendMessage} className="p-3 border-t flex gap-2 bg-white dark:bg-[#0e1422] border-slate-100 dark:border-slate-800">
               <input type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} disabled={chatSending} placeholder={t('chatInputPlaceholder') as string} className="flex-1 border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#161f30] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-400 disabled:opacity-60" />

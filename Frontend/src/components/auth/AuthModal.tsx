@@ -34,7 +34,7 @@ const STRINGS = { ka: kaAuth, en: enAuth, de: deAuth, es: esAuth, fr: frAuth, uk
 export default function AuthModal() {
   const router = useRouter();
   const { login, loginWithGoogle } = useAuth();
-  const { isOpen, contextMessage, initialMode, initialRole, onSuccess, closeAuthModal } = useAuthModal();
+  const { isOpen, contextMessage, initialMode, initialRole, onSuccess, redirectPath, closeAuthModal } = useAuthModal();
   const lang = resolveLocale(router.locale);
   const t = STRINGS[lang];
 
@@ -68,9 +68,21 @@ export default function AuthModal() {
   // business-only CTA (e.g. the Enterprise AI Tools trial, which opens this
   // modal with initialRole: 'Client') still lands past Step 1 instead of
   // making the user re-pick "Hiring & B2B" themselves.
+  //
+  // ?redirect= carries the caller's intended destination through registration
+  // too — e.g. a guest opening this modal from /career-test (via openAuthModal
+  // with redirectPath set) still lands back on the quiz after signing up, not
+  // just after logging in. Falls back to the current page's own ?redirect=
+  // (the ProtectedRoute-bounced-here case), same precedence handlePostLogin
+  // already uses for login.
   const goToRegister = (role: 'Student' | 'Client' = 'Student') => {
     closeAuthModal();
-    router.push(role === 'Client' ? '/auth/register?intent=EMPLOYER' : '/auth/register');
+    const params = new URLSearchParams();
+    if (role === 'Client') params.set('intent', 'EMPLOYER');
+    const effectiveRedirect = redirectPath ?? (typeof router.query.redirect === 'string' ? router.query.redirect : undefined);
+    if (effectiveRedirect) params.set('redirect', effectiveRedirect);
+    const qs = params.toString();
+    router.push(`/auth/register${qs ? `?${qs}` : ''}`);
   };
 
   // Runs once login (email/password or Google) succeeds. A pending onSuccess
