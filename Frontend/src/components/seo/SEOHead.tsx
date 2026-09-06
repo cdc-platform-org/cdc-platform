@@ -30,6 +30,11 @@ export interface SEOHeadProps {
    *  swap in a real 1200x630 banner per page once one exists. */
   ogImage?: string;
   ogType?: OgType;
+  /** ISO 8601 timestamp (e.g. a blog post's createdAt) — rendered as
+   *  article:published_time. Only meaningful when ogType="article"; ignored
+   *  otherwise since Facebook's article schema doesn't apply to a
+   *  website/product og:type. */
+  articlePublishedTime?: string;
   /** Set true for any page that isn't meant to be publicly indexed (e.g.
    *  anything behind ProtectedRoute) — emits <meta name="robots"
    *  content="noindex, nofollow"> and skips hreflang/OG entirely, since
@@ -53,6 +58,7 @@ export default function SEOHead({
   canonicalPath,
   ogImage = DEFAULT_OG_IMAGE,
   ogType = 'website',
+  articlePublishedTime,
   noIndex = false,
   jsonLd,
 }: SEOHeadProps) {
@@ -95,11 +101,19 @@ export default function SEOHead({
       <meta property="og:description" content={description} />
       <meta property="og:url" content={canonicalUrl} />
       <meta property="og:image" content={absoluteOgImage} />
+      {/* Recommended aspect ratio per Facebook/LinkedIn OG guidelines — every
+          image passed to this component should be authored at (or cropped
+          to) 1200x630 for a correct, non-stretched preview. */}
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
       <meta property="og:locale" content={ogLocale} />
       {!noIndex &&
         locales
           .filter((l) => l !== locale)
           .map((l) => <meta key={l} property="og:locale:alternate" content={OG_LOCALE_MAP[l] ?? l} />)}
+      {ogType === 'article' && articlePublishedTime && (
+        <meta property="article:published_time" content={articlePublishedTime} />
+      )}
 
       {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />

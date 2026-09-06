@@ -679,7 +679,13 @@ export default function BlogPostPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <SEOHead title={title} description={description} ogImage={ogImage} ogType="article" />
+      <SEOHead
+        title={title}
+        description={description}
+        ogImage={ogImage}
+        ogType="article"
+        articlePublishedTime={post.createdAt}
+      />
       <SiteHeader />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <Link href="/blog" className="text-sm text-slate-400 hover:text-white no-underline">

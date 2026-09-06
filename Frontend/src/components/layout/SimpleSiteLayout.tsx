@@ -1,14 +1,19 @@
 import { useState, ReactNode } from 'react';
-import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import SiteFooter from './SiteFooter';
 import BackButton from '../common/BackButton';
+import SEOHead from '../seo/SEOHead';
 
 interface SimpleSiteLayoutProps {
   titleKa: string;
   titleEn: string;
+  // Meta description shown in search results and OG/Twitter cards — required
+  // so every page using this shell gets a real, page-specific description
+  // rather than inheriting SEOHead's generic site-wide default.
+  descriptionKa: string;
+  descriptionEn: string;
   // Render-prop so the page body can translate its own content using the
   // same lang state that drives the nav toggle and SiteFooter.
   children: (lang: 'GEO' | 'ENG') => ReactNode;
@@ -17,7 +22,7 @@ interface SimpleSiteLayoutProps {
 // Lightweight shared shell (logo + language toggle + SiteFooter) for
 // content-only pages — /about, /privacy, /terms, /refund-policy — that don't
 // need the homepage's full nav (search bar, mobile menu, chat assistant).
-export default function SimpleSiteLayout({ titleKa, titleEn, children }: SimpleSiteLayoutProps) {
+export default function SimpleSiteLayout({ titleKa, titleEn, descriptionKa, descriptionEn, children }: SimpleSiteLayoutProps) {
   const router = useRouter();
   // Initialized from and kept in sync with router.locale — globally-mounted
   // shared components (AuthModal chief among them) read router.locale
@@ -37,9 +42,7 @@ export default function SimpleSiteLayout({ titleKa, titleEn, children }: SimpleS
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      <Head>
-        <title>{lang === 'GEO' ? titleKa : titleEn} | CDC</title>
-      </Head>
+      <SEOHead title={lang === 'GEO' ? titleKa : titleEn} description={lang === 'GEO' ? descriptionKa : descriptionEn} />
 
       <nav className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between">

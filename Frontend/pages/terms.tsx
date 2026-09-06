@@ -55,7 +55,12 @@ export default function TermsPage() {
   const locale: FullLocale = isFullLocale(router.locale) ? router.locale : 'ka';
 
   return (
-    <SimpleSiteLayout titleKa={heading.ka} titleEn={heading.en}>
+    <SimpleSiteLayout
+      titleKa={heading.ka}
+      titleEn={heading.en}
+      descriptionKa="CDC პლატფორმის გამოყენების წესები და პირობები — რეგისტრაცია, გადახდები, კურსებზე წვდომა და მომხმარებლის ვალდებულებები."
+      descriptionEn="CDC Platform's terms and conditions covering registration, payments, course access, and user obligations."
+    >
       {() => (
         <>
           <h1 className="text-3xl font-black mb-2">{pageHeading[locale]}</h1>
