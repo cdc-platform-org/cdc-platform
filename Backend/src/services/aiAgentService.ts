@@ -170,7 +170,14 @@ const MAX_ATTEMPTS = 3;
 // replacing the fake same-resource "4th rung" in callTextModel entirely.
 const geminiClient = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 const GEMINI_MODEL_FALLBACK_SEQUENCE = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-3.5-flash'];
-const GEMINI_ATTEMPTS_PER_MODEL = 2;
+// Bumped 2 -> 3: with AZURE_OPENAI_API_KEY unset in production (see the
+// isAzureOpenAiConfigured() skip above), Gemini is currently the ONLY real
+// provider every AI-backed feature has — a transient 503 "high demand"
+// (reproduced live on career-quiz submissions, 2026-09-06) previously had
+// just one retry per model before moving on; a 3rd attempt costs one more
+// RETRY_DELAY_MS wait but meaningfully improves the odds a short-lived
+// overload clears before falling through to the next model entirely.
+const GEMINI_ATTEMPTS_PER_MODEL = 3;
 
 function isRetryableGeminiError(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err);
@@ -259,7 +266,18 @@ async function runGeminiFallbackSequence(
     }
   })();
 
-  if (azureContent !== null) {
+  // AUDIT NOTE (fixed): this used to attempt Azure MAX_ATTEMPTS times even
+  // when AZURE_OPENAI_API_KEY/ENDPOINT/DEPLOYMENT_NAME were never set at
+  // all — confirmed live in production (career-quiz submission logs,
+  // 2026-09-06): every single call burned 3 guaranteed-fail attempts
+  // ("Missing credentials..."), each followed by the same RETRY_DELAY_MS
+  // wait as a real transient failure, adding ~4.5s of pure dead time before
+  // ever reaching the real Gemini fallback below on every AI-backed request
+  // platform-wide. A missing credential is a config fact, not a transient
+  // condition — retrying it changes nothing, so skip straight to Gemini
+  // instead of wasting the attempt loop (and the request's latency budget)
+  // on a call that cannot succeed.
+  if (azureContent !== null && isAzureOpenAiConfigured()) {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
         const raw = await callAzureChatCompletion({

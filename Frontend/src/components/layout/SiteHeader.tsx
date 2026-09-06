@@ -207,7 +207,7 @@ export default function SiteHeader() {
           a display:none grid item is dropped from placement entirely, so
           without an explicit column the actions cluster would slide into
           the vacated middle slot on every viewport under 1024px. */}
-      <div className="max-w-7xl mx-auto grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 sm:px-6">
+      <div className="max-w-7xl mx-auto grid grid-cols-[1fr_auto_1fr] items-center gap-6 px-4 sm:px-6">
         <Link href="/" className="col-start-1 justify-self-start flex items-center gap-2 xl:gap-3 shrink-0 no-underline text-current">
           <Image src="/images/cdc-logo.png" alt="CDC" width={40} height={40} className="h-9 w-auto rounded-xl object-cover" />
           <span className="hidden sm:inline font-bold text-sm tracking-wide text-slate-900 dark:text-white">CDC</span>
@@ -227,8 +227,15 @@ export default function SiteHeader() {
             grouped under "More" — not a spacing workaround anymore, just a
             reasonable information-architecture choice now that there's
             room to spare; Courses/Marketplace/Tools remain this site's
-            three primary always-visible traffic drivers. */}
-        <div className="col-start-2 hidden lg:flex items-center justify-center gap-6 xl:gap-8 text-base font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">
+            three primary always-visible traffic drivers.
+            Shown from xl (1280px) up, not lg (1024px) — adding the
+            career-test link as a 7th visible item pushed this row's
+            min-content width past what the 1024-1279px band can fit
+            (measured overflow at 1100px), which visually crushed the
+            logo/actions columns together. The mobile drawer (below xl)
+            already carries every one of these links, career-test
+            included, so nothing is lost by raising the breakpoint. */}
+        <div className="col-start-2 hidden xl:flex items-center justify-center gap-6 xl:gap-8 text-base font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">
           <div className="relative group py-2 -my-2">
             <button type="button" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-1.5 bg-transparent border-none cursor-pointer font-medium text-base p-0 text-inherit">
               {t.more}
@@ -327,8 +334,12 @@ export default function SiteHeader() {
             login/burger are always fully rendered regardless of how long
             the KA nav labels above run. Order left-to-right: Language,
             Theme, Bell (authenticated only), Login (mobile/tablet-only
-            compact pill, guests only — lg+ guests get the same login
-            button via UserMenu's loginFallback below), Burger (< lg). */}
+            compact pill, guests only — xl+ guests get the same login
+            button via UserMenu's loginFallback below), Burger (< xl).
+            Both login variants' breakpoints must stay in lockstep with
+            the center nav's `hidden xl:flex` above — mismatched
+            breakpoints here previously caused two login buttons to render
+            simultaneously in the 1024-1279px gap. */}
         <div className="col-start-3 flex items-center justify-self-end gap-1.5 xl:gap-2.5 shrink-0">
           <LanguageSwitcher />
           <button
@@ -345,13 +356,13 @@ export default function SiteHeader() {
               the actions cluster on every viewport, same as the bell. */}
           <UserMenu
             loginFallback={
-              <button type="button" onClick={() => openAuthModal()} className="vip-btn-secondary !px-4 !py-2 hidden lg:inline-flex">
+              <button type="button" onClick={() => openAuthModal()} className="vip-btn-secondary !px-4 !py-2 hidden xl:inline-flex">
                 👤 {t.login}
               </button>
             }
           />
           {!isAuthenticated && (
-            <button type="button" onClick={() => openAuthModal()} className="vip-btn-secondary lg:hidden !px-3 !py-2 whitespace-nowrap">
+            <button type="button" onClick={() => openAuthModal()} className="vip-btn-secondary xl:hidden !px-3 !py-2 whitespace-nowrap">
               {t.login}
             </button>
           )}
@@ -360,7 +371,7 @@ export default function SiteHeader() {
             onClick={() => setMobileMenuOpen((open) => !open)}
             aria-label="Toggle menu"
             aria-expanded={mobileMenuOpen}
-            className="lg:hidden p-2 rounded-xl border-none bg-transparent cursor-pointer text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="xl:hidden p-2 rounded-xl border-none bg-transparent cursor-pointer text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -373,7 +384,7 @@ export default function SiteHeader() {
         // bleed too — without it the links would run edge-to-edge with no
         // margin. Larger gap/padding throughout vs. the old xs-text version
         // for genuinely touch-friendly tap targets, not just denser text.
-        <div className="lg:hidden mt-3.5 px-4 sm:px-6 pb-2 border-t border-slate-200 dark:border-slate-800">
+        <div className="xl:hidden mt-3.5 px-4 sm:px-6 pb-2 border-t border-slate-200 dark:border-slate-800">
           {isAuthenticated && user ? (
             <Link
               href={dashboardHref}
