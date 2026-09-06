@@ -6,6 +6,8 @@ import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { logAdminAction } from '../services/auditLogService';
+import { sendLiveTrainingEnrollmentEmail } from '../services/emailService';
+import { sendLiveTrainingEnrollmentWhatsApp } from '../services/whatsappService';
 import { uploadImage } from '../services/imageStorage';
 import { BunnyStorageUploadError } from '../services/bunnyStorage';
 import {
@@ -273,6 +275,11 @@ router.post('/:id/grant', async (req: Request, res: Response) => {
   if (!user) return res.status(404).json({ message: 'No user found with that email/id.' });
   if (!training) return res.status(404).json({ message: 'Live training not found.' });
 
+  const before = await prisma.liveTrainingEnrollment.findUnique({
+    where: { userId_liveTrainingId: { userId: user.id, liveTrainingId: training.id } },
+  });
+  const isNewEnrollment = !before || before.status !== 'ACTIVE';
+
   const enrollment = await prisma.liveTrainingEnrollment.upsert({
     where: { userId_liveTrainingId: { userId: user.id, liveTrainingId: training.id } },
     update: { status: 'ACTIVE' },
@@ -286,6 +293,28 @@ router.post('/:id/grant', async (req: Request, res: Response) => {
     performedById: req.user!.id,
     metadata: { note: result.data.note, trainingTitle: training.title, userEmail: user.email },
   });
+  // Same "only on a genuinely fresh activation" gate as
+  // liveTrainingSaleService.completeLiveTrainingPurchase — re-granting an
+  // already-ACTIVE enrollment (e.g. correcting the note) must not re-send it.
+  if (isNewEnrollment) {
+    sendLiveTrainingEnrollmentEmail({
+      email: user.email,
+      userName: user.name,
+      courseTitle: training.title,
+      startDate: training.startDate,
+      meetLink: training.meetingUrl,
+      classroomLink: training.classroomUrl,
+    }).catch((err) => console.error('[adminLiveTrainings] sendLiveTrainingEnrollmentEmail failed:', err));
+    if (user.phone) {
+      sendLiveTrainingEnrollmentWhatsApp({
+        phone: user.phone,
+        userName: user.name,
+        courseTitle: training.title,
+        meetLink: training.meetingUrl,
+        classroomLink: training.classroomUrl,
+      }).catch((err) => console.error('[adminLiveTrainings] sendLiveTrainingEnrollmentWhatsApp failed:', err));
+    }
+  }
   res.status(201).json({ data: enrollment });
 });
 

@@ -88,7 +88,18 @@ export const HR_SUPPORT_NOTIFICATION_EMAILS = (
 // account configured; email sends fall back to console-logging the link
 // instead (see services/emailService.ts). Same reasoning as GOOGLE_CLIENT_ID.
 export const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
-export const EMAIL_FROM = process.env.EMAIL_FROM || 'CDC Platform <contact@cdc.org.ge>';
+export const EMAIL_FROM = process.env.EMAIL_FROM || 'CDC / Center of Digital Careers <contact@cdc.org.ge>';
+// Meta WhatsApp Business Cloud API (services/whatsappService.ts) — same
+// "boot without it, degrade per-call" posture as RESEND_API_KEY/
+// GEMINI_API_KEY above: a missing WHATSAPP_TOKEN logs a warning and skips
+// the send rather than failing the registration/payment request it's
+// attached to. WHATSAPP_API_VERSION defaults to the version current as of
+// this integration — bump the env var, not this fallback, once Meta
+// deprecates it.
+export const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN || '';
+export const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
+export const WHATSAPP_BUSINESS_ACCOUNT_ID = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || '';
+export const WHATSAPP_API_VERSION = process.env.WHATSAPP_API_VERSION || 'v20.0';
 // Deliberately NOT requireEnv() — the app must still boot without a Gemini
 // account configured; exam question generation just responds 501 until this
 // is set (see services/aiExamService.ts), same pattern as Bunny/BOG above.

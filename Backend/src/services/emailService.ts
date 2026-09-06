@@ -375,6 +375,100 @@ export async function sendRecordingReadyEmail(params: {
   await sendEmail(studentEmail, 'თქვენი მენტორობის სესიის ჩანაწერი მზადაა! 🎥', html, recordingUrl);
 }
 
+// ============================================================
+// LIVE TRAINING REGISTRATION & ENROLLMENT — two distinct emails for the two
+// distinct moments in a live training's funnel (see routes/liveTrainings.ts
+// and services/liveTrainingSaleService.ts's own comments on why lead
+// registration and enrollment are separate paths):
+//   Template A (this one) — an anonymous/unpaid lead just submitted the
+//   registration form (POST /:id/register). No seat is confirmed yet.
+//   Template B (below) — the user is now ACTIVELY enrolled with a real
+//   seat: a free training's self-serve enroll, a paid training's payment
+//   confirmation (BOG/Stripe webhook or the admin-test-mode 100%-off
+//   bypass), or an admin's manual grant.
+// Both use ka-GE/Asia/Tbilisi date formatting (same convention as
+// sendMentorshipBookingEmails' whenStr above) and the same "line already
+// reads fine without a real link yet" fallback sendMentorshipBookingEmails
+// uses for meetLink.
+// ============================================================
+function formatTrainingDate(date: Date | null): string {
+  return date ? date.toLocaleDateString('ka-GE', { timeZone: 'Asia/Tbilisi', dateStyle: 'long' }) : 'დაზუსტდება მალე';
+}
+
+export async function sendLiveTrainingRegistrationEmail(params: {
+  email: string;
+  userName: string;
+  courseTitle: string;
+  startDate: Date | null;
+  liveTrainingId: string;
+}): Promise<void> {
+  const { email, userName, courseTitle, startDate, liveTrainingId } = params;
+  const startDateStr = formatTrainingDate(startDate);
+  const trainingUrl = `${FRONTEND_URL}/live-trainings/${liveTrainingId}`;
+
+  const bodyHtml = `
+    <p>გამარჯობა, <strong>${userName}</strong>!</p>
+    <p>მადლობას გიხდით CDC (Center of Digital Careers)-ის პლატფორმაზე დარეგისტრირებისთვის და ციფრული პროფესიის განვითარების გზაზე ჩვენი გუნდის არჩევისთვის!</p>
+    <p>გადავამოწმეთ თქვენი განაცხადი კურსზე - „${courseTitle}“.</p>
+    <p><strong>შემდეგი ნაბიჯები და მნიშვნელოვანი დეტალები:</strong></p>
+    <ul style="padding-left:20px;margin:0 0 16px;">
+      <li style="margin-bottom:8px;"><strong>სწავლის დაწყების თარიღი:</strong> კურსი დაიწყება ${startDateStr}-ს.</li>
+      <li style="margin-bottom:8px;"><strong>ჯგუფის დაკომპლექტება:</strong> სასწავლო პროცესის მაღალი ხარისხისა და ინტერაქციულობის უზრუნველსაყოფად, კურსი იწყება მინიმალური ნაკადის შევსებისთანავე. ჯგუფის საბოლოო დაკომპლექტებისთანავე დამატებით დაგიკავშირდებით ორგანიზაციული დეტალების დასაზუსტებლად.</li>
+      <li><strong>წვდომები და ბმულები:</strong> კურსზე ჩარიცხვის (საფასურის დადასტურების) შემდეგ, თქვენს პირად პროფილში ავტომატურად გააქტიურდება ლექციების Google Meet / ონლაინ შეხვედრის ბმული და პერსონალურ ციფრულ კლასში გასაწევრიანებელი მოწვევა.</li>
+    </ul>
+    <p>თუ რაიმე შეკითხვა გექნებათ, შეგიძლიათ პირდაპირ უპასუხოთ ამ წერილს ან დაგვიკავშირდეთ ნომერზე: <strong>511 14 14 11</strong>.</p>
+    <p>სიხარულით ველოდებით ჩვენს ერთობლივ სასწავლო მოგზაურობას!</p>
+    <p style="margin-top:20px;">პატივისცემით,<br/>CDC — Center of Digital Careers-ის გუნდი<br/>🌐 <a href="https://cdc.org.ge">cdc.org.ge</a><br/>✉️ <a href="mailto:contact@cdc.org.ge">contact@cdc.org.ge</a></p>
+  `;
+
+  const html = wrapTemplate('რეგისტრაცია მიღებულია! ✅', bodyHtml, 'ტრენინგის დეტალები', trainingUrl);
+  await sendEmail(email, `ადასტურებთ რეგისტრაციას კურსზე: ${courseTitle} | CDC`, html, trainingUrl);
+}
+
+export async function sendLiveTrainingEnrollmentEmail(params: {
+  email: string;
+  userName: string;
+  courseTitle: string;
+  startDate: Date | null;
+  meetLink: string | null;
+  classroomLink: string | null;
+}): Promise<void> {
+  const { email, userName, courseTitle, startDate, meetLink, classroomLink } = params;
+  const startDateStr = formatTrainingDate(startDate);
+  const dashboardUrl = `${FRONTEND_URL}/dashboard`;
+  // meetingUrl/classroomUrl are admin-attached-after-the-fact fields (see
+  // LiveTraining's own schema comment) AND time-gated on the dashboard side
+  // (routes/liveTrainings.ts's isMeetingLinkVisible — hidden until shortly
+  // before the session) — either way, "not present right now" is expected
+  // and normal at enrollment time, not an error, so this reads as a
+  // schedule note rather than a broken/missing link.
+  const LINK_NOT_YET_ACTIVE = 'ბმული გააქტიურდება ლექციის დაწყებამდე 15 წუთით ადრე.';
+  const meetLine = meetLink
+    ? `<li style="margin-bottom:8px;"><strong>Google Meet ლექციების ბმული:</strong> <a href="${meetLink}">${meetLink}</a></li>`
+    : `<li style="margin-bottom:8px;"><strong>Google Meet ლექციების ბმული:</strong> ${LINK_NOT_YET_ACTIVE}</li>`;
+  const classroomLine = classroomLink
+    ? `<li><strong>ციფრულ კლასში გაწევრიანების ბმული:</strong> <a href="${classroomLink}">${classroomLink}</a></li>`
+    : `<li><strong>ციფრულ კლასში გაწევრიანების ბმული:</strong> ${LINK_NOT_YET_ACTIVE}</li>`;
+
+  const bodyHtml = `
+    <p>გამარჯობა, <strong>${userName}</strong>!</p>
+    <p>გილოცავთ! თქვენ წარმატებით ჩაერიცხეთ კურსზე - „${courseTitle}“.</p>
+    <p><strong>თქვენი სასწავლო სივრცის დეტალები:</strong></p>
+    <ul style="padding-left:20px;margin:0 0 16px;">
+      <li style="margin-bottom:8px;"><strong>სწავლის დაწყების თარიღი:</strong> ${startDateStr}</li>
+      ${meetLine}
+      ${classroomLine}
+    </ul>
+    <p>ასევე, თქვენს პირად დეშბორდზე (<a href="${dashboardUrl}">cdc.org.ge/dashboard</a>) ნებისმიერ დროს შეგიძლიათ ნახოთ ლექციების განრიგი, ჩანაწერები და სასწავლო მასალები.</p>
+    <p>შეკითხვების შემთხვევაში დაგვიკავშირდით: <strong>511 14 14 11</strong>.</p>
+    <p>წარმატებულ და პროდუქტიულ სწავლას გისურვებთ!</p>
+    <p style="margin-top:20px;">პატივისცემით,<br/>CDC — Center of Digital Careers-ის გუნდი<br/>🌐 <a href="https://cdc.org.ge">cdc.org.ge</a><br/>✉️ <a href="mailto:contact@cdc.org.ge">contact@cdc.org.ge</a></p>
+  `;
+
+  const html = wrapTemplate('გილოცავთ ჩარიცხვას! 🎉', bodyHtml, 'დეშბორდზე გადასვლა', dashboardUrl);
+  await sendEmail(email, `გილოცავთ! ჩარიცხული ხართ კურსზე: ${courseTitle} | CDC`, html, dashboardUrl);
+}
+
 // Fired once, the moment a Business account's public registry extract is
 // approved (routes/adminCompanies.ts's setVerified) — the same trigger
 // point that starts the 7-day AI Agents Suite trial, so this email is what

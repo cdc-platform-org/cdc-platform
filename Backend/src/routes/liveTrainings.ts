@@ -3,6 +3,8 @@ import { prisma } from '../lib/prisma';
 import { authenticate, optionalAuthenticate } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { liveTrainingRegisterSchema } from '../schemas/liveTrainingSchemas';
+import { sendLiveTrainingRegistrationEmail, sendLiveTrainingEnrollmentEmail } from '../services/emailService';
+import { sendLiveTrainingRegistrationWhatsApp, sendLiveTrainingEnrollmentWhatsApp } from '../services/whatsappService';
 
 const router = Router();
 
@@ -161,6 +163,23 @@ router.post('/:id/register', registerRateLimit, async (req: Request, res: Respon
   notifyAdminsOfNewLead(training.title, lead.name).catch((err) =>
     console.error('[liveTrainings] notifyAdminsOfNewLead failed:', err)
   );
+  // Fire-and-forget, same posture as notifyAdminsOfNewLead above — a
+  // Resend outage must never fail (or even slow down) the registration
+  // itself; sendEmail's own try/catch already prevents a thrown error, this
+  // just guards the astronomically unlikely case of a bug upstream of that.
+  sendLiveTrainingRegistrationEmail({
+    email: lead.email,
+    userName: lead.name,
+    courseTitle: training.title,
+    startDate: training.startDate ?? training.scheduledAt,
+    liveTrainingId: training.id,
+  }).catch((err) => console.error('[liveTrainings] sendLiveTrainingRegistrationEmail failed:', err));
+  sendLiveTrainingRegistrationWhatsApp({
+    phone: lead.phone,
+    userName: lead.name,
+    courseTitle: training.title,
+    startDate: training.startDate ?? training.scheduledAt,
+  }).catch((err) => console.error('[liveTrainings] sendLiveTrainingRegistrationWhatsApp failed:', err));
 
   res.status(201).json({ data: { id: lead.id } });
 });
@@ -207,6 +226,35 @@ router.post('/:id/enroll', authenticate, async (req: Request, res: Response) => 
   const enrollment = existing
     ? await prisma.liveTrainingEnrollment.update({ where: { id: existing.id }, data: { status: 'ACTIVE', enrolledAt: new Date() } })
     : await prisma.liveTrainingEnrollment.create({ data: { userId: req.user!.id, liveTrainingId: training.id } });
+
+  // req.user only carries id/role/email (see middleware/auth.ts) — name
+  // isn't in the JWT payload, so it needs its own lookup for the email's
+  // {{userName}}. Fire-and-forget, same posture as the /register email above.
+  prisma.user
+    .findUnique({ where: { id: req.user!.id }, select: { name: true, email: true, phone: true } })
+    .then((user) => {
+      if (!user) return;
+      sendLiveTrainingEnrollmentEmail({
+        email: user.email,
+        userName: user.name,
+        courseTitle: training.title,
+        startDate: training.startDate,
+        meetLink: training.meetingUrl,
+        classroomLink: training.classroomUrl,
+      }).catch((err) => console.error('[liveTrainings] sendLiveTrainingEnrollmentEmail failed:', err));
+      // No phone on file (User.phone is optional) simply skips the
+      // WhatsApp send — email above already covers the notification.
+      if (user.phone) {
+        sendLiveTrainingEnrollmentWhatsApp({
+          phone: user.phone,
+          userName: user.name,
+          courseTitle: training.title,
+          meetLink: training.meetingUrl,
+          classroomLink: training.classroomUrl,
+        }).catch((err) => console.error('[liveTrainings] sendLiveTrainingEnrollmentWhatsApp failed:', err));
+      }
+    })
+    .catch((err) => console.error('[liveTrainings] enrollment-notification user lookup failed:', err));
 
   res.status(201).json({ data: enrollment });
 });
