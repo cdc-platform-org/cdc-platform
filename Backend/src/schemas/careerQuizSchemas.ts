@@ -3,10 +3,19 @@ import { z } from 'zod';
 // Free-text question/answer pairs — the actual question set differs
 // entirely between the kid (<16) and adult (16+) flows (see
 // career-test.tsx's KID_QUESTIONS/ADULT_QUESTIONS), so this only validates
-// shape (a handful of short string values), not specific keys. 2-6 answers
-// covers both flows (3 kid questions, 4 adult questions) with headroom.
+// shape (a handful of short string/string[] values), not specific keys.
+// A question can be multi-select (career-test.tsx's toggleAnswer), so each
+// value is either one string or a non-empty array of them — never both a
+// single string AND requiring array-only, so a caller sending either shape
+// (or a future non-multi-select question) is accepted the same way.
+// 2-6 answers covers both flows (3 kid questions, 4 adult questions) with
+// headroom.
+const answerValueSchema = z.union([
+  z.string().trim().min(1).max(300),
+  z.array(z.string().trim().min(1).max(150)).min(1).max(10),
+]);
 const answersSchema = z
-  .record(z.string().trim().min(1).max(60), z.string().trim().min(1).max(300))
+  .record(z.string().trim().min(1).max(60), answerValueSchema)
   .refine((obj) => {
     const count = Object.keys(obj).length;
     return count >= 2 && count <= 6;

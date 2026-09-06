@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
-import { Sparkles, LogIn, UserPlus, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Sparkles, LogIn, UserPlus, RefreshCw, ArrowLeft, Check } from 'lucide-react';
 import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
 import BackButton from '../src/components/common/BackButton';
@@ -196,7 +196,11 @@ export default function CareerTestPage() {
   const [phone, setPhone] = useState('');
   const [gender, setGender] = useState<CareerQuizGender | ''>('');
   const [age, setAge] = useState<string>(ageParam ? String(ageParam) : '');
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  // Multi-select — a question can have more than one option checked, so
+  // each question key maps to the list of options picked for it (joined
+  // into one free-text string per question right before submitting; see
+  // handleSubmit). Was a single string per question (radio-style) before.
+  const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState(false);
@@ -236,7 +240,15 @@ export default function CareerTestPage() {
     () => !!(fullName.trim() && email.trim() && phone.trim() && gender && age && ageNum > 0),
     [fullName, email, phone, gender, age, ageNum]
   );
-  const canSubmitQuiz = useMemo(() => questions.every((q) => !!answers[q.key]), [questions, answers]);
+  const canSubmitQuiz = useMemo(() => questions.every((q) => (answers[q.key]?.length ?? 0) > 0), [questions, answers]);
+
+  const toggleAnswer = (questionKey: string, option: string) => {
+    setAnswers((prev) => {
+      const current = prev[questionKey] ?? [];
+      const next = current.includes(option) ? current.filter((o) => o !== option) : [...current, option];
+      return { ...prev, [questionKey]: next };
+    });
+  };
 
   const handleNext = () => {
     if (!canSubmitStep1) {
@@ -256,6 +268,11 @@ export default function CareerTestPage() {
     setError(null);
     setSubmitting(true);
     try {
+      // Sends each question's full list of selected options — the Backend
+      // accepts either a single string or a string[] per question (see
+      // careerQuizSchemas.ts) and formats a multi-select question into the
+      // AI prompt's Q&A transcript itself, e.g. "მთავარი კარიერული მიზანი:
+      // პირველი სამსახურის შოვნა ტექში, კარიერის შეცვლა".
       const submission = await submitCareerQuiz({
         fullName: fullName.trim(),
         email: email.trim(),
@@ -458,19 +475,34 @@ export default function CareerTestPage() {
                   {t.back}
                 </button>
 
+                {/* Multi-select — a question can have more than one option
+                    checked (see toggleAnswer/canSubmitQuiz above), so each
+                    option renders as a checkbox rather than a single-pick
+                    radio button. */}
                 {questions.map((q) => (
                   <div key={q.key} className="space-y-3">
                     <h2 className="text-sm font-bold text-slate-200">{q.question}</h2>
-                    {q.options.map((opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => setAnswers((prev) => ({ ...prev, [q.key]: opt }))}
-                        className={choiceButtonClass(answers[q.key] === opt)}
-                      >
-                        {opt}
-                      </button>
-                    ))}
+                    {q.options.map((opt) => {
+                      const checked = answers[q.key]?.includes(opt) ?? false;
+                      return (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => toggleAnswer(q.key, opt)}
+                          aria-pressed={checked}
+                          className={`${choiceButtonClass(checked)} flex items-center gap-3`}
+                        >
+                          <span
+                            className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${
+                              checked ? 'border-cyan-400 bg-cyan-500/20' : 'border-slate-600'
+                            }`}
+                          >
+                            {checked && <Check className="w-3 h-3 text-cyan-300" />}
+                          </span>
+                          {opt}
+                        </button>
+                      );
+                    })}
                   </div>
                 ))}
 

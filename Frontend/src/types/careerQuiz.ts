@@ -10,7 +10,7 @@ export interface CareerQuizSubmission {
   audience: CareerQuizAudience;
   gender: CareerQuizGender;
   age: number;
-  answers: Record<string, string>;
+  answers: Record<string, string | string[]>;
   resultText: string;
   ref: string | null;
   createdAt: string;

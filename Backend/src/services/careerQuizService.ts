@@ -32,7 +32,10 @@ export function resolveAgeGroup(age: number): CareerQuizAgeGroup {
 interface QuizInput {
   gender: 'MALE' | 'FEMALE' | 'OTHER';
   age: number;
-  answers: Record<string, string>;
+  // A question can be multi-select (career-test.tsx's checkbox-style
+  // options), so each answer is either a single string or a non-empty
+  // array of the options picked for that question.
+  answers: Record<string, string | string[]>;
 }
 
 // Live, published catalog at the moment of submission — same "never
@@ -59,9 +62,9 @@ async function buildCatalogContext(): Promise<string> {
     .join('\n\n');
 }
 
-function formatAnswersTranscript(answers: Record<string, string>): string {
+function formatAnswersTranscript(answers: Record<string, string | string[]>): string {
   return Object.entries(answers)
-    .map(([question, answer]) => `- ${question}: ${answer}`)
+    .map(([question, answer]) => `- ${question}: ${Array.isArray(answer) ? answer.join(', ') : answer}`)
     .join('\n');
 }
 

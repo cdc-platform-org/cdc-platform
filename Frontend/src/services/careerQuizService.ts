@@ -8,7 +8,10 @@ export interface CareerQuizSubmitPayload {
   audience: CareerQuizAudience;
   gender: CareerQuizGender;
   age: number;
-  answers: Record<string, string>;
+  // One or more selected options per question — a question can be
+  // multi-select (see career-test.tsx's toggleAnswer), so a plain single
+  // string per key is no longer guaranteed.
+  answers: Record<string, string | string[]>;
   ref?: string | null;
   lang: 'ka' | 'en';
 }
