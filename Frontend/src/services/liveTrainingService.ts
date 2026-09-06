@@ -34,6 +34,10 @@ export interface LiveTrainingRegisterPayload {
   name: string;
   email: string;
   phone: string;
+  // The site's currently-active locale (resolveLocale(router.locale)) at
+  // submit time — the backend uses this to pick the registration
+  // confirmation email/WhatsApp language (Georgian for anything but 'en').
+  locale?: string;
 }
 
 export async function registerForLiveTraining(id: string, payload: LiveTrainingRegisterPayload): Promise<{ id: string }> {
@@ -43,8 +47,10 @@ export async function registerForLiveTraining(id: string, payload: LiveTrainingR
 
 // Authenticated self-serve alternative to the anonymous lead form above —
 // see LiveTrainingEnrollment's own schema comment for why both exist.
-export async function enrollInLiveTraining(id: string): Promise<void> {
-  await apiClient.post(`/live-trainings/${id}/enroll`);
+// `locale` picks the enrollment confirmation email/WhatsApp language, same
+// convention as registerForLiveTraining above.
+export async function enrollInLiveTraining(id: string, locale?: string): Promise<void> {
+  await apiClient.post(`/live-trainings/${id}/enroll`, { locale });
 }
 
 export async function cancelLiveTrainingEnrollment(id: string): Promise<void> {

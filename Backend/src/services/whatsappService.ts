@@ -1,4 +1,5 @@
 import { WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_API_VERSION } from '../utils/env';
+import { NotificationLocale } from '../utils/notificationLocale';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://cdc.org.ge';
 
@@ -114,10 +115,22 @@ export async function sendWhatsAppMessage(params: SendWhatsAppMessageParams): Pr
 // guard (or Meta rejecting an unrecognized template name) keeps this a
 // safe no-op rather than a broken send.
 // ============================================================
-const LINK_NOT_YET_ACTIVE = 'ბმული გააქტიურდება ლექციის დაწყებამდე 15 წუთით ადრე.';
+// Meta requires the FULL locale tag for English ("en_US"), not the bare
+// "en" this codebase otherwise uses everywhere else (resolveNotificationLocale,
+// email subjects, etc.) — WhatsApp template language codes follow Meta's own
+// list (https://developers.facebook.com/docs/whatsapp/business-management-api/languages),
+// which is why this mapping lives here rather than in resolveNotificationLocale
+// itself (that helper's 'en' is correct for every OTHER caller).
+const WHATSAPP_LANGUAGE_CODE: Record<NotificationLocale, string> = { ka: 'ka', en: 'en_US' };
 
-function formatWhatsAppDate(date: Date | null): string {
-  return date ? date.toLocaleDateString('ka-GE', { timeZone: 'Asia/Tbilisi', dateStyle: 'long' }) : 'დაზუსტდება მალე';
+const LINK_NOT_YET_ACTIVE: Record<NotificationLocale, string> = {
+  ka: 'ბმული გააქტიურდება ლექციის დაწყებამდე 15 წუთით ადრე.',
+  en: 'The link will activate 15 minutes before the session starts.',
+};
+
+function formatWhatsAppDate(date: Date | null, locale: NotificationLocale): string {
+  if (!date) return locale === 'en' ? 'to be confirmed soon' : 'დაზუსტდება მალე';
+  return date.toLocaleDateString(locale === 'en' ? 'en-US' : 'ka-GE', { timeZone: 'Asia/Tbilisi', dateStyle: 'long' });
 }
 
 export async function sendLiveTrainingRegistrationWhatsApp(params: {
@@ -125,21 +138,21 @@ export async function sendLiveTrainingRegistrationWhatsApp(params: {
   userName: string;
   courseTitle: string;
   startDate: Date | null;
+  locale?: NotificationLocale;
 }): Promise<void> {
-  const { phone, userName, courseTitle, startDate } = params;
+  const { phone, userName, courseTitle, startDate, locale = 'ka' } = params;
+  const meetUnlockNote =
+    locale === 'en'
+      ? 'The Google Meet link will unlock once your enrollment (payment) is confirmed.'
+      : 'Google Meet ბმული გააქტიურდება კურსზე ჩარიცხვის (გადახდის დადასტურების) შემდეგ.';
   await sendWhatsAppMessage({
     to: phone,
-    templateName: 'live_training_registration',
-    languageCode: 'ka',
+    templateName: 'live_course_registration',
+    languageCode: WHATSAPP_LANGUAGE_CODE[locale],
     // Positional {{1}}..{{4}} — name, course title, start date, and the
     // "Meet link unlocks on enrollment" note (courseTitle repeated per the
     // template's own copy, same as the email's confirmation-line reference).
-    textParameters: [
-      userName,
-      courseTitle,
-      formatWhatsAppDate(startDate),
-      'Google Meet ბმული გააქტიურდება კურსზე ჩარიცხვის (გადახდის დადასტურების) შემდეგ.',
-    ],
+    textParameters: [userName, courseTitle, formatWhatsAppDate(startDate, locale), meetUnlockNote],
   });
 }
 
@@ -149,17 +162,18 @@ export async function sendLiveTrainingEnrollmentWhatsApp(params: {
   courseTitle: string;
   meetLink: string | null;
   classroomLink: string | null;
+  locale?: NotificationLocale;
 }): Promise<void> {
-  const { phone, userName, courseTitle, meetLink, classroomLink } = params;
+  const { phone, userName, courseTitle, meetLink, classroomLink, locale = 'ka' } = params;
   await sendWhatsAppMessage({
     to: phone,
-    templateName: 'live_training_enrollment',
-    languageCode: 'ka',
+    templateName: 'live_course_enrollment',
+    languageCode: WHATSAPP_LANGUAGE_CODE[locale],
     textParameters: [
       userName,
       courseTitle,
-      meetLink || LINK_NOT_YET_ACTIVE,
-      classroomLink || LINK_NOT_YET_ACTIVE,
+      meetLink || LINK_NOT_YET_ACTIVE[locale],
+      classroomLink || LINK_NOT_YET_ACTIVE[locale],
       `${FRONTEND_URL}/dashboard`,
     ],
   });

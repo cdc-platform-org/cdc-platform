@@ -1,6 +1,7 @@
 import { Resend } from 'resend';
 import { RESEND_API_KEY, EMAIL_FROM, SUPER_ADMIN_EMAILS, HR_SUPPORT_NOTIFICATION_EMAILS, BACKEND_URL } from '../utils/env';
 import { buildMentorshipIcs } from './icsService';
+import { NotificationLocale } from '../utils/notificationLocale';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://cdc.org.ge';
 
@@ -391,9 +392,15 @@ export async function sendRecordingReadyEmail(params: {
 // reads fine without a real link yet" fallback sendMentorshipBookingEmails
 // uses for meetLink.
 // ============================================================
-function formatTrainingDate(date: Date | null): string {
-  return date ? date.toLocaleDateString('ka-GE', { timeZone: 'Asia/Tbilisi', dateStyle: 'long' }) : 'დაზუსტდება მალე';
+function formatTrainingDate(date: Date | null, locale: NotificationLocale): string {
+  if (!date) return locale === 'en' ? 'to be confirmed soon' : 'დაზუსტდება მალე';
+  return date.toLocaleDateString(locale === 'en' ? 'en-US' : 'ka-GE', { timeZone: 'Asia/Tbilisi', dateStyle: 'long' });
 }
+
+const SIGNATURE_HTML: Record<NotificationLocale, string> = {
+  ka: 'პატივისცემით,<br/>CDC — Center of Digital Careers-ის გუნდი<br/>🌐 <a href="https://cdc.org.ge">cdc.org.ge</a><br/>✉️ <a href="mailto:contact@cdc.org.ge">contact@cdc.org.ge</a>',
+  en: 'Best regards,<br/>The CDC — Center of Digital Careers team<br/>🌐 <a href="https://cdc.org.ge">cdc.org.ge</a><br/>✉️ <a href="mailto:contact@cdc.org.ge">contact@cdc.org.ge</a>',
+};
 
 export async function sendLiveTrainingRegistrationEmail(params: {
   email: string;
@@ -401,12 +408,29 @@ export async function sendLiveTrainingRegistrationEmail(params: {
   courseTitle: string;
   startDate: Date | null;
   liveTrainingId: string;
+  locale?: NotificationLocale;
 }): Promise<void> {
-  const { email, userName, courseTitle, startDate, liveTrainingId } = params;
-  const startDateStr = formatTrainingDate(startDate);
+  const { email, userName, courseTitle, startDate, liveTrainingId, locale = 'ka' } = params;
+  const startDateStr = formatTrainingDate(startDate, locale);
   const trainingUrl = `${FRONTEND_URL}/live-trainings/${liveTrainingId}`;
 
-  const bodyHtml = `
+  const bodyHtml =
+    locale === 'en'
+      ? `
+    <p>Hello, <strong>${userName}</strong>!</p>
+    <p>Thank you for registering on the CDC (Center of Digital Careers) platform and for choosing our team on your digital career journey!</p>
+    <p>We've received your application for the course - "${courseTitle}".</p>
+    <p><strong>Next steps and important details:</strong></p>
+    <ul style="padding-left:20px;margin:0 0 16px;">
+      <li style="margin-bottom:8px;"><strong>Start date:</strong> the course starts on ${startDateStr}.</li>
+      <li style="margin-bottom:8px;"><strong>Group formation:</strong> to ensure a high-quality, interactive learning experience, the course starts once the minimum group size is reached. We'll contact you separately once the group is finalized to confirm the organizational details.</li>
+      <li><strong>Access & links:</strong> once your enrollment (payment) is confirmed, your Google Meet / online session link and your personal Google Classroom invite will automatically activate in your account.</li>
+    </ul>
+    <p>If you have any questions, you can reply directly to this email or contact us at: <strong>511 14 14 11</strong>.</p>
+    <p>We're looking forward to this learning journey together!</p>
+    <p style="margin-top:20px;">${SIGNATURE_HTML.en}</p>
+  `
+      : `
     <p>გამარჯობა, <strong>${userName}</strong>!</p>
     <p>მადლობას გიხდით CDC (Center of Digital Careers)-ის პლატფორმაზე დარეგისტრირებისთვის და ციფრული პროფესიის განვითარების გზაზე ჩვენი გუნდის არჩევისთვის!</p>
     <p>გადავამოწმეთ თქვენი განაცხადი კურსზე - „${courseTitle}“.</p>
@@ -418,11 +442,18 @@ export async function sendLiveTrainingRegistrationEmail(params: {
     </ul>
     <p>თუ რაიმე შეკითხვა გექნებათ, შეგიძლიათ პირდაპირ უპასუხოთ ამ წერილს ან დაგვიკავშირდეთ ნომერზე: <strong>511 14 14 11</strong>.</p>
     <p>სიხარულით ველოდებით ჩვენს ერთობლივ სასწავლო მოგზაურობას!</p>
-    <p style="margin-top:20px;">პატივისცემით,<br/>CDC — Center of Digital Careers-ის გუნდი<br/>🌐 <a href="https://cdc.org.ge">cdc.org.ge</a><br/>✉️ <a href="mailto:contact@cdc.org.ge">contact@cdc.org.ge</a></p>
+    <p style="margin-top:20px;">${SIGNATURE_HTML.ka}</p>
   `;
 
-  const html = wrapTemplate('რეგისტრაცია მიღებულია! ✅', bodyHtml, 'ტრენინგის დეტალები', trainingUrl);
-  await sendEmail(email, `ადასტურებთ რეგისტრაციას კურსზე: ${courseTitle} | CDC`, html, trainingUrl);
+  const html = wrapTemplate(
+    locale === 'en' ? 'Registration received! ✅' : 'რეგისტრაცია მიღებულია! ✅',
+    bodyHtml,
+    locale === 'en' ? 'Training details' : 'ტრენინგის დეტალები',
+    trainingUrl
+  );
+  const subject =
+    locale === 'en' ? `Confirming your registration for: ${courseTitle} | CDC` : `ადასტურებთ რეგისტრაციას კურსზე: ${courseTitle} | CDC`;
+  await sendEmail(email, subject, html, trainingUrl);
 }
 
 export async function sendLiveTrainingEnrollmentEmail(params: {
@@ -432,9 +463,10 @@ export async function sendLiveTrainingEnrollmentEmail(params: {
   startDate: Date | null;
   meetLink: string | null;
   classroomLink: string | null;
+  locale?: NotificationLocale;
 }): Promise<void> {
-  const { email, userName, courseTitle, startDate, meetLink, classroomLink } = params;
-  const startDateStr = formatTrainingDate(startDate);
+  const { email, userName, courseTitle, startDate, meetLink, classroomLink, locale = 'ka' } = params;
+  const startDateStr = formatTrainingDate(startDate, locale);
   const dashboardUrl = `${FRONTEND_URL}/dashboard`;
   // meetingUrl/classroomUrl are admin-attached-after-the-fact fields (see
   // LiveTraining's own schema comment) AND time-gated on the dashboard side
@@ -442,31 +474,51 @@ export async function sendLiveTrainingEnrollmentEmail(params: {
   // before the session) — either way, "not present right now" is expected
   // and normal at enrollment time, not an error, so this reads as a
   // schedule note rather than a broken/missing link.
-  const LINK_NOT_YET_ACTIVE = 'ბმული გააქტიურდება ლექციის დაწყებამდე 15 წუთით ადრე.';
-  const meetLine = meetLink
-    ? `<li style="margin-bottom:8px;"><strong>Google Meet ლექციების ბმული:</strong> <a href="${meetLink}">${meetLink}</a></li>`
-    : `<li style="margin-bottom:8px;"><strong>Google Meet ლექციების ბმული:</strong> ${LINK_NOT_YET_ACTIVE}</li>`;
-  const classroomLine = classroomLink
-    ? `<li><strong>ციფრულ კლასში გაწევრიანების ბმული:</strong> <a href="${classroomLink}">${classroomLink}</a></li>`
-    : `<li><strong>ციფრულ კლასში გაწევრიანების ბმული:</strong> ${LINK_NOT_YET_ACTIVE}</li>`;
+  const LINK_NOT_YET_ACTIVE: Record<NotificationLocale, string> = {
+    ka: 'ბმული გააქტიურდება ლექციის დაწყებამდე 15 წუთით ადრე.',
+    en: 'The link will activate 15 minutes before the session starts.',
+  };
 
-  const bodyHtml = `
+  const bodyHtml =
+    locale === 'en'
+      ? `
+    <p>Hello, <strong>${userName}</strong>!</p>
+    <p>Congratulations! You've successfully enrolled in the course - "${courseTitle}".</p>
+    <p><strong>Your learning space details:</strong></p>
+    <ul style="padding-left:20px;margin:0 0 16px;">
+      <li style="margin-bottom:8px;"><strong>Start date:</strong> ${startDateStr}</li>
+      <li style="margin-bottom:8px;"><strong>Google Meet session link:</strong> ${meetLink ? `<a href="${meetLink}">${meetLink}</a>` : LINK_NOT_YET_ACTIVE.en}</li>
+      <li><strong>Digital Classroom join link:</strong> ${classroomLink ? `<a href="${classroomLink}">${classroomLink}</a>` : LINK_NOT_YET_ACTIVE.en}</li>
+    </ul>
+    <p>You can also view your lecture schedule, recordings, and course materials any time from your personal dashboard (<a href="${dashboardUrl}">cdc.org.ge/dashboard</a>).</p>
+    <p>If you have any questions, contact us at: <strong>511 14 14 11</strong>.</p>
+    <p>We wish you a successful and productive learning experience!</p>
+    <p style="margin-top:20px;">${SIGNATURE_HTML.en}</p>
+  `
+      : `
     <p>გამარჯობა, <strong>${userName}</strong>!</p>
     <p>გილოცავთ! თქვენ წარმატებით ჩაერიცხეთ კურსზე - „${courseTitle}“.</p>
     <p><strong>თქვენი სასწავლო სივრცის დეტალები:</strong></p>
     <ul style="padding-left:20px;margin:0 0 16px;">
       <li style="margin-bottom:8px;"><strong>სწავლის დაწყების თარიღი:</strong> ${startDateStr}</li>
-      ${meetLine}
-      ${classroomLine}
+      <li style="margin-bottom:8px;"><strong>Google Meet ლექციების ბმული:</strong> ${meetLink ? `<a href="${meetLink}">${meetLink}</a>` : LINK_NOT_YET_ACTIVE.ka}</li>
+      <li><strong>ციფრულ კლასში გაწევრიანების ბმული:</strong> ${classroomLink ? `<a href="${classroomLink}">${classroomLink}</a>` : LINK_NOT_YET_ACTIVE.ka}</li>
     </ul>
     <p>ასევე, თქვენს პირად დეშბორდზე (<a href="${dashboardUrl}">cdc.org.ge/dashboard</a>) ნებისმიერ დროს შეგიძლიათ ნახოთ ლექციების განრიგი, ჩანაწერები და სასწავლო მასალები.</p>
     <p>შეკითხვების შემთხვევაში დაგვიკავშირდით: <strong>511 14 14 11</strong>.</p>
     <p>წარმატებულ და პროდუქტიულ სწავლას გისურვებთ!</p>
-    <p style="margin-top:20px;">პატივისცემით,<br/>CDC — Center of Digital Careers-ის გუნდი<br/>🌐 <a href="https://cdc.org.ge">cdc.org.ge</a><br/>✉️ <a href="mailto:contact@cdc.org.ge">contact@cdc.org.ge</a></p>
+    <p style="margin-top:20px;">${SIGNATURE_HTML.ka}</p>
   `;
 
-  const html = wrapTemplate('გილოცავთ ჩარიცხვას! 🎉', bodyHtml, 'დეშბორდზე გადასვლა', dashboardUrl);
-  await sendEmail(email, `გილოცავთ! ჩარიცხული ხართ კურსზე: ${courseTitle} | CDC`, html, dashboardUrl);
+  const html = wrapTemplate(
+    locale === 'en' ? 'Congratulations on your enrollment! 🎉' : 'გილოცავთ ჩარიცხვას! 🎉',
+    bodyHtml,
+    locale === 'en' ? 'Go to dashboard' : 'დეშბორდზე გადასვლა',
+    dashboardUrl
+  );
+  const subject =
+    locale === 'en' ? `Congratulations! You're enrolled in: ${courseTitle} | CDC` : `გილოცავთ! ჩარიცხული ხართ კურსზე: ${courseTitle} | CDC`;
+  await sendEmail(email, subject, html, dashboardUrl);
 }
 
 // Fired once, the moment a Business account's public registry extract is

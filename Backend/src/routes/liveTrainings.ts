@@ -5,6 +5,7 @@ import { rateLimit } from '../middleware/rateLimit';
 import { liveTrainingRegisterSchema } from '../schemas/liveTrainingSchemas';
 import { sendLiveTrainingRegistrationEmail, sendLiveTrainingEnrollmentEmail } from '../services/emailService';
 import { sendLiveTrainingRegistrationWhatsApp, sendLiveTrainingEnrollmentWhatsApp } from '../services/whatsappService';
+import { resolveNotificationLocale } from '../utils/notificationLocale';
 
 const router = Router();
 
@@ -156,8 +157,13 @@ router.post('/:id/register', registerRateLimit, async (req: Request, res: Respon
     return res.status(409).json({ message: 'This training is fully booked.' });
   }
 
+  // locale isn't a LiveTrainingLead column — it exists purely to pick the
+  // notification language below, split out here so it never reaches Prisma.
+  const { locale: rawLocale, ...leadData } = result.data;
+  const locale = resolveNotificationLocale(rawLocale);
+
   const lead = await prisma.liveTrainingLead.create({
-    data: { liveTrainingId: training.id, ...result.data },
+    data: { liveTrainingId: training.id, ...leadData },
   });
 
   notifyAdminsOfNewLead(training.title, lead.name).catch((err) =>
@@ -173,12 +179,14 @@ router.post('/:id/register', registerRateLimit, async (req: Request, res: Respon
     courseTitle: training.title,
     startDate: training.startDate ?? training.scheduledAt,
     liveTrainingId: training.id,
+    locale,
   }).catch((err) => console.error('[liveTrainings] sendLiveTrainingRegistrationEmail failed:', err));
   sendLiveTrainingRegistrationWhatsApp({
     phone: lead.phone,
     userName: lead.name,
     courseTitle: training.title,
     startDate: training.startDate ?? training.scheduledAt,
+    locale,
   }).catch((err) => console.error('[liveTrainings] sendLiveTrainingRegistrationWhatsApp failed:', err));
 
   res.status(201).json({ data: { id: lead.id } });
@@ -227,6 +235,12 @@ router.post('/:id/enroll', authenticate, async (req: Request, res: Response) => 
     ? await prisma.liveTrainingEnrollment.update({ where: { id: existing.id }, data: { status: 'ACTIVE', enrolledAt: new Date() } })
     : await prisma.liveTrainingEnrollment.create({ data: { userId: req.user!.id, liveTrainingId: training.id } });
 
+  // Self-serve enroll has no lead-form field to carry a locale (unlike
+  // /register), so the frontend sends it as a small request body instead
+  // (see liveTrainingService.ts's enrollInLiveTraining) — the site's
+  // currently-active locale at the moment the student clicked Enroll.
+  const enrollLocale = resolveNotificationLocale(typeof req.body?.locale === 'string' ? req.body.locale : undefined);
+
   // req.user only carries id/role/email (see middleware/auth.ts) — name
   // isn't in the JWT payload, so it needs its own lookup for the email's
   // {{userName}}. Fire-and-forget, same posture as the /register email above.
@@ -241,6 +255,7 @@ router.post('/:id/enroll', authenticate, async (req: Request, res: Response) => 
         startDate: training.startDate,
         meetLink: training.meetingUrl,
         classroomLink: training.classroomUrl,
+        locale: enrollLocale,
       }).catch((err) => console.error('[liveTrainings] sendLiveTrainingEnrollmentEmail failed:', err));
       // No phone on file (User.phone is optional) simply skips the
       // WhatsApp send — email above already covers the notification.
@@ -249,6 +264,7 @@ router.post('/:id/enroll', authenticate, async (req: Request, res: Response) => 
           phone: user.phone,
           userName: user.name,
           courseTitle: training.title,
+          locale: enrollLocale,
           meetLink: training.meetingUrl,
           classroomLink: training.classroomUrl,
         }).catch((err) => console.error('[liveTrainings] sendLiveTrainingEnrollmentWhatsApp failed:', err));

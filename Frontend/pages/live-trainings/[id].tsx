@@ -168,7 +168,7 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
     setError(null);
     setSubmitting(true);
     try {
-      await registerForLiveTraining(id, { name: name.trim(), email: email.trim(), phone: phone.trim() });
+      await registerForLiveTraining(id, { name: name.trim(), email: email.trim(), phone: phone.trim(), locale: lang });
       setSuccess(true);
       load(); // refresh capacity counters
     } catch (err: any) {
@@ -203,7 +203,7 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
         }
         return;
       }
-      await enrollInLiveTraining(id);
+      await enrollInLiveTraining(id, lang);
       setEnrolled(true);
       load(); // refresh capacity counters
     } catch (err: any) {

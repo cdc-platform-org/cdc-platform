@@ -64,6 +64,15 @@ export const liveTrainingRegisterSchema = z.object({
   name: z.string().trim().min(1, 'Name is required.').max(200),
   email: z.string().trim().email('Enter a valid email.').max(255),
   phone: z.string().trim().min(4, 'Enter a valid phone number.').max(50),
+  // The site's currently-active locale (resolveLocale(router.locale) on the
+  // frontend) at the moment the visitor submitted this form — the only
+  // point in the registration/enrollment flow where a real, reliable
+  // signal for "which language should this person's notifications use"
+  // exists (an authenticated User has no stored locale preference; see
+  // routes/liveTrainings.ts's own comment on the other trigger points).
+  // Anything other than 'en' collapses to Georgian, matching every other
+  // ka/en-only notification in this codebase.
+  locale: z.string().trim().max(10).optional(),
 });
 
 export const liveTrainingLeadUpdateSchema = z.object({

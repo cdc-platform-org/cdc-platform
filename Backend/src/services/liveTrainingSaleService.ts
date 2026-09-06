@@ -45,6 +45,14 @@ export async function completeLiveTrainingPurchase(params: { userId: string; liv
   // on a retried webhook delivery re-confirming the same payment.
   // Fire-and-forget: a Resend outage must never fail the payment webhook/
   // callback that got the user here.
+  //
+  // No `locale` param here (unlike routes/liveTrainings.ts's /register and
+  // /enroll): this runs from a BOG/Stripe webhook or callback, with no
+  // browser/request context for the student at all — neither payment
+  // record stores the locale the checkout page was viewed in, and adding
+  // that would mean a schema migration purely to thread one field through
+  // a webhook, out of scope here. Defaults to Georgian, same as every
+  // other untracked-locale case.
   if (isNewEnrollment && liveTraining) {
     prisma.user
       .findUnique({ where: { id: params.userId }, select: { name: true, email: true, phone: true } })

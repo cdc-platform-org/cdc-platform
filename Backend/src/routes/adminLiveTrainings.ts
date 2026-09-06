@@ -333,6 +333,10 @@ router.post('/:id/grant', async (req: Request, res: Response) => {
   // Same "only on a genuinely fresh activation" gate as
   // liveTrainingSaleService.completeLiveTrainingPurchase — re-granting an
   // already-ACTIVE enrollment (e.g. correcting the note) must not re-send it.
+  // No `locale` param — this is the ADMIN's own request, not the student's;
+  // req.user here is whoever is granting the seat, so their Accept-Language
+  // would misrepresent the recipient's actual preference. Defaults to
+  // Georgian, same untracked-locale fallback as the payment-webhook path.
   if (isNewEnrollment) {
     sendLiveTrainingEnrollmentEmail({
       email: user.email,
