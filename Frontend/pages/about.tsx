@@ -51,7 +51,12 @@ const ECOSYSTEM_FEATURES = [
 
 export default function AboutPage() {
   return (
-    <SimpleSiteLayout titleKa={aboutContent.heading.ka} titleEn={aboutContent.heading.en}>
+    <SimpleSiteLayout
+      titleKa={aboutContent.heading.ka}
+      titleEn={aboutContent.heading.en}
+      descriptionKa={aboutContent.mission.ka}
+      descriptionEn={aboutContent.mission.en}
+    >
       {(lang) => {
         const l = lang === 'GEO' ? 'ka' : 'en';
         return (

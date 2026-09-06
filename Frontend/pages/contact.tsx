@@ -14,7 +14,7 @@ const labels = {
 
 export default function ContactPage() {
   return (
-    <SimpleSiteLayout titleKa={heading.ka} titleEn={heading.en}>
+    <SimpleSiteLayout titleKa={heading.ka} titleEn={heading.en} descriptionKa={intro.ka} descriptionEn={intro.en}>
       {(lang) => {
         const l = lang === 'GEO' ? 'ka' : 'en';
         const t = labels[l];

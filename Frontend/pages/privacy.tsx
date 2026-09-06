@@ -8,7 +8,12 @@ const updatedLabel = { ka: 'ბოლო განახლება', en: 'Last
 
 export default function PrivacyPolicyPage() {
   return (
-    <SimpleSiteLayout titleKa={heading.ka} titleEn={heading.en}>
+    <SimpleSiteLayout
+      titleKa={heading.ka}
+      titleEn={heading.en}
+      descriptionKa="როგორ აგროვებს, იყენებს და იცავს CDC პლატფორმა თქვენს პერსონალურ მონაცემებს."
+      descriptionEn="How the CDC Platform collects, uses, and protects your personal data."
+    >
       {(lang) => {
         const l = lang === 'GEO' ? 'ka' : 'en';
         return (

@@ -8,7 +8,12 @@ const updatedLabel = { ka: 'ბოლო განახლება', en: 'Last
 
 export default function RefundPolicyPage() {
   return (
-    <SimpleSiteLayout titleKa={heading.ka} titleEn={heading.en}>
+    <SimpleSiteLayout
+      titleKa={heading.ka}
+      titleEn={heading.en}
+      descriptionKa="CDC პლატფორმის თანხის დაბრუნებისა და კურსზე რეგისტრაციის გაუქმების პირობები."
+      descriptionEn="The CDC Platform's terms for refunds and cancelling a course registration."
+    >
       {(lang) => {
         const l = lang === 'GEO' ? 'ka' : 'en';
         return (
