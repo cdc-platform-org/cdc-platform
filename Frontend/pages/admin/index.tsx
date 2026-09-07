@@ -23,6 +23,27 @@ function formatMoney(minorUnits: number): string {
   return `${(minorUnits / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} GEL`;
 }
 
+// Every System Tools handler below used to fall back to the exact same
+// generic text ("Clearing the cache failed", "The health check failed"...)
+// whenever `err.response.data.message` was missing — which happens for two
+// very different reasons that look identical to an admin staring at a red
+// banner: (1) the request reached the Backend and it returned a real error
+// (a specific, actionable message IS available, just one property deeper —
+// this path was already handled correctly), or (2) the request never got a
+// response at all (a network failure, a CORS rejection, a timeout — axios
+// gives no `.response` object in this case). Case 2 is what a browser-wide
+// issue (e.g. a misconfigured CORS allowlist) looks like from here, and it
+// would hit every single tool on this page simultaneously with the same
+// unhelpful fallback text — indistinguishable from 5 independent bugs
+// without opening the network tab. Surfacing which case actually happened
+// turns that into a one-glance diagnosis.
+function describeToolError(err: any, fallback: string): string {
+  if (err?.response?.data?.message) return err.response.data.message;
+  if (err?.response) return `Server returned an unexpected error (HTTP ${err.response.status}).`;
+  if (err?.request) return 'Request never reached the server — this usually means a network or CORS problem, not a bug in this specific tool.';
+  return fallback;
+}
+
 function DashboardOverview() {
   const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -55,7 +76,7 @@ function DashboardOverview() {
     try {
       setI18nAgentResult(await runI18nAutoTranslateAgent());
     } catch (err: any) {
-      setI18nAgentError(err?.response?.data?.message ?? 'The translation agent run failed.');
+      setI18nAgentError(describeToolError(err, 'The translation agent run failed.'));
     } finally {
       setI18nAgentRunning(false);
     }
@@ -68,7 +89,7 @@ function DashboardOverview() {
     try {
       setCacheResult(await clearApplicationCache());
     } catch (err: any) {
-      setCacheError(err?.response?.data?.message ?? 'Clearing the cache failed.');
+      setCacheError(describeToolError(err, 'Clearing the cache failed.'));
     } finally {
       setCacheClearing(false);
     }
@@ -81,7 +102,7 @@ function DashboardOverview() {
     try {
       setHealthResult(await runHealthCheck());
     } catch (err: any) {
-      setHealthError(err?.response?.data?.message ?? 'The health check failed.');
+      setHealthError(describeToolError(err, 'The health check failed.'));
     } finally {
       setHealthChecking(false);
     }
@@ -94,7 +115,7 @@ function DashboardOverview() {
     try {
       setLocaleAuditResult(await auditOrphanedLocaleKeys());
     } catch (err: any) {
-      setLocaleAuditError(err?.response?.data?.message ?? 'The locale audit failed.');
+      setLocaleAuditError(describeToolError(err, 'The locale audit failed.'));
     } finally {
       setLocaleAuditRunning(false);
     }
@@ -107,7 +128,7 @@ function DashboardOverview() {
       const result = await purgeSystemJunk();
       setJunkToast(`🧹 ${result.message}`);
     } catch (err: any) {
-      setJunkError(err?.response?.data?.message ?? 'Purging system junk failed.');
+      setJunkError(describeToolError(err, 'Purging system junk failed.'));
     } finally {
       setJunkPurging(false);
     }
