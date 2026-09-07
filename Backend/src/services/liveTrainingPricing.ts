@@ -60,7 +60,15 @@ export function validateLiveTrainingDiscount(
   discountPercent: number | null | undefined,
   isOnSale: boolean
 ): string | null {
-  if (!isOnSale || !discountPercent) return null;
+  if (!isOnSale) return null;
+  // AUDIT NOTE (fixed): this used to be `if (!isOnSale || !discountPercent)
+  // return null` — treating "isOnSale=true but no discountPercent" as
+  // nothing to validate, silently accepted. That left the row on-sale with
+  // no discount, which isLiveTrainingSaleActive's own !discountPercent
+  // check then just as silently hides (no badge, no crash) — a confusing
+  // no-op rather than the clear rejection Course's identical scenario gets
+  // (courseSchemas.ts's .refine()). Now rejected explicitly instead.
+  if (!discountPercent) return 'discountPercent is required when isOnSale is true.';
   if (price === null) return 'A free training (no price set) cannot have a discount.';
   const salePrice = Math.round(price * (1 - discountPercent / 100));
   if (salePrice < MIN_SALE_PRICE_MINOR) {

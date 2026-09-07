@@ -22,11 +22,15 @@ module.exports = {
       // fallback before generic sans-serif — not the bare string 'Inter'.
       // Both CSS vars are set on the wrapper div in pages/_app.tsx; see the
       // comment there for the known mixed-script-heading tradeoff of this
-      // two-font-stack approach. `sans` (body text/inputs): still the
-      // original @font-face — unrelated, unchanged.
+      // two-font-stack approach. `sans` (body text/inputs): 'GL-Kirovi'
+      // removed (its @font-face and font FILE never existed together in
+      // this repo — a real production 404 on every page, fixed 2026-09-07,
+      // see globals.css's .app-shell comment) — .app-shell's
+      // georgianSafeFont already wins on specificity everywhere this
+      // matters, so 'Fira GO' is the effective first choice here now.
       fontFamily: {
         heading: ['var(--font-heading)', 'var(--font-fallback)', 'sans-serif'],
-        sans: ['GL-Kirovi', 'Fira GO', 'sans-serif'],
+        sans: ['Fira GO', 'sans-serif'],
       },
     },
   },

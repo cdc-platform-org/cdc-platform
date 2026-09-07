@@ -62,10 +62,12 @@ const fallbackFont = Inter({
 // from it once the browser has "resolved" a glyph in it).
 //
 // Now also the sitewide BODY-text font (see globals.css's .app-shell) —
-// GL-Kirovi (the previous body/nav font, plain @font-face in globals.css)
-// is documented there as corrupted; regular/medium/semibold weights are
-// pulled in alongside the existing 700 so this one family can cover both
-// roles without a second Google Fonts request.
+// GL-Kirovi (the previous body/nav font, a plain @font-face whose source
+// file never actually existed in this repo and was removed from
+// globals.css/tailwind.config.js as a real production 404) is gone;
+// regular/medium/semibold weights are pulled in alongside the existing 700
+// so this one family can cover both roles without a second Google Fonts
+// request.
 const georgianSafeFont = Noto_Sans_Georgian({
   subsets: ['georgian'],
   weight: ['400', '500', '600', '700'],
@@ -122,10 +124,10 @@ function App({ Component, pageProps }: AppProps) {
           }}
         />
         <style>{`
-          /* Font-family itself (GL-Kirovi @font-face + the forced rule on
-             html/body/inputs/headings) now lives in styles/globals.css —
-             one canonical declaration instead of two copies drifting apart.
-             This block keeps only the letter-spacing/line-height tuning. */
+          /* Font-family itself (georgianSafeFont via .app-shell + the
+             heading rules) lives in styles/globals.css — one canonical
+             declaration instead of two copies drifting apart. This block
+             keeps only the letter-spacing/line-height tuning. */
           /* ორიგინალური ფონტის პარამეტრები */
           html, body, button, input, select, textarea {
             letter-spacing: 0.05em !important;

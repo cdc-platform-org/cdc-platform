@@ -169,9 +169,31 @@ app.set('trust proxy', 1);
 // scale) — unset by default. Auth is a Bearer token in the Authorization
 // header, not a cookie (see Frontend's apiClient.ts), so this doesn't need
 // `credentials`.
+//
+// AUDIT NOTE (fixed): the apex ('https://cdc.org.ge') used to be the only
+// hardcoded entry, with FRONTEND_URL (an Azure App Setting) supplying
+// whatever else was needed — but FRONTEND_URL was itself set to the bare
+// apex, so the list only ever contained 'https://cdc.org.ge' twice. Vercel
+// actually serves the site at 'https://www.cdc.org.ge' (the apex 301s to
+// it), so a real browser page load's Origin header is the www host — every
+// single client-side call from apiClient.ts (register/login/career-quiz
+// submit/course fetches/everything) was hitting this origin check, getting
+// `callback(new Error('Not allowed by CORS'))`, and surfacing to the
+// browser as a bare 500 "Server error" (see middleware/errorHandler.ts —
+// only errors with an explicit .status get their real message through).
+// Confirmed live in production, 2026-09-07 (curl with
+// `-H "Origin: https://www.cdc.org.ge"` reproduced the 500 exactly; the
+// docker log's own `[cors] Rejected origin` line named the mismatch). Both
+// the apex and www are now always allowed regardless of what FRONTEND_URL
+// is set to, so this can't regress on an Azure App Settings drift alone —
+// FRONTEND_URL should still be corrected there too (currently
+// 'https://cdc.org.ge'), since it's also read elsewhere (auth.ts's email
+// links, payments.ts's redirect URLs) where only one canonical host makes
+// sense.
 const allowedOriginPatterns = [
   process.env.FRONTEND_URL || 'https://cdc.org.ge',
   'https://cdc.org.ge',
+  'https://www.cdc.org.ge',
   ...(process.env.ADDITIONAL_CORS_ORIGINS?.split(',').map((o) => o.trim()).filter(Boolean) ?? []),
   ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:3000'] : []),
 ];
@@ -215,7 +237,14 @@ app.use(
         tags: { cause: 'cors_origin_rejected' },
         extra: { origin, allowedOriginPatterns },
       });
-      callback(new Error('Not allowed by CORS'));
+      // .status set explicitly — errorHandler.ts only passes an error's real
+      // .message to the client when .status is present, otherwise it masks
+      // it as a generic 500 "Server error". A rejected origin is a genuine
+      // 403 (Forbidden), not a server fault, and should read as one instead
+      // of looking like an incident to whoever's debugging from the outside.
+      const corsError = new Error('Not allowed by CORS') as Error & { status: number };
+      corsError.status = 403;
+      callback(corsError);
     },
   })
 );

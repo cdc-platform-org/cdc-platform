@@ -9,7 +9,10 @@ export const liveTrainingCreateSchema = z.object({
   descriptionEn: z.string().trim().min(10).max(2000).optional().nullable(),
   price: z.number().int().min(0).optional().nullable(),
   discountPercent: z.number().int().min(1).max(90).optional().nullable(),
-  discountEndDate: z.string().datetime().optional().nullable(),
+  // Accepts an ISO string, null, or '' (the admin form's <input
+  // type="datetime-local"> submits '' for "cleared") — same leniency as
+  // courseSchemas.ts's discountEndDate.
+  discountEndDate: z.string().datetime().optional().nullable().or(z.literal('')),
   isOnSale: z.boolean().optional().default(false),
   discountBadgeText: z.string().trim().max(40).optional().nullable(),
   thumbnailUrl: z.string().url().optional().or(z.literal('')),
@@ -44,7 +47,10 @@ export const liveTrainingUpdateSchema = z.object({
   descriptionEn: z.string().trim().min(10).max(2000).optional().nullable(),
   price: z.number().int().min(0).optional().nullable(),
   discountPercent: z.number().int().min(1).max(90).optional().nullable(),
-  discountEndDate: z.string().datetime().optional().nullable(),
+  // Accepts an ISO string, null, or '' (the admin form's <input
+  // type="datetime-local"> submits '' for "cleared") — same leniency as
+  // courseSchemas.ts's discountEndDate.
+  discountEndDate: z.string().datetime().optional().nullable().or(z.literal('')),
   isOnSale: z.boolean().optional(),
   discountBadgeText: z.string().trim().max(40).optional().nullable(),
   thumbnailUrl: z.string().url().optional().or(z.literal('')),
