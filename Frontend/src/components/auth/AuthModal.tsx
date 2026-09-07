@@ -159,10 +159,22 @@ export default function AuthModal() {
       const loggedInUser = await login({ email, password });
       handlePostLogin(loggedInUser);
     } catch (err: any) {
+      // A timed-out/never-responded request (see authService.ts's
+      // AUTH_REQUEST_TIMEOUT_MS) has no `err.response` at all — axios marks
+      // it with code 'ECONNABORTED' (or the newer 'ETIMEDOUT' on some
+      // versions/environments). Distinguished from a real backend rejection
+      // (wrong password, etc.) so the message doesn't wrongly tell someone
+      // to "check your credentials" when the actual problem was the server
+      // never answering in time.
+      const isTimeout = err?.code === 'ECONNABORTED' || err?.code === 'ETIMEDOUT';
       const apiErrors = err?.response?.data?.errors;
       const apiMessage = err?.response?.data?.message;
       setError(
-        Array.isArray(apiErrors) ? apiErrors.map((e: any) => e.message).join(' ') : apiMessage || t.login.genericError
+        isTimeout
+          ? t.login.timeoutError
+          : Array.isArray(apiErrors)
+            ? apiErrors.map((e: any) => e.message).join(' ')
+            : apiMessage || t.login.genericError
       );
     } finally {
       setSubmitting(false);

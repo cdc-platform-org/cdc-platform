@@ -90,7 +90,10 @@ function LoginPage() {
       handlePostLogin(loggedInUser);
     } catch (err) {
       const axiosErr = err as AxiosError<{ message?: string }>;
-      setError(axiosErr.response?.data?.message || t('login.genericError'));
+      // Same timeout-vs-real-rejection distinction as AuthModal.tsx's
+      // handleSubmit — see authService.ts's AUTH_REQUEST_TIMEOUT_MS.
+      const isTimeout = axiosErr.code === 'ECONNABORTED' || axiosErr.code === 'ETIMEDOUT';
+      setError(isTimeout ? t('login.timeoutError') : axiosErr.response?.data?.message || t('login.genericError'));
     } finally {
       if (!redirectingToAdmin) setSubmitting(false);
     }

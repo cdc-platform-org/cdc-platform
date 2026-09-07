@@ -10,8 +10,22 @@ import {
   ChangePasswordPayload,
 } from '../types/auth';
 
+// AUDIT NOTE (fixed): apiClient has no instance-level timeout (axios
+// defaults to 0 — wait forever), so a slow/stuck backend (e.g. an Azure
+// cold start, or a genuinely hung connection) previously left this request
+// pending indefinitely. AuthModal.tsx's handleSubmit already had a correct
+// try/catch/finally — setSubmitting(false) was never actually skipped —
+// but `finally` can only run once the awaited promise SETTLES, and a
+// request with no timeout may never do that, which is what read to a user
+// as the login button stuck on "შედის..." forever. A scoped 10s timeout
+// here (not a global apiClient default, which would also cut off
+// legitimately-slower calls elsewhere — AI generation, uploads — that
+// don't have their own override) guarantees this promise always settles,
+// so the existing finally block always fires within 10s.
+const AUTH_REQUEST_TIMEOUT_MS = 10_000;
+
 export async function login(payload: LoginPayload): Promise<AuthResponse> {
-  const response = await apiClient.post<AuthResponse>('/auth/login', payload);
+  const response = await apiClient.post<AuthResponse>('/auth/login', payload, { timeout: AUTH_REQUEST_TIMEOUT_MS });
   return response.data;
 }
 
@@ -39,7 +53,8 @@ export async function deleteAccount(payload: DeleteAccountPayload): Promise<Dele
 export async function loginWithGoogle(idToken: string, role?: 'Student' | 'Client'): Promise<AuthResponse> {
   // role only matters for brand-new accounts (see Backend's routes/auth.ts
   // POST /google) — ignored if this Google identity already has an account.
-  const response = await apiClient.post<AuthResponse>('/auth/google', { idToken, role });
+  // Same no-timeout risk/fix as login() above.
+  const response = await apiClient.post<AuthResponse>('/auth/google', { idToken, role }, { timeout: AUTH_REQUEST_TIMEOUT_MS });
   return response.data;
 }
 
