@@ -20,3 +20,10 @@ qa-autofix-summary.md
 .aider*
 
 *.bat
+
+# Local/generated artifacts
+*.tsbuildinfo
+runsA.json
+CRITICAL
+lint-dump.txt
+.claude/settings.local.json
