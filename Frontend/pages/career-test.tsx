@@ -42,7 +42,6 @@ const dict = {
     genderLabel: 'სქესი',
     genderMale: 'მამრობითი',
     genderFemale: 'მდედრობითი',
-    genderOther: 'სხვა',
     ageLabel: 'ასაკი (წლები)',
     agePlaceholder: 'მაგ. 14',
     ageHelper: 'მიუთითეთ ასაკი წლებში (არა კლასი).',
@@ -119,7 +118,6 @@ const dict = {
     genderLabel: 'Gender',
     genderMale: 'Male',
     genderFemale: 'Female',
-    genderOther: 'Other',
     ageLabel: 'Age (in years)',
     agePlaceholder: 'e.g. 14',
     ageHelper: 'Enter your age in years (not grade).',
@@ -411,9 +409,6 @@ export default function CareerTestPage() {
                     </button>
                     <button type="button" onClick={() => setGender('FEMALE')} className={choiceButtonClass(gender === 'FEMALE')}>
                       {t.genderFemale}
-                    </button>
-                    <button type="button" onClick={() => setGender('OTHER')} className={choiceButtonClass(gender === 'OTHER')}>
-                      {t.genderOther}
                     </button>
                   </div>
                 </div>

@@ -195,47 +195,44 @@ export default function SiteHeader() {
     // max-w-7xl content row instead, so the CONTENT still gets the same
     // margin from the edge, just without the double-count.
     <nav className="sticky top-0 z-50 -mx-4 sm:-mx-6 border-b border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-[#0e1422]/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-[#0e1422]/60 py-3.5">
-      {/* grid-cols-[1fr_auto_1fr], not flex justify-between: the two outer
-          columns are forced to equal width (whichever of logo/actions is
-          wider sets both), which is what actually centers the middle nav
-          column on the true viewport center — a flex `flex-1 justify-
-          center` on the nav alone only centers it in the space left over
-          AFTER the logo, which visibly drifts off-center by however much
-          narrower the logo is than the actions cluster. Logo/actions are
-          explicitly pinned to col-start-1/3 (not left to DOM-order auto-
-          placement) because the middle nav column is `hidden` below lg —
-          a display:none grid item is dropped from placement entirely, so
-          without an explicit column the actions cluster would slide into
-          the vacated middle slot on every viewport under 1024px. */}
-      <div className="max-w-7xl mx-auto grid grid-cols-[1fr_auto_1fr] items-center gap-4 md:gap-6 px-4 sm:px-6">
-        <Link href="/" className="col-start-1 justify-self-start flex items-center gap-2 xl:gap-3 shrink-0 min-w-fit no-underline text-current">
-          <Image src="/images/cdc-logo.png" alt="CDC" width={40} height={40} className="h-9 w-auto rounded-xl object-cover" />
-          <span className="hidden sm:inline font-bold text-sm tracking-wide text-slate-900 dark:text-white">CDC</span>
-        </Link>
+      {/* Plain flex row, not CSS Grid — three explicit flex items (logo /
+          center nav / actions), each a normal, statically-positioned flex
+          child (no position:absolute, no w-0, nothing pulled out of flow
+          anywhere in this row). Logo and actions both carry `flex-1` —
+          NOT so they stretch to fill visible width (their own content
+          determines that, via shrink-0/min-w-fit and justify-start/end
+          below), but so they claim EQUAL leftover space on either side of
+          the center nav, which is what keeps the nav truly centered on the
+          viewport regardless of the logo being narrower than the actions
+          cluster. A naive `justify-between` on three raw children instead
+          would leave the nav drifting off-center by however much narrower
+          the logo is than the actions cluster — this is the flex
+          equivalent of the same fix, not a functional regression from it. */}
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 md:gap-6 px-4 sm:px-6">
+        <div className="flex-1 flex items-center min-w-fit">
+          <Link href="/" className="flex items-center gap-2 xl:gap-3 shrink-0 min-w-fit mr-6 no-underline text-current">
+            <Image src="/images/cdc-logo.png" alt="CDC" width={40} height={40} className="h-9 w-auto rounded-xl object-cover" />
+            <span className="hidden sm:inline font-bold text-sm tracking-wide text-slate-900 dark:text-white">CDC</span>
+          </Link>
+        </div>
 
-        {/* Center nav — a true 3-column balance (logo / nav / actions):
-            flex-1 + justify-center on this middle group lets it center
-            itself in whatever space is left between the logo and the
-            actions cluster, rather than being pushed flush against the
-            logo the way a plain justify-between would. Shown from lg
-            (1024px) up, not md (768px) as before — that md-1024px tablet
-            band is exactly where the previous tight-gap/small-text version
-            of this row used to risk overflowing (see git history), so
-            widening the links (text-base, gap-6/8) needed the extra room
-            lg gives rather than fighting for space between 768-1024px.
-            Community/Mentors/MentorPanel/About/Gallery/Tutorials stay
-            grouped under "More" — not a spacing workaround anymore, just a
-            reasonable information-architecture choice now that there's
-            room to spare; Courses/Marketplace/Tools remain this site's
-            three primary always-visible traffic drivers.
+        {/* Center nav — its own flex item, sized to its content
+            (whitespace-nowrap so it never wraps), sitting between the two
+            flex-1 wrappers above/below so it lands on the true viewport
+            center rather than drifting toward whichever side is narrower.
             Shown from xl (1280px) up, not lg (1024px) — adding the
             career-test link as a 7th visible item pushed this row's
             min-content width past what the 1024-1279px band can fit
             (measured overflow at 1100px), which visually crushed the
             logo/actions columns together. The mobile drawer (below xl)
             already carries every one of these links, career-test
-            included, so nothing is lost by raising the breakpoint. */}
-        <div className="col-start-2 hidden xl:flex items-center justify-center gap-6 xl:gap-8 text-base font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">
+            included, so nothing is lost by raising the breakpoint.
+            Community/Mentors/MentorPanel/About/Gallery/Tutorials stay
+            grouped under "More" — not a spacing workaround anymore, just a
+            reasonable information-architecture choice now that there's
+            room to spare; Courses/Marketplace/Tools remain this site's
+            three primary always-visible traffic drivers. */}
+        <div className="hidden xl:flex items-center gap-6 xl:gap-8 ml-4 text-base font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">
           <div className="relative group py-2 -my-2">
             <button type="button" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-1.5 bg-transparent border-none cursor-pointer font-medium text-base p-0 text-inherit">
               {t.more}
@@ -330,7 +327,11 @@ export default function SiteHeader() {
           </Link>
         </div>
 
-        {/* Actions cluster — deliberately shrink-0 so language/theme/
+        {/* Actions cluster — wrapped in the same flex-1 pattern as the logo
+            wrapper (see the row's own comment above) so it claims equal
+            leftover space on the right, keeping the center nav truly
+            centered rather than drifting toward whichever side is
+            narrower. The actual row inside is shrink-0 so language/theme/
             login/burger are always fully rendered regardless of how long
             the KA nav labels above run. Order left-to-right: Language,
             Theme, Bell (authenticated only), Login (mobile/tablet-only
@@ -340,7 +341,8 @@ export default function SiteHeader() {
             the center nav's `hidden xl:flex` above — mismatched
             breakpoints here previously caused two login buttons to render
             simultaneously in the 1024-1279px gap. */}
-        <div className="col-start-3 flex items-center justify-self-end gap-1.5 xl:gap-2.5 shrink-0">
+        <div className="flex-1 flex justify-end">
+        <div className="flex items-center gap-1.5 xl:gap-2.5 shrink-0 ml-6">
           <LanguageSwitcher />
           <button
             type="button"
@@ -375,6 +377,7 @@ export default function SiteHeader() {
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
+        </div>
         </div>
       </div>
 
