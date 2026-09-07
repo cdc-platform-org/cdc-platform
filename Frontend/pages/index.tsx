@@ -1047,7 +1047,7 @@ export default function Home() {
                 >
                   {course.saleActive && (
                     <span className="absolute top-3 right-3 z-10 text-xs font-black text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg shadow-rose-500/30">
-                      -{course.discountPercent}%
+                      {course.discountBadgeText || `-${course.discountPercent}%`}
                     </span>
                   )}
                   <div>
@@ -1132,6 +1132,11 @@ export default function Home() {
                 className={`rounded-3xl border overflow-hidden flex flex-col transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] no-underline text-current ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200/80'}`}
               >
                 <div className="relative w-full aspect-video overflow-hidden bg-slate-900">
+                  {tr.saleActive && (
+                    <span className="absolute top-3 right-3 z-10 text-xs font-black text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg shadow-rose-500/30">
+                      {tr.discountBadgeText || `-${tr.discountPercent}%`}
+                    </span>
+                  )}
                   {tr.thumbnailUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={tr.thumbnailUrl} alt="" className="w-full h-full object-cover object-center" />
@@ -1156,7 +1161,18 @@ export default function Home() {
                       <Clock className="w-3 h-3" />
                       {new Date(tr.scheduledAt).toLocaleString()}
                     </div>
-                    <span className="text-xs font-black text-cyan-500">{tr.price ? formatPrice(tr.price) : t('liveTrainingsFree')}</span>
+                    <span className="text-xs font-black text-cyan-500">
+                      {tr.saleActive && tr.currentPrice != null ? (
+                        <>
+                          <s className="text-slate-500 font-normal mr-1">{formatPrice(tr.price!)}</s>
+                          <span className="text-rose-400">{formatPrice(tr.currentPrice)}</span>
+                        </>
+                      ) : tr.price ? (
+                        formatPrice(tr.price)
+                      ) : (
+                        t('liveTrainingsFree')
+                      )}
+                    </span>
                   </div>
                   <div className={`flex items-center gap-1.5 text-xs font-bold ${tr.isFull ? 'text-red-500' : 'text-cyan-500'}`}>
                     <Users className="w-3 h-3" />

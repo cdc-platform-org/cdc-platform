@@ -500,7 +500,7 @@ export default function CoursesPage() {
                       >
                         {course.saleActive && (
                           <span className="absolute top-3 right-3 z-10 text-xs font-black text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg shadow-rose-500/30">
-                            -{course.discountPercent}% {t('saleOffSuffix')}
+                            {course.discountBadgeText || `-${course.discountPercent}% ${t('saleOffSuffix')}`}
                           </span>
                         )}
                         <Link href={`/courses/${course.id}`} className="block relative w-full aspect-video overflow-hidden bg-slate-900 no-underline">

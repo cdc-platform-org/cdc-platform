@@ -69,7 +69,28 @@ async function callAzureTutor(messages: ChatMessage[]): Promise<string> {
 }
 
 const geminiClient = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
-const GEMINI_FALLBACK_MODEL = 'gemini-flash-latest';
+// AUDIT NOTE (fixed): this used to hit only 'gemini-flash-latest' for 2
+// total attempts — the weakest fallback of the three Gemini-cascade
+// services in this codebase (aiAgentService.ts/businessAiChatService.ts
+// both try 3 models). With AZURE_OPENAI_API_KEY unset in production (see
+// the isAzureOpenAiConfigured() skip below), Gemini is this feature's only
+// real provider, so a transient outage on gemini-flash-latest alone used to
+// take the whole tutor down with it. Same 3-model cascade as the other two
+// files now.
+const GEMINI_MODEL_FALLBACK_SEQUENCE = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-3.5-flash'];
+const GEMINI_ATTEMPTS_PER_MODEL = 3;
+
+function isRetryableGeminiError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return /\b(503|429)\b/.test(message) || /overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand/i.test(message);
+}
+
+function isModelNotFoundError(err: unknown): boolean {
+  const status = (err as { status?: number })?.status;
+  if (status === 404) return true;
+  const message = err instanceof Error ? err.message : String(err);
+  return /is not found for API version|not supported for generateContent/i.test(message);
+}
 
 // Cross-vendor fallback once every Azure attempt above is exhausted — a
 // single-shot generateContent call (not a chat session) with the
@@ -84,17 +105,21 @@ async function callGeminiTutorFallback(systemInstruction: string, history: Tutor
   const prompt = `${systemInstruction}${historyText}\n\nStudent: ${message}`;
 
   let lastErr: unknown;
-  for (let attempt = 0; attempt <= 1; attempt++) {
-    try {
-      const model = geminiClient.getGenerativeModel({ model: GEMINI_FALLBACK_MODEL, generationConfig: { temperature: 0.7 } }, GEMINI_REQUEST_OPTIONS);
-      const result = await model.generateContent(prompt);
-      const reply = result.response.text();
-      if (!reply) throw new CourseTutorError('Gemini fallback returned an empty response.');
-      return reply;
-    } catch (err) {
-      lastErr = err;
-      console.error(`[courseTutorService] Gemini fallback attempt ${attempt + 1}/2 failed:`, err instanceof Error ? err.message : err);
-      if (attempt < 1) await sleep(BASE_RETRY_DELAY_MS);
+  geminiLoop: for (const modelName of GEMINI_MODEL_FALLBACK_SEQUENCE) {
+    for (let attempt = 1; attempt <= GEMINI_ATTEMPTS_PER_MODEL; attempt++) {
+      try {
+        const model = geminiClient.getGenerativeModel({ model: modelName, generationConfig: { temperature: 0.7 } }, GEMINI_REQUEST_OPTIONS);
+        const result = await model.generateContent(prompt);
+        const reply = result.response.text();
+        if (!reply) throw new CourseTutorError('Gemini fallback returned an empty response.');
+        return reply;
+      } catch (err) {
+        lastErr = err;
+        console.error(`[courseTutorService] Gemini ${modelName} attempt ${attempt}/${GEMINI_ATTEMPTS_PER_MODEL} failed:`, err instanceof Error ? err.message : err);
+        if (isModelNotFoundError(err)) break;
+        if (!isRetryableGeminiError(err)) break geminiLoop;
+        if (attempt < GEMINI_ATTEMPTS_PER_MODEL) await sleep(BASE_RETRY_DELAY_MS);
+      }
     }
   }
   throw lastErr;
@@ -201,6 +226,12 @@ export async function generateTutorReply(params: GenerateTutorReplyParams): Prom
 
   let reply: string;
   try {
+    // AUDIT NOTE (fixed): used to call Azure unconditionally even when it was
+    // never configured — production has no AZURE_OPENAI_API_KEY set (see
+    // aiAgentService.ts's identical fix), so this always failed instantly
+    // before falling through anyway. Skipping straight to Gemini avoids the
+    // dead call.
+    if (!isAzureOpenAiConfigured()) throw new CourseTutorError('Azure OpenAI not configured — skipping to Gemini.');
     reply = await callAzureTutor(messages);
   } catch (azureErr) {
     console.error('[courseTutorService] Azure exhausted, trying Gemini fallback:', azureErr instanceof Error ? azureErr.message : azureErr);

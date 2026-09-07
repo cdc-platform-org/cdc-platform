@@ -217,7 +217,7 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
             </span>
             {course.saleActive && (
               <span className="text-[10px] font-black text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500">
-                -{course.discountPercent}% {t('saleOffSuffix')}
+                {course.discountBadgeText || `-${course.discountPercent}% ${t('saleOffSuffix')}`}
               </span>
             )}
           </div>

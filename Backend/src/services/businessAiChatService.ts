@@ -60,7 +60,10 @@ export interface GenerateAgentReplyResult {
 
 const geminiClient = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 const GEMINI_MODEL_FALLBACK_SEQUENCE = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-3.5-flash'];
-const GEMINI_ATTEMPTS_PER_MODEL = 2;
+// Bumped 2 -> 3 — see aiAgentService.ts's identical change: with
+// AZURE_OPENAI_API_KEY unset in production, Gemini is the only real
+// provider this widget has right now.
+const GEMINI_ATTEMPTS_PER_MODEL = 3;
 const GEMINI_RETRY_DELAY_MS = 1500;
 
 function isRetryableGeminiError(err: unknown): boolean {
@@ -136,6 +139,11 @@ export async function generateAgentReply(params: GenerateAgentReplyParams): Prom
   // Azure caller in this codebase. Gemini is the real last rung, only
   // reached once both Azure regions are exhausted.
   try {
+    // AUDIT NOTE (fixed): see aiAgentService.ts's identical fix — Azure was
+    // called unconditionally even with no AZURE_OPENAI_API_KEY configured on
+    // production, always failing instantly before falling through to Gemini
+    // anyway. Skip straight to Gemini instead of the dead call.
+    if (!isAzureOpenAiConfigured()) throw new BusinessAiChatError('Azure OpenAI not configured — skipping to Gemini.');
     const { content, usage } = await callAzureChatCompletionFull({ messages });
     return {
       reply: content,

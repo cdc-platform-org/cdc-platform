@@ -57,6 +57,9 @@ export interface Course {
   discountPercent: number | null;
   discountEndDate: string | null;
   isOnSale: boolean;
+  // Optional override shown on the sale badge instead of the computed
+  // "-{discountPercent}%" text — null falls back to the plain percent label.
+  discountBadgeText: string | null;
   currentPrice: number;
   saleActive: boolean;
   published: boolean;
@@ -100,6 +103,8 @@ export interface CoursePayload {
   discountPercent?: number | null;
   // ISO datetime string, or null to clear — see Backend's toPrismaDiscountEndDate().
   discountEndDate?: string | null;
+  // '' clears it (see Backend's toPrismaDiscountBadgeText()).
+  discountBadgeText?: string | null;
   published?: boolean;
   mentorName?: string;
   mentorTitle?: string;

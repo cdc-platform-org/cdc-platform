@@ -13,6 +13,10 @@ const coursePricingFields = {
   discountPercent: z.number().int().min(1).max(90).optional().nullable(),
   // Accepts an ISO string from the admin form's <input type="datetime-local">.
   discountEndDate: z.string().datetime().optional().nullable().or(z.literal('')),
+  // Optional override shown on the sale badge instead of the computed
+  // "-{discountPercent}%" text — see Course.discountBadgeText's schema
+  // comment.
+  discountBadgeText: z.string().trim().max(40).optional().nullable().or(z.literal('')),
 };
 
 export const courseCreateSchema = z

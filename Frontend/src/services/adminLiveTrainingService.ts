@@ -23,6 +23,10 @@ export interface LiveTrainingPayload {
   titleEn?: string | null;
   descriptionEn?: string | null;
   price?: number | null;
+  discountPercent?: number | null;
+  discountEndDate?: string | null;
+  isOnSale?: boolean;
+  discountBadgeText?: string | null;
   thumbnailUrl?: string;
   videoUrl?: string;
   minCapacity?: number;

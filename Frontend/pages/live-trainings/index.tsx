@@ -88,6 +88,11 @@ export default function LiveTrainingsIndexPage() {
                 className="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm overflow-hidden flex flex-col transition-all duration-300 hover:border-cyan-400/50 hover:shadow-[0_0_25px_rgba(34,211,238,0.15)] no-underline text-current"
               >
                 <div className="relative w-full aspect-video overflow-hidden bg-slate-900">
+                  {tr.saleActive && (
+                    <span className="absolute top-3 right-3 z-10 text-xs font-black text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg shadow-rose-500/30">
+                      {tr.discountBadgeText || `-${tr.discountPercent}%`}
+                    </span>
+                  )}
                   {tr.thumbnailUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={tr.thumbnailUrl} alt="" className="w-full h-full object-cover object-center" />
@@ -113,7 +118,14 @@ export default function LiveTrainingsIndexPage() {
                       {new Date(tr.scheduledAt).toLocaleString()}
                     </div>
                     <span className="text-xs font-black text-cyan-400 shrink-0 text-right">
-                      {formatLiveTrainingPriceLabel(tr, contentLang)}
+                      {tr.saleActive && tr.currentPrice != null ? (
+                        <>
+                          <s className="text-slate-500 font-normal mr-1">{formatLiveTrainingPriceLabel(tr, contentLang)}</s>
+                          <span className="text-rose-400">{formatLiveTrainingPriceLabel({ ...tr, price: tr.currentPrice }, contentLang)}</span>
+                        </>
+                      ) : (
+                        formatLiveTrainingPriceLabel(tr, contentLang)
+                      )}
                     </span>
                   </div>
                   {tr.scheduleDays && (

@@ -1218,6 +1218,11 @@ model Course {
   discountPercent Int?
   discountEndDate DateTime?
   isOnSale        Boolean        @default(false)
+  // Optional override shown on the sale badge INSTEAD of the computed
+  // "-{discountPercent}%" text (e.g. "SPECIAL OFFER", "BLACK FRIDAY") — see
+  // coursePricing.ts's withCurrentPrice, which passes this straight through
+  // unchanged. Null means the badge falls back to the plain percent label.
+  discountBadgeText String?
   // Replaces the old plain `published` boolean with the full Mentor Course
   // QA lifecycle (DRAFT -> PENDING_REVIEW -> NEEDS_REVISION -> APPROVED ->
   // PUBLISHED -> ARCHIVED — see CourseStatus). Every pre-existing row is
@@ -1306,6 +1311,20 @@ model LiveTraining {
   // real payment collected on the follow-up call rather than through this
   // registration form.
   price               Int?
+  // Discount trio mirroring Course.discountPercent/discountEndDate/isOnSale
+  // (see services/coursePricing.ts) — `price` above plays the role of
+  // Course.originalPrice (the full/base price; the discounted price is
+  // computed at read time, never stored, by services/liveTrainingPricing.ts
+  // so an expired discountEndDate reverts automatically). No separate
+  // "originalPrice" column exists here since `price` already serves that
+  // purpose, same as it always has for a non-discounted training.
+  discountPercent     Int?
+  discountEndDate     DateTime?
+  isOnSale            Boolean          @default(false)
+  // Optional override shown on the sale badge instead of the computed
+  // "-{discountPercent}%" text — see Course.discountBadgeText's identical
+  // comment.
+  discountBadgeText   String?
   // How `price` above should be read — "350 GEL" alone is ambiguous for a
   // multi-month cohort. Null-safe default of MONTHLY applied at the schema
   // level (@default) so existing rows and any write that omits this field

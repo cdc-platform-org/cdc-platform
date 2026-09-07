@@ -260,6 +260,11 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
 
         {training.thumbnailUrl && (
           <div className="relative w-full aspect-video overflow-hidden rounded-2xl bg-slate-900 mb-6">
+            {training.saleActive && (
+              <span className="absolute top-3 right-3 z-10 text-xs font-black text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg shadow-rose-500/30">
+                {training.discountBadgeText || `-${training.discountPercent}%`}
+              </span>
+            )}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={training.thumbnailUrl} alt={title} className="w-full h-full object-cover object-center" />
           </div>
@@ -290,7 +295,16 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
             <Calendar size={15} className="text-cyan-400" />
             {new Date(training.scheduledAt).toLocaleString()}
           </span>
-          <span className="font-bold text-cyan-400">{formatLiveTrainingPriceLabel(training, contentLang)}</span>
+          <span className="font-bold text-cyan-400">
+            {training.saleActive && training.currentPrice != null ? (
+              <>
+                <s className="text-slate-500 font-normal mr-1.5">{formatLiveTrainingPriceLabel(training, contentLang)}</s>
+                <span className="text-rose-400">{formatLiveTrainingPriceLabel({ ...training, price: training.currentPrice }, contentLang)}</span>
+              </>
+            ) : (
+              formatLiveTrainingPriceLabel(training, contentLang)
+            )}
+          </span>
           {training.scheduleDays && (
             <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border text-purple-300 border-purple-500/30 bg-purple-500/10">
               📅 {training.scheduleDays}

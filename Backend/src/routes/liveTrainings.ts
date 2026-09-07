@@ -6,6 +6,7 @@ import { liveTrainingRegisterSchema } from '../schemas/liveTrainingSchemas';
 import { sendLiveTrainingRegistrationEmail, sendLiveTrainingEnrollmentEmail } from '../services/emailService';
 import { sendLiveTrainingRegistrationWhatsApp, sendLiveTrainingEnrollmentWhatsApp } from '../services/whatsappService';
 import { resolveNotificationLocale } from '../utils/notificationLocale';
+import { withCurrentLiveTrainingPrice, LiveTrainingPricingInput } from '../services/liveTrainingPricing';
 
 const router = Router();
 
@@ -45,6 +46,15 @@ function withCapacity<T extends { minCapacity: number; maxCapacity: number; _cou
     isFull: registeredCount >= training.maxCapacity,
     minThresholdMet: registeredCount >= training.minCapacity,
   };
+}
+
+// Same composition as adminLiveTrainings.ts's own withCapacityAndPrice — see
+// that file's comment. Public list/detail responses need currentPrice/
+// saleActive too, since that's what the course/live-training cards render.
+function withCapacityAndPrice<
+  T extends { minCapacity: number; maxCapacity: number; _count: { leads: number; enrollments: number } } & LiveTrainingPricingInput
+>(training: T) {
+  return withCurrentLiveTrainingPrice(withCapacity(training));
 }
 
 // A meeting link is only ever worth showing shortly before the session
@@ -101,7 +111,7 @@ router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
     include: { _count: { select: { leads: true, enrollments: enrollmentCountSelect } } },
     orderBy: { scheduledAt: 'asc' },
   });
-  res.json({ data: trainings.map(withCapacity) });
+  res.json({ data: trainings.map(withCapacityAndPrice) });
 });
 
 router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => {
@@ -125,7 +135,7 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
     isEnrolled = enrollment?.status === 'ACTIVE' || enrollment?.status === 'COMPLETED';
   }
 
-  res.json({ data: { ...withCapacity(training), isEnrolled } });
+  res.json({ data: { ...withCapacityAndPrice(training), isEnrolled } });
 });
 
 // Broadcasts to every admin-team member — same pattern as blogAgentService's

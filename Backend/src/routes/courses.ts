@@ -47,6 +47,14 @@ function toPrismaDiscountEndDate(value: string | null | undefined): Date | null 
   return new Date(value);
 }
 
+// Same "'' from the admin form means unset, not a literal empty string"
+// normalization as toPrismaDiscountEndDate above, for the plain-text badge
+// override.
+function toPrismaDiscountBadgeText(value: string | null | undefined): string | null | undefined {
+  if (value === undefined) return undefined;
+  return value || null;
+}
+
 // enrolledCount is always the live CourseEnrollment count (via `_count`),
 // never a stored counter — same "count on read, can't drift" posture as
 // liveTrainings.ts's withCapacity(). Unlike LiveTraining, maxCapacity is
@@ -183,7 +191,11 @@ router.post('/', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async
   if (discountError) return res.status(400).json({ message: discountError });
 
   const course = await prisma.course.create({
-    data: { ...result.data, discountEndDate: toPrismaDiscountEndDate(result.data.discountEndDate) },
+    data: {
+      ...result.data,
+      discountEndDate: toPrismaDiscountEndDate(result.data.discountEndDate),
+      discountBadgeText: toPrismaDiscountBadgeText(result.data.discountBadgeText),
+    },
   });
   res.status(201).json({ data: withCurrentPrice(course) });
 });
@@ -210,7 +222,11 @@ router.put('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), asy
   try {
     const course = await prisma.course.update({
       where: { id: req.params.id },
-      data: { ...result.data, discountEndDate: toPrismaDiscountEndDate(result.data.discountEndDate) },
+      data: {
+        ...result.data,
+        discountEndDate: toPrismaDiscountEndDate(result.data.discountEndDate),
+        discountBadgeText: toPrismaDiscountBadgeText(result.data.discountBadgeText),
+      },
     });
     res.json({ data: withCurrentPrice(course) });
   } catch (err: any) {

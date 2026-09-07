@@ -60,6 +60,9 @@ const emptyForm = {
   // <input type="datetime-local"> value, e.g. "2026-08-01T14:30" — converted
   // to a full ISO string on submit.
   discountEndDate: '',
+  // Custom badge text shown instead of "-20%" (e.g. "SPECIAL OFFER") — empty
+  // string falls back to the plain percent label.
+  discountBadgeText: '',
 };
 
 function formatGel(minorUnits: number): string {
@@ -120,6 +123,7 @@ function CourseForm({
         discountPercentCustom: !presetMatch && editingCourse.discountPercent != null ? String(editingCourse.discountPercent) : '',
         useCustomDiscount: !presetMatch && editingCourse.discountPercent != null,
         discountEndDate: editingCourse.discountEndDate ? editingCourse.discountEndDate.slice(0, 16) : '',
+        discountBadgeText: editingCourse.discountBadgeText ?? '',
       });
     } else {
       setForm(emptyForm);
@@ -191,6 +195,7 @@ function CourseForm({
         isOnSale: form.isOnSale,
         discountPercent: form.isOnSale ? effectiveDiscountPercent : null,
         discountEndDate: form.isOnSale && form.discountEndDate ? new Date(form.discountEndDate).toISOString() : null,
+        discountBadgeText: form.isOnSale ? form.discountBadgeText.trim() || null : null,
         // Legacy field still required by the create schema — the real
         // curriculum lives in sections/lessons, managed below once the
         // course exists.
@@ -511,10 +516,23 @@ function CourseForm({
               </div>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
+                Badge Text <span className="text-gray-400 font-normal">— optional, e.g. "SPECIAL OFFER" or "BLACK FRIDAY". Leave blank to show "-{effectiveDiscountPercent}%".</span>
+              </label>
+              <input
+                value={form.discountBadgeText}
+                onChange={(e) => setForm({ ...form, discountBadgeText: e.target.value })}
+                maxLength={40}
+                placeholder={`-${effectiveDiscountPercent}%`}
+                className={inputClass}
+              />
+            </div>
+
             <div className="rounded-lg bg-rose-50 border border-rose-200 px-4 py-3 text-sm">
               <span className="text-gray-500 line-through mr-2">{formatGel(form.originalPrice * 100)}</span>
               <span className="font-black text-rose-600">{formatGel(previewPrice * 100)}</span>
-              <span className="text-rose-500 font-bold ml-2">-{effectiveDiscountPercent}%</span>
+              <span className="text-rose-500 font-bold ml-2">{form.discountBadgeText.trim() || `-${effectiveDiscountPercent}%`}</span>
             </div>
           </div>
         )}

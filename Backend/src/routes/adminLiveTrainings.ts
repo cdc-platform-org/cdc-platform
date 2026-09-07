@@ -20,6 +20,7 @@ import { processLiveTrainingSynopsis } from '../services/liveTrainingSynopsisSer
 import { grantGraduateStatus } from '../services/graduateStatusService';
 import { generateExamQuestions, ExamProctoringAiError, isExamProctoringConfigured } from '../services/examProctoringService';
 import { setupCourseWorkspace } from '../services/googleAgentService';
+import { withCurrentLiveTrainingPrice, validateLiveTrainingDiscount, LiveTrainingPricingInput } from '../services/liveTrainingPricing';
 
 const router = Router();
 router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
@@ -77,18 +78,30 @@ function withCapacity<T extends { minCapacity: number; maxCapacity: number; _cou
   };
 }
 
+// Composed the same order every route in this file applies them —
+// withCapacity first (needs the raw `_count` include), then the pricing
+// shape on top, so the admin list/detail responses carry currentPrice/
+// saleActive alongside registeredCount/seatsRemaining.
+function withCapacityAndPrice<
+  T extends { minCapacity: number; maxCapacity: number; _count: { leads: number; enrollments: number } } & LiveTrainingPricingInput
+>(training: T) {
+  return withCurrentLiveTrainingPrice(withCapacity(training));
+}
+
 router.get('/', async (_req: Request, res: Response) => {
   const trainings = await prisma.liveTraining.findMany({
     include: { _count: { select: { leads: true, enrollments: enrollmentCountSelect } } },
     orderBy: { scheduledAt: 'desc' },
   });
-  res.json({ data: trainings.map(withCapacity) });
+  res.json({ data: trainings.map(withCapacityAndPrice) });
 });
 
 router.post('/', async (req: Request, res: Response) => {
   const result = liveTrainingCreateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
-  const { thumbnailUrl, videoUrl, meetingUrl, classroomUrl, recordingUrl, trainerVideoUrl, startDate, endDate, ...rest } = result.data;
+  const discountError = validateLiveTrainingDiscount(result.data.price ?? null, result.data.discountPercent, result.data.isOnSale ?? false);
+  if (discountError) return res.status(400).json({ message: discountError });
+  const { thumbnailUrl, videoUrl, meetingUrl, classroomUrl, recordingUrl, trainerVideoUrl, startDate, endDate, discountEndDate, ...rest } = result.data;
   const training = await prisma.liveTraining.create({
     data: {
       ...rest,
@@ -100,6 +113,7 @@ router.post('/', async (req: Request, res: Response) => {
       trainerVideoUrl: trainerVideoUrl || null,
       startDate: startDate ? new Date(startDate) : null,
       endDate: endDate ? new Date(endDate) : null,
+      discountEndDate: discountEndDate ? new Date(discountEndDate) : null,
       scheduledAt: new Date(result.data.scheduledAt),
     },
     include: { _count: { select: { leads: true, enrollments: enrollmentCountSelect } } },
@@ -114,7 +128,7 @@ router.post('/', async (req: Request, res: Response) => {
       console.error(`[adminLiveTrainings] synopsis kickoff failed for ${training.id}:`, err)
     );
   }
-  res.status(201).json({ data: withCapacity(training) });
+  res.status(201).json({ data: withCapacityAndPrice(training) });
 });
 
 // ============================================================
@@ -156,11 +170,26 @@ router.post('/generate-workspace', async (req: Request, res: Response) => {
 router.put('/:id', async (req: Request, res: Response) => {
   const result = liveTrainingUpdateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
-  const { thumbnailUrl, videoUrl, meetingUrl, classroomUrl, recordingUrl, trainerVideoUrl, startDate, endDate, scheduledAt, ...rest } = result.data;
+  const { thumbnailUrl, videoUrl, meetingUrl, classroomUrl, recordingUrl, trainerVideoUrl, startDate, endDate, discountEndDate, scheduledAt, ...rest } = result.data;
   try {
-    const existing = recordingUrl !== undefined
-      ? await prisma.liveTraining.findUnique({ where: { id: req.params.id }, select: { recordingUrl: true } })
+    const needsExisting = recordingUrl !== undefined || result.data.price !== undefined || result.data.discountPercent !== undefined || result.data.isOnSale !== undefined;
+    const existing = needsExisting
+      ? await prisma.liveTraining.findUnique({ where: { id: req.params.id }, select: { recordingUrl: true, price: true, discountPercent: true, isOnSale: true } })
       : null;
+    if (!existing && needsExisting) return res.status(404).json({ message: 'Live training not found.' });
+
+    // Validated against the post-update effective values (incoming field if
+    // present, otherwise whatever's already stored) — a PUT that only
+    // touches, say, isOnSale must still be checked against the training's
+    // existing price/discountPercent, not skip validation just because this
+    // particular request didn't resend them.
+    if (needsExisting) {
+      const effectivePrice = result.data.price !== undefined ? result.data.price : existing!.price;
+      const effectiveDiscountPercent = result.data.discountPercent !== undefined ? result.data.discountPercent : existing!.discountPercent;
+      const effectiveIsOnSale = result.data.isOnSale !== undefined ? result.data.isOnSale : existing!.isOnSale;
+      const discountError = validateLiveTrainingDiscount(effectivePrice, effectiveDiscountPercent, effectiveIsOnSale);
+      if (discountError) return res.status(400).json({ message: discountError });
+    }
 
     const training = await prisma.liveTraining.update({
       where: { id: req.params.id },
@@ -174,6 +203,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         ...(trainerVideoUrl !== undefined ? { trainerVideoUrl: trainerVideoUrl || null } : {}),
         ...(startDate !== undefined ? { startDate: startDate ? new Date(startDate) : null } : {}),
         ...(endDate !== undefined ? { endDate: endDate ? new Date(endDate) : null } : {}),
+        ...(discountEndDate !== undefined ? { discountEndDate: discountEndDate ? new Date(discountEndDate) : null } : {}),
         ...(scheduledAt !== undefined ? { scheduledAt: new Date(scheduledAt) } : {}),
       },
       include: { _count: { select: { leads: true, enrollments: enrollmentCountSelect } } },
@@ -188,7 +218,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         console.error(`[adminLiveTrainings] synopsis kickoff failed for ${training.id}:`, err)
       );
     }
-    res.json({ data: withCapacity(training) });
+    res.json({ data: withCapacityAndPrice(training) });
   } catch (err: any) {
     if (err.code === 'P2025') return res.status(404).json({ message: 'Live training not found.' });
     throw err;

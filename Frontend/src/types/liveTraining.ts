@@ -14,6 +14,19 @@ export interface LiveTraining {
   category: string;
   scheduledAt: string;
   price: number | null;
+  // Discount trio mirroring Course.discountPercent/discountEndDate/isOnSale
+  // — `price` above plays the role of Course.originalPrice (the base
+  // price); currentPrice/saleActive/discountedPrice are computed
+  // server-side (Backend's services/liveTrainingPricing.ts). Always use
+  // currentPrice for anything charge-related, price only for the
+  // strikethrough display.
+  discountPercent: number | null;
+  discountEndDate: string | null;
+  isOnSale: boolean;
+  discountBadgeText: string | null;
+  currentPrice: number | null;
+  saleActive: boolean;
+  discountedPrice: number | null;
   thumbnailUrl: string | null;
   videoUrl: string | null;
   minCapacity: number;
