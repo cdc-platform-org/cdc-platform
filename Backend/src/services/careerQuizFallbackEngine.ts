@@ -1,22 +1,23 @@
 // ============================================================
-// TIER 3 — LOCAL DETERMINISTIC CAREER-QUIZ ENGINE
+// INSTANT LOCAL DETERMINISTIC CAREER-QUIZ ENGINE
 //
-// The last-resort fallback for generateCareerQuizResult() (see
-// careerQuizService.ts) — reached only once Tier 1 (Gemini) and Tier 2
-// (Azure OpenAI, when configured) have both failed or timed out. Pure,
-// synchronous keyword-matching against the quiz's own known question/answer
-// option strings (career-test.tsx) plus whatever is actually live in the
-// catalog — no network call, no external dependency, cannot itself fail in
-// a way that should ever surface to the visitor. Deliberately NOT trying to
-// out-write the AI's own prose (that's Tier 1/2's job) — this exists purely
-// so a visitor never sees a hard failure when every real AI provider is
-// down at once, with output honest and specific enough to still be useful.
+// The sole result-generation path for generateCareerQuizResult() (see
+// careerQuizService.ts) — switched from a Gemini/Azure-first pipeline to
+// this pure, synchronous keyword-matching engine specifically to eliminate
+// the 20-30s AI wait a real visitor was sitting through for every
+// submission. No network call, no external dependency, cannot itself fail
+// in a way that should ever surface to the visitor, and returns in
+// low-single-digit milliseconds.
 //
-// Same non-hallucination contract as the AI prompt (careerQuizService.ts's
-// generateCareerQuizResult): only ever names a course/training that is
-// ACTUALLY in the live catalog passed in — if nothing in it matches the
-// identified track, this says so honestly and points to
-// contact@cdc.org.ge, exactly like the AI is instructed to.
+// Matches against the quiz's own known question/answer option strings
+// (career-test.tsx, ka + en — kept in sync manually since the quiz options
+// are a small, stable, hand-written set, not a dynamic source this file
+// could import from without a Frontend->Backend dependency that doesn't
+// exist anywhere else in this codebase) plus whatever is actually live in
+// the catalog. Never invents a course/training that isn't ACTUALLY in the
+// live catalog passed in — if nothing in it matches the identified track,
+// this says so honestly and points to contact@cdc.org.ge instead of
+// forcing an irrelevant match.
 // ============================================================
 
 export type CareerQuizAgeGroup = 'KID' | 'ADULT';
@@ -52,38 +53,62 @@ interface Track {
   catalogKeywords: string[];
 }
 
+// Five tracks, matching the exact category set this engine was specified
+// with (Art/Design, Coding/Tech, Video/Media, Robotics/Logic,
+// Storytelling) — each mapped against career-test.tsx's real KID/ADULT
+// option text (ka + en) and against real CDC catalog category/title
+// keywords. A track with no live catalog match today (Robotics/Logic, as
+// of this writing — the catalog currently only has AI/Programming and
+// Design/Animation/Video items) still honestly redirects rather than
+// forcing an irrelevant course, exactly like every other track.
 const TRACKS: Track[] = [
   {
-    id: 'programming',
-    label: { ka: 'პროგრამირება და AI-ინსტრუმენტები', en: 'Programming & AI Tools' },
+    id: 'coding_tech',
+    label: { ka: 'პროგრამირება და ტექნოლოგიები', en: 'Coding & Tech' },
     signalKeywords: [
       // Kid signals
-      'ვიდეო თამაშების თამაში', 'თამაშის', 'აპლიკაციის შექმნა', 'რობოტების აწყობა', 'თავსატეხების ამოხსნა',
-      'მარტო ვფიქრობ და ეტაპობრივად', 'ახალი რაღაცების აწყობა',
-      'playing video games', 'own game or app', 'building robots', 'solving puzzles', 'figure it out alone', 'building or making new things',
+      'ვიდეო თამაშების თამაში', 'საკუთარი თამაშის ან აპლიკაციის შექმნა',
       // Adult signals
       'პირველი სამსახურის შოვნა ტექში', 'landing a first job in tech',
+      'playing video games', 'creating your own game or app',
     ],
     catalogKeywords: ['პროგრამ', 'programming', 'coding', 'vibe coding', 'ai', 'დეველოპ', 'developer', 'web', 'ვები'],
   },
   {
-    id: 'design',
-    label: { ka: 'დიზაინი, ანიმაცია და ვიდეო კონტენტი', en: 'Design, Animation & Video Content' },
+    id: 'art_design',
+    label: { ka: 'ხელოვნება და დიზაინი', en: 'Art & Design' },
     signalKeywords: [
-      'ხატვა და ციფრული ხელოვნება', 'ციფრული ხელოვნების დახატვა', 'ვიდეოების ან ანიმაციების გადაღება',
-      'ვხატავ ან ვაწყობ რაღაცას',
-      'drawing', 'digital art', 'making videos or animations', 'draw or build something',
+      'ხატვა და ციფრული ხელოვნება', 'ციფრული ხელოვნების დახატვა', 'ვხატავ ან ვაწყობ რაღაცას, რომ დავინახო',
+      'drawing / digital art', 'drawing digital art', 'draw or build something to visualize it',
     ],
-    catalogKeywords: ['დიზაინ', 'design', 'ანიმაც', 'animation', 'ვიდეო', 'video', 'გრაფიკ', 'graphic'],
+    catalogKeywords: ['დიზაინ', 'design', 'გრაფიკ', 'graphic'],
   },
   {
-    id: 'content',
-    label: { ka: 'კონტენტის შექმნა და ციფრული მარკეტინგი', en: 'Content Creation & Digital Marketing' },
+    id: 'video_media',
+    label: { ka: 'ვიდეო და მედია კონტენტი', en: 'Video & Media Content' },
     signalKeywords: [
-      'ისტორიების მოყოლა ან წერა', 'ვიგონებ ამბავს', 'საკუთარი ბიზნესის/პროექტის დაწყება',
-      'telling or writing stories', 'make up a story', 'starting my own business',
+      'ვიდეოების ან ანიმაციების გადაღება',
+      'making videos or animations',
     ],
-    catalogKeywords: ['მარკეტ', 'marketing', 'კონტენტ', 'content', 'ბიზნეს', 'business', 'სმმ', 'smm'],
+    catalogKeywords: ['ვიდეო', 'video', 'ანიმაც', 'animation', 'მედია', 'media', 'მონტაჟ'],
+  },
+  {
+    id: 'robotics_logic',
+    label: { ka: 'რობოტექნიკა და ლოგიკური აზროვნება', en: 'Robotics & Logic' },
+    signalKeywords: [
+      'ახალი რაღაცების აწყობა/შექმნა', 'რობოტების აწყობა ან თავსატეხების ამოხსნა', 'მარტო ვფიქრობ და ეტაპობრივად ვცდი',
+      'building or making new things', 'building robots or solving puzzles', 'figure it out alone, step by step',
+    ],
+    catalogKeywords: ['რობოტ', 'robot', 'ლოგიკ', 'logic'],
+  },
+  {
+    id: 'storytelling',
+    label: { ka: 'სთორითელინგი და კონტენტის შექმნა', en: 'Storytelling & Content Creation' },
+    signalKeywords: [
+      'ისტორიების მოყოლა ან წერა', 'ვიგონებ ამბავს ამის შესახებ', 'საკუთარი ბიზნესის/პროექტის დაწყება',
+      'telling or writing stories', 'make up a story about it', 'starting my own business/project',
+    ],
+    catalogKeywords: ['მარკეტ', 'marketing', 'კონტენტ', 'content', 'ბიზნეს', 'business', 'სმმ', 'smm', 'წერ', 'writing'],
   },
 ];
 
@@ -114,9 +139,9 @@ function normalize(s: string): string {
 // Picks the track whose signalKeywords appear most often (substring match,
 // case-insensitive — safe for both Georgian and Latin script) across the
 // visitor's actual selected answers. Ties broken by TRACKS array order
-// (programming > design > content) — an arbitrary but stable, deterministic
-// choice, same reasoning as any other "first match wins" tie-break in this
-// codebase.
+// (coding_tech > art_design > video_media > robotics_logic > storytelling)
+// — an arbitrary but stable, deterministic choice, same reasoning as any
+// other "first match wins" tie-break in this codebase.
 function pickTrack(answerValues: string[]): Track {
   const normalizedAnswers = answerValues.map(normalize);
   let best: { track: Track; score: number } | null = null;
@@ -205,9 +230,9 @@ function buildReport(
 }
 
 // Public entry point — see careerQuizService.ts's generateCareerQuizResult,
-// which calls this only after Tier 1 (Gemini) and Tier 2 (Azure) have both
-// been exhausted. Deliberately has no async boundary and touches nothing
-// beyond its own arguments, so it cannot itself be the thing that fails.
+// which calls this directly and immediately for every submission.
+// Deliberately has no async boundary and touches nothing beyond its own
+// arguments, so it cannot itself be the thing that fails.
 export function generateFallbackCareerReport(input: QuizInput, lang: 'ka' | 'en', catalog: FallbackCatalogItem[]): string {
   const ageGroup = resolveAgeGroup(input.age);
   const answerValues = flattenAnswers(input.answers);

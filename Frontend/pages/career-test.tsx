@@ -49,7 +49,7 @@ const dict = {
     back: 'უკან',
     requiredStep1: 'გთხოვთ შეავსოთ ყველა ველი.',
     submit: 'შედეგის მიღება',
-    submitting: 'გენერირდება… (შესაძლოა 20-30 წამი დასჭირდეს)',
+    submitting: 'ანალიზი…',
     resultHeading: 'თქვენი პერსონალური კარიერული რეპორტი',
     retake: 'ხელახლა გავლა',
     dashboardLink: 'ჩემი დაშბორდი',
@@ -125,7 +125,7 @@ const dict = {
     back: 'Back',
     requiredStep1: 'Please fill in every field.',
     submit: 'Get My Result',
-    submitting: 'Generating… (can take 20-30 seconds)',
+    submitting: 'Analyzing…',
     resultHeading: 'Your Personal Career Report',
     retake: 'Retake the Test',
     dashboardLink: 'My Dashboard',
@@ -511,9 +511,32 @@ export default function CareerTestPage() {
                   type="button"
                   onClick={handleSubmit}
                   disabled={submitting}
-                  className="w-full rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-3.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-60"
+                  className="relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-3.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-90"
                 >
-                  {submitting ? t.submitting : t.submit}
+                  {/* Results now come from an instant local engine (no more
+                      AI wait), but a bare label-swap on a sub-100ms request
+                      reads as broken ("did my click even register?"). This
+                      fills smoothly over ~1s regardless of how fast the
+                      request actually resolves, then the button's own
+                      submitting->false transition (handleSubmit's finally)
+                      ends it — see the `submit-progress` keyframe below. */}
+                  {submitting && (
+                    <span
+                      className="absolute inset-y-0 left-0 bg-white/25"
+                      style={{ animation: 'submit-progress 1s ease-out forwards' }}
+                    />
+                  )}
+                  <span className="relative">{submitting ? t.submitting : t.submit}</span>
+                  <style jsx>{`
+                    @keyframes submit-progress {
+                      from {
+                        width: 0%;
+                      }
+                      to {
+                        width: 100%;
+                      }
+                    }
+                  `}</style>
                 </button>
               </div>
             )}

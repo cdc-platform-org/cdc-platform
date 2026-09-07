@@ -46,18 +46,19 @@ router.post('/submit', authenticate, async (req: Request, res: Response) => {
 
     res.status(201).json({ data: submission });
   } catch (err) {
-    // AUDIT NOTE (fixed): generateCareerQuizResult() used to throw on any
-    // AI-provider failure (missing config, Gemini/Azure both down), landing
-    // here as a 501/502 the visitor saw as "ტესტის შედეგის გენერირება ვერ
-    // მოხერხდა" — reported live on production, 2026-09-06/07. It now runs a
-    // full Tier 1 (Gemini) -> Tier 2 (Azure) -> Tier 3 (local deterministic
-    // engine, see careerQuizFallbackEngine.ts) pipeline internally and
-    // always resolves with a real report, so this catch block should now
-    // only ever fire for a genuine unexpected failure — e.g. the database
-    // write itself failing — which a clean 502 is still the right response
-    // for; it's just no longer the AI-availability escape hatch it used to
-    // be. CareerQuizNotConfiguredError is kept only for defensive
-    // completeness (no code path raises it anymore).
+    // AUDIT NOTE (fixed): generateCareerQuizResult() used to run a Gemini ->
+    // Azure -> local-engine pipeline and could throw on an AI-provider
+    // failure, landing here as a 501/502 the visitor saw as "ტესტის
+    // შედეგის გენერირება ვერ მოხერხდა" — reported live on production,
+    // 2026-09-06/07. Per a later explicit request to eliminate the AI wait
+    // entirely (not just as a failure fallback), it now calls
+    // careerQuizFallbackEngine.ts's local deterministic engine directly and
+    // unconditionally — sub-second, no network call, cannot itself fail —
+    // so this catch block should only ever fire for a genuine unexpected
+    // failure now (e.g. the database write itself failing), which a clean
+    // 502 is still the right response for. CareerQuizNotConfiguredError is
+    // kept only for defensive completeness (no code path raises it
+    // anymore).
     if (err instanceof CareerQuizNotConfiguredError) {
       return res.status(501).json({ message: err.message });
     }
