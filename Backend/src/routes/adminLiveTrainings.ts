@@ -7,7 +7,7 @@ import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { logAdminAction } from '../services/auditLogService';
 import { sendLiveTrainingEnrollmentEmail } from '../services/emailService';
-import { sendLiveTrainingEnrollmentWhatsApp } from '../services/whatsappService';
+import { sendRegistrationStatusWhatsApp, formatWhatsAppDate } from '../services/whatsappService';
 import { uploadImage } from '../services/imageStorage';
 import { BunnyStorageUploadError } from '../services/bunnyStorage';
 import {
@@ -379,13 +379,17 @@ router.post('/:id/grant', async (req: Request, res: Response) => {
       classroomLink: training.classroomUrl,
     }).catch((err) => console.error('[adminLiveTrainings] sendLiveTrainingEnrollmentEmail failed:', err));
     if (user.phone) {
-      sendLiveTrainingEnrollmentWhatsApp({
+      sendRegistrationStatusWhatsApp({
         phone: user.phone,
-        userName: user.name,
-        courseTitle: training.title,
-        meetLink: training.meetingUrl,
-        classroomLink: training.classroomUrl,
-      }).catch((err) => console.error('[adminLiveTrainings] sendLiveTrainingEnrollmentWhatsApp failed:', err));
+        firstName: user.name,
+        itemTitle: training.title,
+        scheduleText: formatWhatsAppDate(training.startDate, 'ka'),
+        paymentStatus: 'PAID',
+        accessNote:
+          training.meetingUrl || training.classroomUrl
+            ? [training.meetingUrl, training.classroomUrl].filter(Boolean).join(' | ')
+            : undefined,
+      }).catch((err: unknown) => console.error('[adminLiveTrainings] sendRegistrationStatusWhatsApp failed:', err));
     }
   }
   res.status(201).json({ data: enrollment });

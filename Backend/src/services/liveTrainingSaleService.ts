@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { sendLiveTrainingEnrollmentEmail } from './emailService';
-import { sendLiveTrainingEnrollmentWhatsApp } from './whatsappService';
+import { sendRegistrationStatusWhatsApp, formatWhatsAppDate } from './whatsappService';
 
 // ============================================================
 // Fulfillment for a paid LiveTraining seat — mirrors courseSaleService.ts's
@@ -67,13 +67,19 @@ export async function completeLiveTrainingPurchase(params: { userId: string; liv
           classroomLink: liveTraining.classroomUrl,
         }).catch((err) => console.error('[liveTrainingSaleService] sendLiveTrainingEnrollmentEmail failed:', err));
         if (user.phone) {
-          sendLiveTrainingEnrollmentWhatsApp({
+          sendRegistrationStatusWhatsApp({
             phone: user.phone,
-            userName: user.name,
-            courseTitle: liveTraining.title,
-            meetLink: liveTraining.meetingUrl,
-            classroomLink: liveTraining.classroomUrl,
-          }).catch((err) => console.error('[liveTrainingSaleService] sendLiveTrainingEnrollmentWhatsApp failed:', err));
+            firstName: user.name,
+            itemTitle: liveTraining.title,
+            // No `locale` param available here either (see this function's
+            // own comment) — defaults to Georgian, same as the email above.
+            scheduleText: formatWhatsAppDate(liveTraining.startDate, 'ka'),
+            paymentStatus: 'PAID',
+            accessNote:
+              liveTraining.meetingUrl || liveTraining.classroomUrl
+                ? [liveTraining.meetingUrl, liveTraining.classroomUrl].filter(Boolean).join(' | ')
+                : undefined,
+          }).catch((err) => console.error('[liveTrainingSaleService] sendRegistrationStatusWhatsApp failed:', err));
         }
       })
       .catch((err) => console.error('[liveTrainingSaleService] enrollment-notification user lookup failed:', err));

@@ -31,6 +31,8 @@ import { captureMentorshipEscrow } from '../services/mentorshipEscrowService';
 import { sendMentorshipBookingEmails, sendHRSupportRequestAlertEmail } from '../services/emailService';
 import { notifyCourseEnrollment } from '../services/courseEnrollmentNotification';
 import { completeLiveTrainingPurchase } from '../services/liveTrainingSaleService';
+import { sendRegistrationStatusWhatsApp, formatWhatsAppDate } from '../services/whatsappService';
+import { resolveNotificationLocale } from '../utils/notificationLocale';
 import { completeTutorSubscriptionPurchase, TUTOR_SUBSCRIPTION_PRICE_GEL } from '../services/englishTutorSubscriptionService';
 
 const router = Router();
@@ -237,6 +239,26 @@ router.post(
         promoCodeId: appliedPromo?.id ?? null,
       },
     });
+    // Initial-registration WhatsApp, fired the moment checkout is initiated
+    // (not yet confirmed) — the payment-status-update send for this same
+    // purchase happens later, in notifyCourseEnrollment, once the BOG
+    // callback below actually confirms payment. Fire-and-forget: req.user
+    // only carries id/role/email (see middleware/auth.ts), so name/phone
+    // need their own lookup, same pattern as liveTrainings.ts's /enroll.
+    prisma.user
+      .findUnique({ where: { id: req.user!.id }, select: { name: true, phone: true } })
+      .then((buyer) => {
+        if (!buyer?.phone) return;
+        sendRegistrationStatusWhatsApp({
+          phone: buyer.phone,
+          firstName: buyer.name,
+          itemTitle: course.title,
+          scheduleText: 'ხელმისაწვდომია ახლავე / Available now',
+          paymentStatus: 'PENDING',
+          locale: resolveNotificationLocale(checkoutLang(req)),
+        }).catch((err) => console.error('[payments] sendRegistrationStatusWhatsApp (course PENDING) failed:', err));
+      })
+      .catch((err) => console.error('[payments] course PENDING WhatsApp user lookup failed:', err));
     const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
     const order = await createBogOrderOrRespond(res, {
       externalOrderId: bogPayment.id,
@@ -352,6 +374,24 @@ router.post(
         promoCodeId: appliedPromo?.id ?? null,
       },
     });
+    // Same initial-registration WhatsApp as the COURSE checkout above — see
+    // its own comment. The payment-status-update send for this purchase
+    // happens later in liveTrainingSaleService.completeLiveTrainingPurchase
+    // once the BOG callback below actually confirms payment.
+    prisma.user
+      .findUnique({ where: { id: req.user!.id }, select: { name: true, phone: true } })
+      .then((buyer) => {
+        if (!buyer?.phone) return;
+        sendRegistrationStatusWhatsApp({
+          phone: buyer.phone,
+          firstName: buyer.name,
+          itemTitle: training.title,
+          scheduleText: formatWhatsAppDate(training.startDate ?? training.scheduledAt, resolveNotificationLocale(checkoutLang(req))),
+          paymentStatus: 'PENDING',
+          locale: resolveNotificationLocale(checkoutLang(req)),
+        }).catch((err) => console.error('[payments] sendRegistrationStatusWhatsApp (live training PENDING) failed:', err));
+      })
+      .catch((err) => console.error('[payments] live training PENDING WhatsApp user lookup failed:', err));
     const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
     const order = await createBogOrderOrRespond(res, {
       externalOrderId: bogPayment.id,

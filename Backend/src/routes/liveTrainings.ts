@@ -4,7 +4,7 @@ import { authenticate, optionalAuthenticate } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { liveTrainingRegisterSchema } from '../schemas/liveTrainingSchemas';
 import { sendLiveTrainingRegistrationEmail, sendLiveTrainingEnrollmentEmail } from '../services/emailService';
-import { sendLiveTrainingRegistrationWhatsApp, sendLiveTrainingEnrollmentWhatsApp } from '../services/whatsappService';
+import { sendRegistrationStatusWhatsApp, formatWhatsAppDate } from '../services/whatsappService';
 import { resolveNotificationLocale } from '../utils/notificationLocale';
 import { withCurrentLiveTrainingPrice, LiveTrainingPricingInput } from '../services/liveTrainingPricing';
 
@@ -191,13 +191,17 @@ router.post('/:id/register', registerRateLimit, async (req: Request, res: Respon
     liveTrainingId: training.id,
     locale,
   }).catch((err) => console.error('[liveTrainings] sendLiveTrainingRegistrationEmail failed:', err));
-  sendLiveTrainingRegistrationWhatsApp({
+  sendRegistrationStatusWhatsApp({
     phone: lead.phone,
-    userName: lead.name,
-    courseTitle: training.title,
-    startDate: training.startDate ?? training.scheduledAt,
+    firstName: lead.name,
+    itemTitle: training.title,
+    scheduleText: formatWhatsAppDate(training.startDate ?? training.scheduledAt, locale),
+    // A lead-capture registration always precedes payment — this training
+    // may be free (see the separate /enroll self-serve path below for that
+    // case) or paid; either way nothing has been charged yet at this point.
+    paymentStatus: 'PENDING',
     locale,
-  }).catch((err) => console.error('[liveTrainings] sendLiveTrainingRegistrationWhatsApp failed:', err));
+  }).catch((err) => console.error('[liveTrainings] sendRegistrationStatusWhatsApp failed:', err));
 
   res.status(201).json({ data: { id: lead.id } });
 });
@@ -270,14 +274,20 @@ router.post('/:id/enroll', authenticate, async (req: Request, res: Response) => 
       // No phone on file (User.phone is optional) simply skips the
       // WhatsApp send — email above already covers the notification.
       if (user.phone) {
-        sendLiveTrainingEnrollmentWhatsApp({
+        sendRegistrationStatusWhatsApp({
           phone: user.phone,
-          userName: user.name,
-          courseTitle: training.title,
+          firstName: user.name,
+          itemTitle: training.title,
+          scheduleText: formatWhatsAppDate(training.startDate, enrollLocale),
+          // This endpoint is FREE-trainings-only (see its own guard above)
+          // and enrolls immediately — nothing was ever pending here.
+          paymentStatus: 'PAID',
           locale: enrollLocale,
-          meetLink: training.meetingUrl,
-          classroomLink: training.classroomUrl,
-        }).catch((err) => console.error('[liveTrainings] sendLiveTrainingEnrollmentWhatsApp failed:', err));
+          accessNote:
+            training.meetingUrl || training.classroomUrl
+              ? [training.meetingUrl, training.classroomUrl].filter(Boolean).join(' | ')
+              : undefined,
+        }).catch((err) => console.error('[liveTrainings] sendRegistrationStatusWhatsApp failed:', err));
       }
     })
     .catch((err) => console.error('[liveTrainings] enrollment-notification user lookup failed:', err));

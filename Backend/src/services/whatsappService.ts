@@ -104,16 +104,21 @@ export async function sendWhatsAppMessage(params: SendWhatsAppMessageParams): Pr
 }
 
 // ============================================================
-// LIVE TRAINING REGISTRATION & ENROLLMENT — WhatsApp counterparts to
-// emailService.ts's sendLiveTrainingRegistrationEmail/
-// sendLiveTrainingEnrollmentEmail, fired from the same call sites
-// alongside (not instead of) the email. Template names below are
-// placeholders — a real Meta-approved template (submitted and approved in
-// Meta Business Manager, with matching {{1}}/{{2}}/... placeholder count)
-// must exist under these exact names before either function can actually
-// deliver anything; until then sendWhatsAppMessage's own "not configured"
-// guard (or Meta rejecting an unrecognized template name) keeps this a
-// safe no-op rather than a broken send.
+// COURSE & LIVE TRAINING REGISTRATION — one unified WhatsApp template
+// ("live_course_registration") covering both Courses and Live Trainings,
+// at both moments a registration's payment status matters: the initial
+// signup (PENDING for a paid item awaiting checkout, or PAID when nothing
+// was owed / paid up front) and a later payment-status update once a
+// BOG/Stripe webhook confirms payment. WhatsApp counterpart to
+// emailService.ts's registration/enrollment emails and
+// courseEnrollmentNotification.ts's in-app Notification, fired alongside
+// (not instead of) those. `live_course_registration` must exist as a real
+// Meta-approved template (Meta Business Manager) with exactly 5 body
+// placeholders in this order before this can actually deliver anything;
+// until then sendWhatsAppMessage's own "not configured" guard (or Meta
+// rejecting an unrecognized template/placeholder-count) keeps this a safe
+// no-op rather than a broken send — same posture as every other AI/
+// notification integration in this codebase.
 // ============================================================
 // Meta requires the FULL locale tag for English ("en_US"), not the bare
 // "en" this codebase otherwise uses everywhere else (resolveNotificationLocale,
@@ -123,58 +128,71 @@ export async function sendWhatsAppMessage(params: SendWhatsAppMessageParams): Pr
 // itself (that helper's 'en' is correct for every OTHER caller).
 const WHATSAPP_LANGUAGE_CODE: Record<NotificationLocale, string> = { ka: 'ka', en: 'en_US' };
 
-const LINK_NOT_YET_ACTIVE: Record<NotificationLocale, string> = {
-  ka: 'ბმული გააქტიურდება ლექციის დაწყებამდე 15 წუთით ადრე.',
-  en: 'The link will activate 15 minutes before the session starts.',
+export type RegistrationPaymentStatus = 'PENDING' | 'PAID';
+
+// {{4}} — a single fixed bilingual string regardless of the template's own
+// selected language, per the exact wording specified for this integration
+// (the surrounding template body text is still locale-branched via
+// WHATSAPP_LANGUAGE_CODE above; only this one status field always shows
+// both languages together).
+const PAYMENT_STATUS_LABEL: Record<RegistrationPaymentStatus, string> = {
+  PAID: 'დადასტურებულია / Paid',
+  PENDING: 'მოლოდინშია / Pending',
 };
+
+// {{5}} default — overridable per call (e.g. once real Google Meet/
+// Classroom links exist for a Live Training) so a PAID Course purchase
+// (which has no Meet/Classroom concept at all) still gets a sensible note
+// without every call site having to know the difference.
+function defaultAccessNote(paymentStatus: RegistrationPaymentStatus, locale: NotificationLocale): string {
+  if (paymentStatus === 'PENDING') {
+    return locale === 'en'
+      ? 'Your spot is reserved — full access unlocks automatically once your payment is confirmed.'
+      : 'თქვენი ადგილი დაჯავშნილია — სრული წვდომა გააქტიურდება ავტომატურად გადახდის დადასტურების შემდეგ.';
+  }
+  return locale === 'en'
+    ? `You're all set! Check your CDC Dashboard for access details: ${FRONTEND_URL}/dashboard`
+    : `მზად ხართ! წვდომის დეტალებისთვის ეწვიეთ თქვენს CDC დაშბორდს: ${FRONTEND_URL}/dashboard`;
+}
 
 function formatWhatsAppDate(date: Date | null, locale: NotificationLocale): string {
   if (!date) return locale === 'en' ? 'to be confirmed soon' : 'დაზუსტდება მალე';
   return date.toLocaleDateString(locale === 'en' ? 'en-US' : 'ka-GE', { timeZone: 'Asia/Tbilisi', dateStyle: 'long' });
 }
 
-export async function sendLiveTrainingRegistrationWhatsApp(params: {
+export interface SendRegistrationStatusWhatsAppParams {
   phone: string;
-  userName: string;
-  courseTitle: string;
-  startDate: Date | null;
+  firstName: string;
+  // Localized Course/LiveTraining title — {{2}}.
+  itemTitle: string;
+  // Formatted start date/schedule text — {{3}}. Pass a pre-formatted
+  // string (see formatWhatsAppDate below) rather than a raw Date so
+  // callers without a real date (e.g. a rolling/on-demand course) can
+  // supply their own schedule description instead.
+  scheduleText: string;
+  paymentStatus: RegistrationPaymentStatus;
   locale?: NotificationLocale;
-}): Promise<void> {
-  const { phone, userName, courseTitle, startDate, locale = 'ka' } = params;
-  const meetUnlockNote =
-    locale === 'en'
-      ? 'The Google Meet link will unlock once your enrollment (payment) is confirmed.'
-      : 'Google Meet ბმული გააქტიურდება კურსზე ჩარიცხვის (გადახდის დადასტურების) შემდეგ.';
+  // {{5}} override — e.g. real Google Meet/Classroom links once available.
+  // Defaults to a generic PENDING/PAID note (defaultAccessNote above) when
+  // omitted, so simple callers (a Course purchase, which has no
+  // Meet/Classroom concept) don't need to construct one themselves.
+  accessNote?: string;
+}
+
+// The one function every Course/LiveTraining registration and
+// payment-status-change call site should use — see this section's own
+// header comment for the full trigger-point list.
+export async function sendRegistrationStatusWhatsApp(params: SendRegistrationStatusWhatsAppParams): Promise<void> {
+  const { phone, firstName, itemTitle, scheduleText, paymentStatus, locale = 'ka', accessNote } = params;
   await sendWhatsAppMessage({
     to: phone,
     templateName: 'live_course_registration',
     languageCode: WHATSAPP_LANGUAGE_CODE[locale],
-    // Positional {{1}}..{{4}} — name, course title, start date, and the
-    // "Meet link unlocks on enrollment" note (courseTitle repeated per the
-    // template's own copy, same as the email's confirmation-line reference).
-    textParameters: [userName, courseTitle, formatWhatsAppDate(startDate, locale), meetUnlockNote],
+    // Positional {{1}}..{{5}}: first name, item title, schedule, payment
+    // status, access note — exact order/contract this integration was
+    // specified with.
+    textParameters: [firstName, itemTitle, scheduleText, PAYMENT_STATUS_LABEL[paymentStatus], accessNote ?? defaultAccessNote(paymentStatus, locale)],
   });
 }
 
-export async function sendLiveTrainingEnrollmentWhatsApp(params: {
-  phone: string;
-  userName: string;
-  courseTitle: string;
-  meetLink: string | null;
-  classroomLink: string | null;
-  locale?: NotificationLocale;
-}): Promise<void> {
-  const { phone, userName, courseTitle, meetLink, classroomLink, locale = 'ka' } = params;
-  await sendWhatsAppMessage({
-    to: phone,
-    templateName: 'live_course_enrollment',
-    languageCode: WHATSAPP_LANGUAGE_CODE[locale],
-    textParameters: [
-      userName,
-      courseTitle,
-      meetLink || LINK_NOT_YET_ACTIVE[locale],
-      classroomLink || LINK_NOT_YET_ACTIVE[locale],
-      `${FRONTEND_URL}/dashboard`,
-    ],
-  });
-}
+export { formatWhatsAppDate };
