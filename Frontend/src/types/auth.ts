@@ -137,14 +137,18 @@ export interface RegisterPayload {
   name: string;
   email: string;
   password: string;
-  // Public registration only ever grants Student or Client — see
-  // Backend's schemas/authSchemas.ts. Omit to default to Student.
+  // Collected on the single unified registration form (register.tsx) —
+  // optional since Google/social sign-up has no form field to send it from.
+  phone?: string;
+  // Public registration only ever grants Student or Client — see Backend's
+  // schemas/authSchemas.ts. Omit to default to Student (the only outcome a
+  // general visitor to /auth/register can reach now — 'Client' is still
+  // reachable, just only via the one deliberate internal deep-link,
+  // tools.tsx's Business AI Tools trial CTA passing ?intent=EMPLOYER).
   role?: 'Student' | 'Client';
-  // Which onboarding path was picked in register.tsx's Step 1 — purely
-  // descriptive, doesn't change `role`'s validation.
+  // Which path led here — purely descriptive, doesn't change `role`'s
+  // validation.
   primaryIntent?: 'TALENT' | 'EMPLOYER';
-  // Only meaningful for a Freelancer sub-role signup — see register.tsx.
-  freelancerSkills?: string[];
   // Must be true — the backend rejects anything else (z.literal(true)).
   acceptedTerms: boolean;
 }

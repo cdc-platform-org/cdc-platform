@@ -236,7 +236,7 @@ router.post('/register', authRateLimit, async (req, res) => {
     return res.status(400).json({ errors: result.error.errors });
   }
 
-  const { name, email, password, role, primaryIntent, freelancerSkills } = result.data;
+  const { name, email, password, phone, role, primaryIntent } = result.data;
   const normalizedEmail = email.toLowerCase();
 
   const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
@@ -252,9 +252,9 @@ router.post('/register', authRateLimit, async (req, res) => {
         name,
         email: normalizedEmail,
         password: hashed,
+        phone,
         role,
         primaryIntent,
-        freelancerSkills: freelancerSkills ?? [],
         // registerSchema only ever grants Student or Client (see its comment) —
         // both are self-serve roles with no vetting step, so manual admin
         // approval (UserStatus's PENDING_APPROVAL default, reserved for

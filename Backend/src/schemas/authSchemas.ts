@@ -4,18 +4,27 @@ export const registerSchema = z.object({
   name: z.string().min(2).max(120),
   email: z.string().email(),
   password: z.string().min(8).max(128),
+  // Now collected on the single unified registration form (see
+  // register.tsx) — optional since a few call sites (Google/social sign-up)
+  // still don't have one to send. Same min(4) floor as this codebase's other
+  // phone-collecting forms (e.g. liveTrainingSchemas.ts's registration lead).
+  phone: z.string().trim().min(4).max(50).optional(),
   // Public registration only ever grants Student or Client — Mentor and
   // SuperAdmin have no self-serve path (Mentor has no registration flow at
   // all yet; SuperAdmin only via SUPER_ADMIN_EMAILS or the seed script).
+  // register.tsx's own multi-step role picker was removed (every organic
+  // signup now defaults to Student) — 'Client' is still reachable, just
+  // only via the one deliberate internal deep-link (tools.tsx's Business AI
+  // Tools trial CTA, ?intent=EMPLOYER), never a general public choice.
   role: z.enum(['Student', 'Client']).optional().default('Student'),
-  // Which onboarding path the student picked in register.tsx's Step 1 —
-  // purely descriptive (see PrimaryIntent's schema comment), doesn't
-  // affect `role` validation/derivation above.
+  // Which onboarding path led here — purely descriptive (see PrimaryIntent's
+  // schema comment), doesn't affect `role` validation/derivation above.
   primaryIntent: z.enum(['TALENT', 'EMPLOYER']).optional(),
-  // Only meaningful for a Freelancer sub-role signup (register.tsx's Step 2)
-  // — ignored for every other subRole, which just never sends this. Same
-  // storage/validation as PUT /me's freelancerSkills.
-  freelancerSkills: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+  // AUDIT NOTE (removed): freelancerSkills used to be collected here for a
+  // Freelancer sub-role signup — register.tsx's stepper (and the Freelancer
+  // sub-choice specifically) was removed; skills are still fully editable
+  // after signup on /dashboard/settings (PUT /me's freelancerSkills), so
+  // nothing is lost, just no longer front-loaded onto the signup form.
   // Server-side re-check, not just a UI-disabled-submit-button gate — the
   // frontend checkbox is required to submit, but this must still reject a
   // direct API call that skips it. z.literal(true) rejects false/missing.

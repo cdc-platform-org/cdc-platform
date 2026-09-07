@@ -3,44 +3,51 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Image from 'next/image';
 import { AxiosError } from 'axios';
-import { GraduationCap, Sun, Moon, Briefcase, Sparkles, ChevronLeft } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../src/context/AuthContext';
 import GuestRoute from '../../src/components/auth/GuestRoute';
 import PasswordInput from '../../src/components/auth/PasswordInput';
 import GoogleSignInButton from '../../src/components/auth/GoogleSignInButton';
 import SocialLoginButtons from '../../src/components/auth/SocialLoginButtons';
 import LanguageSwitcher from '../../src/components/layout/LanguageSwitcher';
-import SkillPicker from '../../src/components/shared/SkillPicker';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { GetStaticProps } from 'next';
 import { resolveLocale } from '../../src/utils/locale';
 
+// AUDIT NOTE (removed): this page used to gate the actual form behind a
+// 2-step wizard (Step 1: "Learning & Career" vs "Hiring & B2B"; Step 2, TALENT
+// only: Student vs Freelancer, both of which saved the identical role
+// 'Student' — pure UI friction with zero backend effect) plus an inline
+// freelancerSkills picker. Removed per an explicit request to cut
+// registration friction: every organic visitor now goes straight to one
+// unified Name/Email/Password/Phone form and gets role: 'Student' (the
+// schema's own default — see Backend's authSchemas.ts). Freelance skills
+// are still fully editable after signup on /dashboard/settings, so nothing
+// is actually lost, just no longer front-loaded onto the signup form.
+//
+// 'Client' (Employer/Business) is still reachable — just no longer a
+// general public choice on this page. It stays available ONLY via the one
+// real internal integration that already depended on it before this
+// change: tools.tsx's Business AI Tools trial CTA deep-links here with
+// ?intent=EMPLOYER (via AuthModal.tsx's goToRegister), which still silently
+// selects role: 'Client' below with no wizard UI shown for it — removing
+// that support entirely would have broken that specific, already-shipped
+// flow, which nothing in this request asked for.
 function RegisterPage() {
   const router = useRouter();
   const { register, loginWithGoogle } = useAuth();
   const { t } = useTranslation('auth');
   const lang = resolveLocale(router.locale);
-  // SkillPicker's own taxonomy of freelance skill labels is ka/en-only —
-  // same documented boundary as MARKETPLACE_CATEGORIES elsewhere in this
-  // i18n pass, so de/es/fr/uk visitors see the English skill list.
-  const skillPickerLang = lang === 'ka' ? 'ka' : 'en';
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  // Defaults to Student for every organic visit; flipped to Client only
+  // when ?intent=EMPLOYER is already present in the URL on load (see the
+  // effect below) — never by an in-page choice anymore.
   const [role, setRole] = useState<'Student' | 'Client'>('Student');
-  // Step 1: broad intent. Step 2: only the TALENT path still branches
-  // further (Student vs Freelancer — both map to role Student). EMPLOYER
-  // used to offer a "Client" vs "Business" sub-choice here too, but both
-  // saved the identical role: 'Client' — the only real difference was
-  // whether /onboarding's company-KYC form came right after. Removed as a
-  // confusing distinction with no actual backend effect; every Employer
-  // signup now goes straight to the account form and always gets the KYC
-  // prompt afterward (see postSignupRedirect below).
-  const [intent, setIntent] = useState<'TALENT' | 'EMPLOYER' | null>(null);
-  const [subRole, setSubRole] = useState<'Student' | 'Freelancer' | 'Client' | null>(null);
-  const [freelancerSkills, setFreelancerSkills] = useState<string[]>([]);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,12 +57,11 @@ function RegisterPage() {
     setDarkMode(document.documentElement.classList.contains('dark'));
   }, []);
 
-  // Lets a caller land here with Step 1 already answered — e.g. AuthModal.tsx
-  // redirects business-only CTAs (the Enterprise AI Tools trial) here with
-  // ?intent=EMPLOYER instead of making them re-pick "Hiring & B2B" themselves.
+  // The one surviving use of ?intent=EMPLOYER — see this file's own header
+  // comment. Silent: no Step 1/2 UI renders for it, `role` just starts as
+  // 'Client' instead of the default 'Student'.
   useEffect(() => {
-    const q = router.query.intent;
-    if (q === 'TALENT' || q === 'EMPLOYER') setIntent(q);
+    if (router.query.intent === 'EMPLOYER') setRole('Client');
   }, [router.query.intent]);
 
   const toggleDarkMode = () => {
@@ -76,11 +82,10 @@ function RegisterPage() {
     // where they came from, unlike the equivalent login flow.
     const explicitRedirect = typeof router.query.redirect === 'string' ? router.query.redirect : undefined;
     if (explicitRedirect) return explicitRedirect;
-    // Every Employer signup (role: Client) gets the company-KYC prompt —
-    // previously only the "Business" sub-choice did; "Client" landed on
-    // /courses instead. Collapsing that choice means always taking the
-    // more-complete path rather than silently dropping the KYC prompt.
-    if (subRole === 'Client') return '/onboarding';
+    // Every Employer signup (role: Client — reachable only via the
+    // ?intent=EMPLOYER deep-link now, see this file's header comment) gets
+    // the company-KYC prompt.
+    if (role === 'Client') return '/onboarding';
     return '/courses';
   };
 
@@ -117,10 +122,10 @@ function RegisterPage() {
         name,
         email,
         password,
+        phone: phone.trim() || undefined,
         role,
         acceptedTerms,
-        primaryIntent: intent ?? undefined,
-        freelancerSkills: subRole === 'Freelancer' ? freelancerSkills : undefined,
+        primaryIntent: role === 'Client' ? 'EMPLOYER' : 'TALENT',
       });
       // Self-serve Student/Client signups are auto-approved (see backend's
       // POST /register) — pending-approval is now only reachable for a
@@ -170,94 +175,6 @@ function RegisterPage() {
           </div>
         )}
 
-        {!intent ? (
-          // STEP 1 — broad intent. Nothing else on the page (form, social
-          // buttons) renders until this is picked, since it decides `role`.
-          <div className="grid grid-cols-1 gap-3">
-            <button
-              type="button"
-              onClick={() => setIntent('TALENT')}
-              className="flex items-center gap-3 rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-4 text-left cursor-pointer hover:border-cyan-400/50 dark:hover:border-cyan-400/50 transition-colors"
-            >
-              <span className="shrink-0 w-10 h-10 rounded-lg bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
-              </span>
-              <span>
-                <span className="block text-sm font-bold text-gray-900 dark:text-white">
-                  {t('register.wizard.talentTitle')}
-                </span>
-                <span className="block text-xs text-gray-500 dark:text-slate-400">
-                  {t('register.wizard.talentSubtitle')}
-                </span>
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => { setIntent('EMPLOYER'); setSubRole('Client'); setRole('Client'); }}
-              className="flex items-center gap-3 rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-4 text-left cursor-pointer hover:border-cyan-400/50 dark:hover:border-cyan-400/50 transition-colors"
-            >
-              <span className="shrink-0 w-10 h-10 rounded-lg bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
-                <Briefcase className="w-5 h-5 text-white" />
-              </span>
-              <span>
-                <span className="block text-sm font-bold text-gray-900 dark:text-white">
-                  {t('register.wizard.employerTitle')}
-                </span>
-                <span className="block text-xs text-gray-500 dark:text-slate-400">
-                  {t('register.wizard.employerSubtitle')}
-                </span>
-              </span>
-            </button>
-          </div>
-        ) : !subRole ? (
-          // STEP 2 — the specific sub-choice within the chosen intent.
-          <div className="space-y-4">
-            <button
-              type="button"
-              onClick={() => setIntent(null)}
-              className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-white bg-transparent border-none cursor-pointer p-0"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" /> {t('register.wizard.back')}
-            </button>
-            {/* Only TALENT reaches this step — EMPLOYER's Step 1 button
-                sets subRole directly and skips straight to the form (see
-                above), so this sub-choice is Student-vs-Freelancer only. */}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => { setSubRole('Student'); setRole('Student'); }}
-                className="flex flex-col items-center gap-1 rounded-lg border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-3 text-sm font-medium text-gray-600 dark:text-slate-400 cursor-pointer hover:border-cyan-400/50 transition-colors"
-              >
-                <GraduationCap className="w-5 h-5" />
-                {t('register.wizard.studentOption')}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setSubRole('Freelancer'); setRole('Student'); }}
-                className="flex flex-col items-center gap-1 rounded-lg border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-4 py-3 text-sm font-medium text-gray-600 dark:text-slate-400 cursor-pointer hover:border-cyan-400/50 transition-colors"
-              >
-                <Briefcase className="w-5 h-5" />
-                {t('register.wizard.freelancerOption')}
-              </button>
-            </div>
-          </div>
-        ) : (
-        <>
-        <button
-          type="button"
-          onClick={() => {
-            // EMPLOYER has no Step 2 of its own anymore (see Step 1's
-            // button above) — back from here must clear intent too, or
-            // it'd land on Step 2's Student/Freelancer choice under a
-            // still-set EMPLOYER intent, which no longer renders anything
-            // for that combination.
-            if (intent === 'EMPLOYER') setIntent(null);
-            setSubRole(null);
-          }}
-          className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-white bg-transparent border-none cursor-pointer p-0"
-        >
-          <ChevronLeft className="w-3.5 h-3.5" /> {t('register.wizard.back')}
-        </button>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
@@ -307,18 +224,21 @@ function RegisterPage() {
             />
           </div>
 
-          {subRole === 'Freelancer' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
-                {t('register.wizard.skillsLabel')}
-                <span className="text-gray-400 font-normal">
-                  {' '}
-                  — {t('register.wizard.skillsHint')}
-                </span>
-              </label>
-              <SkillPicker value={freelancerSkills} onChange={setFreelancerSkills} lang={skillPickerLang} />
-            </div>
-          )}
+          <div>
+            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
+              {t('register.phoneLabel')}
+            </label>
+            <input
+              id="phone"
+              type="tel"
+              required
+              autoComplete="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-800/60 px-3.5 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              placeholder={t('register.phonePlaceholder')}
+            />
+          </div>
 
           <label className="flex items-start gap-2.5 text-sm text-gray-600 dark:text-slate-400 cursor-pointer">
             <input
@@ -362,8 +282,6 @@ function RegisterPage() {
           />
           <SocialLoginButtons lang={lang} role={role} />
         </div>
-        </>
-        )}
 
         <p className="mt-6 text-center text-sm text-gray-500 dark:text-slate-400">
           {t('register.hasAccount')}{' '}

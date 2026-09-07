@@ -15,6 +15,14 @@ import { sendRegistrationStatusWhatsApp, formatWhatsAppDate } from './whatsappSe
 // idempotent upsert is enough.
 // ============================================================
 
+// "Automatically grant Student role/badge on purchase" — deliberately NOT
+// a role overwrite here either, same reasoning as
+// courseEnrollmentNotification.ts's own AUDIT NOTE (access is already
+// role-agnostic; every organic registration already defaults to Student
+// now that register.tsx's role picker is gone; forcibly flipping an
+// existing Client/Mentor's role on purchase would silently strip their own
+// dashboard/capabilities, which nothing here asked for unambiguously).
+
 export interface LiveTrainingSaleResult {
   // True only the first time this call actually activates the enrollment —
   // false on a retried webhook delivery — so callers know whether to treat
