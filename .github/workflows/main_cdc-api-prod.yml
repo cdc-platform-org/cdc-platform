@@ -1,15 +1,15 @@
 # Docs: https://github.com/Azure/login (OIDC), https://github.com/Azure/acr-build (az acr build)
 #
-# MANDATORY E2E GATE: this used to trigger directly on `push: main`, deploying
-# whatever had just landed with zero test coverage in between. It now instead
-# triggers on the "Nightly QA" workflow (qa-nightly.yml) *completing* — that
-# workflow itself runs the Playwright E2E suite on every push to main (see
-# its own `on:` block) — and only actually deploys if that run's conclusion
-# was `success`. This also covers qa-nightly's nightly cron and
-# workflow_dispatch runs, which just redeploy the same already-live SHA
-# (harmless, idempotent) rather than skip deploying on those triggers.
-# `workflows: ["Nightly QA"]` must match that workflow's `name:` exactly —
-# if one is renamed, update the other.
+# MANDATORY E2E GATE:
+# Production deployment is triggered only after the "Nightly QA" workflow
+# completes successfully on main. The exact SHA tested by QA is checked out,
+# built into a container image, and deployed to the production Azure Web App.
+#
+# IMPORTANT:
+# cdc-api-prod uses Azure App Service Site Containers.
+# Therefore the production image must be updated with
+# `az webapp sitecontainers update`, not the legacy
+# `az webapp config container set` command.
 
 name: Build and deploy container to Azure Web App - cdc-api-prod
 
@@ -24,36 +24,24 @@ env:
   ACR_NAME: cdcplatformacr
   ACR_LOGIN_SERVER: cdcplatformacr.azurecr.io
   IMAGE_NAME: cdc-platform-backend
-
-  # Production backend target.
-  # The public CDC frontend uses cdc-api-prod, which is connected to the
-  # production PostgreSQL database in CDC-Prod-RG.
   WEBAPP_NAME: cdc-api-prod
   RESOURCE_GROUP: CDC-Prod-RG
+  TARGET_PORT: "5000"
 
 jobs:
   build-and-deploy:
-    # workflow_dispatch has no workflow_run context to check — only the
-    # automatic path needs gating. A manual run is an explicit human decision
-    # to deploy right now, same as it was before this gate existed.
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     runs-on: ubuntu-latest
 
     permissions:
-      contents: read # required for actions/checkout
-      id-token: write # required for Azure OIDC login
+      contents: read
+      id-token: write
 
     env:
-      # For a workflow_run trigger, the job-level `github.sha` is NOT the
-      # tested commit — it can resolve to the default branch's current commit.
-      # `workflow_run.head_sha` is the exact commit that the QA workflow tested.
-      # Resolve it once here and use the same SHA for checkout and image tagging.
       DEPLOY_SHA: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
 
     steps:
-      # Deploy exactly the commit the QA workflow tested, not whatever happens
-      # to be newest on main by the time this deployment job starts.
       - name: Checkout tested commit
         uses: actions/checkout@v4
         with:
@@ -66,8 +54,6 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # Build inside Azure Container Registry and tag the image with the exact
-      # commit SHA that passed QA, plus the floating `latest` tag.
       - name: Build and push image via ACR Tasks
         working-directory: Backend
         run: |
@@ -77,17 +63,22 @@ jobs:
             --image ${{ env.IMAGE_NAME }}:latest \
             .
 
-      # Point the real production App Service at the verified image.
-      # The container's entrypoint runs `prisma migrate deploy` before starting
-      # the API, so a failed migration prevents the server from starting against
-      # an incompatible schema.
-      - name: Point production Web App at the new image
+      - name: Point production Site Container at the new image
         run: |
-          az webapp config container set \
+          az webapp sitecontainers update \
             --name ${{ env.WEBAPP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --container-image-name ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.DEPLOY_SHA }} \
-            --container-registry-url https://${{ env.ACR_LOGIN_SERVER }}
+            --container-name main \
+            --image ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.DEPLOY_SHA }} \
+            --target-port ${{ env.TARGET_PORT }}
+
+      - name: Verify production Site Container configuration
+        run: |
+          az webapp sitecontainers list \
+            --name ${{ env.WEBAPP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "[].{Name:name,Image:image,TargetPort:targetPort,IsMain:isMain}" \
+            --output table
 
       - name: Restart production Web App to pull new image
         run: |
