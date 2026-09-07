@@ -70,8 +70,15 @@ export function useSmartReader(initialText: string) {
       const [summaryText, cefr] = data.summary.split('CEFR Level:');
       setSummary(summaryText.trim());
       setCefrLevel((cefr ?? '').trim());
-    } catch {
-      setSummary('Error summarizing text.');
+    } catch (err: any) {
+      // The Backend now always responds 200 with a clean fallback summary
+      // rather than throwing on an AI-provider failure (see
+      // routes/languageTeacher.ts's /summarize) — this branch should only
+      // ever fire for a genuine network/CORS failure that never reached the
+      // server at all, so it's logged for real debugging instead of being a
+      // silent generic string.
+      console.error('[useSmartReader] /language-teacher/summarize request failed:', err?.message ?? err);
+      setSummary('Could not reach the server. Please check your connection and try again.');
     } finally {
       setLoadingAi(false);
     }

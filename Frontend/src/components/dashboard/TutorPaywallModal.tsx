@@ -9,6 +9,11 @@ interface TutorPaywallModalProps {
   trialAvailable: boolean;
   onClose: () => void;
   onTrialStarted: () => void;
+  // Optional context for WHY this modal opened — e.g. "Upgrade to unlock
+  // AI Voice Pronunciation" when a non-Pro user clicks a locked audio
+  // control, vs. the generic header CTA which passes nothing and falls
+  // back to the plain upsell copy below.
+  reason?: string;
 }
 
 const dict = {
@@ -34,7 +39,7 @@ const dict = {
   },
 };
 
-export default function TutorPaywallModal({ lang, trialAvailable, onClose, onTrialStarted }: TutorPaywallModalProps) {
+export default function TutorPaywallModal({ lang, trialAvailable, onClose, onTrialStarted, reason }: TutorPaywallModalProps) {
   const t = dict[lang];
   const [startingTrial, setStartingTrial] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
@@ -81,6 +86,11 @@ export default function TutorPaywallModal({ lang, trialAvailable, onClose, onTri
           <h2 className="text-lg font-black">{t.title}</h2>
         </div>
 
+        {reason && (
+          <p className="text-sm font-bold text-purple-600 dark:text-purple-300 mb-3 rounded-lg bg-purple-50 dark:bg-purple-500/10 px-3 py-2">
+            {reason}
+          </p>
+        )}
         {!trialAvailable && <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">{t.trialEnded}</p>}
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">{t.upsell}</p>
 

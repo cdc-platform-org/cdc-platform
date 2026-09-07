@@ -75,20 +75,68 @@ Respond with strict JSON matching this shape: {"words": [{"word": string, "statu
   }
 );
 
+// AUDIT NOTE (fixed): reported live as "Error summarizing text." on short or
+// single-word input (e.g. "language") — the prompt unconditionally asked
+// Gemini to "Summarize ... in 2-3 sentences", a degenerate, nonsensical ask
+// for a single word, which reliably produced an empty/refused response
+// (aiAgentService's Gemini cascade correctly treats that as a failure and
+// exhausts every model/retry before genuinely throwing) rather than a
+// content problem the prompt itself should never have created. Two fixes:
+// (1) the prompt now explicitly branches on short input, asking for a
+// definition-style response instead of an impossible summary, while still
+// requiring the exact same output format so the Frontend's
+// `.split('CEFR Level:')` parsing never has to change; (2) a 10s interactive
+// budget (this is a real person waiting on a result, not a bulk-generation
+// call — see courseTutorService.ts's identical reasoning/value) with a
+// clean, correctly-formatted local fallback on ANY failure (timeout,
+// exhausted providers, malformed response) instead of ever throwing —
+// "Error summarizing text." should no longer be reachable through an AI
+// failure at all, short input or not.
+const SUMMARIZE_TIMEOUT_MS = 10_000;
+const SHORT_TEXT_WORD_THRESHOLD = 5;
+
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | 'TIMEOUT'> {
+  return Promise.race([promise, new Promise<'TIMEOUT'>((resolve) => setTimeout(() => resolve('TIMEOUT'), ms))]);
+}
+
+function fallbackSummary(text: string): string {
+  const trimmed = text.trim();
+  const notice = trimmed
+    ? `"${trimmed}" — a detailed explanation isn't available right now, please try again shortly.`
+    : 'No text was provided to summarize.';
+  // Same exact <summary>\nCEFR Level: <level> contract the real AI response
+  // uses — the Frontend's parsing has no separate "this was a fallback"
+  // branch to maintain, it just always works.
+  return `${notice}\nCEFR Level: B1`;
+}
+
 router.post('/summarize', async (req: Request, res: Response) => {
   const { text } = req.body;
-  try {
-    const summary = await callTextModelPlain(
-      `Summarize the following text in 2-3 sentences, then give its CEFR complexity level (A1, A2, B1, B2, C1, or C2). Respond in EXACTLY this format, no markdown, no extra commentary:
+  if (typeof text !== 'string' || !text.trim()) {
+    return res.json({ summary: fallbackSummary(typeof text === 'string' ? text : '') });
+  }
+
+  const wordCount = text.trim().split(/\s+/).length;
+  const prompt =
+    wordCount <= SHORT_TEXT_WORD_THRESHOLD
+      ? `The following input is very short (a single word or short phrase), too short to genuinely "summarize" — instead, give a brief definition/explanation of it (2-3 sentences), then its CEFR complexity level (A1, A2, B1, B2, C1, or C2) as a learner vocabulary item. Respond in EXACTLY this format, no markdown, no extra commentary:
+<explanation text>
+CEFR Level: <level>
+
+Text: "${text}"`
+      : `Summarize the following text in 2-3 sentences, then give its CEFR complexity level (A1, A2, B1, B2, C1, or C2). Respond in EXACTLY this format, no markdown, no extra commentary:
 <summary text>
 CEFR Level: <level>
 
-Text: "${text}"`,
-      0.3
-    );
+Text: "${text}"`;
+
+  try {
+    const result = await withTimeout(callTextModelPlain(prompt, 0.3), SUMMARIZE_TIMEOUT_MS);
+    const summary = result === 'TIMEOUT' ? fallbackSummary(text) : result;
     res.json({ summary });
   } catch (err) {
-    respondAiError(res, err);
+    console.error('[languageTeacher] /summarize failed, using local fallback:', err instanceof Error ? err.message : err);
+    res.json({ summary: fallbackSummary(text) });
   }
 });
 

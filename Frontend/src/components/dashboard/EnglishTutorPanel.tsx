@@ -111,6 +111,8 @@ const dict = {
     error: 'დაფიქსირდა შეცდომა. სცადეთ ხელახლა.',
     wordCount: (n: number, target: number) => `${n} სიტყვა (სამიზნე: ~${target})`,
     listenTo: '🔊 მოსმენა',
+    listenToLocked: '🔒 მოსმენა (PRO)',
+    audioLockedReason: 'გახსენით PRO წვდომა AI ხმოვანი გამოთქმისა და აუდიო ხელსაწყოების გამოსაყენებლად.',
     imiakoGreeting: 'IMIAKO-სთან ერთად ისწავლეთ ინგლისური თქვენს ტემპში.',
     trialActive: (days: number) => `PRO ტესტ-ვერსია — დარჩენილია ${days} დღე`,
     trialCta: 'დაიწყეთ 5 დღიანი უფასო ტესტი',
@@ -166,6 +168,8 @@ const dict = {
     error: 'Something went wrong. Please try again.',
     wordCount: (n: number, target: number) => `${n} words (target: ~${target})`,
     listenTo: '🔊 Listen',
+    listenToLocked: '🔒 Listen (PRO)',
+    audioLockedReason: 'Upgrade to Premium to unlock AI Voice Pronunciation & Audio Tools.',
     imiakoGreeting: 'Learn English with IMIAKO, at your own pace.',
     trialActive: (days: number) => `PRO trial active — ${days} day${days === 1 ? '' : 's'} left`,
     trialCta: 'Start 5-day free trial',
@@ -203,6 +207,10 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
   const [lesson, setLesson] = useState<TutorLesson | null>(null);
   const [grading, setGrading] = useState<TutorGradingResult | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
+  // Context for WHY the paywall opened — set right before setShowPaywall(true)
+  // by whichever trigger fired (locked audio, locked CEFR level, the header
+  // CTA), cleared on close so a stale reason never lingers into the next open.
+  const [paywallReason, setPaywallReason] = useState<string | null>(null);
   const [savingGoal, setSavingGoal] = useState(false);
   // Bridges the real gap between "onboarding UI finished" and "the server
   // actually knows tutorNativeLang" — that field is only ever persisted as
@@ -338,15 +346,29 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
     ? Math.max(0, Math.ceil((new Date(tutorState.tutorTrialEndDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
     : 0;
 
+  // Passed down to the lesson views below (QuestionsTaskView/DialogueTaskView)
+  // as the click handler for their locked-audio control — opens the same
+  // paywall modal the rest of this panel already uses, just with a specific
+  // reason attached instead of the generic header-CTA's none.
+  const handleLockedAudioClick = () => {
+    setPaywallReason(t.audioLockedReason);
+    setShowPaywall(true);
+  };
+
   return (
     <div className="flex flex-col gap-8">
       {showPaywall && tutorState && (
         <TutorPaywallModal
           lang={lang}
+          reason={paywallReason ?? undefined}
           trialAvailable={tutorState.trialAvailable}
-          onClose={() => setShowPaywall(false)}
+          onClose={() => {
+            setShowPaywall(false);
+            setPaywallReason(null);
+          }}
           onTrialStarted={() => {
             setShowPaywall(false);
+            setPaywallReason(null);
             refresh();
           }}
         />
@@ -367,7 +389,10 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
             ) : (
               <button
                 type="button"
-                onClick={() => setShowPaywall(true)}
+                onClick={() => {
+                  setPaywallReason(null);
+                  setShowPaywall(true);
+                }}
                 className="inline-flex items-center gap-1.5 text-xs font-bold rounded-full bg-gradient-to-r from-amber-400 via-purple-500 to-cyan-500 text-white px-3.5 py-1.5"
               >
                 <Crown className="w-3.5 h-3.5" />
@@ -447,7 +472,11 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
                     // highlighted as chosen, then only discover it was
                     // locked after clicking Generate and hitting the
                     // paywall modal. Now the paywall opens immediately.
-                    onClick={() => (locked ? setShowPaywall(true) : setLevel(lvl))}
+                    onClick={() => {
+                      if (!locked) return setLevel(lvl);
+                      setPaywallReason(null);
+                      setShowPaywall(true);
+                    }}
                     title={locked ? t.proLocked : undefined}
                     className={`flex items-center gap-1 rounded-lg border border-white/10 backdrop-blur-md px-3 py-2 text-xs font-bold transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-cyan-500/30 ${
                       level === lvl
@@ -538,6 +567,8 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
           lang={lang}
           t={t}
           grading={grading}
+          isPro={isPro}
+          onLockedAudioClick={handleLockedAudioClick}
           onGraded={(g) => {
             setGrading(g);
             refresh();
@@ -586,20 +617,29 @@ interface LessonViewProps {
   t: (typeof dict)['ka'];
   grading: TutorGradingResult | null;
   onGraded: (g: TutorGradingResult) => void;
+  // Gates the audio narration controls (VIPAudioNarrator) below — active
+  // 5-day trial OR paid subscription, per EnglishTutorPanel's own `isPro`
+  // (already SuperAdmin/PRO-tier/trial-active combined server-side, see
+  // Backend's hasEnglishTutorProAccess). Text-to-speech synthesis is a
+  // real per-call cost (native browser TTS is free, but the Georgian
+  // fallback proxies to Azure Speech — see VIPAudioNarrator's own comment),
+  // so it must not be left open to every visitor regardless of lesson tier.
+  isPro: boolean;
+  onLockedAudioClick: () => void;
 }
 
-function LessonView({ lesson, lang, t, grading, onGraded }: LessonViewProps) {
+function LessonView({ lesson, lang, t, grading, onGraded, isPro, onLockedAudioClick }: LessonViewProps) {
   switch (lesson.taskType) {
     case 'READING':
     case 'LISTENING':
     case 'VOCABULARY':
     case 'GRAMMAR':
     case 'QUIZ':
-      return <QuestionsTaskView lesson={lesson} lang={lang} t={t} grading={grading} onGraded={onGraded} />;
+      return <QuestionsTaskView lesson={lesson} lang={lang} t={t} grading={grading} onGraded={onGraded} isPro={isPro} onLockedAudioClick={onLockedAudioClick} />;
     case 'WRITING':
-      return <WritingTaskView lesson={lesson} lang={lang} t={t} grading={grading} onGraded={onGraded} />;
+      return <WritingTaskView lesson={lesson} lang={lang} t={t} grading={grading} onGraded={onGraded} isPro={isPro} onLockedAudioClick={onLockedAudioClick} />;
     case 'DIALOGUE':
-      return <DialogueTaskView lesson={lesson} lang={lang} t={t} grading={grading} onGraded={onGraded} />;
+      return <DialogueTaskView lesson={lesson} lang={lang} t={t} grading={grading} onGraded={onGraded} isPro={isPro} onLockedAudioClick={onLockedAudioClick} />;
   }
 }
 
@@ -613,7 +653,24 @@ function speechLangFor(): string {
   return 'en-US';
 }
 
-function QuestionsTaskView({ lesson, lang, t, grading, onGraded }: LessonViewProps) {
+// Stand-in for VIPAudioNarrator when the viewer isn't Pro — same pill shape
+// and position as the real control so the layout doesn't jump once access
+// unlocks, but visibly inert (Lock icon, no playback state) and opens the
+// paywall (with the audio-specific reason) instead of speaking anything.
+function LockedAudioButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-2 self-start rounded-2xl border border-amber-400/30 bg-gradient-to-r from-amber-400/10 via-purple-500/10 to-cyan-500/10 px-3.5 py-2.5 text-xs font-bold text-slate-500 dark:text-slate-400"
+    >
+      <Lock className="w-3.5 h-3.5" />
+      {label}
+    </button>
+  );
+}
+
+function QuestionsTaskView({ lesson, lang, t, grading, onGraded, isPro, onLockedAudioClick }: LessonViewProps) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -644,7 +701,11 @@ function QuestionsTaskView({ lesson, lang, t, grading, onGraded }: LessonViewPro
       )}
       {'script' in content && (
         <div className="flex flex-col gap-2">
-          <VIPAudioNarrator text={content.script} speechLang={speechLangFor()} lang={lang} label={t.listenTo} />
+          {isPro ? (
+            <VIPAudioNarrator text={content.script} speechLang={speechLangFor()} lang={lang} label={t.listenTo} />
+          ) : (
+            <LockedAudioButton label={t.listenToLocked} onClick={onLockedAudioClick} />
+          )}
           <p className="whitespace-pre-wrap text-sm text-slate-500 dark:text-slate-400">{content.script}</p>
         </div>
       )}
@@ -814,7 +875,7 @@ function WritingTaskView({ lesson, t, grading, onGraded }: LessonViewProps) {
   );
 }
 
-function DialogueTaskView({ lesson, lang, t, grading, onGraded }: LessonViewProps) {
+function DialogueTaskView({ lesson, lang, t, grading, onGraded, isPro, onLockedAudioClick }: LessonViewProps) {
   const content = lesson.content as DialogueContent;
   const [turns, setTurns] = useState<{ role: 'student' | 'tutor'; text: string }[]>([{ role: 'tutor', text: content.openingLine }]);
   const [message, setMessage] = useState('');
@@ -875,7 +936,18 @@ function DialogueTaskView({ lesson, lang, t, grading, onGraded }: LessonViewProp
             </div>
             {turn.role === 'tutor' && (
               <div className="mt-1">
-                <VIPAudioNarrator text={turn.text} speechLang="en-US" lang={lang} compact />
+                {isPro ? (
+                  <VIPAudioNarrator text={turn.text} speechLang="en-US" lang={lang} compact />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onLockedAudioClick}
+                    title={t.audioLockedReason}
+                    className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-amber-400/30 bg-gradient-to-tr from-amber-400/10 via-purple-500/10 to-cyan-500/10 text-slate-400 dark:text-slate-500"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             )}
           </div>
