@@ -207,8 +207,8 @@ export default function SiteHeader() {
           a display:none grid item is dropped from placement entirely, so
           without an explicit column the actions cluster would slide into
           the vacated middle slot on every viewport under 1024px. */}
-      <div className="max-w-7xl mx-auto grid grid-cols-[1fr_auto_1fr] items-center gap-6 px-4 sm:px-6">
-        <Link href="/" className="col-start-1 justify-self-start flex items-center gap-2 xl:gap-3 shrink-0 no-underline text-current">
+      <div className="max-w-7xl mx-auto grid grid-cols-[1fr_auto_1fr] items-center gap-4 md:gap-6 px-4 sm:px-6">
+        <Link href="/" className="col-start-1 justify-self-start flex items-center gap-2 xl:gap-3 shrink-0 min-w-fit no-underline text-current">
           <Image src="/images/cdc-logo.png" alt="CDC" width={40} height={40} className="h-9 w-auto rounded-xl object-cover" />
           <span className="hidden sm:inline font-bold text-sm tracking-wide text-slate-900 dark:text-white">CDC</span>
         </Link>

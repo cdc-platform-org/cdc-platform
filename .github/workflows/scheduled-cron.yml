@@ -7,23 +7,28 @@
 # restriction, so this is one network hop shorter and one fewer thing that
 # breaks if the Frontend deploy has issues.
 #
-# NOT YET ACTIVE: needs a `CRON_SECRET` repo secret matching Backend's real
-# production CRON_SECRET (Web App Application Settings) before these will
-# return anything but 401. Frontend/vercel.json's `crons` block and the
-# pages/api/cron/* relay routes are deliberately left in place until this
-# is confirmed working — removing Vercel's scheduling before this fires
-# successfully at least once would leave both the twice-weekly blog draft
-# and the daily grant scan with nothing actually triggering them. Once
-# confirmed, retire Frontend/vercel.json's `crons` block and the two relay
-# routes; they'll have no remaining purpose.
+# AUDIT NOTE (disabled 2026-09-07): both `schedule:` triggers below (and
+# Frontend/vercel.json's matching `crons` block — see its own note) drove
+# generate-blog-draft and scan-grant-opportunities on a fixed timer with no
+# human trigger, both calling Gemini automatically and draining API quota
+# unattended. Per explicit request, AI generation now only runs from a real
+# admin action — the "✨ Generate" button in /admin/blog
+# (POST /api/admin/blog/generate-ai, a completely separate route from the
+# cron one below and unaffected by this). `schedule:` is commented out so
+# these jobs no longer fire on their own; `workflow_dispatch` is kept so an
+# admin can still run either one on demand from the Actions tab (Run
+# workflow -> pick the job) — that's a deliberate human action, not a timer,
+# so it stays enabled. To restore the automatic schedule, uncomment the
+# `schedule:` block below and move Frontend/vercel.json's `crons` array back
+# to its top-level key.
 name: Scheduled Backend Cron Jobs
 
 on:
-  schedule:
-    # Mirrors vercel.json's generate-blog schedule exactly (Mon/Wed/Fri, 10:00 UTC).
-    - cron: '0 10 * * 1,3,5'
-    # Mirrors vercel.json's scan-grants schedule exactly (daily, 06:00 UTC).
-    - cron: '0 6 * * *'
+  # schedule:
+  #   # Mirrors vercel.json's generate-blog schedule exactly (Mon/Wed/Fri, 10:00 UTC).
+  #   - cron: '0 10 * * 1,3,5'
+  #   # Mirrors vercel.json's scan-grants schedule exactly (daily, 06:00 UTC).
+  #   - cron: '0 6 * * *'
   workflow_dispatch:
     inputs:
       job:
@@ -34,10 +39,11 @@ on:
 
 jobs:
   generate-blog-draft:
-    # On the real schedule, only the matching cron expression's own trigger
-    # fires this — GitHub doesn't tell a job which schedule entry matched,
-    # so both scheduled jobs below would otherwise run on EITHER cron.
-    # github.event.schedule carries the exact expression that fired.
+    # Schedule triggers disabled (see the AUDIT NOTE above) — this now only
+    # ever runs via an admin's explicit workflow_dispatch pick. The
+    # github.event.schedule fallback is kept dormant (harmless once
+    # `schedule:` is commented out above) so re-enabling it later is a
+    # single uncomment, not a rewrite.
     if: github.event_name == 'workflow_dispatch' && inputs.job == 'generate-blog-draft' || github.event.schedule == '0 10 * * 1,3,5'
     runs-on: ubuntu-latest
     timeout-minutes: 5

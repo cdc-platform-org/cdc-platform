@@ -19,9 +19,9 @@ import { uploadBunnyCaption } from './bunnyStreamService';
 // already a dependency — see videoCompressionService.ts) -> upload it to
 // Gemini's File API (handles audio far larger than would fit inline in a
 // single request, so no chunking is needed for anything in the realistic
-// range of a course lesson) -> gemini-1.5-flash transcribes it directly into
+// range of a course lesson) -> the shared Gemini model cascade (see aiAgentService.ts) transcribes it directly into
 // a WebVTT with timing cues and reports the detected spoken language ->
-// gemini-1.5-flash translates that base VTT into whichever of ka/en/ru
+// the shared Gemini model cascade (see aiAgentService.ts) translates that base VTT into whichever of ka/en/ru
 // wasn't the detected language, with the timing cues preserved -> each
 // language is uploaded to Bunny Stream via its Captions API. Bunny's own
 // embed player shows the CC toggle automatically once captions exist — no

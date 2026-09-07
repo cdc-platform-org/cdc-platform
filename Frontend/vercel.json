@@ -1,12 +1,4 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/generate-blog",
-      "schedule": "0 10 * * 1,3,5"
-    },
-    {
-      "path": "/api/cron/scan-grants",
-      "schedule": "0 6 * * *"
-    }
-  ]
+  "crons": [],
+  "_cronsDisabled": "Disabled 2026-09-07 per explicit request to stop automatic background AI generation (twice-weekly blog drafts, daily grant scans) from firing on a timer with no human trigger — both call Gemini and were draining quota unattended. AI generation now only runs from an explicit admin action (the '/admin/blog' Generate button -> POST /api/admin/blog/generate-ai, unaffected by this). The matching .github/workflows/scheduled-cron.yml schedule triggers were disabled the same way (workflow_dispatch kept for an admin to run one on demand). To re-enable both crons, move this array back into the top-level 'crons' key: [{ \"path\": \"/api/cron/generate-blog\", \"schedule\": \"0 10 * * 1,3,5\" }, { \"path\": \"/api/cron/scan-grants\", \"schedule\": \"0 6 * * *\" }]"
 }
