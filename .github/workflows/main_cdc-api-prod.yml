@@ -24,15 +24,12 @@ env:
   ACR_NAME: cdcplatformacr
   ACR_LOGIN_SERVER: cdcplatformacr.azurecr.io
   IMAGE_NAME: cdc-platform-backend
-  # AUDIT NOTE (fixed): WEBAPP_NAME was "cdc-api-prod" — a real Azure Web App,
-  # but it lives in resource group CDC-Prod-RG, not cdc-platform-rg below.
-  # That (name, resource-group) pair doesn't exist, so
-  # `az webapp config container set`/`restart` failed with ResourceNotFound.
-  # Confirmed via `az webapp list` across the whole subscription: the real
-  # backend app IN cdc-platform-rg is named "cdc-platform-api" — "cdc-api-prod"
-  # is a separate, older app in a different resource group entirely.
-  WEBAPP_NAME: cdc-platform-api
-  RESOURCE_GROUP: cdc-platform-rg
+
+  # Production backend target.
+  # The public CDC frontend uses cdc-api-prod, which is connected to the
+  # production PostgreSQL database in CDC-Prod-RG.
+  WEBAPP_NAME: cdc-api-prod
+  RESOURCE_GROUP: CDC-Prod-RG
 
 jobs:
   build-and-deploy:
@@ -40,24 +37,25 @@ jobs:
     # automatic path needs gating. A manual run is an explicit human decision
     # to deploy right now, same as it was before this gate existed.
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
     runs-on: ubuntu-latest
+
     permissions:
       contents: read # required for actions/checkout
       id-token: write # required for Azure OIDC login
+
     env:
       # For a workflow_run trigger, the job-level `github.sha` is NOT the
-      # tested commit — it's a well-known gotcha where it instead resolves to
-      # the default branch's latest commit at trigger time. head_sha is the
-      # actual SHA that workflow ran against. Resolved once here and reused
-      # for both the checkout and the image tag below, so the container image
-      # is always built from — and tagged as — the exact commit that passed.
+      # tested commit — it can resolve to the default branch's current commit.
+      # `workflow_run.head_sha` is the exact commit that the QA workflow tested.
+      # Resolve it once here and use the same SHA for checkout and image tagging.
       DEPLOY_SHA: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
 
     steps:
-      # Deploys exactly the commit the QA workflow tested, not whatever is
-      # newest on main by the time this job starts — those can differ if
-      # another push landed while the E2E suite was still running.
-      - uses: actions/checkout@v4
+      # Deploy exactly the commit the QA workflow tested, not whatever happens
+      # to be newest on main by the time this deployment job starts.
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
@@ -68,8 +66,8 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # Builds inside ACR (no local docker daemon/login needed) and pushes the
-      # resulting image tagged with the commit SHA plus a floating `latest` tag.
+      # Build inside Azure Container Registry and tag the image with the exact
+      # commit SHA that passed QA, plus the floating `latest` tag.
       - name: Build and push image via ACR Tasks
         working-directory: Backend
         run: |
@@ -79,7 +77,11 @@ jobs:
             --image ${{ env.IMAGE_NAME }}:latest \
             .
 
-      - name: Point Web App at the new image
+      # Point the real production App Service at the verified image.
+      # The container's entrypoint runs `prisma migrate deploy` before starting
+      # the API, so a failed migration prevents the server from starting against
+      # an incompatible schema.
+      - name: Point production Web App at the new image
         run: |
           az webapp config container set \
             --name ${{ env.WEBAPP_NAME }} \
@@ -87,8 +89,11 @@ jobs:
             --container-image-name ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.DEPLOY_SHA }} \
             --container-registry-url https://${{ env.ACR_LOGIN_SERVER }}
 
-      - name: Restart Web App to pull new image
-        run: az webapp restart --name ${{ env.WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}
+      - name: Restart production Web App to pull new image
+        run: |
+          az webapp restart \
+            --name ${{ env.WEBAPP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }}
 
       - name: Azure logout
         if: always()
