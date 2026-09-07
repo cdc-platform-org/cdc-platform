@@ -58,6 +58,22 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// AUDIT NOTE (added): a student waiting on a chat reply is watching a
+// loading spinner in real time — the shared 60s GEMINI_REQUEST_OPTIONS
+// timeout (utils/geminiRequestOptions.ts, sized for this codebase's
+// largest bulk-generation payloads like a full exam) is far too long to
+// leave them staring at nothing. Bounds each provider attempt below to
+// 10s and moves on (to the next model, or to the graceful CourseTutorError)
+// rather than actually waiting out the full request — same reasoning as
+// careerQuizService.ts's Tier 1 budget, just slightly more generous since
+// this feature has no local Tier 3 to fall back to if both providers are
+// abandoned too aggressively.
+const INTERACTIVE_TIMEOUT_MS = 10_000;
+
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | 'TIMEOUT'> {
+  return Promise.race([promise, new Promise<'TIMEOUT'>((resolve) => setTimeout(() => resolve('TIMEOUT'), ms))]);
+}
+
 type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
 // Primary/secondary Azure region failover (with its own internal retry) now
@@ -232,11 +248,18 @@ export async function generateTutorReply(params: GenerateTutorReplyParams): Prom
     // before falling through anyway. Skipping straight to Gemini avoids the
     // dead call.
     if (!isAzureOpenAiConfigured()) throw new CourseTutorError('Azure OpenAI not configured — skipping to Gemini.');
-    reply = await callAzureTutor(messages);
+    const azureResult = await withTimeout(callAzureTutor(messages), INTERACTIVE_TIMEOUT_MS);
+    if (azureResult === 'TIMEOUT') throw new CourseTutorError(`Azure exceeded the ${INTERACTIVE_TIMEOUT_MS}ms interactive budget.`);
+    reply = azureResult;
   } catch (azureErr) {
     console.error('[courseTutorService] Azure exhausted, trying Gemini fallback:', azureErr instanceof Error ? azureErr.message : azureErr);
     try {
-      reply = await callGeminiTutorFallback(systemInstruction, params.history.slice(-HISTORY_TURN_LIMIT), params.message);
+      const geminiResult = await withTimeout(
+        callGeminiTutorFallback(systemInstruction, params.history.slice(-HISTORY_TURN_LIMIT), params.message),
+        INTERACTIVE_TIMEOUT_MS
+      );
+      if (geminiResult === 'TIMEOUT') throw new CourseTutorError(`Gemini exceeded the ${INTERACTIVE_TIMEOUT_MS}ms interactive budget.`);
+      reply = geminiResult;
     } catch (geminiErr) {
       // Both providers failed — one graceful, honest error instead of a raw
       // stack trace reaching the student.

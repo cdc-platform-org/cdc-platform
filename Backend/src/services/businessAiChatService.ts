@@ -71,6 +71,16 @@ function isRetryableGeminiError(err: unknown): boolean {
   return /\b(503|429)\b/.test(message) || /overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand/i.test(message);
 }
 
+// AUDIT NOTE (added): a widget visitor waiting on a reply is watching a
+// typing indicator in real time — bounds each provider attempt to 10s
+// (courseTutorService.ts's identical reasoning/value) instead of the
+// shared 60s GEMINI_REQUEST_OPTIONS budget meant for bulk generation.
+const INTERACTIVE_TIMEOUT_MS = 10_000;
+
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | 'TIMEOUT'> {
+  return Promise.race([promise, new Promise<'TIMEOUT'>((resolve) => setTimeout(() => resolve('TIMEOUT'), ms))]);
+}
+
 // AUDIT NOTE (fixed): see aiAgentService.ts's identical helper — a retired/
 // renamed "-latest" model alias 404s, which used to `break geminiLoop` and
 // abort the whole fallback on the FIRST model, never trying the other two.
@@ -144,7 +154,9 @@ export async function generateAgentReply(params: GenerateAgentReplyParams): Prom
     // production, always failing instantly before falling through to Gemini
     // anyway. Skip straight to Gemini instead of the dead call.
     if (!isAzureOpenAiConfigured()) throw new BusinessAiChatError('Azure OpenAI not configured — skipping to Gemini.');
-    const { content, usage } = await callAzureChatCompletionFull({ messages });
+    const azureResult = await withTimeout(callAzureChatCompletionFull({ messages }), INTERACTIVE_TIMEOUT_MS);
+    if (azureResult === 'TIMEOUT') throw new BusinessAiChatError(`Azure exceeded the ${INTERACTIVE_TIMEOUT_MS}ms interactive budget.`);
+    const { content, usage } = azureResult;
     return {
       reply: content,
       usage: usage ? { promptTokens: usage.promptTokens, completionTokens: usage.completionTokens } : undefined,
@@ -152,8 +164,9 @@ export async function generateAgentReply(params: GenerateAgentReplyParams): Prom
   } catch (azureErr) {
     console.error('[businessAiChatService] Azure exhausted, trying Gemini fallback:', azureErr instanceof Error ? azureErr.message : azureErr);
     try {
-      const reply = await callGeminiChatFallback(systemInstruction, params.history, params.message);
-      return { reply };
+      const geminiResult = await withTimeout(callGeminiChatFallback(systemInstruction, params.history, params.message), INTERACTIVE_TIMEOUT_MS);
+      if (geminiResult === 'TIMEOUT') throw new BusinessAiChatError(`Gemini exceeded the ${INTERACTIVE_TIMEOUT_MS}ms interactive budget.`);
+      return { reply: geminiResult };
     } catch (geminiErr) {
       const lastErr = geminiErr ?? azureErr;
       throw lastErr instanceof BusinessAiChatError
