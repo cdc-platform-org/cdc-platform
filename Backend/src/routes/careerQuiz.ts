@@ -46,14 +46,21 @@ router.post('/submit', authenticate, async (req: Request, res: Response) => {
 
     res.status(201).json({ data: submission });
   } catch (err) {
+    // AUDIT NOTE (fixed): generateCareerQuizResult() used to throw on any
+    // AI-provider failure (missing config, Gemini/Azure both down), landing
+    // here as a 501/502 the visitor saw as "ტესტის შედეგის გენერირება ვერ
+    // მოხერხდა" — reported live on production, 2026-09-06/07. It now runs a
+    // full Tier 1 (Gemini) -> Tier 2 (Azure) -> Tier 3 (local deterministic
+    // engine, see careerQuizFallbackEngine.ts) pipeline internally and
+    // always resolves with a real report, so this catch block should now
+    // only ever fire for a genuine unexpected failure — e.g. the database
+    // write itself failing — which a clean 502 is still the right response
+    // for; it's just no longer the AI-availability escape hatch it used to
+    // be. CareerQuizNotConfiguredError is kept only for defensive
+    // completeness (no code path raises it anymore).
     if (err instanceof CareerQuizNotConfiguredError) {
       return res.status(501).json({ message: err.message });
     }
-    // Never leaks the raw AI/provider error to the client — same posture as
-    // the homepage assistant's chat API. A transient Gemini/Azure failure
-    // (rate limit, timeout, malformed response) is common enough on a cold
-    // production deploy that this must degrade to a clean, retryable
-    // message rather than a raw 500/stack trace reaching the browser.
     console.error('[careerQuiz] generateCareerQuizResult failed:', err instanceof Error ? err.message : err);
     res.status(502).json({ message: 'ტესტის შედეგის გენერირება ვერ მოხერხდა. სცადეთ თავიდან.' });
   }
