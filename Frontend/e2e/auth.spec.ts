@@ -8,13 +8,17 @@ test.describe('User Authentication', () => {
     // logged in, no admin-approval interstitial.
     const uniqueEmail = `qa-e2e-register-${Date.now()}@cdc.test`;
 
+    // register.tsx's 2-step role/account-type wizard was removed — every
+    // visitor now lands directly on one unified Name/Email/Password/Phone
+    // form (role defaults to Student server-side, see authSchemas.ts), so
+    // there's no longer a "Learning & Career" / "Student" step to click
+    // through before the form fields even exist in the DOM.
     await page.goto('/auth/register');
-    await page.getByText('Learning & Career', { exact: false }).or(page.locator('button', { hasText: /სწავლა|Learning/ })).first().click();
-    await page.locator('button', { hasText: /სტუდენტი|Student/ }).first().click();
 
     await page.locator('#name').fill('QA Registration Test');
     await page.locator('#email').fill(uniqueEmail);
     await page.locator('#password').fill('RegisterTest123!');
+    await page.locator('#phone').fill('+995555000111');
     await page.locator('form input[type="checkbox"]').check();
     await page.locator('button[type="submit"]').click();
 
