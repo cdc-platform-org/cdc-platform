@@ -565,7 +565,7 @@ export default function Home() {
           inset. Without it the header background rendered inset from the
           real viewport edges, showing white gaps on wide screens. */}
       <nav className={`sticky top-0 z-50 -mx-4 sm:-mx-6 border-b py-4 sm:py-5 ${darkMode ? 'border-slate-800 bg-[#0e1422]/90 backdrop-blur-md' : 'border-slate-200/60 bg-white/90 backdrop-blur-md'}`}>
-        <div className="max-w-7xl mx-auto flex justify-between items-center gap-2 sm:gap-4 px-4 sm:px-6 md:px-12">
+        <div className="max-w-7xl mx-auto relative flex justify-between items-center gap-2 sm:gap-4 px-4 sm:px-6 md:px-12">
           <Link href="/" className="flex items-center space-x-3 shrink-0 no-underline text-current">
             <Image
               src="/images/cdc-logo.png"
@@ -593,9 +593,9 @@ export default function Home() {
               `xl`. At 1024px the five Georgian labels at text-base overflowed
               the row, so the last one ("ბლოგი") rendered clipped to "ბლ" —
               sizing the row to fit is the fix; the nav no longer clips. */}
-          <div className={`hidden lg:flex items-center gap-2 lg:gap-3 xl:gap-6 text-[13px] xl:text-base font-bold tracking-wide whitespace-nowrap ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
+          <div className={`hidden xl:flex absolute left-1/2 -translate-x-1/2 items-center gap-4 2xl:gap-6 text-[13px] 2xl:text-sm font-bold leading-none tracking-normal whitespace-nowrap ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
             <div className="relative group py-2 -my-2">
-              <Link href="/about" className="hover:text-cyan-500 transition no-underline text-current">{t('aboutUs')} ▾</Link>
+              <Link href="/about" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{t('aboutUs')} ▾</Link>
               {/* z-[60] outranks the hero's own layers and the nav's z-50 base,
                   so the panel always paints above the hero below it. */}
               <div
@@ -614,9 +614,9 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <a href="#courses" className="hover:text-cyan-500 transition no-underline text-current">{t('courses')}</a>
+            <a href="#courses" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{t('courses')}</a>
             <div className="relative group py-2 -my-2">
-              <Link href="/marketplace" className="hover:text-cyan-500 transition no-underline text-current">
+              <Link href="/marketplace" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">
                 {t('store')} ▾
               </Link>
               <div className="absolute left-0 top-full pt-2 w-64 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150">
@@ -642,11 +642,11 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <a href="#blog" className="hover:text-cyan-500 transition no-underline text-current">{t('blog')}</a>
-            <Link href="/agency" className="hover:text-cyan-500 transition no-underline text-current">{safeText(t('studio'))}</Link>
-            <Link href="/community" className="hover:text-cyan-500 transition no-underline text-current">{t('jobs')}</Link>
-            <Link href="/forum" className="hover:text-cyan-500 transition no-underline text-current">{t('forum')}</Link>
-            <Link href="/tools" className="hover:text-cyan-500 transition no-underline text-current">{t('toolsHeading')}</Link>
+            <a href="#blog" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{t('blog')}</a>
+            <Link href="/agency" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{safeText(t('studio'))}</Link>
+            <Link href="/community" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{t('jobs')}</Link>
+            <Link href="/forum" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{t('forum')}</Link>
+            <Link href="/tools" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{t('toolsHeading')}</Link>
           </div>
 
           <div className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-4 shrink-0">
@@ -680,7 +680,7 @@ export default function Home() {
               onClick={() => setIsMobileMenuOpen((open) => !open)}
               aria-label="Toggle menu"
               aria-expanded={isMobileMenuOpen}
-              className={`lg:hidden p-2 rounded-xl border-none bg-transparent cursor-pointer transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}
+              className={`xl:hidden p-2 rounded-xl border-none bg-transparent cursor-pointer transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}
             >
               {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -693,7 +693,7 @@ export default function Home() {
             this it sat flush against the nav's now-full-bleed edges (see
             SiteHeader.tsx's own mobile drawer for the same fix). */}
         {isMobileMenuOpen && (
-          <div className={`lg:hidden max-w-full overflow-x-hidden mt-4 pt-4 px-4 sm:px-6 border-t flex flex-col gap-1 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+          <div className={`xl:hidden max-w-full overflow-x-hidden mt-4 pt-4 px-4 sm:px-6 border-t flex flex-col gap-1 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
             <div className="px-2 pb-2">
               <HeaderSearch darkMode={darkMode} lang={legacyLang} />
             </div>

@@ -200,8 +200,8 @@ export default function AuthModal() {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
+      <div className="relative w-full max-w-[460px] overflow-hidden rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-2xl shadow-slate-950/20 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/95 sm:p-8">
         {/* Close button — explicit top-right position, high z-index, always
             above the sliding tab-indicator background below. */}
         <button
@@ -355,12 +355,12 @@ export default function AuthModal() {
               <SocialLoginButtons lang={lang} />
             </div>
 
-            <p className="text-center text-sm text-gray-500 mt-5">
+            <p className="mt-6 text-center text-sm leading-6 text-slate-500 dark:text-slate-400">
               {t.login.noAccount}{' '}
               <button
                 type="button"
                 onClick={() => goToRegister()}
-                className="font-medium text-indigo-600 hover:text-indigo-700"
+                className="font-bold text-indigo-600 transition-colors hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
               >
                 {t.login.registerLink}
               </button>
