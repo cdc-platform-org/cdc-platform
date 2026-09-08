@@ -580,7 +580,7 @@ router.get('/:id/leads/export', async (req: Request, res: Response) => {
 
   const header = ['Name', 'Email', 'Phone', 'Status', 'Note', 'Registered At'];
   const rows = leads.map((l) =>
-    [l.name, l.email, l.phone, l.status, l.adminNote ?? '', l.createdAt.toISOString()].map(csvEscape).join(',')
+    [l.name, l.email ?? '', l.phone, l.status, l.adminNote ?? '', l.createdAt.toISOString()].map(csvEscape).join(',')
   );
   const csv = [header.map(csvEscape).join(','), ...rows].join('\r\n');
 

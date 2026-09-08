@@ -7,6 +7,8 @@ export type LiveTrainingPriceType = 'MONTHLY' | 'TOTAL';
 
 export interface LiveTraining {
   id: string;
+  averageRating?: number | null;
+  reviewCount?: number;
   title: string;
   titleEn: string | null;
   description: string;
@@ -137,7 +139,7 @@ export interface LiveTrainingLead {
   id: string;
   liveTrainingId: string;
   name: string;
-  email: string;
+  email: string | null;
   phone: string;
   status: LiveTrainingLeadStatus;
   adminNote: string | null;

@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import * as Sentry from '@sentry/node';
 import { prisma } from '../lib/prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma, PromoCode } from '@prisma/client';
 import { authenticate, requireApproved } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { checkoutMentorshipSchema } from '../schemas/paymentSchemas';
@@ -24,13 +24,16 @@ import { completeCoursePurchase } from '../services/courseSaleService';
 import { paymentModelForPurpose } from '../services/paymentModel';
 import { getCurrentPrice } from '../services/coursePricing';
 import { getCurrentProductPrice } from '../services/productPricing';
-import { applyPromoToCheckout, PromoCodeError } from '../services/couponService';
+import { applyPromoToCheckout, quotePromoToCheckout, PromoCodeError } from '../services/couponService';
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
 import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
 import { captureMentorshipEscrow } from '../services/mentorshipEscrowService';
 import { sendMentorshipBookingEmails, sendHRSupportRequestAlertEmail } from '../services/emailService';
 import { notifyCourseEnrollment } from '../services/courseEnrollmentNotification';
-import { completeLiveTrainingPurchase } from '../services/liveTrainingSaleService';
+import { completeLiveTrainingPurchase, notifyLiveTrainingEnrollment } from '../services/liveTrainingSaleService';
+import { getCurrentLiveTrainingPrice } from '../services/liveTrainingPricing';
+import { reserveLearningCheckout } from '../services/learningCheckoutService';
+import { completeLearningPayment } from '../services/learningPaymentFulfillment';
 import { sendRegistrationStatusWhatsApp, formatWhatsAppDate } from '../services/whatsappService';
 import { resolveNotificationLocale } from '../utils/notificationLocale';
 import { completeTutorSubscriptionPurchase, TUTOR_SUBSCRIPTION_PRICE_GEL } from '../services/englishTutorSubscriptionService';
@@ -99,7 +102,8 @@ async function findReusablePendingOrder(
   userId: string,
   purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT' | 'HR_SUPPORT' | 'LIVE_TRAINING' | 'ENGLISH_TUTOR_SUBSCRIPTION',
   referenceId: string,
-  expectedAmount?: number
+  expectedAmount?: number,
+  expectedPromoId?: string | null
 ) {
   const existing = await prisma.bogPayment.findFirst({
     where: { userId, purpose, referenceId, status: 'PENDING' },
@@ -115,6 +119,7 @@ async function findReusablePendingOrder(
       return null;
     }
 
+    if (expectedPromoId !== undefined && existing.promoCodeId !== expectedPromoId) return null;
     return existing;
   }
   return null;
@@ -167,16 +172,6 @@ router.post(
       }
     }
     const currentCoursePrice = getCurrentPrice(course);
-    const reusable = await findReusablePendingOrder(
-      req.user!.id,
-      'COURSE',
-      course.id,
-      currentCoursePrice
-    );
-    if (reusable) {
-      return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.redirectUrl });
-    }
-
     // Charges whatever the course actually costs right now — if it's on an
     // active sale, that's the discounted price, not originalPrice.
     let chargeAmount = currentCoursePrice;
@@ -204,10 +199,10 @@ router.post(
     // itself, so an abandoned checkout still "spends" a use but is at least
     // traceable to the specific attempt.
     const rawPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode : null;
-    let appliedPromo: { id: string } | null = null;
-    if (rawPromoCode) {
+    let appliedPromo: PromoCode | null = null;
+    if (rawPromoCode && chargeAmount > 0) {
       try {
-        const applied = await applyPromoToCheckout(rawPromoCode, 'COURSE', course.id, chargeAmount);
+        const applied = await quotePromoToCheckout(rawPromoCode, 'COURSE', course.id, chargeAmount);
         chargeAmount = applied.chargeAmount;
         appliedPromo = applied.appliedPromo;
       } catch (err) {
@@ -222,8 +217,12 @@ router.post(
     // entirely: the enrollment is granted immediately and the BogPayment
     // row is recorded already COMPLETED for a consistent payment-history/
     // invoice trail, same shape as a real paid enrollment just at 0 GEL.
+    const reusable = await findReusablePendingOrder(req.user!.id, 'COURSE', course.id, chargeAmount, appliedPromo?.id ?? null);
+    if (reusable) return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.redirectUrl });
+
     if (chargeAmount <= 0) {
-      const freePayment = await prisma.bogPayment.create({
+      const freeResult = await reserveLearningCheckout({ userId: req.user!.id, purpose: 'COURSE', referenceId: course.id, gateway: 'BOG', amount: chargeAmount, promo: appliedPromo }, async (tx) => {
+        const freePayment = await tx.bogPayment.create({
         data: {
           bogOrderId: `promo-${crypto.randomUUID()}`,
           userId: req.user!.id,
@@ -237,12 +236,15 @@ router.post(
           promoCodeId: appliedPromo?.id ?? null,
         },
       });
-      const { isNewEnrollment } = await completeCoursePurchase({ userId: req.user!.id, courseId: course.id, amount: 0 });
+      const { isNewEnrollment } = await completeCoursePurchase({ userId: req.user!.id, courseId: course.id, amount: 0 }, tx);
+        return { freePayment, isNewEnrollment };
+      });
+      const { freePayment, isNewEnrollment } = freeResult;
       if (isNewEnrollment) await notifyCourseEnrollment(req.user!.id, course);
       return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
     }
 
-    const bogPayment = await prisma.bogPayment.create({
+    const bogPayment = await reserveLearningCheckout({ userId: req.user!.id, purpose: 'COURSE', referenceId: course.id, gateway: 'BOG', amount: chargeAmount, promo: appliedPromo }, async (tx) => tx.bogPayment.create({
       data: {
         bogOrderId: `pending-${crypto.randomUUID()}`,
         userId: req.user!.id,
@@ -254,7 +256,7 @@ router.post(
         status: 'PENDING',
         promoCodeId: appliedPromo?.id ?? null,
       },
-    });
+    }));
     // Initial-registration WhatsApp, fired the moment checkout is initiated
     // (not yet confirmed) — the payment-status-update send for this same
     // purchase happens later, in notifyCourseEnrollment, once the BOG
@@ -303,8 +305,8 @@ router.post(
 // LiveTrainingEnrollment (and the frontend's "You are enrolled!" banner)
 // unconditionally, with no price/payment check at all — that route is now
 // free-trainings-only (see liveTrainings.ts), and a priced training must
-// go through this checkout instead. No promo-code support (live trainings
-// have no promo system) and no instructor payout (see
+// go through this checkout instead. Server-validated promo codes are supported;
+// there is no instructor payout (see
 // liveTrainingSaleService.ts's own comment) — otherwise the same shape as
 // CHECKOUT — COURSE above.
 // ============================================================
@@ -316,7 +318,7 @@ router.post(
   async (req: Request, res: Response) => {
     const training = await prisma.liveTraining.findFirst({
       where: { id: req.params.id, published: true },
-      include: { _count: { select: { leads: true, enrollments: { where: { status: 'ACTIVE' } } } } },
+      include: { _count: { select: { leads: true, enrollments: { where: { status: { not: 'CANCELLED' } } } } } },
     });
     if (!training) return res.status(404).json({ message: 'Live training not found.' });
     if (!training.price || training.price <= 0) {
@@ -326,30 +328,22 @@ router.post(
     const existingEnrollment = await prisma.liveTrainingEnrollment.findUnique({
       where: { userId_liveTrainingId: { userId: req.user!.id, liveTrainingId: training.id } },
     });
-    if (existingEnrollment?.status === 'ACTIVE') {
+    if (existingEnrollment && existingEnrollment.status !== 'CANCELLED') {
       return res.status(400).json({ message: 'You are already enrolled in this training.' });
     }
-    if (!existingEnrollment && training._count.leads + training._count.enrollments >= training.maxCapacity) {
+    if (training._count.leads + training._count.enrollments >= training.maxCapacity) {
       return res.status(409).json({ message: 'This training is fully booked.' });
     }
 
-    const reusable = await findReusablePendingOrder(req.user!.id, 'LIVE_TRAINING', training.id);
-    if (reusable) return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.redirectUrl });
-
-    // Same admin/manager/moderator free test-mode bypass as CHECKOUT — COURSE
-    // above — never a client-sent flag, always derived from the DB's own
-    // adminRole.
-    let chargeAmount = training.price;
-    const requesterAdminRole = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } }))?.adminRole;
-    if (requesterAdminRole) chargeAmount = 0;
+    let chargeAmount = getCurrentLiveTrainingPrice(training) ?? 0;
 
     // Same re-validated-server-side promo handling as CHECKOUT — COURSE —
     // see couponService.ts's applyPromoToCheckout.
     const rawPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode : null;
-    let appliedPromo: { id: string } | null = null;
+    let appliedPromo: PromoCode | null = null;
     if (rawPromoCode && chargeAmount > 0) {
       try {
-        const applied = await applyPromoToCheckout(rawPromoCode, 'LIVE_TRAINING', training.id, chargeAmount);
+        const applied = await quotePromoToCheckout(rawPromoCode, 'LIVE_TRAINING', training.id, chargeAmount);
         chargeAmount = applied.chargeAmount;
         appliedPromo = applied.appliedPromo;
       } catch (err) {
@@ -358,10 +352,14 @@ router.post(
       }
     }
 
+    const reusable = await findReusablePendingOrder(req.user!.id, 'LIVE_TRAINING', training.id, chargeAmount, appliedPromo?.id ?? null);
+    if (reusable) return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.redirectUrl });
+
     if (chargeAmount <= 0) {
-      const freePayment = await prisma.bogPayment.create({
+      const freeResult = await reserveLearningCheckout({ userId: req.user!.id, purpose: 'LIVE_TRAINING', referenceId: training.id, gateway: 'BOG', amount: chargeAmount, promo: appliedPromo }, async (tx) => {
+        const freePayment = await tx.bogPayment.create({
         data: {
-          bogOrderId: `admin-test-${crypto.randomUUID()}`,
+          bogOrderId: `free-${crypto.randomUUID()}`,
           userId: req.user!.id,
           purpose: 'LIVE_TRAINING',
           paymentModel: paymentModelForPurpose('LIVE_TRAINING'),
@@ -373,11 +371,15 @@ router.post(
           promoCodeId: appliedPromo?.id ?? null,
         },
       });
-      await completeLiveTrainingPurchase({ userId: req.user!.id, liveTrainingId: training.id });
+      const fulfillment = await completeLiveTrainingPurchase({ userId: req.user!.id, liveTrainingId: training.id }, tx);
+        return { freePayment, fulfillment };
+      });
+      const { freePayment, fulfillment } = freeResult;
+      if (fulfillment.isNewEnrollment && fulfillment.liveTraining) notifyLiveTrainingEnrollment(req.user!.id, fulfillment.liveTraining);
       return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
     }
 
-    const bogPayment = await prisma.bogPayment.create({
+    const bogPayment = await reserveLearningCheckout({ userId: req.user!.id, purpose: 'LIVE_TRAINING', referenceId: training.id, gateway: 'BOG', amount: chargeAmount, promo: appliedPromo }, async (tx) => tx.bogPayment.create({
       data: {
         bogOrderId: `pending-${crypto.randomUUID()}`,
         userId: req.user!.id,
@@ -389,7 +391,7 @@ router.post(
         status: 'PENDING',
         promoCodeId: appliedPromo?.id ?? null,
       },
-    });
+    }));
     // Same initial-registration WhatsApp as the COURSE checkout above — see
     // its own comment. The payment-status-update send for this purchase
     // happens later in liveTrainingSaleService.completeLiveTrainingPurchase
@@ -980,10 +982,12 @@ export async function applyBogPaymentResult(
   }
 
   if (statusKey !== 'completed') {
-    const failedPayment = await prisma.bogPayment.update({
-      where: { id: bogPaymentId },
+    const changed = await prisma.bogPayment.updateMany({
+      where: { id: bogPaymentId, status: 'PENDING' },
       data: { status: 'FAILED', rawCallback: rawCallback as any },
     });
+    if (!changed.count) return;
+    const failedPayment = await prisma.bogPayment.findUniqueOrThrow({ where: { id: bogPaymentId } });
     // A mentorship booking is created up-front at checkout (before payment
     // completes) so the chosen slot survives the BOG redirect round-trip —
     // but that means a declined card / abandoned checkout otherwise leaves
@@ -1008,6 +1012,8 @@ export async function applyBogPaymentResult(
     }
     return;
   }
+
+  if (await completeLearningPayment('BOG', bogPaymentId, rawCallback)) return;
 
   const bogPayment = await prisma.bogPayment.update({
     where: { id: bogPaymentId },

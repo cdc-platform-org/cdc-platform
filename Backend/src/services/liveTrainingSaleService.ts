@@ -1,6 +1,8 @@
 import { prisma } from '../lib/prisma';
+import { Prisma } from '@prisma/client';
 import { sendLiveTrainingEnrollmentEmail } from './emailService';
 import { sendRegistrationStatusWhatsApp, formatWhatsAppDate } from './whatsappService';
+import { lockLearningTarget } from './learningCheckoutService';
 
 // ============================================================
 // Fulfillment for a paid LiveTraining seat — mirrors courseSaleService.ts's
@@ -28,25 +30,37 @@ export interface LiveTrainingSaleResult {
   // false on a retried webhook delivery — so callers know whether to treat
   // this as a fresh purchase (e.g. for future confirmation-email wiring).
   isNewEnrollment: boolean;
-  liveTraining: { id: string; title: string } | null;
+  liveTraining: { id: string; title: string; startDate: Date | null; meetingUrl: string | null; classroomUrl: string | null } | null;
 }
 
-export async function completeLiveTrainingPurchase(params: { userId: string; liveTrainingId: string }): Promise<LiveTrainingSaleResult> {
-  const liveTraining = await prisma.liveTraining.findUnique({
+export async function completeLiveTrainingPurchase(params: { userId: string; liveTrainingId: string }, transaction?: Prisma.TransactionClient): Promise<LiveTrainingSaleResult> {
+  const fulfill = async (tx: Prisma.TransactionClient) => {
+  await lockLearningTarget(tx, 'LIVE_TRAINING', params.liveTrainingId);
+  const liveTraining = await tx.liveTraining.findUnique({
     where: { id: params.liveTrainingId },
     select: { id: true, title: true, startDate: true, meetingUrl: true, classroomUrl: true },
   });
 
-  const before = await prisma.liveTrainingEnrollment.findUnique({
+  const before = await tx.liveTrainingEnrollment.findUnique({
     where: { userId_liveTrainingId: { userId: params.userId, liveTrainingId: params.liveTrainingId } },
   });
-  const isNewEnrollment = !before || before.status !== 'ACTIVE';
+  const isNewEnrollment = !before || before.status === 'CANCELLED';
 
-  await prisma.liveTrainingEnrollment.upsert({
+  if (isNewEnrollment) await tx.liveTrainingEnrollment.upsert({
     where: { userId_liveTrainingId: { userId: params.userId, liveTrainingId: params.liveTrainingId } },
     create: { userId: params.userId, liveTrainingId: params.liveTrainingId },
     update: { status: 'ACTIVE', enrolledAt: new Date() },
   });
+  return { isNewEnrollment, liveTraining };
+  };
+  const result = transaction ? await fulfill(transaction) : await prisma.$transaction(fulfill);
+  if (!transaction && result.isNewEnrollment && result.liveTraining) notifyLiveTrainingEnrollment(params.userId, result.liveTraining);
+  return result;
+}
+
+export function notifyLiveTrainingEnrollment(userId: string, liveTraining: {
+  id: string; title: string; startDate: Date | null; meetingUrl: string | null; classroomUrl: string | null;
+}): void {
 
   // The confirmation email this comment used to just flag as a future TODO
   // — fired only for a genuinely fresh activation (isNewEnrollment), never
@@ -61,9 +75,8 @@ export async function completeLiveTrainingPurchase(params: { userId: string; liv
   // that would mean a schema migration purely to thread one field through
   // a webhook, out of scope here. Defaults to Georgian, same as every
   // other untracked-locale case.
-  if (isNewEnrollment && liveTraining) {
     prisma.user
-      .findUnique({ where: { id: params.userId }, select: { name: true, email: true, phone: true } })
+      .findUnique({ where: { id: userId }, select: { name: true, email: true, phone: true } })
       .then((user) => {
         if (!user) return;
         sendLiveTrainingEnrollmentEmail({
@@ -91,7 +104,4 @@ export async function completeLiveTrainingPurchase(params: { userId: string; liv
         }
       })
       .catch((err) => console.error('[liveTrainingSaleService] enrollment-notification user lookup failed:', err));
-  }
-
-  return { isNewEnrollment, liveTraining };
 }

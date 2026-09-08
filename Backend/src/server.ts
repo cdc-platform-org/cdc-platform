@@ -15,6 +15,7 @@ import swaggerUi from 'swagger-ui-express';
 import * as Sentry from '@sentry/node';
 import authRoutes from './routes/auth';
 import courseRoutes from './routes/courses';
+import { createLearningRatingsRouter } from './routes/learningRatings';
 import orderRoutes from './routes/orders';
 import uploadRoutes from './routes/upload';
 import gigsRoutes from './routes/gigs';
@@ -252,6 +253,8 @@ app.use(express.json({ verify: (req, _res, buf) => { (req as express.Request).ra
 app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
 
 app.use('/api/auth', authRoutes);
+app.use('/api/courses', createLearningRatingsRouter('course'));
+app.use('/api/live-trainings', createLearningRatingsRouter('live-training'));
 app.use('/api/courses', courseRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/upload', uploadRoutes);

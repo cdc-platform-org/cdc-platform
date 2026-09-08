@@ -15,6 +15,7 @@ import LanguageSwitcher from '../src/components/layout/LanguageSwitcher';
 import { Course } from '../src/types/lms';
 import { LiveTraining } from '../src/types/liveTraining';
 import { getLiveTrainings } from '../src/services/liveTrainingService';
+import LearningRatingSummary from '../src/components/shared/LearningRatingSummary';
 import { HomepageContent, HomepageStat, GalleryImage } from '../src/types/siteContent';
 import { getCourses } from '../src/services/courseService';
 import { getBlogPosts, blogTitle, blogDescription } from '../src/services/blogService';
@@ -1053,6 +1054,7 @@ export default function Home() {
                     </span>
                     <Link href={`/courses/${course.id}`} className="block no-underline text-current">
                       <h3 className="text-lg font-black mt-5 mb-3 hover:text-cyan-500 transition-colors">{course.title}</h3>
+                      <LearningRatingSummary {...course} lang={contentLang} />
                     </Link>
                     <p className="text-xs md:text-sm text-slate-400 leading-relaxed font-medium mb-6 line-clamp-3">{course.description}</p>
 
@@ -1150,6 +1152,7 @@ export default function Home() {
                   <h3 className="text-lg font-black mb-2 hover:text-cyan-500 transition-colors line-clamp-2">
                     {(contentLang === 'en' && tr.titleEn) || tr.title}
                   </h3>
+                  <LearningRatingSummary {...tr} lang={contentLang} />
                   <p className="text-xs md:text-sm text-slate-400 leading-relaxed font-medium mb-6 line-clamp-2 flex-1">
                     {(contentLang === 'en' && tr.descriptionEn) || tr.description}
                   </p>

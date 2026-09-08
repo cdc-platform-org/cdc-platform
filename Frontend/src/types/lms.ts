@@ -38,6 +38,8 @@ export interface CourseDiscussionPost {
 
 export interface Course {
   id: string;
+  averageRating?: number | null;
+  reviewCount?: number;
   title: string;
   // Optional English translation — when set, printed as "title / titleEn" on
   // the certificate PDF's auto-scaling title block. Never auto-translated.

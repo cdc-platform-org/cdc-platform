@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import * as Sentry from '@sentry/node';
 import Stripe from 'stripe';
 import { prisma } from '../lib/prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma, PromoCode } from '@prisma/client';
 import { authenticate, requireApproved } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { checkoutMentorshipSchema } from '../schemas/paymentSchemas';
@@ -20,13 +20,16 @@ import { completeCoursePurchase } from '../services/courseSaleService';
 import { paymentModelForPurpose } from '../services/paymentModel';
 import { getCurrentPrice } from '../services/coursePricing';
 import { getCurrentProductPrice } from '../services/productPricing';
-import { applyPromoToCheckout, PromoCodeError } from '../services/couponService';
+import { applyPromoToCheckout, quotePromoToCheckout, PromoCodeError } from '../services/couponService';
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
 import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
 import { captureMentorshipEscrow } from '../services/mentorshipEscrowService';
 import { sendMentorshipBookingEmails } from '../services/emailService';
 import { notifyCourseEnrollment } from '../services/courseEnrollmentNotification';
-import { completeLiveTrainingPurchase } from '../services/liveTrainingSaleService';
+import { completeLiveTrainingPurchase, notifyLiveTrainingEnrollment } from '../services/liveTrainingSaleService';
+import { getCurrentLiveTrainingPrice } from '../services/liveTrainingPricing';
+import { reserveLearningCheckout } from '../services/learningCheckoutService';
+import { completeLearningPayment } from '../services/learningPaymentFulfillment';
 import { completeTutorSubscriptionPurchase, TUTOR_SUBSCRIPTION_PRICE_GEL } from '../services/englishTutorSubscriptionService';
 
 // ============================================================
@@ -77,12 +80,15 @@ function convertGelToStripeMinorUnits(amountGel: number, currency: StripeCurrenc
 
 const PENDING_ORDER_REUSE_WINDOW_MS = 15 * 60 * 1000;
 
-async function findReusablePendingOrder(userId: string, purpose: StripePurpose, referenceId: string) {
+async function findReusablePendingOrder(userId: string, purpose: StripePurpose, referenceId: string, expectedAmountGel?: number, expectedCurrency?: StripeCurrency, expectedPromoId?: string | null) {
   const existing = await prisma.stripePayment.findFirst({
     where: { userId, purpose, referenceId, status: 'PENDING' },
     orderBy: { createdAt: 'desc' },
   });
   if (existing && existing.checkoutUrl && Date.now() - existing.createdAt.getTime() < PENDING_ORDER_REUSE_WINDOW_MS) {
+    if (expectedAmountGel !== undefined && existing.amountGel !== expectedAmountGel) return null;
+    if (expectedCurrency !== undefined && (existing.currency !== expectedCurrency || existing.amount !== convertGelToStripeMinorUnits(expectedAmountGel!, expectedCurrency))) return null;
+    if (expectedPromoId !== undefined && existing.promoCodeId !== expectedPromoId) return null;
     return existing;
   }
   return null;
@@ -119,15 +125,18 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
     const enrolledCount = await prisma.courseEnrollment.count({ where: { courseId: course.id } });
     if (enrolledCount >= course.maxCapacity) return res.status(409).json({ message: 'This course is full.' });
   }
-  const reusable = await findReusablePendingOrder(req.user!.id, 'COURSE', course.id);
-  if (reusable) return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.checkoutUrl });
 
   let chargeAmountGel = getCurrentPrice(course);
+  // Admin/manager/moderator test-mode bypass — same posture as routes/
+  // payments.ts's identical BOG-side bypass: unconditional for any
+  // admin-team account, gated on the DB's adminRole, never a client flag.
+  const requesterAdminRole = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } }))?.adminRole;
+  if (requesterAdminRole) chargeAmountGel = 0;
   const rawPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode : null;
-  let appliedPromo: { id: string } | null = null;
-  if (rawPromoCode) {
+  let appliedPromo: PromoCode | null = null;
+  if (rawPromoCode && chargeAmountGel > 0) {
     try {
-      const applied = await applyPromoToCheckout(rawPromoCode, 'COURSE', course.id, chargeAmountGel);
+      const applied = await quotePromoToCheckout(rawPromoCode, 'COURSE', course.id, chargeAmountGel);
       chargeAmountGel = applied.chargeAmount;
       appliedPromo = applied.appliedPromo;
     } catch (err) {
@@ -136,14 +145,15 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
     }
   }
 
-  // Admin/manager/moderator test-mode bypass — same posture as routes/
-  // payments.ts's identical BOG-side bypass: unconditional for any
-  // admin-team account, gated on the DB's adminRole, never a client flag.
-  const requesterAdminRole = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } }))?.adminRole;
-  if (requesterAdminRole) chargeAmountGel = 0;
+
+
+  const currency = checkoutCurrency(req);
+  const reusable = await findReusablePendingOrder(req.user!.id, 'COURSE', course.id, chargeAmountGel, currency, appliedPromo?.id ?? null);
+  if (reusable) return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.checkoutUrl });
 
   if (chargeAmountGel <= 0) {
-    const freePayment = await prisma.stripePayment.create({
+    const freeResult = await reserveLearningCheckout({ userId: req.user!.id, purpose: 'COURSE', referenceId: course.id, gateway: 'STRIPE', amount: chargeAmountGel, promo: appliedPromo }, async (tx) => {
+      const freePayment = await tx.stripePayment.create({
       data: {
         stripeSessionId: `promo-${crypto.randomUUID()}`,
         userId: req.user!.id,
@@ -158,14 +168,16 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
         promoCodeId: appliedPromo?.id ?? null,
       },
     });
-    const { isNewEnrollment } = await completeCoursePurchase({ userId: req.user!.id, courseId: course.id, amount: chargeAmountGel });
+    const { isNewEnrollment } = await completeCoursePurchase({ userId: req.user!.id, courseId: course.id, amount: chargeAmountGel }, tx);
+      return { freePayment, isNewEnrollment };
+    });
+    const { freePayment, isNewEnrollment } = freeResult;
     if (isNewEnrollment) await notifyCourseEnrollment(req.user!.id, course);
     return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
   }
 
-  const currency = checkoutCurrency(req);
   const amount = convertGelToStripeMinorUnits(chargeAmountGel, currency);
-  const stripePayment = await prisma.stripePayment.create({
+  const stripePayment = await reserveLearningCheckout({ userId: req.user!.id, purpose: 'COURSE', referenceId: course.id, gateway: 'STRIPE', amount: chargeAmountGel, promo: appliedPromo }, async (tx) => tx.stripePayment.create({
     data: {
       stripeSessionId: `pending-${crypto.randomUUID()}`,
       userId: req.user!.id,
@@ -178,7 +190,7 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
       status: 'PENDING',
       promoCodeId: appliedPromo?.id ?? null,
     },
-  });
+  }));
   const { successUrl, cancelUrl } = resultRedirects(stripePayment.id);
   const session = await createStripeSessionOrRespond(res, {
     externalOrderId: stripePayment.id,
@@ -207,7 +219,7 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
 router.post('/checkout/live-training/:id', checkoutRateLimit, authenticate, requireApproved, async (req: Request, res: Response) => {
   const training = await prisma.liveTraining.findFirst({
     where: { id: req.params.id, published: true },
-    include: { _count: { select: { leads: true, enrollments: { where: { status: 'ACTIVE' } } } } },
+    include: { _count: { select: { leads: true, enrollments: { where: { status: { not: 'CANCELLED' } } } } } },
   });
   if (!training) return res.status(404).json({ message: 'Live training not found.' });
   if (!training.price || training.price <= 0) {
@@ -217,24 +229,21 @@ router.post('/checkout/live-training/:id', checkoutRateLimit, authenticate, requ
   const existingEnrollment = await prisma.liveTrainingEnrollment.findUnique({
     where: { userId_liveTrainingId: { userId: req.user!.id, liveTrainingId: training.id } },
   });
-  if (existingEnrollment?.status === 'ACTIVE') {
+  if (existingEnrollment && existingEnrollment.status !== 'CANCELLED') {
     return res.status(400).json({ message: 'You are already enrolled in this training.' });
   }
-  if (!existingEnrollment && training._count.leads + training._count.enrollments >= training.maxCapacity) {
+  if (training._count.leads + training._count.enrollments >= training.maxCapacity) {
     return res.status(409).json({ message: 'This training is fully booked.' });
   }
 
-  const reusable = await findReusablePendingOrder(req.user!.id, 'LIVE_TRAINING', training.id);
-  if (reusable) return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.checkoutUrl });
 
-  const requesterAdminRole = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } }))?.adminRole;
-  let chargeAmountGel = requesterAdminRole ? 0 : training.price;
+  let chargeAmountGel = getCurrentLiveTrainingPrice(training) ?? 0;
 
   const rawPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode : null;
-  let appliedPromo: { id: string } | null = null;
+  let appliedPromo: PromoCode | null = null;
   if (rawPromoCode && chargeAmountGel > 0) {
     try {
-      const applied = await applyPromoToCheckout(rawPromoCode, 'LIVE_TRAINING', training.id, chargeAmountGel);
+      const applied = await quotePromoToCheckout(rawPromoCode, 'LIVE_TRAINING', training.id, chargeAmountGel);
       chargeAmountGel = applied.chargeAmount;
       appliedPromo = applied.appliedPromo;
     } catch (err) {
@@ -243,10 +252,15 @@ router.post('/checkout/live-training/:id', checkoutRateLimit, authenticate, requ
     }
   }
 
+  const currency = checkoutCurrency(req);
+  const reusable = await findReusablePendingOrder(req.user!.id, 'LIVE_TRAINING', training.id, chargeAmountGel, currency, appliedPromo?.id ?? null);
+  if (reusable) return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.checkoutUrl });
+
   if (chargeAmountGel <= 0) {
-    const freePayment = await prisma.stripePayment.create({
+    const freeResult = await reserveLearningCheckout({ userId: req.user!.id, purpose: 'LIVE_TRAINING', referenceId: training.id, gateway: 'STRIPE', amount: chargeAmountGel, promo: appliedPromo }, async (tx) => {
+      const freePayment = await tx.stripePayment.create({
       data: {
-        stripeSessionId: `admin-test-${crypto.randomUUID()}`,
+        stripeSessionId: `free-${crypto.randomUUID()}`,
         userId: req.user!.id,
         purpose: 'LIVE_TRAINING',
         paymentModel: paymentModelForPurpose('LIVE_TRAINING'),
@@ -259,13 +273,16 @@ router.post('/checkout/live-training/:id', checkoutRateLimit, authenticate, requ
         promoCodeId: appliedPromo?.id ?? null,
       },
     });
-    await completeLiveTrainingPurchase({ userId: req.user!.id, liveTrainingId: training.id });
+    const fulfillment = await completeLiveTrainingPurchase({ userId: req.user!.id, liveTrainingId: training.id }, tx);
+      return { freePayment, fulfillment };
+    });
+    const { freePayment, fulfillment } = freeResult;
+    if (fulfillment.isNewEnrollment && fulfillment.liveTraining) notifyLiveTrainingEnrollment(req.user!.id, fulfillment.liveTraining);
     return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
   }
 
-  const currency = checkoutCurrency(req);
   const amount = convertGelToStripeMinorUnits(chargeAmountGel, currency);
-  const stripePayment = await prisma.stripePayment.create({
+  const stripePayment = await reserveLearningCheckout({ userId: req.user!.id, purpose: 'LIVE_TRAINING', referenceId: training.id, gateway: 'STRIPE', amount: chargeAmountGel, promo: appliedPromo }, async (tx) => tx.stripePayment.create({
     data: {
       stripeSessionId: `pending-${crypto.randomUUID()}`,
       userId: req.user!.id,
@@ -278,7 +295,7 @@ router.post('/checkout/live-training/:id', checkoutRateLimit, authenticate, requ
       status: 'PENDING',
       promoCodeId: appliedPromo?.id ?? null,
     },
-  });
+  }));
   const { successUrl, cancelUrl } = resultRedirects(stripePayment.id);
   const session = await createStripeSessionOrRespond(res, {
     externalOrderId: stripePayment.id,
@@ -667,7 +684,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
     return res.status(400).json({ message: 'Invalid Stripe signature.' });
   }
 
-  if (event.type !== 'checkout.session.completed' && event.type !== 'checkout.session.expired') {
+  if (!['checkout.session.completed', 'checkout.session.async_payment_succeeded', 'checkout.session.async_payment_failed', 'checkout.session.expired'].includes(event.type)) {
     // Every other event type (payment_intent.*, charge.*, etc.) is either
     // redundant with checkout.session.completed for this integration's
     // "did the Checkout Session finish" model, or not something this app
@@ -690,7 +707,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
   }
 
   try {
-    if (event.type === 'checkout.session.expired') {
+    if (event.type === 'checkout.session.expired' || event.type === 'checkout.session.async_payment_failed') {
       await markStripeCheckoutExpired(stripePayment.id, event);
     } else {
       await applyStripePaymentResult(stripePayment.id, session, event);
@@ -713,10 +730,12 @@ router.post('/webhook', async (req: Request, res: Response) => {
 // "free the slot back up" fix as the BOG failure path in
 // payments.ts's applyBogPaymentResult.
 export async function markStripeCheckoutExpired(stripePaymentId: string, rawEvent: unknown) {
-  const stripePayment = await prisma.stripePayment.update({
-    where: { id: stripePaymentId },
+  const changed = await prisma.stripePayment.updateMany({
+    where: { id: stripePaymentId, status: 'PENDING' },
     data: { status: 'FAILED', rawEvent: rawEvent as any },
   });
+  if (!changed.count) return;
+  const stripePayment = await prisma.stripePayment.findUniqueOrThrow({ where: { id: stripePaymentId } });
   if (stripePayment.purpose === 'MENTORSHIP') {
     await prisma.mentorshipBooking.updateMany({
       where: { stripePaymentId: stripePayment.id, status: 'SCHEDULED' },
@@ -726,6 +745,9 @@ export async function markStripeCheckoutExpired(stripePaymentId: string, rawEven
 }
 
 export async function applyStripePaymentResult(stripePaymentId: string, session: Stripe.Checkout.Session, rawEvent: unknown) {
+  // Checkout completion can precede settlement for delayed payment methods.
+  if (session.payment_status !== 'paid') return;
+  if (await completeLearningPayment('STRIPE', stripePaymentId, rawEvent, typeof session.payment_intent === 'string' ? session.payment_intent : null)) return;
   const stripePayment = await prisma.stripePayment.update({
     where: { id: stripePaymentId },
     data: {

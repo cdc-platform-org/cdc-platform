@@ -27,6 +27,8 @@ import CourseHeroBanner from '../../../src/components/shared/CourseHeroBanner';
 import VideoEmbed from '../../../src/components/shared/VideoEmbed';
 import VIPAudioNarrator from '../../../src/components/ui/VIPAudioNarrator';
 import SEOHead from '../../../src/components/seo/SEOHead';
+import LearningRatingsSection from '../../../src/components/shared/LearningRatingsSection';
+import LearningRatingSummary from '../../../src/components/shared/LearningRatingSummary';
 
 function formatTotalDuration(totalSeconds: number, lang: 'ka' | 'en'): string {
   const totalMinutes = Math.round(totalSeconds / 60);
@@ -227,6 +229,7 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
           </div>
         </div>
         <h1 className="blog-heading-safe text-3xl md:text-4xl font-black mt-4 mb-4">{course.title}</h1>
+        <LearningRatingSummary {...course} lang={lang} />
         <div className="mb-6">
           <SocialShareButtons title={course.title} lang={lang} />
         </div>
@@ -429,6 +432,7 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
         </div>
 
         <CourseLeaderboard courseId={course.id} lang={lang} />
+        <LearningRatingsSection target="courses" targetId={course.id} lang={lang} onChange={(summary) => setCourse((current) => current ? { ...current, averageRating: summary.averageRating, reviewCount: summary.reviewCount } : current)} />
       </div>
 
       {previewLesson && (

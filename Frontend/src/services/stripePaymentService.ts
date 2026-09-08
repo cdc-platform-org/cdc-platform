@@ -69,9 +69,7 @@ export async function checkoutProductStripe(productId: string, promoCode?: strin
   return response.data;
 }
 
-// `enrolled` (not `purchased`) — same shape as StripeCourseCheckoutResult,
-// since the admin test-mode free bypass grants enrollment directly rather
-// than a product purchase.
+// `enrolled` is returned only for a legitimate zero-price checkout.
 export async function checkoutLiveTrainingStripe(id: string, promoCode?: string, currency: StripeCurrency = 'usd'): Promise<StripeCourseCheckoutResult> {
   const response = await apiClient.post<StripeCourseCheckoutResult>(`/payments/stripe/checkout/live-training/${id}`, { promoCode, currency });
   return response.data;

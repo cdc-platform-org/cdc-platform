@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma';
+import { Prisma } from '@prisma/client';
 import { getCommissionRate } from './platformFeeScheduleService';
 
 // ============================================================
@@ -42,8 +43,8 @@ export async function completeCoursePurchase(params: {
   userId: string;
   courseId: string;
   amount: number;
-}): Promise<CourseSaleResult> {
-  return prisma.$transaction(async (tx) => {
+}, transaction?: Prisma.TransactionClient): Promise<CourseSaleResult> {
+  const fulfill = async (tx: Prisma.TransactionClient) => {
     const course = await tx.course.findUnique({
       where: { id: params.courseId },
       select: { id: true, title: true, instructorId: true },
@@ -83,5 +84,6 @@ export async function completeCoursePurchase(params: {
     }
 
     return { isNewEnrollment, course: course ? { id: course.id, title: course.title } : null };
-  });
+  };
+  return transaction ? fulfill(transaction) : prisma.$transaction(fulfill);
 }

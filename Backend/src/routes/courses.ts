@@ -31,6 +31,7 @@ import {
 } from '../services/bunnyStreamService';
 import { generateCertificatePdf, generateVerificationCode, CertificateTemplateMissingError } from '../services/certificateService';
 import { withCurrentPrice, validateCourseDiscount } from '../services/coursePricing';
+import { withCourseRatings } from '../services/learningRatingService';
 import { generateExamQuestions, isAiExamConfigured, AiExamGenerationError, GeneratedQuestion } from '../services/aiExamService';
 import { createExamSessionToken, verifyExamSessionToken, ExamSessionError } from '../services/examSessionService';
 import { logAdminAction } from '../services/auditLogService';
@@ -76,7 +77,7 @@ router.get('/', async (req, res) => {
     orderBy: { createdAt: 'desc' },
     include: { _count: { select: { enrollments: true } } },
   });
-  res.json({ data: courses.map((c) => withCurrentPrice(withCapacityInfo(c))) });
+  res.json({ data: await withCourseRatings(courses.map((c) => withCurrentPrice(withCapacityInfo(c)))) });
 });
 
 // Student's own enrolled courses + per-course progress, for the dashboard
@@ -147,7 +148,7 @@ router.get('/:id', async (req, res) => {
   if (!course) {
     return res.status(404).json({ message: 'Course not found.' });
   }
-  res.json({ data: withCurrentPrice(withCapacityInfo(course)) });
+  res.json({ data: (await withCourseRatings([withCurrentPrice(withCapacityInfo(course))]))[0] });
 });
 
 // Public curriculum outline (section/lesson titles + durations only — no

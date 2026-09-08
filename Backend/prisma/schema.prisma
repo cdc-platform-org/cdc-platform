@@ -648,6 +648,8 @@ model User {
   bogPayments                   BogPayment[]
   stripePayments                StripePayment[]
   courseEnrollments             CourseEnrollment[]
+  courseRatings                 CourseRating[]
+  liveTrainingRatings           LiveTrainingRating[]
   lessonProgress                LessonProgress[]
   courseCertificates            CourseCertificate[]
   courseDiscussionPosts         CourseDiscussionPost[]
@@ -1268,6 +1270,7 @@ model Course {
 
   orders             Order[]                @relation("OrderCourses")
   enrollments        CourseEnrollment[]
+  ratings            CourseRating[]
   sections           CourseSection[]
   certificates       CourseCertificate[]
   // One AI-generated certification exam per course, if configured by an
@@ -1412,6 +1415,7 @@ model LiveTraining {
 
   leads        LiveTrainingLead[]
   enrollments  LiveTrainingEnrollment[]
+  ratings      LiveTrainingRating[]
   // Final/graduation exam sessions generated for this cohort — see
   // ExamSession.liveTrainingId. Reuses the same AI question generator and
   // candidate-token link mechanism as the standalone Business exam
@@ -1438,7 +1442,7 @@ model LiveTrainingLead {
   liveTrainingId String
   liveTraining   LiveTraining           @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
   name           String
-  email          String
+  email          String?
   phone          String
   status         LiveTrainingLeadStatus @default(NOT_CONTACTED)
   adminNote      String?
@@ -2070,6 +2074,41 @@ model CourseEnrollment {
   // routes/courses.ts run, on every request, not just occasionally.
   @@index([courseId])
   @@map("course_enrollments")
+}
+
+// Learner feedback is separate from CourseReviewHistory (editorial approval)
+// and ProductReview (digital-store purchases). Enrollment is checked by the
+// API; unique keys protect concurrent submissions and permit editing in place.
+model CourseRating {
+  id        String   @id @default(uuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, courseId])
+  @@index([courseId, createdAt])
+  @@map("course_ratings")
+}
+
+model LiveTrainingRating {
+  id             String       @id @default(uuid())
+  liveTrainingId String
+  liveTraining   LiveTraining @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating         Int
+  comment        String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([userId, liveTrainingId])
+  @@index([liveTrainingId, createdAt])
+  @@map("live_training_ratings")
 }
 
 // ============================================================

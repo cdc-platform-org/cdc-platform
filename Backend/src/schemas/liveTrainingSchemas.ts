@@ -79,13 +79,33 @@ export const liveTrainingUpdateSchema = z.object({
   path: ['endDate'],
 });
 
-// Public, no-login registration — same shape as createStudioInquirySchema,
-// phone required (not optional) since a callback number is the entire
-// point of this form.
+const leadNameSchema = z.string().trim().min(1, 'Name is required.').max(100)
+  .regex(/^[\p{L}\p{M}][\p{L}\p{M}\s.'’\-]*$/u, 'Enter a valid name.')
+  .transform((value) => value.replace(/\s+/g, ' '));
+
+const leadPhoneSchema = z.string().trim().max(40)
+  .regex(/^\+?[\d\s().-]+$/, 'Enter a valid phone number.')
+  .transform((value) => {
+    const compact = value.replace(/[\s().-]/g, '').replace(/^00/, '+');
+    if (/^\d{9}$/.test(compact)) return `+995${compact}`;
+    if (/^995\d{9}$/.test(compact)) return `+${compact}`;
+    return compact;
+  })
+  .refine((value) => /^\+?[1-9]\d{7,14}$/.test(value), 'Enter a valid phone number.')
+  .refine((value) => !value.startsWith('+995') || /^\+995\d{9}$/.test(value), 'Enter a valid Georgian phone number.')
+  .refine((value) => !/^(\d)\1+$/.test(value.replace(/^\+995|^\+/, '')), 'Enter a valid phone number.');
+
+// Keep the existing name column and accept older clients' full-name/email
+// payloads. New public forms collect first name, last name, and phone only.
 export const liveTrainingRegisterSchema = z.object({
-  name: z.string().trim().min(1, 'Name is required.').max(200),
-  email: z.string().trim().email('Enter a valid email.').max(255),
-  phone: z.string().trim().min(4, 'Enter a valid phone number.').max(50),
+  firstName: leadNameSchema.optional(),
+  lastName: leadNameSchema.optional(),
+  name: z.string().trim().min(1).max(200)
+    .regex(/^[\p{L}\p{M}][\p{L}\p{M}\s.'’\-]*$/u, 'Enter a valid name.').optional(),
+  email: z.string().trim().email('Enter a valid email.').max(255).optional().nullable().or(z.literal('')),
+  phone: leadPhoneSchema,
+  // Unseen by human visitors; complements the existing public rate limit.
+  website: z.string().max(0).optional(),
   // The site's currently-active locale (resolveLocale(router.locale) on the
   // frontend) at the moment the visitor submitted this form — the only
   // point in the registration/enrollment flow where a real, reliable
@@ -95,7 +115,17 @@ export const liveTrainingRegisterSchema = z.object({
   // Anything other than 'en' collapses to Georgian, matching every other
   // ka/en-only notification in this codebase.
   locale: z.string().trim().max(10).optional(),
-});
+}).superRefine((data, ctx) => {
+  if (data.firstName !== undefined || data.lastName !== undefined || !data.name) {
+    if (!data.firstName) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['firstName'], message: 'First name is required.' });
+    if (!data.lastName) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['lastName'], message: 'Last name is required.' });
+  }
+}).transform(({ firstName, lastName, name, email, phone, locale }) => ({
+  name: firstName && lastName ? `${firstName} ${lastName}` : name!,
+  email: email || null,
+  phone,
+  locale,
+}));
 
 export const liveTrainingLeadUpdateSchema = z.object({
   status: z.enum(['NOT_CONTACTED', 'CONTACTED', 'SCHEDULED', 'DECLINED']).optional(),

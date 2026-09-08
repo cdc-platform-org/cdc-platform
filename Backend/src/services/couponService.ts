@@ -1,7 +1,8 @@
 import { prisma } from '../lib/prisma';
-import { PromoCode, CouponApplicableType } from '@prisma/client';
+import { PromoCode, CouponApplicableType, Prisma } from '@prisma/client';
 import { getCurrentPrice } from './coursePricing';
 import { getCurrentProductPrice } from './productPricing';
+import { getCurrentLiveTrainingPrice } from './liveTrainingPricing';
 import { TUTOR_SUBSCRIPTION_PRICE_GEL } from './englishTutorSubscriptionService';
 
 // ============================================================
@@ -28,13 +29,13 @@ export const PROMO_TARGET_MISMATCH_MESSAGE = 'ეს პრომო კოდ�
 // the client saw from a prior POST /promos/validate call), same posture the
 // pre-existing course-only flow already had. Throws PromoCodeError with a
 // message safe to show the user directly.
-export async function findValidPromoCode(rawCode: string, targetType: CouponTargetType, targetId: string): Promise<PromoCode> {
+export async function findValidPromoCode(rawCode: string, targetType: CouponTargetType, targetId: string, allowReservedUse = false): Promise<PromoCode> {
   const code = rawCode.trim().toUpperCase();
   const promo = await prisma.promoCode.findUnique({ where: { code } });
   if (!promo) throw new PromoCodeError('Invalid promo code.');
   if (!promo.isActive) throw new PromoCodeError('This promo code is no longer active.');
-  if (promo.expiresAt && promo.expiresAt < new Date()) throw new PromoCodeError('This promo code has expired.');
-  if (promo.maxUses && promo.currentUses >= promo.maxUses) throw new PromoCodeError('This promo code has reached its usage limit.');
+  if (promo.expiresAt && promo.expiresAt <= new Date()) throw new PromoCodeError('This promo code has expired.');
+  if (!allowReservedUse && promo.maxUses != null && promo.currentUses >= promo.maxUses) throw new PromoCodeError('This promo code has reached its usage limit.');
   if (promo.applicableType !== 'ALL') {
     if (promo.applicableType !== targetType || !promo.applicableTargetIds.includes(targetId)) {
       throw new PromoCodeError(PROMO_TARGET_MISMATCH_MESSAGE);
@@ -86,7 +87,7 @@ export async function resolveTargetPrice(targetType: CouponTargetType, targetId:
     case 'LIVE_TRAINING': {
       const training = await prisma.liveTraining.findUnique({ where: { id: targetId } });
       if (!training || !training.price) throw new CouponTargetNotFoundError('Live training not found or is free.');
-      return { currentPrice: training.price, originalPrice: training.price };
+      return { currentPrice: getCurrentLiveTrainingPrice(training) ?? 0, originalPrice: training.price };
     }
     case 'DIGITAL_PRODUCT': {
       const product = await prisma.digitalProduct.findUnique({ where: { id: targetId } });
@@ -129,26 +130,38 @@ export async function resolveTargetPrice(targetType: CouponTargetType, targetId:
 // the same atomic write; only one concurrent claim near the limit can ever
 // win, and the loser gets a clear, retriable error instead of silently
 // succeeding uncounted.
-export async function applyPromoToCheckout(
+export async function quotePromoToCheckout(
   rawPromoCode: string | null | undefined,
   targetType: CouponTargetType,
   targetId: string,
   baseChargeAmount: number
 ): Promise<{ chargeAmount: number; appliedPromo: PromoCode | null }> {
   if (!rawPromoCode) return { chargeAmount: baseChargeAmount, appliedPromo: null };
-  const promo = await findValidPromoCode(rawPromoCode, targetType, targetId);
+  // A matching pending payment already owns its use. The atomic claim below
+  // still enforces maxUses for every genuinely new checkout.
+  const promo = await findValidPromoCode(rawPromoCode, targetType, targetId, true);
   const { originalPrice } = await resolveTargetPrice(targetType, targetId);
   const chargeAmount = computePromoPrice(baseChargeAmount, originalPrice, promo);
 
-  if (promo.maxUses != null) {
-    const claim = await prisma.promoCode.updateMany({
-      where: { id: promo.id, currentUses: { lt: promo.maxUses } },
-      data: { currentUses: { increment: 1 } },
-    });
-    if (claim.count === 0) throw new PromoCodeError('This promo code has just reached its usage limit.');
-  } else {
-    await prisma.promoCode.update({ where: { id: promo.id }, data: { currentUses: { increment: 1 } } });
-  }
-
   return { chargeAmount, appliedPromo: promo };
+}
+
+export async function claimPromoRedemption(promo: PromoCode, client: Prisma.TransactionClient = prisma): Promise<void> {
+  const claim = await client.promoCode.updateMany({
+    where: {
+      id: promo.id, isActive: true,
+      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      ...(promo.maxUses != null ? { currentUses: { lt: promo.maxUses } } : {}),
+    },
+    data: { currentUses: { increment: 1 } },
+  });
+  if (claim.count === 0) throw new PromoCodeError('This promo code is no longer available or has reached its usage limit.');
+}
+
+export async function applyPromoToCheckout(
+  rawPromoCode: string | null | undefined, targetType: CouponTargetType, targetId: string, baseChargeAmount: number
+): Promise<{ chargeAmount: number; appliedPromo: PromoCode | null }> {
+  const quoted = await quotePromoToCheckout(rawPromoCode, targetType, targetId, baseChargeAmount);
+  if (quoted.appliedPromo) await claimPromoRedemption(quoted.appliedPromo);
+  return quoted;
 }
