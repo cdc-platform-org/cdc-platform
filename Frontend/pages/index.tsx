@@ -202,6 +202,7 @@ export default function Home() {
   useEffect(() => {
     getCourses()
       .then((data) => setCourses(data.filter((c) => c.published)))
+      .catch(() => setCourses([]))
       .finally(() => setCoursesLoading(false));
   }, []);
 
@@ -436,7 +437,7 @@ export default function Home() {
   };
 
   return (
-    <div className={`min-h-screen font-sans antialiased transition-colors duration-300 relative overflow-hidden ${darkMode ? 'text-slate-200 bg-[#0b0f19]' : 'text-slate-800 bg-[#f8fafc]'}`}>
+    <div className={`min-h-screen font-sans antialiased transition-colors duration-300 relative ${darkMode ? 'text-slate-200 bg-[#0b0f19]' : 'text-slate-800 bg-[#f8fafc]'}`}>
       <SEOHead
         title="ციფრული პროფესიების ცენტრი (CDC) - საუკეთესო პროფესიები საქართველოში"
         description="ციფრული პროფესიების ცენტრი (CDC) გთავაზობთ ტოპ 10 პროფესიას საქართველოში, მათ შორის მაღალანაზღაურებადი პროფესიები, AI ტესტების გენერატორი და მასწავლებლის ასისტენტი."
@@ -542,8 +543,10 @@ export default function Home() {
       )}
 
       {/* BACKGROUND GLOW ORBS */}
-      <div className="absolute top-[20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-cyan-500/5 blur-[120px] pointer-events-none dark:bg-cyan-500/10" />
-      <div className="absolute top-[50%] right-[-10%] w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[150px] pointer-events-none dark:bg-purple-500/5" />
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+        <div className="absolute top-[20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-cyan-500/5 blur-[120px] dark:bg-cyan-500/10" />
+        <div className="absolute top-[50%] right-[-10%] w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[150px] dark:bg-purple-500/5" />
+      </div>
 
       {/* 🧭 NAVIGATION */}
       {/* NO overflow clipping on this element, deliberately. Per the CSS
@@ -565,35 +568,23 @@ export default function Home() {
           inset. Without it the header background rendered inset from the
           real viewport edges, showing white gaps on wide screens. */}
       <nav className={`sticky top-0 z-50 -mx-4 sm:-mx-6 border-b py-4 sm:py-5 ${darkMode ? 'border-slate-800 bg-[#0e1422]/90 backdrop-blur-md' : 'border-slate-200/60 bg-white/90 backdrop-blur-md'}`}>
-        <div className="max-w-7xl mx-auto relative flex justify-between items-center gap-2 sm:gap-4 px-4 sm:px-6 md:px-12">
-          <Link href="/" className="flex items-center space-x-3 shrink-0 no-underline text-current">
+        <div className="max-w-[1536px] mx-auto grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 sm:gap-4 px-4 sm:px-6 lg:px-8 xl:px-10">
+          <Link href="/" className="flex items-center shrink-0 no-underline text-current">
             <Image
               src="/images/cdc-logo.png"
               alt={t('logoAlt') as string}
               width={48}
               height={48}
               priority
-              className="h-10 sm:h-12 w-auto rounded-xl object-cover"
+              className="h-10 sm:h-11 w-auto rounded-xl object-cover shadow-sm"
             />
-            <div className="hidden sm:block">
-              <span className="font-bold text-lg block leading-none tracking-tight">{safeText('CDC')}</span>
-              <span className="text-[11px] text-slate-400 font-bold block mt-1">{t('tagline')}</span>
-            </div>
           </Link>
-
-          {/* 🔍 SEARCH — compact icon button that opens a centered command-
-              palette-style modal (HeaderSearch.tsx) instead of an inline
-              expanding input, so it no longer needs to shrink/fight the nav
-              links row for space at the `lg` breakpoint. */}
-          <div className="hidden sm:block">
-            <HeaderSearch darkMode={darkMode} lang={legacyLang} />
-          </div>
 
           {/* Nav links step down to text-sm at `lg` and only reach text-base at
               `xl`. At 1024px the five Georgian labels at text-base overflowed
               the row, so the last one ("ბლოგი") rendered clipped to "ბლ" —
               sizing the row to fit is the fix; the nav no longer clips. */}
-          <div className={`hidden xl:flex absolute left-1/2 -translate-x-1/2 items-center gap-4 2xl:gap-6 text-[13px] 2xl:text-sm font-bold leading-none tracking-normal whitespace-nowrap ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
+          <div className={`hidden min-[1420px]:flex min-w-0 items-center justify-center gap-3 2xl:gap-4 text-[12px] 2xl:text-[13px] font-bold leading-none tracking-normal whitespace-nowrap ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
             <div className="relative group py-2 -my-2">
               <Link href="/about" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{t('aboutUs')} ▾</Link>
               {/* z-[60] outranks the hero's own layers and the nav's z-50 base,
@@ -649,8 +640,14 @@ export default function Home() {
             <Link href="/tools" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{t('toolsHeading')}</Link>
           </div>
 
-          <div className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-4 shrink-0">
-            <LanguageSwitcher />
+          <div className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0">
+            <div className="hidden md:block">
+              <HeaderSearch darkMode={darkMode} lang={legacyLang} />
+            </div>
+
+            <div className="hidden sm:block">
+              <LanguageSwitcher />
+            </div>
             <button type="button" onClick={toggleDarkMode} aria-label="Toggle dark mode" className="p-2 rounded-xl transition border-none bg-transparent cursor-pointer hover:rotate-12 duration-200">{darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}</button>
             <UserMenu
               className="hidden sm:block"
@@ -680,7 +677,7 @@ export default function Home() {
               onClick={() => setIsMobileMenuOpen((open) => !open)}
               aria-label="Toggle menu"
               aria-expanded={isMobileMenuOpen}
-              className={`xl:hidden p-2 rounded-xl border-none bg-transparent cursor-pointer transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}
+              className={`min-[1420px]:hidden p-2 rounded-xl border-none bg-transparent cursor-pointer transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}
             >
               {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -693,7 +690,7 @@ export default function Home() {
             this it sat flush against the nav's now-full-bleed edges (see
             SiteHeader.tsx's own mobile drawer for the same fix). */}
         {isMobileMenuOpen && (
-          <div className={`xl:hidden max-w-full overflow-x-hidden mt-4 pt-4 px-4 sm:px-6 border-t flex flex-col gap-1 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+          <div className={`min-[1420px]:hidden max-w-full overflow-x-hidden mt-4 pt-4 px-4 sm:px-6 border-t flex flex-col gap-1 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
             <div className="px-2 pb-2">
               <HeaderSearch darkMode={darkMode} lang={legacyLang} />
             </div>
