@@ -98,13 +98,23 @@ const PENDING_ORDER_REUSE_WINDOW_MS = 15 * 60 * 1000;
 async function findReusablePendingOrder(
   userId: string,
   purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT' | 'HR_SUPPORT' | 'LIVE_TRAINING' | 'ENGLISH_TUTOR_SUBSCRIPTION',
-  referenceId: string
+  referenceId: string,
+  expectedAmount?: number
 ) {
   const existing = await prisma.bogPayment.findFirst({
     where: { userId, purpose, referenceId, status: 'PENDING' },
     orderBy: { createdAt: 'desc' },
   });
   if (existing && existing.redirectUrl && Date.now() - existing.createdAt.getTime() < PENDING_ORDER_REUSE_WINDOW_MS) {
+    // Never reuse a stale checkout after the payable price changed
+    // (for example, when a course goes on sale from 700 GEL to 350 GEL).
+    if (
+      expectedAmount !== undefined &&
+      Math.abs(Number(existing.amount) - expectedAmount) >= 0.005
+    ) {
+      return null;
+    }
+
     return existing;
   }
   return null;
@@ -156,14 +166,20 @@ router.post(
         return res.status(409).json({ message: 'This course is full.' });
       }
     }
-    const reusable = await findReusablePendingOrder(req.user!.id, 'COURSE', course.id);
+    const currentCoursePrice = getCurrentPrice(course);
+    const reusable = await findReusablePendingOrder(
+      req.user!.id,
+      'COURSE',
+      course.id,
+      currentCoursePrice
+    );
     if (reusable) {
       return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.redirectUrl });
     }
 
     // Charges whatever the course actually costs right now — if it's on an
     // active sale, that's the discounted price, not originalPrice.
-    let chargeAmount = getCurrentPrice(course);
+    let chargeAmount = currentCoursePrice;
 
     // Admin/manager/moderator test-mode bypass — lets the admin team QA the
     // full enroll flow (notification, dashboard entry, /learn access) for
