@@ -18,7 +18,8 @@ for (const target of targets) {
     const reviews = page.getByRole('region', { name: 'Ratings and reviews' });
     await expect(reviews.getByRole('button', { name: 'Save review', exact: true })).toBeVisible();
     // Native radios support keyboard selection as well as pointer input.
-    await reviews.getByRole('radio', { name: '4 / 5', exact: true }).check();
+    await reviews.getByRole('radio', { name: '4 / 5', exact: true }).focus();
+    await page.keyboard.press('Space');
     await reviews.getByLabel('Comment (optional)').fill('QA review: clear explanations.');
     await reviews.getByRole('button', { name: 'Save review', exact: true }).click();
     await expect(reviews.getByRole('status')).toHaveText('Review saved.');

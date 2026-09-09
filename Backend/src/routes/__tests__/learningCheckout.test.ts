@@ -89,6 +89,19 @@ async function promo(discountPercent = 20, maxUses: number | null = null) {
 }
 
 describe('learning checkout pricing and retries', () => {
+  it.each(['course', 'live-training'] as const)('requests a 31-minute Stripe session for a paid %s', async (purpose) => {
+    const buyer = await createUser();
+    const target = purpose === 'course' ? await createCourse({}) : await training();
+    const before = Math.floor(Date.now() / 1000);
+    const response = await post(`/payments/stripe/checkout/${purpose}/${target.id}`, buyer);
+    const after = Math.floor(Date.now() / 1000);
+    expect(response.status).toBe(201);
+    expect(createStripeCheckoutSession).toHaveBeenCalledTimes(1);
+    const { expiresAt } = jest.mocked(createStripeCheckoutSession).mock.calls[0][0];
+    expect(expiresAt).toBeGreaterThanOrEqual(before + 31 * 60);
+    expect(expiresAt).toBeLessThanOrEqual(after + 31 * 60);
+  });
+
   it.each(['BOG', 'STRIPE'] as const)('%s charges the active live training sale price even for an admin', async (gateway) => {
     const admin = await createUser({ adminRole: 'MANAGER' });
     const target = await training();

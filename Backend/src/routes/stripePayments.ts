@@ -79,6 +79,10 @@ function convertGelToStripeMinorUnits(amountGel: number, currency: StripeCurrenc
 }
 
 const PENDING_ORDER_REUSE_WINDOW_MS = 15 * 60 * 1000;
+// Stripe requires at least 30 minutes; one extra minute allows for network
+// transit. Expiry releases a learning seat once the webhook or sweep confirms
+// it, instead of leaving abandoned reservations open for Stripe's 24h default.
+const LEARNING_CHECKOUT_EXPIRY_SECONDS = 31 * 60;
 
 async function findReusablePendingOrder(userId: string, purpose: StripePurpose, referenceId: string, expectedAmountGel?: number, expectedCurrency?: StripeCurrency, expectedPromoId?: string | null) {
   const existing = await prisma.stripePayment.findFirst({
@@ -201,6 +205,7 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
     successUrl,
     cancelUrl,
     customerEmail: req.user!.email,
+    expiresAt: Math.floor(Date.now() / 1000) + LEARNING_CHECKOUT_EXPIRY_SECONDS,
   });
   if (!session) return;
   const updated = await prisma.stripePayment.update({
@@ -306,6 +311,7 @@ router.post('/checkout/live-training/:id', checkoutRateLimit, authenticate, requ
     successUrl,
     cancelUrl,
     customerEmail: req.user!.email,
+    expiresAt: Math.floor(Date.now() / 1000) + LEARNING_CHECKOUT_EXPIRY_SECONDS,
   });
   if (!session) return;
   const updated = await prisma.stripePayment.update({

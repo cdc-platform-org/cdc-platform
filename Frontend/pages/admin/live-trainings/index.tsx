@@ -850,7 +850,8 @@ function AdminLiveTrainingsDashboard() {
                         {new Date(t.scheduledAt).toLocaleString()} · {t.registeredCount} / {t.maxCapacity} რეგისტრირებული
                       </p>
                     </div>
-                    <div className="flex gap-2 shrink-0">
+                    <div className="flex flex-wrap gap-2 shrink-0">
+                      <Link href={`/admin/live-trainings/${t.id}/guides`} className="text-xs font-medium text-cyan-700 px-3 py-1.5 rounded-lg hover:bg-cyan-50">IAKO · გზამკვლევები</Link>
                       <Link
                         href={`/admin/live-trainings/${t.id}/leads`}
                         className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50"

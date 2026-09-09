@@ -16,6 +16,8 @@ import * as Sentry from '@sentry/node';
 import authRoutes from './routes/auth';
 import courseRoutes from './routes/courses';
 import { createLearningRatingsRouter } from './routes/learningRatings';
+import trainingGuideRoutes from './routes/trainingGuides';
+import adminTrainingGuideRoutes from './routes/adminTrainingGuides';
 import orderRoutes from './routes/orders';
 import uploadRoutes from './routes/upload';
 import gigsRoutes from './routes/gigs';
@@ -255,6 +257,8 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', createLearningRatingsRouter('course'));
 app.use('/api/live-trainings', createLearningRatingsRouter('live-training'));
+app.use('/api/live-trainings', trainingGuideRoutes);
+app.use('/api/admin/live-trainings', adminTrainingGuideRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/upload', uploadRoutes);

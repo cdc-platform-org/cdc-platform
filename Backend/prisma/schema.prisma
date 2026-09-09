@@ -650,6 +650,7 @@ model User {
   courseEnrollments             CourseEnrollment[]
   courseRatings                 CourseRating[]
   liveTrainingRatings           LiveTrainingRating[]
+  trainingDayProgress           TrainingDayProgress[]
   lessonProgress                LessonProgress[]
   courseCertificates            CourseCertificate[]
   courseDiscussionPosts         CourseDiscussionPost[]
@@ -1416,6 +1417,9 @@ model LiveTraining {
   leads        LiveTrainingLead[]
   enrollments  LiveTrainingEnrollment[]
   ratings      LiveTrainingRating[]
+  guideSettings TrainingGuideSettings?
+  guideDays     TrainingDay[]
+  guideSources  TrainingGuideSource[]
   // Final/graduation exam sessions generated for this cohort — see
   // ExamSession.liveTrainingId. Reuses the same AI question generator and
   // candidate-token link mechanism as the standalone Business exam
@@ -2109,6 +2113,72 @@ model LiveTrainingRating {
   @@unique([userId, liveTrainingId])
   @@index([liveTrainingId, createdAt])
   @@map("live_training_ratings")
+}
+
+enum GuideVisibility {
+  TODAY_ONLY
+  CURRENT_AND_PREVIOUS
+  ALL_DAYS
+}
+
+model TrainingGuideSettings {
+  liveTrainingId     String @id
+  liveTraining       LiveTraining @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  timeZone           String @default("Asia/Tbilisi")
+  // Calendar dates are local to timeZone, not UTC-midnight timestamps.
+  startDate          String?
+  paused             Boolean @default(false)
+  pausedDayNumber    Int?
+  currentDayOverride Int?
+  visibility         GuideVisibility @default(CURRENT_AND_PREVIOUS)
+  updatedAt          DateTime @updatedAt
+  @@map("training_guide_settings")
+}
+
+model TrainingDay {
+  id             String @id @default(uuid())
+  liveTrainingId String
+  liveTraining   LiveTraining @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  dayNumber      Int
+  title          String
+  summary        String
+  scheduledDate  String?
+  published      Boolean @default(false)
+  // Validated section/item objects: content is never an opaque text blob.
+  sections       Json
+  sourcePages    Int[] @default([])
+  progress       TrainingDayProgress[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@unique([liveTrainingId, dayNumber])
+  @@map("training_days")
+}
+
+model TrainingDayProgress {
+  id        String @id @default(uuid())
+  dayId     String
+  day       TrainingDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId    String
+  completed Boolean @default(false)
+  updatedAt DateTime @updatedAt
+  @@unique([userId, dayId, itemId])
+  @@index([dayId])
+  @@map("training_day_progress")
+}
+
+// Reference knowledge has an independent editing lifecycle from guide days.
+model TrainingGuideSource {
+  id             String @id @default(uuid())
+  liveTrainingId String
+  liveTraining   LiveTraining @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  dayNumber      Int?
+  title          String
+  content        String
+  updatedAt      DateTime @updatedAt
+  @@index([liveTrainingId, dayNumber])
+  @@map("training_guide_sources")
 }
 
 // ============================================================

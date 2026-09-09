@@ -30,6 +30,7 @@ const EN_STRINGS = {
   cancelling: 'Cancelling…',
   cancelConfirm: 'Cancel your enrollment in this training?',
   cancelError: 'Could not cancel — please try again.',
+  iako: 'IAKO · Daily guide',
 };
 
 const dict = {
@@ -50,6 +51,7 @@ const dict = {
     cancelling: 'უქმდება…',
     cancelConfirm: 'გავაუქმოთ ჩარიცხვა ამ ტრენინგზე?',
     cancelError: 'გაუქმება ვერ მოხერხდა — სცადეთ თავიდან.',
+    iako: 'IAKO · დღევანდელი გზამკვლევი',
   },
   en: EN_STRINGS,
   de: EN_STRINGS,
@@ -97,6 +99,7 @@ function EnrollmentCard({
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
           <p className="text-sm font-black text-slate-900 dark:text-white">{title}</p>
+          <Link href={`/dashboard/live-trainings/${enrollment.liveTrainingId}/iako`} className="inline-block mt-3 mb-2 rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-bold text-white">{t.iako}</Link>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             {t.scheduledFor} {formatDateTime(enrollment.startDate ?? enrollment.scheduledAt, lang)}
           </p>

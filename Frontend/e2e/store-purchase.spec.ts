@@ -50,7 +50,8 @@ test.describe('Store Purchases', () => {
     test.skip(await alreadyReviewed.isVisible(), 'Already reviewed by this QA user in a prior run');
 
     await writeReviewButton.click();
-    await page.locator('[aria-label="5 stars"]').click();
+    await page.getByRole('radio', { name: '5 stars', exact: true }).focus();
+    await page.keyboard.press('Space');
     await page.locator('textarea').fill('Automated nightly QA review — verifying the verified-purchase review flow end to end.');
     await page.getByRole('button', { name: /submit review|შეფასების გაგზავნა/i }).click();
 

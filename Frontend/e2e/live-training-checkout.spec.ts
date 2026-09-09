@@ -83,7 +83,7 @@ test.describe('Authenticated live training checkout', () => {
       await expect(page.getByRole('textbox', { name: /Promo code|პრომო კოდი/ })).toBeVisible();
       const checkoutButton = page.getByRole('button', { name: /Register & Pay|რეგისტრაცია და გადახდა/ });
       await checkoutButton.click();
-      await expect(page.getByRole('alert')).toHaveText('Test gateway unavailable. Please retry.');
+      await expect(page.getByRole('alert').filter({ hasText: 'Test gateway unavailable. Please retry.' })).toBeVisible();
       expect(checkoutPath).toBe(`/api/payments/${locale === 'en' ? 'stripe/' : ''}checkout/live-training/${TRAINING_ID}`);
       expect(checkoutPayload).toEqual(locale === 'en' ? { currency: 'usd' } : { lang: 'ka' });
       await expect(checkoutButton).toBeEnabled();
