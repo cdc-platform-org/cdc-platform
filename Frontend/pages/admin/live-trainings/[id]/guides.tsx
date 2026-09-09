@@ -6,6 +6,7 @@ import AdminGuard from '@/src/components/admin/AdminGuard';
 import AdminLayout from '@/src/components/admin/AdminLayout';
 import TrainingDayContent, { guideSectionLabels } from '@/src/components/training-guides/TrainingDayContent';
 import { AdminGuide, getAdminGuide, GuideSection, GuideSectionKind, GuideSettings, GuideSource, GuideVisibility, guideDayInput, importVibeCodingGuide, reorderGuideDays, saveGuideDay, saveGuideSettings, saveGuideSource, TrainingDay, TrainingDayInput } from '@/src/services/trainingGuideService';
+import { IakoProfile, assignIakoProfile, listIakoProfiles } from '@/src/services/iakoAssistantService';
 
 const inputClass = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-cyan-500';
 const buttonClass = 'rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50';
@@ -33,16 +34,24 @@ function AdminGuidesContent() {
   const [preview, setPreview] = useState(false);
   const [source, setSource] = useState<{ title: string; content: string } | null>(null);
   const [sourceId, setSourceId] = useState<string>();
+  const [iakoProfiles, setIakoProfiles] = useState<IakoProfile[]>([]);
+  const [iakoBusy, setIakoBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!trainingId) return;
-    const result = await getAdminGuide(trainingId);
-    setData(result); setSettings(result.settings);
+    const [result, profiles] = await Promise.all([getAdminGuide(trainingId), listIakoProfiles()]);
+    setData(result); setSettings(result.settings); setIakoProfiles(profiles);
   }, [trainingId]);
   useEffect(() => {
     setLoading(true);
     void load().catch(() => setError(t.loadFailed)).finally(() => setLoading(false));
   }, [load, t.loadFailed]);
+  const assignedIakoProfile = iakoProfiles.find((profile) => profile.assignments?.some((a) => a.liveTrainingId === trainingId));
+  const changeIakoAssignment = async (profileId: string) => {
+    setIakoBusy(true);
+    try { await assignIakoProfile({ liveTrainingId: trainingId }, profileId || null); await load(); }
+    finally { setIakoBusy(false); }
+  };
 
   const mutate = async (action: () => Promise<void>, after?: () => void) => {
     setBusy(true); setError(''); setSaved(false);
@@ -85,6 +94,17 @@ function AdminGuidesContent() {
           </div>
           <div className="flex flex-wrap justify-between gap-4 mt-5"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={settings.paused} onChange={(event) => setSettings({ ...settings, paused: event.target.checked })} className="h-4 w-4 accent-cyan-700" />{t.paused}</label><button type="submit" className={primaryClass}>{t.saveSettings}</button></div>
         </fieldset></form>
+      </section>
+      <section aria-label="IAKO Assistant" className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 mb-7">
+        <h2 className="text-xl font-bold mb-2">{lang === 'ka' ? 'IAKO ასისტენტი' : 'IAKO Assistant'}</h2>
+        <p className="text-sm text-slate-500 mb-4">{lang === 'ka' ? 'აირჩიეთ ასისტენტის პროფილი ამ ტრენინგისთვის — მართავს მოცემულობის ცოდნის ბაზას, სქრინშოთებს და საკუთარ საუბრის ისტორიას.' : 'Choose an assistant profile for this training — controls its knowledge base, screenshot support, and its own conversation history, separate from the Daily Guides Q&A above.'}</p>
+        <select disabled={iakoBusy} value={assignedIakoProfile?.id ?? ''} onChange={(event) => void changeIakoAssignment(event.target.value)} className={`${inputClass} max-w-sm`}>
+          <option value="">{lang === 'ka' ? '— ასისტენტის გარეშე —' : '— No assistant —'}</option>
+          {iakoProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
+        </select>
+        <p className="text-xs text-slate-400 mt-3">
+          <Link href="/admin/iako/profiles" className="underline">{lang === 'ka' ? 'პროფილების მართვა →' : 'Manage profiles →'}</Link>
+        </p>
       </section>
       <section aria-label={t.days} className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 mb-7">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-5"><h2 className="text-xl font-bold">{t.days}</h2><button type="button" disabled={busy} onClick={() => { setDraft(emptyDay(Math.max(0, ...data.days.map((day) => day.dayNumber)) + 1)); setEditingId(undefined); setPreview(false); }} className={primaryClass}>{t.create}</button></div>
