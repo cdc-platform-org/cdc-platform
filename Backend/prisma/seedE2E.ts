@@ -23,7 +23,18 @@ const QA_TEST_PASSWORD = process.env.QA_TEST_PASSWORD || 'QaE2ePass123!';
 const FREE_PRODUCT_ID = '00000000-0000-4000-8000-00000000f00d';
 const COURSE_ID = '00000000-0000-4000-8000-0000000c0575';
 const LIVE_TRAINING_ID = '00000000-0000-4000-8000-000000007a10';
+const FREE_LIVE_TRAINING_ID = '00000000-0000-4000-8000-000000007a11';
 const NOTIFICATION_MARKER = '[QA_E2E_SEED]';
+// Fixed tokens (not UUIDs — matches the real random-base64url token shape
+// closely enough for routing, and stays readable in test assertions) so
+// e2e/live-training-invite.spec.ts can deep-link straight to
+// /live-trainings/invite/<token> without querying the DB first. One per
+// training: the free one proves an invite CAN fast-track a free
+// registration; the paid one proves it can NEVER bypass payment — see
+// liveTrainingInviteService.ts's own comment on why that guard lives in
+// reserveLearningCheckout, not duplicated here.
+const FREE_INVITE_TOKEN = 'qa-e2e-free-invite-token';
+const PAID_INVITE_TOKEN = 'qa-e2e-paid-invite-token';
 
 async function main() {
   const passwordHash = await bcrypt.hash(QA_TEST_PASSWORD, 12);
@@ -124,6 +135,35 @@ async function main() {
     create: { userId: testUser.id, liveTrainingId: training.id },
   });
 
+  const freeTraining = await prisma.liveTraining.upsert({
+    where: { id: FREE_LIVE_TRAINING_ID },
+    update: { published: true, price: null, maxCapacity: 100 },
+    create: {
+      id: FREE_LIVE_TRAINING_ID,
+      title: 'QA E2E Free Live Training',
+      titleEn: 'QA E2E Free Live Training',
+      description: 'Seeded FREE training for the invite/QR redemption e2e test.',
+      category: 'QA Fixtures',
+      scheduledAt: new Date('2030-02-15T14:00:00Z'),
+      price: null,
+      priceType: 'TOTAL',
+      minCapacity: 1,
+      maxCapacity: 100,
+      published: true,
+      language: 'BOTH',
+    },
+  });
+  await prisma.liveTrainingInvite.upsert({
+    where: { token: FREE_INVITE_TOKEN },
+    update: { revokedAt: null, expiresAt: null, maxRedemptions: 1000 },
+    create: { token: FREE_INVITE_TOKEN, liveTrainingId: freeTraining.id, maxRedemptions: 1000, createdById: testUser.id },
+  });
+  await prisma.liveTrainingInvite.upsert({
+    where: { token: PAID_INVITE_TOKEN },
+    update: { revokedAt: null, expiresAt: null, maxRedemptions: 1000 },
+    create: { token: PAID_INVITE_TOKEN, liveTrainingId: training.id, maxRedemptions: 1000, createdById: testUser.id },
+  });
+
   // Notifications have no natural unique key to upsert on — delete any
   // prior seed run's notification for this user before creating a fresh
   // one, so re-seeding stays idempotent (exactly one QA notification, not
@@ -143,6 +183,9 @@ async function main() {
     freeProductId: FREE_PRODUCT_ID,
     courseId: COURSE_ID,
     liveTrainingId: LIVE_TRAINING_ID,
+    freeLiveTrainingId: freeTraining.id,
+    freeInviteToken: FREE_INVITE_TOKEN,
+    paidInviteToken: PAID_INVITE_TOKEN,
   });
 }
 
