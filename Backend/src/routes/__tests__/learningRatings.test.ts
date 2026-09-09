@@ -2,12 +2,13 @@ import 'express-async-errors';
 import express, { ErrorRequestHandler } from 'express';
 import { Server } from 'http';
 import { AddressInfo } from 'net';
+import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../../lib/prisma';
 import { JWT_SECRET } from '../../utils/env';
 import { createUser, createCourse } from '../../test/factories';
 import { createLearningRatingsRouter } from '../learningRatings';
-import { LearningRatingTarget, withCourseRatings, withTrainingRatings } from '../../services/learningRatingService';
+import { getLearningRatings, LearningRatingTarget, withCourseRatings, withTrainingRatings } from '../../services/learningRatingService';
 
 let server: Server;
 let baseUrl: string;
@@ -40,7 +41,7 @@ async function request(path: string, options: { token?: string; body?: unknown }
     headers: { 'Content-Type': 'application/json', ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}) },
     ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
   });
-  return { status: response.status, body: await response.json() };
+  return { status: response.status, body: await response.json() as { data: Awaited<ReturnType<typeof getLearningRatings>> } };
 }
 
 describe.each<[LearningRatingTarget, string]>([
@@ -56,6 +57,14 @@ describe.each<[LearningRatingTarget, string]>([
       await prisma.courseEnrollment.create({ data: { userId, courseId: targetId } });
     } else {
       await prisma.liveTrainingEnrollment.create({ data: { userId, liveTrainingId: targetId, status: 'ACTIVE' } });
+    }
+  }
+
+  async function removeEnrollment(userId: string) {
+    if (target === 'course') {
+      await prisma.courseEnrollment.deleteMany({ where: { userId, courseId: targetId } });
+    } else {
+      await prisma.liveTrainingEnrollment.deleteMany({ where: { userId, liveTrainingId: targetId } });
     }
   }
 
@@ -82,6 +91,9 @@ describe.each<[LearningRatingTarget, string]>([
   it('requires authentication and rejects stale/invalid tokens', async () => {
     expect((await request(path, { body: { rating: 5 } })).status).toBe(401);
     expect((await request(path, { token: 'invalid-token', body: { rating: 5 } })).status).toBe(401);
+    const expiredToken = jwt.sign({ userId: learner.id, email: learner.email, role: learner.role }, JWT_SECRET, { expiresIn: -1 });
+    expect((await request(path, { token: expiredToken, body: { rating: 5 } })).status).toBe(401);
+    expect((await request(path, { token: expiredToken })).body.data).toMatchObject({ canReview: false, myReview: null });
   });
 
   it('requires actual enrollment, including for administrators', async () => {
@@ -93,6 +105,20 @@ describe.each<[LearningRatingTarget, string]>([
   it('rejects banned users even when their enrollment and token remain valid', async () => {
     await prisma.user.update({ where: { id: learner.id }, data: { isBanned: true } });
     expect((await request(path, { token, body: { rating: 4 } })).status).toBe(403);
+    expect((await request(path, { token })).body.data.canReview).toBe(false);
+  });
+
+  it('rejects deactivated accounts and no longer advertises review eligibility', async () => {
+    await prisma.user.update({ where: { id: learner.id }, data: { deletionRequestedAt: new Date() } });
+    expect((await request(path, { token, body: { rating: 4 } })).status).toBe(403);
+    expect((await request(path, { token })).body.data.canReview).toBe(false);
+  });
+
+  it('rejects deleted accounts whose signed tokens have not expired', async () => {
+    await removeEnrollment(learner.id);
+    await prisma.user.delete({ where: { id: learner.id } });
+    expect((await request(path, { token, body: { rating: 4 } })).status).toBe(401);
+    expect((await request(path, { token })).body.data.canReview).toBe(false);
   });
 
   it('rejects nonexistent targets without creating reviews', async () => {
@@ -108,8 +134,19 @@ describe.each<[LearningRatingTarget, string]>([
     const edited = await request(path, { token, body: { rating: 5, comment: '' } });
     expect(edited.status).toBe(200);
     expect(edited.body.data).toMatchObject({ averageRating: 5, reviewCount: 1 });
-    expect(edited.body.data.myReview).toMatchObject({ id: first.body.data.myReview.id, rating: 5, comment: null });
+    expect(edited.body.data.myReview).toMatchObject({ id: first.body.data.myReview!.id, rating: 5, comment: null });
     expect(edited.body.data.reviews).toHaveLength(1);
+  });
+
+  it('validates comment type and length before saving', async () => {
+    for (const comment of [123, [], 'x'.repeat(2001)]) {
+      expect((await request(path, { token, body: { rating: 4, comment } })).status).toBe(400);
+    }
+    const accepted = await request(path, { token, body: { rating: 4, comment: `  ${'x'.repeat(2000)}  ` } });
+    expect(accepted.status).toBe(200);
+    expect(accepted.body.data.myReview!.comment).toHaveLength(2000);
+    const cleared = await request(path, { token, body: { rating: 4, comment: null } });
+    expect(cleared.body.data.myReview!.comment).toBeNull();
   });
 
   it('calculates averages/counts on the server and ignores spoofed identity or aggregates', async () => {
@@ -140,6 +177,52 @@ describe.each<[LearningRatingTarget, string]>([
     await expect(duplicate).rejects.toMatchObject({ code: 'P2002' });
   });
 
+  it('caps public reviews while aggregating every review and returning the caller\'s older review', async () => {
+    const ownReview = await request(path, { token, body: { rating: 1, comment: 'My older review' } });
+    const userIds = Array.from({ length: 50 }, () => randomUUID());
+    await prisma.user.createMany({ data: userIds.map((id) => ({
+      id, name: 'Another learner', email: `rating-${id}@cdc.test`, password: 'not-a-real-hash',
+    })) });
+    const createdAt = new Date(Date.now() + 1000);
+    if (target === 'course') {
+      await prisma.courseEnrollment.createMany({ data: userIds.map((userId) => ({ userId, courseId: targetId })) });
+      await prisma.courseRating.createMany({ data: userIds.map((userId) => ({ userId, courseId: targetId, rating: 5, createdAt })) });
+    } else {
+      await prisma.liveTrainingEnrollment.createMany({ data: userIds.map((userId) => ({ userId, liveTrainingId: targetId })) });
+      await prisma.liveTrainingRating.createMany({ data: userIds.map((userId) => ({ userId, liveTrainingId: targetId, rating: 5, createdAt })) });
+    }
+    const response = await request(path, { token });
+    expect(response.status).toBe(200);
+    expect(response.body.data.reviewCount).toBe(51);
+    expect(response.body.data.averageRating).toBeCloseTo(251 / 51);
+    expect(response.body.data.reviews).toHaveLength(50);
+    expect(response.body.data.reviews.some((review: { userId: string }) => review.userId === learner.id)).toBe(false);
+    expect(response.body.data.myReview).toMatchObject({ id: ownReview.body.data.myReview!.id, comment: 'My older review' });
+    for (const review of response.body.data.reviews) {
+      expect(Object.keys(review.user).sort()).toEqual(['id', 'name']);
+    }
+  });
+
+  it('removes a deleted learner\'s review from the public list and aggregate', async () => {
+    expect((await request(path, { token, body: { rating: 5 } })).status).toBe(200);
+    await removeEnrollment(learner.id);
+    await prisma.user.delete({ where: { id: learner.id } });
+    expect((await request(path)).body.data).toMatchObject({ averageRating: null, reviewCount: 0, reviews: [] });
+  });
+
+  it('deletes target reviews with the target', async () => {
+    expect((await request(path, { token, body: { rating: 5 } })).status).toBe(200);
+    await removeEnrollment(learner.id);
+    if (target === 'course') {
+      await prisma.course.delete({ where: { id: targetId } });
+      expect(await prisma.courseRating.count({ where: { courseId: targetId } })).toBe(0);
+    } else {
+      await prisma.liveTraining.delete({ where: { id: targetId } });
+      expect(await prisma.liveTrainingRating.count({ where: { liveTrainingId: targetId } })).toBe(0);
+    }
+    expect((await request(path)).status).toBe(404);
+  });
+
   it('also enforces star bounds at the database boundary', async () => {
     const invalid = target === 'course'
       ? prisma.courseRating.create({ data: { courseId: targetId, userId: learner.id, rating: 6 } })
@@ -148,7 +231,13 @@ describe.each<[LearningRatingTarget, string]>([
     expect((await request(path)).body.data.reviewCount).toBe(0);
   });
 
-  if (target === 'live-training') {
+  if (target === 'course') {
+    it('does not reveal or accept ratings for unpublished courses', async () => {
+      await prisma.course.update({ where: { id: targetId }, data: { status: 'DRAFT' } });
+      expect((await request(path)).status).toBe(404);
+      expect((await request(path, { token, body: { rating: 4 } })).status).toBe(404);
+    });
+  } else {
     it('rejects cancelled enrollment and permits completed enrollment', async () => {
       await prisma.liveTrainingEnrollment.update({ where: { userId_liveTrainingId: { userId: learner.id, liveTrainingId: targetId } }, data: { status: 'CANCELLED' } });
       expect((await request(path, { token, body: { rating: 4 } })).status).toBe(403);

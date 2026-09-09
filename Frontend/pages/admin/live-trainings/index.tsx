@@ -5,6 +5,7 @@ import { Users } from 'lucide-react';
 import AdminGuard from '../../../src/components/admin/AdminGuard';
 import AdminLayout from '../../../src/components/admin/AdminLayout';
 import RichTextEditor from '../../../src/components/shared/RichTextEditor';
+import VideoEmbed, { parseVideoUrl } from '../../../src/components/shared/VideoEmbed';
 import { LiveTraining } from '../../../src/types/liveTraining';
 import { CourseLanguage } from '../../../src/types/lms';
 import {
@@ -307,7 +308,7 @@ function AdminLiveTrainingsDashboard() {
         discountEndDate: form.isOnSale && form.discountEndDateLocal ? toIsoDatetime(form.discountEndDateLocal) : null,
         discountBadgeText: form.isOnSale ? form.discountBadgeText.trim() || null : null,
         thumbnailUrl: form.thumbnailUrl?.trim() || undefined,
-        videoUrl: form.videoUrl?.trim() || undefined,
+        videoUrl: form.videoUrl?.trim() || '',
         minCapacity: form.minCapacity ?? 0,
         maxCapacity: form.maxCapacity,
         published: form.published,
@@ -320,7 +321,7 @@ function AdminLiveTrainingsDashboard() {
         priceType: form.priceType,
         durationMonths: form.durationMonths,
         scheduleDays: form.scheduleDays?.trim() || null,
-        trainerVideoUrl: form.trainerVideoUrl?.trim() || undefined,
+        trainerVideoUrl: form.trainerVideoUrl?.trim() || '',
       };
       if (editingId) {
         const updated = await updateLiveTraining(editingId, payload);
@@ -712,26 +713,42 @@ function AdminLiveTrainingsDashboard() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">YouTube / Video Trailer Link</label>
+                <label htmlFor="training-video-url" className="block text-sm font-medium text-gray-700 mb-1.5">YouTube / Video Trailer Link</label>
                 <input
-                  type="text"
+                  id="training-video-url"
+                  type="url"
                   value={form.videoUrl ?? ''}
                   onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
                   placeholder="მაგ. https://www.youtube.com/watch?v=..."
                   className={inputClass}
                 />
+                {form.videoUrl?.trim() && (
+                  <div className="mt-3">
+                    {parseVideoUrl(form.videoUrl.trim()) ? <VideoEmbed url={form.videoUrl.trim()} title="Training trailer preview" /> : (
+                      <p role="status" className="text-xs text-amber-700">გამოიყენეთ YouTube, Vimeo ან პირდაპირი MP4/WebM/OGG/MOV ბმული. ეს ბმული საჯარო გვერდზე ვერ გამოჩნდება.</p>
+                    )}
+                  </div>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  ლექტორის ვიდეო <span className="text-gray-400 font-normal">(YouTube — გამოჩნდება საჯარო გვერდზე)</span>
+                <label htmlFor="training-trainer-video-url" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  ლექტორის ვიდეო <span className="text-gray-400 font-normal">(YouTube / Vimeo / MP4 — გამოჩნდება საჯარო გვერდზე)</span>
                 </label>
                 <input
-                  type="text"
+                  id="training-trainer-video-url"
+                  type="url"
                   value={form.trainerVideoUrl ?? ''}
                   onChange={(e) => setForm({ ...form, trainerVideoUrl: e.target.value })}
                   placeholder="მაგ. https://www.youtube.com/watch?v=..."
                   className={inputClass}
                 />
+                {form.trainerVideoUrl?.trim() && (
+                  <div className="mt-3">
+                    {parseVideoUrl(form.trainerVideoUrl.trim()) ? <VideoEmbed url={form.trainerVideoUrl.trim()} title="Trainer video preview" /> : (
+                      <p role="status" className="text-xs text-amber-700">გამოიყენეთ YouTube, Vimeo ან პირდაპირი MP4/WebM/OGG/MOV ბმული. ეს ბმული საჯარო გვერდზე ვერ გამოჩნდება.</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

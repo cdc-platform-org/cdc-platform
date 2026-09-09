@@ -15,6 +15,7 @@ import { TUTOR_SUBSCRIPTION_PRICE_GEL } from './englishTutorSubscriptionService'
 export type CouponTargetType = Exclude<CouponApplicableType, 'ALL'>;
 
 export class PromoCodeError extends Error {
+  readonly status = 400;
   constructor(message: string) {
     super(message);
     this.name = 'PromoCodeError';
@@ -150,6 +151,11 @@ export async function claimPromoRedemption(promo: PromoCode, client: Prisma.Tran
   const claim = await client.promoCode.updateMany({
     where: {
       id: promo.id, isActive: true,
+      // If an admin changed the quoted discount, scope or cap, request a
+      // fresh quote instead of claiming an outdated offer.
+      discountPercent: promo.discountPercent, discountAmount: promo.discountAmount,
+      applicableType: promo.applicableType, applicableTargetIds: { equals: promo.applicableTargetIds },
+      maxUses: promo.maxUses,
       OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       ...(promo.maxUses != null ? { currentUses: { lt: promo.maxUses } } : {}),
     },

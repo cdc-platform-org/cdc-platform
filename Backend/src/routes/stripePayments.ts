@@ -85,7 +85,8 @@ async function findReusablePendingOrder(userId: string, purpose: StripePurpose, 
     where: { userId, purpose, referenceId, status: 'PENDING' },
     orderBy: { createdAt: 'desc' },
   });
-  if (existing && existing.checkoutUrl && Date.now() - existing.createdAt.getTime() < PENDING_ORDER_REUSE_WINDOW_MS) {
+  const learningOrder = purpose === 'COURSE' || purpose === 'LIVE_TRAINING';
+  if (existing && existing.checkoutUrl && (learningOrder || Date.now() - existing.createdAt.getTime() < PENDING_ORDER_REUSE_WINDOW_MS)) {
     if (expectedAmountGel !== undefined && existing.amountGel !== expectedAmountGel) return null;
     if (expectedCurrency !== undefined && (existing.currency !== expectedCurrency || existing.amount !== convertGelToStripeMinorUnits(expectedAmountGel!, expectedCurrency))) return null;
     if (expectedPromoId !== undefined && existing.promoCodeId !== expectedPromoId) return null;
@@ -172,7 +173,7 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
       return { freePayment, isNewEnrollment };
     });
     const { freePayment, isNewEnrollment } = freeResult;
-    if (isNewEnrollment) await notifyCourseEnrollment(req.user!.id, course);
+    if (isNewEnrollment) await notifyCourseEnrollment(req.user!.id, course).catch((err) => console.error('[stripe] enrollment notification failed:', err));
     return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
   }
 

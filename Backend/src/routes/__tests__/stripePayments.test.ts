@@ -9,7 +9,7 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-const fakeSession = { payment_intent: 'pi_test_fake' } as unknown as Stripe.Checkout.Session;
+const fakeSession = { payment_intent: 'pi_test_fake', payment_status: 'paid' } as unknown as Stripe.Checkout.Session;
 
 async function createDigitalProduct(params: { submittedById?: string; price?: number }) {
   const suffix = randomUUID();

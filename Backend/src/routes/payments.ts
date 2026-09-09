@@ -109,7 +109,8 @@ async function findReusablePendingOrder(
     where: { userId, purpose, referenceId, status: 'PENDING' },
     orderBy: { createdAt: 'desc' },
   });
-  if (existing && existing.redirectUrl && Date.now() - existing.createdAt.getTime() < PENDING_ORDER_REUSE_WINDOW_MS) {
+  const learningOrder = purpose === 'COURSE' || purpose === 'LIVE_TRAINING';
+  if (existing && existing.redirectUrl && (learningOrder || Date.now() - existing.createdAt.getTime() < PENDING_ORDER_REUSE_WINDOW_MS)) {
     // Never reuse a stale checkout after the payable price changed
     // (for example, when a course goes on sale from 700 GEL to 350 GEL).
     if (
@@ -240,7 +241,7 @@ router.post(
         return { freePayment, isNewEnrollment };
       });
       const { freePayment, isNewEnrollment } = freeResult;
-      if (isNewEnrollment) await notifyCourseEnrollment(req.user!.id, course);
+      if (isNewEnrollment) await notifyCourseEnrollment(req.user!.id, course).catch((err) => console.error('[payments] enrollment notification failed:', err));
       return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
     }
 

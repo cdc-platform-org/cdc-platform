@@ -24,11 +24,12 @@ const copy = {
   },
 };
 
-export default function LearningRatingsSection({ target, targetId, lang, onChange }: {
+export default function LearningRatingsSection({ target, targetId, lang, onChange, enrollmentVersion }: {
   target: RatingTarget;
   targetId: string;
   lang: 'ka' | 'en';
   onChange?: (summary: LearningRatings) => void;
+  enrollmentVersion?: boolean;
 }) {
   const t = copy[lang];
   const { isAuthenticated, user } = useAuth();
@@ -57,7 +58,7 @@ export default function LearningRatingsSection({ target, targetId, lang, onChang
     }
   }, [target, targetId]);
 
-  useEffect(() => { setSummary(null); setSaved(false); setError(null); void load(); }, [load, user?.id]);
+  useEffect(() => { setSummary(null); setSaved(false); setError(null); void load(); }, [load, user?.id, enrollmentVersion]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();

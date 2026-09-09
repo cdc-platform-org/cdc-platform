@@ -8,6 +8,7 @@ import { sendRegistrationStatusWhatsApp, formatWhatsAppDate } from '../services/
 import { resolveNotificationLocale } from '../utils/notificationLocale';
 import { withCurrentLiveTrainingPrice, LiveTrainingPricingInput } from '../services/liveTrainingPricing';
 import { withTrainingRatings } from '../services/learningRatingService';
+import { lockLearningTarget, countPendingLearningSeats, reserveLearningCheckout } from '../services/learningCheckoutService';
 
 const router = Router();
 
@@ -186,7 +187,7 @@ router.post('/:id/register', registerRateLimit, async (req: Request, res: Respon
     const lead = await tx.liveTrainingLead.create({ data: { liveTrainingId: training.id, ...leadData } });
     return { training, lead, duplicate: false } as const;
   });
-  if ('error' in registration) return res.status(registration.status).json({ message: registration.error });
+  if (registration.status !== undefined) return res.status(registration.status).json({ message: registration.error });
   const { training, lead } = registration;
   if (registration.duplicate) return res.status(200).json({ data: { id: lead.id } });
 
@@ -248,22 +249,15 @@ router.post('/:id/enroll', authenticate, async (req: Request, res: Response) => 
     return res.status(400).json({ message: 'This training requires payment. Please use the registration & payment option.' });
   }
 
-  const existing = await prisma.liveTrainingEnrollment.findUnique({
+  // The shared lock protects free seats against concurrent lead capture,
+  // paid checkout and reactivation of an earlier cancelled enrollment.
+  const enrollment = await reserveLearningCheckout({
+    userId: req.user!.id, purpose: 'LIVE_TRAINING', referenceId: training.id, amount: 0,
+  }, (tx) => tx.liveTrainingEnrollment.upsert({
     where: { userId_liveTrainingId: { userId: req.user!.id, liveTrainingId: training.id } },
-  });
-  if (existing?.status === 'ACTIVE') {
-    return res.status(400).json({ message: 'You are already enrolled in this training.' });
-  }
-  if (!existing && training._count.leads + training._count.enrollments >= training.maxCapacity) {
-    return res.status(409).json({ message: 'This training is fully booked.' });
-  }
-
-  // Re-enrolling after a prior cancellation flips the same row back to
-  // ACTIVE (the unique constraint on [userId, liveTrainingId] means a
-  // second row can never exist) rather than creating a new one.
-  const enrollment = existing
-    ? await prisma.liveTrainingEnrollment.update({ where: { id: existing.id }, data: { status: 'ACTIVE', enrolledAt: new Date() } })
-    : await prisma.liveTrainingEnrollment.create({ data: { userId: req.user!.id, liveTrainingId: training.id } });
+    create: { userId: req.user!.id, liveTrainingId: training.id },
+    update: { status: 'ACTIVE', enrolledAt: new Date(), completedAt: null },
+  }));
 
   // Self-serve enroll has no lead-form field to carry a locale (unlike
   // /register), so the frontend sends it as a small request body instead

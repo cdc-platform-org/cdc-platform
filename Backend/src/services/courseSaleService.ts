@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { getCommissionRate } from './platformFeeScheduleService';
+import { lockLearningTarget } from './learningCheckoutService';
 
 // ============================================================
 // Mentor course-sale payout — mirrors productSaleService.ts's
@@ -45,6 +46,7 @@ export async function completeCoursePurchase(params: {
   amount: number;
 }, transaction?: Prisma.TransactionClient): Promise<CourseSaleResult> {
   const fulfill = async (tx: Prisma.TransactionClient) => {
+    await lockLearningTarget(tx, 'COURSE', params.courseId);
     const course = await tx.course.findUnique({
       where: { id: params.courseId },
       select: { id: true, title: true, instructorId: true },

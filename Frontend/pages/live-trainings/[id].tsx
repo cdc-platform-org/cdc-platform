@@ -5,7 +5,7 @@ import { Calendar, Users, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import BackButton from '../../src/components/common/BackButton';
-import VideoEmbed from '../../src/components/shared/VideoEmbed';
+import VideoEmbed, { parseVideoUrl } from '../../src/components/shared/VideoEmbed';
 import SEOHead from '../../src/components/seo/SEOHead';
 import SocialShareButtons from '../../src/components/shared/SocialShareButtons';
 import { LiveTraining } from '../../src/types/liveTraining';
@@ -23,7 +23,7 @@ import LearningRatingSummary from '../../src/components/shared/LearningRatingSum
 const EN_STRINGS = {
   loading: 'Loading…',
   notFound: 'This live training could not be found.',
-  seatsRemaining: (n: number, total: number) => `${n} seats left of ${total} registered`,
+  seatsRemaining: (n: number, total: number) => `${n} seats left of ${total}`,
   registeredOf: (n: number, total: number) => `${n} / ${total} registered`,
   full: 'Fully Booked',
   minMet: 'Minimum group reached — this session is confirmed to run',
@@ -39,7 +39,7 @@ const EN_STRINGS = {
   signInToEnroll: 'Sign in or create an account to register for this training.',
   genericError: 'Registration failed. Please try again.',
   free: 'Free',
-  enroll: 'Enroll — I have an account',
+  enroll: 'Enroll for free',
   enrolling: 'Enrolling…',
   enrollSuccess: 'You\'re enrolled! Find the join link and recording on your dashboard closer to the session.',
   goToDashboard: 'Go to My Live Trainings',
@@ -50,6 +50,7 @@ const EN_STRINGS = {
   refundGuarantee: '🛡️ 100% refund guarantee if the group doesn\'t fill or the training is cancelled',
   refundGuaranteeDetail: 'If the minimum group size isn\'t reached or the training is cancelled for any reason, you\'ll receive a 100% refund.',
   trainerVideoHeading: 'Meet the trainer',
+  promoCode: 'Promo code', promoApplied: 'Promo applied', apply: 'Apply', removePromo: 'Remove promo code', invalidPromo: 'Invalid promo code.',
 };
 
 // Real short translations for the refund-guarantee badge specifically
@@ -101,7 +102,7 @@ const dict = {
     signInToEnroll: 'ტრენინგზე რეგისტრაციისთვის შედით ან შექმენით ანგარიში.',
     genericError: 'რეგისტრაცია ვერ მოხერხდა. სცადეთ თავიდან.',
     free: 'უფასო',
-    enroll: 'ჩარიცხვა — მაქვს ანგარიში',
+    enroll: 'უფასო ჩარიცხვა',
     enrolling: 'ჩარიცხვა მიმდინარეობს…',
     enrollSuccess: 'თქვენ ჩარიცხული ხართ! მიერთების ბმული და ჩანაწერი სესიასთან ახლოს დაშბორდზე გამოჩნდება.',
     goToDashboard: 'ჩემი ლაივ ტრენინგები',
@@ -112,6 +113,7 @@ const dict = {
     refundGuarantee: '🛡️ 100% თანხის დაბრუნების გარანტია ჯგუფის შეუვსებლობის ან ჩაშლის შემთხვევაში',
     refundGuaranteeDetail: 'თუ ლაივ ტრენინგზე არ შეგროვდა მინიმალური ჯგუფი ან ტრენინგი ჩაიშალა რაიმე მიზეზით, გადახდილი თანხა მომხმარებელს დაუბრუნდება 100%-ით.',
     trainerVideoHeading: 'გაიცანი ტრენერი',
+    promoCode: 'პრომო კოდი', promoApplied: 'პრომო კოდი გააქტიურდა', apply: 'გამოყენება', removePromo: 'პრომო კოდის გაუქმება', invalidPromo: 'პრომო კოდი არასწორია.',
   },
   en: EN_STRINGS,
   de: { ...EN_STRINGS, ...DE_REFUND_GUARANTEE },
@@ -161,6 +163,15 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
     load();
   }, [load]);
 
+  useEffect(() => {
+    setAppliedPromo(null);
+    setPromoInput('');
+    setPromoError(null);
+    setSuccess(false);
+    setError(null);
+    setEnrollError(null);
+  }, [id]);
+
   const handleApplyPromo = async () => {
     if (!id || !promoInput.trim()) return;
     setPromoError(null);
@@ -169,7 +180,7 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
       const result = await validatePromoCode(promoInput.trim(), 'LIVE_TRAINING', id);
       setAppliedPromo(result);
     } catch (err: any) {
-      setPromoError(err?.response?.data?.message ?? (lang === 'ka' ? 'პრომო კოდი არასწორია.' : 'Invalid promo code.'));
+      setPromoError(err?.response?.data?.message ?? t.invalidPromo);
     } finally {
       setApplyingPromo(false);
     }
@@ -300,7 +311,7 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
         <div className="mb-4">
           <SocialShareButtons title={title} lang={lang} variant="dark" />
         </div>
-        {training.videoUrl && (
+        {training.videoUrl && parseVideoUrl(training.videoUrl) && (
           <div className="w-full mb-8">
             <VideoEmbed url={training.videoUrl} title={title} />
           </div>
@@ -330,7 +341,7 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
           )}
         </div>
 
-        {training.trainerVideoUrl && (
+        {training.trainerVideoUrl && parseVideoUrl(training.trainerVideoUrl) && (
           <div className="mb-6">
             <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-3">{t.trainerVideoHeading}</h2>
             <VideoEmbed url={training.trainerVideoUrl} title={`${t.trainerVideoHeading} — ${title}`} />
@@ -393,40 +404,43 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
           <>
               <div className="mb-4">
                 {enrollError && (
-                  <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-xs text-red-300 mb-3">{enrollError}</div>
+                  <div role="alert" className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-xs text-red-300 mb-3">{enrollError}</div>
                 )}
                 {isAuthenticated && requiresCheckout && currentPrice > 0 && !training.saleActive && (
                   <div className="mb-3">
                     {appliedPromo ? (
-                      <p className="text-xs font-bold text-emerald-400">
-                        ✓ {lang === 'ka' ? 'პრომო კოდი გააქტიურდა' : 'Promo applied'}: {appliedPromo.code}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-3 text-xs">
+                        <p role="status" className="font-bold text-emerald-400">✓ {t.promoApplied}: {appliedPromo.code}</p>
+                        <button type="button" disabled={enrolling} className="underline text-slate-300 disabled:opacity-60" onClick={() => { setAppliedPromo(null); setPromoInput(''); setPromoError(null); }}>{t.removePromo}</button>
+                      </div>
                     ) : (
                       <div className="flex gap-2">
                         <input
                           value={promoInput}
-                          aria-label={lang === 'ka' ? 'პრომო კოდი' : 'Promo code'}
+                          aria-label={t.promoCode}
+                          disabled={applyingPromo || enrolling}
+                          maxLength={50}
                           onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
-                          placeholder={lang === 'ka' ? 'პრომო კოდი' : 'Promo code'}
+                          placeholder={t.promoCode}
                           className="flex-1 min-w-0 rounded-lg border border-slate-700 bg-transparent px-3 py-2 text-xs text-slate-100"
                         />
                         <button
                           type="button"
                           onClick={handleApplyPromo}
-                          disabled={applyingPromo || !promoInput.trim()}
+                          disabled={applyingPromo || enrolling || !promoInput.trim()}
                           className="shrink-0 text-xs font-bold px-3.5 py-2 rounded-lg border border-slate-700 text-slate-200 hover:bg-slate-800 disabled:opacity-60"
                         >
-                          {applyingPromo ? '…' : lang === 'ka' ? 'გამოყენება' : 'Apply'}
+                          {applyingPromo ? '…' : t.apply}
                         </button>
                       </div>
                     )}
-                    {promoError && <p className="text-xs text-red-400 mt-1">{promoError}</p>}
+                    {promoError && <p role="alert" className="text-xs text-red-400 mt-1">{promoError}</p>}
                   </div>
                 )}
                 <button
                   type="button"
                   onClick={handleEnroll}
-                  disabled={enrolling || training.isFull}
+                  disabled={enrolling || applyingPromo || training.isFull}
                   className="w-full rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-3 text-sm font-bold text-white hover:opacity-90 disabled:opacity-60"
                 >
                   {enrolling
@@ -523,7 +537,7 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
           </>
         )}
         <div className="dark">
-          <LearningRatingsSection target="live-trainings" targetId={training.id} lang={contentLang} onChange={(summary) => setTraining((current) => current ? { ...current, averageRating: summary.averageRating, reviewCount: summary.reviewCount } : current)} />
+          <LearningRatingsSection target="live-trainings" targetId={training.id} lang={contentLang} enrollmentVersion={training.isEnrolled} onChange={(summary) => setTraining((current) => current ? { ...current, averageRating: summary.averageRating, reviewCount: summary.reviewCount } : current)} />
         </div>
       </div>
     </div>

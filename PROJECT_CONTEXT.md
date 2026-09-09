@@ -74,6 +74,18 @@ Structural parity is not the same as translation completeness: `ka` and `en` are
 
 ## Change Log Reference
 
+### Live training checkout, video and learner ratings
+
+The public live-training callback form collects first name, last name and a normalized phone number. Email remains optional for older clients. A saved callback request is a lead, not a paid enrollment; the page confirms that no payment was taken. Phone retries reuse the existing lead. The existing capacity policy counts leads and non-cancelled enrollments, with pending gateway orders reserving capacity while payable.
+
+Paid course and live-training checkout share `learningCheckoutService.ts`: target row locks serialize seat claims across BOG, Stripe, free enrollment and callback registration. Promo usage is claimed atomically with the local payment/enrollment record. A matching pending checkout is reused; a different payable checkout must reach a terminal gateway state before another is created. `learningPaymentFulfillment.ts` commits payment completion, enrollment and course instructor credit together, so failed fulfillment remains retryable and repeated callbacks do not duplicate enrollment or payouts. Gateway reconciliation uses the same completion functions.
+
+The live-training page derives enrollment success from the API, supports promo removal, places the main video above the description and labels the trainer introduction separately. Admins can preview supported videos and clear previously saved video/trainer fields. `VideoEmbed.tsx` supports YouTube, Vimeo (including unlisted hashes) and direct video files.
+
+Course and live-training learner ratings use separate tables from editorial course review history and store product reviews. Only enrolled participants with active accounts can submit ratings for published learning content; cancelled live-training enrollments are ineligible. Each learner has one editable 1–5-star review per item. Public summaries aggregate all reviews while the displayed list is capped at 50; the caller's own review remains editable when older than that list. Catalog summaries use grouped queries. The additive migration also makes legacy live-training lead email nullable.
+
+Regression coverage lives in the backend learning ratings, live-training leads and learning checkout tests, plus frontend learning-flow Playwright tests. Run tests against disposable PostgreSQL databases and mock payment gateways; production smoke tests must not submit a payment.
+
 | Capability | Key files |
 |---|---|
 | Preview watermarking | `Backend/src/services/productImageProtection.ts` |

@@ -49,7 +49,7 @@ export async function completeLiveTrainingPurchase(params: { userId: string; liv
   if (isNewEnrollment) await tx.liveTrainingEnrollment.upsert({
     where: { userId_liveTrainingId: { userId: params.userId, liveTrainingId: params.liveTrainingId } },
     create: { userId: params.userId, liveTrainingId: params.liveTrainingId },
-    update: { status: 'ACTIVE', enrolledAt: new Date() },
+    update: { status: 'ACTIVE', enrolledAt: new Date(), completedAt: null },
   });
   return { isNewEnrollment, liveTraining };
   };

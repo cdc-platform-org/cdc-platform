@@ -67,6 +67,9 @@ export async function reserveLearningCheckout<T>(params: {
         include: { _count: { select: { leads: true, enrollments: { where: { status: { not: 'CANCELLED' } } } } } },
       });
       if (!training?.published) throw new LearningCheckoutError(404, 'Live training not found.');
+      if (!params.gateway && training.price && training.price > 0) {
+        throw new LearningCheckoutError(400, 'This training requires payment. Please use the registration & payment option.');
+      }
       const enrollment = await tx.liveTrainingEnrollment.findUnique({
         where: { userId_liveTrainingId: { userId: params.userId, liveTrainingId: params.referenceId } },
       });
@@ -83,15 +86,15 @@ export async function reserveLearningCheckout<T>(params: {
       capacity = course.maxCapacity;
     }
 
-    const where = { userId: params.userId, purpose: params.purpose, referenceId: params.referenceId, status: 'PENDING' as const, createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) } };
-    const bog = await tx.bogPayment.findFirst({ where, orderBy: { createdAt: 'desc' } });
-    const stripe = await tx.stripePayment.findFirst({ where, orderBy: { createdAt: 'desc' } });
-    const samePromo = (promoId: string | null) => promoId === (params.promo?.id ?? null);
-    // A parallel request may arrive before the first redirect was saved.
-    // Reject it instead of creating another payable order or spending a promo twice.
-    if ((bog && (params.gateway !== 'BOG' || (bog.amount === params.amount && samePromo(bog.promoCodeId)))) ||
-        (stripe && (params.gateway !== 'STRIPE' || (stripe.amountGel === params.amount && samePromo(stripe.promoCodeId))))) {
-      throw new LearningCheckoutError(409, 'A checkout is already in progress. Please retry in a moment.');
+    const where = { userId: params.userId, purpose: params.purpose, referenceId: params.referenceId, status: 'PENDING' as const };
+    const cutoff = new Date(Date.now() - 15 * 60 * 1000);
+    const bog = await tx.bogPayment.findFirst({ where: { ...where, OR: [{ bogOrderId: { not: { startsWith: 'pending-' } } }, { createdAt: { gte: cutoff } }] } });
+    const stripe = await tx.stripePayment.findFirst({ where: { ...where, OR: [{ stripeSessionId: { not: { startsWith: 'pending-' } } }, { createdAt: { gte: cutoff } }] } });
+    // A pending gateway order remains payable even when the price, promo,
+    // currency or selected gateway changes. Never issue a second payable
+    // order until reconciliation confirms that the first one is terminal.
+    if (bog || stripe) {
+      throw new LearningCheckoutError(409, 'A checkout is already in progress. Please complete the existing checkout or wait for it to expire.');
     }
     if (capacity != null && used + await countPendingLearningSeats(tx, params.purpose, params.referenceId, params.userId) >= capacity) {
       throw new LearningCheckoutError(409, params.purpose === 'COURSE' ? 'This course is full.' : 'This training is fully booked.');

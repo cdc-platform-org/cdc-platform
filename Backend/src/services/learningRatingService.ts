@@ -13,7 +13,7 @@ export class LearningRatingError extends Error {
 
 async function assertTargetExists(target: LearningRatingTarget, id: string) {
   const exists = target === 'course'
-    ? await prisma.course.findUnique({ where: { id }, select: { id: true } })
+    ? await prisma.course.findFirst({ where: { id, status: 'PUBLISHED' }, select: { id: true } })
     : await prisma.liveTraining.findFirst({ where: { id, published: true }, select: { id: true } });
   if (!exists) throw new LearningRatingError(404, 'Course or live training not found.');
 }
@@ -21,12 +21,12 @@ async function assertTargetExists(target: LearningRatingTarget, id: string) {
 async function isEligible(target: LearningRatingTarget, id: string, userId?: string): Promise<boolean> {
   if (!userId) return false;
   if (target === 'course') {
-    return !!await prisma.courseEnrollment.findUnique({
-      where: { userId_courseId: { userId, courseId: id } }, select: { id: true },
+    return !!await prisma.courseEnrollment.findFirst({
+      where: { userId, courseId: id, user: { isBanned: false, deletionRequestedAt: null } }, select: { id: true },
     });
   }
-  const enrollment = await prisma.liveTrainingEnrollment.findUnique({
-    where: { userId_liveTrainingId: { userId, liveTrainingId: id } }, select: { status: true },
+  const enrollment = await prisma.liveTrainingEnrollment.findFirst({
+    where: { userId, liveTrainingId: id, user: { isBanned: false, deletionRequestedAt: null } }, select: { status: true },
   });
   return enrollment?.status === 'ACTIVE' || enrollment?.status === 'COMPLETED';
 }
@@ -38,7 +38,7 @@ export async function getLearningRatings(target: LearningRatingTarget, id: strin
   if (target === 'course') {
     const [aggregate, reviews, myReview, canReview] = await Promise.all([
       prisma.courseRating.aggregate({ where: { courseId: id }, _avg: { rating: true }, _count: { rating: true } }),
-      prisma.courseRating.findMany({ where: { courseId: id }, include: reviewInclude, orderBy: { createdAt: 'desc' }, take: 50 }),
+      prisma.courseRating.findMany({ where: { courseId: id }, include: reviewInclude, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 50 }),
       userId ? prisma.courseRating.findUnique({ where: { userId_courseId: { userId, courseId: id } }, include: reviewInclude }) : null,
       isEligible(target, id, userId),
     ]);
@@ -46,7 +46,7 @@ export async function getLearningRatings(target: LearningRatingTarget, id: strin
   }
   const [aggregate, reviews, myReview, canReview] = await Promise.all([
     prisma.liveTrainingRating.aggregate({ where: { liveTrainingId: id }, _avg: { rating: true }, _count: { rating: true } }),
-    prisma.liveTrainingRating.findMany({ where: { liveTrainingId: id }, include: reviewInclude, orderBy: { createdAt: 'desc' }, take: 50 }),
+    prisma.liveTrainingRating.findMany({ where: { liveTrainingId: id }, include: reviewInclude, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 50 }),
     userId ? prisma.liveTrainingRating.findUnique({ where: { userId_liveTrainingId: { userId, liveTrainingId: id } }, include: reviewInclude }) : null,
     isEligible(target, id, userId),
   ]);

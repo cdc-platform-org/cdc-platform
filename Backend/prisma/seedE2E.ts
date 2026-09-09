@@ -22,6 +22,7 @@ const QA_TEST_PASSWORD = process.env.QA_TEST_PASSWORD || 'QaE2ePass123!';
 // querying the DB — this script is the single source of truth for both.
 const FREE_PRODUCT_ID = '00000000-0000-4000-8000-00000000f00d';
 const COURSE_ID = '00000000-0000-4000-8000-0000000c0575';
+const LIVE_TRAINING_ID = '00000000-0000-4000-8000-000000007a10';
 const NOTIFICATION_MARKER = '[QA_E2E_SEED]';
 
 async function main() {
@@ -97,6 +98,32 @@ async function main() {
     create: { userId: testUser.id, courseId: course.id },
   });
 
+  const training = await prisma.liveTraining.upsert({
+    where: { id: LIVE_TRAINING_ID },
+    update: { published: true, price: 10000, isOnSale: false, maxCapacity: 100 },
+    create: {
+      id: LIVE_TRAINING_ID,
+      title: 'QA E2E Live Training',
+      titleEn: 'QA E2E Live Training',
+      description: 'Seeded training for rating and media tests. Payment endpoints are intercepted by Playwright.',
+      category: 'QA Fixtures',
+      scheduledAt: new Date('2030-01-15T14:00:00Z'),
+      price: 10000,
+      priceType: 'TOTAL',
+      minCapacity: 1,
+      maxCapacity: 100,
+      published: true,
+      language: 'BOTH',
+      videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      trainerVideoUrl: 'https://vimeo.com/76979871',
+    },
+  });
+  await prisma.liveTrainingEnrollment.upsert({
+    where: { userId_liveTrainingId: { userId: testUser.id, liveTrainingId: training.id } },
+    update: { status: 'ACTIVE' },
+    create: { userId: testUser.id, liveTrainingId: training.id },
+  });
+
   // Notifications have no natural unique key to upsert on — delete any
   // prior seed run's notification for this user before creating a fresh
   // one, so re-seeding stays idempotent (exactly one QA notification, not
@@ -115,6 +142,7 @@ async function main() {
     testUser: testUser.email,
     freeProductId: FREE_PRODUCT_ID,
     courseId: COURSE_ID,
+    liveTrainingId: LIVE_TRAINING_ID,
   });
 }
 
