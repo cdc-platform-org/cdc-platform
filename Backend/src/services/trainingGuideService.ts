@@ -27,7 +27,7 @@ export function scheduledGuideDate(day: ScheduleDay, settings: Settings): string
   date.setUTCDate(date.getUTCDate() + day.dayNumber - 1);
   return date.toISOString().slice(0, 10);
 }
-export function resolveGuideSchedule(days: ScheduleDay[], settings: Settings, now = new Date()) {
+export function resolveGuideSchedule<T extends ScheduleDay>(days: T[], settings: Settings, now = new Date()) {
   const today = localCalendarDate(now, settings.timeZone);
   const manual = settings.currentDayOverride ?? (settings.paused ? settings.pausedDayNumber : null);
   // A paused schedule stays on the day snapshotted by the settings mutation.
@@ -123,7 +123,7 @@ export async function importVibeCodingGuides(trainingId: string) {
     await tx.$queryRaw`SELECT id FROM live_trainings WHERE id = ${trainingId} FOR UPDATE`;
     if (await tx.trainingDay.count({ where: { liveTrainingId: trainingId } })) throw new TrainingGuideError(409, 'Guides already exist. Import into an empty training to preserve edits and learner progress.');
     for (const day of vibeCodingDailyGuides) {
-      await tx.trainingDay.create({ data: { ...day, liveTrainingId: trainingId, published: true, sections: day.sections as Prisma.InputJsonValue } });
+      await tx.trainingDay.create({ data: { ...day, liveTrainingId: trainingId, published: true, sections: day.sections as unknown as Prisma.InputJsonValue } });
       await tx.trainingGuideSource.create({ data: {
         liveTrainingId: trainingId, dayNumber: day.dayNumber,
         title: `Vibe Coding Camp syllabus — day ${day.dayNumber}, pages ${day.sourcePages.join(', ')}`,

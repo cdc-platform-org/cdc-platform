@@ -14,6 +14,12 @@ for (const target of targets) {
   test(`${target.name} review persists and editing keeps one review per learner`, async ({ page }) => {
     await page.route(/\/api\/payments\/(?:stripe\/)?checkout\//, (route) => route.abort());
     await page.route(/https:\/\/(?:www\.youtube-nocookie\.com|player\.vimeo\.com)\//, (route) => route.abort());
+    // Pre-accept the cookie consent banner (CookieConsentBanner.tsx) so its
+    // fixed bottom-left card never renders — otherwise it can overlap and
+    // intercept clicks on the Save review button once the page is scrolled.
+    await page.addInitScript(() => {
+      localStorage.setItem('cdc-cookie-consent', JSON.stringify({ essential: true, analytics: true, marketing: true, decidedAt: new Date().toISOString() }));
+    });
     await page.goto(`/en${target.path}`);
     const reviews = page.getByRole('region', { name: 'Ratings and reviews' });
     await expect(reviews.getByRole('button', { name: 'Save review', exact: true })).toBeVisible();

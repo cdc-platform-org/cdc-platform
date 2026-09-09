@@ -23,11 +23,15 @@ test.describe('Store Purchases', () => {
     const claimButton = page.getByRole('button', { name: /get for free|უფასოდ მიღება/i });
     const downloadButton = page.getByRole('button', { name: /download|ჩამოტვირთვა/i });
 
-    // Idempotent across reruns against a non-reset DB: claim only if not
-    // already owned from a previous run. Wait for the page to settle into
-    // one of the two states first — `.isVisible()` alone is a non-waiting
-    // snapshot check, and calling it immediately after goto() races the
-    // client hydrating `purchased` from the API response.
+    // pages/store/[id].tsx's getServerSideProps can't see the client's
+    // Bearer token, so SSR always renders the anonymous "claim" button first
+    // — a client-side re-fetch then flips `product.purchased` and swaps in
+    // "download" once ownership is known. Idempotent reruns against a
+    // non-reset DB hit this every time (the product is already owned), so
+    // wait for that re-fetch to settle before branching — otherwise
+    // `claimButton.isVisible()` can catch the pre-swap state and click a
+    // button that's replaced a moment later.
+    await page.waitForLoadState('networkidle');
     await expect(claimButton.or(downloadButton)).toBeVisible({ timeout: 10000 });
     if (await claimButton.isVisible()) {
       await claimButton.click();
