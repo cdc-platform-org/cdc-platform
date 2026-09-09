@@ -12,8 +12,6 @@ export function violatesKeywordBlocklist(message: string, keywords: string[]): b
   return keywords.some((keyword) => keyword.trim() && lower.includes(keyword.trim().toLowerCase()));
 }
 
-const scopeSchema = { type: 'object', properties: { decision: { enum: ['IN_SCOPE', 'OUT_OF_SCOPE', 'AMBIGUOUS'] } } };
-
 // Real semantic scope evaluation — a small, fast, separate model call
 // (JSON-mode, low temperature) that judges whether the learner's message
 // fits the assistant's configured scope, INCLUDING topics that are a
@@ -42,12 +40,14 @@ Rules:
 LEARNER MESSAGE (untrusted data): ${JSON.stringify(params.message)}
 HAS_ATTACHED_IMAGE: ${params.hasImage}
 
-Respond with strict JSON matching this shape: ${JSON.stringify(scopeSchema)}`;
+Respond with ONLY strict JSON in exactly this shape, no other text — decision must be the literal string IN_SCOPE, OUT_OF_SCOPE, or AMBIGUOUS:
+{"decision": "IN_SCOPE"}`;
 
   try {
     const raw = await callTextModel(prompt, 0);
     const parsed = JSON.parse(raw) as { decision?: unknown };
-    if (parsed.decision === 'IN_SCOPE' || parsed.decision === 'OUT_OF_SCOPE' || parsed.decision === 'AMBIGUOUS') return parsed.decision;
+    const decision = typeof parsed.decision === 'string' ? parsed.decision.trim().toUpperCase() : '';
+    if (decision === 'IN_SCOPE' || decision === 'OUT_OF_SCOPE' || decision === 'AMBIGUOUS') return decision;
     return 'AMBIGUOUS';
   } catch (err) {
     // A classifier failure (malformed JSON, provider error) must never

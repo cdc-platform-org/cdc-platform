@@ -345,7 +345,7 @@ describe('IAKO usage limits', () => {
     }
     const fourth = await chatRequest('/iako/digital-tool/educator-hub/chat', learner, 'Question 4');
     expect(fourth.status).toBe(429);
-    expect((await fourth.json()).message).toMatch(/limit/i);
+    expect((await fourth.json() as { message: string }).message).toMatch(/limit/i);
   });
 
   it('enforces the daily limit independently of the total limit', async () => {
