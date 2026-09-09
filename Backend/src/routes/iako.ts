@@ -43,7 +43,7 @@ async function chatHandler(resourceType: 'LIVE_TRAINING' | 'DIGITAL_TOOL', resou
   try {
     const data = await askIakoAssistant({
       resourceType, resourceId, userId: req.user!.id, userEmail: req.user!.email,
-      message: result.data.message, idempotencyKey: result.data.idempotencyKey, images,
+      message: result.data.message, idempotencyKey: result.data.idempotencyKey, images, topicContext: result.data.topicContext,
     });
     res.json({ data });
   } catch (err) {

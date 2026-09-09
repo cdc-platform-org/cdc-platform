@@ -33,6 +33,13 @@ export const iakoChatSchema = z.object({
   // iakoUsageGrantService.ts's own comment on how this makes a network
   // retry a safe no-op instead of a second charge.
   idempotencyKey: z.string().uuid(),
+  // Set when the learner arrived via a Daily Guide's "Ask IAKO about this
+  // topic" action — the specific day/section they clicked, injected into
+  // the server-side prompt for this one message (see
+  // iakoAssistantService.ts's askIakoAssistant) so IAKO answers with that
+  // exact topic in view, not just whatever the pre-filled question text
+  // happens to say.
+  topicContext: z.string().trim().max(1000).optional(),
 });
 
 export const iakoUsageGrantPatchSchema = z.object({

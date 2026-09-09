@@ -98,10 +98,11 @@ export async function getIakoConversation(resource: IakoResource): Promise<{
 }> {
   return (await apiClient.get(`${resourcePath(resource)}/conversation`)).data.data;
 }
-export async function askIako(resource: IakoResource, message: string, idempotencyKey: string, images?: File[]): Promise<{ reply: string; conversationId: string; outOfScope: boolean; usage: IakoUsage }> {
+export async function askIako(resource: IakoResource, message: string, idempotencyKey: string, images?: File[], topicContext?: string): Promise<{ reply: string; conversationId: string; outOfScope: boolean; usage: IakoUsage }> {
   const form = new FormData();
   form.append('message', message);
   form.append('idempotencyKey', idempotencyKey);
+  if (topicContext) form.append('topicContext', topicContext);
   (images ?? []).forEach((image) => form.append('images', image));
   return (await apiClient.post(`${resourcePath(resource)}/chat`, form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 90000 })).data.data;
 }

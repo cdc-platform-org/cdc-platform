@@ -56,10 +56,15 @@ export default function IakoMentorPage({ resource, backHref, backLabel, guideHre
   const [question, setQuestion] = useState('');
   const [images, setImages] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const idempotencyKey = useRef(crypto.randomUUID());
   const questionRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Set once from ?topic=... (a Daily Guide's "Ask IAKO about this topic"
+  // action) and sent as server-side context with the NEXT message only —
+  // cleared from both state and the URL after that send so it doesn't
+  // silently keep attaching to unrelated follow-up questions.
+  const topicContext = useRef<string | undefined>(undefined);
 
   const load = useCallback(async () => {
     setLoading(true); setFailed(false);
@@ -71,6 +76,17 @@ export default function IakoMentorPage({ resource, backHref, backLabel, guideHre
     // eslint-disable-next-line react-hooks/exhaustive-deps -- resource is a stable object literal supplied by the page, not expected to change identity.
   }, []);
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    const topic = router.query.topic;
+    if (typeof topic !== 'string' || !topic) return;
+    topicContext.current = topic;
+    setQuestion((current) => current || (lang === 'ka' ? `ამიხსენი: ${topic}` : `Explain this topic: ${topic}`));
+    const { topic: _drop, ...rest } = router.query;
+    void router.replace({ pathname: router.pathname, query: rest }, undefined, { shallow: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when the query param itself changes, not on every router identity change.
+  }, [router.isReady, router.query.topic]);
 
   const maxImages = usage?.maxScreenshotsPerMessage ?? 3;
   const limitReached = usage?.requestLimit != null && usage.requestsUsed >= usage.requestLimit;
@@ -91,10 +107,11 @@ export default function IakoMentorPage({ resource, backHref, backLabel, guideHre
   const sendMessage = async () => {
     const message = question.trim();
     if (!message || sending || limitReached) return;
-    setSending(true); setError(false);
+    setSending(true); setError(null);
     const sentImages = images;
+    const sentTopicContext = topicContext.current;
     try {
-      const result = await askIako(resource, message, idempotencyKey.current, sentImages);
+      const result = await askIako(resource, message, idempotencyKey.current, sentImages, sentTopicContext);
       setMessages((current) => [...current,
         { id: `local-${Date.now()}-u`, role: 'USER', content: message, imageUrls: sentImages.map((file) => URL.createObjectURL(file)), createdAt: new Date().toISOString() },
         { id: `local-${Date.now()}-a`, role: 'ASSISTANT', content: result.reply, imageUrls: [], createdAt: new Date().toISOString() },
@@ -102,8 +119,14 @@ export default function IakoMentorPage({ resource, backHref, backLabel, guideHre
       setUsage(result.usage);
       setQuestion(''); setImages([]);
       idempotencyKey.current = crypto.randomUUID();
-    } catch {
-      setError(true); // Same idempotencyKey stays — Retry resends it unchanged, safe against double-charging.
+      topicContext.current = undefined;
+    } catch (err: any) {
+      // Same idempotencyKey stays — Retry resends it unchanged, safe
+      // against double-charging. Surfaces the real reason (limit reached,
+      // too many screenshots, vision disabled, etc.) instead of a generic
+      // message, matching the product requirement for clear validation
+      // errors rather than a one-size-fits-all failure.
+      setError(err?.response?.data?.message || t.genericError);
     } finally {
       setSending(false);
     }
@@ -160,7 +183,7 @@ export default function IakoMentorPage({ resource, backHref, backLabel, guideHre
             <p className="whitespace-pre-wrap break-words leading-6">{message.content}</p>
           </div>)}
         </div>
-        {error && <div role="alert" className="text-sm text-red-600 mb-3 flex items-center gap-2"><AlertCircle className="w-4 h-4" />{t.genericError} <button type="button" onClick={() => void sendMessage()} className="underline">{t.retry}</button></div>}
+        {error && <div role="alert" className="text-sm text-red-600 mb-3 flex items-center gap-2"><AlertCircle className="w-4 h-4 shrink-0" />{error} <button type="button" onClick={() => void sendMessage()} className="underline">{t.retry}</button></div>}
 
         <form onSubmit={(event: FormEvent) => { event.preventDefault(); void sendMessage(); }}>
           {images.length > 0 && <div className="flex flex-wrap gap-2 mb-3">

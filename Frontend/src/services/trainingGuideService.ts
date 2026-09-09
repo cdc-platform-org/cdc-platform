@@ -37,7 +37,6 @@ export interface AdminGuide {
   metrics: { dayId: string; dayNumber: number; completedParticipants: number; totalParticipants: number }[];
   sources: GuideSource[];
 }
-export interface GuideChatMessage { role: 'USER' | 'ASSISTANT'; content: string }
 
 const learnerPath = (id: string) => `/live-trainings/${encodeURIComponent(id)}/guide`;
 const adminPath = (id: string) => `/admin/live-trainings/${encodeURIComponent(id)}/guides`;
@@ -48,9 +47,13 @@ export async function getLearnerGuide(trainingId: string): Promise<LearnerGuide>
 export async function updateGuideProgress(trainingId: string, dayId: string, itemId: string, completed: boolean): Promise<void> {
   await apiClient.put(`${learnerPath(trainingId)}/days/${encodeURIComponent(dayId)}/progress`, { itemId, completed });
 }
-export async function askTrainingGuide(trainingId: string, input: { message: string; dayId?: string; sectionId?: string; history: GuideChatMessage[] }): Promise<{ reply: string; dayNumber: number | null }> {
-  return (await apiClient.post<{ data: { reply: string; dayNumber: number | null } }>(`${learnerPath(trainingId)}/chat`, input, { timeout: 90000 })).data.data;
-}
+// Note: the per-guide chat endpoint (POST .../guide/chat, trainingGuideService.answerTrainingGuide
+// on the backend) is intentionally left in place and still covered by
+// Backend/src/routes/__tests__/trainingGuides.test.ts — the Frontend's
+// Daily Guide page now routes "Ask IAKO" into the primary IAKO mentor
+// conversation instead (see IakoMentorPage's topicContext), so nothing
+// here calls it anymore, but the backend capability itself isn't being
+// removed.
 export async function getAdminGuide(trainingId: string): Promise<AdminGuide> {
   return (await apiClient.get<{ data: AdminGuide }>(adminPath(trainingId))).data.data;
 }

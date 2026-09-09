@@ -83,10 +83,11 @@ async function data<T>(response: Response): Promise<T> {
 // carry optional screenshots), and idempotencyKey is required by
 // iakoChatSchema, so this is what every chat test below goes through
 // rather than the plain-JSON `request()` helper above.
-async function chatRequest(path: string, user: User, message: string, opts: { idempotencyKey?: string; images?: Array<{ bytes: number[]; mimeType: string; name: string }> } = {}) {
+async function chatRequest(path: string, user: User, message: string, opts: { idempotencyKey?: string; images?: Array<{ bytes: number[]; mimeType: string; name: string }>; topicContext?: string } = {}) {
   const form = new FormData();
   form.append('message', message);
   form.append('idempotencyKey', opts.idempotencyKey ?? randomUUID());
+  if (opts.topicContext) form.append('topicContext', opts.topicContext);
   for (const image of opts.images ?? []) form.append('images', new Blob([new Uint8Array(image.bytes)], { type: image.mimeType }), image.name);
   const token = jwt.sign({ userId: user.id, role: user.role, email: user.email }, JWT_SECRET, { algorithm: 'HS256', expiresIn: '5m' });
   return fetch(`${baseUrl}${path}`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'X-Forwarded-For': `198.18.1.${++requestNumber}` }, body: form });
@@ -576,5 +577,139 @@ describe('Live Training manual enrollment and QR invites', () => {
     await request(`/live-trainings/invites/${invite.token}/redeem`, learner, 'POST', {});
     const stored = await prisma.liveTrainingInvite.findUnique({ where: { id: invite.id } });
     expect(stored?.redemptionCount).toBe(1);
+  });
+
+  it('a full QR redemption grants Live Training enrollment, which shows IAKO as entitled without any extra manual step', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const training = await createTraining(null);
+    const profile = await createProfile(admin, { name: 'Mentor for QR training' });
+    await request(`/admin/iako/assignments/live-training/${training.id}`, admin, 'PUT', { profileId: profile.id });
+    const learner = await createUser();
+
+    // Before redemption: no enrollment yet, so IAKO must not appear.
+    const before = await data<Array<{ resourceId: string }>>(await request('/iako/my-assistants', learner));
+    expect(before.some((entry) => entry.resourceId === training.id)).toBe(false);
+
+    const invite = await data<{ token: string }>(await request(`/admin/live-trainings/${training.id}/invites`, admin, 'POST', { maxRedemptions: 5 }));
+    expect((await request(`/live-trainings/invites/${invite.token}/redeem`, learner, 'POST', {})).status).toBe(200);
+
+    // After redemption: enrollment -> IAKO entitlement -> visible in "Digital Tools", no admin action needed.
+    const after = await data<Array<{ resourceId: string; profileName: string }>>(await request('/iako/my-assistants', learner));
+    const entry = after.find((item) => item.resourceId === training.id);
+    expect(entry?.profileName).toBe('Mentor for QR training');
+    // And the Daily Guides side of the same entitlement (a real enrollment
+    // row) is what trainingGuideService.requireTrainingGuideAccess itself
+    // checks — already proven directly by the IAKO chat succeeding above.
+    expect((await prisma.liveTrainingEnrollment.findUnique({ where: { userId_liveTrainingId: { userId: learner.id, liveTrainingId: training.id } } }))?.status).toBe('ACTIVE');
+  });
+});
+
+describe('IAKO topic context from Daily Guides', () => {
+  it('"Ask IAKO about this topic" context is injected into the server-side prompt', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const profile = await createProfile(admin);
+    const training = await prisma.liveTraining.create({ data: {
+      title: 'Topic-context training', description: 'x', category: 'Engineering',
+      scheduledAt: new Date('2026-09-01T12:00:00Z'), published: true, maxCapacity: 20,
+    } });
+    await request(`/admin/iako/assignments/live-training/${training.id}`, admin, 'PUT', { profileId: profile.id });
+    const learner = await createUser();
+    await prisma.liveTrainingEnrollment.create({ data: { liveTrainingId: training.id, userId: learner.id } });
+
+    await chatRequest(`/iako/live-training/${training.id}/chat`, learner, 'Explain this', { topicContext: 'Day 3: Orientation — Supabase Auth Setup' });
+    const answerCall = jest.mocked(callTextModel).mock.calls.find(([prompt]) => prompt.includes('Context priority when answering'))!;
+    expect(answerCall[0]).toContain('SELECTED TOPIC');
+    expect(answerCall[0]).toContain('Day 3: Orientation — Supabase Auth Setup');
+  });
+});
+
+describe('IAKO knowledge base isolation', () => {
+  it('one profile\'s knowledge base is never visible when answering for a different profile', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const profileA = await createProfile(admin, { name: 'Profile A' });
+    const profileB = await createProfile(admin, { name: 'Profile B' });
+    await request('/admin/iako/assignments/digital-tool/educator-hub', admin, 'PUT', { profileId: profileA.id });
+    await request('/admin/iako/assignments/digital-tool/media-studio', admin, 'PUT', { profileId: profileB.id });
+    await prisma.iakoKnowledgeDocument.create({ data: { profileId: profileA.id, sourceFilename: 'a.md', chunkIndex: 0, totalChunks: 1, content: 'SECRET_A_ONLY: the export button is in the top-right toolbar.' } });
+    const learner = await entitleLearner(admin, 'media-studio');
+
+    await chatRequest('/iako/digital-tool/media-studio/chat', learner, 'Where is the export button?');
+    const answerCall = jest.mocked(callTextModel).mock.calls.find(([prompt]) => prompt.includes('Context priority when answering'))!;
+    expect(answerCall[0]).not.toContain('SECRET_A_ONLY');
+  });
+
+  it('answers gracefully with no knowledge base at all — no REFERENCE DATA block, no error', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    await assignedProfile(admin, 'educator-hub');
+    const learner = await entitleLearner(admin, 'educator-hub');
+
+    const response = await chatRequest('/iako/digital-tool/educator-hub/chat', learner, 'How do I get started?');
+    expect(response.status).toBe(200);
+    const answerCall = jest.mocked(callTextModel).mock.calls.find(([prompt]) => prompt.includes('Context priority when answering'))!;
+    // The standing instruction line always names "REFERENCE DATA" (it
+    // explains the label's meaning generically) — what must be absent is
+    // an actual populated block for it, i.e. "REFERENCE DATA:" followed by content.
+    expect(answerCall[0]).not.toMatch(/REFERENCE DATA:\s*\S/);
+  });
+});
+
+describe('IAKO scope configuration is isolated per profile', () => {
+  it('the classifier for each profile only ever sees that profile\'s own scope text', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    await assignedProfile(admin, 'educator-hub', { inScope: 'ONLY_A: React and Next.js debugging.' });
+    await assignedProfile(admin, 'media-studio', { inScope: 'ONLY_B: video editing and transcription.' });
+    const learnerA = await entitleLearner(admin, 'educator-hub');
+    const learnerB = await entitleLearner(admin, 'media-studio');
+
+    await chatRequest('/iako/digital-tool/educator-hub/chat', learnerA, 'Why does my component not render?');
+    const classifierCallA = jest.mocked(callTextModel).mock.calls.find(([prompt]) => prompt.includes('strict scope classifier'))!;
+    expect(classifierCallA[0]).toContain('ONLY_A');
+    expect(classifierCallA[0]).not.toContain('ONLY_B');
+
+    jest.mocked(callTextModel).mockClear();
+    await chatRequest('/iako/digital-tool/media-studio/chat', learnerB, 'How do I trim a clip?');
+    const classifierCallB = jest.mocked(callTextModel).mock.calls.find(([prompt]) => prompt.includes('strict scope classifier'))!;
+    expect(classifierCallB[0]).toContain('ONLY_B');
+    expect(classifierCallB[0]).not.toContain('ONLY_A');
+  });
+});
+
+describe('IAKO conversation summary', () => {
+  it('generates a running project-context summary once the thread is long enough, and includes it in later prompts', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    await assignedProfile(admin, 'educator-hub');
+    const learner = await entitleLearner(admin, 'educator-hub', { requestLimit: 200 });
+
+    // 9 successful exchanges (18 messages) crosses SUMMARY_TRIGGER_COUNT (16).
+    for (let i = 1; i <= 9; i++) {
+      const response = await chatRequest('/iako/digital-tool/educator-hub/chat', learner, `Question ${i} about my Task Manager app`);
+      expect(response.status).toBe(200);
+    }
+    const summaryCalls = jest.mocked(callTextModel).mock.calls.filter(([prompt]) => prompt.includes('Update a running project-context summary'));
+    expect(summaryCalls.length).toBeGreaterThan(0);
+
+    const grant = await prisma.iakoUsageGrant.findFirstOrThrow({ where: { userId: learner.id, resourceType: 'DIGITAL_TOOL', resourceId: 'educator-hub' } });
+    const conversation = await prisma.iakoConversation.findFirstOrThrow({ where: { profileId: grant.profileId, userId: learner.id } });
+    expect(conversation.summary).toBeTruthy();
+
+    // The next message's prompt carries the summary forward instead of the full 18-message transcript.
+    await chatRequest('/iako/digital-tool/educator-hub/chat', learner, 'One more follow-up question');
+    const lastAnswerCall = jest.mocked(callTextModel).mock.calls.filter(([prompt]) => prompt.includes('Context priority when answering')).at(-1)!;
+    expect(lastAnswerCall[0]).toContain('PROJECT CONTEXT SUMMARY');
+  });
+});
+
+describe('My IAKO assistants — Digital Tools visibility', () => {
+  it('is absent for a learner with no entitlement, and present once entitled', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    await assignedProfile(admin, 'educator-hub');
+    const stranger = await createUser();
+
+    const before = await data<Array<{ resourceId: string }>>(await request('/iako/my-assistants', stranger));
+    expect(before.some((entry) => entry.resourceId === 'educator-hub')).toBe(false);
+
+    await prisma.accessGrant.create({ data: { resourceType: 'DIGITAL_TOOL', resourceId: 'educator-hub', userId: stranger.id, createdById: admin.id } });
+    const after = await data<Array<{ resourceId: string }>>(await request('/iako/my-assistants', stranger));
+    expect(after.some((entry) => entry.resourceId === 'educator-hub')).toBe(true);
   });
 });

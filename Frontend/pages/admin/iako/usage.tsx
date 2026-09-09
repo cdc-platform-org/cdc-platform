@@ -38,6 +38,7 @@ function GrantRow({ grant, busy, onChanged }: { grant: IakoUsageGrant; busy: boo
     <td className="py-3 pr-3">{grant.usage.expiresAt ? new Date(grant.usage.expiresAt).toLocaleDateString() : '∞'}</td>
     <td className="py-3 pr-3 cursor-pointer" onClick={() => void changeLimit('requestLimit', grant.usage.requestLimit)}>{grant.usage.requestsUsed} / {grant.usage.requestLimit ?? '∞'}</td>
     <td className="py-3 pr-3 cursor-pointer" onClick={() => void changeLimit('dailyRequestLimit', grant.usage.dailyLimit)}>{grant.usage.dailyUsed} / {grant.usage.dailyLimit ?? '∞'}</td>
+    <td className="py-3 pr-3 cursor-pointer" onClick={() => void changeLimit('hourlyRequestLimit', grant.usage.hourlyLimit)}>{grant.usage.hourlyUsed} / {grant.usage.hourlyLimit ?? '∞'}</td>
     <td className="py-3 pr-3 cursor-pointer" onClick={() => void changeLimit('screenshotLimit', grant.usage.screenshotLimit)}>{grant.usage.screenshotsUsed} / {grant.usage.screenshotLimit ?? '∞'}</td>
     <td className="py-3 pr-3"><span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS_CLASS[status]}`}>{status}</span></td>
     <td className="py-3">
@@ -73,7 +74,7 @@ function AdminIakoUsageContent() {
     {loading ? <p role="status">Loading…</p> : (
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
         <table className="w-full text-xs text-left">
-          <thead><tr className="border-b border-slate-200 text-slate-500"><th className="py-3 pl-3 pr-3">User</th><th className="pr-3">Profile</th><th className="pr-3">Training / Tool</th><th className="pr-3">Starts</th><th className="pr-3">Expires</th><th className="pr-3">Requests</th><th className="pr-3">Today</th><th className="pr-3">Screenshots</th><th className="pr-3">Status</th><th>Actions</th></tr></thead>
+          <thead><tr className="border-b border-slate-200 text-slate-500"><th className="py-3 pl-3 pr-3">User</th><th className="pr-3">Profile</th><th className="pr-3">Training / Tool</th><th className="pr-3">Starts</th><th className="pr-3">Expires</th><th className="pr-3">Requests</th><th className="pr-3">Today</th><th className="pr-3">This hour</th><th className="pr-3">Screenshots</th><th className="pr-3">Status</th><th>Actions</th></tr></thead>
           <tbody>{grants.map((grant) => <GrantRow key={grant.id} grant={grant} busy={busy} onChanged={onChanged} />)}</tbody>
         </table>
         {!grants.length && <p className="text-sm text-slate-500 p-5">No usage grants yet — they&apos;re created automatically the first time a learner opens IAKO.</p>}
