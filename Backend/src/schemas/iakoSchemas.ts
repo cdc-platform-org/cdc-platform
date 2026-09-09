@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+const nullableLimit = z.number().int().min(0).max(1_000_000).nullable();
+
 export const iakoProfileSchema = z.object({
   name: z.string().trim().min(1).max(200),
   description: z.string().trim().max(2000).nullable().optional().default(null),
@@ -10,6 +12,15 @@ export const iakoProfileSchema = z.object({
   visionEnabled: z.boolean().optional().default(false),
   temperature: z.number().min(0).max(1).optional().default(0.2),
   active: z.boolean().optional().default(true),
+  mentorTagline: z.string().trim().max(200).nullable().optional().default(null),
+  welcomeMessageKa: z.string().trim().max(2000).nullable().optional().default(null),
+  welcomeMessageEn: z.string().trim().max(2000).nullable().optional().default(null),
+  defaultRequestLimit: nullableLimit.optional().default(200),
+  defaultDailyRequestLimit: nullableLimit.optional().default(30),
+  defaultHourlyRequestLimit: nullableLimit.optional().default(10),
+  defaultScreenshotLimit: nullableLimit.optional().default(30),
+  defaultMaxScreenshotsPerMessage: z.number().int().min(0).max(3).optional().default(3),
+  defaultAccessDays: z.number().int().min(1).max(3650).nullable().optional().default(10),
 });
 
 export const iakoAssignmentSchema = z.object({
@@ -18,7 +29,23 @@ export const iakoAssignmentSchema = z.object({
 
 export const iakoChatSchema = z.object({
   message: z.string().trim().min(1).max(4000),
+  // A UUID the Frontend generates once per send attempt — see
+  // iakoUsageGrantService.ts's own comment on how this makes a network
+  // retry a safe no-op instead of a second charge.
+  idempotencyKey: z.string().uuid(),
 });
+
+export const iakoUsageGrantPatchSchema = z.object({
+  requestLimit: nullableLimit.optional(),
+  dailyRequestLimit: nullableLimit.optional(),
+  hourlyRequestLimit: nullableLimit.optional(),
+  screenshotLimit: nullableLimit.optional(),
+  maxScreenshotsPerMessage: z.number().int().min(0).max(3).optional(),
+  startsAt: z.coerce.date().nullable().optional(),
+  expiresAt: z.coerce.date().nullable().optional(),
+});
+
+export const iakoAddRequestsSchema = z.object({ amount: z.number().int().min(1).max(100_000) });
 
 export const accessGrantResourceType = z.enum(['IAKO_PROFILE', 'DIGITAL_TOOL', 'LIVE_TRAINING']);
 

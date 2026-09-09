@@ -30,7 +30,7 @@ const EN_STRINGS = {
   cancelling: 'Cancelling…',
   cancelConfirm: 'Cancel your enrollment in this training?',
   cancelError: 'Could not cancel — please try again.',
-  iako: 'IAKO · Daily guide',
+  iako: 'Ask IAKO',
 };
 
 const dict = {
@@ -51,7 +51,7 @@ const dict = {
     cancelling: 'უქმდება…',
     cancelConfirm: 'გავაუქმოთ ჩარიცხვა ამ ტრენინგზე?',
     cancelError: 'გაუქმება ვერ მოხერხდა — სცადეთ თავიდან.',
-    iako: 'IAKO · დღევანდელი გზამკვლევი',
+    iako: 'IAKO-ს კითხვა',
   },
   en: EN_STRINGS,
   de: EN_STRINGS,

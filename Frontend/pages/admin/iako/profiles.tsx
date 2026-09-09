@@ -15,6 +15,9 @@ const primaryClass = 'rounded-xl bg-cyan-700 px-4 py-2.5 text-sm font-bold text-
 const emptyDraft: IakoProfileInput = {
   name: '', description: null, systemPrompt: '', inScope: '', outOfScope: null,
   outOfScopeKeywords: [], visionEnabled: false, temperature: 0.2, active: true,
+  mentorTagline: null, welcomeMessageKa: null, welcomeMessageEn: null,
+  defaultRequestLimit: 200, defaultDailyRequestLimit: 30, defaultHourlyRequestLimit: 10,
+  defaultScreenshotLimit: 30, defaultMaxScreenshotsPerMessage: 3, defaultAccessDays: 10,
 };
 
 function AdminIakoProfilesContent() {
@@ -47,6 +50,10 @@ function AdminIakoProfilesContent() {
       name: full.name, description: full.description, systemPrompt: full.systemPrompt, inScope: full.inScope,
       outOfScope: full.outOfScope, outOfScopeKeywords: full.outOfScopeKeywords, visionEnabled: full.visionEnabled,
       temperature: full.temperature, active: full.active,
+      mentorTagline: full.mentorTagline, welcomeMessageKa: full.welcomeMessageKa, welcomeMessageEn: full.welcomeMessageEn,
+      defaultRequestLimit: full.defaultRequestLimit, defaultDailyRequestLimit: full.defaultDailyRequestLimit,
+      defaultHourlyRequestLimit: full.defaultHourlyRequestLimit, defaultScreenshotLimit: full.defaultScreenshotLimit,
+      defaultMaxScreenshotsPerMessage: full.defaultMaxScreenshotsPerMessage, defaultAccessDays: full.defaultAccessDays,
     });
     setKeywordsInput(full.outOfScopeKeywords.join(', '));
     setEditingId(full.id);
@@ -100,7 +107,8 @@ function AdminIakoProfilesContent() {
     <Head><title>IAKO Assistant Profiles | CDC Admin</title></Head>
     <Link href="/admin" className="text-sm text-cyan-700">← Admin</Link>
     <h1 className="mt-5 text-2xl sm:text-3xl font-black">IAKO Assistant Profiles</h1>
-    <p className="text-sm text-slate-500 mt-2 mb-7">Reusable AI assistant personas — assign one to a Digital Tool below, or to a Live Training from that training&apos;s Daily Guides page.</p>
+    <p className="text-sm text-slate-500 mt-2 mb-2">Reusable AI assistant personas — assign one to a Digital Tool below, or to a Live Training from that training&apos;s Daily Guides page.</p>
+    <p className="text-sm mb-7"><Link href="/admin/iako/usage" className="text-cyan-700 underline">Manage learner usage & access grants →</Link></p>
     {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 mb-5 text-sm text-red-700">{error}</div>}
     {saved && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 mb-5 text-sm text-emerald-700">Saved.</p>}
 
@@ -132,7 +140,14 @@ function AdminIakoProfilesContent() {
         <h2 className="text-xl font-bold mb-5">{editingId ? 'Edit profile' : 'New profile'}</h2>
         <form onSubmit={submit}><fieldset disabled={busy} className="space-y-5">
           <label className="block text-sm font-medium">Name<input required maxLength={200} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} className={`${inputClass} mt-2`} /></label>
+          <label className="block text-sm font-medium">Mentor tagline — shown under &quot;IAKO&quot; on the learner page and Digital Tools card, e.g. &quot;Vibe Coding Full-Stack AI Mentor&quot;
+            <input maxLength={200} value={draft.mentorTagline ?? ''} onChange={(e) => setDraft({ ...draft, mentorTagline: e.target.value || null })} className={`${inputClass} mt-2`} />
+          </label>
           <label className="block text-sm font-medium">Description<input maxLength={2000} value={draft.description ?? ''} onChange={(e) => setDraft({ ...draft, description: e.target.value || null })} className={`${inputClass} mt-2`} /></label>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <label className="text-sm font-medium">Welcome message (Georgian)<textarea rows={4} maxLength={2000} value={draft.welcomeMessageKa ?? ''} onChange={(e) => setDraft({ ...draft, welcomeMessageKa: e.target.value || null })} className={`${inputClass} mt-2`} /></label>
+            <label className="text-sm font-medium">Welcome message (English)<textarea rows={4} maxLength={2000} value={draft.welcomeMessageEn ?? ''} onChange={(e) => setDraft({ ...draft, welcomeMessageEn: e.target.value || null })} className={`${inputClass} mt-2`} /></label>
+          </div>
           <label className="block text-sm font-medium">System prompt / persona<textarea required rows={5} maxLength={8000} value={draft.systemPrompt} onChange={(e) => setDraft({ ...draft, systemPrompt: e.target.value })} className={`${inputClass} mt-2`} /></label>
           <label className="block text-sm font-medium">In scope — what this assistant may help with<textarea required rows={3} maxLength={4000} value={draft.inScope} onChange={(e) => setDraft({ ...draft, inScope: e.target.value })} className={`${inputClass} mt-2`} /></label>
           <label className="block text-sm font-medium">Out of scope — what it must decline<textarea rows={3} maxLength={4000} value={draft.outOfScope ?? ''} onChange={(e) => setDraft({ ...draft, outOfScope: e.target.value || null })} className={`${inputClass} mt-2`} /></label>
@@ -143,6 +158,18 @@ function AdminIakoProfilesContent() {
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={draft.visionEnabled} onChange={(e) => setDraft({ ...draft, visionEnabled: e.target.checked })} className="h-4 w-4 accent-cyan-700" />Accept screenshots (vision)</label>
             <label className="text-sm font-medium">Temperature<input type="number" min={0} max={1} step={0.1} value={draft.temperature} onChange={(e) => setDraft({ ...draft, temperature: Number(e.target.value) })} className={`${inputClass} mt-2`} /></label>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.checked })} className="h-4 w-4 accent-cyan-700" />Active</label>
+          </div>
+          <div className="border-t border-slate-100 pt-5">
+            <h3 className="font-bold mb-1">Default usage limits</h3>
+            <p className="text-xs text-slate-500 mb-4">Applied when a learner opens this assistant for the first time — an admin can still override any individual grant afterward. Leave blank for unlimited.</p>
+            <div className="grid sm:grid-cols-3 gap-4">
+              <label className="text-sm font-medium">Total requests<input type="number" min={0} value={draft.defaultRequestLimit ?? ''} onChange={(e) => setDraft({ ...draft, defaultRequestLimit: e.target.value ? Number(e.target.value) : null })} className={`${inputClass} mt-2`} /></label>
+              <label className="text-sm font-medium">Per day<input type="number" min={0} value={draft.defaultDailyRequestLimit ?? ''} onChange={(e) => setDraft({ ...draft, defaultDailyRequestLimit: e.target.value ? Number(e.target.value) : null })} className={`${inputClass} mt-2`} /></label>
+              <label className="text-sm font-medium">Per hour<input type="number" min={0} value={draft.defaultHourlyRequestLimit ?? ''} onChange={(e) => setDraft({ ...draft, defaultHourlyRequestLimit: e.target.value ? Number(e.target.value) : null })} className={`${inputClass} mt-2`} /></label>
+              <label className="text-sm font-medium">Screenshots total<input type="number" min={0} value={draft.defaultScreenshotLimit ?? ''} onChange={(e) => setDraft({ ...draft, defaultScreenshotLimit: e.target.value ? Number(e.target.value) : null })} className={`${inputClass} mt-2`} /></label>
+              <label className="text-sm font-medium">Screenshots per message<input type="number" min={0} max={3} value={draft.defaultMaxScreenshotsPerMessage} onChange={(e) => setDraft({ ...draft, defaultMaxScreenshotsPerMessage: Number(e.target.value) })} className={`${inputClass} mt-2`} /></label>
+              <label className="text-sm font-medium">Access days from first use<input type="number" min={1} value={draft.defaultAccessDays ?? ''} onChange={(e) => setDraft({ ...draft, defaultAccessDays: e.target.value ? Number(e.target.value) : null })} className={`${inputClass} mt-2`} /></label>
+            </div>
           </div>
           <button type="submit" className={primaryClass}>{busy ? 'Saving…' : 'Save profile'}</button>
         </fieldset></form>

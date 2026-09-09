@@ -725,6 +725,8 @@ model User {
   tutorPromptOverridesUpdated   TutorPromptOverride[]          @relation("TutorPromptOverridesUpdated")
   iakoConversations             IakoConversation[]
   iakoProfilesCreated           IakoAssistantProfile[]         @relation("IakoProfilesCreated")
+  iakoUsageGrantsReceived       IakoUsageGrant[]               @relation("IakoUsageGrantsReceived")
+  iakoUsageGrantsCreated        IakoUsageGrant[]               @relation("IakoUsageGrantsCreated")
   accessGrantsReceived          AccessGrant[]                  @relation("AccessGrantsReceived")
   accessGrantsCreated           AccessGrant[]                  @relation("AccessGrantsCreated")
   liveTrainingInvitesCreated    LiveTrainingInvite[]
@@ -2205,31 +2207,50 @@ model TrainingGuideSource {
 // ============================================================
 
 model IakoAssistantProfile {
-  id                 String   @id @default(uuid())
-  name               String
-  description        String?
+  id                              String   @id @default(uuid())
+  name                            String
+  description                     String?
   // Core persona/instructions, prepended to every call for this profile.
-  systemPrompt       String
+  systemPrompt                    String
   // Plain-language allow-list — what the assistant should answer.
-  inScope            String
+  inScope                         String
   // Plain-language deny-list plus a comma-separated keyword block-list
   // (outOfScopeKeywords) that short-circuits BEFORE any model call — see
   // services/iakoAssistantService.ts's classifyScope. Prompt instructions
   // alone are a request, not an enforcement point; the keyword gate is the
   // actual server-side enforcement this profile's name promises.
-  outOfScope         String?
-  outOfScopeKeywords String[] @default([])
-  visionEnabled      Boolean  @default(false)
-  temperature        Float    @default(0.2)
-  active             Boolean  @default(true)
-  createdById        String
-  createdBy          User     @relation("IakoProfilesCreated", fields: [createdById], references: [id])
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  outOfScope                      String?
+  outOfScopeKeywords              String[] @default([])
+  visionEnabled                   Boolean  @default(false)
+  temperature                     Float    @default(0.2)
+  active                          Boolean  @default(true)
+  // Product positioning (see services/iakoAssistantService.ts's system
+  // prompt builder) — e.g. name "IAKO", mentorTagline "Vibe Coding
+  // Full-Stack AI Mentor", shown on the Digital Tools card and the
+  // dedicated learner page instead of a generic "AI Assistant" label.
+  mentorTagline                   String?
+  welcomeMessageKa                String?
+  welcomeMessageEn                String?
+  // Defaults used to auto-provision an IakoUsageGrant the first time a
+  // newly-entitled learner opens this assistant (see
+  // usageGrantService.ts's getOrCreateUsageGrant) — an admin can still
+  // override any individual grant afterward. Null on a limit field means
+  // unlimited.
+  defaultRequestLimit             Int?     @default(200)
+  defaultDailyRequestLimit        Int?     @default(30)
+  defaultHourlyRequestLimit       Int?     @default(10)
+  defaultScreenshotLimit          Int?     @default(30)
+  defaultMaxScreenshotsPerMessage Int      @default(3)
+  defaultAccessDays               Int?     @default(10)
+  createdById                     String
+  createdBy                       User     @relation("IakoProfilesCreated", fields: [createdById], references: [id])
+  createdAt                       DateTime @default(now())
+  updatedAt                       DateTime @updatedAt
 
   assignments        IakoProfileAssignment[]
   knowledgeDocuments IakoKnowledgeDocument[]
   conversations      IakoConversation[]
+  usageGrants        IakoUsageGrant[]
 
   @@map("iako_assistant_profiles")
 }
@@ -2286,15 +2307,23 @@ enum IakoMessageRole {
 // a conversation must stay readable even after an admin reassigns or
 // deletes the assignment row.
 model IakoConversation {
-  id           String               @id @default(uuid())
-  profileId    String
-  profile      IakoAssistantProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  userId       String
-  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  resourceType IakoGrantResource
-  resourceId   String
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
+  id               String               @id @default(uuid())
+  profileId        String
+  profile          IakoAssistantProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resourceType     IakoGrantResource
+  resourceId       String
+  // A running summary of the project/topic the learner is working on and
+  // what's already been tried — regenerated periodically (see
+  // iakoAssistantService.ts's maintainConversationSummary) once the raw
+  // history grows past a threshold, so older turns stop consuming tokens
+  // on every call without the assistant losing "what are we building"
+  // context. Null until the conversation is long enough to need one.
+  summary          String?
+  summaryUpdatedAt DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
 
   messages IakoMessage[]
 
@@ -2308,15 +2337,83 @@ model IakoMessage {
   conversation   IakoConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   role           IakoMessageRole
   content        String
-  // A learner-submitted screenshot for this message, already uploaded to
-  // blob storage (see services/imageStorage.ts) — stored as a URL, never
-  // inline base64, same convention as every other user-uploaded image on
-  // this platform.
-  imageUrl       String?
+  // Learner-submitted screenshots for this message (up to a profile's
+  // maxScreenshotsPerMessage), already uploaded to blob storage (see
+  // services/imageStorage.ts) — stored as URLs, never inline base64, same
+  // convention as every other user-uploaded image on this platform.
+  imageUrls      String[]         @default([])
   createdAt      DateTime         @default(now())
 
   @@index([conversationId, createdAt])
   @@map("iako_messages")
+}
+
+// ============================================================
+// IAKO USAGE — a per-(profile, user, resource) quota, auto-provisioned
+// (see usageGrantService.ts's getOrCreateUsageGrant) the first time an
+// already-entitled learner opens the assistant, using the assigned
+// profile's default* fields — an admin can override any individual grant
+// afterward (extend, revoke, add credits, change limits, reset usage,
+// go unlimited). Distinct from AccessGrant above: AccessGrant answers
+// "can this person use this resource at all", this answers "how much of
+// IAKO specifically have they used, and how much do they have left."
+// ============================================================
+
+model IakoUsageGrant {
+  id                       String               @id @default(uuid())
+  profileId                String
+  profile                  IakoAssistantProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  userId                   String
+  user                     User                 @relation("IakoUsageGrantsReceived", fields: [userId], references: [id], onDelete: Cascade)
+  resourceType             IakoGrantResource
+  resourceId               String
+  // Null on any limit field means unlimited for that dimension.
+  requestLimit             Int?
+  dailyRequestLimit        Int?
+  hourlyRequestLimit       Int?
+  screenshotLimit          Int?
+  maxScreenshotsPerMessage Int                  @default(3)
+  startsAt                 DateTime?
+  expiresAt                DateTime?
+  revokedAt                DateTime?
+  // Usage is COUNTED from IakoRequestLog rows created after this
+  // timestamp, rather than a separately-incremented counter that could
+  // drift out of sync — see usageGrantService.ts's usageSummary. Admin
+  // "reset usage" moves this forward instead of deleting log history.
+  usageResetAt             DateTime             @default(now())
+  createdById              String
+  createdBy                User                 @relation("IakoUsageGrantsCreated", fields: [createdById], references: [id])
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+
+  requestLogs IakoRequestLog[]
+
+  @@unique([profileId, userId, resourceType, resourceId])
+  @@map("iako_usage_grants")
+}
+
+// One row per SUCCESSFULLY-answered learner message (never per grammatical
+// question inside it — see usageGrantService.ts's own comment). Written
+// only once a usable assistant reply exists; a scope refusal, an auth/
+// access failure, a validation failure, a provider error, or a timeout
+// never reaches this table at all, which is what makes "don't charge for
+// a failed request" hold with no separate bookkeeping. idempotencyKey is
+// a UUID the Frontend generates once per send attempt and resends
+// unchanged on retry — the unique constraint below is what turns a
+// network-retry into a no-op re-read of resultMessageId instead of a
+// second charge.
+model IakoRequestLog {
+  id              String         @id @default(uuid())
+  usageGrantId    String
+  usageGrant      IakoUsageGrant @relation(fields: [usageGrantId], references: [id], onDelete: Cascade)
+  idempotencyKey  String
+  screenshotCount Int            @default(0)
+  resultMessageId String?
+  createdAt       DateTime       @default(now())
+
+  @@unique([usageGrantId, idempotencyKey])
+  @@index([usageGrantId, createdAt])
+  @@map("iako_request_logs")
 }
 
 // ============================================================

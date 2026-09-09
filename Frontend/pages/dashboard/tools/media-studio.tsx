@@ -24,7 +24,6 @@ import {
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
 import DigitalToolAccessGate from '../../../src/components/tools/DigitalToolAccessGate';
-import IakoChatWidget from '../../../src/components/iako/IakoChatWidget';
 import SEOHead from '../../../src/components/seo/SEOHead';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
@@ -940,7 +939,6 @@ export default function MediaStudioPage() {
         <ToolErrorBoundary>
           <DigitalToolAccessGate toolKey="media-studio">
             <MediaStudioContent />
-            <IakoChatWidget resource={{ digitalToolKey: 'media-studio' }} />
           </DigitalToolAccessGate>
         </ToolErrorBoundary>
       </ProtectedRoute>

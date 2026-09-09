@@ -13,6 +13,7 @@ import { Agent } from '../../../src/types/agent';
 import { getTutorState, TutorState } from '../../../src/services/englishTutorService';
 import { getEducatorHubState, EducatorHubState } from '../../../src/services/educatorHubService';
 import { resolveLocale } from '@/src/utils/locale';
+import { listMyIakoAssistants, hasDigitalToolAccess, iakoAssistantHref, MyIakoAssistant } from '../../../src/services/iakoAssistantService';
 
 const EN_STRINGS = {
   title: 'My Tools',
@@ -34,9 +35,11 @@ const EN_STRINGS = {
   englishTutor: 'IMIAKO — AI English Tutor',
   educatorVip: 'AI Educator VIP Hub',
   mediaStudio: 'AI Voice & Video Studio',
-  mediaStudioDesc: 'Free — open to every account',
+  mediaStudioDescActive: 'Access granted',
+  mediaStudioDescLocked: 'Requires access — contact us to request it',
   cyberSentinel: 'Cyber Sentinel (AG-SAIA)',
   cyberSentinelDesc: 'Sovereign AI security node — launching soon',
+  iakoDesc: 'AI training mentor',
 };
 
 const dict = {
@@ -60,9 +63,11 @@ const dict = {
     englishTutor: 'IMIAKO — AI ინგლისურის მასწავლებელი',
     educatorVip: 'AI მასწავლებლის VIP ჰაბი',
     mediaStudio: 'AI ხმისა და ვიდეოს სტუდია',
-    mediaStudioDesc: 'უფასო — ხელმისაწვდომია ყველა ანგარიშისთვის',
+    mediaStudioDescActive: 'წვდომა მინიჭებულია',
+    mediaStudioDescLocked: 'საჭიროებს წვდომას — დაგვიკავშირდით მოთხოვნისთვის',
     cyberSentinel: 'Cyber Sentinel (AG-SAIA)',
     cyberSentinelDesc: 'სუვერენული AI უსაფრთხოების კვანძი — მალე გაეშვება',
+    iakoDesc: 'AI ტრენინგის მენტორი',
   },
   en: EN_STRINGS,
   de: EN_STRINGS,
@@ -132,6 +137,8 @@ function MyToolsContent() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [tutorState, setTutorState] = useState<TutorState | null>(null);
   const [educatorState, setEducatorState] = useState<EducatorHubState | null>(null);
+  const [myAssistants, setMyAssistants] = useState<MyIakoAssistant[]>([]);
+  const [mediaStudioAccess, setMediaStudioAccess] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -140,10 +147,14 @@ function MyToolsContent() {
       getMyAgents().catch(() => []),
       getTutorState().catch(() => null),
       getEducatorHubState().catch(() => null),
-    ]).then(([a, ts, es]) => {
+      listMyIakoAssistants().catch(() => []),
+      hasDigitalToolAccess('media-studio').catch(() => false),
+    ]).then(([a, ts, es, assistants, mediaAccess]) => {
       setAgents(a);
       setTutorState(ts);
       setEducatorState(es);
+      setMyAssistants(assistants);
+      setMediaStudioAccess(mediaAccess);
       setLoading(false);
     });
   }, [isAuthenticated]);
@@ -209,18 +220,37 @@ function MyToolsContent() {
     });
   }
 
-  // AI Voice & Video Studio — free/open to every authenticated account
-  // (no trial/subscription gate at all), so it's always shown as available.
+  // AI Voice & Video Studio — gated by digitalToolAccessService's
+  // requireDigitalToolAccess('media-studio') on the backend (an
+  // AccessGrant or a linked purchase); reflect the real state here rather
+  // than always claiming it's open, which it no longer is.
   cards.push({
     key: 'media-studio',
     icon: Mic,
     title: t.mediaStudio,
-    description: t.mediaStudioDesc,
-    badge: 'AVAILABLE',
-    badgeLabel: t.statusAvailable,
+    description: mediaStudioAccess ? t.mediaStudioDescActive : t.mediaStudioDescLocked,
+    badge: mediaStudioAccess ? 'ACTIVE' : 'AVAILABLE',
+    badgeLabel: mediaStudioAccess ? t.statusActive : t.statusAvailable,
     dateLine: null,
     manageHref: '/dashboard/tools/media-studio',
   });
+
+  // IAKO — one card per Live Training or Digital Tool this learner
+  // currently has a real, active assistant assignment for (see
+  // GET /api/iako/my-assistants).
+  for (const assistant of myAssistants) {
+    const expired = assistant.usage.revokedAt != null || (assistant.usage.expiresAt != null && new Date(assistant.usage.expiresAt) < new Date());
+    cards.push({
+      key: `iako-${assistant.resourceType}-${assistant.resourceId}`,
+      icon: Sparkles,
+      title: `IAKO — ${assistant.mentorTagline || assistant.resourceTitle}`,
+      description: t.iakoDesc,
+      badge: expired ? 'EXPIRED' : 'ACTIVE',
+      badgeLabel: expired ? t.statusExpired : t.statusActive,
+      dateLine: assistant.usage.expiresAt ? `${t.expires}: ${new Date(assistant.usage.expiresAt).toLocaleDateString()}` : null,
+      manageHref: iakoAssistantHref(assistant),
+    });
+  }
 
   // Cyber Sentinel / AG-SAIA — not purchasable by anyone yet (see
   // pages/dashboard/cyber-security.tsx's own "coming soon" framing) —

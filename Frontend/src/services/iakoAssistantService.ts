@@ -11,14 +11,46 @@ export interface IakoProfile {
   visionEnabled: boolean;
   temperature: number;
   active: boolean;
+  mentorTagline: string | null;
+  welcomeMessageKa: string | null;
+  welcomeMessageEn: string | null;
+  defaultRequestLimit: number | null;
+  defaultDailyRequestLimit: number | null;
+  defaultHourlyRequestLimit: number | null;
+  defaultScreenshotLimit: number | null;
+  defaultMaxScreenshotsPerMessage: number;
+  defaultAccessDays: number | null;
   createdAt: string;
   assignments?: Array<{ liveTrainingId: string | null; digitalToolKey: string | null }>;
 }
 export interface IakoKnowledgeSource { sourceFilename: string; totalChunks: number; totalChars: number; updatedAt: string }
-export interface IakoMessage { id: string; role: 'USER' | 'ASSISTANT'; content: string; imageUrl: string | null; createdAt: string }
+export interface IakoMessage { id: string; role: 'USER' | 'ASSISTANT'; content: string; imageUrls: string[]; createdAt: string }
 export interface DigitalToolDefinition { key: string; label: string; linkedProductId: string | null }
+export interface IakoUsage {
+  requestsUsed: number; requestLimit: number | null;
+  dailyUsed: number; dailyLimit: number | null;
+  hourlyUsed: number; hourlyLimit: number | null;
+  screenshotsUsed: number; screenshotLimit: number | null;
+  maxScreenshotsPerMessage: number;
+  startsAt: string | null; expiresAt: string | null; revokedAt: string | null;
+}
+export interface MyIakoAssistant {
+  resourceType: 'LIVE_TRAINING' | 'DIGITAL_TOOL';
+  resourceId: string;
+  resourceTitle: string;
+  profileName: string;
+  mentorTagline: string | null;
+  usage: IakoUsage;
+}
+
+export function iakoAssistantHref(assistant: Pick<MyIakoAssistant, 'resourceType' | 'resourceId'>): string {
+  return assistant.resourceType === 'LIVE_TRAINING'
+    ? `/dashboard/live-trainings/${assistant.resourceId}/iako`
+    : `/dashboard/iako/tool/${assistant.resourceId}`;
+}
 
 export type IakoProfileInput = Omit<IakoProfile, 'id' | 'createdAt' | 'assignments'>;
+export type IakoResource = { liveTrainingId: string } | { digitalToolKey: string };
 
 export async function listIakoProfiles(): Promise<IakoProfile[]> {
   return (await apiClient.get<{ data: IakoProfile[] }>('/admin/iako/profiles')).data.data;
@@ -46,22 +78,61 @@ export async function listDigitalTools(): Promise<DigitalToolDefinition[]> {
 export async function hasDigitalToolAccess(toolKey: string): Promise<boolean> {
   return (await apiClient.get<{ data: { allowed: boolean } }>(`/digital-tools/${encodeURIComponent(toolKey)}/access`)).data.data.allowed;
 }
-export async function assignIakoProfile(target: { liveTrainingId: string } | { digitalToolKey: string }, profileId: string | null): Promise<void> {
+export async function assignIakoProfile(target: IakoResource, profileId: string | null): Promise<void> {
   const path = 'liveTrainingId' in target
     ? `/admin/iako/assignments/live-training/${encodeURIComponent(target.liveTrainingId)}`
     : `/admin/iako/assignments/digital-tool/${encodeURIComponent(target.digitalToolKey)}`;
   await apiClient.put(path, { profileId });
 }
+export async function listMyIakoAssistants(): Promise<MyIakoAssistant[]> {
+  return (await apiClient.get<{ data: MyIakoAssistant[] }>('/iako/my-assistants')).data.data;
+}
 
-const resourcePath = (resource: { liveTrainingId: string } | { digitalToolKey: string }) =>
+const resourcePath = (resource: IakoResource) =>
   'liveTrainingId' in resource ? `/iako/live-training/${encodeURIComponent(resource.liveTrainingId)}` : `/iako/digital-tool/${encodeURIComponent(resource.digitalToolKey)}`;
 
-export async function getIakoConversation(resource: { liveTrainingId: string } | { digitalToolKey: string }): Promise<{ profile: { id: string; name: string; visionEnabled: boolean }; messages: IakoMessage[] }> {
-  return (await apiClient.get<{ data: { profile: { id: string; name: string; visionEnabled: boolean }; messages: IakoMessage[] } }>(`${resourcePath(resource)}/conversation`)).data.data;
+export async function getIakoConversation(resource: IakoResource): Promise<{
+  profile: { id: string; name: string; mentorTagline: string | null; visionEnabled: boolean; welcomeMessageKa: string | null; welcomeMessageEn: string | null };
+  messages: IakoMessage[];
+  usage: IakoUsage | null;
+}> {
+  return (await apiClient.get(`${resourcePath(resource)}/conversation`)).data.data;
 }
-export async function askIako(resource: { liveTrainingId: string } | { digitalToolKey: string }, message: string, image?: File): Promise<{ reply: string; conversationId: string; outOfScope: boolean }> {
+export async function askIako(resource: IakoResource, message: string, idempotencyKey: string, images?: File[]): Promise<{ reply: string; conversationId: string; outOfScope: boolean; usage: IakoUsage }> {
   const form = new FormData();
   form.append('message', message);
-  if (image) form.append('image', image);
-  return (await apiClient.post<{ data: { reply: string; conversationId: string; outOfScope: boolean } }>(`${resourcePath(resource)}/chat`, form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 90000 })).data.data;
+  form.append('idempotencyKey', idempotencyKey);
+  (images ?? []).forEach((image) => form.append('images', image));
+  return (await apiClient.post(`${resourcePath(resource)}/chat`, form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 90000 })).data.data;
+}
+
+export interface IakoUsageGrant {
+  id: string;
+  user: { id: string; name: string; email: string };
+  profile: { id: string; name: string };
+  resourceType: 'LIVE_TRAINING' | 'DIGITAL_TOOL';
+  resourceId: string;
+  resourceTitle: string;
+  usage: IakoUsage;
+}
+export async function listUsageGrants(filter?: { resourceType?: string; resourceId?: string }): Promise<IakoUsageGrant[]> {
+  return (await apiClient.get<{ data: IakoUsageGrant[] }>('/admin/iako/usage-grants', { params: filter })).data.data;
+}
+export async function updateUsageGrant(id: string, patch: {
+  requestLimit?: number | null; dailyRequestLimit?: number | null; hourlyRequestLimit?: number | null;
+  screenshotLimit?: number | null; maxScreenshotsPerMessage?: number; startsAt?: string | null; expiresAt?: string | null;
+}): Promise<void> {
+  await apiClient.patch(`/admin/iako/usage-grants/${encodeURIComponent(id)}`, patch);
+}
+export async function addUsageGrantRequests(id: string, amount: number): Promise<void> {
+  await apiClient.post(`/admin/iako/usage-grants/${encodeURIComponent(id)}/add-requests`, { amount });
+}
+export async function revokeUsageGrant(id: string): Promise<void> {
+  await apiClient.post(`/admin/iako/usage-grants/${encodeURIComponent(id)}/revoke`);
+}
+export async function reactivateUsageGrant(id: string): Promise<void> {
+  await apiClient.post(`/admin/iako/usage-grants/${encodeURIComponent(id)}/reactivate`);
+}
+export async function resetUsageGrant(id: string): Promise<void> {
+  await apiClient.post(`/admin/iako/usage-grants/${encodeURIComponent(id)}/reset-usage`);
 }
