@@ -38,17 +38,17 @@ interface ImageGalleryUploaderProps {
   disabled?: boolean;
 }
 
-// 1 main cover + up to `maxGalleryImages` (default 4 — Gumroad/Amazon-style
-// "5 images total") showcase screenshots, both drag-and-drop capable. Cover
-// and gallery slots share the same isImageTooLarge/10MB guard already used
-// elsewhere in the app (see admin/studio-cases.tsx).
+// 1 main cover + up to `maxGalleryImages` (default 15 — "16 images total")
+// showcase screenshots, both drag-and-drop capable. Cover and gallery slots
+// share the same isImageTooLarge/10MB guard already used elsewhere in the
+// app (see admin/studio-cases.tsx).
 export default function ImageGalleryUploader({
   coverUrl,
   onCoverChange,
   previewImages,
   onPreviewImagesChange,
   uploadImage,
-  maxGalleryImages = 4,
+  maxGalleryImages = 15,
   labels,
   lang,
   disabled = false,

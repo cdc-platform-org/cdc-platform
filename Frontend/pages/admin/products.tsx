@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { Sparkles } from 'lucide-react';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
+import AITranslateButton from '../../src/components/admin/AITranslateButton';
 import LaunchKitDrawer from '../../src/components/admin/LaunchKitDrawer';
 import RichTextEditor from '../../src/components/shared/RichTextEditor';
 import MarkdownContent from '../../src/components/shared/MarkdownContent';
@@ -21,6 +22,7 @@ import {
   uploadProductFile,
   uploadProductVideo,
   getProductPurchases,
+  translateProduct,
   DigitalProduct,
   AdminProductPurchase,
   ProductLicenseType,
@@ -46,6 +48,84 @@ const STATUS_BADGE: Record<string, string> = {
   NEEDS_REVISION: 'bg-orange-50 text-orange-700 border-orange-200',
 };
 
+// KA/EN tabbed title+description editor, shared by the "Add Product
+// Directly" form and ModerationProductCard's edit mode — mirrors the same
+// tab-bar + AITranslateButton pattern already used on admin/blog.tsx,
+// admin/mentorship.tsx, etc. Deliberately owns only the tab UI; the caller
+// owns state, the actual translate request, and the overwrite-confirmation
+// check (same "caller owns the call" split AITranslateButton itself uses).
+function BilingualTitleDescriptionFields({
+  title, description, titleEn, descriptionEn,
+  onTitleChange, onDescriptionChange, onTitleEnChange, onDescriptionEnChange,
+  onTranslate, translating, translateError,
+  titleRequired, descriptionRequired, inputClassName,
+}: {
+  title: string; description: string; titleEn: string; descriptionEn: string;
+  onTitleChange: (value: string) => void; onDescriptionChange: (value: string) => void;
+  onTitleEnChange: (value: string) => void; onDescriptionEnChange: (value: string) => void;
+  onTranslate: () => void; translating: boolean; translateError: string | null;
+  titleRequired?: boolean; descriptionRequired?: boolean; inputClassName: string;
+}) {
+  const [tab, setTab] = useState<'ka' | 'en'>('ka');
+  const hasEnglishContent = !!(titleEn.trim() || descriptionEn.trim());
+  return (
+    <div>
+      <div className="flex items-center justify-between border-b border-gray-200 mb-3 flex-wrap gap-2">
+        <div className="flex gap-1">
+          {(['ka', 'en'] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              className={`px-3 py-1.5 text-xs font-semibold border-b-2 -mb-px transition-colors bg-transparent cursor-pointer ${
+                tab === t ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              {t === 'ka' ? '🇬🇪 Title/Description (KA)' : '🇬🇧 Title/Description (EN)'}
+              {t === 'en' && hasEnglishContent && <span className="ml-1 text-emerald-500" title="English content set">●</span>}
+            </button>
+          ))}
+        </div>
+        <AITranslateButton onClick={onTranslate} loading={translating} label="✨ Auto Translate to English" loadingLabel="Translating…" className="mb-0" />
+      </div>
+      {translateError && <p className="text-xs text-red-600 mb-2">{translateError}</p>}
+      {tab === 'ka' ? (
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Title (KA)</label>
+            <input required={titleRequired} value={title} onChange={(e) => onTitleChange(e.target.value)} className={inputClassName} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Description (KA)</label>
+            <RichTextEditor required={descriptionRequired} rows={3} value={description} onChange={onDescriptionChange} />
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Title (EN)</label>
+            <input
+              value={titleEn}
+              onChange={(e) => onTitleEnChange(e.target.value)}
+              placeholder="Falls back to the Georgian title on the storefront if left blank"
+              className={inputClassName}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Description (EN)</label>
+            <RichTextEditor
+              rows={3}
+              value={descriptionEn}
+              onChange={onDescriptionEnChange}
+              placeholder="Falls back to the Georgian description on the storefront if left blank"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ModerationProductCard({
   product: p,
   acting,
@@ -64,6 +144,10 @@ function ModerationProductCard({
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(p.title);
   const [description, setDescription] = useState(p.description);
+  const [titleEn, setTitleEn] = useState(p.titleEn ?? '');
+  const [descriptionEn, setDescriptionEn] = useState(p.descriptionEn ?? '');
+  const [translating, setTranslating] = useState(false);
+  const [translateError, setTranslateError] = useState<string | null>(null);
   const [editImageUrl, setEditImageUrl] = useState(p.imageUrl);
   const [editPreviewImages, setEditPreviewImages] = useState<string[]>(p.previewImages);
   const [editVideoUrl, setEditVideoUrl] = useState(p.previewVideoUrl ?? '');
@@ -98,6 +182,9 @@ function ModerationProductCard({
   const startEdit = () => {
     setTitle(p.title);
     setDescription(p.description);
+    setTitleEn(p.titleEn ?? '');
+    setDescriptionEn(p.descriptionEn ?? '');
+    setTranslateError(null);
     setEditImageUrl(p.imageUrl);
     setEditPreviewImages(p.previewImages);
     setEditVideoUrl(p.previewVideoUrl ?? '');
@@ -107,6 +194,28 @@ function ModerationProductCard({
     setEditing(true);
   };
 
+  const handleAutoTranslate = async () => {
+    setTranslateError(null);
+    if (!title.trim() || !description.trim()) {
+      setTranslateError('Enter a Georgian title and description before translating.');
+      return;
+    }
+    if ((titleEn.trim() || descriptionEn.trim()) && !window.confirm('This will overwrite the existing English title/description. Continue?')) {
+      return;
+    }
+    setTranslating(true);
+    try {
+      const translated = await translateProduct({ title: title.trim(), description: description.trim() });
+      setTitleEn(translated.titleEn);
+      setDescriptionEn(translated.descriptionEn);
+    } catch (err: any) {
+      // Existing titleEn/descriptionEn are left exactly as they were.
+      setTranslateError(err?.response?.data?.message ?? 'Translation failed. Please try again.');
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   const handleSave = async () => {
     if (useCustomSteps && !stepsValid) return;
     setSaving(true);
@@ -114,6 +223,8 @@ function ModerationProductCard({
       await onSave({
         title,
         description,
+        titleEn: titleEn.trim() || null,
+        descriptionEn: descriptionEn.trim() || null,
         imageUrl: editImageUrl,
         previewImages: editPreviewImages,
         previewVideoUrl: editVideoUrl || null,
@@ -152,8 +263,13 @@ function ModerationProductCard({
 
         {editing ? (
           <div className="space-y-3 mb-2">
-            <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold" />
-            <RichTextEditor rows={3} value={description} onChange={setDescription} />
+            <BilingualTitleDescriptionFields
+              title={title} description={description} titleEn={titleEn} descriptionEn={descriptionEn}
+              onTitleChange={setTitle} onDescriptionChange={setDescription}
+              onTitleEnChange={setTitleEn} onDescriptionEnChange={setDescriptionEn}
+              onTranslate={handleAutoTranslate} translating={translating} translateError={translateError}
+              inputClassName="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold"
+            />
             <ImageGalleryUploader
               coverUrl={editImageUrl}
               onCoverChange={setEditImageUrl}
@@ -166,7 +282,7 @@ function ModerationProductCard({
                 coverHint: 'Click or drop to replace',
                 coverSizeHint: 'Max 10MB',
                 galleryLabel: 'Screenshots',
-                gallerySizeHint: 'Max 10MB each, up to 4',
+                gallerySizeHint: 'Max 10MB each, up to 15',
                 addMore: 'Add more',
                 uploading: 'Uploading…',
                 remove: 'Remove',
@@ -429,6 +545,10 @@ function AdminProductsDashboard() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [titleEn, setTitleEn] = useState('');
+  const [descriptionEn, setDescriptionEn] = useState('');
+  const [translating, setTranslating] = useState(false);
+  const [translateError, setTranslateError] = useState<string | null>(null);
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('');
   const [imageUrl, setImageUrl] = useState('');
@@ -469,6 +589,28 @@ function AdminProductsDashboard() {
     return validateProductDiscount(Number(price) || 0, Number(discountedPrice) || 0);
   }, [price, discountedPrice]);
 
+  const handleAutoTranslate = async () => {
+    setTranslateError(null);
+    if (!title.trim() || !description.trim()) {
+      setTranslateError('Enter a Georgian title and description before translating.');
+      return;
+    }
+    if ((titleEn.trim() || descriptionEn.trim()) && !window.confirm('This will overwrite the existing English title/description. Continue?')) {
+      return;
+    }
+    setTranslating(true);
+    try {
+      const translated = await translateProduct({ title: title.trim(), description: description.trim() });
+      setTitleEn(translated.titleEn);
+      setDescriptionEn(translated.descriptionEn);
+    } catch (err: any) {
+      // Existing titleEn/descriptionEn are left exactly as they were.
+      setTranslateError(err?.response?.data?.message ?? 'Translation failed. Please try again.');
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -478,6 +620,8 @@ function AdminProductsDashboard() {
       await createProduct({
         title,
         description,
+        titleEn: titleEn.trim() || null,
+        descriptionEn: descriptionEn.trim() || null,
         price: Number(price) || 0,
         category,
         imageUrl,
@@ -489,6 +633,8 @@ function AdminProductsDashboard() {
       });
       setTitle('');
       setDescription('');
+      setTitleEn('');
+      setDescriptionEn('');
       setPrice('');
       setCategory('');
       setImageUrl('');
@@ -629,25 +775,23 @@ function AdminProductsDashboard() {
         <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-xl p-6 mb-8 space-y-4">
           <h2 className="text-sm font-semibold text-gray-900">Add Product Directly (Admin)</h2>
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Title</label>
-              <input required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
-              <input
-                required
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="UI Kits / AI Prompts / Templates / E-Books"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-              />
-            </div>
-          </div>
+          <BilingualTitleDescriptionFields
+            title={title} description={description} titleEn={titleEn} descriptionEn={descriptionEn}
+            onTitleChange={setTitle} onDescriptionChange={setDescription}
+            onTitleEnChange={setTitleEn} onDescriptionEnChange={setDescriptionEn}
+            onTranslate={handleAutoTranslate} translating={translating} translateError={translateError}
+            titleRequired descriptionRequired
+            inputClassName="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-            <RichTextEditor required rows={3} value={description} onChange={setDescription} />
+            <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+            <input
+              required
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="UI Kits / AI Prompts / Templates / E-Books"
+              className="w-full sm:w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Price (GEL, 0 = free)</label>
@@ -674,7 +818,7 @@ function AdminProductsDashboard() {
               coverHint: imageUrl ? 'Click or drop to replace' : 'Click or drop an image',
               coverSizeHint: 'Optimal Cover Size: 2000 × 1500 px (4:3 ratio). PNG/JPG, up to 10MB.',
               galleryLabel: 'Additional Screenshots',
-              gallerySizeHint: 'Upload up to 4 preview images (Optimal Size: 2000 × 1500 px, 4:3 ratio).',
+              gallerySizeHint: 'Upload up to 15 preview images (Optimal Size: 2000 × 1500 px, 4:3 ratio).',
               addMore: 'Add',
               uploading: 'Uploading…',
               remove: 'Remove',

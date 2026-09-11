@@ -121,9 +121,9 @@ const createSchema = z.object({
   price: z.number().min(0),
   category: z.string().min(1).max(100),
   imageUrl: z.string().url(),
-  // Up to 4 additional showcase screenshots alongside imageUrl (the main
+  // Up to 15 additional showcase screenshots alongside imageUrl (the main
   // cover) — empty is fine, a submission isn't required to have a gallery.
-  previewImages: z.array(z.string().url()).max(4).optional().default([]),
+  previewImages: z.array(z.string().url()).max(15).optional().default([]),
   previewVideoUrl: z.string().url().optional().nullable(),
   fileUrl: z.string().url(),
   licenseType: z.nativeEnum(ProductLicenseType).optional(),
@@ -209,7 +209,7 @@ const updateSchema = z.object({
   // Major-unit GEL, same conversion as createSchema — omit to leave price unchanged.
   price: z.number().min(0).optional(),
   imageUrl: z.string().url().optional(),
-  previewImages: z.array(z.string().url()).max(4).optional(),
+  previewImages: z.array(z.string().url()).max(15).optional(),
   previewVideoUrl: z.string().url().optional().nullable(),
   licenseType: z.nativeEnum(ProductLicenseType).optional(),
   discountedPrice: z.number().min(0).optional().nullable(),
