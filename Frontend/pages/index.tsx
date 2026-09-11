@@ -6,7 +6,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import type { GetStaticProps } from 'next';
-import { CheckCircle2, AlertTriangle, Sun, Moon, User, X, Menu, Link as LinkIcon, Rocket, Clock, Bot, ShieldCheck, Users, Sparkles, Lock, MessageSquareText, BookOpen, Code2, BarChart3, Building2, Calendar, Play, GraduationCap, Gift, Globe, Target } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Sun, Moon, User, X, Menu, Link as LinkIcon, Rocket, Clock, Bot, ShieldCheck, Users, Sparkles, Lock, MessageSquareText, BookOpen, Code2, BarChart3, Building2, Calendar, Play, GraduationCap, Gift, Globe, Target, FileText } from 'lucide-react';
 import { useAuthModal } from '../src/context/AuthModalContext';
 import { useAuth } from '../src/context/AuthContext';
 import SiteFooter from '../src/components/layout/SiteFooter';
@@ -634,7 +634,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <a href="#blog" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{t('blog')}</a>
+            <Link href="/blog" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{t('blog')}</Link>
             <Link href="/agency" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{safeText(t('studio'))}</Link>
             <Link href="/community" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{t('jobs')}</Link>
             <Link href="/forum" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{t('forum')}</Link>
@@ -714,7 +714,7 @@ export default function Home() {
                 {contentLang === 'en' ? cat.value.en : cat.value.ka}
               </Link>
             ))}
-            <a href="#blog" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('blog')}</a>
+            <Link href="/blog" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('blog')}</Link>
             <Link href="/agency" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{safeText(t('studio'))}</Link>
             <Link href="/community" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('jobs')}</Link>
             <Link href="/forum" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('forum')}</Link>
@@ -1359,11 +1359,21 @@ export default function Home() {
                   <Link
                     key={post.id}
                     href={`/blog/${post.slug}`}
-                    className={`p-8 rounded-3xl border backdrop-blur-md transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}
+                    className={`rounded-3xl border backdrop-blur-md overflow-hidden flex flex-col transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] no-underline text-current ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}
                   >
-                    <span className={`text-[11px] font-black uppercase tracking-widest block mb-3 ${badgeColor}`}>{post.category}</span>
-                    <h3 className="text-lg font-black mb-3">{blogTitle(post, contentLang)}</h3>
-                    <p className="text-sm text-slate-400 leading-relaxed font-medium line-clamp-3">{blogDescription(post, contentLang)}</p>
+                    {post.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- a CDN thumbnail, next/image gains nothing here (same as pages/blog/index.tsx's own card grid).
+                      <img src={resolveBlogImageUrl(post.imageUrl)} alt={blogTitle(post, contentLang)} onError={onImageErrorFallback} className="w-full h-44 object-cover" />
+                    ) : (
+                      <div className={`w-full h-44 flex items-center justify-center ${darkMode ? 'bg-gradient-to-br from-slate-900 to-slate-800' : 'bg-gradient-to-br from-slate-100 to-slate-50'}`}>
+                        <FileText className="w-8 h-8 text-cyan-500/40" />
+                      </div>
+                    )}
+                    <div className="p-8">
+                      <span className={`text-[11px] font-black uppercase tracking-widest block mb-3 ${badgeColor}`}>{post.category}</span>
+                      <h3 className="text-lg font-black mb-3">{blogTitle(post, contentLang)}</h3>
+                      <p className="text-sm text-slate-400 leading-relaxed font-medium line-clamp-3">{blogDescription(post, contentLang)}</p>
+                    </div>
                   </Link>
                 );
               })}

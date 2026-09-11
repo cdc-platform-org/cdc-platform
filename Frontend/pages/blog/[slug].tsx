@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef, FormEvent } from 'react';
+import type { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
@@ -387,7 +388,7 @@ function CommentThread({
   );
 }
 
-export default function BlogPostPage() {
+export default function BlogPostPage({ initialPost }: { initialPost: BlogPost | null }) {
   const router = useRouter();
   const lang = resolveLocale(router.locale);
   const t = pickText(dict, lang);
@@ -397,8 +398,8 @@ export default function BlogPostPage() {
   const { openAuthModal } = useAuthModal();
   const slug = typeof router.query.slug === 'string' ? router.query.slug : null;
 
-  const [post, setPost] = useState<BlogPost | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [post, setPost] = useState<BlogPost | null>(initialPost);
+  const [loading, setLoading] = useState(!initialPost);
   const [notFound, setNotFound] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [relatedPosts, setRelatedPosts] = useState<BlogPost[]>([]);
@@ -413,7 +414,11 @@ export default function BlogPostPage() {
 
   const load = useCallback(async () => {
     if (!slug) return;
-    setLoading(true);
+    // getServerSideProps already fetched this post for the initial render
+    // (so SEOHead below has real data in the server-rendered HTML for
+    // crawlers) — a truthy initialPost means this run is just the client
+    // taking over, not a first load, so it shouldn't flash a loading state.
+    if (!initialPost) setLoading(true);
     setNotFound(false);
     setLoadError(false);
     try {
@@ -437,7 +442,7 @@ export default function BlogPostPage() {
     } finally {
       setLoading(false);
     }
-  }, [slug]);
+  }, [slug, initialPost]);
 
   useEffect(() => {
     load();
@@ -682,7 +687,9 @@ export default function BlogPostPage() {
       <SEOHead
         title={title}
         description={description}
+        canonicalPath={`/blog/${post.slug}`}
         ogImage={ogImage}
+        ogImageAlt={title}
         ogType="article"
         articlePublishedTime={post.createdAt}
       />
@@ -974,3 +981,19 @@ export default function BlogPostPage() {
     </div>
   );
 }
+
+// Fetched here (not just client-side via `load()`) so SEOHead above renders
+// real article-specific og:title/og:description/og:image/canonical in the
+// initial server-rendered HTML — social-media crawlers (Facebook, LinkedIn,
+// Twitter, WhatsApp, Slack) don't execute client JS, so a client-only fetch
+// left every share preview generic/blank. Same pattern already used by
+// pages/courses/[id]/index.tsx's own getServerSideProps.
+export const getServerSideProps: GetServerSideProps = async ({ params }) => {
+  const slug = typeof params?.slug === 'string' ? params.slug : null;
+  const fetched = slug ? await getBlogPostById(slug).catch(() => null) : null;
+  // An unpublished/removed post must never leak its metadata to a crawler —
+  // the client-side load() above still runs and resolves the same
+  // not-found/error UI it always has for this case.
+  const initialPost = fetched && fetched.published ? fetched : null;
+  return { props: { initialPost } };
+};

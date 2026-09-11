@@ -35,6 +35,17 @@ const NOTIFICATION_MARKER = '[QA_E2E_SEED]';
 // reserveLearningCheckout, not duplicated here.
 const FREE_INVITE_TOKEN = 'qa-e2e-free-invite-token';
 const PAID_INVITE_TOKEN = 'qa-e2e-paid-invite-token';
+// Three fixed blog posts covering the three og:image cases
+// e2e/blog-seo.spec.ts asserts on: a real cover, a DIFFERENT real cover (to
+// prove og:image actually varies per article, not just present), and no
+// cover at all (must fall back to the platform default banner, never the
+// old stretched-logo image). Absolute http://localhost:3000 URLs (not a
+// real Bunny CDN path) are fine here — this is testing the Frontend's own
+// og:image-resolution logic, not the upload pipeline, and this exact origin
+// is what both a local run and qa-nightly.yml serve the Frontend from.
+const BLOG_POST_WITH_COVER_SLUG = 'qa-e2e-post-with-cover';
+const BLOG_POST_WITH_OTHER_COVER_SLUG = 'qa-e2e-post-with-other-cover';
+const BLOG_POST_NO_COVER_SLUG = 'qa-e2e-post-no-cover';
 
 async function main() {
   const passwordHash = await bcrypt.hash(QA_TEST_PASSWORD, 12);
@@ -218,6 +229,34 @@ async function main() {
     },
   });
 
+  const blogPostFixtures = [
+    {
+      slug: BLOG_POST_WITH_COVER_SLUG,
+      title: 'QA E2E სტატია — ყდით', titleEn: 'QA E2E Article — With Cover',
+      description: 'ეს არის სატესტო სტატიის აღწერა Playwright-ის სუიტისთვის.', descriptionEn: 'A seeded article description for the Playwright suite.',
+      imageUrl: 'http://localhost:3000/images/heks-eper.jpg',
+    },
+    {
+      slug: BLOG_POST_WITH_OTHER_COVER_SLUG,
+      title: 'QA E2E სტატია — სხვა ყდა', titleEn: 'QA E2E Article — Other Cover',
+      description: 'განსხვავებული ყდის მქონე სატესტო სტატია.', descriptionEn: 'A second seeded article with a different cover image.',
+      imageUrl: 'http://localhost:3000/images/cdc-logo.png',
+    },
+    {
+      slug: BLOG_POST_NO_COVER_SLUG,
+      title: 'QA E2E სტატია — ყდის გარეშე', titleEn: 'QA E2E Article — No Cover',
+      description: 'ყდის გარეშე სატესტო სტატია — უნდა გამოჩნდეს ნაგულისხმევი სურათი.', descriptionEn: 'A seeded article with no cover — must fall back to the default social image.',
+      imageUrl: null as string | null,
+    },
+  ];
+  for (const fixture of blogPostFixtures) {
+    await prisma.blogPost.upsert({
+      where: { slug: fixture.slug },
+      update: { ...fixture, published: true },
+      create: { ...fixture, category: 'QA', content: 'Seeded content for the Playwright E2E suite.', contentEn: 'Seeded content for the Playwright E2E suite.', authorId: testUser.id, published: true },
+    });
+  }
+
   console.log('E2E fixtures seeded:', {
     testUser: testUser.email,
     freeProductId: FREE_PRODUCT_ID,
@@ -227,6 +266,7 @@ async function main() {
     freeInviteToken: FREE_INVITE_TOKEN,
     paidInviteToken: PAID_INVITE_TOKEN,
     iakoProfileId: iakoProfile.id,
+    blogSlugs: [BLOG_POST_WITH_COVER_SLUG, BLOG_POST_WITH_OTHER_COVER_SLUG, BLOG_POST_NO_COVER_SLUG],
   });
 }
 

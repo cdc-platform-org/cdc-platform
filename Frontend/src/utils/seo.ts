@@ -10,10 +10,13 @@ export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://cdc.org.ge
 
 export const SITE_NAME = 'CDC Platform';
 export const DEFAULT_TITLE = 'CDC — Digital Tools & AI Platform';
-// No dedicated 1200x630 OG banner exists in public/ yet — falls back to the
-// real logo asset rather than a fabricated path. Swap this for a real
-// banner once one is designed.
-export const DEFAULT_OG_IMAGE = '/images/cdc-logo.png';
+// A real 1200x630 branded banner (gradient + logo, generated from the
+// existing brand mark — see scripts this was produced with) — replaces the
+// old fallback of stretching the square cdc-logo.png into a 1200x630 box,
+// which distorted it in every social preview that had to use the default.
+export const DEFAULT_OG_IMAGE = '/images/og-default.jpg';
+export const DEFAULT_OG_IMAGE_WIDTH = 1200;
+export const DEFAULT_OG_IMAGE_HEIGHT = 630;
 
 export const DEFAULT_LOCALE = 'ka';
 // Mirrors next-i18next.config.js's `locales` exactly — same duplication
