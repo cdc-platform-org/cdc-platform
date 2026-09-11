@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
-import { authenticate, optionalAuthenticate } from '../middleware/auth';
+import { authenticate, optionalAuthenticate, requireNotBannedOrDeleted } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { liveTrainingRegisterSchema } from '../schemas/liveTrainingSchemas';
 import { sendLiveTrainingRegistrationEmail, sendLiveTrainingEnrollmentEmail } from '../services/emailService';
@@ -239,7 +239,7 @@ router.post('/:id/register', registerRateLimit, async (req: Request, res: Respon
 // LiveTrainingEnrollment there is only ever created by
 // liveTrainingSaleService.completeLiveTrainingPurchase, once the gateway
 // actually confirms payment.
-router.post('/:id/enroll', authenticate, async (req: Request, res: Response) => {
+router.post('/:id/enroll', authenticate, requireNotBannedOrDeleted, async (req: Request, res: Response) => {
   const training = await prisma.liveTraining.findFirst({
     where: { id: req.params.id, published: true },
     include: { _count: { select: { leads: true, enrollments: enrollmentCountSelect } } },

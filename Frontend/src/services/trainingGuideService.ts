@@ -61,8 +61,9 @@ export async function saveGuideSettings(trainingId: string, settings: GuideSetti
   await apiClient.patch(`${adminPath(trainingId)}/settings`, settings);
 }
 export async function saveGuideDay(trainingId: string, day: TrainingDayInput, dayId?: string): Promise<void> {
-  if (dayId) await apiClient.put(`${adminPath(trainingId)}/days/${encodeURIComponent(dayId)}`, day);
-  else await apiClient.post(`${adminPath(trainingId)}/days`, day);
+  const payload = { ...day, sections: day.sections.map((section) => ({ ...section, items: section.items.map(({ url, ...item }) => ({ ...item, ...(url?.trim() ? { url: url.trim() } : {}) })) })) };
+  if (dayId) await apiClient.put(`${adminPath(trainingId)}/days/${encodeURIComponent(dayId)}`, payload);
+  else await apiClient.post(`${adminPath(trainingId)}/days`, payload);
 }
 export async function reorderGuideDays(trainingId: string, dayIds: string[]): Promise<void> {
   await apiClient.post(`${adminPath(trainingId)}/reorder`, { dayIds });

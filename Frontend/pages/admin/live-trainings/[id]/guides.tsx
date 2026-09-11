@@ -30,6 +30,7 @@ function AdminGuidesContent() {
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [draft, setDraft] = useState<TrainingDayInput | null>(null);
+  const [sourcePagesText, setSourcePagesText] = useState('');
   const [editingId, setEditingId] = useState<string>();
   const [preview, setPreview] = useState(false);
   const [source, setSource] = useState<{ title: string; content: string } | null>(null);
@@ -48,8 +49,9 @@ function AdminGuidesContent() {
   }, [load, t.loadFailed]);
   const assignedIakoProfile = iakoProfiles.find((profile) => profile.assignments?.some((a) => a.liveTrainingId === trainingId));
   const changeIakoAssignment = async (profileId: string) => {
-    setIakoBusy(true);
-    try { await assignIakoProfile({ liveTrainingId: trainingId }, profileId || null); await load(); }
+    setIakoBusy(true); setError(''); setSaved(false);
+    try { await assignIakoProfile({ liveTrainingId: trainingId }, profileId || null); await load(); setSaved(true); }
+    catch { setError(t.failed); }
     finally { setIakoBusy(false); }
   };
 
@@ -59,7 +61,7 @@ function AdminGuidesContent() {
     catch { setError(t.failed); }
     finally { setBusy(false); }
   };
-  const editDay = (day: TrainingDay) => { setDraft(guideDayInput(day)); setEditingId(day.id); setPreview(false); setSaved(false); };
+  const editDay = (day: TrainingDay) => { setDraft(guideDayInput(day)); setSourcePagesText(day.sourcePages.join(', ')); setEditingId(day.id); setPreview(false); setSaved(false); };
   const editSource = (entry?: GuideSource) => { setSource(entry ? { title: entry.title, content: entry.content } : { title: '', content: '' }); setSourceId(entry?.id); };
   const changeSection = (sectionId: string, update: Partial<GuideSection>) => setDraft((current) => current ? { ...current, sections: current.sections.map((section) => section.id === sectionId ? { ...section, ...update } : section) } : current);
   const moveDay = (index: number, direction: -1 | 1) => {
@@ -97,8 +99,8 @@ function AdminGuidesContent() {
       </section>
       <section aria-label="IAKO Assistant" className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 mb-7">
         <h2 className="text-xl font-bold mb-2">{lang === 'ka' ? 'IAKO ასისტენტი' : 'IAKO Assistant'}</h2>
-        <p className="text-sm text-slate-500 mb-4">{lang === 'ka' ? 'აირჩიეთ ასისტენტის პროფილი ამ ტრენინგისთვის — მართავს მოცემულობის ცოდნის ბაზას, სქრინშოთებს და საკუთარ საუბრის ისტორიას.' : 'Choose an assistant profile for this training — controls its knowledge base, screenshot support, and its own conversation history, separate from the Daily Guides Q&A above.'}</p>
-        <select disabled={iakoBusy} value={assignedIakoProfile?.id ?? ''} onChange={(event) => void changeIakoAssignment(event.target.value)} className={`${inputClass} max-w-sm`}>
+        <p className="text-sm text-slate-500 mb-4">{lang === 'ka' ? 'აირჩიეთ ასისტენტის პროფილი ამ ტრენინგისთვის — მართავს მოცემულობის ცოდნის ბაზას, სქრინშოთებს და საკუთარ საუბრის ისტორიას.' : 'Choose the IAKO profile participants use for this training. Guide questions open the same mentor conversation.'}</p>
+        <select aria-label="IAKO Assistant profile" disabled={iakoBusy || busy} value={assignedIakoProfile?.id ?? ''} onChange={(event) => void changeIakoAssignment(event.target.value)} className={`${inputClass} max-w-sm`}>
           <option value="">{lang === 'ka' ? '— ასისტენტის გარეშე —' : '— No assistant —'}</option>
           {iakoProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
         </select>
@@ -107,7 +109,7 @@ function AdminGuidesContent() {
         </p>
       </section>
       <section aria-label={t.days} className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 mb-7">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-5"><h2 className="text-xl font-bold">{t.days}</h2><button type="button" disabled={busy} onClick={() => { setDraft(emptyDay(Math.max(0, ...data.days.map((day) => day.dayNumber)) + 1)); setEditingId(undefined); setPreview(false); }} className={primaryClass}>{t.create}</button></div>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-5"><h2 className="text-xl font-bold">{t.days}</h2><button type="button" disabled={busy} onClick={() => { setDraft(emptyDay(Math.max(0, ...data.days.map((day) => day.dayNumber)) + 1)); setSourcePagesText(''); setEditingId(undefined); setPreview(false); }} className={primaryClass}>{t.create}</button></div>
         {!data.days.length ? <div className="text-sm text-slate-500"><p>{t.noDays}</p><p className="mt-2">{t.importHelp}</p><button type="button" disabled={busy} onClick={() => void mutate(() => importVibeCodingGuide(trainingId))} className={`${buttonClass} mt-4`}>{t.import}</button></div> : <ol className="divide-y divide-slate-100">
           {data.days.map((day, index) => <li key={day.id} className="py-4 flex flex-wrap justify-between items-center gap-4">
             <div className="min-w-0"><p className="text-xs font-bold text-cyan-700">{t.day} {day.dayNumber} · {day.published ? t.published : t.draft}{day.scheduledDate ? ` · ${day.scheduledDate.slice(0, 10)}` : ''}</p><h3 className="font-semibold mt-1 break-words">{day.title}</h3></div>
@@ -117,18 +119,18 @@ function AdminGuidesContent() {
       </section>
       {draft && <section aria-label={t.editor} className="rounded-2xl border border-cyan-200 bg-cyan-50/30 p-5 sm:p-6 mb-7">
         <div className="flex flex-wrap justify-between items-center gap-3 mb-5"><h2 className="text-xl font-bold">{t.editor}</h2><div className="flex gap-2"><button type="button" onClick={() => setPreview(!preview)} className={buttonClass}>{preview ? t.closePreview : t.preview}</button><button type="button" disabled={busy} onClick={() => setDraft(null)} className={buttonClass}>{t.cancel}</button></div></div>
-        {preview ? <><p className="text-sm text-slate-500 mb-5">{t.previewNote}</p><h2 className="font-black text-2xl">{t.day} {draft.dayNumber}: {draft.title}</h2><p className="my-4 leading-7">{draft.summary}</p><TrainingDayContent day={draft} lang={lang} /></> : <form onSubmit={(event) => { event.preventDefault(); void mutate(() => saveGuideDay(trainingId, draft, editingId), () => setDraft(null)); }}><fieldset disabled={busy} className="space-y-5">
-          <div className="grid sm:grid-cols-[100px_1fr_180px] gap-4"><label className="text-sm font-medium">{t.number}<input type="number" min={1} max={365} required value={draft.dayNumber} onChange={(event) => setDraft({ ...draft, dayNumber: Number(event.target.value) })} className={`${inputClass} mt-2`} /></label><label className="text-sm font-medium">{t.dayTitle}<input required maxLength={200} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} className={`${inputClass} mt-2`} /></label><label className="text-sm font-medium">{t.date}<input type="date" value={draft.scheduledDate?.slice(0, 10) || ''} onChange={(event) => setDraft({ ...draft, scheduledDate: event.target.value || null })} className={`${inputClass} mt-2`} /></label></div>
-          <label className="block text-sm font-medium">{t.summary}<textarea rows={3} maxLength={4000} value={draft.summary} onChange={(event) => setDraft({ ...draft, summary: event.target.value })} className={`${inputClass} mt-2`} /></label>
-          <label className="block text-sm font-medium">{t.sourcePages}<input value={draft.sourcePages.join(', ')} onChange={(event) => setDraft({ ...draft, sourcePages: event.target.value.split(',').map((value) => Number(value.trim())).filter((value) => Number.isInteger(value) && value > 0) })} className={`${inputClass} mt-2`} /><span className="block text-xs text-slate-500 font-normal mt-1">{t.sourceHint}</span></label>
+        {preview ? <><p className="text-sm text-slate-500 mb-5">{t.previewNote}</p><h2 className="font-black text-2xl">{t.day} {draft.dayNumber}: {draft.title}</h2><p className="my-4 leading-7">{draft.summary}</p><TrainingDayContent day={draft} lang={lang} /></> : <form onSubmit={(event) => { event.preventDefault(); void mutate(() => saveGuideDay(trainingId, { ...draft, sourcePages: sourcePagesText.split(',').map((value) => Number(value.trim())).filter((value) => value > 0) }, editingId), () => setDraft(null)); }}><fieldset disabled={busy} className="space-y-5">
+          <div className="grid sm:grid-cols-[100px_1fr_180px] gap-4"><label className="text-sm font-medium">{t.number}<input type="number" min={1} max={366} required value={draft.dayNumber} onChange={(event) => setDraft({ ...draft, dayNumber: Number(event.target.value) })} className={`${inputClass} mt-2`} /></label><label className="text-sm font-medium">{t.dayTitle}<input required maxLength={200} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} className={`${inputClass} mt-2`} /></label><label className="text-sm font-medium">{t.date}<input type="date" value={draft.scheduledDate?.slice(0, 10) || ''} onChange={(event) => setDraft({ ...draft, scheduledDate: event.target.value || null })} className={`${inputClass} mt-2`} /></label></div>
+          <label className="block text-sm font-medium">{t.summary}<textarea rows={3} maxLength={2000} value={draft.summary} onChange={(event) => setDraft({ ...draft, summary: event.target.value })} className={`${inputClass} mt-2`} /></label>
+          <label className="block text-sm font-medium">{t.sourcePages}<input value={sourcePagesText} pattern="[0-9, ]*" onChange={(event) => setSourcePagesText(event.target.value)} className={`${inputClass} mt-2`} /><span className="block text-xs text-slate-500 font-normal mt-1">{t.sourceHint}</span></label>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={draft.published} onChange={(event) => setDraft({ ...draft, published: event.target.checked })} className="h-4 w-4 accent-cyan-700" />{t.publishedLabel}</label>
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-cyan-100 pt-5"><h3 className="font-bold">{t.sections}</h3><button type="button" onClick={() => setDraft({ ...draft, sections: [...draft.sections, { id: crypto.randomUUID(), kind: 'topics', title: guideSectionLabels[lang].topics, items: [] }] })} className={buttonClass}>{t.addSection}</button></div>
           {draft.sections.map((section, sectionIndex) => <fieldset key={section.id} className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-4"><legend className="px-2 text-sm font-bold text-slate-500">{sectionIndex + 1}. {section.title}</legend>
             <div className="grid sm:grid-cols-[200px_1fr_auto] items-end gap-3"><label className="text-sm font-medium">{t.sectionType}<select value={section.kind} onChange={(event) => { const kind = event.target.value as GuideSectionKind; changeSection(section.id, { kind, title: guideSectionLabels[lang][kind] }); }} className={`${inputClass} mt-2`}>{(Object.keys(guideSectionLabels[lang]) as GuideSectionKind[]).map((kind) => <option key={kind} value={kind}>{guideSectionLabels[lang][kind]}</option>)}</select></label><label className="text-sm font-medium">{t.sectionTitle}<input required value={section.title} maxLength={200} onChange={(event) => changeSection(section.id, { title: event.target.value })} className={`${inputClass} mt-2`} /></label><button type="button" onClick={() => setDraft({ ...draft, sections: draft.sections.filter((entry) => entry.id !== section.id) })} className={buttonClass}>{t.removeSection}</button></div>
             {section.items.map((item, itemIndex) => <div key={item.id} className="rounded-xl bg-slate-50 p-4 space-y-3">
               <div className="flex justify-between items-center"><span className="text-xs text-slate-500">{sectionIndex + 1}.{itemIndex + 1}</span><button type="button" onClick={() => changeSection(section.id, { items: section.items.filter((entry) => entry.id !== item.id) })} className="text-xs text-red-600 underline">{t.removeItem}</button></div>
-              <label className="block text-sm font-medium">{t.itemTitle}<input required maxLength={300} value={item.title} onChange={(event) => changeSection(section.id, { items: section.items.map((entry) => entry.id === item.id ? { ...entry, title: event.target.value } : entry) })} className={`${inputClass} mt-2`} /></label>
-              <label className="block text-sm font-medium">{t.itemBody}<textarea rows={section.kind === 'code' ? 6 : 3} maxLength={20000} value={item.body} onChange={(event) => changeSection(section.id, { items: section.items.map((entry) => entry.id === item.id ? { ...entry, body: event.target.value } : entry) })} className={`${inputClass} mt-2 ${section.kind === 'code' ? 'font-mono' : ''}`} /></label>
+              <label className="block text-sm font-medium">{t.itemTitle}<input required maxLength={200} value={item.title} onChange={(event) => changeSection(section.id, { items: section.items.map((entry) => entry.id === item.id ? { ...entry, title: event.target.value } : entry) })} className={`${inputClass} mt-2`} /></label>
+              <label className="block text-sm font-medium">{t.itemBody}<textarea rows={section.kind === 'code' ? 6 : 3} maxLength={12000} value={item.body} onChange={(event) => changeSection(section.id, { items: section.items.map((entry) => entry.id === item.id ? { ...entry, body: event.target.value } : entry) })} className={`${inputClass} mt-2 ${section.kind === 'code' ? 'font-mono' : ''}`} /></label>
               <div className="grid sm:grid-cols-2 gap-3">{section.kind === 'code' && <label className="text-sm font-medium">{t.language}<input value={item.language ?? ''} maxLength={40} onChange={(event) => changeSection(section.id, { items: section.items.map((entry) => entry.id === item.id ? { ...entry, language: event.target.value } : entry) })} className={`${inputClass} mt-2`} /></label>}<label className="text-sm font-medium">{t.url}<input type="url" value={item.url ?? ''} maxLength={2000} onChange={(event) => changeSection(section.id, { items: section.items.map((entry) => entry.id === item.id ? { ...entry, url: event.target.value } : entry) })} placeholder="https://" className={`${inputClass} mt-2`} /></label></div>
             </div>)}
             <button type="button" onClick={() => changeSection(section.id, { items: [...section.items, { id: crypto.randomUUID(), title: '', body: '' }] })} className={buttonClass}>{t.addItem}</button>

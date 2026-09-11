@@ -43,7 +43,7 @@ async function chatHandler(resourceType: 'LIVE_TRAINING' | 'DIGITAL_TOOL', resou
   try {
     const data = await askIakoAssistant({
       resourceType, resourceId, userId: req.user!.id, userEmail: req.user!.email,
-      message: result.data.message, idempotencyKey: result.data.idempotencyKey, images, topicContext: result.data.topicContext,
+      message: result.data.message, idempotencyKey: result.data.idempotencyKey, images, guideContext: result.data.guideContext,
     });
     res.json({ data });
   } catch (err) {
@@ -58,7 +58,7 @@ router.get('/my-assistants', async (req: Request, res: Response) => {
 
 router.get('/live-training/:id/conversation', async (req: Request, res: Response) => {
   try {
-    res.json({ data: await getConversation('LIVE_TRAINING', req.params.id, req.user!.id) });
+    res.json({ data: await getConversation('LIVE_TRAINING', req.params.id, req.user!.id, typeof req.query.before === 'string' ? req.query.before : undefined) });
   } catch (err) {
     if (err instanceof IakoError) return res.status(err.status).json({ message: err.message });
     throw err;
@@ -69,7 +69,7 @@ router.post('/live-training/:id/chat', chatLimiter, handleUpload, (req: Request,
 router.get('/digital-tool/:key/conversation', async (req: Request, res: Response) => {
   if (!isDigitalToolKey(req.params.key)) return res.status(404).json({ message: 'Unknown Digital Tool.' });
   try {
-    res.json({ data: await getConversation('DIGITAL_TOOL', req.params.key, req.user!.id) });
+    res.json({ data: await getConversation('DIGITAL_TOOL', req.params.key, req.user!.id, typeof req.query.before === 'string' ? req.query.before : undefined) });
   } catch (err) {
     if (err instanceof IakoError) return res.status(err.status).json({ message: err.message });
     throw err;

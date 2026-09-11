@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole, requireNotBannedOrDeleted } from '../middleware/auth';
 import { manualEnrollmentSchema, createInviteSchema } from '../schemas/iakoSchemas';
-import { createInvite, listInvites, revokeInvite, LiveTrainingInviteError } from '../services/liveTrainingInviteService';
+import { createInvite, listInvites, revokeInvite, rotateInvite, listInviteRequests, reviewInviteRequest, LiveTrainingInviteError } from '../services/liveTrainingInviteService';
 import { logAdminAction } from '../services/auditLogService';
 
 // Same "each caller declares its own copy" convention as
@@ -90,6 +90,37 @@ router.post('/:trainingId/invites/:id/revoke', async (req: Request, res: Respons
     const invite = await revokeInvite(req.params.id);
     await logAdminAction({ action: 'LIVE_TRAINING_INVITE_REVOKED', targetType: 'LIVE_TRAINING', targetId: req.params.trainingId, performedById: req.user!.id, metadata: { inviteId: invite.id } });
     res.json({ data: invite });
+  } catch (err) {
+    if (err instanceof LiveTrainingInviteError) return res.status(err.status).json({ message: err.message });
+    throw err;
+  }
+});
+
+router.post('/:trainingId/invites/:id/rotate', async (req: Request, res: Response) => {
+  const existing = await prisma.liveTrainingInvite.findFirst({ where: { id: req.params.id, liveTrainingId: req.params.trainingId } });
+  if (!existing) return res.status(404).json({ message: 'Invite not found.' });
+  const invite = await rotateInvite(req.params.id);
+  await logAdminAction({ action: 'LIVE_TRAINING_INVITE_ROTATED', targetType: 'LIVE_TRAINING', targetId: req.params.trainingId, performedById: req.user!.id, metadata: { inviteId: invite.id } });
+  res.json({ data: invite });
+});
+
+router.get('/:trainingId/invites/:id/requests', async (req: Request, res: Response) => {
+  const invite = await prisma.liveTrainingInvite.findFirst({ where: { id: req.params.id, liveTrainingId: req.params.trainingId } });
+  if (!invite) return res.status(404).json({ message: 'Invite not found.' });
+  res.json({ data: await listInviteRequests(invite.id) });
+});
+
+router.post('/:trainingId/invites/:id/requests/:userId/:decision', async (req: Request, res: Response) => {
+  if (req.params.decision !== 'approve' && req.params.decision !== 'reject') return res.status(404).json({ message: 'Unknown action.' });
+  const invite = await prisma.liveTrainingInvite.findFirst({ where: { id: req.params.id, liveTrainingId: req.params.trainingId } });
+  if (!invite) return res.status(404).json({ message: 'Invite not found.' });
+  try {
+    await reviewInviteRequest(invite.id, req.params.userId, req.params.decision as 'approve' | 'reject');
+    await logAdminAction({
+      action: req.params.decision === 'approve' ? 'LIVE_TRAINING_INVITE_REQUEST_APPROVED' : 'LIVE_TRAINING_INVITE_REQUEST_REJECTED',
+      targetType: 'LIVE_TRAINING', targetId: req.params.trainingId, performedById: req.user!.id, metadata: { inviteId: invite.id, userId: req.params.userId },
+    });
+    res.json({ data: { saved: true } });
   } catch (err) {
     if (err instanceof LiveTrainingInviteError) return res.status(err.status).json({ message: err.message });
     throw err;

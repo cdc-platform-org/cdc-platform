@@ -39,7 +39,7 @@ const EN_STRINGS = {
   mediaStudioDescLocked: 'Requires access — contact us to request it',
   cyberSentinel: 'Cyber Sentinel (AG-SAIA)',
   cyberSentinelDesc: 'Sovereign AI security node — launching soon',
-  iakoDesc: 'AI training mentor',
+  iakoDesc: 'AI training mentor', openIako: 'Open IAKO', todayGuide: "Today's Guide", requestsUsed: 'requests used',
 };
 
 const dict = {
@@ -67,7 +67,7 @@ const dict = {
     mediaStudioDescLocked: 'საჭიროებს წვდომას — დაგვიკავშირდით მოთხოვნისთვის',
     cyberSentinel: 'Cyber Sentinel (AG-SAIA)',
     cyberSentinelDesc: 'სუვერენული AI უსაფრთხოების კვანძი — მალე გაეშვება',
-    iakoDesc: 'AI ტრენინგის მენტორი',
+    iakoDesc: 'AI ტრენინგის მენტორი', openIako: 'IAKO-ს გახსნა', todayGuide: 'დღევანდელი გზამკვლევი', requestsUsed: 'მოთხოვნა გამოყენებულია',
   },
   en: EN_STRINGS,
   de: EN_STRINGS,
@@ -96,6 +96,10 @@ interface ToolCardData {
   badgeLabel: string;
   dateLine: string | null;
   manageHref: string;
+  actionLabel?: string;
+  usageLine?: string;
+  guideHref?: string;
+  guideLabel?: string;
 }
 
 function ToolCard({ tool, manageLabel }: { tool: ToolCardData; manageLabel: string }) {
@@ -118,12 +122,14 @@ function ToolCard({ tool, manageLabel }: { tool: ToolCardData; manageLabel: stri
           {tool.dateLine}
         </p>
       )}
+      {tool.usageLine && <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{tool.usageLine}</p>}
       <Link
         href={tool.manageHref}
         className="mt-auto inline-flex items-center justify-center text-xs font-bold px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 no-underline hover:bg-slate-50 dark:hover:bg-slate-800"
       >
-        {manageLabel}
+        {tool.actionLabel || manageLabel}
       </Link>
+      {tool.guideHref && <Link href={tool.guideHref} className="mt-2 text-center text-xs font-bold text-cyan-700 dark:text-cyan-300 py-2">{tool.guideLabel}</Link>}
     </div>
   );
 }
@@ -249,6 +255,10 @@ function MyToolsContent() {
       badgeLabel: expired ? t.statusExpired : t.statusActive,
       dateLine: assistant.usage.expiresAt ? `${t.expires}: ${new Date(assistant.usage.expiresAt).toLocaleDateString()}` : null,
       manageHref: iakoAssistantHref(assistant),
+      actionLabel: t.openIako,
+      usageLine: `${assistant.usage.requestsUsed}${assistant.usage.requestLimit != null ? ` / ${assistant.usage.requestLimit}` : ''} ${t.requestsUsed}`,
+      guideHref: assistant.resourceType === 'LIVE_TRAINING' ? `/dashboard/live-trainings/${assistant.resourceId}/guide` : undefined,
+      guideLabel: t.todayGuide,
     });
   }
 

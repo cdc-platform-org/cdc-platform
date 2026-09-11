@@ -45,7 +45,7 @@ function DailyGuideContent() {
   // separate assistant with its own siloed history.
   const askIako = (day?: TrainingDay, section?: GuideSection) => {
     const topic = day ? `${t.day} ${day.dayNumber}: ${day.title}${section ? ` — ${section.title}` : ''}` : undefined;
-    void router.push({ pathname: `/dashboard/live-trainings/${id}/iako`, query: topic ? { topic } : {} });
+    void router.push({ pathname: `/dashboard/live-trainings/${id}/iako`, query: day ? { topic, dayId: day.id, ...(section ? { sectionId: section.id } : {}) } : {} });
   };
   const toggleProgress = async (day: TrainingDay, itemId: string, completed: boolean) => {
     setProgressError(false); setBusyItems((items) => [...items, itemId]);

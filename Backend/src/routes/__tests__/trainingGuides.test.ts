@@ -10,7 +10,7 @@ import trainingGuidesRouter from '../trainingGuides';
 import adminTrainingGuidesRouter from '../adminTrainingGuides';
 import { errorHandler } from '../../middleware/errorHandler';
 import { callTextModel, isAiAgentConfigured } from '../../services/aiAgentService';
-import { defaultGuideSettings, getTrainingGuides, localCalendarDate, resolveGuideSchedule, scheduledGuideDate } from '../../services/trainingGuideService';
+import { defaultGuideSettings, getTrainingGuides, localCalendarDate, resolveGuideSchedule, resolveIakoGuideContext, scheduledGuideDate } from '../../services/trainingGuideService';
 import { trainingDaySchema, guideSettingsSchema } from '../../schemas/trainingGuideSchemas';
 import { logAdminAction } from '../../services/auditLogService';
 
@@ -234,6 +234,23 @@ describe('personal progress and aggregate metrics', () => {
 });
 
 describe('admin guide controls and reference sources', () => {
+  it('serializes simultaneous day creation and reorders without losing source or selected-day identity', async () => {
+    const { training, admin, days } = await fixture(2);
+    const source = await prisma.trainingGuideSource.create({ data: { liveTrainingId: training.id, dayNumber: 2, title: 'Day two reference', content: 'Original second day source.' } });
+    const created = await Promise.all([1, 2].map(() => request(`${adminPath(training.id)}/days`, admin, 'POST', dayInput(3))));
+    expect(created.map((response) => response.status).sort()).toEqual([201, 409]);
+    const third = await prisma.trainingDay.findUniqueOrThrow({ where: { liveTrainingId_dayNumber: { liveTrainingId: training.id, dayNumber: 3 } } });
+    const orders = [[third.id, days[1].id, days[0].id], [days[1].id, days[0].id, third.id]];
+    const reordered = await Promise.all(orders.map((dayIds) => request(`${adminPath(training.id)}/reorder`, admin, 'POST', { dayIds })));
+    expect(reordered.map((response) => response.status)).toEqual([200, 200]);
+    const finalDays = await prisma.trainingDay.findMany({ where: { liveTrainingId: training.id }, orderBy: { dayNumber: 'asc' } });
+    expect(finalDays.map((day) => day.dayNumber)).toEqual([1, 2, 3]);
+    expect(orders).toContainEqual(finalDays.map((day) => day.id));
+    const selectedDay = finalDays.find((day) => day.id === days[1].id)!;
+    expect((await prisma.trainingGuideSource.findUniqueOrThrow({ where: { id: source.id } })).dayNumber).toBe(selectedDay.dayNumber);
+    expect((await prisma.trainingGuideSettings.findUniqueOrThrow({ where: { liveTrainingId: training.id } })).currentDayOverride).toBe(selectedDay.dayNumber);
+  });
+
   it('pauses and resumes schedules, chooses manual days and validates settings', async () => {
     const { training, admin } = await fixture();
     const path = `${adminPath(training.id)}/settings`;
@@ -312,6 +329,36 @@ describe('admin guide controls and reference sources', () => {
 });
 
 describe('IAKO day and section context', () => {
+  it('resolves selected mentor context from visible persisted day and item identifiers', async () => {
+    const one = await fixture();
+    const two = await fixture();
+    const context = await resolveIakoGuideContext(one.training.id, one.learner.id, { dayId: one.days[1].id, sectionId: 'tasks', itemId: 'first-task' });
+    expect(context).toMatchObject({ dayNumber: 2, title: 'Guide day 2', sectionTitle: 'Practice tasks', topicTitle: 'Exercise 2' });
+    expect(context.context).toContain('Required exercise for day 2');
+    expect(context.context).not.toContain('Expected deliverable');
+    for (const dayId of [one.days[2].id, two.days[1].id]) {
+      await expect(resolveIakoGuideContext(one.training.id, one.learner.id, { dayId })).rejects.toMatchObject({ status: 404 });
+    }
+    for (const selection of [{ sectionId: 'unknown' }, { sectionId: 'tasks', itemId: 'unknown' }]) {
+      await expect(resolveIakoGuideContext(one.training.id, one.learner.id, { dayId: one.days[1].id, ...selection })).rejects.toMatchObject({ status: 400 });
+    }
+    await expect(resolveIakoGuideContext(one.training.id, two.learner.id, { dayId: one.days[1].id })).rejects.toMatchObject({ status: 403 });
+    await prisma.trainingDay.update({ where: { id: one.days[1].id }, data: { published: false } });
+    await expect(resolveIakoGuideContext(one.training.id, one.learner.id, { dayId: one.days[1].id })).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('bounds full-day mentor context while preserving valid structured JSON', async () => {
+    const { training, learner, days } = await fixture(1);
+    await prisma.trainingDay.update({ where: { id: days[0].id }, data: { sections: Array.from({ length: 20 }, (_, section) => ({
+      id: `section-${section}`, kind: 'code', title: 'Large code examples', items: Array.from({ length: 40 }, (_, item) => ({
+        id: `item-${section}-${item}`, title: 'Code example', body: 'x'.repeat(12000),
+      })),
+    })) } });
+    const context = await resolveIakoGuideContext(training.id, learner.id, { dayId: days[0].id });
+    expect(context.context.length).toBeLessThan(14000);
+    expect(JSON.parse(context.context)).toMatchObject({ dayNumber: 1, title: 'Guide day 1' });
+  });
+
   it('answers today, tomorrow and day four from allowed structured guides without inventing curriculum', async () => {
     const { training, learner, admin } = await fixture();
     const path = `${learnerPath(training.id)}/chat`;
@@ -331,7 +378,7 @@ describe('IAKO day and section context', () => {
     expect(callTextModel).not.toHaveBeenCalled();
   });
 
-  it('authorizes selected day/section metadata and sends only its allowed reference knowledge to the model', async () => {
+  it('authorizes selected day/section metadata without offering an unmetered model or disclosing reference knowledge', async () => {
     const one = await fixture();
     const two = await fixture();
     await prisma.trainingGuideSource.createMany({ data: [
@@ -350,12 +397,12 @@ describe('IAKO day and section context', () => {
     expect(response.status).toBe(200);
     const reply = await data<{ dayNumber: number; reply: string }>(response);
     expect(Object.keys(reply).sort()).toEqual(['dayNumber', 'reply']);
-    expect(reply).toEqual({ dayNumber: 2, reply: 'Additional technical advice: check the browser console.' });
-    const prompt = jest.mocked(callTextModel).mock.calls[0][0];
-    expect(prompt).toContain('ALLOWED_REFERENCE');
-    expect(prompt).toContain('Required exercise for day 2');
-    expect(prompt).not.toContain('FUTURE_SECRET');
-    expect(prompt).not.toContain('OTHER_TRAINING_SECRET');
+    expect(reply.dayNumber).toBe(2);
+    expect(reply.reply).toContain('Required exercise for day 2');
+    expect(reply.reply).not.toContain('ALLOWED_REFERENCE');
+    expect(reply.reply).not.toContain('FUTURE_SECRET');
+    expect(reply.reply).not.toContain('OTHER_TRAINING_SECRET');
+    expect(callTextModel).not.toHaveBeenCalled();
     expect(JSON.stringify(reply)).not.toContain('REFERENCE DATA');
     expect(JSON.stringify(reply)).not.toContain('internal instructions');
   });

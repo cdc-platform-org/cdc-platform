@@ -189,6 +189,18 @@ describe('learning checkout pricing and retries', () => {
 });
 
 describe('learning capacity and coupon concurrency', () => {
+  it.each(['BANNED', 'DEACTIVATED', 'DELETED'] as const)('rejects %s accounts from free enrollment before they consume a seat', async (condition) => {
+    const buyer = await createUser();
+    const target = await training(1, null);
+    if (condition === 'DELETED') await prisma.user.delete({ where: { id: buyer.id } });
+    else await prisma.user.update({ where: { id: buyer.id }, data: condition === 'BANNED' ? { isBanned: true } : { deletionRequestedAt: new Date() } });
+    const response = await post(`/live-trainings/${target.id}/enroll`, buyer);
+    expect(response.status).toBe(condition === 'DELETED' ? 401 : 403);
+    expect(await prisma.liveTrainingEnrollment.count({ where: { liveTrainingId: target.id } })).toBe(0);
+    expect(createBogOrder).not.toHaveBeenCalled();
+    expect(createStripeCheckoutSession).not.toHaveBeenCalled();
+  });
+
   it('reserves the final paid seat only once across gateways', async () => {
     const buyers = await Promise.all([createUser(), createUser()]);
     const target = await training(1);

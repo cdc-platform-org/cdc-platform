@@ -15,6 +15,7 @@ import liveTrainingInviteRouter from '../liveTrainingInvites';
 import { errorHandler } from '../../middleware/errorHandler';
 import { callTextModel, isAiAgentConfigured, AiAgentError } from '../../services/aiAgentService';
 import { uploadImage } from '../../services/imageStorage';
+import { uploadPrivateBlob } from '../../services/privateBlobStorage';
 
 jest.mock('../../services/aiAgentService', () => ({
   callTextModel: jest.fn(), isAiAgentConfigured: jest.fn(),
@@ -22,6 +23,15 @@ jest.mock('../../services/aiAgentService', () => ({
 }));
 jest.mock('../../services/auditLogService', () => ({ logAdminAction: jest.fn().mockResolvedValue(undefined) }));
 jest.mock('../../services/imageStorage', () => ({ uploadImage: jest.fn().mockResolvedValue('https://cdn.example.test/iako-screenshots/shot.png') }));
+// The real module talks to Azure Blob (User Delegation Key + SAS) — no
+// network access in tests, so every screenshot-enabled test would otherwise
+// hang/fail against the fake AZURE_STORAGE_ACCOUNT_URL in setupEnv.ts.
+jest.mock('../../services/privateBlobStorage', () => ({
+  uploadPrivateBlob: jest.fn().mockResolvedValue(undefined),
+  assertPrivateBlobContainer: jest.fn().mockResolvedValue(undefined),
+  privateBlobExists: jest.fn().mockResolvedValue(true),
+  getSignedBlobUrl: jest.fn().mockImplementation(async (blobName: string) => `https://test-blob.example.test/${blobName}?sig=test`),
+}));
 jest.mock('../../services/emailService', () => ({ sendLiveTrainingEnrollmentEmail: jest.fn().mockResolvedValue(undefined) }));
 jest.mock('../../services/whatsappService', () => ({ sendRegistrationStatusWhatsApp: jest.fn().mockResolvedValue(undefined), formatWhatsAppDate: jest.fn().mockReturnValue('December 2026') }));
 
@@ -83,16 +93,20 @@ async function data<T>(response: Response): Promise<T> {
 // carry optional screenshots), and idempotencyKey is required by
 // iakoChatSchema, so this is what every chat test below goes through
 // rather than the plain-JSON `request()` helper above.
-async function chatRequest(path: string, user: User, message: string, opts: { idempotencyKey?: string; images?: Array<{ bytes: number[]; mimeType: string; name: string }>; topicContext?: string } = {}) {
+async function chatRequest(path: string, user: User, message: string, opts: { idempotencyKey?: string; images?: Array<{ bytes: number[]; mimeType: string; name: string }>; guideContext?: { dayId: string; sectionId?: string; itemId?: string } } = {}) {
   const form = new FormData();
   form.append('message', message);
   form.append('idempotencyKey', opts.idempotencyKey ?? randomUUID());
-  if (opts.topicContext) form.append('topicContext', opts.topicContext);
+  if (opts.guideContext) form.append('guideContext', JSON.stringify(opts.guideContext));
   for (const image of opts.images ?? []) form.append('images', new Blob([new Uint8Array(image.bytes)], { type: image.mimeType }), image.name);
   const token = jwt.sign({ userId: user.id, role: user.role, email: user.email }, JWT_SECRET, { algorithm: 'HS256', expiresIn: '5m' });
   return fetch(`${baseUrl}${path}`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'X-Forwarded-For': `198.18.1.${++requestNumber}` }, body: form });
 }
-const PNG_BYTES = [137, 80, 78, 71];
+// A real, decodable 1x1 transparent PNG — iakoScreenshotService.ts's
+// validateIakoScreenshots decodes every upload with sharp (see its own
+// comment on why: metadata alone accepts a truncated file), so a bare
+// magic-number stub no longer passes here the way it used to.
+const PNG_BYTES = Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64'));
 
 async function createProfile(admin: User, overrides: Record<string, unknown> = {}) {
   const response = await request('/admin/iako/profiles', admin, 'POST', {
@@ -208,14 +222,20 @@ describe('IAKO Digital Tool assignment and chat', () => {
 
     const denied = await chatRequest('/iako/digital-tool/educator-hub/chat', learner, 'What does this screenshot show?', { images: [{ bytes: PNG_BYTES, mimeType: 'image/png', name: 'shot.png' }] });
     expect(denied.status).toBe(400);
-    expect(uploadImage).not.toHaveBeenCalled();
+    expect(uploadPrivateBlob).not.toHaveBeenCalled();
 
     await request('/admin/iako/assignments/digital-tool/educator-hub', admin, 'PUT', { profileId: (await assignedProfile(admin, 'educator-hub', { visionEnabled: true, name: 'Vision assistant' })).id });
     const allowed = await chatRequest('/iako/digital-tool/educator-hub/chat', learner, 'What does this screenshot show?', { images: [{ bytes: PNG_BYTES, mimeType: 'image/png', name: 'shot.png' }] });
     expect(allowed.status).toBe(200);
-    expect(uploadImage).toHaveBeenCalled();
+    // Screenshots go through the platform's private-blob storage (short-lived
+    // signed SAS URLs), never the public asset pipeline (imageStorage.ts).
+    expect(uploadPrivateBlob).toHaveBeenCalledWith(expect.stringMatching(new RegExp(`^iako-private/${learner.id}/`)), expect.any(Buffer), 'image/webp');
+    expect(uploadImage).not.toHaveBeenCalled();
     const lastAnswerCall = jest.mocked(callTextModel).mock.calls.find(([prompt]) => prompt.includes('Context priority when answering'))!;
-    expect(lastAnswerCall[2]).toEqual([{ mimeType: 'image/png', data: expect.any(String) }]);
+    // validateIakoScreenshots always re-encodes to webp (strips EXIF, bounds
+    // pixels) before it ever reaches storage or the vision provider — see
+    // iakoScreenshotService.ts.
+    expect(lastAnswerCall[2]).toEqual([{ mimeType: 'image/webp', data: expect.any(String) }]);
   });
 });
 
@@ -315,7 +335,7 @@ describe('IAKO semantic scope classification', () => {
     expect(answerCall[0]).toContain('ask a brief, specific clarifying question');
   });
 
-  it('a classifier failure falls back to AMBIGUOUS instead of crashing or silently granting scope', async () => {
+  it('a classifier failure fails closed (never silently grants scope) and does not consume a credit', async () => {
     const admin = await createUser({ adminRole: 'MANAGER' });
     await assignedProfile(admin, 'educator-hub');
     const learner = await entitleLearner(admin, 'educator-hub');
@@ -325,8 +345,12 @@ describe('IAKO semantic scope classification', () => {
     });
 
     const response = await chatRequest('/iako/digital-tool/educator-hub/chat', learner, 'How do I debug this?');
-    expect(response.status).toBe(200);
-    expect((await data<{ outOfScope: boolean }>(response)).outOfScope).toBe(false);
+    // A broken safety gate is not a valid AMBIGUOUS decision — see
+    // iakoScopeService.ts's classifyScope. It must surface as a clear,
+    // retryable failure rather than ever proceeding to an answer.
+    expect(response.status).toBe(502);
+    const grant = await prisma.iakoUsageGrant.findFirstOrThrow({ where: { userId: learner.id, resourceType: 'DIGITAL_TOOL', resourceId: 'educator-hub' } });
+    expect(await prisma.iakoRequestLog.count({ where: { usageGrantId: grant.id } })).toBe(0);
   });
 });
 
@@ -536,16 +560,90 @@ describe('Live Training manual enrollment and QR invites', () => {
     expect(enrollment?.status).toBe('ACTIVE');
   });
 
-  it('NEVER lets a QR invite bypass payment for a paid training', async () => {
+  it('NEVER lets a QR invite bypass payment for a paid training by default, and never spends its redemption budget doing so', async () => {
     const admin = await createUser({ adminRole: 'MANAGER' });
     const training = await createTraining(15000);
     const learner = await createUser();
 
-    const invite = await data<{ token: string }>(await request(`/admin/live-trainings/${training.id}/invites`, admin, 'POST', { maxRedemptions: 5 }));
+    const invite = await data<{ id: string; token: string; policy: string }>(await request(`/admin/live-trainings/${training.id}/invites`, admin, 'POST', { maxRedemptions: 5 }));
+    expect(invite.policy).toBe('PAYMENT_REQUIRED'); // Safe default — no explicit admin choice.
     const response = await request(`/live-trainings/invites/${invite.token}/redeem`, learner, 'POST', {});
-    expect(response.status).toBe(400);
-    const enrollment = await prisma.liveTrainingEnrollment.findUnique({ where: { userId_liveTrainingId: { userId: learner.id, liveTrainingId: training.id } } });
-    expect(enrollment).toBeNull();
+    expect(response.status).toBe(200);
+    expect((await data<{ status: string }>(response)).status).toBe('PAYMENT_REQUIRED');
+    expect(await prisma.liveTrainingEnrollment.findUnique({ where: { userId_liveTrainingId: { userId: learner.id, liveTrainingId: training.id } } })).toBeNull();
+    // Nothing was granted, so this attempt must not have spent the invite's budget.
+    expect((await prisma.liveTrainingInvite.findUniqueOrThrow({ where: { id: invite.id } })).redemptionCount).toBe(0);
+  });
+
+  it('only an explicit FREE_ENROLLMENT policy can waive payment on a paid training', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const training = await createTraining(15000);
+    const learner = await createUser();
+
+    const invite = await data<{ token: string }>(await request(`/admin/live-trainings/${training.id}/invites`, admin, 'POST', { maxRedemptions: 5, policy: 'FREE_ENROLLMENT' }));
+    const response = await request(`/live-trainings/invites/${invite.token}/redeem`, learner, 'POST', {});
+    expect(response.status).toBe(200);
+    expect((await data<{ status: string }>(response)).status).toBe('ACTIVE');
+    expect((await prisma.liveTrainingEnrollment.findUnique({ where: { userId_liveTrainingId: { userId: learner.id, liveTrainingId: training.id } } }))?.status).toBe('ACTIVE');
+  });
+
+  it('REGISTRATION_ONLY never grants a seat, even on a free training', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const training = await createTraining(null);
+    const learner = await createUser();
+
+    const invite = await data<{ token: string }>(await request(`/admin/live-trainings/${training.id}/invites`, admin, 'POST', { maxRedemptions: 5, policy: 'REGISTRATION_ONLY' }));
+    const response = await request(`/live-trainings/invites/${invite.token}/redeem`, learner, 'POST', {});
+    expect(response.status).toBe(200);
+    expect((await data<{ status: string }>(response)).status).toBe('REGISTRATION_ONLY');
+    expect(await prisma.liveTrainingEnrollment.findUnique({ where: { userId_liveTrainingId: { userId: learner.id, liveTrainingId: training.id } } })).toBeNull();
+  });
+
+  it('requiresApproval holds the seat pending admin review — approve grants it, reject permanently denies it', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const training = await createTraining(null);
+    const [approved, rejected] = await Promise.all([createUser(), createUser()]);
+
+    const invite = await data<{ id: string; token: string }>(await request(`/admin/live-trainings/${training.id}/invites`, admin, 'POST', { maxRedemptions: 5, requiresApproval: true }));
+
+    for (const learner of [approved, rejected]) {
+      const response = await request(`/live-trainings/invites/${invite.token}/redeem`, learner, 'POST', {});
+      expect(response.status).toBe(200);
+      expect((await data<{ status: string }>(response)).status).toBe('PENDING_APPROVAL');
+      expect(await prisma.liveTrainingEnrollment.findUnique({ where: { userId_liveTrainingId: { userId: learner.id, liveTrainingId: training.id } } })).toBeNull();
+    }
+
+    const requests = await data<Array<{ userId: string; status: string; user: { email: string } }>>(await request(`/admin/live-trainings/${training.id}/invites/${invite.id}/requests`, admin));
+    expect(requests.map(({ userId, status }) => ({ userId, status })).sort((a, b) => a.userId.localeCompare(b.userId))).toEqual(
+      [{ userId: approved.id, status: 'PENDING_APPROVAL' }, { userId: rejected.id, status: 'PENDING_APPROVAL' }].sort((a, b) => a.userId.localeCompare(b.userId))
+    );
+    expect(requests.every((row) => row.user?.email)).toBe(true);
+
+    expect((await request(`/admin/live-trainings/${training.id}/invites/${invite.id}/requests/${approved.id}/approve`, admin, 'POST')).status).toBe(200);
+    expect((await prisma.liveTrainingEnrollment.findUnique({ where: { userId_liveTrainingId: { userId: approved.id, liveTrainingId: training.id } } }))?.status).toBe('ACTIVE');
+
+    expect((await request(`/admin/live-trainings/${training.id}/invites/${invite.id}/requests/${rejected.id}/reject`, admin, 'POST')).status).toBe(200);
+    expect(await prisma.liveTrainingEnrollment.findUnique({ where: { userId_liveTrainingId: { userId: rejected.id, liveTrainingId: training.id } } })).toBeNull();
+    // A rejected/approved request cannot be re-reviewed, and re-redeeming replays the same terminal status.
+    expect((await request(`/admin/live-trainings/${training.id}/invites/${invite.id}/requests/${rejected.id}/approve`, admin, 'POST')).status).toBe(409);
+    const replay = await request(`/live-trainings/invites/${invite.token}/redeem`, rejected, 'POST', {});
+    expect((await data<{ status: string }>(replay)).status).toBe('REJECTED');
+  });
+
+  it('an invite that has not started yet cannot be redeemed, and rotating an invite issues a new token while preserving its history', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const training = await createTraining(null);
+    const notYetStarted = await data<{ token: string }>(await request(`/admin/live-trainings/${training.id}/invites`, admin, 'POST', { maxRedemptions: 5, startsAt: new Date(Date.now() + 60_000).toISOString() }));
+    expect((await request(`/live-trainings/invites/${notYetStarted.token}/redeem`, await createUser(), 'POST', {})).status).toBe(403);
+
+    const invite = await data<{ id: string; token: string }>(await request(`/admin/live-trainings/${training.id}/invites`, admin, 'POST', { maxRedemptions: 5 }));
+    const learner = await createUser();
+    expect((await request(`/live-trainings/invites/${invite.token}/redeem`, learner, 'POST', {})).status).toBe(200);
+    expect((await request(`/admin/live-trainings/${training.id}/invites/${invite.id}/rotate`, admin, 'POST')).status).toBe(200);
+    expect((await request(`/live-trainings/invites/${invite.token}/redeem`, await createUser(), 'POST', {})).status).toBe(404); // Old token is dead.
+    const rotated = await prisma.liveTrainingInvite.findUniqueOrThrow({ where: { id: invite.id } });
+    expect(rotated.token).not.toBe(invite.token);
+    expect(await request(`/live-trainings/invites/${rotated.token}/redeem`, learner, 'POST', {})).toBeDefined(); // Same learner can still replay their own prior redemption via the new link.
   });
 
   it('rejects a redemption after revocation, after expiry, past its redemption cap, or by the wrong email', async () => {
@@ -605,21 +703,64 @@ describe('Live Training manual enrollment and QR invites', () => {
 });
 
 describe('IAKO topic context from Daily Guides', () => {
-  it('"Ask IAKO about this topic" context is injected into the server-side prompt', async () => {
-    const admin = await createUser({ adminRole: 'MANAGER' });
-    const profile = await createProfile(admin);
+  // The learner may only submit IDs — resolveIakoGuideContext (see
+  // trainingGuideService.ts) is what turns them into trusted prompt text,
+  // through the SAME enrollment/publish/visibility gates the Daily Guide
+  // page itself uses. A raw client-supplied topic string is never accepted
+  // here at all (see iakoSchemas.ts's iakoChatSchema).
+  async function topicFixture(admin: User) {
+    const profile = await createProfile(admin, { name: 'Guide-topic assistant' });
     const training = await prisma.liveTraining.create({ data: {
       title: 'Topic-context training', description: 'x', category: 'Engineering',
       scheduledAt: new Date('2026-09-01T12:00:00Z'), published: true, maxCapacity: 20,
     } });
     await request(`/admin/iako/assignments/live-training/${training.id}`, admin, 'PUT', { profileId: profile.id });
+    const day = await prisma.trainingDay.create({ data: {
+      liveTrainingId: training.id, dayNumber: 1, title: 'Day 1', summary: 'Orientation', published: true,
+      sections: [{ id: 'topics-1', kind: 'topics', title: 'Orientation topics', items: [
+        { id: 'item-1', title: 'Supabase Auth Setup', body: 'Wire up Supabase email/password auth.' },
+      ] }] as unknown as object,
+    } });
+    await prisma.trainingGuideSettings.create({ data: { liveTrainingId: training.id, currentDayOverride: 1 } });
     const learner = await createUser();
     await prisma.liveTrainingEnrollment.create({ data: { liveTrainingId: training.id, userId: learner.id } });
+    return { training, day, learner };
+  }
 
-    await chatRequest(`/iako/live-training/${training.id}/chat`, learner, 'Explain this', { topicContext: 'Day 3: Orientation — Supabase Auth Setup' });
+  it('"Ask IAKO about this topic" resolves trusted context server-side from the day/item IDs', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const { training, day, learner } = await topicFixture(admin);
+
+    await chatRequest(`/iako/live-training/${training.id}/chat`, learner, 'Explain this', { guideContext: { dayId: day.id, sectionId: 'topics-1', itemId: 'item-1' } });
     const answerCall = jest.mocked(callTextModel).mock.calls.find(([prompt]) => prompt.includes('Context priority when answering'))!;
     expect(answerCall[0]).toContain('SELECTED TOPIC');
-    expect(answerCall[0]).toContain('Day 3: Orientation — Supabase Auth Setup');
+    expect(answerCall[0]).toContain('Supabase Auth Setup');
+  });
+
+  it('never lets the browser invent guide context: unknown day/item, another training\'s day, and a non-training resource are all rejected', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const { training, day, learner } = await topicFixture(admin);
+    const other = await topicFixture(admin);
+
+    // Forged/unknown identifiers.
+    expect((await chatRequest(`/iako/live-training/${training.id}/chat`, learner, 'Explain this', { guideContext: { dayId: randomUUID() } })).status).toBe(404);
+    expect((await chatRequest(`/iako/live-training/${training.id}/chat`, learner, 'Explain this', { guideContext: { dayId: day.id, itemId: 'not-a-real-item' } })).status).toBe(400);
+    // A real day ID, but belonging to a DIFFERENT training this learner has no relationship to.
+    expect((await chatRequest(`/iako/live-training/${training.id}/chat`, learner, 'Explain this', { guideContext: { dayId: other.day.id } })).status).toBe(404);
+    // guideContext is rejected outright for a Digital Tool (no training/day concept at all).
+    await assignedProfile(admin, 'educator-hub');
+    const toolLearner = await entitleLearner(admin, 'educator-hub');
+    expect((await chatRequest('/iako/digital-tool/educator-hub/chat', toolLearner, 'Explain this', { guideContext: { dayId: day.id } })).status).toBe(400);
+  });
+
+  it('denies guide context for a learner not enrolled in that training, and for an unpublished day', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const { training, day, learner } = await topicFixture(admin);
+    const outsider = await createUser();
+    expect((await chatRequest(`/iako/live-training/${training.id}/chat`, outsider, 'Explain this', { guideContext: { dayId: day.id } })).status).toBe(403);
+
+    await prisma.trainingDay.update({ where: { id: day.id }, data: { published: false } });
+    expect((await chatRequest(`/iako/live-training/${training.id}/chat`, learner, 'Explain this', { guideContext: { dayId: day.id } })).status).toBe(404);
   });
 });
 
@@ -680,11 +821,19 @@ describe('IAKO conversation summary', () => {
     await assignedProfile(admin, 'educator-hub');
     const learner = await entitleLearner(admin, 'educator-hub', { requestLimit: 200 });
 
-    // 9 successful exchanges (18 messages) crosses SUMMARY_TRIGGER_COUNT (16).
+    // 9 successful exchanges leave 18 messages on record — maintainConversationSummary
+    // counts messages already on record BEFORE the current exchange, so the
+    // trigger (total > SUMMARY_TRIGGER_COUNT === 16) first fires on the 10th
+    // request, not within this loop itself.
     for (let i = 1; i <= 9; i++) {
       const response = await chatRequest('/iako/digital-tool/educator-hub/chat', learner, `Question ${i} about my Task Manager app`);
       expect(response.status).toBe(200);
     }
+    expect(jest.mocked(callTextModel).mock.calls.some(([prompt]) => prompt.includes('Update a running project-context summary'))).toBe(false);
+
+    // The 10th request crosses the threshold and carries the resulting
+    // summary forward in its own prompt instead of the full transcript.
+    await chatRequest('/iako/digital-tool/educator-hub/chat', learner, 'One more follow-up question');
     const summaryCalls = jest.mocked(callTextModel).mock.calls.filter(([prompt]) => prompt.includes('Update a running project-context summary'));
     expect(summaryCalls.length).toBeGreaterThan(0);
 
@@ -692,8 +841,8 @@ describe('IAKO conversation summary', () => {
     const conversation = await prisma.iakoConversation.findFirstOrThrow({ where: { profileId: grant.profileId, userId: learner.id } });
     expect(conversation.summary).toBeTruthy();
 
-    // The next message's prompt carries the summary forward instead of the full 18-message transcript.
-    await chatRequest('/iako/digital-tool/educator-hub/chat', learner, 'One more follow-up question');
+    // A further follow-up's prompt carries the summary forward instead of the full transcript.
+    await chatRequest('/iako/digital-tool/educator-hub/chat', learner, 'Yet another follow-up question');
     const lastAnswerCall = jest.mocked(callTextModel).mock.calls.filter(([prompt]) => prompt.includes('Context priority when answering')).at(-1)!;
     expect(lastAnswerCall[0]).toContain('PROJECT CONTEXT SUMMARY');
   });

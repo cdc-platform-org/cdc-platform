@@ -30,6 +30,7 @@ export default function DigitalToolAccessGate({ toolKey, children }: { toolKey: 
 
   useEffect(() => {
     let cancelled = false;
+    setState('checking');
     hasDigitalToolAccess(toolKey)
       .then((allowed) => { if (!cancelled) setState(allowed ? 'allowed' : 'denied'); })
       .catch(() => { if (!cancelled) setState('denied'); });

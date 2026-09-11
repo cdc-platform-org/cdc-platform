@@ -48,6 +48,14 @@ export async function uploadPrivateBlob(blobName: string, buffer: Buffer, mimety
   await containerClient.getBlockBlobClient(blobName).uploadData(buffer, { blobHTTPHeaders: { blobContentType: mimetype } });
 }
 
+// createIfNotExists does not change the ACL of an existing container.
+// Sensitive new uploads must fail closed if that container is public.
+export async function assertPrivateBlobContainer(): Promise<void> {
+  await privateContainerReady;
+  const policy = await containerClient.getAccessPolicy();
+  if (policy.blobPublicAccess) throw new Error('Private attachment storage is not configured.');
+}
+
 export async function privateBlobExists(blobName: string): Promise<boolean> {
   await privateContainerReady;
   return containerClient.getBlockBlobClient(blobName).exists();

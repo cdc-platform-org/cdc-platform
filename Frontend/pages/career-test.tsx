@@ -311,8 +311,9 @@ export default function CareerTestPage() {
     `w-full text-left rounded-xl border px-4 py-3 text-sm font-medium transition ${
       active
         ? 'border-cyan-400 bg-cyan-500/10 text-cyan-300'
-        : 'border-slate-800 bg-slate-900/60 text-slate-300 hover:border-slate-700'
+        : 'border-slate-700/60 bg-slate-900/70 text-slate-300 hover:border-cyan-500/50'
     }`;
+  const inputClass = 'w-full rounded-lg border border-slate-700 bg-slate-950/40 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/60 transition-colors';
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
@@ -366,7 +367,7 @@ export default function CareerTestPage() {
           </div>
         ) : step === 'result' && resultText ? (
           <div className="space-y-6">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
+            <div className="rounded-2xl border border-slate-700/60 bg-slate-900/70 p-6">
               <h2 className="text-lg font-black mb-4 text-cyan-300">{t.resultHeading}</h2>
               <div className="prose prose-invert prose-sm max-w-none prose-a:text-cyan-400">
                 <ReactMarkdown>{resultText}</ReactMarkdown>
@@ -398,7 +399,7 @@ export default function CareerTestPage() {
             )}
 
             {step === 'demographics' ? (
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
+              <div className="rounded-2xl border border-slate-700/60 bg-slate-900/70 p-6 space-y-4">
                 <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">{t.step1Heading}</h2>
 
                 <div>
@@ -422,7 +423,7 @@ export default function CareerTestPage() {
                     value={age}
                     onChange={(e) => setAge(e.target.value)}
                     placeholder={t.agePlaceholder}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-800/60 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    className={inputClass}
                   />
                   <p className="text-[11px] text-slate-500 mt-1.5">{t.ageHelper}</p>
                 </div>
@@ -432,7 +433,7 @@ export default function CareerTestPage() {
                   <input
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-800/60 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    className={inputClass}
                   />
                 </div>
                 <div>
@@ -441,7 +442,7 @@ export default function CareerTestPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-800/60 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    className={inputClass}
                   />
                 </div>
                 <div>
@@ -453,7 +454,7 @@ export default function CareerTestPage() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+995 5XX XX XX XX"
-                    className="w-full rounded-lg border border-slate-700 bg-slate-800/60 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    className={inputClass}
                   />
                 </div>
 

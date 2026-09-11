@@ -49,8 +49,9 @@ function AdminAccessGrantsContent() {
     }
   };
   const doRevoke = async (id: string) => {
-    setBusy(true);
+    setBusy(true); setError('');
     try { await revokeAccessGrant(id); await load(); }
+    catch { setError('Could not revoke this grant. Please try again.'); }
     finally { setBusy(false); }
   };
 

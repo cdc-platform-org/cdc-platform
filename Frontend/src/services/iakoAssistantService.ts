@@ -51,6 +51,7 @@ export function iakoAssistantHref(assistant: Pick<MyIakoAssistant, 'resourceType
 
 export type IakoProfileInput = Omit<IakoProfile, 'id' | 'createdAt' | 'assignments'>;
 export type IakoResource = { liveTrainingId: string } | { digitalToolKey: string };
+export interface IakoGuideContext { dayId: string; sectionId?: string; itemId?: string }
 
 export async function listIakoProfiles(): Promise<IakoProfile[]> {
   return (await apiClient.get<{ data: IakoProfile[] }>('/admin/iako/profiles')).data.data;
@@ -93,16 +94,17 @@ const resourcePath = (resource: IakoResource) =>
 
 export async function getIakoConversation(resource: IakoResource): Promise<{
   profile: { id: string; name: string; mentorTagline: string | null; visionEnabled: boolean; welcomeMessageKa: string | null; welcomeMessageEn: string | null };
+  resourceTitle?: string;
   messages: IakoMessage[];
   usage: IakoUsage | null;
 }> {
   return (await apiClient.get(`${resourcePath(resource)}/conversation`)).data.data;
 }
-export async function askIako(resource: IakoResource, message: string, idempotencyKey: string, images?: File[], topicContext?: string): Promise<{ reply: string; conversationId: string; outOfScope: boolean; usage: IakoUsage }> {
+export async function askIako(resource: IakoResource, message: string, idempotencyKey: string, images?: File[], guideContext?: IakoGuideContext): Promise<{ reply: string; conversationId: string; outOfScope: boolean; usage: IakoUsage }> {
   const form = new FormData();
   form.append('message', message);
   form.append('idempotencyKey', idempotencyKey);
-  if (topicContext) form.append('topicContext', topicContext);
+  if (guideContext) form.append('guideContext', JSON.stringify(guideContext));
   (images ?? []).forEach((image) => form.append('images', image));
   return (await apiClient.post(`${resourcePath(resource)}/chat`, form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 90000 })).data.data;
 }

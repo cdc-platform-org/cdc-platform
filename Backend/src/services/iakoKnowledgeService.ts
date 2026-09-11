@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { parseDocumentToMarkdown, chunkMarkdown, DocumentParseError } from './documentParserService';
+import { redactIakoSecrets } from './iakoSecretSafety';
 
 export { DocumentParseError };
 
@@ -8,9 +9,13 @@ export { DocumentParseError };
 // IakoAssistantProfile's knowledge base instead of the global one.
 export async function uploadKnowledgeDocument(profileId: string, file: { buffer: Buffer; mimetype: string; originalname: string }) {
   const markdown = await parseDocumentToMarkdown(file.buffer, file.mimetype, file.originalname);
-  const chunks = chunkMarkdown(markdown);
-  const sourceFilename = file.originalname;
+  if (markdown.length > 1_000_000) throw new DocumentParseError('This document exceeds the 1 million character knowledge limit.');
+  if (redactIakoSecrets(markdown).redacted || redactIakoSecrets(file.originalname).redacted) throw new DocumentParseError('Possible credentials found. Remove secrets from this document before uploading it.');
+  const chunks = chunkMarkdown(markdown).flatMap((chunk) => chunk.match(/[\s\S]{1,4000}/g) ?? []);
+  const sourceFilename = file.originalname.replace(/^.*[\\/]/, '').slice(0, 255);
   return prisma.$transaction(async (tx) => {
+    // Serialize replacements with the same profile to avoid duplicate chunks.
+    await tx.$queryRaw`SELECT id FROM iako_assistant_profiles WHERE id = ${profileId} FOR UPDATE`;
     await tx.iakoKnowledgeDocument.deleteMany({ where: { profileId, sourceFilename } });
     return Promise.all(
       chunks.map((content, i) => tx.iakoKnowledgeDocument.create({
@@ -52,7 +57,11 @@ function queryTerms(text: string): string[] {
 export async function retrieveKnowledge(profileId: string, query: string, limit = 6): Promise<Array<{ sourceFilename: string; content: string }>> {
   const terms = queryTerms(query);
   if (terms.length === 0) return [];
-  const documents = await prisma.iakoKnowledgeDocument.findMany({ where: { profileId }, select: { sourceFilename: true, content: true } });
+  const documents = await prisma.iakoKnowledgeDocument.findMany({
+    where: { profileId, profile: { active: true }, OR: terms.slice(0, 30).map((term) => ({ content: { contains: term, mode: 'insensitive' as const } })) },
+    orderBy: [{ sourceFilename: 'asc' }, { chunkIndex: 'asc' }], take: 200,
+    select: { sourceFilename: true, content: true },
+  });
   const scored = documents
     .map((doc) => {
       const lower = doc.content.toLowerCase();
@@ -61,6 +70,6 @@ export async function retrieveKnowledge(profileId: string, query: string, limit 
     })
     .filter((entry) => entry.score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
-  return scored.map((entry) => ({ sourceFilename: entry.doc.sourceFilename, content: entry.doc.content.slice(0, 6000) }));
+    .slice(0, Math.min(6, Math.max(0, limit)));
+  return scored.map((entry) => ({ sourceFilename: redactIakoSecrets(entry.doc.sourceFilename).text, content: redactIakoSecrets(entry.doc.content.slice(0, 4000)).text }));
 }

@@ -33,13 +33,10 @@ export const iakoChatSchema = z.object({
   // iakoUsageGrantService.ts's own comment on how this makes a network
   // retry a safe no-op instead of a second charge.
   idempotencyKey: z.string().uuid(),
-  // Set when the learner arrived via a Daily Guide's "Ask IAKO about this
-  // topic" action — the specific day/section they clicked, injected into
-  // the server-side prompt for this one message (see
-  // iakoAssistantService.ts's askIakoAssistant) so IAKO answers with that
-  // exact topic in view, not just whatever the pre-filled question text
-  // happens to say.
-  topicContext: z.string().trim().max(1000).optional(),
+  guideContext: z.preprocess((value) => {
+    if (typeof value !== 'string') return value;
+    try { return JSON.parse(value); } catch { return value; }
+  }, z.object({ dayId: z.string().uuid(), sectionId: z.string().min(1).max(200).optional(), itemId: z.string().min(1).max(200).optional() }).strict().optional()),
 });
 
 export const iakoUsageGrantPatchSchema = z.object({
@@ -74,6 +71,9 @@ export const manualEnrollmentSchema = z.object({
 }).or(z.object({ userId: z.string().uuid() }));
 
 export const createInviteSchema = z.object({
+  policy: z.enum(['FREE_ENROLLMENT', 'REGISTRATION_ONLY', 'PAYMENT_REQUIRED']).optional(),
+  requiresApproval: z.boolean().optional().default(false),
+  startsAt: z.coerce.date().nullable().optional().default(null),
   email: z.string().trim().email().max(320).nullable().optional().default(null),
   maxRedemptions: z.number().int().min(1).max(10000).optional().default(1),
   expiresAt: z.coerce.date().nullable().optional().default(null),

@@ -2381,6 +2381,10 @@ model IakoUsageGrant {
   // drift out of sync — see usageGrantService.ts's usageSummary. Admin
   // "reset usage" moves this forward instead of deleting log history.
   usageResetAt             DateTime             @default(now())
+  // Cross-instance lease: only one request can check/spend this grant at
+  // a time. Provider calls run outside DB transactions; stale leases recover.
+  processingToken          String?
+  processingExpiresAt      DateTime?
   createdById              String
   createdBy                User                 @relation("IakoUsageGrantsCreated", fields: [createdById], references: [id])
   createdAt                DateTime             @default(now())
@@ -2392,6 +2396,7 @@ model IakoUsageGrant {
   @@map("iako_usage_grants")
 }
 
+// Scope refusals are cached with counted=false and do not consume quota.
 // One row per SUCCESSFULLY-answered learner message (never per grammatical
 // question inside it — see usageGrantService.ts's own comment). Written
 // only once a usable assistant reply exists; a scope refusal, an auth/
@@ -2408,6 +2413,9 @@ model IakoRequestLog {
   usageGrant      IakoUsageGrant @relation(fields: [usageGrantId], references: [id], onDelete: Cascade)
   idempotencyKey  String
   screenshotCount Int            @default(0)
+  requestHash     String?
+  counted         Boolean        @default(true)
+  outOfScope      Boolean        @default(false)
   resultMessageId String?
   createdAt       DateTime       @default(now())
 
@@ -2473,6 +2481,19 @@ model AccessGrant {
 // into the real registration/checkout page.
 // ============================================================
 
+enum LiveTrainingInvitePolicy {
+  FREE_ENROLLMENT
+  REGISTRATION_ONLY
+  PAYMENT_REQUIRED
+}
+
+enum LiveTrainingInviteRequestStatus {
+  ACTIVE
+  PENDING_APPROVAL
+  REGISTRATION_ONLY
+  REJECTED
+}
+
 model LiveTrainingInvite {
   id              String       @id @default(uuid())
   liveTrainingId  String
@@ -2484,6 +2505,9 @@ model LiveTrainingInvite {
   // Optional restriction to one address — set for a personal invite sent
   // to a specific lead; null for a generic reusable QR poster/link.
   email           String?
+  policy          LiveTrainingInvitePolicy @default(PAYMENT_REQUIRED)
+  requiresApproval Boolean @default(false)
+  startsAt        DateTime?
   maxRedemptions  Int          @default(1)
   redemptionCount Int          @default(0)
   expiresAt       DateTime?
@@ -2504,6 +2528,7 @@ model LiveTrainingInviteRedemption {
   invite     LiveTrainingInvite @relation(fields: [inviteId], references: [id], onDelete: Cascade)
   userId     String
   user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status     LiveTrainingInviteRequestStatus @default(ACTIVE)
   redeemedAt DateTime           @default(now())
 
   @@unique([inviteId, userId])

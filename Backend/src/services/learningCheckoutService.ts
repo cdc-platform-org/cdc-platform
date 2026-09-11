@@ -56,6 +56,12 @@ export async function reserveLearningCheckout<T>(params: {
   gateway?: 'BOG' | 'STRIPE';
   amount: number;
   promo?: PromoCode | null;
+  // A narrow, explicit opt-out of the payment guard below — same "admin's own
+  // conscious decision" posture as routes/adminLiveTrainingEnrollments.ts's
+  // manual-enrollment route, just reachable through an admin-configured
+  // FREE_ENROLLMENT invite policy instead (see liveTrainingInviteService.ts's
+  // redeemInvite/reviewInviteRequest). Never set by a learner-facing path.
+  allowFreeOnPaid?: boolean;
 }, create: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
   return prisma.$transaction(async (tx) => {
     await lockLearningTarget(tx, params.purpose, params.referenceId);
@@ -67,7 +73,7 @@ export async function reserveLearningCheckout<T>(params: {
         include: { _count: { select: { leads: true, enrollments: { where: { status: { not: 'CANCELLED' } } } } } },
       });
       if (!training?.published) throw new LearningCheckoutError(404, 'Live training not found.');
-      if (!params.gateway && training.price && training.price > 0) {
+      if (!params.gateway && !params.allowFreeOnPaid && training.price && training.price > 0) {
         throw new LearningCheckoutError(400, 'This training requires payment. Please use the registration & payment option.');
       }
       const enrollment = await tx.liveTrainingEnrollment.findUnique({

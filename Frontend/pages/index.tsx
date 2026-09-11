@@ -781,11 +781,11 @@ export default function Home() {
 
         <header className="relative z-20 w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 py-8 sm:py-12 lg:py-16 text-left flex flex-col justify-center">
           <div className="w-full grid grid-cols-1 lg:grid-cols-12 items-center gap-10">
-            <div className="lg:col-span-7 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] outline-none hover:outline-none focus:outline-none border-none hover:border-none hover:shadow-none hover:ring-0">
+            <div className="lg:col-span-7 lg:max-w-[700px] drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] outline-none hover:outline-none focus:outline-none border-none hover:border-none hover:shadow-none hover:ring-0">
               {/* Badge — subtle glow ring added alongside the existing
                   glassmorphism (backdrop-blur + translucent border/fill) for
                   a more premium feel at rest, not just on hover. */}
-              <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full text-xs font-black tracking-wider mb-4 sm:mb-7 border border-white/20 bg-white/10 backdrop-blur-md text-white shadow-[0_0_20px_-4px_rgba(34,211,238,0.35)]">
+              <div className="inline-flex items-center gap-2.5 px-4 py-2 lg:px-5 lg:py-2.5 rounded-full text-xs lg:text-sm font-black tracking-wider mb-4 sm:mb-7 border border-white/20 bg-white/10 backdrop-blur-md text-white shadow-[0_0_20px_-4px_rgba(34,211,238,0.35)]">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
@@ -795,21 +795,28 @@ export default function Home() {
 
               {/* Heading — CMS override renders as plain text (no gradient
                   highlight word); the default keeps the styled version. */}
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black leading-snug tracking-tight text-white mb-4 sm:mb-6 outline-none hover:outline-none focus:outline-none border-none hover:border-none hover:shadow-none hover:ring-0">
+              {/* Inline line-height (not a `leading-*` utility): this custom
+                  local heading font's own metrics make its browser-default
+                  "normal" line-height render far looser than any of
+                  Tailwind's leading-* classes reliably override here, and
+                  1.2 is the same proven-safe floor JobsDashboard.tsx already
+                  uses for a Georgian <h1> in this heading font (descenders
+                  on ვ/ჯ/ყ/ღ/პ/ხ get clipped below that). */}
+              <h1 style={{ lineHeight: 1.2 }} className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-extrabold tracking-tight text-white mb-4 sm:mb-6 outline-none hover:outline-none focus:outline-none border-none hover:border-none hover:shadow-none hover:ring-0">
                 {cms?.heroTitleKa || cms?.heroTitleEn
                   ? translate(cms.heroTitleKa || cms.heroTitleEn, cms.heroTitleEn || cms.heroTitleKa)
                   : <>{t('heroHeadingBefore')} <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">{t('heroHeadingHighlight')}</span> {t('heroHeadingAfter')}</>}
               </h1>
 
               {/* Job placement subtitle */}
-              <p className="text-sm sm:text-lg lg:text-xl font-semibold text-cyan-400 mb-4 sm:mb-6">
+              <p className="text-base sm:text-xl lg:text-2xl font-semibold text-cyan-400 mb-4 sm:mb-6">
                 {cms?.heroSubtitleKa || cms?.heroSubtitleEn
                   ? translate(cms.heroSubtitleKa || cms.heroSubtitleEn, cms.heroSubtitleEn || cms.heroSubtitleKa)
                   : t('heroSubtitle')}
               </p>
 
               {/* Description */}
-              <p className="text-sm sm:text-base lg:text-lg text-slate-200/90 max-w-2xl text-left leading-relaxed mb-5 sm:mb-9 font-medium">
+              <p className="text-sm sm:text-base lg:text-xl text-slate-200/90 text-left leading-relaxed mb-5 sm:mb-9 font-medium">
                 {t('heroDescription')}
               </p>
 
@@ -820,14 +827,14 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row items-center sm:items-stretch justify-start gap-3">
                 <a
                   href="#courses"
-                  className="group inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl text-sm uppercase tracking-widest no-underline shadow-lg shadow-cyan-500/30 hover:shadow-2xl hover:shadow-cyan-500/40 hover:scale-105 transition-all duration-300 whitespace-nowrap"
+                  className="group inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 lg:px-9 lg:py-4 rounded-xl text-sm lg:text-base uppercase tracking-widest no-underline shadow-lg shadow-cyan-500/30 hover:shadow-2xl hover:shadow-cyan-500/40 hover:scale-105 transition-all duration-300 whitespace-nowrap"
                 >
                   {t('heroCtaCourses')}
                   <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
                 </a>
                 <Link
                   href="/auth/register"
-                  className="inline-flex items-center justify-center gap-2 bg-white/10 border border-white/20 backdrop-blur-md text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl text-sm uppercase tracking-widest no-underline shadow-[0_0_20px_-6px_rgba(255,255,255,0.25)] hover:bg-white/20 hover:border-white/30 transition-all duration-300 whitespace-nowrap"
+                  className="inline-flex items-center justify-center gap-2 bg-white/10 border border-white/20 backdrop-blur-md text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 lg:px-9 lg:py-4 rounded-xl text-sm lg:text-base uppercase tracking-widest no-underline shadow-[0_0_20px_-6px_rgba(255,255,255,0.25)] hover:bg-white/20 hover:border-white/30 transition-all duration-300 whitespace-nowrap"
                 >
                   {t('heroCtaJoin')}
                 </Link>
@@ -838,7 +845,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setShowPromoVideo(true)}
-                    className="inline-flex items-center justify-center gap-2 bg-transparent border border-white/30 text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl text-sm uppercase tracking-widest cursor-pointer hover:bg-white/10 hover:border-white/50 transition-all duration-300 whitespace-nowrap"
+                    className="inline-flex items-center justify-center gap-2 bg-transparent border border-white/30 text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 lg:px-9 lg:py-4 rounded-xl text-sm lg:text-base uppercase tracking-widest cursor-pointer hover:bg-white/10 hover:border-white/50 transition-all duration-300 whitespace-nowrap"
                   >
                     <Play size={16} className="fill-current" />
                     {t('heroCtaWatchDemo')}
