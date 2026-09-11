@@ -12,6 +12,14 @@ process.env.PORT = process.env.PORT || '4099';
 process.env.AZURE_STORAGE_ACCOUNT_URL = process.env.AZURE_STORAGE_ACCOUNT_URL || 'https://test-unused.blob.core.windows.net';
 process.env.AZURE_STORAGE_CONTAINER_NAME = process.env.AZURE_STORAGE_CONTAINER_NAME || 'test-unused';
 process.env.CRON_SECRET = process.env.CRON_SECRET || 'test-cron-secret';
+// Unset (not left to Backend/.env's real key) so emailService.ts's own
+// "no RESEND_API_KEY -> log instead of send" dev-fallback gate is what runs
+// in every test by default — a fire-and-forget sendEmail call (registration,
+// live-training enrollment, etc.) a test doesn't explicitly mock for
+// assertions must never reach the real Resend API. Confirmed live: several
+// suites don't mock emailService, and a real (rate-limited) network call to
+// Resend was observed after test teardown before this was added.
+process.env.RESEND_API_KEY = '';
 // A dummy, syntactically-arbitrary key — not used to make a real API call
 // in any test (every AI-provider-calling function is mocked at its own
 // module boundary, see e.g. services/__tests__/aiExamService.test.ts).

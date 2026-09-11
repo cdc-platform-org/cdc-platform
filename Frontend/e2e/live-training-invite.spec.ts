@@ -34,7 +34,13 @@ test.describe('Live Training QR/link invite redemption — fresh guest', () => {
     await expect(page).toHaveURL(/\/courses/, { timeout: 15000 });
 
     await page.goto(`/en/live-trainings/invite/${PAID_INVITE_TOKEN}`);
-    await expect(page.getByRole('alert').filter({ hasText: /payment/i })).toBeVisible({ timeout: 10000 });
+    // The default PAYMENT_REQUIRED policy on a paid training now resolves
+    // gracefully (200, status: 'PAYMENT_REQUIRED') rather than throwing — see
+    // liveTrainingInviteService.ts's redeemInvite and the invite page's own
+    // `payment` state — so this renders as an informational role="status",
+    // not role="alert". The important assertion (never redirected/enrolled
+    // as if paid) is unchanged.
+    await expect(page.getByRole('status').filter({ hasText: /payment/i })).toBeVisible({ timeout: 10000 });
     // Never redirected to the training as if enrolled.
     await expect(page).not.toHaveURL(/\/live-trainings\/[0-9a-f-]+$/, { timeout: 2000 });
   });

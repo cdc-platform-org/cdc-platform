@@ -22,7 +22,10 @@ test('realistic learner journey: Digital Tools -> IAKO -> in-scope help, screens
   const iakoCard = page.locator('div.rounded-2xl', { has: page.getByText('Vibe Coding Full-Stack AI Mentor') });
   await expect(iakoCard).toBeVisible({ timeout: 15000 });
   await expect(iakoCard.getByText('Active', { exact: true })).toBeVisible();
-  await iakoCard.getByRole('link', { name: /manage/i }).click();
+  // The IAKO card's own action label is "Open IAKO" (mentor-first —
+  // see dashboard/tools/index.tsx's actionLabel), not the generic
+  // "Manage" every other tool card falls back to.
+  await iakoCard.getByRole('link', { name: /open iako/i }).click();
 
   // 2. Lands on the dedicated, mentor-primary IAKO page.
   await expect(page).toHaveURL(new RegExp(`/dashboard/live-trainings/${FREE_LIVE_TRAINING_ID}/iako`));
@@ -42,16 +45,20 @@ test('realistic learner journey: Digital Tools -> IAKO -> in-scope help, screens
   // Idempotent across reruns against a non-reset local DB (same posture as
   // e2e/store-purchase.spec.ts's own comment) — this QA learner's IAKO
   // conversation on this training may already carry history from an
-  // earlier run, so growth is asserted relative to the count at the start
-  // of this test, never an absolute number.
-  const countBeforeFirstMessage = await logEntries.count();
+  // earlier run, so assertions below key off relative position/content,
+  // never an absolute count from a captured "before" baseline.
 
   // 3. An in-scope technical question gets real help.
   await textarea.fill('What is Supabase, briefly?');
   await sendButton.click();
-  // Some real assistant reply appeared (content is non-deterministic — only structure is asserted).
-  await expect(logEntries).toHaveCount(countBeforeFirstMessage + 2, { timeout: 60000 }); // this USER + ASSISTANT turn
-  await expect(logEntries.nth(-2)).toContainText('What is Supabase');
+  // Some real assistant reply appeared (content is non-deterministic — only
+  // structure is asserted). Not an absolute-count check: on a genuinely
+  // fresh conversation (no prior history at all) the welcome banner is
+  // itself one of these [role="log"] > div children and is REPLACED —
+  // not added to — once real messages exist, so the log only grows by
+  // +1 (not +2) the very first time. nth(-2)/nth(-1) are relative to
+  // whatever's there now, so they're correct either way once this turn lands.
+  await expect(logEntries.nth(-2)).toContainText('What is Supabase', { timeout: 60000 });
   await expect(page.getByText(/\d+ \/ \d+ requests used|\d+ requests used/)).toBeVisible();
 
   // 4. An unrelated question is refused with the canned message, not answered.
