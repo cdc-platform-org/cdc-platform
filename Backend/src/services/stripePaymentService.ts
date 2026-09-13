@@ -39,6 +39,9 @@ export interface CreateStripeCheckoutSessionParams {
   successUrl: string;
   cancelUrl: string;
   customerEmail?: string;
+  // Unix seconds. Learning checkouts use a shorter gateway expiry because
+  // their pending sessions reserve limited seats until Stripe expires them.
+  expiresAt?: number;
 }
 
 export interface CreateStripeCheckoutSessionResult {
@@ -69,6 +72,7 @@ export async function createStripeCheckoutSession(
     customer_email: params.customerEmail,
     success_url: params.successUrl,
     cancel_url: params.cancelUrl,
+    ...(params.expiresAt !== undefined ? { expires_at: params.expiresAt } : {}),
   });
   if (!session.url) {
     throw new Error('Stripe Checkout session created without a redirect URL.');

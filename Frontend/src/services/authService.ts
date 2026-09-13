@@ -141,3 +141,14 @@ export async function uploadIndividualVerificationDoc(file: File, personalNumber
   });
   return response.data.user;
 }
+
+// A stored verificationDocUrl is no longer necessarily an openable link on
+// its own (a new upload is a private cdcblob:// marker, not a real URL) —
+// call this to get a short-lived link right before opening it, rather than
+// using user.verificationDocUrl directly as an <a href>. Works the same for
+// a legacy Bunny row too (the backend just passes that URL through
+// unchanged), so this is always the correct way to view your own document.
+export async function resolveMyVerificationDoc(): Promise<string> {
+  const response = await apiClient.get<{ data: { url: string } }>('/auth/me/verification-doc');
+  return response.data.data.url;
+}

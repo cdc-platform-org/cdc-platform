@@ -22,6 +22,7 @@ import { getSiteContent } from '../../src/services/siteContentService';
 import { resolveBlogImageUrl } from '../../src/services/blogService';
 import { ToolCatalogContent } from '../../src/types/siteContent';
 import { findToolEntry } from '../../src/utils/toolCatalog';
+import LearningRatingSummary from '../../src/components/shared/LearningRatingSummary';
 
 type SortMode = 'recommended' | 'price_asc' | 'price_desc';
 type PriceFilter = 'all' | 'free' | 'paid';
@@ -187,7 +188,7 @@ export default function CoursesPage() {
     return liveTrainings.filter((tr) => {
       if (category && tr.category !== category) return false;
       if (language && tr.language !== language) return false;
-      const price = tr.price ?? 0;
+      const price = tr.currentPrice ?? tr.price ?? 0;
       if (priceFilter === 'free' && price > 0) return false;
       if (priceFilter === 'paid' && price === 0) return false;
       if (q && !tr.title.toLowerCase().includes(q) && !tr.description.toLowerCase().includes(q)) return false;
@@ -531,6 +532,7 @@ export default function CoursesPage() {
                           </div>
                           <Link href={`/courses/${course.id}`} className="block no-underline text-current">
                             <h3 className="text-lg font-black mt-4 mb-2 text-slate-900 dark:text-white hover:text-cyan-600 dark:hover:text-cyan-300 transition-colors">{course.title}</h3>
+                            <LearningRatingSummary {...course} lang={lang} />
                           </Link>
                           <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6 line-clamp-3">{course.description}</p>
                           {course.mentorName && (
@@ -618,11 +620,13 @@ export default function CoursesPage() {
                                 </span>
                               </div>
                               <span className="text-sm font-black text-cyan-600 dark:text-cyan-300 whitespace-nowrap">
-                                {tr.price ? formatPrice(tr.price) : t('priceFree')}
+                                {tr.saleActive && <s className="text-slate-400 font-normal mr-2">{formatPrice(tr.price ?? 0)}</s>}
+                                {(tr.currentPrice ?? tr.price) ? formatPrice(tr.currentPrice ?? tr.price ?? 0) : t('priceFree')}
                               </span>
                             </div>
                             <Link href={`/live-trainings/${tr.id}`} className="block no-underline text-current">
                               <h3 className="text-lg font-black mt-4 mb-2 text-slate-900 dark:text-white hover:text-cyan-600 dark:hover:text-cyan-300 transition-colors">{tr.title}</h3>
+                              <LearningRatingSummary {...tr} lang={lang} />
                             </Link>
                             <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-4 line-clamp-3">{tr.description}</p>
                             <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mb-6">

@@ -63,7 +63,7 @@ export interface DigitalProduct {
   saleActive: boolean;
   category: string;
   imageUrl: string;
-  // Up to 4 additional showcase screenshots alongside imageUrl (the main
+  // Up to 15 additional showcase screenshots alongside imageUrl (the main
   // cover) — shown as a gallery/carousel on /store/[id].
   previewImages: string[];
   // Optional demo clip — either an uploaded MP4/MOV's CDN URL or a pasted
@@ -169,10 +169,16 @@ export function validateProductDiscount(priceGel: number, discountedPriceGel: nu
 export interface CreateProductPayload {
   title: string;
   description: string;
+  // Omit/blank -> Backend's autoTranslateIfBlank fills these in as a
+  // best-effort fallback; the admin editor's "Auto Translate to English"
+  // button (translateProduct below) lets an admin generate + review these
+  // explicitly before saving instead of relying on that silent fallback.
+  titleEn?: string | null;
+  descriptionEn?: string | null;
   price: number; // major-unit GEL from the form
   category: string;
   imageUrl: string;
-  previewImages?: string[]; // up to 4
+  previewImages?: string[]; // up to 15
   previewVideoUrl?: string | null; // uploaded MP4/MOV CDN URL or a pasted YouTube/Vimeo link
   fileUrl: string;
   licenseType?: ProductLicenseType; // omit to default to PERSONAL_USE (see Backend schema)
@@ -216,10 +222,12 @@ export async function getAdminProducts(): Promise<(DigitalProduct & { submittedB
 export interface UpdateProductPayload {
   title?: string;
   description?: string;
+  titleEn?: string | null;
+  descriptionEn?: string | null;
   category?: string;
   price?: number; // major-unit GEL
   imageUrl?: string;
-  previewImages?: string[]; // up to 4
+  previewImages?: string[]; // up to 15
   previewVideoUrl?: string | null;
   licenseType?: ProductLicenseType;
   discountedPrice?: number | null;

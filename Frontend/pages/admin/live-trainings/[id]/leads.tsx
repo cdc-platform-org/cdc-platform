@@ -595,7 +595,7 @@ function AdminLiveTrainingLeadsDashboard() {
                     <tr key={l.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-gray-900">{l.name}</td>
                       <td className="px-4 py-3 text-gray-600">
-                        <div>{l.email}</div>
+                        {l.email && <div>{l.email}</div>}
                         <a href={`tel:${l.phone.replace(/\s+/g, '')}`} className="text-indigo-600 hover:underline">
                           {l.phone}
                         </a>

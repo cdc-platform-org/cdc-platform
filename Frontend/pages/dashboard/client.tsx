@@ -30,7 +30,7 @@ import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import { useAuth } from '../../src/context/AuthContext';
 import { useEscapeToClose } from '../../src/hooks/useEscapeToClose';
-import { updateProfile, uploadAvatar, uploadVerificationDoc } from '../../src/services/authService';
+import { updateProfile, uploadAvatar, uploadVerificationDoc, resolveMyVerificationDoc } from '../../src/services/authService';
 import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../src/utils/imageUpload';
 import Toast from '../../src/components/shared/Toast';
 import { getVerificationStatus, VerificationStatus } from '../../src/types/auth';
@@ -86,6 +86,7 @@ const dictBase = {
     kycReplace: 'დოკუმენტის შეცვლა',
     kycUploading: 'იტვირთება…',
     docUploadError: 'დოკუმენტის ატვირთვა ვერ მოხერხდა.',
+    docOpenError: 'დოკუმენტის გახსნა ვერ მოხერხდა.',
     kycViewDoc: 'ატვირთული დოკუმენტის ნახვა',
     statusUnverified: 'მოითხოვს ვერიფიკაციას',
     statusUnderReview: 'განხილვის პროცესშია',
@@ -172,6 +173,7 @@ const dictBase = {
     kycReplace: 'Replace Document',
     kycUploading: 'Uploading…',
     docUploadError: 'Unable to upload the document.',
+    docOpenError: 'Unable to open the document.',
     kycViewDoc: 'View Uploaded Document',
     statusUnverified: 'Unverified',
     statusUnderReview: 'Under Review',
@@ -499,6 +501,7 @@ function BusinessDashboardContent() {
 
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [docError, setDocError] = useState<string | null>(null);
+  const [resolvingDoc, setResolvingDoc] = useState(false);
   const docInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -572,6 +575,22 @@ function BusinessDashboardContent() {
     } finally {
       setUploadingDoc(false);
       if (docInputRef.current) docInputRef.current.value = '';
+    }
+  };
+
+  // user.verificationDocUrl is no longer necessarily an openable link on
+  // its own (a new upload is a private cdcblob:// marker) — resolve a
+  // short-lived link first, then open it, rather than using the stored
+  // value directly as an <a href>.
+  const openMyDocument = async () => {
+    setResolvingDoc(true);
+    try {
+      const url = await resolveMyVerificationDoc();
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch {
+      setDocError(t.docOpenError);
+    } finally {
+      setResolvingDoc(false);
     }
   };
 
@@ -826,9 +845,14 @@ function BusinessDashboardContent() {
                           />
                         </label>
                         {user?.verificationDocUrl && (
-                          <a href={user.verificationDocUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline">
-                            {t.kycViewDoc}
-                          </a>
+                          <button
+                            type="button"
+                            onClick={() => void openMyDocument()}
+                            disabled={resolvingDoc}
+                            className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline disabled:opacity-60"
+                          >
+                            {resolvingDoc ? t.kycUploading : t.kycViewDoc}
+                          </button>
                         )}
                       </div>
                       {docError && <p className="text-xs text-red-600">{docError}</p>}

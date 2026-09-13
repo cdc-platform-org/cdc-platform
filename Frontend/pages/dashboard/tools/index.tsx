@@ -13,6 +13,7 @@ import { Agent } from '../../../src/types/agent';
 import { getTutorState, TutorState } from '../../../src/services/englishTutorService';
 import { getEducatorHubState, EducatorHubState } from '../../../src/services/educatorHubService';
 import { resolveLocale } from '@/src/utils/locale';
+import { listMyIakoAssistants, hasDigitalToolAccess, iakoAssistantHref, MyIakoAssistant } from '../../../src/services/iakoAssistantService';
 
 const EN_STRINGS = {
   title: 'My Tools',
@@ -34,9 +35,11 @@ const EN_STRINGS = {
   englishTutor: 'IMIAKO — AI English Tutor',
   educatorVip: 'AI Educator VIP Hub',
   mediaStudio: 'AI Voice & Video Studio',
-  mediaStudioDesc: 'Free — open to every account',
+  mediaStudioDescActive: 'Access granted',
+  mediaStudioDescLocked: 'Requires access — contact us to request it',
   cyberSentinel: 'Cyber Sentinel (AG-SAIA)',
   cyberSentinelDesc: 'Sovereign AI security node — launching soon',
+  iakoDesc: 'AI training mentor', openIako: 'Open IAKO', todayGuide: "Today's Guide", requestsUsed: 'requests used',
 };
 
 const dict = {
@@ -60,9 +63,11 @@ const dict = {
     englishTutor: 'IMIAKO — AI ინგლისურის მასწავლებელი',
     educatorVip: 'AI მასწავლებლის VIP ჰაბი',
     mediaStudio: 'AI ხმისა და ვიდეოს სტუდია',
-    mediaStudioDesc: 'უფასო — ხელმისაწვდომია ყველა ანგარიშისთვის',
+    mediaStudioDescActive: 'წვდომა მინიჭებულია',
+    mediaStudioDescLocked: 'საჭიროებს წვდომას — დაგვიკავშირდით მოთხოვნისთვის',
     cyberSentinel: 'Cyber Sentinel (AG-SAIA)',
     cyberSentinelDesc: 'სუვერენული AI უსაფრთხოების კვანძი — მალე გაეშვება',
+    iakoDesc: 'AI ტრენინგის მენტორი', openIako: 'IAKO-ს გახსნა', todayGuide: 'დღევანდელი გზამკვლევი', requestsUsed: 'მოთხოვნა გამოყენებულია',
   },
   en: EN_STRINGS,
   de: EN_STRINGS,
@@ -91,6 +96,10 @@ interface ToolCardData {
   badgeLabel: string;
   dateLine: string | null;
   manageHref: string;
+  actionLabel?: string;
+  usageLine?: string;
+  guideHref?: string;
+  guideLabel?: string;
 }
 
 function ToolCard({ tool, manageLabel }: { tool: ToolCardData; manageLabel: string }) {
@@ -113,12 +122,14 @@ function ToolCard({ tool, manageLabel }: { tool: ToolCardData; manageLabel: stri
           {tool.dateLine}
         </p>
       )}
+      {tool.usageLine && <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{tool.usageLine}</p>}
       <Link
         href={tool.manageHref}
         className="mt-auto inline-flex items-center justify-center text-xs font-bold px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 no-underline hover:bg-slate-50 dark:hover:bg-slate-800"
       >
-        {manageLabel}
+        {tool.actionLabel || manageLabel}
       </Link>
+      {tool.guideHref && <Link href={tool.guideHref} className="mt-2 text-center text-xs font-bold text-cyan-700 dark:text-cyan-300 py-2">{tool.guideLabel}</Link>}
     </div>
   );
 }
@@ -132,6 +143,8 @@ function MyToolsContent() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [tutorState, setTutorState] = useState<TutorState | null>(null);
   const [educatorState, setEducatorState] = useState<EducatorHubState | null>(null);
+  const [myAssistants, setMyAssistants] = useState<MyIakoAssistant[]>([]);
+  const [mediaStudioAccess, setMediaStudioAccess] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -140,10 +153,14 @@ function MyToolsContent() {
       getMyAgents().catch(() => []),
       getTutorState().catch(() => null),
       getEducatorHubState().catch(() => null),
-    ]).then(([a, ts, es]) => {
+      listMyIakoAssistants().catch(() => []),
+      hasDigitalToolAccess('media-studio').catch(() => false),
+    ]).then(([a, ts, es, assistants, mediaAccess]) => {
       setAgents(a);
       setTutorState(ts);
       setEducatorState(es);
+      setMyAssistants(assistants);
+      setMediaStudioAccess(mediaAccess);
       setLoading(false);
     });
   }, [isAuthenticated]);
@@ -209,18 +226,41 @@ function MyToolsContent() {
     });
   }
 
-  // AI Voice & Video Studio — free/open to every authenticated account
-  // (no trial/subscription gate at all), so it's always shown as available.
+  // AI Voice & Video Studio — gated by digitalToolAccessService's
+  // requireDigitalToolAccess('media-studio') on the backend (an
+  // AccessGrant or a linked purchase); reflect the real state here rather
+  // than always claiming it's open, which it no longer is.
   cards.push({
     key: 'media-studio',
     icon: Mic,
     title: t.mediaStudio,
-    description: t.mediaStudioDesc,
-    badge: 'AVAILABLE',
-    badgeLabel: t.statusAvailable,
+    description: mediaStudioAccess ? t.mediaStudioDescActive : t.mediaStudioDescLocked,
+    badge: mediaStudioAccess ? 'ACTIVE' : 'AVAILABLE',
+    badgeLabel: mediaStudioAccess ? t.statusActive : t.statusAvailable,
     dateLine: null,
     manageHref: '/dashboard/tools/media-studio',
   });
+
+  // IAKO — one card per Live Training or Digital Tool this learner
+  // currently has a real, active assistant assignment for (see
+  // GET /api/iako/my-assistants).
+  for (const assistant of myAssistants) {
+    const expired = assistant.usage.revokedAt != null || (assistant.usage.expiresAt != null && new Date(assistant.usage.expiresAt) < new Date());
+    cards.push({
+      key: `iako-${assistant.resourceType}-${assistant.resourceId}`,
+      icon: Sparkles,
+      title: `IAKO — ${assistant.mentorTagline || assistant.resourceTitle}`,
+      description: t.iakoDesc,
+      badge: expired ? 'EXPIRED' : 'ACTIVE',
+      badgeLabel: expired ? t.statusExpired : t.statusActive,
+      dateLine: assistant.usage.expiresAt ? `${t.expires}: ${new Date(assistant.usage.expiresAt).toLocaleDateString()}` : null,
+      manageHref: iakoAssistantHref(assistant),
+      actionLabel: t.openIako,
+      usageLine: `${assistant.usage.requestsUsed}${assistant.usage.requestLimit != null ? ` / ${assistant.usage.requestLimit}` : ''} ${t.requestsUsed}`,
+      guideHref: assistant.resourceType === 'LIVE_TRAINING' ? `/dashboard/live-trainings/${assistant.resourceId}/guide` : undefined,
+      guideLabel: t.todayGuide,
+    });
+  }
 
   // Cyber Sentinel / AG-SAIA — not purchasable by anyone yet (see
   // pages/dashboard/cyber-security.tsx's own "coming soon" framing) —

@@ -101,7 +101,7 @@ router.post('/', async (req: Request, res: Response) => {
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
   const discountError = validateLiveTrainingDiscount(result.data.price ?? null, result.data.discountPercent, result.data.isOnSale ?? false);
   if (discountError) return res.status(400).json({ message: discountError });
-  const { thumbnailUrl, videoUrl, meetingUrl, classroomUrl, recordingUrl, trainerVideoUrl, startDate, endDate, discountEndDate, ...rest } = result.data;
+  const { thumbnailUrl, videoUrl, meetingUrl, classroomUrl, recordingUrl, trainerVideoUrl, mediaConsentFormUrl, startDate, endDate, discountEndDate, ...rest } = result.data;
   const training = await prisma.liveTraining.create({
     data: {
       ...rest,
@@ -111,6 +111,7 @@ router.post('/', async (req: Request, res: Response) => {
       classroomUrl: classroomUrl || null,
       recordingUrl: recordingUrl || null,
       trainerVideoUrl: trainerVideoUrl || null,
+      mediaConsentFormUrl: mediaConsentFormUrl || null,
       startDate: startDate ? new Date(startDate) : null,
       endDate: endDate ? new Date(endDate) : null,
       discountEndDate: discountEndDate ? new Date(discountEndDate) : null,
@@ -170,7 +171,7 @@ router.post('/generate-workspace', async (req: Request, res: Response) => {
 router.put('/:id', async (req: Request, res: Response) => {
   const result = liveTrainingUpdateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
-  const { thumbnailUrl, videoUrl, meetingUrl, classroomUrl, recordingUrl, trainerVideoUrl, startDate, endDate, discountEndDate, scheduledAt, ...rest } = result.data;
+  const { thumbnailUrl, videoUrl, meetingUrl, classroomUrl, recordingUrl, trainerVideoUrl, mediaConsentFormUrl, startDate, endDate, discountEndDate, scheduledAt, ...rest } = result.data;
   try {
     const needsExisting = recordingUrl !== undefined || result.data.price !== undefined || result.data.discountPercent !== undefined || result.data.isOnSale !== undefined;
     const existing = needsExisting
@@ -201,6 +202,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         ...(classroomUrl !== undefined ? { classroomUrl: classroomUrl || null } : {}),
         ...(recordingUrl !== undefined ? { recordingUrl: recordingUrl || null } : {}),
         ...(trainerVideoUrl !== undefined ? { trainerVideoUrl: trainerVideoUrl || null } : {}),
+        ...(mediaConsentFormUrl !== undefined ? { mediaConsentFormUrl: mediaConsentFormUrl || null } : {}),
         ...(startDate !== undefined ? { startDate: startDate ? new Date(startDate) : null } : {}),
         ...(endDate !== undefined ? { endDate: endDate ? new Date(endDate) : null } : {}),
         ...(discountEndDate !== undefined ? { discountEndDate: discountEndDate ? new Date(discountEndDate) : null } : {}),
@@ -580,7 +582,7 @@ router.get('/:id/leads/export', async (req: Request, res: Response) => {
 
   const header = ['Name', 'Email', 'Phone', 'Status', 'Note', 'Registered At'];
   const rows = leads.map((l) =>
-    [l.name, l.email, l.phone, l.status, l.adminNote ?? '', l.createdAt.toISOString()].map(csvEscape).join(',')
+    [l.name, l.email ?? '', l.phone, l.status, l.adminNote ?? '', l.createdAt.toISOString()].map(csvEscape).join(',')
   );
   const csv = [header.map(csvEscape).join(','), ...rows].join('\r\n');
 

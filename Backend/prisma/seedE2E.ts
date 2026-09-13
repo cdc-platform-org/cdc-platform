@@ -22,7 +22,30 @@ const QA_TEST_PASSWORD = process.env.QA_TEST_PASSWORD || 'QaE2ePass123!';
 // querying the DB — this script is the single source of truth for both.
 const FREE_PRODUCT_ID = '00000000-0000-4000-8000-00000000f00d';
 const COURSE_ID = '00000000-0000-4000-8000-0000000c0575';
+const LIVE_TRAINING_ID = '00000000-0000-4000-8000-000000007a10';
+const FREE_LIVE_TRAINING_ID = '00000000-0000-4000-8000-000000007a11';
 const NOTIFICATION_MARKER = '[QA_E2E_SEED]';
+// Fixed tokens (not UUIDs — matches the real random-base64url token shape
+// closely enough for routing, and stays readable in test assertions) so
+// e2e/live-training-invite.spec.ts can deep-link straight to
+// /live-trainings/invite/<token> without querying the DB first. One per
+// training: the free one proves an invite CAN fast-track a free
+// registration; the paid one proves it can NEVER bypass payment — see
+// liveTrainingInviteService.ts's own comment on why that guard lives in
+// reserveLearningCheckout, not duplicated here.
+const FREE_INVITE_TOKEN = 'qa-e2e-free-invite-token';
+const PAID_INVITE_TOKEN = 'qa-e2e-paid-invite-token';
+// Three fixed blog posts covering the three og:image cases
+// e2e/blog-seo.spec.ts asserts on: a real cover, a DIFFERENT real cover (to
+// prove og:image actually varies per article, not just present), and no
+// cover at all (must fall back to the platform default banner, never the
+// old stretched-logo image). Absolute http://localhost:3000 URLs (not a
+// real Bunny CDN path) are fine here — this is testing the Frontend's own
+// og:image-resolution logic, not the upload pipeline, and this exact origin
+// is what both a local run and qa-nightly.yml serve the Frontend from.
+const BLOG_POST_WITH_COVER_SLUG = 'qa-e2e-post-with-cover';
+const BLOG_POST_WITH_OTHER_COVER_SLUG = 'qa-e2e-post-with-other-cover';
+const BLOG_POST_NO_COVER_SLUG = 'qa-e2e-post-no-cover';
 
 async function main() {
   const passwordHash = await bcrypt.hash(QA_TEST_PASSWORD, 12);
@@ -97,6 +120,101 @@ async function main() {
     create: { userId: testUser.id, courseId: course.id },
   });
 
+  const training = await prisma.liveTraining.upsert({
+    where: { id: LIVE_TRAINING_ID },
+    update: { published: true, price: 10000, isOnSale: false, maxCapacity: 100 },
+    create: {
+      id: LIVE_TRAINING_ID,
+      title: 'QA E2E Live Training',
+      titleEn: 'QA E2E Live Training',
+      description: 'Seeded training for rating and media tests. Payment endpoints are intercepted by Playwright.',
+      category: 'QA Fixtures',
+      scheduledAt: new Date('2030-01-15T14:00:00Z'),
+      price: 10000,
+      priceType: 'TOTAL',
+      minCapacity: 1,
+      maxCapacity: 100,
+      published: true,
+      language: 'BOTH',
+      videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      trainerVideoUrl: 'https://vimeo.com/76979871',
+    },
+  });
+  await prisma.liveTrainingEnrollment.upsert({
+    where: { userId_liveTrainingId: { userId: testUser.id, liveTrainingId: training.id } },
+    update: { status: 'ACTIVE' },
+    create: { userId: testUser.id, liveTrainingId: training.id },
+  });
+
+  const freeTraining = await prisma.liveTraining.upsert({
+    where: { id: FREE_LIVE_TRAINING_ID },
+    update: { published: true, price: null, maxCapacity: 100 },
+    create: {
+      id: FREE_LIVE_TRAINING_ID,
+      title: 'QA E2E Free Live Training',
+      titleEn: 'QA E2E Free Live Training',
+      description: 'Seeded FREE training for the invite/QR redemption e2e test.',
+      category: 'QA Fixtures',
+      scheduledAt: new Date('2030-02-15T14:00:00Z'),
+      price: null,
+      priceType: 'TOTAL',
+      minCapacity: 1,
+      maxCapacity: 100,
+      published: true,
+      language: 'BOTH',
+    },
+  });
+  await prisma.liveTrainingInvite.upsert({
+    where: { token: FREE_INVITE_TOKEN },
+    update: { revokedAt: null, expiresAt: null, maxRedemptions: 1000 },
+    create: { token: FREE_INVITE_TOKEN, liveTrainingId: freeTraining.id, maxRedemptions: 1000, createdById: testUser.id },
+  });
+  await prisma.liveTrainingInvite.upsert({
+    where: { token: PAID_INVITE_TOKEN },
+    update: { revokedAt: null, expiresAt: null, maxRedemptions: 1000 },
+    create: { token: PAID_INVITE_TOKEN, liveTrainingId: training.id, maxRedemptions: 1000, createdById: testUser.id },
+  });
+
+  // Enrolled (not just invited) so the QA user has real IAKO entitlement on
+  // the free training for e2e/iako-mentor-journey.spec.ts — that entitlement
+  // check (services/trainingGuideService.ts's requireTrainingGuideAccess)
+  // is the same real enrollment check the whole platform uses, not a test-
+  // only shortcut.
+  await prisma.liveTrainingEnrollment.upsert({
+    where: { userId_liveTrainingId: { userId: testUser.id, liveTrainingId: freeTraining.id } },
+    update: { status: 'ACTIVE' },
+    create: { userId: testUser.id, liveTrainingId: freeTraining.id },
+  });
+
+  // IAKO — a Vibe Coding mentor profile assigned to the free training, with
+  // small usage limits so e2e/iako-mentor-journey.spec.ts's limit-related
+  // assertions run fast against a real (not mocked) AI provider call.
+  const iakoProfile = await prisma.iakoAssistantProfile.upsert({
+    where: { id: '00000000-0000-4000-8000-00000000ia50' },
+    update: {
+      name: 'Vibe Coding Mentor', mentorTagline: 'Vibe Coding Full-Stack AI Mentor', active: true,
+      inScope: 'React/Next.js frontend, Node/Express backend, Supabase (auth, database, storage), GitHub, Vercel deployment, HTML/CSS/JavaScript, debugging errors, and building a full-stack project during this training.',
+      outOfScope: 'Anything unrelated to this training\'s tech stack or the learner\'s own project — general trivia, other subjects, personal/financial/medical advice.',
+    },
+    create: {
+      id: '00000000-0000-4000-8000-00000000ia50', name: 'Vibe Coding Mentor', mentorTagline: 'Vibe Coding Full-Stack AI Mentor',
+      welcomeMessageKa: 'გამარჯობა, მე ვარ IAKO 👋 შენი Vibe Coding ტრენინგის AI ტექნიკური ასისტენტი ვარ.',
+      welcomeMessageEn: 'Hi, I\'m IAKO 👋 Your Vibe Coding training\'s AI technical assistant.',
+      systemPrompt: 'You are IAKO, a full-stack developer mentor for the Vibe Coding training.',
+      inScope: 'React/Next.js frontend, Node/Express backend, Supabase (auth, database, storage), GitHub, Vercel deployment, HTML/CSS/JavaScript, debugging errors, and building a full-stack project during this training.',
+      outOfScope: 'Anything unrelated to this training\'s tech stack or the learner\'s own project — general trivia, other subjects, personal/financial/medical advice.',
+      visionEnabled: true, temperature: 0.2, active: true,
+      defaultRequestLimit: 50, defaultDailyRequestLimit: 30, defaultHourlyRequestLimit: 10,
+      defaultScreenshotLimit: 10, defaultMaxScreenshotsPerMessage: 3, defaultAccessDays: 10,
+      createdById: testUser.id,
+    },
+  });
+  await prisma.iakoProfileAssignment.upsert({
+    where: { liveTrainingId: freeTraining.id },
+    update: { profileId: iakoProfile.id },
+    create: { liveTrainingId: freeTraining.id, profileId: iakoProfile.id },
+  });
+
   // Notifications have no natural unique key to upsert on — delete any
   // prior seed run's notification for this user before creating a fresh
   // one, so re-seeding stays idempotent (exactly one QA notification, not
@@ -111,10 +229,44 @@ async function main() {
     },
   });
 
+  const blogPostFixtures = [
+    {
+      slug: BLOG_POST_WITH_COVER_SLUG,
+      title: 'QA E2E სტატია — ყდით', titleEn: 'QA E2E Article — With Cover',
+      description: 'ეს არის სატესტო სტატიის აღწერა Playwright-ის სუიტისთვის.', descriptionEn: 'A seeded article description for the Playwright suite.',
+      imageUrl: 'http://localhost:3000/images/heks-eper.jpg',
+    },
+    {
+      slug: BLOG_POST_WITH_OTHER_COVER_SLUG,
+      title: 'QA E2E სტატია — სხვა ყდა', titleEn: 'QA E2E Article — Other Cover',
+      description: 'განსხვავებული ყდის მქონე სატესტო სტატია.', descriptionEn: 'A second seeded article with a different cover image.',
+      imageUrl: 'http://localhost:3000/images/cdc-logo.png',
+    },
+    {
+      slug: BLOG_POST_NO_COVER_SLUG,
+      title: 'QA E2E სტატია — ყდის გარეშე', titleEn: 'QA E2E Article — No Cover',
+      description: 'ყდის გარეშე სატესტო სტატია — უნდა გამოჩნდეს ნაგულისხმევი სურათი.', descriptionEn: 'A seeded article with no cover — must fall back to the default social image.',
+      imageUrl: null as string | null,
+    },
+  ];
+  for (const fixture of blogPostFixtures) {
+    await prisma.blogPost.upsert({
+      where: { slug: fixture.slug },
+      update: { ...fixture, published: true },
+      create: { ...fixture, category: 'QA', content: 'Seeded content for the Playwright E2E suite.', contentEn: 'Seeded content for the Playwright E2E suite.', authorId: testUser.id, published: true },
+    });
+  }
+
   console.log('E2E fixtures seeded:', {
     testUser: testUser.email,
     freeProductId: FREE_PRODUCT_ID,
     courseId: COURSE_ID,
+    liveTrainingId: LIVE_TRAINING_ID,
+    freeLiveTrainingId: freeTraining.id,
+    freeInviteToken: FREE_INVITE_TOKEN,
+    paidInviteToken: PAID_INVITE_TOKEN,
+    iakoProfileId: iakoProfile.id,
+    blogSlugs: [BLOG_POST_WITH_COVER_SLUG, BLOG_POST_WITH_OTHER_COVER_SLUG, BLOG_POST_NO_COVER_SLUG],
   });
 }
 

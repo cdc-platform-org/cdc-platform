@@ -1,9 +1,8 @@
 import apiClient from './apiClient';
 import { LiveTraining, MyLiveTrainingEnrollment } from '../types/liveTraining';
 
-// Priced-training checkout result — same null-redirectUrl-means-already-
-// granted shape as paymentService.ts's CourseCheckoutResult (the admin
-// test-mode free bypass in Backend's /checkout/live-training route).
+// A null redirect with enrolled=true is reserved for a server-verified
+// legitimate zero-price checkout, including a valid 100% promo discount.
 export interface LiveTrainingCheckoutResult {
   paymentId: string;
   redirectUrl: string | null;
@@ -31,9 +30,11 @@ export async function getLiveTraining(id: string): Promise<LiveTraining> {
 }
 
 export interface LiveTrainingRegisterPayload {
-  name: string;
-  email: string;
+  firstName: string;
+  lastName: string;
+  email?: string;
   phone: string;
+  website?: string;
   // The site's currently-active locale (resolveLocale(router.locale)) at
   // submit time — the backend uses this to pick the registration
   // confirmation email/WhatsApp language (Georgian for anything but 'en').

@@ -12,6 +12,7 @@ import {
   getTaxIdLimit,
   setTaxIdLimit,
   resetTaxIdLimit,
+  resolveCompanyDocument,
   CompanyRow,
 } from '../../src/services/adminCompaniesService';
 import { useAuth } from '../../src/context/AuthContext';
@@ -171,7 +172,24 @@ function KycInspectionDrawer({
   busy: boolean;
 }) {
   const [reasonDraft, setReasonDraft] = useState('');
+  const [resolvingDoc, setResolvingDoc] = useState(false);
   const extracted = company.businessKycExtractedData;
+
+  // company.verificationDocUrl is no longer necessarily an openable link on
+  // its own (a new upload is a private cdcblob:// marker) — resolve a
+  // short-lived link first, then open it, rather than using the stored
+  // value directly as an <a href>.
+  const openDocument = async () => {
+    setResolvingDoc(true);
+    try {
+      const url = await resolveCompanyDocument(company.id);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch {
+      window.alert('Could not open this document. Please try again.');
+    } finally {
+      setResolvingDoc(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-end z-50" onClick={onClose}>
@@ -195,15 +213,15 @@ function KycInspectionDrawer({
         </div>
 
         {company.verificationDocUrl ? (
-          <a
-            href={company.verificationDocUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline mb-5 rounded-lg border border-gray-200 dark:border-slate-700 px-3.5 py-2.5"
+          <button
+            type="button"
+            onClick={() => void openDocument()}
+            disabled={resolvingDoc}
+            className="flex items-center gap-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline mb-5 rounded-lg border border-gray-200 dark:border-slate-700 px-3.5 py-2.5 disabled:opacity-60"
           >
             <FileText className="w-4 h-4" />
-            Open uploaded document
-          </a>
+            {resolvingDoc ? 'Opening…' : 'Open uploaded document'}
+          </button>
         ) : (
           <p className="text-sm text-gray-400 dark:text-slate-500 mb-5">No document uploaded yet.</p>
         )}
@@ -424,6 +442,7 @@ function AdminCompaniesDashboard() {
   const [aiTrialCompanyId, setAiTrialCompanyId] = useState<string | null>(null);
   const [inspectingCompanyId, setInspectingCompanyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [resolvingDocId, setResolvingDocId] = useState<string | null>(null);
   const { user } = useAuth();
   // Matches the backend's requireAdminRole('SUPER_ADMIN') on PATCH
   // /admin/users/:id/ai-trial — hidden for MANAGER rather than shown as a
@@ -442,6 +461,22 @@ function AdminCompaniesDashboard() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // company.verificationDocUrl is no longer necessarily an openable link on
+  // its own (a new upload is a private cdcblob:// marker) — resolve a
+  // short-lived link first, then open it, rather than using the stored
+  // value directly as an <a href>.
+  const openCompanyDocument = async (id: string) => {
+    setResolvingDocId(id);
+    try {
+      const url = await resolveCompanyDocument(id);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch {
+      setActionError('Could not open this document. Please try again.');
+    } finally {
+      setResolvingDocId(null);
+    }
+  };
 
   const handleVerify = async (id: string) => {
     setBusyId(id);
@@ -552,15 +587,15 @@ function AdminCompaniesDashboard() {
                     </div>
                     <div className="flex flex-col items-end gap-2 shrink-0">
                       {c.verificationDocUrl ? (
-                        <a
-                          href={c.verificationDocUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center gap-1.5"
+                        <button
+                          type="button"
+                          onClick={() => void openCompanyDocument(c.id)}
+                          disabled={resolvingDocId === c.id}
+                          className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center gap-1.5 disabled:opacity-60"
                         >
                           <FileText className="w-3.5 h-3.5" />
-                          View Document
-                        </a>
+                          {resolvingDocId === c.id ? 'Opening…' : 'View Document'}
+                        </button>
                       ) : (
                         <span className="text-xs text-gray-400 dark:text-slate-500">No document uploaded</span>
                       )}

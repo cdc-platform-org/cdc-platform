@@ -5,6 +5,7 @@ import { Users } from 'lucide-react';
 import AdminGuard from '../../../src/components/admin/AdminGuard';
 import AdminLayout from '../../../src/components/admin/AdminLayout';
 import RichTextEditor from '../../../src/components/shared/RichTextEditor';
+import VideoEmbed, { parseVideoUrl } from '../../../src/components/shared/VideoEmbed';
 import { LiveTraining } from '../../../src/types/liveTraining';
 import { CourseLanguage } from '../../../src/types/lms';
 import {
@@ -17,6 +18,10 @@ import {
   generateLiveTrainingWorkspace,
   LiveTrainingPayload,
 } from '../../../src/services/adminLiveTrainingService';
+import {
+  IakoAssignmentMode, IakoKnowledgeSource, IakoProfile,
+  assignIakoProfile, getIakoProfile, listIakoProfiles,
+} from '../../../src/services/iakoAssistantService';
 
 // <input type="datetime-local"> gives "YYYY-MM-DDTHH:mm" (local time, no
 // timezone) — the backend requires full ISO 8601. Same UTC-anchoring
@@ -87,6 +92,7 @@ const emptyForm: Omit<LiveTrainingPayload, 'discountBadgeText'> & {
   durationMonths: null,
   scheduleDays: '',
   trainerVideoUrl: '',
+  mediaConsentFormUrl: '',
 };
 
 function AdminLiveTrainingsDashboard() {
@@ -117,6 +123,82 @@ function AdminLiveTrainingsDashboard() {
   const [synopsisRu, setSynopsisRu] = useState('');
   const [savingSynopsis, setSavingSynopsis] = useState(false);
   const [regeneratingSynopsis, setRegeneratingSynopsis] = useState(false);
+
+  // IAKO Assistant block — reads/writes the SAME IakoProfileAssignment the
+  // Daily Guides admin page (guides.tsx) already assigns from; there is no
+  // separate config table here. `iakoProfiles` is the one shared list both
+  // pages derive "who's currently assigned to this training" from.
+  const [iakoProfiles, setIakoProfiles] = useState<IakoProfile[]>([]);
+  const [iakoEnabled, setIakoEnabled] = useState(false);
+  const [iakoProfileId, setIakoProfileId] = useState('');
+  // New assignments default to TESTING (Private) until an admin explicitly
+  // picks LIVE — an existing assignment's real mode always overrides this
+  // once loaded below.
+  const [iakoMode, setIakoMode] = useState<IakoAssignmentMode>('TESTING');
+  const [iakoDetail, setIakoDetail] = useState<(IakoProfile & { sources: IakoKnowledgeSource[] }) | null>(null);
+  const [iakoWarning, setIakoWarning] = useState<string | null>(null);
+  // Controlled auto-top-up — per-training policy layered on this same
+  // assignment (see Backend's IakoProfileAssignment schema comment); never
+  // touches the profile's own daily/hourly/screenshot/per-message defaults,
+  // shown read-only in iakoDetail above.
+  const [iakoInitialLimit, setIakoInitialLimit] = useState<string>('');
+  const [iakoAutoTopUpEnabled, setIakoAutoTopUpEnabled] = useState(false);
+  const [iakoAutoTopUpAmount, setIakoAutoTopUpAmount] = useState<string>('');
+  const [iakoMaxAutoTopUps, setIakoMaxAutoTopUps] = useState<string>('1');
+  const [iakoMaxAutoTotal, setIakoMaxAutoTotal] = useState<string>('');
+
+  useEffect(() => {
+    void listIakoProfiles().then(setIakoProfiles).catch(() => {});
+  }, []);
+
+  const assignedIakoProfile = editingId
+    ? iakoProfiles.find((p) => p.assignments?.some((a) => a.liveTrainingId === editingId))
+    : undefined;
+
+  // Syncs the editable IAKO fields from the real assignment whenever we
+  // start editing a training (or the profiles list finishes loading) —
+  // never the other way around, so this is a read-sync, not a write.
+  useEffect(() => {
+    if (!editingId) {
+      setIakoEnabled(false); setIakoProfileId(''); setIakoMode('TESTING');
+      setIakoInitialLimit(''); setIakoAutoTopUpEnabled(false); setIakoAutoTopUpAmount(''); setIakoMaxAutoTopUps('1'); setIakoMaxAutoTotal('');
+      return;
+    }
+    if (assignedIakoProfile) {
+      const assignment = assignedIakoProfile.assignments!.find((a) => a.liveTrainingId === editingId)!;
+      setIakoEnabled(true);
+      setIakoProfileId(assignedIakoProfile.id);
+      setIakoMode(assignment.mode);
+      setIakoInitialLimit(assignment.initialRequestLimit != null ? String(assignment.initialRequestLimit) : '');
+      setIakoAutoTopUpEnabled(assignment.autoTopUpEnabled);
+      setIakoAutoTopUpAmount(assignment.autoTopUpAmount != null ? String(assignment.autoTopUpAmount) : '');
+      setIakoMaxAutoTopUps(String(assignment.maxAutoTopUps || 1));
+      setIakoMaxAutoTotal(assignment.maxAutoTotal != null ? String(assignment.maxAutoTotal) : '');
+    } else {
+      setIakoEnabled(false);
+      setIakoProfileId('');
+      setIakoMode('TESTING');
+      setIakoInitialLimit(''); setIakoAutoTopUpEnabled(false); setIakoAutoTopUpAmount(''); setIakoMaxAutoTopUps('1'); setIakoMaxAutoTotal('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingId, iakoProfiles]);
+
+  // Full profile detail (Knowledge Base doc/chunk counts, live active/vision
+  // flags) — one cheap targeted fetch only for the currently-selected
+  // profile, not a bulk fetch across every profile in the list.
+  useEffect(() => {
+    if (!iakoProfileId) { setIakoDetail(null); return; }
+    let cancelled = false;
+    void getIakoProfile(iakoProfileId).then((full) => { if (!cancelled) setIakoDetail(full); }).catch(() => { if (!cancelled) setIakoDetail(null); });
+    return () => { cancelled = true; };
+  }, [iakoProfileId]);
+
+  // Same profile assigned to some OTHER resource — persona/Knowledge Base
+  // are shared by design (see IakoProfileAssignment's own schema comment);
+  // this is purely informational, computed from data already on hand.
+  const iakoReusedElsewhere = iakoProfileId
+    ? iakoProfiles.find((p) => p.id === iakoProfileId)?.assignments?.some((a) => (a.liveTrainingId && a.liveTrainingId !== editingId) || a.digitalToolKey)
+    : false;
 
   const handleCoverImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -155,6 +237,7 @@ function AdminLiveTrainingsDashboard() {
     setEditingId(null);
     setEditingTraining(null);
     setFormError(null);
+    setIakoWarning(null);
     setActiveLangTab('ka');
   };
 
@@ -193,6 +276,7 @@ function AdminLiveTrainingsDashboard() {
       durationMonths: t.durationMonths,
       scheduleDays: t.scheduleDays ?? '',
       trainerVideoUrl: t.trainerVideoUrl ?? '',
+      mediaConsentFormUrl: t.mediaConsentFormUrl ?? '',
     });
     setActiveLangTab('ka');
     setFormError(null);
@@ -277,6 +361,7 @@ function AdminLiveTrainingsDashboard() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setFormError(null);
+    setIakoWarning(null);
     if (form.title.trim().length < 3) return setFormError('სათაური ძალიან მოკლეა.');
     if (form.description.trim().length < 10) return setFormError('აღწერა ძალიან მოკლეა.');
     if (!form.category.trim()) return setFormError('კატეგორია სავალდებულოა.');
@@ -291,8 +376,18 @@ function AdminLiveTrainingsDashboard() {
     if (form.isOnSale && form.price == null) {
       return setFormError('უფასო ტრენინგს (ცარიელი ფასი) ფასდაკლება არ შეიძლება.');
     }
+    if (iakoEnabled && !iakoProfileId) {
+      return setFormError('IAKO-ს ჩასართავად აირჩიეთ ასისტენტის პროფილი (ან გამორთეთ IAKO).');
+    }
+    if (iakoEnabled && iakoAutoTopUpEnabled && (!iakoAutoTopUpAmount || !iakoMaxAutoTopUps || !iakoMaxAutoTotal)) {
+      return setFormError('ავტომატური შევსების ჩასართავად მიუთითეთ თანხა, მაქსიმალური რაოდენობა და მაქსიმალური ჯამი.');
+    }
+    if (iakoEnabled && iakoAutoTopUpEnabled && Number(iakoMaxAutoTotal) < Number(iakoInitialLimit || iakoDetail?.defaultRequestLimit || 0)) {
+      return setFormError('მაქსიმალური ჯამი არ შეიძლება იყოს საწყის ლიმიტზე ნაკლები.');
+    }
 
     setSubmitting(true);
+    const wasCreating = !editingId;
     try {
       const payload: LiveTrainingPayload = {
         title: form.title.trim(),
@@ -307,7 +402,7 @@ function AdminLiveTrainingsDashboard() {
         discountEndDate: form.isOnSale && form.discountEndDateLocal ? toIsoDatetime(form.discountEndDateLocal) : null,
         discountBadgeText: form.isOnSale ? form.discountBadgeText.trim() || null : null,
         thumbnailUrl: form.thumbnailUrl?.trim() || undefined,
-        videoUrl: form.videoUrl?.trim() || undefined,
+        videoUrl: form.videoUrl?.trim() || '',
         minCapacity: form.minCapacity ?? 0,
         maxCapacity: form.maxCapacity,
         published: form.published,
@@ -320,16 +415,66 @@ function AdminLiveTrainingsDashboard() {
         priceType: form.priceType,
         durationMonths: form.durationMonths,
         scheduleDays: form.scheduleDays?.trim() || null,
-        trainerVideoUrl: form.trainerVideoUrl?.trim() || undefined,
+        trainerVideoUrl: form.trainerVideoUrl?.trim() || '',
+        mediaConsentFormUrl: form.mediaConsentFormUrl?.trim() || '',
       };
+      let liveTrainingId = editingId;
       if (editingId) {
         const updated = await updateLiveTraining(editingId, payload);
         setTrainings((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+        setEditingTraining(updated);
       } else {
         const created = await createLiveTraining(payload);
         setTrainings((prev) => [created, ...prev]);
+        liveTrainingId = created.id;
+        // Land in the edit view for the training we just created — if the
+        // IAKO assignment call below fails, the admin is already on a real
+        // retry/edit path instead of a form that reset back to empty.
+        setEditingId(created.id);
+        setEditingTraining(created);
       }
-      resetForm();
+
+      // The Live Training record itself is now saved either way — an IAKO
+      // assignment failure below must never look like (or actually cause)
+      // the training save having failed, and must never prevent the form
+      // from resetting the same way any other successful save does (a
+      // network hiccup on this unrelated call must not strand the admin on
+      // a stale "editing" view — see e2e/live-training-checkout.spec.ts's
+      // "admin can preview and remove both saved video URLs").
+      let iakoAssignmentFailed = false;
+      try {
+        if (iakoEnabled) {
+          await assignIakoProfile({ liveTrainingId: liveTrainingId! }, iakoProfileId, iakoMode, {
+            initialRequestLimit: iakoInitialLimit ? Number(iakoInitialLimit) : null,
+            autoTopUpEnabled: iakoAutoTopUpEnabled,
+            autoTopUpAmount: iakoAutoTopUpEnabled && iakoAutoTopUpAmount ? Number(iakoAutoTopUpAmount) : null,
+            maxAutoTopUps: iakoAutoTopUpEnabled && iakoMaxAutoTopUps ? Number(iakoMaxAutoTopUps) : 0,
+            maxAutoTotal: iakoAutoTopUpEnabled && iakoMaxAutoTotal ? Number(iakoMaxAutoTotal) : null,
+          });
+        } else if (assignedIakoProfile) {
+          await assignIakoProfile({ liveTrainingId: liveTrainingId! }, null);
+        }
+      } catch {
+        iakoAssignmentFailed = true;
+        setIakoWarning(
+          wasCreating
+            ? 'ტრენინგი შეიქმნა, მაგრამ IAKO-ს კონფიგურაცია ვერ შეინახა. შეამოწმეთ პროფილი და დააჭირეთ „განახლებას" თავიდან საცდელად.'
+            : 'ტრენინგი განახლდა, მაგრამ IAKO-ს კონფიგურაცია ვერ შეინახა. სცადეთ „განახლება" თავიდან.'
+        );
+      }
+      // Best-effort — same "swallow and move on" posture as the mount
+      // effect's own listIakoProfiles() call above; a failure here must
+      // never block the form from resetting either.
+      await listIakoProfiles().then(setIakoProfiles).catch(() => {});
+      // Inlined rather than resetForm() (which also clears iakoWarning) —
+      // a genuine IAKO failure's warning must survive this reset so the
+      // admin actually sees it, not just the rest of the form clearing.
+      setForm(emptyForm);
+      setEditingId(null);
+      setEditingTraining(null);
+      setFormError(null);
+      setActiveLangTab('ka');
+      if (!iakoAssignmentFailed) setIakoWarning(null);
     } catch (err: any) {
       setFormError(extractSaveErrorMessage(err));
     } finally {
@@ -712,26 +857,56 @@ function AdminLiveTrainingsDashboard() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">YouTube / Video Trailer Link</label>
+                <label htmlFor="training-video-url" className="block text-sm font-medium text-gray-700 mb-1.5">YouTube / Video Trailer Link</label>
                 <input
-                  type="text"
+                  id="training-video-url"
+                  type="url"
                   value={form.videoUrl ?? ''}
                   onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
                   placeholder="მაგ. https://www.youtube.com/watch?v=..."
                   className={inputClass}
                 />
+                {form.videoUrl?.trim() && (
+                  <div className="mt-3">
+                    {parseVideoUrl(form.videoUrl.trim()) ? <VideoEmbed url={form.videoUrl.trim()} title="Training trailer preview" /> : (
+                      <p role="status" className="text-xs text-amber-700">გამოიყენეთ YouTube, Vimeo ან პირდაპირი MP4/WebM/OGG/MOV ბმული. ეს ბმული საჯარო გვერდზე ვერ გამოჩნდება.</p>
+                    )}
+                  </div>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  ლექტორის ვიდეო <span className="text-gray-400 font-normal">(YouTube — გამოჩნდება საჯარო გვერდზე)</span>
+                <label htmlFor="training-trainer-video-url" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  ლექტორის ვიდეო <span className="text-gray-400 font-normal">(YouTube / Vimeo / MP4 — გამოჩნდება საჯარო გვერდზე)</span>
                 </label>
                 <input
-                  type="text"
+                  id="training-trainer-video-url"
+                  type="url"
                   value={form.trainerVideoUrl ?? ''}
                   onChange={(e) => setForm({ ...form, trainerVideoUrl: e.target.value })}
                   placeholder="მაგ. https://www.youtube.com/watch?v=..."
                   className={inputClass}
                 />
+                {form.trainerVideoUrl?.trim() && (
+                  <div className="mt-3">
+                    {parseVideoUrl(form.trainerVideoUrl.trim()) ? <VideoEmbed url={form.trainerVideoUrl.trim()} title="Trainer video preview" /> : (
+                      <p role="status" className="text-xs text-amber-700">გამოიყენეთ YouTube, Vimeo ან პირდაპირი MP4/WebM/OGG/MOV ბმული. ეს ბმული საჯარო გვერდზე ვერ გამოჩნდება.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label htmlFor="training-media-consent-url" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  ფოტო/ვიდეო თანხმობის ფორმა <span className="text-gray-400 font-normal">(Google Forms ბმული — მთელი ტრენინგისთვის ერთხელ)</span>
+                </label>
+                <input
+                  id="training-media-consent-url"
+                  type="url"
+                  value={form.mediaConsentFormUrl ?? ''}
+                  onChange={(e) => setForm({ ...form, mediaConsentFormUrl: e.target.value })}
+                  placeholder="https://forms.gle/..."
+                  className={inputClass}
+                />
+                <p className="text-xs text-gray-400 mt-1.5">ცარიელი — მონაწილეს „ფოტო/ვიდეო თანხმობის" ღილაკი არ უჩანს.</p>
               </div>
             </div>
 
@@ -773,6 +948,133 @@ function AdminLiveTrainingsDashboard() {
                 </div>
               </>
             )}
+
+            <div className="rounded-xl border border-cyan-200 bg-cyan-50/40 p-4 sm:p-5 space-y-4">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">IAKO ასისტენტი</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  დააკონფიგურირეთ AI მენტორი ამ ტრენინგისთვის. დატოვეთ Private / Testing რეჟიმში, სანამ არ იქნება მზად ჩარიცხულ მონაწილეებზე გასაშვებად.
+                </p>
+              </div>
+
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={iakoEnabled}
+                  onChange={(e) => setIakoEnabled(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                />
+                IAKO ჩართული
+              </label>
+
+              {iakoEnabled && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">IAKO პროფილი</label>
+                      <select value={iakoProfileId} onChange={(e) => setIakoProfileId(e.target.value)} className={inputClass}>
+                        <option value="">— აირჩიეთ პროფილი —</option>
+                        {iakoProfiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                      {iakoReusedElsewhere && (
+                        <p className="text-xs text-amber-700 mt-1.5">
+                          ეს IAKO პროფილი გამოიყენება სხვა ტრენინგზეც/ტულზეც — მისი პერსონა და ცოდნის ბაზა საერთოა.
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">წვდომის რეჟიმი</label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIakoMode('TESTING')}
+                          className={`flex-1 rounded-lg border px-3 py-2.5 text-sm font-semibold ${iakoMode === 'TESTING' ? 'border-amber-500 bg-amber-50 text-amber-800' : 'border-gray-300 text-gray-500 hover:bg-gray-50'}`}
+                        >
+                          Private / Testing
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIakoMode('LIVE')}
+                          className={`flex-1 rounded-lg border px-3 py-2.5 text-sm font-semibold ${iakoMode === 'LIVE' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-gray-300 text-gray-500 hover:bg-gray-50'}`}
+                        >
+                          Live
+                        </button>
+                      </div>
+                      {iakoMode === 'TESTING' ? (
+                        <p className="text-xs text-amber-700 mt-1.5">
+                          <span className="font-semibold">Private / Testing</span> — მხოლოდ ჩარიცხულმა ადმინისტრატორმა (SUPER_ADMIN/MANAGER) შეუძლია ამ IAKO-ს გამოყენება. ჩარიცხული მონაწილეები მას ვერც ხედავენ და ვერც წვდებიან.
+                        </p>
+                      ) : (
+                        <p className="text-xs text-emerald-700 mt-1.5">
+                          <span className="font-semibold">Live</span> — ავთენტიფიცირებულ მონაწილეებს აქტიური/დასრულებული ჩარიცხვით შეუძლიათ ამ IAKO-ს გამოყენება, მოქმედი ლიმიტების ფარგლებში.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {iakoDetail && (
+                    <div className="rounded-lg border border-gray-200 bg-white p-3.5 text-xs text-gray-600 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5">
+                      <div><span className="text-gray-400">პროფილი:</span> {iakoDetail.name}</div>
+                      <div><span className="text-gray-400">სტატუსი:</span> {iakoDetail.active ? 'აქტიური' : 'გამორთული'}</div>
+                      <div><span className="text-gray-400">Vision:</span> {iakoDetail.visionEnabled ? 'ჩართული' : 'გამორთული'}</div>
+                      <div><span className="text-gray-400">სულ მოთხოვნა (პროფილის ნაგულისხმევი):</span> {iakoDetail.defaultRequestLimit ?? '∞'}</div>
+                      <div><span className="text-gray-400">დღიური:</span> {iakoDetail.defaultDailyRequestLimit ?? '∞'}</div>
+                      <div><span className="text-gray-400">საათური:</span> {iakoDetail.defaultHourlyRequestLimit ?? '∞'}</div>
+                      <div><span className="text-gray-400">სქრინშოთი (სულ):</span> {iakoDetail.defaultScreenshotLimit ?? '∞'}</div>
+                      <div><span className="text-gray-400">სქრინშოთი/შეტყობინება:</span> {iakoDetail.defaultMaxScreenshotsPerMessage}</div>
+                      <div><span className="text-gray-400">ცოდნის ბაზა:</span> {iakoDetail.sources.length} დოკუმენტი / {iakoDetail.sources.reduce((sum, s) => sum + s.totalChunks, 0)} ნაწილი</div>
+                    </div>
+                  )}
+
+                  <div className="rounded-lg border border-gray-200 bg-white p-3.5 space-y-3">
+                    <h4 className="text-sm font-bold text-gray-900">კონტროლირებადი ავტომატური შევსება</h4>
+                    <p className="text-xs text-gray-500">
+                      მაგ: 200 → ავტომატურად +200 ერთხელ → მაქსიმუმ 400. ამის მეტი ავტომატურად არასდროს ემატება; შემდგომი კრედიტი მხოლოდ ადმინის ხელით.
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      <label className="text-xs font-medium text-gray-700">საწყისი სულ
+                        <input type="number" min={0} value={iakoInitialLimit} placeholder={String(iakoDetail?.defaultRequestLimit ?? 200)}
+                          onChange={(e) => setIakoInitialLimit(e.target.value)} className={`${inputClass} mt-1.5`} />
+                      </label>
+                      <label className="flex items-center gap-2 text-xs font-medium text-gray-700 mt-5">
+                        <input type="checkbox" checked={iakoAutoTopUpEnabled} onChange={(e) => setIakoAutoTopUpEnabled(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500" />
+                        ავტო-შევსება ჩართული
+                      </label>
+                    </div>
+                    {iakoAutoTopUpEnabled && (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <label className="text-xs font-medium text-gray-700">შევსების ოდენობა
+                          <input type="number" min={1} value={iakoAutoTopUpAmount} placeholder="200" onChange={(e) => setIakoAutoTopUpAmount(e.target.value)} className={`${inputClass} mt-1.5`} />
+                        </label>
+                        <label className="text-xs font-medium text-gray-700">მაქს. ავტო-შევსებები
+                          <input type="number" min={1} value={iakoMaxAutoTopUps} onChange={(e) => setIakoMaxAutoTopUps(e.target.value)} className={`${inputClass} mt-1.5`} />
+                        </label>
+                        <label className="text-xs font-medium text-gray-700">მაქსიმალური ჯამი
+                          <input type="number" min={1} value={iakoMaxAutoTotal} placeholder="400" onChange={(e) => setIakoMaxAutoTotal(e.target.value)} className={`${inputClass} mt-1.5`} />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-gray-500">
+                    სასწავლო მასალები IAKO-სთვის იმართება არჩეული IAKO პროფილის ცოდნის ბაზაში — არა Daily Guides-ის „ცოდნის ბაზა — წყაროებში".
+                  </p>
+
+                  <Link
+                    href={iakoProfileId ? `/admin/iako/profiles?id=${encodeURIComponent(iakoProfileId)}` : '/admin/iako/profiles'}
+                    className="inline-block text-xs font-semibold text-cyan-700 hover:text-cyan-900"
+                  >
+                    IAKO პროფილის მართვა →
+                  </Link>
+                </div>
+              )}
+
+              {iakoWarning && (
+                <div role="alert" className="rounded-lg bg-amber-50 border border-amber-300 px-3.5 py-2.5 text-xs text-amber-800">
+                  {iakoWarning}
+                </div>
+              )}
+            </div>
 
             <label className="flex items-center gap-2 text-sm text-gray-600">
               <input
@@ -833,7 +1135,10 @@ function AdminLiveTrainingsDashboard() {
                         {new Date(t.scheduledAt).toLocaleString()} · {t.registeredCount} / {t.maxCapacity} რეგისტრირებული
                       </p>
                     </div>
-                    <div className="flex gap-2 shrink-0">
+                    <div className="flex flex-wrap gap-2 shrink-0">
+                      <Link href={`/admin/live-trainings/${t.id}/guides`} className="text-xs font-medium text-cyan-700 px-3 py-1.5 rounded-lg hover:bg-cyan-50">IAKO · გზამკვლევები</Link>
+                      <Link href={`/admin/live-trainings/${t.id}/trainers`} className="text-xs font-medium text-cyan-700 px-3 py-1.5 rounded-lg hover:bg-cyan-50">ტრენერები</Link>
+                      <Link href={`/admin/live-trainings/${t.id}/enrollments`} className="text-xs font-medium text-cyan-700 px-3 py-1.5 rounded-lg hover:bg-cyan-50">ჩარიცხვები · QR</Link>
                       <Link
                         href={`/admin/live-trainings/${t.id}/leads`}
                         className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50"

@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { X, ShieldCheck, ShieldAlert, Clock, UserCheck, Building2, Sparkles } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useVerificationDrawer } from '../../context/VerificationDrawerContext';
-import { uploadVerificationDoc, uploadIndividualVerificationDoc, updateProfile } from '../../services/authService';
+import { uploadVerificationDoc, uploadIndividualVerificationDoc, updateProfile, resolveMyVerificationDoc } from '../../services/authService';
 import { resolveLocale } from '@/src/utils/locale';
 import { JOB_CATEGORIES, JOB_CATEGORY_LABEL } from '@/src/utils/jobCategory';
 import { JobCategory } from '@/src/types/community';
@@ -109,6 +109,7 @@ export default function VerificationDrawer() {
   const [personalNumber, setPersonalNumber] = useState('');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resolvingDoc, setResolvingDoc] = useState(false);
   const [selectedProfessions, setSelectedProfessions] = useState<JobCategory[]>([]);
   const [otherProfession, setOtherProfession] = useState('');
 
@@ -199,6 +200,22 @@ export default function VerificationDrawer() {
       setError(err?.response?.data?.message ?? 'Upload failed. Please try again.');
     } finally {
       setUploading(false);
+    }
+  };
+
+  // user.verificationDocUrl is no longer necessarily an openable link on
+  // its own (a new upload is a private cdcblob:// marker) — resolve a
+  // short-lived link first, then open it, rather than using the stored
+  // value directly as an <a href>.
+  const openMyDocument = async () => {
+    setResolvingDoc(true);
+    try {
+      const url = await resolveMyVerificationDoc();
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch {
+      setError('Could not open this document. Please try again.');
+    } finally {
+      setResolvingDoc(false);
     }
   };
 
@@ -329,9 +346,14 @@ export default function VerificationDrawer() {
                 <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={handleBusinessFile} disabled={uploading} className="hidden" />
               </label>
               {user.verificationDocUrl && (
-                <a href={user.verificationDocUrl} target="_blank" rel="noopener noreferrer" className="block text-xs font-bold text-cyan-600 dark:text-cyan-400 no-underline hover:underline">
-                  {t.viewDocument}
-                </a>
+                <button
+                  type="button"
+                  onClick={() => void openMyDocument()}
+                  disabled={resolvingDoc}
+                  className="block text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline disabled:opacity-60"
+                >
+                  {resolvingDoc ? t.uploading : t.viewDocument}
+                </button>
               )}
             </>
           )}

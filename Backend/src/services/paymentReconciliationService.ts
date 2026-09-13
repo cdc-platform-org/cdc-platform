@@ -16,10 +16,11 @@ import { applyStripePaymentResult, markStripeCheckoutExpired } from '../routes/s
 // ever fire — nothing else in this codebase revisits a still-PENDING
 // BogPayment/StripePayment on its own (each gateway's /status poll route
 // only reconciles when the *frontend* asks, which never happens if the user
-// never comes back). 30 minutes comfortably clears BOG's/Stripe's own
-// checkout-session lifetimes plus the 15-minute PENDING_ORDER_REUSE_WINDOW_MS
-// both checkout routes already use for a *fresh* retry, so this sweep only
-// ever touches an order that's genuinely been abandoned.
+// never comes back). Start checking after 30 minutes, but only the gateway's
+// terminal status releases a reservation: age alone cannot prove a checkout
+// is no longer payable. New Stripe learning sessions expire after 31 minutes;
+// older sessions and other purchase types may remain open for up to 24 hours.
+// A still-open session stays PENDING and is checked on the next sweep.
 const STALE_PENDING_MS = 30 * 60 * 1000;
 
 // A 'pending-...' bogOrderId/stripeSessionId means createBogOrder/

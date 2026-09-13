@@ -9,6 +9,7 @@ import { LiveTraining } from '../../src/types/liveTraining';
 import { getLiveTrainings } from '../../src/services/liveTrainingService';
 import { resolveLocale } from '@/src/utils/locale';
 import { formatLiveTrainingPriceLabel } from '@/src/utils/liveTrainingPricing';
+import LearningRatingSummary from '../../src/components/shared/LearningRatingSummary';
 
 const EN_STRINGS = {
   title: 'Live Trainings',
@@ -109,6 +110,7 @@ export default function LiveTrainingsIndexPage() {
                   <h3 className="text-lg font-black mb-2 text-white line-clamp-2 break-words">
                     {(contentLang === 'en' && tr.titleEn) || tr.title}
                   </h3>
+                  <LearningRatingSummary {...tr} lang={contentLang} />
                   <p className="text-sm text-slate-400 leading-relaxed line-clamp-2 mb-4 flex-1">
                     {(contentLang === 'en' && tr.descriptionEn) || tr.description}
                   </p>

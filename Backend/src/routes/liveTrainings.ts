@@ -1,12 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
-import { authenticate, optionalAuthenticate } from '../middleware/auth';
+import { authenticate, optionalAuthenticate, requireNotBannedOrDeleted } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { liveTrainingRegisterSchema } from '../schemas/liveTrainingSchemas';
 import { sendLiveTrainingRegistrationEmail, sendLiveTrainingEnrollmentEmail } from '../services/emailService';
 import { sendRegistrationStatusWhatsApp, formatWhatsAppDate } from '../services/whatsappService';
 import { resolveNotificationLocale } from '../utils/notificationLocale';
 import { withCurrentLiveTrainingPrice, LiveTrainingPricingInput } from '../services/liveTrainingPricing';
+import { withTrainingRatings } from '../services/learningRatingService';
+import { lockLearningTarget, countPendingLearningSeats, reserveLearningCheckout } from '../services/learningCheckoutService';
 
 const router = Router();
 
@@ -111,7 +113,7 @@ router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
     include: { _count: { select: { leads: true, enrollments: enrollmentCountSelect } } },
     orderBy: { scheduledAt: 'asc' },
   });
-  res.json({ data: trainings.map(withCapacityAndPrice) });
+  res.json({ data: await withTrainingRatings(trainings.map(withCapacityAndPrice)) });
 });
 
 router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => {
@@ -135,7 +137,7 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
     isEnrolled = enrollment?.status === 'ACTIVE' || enrollment?.status === 'COMPLETED';
   }
 
-  res.json({ data: { ...withCapacityAndPrice(training), isEnrolled } });
+  res.json({ data: (await withTrainingRatings([{ ...withCapacityAndPrice(training), isEnrolled }]))[0] });
 });
 
 // Broadcasts to every admin-team member — same pattern as blogAgentService's
@@ -156,25 +158,38 @@ async function notifyAdminsOfNewLead(trainingTitle: string, leadName: string): P
 
 router.post('/:id/register', registerRateLimit, async (req: Request, res: Response) => {
   const result = liveTrainingRegisterSchema.safeParse(req.body);
-  if (!result.success) return res.status(400).json({ errors: result.error.errors });
-
-  const training = await prisma.liveTraining.findFirst({
-    where: { id: req.params.id, published: true },
-    include: { _count: { select: { leads: true, enrollments: enrollmentCountSelect } } },
-  });
-  if (!training) return res.status(404).json({ message: 'Live training not found.' });
-  if (training._count.leads + training._count.enrollments >= training.maxCapacity) {
-    return res.status(409).json({ message: 'This training is fully booked.' });
-  }
+  if (!result.success) return res.status(400).json({ message: result.error.errors[0]?.message, errors: result.error.errors });
 
   // locale isn't a LiveTrainingLead column — it exists purely to pick the
   // notification language below, split out here so it never reaches Prisma.
   const { locale: rawLocale, ...leadData } = result.data;
   const locale = resolveNotificationLocale(rawLocale);
 
-  const lead = await prisma.liveTrainingLead.create({
-    data: { liveTrainingId: training.id, ...leadData },
+  const registration = await prisma.$transaction(async (tx) => {
+    // Use the same row lock as checkout/free enrollment so the final seat
+    // cannot be claimed by two registration paths concurrently.
+    await lockLearningTarget(tx, 'LIVE_TRAINING', req.params.id);
+    const training = await tx.liveTraining.findFirst({
+      where: { id: req.params.id, published: true },
+      include: { _count: { select: { leads: true, enrollments: enrollmentCountSelect } } },
+    });
+    if (!training) return { error: 'Live training not found.', status: 404 } as const;
+    const existing = await tx.liveTrainingLead.findFirst({
+      where: { liveTrainingId: training.id, phone: leadData.phone },
+    });
+    // A retry should acknowledge the saved lead without reserving another
+    // seat or duplicating email/WhatsApp notifications.
+    if (existing) return { training, lead: existing, duplicate: true } as const;
+    const pendingSeats = await countPendingLearningSeats(tx, 'LIVE_TRAINING', training.id);
+    if (training._count.leads + training._count.enrollments + pendingSeats >= training.maxCapacity) {
+      return { error: 'This training is fully booked.', status: 409 } as const;
+    }
+    const lead = await tx.liveTrainingLead.create({ data: { liveTrainingId: training.id, ...leadData } });
+    return { training, lead, duplicate: false } as const;
   });
+  if (registration.status !== undefined) return res.status(registration.status).json({ message: registration.error });
+  const { training, lead } = registration;
+  if (registration.duplicate) return res.status(200).json({ data: { id: lead.id } });
 
   notifyAdminsOfNewLead(training.title, lead.name).catch((err) =>
     console.error('[liveTrainings] notifyAdminsOfNewLead failed:', err)
@@ -183,14 +198,16 @@ router.post('/:id/register', registerRateLimit, async (req: Request, res: Respon
   // Resend outage must never fail (or even slow down) the registration
   // itself; sendEmail's own try/catch already prevents a thrown error, this
   // just guards the astronomically unlikely case of a bug upstream of that.
-  sendLiveTrainingRegistrationEmail({
-    email: lead.email,
-    userName: lead.name,
-    courseTitle: training.title,
-    startDate: training.startDate ?? training.scheduledAt,
-    liveTrainingId: training.id,
-    locale,
-  }).catch((err) => console.error('[liveTrainings] sendLiveTrainingRegistrationEmail failed:', err));
+  if (lead.email) {
+    sendLiveTrainingRegistrationEmail({
+      email: lead.email,
+      userName: lead.name,
+      courseTitle: training.title,
+      startDate: training.startDate ?? training.scheduledAt,
+      liveTrainingId: training.id,
+      locale,
+    }).catch((err) => console.error('[liveTrainings] sendLiveTrainingRegistrationEmail failed:', err));
+  }
   sendRegistrationStatusWhatsApp({
     phone: lead.phone,
     firstName: lead.name,
@@ -222,7 +239,7 @@ router.post('/:id/register', registerRateLimit, async (req: Request, res: Respon
 // LiveTrainingEnrollment there is only ever created by
 // liveTrainingSaleService.completeLiveTrainingPurchase, once the gateway
 // actually confirms payment.
-router.post('/:id/enroll', authenticate, async (req: Request, res: Response) => {
+router.post('/:id/enroll', authenticate, requireNotBannedOrDeleted, async (req: Request, res: Response) => {
   const training = await prisma.liveTraining.findFirst({
     where: { id: req.params.id, published: true },
     include: { _count: { select: { leads: true, enrollments: enrollmentCountSelect } } },
@@ -232,22 +249,15 @@ router.post('/:id/enroll', authenticate, async (req: Request, res: Response) => 
     return res.status(400).json({ message: 'This training requires payment. Please use the registration & payment option.' });
   }
 
-  const existing = await prisma.liveTrainingEnrollment.findUnique({
+  // The shared lock protects free seats against concurrent lead capture,
+  // paid checkout and reactivation of an earlier cancelled enrollment.
+  const enrollment = await reserveLearningCheckout({
+    userId: req.user!.id, purpose: 'LIVE_TRAINING', referenceId: training.id, amount: 0,
+  }, (tx) => tx.liveTrainingEnrollment.upsert({
     where: { userId_liveTrainingId: { userId: req.user!.id, liveTrainingId: training.id } },
-  });
-  if (existing?.status === 'ACTIVE') {
-    return res.status(400).json({ message: 'You are already enrolled in this training.' });
-  }
-  if (!existing && training._count.leads + training._count.enrollments >= training.maxCapacity) {
-    return res.status(409).json({ message: 'This training is fully booked.' });
-  }
-
-  // Re-enrolling after a prior cancellation flips the same row back to
-  // ACTIVE (the unique constraint on [userId, liveTrainingId] means a
-  // second row can never exist) rather than creating a new one.
-  const enrollment = existing
-    ? await prisma.liveTrainingEnrollment.update({ where: { id: existing.id }, data: { status: 'ACTIVE', enrolledAt: new Date() } })
-    : await prisma.liveTrainingEnrollment.create({ data: { userId: req.user!.id, liveTrainingId: training.id } });
+    create: { userId: req.user!.id, liveTrainingId: training.id },
+    update: { status: 'ACTIVE', enrolledAt: new Date(), completedAt: null },
+  }));
 
   // Self-serve enroll has no lead-form field to carry a locale (unlike
   // /register), so the frontend sends it as a small request body instead

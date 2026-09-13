@@ -623,21 +623,21 @@ model User {
   currentSessionId              String?
   createdAt                     DateTime              @default(now())
 
-  postedGigs                    Gig[]                         @relation("PostedGigs")
-  assignedGigs                  Gig[]                         @relation("AssignedGigs")
+  postedGigs                    Gig[]                          @relation("PostedGigs")
+  assignedGigs                  Gig[]                          @relation("AssignedGigs")
   gigApplications               GigApplication[]
-  clientTransactions            GigTransaction[]              @relation("ClientTransactions")
-  freelancerTransactions        GigTransaction[]              @relation("FreelancerTransactions")
+  clientTransactions            GigTransaction[]               @relation("ClientTransactions")
+  freelancerTransactions        GigTransaction[]               @relation("FreelancerTransactions")
   walletEntries                 WalletEntry[]
   postedVacancies               Vacancy[]
   vacancyApplications           VacancyApplication[]
   blogPosts                     BlogPost[]
-  reviewsGiven                  Review[]                      @relation("ReviewsGiven")
-  reviewsReceived               Review[]                      @relation("ReviewsReceived")
-  sentDirectOffers              DirectOffer[]                 @relation("SentDirectOffers")
-  receivedDirectOffers          DirectOffer[]                 @relation("ReceivedDirectOffers")
-  sentMessages                  Message[]                     @relation("SentMessages")
-  receivedMessages              Message[]                     @relation("ReceivedMessages")
+  reviewsGiven                  Review[]                       @relation("ReviewsGiven")
+  reviewsReceived               Review[]                       @relation("ReviewsReceived")
+  sentDirectOffers              DirectOffer[]                  @relation("SentDirectOffers")
+  receivedDirectOffers          DirectOffer[]                  @relation("ReceivedDirectOffers")
+  sentMessages                  Message[]                      @relation("SentMessages")
+  receivedMessages              Message[]                      @relation("ReceivedMessages")
   // One Stripe Customer per platform user, created lazily the first time
   // they start adding a card (see stripePaymentService.getOrCreateStripeCustomerId)
   // — every saved PaymentMethod of provider STRIPE is attached to this same
@@ -648,6 +648,9 @@ model User {
   bogPayments                   BogPayment[]
   stripePayments                StripePayment[]
   courseEnrollments             CourseEnrollment[]
+  courseRatings                 CourseRating[]
+  liveTrainingRatings           LiveTrainingRating[]
+  trainingDayProgress           TrainingDayProgress[]
   lessonProgress                LessonProgress[]
   courseCertificates            CourseCertificate[]
   courseDiscussionPosts         CourseDiscussionPost[]
@@ -657,17 +660,17 @@ model User {
   verifiedSkills                VerifiedSkill[]
   productPurchases              ProductPurchase[]
   assignmentSubmissions         AssignmentSubmission[]
-  submittedProducts             DigitalProduct[]              @relation("SubmittedProducts")
-  productReviewsGiven           ProductReview[]               @relation("ProductReviewsGiven")
+  submittedProducts             DigitalProduct[]               @relation("SubmittedProducts")
+  productReviewsGiven           ProductReview[]                @relation("ProductReviewsGiven")
   productReviewHelpfulVotes     ProductReviewHelpfulVote[]
   forumThreads                  ForumThread[]
   forumComments                 ForumComment[]
   forumThreadLikes              ForumThreadLike[]
   forumCommentLikes             ForumCommentLike[]
-  disputesRaised                Dispute[]                     @relation("DisputesRaised")
-  disputesResolved              Dispute[]                     @relation("DisputesResolved")
-  payoutRequests                PayoutRequest[]               @relation("PayoutRequests")
-  payoutRequestsReviewed        PayoutRequest[]               @relation("PayoutRequestsReviewed")
+  disputesRaised                Dispute[]                      @relation("DisputesRaised")
+  disputesResolved              Dispute[]                      @relation("DisputesResolved")
+  payoutRequests                PayoutRequest[]                @relation("PayoutRequests")
+  payoutRequestsReviewed        PayoutRequest[]                @relation("PayoutRequestsReviewed")
   loginEvents                   LoginEvent[]
   auditLogs                     AuditLog[]
   siteContentUpdates            SiteContent[]
@@ -678,48 +681,60 @@ model User {
   agents                        Agent[]
   examSessions                  ExamSession[]
   adminSectionSeen              AdminSectionSeen[]
-  projectsCreated                Project[]
+  projectsCreated               Project[]
   billingSubscriptions          BillingSubscription[]
   educatorGenerations           EducatorGeneration[]
   teacherQuizzes                TeacherQuiz[]
   blogComments                  BlogComment[]
-  mentorshipRequestsMade        MentorshipRequest[]           @relation("MentorshipRequestsMade")
-  mentorshipRequestsResolved    MentorshipRequest[]           @relation("MentorshipRequestsResolved")
+  mentorshipRequestsMade        MentorshipRequest[]            @relation("MentorshipRequestsMade")
+  mentorshipRequestsResolved    MentorshipRequest[]            @relation("MentorshipRequestsResolved")
   notifications                 Notification[]
   mentorAvailabilityRules       MentorAvailabilityRule[]
   mentorAvailabilityExceptions  MentorAvailabilityException[]
   sentNotificationBatches       NotificationBatch[]
-  mentorshipBookingsAsMentor    MentorshipBooking[]           @relation("MentorshipBookingsAsMentor")
-  mentorshipBookingsAsStudent   MentorshipBooking[]           @relation("MentorshipBookingsAsStudent")
-  mentorBookingHistoryActions   MentorBookingHistory[]        @relation("MentorBookingHistoryActor")
-  mentorChatMessagesSent        MentorChatMessage[]           @relation("MentorChatMessagesSent")
-  mentorChatMessagesReceived    MentorChatMessage[]           @relation("MentorChatMessagesReceived")
-  mentorChatViolations          MentorChatViolation[]         @relation("MentorChatViolations")
-  cyberSentinelDevices          CyberSentinelDevice[]         @relation("CyberSentinelDevices")
+  mentorshipBookingsAsMentor    MentorshipBooking[]            @relation("MentorshipBookingsAsMentor")
+  mentorshipBookingsAsStudent   MentorshipBooking[]            @relation("MentorshipBookingsAsStudent")
+  mentorBookingHistoryActions   MentorBookingHistory[]         @relation("MentorBookingHistoryActor")
+  mentorChatMessagesSent        MentorChatMessage[]            @relation("MentorChatMessagesSent")
+  mentorChatMessagesReceived    MentorChatMessage[]            @relation("MentorChatMessagesReceived")
+  mentorChatViolations          MentorChatViolation[]          @relation("MentorChatViolations")
+  cyberSentinelDevices          CyberSentinelDevice[]          @relation("CyberSentinelDevices")
   reviewedGrantOpportunities    GrantOpportunity[]
   generatedLaunchKits           LaunchKit[]
   digitalMarketingGenerations   DigitalMarketingGeneration[]
   liveTrainingEnrollments       LiveTrainingEnrollment[]
   careerQuizSubmissions         CareerQuizSubmission[]
-  chatRequestsSent              ChatRequest[]                 @relation("ChatRequestsSent")
-  chatRequestsReceived          ChatRequest[]                 @relation("ChatRequestsReceived")
-  chatFlagsAsSender             ChatFlag[]                    @relation("ChatFlagsAsSender")
-  chatFlagsAsRecipient          ChatFlag[]                    @relation("ChatFlagsAsRecipient")
-  chatFlagsReviewed             ChatFlag[]                    @relation("ChatFlagsReviewed")
-  hrSupportRequestsAsClient     HRSupportRequest[]            @relation("HRSupportRequestsAsClient")
-  hrSupportRequestsAsSpecialist HRSupportRequest[]            @relation("HRSupportRequestsAsSpecialist")
-  instructorCourses             Course[]                      @relation("InstructorCourses")
-  mentorApplications            MentorApplication[]           @relation("MentorApplications")
-  mentorApplicationsReviewed    MentorApplication[]           @relation("MentorApplicationsReviewed")
-  courseReviewsActed            CourseReviewHistory[]         @relation("CourseReviewsActed")
+  chatRequestsSent              ChatRequest[]                  @relation("ChatRequestsSent")
+  chatRequestsReceived          ChatRequest[]                  @relation("ChatRequestsReceived")
+  chatFlagsAsSender             ChatFlag[]                     @relation("ChatFlagsAsSender")
+  chatFlagsAsRecipient          ChatFlag[]                     @relation("ChatFlagsAsRecipient")
+  chatFlagsReviewed             ChatFlag[]                     @relation("ChatFlagsReviewed")
+  hrSupportRequestsAsClient     HRSupportRequest[]             @relation("HRSupportRequestsAsClient")
+  hrSupportRequestsAsSpecialist HRSupportRequest[]             @relation("HRSupportRequestsAsSpecialist")
+  instructorCourses             Course[]                       @relation("InstructorCourses")
+  mentorApplications            MentorApplication[]            @relation("MentorApplications")
+  mentorApplicationsReviewed    MentorApplication[]            @relation("MentorApplicationsReviewed")
+  courseReviewsActed            CourseReviewHistory[]          @relation("CourseReviewsActed")
   tutorLessons                  TutorLesson[]
   tutorProgress                 UserTutorProgress[]
   tutorLessonGenerations        TutorLessonGeneration[]
   tutorResumeState              UserTutorResumeState?
-  tutorContentFlagsRaised       TutorContentFlag[]            @relation("TutorContentFlagsRaised")
-  tutorContentFlagsReviewed     TutorContentFlag[]            @relation("TutorContentFlagsReviewed")
-  tutorLessonsApproved          TutorLesson[]                 @relation("TutorLessonsApproved")
-  tutorPromptOverridesUpdated   TutorPromptOverride[]         @relation("TutorPromptOverridesUpdated")
+  tutorContentFlagsRaised       TutorContentFlag[]             @relation("TutorContentFlagsRaised")
+  tutorContentFlagsReviewed     TutorContentFlag[]             @relation("TutorContentFlagsReviewed")
+  tutorLessonsApproved          TutorLesson[]                  @relation("TutorLessonsApproved")
+  tutorPromptOverridesUpdated   TutorPromptOverride[]          @relation("TutorPromptOverridesUpdated")
+  iakoConversations             IakoConversation[]
+  iakoProfilesCreated           IakoAssistantProfile[]         @relation("IakoProfilesCreated")
+  iakoUsageGrantsReceived       IakoUsageGrant[]               @relation("IakoUsageGrantsReceived")
+  iakoUsageGrantsCreated        IakoUsageGrant[]               @relation("IakoUsageGrantsCreated")
+  accessGrantsReceived          AccessGrant[]                  @relation("AccessGrantsReceived")
+  accessGrantsCreated           AccessGrant[]                  @relation("AccessGrantsCreated")
+  liveTrainingInvitesCreated    LiveTrainingInvite[]
+  liveTrainingInviteRedemptions LiveTrainingInviteRedemption[]
+  // A separate, opt-in capability layered on top of this account — see
+  // TrainerProfile's own comment for why this is deliberately NOT the
+  // Mentor role, an AdminRole tier, or the marketing TeamMember model.
+  trainerProfile                TrainerProfile?
 
   @@index([status, createdAt])
   @@map("users")
@@ -1183,41 +1198,41 @@ model CourseReviewHistory {
 }
 
 model Course {
-  id              String         @id @default(uuid())
-  title           String
+  id                String         @id @default(uuid())
+  title             String
   // Optional English translation of `title` — never guessed/auto-translated.
   // When set, the certificate PDF prints "title / titleEn"; course pages
   // otherwise always display the plain `title` (single-language courses are
   // the common case, so nothing else reads this field).
-  titleEn         String?
-  description     String
+  titleEn           String?
+  description       String
   // Optional English translation of `description`, same never-guessed/
   // never-auto-translated posture as titleEn. The course detail page shows
   // this instead of `description` when the site's active language is EN,
   // falling back to `description` when unset — see pages/courses/[id]/index.tsx.
-  descriptionEn   String?
-  category        String
+  descriptionEn     String?
+  category          String
   // Admin-set (see admin/courses.tsx) list of freelancer skills (curated
   // src/data/freelancerSkills.ts values, or free text) this course teaches.
   // When a student earns this course's certificate, every skill listed here
   // is auto-verified on their profile (VerifiedSkillSource.COURSE_COMPLETION)
   // without needing the AI skill test — see routes/courses.ts. Independent
   // of `category` above (a plain, unrelated free-text field).
-  skillsTaught    String[]       @default([])
+  skillsTaught      String[]       @default([])
   // Legacy flat lesson blob — predates CourseSection/Lesson below and is left
   // as-is for backward compat with the existing admin course-create form
   // (lib/api.ts's CoursePayload). The Udemy-style /learn player reads the
   // relational `sections` instead.
-  lessons         Json
+  lessons           Json
   // Minor units (tetri) — matches this codebase's Int-money convention
   // everywhere else (Gig.budgetAmount, BogPayment.amount, etc.). The user-
   // facing "sale price" is never stored — see services/coursePricing.ts's
   // getCurrentPrice(), computed at read time so an expired discountEndDate
   // reverts to originalPrice automatically with no cron/cleanup needed.
-  originalPrice   Int
-  discountPercent Int?
-  discountEndDate DateTime?
-  isOnSale        Boolean        @default(false)
+  originalPrice     Int
+  discountPercent   Int?
+  discountEndDate   DateTime?
+  isOnSale          Boolean        @default(false)
   // Optional override shown on the sale badge INSTEAD of the computed
   // "-{discountPercent}%" text (e.g. "SPECIAL OFFER", "BLACK FRIDAY") — see
   // coursePricing.ts's withCurrentPrice, which passes this straight through
@@ -1230,44 +1245,45 @@ model Course {
   // (true -> PUBLISHED, false -> DRAFT) so admin-authored catalog behavior
   // is unchanged. Checkout-initiation (payments.ts/stripePayments.ts) still
   // gates on `status === 'PUBLISHED'`, same enforcement point as before.
-  status          CourseStatus   @default(DRAFT)
+  status            CourseStatus   @default(DRAFT)
   // Null = admin-authored (the original, still-supported catalog flow —
   // instructorId-less courses skip the mentor review pipeline entirely and
   // an admin can move `status` freely, including straight to PUBLISHED, via
   // the existing admin course editor). Set = a Mentor's own Instructor
   // Studio course, subject to the full review lifecycle and the
   // ownership/status edit guards in routes/instructorCourses.ts.
-  instructorId    String?
-  instructor      User?          @relation("InstructorCourses", fields: [instructorId], references: [id], onDelete: SetNull)
-  mentorName      String?
-  mentorTitle     String?
-  thumbnailUrl    String?
+  instructorId      String?
+  instructor        User?          @relation("InstructorCourses", fields: [instructorId], references: [id], onDelete: SetNull)
+  mentorName        String?
+  mentorTitle       String?
+  thumbnailUrl      String?
   // Full-width hero banner on the course landing page — distinct from
   // thumbnailUrl (card/list thumbnail). Optional; falls back to no hero
   // image when unset.
-  coverImageUrl   String?
+  coverImageUrl     String?
   // Promo/trailer clip for the course detail page — same pasted-link
   // convention (YouTube/Vimeo/direct file) and rendering (VideoEmbed.tsx)
   // as LiveTraining.videoUrl. No upload path — always a plain URL, never
   // required.
-  introVideoUrl   String?
+  introVideoUrl     String?
   // Rendered as a vertical portrait next to mentorName/mentorTitle on the
   // landing page — falls back to initials when unset.
-  mentorAvatarUrl String?
+  mentorAvatarUrl   String?
   // Instruction language, shown as a badge on course cards. Defaults to
   // GEORGIAN since every pre-existing course is Georgian-taught.
-  language        CourseLanguage @default(GEORGIAN)
+  language          CourseLanguage @default(GEORGIAN)
   // Null (the default/common case) = unlimited seats, same "absence means
   // no limit" posture as PromoCode.maxUses. Set for capacity-capped cohorts
   // (e.g. a live masterclass) — checked at checkout-initiation time in
   // payments.ts/stripePayments.ts against a live CourseEnrollment count
   // (never a stored counter, so it can't drift out of sync with reality).
-  maxCapacity     Int?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  maxCapacity       Int?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
   orders             Order[]                @relation("OrderCourses")
   enrollments        CourseEnrollment[]
+  ratings            CourseRating[]
   sections           CourseSection[]
   certificates       CourseCertificate[]
   // One AI-generated certification exam per course, if configured by an
@@ -1299,7 +1315,7 @@ model Course {
 // ============================================================
 
 model LiveTraining {
-  id                  String           @id @default(uuid())
+  id                  String                @id @default(uuid())
   title               String
   titleEn             String?
   description         String
@@ -1320,7 +1336,7 @@ model LiveTraining {
   // purpose, same as it always has for a non-discounted training.
   discountPercent     Int?
   discountEndDate     DateTime?
-  isOnSale            Boolean          @default(false)
+  isOnSale            Boolean               @default(false)
   // Optional override shown on the sale badge instead of the computed
   // "-{discountPercent}%" text — see Course.discountBadgeText's identical
   // comment.
@@ -1350,17 +1366,23 @@ model LiveTraining {
   // as videoUrl above, just a distinct field so a training can show both
   // (a program promo video AND a "meet your trainer" clip) independently.
   trainerVideoUrl     String?
+  // Training-level (not per-day) Google Form link for photo/video consent —
+  // completed once for the whole cohort, unlike TrainingDay's own
+  // attendanceFormUrl/feedbackFormUrl which are per-day. CDC only stores and
+  // surfaces this URL; whether a given learner actually submitted the form
+  // is never tracked here (no Google Forms/Sheets API integration).
+  mediaConsentFormUrl String?
   // Group-viability floor — see LiveTrainingLead's registeredCount-derived
   // "min threshold met" badge on both the admin and public pages. 0 means
   // no minimum is enforced.
-  minCapacity         Int              @default(0)
+  minCapacity         Int                   @default(0)
   maxCapacity         Int
-  published           Boolean          @default(false)
+  published           Boolean               @default(false)
   // Same enum/meaning as Course.language — which language(s) the live
   // session itself is conducted in, shown via the same courseLanguageBadge()
   // helper. Defaults to GEORGIAN (this platform's primary audience), same
   // default as Course.language.
-  language            CourseLanguage   @default(GEORGIAN)
+  language            CourseLanguage        @default(GEORGIAN)
   // Pasted join link (Zoom/Meet/etc.) for the actual live session — same
   // plain-URL convention as HRSupportRequest.meetingUrl, not a real
   // Zoom/Meet API integration. Null until an admin sets it once the cohort
@@ -1405,19 +1427,29 @@ model LiveTraining {
   // merge: the new Course still needs real sections/lessons authored by
   // hand, this just lets past leads be notified and traced back to the
   // session that originated the course.
-  convertedToCourseId String?          @unique
-  convertedToCourse   Course?          @relation(fields: [convertedToCourseId], references: [id])
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
+  convertedToCourseId String?               @unique
+  convertedToCourse   Course?               @relation(fields: [convertedToCourseId], references: [id])
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
 
-  leads        LiveTrainingLead[]
-  enrollments  LiveTrainingEnrollment[]
+  leads                 LiveTrainingLead[]
+  enrollments           LiveTrainingEnrollment[]
+  ratings               LiveTrainingRating[]
+  guideSettings         TrainingGuideSettings?
+  guideDays             TrainingDay[]
+  guideSources          TrainingGuideSource[]
+  iakoProfileAssignment IakoProfileAssignment?
+  invites               LiveTrainingInvite[]
+  // IAKO Trainer Tools — zero-or-more authenticated trainers explicitly
+  // assigned to run this specific cohort. See LiveTrainingTrainerAssignment's
+  // own comment; completely independent of Mentor/convertedToCourse above.
+  trainerAssignments    LiveTrainingTrainerAssignment[]
   // Final/graduation exam sessions generated for this cohort — see
   // ExamSession.liveTrainingId. Reuses the same AI question generator and
   // candidate-token link mechanism as the standalone Business exam
   // proctoring tool, just created from the admin Live Training panel
   // instead of a Client account.
-  examSessions ExamSession[]
+  examSessions          ExamSession[]
 
   @@index([published])
   @@map("live_trainings")
@@ -1438,7 +1470,7 @@ model LiveTrainingLead {
   liveTrainingId String
   liveTraining   LiveTraining           @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
   name           String
-  email          String
+  email          String?
   phone          String
   status         LiveTrainingLeadStatus @default(NOT_CONTACTED)
   adminNote      String?
@@ -1489,6 +1521,61 @@ model LiveTrainingEnrollment {
   @@unique([userId, liveTrainingId])
   @@index([liveTrainingId])
   @@map("live_training_enrollments")
+}
+
+// ============================================================
+// IAKO TRAINER TOOLS — Phase 1 foundation.
+//
+// A Trainer is a capability layered on top of an existing User account —
+// deliberately NOT the Mentor role (Role.Mentor is the gig-marketplace/
+// course-instructor concept and stays completely unchanged), NOT an
+// AdminRole tier (a Trainer must never gain admin-panel access), and NOT
+// the marketing TeamMember model (the public /trainers bio listing, which
+// has no login/userId at all — see TeamMember's own comment). This lets one
+// real account be a Student, a Mentor AND a Trainer at once with no schema
+// conflict, and lets a Trainer be assigned to (or removed from) individual
+// Live Trainings without ever touching Role or AdminRole.
+// ============================================================
+
+// 1:1 with User — deliberately minimal (no name/email/bio duplication of
+// fields User already has). `active` is the admin on/off switch: disabling
+// a TrainerProfile immediately revokes every authorization check below
+// without deleting assignment history, same "soft toggle, keep the audit
+// trail" posture as User.isBanned.
+model TrainerProfile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignments LiveTrainingTrainerAssignment[]
+
+  @@map("trainer_profiles")
+}
+
+// The join model that lets one-or-more TrainerProfiles run a given
+// LiveTraining, and one TrainerProfile run one-or-more LiveTrainings, without
+// ever adding a single `trainerId` column to LiveTraining itself (which
+// would have hard-capped it at one trainer per cohort). The unique
+// constraint is what prevents assigning the same trainer to the same
+// training twice; the two independent indexes are what keep both "all of
+// this trainer's trainings" (their dashboard) and "all trainers on this
+// training" (the admin panel) cheap lookups.
+model LiveTrainingTrainerAssignment {
+  id               String         @id @default(uuid())
+  trainerProfileId String
+  trainerProfile   TrainerProfile @relation(fields: [trainerProfileId], references: [id], onDelete: Cascade)
+  liveTrainingId   String
+  liveTraining     LiveTraining   @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  assignedById     String?
+  createdAt        DateTime       @default(now())
+
+  @@unique([trainerProfileId, liveTrainingId])
+  @@index([trainerProfileId])
+  @@index([liveTrainingId])
+  @@map("live_training_trainer_assignments")
 }
 
 // ============================================================
@@ -1801,7 +1888,7 @@ model VerifiedSkill {
 // Course.originalPrice/BogPayment.amount elsewhere — not Float, to avoid
 // floating-point rounding on money.
 model DigitalProduct {
-  id                 String             @id @default(uuid())
+  id                 String               @id @default(uuid())
   title              String
   // Auto-translated by Gemini at create/update time whenever left blank
   // (see aiTranslateService.ts's translateTitleAndDescription, wired into
@@ -1836,7 +1923,7 @@ model DigitalProduct {
   // main cover) in the /store/[id] gallery/carousel — same array-of-URLs
   // pattern as StudioCaseStudy.galleryImages. Capped at 4 in the Zod schemas
   // (products.ts/adminProducts.ts), not here.
-  previewImages      String[]           @default([])
+  previewImages      String[]             @default([])
   // Optional demo/preview clip shown on /store/[id] alongside the gallery —
   // either an uploaded MP4/MOV (plain public Bunny CDN URL, same convention
   // as imageUrl/previewImages, capped at 50MB by videoUpload in
@@ -1870,21 +1957,21 @@ model DigitalProduct {
   // keep a plain URL, returned as-is — same protection level those had
   // before this existed, not a regression.
   fileUrl            String
-  downloadsCount     Int                @default(0)
+  downloadsCount     Int                  @default(0)
   // Denormalized rollup of ProductPurchase rows that reached COMPLETED —
   // same "avoid an aggregate query on every list read" posture as
   // User.averageRating/reviewCount elsewhere in this schema. Incremented
   // exactly once per genuine new completion (productSaleService.ts's
   // completeProductPurchase and products.ts's free /:id/claim), never on a
   // retry of an already-COMPLETED purchase.
-  salesCount         Int                @default(0)
-  createdAt          DateTime           @default(now())
+  salesCount         Int                  @default(0)
+  createdAt          DateTime             @default(now())
   purchases          ProductPurchase[]
   // Usage terms attached to this listing — snapshotted onto ProductPurchase
   // at fulfillment time (see productSaleService.ts). Defaults to the most
   // restrictive option so an admin/submitter has to deliberately opt into a
   // broader license rather than one being granted by omission.
-  licenseType        ProductLicenseType @default(PERSONAL_USE)
+  licenseType        ProductLicenseType   @default(PERSONAL_USE)
   // "PENDING" | "APPROVED" | "REJECTED" | "NEEDS_REVISION" — admin-created
   // products (see adminProducts.ts) are inserted as APPROVED directly;
   // graduate/verified-freelancer submissions (products.ts's POST /) start
@@ -1892,7 +1979,7 @@ model DigitalProduct {
   // productModerationService's AI review is confident enough — see
   // aiReview* fields below) and only show up in the public catalog once
   // APPROVED.
-  status             String             @default("PENDING")
+  status             String               @default("PENDING")
   rejectionReason    String?
   // AI moderation (services/productModerationService.ts), run once at
   // submission/resubmission time — never re-run automatically afterward, so
@@ -1907,13 +1994,18 @@ model DigitalProduct {
   aiReviewReasoning  String?
   aiReviewedAt       DateTime?
   submittedById      String?
-  submittedBy        User?              @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
+  submittedBy        User?                @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
   launchKits         LaunchKit[]
   // Denormalized rollup of `reviews` (ProductReview), same pattern as
   // User.averageRating/reviewCount — recomputed on every review create/delete.
   averageRating      Float?
-  reviewCount        Int                @default(0)
+  reviewCount        Int                  @default(0)
   reviews            ProductReview[]
+  // Files beyond the single required `fileUrl` above (bonus PDFs,
+  // instructions, a separate workbook, ...) — see DigitalProductFile's own
+  // comment for why this is purely additive rather than a replacement for
+  // `fileUrl`.
+  additionalFiles    DigitalProductFile[]
 
   // The public storefront (GET /products) filters status+category together,
   // and the admin dashboard's pending-review badge counts status alone on
@@ -1921,6 +2013,48 @@ model DigitalProduct {
   // full-table scan on both.
   @@index([status, category])
   @@map("digital_products")
+}
+
+// A product's ADDITIONAL downloadable files, beyond the one every product
+// already has via DigitalProduct.fileUrl. Deliberately additive rather than
+// a replacement/migration of that column: fileUrl stays the always-present
+// "main" file (required, never absent — so a product can never end up with
+// zero files), and every existing single-file product needs no backfill at
+// all here — it simply has zero rows in this table until an admin adds one,
+// same "old rows stay valid with the new architecture layered on top" shape
+// as IakoUsageGrant's processingToken addition earlier this branch.
+// ProductPurchase references a product only by ID (see its own comment on
+// licenseType being the only snapshotted field) — access is resolved fresh
+// on every download, so replacing/adding/removing a file here immediately
+// applies to every existing buyer, exactly like fileUrl always has.
+model DigitalProductFile {
+  id          String         @id @default(uuid())
+  productId   String
+  product     DigitalProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  // Admin-editable label shown to buyers (e.g. "Bonus Templates") — defaults
+  // to fileName at upload time but can be renamed independently of it.
+  displayName String
+  // The original uploaded filename — never shown as a download URL (see
+  // fileUrl below), just for the admin/buyer UI to show something real.
+  fileName    String
+  // Same `cdcblob://<blobName>` marker scheme as DigitalProduct.fileUrl —
+  // see productFileDelivery.ts's uploadProductFile/resolveProductFileDeliveryUrl,
+  // both already generic over any file, not specific to the "main" one.
+  fileUrl     String
+  mimeType    String?
+  sizeBytes   Int?
+  // Admin-controlled display order in the buyer-facing file list — see
+  // adminProducts.ts's POST /:id/files/reorder.
+  sortOrder   Int            @default(0)
+  // Soft-disable without deleting — download routes always filter on this,
+  // so a file that's hidden (or mid-replacement) can never be fetched even
+  // if some other check were ever missed.
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([productId, sortOrder])
+  @@map("digital_product_files")
 }
 
 // ============================================================
@@ -2070,6 +2204,513 @@ model CourseEnrollment {
   // routes/courses.ts run, on every request, not just occasionally.
   @@index([courseId])
   @@map("course_enrollments")
+}
+
+// Learner feedback is separate from CourseReviewHistory (editorial approval)
+// and ProductReview (digital-store purchases). Enrollment is checked by the
+// API; unique keys protect concurrent submissions and permit editing in place.
+model CourseRating {
+  id        String   @id @default(uuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, courseId])
+  @@index([courseId, createdAt])
+  @@map("course_ratings")
+}
+
+model LiveTrainingRating {
+  id             String       @id @default(uuid())
+  liveTrainingId String
+  liveTraining   LiveTraining @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating         Int
+  comment        String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([userId, liveTrainingId])
+  @@index([liveTrainingId, createdAt])
+  @@map("live_training_ratings")
+}
+
+enum GuideVisibility {
+  TODAY_ONLY
+  CURRENT_AND_PREVIOUS
+  ALL_DAYS
+}
+
+model TrainingGuideSettings {
+  liveTrainingId     String          @id
+  liveTraining       LiveTraining    @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  timeZone           String          @default("Asia/Tbilisi")
+  // Calendar dates are local to timeZone, not UTC-midnight timestamps.
+  startDate          String?
+  paused             Boolean         @default(false)
+  pausedDayNumber    Int?
+  currentDayOverride Int?
+  visibility         GuideVisibility @default(CURRENT_AND_PREVIOUS)
+  updatedAt          DateTime        @updatedAt
+
+  @@map("training_guide_settings")
+}
+
+model TrainingDay {
+  id             String                @id @default(uuid())
+  liveTrainingId String
+  liveTraining   LiveTraining          @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  dayNumber      Int
+  title          String
+  summary        String
+  scheduledDate  String?
+  published      Boolean               @default(false)
+  // Validated section/item objects: content is never an opaque text blob.
+  sections       Json
+  sourcePages    Int[]                 @default([])
+  // Per-day Google Form links — the SAME attendance form is normally reused
+  // for every day of a training via Google Forms' own pre-filled-link
+  // feature (one query param preselects the day), so this is just this
+  // day's specific URL, not a distinct form. Null hides the learner's
+  // button entirely; see TrainingDayContent/guide.tsx. Training-wide media
+  // consent lives on LiveTraining.mediaConsentFormUrl instead — not here.
+  attendanceFormUrl String?
+  feedbackFormUrl   String?
+  progress       TrainingDayProgress[]
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  @@unique([liveTrainingId, dayNumber])
+  @@map("training_days")
+}
+
+model TrainingDayProgress {
+  id        String      @id @default(uuid())
+  dayId     String
+  day       TrainingDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId    String
+  completed Boolean     @default(false)
+  updatedAt DateTime    @updatedAt
+
+  @@unique([userId, dayId, itemId])
+  @@index([dayId])
+  @@map("training_day_progress")
+}
+
+// Reference knowledge has an independent editing lifecycle from guide days.
+model TrainingGuideSource {
+  id             String       @id @default(uuid())
+  liveTrainingId String
+  liveTraining   LiveTraining @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  dayNumber      Int?
+  title          String
+  content        String
+  updatedAt      DateTime     @updatedAt
+
+  @@index([liveTrainingId, dayNumber])
+  @@map("training_guide_sources")
+}
+
+// ============================================================
+// IAKO — reusable AI assistant profiles. A profile is a persona/scope/
+// knowledge-base configuration that can be assigned to more than one
+// resource (a LiveTraining's Daily Guides chat today; a Digital Tool
+// tomorrow) instead of the persona being hardcoded per-feature the way
+// trainingGuideService.ts's answerTrainingGuide originally was. Text
+// generation always goes through services/aiAgentService.ts's
+// callTextModel (Azure primary/secondary -> Gemini 3-model cascade) — this
+// module never talks to a provider directly.
+// ============================================================
+
+model IakoAssistantProfile {
+  id                              String   @id @default(uuid())
+  name                            String
+  description                     String?
+  // Core persona/instructions, prepended to every call for this profile.
+  systemPrompt                    String
+  // Plain-language allow-list — what the assistant should answer.
+  inScope                         String
+  // Plain-language deny-list plus a comma-separated keyword block-list
+  // (outOfScopeKeywords) that short-circuits BEFORE any model call — see
+  // services/iakoAssistantService.ts's classifyScope. Prompt instructions
+  // alone are a request, not an enforcement point; the keyword gate is the
+  // actual server-side enforcement this profile's name promises.
+  outOfScope                      String?
+  outOfScopeKeywords              String[] @default([])
+  visionEnabled                   Boolean  @default(false)
+  temperature                     Float    @default(0.2)
+  active                          Boolean  @default(true)
+  // Product positioning (see services/iakoAssistantService.ts's system
+  // prompt builder) — e.g. name "IAKO", mentorTagline "Vibe Coding
+  // Full-Stack AI Mentor", shown on the Digital Tools card and the
+  // dedicated learner page instead of a generic "AI Assistant" label.
+  mentorTagline                   String?
+  welcomeMessageKa                String?
+  welcomeMessageEn                String?
+  // Defaults used to auto-provision an IakoUsageGrant the first time a
+  // newly-entitled learner opens this assistant (see
+  // usageGrantService.ts's getOrCreateUsageGrant) — an admin can still
+  // override any individual grant afterward. Null on a limit field means
+  // unlimited.
+  defaultRequestLimit             Int?     @default(200)
+  defaultDailyRequestLimit        Int?     @default(30)
+  defaultHourlyRequestLimit       Int?     @default(10)
+  defaultScreenshotLimit          Int?     @default(30)
+  defaultMaxScreenshotsPerMessage Int      @default(3)
+  defaultAccessDays               Int?     @default(10)
+  createdById                     String
+  createdBy                       User     @relation("IakoProfilesCreated", fields: [createdById], references: [id])
+  createdAt                       DateTime @default(now())
+  updatedAt                       DateTime @updatedAt
+
+  assignments        IakoProfileAssignment[]
+  knowledgeDocuments IakoKnowledgeDocument[]
+  conversations      IakoConversation[]
+  usageGrants        IakoUsageGrant[]
+
+  @@map("iako_assistant_profiles")
+}
+
+// TESTING restricts a LIVE_TRAINING assignment to SUPER_ADMIN/MANAGER
+// learners only (still subject to the same enrollment requirement) so an
+// admin can dogfood a brand-new training's IAKO through the real learner
+// path before exposing it to the cohort. LIVE is the normal, unrestricted
+// enrollment-gated behavior every assignment had before this field existed.
+// Digital Tool assignments ignore this field entirely — see
+// iakoAssistantService.ts's assertResourceAccess/listMyIakoAssistants.
+enum IakoAssignmentMode {
+  TESTING
+  LIVE
+}
+
+// Which concrete resource a profile is currently wired to. A LEFT join
+// table rather than a direct FK on the resource itself (LiveTraining etc.)
+// so the same profile can be reused across many resources, and so a new
+// resource type (Digital Tools today, more later) doesn't need its own
+// profile-picker column on every target model.
+model IakoProfileAssignment {
+  id             String               @id @default(uuid())
+  profileId      String
+  profile        IakoAssistantProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  liveTrainingId String?              @unique
+  liveTraining   LiveTraining?        @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  // Stable key from src/config/digitalTools.ts's registry (e.g.
+  // "educator-hub") — Digital Tools are page routes, not a DB table, so
+  // this is a plain string, not a foreign key.
+  digitalToolKey String?              @unique
+  // Defaults to LIVE (not TESTING) so every assignment that predates this
+  // field, and any write that doesn't explicitly set it (e.g. the Daily
+  // Guides assign call), keeps its exact current real-world behavior — only
+  // the Live Training admin UI's create/edit flow defaults new assignments
+  // to TESTING, and only at the API-call level, never here.
+  mode           IakoAssignmentMode   @default(LIVE)
+  // ============================================================
+  // Controlled auto-top-up — a one-time (per grant), capped extension of
+  // the TOTAL request ceiling (e.g. 200 -> 400, never further), scoped to
+  // THIS assignment only so enabling it for one Live Training never
+  // silently changes every IAKO assistant platform-wide. All null/default
+  // (disabled) for every assignment that predates this feature, and for any
+  // write that doesn't explicitly set them — same "existing behavior never
+  // regresses" posture as `mode` above. Every other quota dimension
+  // (daily/hourly/screenshot/per-message) is deliberately NOT duplicated
+  // here — those keep coming from the assigned IakoAssistantProfile's own
+  // default* fields, exactly as before; see iakoUsageGrantService.ts.
+  // ============================================================
+  // Overrides IakoAssistantProfile.defaultRequestLimit as the STARTING
+  // total for a grant created under this assignment. Null = use the
+  // profile's own default, unchanged from today.
+  initialRequestLimit Int?
+  autoTopUpEnabled    Boolean              @default(false)
+  // Amount added to a grant's requestLimit by exactly one automatic top-up
+  // — see maxAutoTopUps for how many times this can happen per grant.
+  autoTopUpAmount     Int?
+  // How many automatic top-ups a single learner's grant may ever receive
+  // under this assignment. 0 (the default) means auto-top-up never fires
+  // even if autoTopUpEnabled is somehow true — maxAutoTopUps is the real
+  // hard stop, not just autoTopUpEnabled.
+  maxAutoTopUps       Int                  @default(0)
+  // The hard ceiling a grant's requestLimit can never automatically exceed
+  // under this assignment, regardless of amount * maxAutoTopUps math —
+  // see iakoUsageGrantService.ts's applyAutoTopUpIfEligible, which always
+  // clamps to this value. Null = auto-top-up cannot apply (no ceiling to
+  // clamp to), same effective behavior as autoTopUpEnabled: false.
+  maxAutoTotal        Int?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@map("iako_profile_assignments")
+}
+
+// Source/reference material for a profile's knowledge base — same parse
+// (documentParserService.ts) -> chunk -> store pipeline as the site-wide
+// assistant's CdcKnowledgeDocument (see routes/adminKnowledge.ts), just
+// scoped per-profile instead of global. Retrieval is lexical (no vector
+// store in this stack) — see iakoAssistantService.ts's retrieveKnowledge.
+model IakoKnowledgeDocument {
+  id             String               @id @default(uuid())
+  profileId      String
+  profile        IakoAssistantProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  sourceFilename String
+  chunkIndex     Int
+  totalChunks    Int
+  content        String
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@index([profileId])
+  @@map("iako_knowledge_documents")
+}
+
+enum IakoMessageRole {
+  USER
+  ASSISTANT
+}
+
+// One thread per (profile, user, resource) — resourceId is the same
+// liveTrainingId/digitalToolKey shape IakoProfileAssignment uses, kept
+// denormalized here (rather than re-joining through the assignment) since
+// a conversation must stay readable even after an admin reassigns or
+// deletes the assignment row.
+model IakoConversation {
+  id               String               @id @default(uuid())
+  profileId        String
+  profile          IakoAssistantProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resourceType     IakoGrantResource
+  resourceId       String
+  // A running summary of the project/topic the learner is working on and
+  // what's already been tried — regenerated periodically (see
+  // iakoAssistantService.ts's maintainConversationSummary) once the raw
+  // history grows past a threshold, so older turns stop consuming tokens
+  // on every call without the assistant losing "what are we building"
+  // context. Null until the conversation is long enough to need one.
+  summary          String?
+  summaryUpdatedAt DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  messages IakoMessage[]
+
+  @@unique([profileId, userId, resourceType, resourceId])
+  @@map("iako_conversations")
+}
+
+model IakoMessage {
+  id             String           @id @default(uuid())
+  conversationId String
+  conversation   IakoConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           IakoMessageRole
+  content        String
+  // Learner-submitted screenshots for this message (up to a profile's
+  // maxScreenshotsPerMessage), already uploaded to blob storage (see
+  // services/imageStorage.ts) — stored as URLs, never inline base64, same
+  // convention as every other user-uploaded image on this platform.
+  imageUrls      String[]         @default([])
+  createdAt      DateTime         @default(now())
+
+  @@index([conversationId, createdAt])
+  @@map("iako_messages")
+}
+
+// ============================================================
+// IAKO USAGE — a per-(profile, user, resource) quota, auto-provisioned
+// (see usageGrantService.ts's getOrCreateUsageGrant) the first time an
+// already-entitled learner opens the assistant, using the assigned
+// profile's default* fields — an admin can override any individual grant
+// afterward (extend, revoke, add credits, change limits, reset usage,
+// go unlimited). Distinct from AccessGrant above: AccessGrant answers
+// "can this person use this resource at all", this answers "how much of
+// IAKO specifically have they used, and how much do they have left."
+// ============================================================
+
+model IakoUsageGrant {
+  id                       String               @id @default(uuid())
+  profileId                String
+  profile                  IakoAssistantProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  userId                   String
+  user                     User                 @relation("IakoUsageGrantsReceived", fields: [userId], references: [id], onDelete: Cascade)
+  resourceType             IakoGrantResource
+  resourceId               String
+  // Null on any limit field means unlimited for that dimension.
+  requestLimit             Int?
+  dailyRequestLimit        Int?
+  hourlyRequestLimit       Int?
+  screenshotLimit          Int?
+  maxScreenshotsPerMessage Int                  @default(3)
+  // How many of this assignment's maxAutoTopUps this specific grant has
+  // already consumed — see IakoProfileAssignment.maxAutoTopUps and
+  // iakoUsageGrantService.ts's applyAutoTopUpIfEligible, the only writer.
+  // Per-grant (per learner), never shared across learners or trainings.
+  autoTopUpsApplied        Int                  @default(0)
+  startsAt                 DateTime?
+  expiresAt                DateTime?
+  revokedAt                DateTime?
+  // Usage is COUNTED from IakoRequestLog rows created after this
+  // timestamp, rather than a separately-incremented counter that could
+  // drift out of sync — see usageGrantService.ts's usageSummary. Admin
+  // "reset usage" moves this forward instead of deleting log history.
+  usageResetAt             DateTime             @default(now())
+  // Cross-instance lease: only one request can check/spend this grant at
+  // a time. Provider calls run outside DB transactions; stale leases recover.
+  processingToken          String?
+  processingExpiresAt      DateTime?
+  createdById              String
+  createdBy                User                 @relation("IakoUsageGrantsCreated", fields: [createdById], references: [id])
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+
+  requestLogs IakoRequestLog[]
+
+  @@unique([profileId, userId, resourceType, resourceId])
+  @@map("iako_usage_grants")
+}
+
+// Scope refusals are cached with counted=false and do not consume quota.
+// One row per SUCCESSFULLY-answered learner message (never per grammatical
+// question inside it — see usageGrantService.ts's own comment). Written
+// only once a usable assistant reply exists; a scope refusal, an auth/
+// access failure, a validation failure, a provider error, or a timeout
+// never reaches this table at all, which is what makes "don't charge for
+// a failed request" hold with no separate bookkeeping. idempotencyKey is
+// a UUID the Frontend generates once per send attempt and resends
+// unchanged on retry — the unique constraint below is what turns a
+// network-retry into a no-op re-read of resultMessageId instead of a
+// second charge.
+model IakoRequestLog {
+  id              String         @id @default(uuid())
+  usageGrantId    String
+  usageGrant      IakoUsageGrant @relation(fields: [usageGrantId], references: [id], onDelete: Cascade)
+  idempotencyKey  String
+  screenshotCount Int            @default(0)
+  requestHash     String?
+  counted         Boolean        @default(true)
+  outOfScope      Boolean        @default(false)
+  resultMessageId String?
+  createdAt       DateTime       @default(now())
+
+  @@unique([usageGrantId, idempotencyKey])
+  @@index([usageGrantId, createdAt])
+  @@map("iako_request_logs")
+}
+
+// ============================================================
+// ACCESS GRANTS — a temporary, admin-issued entitlement that isn't backed
+// by a purchase or enrollment: "let this person (or this not-yet-registered
+// email) use X from startsAt to expiresAt." Checked ALONGSIDE each
+// resource's own natural entitlement (a LiveTraining's real enrollment, a
+// Digital Tool's linked ProductPurchase) — never instead of it. See
+// services/accessGrantService.ts's hasAccessGrant.
+// ============================================================
+
+enum IakoGrantResource {
+  IAKO_PROFILE
+  DIGITAL_TOOL
+  LIVE_TRAINING
+}
+
+model AccessGrant {
+  id           String            @id @default(uuid())
+  resourceType IakoGrantResource
+  // A profile id, a digitalToolKey, or a liveTrainingId, depending on
+  // resourceType — same "typed string keyed by an enum sibling field"
+  // shape as IakoConversation.resourceId above.
+  resourceId   String
+  // Exactly one of userId/email is set (enforced in
+  // schemas/accessGrantSchemas.ts, not the DB — this codebase validates
+  // XOR-shaped input at the Zod layer throughout, e.g.
+  // trainingGuideSchemas.ts's superRefine). email lets an admin grant
+  // access to someone who hasn't registered yet; resolved against User.email
+  // at check time once they do.
+  userId       String?
+  user         User?             @relation("AccessGrantsReceived", fields: [userId], references: [id], onDelete: Cascade)
+  email        String?
+  startsAt     DateTime?
+  expiresAt    DateTime?
+  note         String?
+  createdById  String
+  createdBy    User              @relation("AccessGrantsCreated", fields: [createdById], references: [id])
+  revokedAt    DateTime?
+  createdAt    DateTime          @default(now())
+
+  @@index([resourceType, resourceId])
+  @@index([userId])
+  @@index([email])
+  @@map("access_grants")
+}
+
+// ============================================================
+// LIVE TRAINING INVITES — a QR/link-based enrollment path, additive to the
+// existing self-serve POST /live-trainings/:id/enroll and the paid
+// checkout flow, never a replacement for either. Redemption
+// (services/liveTrainingInviteService.ts's redeemLiveTrainingInvite)
+// applies the EXACT SAME "training.price > 0 -> reject" guard the free
+// /enroll endpoint already enforces (see routes/liveTrainings.ts) — an
+// invite can fast-track a FREE training's registration, but can never
+// itself create a paid seat. A paid training's invite instead deep-links
+// into the real registration/checkout page.
+// ============================================================
+
+enum LiveTrainingInvitePolicy {
+  FREE_ENROLLMENT
+  REGISTRATION_ONLY
+  PAYMENT_REQUIRED
+}
+
+enum LiveTrainingInviteRequestStatus {
+  ACTIVE
+  PENDING_APPROVAL
+  REGISTRATION_ONLY
+  REJECTED
+}
+
+model LiveTrainingInvite {
+  id               String                   @id @default(uuid())
+  liveTrainingId   String
+  liveTraining     LiveTraining             @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  // Opaque, random, URL-safe — see liveTrainingInviteService.ts's
+  // generateInviteToken. Not a sequential/guessable id: this token is the
+  // entire access control for redemption.
+  token            String                   @unique
+  // Optional restriction to one address — set for a personal invite sent
+  // to a specific lead; null for a generic reusable QR poster/link.
+  email            String?
+  policy           LiveTrainingInvitePolicy @default(PAYMENT_REQUIRED)
+  requiresApproval Boolean                  @default(false)
+  startsAt         DateTime?
+  maxRedemptions   Int                      @default(1)
+  redemptionCount  Int                      @default(0)
+  expiresAt        DateTime?
+  createdById      String
+  createdBy        User                     @relation(fields: [createdById], references: [id])
+  revokedAt        DateTime?
+  createdAt        DateTime                 @default(now())
+
+  redemptions LiveTrainingInviteRedemption[]
+
+  @@index([liveTrainingId])
+  @@map("live_training_invites")
+}
+
+model LiveTrainingInviteRedemption {
+  id         String                          @id @default(uuid())
+  inviteId   String
+  invite     LiveTrainingInvite              @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User                            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status     LiveTrainingInviteRequestStatus @default(ACTIVE)
+  redeemedAt DateTime                        @default(now())
+
+  @@unique([inviteId, userId])
+  @@map("live_training_invite_redemptions")
 }
 
 // ============================================================
@@ -2820,22 +3461,22 @@ enum ExamSubmissionStatus {
 // submission, so one candidate's answers/timer are never guessable from
 // another's.
 model ExamSubmission {
-  id                   String               @id @default(uuid())
-  examSessionId        String
-  examSession          ExamSession          @relation(fields: [examSessionId], references: [id], onDelete: Cascade)
-  candidateName        String
-  candidateEmail       String
-  candidateToken       String               @unique @default(uuid())
+  id                    String               @id @default(uuid())
+  examSessionId         String
+  examSession           ExamSession          @relation(fields: [examSessionId], references: [id], onDelete: Cascade)
+  candidateName         String
+  candidateEmail        String
+  candidateToken        String               @unique @default(uuid())
   // { [questionId]: "A"|"B"|"C"|"D" } for MCQ, plus the practical question's
   // free-text answer under its own id — one JSON blob, same convention as
   // FreelancerSkillExamAttempt.answers.
-  answers              Json?
-  mcqScore             Float?
-  practicalScore       Float?
-  totalScore           Float?
+  answers               Json?
+  mcqScore              Float?
+  practicalScore        Float?
+  totalScore            Float?
   // AI's written feedback on the practical answer (gradePracticalAnswer) —
   // shown to the business in the candidate report, not the candidate.
-  aiEvaluation         String?
+  aiEvaluation          String?
   // Combined violation count — still the FLAG_THRESHOLD source of truth in
   // routes/examProctoring.ts. tabSwitches/copyPasteCount below are the same
   // events broken out by kind for the business's proctoring report; every
@@ -2843,18 +3484,18 @@ model ExamSubmission {
   // once, at submit time, recomputed server-side from this submission's
   // ProctoringEvent rows — never taken from the client's submit request
   // body, which a candidate calling the API directly could set to anything.
-  proctoringViolations Int                  @default(0)
-  tabSwitches          Int                  @default(0)
-  copyPasteCount       Int                  @default(0)
+  proctoringViolations  Int                  @default(0)
+  tabSwitches           Int                  @default(0)
+  copyPasteCount        Int                  @default(0)
   // Combined count of FACE_MISSING/MULTIPLE_FACES/LOOKING_AWAY/
   // BACKGROUND_VOICE ProctoringEvent rows — the camera/mic-based signals,
   // broken out from tabSwitches/copyPasteCount the same way those are
   // broken out from the plain total, for the business's report.
-  cameraAudioViolations Int                 @default(0)
+  cameraAudioViolations Int                  @default(0)
   // 100 minus a penalty per proctoring violation, floored at 0 — a single
   // at-a-glance number for the business report; the raw counts above stay
   // available for detail. Null until the attempt is submitted.
-  integrityScore       Float?
+  integrityScore        Float?
   // Best-effort AI estimate (0-100) of how likely the candidate's
   // PRACTICAL/CODE answers were AI-generated rather than self-written —
   // heuristic, not a certainty (LLM writing-pattern classification has no
@@ -2862,7 +3503,7 @@ model ExamSubmission {
   // advisory signal alongside the human-reviewable answer text itself,
   // never as an automatic disqualification. Null when there were no
   // PRACTICAL/CODE questions to assess.
-  aiTextScore          Float?
+  aiTextScore           Float?
   // Per-question grading detail — [{questionId, candidateAnswer, aiScore,
   // aiFeedback, aiTextScore}] for every PRACTICAL/CODE question, the basis
   // for AdaptiveStudyGuide's weakTopics. JSON blob rather than a child
@@ -2870,10 +3511,10 @@ model ExamSubmission {
   // this schema (Exam.ExamAttempt.questions, SkillTestAttempt.questions) —
   // always read as a whole alongside its one parent submission, never
   // queried across submissions.
-  answerGrades         Json?
-  status               ExamSubmissionStatus @default(IN_PROGRESS)
-  startedAt            DateTime             @default(now())
-  completedAt          DateTime?
+  answerGrades          Json?
+  status                ExamSubmissionStatus @default(IN_PROGRESS)
+  startedAt             DateTime             @default(now())
+  completedAt           DateTime?
 
   usageRecords     UsageRecord[]
   studyGuide       AdaptiveStudyGuide?
@@ -3913,10 +4554,10 @@ model PlatformAgentKnowledgeSource {
 // discountedAmount), currentUses incremented atomically once an order is
 // actually created (see routes/payments.ts / routes/stripePayments.ts).
 model PromoCode {
-  id              String          @id @default(uuid())
-  code            String          @unique
-  discountPercent Int?
-  discountAmount  Int?
+  id                  String               @id @default(uuid())
+  code                String               @unique
+  discountPercent     Int?
+  discountAmount      Int?
   // ALL = valid for any purchase; every other value restricts redemption to
   // exactly this product type AND one of applicableTargetIds (empty
   // targetIds with a non-ALL type effectively disables the code, since
@@ -3927,13 +4568,13 @@ model PromoCode {
   // Quick admin on/off switch, independent of expiresAt/maxUses — lets an
   // admin pause a code without losing its usage history or having to guess
   // a new expiry date.
-  isActive        Boolean         @default(true)
-  expiresAt       DateTime?
-  maxUses         Int?
-  currentUses     Int             @default(0)
-  createdAt       DateTime        @default(now())
-  bogPayments     BogPayment[]
-  stripePayments  StripePayment[]
+  isActive            Boolean              @default(true)
+  expiresAt           DateTime?
+  maxUses             Int?
+  currentUses         Int                  @default(0)
+  createdAt           DateTime             @default(now())
+  bogPayments         BogPayment[]
+  stripePayments      StripePayment[]
 
   @@map("promo_codes")
 }
@@ -4715,27 +5356,27 @@ enum CareerQuizGender {
 // tag from an admin-generated pre-filled link (e.g. /career-test?ref=sofi)
 // — never used in any access-control decision.
 model CareerQuizSubmission {
-  id       String             @id @default(uuid())
-  userId   String
-  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fullName String
-  email    String
-  phone    String
-  audience CareerQuizAudience @default(SELF)
-  gender   CareerQuizGender
+  id         String             @id @default(uuid())
+  userId     String
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName   String
+  email      String
+  phone      String
+  audience   CareerQuizAudience @default(SELF)
+  gender     CareerQuizGender
   // Drives which question set the frontend showed (see career-test.tsx's
   // KID_QUESTIONS/ADULT_QUESTIONS split at the <16 boundary) and is passed
   // straight into the AI prompt for age-appropriate tone/vocabulary — always
   // required now (a plain quiz answer, not the old admin-link pass-through
   // it used to double as).
-  age Int
+  age        Int
   // Free-text question/answer pairs, e.g. {"interest": "...", "workStyle":
   // "..."} — kept as JSON rather than one column per question because the
   // kid and adult question sets are entirely different dimensions (see
   // careerQuizService.ts's buildAnswersTranscript) that would otherwise mean
   // half of a fixed column set is always null, and a schema migration every
   // time a question is reworded.
-  answers Json
+  answers    Json
   // AI-generated (see careerQuizService.ts's generateCareerQuizResult) —
   // Markdown prose recommending specific course(s)/live training(s) from the
   // real, live catalog at the moment of submission. Kept verbatim rather

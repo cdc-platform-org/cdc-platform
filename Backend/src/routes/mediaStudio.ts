@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
 import { authenticate } from '../middleware/auth';
+import { requireDigitalToolAccess } from '../services/digitalToolAccessService';
 import { rateLimit } from '../middleware/rateLimit';
 import { multerErrorHandler } from '../middleware/productUploads';
 import {
@@ -22,6 +23,10 @@ import { callTextModelPlain, AiAgentError } from '../services/aiAgentService';
 // ============================================================
 
 const router = Router();
+// First real entitlement gate for this Digital Tool — see
+// services/digitalToolAccessService.ts's own comment on why this and
+// educator-hub/agents.ts (the chatbot builder) are treated differently.
+const requireMediaStudioAccess = requireDigitalToolAccess('media-studio');
 
 // Uploaded lecture/meeting videos are typically far larger than the
 // product-preview clips productUploads.ts's videoUpload was sized for
@@ -53,7 +58,7 @@ function handleUpload(req: Request, res: Response, next: NextFunction) {
 
 const youtubeSchema = z.object({ youtubeUrl: z.string().min(1) });
 
-router.post('/transcribe', authenticate, transcribeRateLimit, handleUpload, async (req: Request, res: Response) => {
+router.post('/transcribe', authenticate, requireMediaStudioAccess, transcribeRateLimit, handleUpload, async (req: Request, res: Response) => {
   try {
     if (req.file) {
       if (!isMediaStudioUploadConfigured()) {
@@ -99,7 +104,7 @@ const emailExportRateLimit = rateLimit({
   message: 'Too many export emails sent. Please wait before trying again.',
 });
 
-router.post('/email', authenticate, emailExportRateLimit, async (req: Request, res: Response) => {
+router.post('/email', authenticate, requireMediaStudioAccess, emailExportRateLimit, async (req: Request, res: Response) => {
   const parsed = emailExportSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
 
@@ -127,7 +132,7 @@ const translateRateLimit = rateLimit({
   message: 'Too many translation requests. Please wait a few minutes before trying again.',
 });
 
-router.post('/translate', authenticate, translateRateLimit, async (req: Request, res: Response) => {
+router.post('/translate', authenticate, requireMediaStudioAccess, translateRateLimit, async (req: Request, res: Response) => {
   const parsed = translateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
 

@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { logAdminAction } from '../services/auditLogService';
+import { resolveVerificationDocDeliveryUrl } from '../services/verificationDocDelivery';
 
 // ============================================================
 // INDIVIDUAL IDENTITY VERIFICATION — admin review queue for the ID card/
@@ -36,6 +37,16 @@ router.get('/', async (req: Request, res: Response) => {
     orderBy: { createdAt: 'desc' },
   });
   res.json({ data: users });
+});
+
+// Admin-authorized document resolve — see adminCompanies.ts's identical
+// endpoint for the BUSINESS counterpart; never send verificationDocUrl's
+// raw value to the browser as if it were an openable link.
+router.get('/:id/document', async (req: Request, res: Response) => {
+  const user = await prisma.user.findUnique({ where: { id: req.params.id }, select: { verificationDocUrl: true } });
+  if (!user?.verificationDocUrl) return res.status(404).json({ message: 'No verification document on file.' });
+  const url = await resolveVerificationDocDeliveryUrl(user.verificationDocUrl);
+  res.json({ data: { url } });
 });
 
 // Approving here never touches isVerifiedGraduate — see auth.ts's own

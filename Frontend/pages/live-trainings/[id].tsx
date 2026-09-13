@@ -5,7 +5,7 @@ import { Calendar, Users, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import BackButton from '../../src/components/common/BackButton';
-import VideoEmbed from '../../src/components/shared/VideoEmbed';
+import VideoEmbed, { parseVideoUrl } from '../../src/components/shared/VideoEmbed';
 import SEOHead from '../../src/components/seo/SEOHead';
 import SocialShareButtons from '../../src/components/shared/SocialShareButtons';
 import { LiveTraining } from '../../src/types/liveTraining';
@@ -16,24 +16,30 @@ import { resolveLocale } from '@/src/utils/locale';
 import { courseLanguageBadge } from '@/src/utils/courseLanguage';
 import { formatLiveTrainingPriceLabel } from '@/src/utils/liveTrainingPricing';
 import { useAuth } from '../../src/context/AuthContext';
+import { useAuthModal } from '../../src/context/AuthModalContext';
+import LearningRatingsSection from '../../src/components/shared/LearningRatingsSection';
+import LearningRatingSummary from '../../src/components/shared/LearningRatingSummary';
 
 const EN_STRINGS = {
   loading: 'Loading…',
   notFound: 'This live training could not be found.',
-  seatsRemaining: (n: number, total: number) => `${n} seats left of ${total} registered`,
+  seatsRemaining: (n: number, total: number) => `${n} seats left of ${total}`,
   registeredOf: (n: number, total: number) => `${n} / ${total} registered`,
   full: 'Fully Booked',
   minMet: 'Minimum group reached — this session is confirmed to run',
   minNotMet: (n: number, min: number) => `${n} more needed to reach the minimum group of ${min}`,
-  nameLabel: 'Full name',
-  emailLabel: 'Email',
+  firstNameLabel: 'First name',
+  lastNameLabel: 'Last name',
   phoneLabel: 'Phone number',
   register: 'Register',
   registering: 'Registering…',
-  success: 'Thanks! We\'ll call you shortly to confirm your spot.',
+  success: 'Thanks! We\'ll call you shortly to discuss the training. No payment has been taken.',
+  interestHeading: 'Interested? Request a callback',
+  interestDescription: 'Leave your details and we will help you with registration. No payment is required.',
+  signInToEnroll: 'Sign in or create an account to register for this training.',
   genericError: 'Registration failed. Please try again.',
   free: 'Free',
-  enroll: 'Enroll — I have an account',
+  enroll: 'Enroll for free',
   enrolling: 'Enrolling…',
   enrollSuccess: 'You\'re enrolled! Find the join link and recording on your dashboard closer to the session.',
   goToDashboard: 'Go to My Live Trainings',
@@ -43,7 +49,8 @@ const EN_STRINGS = {
   alreadyEnrolled: 'You are already enrolled in this training.',
   refundGuarantee: '🛡️ 100% refund guarantee if the group doesn\'t fill or the training is cancelled',
   refundGuaranteeDetail: 'If the minimum group size isn\'t reached or the training is cancelled for any reason, you\'ll receive a 100% refund.',
-  trainerVideoHeading: 'Meet Your Trainer',
+  trainerVideoHeading: 'Meet the trainer',
+  promoCode: 'Promo code', promoApplied: 'Promo applied', apply: 'Apply', removePromo: 'Remove promo code', invalidPromo: 'Invalid promo code.',
 };
 
 // Real short translations for the refund-guarantee badge specifically
@@ -84,15 +91,18 @@ const dict = {
     // session" vs. "room holds 15") both correctly derived from the same
     // live registeredCount.
     minNotMet: (n: number, min: number) => `მინიმალური ${min}-კაციანი ჯგუფისთვის აკლია ${n} ადამიანი`,
-    nameLabel: 'სახელი და გვარი',
-    emailLabel: 'ელ. ფოსტა',
+    firstNameLabel: 'სახელი',
+    lastNameLabel: 'გვარი',
     phoneLabel: 'ტელეფონის ნომერი',
     register: 'რეგისტრაცია',
     registering: 'იგზავნება…',
-    success: 'გმადლობთ! მალე დაგირეკავთ ადგილის დასადასტურებლად.',
+    success: 'გმადლობთ! მალე დაგიკავშირდებით ტრენინგის დეტალებზე. თანხა არ ჩამოგჭრიათ.',
+    interestHeading: 'გაინტერესებს? დაგვიტოვე ნომერი',
+    interestDescription: 'დატოვე საკონტაქტო ინფორმაცია და რეგისტრაციაში დაგეხმარებით. გადახდა არ არის საჭირო.',
+    signInToEnroll: 'ტრენინგზე რეგისტრაციისთვის შედით ან შექმენით ანგარიში.',
     genericError: 'რეგისტრაცია ვერ მოხერხდა. სცადეთ თავიდან.',
     free: 'უფასო',
-    enroll: 'ჩარიცხვა — მაქვს ანგარიში',
+    enroll: 'უფასო ჩარიცხვა',
     enrolling: 'ჩარიცხვა მიმდინარეობს…',
     enrollSuccess: 'თქვენ ჩარიცხული ხართ! მიერთების ბმული და ჩანაწერი სესიასთან ახლოს დაშბორდზე გამოჩნდება.',
     goToDashboard: 'ჩემი ლაივ ტრენინგები',
@@ -102,7 +112,8 @@ const dict = {
     alreadyEnrolled: 'თქვენ უკვე ჩარიცხული ხართ ამ ტრენინგზე.',
     refundGuarantee: '🛡️ 100% თანხის დაბრუნების გარანტია ჯგუფის შეუვსებლობის ან ჩაშლის შემთხვევაში',
     refundGuaranteeDetail: 'თუ ლაივ ტრენინგზე არ შეგროვდა მინიმალური ჯგუფი ან ტრენინგი ჩაიშალა რაიმე მიზეზით, გადახდილი თანხა მომხმარებელს დაუბრუნდება 100%-ით.',
-    trainerVideoHeading: 'გაიცანით ლექტორი',
+    trainerVideoHeading: 'გაიცანი ტრენერი',
+    promoCode: 'პრომო კოდი', promoApplied: 'პრომო კოდი გააქტიურდა', apply: 'გამოყენება', removePromo: 'პრომო კოდის გაუქმება', invalidPromo: 'პრომო კოდი არასწორია.',
   },
   en: EN_STRINGS,
   de: { ...EN_STRINGS, ...DE_REFUND_GUARANTEE },
@@ -118,18 +129,19 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
   const t = dict[lang];
   const contentLang = lang === 'ka' ? 'ka' : 'en';
   const { isAuthenticated } = useAuth();
+  const { openAuthModal } = useAuthModal();
 
   const [training, setTraining] = useState<LiveTraining | null>(initialTraining);
   const [loading, setLoading] = useState(!initialTraining);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
+  const [website, setWebsite] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [enrollError, setEnrollError] = useState<string | null>(null);
-  const [enrolled, setEnrolled] = useState(false);
   const [promoInput, setPromoInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
@@ -145,11 +157,20 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
     } finally {
       setLoading(false);
     }
-  }, [id, initialTraining]);
+  }, [id, initialTraining, isAuthenticated]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    setAppliedPromo(null);
+    setPromoInput('');
+    setPromoError(null);
+    setSuccess(false);
+    setError(null);
+    setEnrollError(null);
+  }, [id]);
 
   const handleApplyPromo = async () => {
     if (!id || !promoInput.trim()) return;
@@ -159,7 +180,7 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
       const result = await validatePromoCode(promoInput.trim(), 'LIVE_TRAINING', id);
       setAppliedPromo(result);
     } catch (err: any) {
-      setPromoError(err?.response?.data?.message ?? (lang === 'ka' ? 'პრომო კოდი არასწორია.' : 'Invalid promo code.'));
+      setPromoError(err?.response?.data?.message ?? t.invalidPromo);
     } finally {
       setApplyingPromo(false);
     }
@@ -171,7 +192,7 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
     setError(null);
     setSubmitting(true);
     try {
-      await registerForLiveTraining(id, { name: name.trim(), email: email.trim(), phone: phone.trim(), locale: lang });
+      await registerForLiveTraining(id, { firstName: firstName.trim(), lastName: lastName.trim(), phone: phone.trim(), website, locale: lang });
       setSuccess(true);
       load(); // refresh capacity counters
     } catch (err: any) {
@@ -183,6 +204,10 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
 
   const handleEnroll = async () => {
     if (!id || !training) return;
+    if (!isAuthenticated) {
+      openAuthModal({ message: t.signInToEnroll, redirectPath: router.asPath, onSuccess: () => { void load(); } });
+      return;
+    }
     setEnrollError(null);
     setEnrolling(true);
     try {
@@ -199,22 +224,22 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
           lang === 'ka'
             ? await checkoutLiveTraining(id, appliedPromo?.code, 'ka')
             : await checkoutLiveTrainingStripe(id, appliedPromo?.code, 'usd');
-        if (result.enrolled) {
-          setEnrolled(true);
-        } else if (result.redirectUrl) {
+        if (result.redirectUrl) {
           window.location.href = result.redirectUrl;
+        } else if (result.enrolled) {
+          // A zero-price checkout may complete directly. Refresh the
+          // enrollment from the server before showing any success state.
+          await load();
+        } else {
+          setEnrollError(t.genericError);
         }
         return;
       }
       await enrollInLiveTraining(id, lang);
-      setEnrolled(true);
-      load(); // refresh capacity counters
+      await load();
     } catch (err: any) {
-      // "already enrolled" is functionally the same outcome as a fresh
-      // success from this button's point of view — no reason to surface it
-      // as an error.
       if (err?.response?.status === 400 && err.response.data?.message?.includes('already enrolled')) {
-        setEnrolled(true);
+        await load();
       } else {
         setEnrollError(err?.response?.data?.message ?? t.genericError);
       }
@@ -243,6 +268,9 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
 
   const title = (contentLang === 'en' && training.titleEn) || training.title;
   const description = (contentLang === 'en' && training.descriptionEn) || training.description;
+  const currentPrice = training.currentPrice ?? training.price ?? 0;
+  const checkoutPrice = appliedPromo?.discountedAmount ?? currentPrice;
+  const requiresCheckout = (training.price ?? 0) > 0;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-16">
@@ -253,7 +281,7 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
         ogType="website"
       />
       <SiteHeader />
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <div className="mb-4">
           <BackButton fallbackHref="/live-trainings" className="text-slate-400 hover:text-slate-100" />
         </div>
@@ -279,16 +307,17 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
           </span>
         </div>
         <h1 className="blog-heading-safe text-3xl font-black mb-3">{title}</h1>
+        <LearningRatingSummary {...training} lang={contentLang} />
         <div className="mb-4">
           <SocialShareButtons title={title} lang={lang} variant="dark" />
         </div>
-        <p className="text-slate-400 leading-relaxed mb-6 whitespace-pre-line">{description}</p>
-
-        {training.videoUrl && (
-          <div className="mb-6">
+        {training.videoUrl && parseVideoUrl(training.videoUrl) && (
+          <div className="w-full mb-8">
             <VideoEmbed url={training.videoUrl} title={title} />
           </div>
         )}
+
+        <p className="text-slate-400 leading-relaxed mb-6 whitespace-pre-line">{description}</p>
 
         <div className="flex flex-wrap items-center gap-4 mb-6 text-sm text-slate-300">
           <span className="flex items-center gap-1.5">
@@ -312,10 +341,10 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
           )}
         </div>
 
-        {training.trainerVideoUrl && (
+        {training.trainerVideoUrl && parseVideoUrl(training.trainerVideoUrl) && (
           <div className="mb-6">
             <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-3">{t.trainerVideoHeading}</h2>
-            <VideoEmbed url={training.trainerVideoUrl} title={title} />
+            <VideoEmbed url={training.trainerVideoUrl} title={`${t.trainerVideoHeading} — ${title}`} />
           </div>
         )}
 
@@ -352,20 +381,18 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
           )}
         </div>
 
-        {success || enrolled || training.isEnrolled ? (
+        {training.isEnrolled ? (
           <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center">
             <CheckCircle2 className="mx-auto mb-2 text-emerald-400" size={28} />
-            <p className="text-sm text-emerald-300">{enrolled || training.isEnrolled ? t.enrollSuccess : t.success}</p>
-            {(enrolled || training.isEnrolled) && (
+            <p className="text-sm text-emerald-300">{t.enrollSuccess}</p>
               <Link
                 href="/dashboard/live-trainings"
                 className="inline-block mt-4 text-xs font-bold px-4 py-2.5 rounded-lg bg-emerald-500/20 text-emerald-300 no-underline"
               >
                 {t.goToDashboard}
               </Link>
-            )}
           </div>
-        ) : training.isFull ? (
+        ) : training.isFull && !success ? (
           <button
             type="button"
             disabled
@@ -375,53 +402,56 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
           </button>
         ) : (
           <>
-            {isAuthenticated && (
               <div className="mb-4">
                 {enrollError && (
-                  <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-xs text-red-300 mb-3">{enrollError}</div>
+                  <div role="alert" className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-xs text-red-300 mb-3">{enrollError}</div>
                 )}
-                {!!training.price && training.price > 0 && (
+                {isAuthenticated && requiresCheckout && currentPrice > 0 && !training.saleActive && (
                   <div className="mb-3">
                     {appliedPromo ? (
-                      <p className="text-xs font-bold text-emerald-400">
-                        ✓ {lang === 'ka' ? 'პრომო კოდი გააქტიურდა' : 'Promo applied'}: {appliedPromo.code}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-3 text-xs">
+                        <p role="status" className="font-bold text-emerald-400">✓ {t.promoApplied}: {appliedPromo.code}</p>
+                        <button type="button" disabled={enrolling} className="underline text-slate-300 disabled:opacity-60" onClick={() => { setAppliedPromo(null); setPromoInput(''); setPromoError(null); }}>{t.removePromo}</button>
+                      </div>
                     ) : (
                       <div className="flex gap-2">
                         <input
                           value={promoInput}
+                          aria-label={t.promoCode}
+                          disabled={applyingPromo || enrolling}
+                          maxLength={50}
                           onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
-                          placeholder={lang === 'ka' ? 'პრომო კოდი' : 'Promo code'}
+                          placeholder={t.promoCode}
                           className="flex-1 min-w-0 rounded-lg border border-slate-700 bg-transparent px-3 py-2 text-xs text-slate-100"
                         />
                         <button
                           type="button"
                           onClick={handleApplyPromo}
-                          disabled={applyingPromo || !promoInput.trim()}
+                          disabled={applyingPromo || enrolling || !promoInput.trim()}
                           className="shrink-0 text-xs font-bold px-3.5 py-2 rounded-lg border border-slate-700 text-slate-200 hover:bg-slate-800 disabled:opacity-60"
                         >
-                          {applyingPromo ? '…' : lang === 'ka' ? 'გამოყენება' : 'Apply'}
+                          {applyingPromo ? '…' : t.apply}
                         </button>
                       </div>
                     )}
-                    {promoError && <p className="text-xs text-red-400 mt-1">{promoError}</p>}
+                    {promoError && <p role="alert" className="text-xs text-red-400 mt-1">{promoError}</p>}
                   </div>
                 )}
                 <button
                   type="button"
                   onClick={handleEnroll}
-                  disabled={enrolling}
+                  disabled={enrolling || applyingPromo || training.isFull}
                   className="w-full rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-3 text-sm font-bold text-white hover:opacity-90 disabled:opacity-60"
                 >
                   {enrolling
-                    ? training.price && training.price > 0
+                    ? requiresCheckout
                       ? t.redirectingToPayment
                       : t.enrolling
-                    : training.price && training.price > 0
-                    ? t.registerAndPay(`${((appliedPromo ? appliedPromo.discountedAmount : training.price) / 100).toFixed(2)} ₾`)
+                    : requiresCheckout
+                    ? t.registerAndPay(`${(checkoutPrice / 100).toFixed(2)} ₾`)
                     : t.enroll}
                 </button>
-                {!!training.price && training.price > 0 && (
+                {requiresCheckout && (
                   <p
                     className="mt-2.5 flex items-center justify-center gap-1.5 text-center text-[11px] font-bold text-emerald-400"
                     title={t.refundGuaranteeDetail}
@@ -435,40 +465,65 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
                   <div className="flex-1 h-px bg-slate-800" />
                 </div>
               </div>
-            )}
+            {success ? (
+              <div role="status" className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center">
+                <CheckCircle2 className="mx-auto mb-2 text-emerald-400" size={28} />
+                <p className="text-sm text-emerald-300">{t.success}</p>
+              </div>
+            ) : (
             <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-100">{t.interestHeading}</h2>
+              <p className="text-sm text-slate-400 mt-1">{t.interestDescription}</p>
+            </div>
             {error && (
-              <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-xs text-red-300">{error}</div>
+              <div role="alert" className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-xs text-red-300">{error}</div>
             )}
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">{t.nameLabel}</label>
+              <label htmlFor="lead-first-name" className="block text-xs font-medium text-slate-400 mb-1.5">{t.firstNameLabel}</label>
               <input
+                id="lead-first-name"
+                name="firstName"
+                autoComplete="given-name"
                 required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                maxLength={100}
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
                 className="w-full rounded-lg border border-slate-700 bg-slate-800/60 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">{t.emailLabel}</label>
+              <label htmlFor="lead-last-name" className="block text-xs font-medium text-slate-400 mb-1.5">{t.lastNameLabel}</label>
               <input
+                id="lead-last-name"
+                name="lastName"
+                autoComplete="family-name"
                 required
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                maxLength={100}
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
                 className="w-full rounded-lg border border-slate-700 bg-slate-800/60 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">{t.phoneLabel}</label>
+              <label htmlFor="lead-phone" className="block text-xs font-medium text-slate-400 mb-1.5">{t.phoneLabel}</label>
               <input
+                id="lead-phone"
+                name="phone"
+                autoComplete="tel"
+                inputMode="tel"
                 required
                 type="tel"
+                maxLength={40}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+995 5XX XX XX XX"
                 className="w-full rounded-lg border border-slate-700 bg-slate-800/60 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
               />
+            </div>
+            <div aria-hidden="true" className="hidden">
+              <label htmlFor="lead-website">Website</label>
+              <input id="lead-website" name="website" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
             </div>
             <button
               type="submit"
@@ -478,8 +533,12 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
               {submitting ? t.registering : t.register}
             </button>
             </form>
+            )}
           </>
         )}
+        <div className="dark">
+          <LearningRatingsSection target="live-trainings" targetId={training.id} lang={contentLang} enrollmentVersion={training.isEnrolled} onChange={(summary) => setTraining((current) => current ? { ...current, averageRating: summary.averageRating, reviewCount: summary.reviewCount } : current)} />
+        </div>
       </div>
     </div>
   );

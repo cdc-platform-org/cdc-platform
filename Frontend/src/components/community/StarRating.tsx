@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 interface StarRatingProps {
   value: number;
   size?: 'sm' | 'md' | 'lg';
   // Interactive mode (used by ReviewModal's picker) — omit for read-only display.
   onChange?: (value: number) => void;
+  label?: string;
+  starLabel?: (value: number) => string;
 }
 
 const SIZE_CLASSES: Record<NonNullable<StarRatingProps['size']>, string> = {
@@ -13,7 +15,8 @@ const SIZE_CLASSES: Record<NonNullable<StarRatingProps['size']>, string> = {
   lg: 'text-4xl',
 };
 
-export default function StarRating({ value, size = 'md', onChange }: StarRatingProps) {
+export default function StarRating({ value, size = 'md', onChange, label = 'Rating', starLabel = (star) => `${star} star${star > 1 ? 's' : ''}` }: StarRatingProps) {
+  const groupId = useId();
   const [hoverValue, setHoverValue] = useState<number | null>(null);
   const interactive = typeof onChange === 'function';
   const displayValue = interactive && hoverValue !== null ? hoverValue : value;
@@ -23,30 +26,32 @@ export default function StarRating({ value, size = 'md', onChange }: StarRatingP
     <div
       className={`inline-flex items-center gap-1 ${SIZE_CLASSES[size]}`}
       onMouseLeave={interactive ? () => setHoverValue(null) : undefined}
+      role={interactive ? 'radiogroup' : 'img'}
+      aria-label={interactive ? label : `${label}: ${value.toFixed(1)} / 5`}
     >
       {stars.map((star) => {
         const filled = star <= Math.round(displayValue);
-        return (
+        const className = `leading-none transition-transform duration-150 ${
+          interactive ? 'cursor-pointer hover:scale-125' : ''
+        } ${filled ? 'text-amber-400' : 'text-gray-300'}`;
+        return interactive ? (
+          <label key={star} className={className} onMouseEnter={() => setHoverValue(star)}>
+            <input
+              type="radio"
+              name={groupId}
+              value={star}
+              checked={value === star}
+              onChange={() => onChange!(star)}
+              aria-label={starLabel(star)}
+              className="peer sr-only"
+            />
+            <span aria-hidden="true" className="rounded peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-cyan-500">★</span>
+          </label>
+        ) : (
           <span
             key={star}
-            role={interactive ? 'button' : undefined}
-            aria-label={interactive ? `${star} star${star > 1 ? 's' : ''}` : undefined}
-            tabIndex={interactive ? 0 : undefined}
-            onMouseEnter={interactive ? () => setHoverValue(star) : undefined}
-            onClick={interactive ? () => onChange!(star) : undefined}
-            onKeyDown={
-              interactive
-                ? (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      onChange!(star);
-                    }
-                  }
-                : undefined
-            }
-            className={`leading-none transition-transform duration-150 ${
-              interactive ? 'cursor-pointer hover:scale-125' : ''
-            } ${filled ? 'text-amber-400' : 'text-gray-300'}`}
+            aria-hidden="true"
+            className={className}
           >
             ★
           </span>

@@ -6,6 +6,7 @@ import { authenticate, requireAdminRole, requireApproved, requireNotBannedOrDele
 import { rateLimit } from '../middleware/rateLimit';
 import { uploadImage, deleteManagedImage } from '../services/imageStorage';
 import { BunnyStorageUploadError } from '../services/bunnyStorage';
+import { uploadAssignmentSubmissionFile, resolveAssignmentSubmissionDeliveryUrl } from '../services/assignmentSubmissionDelivery';
 import { checkContentSafety } from '../services/contentModerationService';
 import {
   courseCreateSchema,
@@ -31,6 +32,7 @@ import {
 } from '../services/bunnyStreamService';
 import { generateCertificatePdf, generateVerificationCode, CertificateTemplateMissingError } from '../services/certificateService';
 import { withCurrentPrice, validateCourseDiscount } from '../services/coursePricing';
+import { withCourseRatings } from '../services/learningRatingService';
 import { generateExamQuestions, isAiExamConfigured, AiExamGenerationError, GeneratedQuestion } from '../services/aiExamService';
 import { createExamSessionToken, verifyExamSessionToken, ExamSessionError } from '../services/examSessionService';
 import { logAdminAction } from '../services/auditLogService';
@@ -76,7 +78,7 @@ router.get('/', async (req, res) => {
     orderBy: { createdAt: 'desc' },
     include: { _count: { select: { enrollments: true } } },
   });
-  res.json({ data: courses.map((c) => withCurrentPrice(withCapacityInfo(c))) });
+  res.json({ data: await withCourseRatings(courses.map((c) => withCurrentPrice(withCapacityInfo(c)))) });
 });
 
 // Student's own enrolled courses + per-course progress, for the dashboard
@@ -147,7 +149,7 @@ router.get('/:id', async (req, res) => {
   if (!course) {
     return res.status(404).json({ message: 'Course not found.' });
   }
-  res.json({ data: withCurrentPrice(withCapacityInfo(course)) });
+  res.json({ data: (await withCourseRatings([withCurrentPrice(withCapacityInfo(course))]))[0] });
 });
 
 // Public curriculum outline (section/lesson titles + durations only — no
@@ -1245,9 +1247,12 @@ router.post(
   },
   async (req: Request, res: Response) => {
     if (!req.file) return res.status(400).json({ message: 'No file was selected.' });
-    const filename = `submission-${req.user!.id}-${Date.now()}${path.extname(req.file.originalname)}`;
     try {
-      const url = await uploadImage({ buffer: req.file.buffer, mimetype: req.file.mimetype, folderName: 'assignment-submissions', filename });
+      // Private Azure Blob storage, not the public Bunny CDN this used to
+      // use — a student's homework is private to them (and to an
+      // admin/grader), never a public link. See
+      // assignmentSubmissionDelivery.ts for why.
+      const url = await uploadAssignmentSubmissionFile(req.user!.id, req.params.lessonId, req.file.buffer, req.file.mimetype, req.file.originalname);
       res.status(201).json({ data: { url } });
     } catch (err) {
       const message = err instanceof BunnyStorageUploadError ? err.message : 'File upload failed. Please try again.';
@@ -1287,6 +1292,21 @@ router.get('/lessons/:lessonId/submissions/mine', authenticate, async (req: Requ
   res.json({ data: submission });
 });
 
+// Resolves the caller's OWN submission file into something actually
+// openable — a legacy Bunny row already is one; a new Azure-private
+// cdcblob:// marker is not itself a URL, so the frontend must go through
+// this rather than opening fileUrl directly. See GET /admin/submissions/:id/document
+// for the grading-side counterpart.
+router.get('/lessons/:lessonId/submissions/mine/document', authenticate, async (req: Request, res: Response) => {
+  const submission = await prisma.assignmentSubmission.findUnique({
+    where: { lessonId_userId: { lessonId: req.params.lessonId, userId: req.user!.id } },
+    select: { fileUrl: true },
+  });
+  if (!submission?.fileUrl) return res.status(404).json({ message: 'No submission file on file.' });
+  const url = await resolveAssignmentSubmissionDeliveryUrl(submission.fileUrl);
+  res.json({ data: { url } });
+});
+
 // Admin: every submission across every course, most recent first — the
 // review queue backing /admin/assignments.
 router.get('/admin/submissions', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
@@ -1300,6 +1320,16 @@ router.get('/admin/submissions', authenticate, requireAdminRole('SUPER_ADMIN', '
     },
   });
   res.json({ data: submissions });
+});
+
+// Admin-authorized document resolve — see .../submissions/mine/document
+// for the student-side counterpart; never send fileUrl's raw value to the
+// browser as if it were an openable link.
+router.get('/admin/submissions/:id/document', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {
+  const submission = await prisma.assignmentSubmission.findUnique({ where: { id: req.params.id }, select: { fileUrl: true } });
+  if (!submission?.fileUrl) return res.status(404).json({ message: 'No submission file on file.' });
+  const url = await resolveAssignmentSubmissionDeliveryUrl(submission.fileUrl);
+  res.json({ data: { url } });
 });
 
 router.post('/admin/submissions/:id/grade', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req: Request, res: Response) => {

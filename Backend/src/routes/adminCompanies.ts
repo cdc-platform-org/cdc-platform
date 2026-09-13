@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole } from '../middleware/auth';
 import { logAdminAction } from '../services/auditLogService';
 import { sendBusinessVerifiedEmail, sendBusinessRejectedEmail } from '../services/emailService';
+import { resolveVerificationDocDeliveryUrl } from '../services/verificationDocDelivery';
 
 const router = Router();
 router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
@@ -111,6 +112,17 @@ async function setVerified(req: Request, res: Response, isVerified: boolean, act
   }
   res.json({ data: user });
 }
+
+// Admin-authorized document resolve — never send verificationDocUrl's raw
+// value to the browser as if it were an openable link (a cdcblob:// marker
+// isn't one). Router-level authenticate + requireAdminRole above already
+// gates this whole file; this just adds the per-document existence check.
+router.get('/:id/document', async (req: Request, res: Response) => {
+  const user = await prisma.user.findUnique({ where: { id: req.params.id }, select: { verificationDocUrl: true } });
+  if (!user?.verificationDocUrl) return res.status(404).json({ message: 'No verification document on file.' });
+  const url = await resolveVerificationDocDeliveryUrl(user.verificationDocUrl);
+  res.json({ data: { url } });
+});
 
 router.post('/:id/verify', (req: Request, res: Response) => setVerified(req, res, true, 'company.verify'));
 router.post('/:id/unverify', (req: Request, res: Response) => setVerified(req, res, false, 'company.unverify'));

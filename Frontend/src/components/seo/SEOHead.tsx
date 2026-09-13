@@ -3,6 +3,8 @@ import { useRouter } from 'next/router';
 import {
   DEFAULT_LOCALE,
   DEFAULT_OG_IMAGE,
+  DEFAULT_OG_IMAGE_HEIGHT,
+  DEFAULT_OG_IMAGE_WIDTH,
   DEFAULT_TITLE,
   OG_LOCALE_MAP,
   SITE_LOCALES,
@@ -26,9 +28,20 @@ export interface SEOHeadProps {
    *  pages; pass it explicitly on dynamic routes if router.asPath ever
    *  includes something that shouldn't be canonicalized as-is. */
   canonicalPath?: string;
-  /** Root-relative or absolute image URL. Defaults to the platform logo —
-   *  swap in a real 1200x630 banner per page once one exists. */
+  /** Root-relative or absolute image URL. Defaults to DEFAULT_OG_IMAGE (a
+   *  real 1200x630 branded banner) when omitted. Pass the page/article's own
+   *  cover as-is — never stretched/cropped here — since its real dimensions
+   *  are usually unknown; width/height below are only declared for the
+   *  platform default, whose dimensions are known exactly. */
   ogImage?: string;
+  /** Only meaningful together — omit both unless you actually know the
+   *  image's real pixel dimensions (e.g. a source generated at a fixed
+   *  size). Never guess: a wrong declared size is worse than none, since
+   *  crawlers trust it instead of measuring the file themselves. */
+  ogImageWidth?: number;
+  ogImageHeight?: number;
+  /** Alt text for the shared image. Defaults to the resolved page title. */
+  ogImageAlt?: string;
   ogType?: OgType;
   /** ISO 8601 timestamp (e.g. a blog post's createdAt) — rendered as
    *  article:published_time. Only meaningful when ogType="article"; ignored
@@ -56,7 +69,10 @@ export default function SEOHead({
   title,
   description,
   canonicalPath,
-  ogImage = DEFAULT_OG_IMAGE,
+  ogImage,
+  ogImageWidth,
+  ogImageHeight,
+  ogImageAlt,
   ogType = 'website',
   articlePublishedTime,
   noIndex = false,
@@ -70,7 +86,13 @@ export default function SEOHead({
   const pageTitle = title || DEFAULT_TITLE;
   const documentTitle = title ? `${title} | ${SITE_NAME}` : DEFAULT_TITLE;
   const canonicalUrl = localizedUrl(locale, path);
-  const absoluteOgImage = absoluteAsset(ogImage);
+  const absoluteOgImage = absoluteAsset(ogImage ?? DEFAULT_OG_IMAGE);
+  // Only the platform default's dimensions are actually known — a caller's
+  // own image (a blog cover, a course thumbnail, ...) never gets a
+  // fabricated width/height unless it explicitly passes one.
+  const resolvedImageWidth = ogImageWidth ?? (ogImage ? undefined : DEFAULT_OG_IMAGE_WIDTH);
+  const resolvedImageHeight = ogImageHeight ?? (ogImage ? undefined : DEFAULT_OG_IMAGE_HEIGHT);
+  const resolvedImageAlt = ogImageAlt ?? pageTitle;
   const ogLocale = OG_LOCALE_MAP[locale] ?? OG_LOCALE_MAP[DEFAULT_LOCALE];
   const jsonLdList = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
 
@@ -101,11 +123,9 @@ export default function SEOHead({
       <meta property="og:description" content={description} />
       <meta property="og:url" content={canonicalUrl} />
       <meta property="og:image" content={absoluteOgImage} />
-      {/* Recommended aspect ratio per Facebook/LinkedIn OG guidelines — every
-          image passed to this component should be authored at (or cropped
-          to) 1200x630 for a correct, non-stretched preview. */}
-      <meta property="og:image:width" content="1200" />
-      <meta property="og:image:height" content="630" />
+      <meta property="og:image:alt" content={resolvedImageAlt} />
+      {resolvedImageWidth != null && <meta property="og:image:width" content={String(resolvedImageWidth)} />}
+      {resolvedImageHeight != null && <meta property="og:image:height" content={String(resolvedImageHeight)} />}
       <meta property="og:locale" content={ogLocale} />
       {!noIndex &&
         locales
@@ -120,6 +140,7 @@ export default function SEOHead({
       <meta name="twitter:title" content={pageTitle} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={absoluteOgImage} />
+      <meta name="twitter:image:alt" content={resolvedImageAlt} />
 
       {jsonLdList.map((schema, i) => (
         <script

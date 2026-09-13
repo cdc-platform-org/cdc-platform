@@ -194,7 +194,7 @@ export default function SiteHeader() {
     // px-4 sm:px-6 that used to live on <nav> moves to the inner
     // max-w-7xl content row instead, so the CONTENT still gets the same
     // margin from the edge, just without the double-count.
-    <nav className="sticky top-0 z-50 -mx-4 sm:-mx-6 border-b border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-[#0e1422]/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-[#0e1422]/60 py-3.5">
+    <nav className="sticky top-0 z-50 -mx-4 sm:-mx-6 border-b border-slate-200 dark:border-white/10 bg-white dark:bg-[#0e1422]/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white dark:supports-[backdrop-filter]:bg-[#0e1422]/60 py-3.5">
       {/* Plain flex row, not CSS Grid — three explicit flex items (logo /
           center nav / actions), each a normal, statically-positioned flex
           child (no position:absolute, no w-0, nothing pulled out of flow
@@ -232,25 +232,25 @@ export default function SiteHeader() {
             reasonable information-architecture choice now that there's
             room to spare; Courses/Marketplace/Tools remain this site's
             three primary always-visible traffic drivers. */}
-        <div className="hidden xl:flex items-center gap-6 xl:gap-8 ml-4 text-base font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">
+        <div className="hidden xl:flex items-center gap-6 xl:gap-8 ml-4 text-base font-medium text-slate-900 dark:text-slate-200 whitespace-nowrap">
           <div className="relative group py-2 -my-2">
-            <button type="button" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-1.5 bg-transparent border-none cursor-pointer font-medium text-base p-0 text-inherit">
+            <button type="button" className="no-underline hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-1.5 bg-transparent border-none cursor-pointer font-medium text-base p-0 text-inherit">
               {t.more}
               <ChevronDown className="w-4 h-4" />
             </button>
             <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 w-56 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150">
-              <div className="rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-sm bg-white/95 backdrop-blur-md border-slate-200 dark:bg-[#0e1422]/95 dark:border-white/10">
-                <Link href="/community" className="block px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+              <div className="rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-sm bg-white backdrop-blur-md border-slate-200 dark:bg-[#0e1422]/95 dark:border-white/10">
+                <Link href="/community" className="block px-4 py-2.5 no-underline text-slate-900 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                   {t.community}
                 </Link>
-                <Link href="/mentors" className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                <Link href="/mentors" className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-900 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                   <Users className="w-4 h-4 shrink-0" />
                   {t.mentors}
                 </Link>
                 {canSeeMentorPanel && (
                   <Link
                     href="/dashboard/mentorship-sessions"
-                    className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-900 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
                   >
                     <CalendarClock className="w-4 h-4 shrink-0" />
                     {t.mentorPanel}
@@ -258,41 +258,41 @@ export default function SiteHeader() {
                 )}
                 {!(isAuthenticated && user) && (
                   <>
-                    <Link href="/about" className="block px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                    <Link href="/about" className="block px-4 py-2.5 no-underline text-slate-900 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                       {t.about}
                     </Link>
-                    <Link href="/gallery" className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                    <Link href="/gallery" className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-900 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                       <GalleryHorizontal className="w-4 h-4 shrink-0" />
                       {t.gallery}
                     </Link>
                   </>
                 )}
-                <Link href="/tutorials" className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                <Link href="/tutorials" className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-900 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                   <PlayCircle className="w-4 h-4 shrink-0" />
                   {t.tutorials}
                 </Link>
               </div>
             </div>
           </div>
-          <Link href="/courses" className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
+          <Link href="/courses" className="no-underline hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">
             {t.courses}
           </Link>
           <div className="relative group py-2 -my-2">
             <Link
               href="/marketplace"
-              className="no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-1.5"
+              className="no-underline hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-1.5"
             >
               {t.marketplace}
               <ChevronDown className="w-4 h-4" />
             </Link>
             <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 w-64 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150">
-              <div className="rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-sm bg-white/95 backdrop-blur-md border-slate-200 dark:bg-[#0e1422]/95 dark:border-white/10">
+              <div className="rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-sm bg-white backdrop-blur-md border-slate-200 dark:bg-[#0e1422]/95 dark:border-white/10">
                 <p className="px-4 pt-3 pb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">{t.categories}</p>
                 {MARKETPLACE_CATEGORIES.map((cat) => (
                   <Link
                     key={cat.value.en}
                     href={`/marketplace?category=${encodeURIComponent(cat.value[catLocale])}`}
-                    className="block px-4 py-2.5 no-underline text-slate-700 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                    className="block px-4 py-2.5 no-underline text-slate-900 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
                   >
                     {cat.value[catLocale]}
                   </Link>
@@ -373,7 +373,7 @@ export default function SiteHeader() {
             onClick={() => setMobileMenuOpen((open) => !open)}
             aria-label="Toggle menu"
             aria-expanded={mobileMenuOpen}
-            className="xl:hidden p-2 rounded-xl border-none bg-transparent cursor-pointer text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="xl:hidden p-2 rounded-xl border-none bg-transparent cursor-pointer text-slate-900 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -410,13 +410,13 @@ export default function SiteHeader() {
                 setMobileMenuOpen(false);
                 openAuthModal();
               }}
-              className="w-full my-4 text-base font-bold px-4 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-transparent cursor-pointer"
+              className="w-full my-4 text-base font-bold px-4 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-300 bg-transparent cursor-pointer hover:border-cyan-500/60"
             >
               👤 {t.login}
             </button>
           )}
 
-          <div className="flex flex-col gap-1 text-base font-semibold text-slate-700 dark:text-slate-300">
+          <div className="flex flex-col gap-1 text-base font-semibold text-slate-900 dark:text-slate-300">
             <Link href="/community" onClick={() => setMobileMenuOpen(false)} className="no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
               {t.community}
             </Link>

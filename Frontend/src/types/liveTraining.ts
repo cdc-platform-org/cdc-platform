@@ -7,6 +7,8 @@ export type LiveTrainingPriceType = 'MONTHLY' | 'TOTAL';
 
 export interface LiveTraining {
   id: string;
+  averageRating?: number | null;
+  reviewCount?: number;
   title: string;
   titleEn: string | null;
   description: string;
@@ -55,6 +57,10 @@ export interface LiveTraining {
   // fixed schema would just force admins to fight the input.
   scheduleDays: string | null;
   trainerVideoUrl: string | null;
+  // Training-level (not per-day) Google Form link for photo/video consent —
+  // completed once for the whole cohort. See TrainingDay's own
+  // attendanceFormUrl/feedbackFormUrl for the per-day equivalents.
+  mediaConsentFormUrl: string | null;
   // AI-generated "conspectus" (study notes/synopsis) extracted from
   // recordingUrl's audio — see Backend's liveTrainingSynopsisService.ts.
   // Same status/error/per-language shape as AdminLesson's own conspectus
@@ -137,7 +143,7 @@ export interface LiveTrainingLead {
   id: string;
   liveTrainingId: string;
   name: string;
-  email: string;
+  email: string | null;
   phone: string;
   status: LiveTrainingLeadStatus;
   adminNote: string | null;

@@ -65,6 +65,8 @@ router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
         id: p.id,
         title: p.title,
         description: p.description,
+        titleEn: p.titleEn,
+        descriptionEn: p.descriptionEn,
         price: p.price,
         discountedPrice: saleActive ? p.discountedPrice : null,
         saleEndsAt: saleActive ? p.saleEndsAt : null,
@@ -110,6 +112,8 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
       id: product.id,
       title: product.title,
       description: product.description,
+      titleEn: product.titleEn,
+      descriptionEn: product.descriptionEn,
       price: product.price,
       discountedPrice: saleActive ? product.discountedPrice : null,
       saleEndsAt: saleActive ? product.saleEndsAt : null,
@@ -119,6 +123,7 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
       imageUrl: product.imageUrl,
       previewImages: product.previewImages,
       previewVideoUrl: product.previewVideoUrl,
+      howItWorksSteps: product.howItWorksSteps,
       fileFormat: fileFormatFromUrl(product.fileUrl),
       toolRoute: product.toolRoute,
       licenseType: product.licenseType,
@@ -144,9 +149,9 @@ const submitSchema = z.object({
   price: z.number().min(0),
   category: z.string().min(1).max(100),
   imageUrl: z.string().url(),
-  // Up to 4 additional showcase screenshots alongside imageUrl (the main
+  // Up to 15 additional showcase screenshots alongside imageUrl (the main
   // cover) — empty is fine, a submission isn't required to have a gallery.
-  previewImages: z.array(z.string().url()).max(4).optional().default([]),
+  previewImages: z.array(z.string().url()).max(15).optional().default([]),
   // Either an uploaded MP4/MOV's Bunny CDN URL or a pasted YouTube/Vimeo
   // link — both are just URLs from here, VideoEmbed.tsx tells them apart.
   previewVideoUrl: z.string().url().optional().nullable(),

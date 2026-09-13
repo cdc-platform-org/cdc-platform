@@ -84,6 +84,13 @@ export interface InlineImagePart {
   data: string; // base64
 }
 
+export interface TextModelOptions { maxOutputTokens?: number; timeoutMs?: number; signal?: AbortSignal }
+
+function safeProviderError(err: unknown) {
+  const status = (err as { status?: unknown })?.status;
+  return { status: typeof status === 'number' ? status : null, kind: err instanceof SyntaxError ? 'invalid_json' : 'provider_failure' };
+}
+
 // A Gemini File API reference (see subtitleService.ts's uploadAudioAndWaitActive)
 // — distinct from InlineImagePart, which is base64 bytes inlined into the
 // request. A File API upload is how audio (and anything too large to inline)
@@ -211,22 +218,24 @@ function isModelNotFoundError(err: unknown): boolean {
 async function callGeminiFallback(
   parts: GeminiPart[],
   temperature: number,
-  responseMimeType: 'application/json' | 'text/plain'
+  responseMimeType: 'application/json' | 'text/plain',
+  options: TextModelOptions = {}
 ): Promise<string> {
   if (!geminiClient) throw new AiAgentError('Gemini fallback is not configured (GEMINI_API_KEY missing).');
 
   let lastErr: unknown;
   geminiLoop: for (const modelName of GEMINI_MODEL_FALLBACK_SEQUENCE) {
     for (let attempt = 1; attempt <= GEMINI_ATTEMPTS_PER_MODEL; attempt++) {
+      options.signal?.throwIfAborted();
       try {
         const model = geminiClient.getGenerativeModel(
           {
             model: modelName,
-            generationConfig: { temperature, ...(responseMimeType === 'application/json' ? { responseMimeType: 'application/json' } : {}) },
+            generationConfig: { temperature, ...(options.maxOutputTokens != null ? { maxOutputTokens: options.maxOutputTokens } : {}), ...(responseMimeType === 'application/json' ? { responseMimeType: 'application/json' } : {}) },
           },
           GEMINI_REQUEST_OPTIONS
         );
-        const result = await model.generateContent({ contents: [{ role: 'user', parts: parts as any }] });
+        const result = await model.generateContent({ contents: [{ role: 'user', parts: parts as any }] }, { ...GEMINI_REQUEST_OPTIONS, signal: options.signal });
         const raw = result.response.text();
         if (!raw) throw new Error('Gemini returned an empty response.');
         if (responseMimeType !== 'application/json') return raw;
@@ -235,7 +244,7 @@ async function callGeminiFallback(
         return cleaned;
       } catch (err) {
         lastErr = err;
-        console.error(`[aiAgentService] Gemini ${modelName} attempt ${attempt}/${GEMINI_ATTEMPTS_PER_MODEL} failed:`, err instanceof Error ? err.message : err);
+        console.error(`[aiAgentService] Gemini ${modelName} attempt ${attempt}/${GEMINI_ATTEMPTS_PER_MODEL} failed:`, safeProviderError(err));
         // A plain `break` (not `break geminiLoop`) here moves straight to the
         // next modelName — retrying the same nonexistent model wastes an
         // attempt, but the OTHER models in the sequence deserve a real shot.
@@ -251,7 +260,8 @@ async function callGeminiFallback(
 async function runGeminiFallbackSequence(
   parts: GeminiPart[],
   temperature: number,
-  responseMimeType: 'application/json' | 'text/plain'
+  responseMimeType: 'application/json' | 'text/plain',
+  options: TextModelOptions = {}
 ): Promise<{ raw: string; lastError: null } | { raw: null; lastError: unknown }> {
   // fileData parts (a Gemini File API reference) have no Azure equivalent at
   // all — buildAzureMessageContent throws for that case, so azureContent
@@ -279,11 +289,13 @@ async function runGeminiFallbackSequence(
   // on a call that cannot succeed.
   if (azureContent !== null && isAzureOpenAiConfigured()) {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      options.signal?.throwIfAborted();
       try {
         const raw = await callAzureChatCompletion({
           messages: [{ role: 'user', content: azureContent }],
           temperature,
           jsonMode: responseMimeType === 'application/json',
+          maxOutputTokens: options.maxOutputTokens, signal: options.signal,
         });
 
         if (responseMimeType !== 'application/json') return { raw, lastError: null };
@@ -297,7 +309,7 @@ async function runGeminiFallbackSequence(
         JSON.parse(cleaned); // throws SyntaxError on invalid JSON — caught below, retried
         return { raw: cleaned, lastError: null };
       } catch (err) {
-        console.error(`[aiAgentService] Azure attempt ${attempt}/${MAX_ATTEMPTS} failed:`, err instanceof Error ? err.message : err);
+        console.error(`[aiAgentService] Azure attempt ${attempt}/${MAX_ATTEMPTS} failed:`, safeProviderError(err));
         // AUDIT NOTE (fixed): a 429 used to be treated like any other
         // retryable error — retried up to MAX_ATTEMPTS more times, each
         // attempt re-cycling both Azure regions internally with its own
@@ -308,7 +320,7 @@ async function runGeminiFallbackSequence(
         // seconds an interactive "generate" click doesn't have to spare.
         // Move straight to the real cross-vendor fallback below instead.
         const status = (err as { status?: number })?.status;
-        if (status === 429) break;
+        if (status === 429 || !(err instanceof SyntaxError)) break;
         // A malformed-JSON parse failure (SyntaxError) always retries — both
         // Azure regions already failed over inside callAzureChatCompletion
         // before this catch ever sees a network-level error, so what reaches
@@ -326,22 +338,17 @@ async function runGeminiFallbackSequence(
   // itself (not just one region) is down, or for a fileData request Azure
   // can never satisfy in the first place.
   try {
-    const raw = await callGeminiFallback(parts, temperature, responseMimeType);
+    const raw = await callGeminiFallback(parts, temperature, responseMimeType, options);
     return { raw, lastError: null };
   } catch (geminiErr) {
-    console.error('[aiAgentService] Gemini fallback also failed:', geminiErr instanceof Error ? geminiErr.message : geminiErr);
+    console.error('[aiAgentService] Gemini fallback also failed:', safeProviderError(geminiErr));
     return { raw: null, lastError: geminiErr };
   }
 }
 
 function throwGeminiFailure(lastError: unknown): never {
-  Sentry.captureException(lastError);
-  throw lastError instanceof AiAgentError
-    ? lastError
-    : new AiAgentError(
-        lastError instanceof Error ? `Gemini request failed: ${lastError.message}` : 'Gemini request failed.',
-        classifyGeminiErrorStatus(lastError)
-      );
+  Sentry.captureException(new Error('AI provider chain exhausted'), { extra: safeProviderError(lastError) });
+  throw new AiAgentError('The AI service is temporarily unavailable. Please retry.', classifyGeminiErrorStatus(lastError));
 }
 
 // Exported for other operational modules that need raw AI JSON output but
@@ -350,7 +357,7 @@ function throwGeminiFailure(lastError: unknown): never {
 // mode fix above in effect for those too. `imageParts` is optional inline
 // (base64) image data for vision-capable calls — see
 // buildAzureMessageContent.
-export async function callTextModel(prompt: string, temperature: number, imageParts?: InlineImagePart[]): Promise<string> {
+export async function callTextModel(prompt: string, temperature: number, imageParts?: InlineImagePart[], options?: TextModelOptions): Promise<string> {
   if (!isAiAgentConfigured()) {
     throw new AiAgentError('AI text generation is not configured (GEMINI_API_KEY/AZURE_OPENAI_* missing).');
   }
@@ -361,7 +368,8 @@ export async function callTextModel(prompt: string, temperature: number, imagePa
   // see runGeminiFallbackSequence) — Gemini natively supports the same
   // inlineData image parts Azure's vision path does, so this one call
   // covers both the text-only and vision callers of this function.
-  const result = await runGeminiFallbackSequence(parts, temperature, 'application/json');
+  const signal = options ? options.signal ?? AbortSignal.timeout(options.timeoutMs ?? 90_000) : undefined;
+  const result = await runGeminiFallbackSequence(parts, temperature, 'application/json', { ...options, signal });
   if (result.raw !== null) return result.raw;
 
   // Same reasoning as examProctoringService.ts's identical capture point —

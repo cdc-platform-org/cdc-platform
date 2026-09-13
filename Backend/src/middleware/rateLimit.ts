@@ -2,10 +2,20 @@ import { Request, Response, NextFunction } from 'express';
 
 // Dependency-free in-memory rate limiter (no express-rate-limit install) —
 // fine for this single-instance deployment; would need a shared store
-// (Redis) behind a load balancer. Keyed by IP, one Map per middleware
-// instance so separate routes (e.g. studio inquiries vs. auth) don't share
-// a budget.
-export function rateLimit(options: { windowMs: number; max: number; message?: string }) {
+// (Redis) behind a load balancer. Keyed by IP by default, one Map per
+// middleware instance so separate routes (e.g. studio inquiries vs. auth)
+// don't share a budget.
+export function rateLimit(options: {
+  windowMs: number;
+  max: number;
+  message?: string;
+  // Optional override for the bucket key — defaults to req.ip everywhere
+  // this was already used. Lets an authenticated-only route (e.g. IAKO chat)
+  // key by user id instead, so N learners behind one shared classroom/NAT IP
+  // don't throttle each other; every existing call site that doesn't pass
+  // this keeps its exact current IP-keyed behavior.
+  keyGenerator?: (req: Request) => string;
+}) {
   const hits = new Map<string, { count: number; resetAt: number }>();
 
   // Without this, `hits` grows unbounded for a public endpoint hit by many
@@ -19,7 +29,7 @@ export function rateLimit(options: { windowMs: number; max: number; message?: st
   }, options.windowMs).unref();
 
   return (req: Request, res: Response, next: NextFunction) => {
-    const key = req.ip ?? 'unknown';
+    const key = (options.keyGenerator ? options.keyGenerator(req) : req.ip) ?? 'unknown';
     const now = Date.now();
     const entry = hits.get(key);
 

@@ -62,6 +62,8 @@ export interface CallAzureChatOptions {
   messages: AzureChatMessage[];
   temperature?: number;
   jsonMode?: boolean;
+  maxOutputTokens?: number;
+  signal?: AbortSignal;
 }
 
 const BASE_RETRY_DELAY_MS = 500;
@@ -91,6 +93,7 @@ export async function callAzureChatCompletionFull(options: CallAzureChatOptions)
     model,
     messages: messages as any,
     temperature,
+    ...(options.maxOutputTokens != null ? { max_tokens: options.maxOutputTokens } : {}),
     ...(jsonMode ? { response_format: { type: 'json_object' as const } } : {}),
   });
   const toResult = (response: { choices: { message?: { content?: string | null } }[]; usage?: { prompt_tokens: number; completion_tokens: number } }): AzureChatCompletionResult => ({
@@ -101,7 +104,7 @@ export async function callAzureChatCompletionFull(options: CallAzureChatOptions)
   const regions: { label: string; call: () => Promise<AzureChatCompletionResult> }[] = [
     {
       label: 'primary',
-      call: async () => toResult(await getAzureOpenaiClient().chat.completions.create(buildArgs(AZURE_OPENAI_DEPLOYMENT_NAME))),
+      call: async () => toResult(await getAzureOpenaiClient().chat.completions.create(buildArgs(AZURE_OPENAI_DEPLOYMENT_NAME), { signal: options.signal })),
     },
   ];
   if (isSecondaryAzureConfigured()) {
@@ -110,7 +113,7 @@ export async function callAzureChatCompletionFull(options: CallAzureChatOptions)
       call: async () =>
         toResult(
           await getSecondaryClient().chat.completions.create(
-            buildArgs(AZURE_OPENAI_DEPLOYMENT_NAME_SECONDARY || AZURE_OPENAI_DEPLOYMENT_NAME)
+            buildArgs(AZURE_OPENAI_DEPLOYMENT_NAME_SECONDARY || AZURE_OPENAI_DEPLOYMENT_NAME), { signal: options.signal }
           )
         ),
     });
@@ -119,6 +122,7 @@ export async function callAzureChatCompletionFull(options: CallAzureChatOptions)
   let lastErr: unknown;
   for (let round = 0; round < ROUNDS_PER_REGION; round++) {
     for (const region of regions) {
+      options.signal?.throwIfAborted();
       try {
         const result = await region.call();
         if (!result.content) throw new Error('AI provider returned an empty response.');
@@ -128,7 +132,7 @@ export async function callAzureChatCompletionFull(options: CallAzureChatOptions)
         const status = (err as { status?: number })?.status;
         console.error(
           `[azureChatCompletionService] ${region.label} region, round ${round + 1}/${ROUNDS_PER_REGION} failed:`,
-          err instanceof Error ? err.message : err
+          { status: typeof status === 'number' ? status : null }
         );
         if (status === 400) throw err;
         // Not classified as obviously retryable (e.g. an auth error tied
