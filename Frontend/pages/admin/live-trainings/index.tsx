@@ -436,7 +436,12 @@ function AdminLiveTrainingsDashboard() {
 
       // The Live Training record itself is now saved either way — an IAKO
       // assignment failure below must never look like (or actually cause)
-      // the training save having failed.
+      // the training save having failed, and must never prevent the form
+      // from resetting the same way any other successful save does (a
+      // network hiccup on this unrelated call must not strand the admin on
+      // a stale "editing" view — see e2e/live-training-checkout.spec.ts's
+      // "admin can preview and remove both saved video URLs").
+      let iakoAssignmentFailed = false;
       try {
         if (iakoEnabled) {
           await assignIakoProfile({ liveTrainingId: liveTrainingId! }, iakoProfileId, iakoMode, {
@@ -449,15 +454,27 @@ function AdminLiveTrainingsDashboard() {
         } else if (assignedIakoProfile) {
           await assignIakoProfile({ liveTrainingId: liveTrainingId! }, null);
         }
-        setIakoProfiles(await listIakoProfiles());
-        resetForm();
       } catch {
+        iakoAssignmentFailed = true;
         setIakoWarning(
           wasCreating
             ? 'ტრენინგი შეიქმნა, მაგრამ IAKO-ს კონფიგურაცია ვერ შეინახა. შეამოწმეთ პროფილი და დააჭირეთ „განახლებას" თავიდან საცდელად.'
             : 'ტრენინგი განახლდა, მაგრამ IAKO-ს კონფიგურაცია ვერ შეინახა. სცადეთ „განახლება" თავიდან.'
         );
       }
+      // Best-effort — same "swallow and move on" posture as the mount
+      // effect's own listIakoProfiles() call above; a failure here must
+      // never block the form from resetting either.
+      await listIakoProfiles().then(setIakoProfiles).catch(() => {});
+      // Inlined rather than resetForm() (which also clears iakoWarning) —
+      // a genuine IAKO failure's warning must survive this reset so the
+      // admin actually sees it, not just the rest of the form clearing.
+      setForm(emptyForm);
+      setEditingId(null);
+      setEditingTraining(null);
+      setFormError(null);
+      setActiveLangTab('ka');
+      if (!iakoAssignmentFailed) setIakoWarning(null);
     } catch (err: any) {
       setFormError(extractSaveErrorMessage(err));
     } finally {

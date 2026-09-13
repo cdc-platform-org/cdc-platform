@@ -13,6 +13,20 @@ test.use({ storageState: AUTH_STATE_PATH });
 // journey", not something a mocked unit test can substitute for. Slower
 // and depends on the provider actually being configured and responsive.
 test.setTimeout(240_000);
+// CI's Nightly QA e2e job (.github/workflows/qa-nightly.yml) deliberately
+// runs the Backend with only placeholder AZURE_OPENAI_*/no GEMINI_API_KEY
+// at all — every other spec is designed to never need a real model call,
+// but this one, by design (see comment above), does. isAiAgentConfigured()
+// is satisfied by mere presence of those placeholder Azure values (see
+// azureOpenAiService.ts), so the request doesn't fail closed with a clean
+// "not configured" — it actually attempts a live call to a fake endpoint
+// and hangs until every fallback (Azure secondary, then Gemini — neither
+// configured either) is exhausted, timing out this test instead of
+// skipping it. Verified locally: reproduced this exact failure by
+// pointing a local Backend at CI's exact placeholder values. Run this
+// spec locally with real credentials before opening a PR — that's its
+// whole reason for existing — never in CI until CI is given a real key.
+test.skip(!!process.env.CI, 'Requires a real, working AI provider key — CI only ever sets placeholder Azure OpenAI values and no Gemini key, so this must be run locally with real credentials before a PR.');
 
 test('realistic learner journey: Digital Tools -> IAKO -> in-scope help, screenshot, refusal, Today\'s Guide', async ({ page }) => {
   await page.route(/https:\/\/(?:www\.youtube-nocookie\.com|player\.vimeo\.com)\//, (route) => route.abort());
