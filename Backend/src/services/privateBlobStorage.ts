@@ -61,6 +61,17 @@ export async function privateBlobExists(blobName: string): Promise<boolean> {
   return containerClient.getBlockBlobClient(blobName).exists();
 }
 
+// Best-effort, like every other delete helper in this codebase (bunnyStorage.ts's
+// deleteFromBunnyStorage, imageStorage.ts's deleteManagedImage) — a failed
+// cleanup leaves low-cost orphaned blob debris, never blocks or rolls back
+// the caller's own already-successful DB update. deleteIfExists() itself
+// never throws for "not found," so this only needs to guard against a
+// genuine request failure (network/auth), not a missing blob.
+export async function deletePrivateBlob(blobName: string): Promise<void> {
+  await privateContainerReady;
+  await containerClient.getBlockBlobClient(blobName).deleteIfExists().catch(() => {});
+}
+
 export async function getSignedBlobUrl(blobName: string, expiryMinutes: number = SAS_EXPIRY_MINUTES): Promise<string> {
   const delegationKey = await getDelegationKey();
   const now = Date.now();

@@ -45,6 +45,15 @@ export async function getCompanies(status?: 'unverified' | 'under_review' | 'ver
   return response.data.data;
 }
 
+// A stored verificationDocUrl is no longer necessarily an openable link on
+// its own (a new upload is a private cdcblob:// marker) — call this to get
+// a short-lived link right before opening it, rather than using
+// company.verificationDocUrl directly as an <a href>.
+export async function resolveCompanyDocument(id: string): Promise<string> {
+  const response = await apiClient.get<{ data: { url: string } }>(`/admin/companies/${id}/document`);
+  return response.data.data.url;
+}
+
 export async function verifyCompany(id: string): Promise<CompanyRow> {
   const response = await apiClient.post<{ data: CompanyRow }>(`/admin/companies/${id}/verify`);
   return response.data.data;

@@ -36,8 +36,9 @@ import {
 import { sendVerificationEmail, sendPasswordResetEmail, sendBusinessVerifiedEmail, sendPayoutIbanChangedEmail } from '../services/emailService';
 import { recordLoginEvent, detectSessionAnomaly } from '../services/sessionAnomalyService';
 import { verifyStepUp, StepUpRequiredError } from '../utils/stepUpAuth';
-import { uploadToBunnyStorage, isBunnyStorageConfigured, BunnyStorageUploadError, deleteBunnyStorageUrlIfManaged } from '../services/bunnyStorage';
+import { BunnyStorageUploadError, deleteBunnyStorageUrlIfManaged } from '../services/bunnyStorage';
 import { uploadImage, deleteManagedImage } from '../services/imageStorage';
+import { uploadVerificationDoc, resolveVerificationDocDeliveryUrl, deleteVerificationDocIfManaged } from '../services/verificationDocDelivery';
 import { parseBusinessDocument, isBusinessKycParsingConfigured, shouldAutoApprove } from '../services/businessKycService';
 
 const router = Router();
@@ -990,12 +991,6 @@ const BUSINESS_TAX_ID_DEFAULT_LIMIT = 3;
 router.post(
   '/me/verification-doc',
   authenticate,
-  (req: Request, res: Response, next) => {
-    if (!isBunnyStorageConfigured()) {
-      return res.status(501).json({ message: 'Bunny Storage is not configured (BUNNY_STORAGE_ZONE_NAME / BUNNY_STORAGE_API_KEY / BUNNY_CDN_URL).' });
-    }
-    next();
-  },
   verificationDocUpload.single('document'),
   async (req: Request, res: Response) => {
     if (!req.file) {
@@ -1027,14 +1022,11 @@ router.post(
       }
     }
 
-    const filename = `kyc-${req.user!.id}-${Date.now()}${path.extname(req.file.originalname)}`;
     try {
-      const url = await uploadToBunnyStorage({
-        buffer: req.file.buffer,
-        mimetype: req.file.mimetype,
-        folderName: 'kyc',
-        filename,
-      });
+      // Private Azure Blob storage, not the public Bunny CDN this used to
+      // use — the returned `url` is a cdcblob:// marker, not a working
+      // link. See verificationDocDelivery.ts for why.
+      const url = await uploadVerificationDoc(req.user!.id, req.file.buffer, req.file.mimetype, req.file.originalname);
 
       // Best-effort instant auto-verification: only fires on a clean,
       // high-confidence match against the business's own self-reported
@@ -1090,7 +1082,13 @@ router.post(
       });
 
       if (previous?.verificationDocUrl && previous.verificationDocUrl !== url) {
+        // Each delete helper only acts on a URL that actually matches its
+        // own managed shape and no-ops on anything else, so calling both
+        // unconditionally correctly cleans up whichever provider the
+        // replaced document actually lived on (legacy Bunny, or a prior
+        // Azure-private upload) without needing to branch on it here.
         deleteBunnyStorageUrlIfManaged(previous.verificationDocUrl).catch(() => {});
+        deleteVerificationDocIfManaged(previous.verificationDocUrl).catch(() => {});
       }
 
       if (autoVerified) {
@@ -1137,12 +1135,6 @@ const PERSONAL_NUMBER_PATTERN = /^\d{11}$/;
 router.post(
   '/me/individual-verification-doc',
   authenticate,
-  (req: Request, res: Response, next) => {
-    if (!isBunnyStorageConfigured()) {
-      return res.status(501).json({ message: 'Bunny Storage is not configured (BUNNY_STORAGE_ZONE_NAME / BUNNY_STORAGE_API_KEY / BUNNY_CDN_URL).' });
-    }
-    next();
-  },
   verificationDocUpload.single('document'),
   async (req: Request, res: Response) => {
     if (!req.file) {
@@ -1163,9 +1155,10 @@ router.post(
 
     const previous = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { verificationDocUrl: true, verificationLevel: true } });
 
-    const filename = `id-verification-${req.user!.id}-${Date.now()}${path.extname(req.file.originalname)}`;
     try {
-      const url = await uploadToBunnyStorage({ buffer: req.file.buffer, mimetype: req.file.mimetype, folderName: 'individual-verification', filename });
+      // Private Azure Blob storage, not the public Bunny CDN this used to
+      // use — see verificationDocDelivery.ts for why.
+      const url = await uploadVerificationDoc(req.user!.id, req.file.buffer, req.file.mimetype, req.file.originalname);
 
       let user;
       try {
@@ -1185,7 +1178,7 @@ router.post(
         // constraint is the real guarantee, this just turns its violation
         // into the same clean, localized message instead of a raw 500.
         if (err.code === 'P2002') {
-          deleteBunnyStorageUrlIfManaged(url).catch(() => {});
+          deleteVerificationDocIfManaged(url).catch(() => {});
           return res.status(409).json({ message: 'ეს პირადი ნომერი უკვე გამოყენებულია სხვა ანგარიშზე.' });
         }
         throw err;
@@ -1199,6 +1192,7 @@ router.post(
       // survives, which matches "one active submission at a time" above).
       if (previous?.verificationDocUrl && previous.verificationDocUrl !== url) {
         deleteBunnyStorageUrlIfManaged(previous.verificationDocUrl).catch(() => {});
+        deleteVerificationDocIfManaged(previous.verificationDocUrl).catch(() => {});
       }
 
       res.status(201).json({ user: toUserResponse(user) });
@@ -1208,6 +1202,21 @@ router.post(
     }
   }
 );
+
+// Resolves the caller's OWN verificationDocUrl into something actually
+// openable — a legacy Bunny row already is one and passes through
+// unchanged; a new Azure-private cdcblob:// marker is not itself a URL at
+// all, so the frontend's "View document" link must go through this rather
+// than opening user.verificationDocUrl directly. Self-service counterpart
+// to the admin resolve endpoints in adminCompanies.ts/adminVerifications.ts
+// — same resolveVerificationDocDeliveryUrl(), different authorization (it's
+// your own document, not an admin review).
+router.get('/me/verification-doc', authenticate, async (req: Request, res: Response) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { verificationDocUrl: true } });
+  if (!user?.verificationDocUrl) return res.status(404).json({ message: 'No verification document on file.' });
+  const url = await resolveVerificationDocDeliveryUrl(user.verificationDocUrl);
+  res.json({ data: { url } });
+});
 
 router.put('/me', authenticate, async (req, res) => {
   const result = updateProfileSchema.safeParse(req.body);
