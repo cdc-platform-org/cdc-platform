@@ -1,6 +1,7 @@
-import { IakoAssistantProfile, IakoGrantResource, IakoUsageGrant, Prisma } from '@prisma/client';
+import { IakoAssistantProfile, IakoGrantResource, IakoProfileAssignment, IakoUsageGrant, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { prisma } from '../lib/prisma';
+import { logAdminAction } from './auditLogService';
 
 export class IakoUsageError extends Error {
   constructor(public status: number, message: string, public reason: 'revoked' | 'not_started' | 'expired' | 'request_limit' | 'daily_limit' | 'hourly_limit' | 'screenshot_limit' | 'too_many_screenshots') {
@@ -18,6 +19,10 @@ export interface UsageSummary {
   screenshotsUsed: number; screenshotLimit: number | null;
   maxScreenshotsPerMessage: number;
   startsAt: Date | null; expiresAt: Date | null; revokedAt: Date | null;
+  // How many of the assignment's maxAutoTopUps this grant has already
+  // consumed — see IakoProfileAssignment's own comment. 0 for a grant whose
+  // assignment never enabled auto-top-up at all.
+  autoTopUpsApplied: number;
 }
 
 async function countSince(usageGrantId: string, since: Date, client: Prisma.TransactionClient = prisma): Promise<{ requests: number; screenshots: number }> {
@@ -43,6 +48,7 @@ export async function usageSummary(grant: IakoUsageGrant, client: Prisma.Transac
     screenshotsUsed: total.screenshots, screenshotLimit: grant.screenshotLimit,
     maxScreenshotsPerMessage: grant.maxScreenshotsPerMessage,
     startsAt: grant.startsAt, expiresAt: grant.expiresAt, revokedAt: grant.revokedAt,
+    autoTopUpsApplied: grant.autoTopUpsApplied,
   };
 }
 
@@ -52,14 +58,23 @@ export async function usageSummary(grant: IakoUsageGrant, client: Prisma.Transac
 // purchase, or AccessGrant), since nothing about entitlement itself
 // depends on this row existing. Idempotent: re-fetches an existing grant
 // rather than resetting it.
-export async function getOrCreateUsageGrant(profile: IakoAssistantProfile, userId: string, resourceType: IakoGrantResource, resourceId: string): Promise<IakoUsageGrant> {
+//
+// Takes the whole assignment (not just its profile) so a per-training
+// initialRequestLimit override (see IakoProfileAssignment's own comment)
+// can seed the STARTING total — every other quota dimension still comes
+// from the profile's own default* fields, unchanged.
+export async function getOrCreateUsageGrant(
+  assignment: Pick<IakoProfileAssignment, 'initialRequestLimit'> & { profile: IakoAssistantProfile },
+  userId: string, resourceType: IakoGrantResource, resourceId: string,
+): Promise<IakoUsageGrant> {
+  const profile = assignment.profile;
   const expiresAt = profile.defaultAccessDays != null ? new Date(Date.now() + profile.defaultAccessDays * DAY_MS) : null;
   return prisma.iakoUsageGrant.upsert({
     where: { profileId_userId_resourceType_resourceId: { profileId: profile.id, userId, resourceType, resourceId } },
     update: {},
     create: {
       profileId: profile.id, userId, resourceType, resourceId, createdById: userId,
-      requestLimit: profile.defaultRequestLimit, dailyRequestLimit: profile.defaultDailyRequestLimit,
+      requestLimit: assignment.initialRequestLimit ?? profile.defaultRequestLimit, dailyRequestLimit: profile.defaultDailyRequestLimit,
       hourlyRequestLimit: profile.defaultHourlyRequestLimit, screenshotLimit: profile.defaultScreenshotLimit,
       maxScreenshotsPerMessage: profile.defaultMaxScreenshotsPerMessage, expiresAt,
     },
@@ -77,13 +92,70 @@ export function assertUsageAccess(grant: IakoUsageGrant): void {
   if (grant.expiresAt && grant.expiresAt <= now) throw new IakoUsageError(403, 'This IAKO access has expired.', 'expired');
 }
 
+// Controlled auto-top-up — a one-time-per-configured-max, hard-capped
+// extension of the TOTAL request ceiling (e.g. 200 -> 400, never 600, never
+// unbounded). Configured on the IakoProfileAssignment for the grant's own
+// resource (never on the profile itself), so enabling this for one Live
+// Training never silently changes every IAKO assistant platform-wide — see
+// IakoProfileAssignment's own schema comment.
+//
+// Mutates `grant` in place (rather than returning a new object) so every
+// caller's already-held reference — and any UsageSummary computed from it
+// immediately afterward — reflects the raised ceiling without needing to
+// re-fetch.
+//
+// Concurrency: this only ever runs from inside checkUsageQuota, which is
+// only ever called (a) while the caller holds this grant's exclusive
+// processing lease (acquireUsageLease — a second concurrent request for the
+// same grant fails fast with 409 before reaching here at all), and (b)
+// inside recordSuccessfulRequest's own transaction, which additionally
+// holds a `FOR UPDATE` row lock on this exact grant. Two concurrent
+// requests against the same grant can therefore never both observe
+// "eligible" and both apply a top-up — requests against DIFFERENT grants
+// (different user, or different resource/training) never contend at all,
+// since a grant is already unique per (profile, user, resourceType,
+// resourceId).
+async function applyAutoTopUpIfEligible(grant: IakoUsageGrant, client: Prisma.TransactionClient): Promise<boolean> {
+  if (grant.requestLimit == null) return false; // Already unlimited — nothing to extend.
+  const assignment = grant.resourceType === 'LIVE_TRAINING'
+    ? await client.iakoProfileAssignment.findUnique({ where: { liveTrainingId: grant.resourceId } })
+    : await client.iakoProfileAssignment.findUnique({ where: { digitalToolKey: grant.resourceId } });
+  if (!assignment?.autoTopUpEnabled || !assignment.autoTopUpAmount || assignment.maxAutoTotal == null) return false;
+  if (grant.autoTopUpsApplied >= assignment.maxAutoTopUps) return false;
+  const previousLimit = grant.requestLimit;
+  const newLimit = Math.min(previousLimit + assignment.autoTopUpAmount, assignment.maxAutoTotal);
+  if (newLimit <= previousLimit) return false; // Already at (or somehow past) the configured ceiling.
+  const updated = await client.iakoUsageGrant.update({
+    where: { id: grant.id },
+    data: { requestLimit: newLimit, autoTopUpsApplied: { increment: 1 } },
+  });
+  grant.requestLimit = updated.requestLimit;
+  grant.autoTopUpsApplied = updated.autoTopUpsApplied;
+  // Fire-and-forget, same posture as every other logAdminAction call — a
+  // failed audit write must never block the top-up (or the request) it's
+  // recording. Deliberately no prompt/message content in metadata.
+  await logAdminAction({
+    action: 'IAKO_AUTO_TOP_UP_APPLIED', targetType: 'IakoUsageGrant', targetId: grant.id, performedById: grant.userId,
+    metadata: {
+      userId: grant.userId,
+      ...(grant.resourceType === 'LIVE_TRAINING' ? { liveTrainingId: grant.resourceId } : { digitalToolKey: grant.resourceId }),
+      previousLimit, topUpAmount: assignment.autoTopUpAmount, newLimit: updated.requestLimit,
+      autoTopUpNumber: updated.autoTopUpsApplied, timestamp: new Date().toISOString(),
+    },
+  });
+  return true;
+}
+
 export async function checkUsageQuota(grant: IakoUsageGrant, incomingScreenshotCount: number, client: Prisma.TransactionClient = prisma): Promise<UsageSummary> {
   assertUsageAccess(grant);
   if (incomingScreenshotCount > grant.maxScreenshotsPerMessage) {
     throw new IakoUsageError(400, `You can attach at most ${grant.maxScreenshotsPerMessage} screenshot(s) per message.`, 'too_many_screenshots');
   }
-  const summary = await usageSummary(grant, client);
-  if (summary.requestLimit != null && summary.requestsUsed >= summary.requestLimit) throw new IakoUsageError(429, 'Your IAKO request limit for this access has been reached.', 'request_limit');
+  let summary = await usageSummary(grant, client);
+  if (summary.requestLimit != null && summary.requestsUsed >= summary.requestLimit) {
+    if (!await applyAutoTopUpIfEligible(grant, client)) throw new IakoUsageError(429, 'Your IAKO request limit for this access has been reached.', 'request_limit');
+    summary = await usageSummary(grant, client);
+  }
   if (summary.dailyLimit != null && summary.dailyUsed >= summary.dailyLimit) throw new IakoUsageError(429, 'Your daily IAKO request limit has been reached. Try again tomorrow.', 'daily_limit');
   if (summary.hourlyLimit != null && summary.hourlyUsed >= summary.hourlyLimit) throw new IakoUsageError(429, 'Too many IAKO requests this hour. Please wait a bit and try again.', 'hourly_limit');
   if (summary.screenshotLimit != null && summary.screenshotsUsed + incomingScreenshotCount > summary.screenshotLimit) {

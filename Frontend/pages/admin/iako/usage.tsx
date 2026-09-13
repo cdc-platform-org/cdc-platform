@@ -36,7 +36,16 @@ function GrantRow({ grant, busy, onChanged }: { grant: IakoUsageGrant; busy: boo
     <td className="py-3 pr-3">{grant.resourceType === 'LIVE_TRAINING' ? grant.resourceTitle : `Tool: ${grant.resourceTitle}`}</td>
     <td className="py-3 pr-3">{grant.usage.startsAt ? new Date(grant.usage.startsAt).toLocaleDateString() : '—'}</td>
     <td className="py-3 pr-3">{grant.usage.expiresAt ? new Date(grant.usage.expiresAt).toLocaleDateString() : '∞'}</td>
-    <td className="py-3 pr-3 cursor-pointer" onClick={() => void changeLimit('requestLimit', grant.usage.requestLimit)}>{grant.usage.requestsUsed} / {grant.usage.requestLimit ?? '∞'}</td>
+    <td className="py-3 pr-3 cursor-pointer" onClick={() => void changeLimit('requestLimit', grant.usage.requestLimit)}>
+      {grant.usage.requestsUsed} / {grant.usage.requestLimit ?? '∞'}
+      {grant.topUpPolicy && (
+        <p className="mt-0.5 font-normal text-[11px] text-slate-500">
+          {grant.topUpPolicy.available
+            ? `Auto top-up available: +${grant.topUpPolicy.amount}`
+            : `Auto top-up applied (max ${grant.topUpPolicy.maxTotal})`}
+        </p>
+      )}
+    </td>
     <td className="py-3 pr-3 cursor-pointer" onClick={() => void changeLimit('dailyRequestLimit', grant.usage.dailyLimit)}>{grant.usage.dailyUsed} / {grant.usage.dailyLimit ?? '∞'}</td>
     <td className="py-3 pr-3 cursor-pointer" onClick={() => void changeLimit('hourlyRequestLimit', grant.usage.hourlyLimit)}>{grant.usage.hourlyUsed} / {grant.usage.hourlyLimit ?? '∞'}</td>
     <td className="py-3 pr-3 cursor-pointer" onClick={() => void changeLimit('screenshotLimit', grant.usage.screenshotLimit)}>{grant.usage.screenshotsUsed} / {grant.usage.screenshotLimit ?? '∞'}</td>

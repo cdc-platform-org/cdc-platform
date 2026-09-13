@@ -21,7 +21,26 @@ export interface IakoProfile {
   defaultMaxScreenshotsPerMessage: number;
   defaultAccessDays: number | null;
   createdAt: string;
-  assignments?: Array<{ liveTrainingId: string | null; digitalToolKey: string | null }>;
+  assignments?: Array<{
+    liveTrainingId: string | null; digitalToolKey: string | null; mode: IakoAssignmentMode;
+  } & IakoTopUpPolicy>;
+}
+// TESTING restricts a Live Training assignment to SUPER_ADMIN/MANAGER
+// learners only (still enrollment-gated) — lets an admin dogfood a new
+// training's IAKO before exposing it to the cohort. Digital Tool
+// assignments ignore this field. See Backend's IakoProfileAssignment.mode.
+export type IakoAssignmentMode = 'TESTING' | 'LIVE';
+// Controlled auto-top-up — see Backend's IakoProfileAssignment schema
+// comment. All null/false/0 (disabled) for every assignment that predates
+// this feature. Every other quota dimension (daily/hourly/screenshot/
+// per-message) is NOT duplicated here — those stay on the IakoProfile's own
+// default* fields, shown read-only alongside this policy in the admin UI.
+export interface IakoTopUpPolicy {
+  initialRequestLimit: number | null;
+  autoTopUpEnabled: boolean;
+  autoTopUpAmount: number | null;
+  maxAutoTopUps: number;
+  maxAutoTotal: number | null;
 }
 export interface IakoKnowledgeSource { sourceFilename: string; totalChunks: number; totalChars: number; updatedAt: string }
 export interface IakoMessage { id: string; role: 'USER' | 'ASSISTANT'; content: string; imageUrls: string[]; createdAt: string }
@@ -33,6 +52,7 @@ export interface IakoUsage {
   screenshotsUsed: number; screenshotLimit: number | null;
   maxScreenshotsPerMessage: number;
   startsAt: string | null; expiresAt: string | null; revokedAt: string | null;
+  autoTopUpsApplied: number;
 }
 export interface MyIakoAssistant {
   resourceType: 'LIVE_TRAINING' | 'DIGITAL_TOOL';
@@ -79,11 +99,23 @@ export async function listDigitalTools(): Promise<DigitalToolDefinition[]> {
 export async function hasDigitalToolAccess(toolKey: string): Promise<boolean> {
   return (await apiClient.get<{ data: { allowed: boolean } }>(`/digital-tools/${encodeURIComponent(toolKey)}/access`)).data.data.allowed;
 }
-export async function assignIakoProfile(target: IakoResource, profileId: string | null): Promise<void> {
+// `mode` only applies to a Live Training target — the backend ignores it
+// for a Digital Tool assignment; omit it to leave an existing assignment's
+// mode untouched (or fall back to the backend's own LIVE default on create).
+// `topUp` is likewise entirely optional — omitted fields leave whatever
+// top-up policy is already configured untouched (see Backend's
+// topUpAssignmentFields), so a simple mode-only call (e.g. the Daily
+// Guides page) never wipes out an already-configured policy.
+export async function assignIakoProfile(
+  target: IakoResource, profileId: string | null, mode?: IakoAssignmentMode, topUp?: Partial<IakoTopUpPolicy>,
+): Promise<({ mode: IakoAssignmentMode } & Partial<IakoTopUpPolicy>) | void> {
   const path = 'liveTrainingId' in target
     ? `/admin/iako/assignments/live-training/${encodeURIComponent(target.liveTrainingId)}`
     : `/admin/iako/assignments/digital-tool/${encodeURIComponent(target.digitalToolKey)}`;
-  await apiClient.put(path, { profileId });
+  const response = await apiClient.put<{ data: { mode: IakoAssignmentMode } & Partial<IakoTopUpPolicy> }>(
+    path, { profileId, ...('liveTrainingId' in target && mode ? { mode } : {}), ...topUp },
+  );
+  return response.data.data;
 }
 export async function listMyIakoAssistants(): Promise<MyIakoAssistant[]> {
   return (await apiClient.get<{ data: MyIakoAssistant[] }>('/iako/my-assistants')).data.data;
@@ -117,6 +149,9 @@ export interface IakoUsageGrant {
   resourceId: string;
   resourceTitle: string;
   usage: IakoUsage;
+  // Null when this resource's assignment never enabled auto-top-up.
+  // `available` is false once autoTopUpsApplied has reached maxTopUps.
+  topUpPolicy: { amount: number | null; maxTopUps: number; maxTotal: number | null; available: boolean } | null;
 }
 export async function listUsageGrants(filter?: { resourceType?: string; resourceId?: string }): Promise<IakoUsageGrant[]> {
   return (await apiClient.get<{ data: IakoUsageGrant[] }>('/admin/iako/usage-grants', { params: filter })).data.data;

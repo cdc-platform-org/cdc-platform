@@ -23,8 +23,38 @@ export const iakoProfileSchema = z.object({
   defaultAccessDays: z.number().int().min(1).max(3650).nullable().optional().default(10),
 });
 
+// Controlled auto-top-up policy — see IakoProfileAssignment's own schema
+// comment. Every field is optional and omitted entirely means "leave
+// whatever is already configured alone" (same convention as `mode` below),
+// so a caller that only ever sends `mode` (e.g. the Daily Guides page)
+// never accidentally resets an already-configured top-up policy.
+const topUpFields = {
+  initialRequestLimit: nullableLimit.optional(),
+  autoTopUpEnabled: z.boolean().optional(),
+  autoTopUpAmount: nullableLimit.optional(),
+  maxAutoTopUps: z.number().int().min(0).max(100).optional(),
+  maxAutoTotal: nullableLimit.optional(),
+};
+
 export const iakoAssignmentSchema = z.object({
   profileId: z.string().uuid().nullable(),
+  // Live Training assignments only — ignored for Digital Tool assignments.
+  // Omitted entirely means "leave the current mode alone" on an existing
+  // assignment, or "use the DB default (LIVE)" on a brand-new one; see
+  // IakoProfileAssignment.mode's own schema comment for why that default
+  // exists.
+  mode: z.enum(['TESTING', 'LIVE']).optional(),
+  ...topUpFields,
+}).superRefine((data, ctx) => {
+  // Internal consistency only — cross-checking maxAutoTotal against the
+  // resolved starting point (initialRequestLimit ?? the profile's own
+  // default) happens in the route handler, which is the only place that
+  // also knows the profile's defaultRequestLimit.
+  if (data.autoTopUpEnabled) {
+    if (!data.autoTopUpAmount) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['autoTopUpAmount'], message: 'Set a top-up amount to enable auto-top-up.' });
+    if (!data.maxAutoTopUps) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['maxAutoTopUps'], message: 'Set how many automatic top-ups are allowed.' });
+    if (data.maxAutoTotal == null) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['maxAutoTotal'], message: 'Set the maximum automatic total.' });
+  }
 });
 
 export const iakoChatSchema = z.object({

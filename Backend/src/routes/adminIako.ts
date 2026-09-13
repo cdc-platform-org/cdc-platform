@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
 import multer from 'multer';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole, requireNotBannedOrDeleted } from '../middleware/auth';
@@ -27,7 +28,10 @@ router.get('/tools', (req: Request, res: Response) => {
 router.get('/profiles', async (req: Request, res: Response) => {
   const profiles = await prisma.iakoAssistantProfile.findMany({
     orderBy: { createdAt: 'desc' },
-    include: { assignments: { select: { liveTrainingId: true, digitalToolKey: true } } },
+    include: { assignments: { select: {
+      liveTrainingId: true, digitalToolKey: true, mode: true,
+      initialRequestLimit: true, autoTopUpEnabled: true, autoTopUpAmount: true, maxAutoTopUps: true, maxAutoTotal: true,
+    } } },
   });
   res.json({ data: profiles });
 });
@@ -90,6 +94,21 @@ router.delete('/profiles/:id/knowledge/:filename', async (req: Request, res: Res
   res.status(204).send();
 });
 
+// Builds the partial write for the 5 auto-top-up fields, omitting anything
+// the caller didn't send — same "don't silently reset what wasn't sent"
+// convention as `mode` above, since a simpler caller (e.g. the Daily
+// Guides page's profile-only assignment call) must never wipe out an
+// already-configured top-up policy.
+function topUpAssignmentFields(data: z.infer<typeof iakoAssignmentSchema>) {
+  return {
+    ...(data.initialRequestLimit !== undefined ? { initialRequestLimit: data.initialRequestLimit } : {}),
+    ...(data.autoTopUpEnabled !== undefined ? { autoTopUpEnabled: data.autoTopUpEnabled } : {}),
+    ...(data.autoTopUpAmount !== undefined ? { autoTopUpAmount: data.autoTopUpAmount } : {}),
+    ...(data.maxAutoTopUps !== undefined ? { maxAutoTopUps: data.maxAutoTopUps } : {}),
+    ...(data.maxAutoTotal !== undefined ? { maxAutoTotal: data.maxAutoTotal } : {}),
+  };
+}
+
 // Assign (or unassign, with profileId: null) a profile to a LiveTraining.
 router.put('/assignments/live-training/:liveTrainingId', async (req: Request, res: Response) => {
   const result = iakoAssignmentSchema.safeParse(req.body);
@@ -103,10 +122,31 @@ router.put('/assignments/live-training/:liveTrainingId', async (req: Request, re
   }
   const profile = await prisma.iakoAssistantProfile.findUnique({ where: { id: result.data.profileId } });
   if (!profile) return res.status(400).json({ message: 'Choose an existing profile.' });
+
+  // Validated against the post-write effective values (incoming field if
+  // present, otherwise whatever's already configured) — same posture as
+  // adminLiveTrainings.ts's own discount validation — so a caller that
+  // only ever sends one top-up field can never leave the policy in a state
+  // where the ceiling is below the starting total.
+  const existingAssignment = await prisma.iakoProfileAssignment.findUnique({ where: { liveTrainingId: training.id } });
+  const effectiveInitial = (result.data.initialRequestLimit !== undefined ? result.data.initialRequestLimit : existingAssignment?.initialRequestLimit ?? null) ?? profile.defaultRequestLimit;
+  const effectiveAutoTopUpEnabled = result.data.autoTopUpEnabled !== undefined ? result.data.autoTopUpEnabled : existingAssignment?.autoTopUpEnabled ?? false;
+  const effectiveMaxAutoTotal = result.data.maxAutoTotal !== undefined ? result.data.maxAutoTotal : existingAssignment?.maxAutoTotal ?? null;
+  if (effectiveAutoTopUpEnabled && effectiveInitial != null && effectiveMaxAutoTotal != null && effectiveMaxAutoTotal < effectiveInitial) {
+    return res.status(400).json({ message: 'Maximum automatic total cannot be less than the starting total.' });
+  }
+  // mode omitted => leave an existing assignment's mode untouched, or let a
+  // brand-new one fall back to the schema default (LIVE) — see
+  // IakoProfileAssignment.mode's own comment for why a caller that doesn't
+  // know about modes yet (e.g. the Daily Guides page, until it's updated)
+  // must never silently flip an assignment's access mode. Same convention
+  // now extends to the 5 auto-top-up fields — see topUpAssignmentFields.
   const assignment = await prisma.iakoProfileAssignment.upsert({
-    where: { liveTrainingId: training.id }, create: { liveTrainingId: training.id, profileId: profile.id }, update: { profileId: profile.id },
+    where: { liveTrainingId: training.id },
+    create: { liveTrainingId: training.id, profileId: profile.id, ...(result.data.mode ? { mode: result.data.mode } : {}), ...topUpAssignmentFields(result.data) },
+    update: { profileId: profile.id, ...(result.data.mode ? { mode: result.data.mode } : {}), ...topUpAssignmentFields(result.data) },
   });
-  await logAdminAction({ action: 'IAKO_ASSIGNMENT_SET', targetType: 'LIVE_TRAINING', targetId: training.id, performedById: req.user!.id, metadata: { profileId: profile.id } });
+  await logAdminAction({ action: 'IAKO_ASSIGNMENT_SET', targetType: 'LIVE_TRAINING', targetId: training.id, performedById: req.user!.id, metadata: { profileId: profile.id, mode: assignment.mode } });
   res.json({ data: assignment });
 });
 
@@ -123,7 +163,9 @@ router.put('/assignments/digital-tool/:toolKey', async (req: Request, res: Respo
   const profile = await prisma.iakoAssistantProfile.findUnique({ where: { id: result.data.profileId } });
   if (!profile) return res.status(400).json({ message: 'Choose an existing profile.' });
   const assignment = await prisma.iakoProfileAssignment.upsert({
-    where: { digitalToolKey: req.params.toolKey }, create: { digitalToolKey: req.params.toolKey, profileId: profile.id }, update: { profileId: profile.id },
+    where: { digitalToolKey: req.params.toolKey },
+    create: { digitalToolKey: req.params.toolKey, profileId: profile.id, ...topUpAssignmentFields(result.data) },
+    update: { profileId: profile.id, ...topUpAssignmentFields(result.data) },
   });
   await logAdminAction({ action: 'IAKO_ASSIGNMENT_SET', targetType: 'DIGITAL_TOOL', targetId: req.params.toolKey, performedById: req.user!.id, metadata: { profileId: profile.id } });
   res.json({ data: assignment });
@@ -142,14 +184,33 @@ router.get('/usage-grants', async (req: Request, res: Response) => {
     orderBy: { createdAt: 'desc' },
   });
   const liveTrainingIds = grants.filter((grant) => grant.resourceType === 'LIVE_TRAINING').map((grant) => grant.resourceId);
-  const trainings = liveTrainingIds.length ? await prisma.liveTraining.findMany({ where: { id: { in: liveTrainingIds } }, select: { id: true, title: true } }) : [];
+  const digitalToolKeys = grants.filter((grant) => grant.resourceType === 'DIGITAL_TOOL').map((grant) => grant.resourceId);
+  const [trainings, assignments] = await Promise.all([
+    liveTrainingIds.length ? prisma.liveTraining.findMany({ where: { id: { in: liveTrainingIds } }, select: { id: true, title: true } }) : Promise.resolve([]),
+    prisma.iakoProfileAssignment.findMany({
+      where: { OR: [{ liveTrainingId: { in: liveTrainingIds } }, { digitalToolKey: { in: digitalToolKeys } }] },
+      select: { liveTrainingId: true, digitalToolKey: true, autoTopUpEnabled: true, autoTopUpAmount: true, maxAutoTopUps: true, maxAutoTotal: true },
+    }),
+  ]);
   const trainingTitleById = new Map(trainings.map((training) => [training.id, training.title]));
+  const assignmentByResourceId = new Map(assignments.map((assignment) => [assignment.liveTrainingId ?? assignment.digitalToolKey, assignment]));
 
-  const data = await Promise.all(grants.map(async (grant) => ({
-    id: grant.id, user: grant.user, profile: grant.profile, resourceType: grant.resourceType, resourceId: grant.resourceId,
-    resourceTitle: grant.resourceType === 'LIVE_TRAINING' ? (trainingTitleById.get(grant.resourceId) ?? grant.resourceId) : (DIGITAL_TOOLS.find((tool) => tool.key === grant.resourceId)?.label ?? grant.resourceId),
-    usage: await usageSummary(grant),
-  })));
+  // Lets the admin table show "Auto top-up available: +N" (below the
+  // ceiling, a top-up hasn't fired yet but could) vs. "Auto top-up applied"
+  // (already used at least once) vs. nothing (disabled for this resource).
+  const data = await Promise.all(grants.map(async (grant) => {
+    const assignment = assignmentByResourceId.get(grant.resourceId);
+    const usage = await usageSummary(grant);
+    const topUpPolicy = assignment?.autoTopUpEnabled ? {
+      amount: assignment.autoTopUpAmount, maxTopUps: assignment.maxAutoTopUps, maxTotal: assignment.maxAutoTotal,
+      available: usage.autoTopUpsApplied < assignment.maxAutoTopUps,
+    } : null;
+    return {
+      id: grant.id, user: grant.user, profile: grant.profile, resourceType: grant.resourceType, resourceId: grant.resourceId,
+      resourceTitle: grant.resourceType === 'LIVE_TRAINING' ? (trainingTitleById.get(grant.resourceId) ?? grant.resourceId) : (DIGITAL_TOOLS.find((tool) => tool.key === grant.resourceId)?.label ?? grant.resourceId),
+      usage, topUpPolicy,
+    };
+  }));
   res.json({ data });
 });
 

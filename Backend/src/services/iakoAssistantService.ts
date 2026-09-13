@@ -57,22 +57,39 @@ For an in-scope technical/project problem, prefer this response shape:
 If the learner shares a screenshot, start by describing what you see in it (e.g. "სქრინზე ვხედავ..." / "In the screenshot I can see...") before diagnosing: the problem, the likely cause, the exact fix, and how to verify it worked.
 Be a mentor: explain, guide, and give working code when it genuinely helps, but favor helping the learner understand and do the next step themselves over generating an entire product for them.`;
 
-async function loadProfileForResource(resourceType: IakoGrantResource, resourceId: string) {
+// Returns the whole assignment (not just its profile) so callers can also
+// read its per-training auto-top-up policy (see IakoProfileAssignment's own
+// comment) when provisioning a usage grant.
+async function loadAssignmentForResource(resourceType: IakoGrantResource, resourceId: string) {
   const assignment = resourceType === 'LIVE_TRAINING'
     ? await prisma.iakoProfileAssignment.findUnique({ where: { liveTrainingId: resourceId }, include: { profile: true } })
     : resourceType === 'DIGITAL_TOOL'
     ? await prisma.iakoProfileAssignment.findUnique({ where: { digitalToolKey: resourceId }, include: { profile: true } })
     : null;
   if (!assignment || !assignment.profile.active) throw new IakoError(404, 'No IAKO assistant is configured here yet.');
-  return assignment.profile;
+  return assignment;
+}
+
+// SUPER_ADMIN/MANAGER only — same tier adminIako.ts itself requires to
+// configure IAKO at all, reused here rather than a separate allow-list.
+function canUseTestingModeAssignment(adminRole: string | null): boolean {
+  return adminRole === 'SUPER_ADMIN' || adminRole === 'MANAGER';
 }
 
 async function assertResourceAccess(resourceType: IakoGrantResource, resourceId: string, userId: string, _email: string) {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, isBanned: true, deletionRequestedAt: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, isBanned: true, deletionRequestedAt: true, adminRole: true } });
   if (!user || user.isBanned || user.deletionRequestedAt) throw new IakoError(403, 'This account cannot use IAKO.');
   const email = user.email;
   if (resourceType === 'LIVE_TRAINING') {
+    // The learner's real LiveTrainingEnrollment is still required first and
+    // is never bypassed for an admin — TESTING mode only ever narrows who,
+    // among genuinely enrolled people, may use it further. See
+    // IakoProfileAssignment.mode's own comment.
     await requireTrainingGuideAccess(resourceId, userId);
+    const assignment = await prisma.iakoProfileAssignment.findUnique({ where: { liveTrainingId: resourceId }, select: { mode: true } });
+    if (assignment?.mode === 'TESTING' && !canUseTestingModeAssignment(user.adminRole)) {
+      throw new IakoError(403, 'This IAKO assistant is in private/testing mode and is not yet available to participants.');
+    }
   } else if (resourceType === 'DIGITAL_TOOL') {
     if (!await hasDigitalToolAccess(userId, email, resourceId)) throw new IakoError(403, 'You do not have access to this tool yet.');
   } else {
@@ -166,7 +183,8 @@ export interface AskIakoResult {
 }
 
 export async function askIakoAssistant(input: AskIakoInput): Promise<AskIakoResult> {
-  const profile = await loadProfileForResource(input.resourceType, input.resourceId);
+  const assignment = await loadAssignmentForResource(input.resourceType, input.resourceId);
+  const profile = assignment.profile;
   await assertResourceAccess(input.resourceType, input.resourceId, input.userId, input.userEmail);
   const imageCount = input.images?.length ?? 0;
   if (imageCount > 0 && !profile.visionEnabled) throw new IakoError(400, 'This assistant does not accept image attachments.');
@@ -181,7 +199,7 @@ export async function askIakoAssistant(input: AskIakoInput): Promise<AskIakoResu
   const lang = detectLang(input.message);
   let lease: Awaited<ReturnType<typeof acquireUsageLease>> | undefined;
   try {
-    let grant = await getOrCreateUsageGrant(profile, input.userId, input.resourceType, input.resourceId);
+    let grant = await getOrCreateUsageGrant(assignment, input.userId, input.resourceType, input.resourceId);
     assertUsageAccess(grant);
     const cached = await findIdempotentResult(grant.id, input.idempotencyKey, requestHash);
     if (cached) return { reply: cached.message.content, conversationId: cached.message.conversationId, outOfScope: cached.log.outOfScope, usage: await usageSummary(grant), warning };
@@ -257,12 +275,13 @@ Respond with well-formatted plain text (short paragraphs and bullet points where
 }
 
 export async function getConversation(resourceType: IakoGrantResource, resourceId: string, userId: string, before?: string) {
-  const profile = await loadProfileForResource(resourceType, resourceId);
+  const assignment = await loadAssignmentForResource(resourceType, resourceId);
+  const profile = assignment.profile;
   await assertResourceAccess(resourceType, resourceId, userId, '');
   const conversation = await prisma.iakoConversation.findUnique({
     where: { profileId_userId_resourceType_resourceId: { profileId: profile.id, userId, resourceType, resourceId } },
   });
-  const grant = await getOrCreateUsageGrant(profile, userId, resourceType, resourceId);
+  const grant = await getOrCreateUsageGrant(assignment, userId, resourceType, resourceId);
   try { assertUsageAccess(grant); } catch (err) { if (err instanceof IakoUsageError) throw new IakoError(err.status, err.message); throw err; }
   if (before && (!conversation || !await prisma.iakoMessage.findFirst({ where: { id: before, conversationId: conversation.id } }))) throw new IakoError(400, 'Invalid conversation cursor.');
   const rows = conversation ? await prisma.iakoMessage.findMany({ where: { conversationId: conversation.id }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 101, ...(before ? { cursor: { id: before }, skip: 1 } : {}) }) : [];
@@ -292,7 +311,8 @@ export interface MyIakoAssistant {
 // itself) so the listing always shows a real 0/limit instead of a blank
 // state before the learner's first message.
 export async function listMyIakoAssistants(userId: string, userEmail: string): Promise<MyIakoAssistant[]> {
-  const [enrollments, assignments] = await Promise.all([
+  const [user, enrollments, assignments] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { adminRole: true } }),
     prisma.liveTrainingEnrollment.findMany({
       where: { userId, status: { in: ['ACTIVE', 'COMPLETED'] } },
       select: { liveTrainingId: true, liveTraining: { select: { title: true } } },
@@ -306,12 +326,16 @@ export async function listMyIakoAssistants(userId: string, userEmail: string): P
     if (assignment.liveTrainingId) {
       const title = trainingTitleById.get(assignment.liveTrainingId);
       if (!title) continue; // Not enrolled — no entitlement, no card.
-      const grant = await getOrCreateUsageGrant(assignment.profile, userId, 'LIVE_TRAINING', assignment.liveTrainingId);
+      // A Testing/Private assignment must not surface to an ordinary
+      // enrolled participant here either — same rule chat/conversation
+      // enforce, see assertResourceAccess.
+      if (assignment.mode === 'TESTING' && !canUseTestingModeAssignment(user?.adminRole ?? null)) continue;
+      const grant = await getOrCreateUsageGrant(assignment, userId, 'LIVE_TRAINING', assignment.liveTrainingId);
       results.push({ resourceType: 'LIVE_TRAINING', resourceId: assignment.liveTrainingId, resourceTitle: title, profileName: assignment.profile.name, mentorTagline: assignment.profile.mentorTagline, usage: await usageSummary(grant) });
     } else if (assignment.digitalToolKey) {
       if (!await hasDigitalToolAccess(userId, userEmail, assignment.digitalToolKey)) continue;
       const tool = DIGITAL_TOOLS.find((entry) => entry.key === assignment.digitalToolKey);
-      const grant = await getOrCreateUsageGrant(assignment.profile, userId, 'DIGITAL_TOOL', assignment.digitalToolKey);
+      const grant = await getOrCreateUsageGrant(assignment, userId, 'DIGITAL_TOOL', assignment.digitalToolKey);
       results.push({ resourceType: 'DIGITAL_TOOL', resourceId: assignment.digitalToolKey, resourceTitle: tool?.label ?? assignment.digitalToolKey, profileName: assignment.profile.name, mentorTagline: assignment.profile.mentorTagline, usage: await usageSummary(grant) });
     }
   }
