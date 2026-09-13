@@ -22,7 +22,18 @@ const upload = multer({
   limits: { fileSize: 8 * 1024 * 1024, files: MAX_IMAGES_PER_MESSAGE },
 });
 
-const chatLimiter = rateLimit({ windowMs: 60 * 1000, max: 15 });
+// Keyed by authenticated user id, not req.ip: this router already requires
+// `authenticate` above, so req.user is always populated by the time this
+// runs. Without this override, ~25 learners on the same classroom/NAT IP
+// would share one 15/min bucket and throttle each other even with quota to
+// spare — see iakoUsageGrantService.ts for the real per-user hourly/daily/
+// total limits this is layered on top of. Falls back to req.ip only if
+// req.user is ever unexpectedly absent, so this can never fail open.
+const chatLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 15,
+  keyGenerator: (req) => (req.user?.id ? `iako-user:${req.user.id}` : (req.ip ?? 'unknown')),
+});
 
 function handleUpload(req: Request, res: Response, next: (err?: unknown) => void) {
   upload.array('images', MAX_IMAGES_PER_MESSAGE)(req, res, (err: any) => {

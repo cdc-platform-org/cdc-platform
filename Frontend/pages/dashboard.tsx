@@ -35,6 +35,7 @@ import { MyCourseWithProgress } from '../src/types/lms';
 import { getMyCourses, downloadCertificate } from '../src/services/courseService';
 import { AssignedGig, GigStatus } from '../src/types/community';
 import { getAssignedGigs, requestMentorHelp } from '../src/services/gigService';
+import { getTrainerMe } from '../src/services/trainerWorkspaceService';
 import { getFeeSchedule, findRate } from '../src/services/commissionsService';
 import { useEscapeToClose } from '../src/hooks/useEscapeToClose';
 import {
@@ -1043,6 +1044,11 @@ function DashboardContent() {
   const { user, logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  // IAKO Trainer Tools — sidebar entry only when the signed-in user has an
+  // active TrainerProfile (server-verified via GET /trainer/me, see
+  // trainerWorkspaceService.ts). Deliberately not a Role check — a Mentor or
+  // admin without a TrainerProfile must not see it.
+  const [isTrainer, setIsTrainer] = useState(false);
   const [loading, setLoading] = useState(true);
   const [courses, setCourses] = useState<MyCourseWithProgress[]>([]);
   const [gigs, setGigs] = useState<AssignedGig[]>([]);
@@ -1085,6 +1091,10 @@ function DashboardContent() {
   // An unverified uploader will see a lower estimate here than they're
   // actually charged at sale time; flagged, not fixed, in this pass.
   const [digitalProductCommissionPct, setDigitalProductCommissionPct] = useState(20);
+  useEffect(() => {
+    getTrainerMe().then((result) => setIsTrainer(result.isTrainer)).catch(() => setIsTrainer(false));
+  }, []);
+
   useEffect(() => {
     getFeeSchedule()
       .then((schedule) => {
@@ -1548,6 +1558,17 @@ function DashboardContent() {
             <CalendarClock className="w-4 h-4 shrink-0" />
             {t.tabMentorshipSessions}
           </Link>
+          {/* IAKO Trainer Tools — server-verified trainer capability; same
+              disappearance-on-demotion posture as the Mentor link above. */}
+          {isTrainer && (
+            <Link
+              href="/dashboard/trainer"
+              className="flex items-center gap-2.5 w-full text-left p-3.5 rounded-xl text-xs font-bold transition border border-slate-200 dark:border-cyan-900/50 bg-white dark:bg-slate-900/60 text-cyan-600 dark:text-cyan-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:shadow-[0_0_14px_2px_rgba(34,211,238,0.4)] no-underline"
+            >
+              <GraduationCap className="w-4 h-4 shrink-0" />
+              {lang === 'ka' ? 'ტრენერის პანელი' : 'Trainer Control Center'}
+            </Link>
+          )}
           <Link
             href="/dashboard/live-trainings"
             className="flex items-center gap-2.5 w-full text-left p-3.5 rounded-xl text-xs font-bold transition border bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 no-underline"

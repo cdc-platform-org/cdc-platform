@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import AdminGuard from '@/src/components/admin/AdminGuard';
 import AdminLayout from '@/src/components/admin/AdminLayout';
 import {
@@ -21,6 +22,7 @@ const emptyDraft: IakoProfileInput = {
 };
 
 function AdminIakoProfilesContent() {
+  const router = useRouter();
   const [profiles, setProfiles] = useState<IakoProfile[]>([]);
   const [tools, setTools] = useState<DigitalToolDefinition[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +44,18 @@ function AdminIakoProfilesContent() {
     setLoading(true);
     void load().catch(() => setError('Could not load IAKO profiles.')).finally(() => setLoading(false));
   }, [load]);
+
+  // Deep-link from the Live Training / Daily Guides IAKO blocks — "Configure
+  // IAKO Profile" passes ?id=<profileId> so the admin lands directly in that
+  // profile's editor instead of having to find it in the list again.
+  useEffect(() => {
+    if (!router.isReady || editingId) return;
+    const targetId = typeof router.query.id === 'string' ? router.query.id : undefined;
+    if (!targetId) return;
+    const match = profiles.find((p) => p.id === targetId);
+    if (match) void startEdit(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady, router.query.id, profiles]);
 
   const startCreate = () => { setDraft(emptyDraft); setKeywordsInput(''); setEditingId(undefined); setSources([]); setSaved(false); };
   const startEdit = async (profile: IakoProfile) => {

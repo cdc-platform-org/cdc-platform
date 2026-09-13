@@ -467,6 +467,35 @@ describe('IAKO usage limits', () => {
     expect(await prisma.iakoRequestLog.count({ where: { usageGrantId: grant.id } })).toBe(0);
   });
 
+  it('a provider 429 (rate-limited by the AI vendor) returns a safe status and does not consume a credit', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    await assignedProfile(admin, 'educator-hub');
+    const learner = await entitleLearner(admin, 'educator-hub');
+    jest.mocked(callTextModel).mockImplementation(async (prompt: string) => {
+      if (prompt.includes('strict scope classifier')) return JSON.stringify({ decision: 'IN_SCOPE' });
+      // Mirrors what aiAgentService.ts's own classifyGeminiErrorStatus/
+      // throwGeminiFailure produce for a real vendor 429 — a generic,
+      // safe-to-show message paired with the classified status, never the
+      // raw provider payload.
+      throw new AiAgentError('The AI service is temporarily unavailable. Please retry.', 429);
+    });
+
+    const response = await chatRequest('/iako/digital-tool/educator-hub/chat', learner, 'This will be rate-limited by the provider');
+    expect(response.status).toBe(429);
+    const grant = await prisma.iakoUsageGrant.findFirstOrThrow({ where: { userId: learner.id, resourceType: 'DIGITAL_TOOL', resourceId: 'educator-hub' } });
+    expect(await prisma.iakoRequestLog.count({ where: { usageGrantId: grant.id } })).toBe(0);
+
+    // The credit really is still there — a normal follow-up succeeds and is
+    // billed as the learner's first (not second) request.
+    jest.mocked(callTextModel).mockImplementation(async (prompt: string) => {
+      if (prompt.includes('strict scope classifier')) return JSON.stringify({ decision: 'IN_SCOPE' });
+      return JSON.stringify({ response: 'A helpful, in-scope reply.' });
+    });
+    const retry = await chatRequest('/iako/digital-tool/educator-hub/chat', learner, 'Retrying after the provider recovered');
+    expect(retry.status).toBe(200);
+    expect((await data<{ usage: { requestsUsed: number } }>(retry)).usage.requestsUsed).toBe(1);
+  });
+
   it('a duplicate retry (same idempotency key) replays the cached reply and does not double-charge', async () => {
     const admin = await createUser({ adminRole: 'MANAGER' });
     await assignedProfile(admin, 'educator-hub');
@@ -860,5 +889,305 @@ describe('My IAKO assistants — Digital Tools visibility', () => {
     await prisma.accessGrant.create({ data: { resourceType: 'DIGITAL_TOOL', resourceId: 'educator-hub', userId: stranger.id, createdById: admin.id } });
     const after = await data<Array<{ resourceId: string }>>(await request('/iako/my-assistants', stranger));
     expect(after.some((entry) => entry.resourceId === 'educator-hub')).toBe(true);
+  });
+});
+
+// Both Live Trainings below get their own real IakoAssistantProfile/
+// enrollment — the closest analog previously tested was cross-training
+// GUIDE context (the "never lets the browser invent guide context" case
+// above), not IAKO's own chat/conversation endpoints directly. This proves
+// the same trust boundary on the endpoints a real learner actually calls.
+describe('IAKO cross-Live-Training isolation', () => {
+  it('enrollment in Live Training A does not grant access to Live Training B\'s IAKO chat or conversation', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+
+    const profileA = await createProfile(admin, { name: 'Training A assistant' });
+    const trainingA = await prisma.liveTraining.create({ data: {
+      title: 'Cross-training isolation — Training A', description: 'x', category: 'Engineering',
+      scheduledAt: new Date('2026-09-01T12:00:00Z'), published: true, maxCapacity: 20,
+    } });
+    await request(`/admin/iako/assignments/live-training/${trainingA.id}`, admin, 'PUT', { profileId: profileA.id });
+
+    const profileB = await createProfile(admin, { name: 'Training B assistant' });
+    const trainingB = await prisma.liveTraining.create({ data: {
+      title: 'Cross-training isolation — Training B', description: 'x', category: 'Engineering',
+      scheduledAt: new Date('2026-09-01T12:00:00Z'), published: true, maxCapacity: 20,
+    } });
+    await request(`/admin/iako/assignments/live-training/${trainingB.id}`, admin, 'PUT', { profileId: profileB.id });
+
+    const learnerA = await createUser();
+    await prisma.liveTrainingEnrollment.create({ data: { liveTrainingId: trainingA.id, userId: learnerA.id } });
+
+    // Enrolled in A only — every attempt against B's IAKO must be denied,
+    // per the existing access contract (403 not-enrolled / 404 not-found).
+    const conversationResponse = await request(`/iako/live-training/${trainingB.id}/conversation`, learnerA);
+    expect([403, 404]).toContain(conversationResponse.status);
+
+    const chatResponse = await chatRequest(`/iako/live-training/${trainingB.id}/chat`, learnerA, 'Can I see Training B\'s IAKO?');
+    expect([403, 404]).toContain(chatResponse.status);
+    expect(callTextModel).not.toHaveBeenCalled();
+
+    // Sanity check: the same learner's real entitlement (their own Training A) still works.
+    const ownTraining = await chatRequest(`/iako/live-training/${trainingA.id}/chat`, learnerA, 'This should work.');
+    expect(ownTraining.status).toBe(200);
+  });
+});
+
+describe('IAKO participant-to-participant conversation privacy', () => {
+  it('one participant\'s conversation read never returns another participant\'s messages', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    await assignedProfile(admin, 'media-studio');
+    const participantA = await entitleLearner(admin, 'media-studio');
+    const participantB = await entitleLearner(admin, 'media-studio');
+
+    const sent = await chatRequest('/iako/digital-tool/media-studio/chat', participantA, 'This is Participant A\'s private question.');
+    expect(sent.status).toBe(200);
+
+    // B has real access to the same tool/profile but has said nothing yet —
+    // reading the actual existing conversation endpoint as B must come back
+    // empty, never leak A's messages. No conversation-ID parameter exists
+    // to pass here at all — the endpoint derives "whose conversation" purely
+    // from the authenticated caller, which is exactly what this proves.
+    const bBefore = await data<{ messages: Array<{ role: string; content: string }> }>(await request('/iako/digital-tool/media-studio/conversation', participantB));
+    expect(bBefore.messages).toHaveLength(0);
+
+    await chatRequest('/iako/digital-tool/media-studio/chat', participantB, 'This is Participant B\'s own question.');
+    const bAfter = await data<{ messages: Array<{ role: string; content: string }> }>(await request('/iako/digital-tool/media-studio/conversation', participantB));
+    expect(bAfter.messages).toHaveLength(2);
+    expect(bAfter.messages.some((m) => m.content.includes('Participant A'))).toBe(false);
+
+    // Symmetric check: A's own read still only shows A's own exchange.
+    const aConversation = await data<{ messages: Array<{ role: string; content: string }> }>(await request('/iako/digital-tool/media-studio/conversation', participantA));
+    expect(aConversation.messages).toHaveLength(2);
+    expect(aConversation.messages.some((m) => m.content.includes('Participant B'))).toBe(false);
+  });
+});
+
+// A Live Training assignment's `mode` (TESTING/LIVE) lets an admin dogfood a
+// brand-new training's IAKO through the real learner path (their own real
+// enrollment) before exposing it to the cohort — see
+// IakoProfileAssignment.mode's own schema comment. TESTING never bypasses
+// enrollment; it only narrows who, among the genuinely enrolled, may use it.
+describe('IAKO Live Training assignment mode (TESTING/LIVE)', () => {
+  async function testingFixture(admin: User, overrides: Record<string, unknown> = {}) {
+    const profile = await createProfile(admin, { name: 'Testing-mode assistant', ...overrides });
+    const training = await prisma.liveTraining.create({ data: {
+      title: 'Mode-gated training', description: 'x', category: 'Engineering',
+      scheduledAt: new Date('2026-09-01T12:00:00Z'), published: true, maxCapacity: 20,
+    } });
+    await request(`/admin/iako/assignments/live-training/${training.id}`, admin, 'PUT', { profileId: profile.id, mode: 'TESTING' });
+    return { profile, training };
+  }
+
+  it('a pre-existing assignment with no explicit mode keeps behaving as LIVE (migration-safe default)', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const profile = await createProfile(admin);
+    const training = await prisma.liveTraining.create({ data: {
+      title: 'Legacy-style assignment', description: 'x', category: 'Engineering',
+      scheduledAt: new Date('2026-09-01T12:00:00Z'), published: true, maxCapacity: 20,
+    } });
+    // Written directly, the way every assignment was created before `mode`
+    // existed — no `mode` field at all, relying purely on the schema/
+    // migration default (LIVE) rather than the admin route's own default.
+    await prisma.iakoProfileAssignment.create({ data: { liveTrainingId: training.id, profileId: profile.id } });
+
+    const learner = await createUser();
+    await prisma.liveTrainingEnrollment.create({ data: { liveTrainingId: training.id, userId: learner.id } });
+    const response = await chatRequest(`/iako/live-training/${training.id}/chat`, learner, 'Does this still work?');
+    expect(response.status).toBe(200);
+  });
+
+  it('TESTING mode denies an enrolled regular learner from reading the conversation', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const { training } = await testingFixture(admin);
+    const learner = await createUser();
+    await prisma.liveTrainingEnrollment.create({ data: { liveTrainingId: training.id, userId: learner.id } });
+
+    const response = await request(`/iako/live-training/${training.id}/conversation`, learner);
+    expect(response.status).toBe(403);
+  });
+
+  it('TESTING mode denies an enrolled regular learner from chatting, and never calls the model', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const { training } = await testingFixture(admin);
+    const learner = await createUser();
+    await prisma.liveTrainingEnrollment.create({ data: { liveTrainingId: training.id, userId: learner.id } });
+
+    const response = await chatRequest(`/iako/live-training/${training.id}/chat`, learner, 'Can I use this?');
+    expect(response.status).toBe(403);
+    expect(callTextModel).not.toHaveBeenCalled();
+  });
+
+  it('TESTING mode allows an enrolled SUPER_ADMIN/MANAGER to use the real learner path', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const { training } = await testingFixture(admin);
+    const testerAdmin = await createUser({ adminRole: 'SUPER_ADMIN' });
+    await prisma.liveTrainingEnrollment.create({ data: { liveTrainingId: training.id, userId: testerAdmin.id } });
+
+    const response = await chatRequest(`/iako/live-training/${training.id}/chat`, testerAdmin, 'Testing as an admin.');
+    expect(response.status).toBe(200);
+  });
+
+  it('TESTING mode still denies an admin who is not enrolled — no bypass of the enrollment rule', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const { training } = await testingFixture(admin);
+    const unenrolledAdmin = await createUser({ adminRole: 'SUPER_ADMIN' });
+
+    const response = await chatRequest(`/iako/live-training/${training.id}/chat`, unenrolledAdmin, 'Let me in without enrolling?');
+    expect(response.status).toBe(403);
+    expect(callTextModel).not.toHaveBeenCalled();
+  });
+
+  it('a TESTING assignment does not appear in /iako/my-assistants for an ordinary enrolled learner', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const { training } = await testingFixture(admin);
+    const learner = await createUser();
+    await prisma.liveTrainingEnrollment.create({ data: { liveTrainingId: training.id, userId: learner.id } });
+
+    const list = await data<Array<{ resourceId: string }>>(await request('/iako/my-assistants', learner));
+    expect(list.some((entry) => entry.resourceId === training.id)).toBe(false);
+  });
+
+  it('switching TESTING -> LIVE immediately lets the same enrolled learner use IAKO', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const { training, profile } = await testingFixture(admin);
+    const learner = await createUser();
+    await prisma.liveTrainingEnrollment.create({ data: { liveTrainingId: training.id, userId: learner.id } });
+    expect((await chatRequest(`/iako/live-training/${training.id}/chat`, learner, 'Not yet.')).status).toBe(403);
+
+    const switched = await request(`/admin/iako/assignments/live-training/${training.id}`, admin, 'PUT', { profileId: profile.id, mode: 'LIVE' });
+    expect(switched.status).toBe(200);
+    expect((await data<{ mode: string }>(switched)).mode).toBe('LIVE');
+
+    const response = await chatRequest(`/iako/live-training/${training.id}/chat`, learner, 'Now it should work.');
+    expect(response.status).toBe(200);
+    const list = await data<Array<{ resourceId: string }>>(await request('/iako/my-assistants', learner));
+    expect(list.some((entry) => entry.resourceId === training.id)).toBe(true);
+  });
+
+  it('LIVE mode still denies a non-enrolled user (unchanged from before this feature)', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const profile = await createProfile(admin);
+    const training = await prisma.liveTraining.create({ data: {
+      title: 'Live-mode training', description: 'x', category: 'Engineering',
+      scheduledAt: new Date('2026-09-01T12:00:00Z'), published: true, maxCapacity: 20,
+    } });
+    await request(`/admin/iako/assignments/live-training/${training.id}`, admin, 'PUT', { profileId: profile.id, mode: 'LIVE' });
+    const outsider = await createUser();
+
+    const response = await chatRequest(`/iako/live-training/${training.id}/chat`, outsider, 'Let me in?');
+    expect(response.status).toBe(403);
+    expect(callTextModel).not.toHaveBeenCalled();
+  });
+
+  it('changing only the mode leaves the assigned profile untouched', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const { training, profile } = await testingFixture(admin);
+
+    const response = await request(`/admin/iako/assignments/live-training/${training.id}`, admin, 'PUT', { profileId: profile.id, mode: 'LIVE' });
+    const updated = await data<{ profileId: string; mode: string }>(response);
+    expect(updated.profileId).toBe(profile.id);
+    expect(updated.mode).toBe('LIVE');
+  });
+});
+
+// Section 21/26 of the Monday hardening request: a profile is an
+// intentionally reusable persona/scope/Knowledge-Base template, but
+// conversations/usage/screenshots must never merge across the trainings
+// that happen to share one.
+describe('IAKO multi-training isolation with a shared profile', () => {
+  async function sharedProfileFixture(admin: User) {
+    const profile = await createProfile(admin, { name: 'Shared assistant', visionEnabled: true });
+    const trainingA = await prisma.liveTraining.create({ data: {
+      title: 'Shared-profile Training A', description: 'x', category: 'Engineering',
+      scheduledAt: new Date('2026-09-01T12:00:00Z'), published: true, maxCapacity: 20,
+    } });
+    const trainingB = await prisma.liveTraining.create({ data: {
+      title: 'Shared-profile Training B', description: 'x', category: 'Engineering',
+      scheduledAt: new Date('2026-09-01T12:00:00Z'), published: true, maxCapacity: 20,
+    } });
+    await request(`/admin/iako/assignments/live-training/${trainingA.id}`, admin, 'PUT', { profileId: profile.id, mode: 'LIVE' });
+    await request(`/admin/iako/assignments/live-training/${trainingB.id}`, admin, 'PUT', { profileId: profile.id, mode: 'LIVE' });
+    const learner = await createUser();
+    await prisma.liveTrainingEnrollment.create({ data: { liveTrainingId: trainingA.id, userId: learner.id } });
+    await prisma.liveTrainingEnrollment.create({ data: { liveTrainingId: trainingB.id, userId: learner.id } });
+    return { profile, trainingA, trainingB, learner };
+  }
+
+  it('the same profile assigned to two trainings keeps each conversation completely separate', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const { trainingA, trainingB, learner } = await sharedProfileFixture(admin);
+
+    await chatRequest(`/iako/live-training/${trainingA.id}/chat`, learner, 'This is my Training A message.');
+    await chatRequest(`/iako/live-training/${trainingB.id}/chat`, learner, 'This is my Training B message.');
+
+    const convoA = await data<{ messages: Array<{ content: string }> }>(await request(`/iako/live-training/${trainingA.id}/conversation`, learner));
+    const convoB = await data<{ messages: Array<{ content: string }> }>(await request(`/iako/live-training/${trainingB.id}/conversation`, learner));
+    expect(convoA.messages).toHaveLength(2);
+    expect(convoB.messages).toHaveLength(2);
+    expect(convoA.messages.some((m) => m.content.includes('Training B'))).toBe(false);
+    expect(convoB.messages.some((m) => m.content.includes('Training A'))).toBe(false);
+  });
+
+  it('usage counters for Training A do not affect Training B, even under the same shared profile', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const { trainingA, trainingB, learner } = await sharedProfileFixture(admin);
+
+    await chatRequest(`/iako/live-training/${trainingA.id}/chat`, learner, 'A question one.');
+    await chatRequest(`/iako/live-training/${trainingA.id}/chat`, learner, 'A question two.');
+    await chatRequest(`/iako/live-training/${trainingB.id}/chat`, learner, 'B question one.');
+
+    const grantA = await prisma.iakoUsageGrant.findFirstOrThrow({ where: { userId: learner.id, resourceType: 'LIVE_TRAINING', resourceId: trainingA.id } });
+    const grantB = await prisma.iakoUsageGrant.findFirstOrThrow({ where: { userId: learner.id, resourceType: 'LIVE_TRAINING', resourceId: trainingB.id } });
+    expect(await prisma.iakoRequestLog.count({ where: { usageGrantId: grantA.id } })).toBe(2);
+    expect(await prisma.iakoRequestLog.count({ where: { usageGrantId: grantB.id } })).toBe(1);
+  });
+
+  it('a screenshot sent in Training A never appears in Training B\'s conversation', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const { trainingA, trainingB, learner } = await sharedProfileFixture(admin);
+
+    await chatRequest(`/iako/live-training/${trainingA.id}/chat`, learner, 'Here is my error screenshot.', { images: [{ bytes: PNG_BYTES, mimeType: 'image/png', name: 'shot.png' }] });
+    await chatRequest(`/iako/live-training/${trainingB.id}/chat`, learner, 'A plain text question, no screenshot.');
+
+    const convoB = await data<{ messages: Array<{ imageUrls: string[] }> }>(await request(`/iako/live-training/${trainingB.id}/conversation`, learner));
+    expect(convoB.messages.every((m) => m.imageUrls.length === 0)).toBe(true);
+  });
+
+  it('removing Training A\'s assignment does not delete the shared profile or touch Training B\'s assignment', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const { profile, trainingA, trainingB } = await sharedProfileFixture(admin);
+
+    const unassign = await request(`/admin/iako/assignments/live-training/${trainingA.id}`, admin, 'PUT', { profileId: null });
+    expect(unassign.status).toBe(200);
+
+    const stillExists = await prisma.iakoAssistantProfile.findUnique({ where: { id: profile.id } });
+    expect(stillExists).not.toBeNull();
+    const trainingBAssignment = await prisma.iakoProfileAssignment.findUnique({ where: { liveTrainingId: trainingB.id } });
+    expect(trainingBAssignment?.profileId).toBe(profile.id);
+  });
+
+  it('creating a new Live Training does not modify an existing training\'s conversation/usage/request-log rows', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const { trainingA, learner } = await sharedProfileFixture(admin);
+    await chatRequest(`/iako/live-training/${trainingA.id}/chat`, learner, 'Original Training A message.');
+
+    const grantBefore = await prisma.iakoUsageGrant.findFirstOrThrow({ where: { userId: learner.id, resourceType: 'LIVE_TRAINING', resourceId: trainingA.id } });
+    const logCountBefore = await prisma.iakoRequestLog.count({ where: { usageGrantId: grantBefore.id } });
+    const convoBefore = await prisma.iakoConversation.findFirstOrThrow({ where: { userId: learner.id, resourceType: 'LIVE_TRAINING', resourceId: trainingA.id } });
+    const messageCountBefore = await prisma.iakoMessage.count({ where: { conversationId: convoBefore.id } });
+
+    // An entirely unrelated new Live Training + its own separate profile/assignment.
+    const newProfile = await createProfile(admin, { name: 'Brand-new training assistant' });
+    const newTraining = await prisma.liveTraining.create({ data: {
+      title: 'A brand-new, unrelated training', description: 'x', category: 'Engineering',
+      scheduledAt: new Date('2026-10-01T12:00:00Z'), published: true, maxCapacity: 20,
+    } });
+    await request(`/admin/iako/assignments/live-training/${newTraining.id}`, admin, 'PUT', { profileId: newProfile.id, mode: 'TESTING' });
+
+    expect(await prisma.iakoRequestLog.count({ where: { usageGrantId: grantBefore.id } })).toBe(logCountBefore);
+    expect(await prisma.iakoMessage.count({ where: { conversationId: convoBefore.id } })).toBe(messageCountBefore);
+    const grantAfter = await prisma.iakoUsageGrant.findUniqueOrThrow({ where: { id: grantBefore.id } });
+    expect(grantAfter.resourceId).toBe(trainingA.id);
   });
 });
