@@ -52,6 +52,17 @@ export function guideSections(day: { sections: Prisma.JsonValue }): GuideSection
   return guideSectionSchema.array().parse(day.sections);
 }
 
+// Hides soft-archived items (GuideSection item.active === false) — used for
+// every learner-facing read (guide display, class completion metrics, "Ask
+// IAKO" context resolution) so an archived topic disappears from view
+// without ever deleting its row-level history (TrainingDayProgress,
+// IakoRequestLog). Admin/trainer reads stay on the unfiltered
+// guideSections() directly so an archived item can still be found and
+// reactivated.
+function activeGuideSections(sections: GuideSection[]): GuideSection[] {
+  return sections.map((section) => ({ ...section, items: section.items.filter((item) => item.active !== false) })).filter((section) => section.items.length > 0);
+}
+
 export async function requireTrainingGuideAccess(trainingId: string, userId: string, admin = false) {
   const training = await prisma.liveTraining.findUnique({ where: { id: trainingId } });
   if (!training || (!admin && !training.published)) throw new TrainingGuideError(404, 'Training not found.');
@@ -82,11 +93,14 @@ export async function getTrainingGuides(trainingId: string, userId: string, admi
   const days = schedule.days.filter((day) => admin || day.published && (
     settings.visibility === 'ALL_DAYS' || day.status === 'today' || settings.visibility === 'CURRENT_AND_PREVIOUS' && day.status === 'completed'
   )).map((day) => {
-    const sections = guideSections(day as TrainingDay);
+    // Admin/trainer reads keep every item (including archived ones) visible
+    // so they can be found and reactivated; a learner never sees an
+    // archived topic at all — see activeGuideSections's own comment.
+    const sections = admin ? guideSections(day as TrainingDay) : activeGuideSections(guideSections(day as TrainingDay));
     const validIds = new Set(sections.flatMap((section) => section.items.map((item) => item.id)));
     return { ...day, sections, completedItemIds: progress.filter((item) => item.dayId === day.id && validIds.has(item.itemId)).map((item) => item.itemId) };
   });
-  return { training: { id: training.id, title: training.title }, settings, currentDayNumber: schedule.currentDayNumber, days };
+  return { training: { id: training.id, title: training.title, mediaConsentFormUrl: training.mediaConsentFormUrl }, settings, currentDayNumber: schedule.currentDayNumber, days };
 }
 
 export type IakoGuideSelection = { dayId: string; sectionId?: string; itemId?: string };
@@ -142,7 +156,10 @@ export async function getGuideMetrics(trainingId: string, days: TrainingDay[]) {
     select: { dayId: true, userId: true, itemId: true },
   });
   return days.map((day) => {
-    const itemIds = guideSections(day).flatMap((section) => section.items.map((item) => item.id));
+    // Archived items no longer count toward "day completed" — see
+    // activeGuideSections's own comment; a topic an admin hid after the
+    // fact must not permanently block 100% completion for everyone.
+    const itemIds = activeGuideSections(guideSections(day)).flatMap((section) => section.items.map((item) => item.id));
     return { dayId: day.id, dayNumber: day.dayNumber, totalParticipants: participants.length,
       completedParticipants: itemIds.length === 0 ? 0 : participants.filter((participant) => {
         const completed = new Set(progress.filter((row) => row.dayId === day.id && row.userId === participant.userId).map((row) => row.itemId));

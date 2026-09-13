@@ -1,5 +1,18 @@
 import { z } from 'zod';
 
+// Opened directly by a learner in a new tab, and often carries a
+// pre-filled-response query string — stricter than the plain z.string().url()
+// used for meetingUrl/videoUrl/etc. below (https only) since this
+// specifically points at an externally-hosted Google Form, not an internal
+// resource link.
+const httpsFormUrl = z.string().trim().url().max(2000).refine((value) => {
+  // Zod's chained .refine() still runs even when the preceding .url() check
+  // already failed — without this try/catch, a malformed non-URL string
+  // reaching here would crash `new URL()` into an uncaught 500 instead of a
+  // clean 400.
+  try { return new URL(value).protocol === 'https:'; } catch { return false; }
+}, 'Use an HTTPS link.');
+
 export const liveTrainingCreateSchema = z.object({
   title: z.string().trim().min(3).max(200),
   description: z.string().trim().min(10).max(2000),
@@ -30,6 +43,9 @@ export const liveTrainingCreateSchema = z.object({
   durationMonths: z.number().int().min(1).max(60).optional().nullable(),
   scheduleDays: z.string().trim().max(200).optional().nullable(),
   trainerVideoUrl: z.string().url().optional().or(z.literal('')),
+  // Training-level (not per-day) — see LiveTraining.mediaConsentFormUrl's
+  // own schema comment.
+  mediaConsentFormUrl: httpsFormUrl.optional().or(z.literal('')),
 }).refine((data) => data.minCapacity === undefined || data.minCapacity <= data.maxCapacity, {
   message: 'minCapacity cannot exceed maxCapacity.',
   path: ['minCapacity'],
@@ -68,6 +84,7 @@ export const liveTrainingUpdateSchema = z.object({
   durationMonths: z.number().int().min(1).max(60).optional().nullable(),
   scheduleDays: z.string().trim().max(200).optional().nullable(),
   trainerVideoUrl: z.string().url().optional().or(z.literal('')),
+  mediaConsentFormUrl: httpsFormUrl.optional().or(z.literal('')),
   // Only ever AI-generated before now (services/liveTrainingSynopsisService.ts)
   // — an admin editing/polishing it is a plain field update, same posture
   // as courseSchemas.ts's lessonUpdateSchema conspectus fields.

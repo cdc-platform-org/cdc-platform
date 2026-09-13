@@ -731,6 +731,10 @@ model User {
   accessGrantsCreated           AccessGrant[]                  @relation("AccessGrantsCreated")
   liveTrainingInvitesCreated    LiveTrainingInvite[]
   liveTrainingInviteRedemptions LiveTrainingInviteRedemption[]
+  // A separate, opt-in capability layered on top of this account — see
+  // TrainerProfile's own comment for why this is deliberately NOT the
+  // Mentor role, an AdminRole tier, or the marketing TeamMember model.
+  trainerProfile                TrainerProfile?
 
   @@index([status, createdAt])
   @@map("users")
@@ -1362,6 +1366,12 @@ model LiveTraining {
   // as videoUrl above, just a distinct field so a training can show both
   // (a program promo video AND a "meet your trainer" clip) independently.
   trainerVideoUrl     String?
+  // Training-level (not per-day) Google Form link for photo/video consent —
+  // completed once for the whole cohort, unlike TrainingDay's own
+  // attendanceFormUrl/feedbackFormUrl which are per-day. CDC only stores and
+  // surfaces this URL; whether a given learner actually submitted the form
+  // is never tracked here (no Google Forms/Sheets API integration).
+  mediaConsentFormUrl String?
   // Group-viability floor — see LiveTrainingLead's registeredCount-derived
   // "min threshold met" badge on both the admin and public pages. 0 means
   // no minimum is enforced.
@@ -1430,6 +1440,10 @@ model LiveTraining {
   guideSources          TrainingGuideSource[]
   iakoProfileAssignment IakoProfileAssignment?
   invites               LiveTrainingInvite[]
+  // IAKO Trainer Tools — zero-or-more authenticated trainers explicitly
+  // assigned to run this specific cohort. See LiveTrainingTrainerAssignment's
+  // own comment; completely independent of Mentor/convertedToCourse above.
+  trainerAssignments    LiveTrainingTrainerAssignment[]
   // Final/graduation exam sessions generated for this cohort — see
   // ExamSession.liveTrainingId. Reuses the same AI question generator and
   // candidate-token link mechanism as the standalone Business exam
@@ -1507,6 +1521,61 @@ model LiveTrainingEnrollment {
   @@unique([userId, liveTrainingId])
   @@index([liveTrainingId])
   @@map("live_training_enrollments")
+}
+
+// ============================================================
+// IAKO TRAINER TOOLS — Phase 1 foundation.
+//
+// A Trainer is a capability layered on top of an existing User account —
+// deliberately NOT the Mentor role (Role.Mentor is the gig-marketplace/
+// course-instructor concept and stays completely unchanged), NOT an
+// AdminRole tier (a Trainer must never gain admin-panel access), and NOT
+// the marketing TeamMember model (the public /trainers bio listing, which
+// has no login/userId at all — see TeamMember's own comment). This lets one
+// real account be a Student, a Mentor AND a Trainer at once with no schema
+// conflict, and lets a Trainer be assigned to (or removed from) individual
+// Live Trainings without ever touching Role or AdminRole.
+// ============================================================
+
+// 1:1 with User — deliberately minimal (no name/email/bio duplication of
+// fields User already has). `active` is the admin on/off switch: disabling
+// a TrainerProfile immediately revokes every authorization check below
+// without deleting assignment history, same "soft toggle, keep the audit
+// trail" posture as User.isBanned.
+model TrainerProfile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignments LiveTrainingTrainerAssignment[]
+
+  @@map("trainer_profiles")
+}
+
+// The join model that lets one-or-more TrainerProfiles run a given
+// LiveTraining, and one TrainerProfile run one-or-more LiveTrainings, without
+// ever adding a single `trainerId` column to LiveTraining itself (which
+// would have hard-capped it at one trainer per cohort). The unique
+// constraint is what prevents assigning the same trainer to the same
+// training twice; the two independent indexes are what keep both "all of
+// this trainer's trainings" (their dashboard) and "all trainers on this
+// training" (the admin panel) cheap lookups.
+model LiveTrainingTrainerAssignment {
+  id               String         @id @default(uuid())
+  trainerProfileId String
+  trainerProfile   TrainerProfile @relation(fields: [trainerProfileId], references: [id], onDelete: Cascade)
+  liveTrainingId   String
+  liveTraining     LiveTraining   @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  assignedById     String?
+  createdAt        DateTime       @default(now())
+
+  @@unique([trainerProfileId, liveTrainingId])
+  @@index([trainerProfileId])
+  @@index([liveTrainingId])
+  @@map("live_training_trainer_assignments")
 }
 
 // ============================================================
@@ -1819,7 +1888,7 @@ model VerifiedSkill {
 // Course.originalPrice/BogPayment.amount elsewhere — not Float, to avoid
 // floating-point rounding on money.
 model DigitalProduct {
-  id                 String             @id @default(uuid())
+  id                 String               @id @default(uuid())
   title              String
   // Auto-translated by Gemini at create/update time whenever left blank
   // (see aiTranslateService.ts's translateTitleAndDescription, wired into
@@ -1854,7 +1923,7 @@ model DigitalProduct {
   // main cover) in the /store/[id] gallery/carousel — same array-of-URLs
   // pattern as StudioCaseStudy.galleryImages. Capped at 4 in the Zod schemas
   // (products.ts/adminProducts.ts), not here.
-  previewImages      String[]           @default([])
+  previewImages      String[]             @default([])
   // Optional demo/preview clip shown on /store/[id] alongside the gallery —
   // either an uploaded MP4/MOV (plain public Bunny CDN URL, same convention
   // as imageUrl/previewImages, capped at 50MB by videoUpload in
@@ -1888,21 +1957,21 @@ model DigitalProduct {
   // keep a plain URL, returned as-is — same protection level those had
   // before this existed, not a regression.
   fileUrl            String
-  downloadsCount     Int                @default(0)
+  downloadsCount     Int                  @default(0)
   // Denormalized rollup of ProductPurchase rows that reached COMPLETED —
   // same "avoid an aggregate query on every list read" posture as
   // User.averageRating/reviewCount elsewhere in this schema. Incremented
   // exactly once per genuine new completion (productSaleService.ts's
   // completeProductPurchase and products.ts's free /:id/claim), never on a
   // retry of an already-COMPLETED purchase.
-  salesCount         Int                @default(0)
-  createdAt          DateTime           @default(now())
+  salesCount         Int                  @default(0)
+  createdAt          DateTime             @default(now())
   purchases          ProductPurchase[]
   // Usage terms attached to this listing — snapshotted onto ProductPurchase
   // at fulfillment time (see productSaleService.ts). Defaults to the most
   // restrictive option so an admin/submitter has to deliberately opt into a
   // broader license rather than one being granted by omission.
-  licenseType        ProductLicenseType @default(PERSONAL_USE)
+  licenseType        ProductLicenseType   @default(PERSONAL_USE)
   // "PENDING" | "APPROVED" | "REJECTED" | "NEEDS_REVISION" — admin-created
   // products (see adminProducts.ts) are inserted as APPROVED directly;
   // graduate/verified-freelancer submissions (products.ts's POST /) start
@@ -1910,7 +1979,7 @@ model DigitalProduct {
   // productModerationService's AI review is confident enough — see
   // aiReview* fields below) and only show up in the public catalog once
   // APPROVED.
-  status             String             @default("PENDING")
+  status             String               @default("PENDING")
   rejectionReason    String?
   // AI moderation (services/productModerationService.ts), run once at
   // submission/resubmission time — never re-run automatically afterward, so
@@ -1925,13 +1994,18 @@ model DigitalProduct {
   aiReviewReasoning  String?
   aiReviewedAt       DateTime?
   submittedById      String?
-  submittedBy        User?              @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
+  submittedBy        User?                @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
   launchKits         LaunchKit[]
   // Denormalized rollup of `reviews` (ProductReview), same pattern as
   // User.averageRating/reviewCount — recomputed on every review create/delete.
   averageRating      Float?
-  reviewCount        Int                @default(0)
+  reviewCount        Int                  @default(0)
   reviews            ProductReview[]
+  // Files beyond the single required `fileUrl` above (bonus PDFs,
+  // instructions, a separate workbook, ...) — see DigitalProductFile's own
+  // comment for why this is purely additive rather than a replacement for
+  // `fileUrl`.
+  additionalFiles    DigitalProductFile[]
 
   // The public storefront (GET /products) filters status+category together,
   // and the admin dashboard's pending-review badge counts status alone on
@@ -1939,6 +2013,48 @@ model DigitalProduct {
   // full-table scan on both.
   @@index([status, category])
   @@map("digital_products")
+}
+
+// A product's ADDITIONAL downloadable files, beyond the one every product
+// already has via DigitalProduct.fileUrl. Deliberately additive rather than
+// a replacement/migration of that column: fileUrl stays the always-present
+// "main" file (required, never absent — so a product can never end up with
+// zero files), and every existing single-file product needs no backfill at
+// all here — it simply has zero rows in this table until an admin adds one,
+// same "old rows stay valid with the new architecture layered on top" shape
+// as IakoUsageGrant's processingToken addition earlier this branch.
+// ProductPurchase references a product only by ID (see its own comment on
+// licenseType being the only snapshotted field) — access is resolved fresh
+// on every download, so replacing/adding/removing a file here immediately
+// applies to every existing buyer, exactly like fileUrl always has.
+model DigitalProductFile {
+  id          String         @id @default(uuid())
+  productId   String
+  product     DigitalProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  // Admin-editable label shown to buyers (e.g. "Bonus Templates") — defaults
+  // to fileName at upload time but can be renamed independently of it.
+  displayName String
+  // The original uploaded filename — never shown as a download URL (see
+  // fileUrl below), just for the admin/buyer UI to show something real.
+  fileName    String
+  // Same `cdcblob://<blobName>` marker scheme as DigitalProduct.fileUrl —
+  // see productFileDelivery.ts's uploadProductFile/resolveProductFileDeliveryUrl,
+  // both already generic over any file, not specific to the "main" one.
+  fileUrl     String
+  mimeType    String?
+  sizeBytes   Int?
+  // Admin-controlled display order in the buyer-facing file list — see
+  // adminProducts.ts's POST /:id/files/reorder.
+  sortOrder   Int            @default(0)
+  // Soft-disable without deleting — download routes always filter on this,
+  // so a file that's hidden (or mid-replacement) can never be fetched even
+  // if some other check were ever missed.
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([productId, sortOrder])
+  @@map("digital_product_files")
 }
 
 // ============================================================
@@ -2158,6 +2274,14 @@ model TrainingDay {
   // Validated section/item objects: content is never an opaque text blob.
   sections       Json
   sourcePages    Int[]                 @default([])
+  // Per-day Google Form links — the SAME attendance form is normally reused
+  // for every day of a training via Google Forms' own pre-filled-link
+  // feature (one query param preselects the day), so this is just this
+  // day's specific URL, not a distinct form. Null hides the learner's
+  // button entirely; see TrainingDayContent/guide.tsx. Training-wide media
+  // consent lives on LiveTraining.mediaConsentFormUrl instead — not here.
+  attendanceFormUrl String?
+  feedbackFormUrl   String?
   progress       TrainingDayProgress[]
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
@@ -2255,6 +2379,18 @@ model IakoAssistantProfile {
   @@map("iako_assistant_profiles")
 }
 
+// TESTING restricts a LIVE_TRAINING assignment to SUPER_ADMIN/MANAGER
+// learners only (still subject to the same enrollment requirement) so an
+// admin can dogfood a brand-new training's IAKO through the real learner
+// path before exposing it to the cohort. LIVE is the normal, unrestricted
+// enrollment-gated behavior every assignment had before this field existed.
+// Digital Tool assignments ignore this field entirely — see
+// iakoAssistantService.ts's assertResourceAccess/listMyIakoAssistants.
+enum IakoAssignmentMode {
+  TESTING
+  LIVE
+}
+
 // Which concrete resource a profile is currently wired to. A LEFT join
 // table rather than a direct FK on the resource itself (LiveTraining etc.)
 // so the same profile can be reused across many resources, and so a new
@@ -2270,6 +2406,43 @@ model IakoProfileAssignment {
   // "educator-hub") — Digital Tools are page routes, not a DB table, so
   // this is a plain string, not a foreign key.
   digitalToolKey String?              @unique
+  // Defaults to LIVE (not TESTING) so every assignment that predates this
+  // field, and any write that doesn't explicitly set it (e.g. the Daily
+  // Guides assign call), keeps its exact current real-world behavior — only
+  // the Live Training admin UI's create/edit flow defaults new assignments
+  // to TESTING, and only at the API-call level, never here.
+  mode           IakoAssignmentMode   @default(LIVE)
+  // ============================================================
+  // Controlled auto-top-up — a one-time (per grant), capped extension of
+  // the TOTAL request ceiling (e.g. 200 -> 400, never further), scoped to
+  // THIS assignment only so enabling it for one Live Training never
+  // silently changes every IAKO assistant platform-wide. All null/default
+  // (disabled) for every assignment that predates this feature, and for any
+  // write that doesn't explicitly set them — same "existing behavior never
+  // regresses" posture as `mode` above. Every other quota dimension
+  // (daily/hourly/screenshot/per-message) is deliberately NOT duplicated
+  // here — those keep coming from the assigned IakoAssistantProfile's own
+  // default* fields, exactly as before; see iakoUsageGrantService.ts.
+  // ============================================================
+  // Overrides IakoAssistantProfile.defaultRequestLimit as the STARTING
+  // total for a grant created under this assignment. Null = use the
+  // profile's own default, unchanged from today.
+  initialRequestLimit Int?
+  autoTopUpEnabled    Boolean              @default(false)
+  // Amount added to a grant's requestLimit by exactly one automatic top-up
+  // — see maxAutoTopUps for how many times this can happen per grant.
+  autoTopUpAmount     Int?
+  // How many automatic top-ups a single learner's grant may ever receive
+  // under this assignment. 0 (the default) means auto-top-up never fires
+  // even if autoTopUpEnabled is somehow true — maxAutoTopUps is the real
+  // hard stop, not just autoTopUpEnabled.
+  maxAutoTopUps       Int                  @default(0)
+  // The hard ceiling a grant's requestLimit can never automatically exceed
+  // under this assignment, regardless of amount * maxAutoTopUps math —
+  // see iakoUsageGrantService.ts's applyAutoTopUpIfEligible, which always
+  // clamps to this value. Null = auto-top-up cannot apply (no ceiling to
+  // clamp to), same effective behavior as autoTopUpEnabled: false.
+  maxAutoTotal        Int?
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 
@@ -2373,6 +2546,11 @@ model IakoUsageGrant {
   hourlyRequestLimit       Int?
   screenshotLimit          Int?
   maxScreenshotsPerMessage Int                  @default(3)
+  // How many of this assignment's maxAutoTopUps this specific grant has
+  // already consumed — see IakoProfileAssignment.maxAutoTopUps and
+  // iakoUsageGrantService.ts's applyAutoTopUpIfEligible, the only writer.
+  // Per-grant (per learner), never shared across learners or trainings.
+  autoTopUpsApplied        Int                  @default(0)
   startsAt                 DateTime?
   expiresAt                DateTime?
   revokedAt                DateTime?
@@ -2495,26 +2673,26 @@ enum LiveTrainingInviteRequestStatus {
 }
 
 model LiveTrainingInvite {
-  id              String       @id @default(uuid())
-  liveTrainingId  String
-  liveTraining    LiveTraining @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  id               String                   @id @default(uuid())
+  liveTrainingId   String
+  liveTraining     LiveTraining             @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
   // Opaque, random, URL-safe — see liveTrainingInviteService.ts's
   // generateInviteToken. Not a sequential/guessable id: this token is the
   // entire access control for redemption.
-  token           String       @unique
+  token            String                   @unique
   // Optional restriction to one address — set for a personal invite sent
   // to a specific lead; null for a generic reusable QR poster/link.
-  email           String?
-  policy          LiveTrainingInvitePolicy @default(PAYMENT_REQUIRED)
-  requiresApproval Boolean @default(false)
-  startsAt        DateTime?
-  maxRedemptions  Int          @default(1)
-  redemptionCount Int          @default(0)
-  expiresAt       DateTime?
-  createdById     String
-  createdBy       User         @relation(fields: [createdById], references: [id])
-  revokedAt       DateTime?
-  createdAt       DateTime     @default(now())
+  email            String?
+  policy           LiveTrainingInvitePolicy @default(PAYMENT_REQUIRED)
+  requiresApproval Boolean                  @default(false)
+  startsAt         DateTime?
+  maxRedemptions   Int                      @default(1)
+  redemptionCount  Int                      @default(0)
+  expiresAt        DateTime?
+  createdById      String
+  createdBy        User                     @relation(fields: [createdById], references: [id])
+  revokedAt        DateTime?
+  createdAt        DateTime                 @default(now())
 
   redemptions LiveTrainingInviteRedemption[]
 
@@ -2523,13 +2701,13 @@ model LiveTrainingInvite {
 }
 
 model LiveTrainingInviteRedemption {
-  id         String             @id @default(uuid())
+  id         String                          @id @default(uuid())
   inviteId   String
-  invite     LiveTrainingInvite @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+  invite     LiveTrainingInvite              @relation(fields: [inviteId], references: [id], onDelete: Cascade)
   userId     String
-  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User                            @relation(fields: [userId], references: [id], onDelete: Cascade)
   status     LiveTrainingInviteRequestStatus @default(ACTIVE)
-  redeemedAt DateTime           @default(now())
+  redeemedAt DateTime                        @default(now())
 
   @@unique([inviteId, userId])
   @@map("live_training_invite_redemptions")

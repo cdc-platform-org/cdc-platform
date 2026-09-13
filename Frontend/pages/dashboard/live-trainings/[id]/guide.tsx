@@ -8,8 +8,8 @@ import TrainingDayContent from '@/src/components/training-guides/TrainingDayCont
 import { getLearnerGuide, GuideSection, LearnerGuide, TrainingDay, updateGuideProgress } from '@/src/services/trainingGuideService';
 
 const copy = {
-  ka: { title: 'დღევანდელი გზამკვლევი', day: 'დღე', view: 'დღევანდელი გზამკვლევის ნახვა', ask: 'ჰკითხე IAKO-ს', progress: 'ჩემი პროგრესი', today: 'დღეს', completed: 'გავლილი', upcoming: 'წინ არის', loading: 'იტვირთება…', empty: 'გზამკვლევი ჯერ არ გამოქვეყნებულა. მოგვიანებით დაბრუნდით.', noToday: 'დღეს ახალი სასწავლო დღე არ არის. შეგიძლია უკვე გახსნილი მასალა გაიმეორო.', loadError: 'გზამკვლევი ვერ ჩაიტვირთა. შეამოწმეთ ტრენინგზე წვდომა და სცადეთ თავიდან.', retry: 'ხელახლა ცდა', paused: 'განრიგი შეჩერებულია', timezone: 'ტრენინგის დროის სარტყელი', of: 'დასრულებულია', progressHelp: 'შენი პირადი პროგრესი — მონიშვნები სასწავლო პროგრამას არ ცვლის.', progressError: 'პროგრესი ვერ შეინახა. სცადეთ თავიდან.', exercise: 'დღის პრაქტიკული დავალება', objectives: 'დღეს ვისწავლით', guide: 'სრული გზამკვლევი', date: 'თარიღი', askAboutDay: (n: number) => `ჰკითხე IAKO-ს დღე ${n}-ზე` },
-  en: { title: "Today's guide", day: 'Day', view: "Open today's guide", ask: 'Ask IAKO', progress: 'My progress', today: 'Today', completed: 'Previous', upcoming: 'Upcoming', loading: 'Loading…', empty: 'Your guide has not been published yet. Please check back later.', noToday: 'There is no new training day today. You can revisit the available material.', loadError: 'Could not load the guide. Check your training access and try again.', retry: 'Try again', paused: 'Schedule paused', timezone: 'Training time zone', of: 'completed', progressHelp: 'Your personal progress — checkmarks do not change the syllabus.', progressError: 'Could not save progress. Please try again.', exercise: 'Practical exercise', objectives: 'Today we will learn', guide: 'Full guide', date: 'Date', askAboutDay: (n: number) => `Ask IAKO about Day ${n}` },
+  ka: { title: 'დღევანდელი გზამკვლევი', day: 'დღე', view: 'დღევანდელი გზამკვლევის ნახვა', ask: 'ჰკითხე IAKO-ს', progress: 'ჩემი პროგრესი', today: 'დღეს', completed: 'გავლილი', upcoming: 'წინ არის', loading: 'იტვირთება…', empty: 'გზამკვლევი ჯერ არ გამოქვეყნებულა. მოგვიანებით დაბრუნდით.', noToday: 'დღეს ახალი სასწავლო დღე არ არის. შეგიძლია უკვე გახსნილი მასალა გაიმეორო.', loadError: 'გზამკვლევი ვერ ჩაიტვირთა. შეამოწმეთ ტრენინგზე წვდომა და სცადეთ თავიდან.', retry: 'ხელახლა ცდა', paused: 'განრიგი შეჩერებულია', timezone: 'ტრენინგის დროის სარტყელი', of: 'დასრულებულია', progressHelp: 'შენი პირადი პროგრესი — მონიშვნები სასწავლო პროგრამას არ ცვლის.', progressError: 'პროგრესი ვერ შეინახა. სცადეთ თავიდან.', exercise: 'დღის პრაქტიკული დავალება', objectives: 'დღეს ვისწავლით', guide: 'სრული გზამკვლევი', date: 'თარიღი', askAboutDay: (n: number) => `ჰკითხე IAKO-ს დღე ${n}-ზე`, attendance: '✅ დასწრების დაფიქსირება', feedback: '⭐ დღის შეფასება', mediaConsent: '📷 ფოტო/ვიდეო თანხმობა' },
+  en: { title: "Today's guide", day: 'Day', view: "Open today's guide", ask: 'Ask IAKO', progress: 'My progress', today: 'Today', completed: 'Previous', upcoming: 'Upcoming', loading: 'Loading…', empty: 'Your guide has not been published yet. Please check back later.', noToday: 'There is no new training day today. You can revisit the available material.', loadError: 'Could not load the guide. Check your training access and try again.', retry: 'Try again', paused: 'Schedule paused', timezone: 'Training time zone', of: 'completed', progressHelp: 'Your personal progress — checkmarks do not change the syllabus.', progressError: 'Could not save progress. Please try again.', exercise: 'Practical exercise', objectives: 'Today we will learn', guide: 'Full guide', date: 'Date', askAboutDay: (n: number) => `Ask IAKO about Day ${n}`, attendance: '✅ Mark attendance', feedback: '⭐ Rate today', mediaConsent: '📷 Photo/video consent' },
 };
 
 function DailyGuideContent() {
@@ -63,7 +63,18 @@ function DailyGuideContent() {
       <Link href={`/dashboard/live-trainings/${id}/iako`} className="text-sm text-cyan-700 dark:text-cyan-300">← IAKO</Link>
       <div className="my-6"><p className="text-sm font-bold text-cyan-600 dark:text-cyan-400">IAKO · {guide?.training.title}</p><h1 className="text-3xl sm:text-4xl font-black mt-2">{t.title}</h1></div>
       {loading ? <p role="status">{t.loading}</p> : failed ? <div role="alert" className="rounded-2xl border border-red-200 p-6"><p>{t.loadError}</p><button type="button" onClick={() => void load()} className="mt-3 underline">{t.retry}</button></div> : guide && <>
-        <div className="flex flex-wrap gap-3 text-xs text-slate-500 dark:text-slate-400 mb-5"><span>{t.timezone}: {guide.settings.timeZone}</span>{guide.settings.paused && <span className="font-bold text-amber-600">{t.paused}</span>}</div>
+        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mb-5">
+          <span>{t.timezone}: {guide.settings.timeZone}</span>
+          {guide.settings.paused && <span className="font-bold text-amber-600">{t.paused}</span>}
+          {/* Training-level (not per-day) — completed once for the whole
+              cohort. CDC only provides the link; it never knows whether the
+              learner actually submitted it. */}
+          {guide.training.mediaConsentFormUrl && (
+            <a href={guide.training.mediaConsentFormUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 font-bold text-slate-700 dark:text-slate-200 no-underline hover:bg-slate-100 dark:hover:bg-slate-800">
+              {t.mediaConsent}
+            </a>
+          )}
+        </div>
         <section aria-label={t.title} className="rounded-3xl bg-gradient-to-br from-cyan-950 to-slate-900 text-white p-6 sm:p-8 mb-7">
           {today ? <>
             <p className="text-cyan-300 font-bold text-sm">{t.day} {today.dayNumber} · {t.today}</p><h2 className="text-2xl sm:text-3xl font-black mt-2">{today.title}</h2>
@@ -92,6 +103,22 @@ function DailyGuideContent() {
               <div><h2 className="text-2xl font-black">{t.day} {selectedDay.dayNumber}: {selectedDay.title}</h2>{selectedDay.scheduledDate && <p className="mt-2 text-xs text-slate-500">{t.date}: {selectedDay.scheduledDate.slice(0, 10)}</p>}<p className="mt-3 leading-7 text-slate-600 dark:text-slate-300">{selectedDay.summary}</p></div>
               <button type="button" onClick={() => askIako(selectedDay)} className="shrink-0 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-bold">{t.askAboutDay(selectedDay.dayNumber)}</button>
             </div>
+            {/* Per-day — each day stores (and can reuse via a Google Forms
+                pre-filled link) its own URL, independent of every other day. */}
+            {(selectedDay.attendanceFormUrl || selectedDay.feedbackFormUrl) && (
+              <div className="flex flex-wrap gap-3 mb-5">
+                {selectedDay.attendanceFormUrl && (
+                  <a href={selectedDay.attendanceFormUrl} target="_blank" rel="noopener noreferrer" className="rounded-xl bg-emerald-600 text-white px-4 py-2.5 text-sm font-bold no-underline hover:bg-emerald-700">
+                    {t.attendance}
+                  </a>
+                )}
+                {selectedDay.feedbackFormUrl && (
+                  <a href={selectedDay.feedbackFormUrl} target="_blank" rel="noopener noreferrer" className="rounded-xl border border-amber-400 text-amber-700 dark:text-amber-300 px-4 py-2.5 text-sm font-bold no-underline hover:bg-amber-50 dark:hover:bg-amber-950/30">
+                    {t.feedback}
+                  </a>
+                )}
+              </div>
+            )}
             <TrainingDayContent day={selectedDay} lang={lang} completedItemIds={selectedDay.completedItemIds} busyItemIds={busyItems} onToggle={(itemId, completed) => void toggleProgress(selectedDay, itemId, completed)} onAsk={(section) => askIako(selectedDay, section)} />
           </>}
         </div>

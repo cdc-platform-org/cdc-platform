@@ -2,7 +2,11 @@ import apiClient from './apiClient';
 
 export type GuideSectionKind = 'objectives' | 'topics' | 'tools' | 'concepts' | 'demo' | 'exercise' | 'outcome' | 'prompts' | 'code' | 'troubleshooting' | 'homework' | 'preview' | 'resources';
 export type GuideVisibility = 'TODAY_ONLY' | 'CURRENT_AND_PREVIOUS' | 'ALL_DAYS';
-export interface GuideItem { id: string; title: string; body: string; language?: string; url?: string }
+// active defaults to true server-side when omitted — an item that predates
+// this field, or a write that doesn't send it, keeps showing exactly as
+// before. false = soft-hidden: filtered out of every learner-facing read,
+// but never deleted (see Backend's activeGuideSections).
+export interface GuideItem { id: string; title: string; body: string; language?: string; url?: string; active?: boolean }
 export interface GuideSection { id: string; kind: GuideSectionKind; title: string; items: GuideItem[] }
 export interface TrainingDay {
   id: string;
@@ -15,6 +19,11 @@ export interface TrainingDay {
   sections: GuideSection[];
   status: 'upcoming' | 'today' | 'completed';
   completedItemIds: string[];
+  // Google Form links — same form reused across every day of a training via
+  // Google Forms' own pre-filled-link feature; each day still stores its
+  // own URL independently. Null hides the learner's button for that form.
+  attendanceFormUrl: string | null;
+  feedbackFormUrl: string | null;
 }
 export type TrainingDayInput = Omit<TrainingDay, 'id' | 'status' | 'completedItemIds'>;
 export interface GuideSettings {
@@ -25,7 +34,9 @@ export interface GuideSettings {
   visibility: GuideVisibility;
 }
 export interface LearnerGuide {
-  training: { id: string; title: string };
+  // mediaConsentFormUrl is training-level (not per-day) — completed once
+  // for the whole cohort, unlike attendanceFormUrl/feedbackFormUrl above.
+  training: { id: string; title: string; mediaConsentFormUrl: string | null };
   settings: GuideSettings;
   currentDayNumber: number | null;
   days: TrainingDay[];
@@ -61,7 +72,14 @@ export async function saveGuideSettings(trainingId: string, settings: GuideSetti
   await apiClient.patch(`${adminPath(trainingId)}/settings`, settings);
 }
 export async function saveGuideDay(trainingId: string, day: TrainingDayInput, dayId?: string): Promise<void> {
-  const payload = { ...day, sections: day.sections.map((section) => ({ ...section, items: section.items.map(({ url, ...item }) => ({ ...item, ...(url?.trim() ? { url: url.trim() } : {}) })) })) };
+  const payload = {
+    ...day,
+    // Backend's httpsFormUrl accepts a real https:// link or null — never
+    // an empty string, which a plain cleared text input naturally produces.
+    attendanceFormUrl: day.attendanceFormUrl?.trim() || null,
+    feedbackFormUrl: day.feedbackFormUrl?.trim() || null,
+    sections: day.sections.map((section) => ({ ...section, items: section.items.map(({ url, ...item }) => ({ ...item, ...(url?.trim() ? { url: url.trim() } : {}) })) })),
+  };
   if (dayId) await apiClient.put(`${adminPath(trainingId)}/days/${encodeURIComponent(dayId)}`, payload);
   else await apiClient.post(`${adminPath(trainingId)}/days`, payload);
 }
@@ -77,5 +95,9 @@ export async function saveGuideSource(trainingId: string, source: { title: strin
 }
 
 export function guideDayInput(day: TrainingDay): TrainingDayInput {
-  return { dayNumber: day.dayNumber, title: day.title, summary: day.summary, scheduledDate: day.scheduledDate?.slice(0, 10) || null, published: day.published, sourcePages: day.sourcePages ?? [], sections: day.sections };
+  return {
+    dayNumber: day.dayNumber, title: day.title, summary: day.summary, scheduledDate: day.scheduledDate?.slice(0, 10) || null,
+    published: day.published, sourcePages: day.sourcePages ?? [], sections: day.sections,
+    attendanceFormUrl: day.attendanceFormUrl ?? null, feedbackFormUrl: day.feedbackFormUrl ?? null,
+  };
 }

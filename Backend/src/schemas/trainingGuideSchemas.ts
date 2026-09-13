@@ -5,7 +5,25 @@ export const calendarDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((valu
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }, 'Enter a valid calendar date.');
 const identifier = z.string().min(1).max(100).regex(/^[a-zA-Z0-9_-]+$/);
-const safeUrl = z.string().url().max(2000).refine((value) => ['http:', 'https:'].includes(new URL(value).protocol), 'Use an HTTP or HTTPS link.');
+// try/catch: Zod's chained .refine() still runs even when the preceding
+// .url() check already failed (it doesn't short-circuit on a "dirty"
+// status) — without it, a malformed non-URL string reaching here would
+// crash `new URL()` into an uncaught 500 instead of a clean 400.
+const safeUrl = z.string().url().max(2000).refine((value) => {
+  try { return ['http:', 'https:'].includes(new URL(value).protocol); } catch { return false; }
+}, 'Use an HTTP or HTTPS link.');
+// Google Forms links (attendance/feedback/media-consent) are opened
+// directly by learners in a new tab and often carry a pre-filled-response
+// query string — stricter than safeUrl above (https only, no bare http)
+// since these specifically point at an externally-hosted data-collection
+// form, not an internal resource link.
+export const httpsFormUrl = z.string().trim().url().max(2000).refine((value) => {
+  // Zod's chained .refine() still runs even when the preceding .url() check
+  // already failed (it doesn't short-circuit on a "dirty" status) — without
+  // this try/catch, a malformed non-URL string reaching here would crash
+  // `new URL()` and turn into an uncaught 500 instead of a clean 400.
+  try { return new URL(value).protocol === 'https:'; } catch { return false; }
+}, 'Use an HTTPS link.');
 export const guideSectionSchema = z.object({
   id: identifier,
   kind: z.enum(['objectives', 'topics', 'tools', 'concepts', 'demo', 'exercise', 'outcome', 'prompts', 'code', 'troubleshooting', 'homework', 'preview', 'resources']),
@@ -13,6 +31,14 @@ export const guideSectionSchema = z.object({
   items: z.array(z.object({
     id: identifier, title: z.string().trim().min(1).max(200), body: z.string().max(12000),
     language: z.string().max(40).optional(), url: safeUrl.optional(),
+    // Soft hide/archive — an inactive item is never removed from storage
+    // (so TrainingDayProgress/IakoRequestLog history referencing its id
+    // stays intact) but is filtered out of the learner-facing guide (see
+    // trainingGuideService.ts's getTrainingGuides) and excluded from class
+    // completion metrics. Defaults true so every item that predates this
+    // field, and any write that doesn't explicitly set it, keeps showing
+    // exactly as before.
+    active: z.boolean().optional().default(true),
   })).max(40),
 });
 export const trainingDaySchema = z.object({
@@ -20,6 +46,11 @@ export const trainingDaySchema = z.object({
   summary: z.string().trim().max(2000), scheduledDate: calendarDate.nullable().optional().default(null),
   published: z.boolean().optional().default(false), sourcePages: z.array(z.number().int().min(1).max(10000)).max(100).default([]),
   sections: z.array(guideSectionSchema).max(20),
+  // Per-day Google Form links — see TrainingDay.attendanceFormUrl/
+  // feedbackFormUrl's own schema comment. Null/omitted hides the learner's
+  // button for that form entirely.
+  attendanceFormUrl: httpsFormUrl.nullable().optional().default(null),
+  feedbackFormUrl: httpsFormUrl.nullable().optional().default(null),
 }).superRefine((day, ctx) => {
   const sections = day.sections.map((section) => section.id);
   const items = day.sections.flatMap((section) => section.items.map((item) => item.id));

@@ -6,17 +6,17 @@ import AdminGuard from '@/src/components/admin/AdminGuard';
 import AdminLayout from '@/src/components/admin/AdminLayout';
 import TrainingDayContent, { guideSectionLabels } from '@/src/components/training-guides/TrainingDayContent';
 import { AdminGuide, getAdminGuide, GuideSection, GuideSectionKind, GuideSettings, GuideSource, GuideVisibility, guideDayInput, importVibeCodingGuide, reorderGuideDays, saveGuideDay, saveGuideSettings, saveGuideSource, TrainingDay, TrainingDayInput } from '@/src/services/trainingGuideService';
-import { IakoProfile, assignIakoProfile, listIakoProfiles } from '@/src/services/iakoAssistantService';
+import { IakoAssignmentMode, IakoProfile, assignIakoProfile, listIakoProfiles } from '@/src/services/iakoAssistantService';
 
 const inputClass = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-cyan-500';
 const buttonClass = 'rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50';
 const primaryClass = 'rounded-xl bg-cyan-700 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50';
 const copy = {
-  ka: { title: 'IAKO — ყოველდღიური გზამკვლევები', back: 'ლაივ ტრენინგების მართვა', intro: 'შექმენი სტრუქტურირებული სასწავლო დღეები და მართე მონაწილეებისთვის ხილული მასალა.', schedule: 'განრიგი და წვდომა', timezone: 'დროის სარტყელი', start: 'საწყისი თარიღი', current: 'მიმდინარე დღის არჩევა', automatic: 'ავტომატურად, განრიგით', paused: 'განრიგის შეჩერება', visibility: 'გზამკვლევის ხილვადობა', TODAY_ONLY: 'მხოლოდ დღეს', CURRENT_AND_PREVIOUS: 'დღეს და წინა დღეები', ALL_DAYS: 'ყველა დღე', saveSettings: 'პარამეტრების შენახვა', days: 'სასწავლო დღეები', create: 'დღის დამატება', import: 'Vibe Coding-ის 10 დღის იმპორტი', importHelp: 'ოფიციალური პროგრამის იმპორტი შესაძლებელია მხოლოდ ცარიელ გზამკვლევში.', day: 'დღე', published: 'გამოქვეყნებული', draft: 'მონახაზი', edit: 'რედაქტირება', moveUp: 'ზემოთ გადატანა', moveDown: 'ქვემოთ გადატანა', publish: 'გამოქვეყნება', unpublish: 'გამოქვეყნების გაუქმება', editor: 'დღის რედაქტორი', number: 'დღის ნომერი', dayTitle: 'დღის სათაური', date: 'თარიღი (არასავალდებულო)', summary: 'მოკლე შეჯამება', sourcePages: 'წყაროს გვერდები (მძიმით გამოყოფილი)', publishedLabel: 'გამოქვეყნდეს მონაწილეებისთვის', sections: 'გზამკვლევის სექციები', addSection: 'სექციის დამატება', sectionType: 'სექციის ტიპი', sectionTitle: 'სექციის სათაური', removeSection: 'სექციის წაშლა', addItem: 'პუნქტის დამატება', itemTitle: 'პუნქტის სათაური', itemBody: 'აღწერა / ინსტრუქცია', language: 'კოდის ენა', url: 'რესურსის ბმული', removeItem: 'პუნქტის წაშლა', saveDay: 'დღის შენახვა', preview: 'მონაწილის ხედვის ნახვა', closePreview: 'რედაქტორზე დაბრუნება', previewNote: 'გადახედვა — პირადი პროგრესი და ჩატი აქ არ ინახება.', cancel: 'გაუქმება', metrics: 'ჯგუფის პროგრესი', metricsHelp: 'ჯამური პროგრესი დღის ყველა პუნქტის მიხედვით. პირადი ჩატები აქ არ ჩანს.', completed: 'მონაწილემ დაასრულა', sources: 'ცოდნის ბაზა — წყაროები', sourcesHelp: 'საწყისი და საცნობარო მასალა. წყაროს ცვლილება დღის გზამკვლევს ავტომატურად არ ცვლის.', sourceTitle: 'წყაროს სათაური', sourceContent: 'წყაროს ტექსტი', newSource: 'წყაროს დამატება', saveSource: 'წყაროს შენახვა', loading: 'იტვირთება…', saved: 'ცვლილებები შენახულია.', failed: 'ცვლილება ვერ შესრულდა. შეამოწმეთ მონაცემები და სცადეთ თავიდან.', loadFailed: 'გზამკვლევების ჩატვირთვა ვერ მოხერხდა.', retry: 'ხელახლა ცდა', noDays: 'სასწავლო დღეები ჯერ არ არის.', noSources: 'წყარო ჯერ არ არის დამატებული.', noMetrics: 'გამოქვეყნებული დღეების პროგრესი აქ გამოჩნდება.', invalidTimezone: 'მიუთითეთ სწორი დროის სარტყელი, მაგალითად Asia/Tbilisi.', sourceHint: 'მიუთითეთ მხოლოდ ოფიციალურ წყაროში არსებული გვერდები.', saving: 'ინახება…' },
-  en: { title: 'IAKO — Daily Guides', back: 'Manage live trainings', intro: 'Create structured training days and control the material available to participants.', schedule: 'Schedule and access', timezone: 'Time zone', start: 'Start date', current: 'Current day', automatic: 'Automatic, from schedule', paused: 'Pause schedule', visibility: 'Guide visibility', TODAY_ONLY: 'Today only', CURRENT_AND_PREVIOUS: 'Current and previous days', ALL_DAYS: 'All days', saveSettings: 'Save settings', days: 'Training days', create: 'Add day', import: 'Import 10-day Vibe Coding guide', importHelp: 'The official syllabus can be imported only into an empty guide.', day: 'Day', published: 'Published', draft: 'Draft', edit: 'Edit', moveUp: 'Move up', moveDown: 'Move down', publish: 'Publish', unpublish: 'Unpublish', editor: 'Day editor', number: 'Day number', dayTitle: 'Day title', date: 'Date (optional)', summary: 'Short summary', sourcePages: 'Source pages (comma-separated)', publishedLabel: 'Publish to participants', sections: 'Guide sections', addSection: 'Add section', sectionType: 'Section type', sectionTitle: 'Section title', removeSection: 'Remove section', addItem: 'Add item', itemTitle: 'Item title', itemBody: 'Description / instructions', language: 'Code language', url: 'Resource link', removeItem: 'Remove item', saveDay: 'Save day', preview: 'Preview student view', closePreview: 'Back to editor', previewNote: 'Preview — personal progress and chat are not saved here.', cancel: 'Cancel', metrics: 'Class progress', metricsHelp: 'Aggregate completion of all guide items per day. Private chats are not shown.', completed: 'participants completed', sources: 'Knowledge base — sources', sourcesHelp: 'Source and reference material. Editing a source does not automatically change the daily guide.', sourceTitle: 'Source title', sourceContent: 'Source text', newSource: 'Add source', saveSource: 'Save source', loading: 'Loading…', saved: 'Changes saved.', failed: 'Could not complete this change. Check the fields and try again.', loadFailed: 'Could not load training guides.', retry: 'Try again', noDays: 'No training days yet.', noSources: 'No sources have been added.', noMetrics: 'Published-day progress will appear here.', invalidTimezone: 'Enter a valid time zone, such as Asia/Tbilisi.', sourceHint: 'Only cite pages that exist in the official source.', saving: 'Saving…' },
+  ka: { title: 'IAKO — ყოველდღიური გზამკვლევები', back: 'ლაივ ტრენინგების მართვა', intro: 'შექმენი სტრუქტურირებული სასწავლო დღეები და მართე მონაწილეებისთვის ხილული მასალა.', schedule: 'განრიგი და წვდომა', timezone: 'დროის სარტყელი', start: 'საწყისი თარიღი', current: 'მიმდინარე დღის არჩევა', automatic: 'ავტომატურად, განრიგით', paused: 'განრიგის შეჩერება', visibility: 'გზამკვლევის ხილვადობა', TODAY_ONLY: 'მხოლოდ დღეს', CURRENT_AND_PREVIOUS: 'დღეს და წინა დღეები', ALL_DAYS: 'ყველა დღე', saveSettings: 'პარამეტრების შენახვა', days: 'სასწავლო დღეები', create: 'დღის დამატება', import: 'Vibe Coding-ის 10 დღის იმპორტი', importHelp: 'ოფიციალური პროგრამის იმპორტი შესაძლებელია მხოლოდ ცარიელ გზამკვლევში.', day: 'დღე', published: 'გამოქვეყნებული', draft: 'მონახაზი', edit: 'რედაქტირება', moveUp: 'ზემოთ გადატანა', moveDown: 'ქვემოთ გადატანა', publish: 'გამოქვეყნება', unpublish: 'გამოქვეყნების გაუქმება', editor: 'დღის რედაქტორი', number: 'დღის ნომერი', dayTitle: 'დღის სათაური', date: 'თარიღი (არასავალდებულო)', summary: 'მოკლე შეჯამება', sourcePages: 'წყაროს გვერდები (მძიმით გამოყოფილი)', publishedLabel: 'გამოქვეყნდეს მონაწილეებისთვის', sections: 'გზამკვლევის სექციები', addSection: 'სექციის დამატება', sectionType: 'სექციის ტიპი', sectionTitle: 'სექციის სათაური', removeSection: 'სექციის წაშლა', addItem: 'პუნქტის დამატება', itemTitle: 'პუნქტის სათაური', itemBody: 'აღწერა / ინსტრუქცია', language: 'კოდის ენა', url: 'რესურსის ბმული', removeItem: 'პუნქტის წაშლა', moveItemUp: 'პუნქტის ზემოთ გადატანა', moveItemDown: 'პუნქტის ქვემოთ გადატანა', archiveItem: 'დამალვა/არქივი', archivedBadge: 'დამალულია მონაწილეებისთვის', attendanceFormUrl: 'დასწრების ფორმის ბმული', feedbackFormUrl: 'დღის შეფასების ფორმის ბმული', formUrlHint: 'Google Forms-ის ბმული (https://). ცარიელი — ღილაკი მონაწილეს არ უჩანს.', saveDay: 'დღის შენახვა', preview: 'მონაწილის ხედვის ნახვა', closePreview: 'რედაქტორზე დაბრუნება', previewNote: 'გადახედვა — პირადი პროგრესი და ჩატი აქ არ ინახება.', cancel: 'გაუქმება', metrics: 'ჯგუფის პროგრესი', metricsHelp: 'ჯამური პროგრესი დღის ყველა პუნქტის მიხედვით. პირადი ჩატები აქ არ ჩანს.', completed: 'მონაწილემ დაასრულა', sources: 'ცოდნის ბაზა — წყაროები', sourcesHelp: 'საწყისი და საცნობარო მასალა. წყაროს ცვლილება დღის გზამკვლევს ავტომატურად არ ცვლის.', sourceTitle: 'წყაროს სათაური', sourceContent: 'წყაროს ტექსტი', newSource: 'წყაროს დამატება', saveSource: 'წყაროს შენახვა', loading: 'იტვირთება…', saved: 'ცვლილებები შენახულია.', failed: 'ცვლილება ვერ შესრულდა. შეამოწმეთ მონაცემები და სცადეთ თავიდან.', loadFailed: 'გზამკვლევების ჩატვირთვა ვერ მოხერხდა.', retry: 'ხელახლა ცდა', noDays: 'სასწავლო დღეები ჯერ არ არის.', noSources: 'წყარო ჯერ არ არის დამატებული.', noMetrics: 'გამოქვეყნებული დღეების პროგრესი აქ გამოჩნდება.', invalidTimezone: 'მიუთითეთ სწორი დროის სარტყელი, მაგალითად Asia/Tbilisi.', sourceHint: 'მიუთითეთ მხოლოდ ოფიციალურ წყაროში არსებული გვერდები.', saving: 'ინახება…' },
+  en: { title: 'IAKO — Daily Guides', back: 'Manage live trainings', intro: 'Create structured training days and control the material available to participants.', schedule: 'Schedule and access', timezone: 'Time zone', start: 'Start date', current: 'Current day', automatic: 'Automatic, from schedule', paused: 'Pause schedule', visibility: 'Guide visibility', TODAY_ONLY: 'Today only', CURRENT_AND_PREVIOUS: 'Current and previous days', ALL_DAYS: 'All days', saveSettings: 'Save settings', days: 'Training days', create: 'Add day', import: 'Import 10-day Vibe Coding guide', importHelp: 'The official syllabus can be imported only into an empty guide.', day: 'Day', published: 'Published', draft: 'Draft', edit: 'Edit', moveUp: 'Move up', moveDown: 'Move down', publish: 'Publish', unpublish: 'Unpublish', editor: 'Day editor', number: 'Day number', dayTitle: 'Day title', date: 'Date (optional)', summary: 'Short summary', sourcePages: 'Source pages (comma-separated)', publishedLabel: 'Publish to participants', sections: 'Guide sections', addSection: 'Add section', sectionType: 'Section type', sectionTitle: 'Section title', removeSection: 'Remove section', addItem: 'Add item', itemTitle: 'Item title', itemBody: 'Description / instructions', language: 'Code language', url: 'Resource link', removeItem: 'Remove item', moveItemUp: 'Move item up', moveItemDown: 'Move item down', archiveItem: 'Hide/archive', archivedBadge: 'Hidden from participants', attendanceFormUrl: 'Attendance form link', feedbackFormUrl: 'Daily feedback form link', formUrlHint: 'A Google Forms link (https://). Leave blank to hide the button from participants.', saveDay: 'Save day', preview: 'Preview student view', closePreview: 'Back to editor', previewNote: 'Preview — personal progress and chat are not saved here.', cancel: 'Cancel', metrics: 'Class progress', metricsHelp: 'Aggregate completion of all guide items per day. Private chats are not shown.', completed: 'participants completed', sources: 'Knowledge base — sources', sourcesHelp: 'Source and reference material. Editing a source does not automatically change the daily guide.', sourceTitle: 'Source title', sourceContent: 'Source text', newSource: 'Add source', saveSource: 'Save source', loading: 'Loading…', saved: 'Changes saved.', failed: 'Could not complete this change. Check the fields and try again.', loadFailed: 'Could not load training guides.', retry: 'Try again', noDays: 'No training days yet.', noSources: 'No sources have been added.', noMetrics: 'Published-day progress will appear here.', invalidTimezone: 'Enter a valid time zone, such as Asia/Tbilisi.', sourceHint: 'Only cite pages that exist in the official source.', saving: 'Saving…' },
 };
 
-const emptyDay = (dayNumber: number): TrainingDayInput => ({ dayNumber, title: '', summary: '', scheduledDate: null, published: false, sourcePages: [], sections: [] });
+const emptyDay = (dayNumber: number): TrainingDayInput => ({ dayNumber, title: '', summary: '', scheduledDate: null, published: false, sourcePages: [], sections: [], attendanceFormUrl: null, feedbackFormUrl: null });
 
 function AdminGuidesContent() {
   const router = useRouter();
@@ -48,9 +48,21 @@ function AdminGuidesContent() {
     void load().catch(() => setError(t.loadFailed)).finally(() => setLoading(false));
   }, [load, t.loadFailed]);
   const assignedIakoProfile = iakoProfiles.find((profile) => profile.assignments?.some((a) => a.liveTrainingId === trainingId));
+  // Same IakoProfileAssignment the Live Training create/edit page's own
+  // IAKO block reads/writes — one backend assignment, two admin surfaces.
+  // Defaults a brand-new assignment to TESTING (same posture as that page),
+  // and preserves whatever mode is already set when just swapping profiles.
+  const assignedMode: IakoAssignmentMode = assignedIakoProfile?.assignments?.find((a) => a.liveTrainingId === trainingId)?.mode ?? 'TESTING';
   const changeIakoAssignment = async (profileId: string) => {
     setIakoBusy(true); setError(''); setSaved(false);
-    try { await assignIakoProfile({ liveTrainingId: trainingId }, profileId || null); await load(); setSaved(true); }
+    try { await assignIakoProfile({ liveTrainingId: trainingId }, profileId || null, profileId ? assignedMode : undefined); await load(); setSaved(true); }
+    catch { setError(t.failed); }
+    finally { setIakoBusy(false); }
+  };
+  const changeIakoMode = async (mode: IakoAssignmentMode) => {
+    if (!assignedIakoProfile) return;
+    setIakoBusy(true); setError(''); setSaved(false);
+    try { await assignIakoProfile({ liveTrainingId: trainingId }, assignedIakoProfile.id, mode); await load(); setSaved(true); }
     catch { setError(t.failed); }
     finally { setIakoBusy(false); }
   };
@@ -64,6 +76,15 @@ function AdminGuidesContent() {
   const editDay = (day: TrainingDay) => { setDraft(guideDayInput(day)); setSourcePagesText(day.sourcePages.join(', ')); setEditingId(day.id); setPreview(false); setSaved(false); };
   const editSource = (entry?: GuideSource) => { setSource(entry ? { title: entry.title, content: entry.content } : { title: '', content: '' }); setSourceId(entry?.id); };
   const changeSection = (sectionId: string, update: Partial<GuideSection>) => setDraft((current) => current ? { ...current, sections: current.sections.map((section) => section.id === sectionId ? { ...section, ...update } : section) } : current);
+  // Simple array-position swap, same shape as moveDay below — items already
+  // carry stable ids (assigned at creation), so reordering never disturbs
+  // which learner-progress/IAKO-history rows belong to which item.
+  const moveItem = (sectionId: string, index: number, direction: -1 | 1) => setDraft((current) => current ? { ...current, sections: current.sections.map((section) => {
+    if (section.id !== sectionId) return section;
+    const items = [...section.items];
+    [items[index], items[index + direction]] = [items[index + direction], items[index]];
+    return { ...section, items };
+  }) } : current);
   const moveDay = (index: number, direction: -1 | 1) => {
     if (!data) return;
     const ids = data.days.map((day) => day.id);
@@ -104,6 +125,30 @@ function AdminGuidesContent() {
           <option value="">{lang === 'ka' ? '— ასისტენტის გარეშე —' : '— No assistant —'}</option>
           {iakoProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
         </select>
+        {assignedIakoProfile && (
+          <div className="mt-4">
+            <span className="block text-sm font-medium text-slate-700 mb-1.5">{lang === 'ka' ? 'წვდომის რეჟიმი' : 'Access mode'}</span>
+            <div className="flex gap-2 max-w-sm">
+              <button
+                type="button" disabled={iakoBusy || busy} onClick={() => void changeIakoMode('TESTING')}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold disabled:opacity-50 ${assignedMode === 'TESTING' ? 'border-amber-500 bg-amber-50 text-amber-800' : 'border-slate-300 text-slate-500 hover:bg-slate-50'}`}
+              >
+                Private / Testing
+              </button>
+              <button
+                type="button" disabled={iakoBusy || busy} onClick={() => void changeIakoMode('LIVE')}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold disabled:opacity-50 ${assignedMode === 'LIVE' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-slate-300 text-slate-500 hover:bg-slate-50'}`}
+              >
+                Live
+              </button>
+            </div>
+            <p className="text-xs text-slate-400 mt-1.5">
+              {assignedMode === 'TESTING'
+                ? (lang === 'ka' ? 'მხოლოდ ჩარიცხულმა ადმინისტრატორმა (SUPER_ADMIN/MANAGER) შეუძლია ამ IAKO-ს გამოყენება.' : 'Only an enrolled SUPER_ADMIN/MANAGER can use this IAKO right now.')
+                : (lang === 'ka' ? 'ჩარიცხული მონაწილეები აქტიური/დასრულებული ჩარიცხვით სარგებლობენ ამ IAKO-თი.' : 'Enrolled participants with an active/completed enrollment can use this IAKO.')}
+            </p>
+          </div>
+        )}
         <p className="text-xs text-slate-400 mt-3">
           <Link href="/admin/iako/profiles" className="underline">{lang === 'ka' ? 'პროფილების მართვა →' : 'Manage profiles →'}</Link>
         </p>
@@ -124,11 +169,29 @@ function AdminGuidesContent() {
           <label className="block text-sm font-medium">{t.summary}<textarea rows={3} maxLength={2000} value={draft.summary} onChange={(event) => setDraft({ ...draft, summary: event.target.value })} className={`${inputClass} mt-2`} /></label>
           <label className="block text-sm font-medium">{t.sourcePages}<input value={sourcePagesText} pattern="[0-9, ]*" onChange={(event) => setSourcePagesText(event.target.value)} className={`${inputClass} mt-2`} /><span className="block text-xs text-slate-500 font-normal mt-1">{t.sourceHint}</span></label>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={draft.published} onChange={(event) => setDraft({ ...draft, published: event.target.checked })} className="h-4 w-4 accent-cyan-700" />{t.publishedLabel}</label>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <label className="block text-sm font-medium">{t.attendanceFormUrl}<input type="url" value={draft.attendanceFormUrl ?? ''} maxLength={2000} placeholder="https://forms.gle/..." onChange={(event) => setDraft({ ...draft, attendanceFormUrl: event.target.value || null })} className={`${inputClass} mt-2`} /></label>
+            <label className="block text-sm font-medium">{t.feedbackFormUrl}<input type="url" value={draft.feedbackFormUrl ?? ''} maxLength={2000} placeholder="https://forms.gle/..." onChange={(event) => setDraft({ ...draft, feedbackFormUrl: event.target.value || null })} className={`${inputClass} mt-2`} /></label>
+          </div>
+          <p className="text-xs text-slate-500 -mt-2">{t.formUrlHint}</p>
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-cyan-100 pt-5"><h3 className="font-bold">{t.sections}</h3><button type="button" onClick={() => setDraft({ ...draft, sections: [...draft.sections, { id: crypto.randomUUID(), kind: 'topics', title: guideSectionLabels[lang].topics, items: [] }] })} className={buttonClass}>{t.addSection}</button></div>
           {draft.sections.map((section, sectionIndex) => <fieldset key={section.id} className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-4"><legend className="px-2 text-sm font-bold text-slate-500">{sectionIndex + 1}. {section.title}</legend>
             <div className="grid sm:grid-cols-[200px_1fr_auto] items-end gap-3"><label className="text-sm font-medium">{t.sectionType}<select value={section.kind} onChange={(event) => { const kind = event.target.value as GuideSectionKind; changeSection(section.id, { kind, title: guideSectionLabels[lang][kind] }); }} className={`${inputClass} mt-2`}>{(Object.keys(guideSectionLabels[lang]) as GuideSectionKind[]).map((kind) => <option key={kind} value={kind}>{guideSectionLabels[lang][kind]}</option>)}</select></label><label className="text-sm font-medium">{t.sectionTitle}<input required value={section.title} maxLength={200} onChange={(event) => changeSection(section.id, { title: event.target.value })} className={`${inputClass} mt-2`} /></label><button type="button" onClick={() => setDraft({ ...draft, sections: draft.sections.filter((entry) => entry.id !== section.id) })} className={buttonClass}>{t.removeSection}</button></div>
-            {section.items.map((item, itemIndex) => <div key={item.id} className="rounded-xl bg-slate-50 p-4 space-y-3">
-              <div className="flex justify-between items-center"><span className="text-xs text-slate-500">{sectionIndex + 1}.{itemIndex + 1}</span><button type="button" onClick={() => changeSection(section.id, { items: section.items.filter((entry) => entry.id !== item.id) })} className="text-xs text-red-600 underline">{t.removeItem}</button></div>
+            {section.items.map((item, itemIndex) => <div key={item.id} className={`rounded-xl p-4 space-y-3 ${item.active === false ? 'bg-slate-100 opacity-70' : 'bg-slate-50'}`}>
+              <div className="flex flex-wrap justify-between items-center gap-2">
+                <span className="text-xs text-slate-500">{sectionIndex + 1}.{itemIndex + 1}{item.active === false && <span className="ml-2 rounded-full bg-slate-300 px-2 py-0.5 text-[10px] font-bold text-slate-700">{t.archivedBadge}</span>}</span>
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1">
+                    <button type="button" onClick={() => moveItem(section.id, itemIndex, -1)} disabled={itemIndex === 0} aria-label={`${t.moveItemUp}: ${item.title}`} className={buttonClass}>↑</button>
+                    <button type="button" onClick={() => moveItem(section.id, itemIndex, 1)} disabled={itemIndex === section.items.length - 1} aria-label={`${t.moveItemDown}: ${item.title}`} className={buttonClass}>↓</button>
+                  </div>
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 whitespace-nowrap">
+                    <input type="checkbox" checked={item.active === false} onChange={(event) => changeSection(section.id, { items: section.items.map((entry) => entry.id === item.id ? { ...entry, active: !event.target.checked } : entry) })} className="h-4 w-4 accent-slate-600" />
+                    {t.archiveItem}
+                  </label>
+                  <button type="button" onClick={() => changeSection(section.id, { items: section.items.filter((entry) => entry.id !== item.id) })} className="text-xs text-red-600 underline">{t.removeItem}</button>
+                </div>
+              </div>
               <label className="block text-sm font-medium">{t.itemTitle}<input required maxLength={200} value={item.title} onChange={(event) => changeSection(section.id, { items: section.items.map((entry) => entry.id === item.id ? { ...entry, title: event.target.value } : entry) })} className={`${inputClass} mt-2`} /></label>
               <label className="block text-sm font-medium">{t.itemBody}<textarea rows={section.kind === 'code' ? 6 : 3} maxLength={12000} value={item.body} onChange={(event) => changeSection(section.id, { items: section.items.map((entry) => entry.id === item.id ? { ...entry, body: event.target.value } : entry) })} className={`${inputClass} mt-2 ${section.kind === 'code' ? 'font-mono' : ''}`} /></label>
               <div className="grid sm:grid-cols-2 gap-3">{section.kind === 'code' && <label className="text-sm font-medium">{t.language}<input value={item.language ?? ''} maxLength={40} onChange={(event) => changeSection(section.id, { items: section.items.map((entry) => entry.id === item.id ? { ...entry, language: event.target.value } : entry) })} className={`${inputClass} mt-2`} /></label>}<label className="text-sm font-medium">{t.url}<input type="url" value={item.url ?? ''} maxLength={2000} onChange={(event) => changeSection(section.id, { items: section.items.map((entry) => entry.id === item.id ? { ...entry, url: event.target.value } : entry) })} placeholder="https://" className={`${inputClass} mt-2`} /></label></div>

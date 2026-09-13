@@ -42,6 +42,7 @@ export interface LiveTrainingPayload {
   durationMonths?: number | null;
   scheduleDays?: string | null;
   trainerVideoUrl?: string;
+  mediaConsentFormUrl?: string;
   synopsisKa?: string | null;
   synopsisEn?: string | null;
   synopsisRu?: string | null;
