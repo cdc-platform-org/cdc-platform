@@ -90,6 +90,12 @@ function App({ Component, pageProps }: AppProps) {
   return (
     <>
       <Head>
+        {/* No viewport meta existed anywhere in the app (Next.js Pages
+            Router does not inject one for non-AMP pages — only _document.js's
+            AMP-mode branch does). Without it, mobile browsers default to a
+            ~980px desktop layout viewport and every sm:/md: Tailwind
+            breakpoint below effectively never activates on a real phone. */}
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         {/* AUDIT NOTE (fixed): this block used to also render og:title/
             og:description/og:image/og:url and twitter:*, hardcoded to the
             homepage's own content, in a <Head> that wraps EVERY page. Next's
