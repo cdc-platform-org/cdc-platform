@@ -1888,7 +1888,7 @@ model VerifiedSkill {
 // Course.originalPrice/BogPayment.amount elsewhere — not Float, to avoid
 // floating-point rounding on money.
 model DigitalProduct {
-  id                 String               @id @default(uuid())
+  id                 String             @id @default(uuid())
   title              String
   // Auto-translated by Gemini at create/update time whenever left blank
   // (see aiTranslateService.ts's translateTitleAndDescription, wired into
@@ -1923,7 +1923,7 @@ model DigitalProduct {
   // main cover) in the /store/[id] gallery/carousel — same array-of-URLs
   // pattern as StudioCaseStudy.galleryImages. Capped at 4 in the Zod schemas
   // (products.ts/adminProducts.ts), not here.
-  previewImages      String[]             @default([])
+  previewImages      String[]           @default([])
   // Optional demo/preview clip shown on /store/[id] alongside the gallery —
   // either an uploaded MP4/MOV (plain public Bunny CDN URL, same convention
   // as imageUrl/previewImages, capped at 50MB by videoUpload in
@@ -1957,21 +1957,21 @@ model DigitalProduct {
   // keep a plain URL, returned as-is — same protection level those had
   // before this existed, not a regression.
   fileUrl            String
-  downloadsCount     Int                  @default(0)
+  downloadsCount     Int                @default(0)
   // Denormalized rollup of ProductPurchase rows that reached COMPLETED —
   // same "avoid an aggregate query on every list read" posture as
   // User.averageRating/reviewCount elsewhere in this schema. Incremented
   // exactly once per genuine new completion (productSaleService.ts's
   // completeProductPurchase and products.ts's free /:id/claim), never on a
   // retry of an already-COMPLETED purchase.
-  salesCount         Int                  @default(0)
-  createdAt          DateTime             @default(now())
+  salesCount         Int                @default(0)
+  createdAt          DateTime           @default(now())
   purchases          ProductPurchase[]
   // Usage terms attached to this listing — snapshotted onto ProductPurchase
   // at fulfillment time (see productSaleService.ts). Defaults to the most
   // restrictive option so an admin/submitter has to deliberately opt into a
   // broader license rather than one being granted by omission.
-  licenseType        ProductLicenseType   @default(PERSONAL_USE)
+  licenseType        ProductLicenseType @default(PERSONAL_USE)
   // "PENDING" | "APPROVED" | "REJECTED" | "NEEDS_REVISION" — admin-created
   // products (see adminProducts.ts) are inserted as APPROVED directly;
   // graduate/verified-freelancer submissions (products.ts's POST /) start
@@ -1979,7 +1979,7 @@ model DigitalProduct {
   // productModerationService's AI review is confident enough — see
   // aiReview* fields below) and only show up in the public catalog once
   // APPROVED.
-  status             String               @default("PENDING")
+  status             String             @default("PENDING")
   rejectionReason    String?
   // AI moderation (services/productModerationService.ts), run once at
   // submission/resubmission time — never re-run automatically afterward, so
@@ -1994,18 +1994,13 @@ model DigitalProduct {
   aiReviewReasoning  String?
   aiReviewedAt       DateTime?
   submittedById      String?
-  submittedBy        User?                @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
+  submittedBy        User?              @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
   launchKits         LaunchKit[]
   // Denormalized rollup of `reviews` (ProductReview), same pattern as
   // User.averageRating/reviewCount — recomputed on every review create/delete.
   averageRating      Float?
-  reviewCount        Int                  @default(0)
+  reviewCount        Int                @default(0)
   reviews            ProductReview[]
-  // Files beyond the single required `fileUrl` above (bonus PDFs,
-  // instructions, a separate workbook, ...) — see DigitalProductFile's own
-  // comment for why this is purely additive rather than a replacement for
-  // `fileUrl`.
-  additionalFiles    DigitalProductFile[]
 
   // The public storefront (GET /products) filters status+category together,
   // and the admin dashboard's pending-review badge counts status alone on
@@ -2013,48 +2008,6 @@ model DigitalProduct {
   // full-table scan on both.
   @@index([status, category])
   @@map("digital_products")
-}
-
-// A product's ADDITIONAL downloadable files, beyond the one every product
-// already has via DigitalProduct.fileUrl. Deliberately additive rather than
-// a replacement/migration of that column: fileUrl stays the always-present
-// "main" file (required, never absent — so a product can never end up with
-// zero files), and every existing single-file product needs no backfill at
-// all here — it simply has zero rows in this table until an admin adds one,
-// same "old rows stay valid with the new architecture layered on top" shape
-// as IakoUsageGrant's processingToken addition earlier this branch.
-// ProductPurchase references a product only by ID (see its own comment on
-// licenseType being the only snapshotted field) — access is resolved fresh
-// on every download, so replacing/adding/removing a file here immediately
-// applies to every existing buyer, exactly like fileUrl always has.
-model DigitalProductFile {
-  id          String         @id @default(uuid())
-  productId   String
-  product     DigitalProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
-  // Admin-editable label shown to buyers (e.g. "Bonus Templates") — defaults
-  // to fileName at upload time but can be renamed independently of it.
-  displayName String
-  // The original uploaded filename — never shown as a download URL (see
-  // fileUrl below), just for the admin/buyer UI to show something real.
-  fileName    String
-  // Same `cdcblob://<blobName>` marker scheme as DigitalProduct.fileUrl —
-  // see productFileDelivery.ts's uploadProductFile/resolveProductFileDeliveryUrl,
-  // both already generic over any file, not specific to the "main" one.
-  fileUrl     String
-  mimeType    String?
-  sizeBytes   Int?
-  // Admin-controlled display order in the buyer-facing file list — see
-  // adminProducts.ts's POST /:id/files/reorder.
-  sortOrder   Int            @default(0)
-  // Soft-disable without deleting — download routes always filter on this,
-  // so a file that's hidden (or mid-replacement) can never be fetched even
-  // if some other check were ever missed.
-  isActive    Boolean        @default(true)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-
-  @@index([productId, sortOrder])
-  @@map("digital_product_files")
 }
 
 // ============================================================
@@ -2263,17 +2216,17 @@ model TrainingGuideSettings {
 }
 
 model TrainingDay {
-  id             String                @id @default(uuid())
-  liveTrainingId String
-  liveTraining   LiveTraining          @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
-  dayNumber      Int
-  title          String
-  summary        String
-  scheduledDate  String?
-  published      Boolean               @default(false)
+  id                String                @id @default(uuid())
+  liveTrainingId    String
+  liveTraining      LiveTraining          @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  dayNumber         Int
+  title             String
+  summary           String
+  scheduledDate     String?
+  published         Boolean               @default(false)
   // Validated section/item objects: content is never an opaque text blob.
-  sections       Json
-  sourcePages    Int[]                 @default([])
+  sections          Json
+  sourcePages       Int[]                 @default([])
   // Per-day Google Form links — the SAME attendance form is normally reused
   // for every day of a training via Google Forms' own pre-filled-link
   // feature (one query param preselects the day), so this is just this
@@ -2282,9 +2235,9 @@ model TrainingDay {
   // consent lives on LiveTraining.mediaConsentFormUrl instead — not here.
   attendanceFormUrl String?
   feedbackFormUrl   String?
-  progress       TrainingDayProgress[]
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  progress          TrainingDayProgress[]
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
 
   @@unique([liveTrainingId, dayNumber])
   @@map("training_days")
@@ -2397,21 +2350,21 @@ enum IakoAssignmentMode {
 // resource type (Digital Tools today, more later) doesn't need its own
 // profile-picker column on every target model.
 model IakoProfileAssignment {
-  id             String               @id @default(uuid())
-  profileId      String
-  profile        IakoAssistantProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  liveTrainingId String?              @unique
-  liveTraining   LiveTraining?        @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  id                  String               @id @default(uuid())
+  profileId           String
+  profile             IakoAssistantProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  liveTrainingId      String?              @unique
+  liveTraining        LiveTraining?        @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
   // Stable key from src/config/digitalTools.ts's registry (e.g.
   // "educator-hub") — Digital Tools are page routes, not a DB table, so
   // this is a plain string, not a foreign key.
-  digitalToolKey String?              @unique
+  digitalToolKey      String?              @unique
   // Defaults to LIVE (not TESTING) so every assignment that predates this
   // field, and any write that doesn't explicitly set it (e.g. the Daily
   // Guides assign call), keeps its exact current real-world behavior — only
   // the Live Training admin UI's create/edit flow defaults new assignments
   // to TESTING, and only at the API-call level, never here.
-  mode           IakoAssignmentMode   @default(LIVE)
+  mode                IakoAssignmentMode   @default(LIVE)
   // ============================================================
   // Controlled auto-top-up — a one-time (per grant), capped extension of
   // the TOTAL request ceiling (e.g. 200 -> 400, never further), scoped to
@@ -2443,8 +2396,8 @@ model IakoProfileAssignment {
   // clamps to this value. Null = auto-top-up cannot apply (no ceiling to
   // clamp to), same effective behavior as autoTopUpEnabled: false.
   maxAutoTotal        Int?
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   @@map("iako_profile_assignments")
 }
