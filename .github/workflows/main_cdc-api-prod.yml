@@ -1,24 +1,120 @@
 # Docs: https://github.com/Azure/login (OIDC), https://github.com/Azure/acr-build (az acr build)
 #
-# MANDATORY E2E GATE:
-# Production deployment is triggered only after the "Nightly QA" workflow
-# completes successfully on main. The exact SHA tested by QA is checked out,
-# built into a container image, and deployed to the production Azure Web App.
+# ============================================================================
+# PRODUCTION DEPLOY - MANUAL, MAIN-ONLY, SHA-PINNED   (Phase 18 safety gate)
+# ============================================================================
+# This workflow NO LONGER runs after Nightly QA. It used to (`workflow_run`),
+# so a green nightly run unattendedly rebuilt, re-pointed and restarted
+# production every night, and any merge to main could have activated new code
+# - and, through Backend/docker-entrypoint.sh, run `prisma migrate deploy`
+# against the PRODUCTION database - without a human decision.
 #
-# IMPORTANT:
-# cdc-api-prod uses Azure App Service Site Containers.
-# Therefore the production image must be updated with
-# `az webapp sitecontainers update`, not the legacy
-# `az webapp config container set` command.
+# Nightly QA (qa-nightly.yml) is unchanged and keeps running. It is now a gate
+# this workflow CHECKS; it can never TRIGGER a deploy.
+#
+# HOW TO DEPLOY (manual and deliberate)
+#   1. Actions -> this workflow -> Run workflow -> "Use workflow from": main.
+#   2. deploy_sha = full 40-char SHA of the CURRENT tip of main. That exact
+#      commit must already have a green Nightly QA run.
+#   3. Tick acknowledge_startup_migrations.
+#   4. Approve the run in the "Production" environment - but ONLY if protection
+#      rules exist there (see REQUIRED SETUP, item 1).
+#
+# WHAT THE `guard` JOB ENFORCES (before any Azure login)
+#   - the event is workflow_dispatch and the ref is refs/heads/main (a dispatch
+#     from any feature branch is refused);
+#   - deploy_sha is a full SHA, equals the tip of main at dispatch time AND is
+#     still the tip of main when the guard runs;
+#   - a successful "Nightly QA" run exists for exactly that SHA on main;
+#   - the migrations acknowledgement is ticked.
+# Further: one production deploy at a time (concurrency group, never cancelled
+# mid-flight); the image is tagged with the immutable commit SHA only - there is
+# no `:latest`, and an existing SHA tag is reused, never overwritten; the Site
+# Container is re-pointed and the app restarted only if it does not already
+# point at this image (or force_restart_if_unchanged is ticked).
+#
+# ----------------------------------------------------------------------------
+# KNOWN LIMITATION - a green run does NOT prove the new code is live
+# (audit of 2026-09-20). For cdc-api-prod three things exist and they DISAGREE:
+#   site config `linuxFxVersion`   DOCKER|cdcplatformacr.azurecr.io/cdc-platform-backend:14cc1780...
+#                                  ACTIVE. Legacy single-container mode, last written 2026-09-07 21:03 UTC.
+#   Site Containers "main" image   ...:37a79ea4...   DORMANT. Only this workflow ever wrote it.
+#   image the platform pulls       ...:14cc1780...   (docker log at every restart on 09-18, 09-19, 09-20)
+# While `linuxFxVersion` is not "sitecontainers", `az webapp sitecontainers
+# update` changes nothing that actually runs, and the old "verify" step only
+# re-listed that dormant config - which is how nightly "successes" hid a
+# 13-day-old production backend. The preflight step reports this on every run.
+# This file deliberately does NOT switch the container mode or activate a new
+# image; that is a separate, reviewed change.
+#
+# ----------------------------------------------------------------------------
+# REQUIRED SETUP BEFORE A REAL DEPLOY - blockers; none is done by this file
+#   1. GitHub environment "Production" (exact case - it already exists) has NO
+#      protection rules today: no required reviewers, no deployment-branch
+#      policy. Referencing an environment enforces nothing until an admin adds
+#      required reviewers and "Deployment branches: main only".
+#   2. Azure login: federated credential of app `gha-cdc-api-prod-deploy` trusts
+#      only `...cdc-platform@1324272899:ref:refs/heads/main`. A job that uses an
+#      environment presents `repo:cdc-platform-org@313505784/cdc-platform@1324272899:environment:Production`
+#      instead, so Azure login fails (safely) until that subject is added. Once
+#      it works, remove the branch-scoped credential so other main workflows
+#      cannot log in to Azure.
+#   3. main has no branch protection/ruleset and there is no CODEOWNERS, so this
+#      file can be changed by a direct push to main without review.
+#
+# ----------------------------------------------------------------------------
+# PHASE 19 - post-deploy verification (DESIGN ONLY, not implemented here)
+# A deploy must be reported successful only when ALL of these pass, and must
+# fail loudly otherwise. Dependency: Backend health/version endpoints do not
+# exist yet (/, /api/health return 404 in production as of 2026-09-20).
+#   1. expected SHA   - `GET /api/version` (to build) returns the SHA baked into
+#                       the image (`--build-arg`), and it equals DEPLOY_SHA.
+#   2. actual SHA     - the platform log line "Pulling image ...:<sha>" /
+#                       "Creating container with image ..." after the restart
+#                       (az webapp log download) names DEPLOY_SHA; and
+#                       linuxFxVersion == "sitecontainers"; and the Site
+#                       Containers "main" image == the target image.
+#   3. startup        - app state Running, warm-up probe succeeded, no
+#                       crash/restart loop over a stabilisation window.
+#   4. health/ready   - `GET /api/health` (liveness) and `/api/ready`
+#                       (DB ping) return 200; set the Azure `healthCheckPath`.
+#   5. migrations     - read-only `prisma migrate status` before (operator) and
+#                       after; the container log shows applied/"No pending
+#                       migrations"; ANY migration failure fails the deploy.
+#   6. API smoke      - unauthenticated read-only GETs: /api/auth/me 401,
+#                       /api/trainer/me 401 (404 = old build), /api/iako/my-assistants
+#                       401, /api/courses 200, /api/products 200, /api/studio/cases 200.
+#   7. rollback       - record the previously configured image before changing
+#                       anything (done below as CONFIGURED_IMAGE) and prefer a
+#                       staging slot + swap so a failed boot is not an outage.
 
 name: Build and deploy container to Azure Web App - cdc-api-prod
 
 on:
-  workflow_run:
-    workflows: ["Nightly QA"]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      deploy_sha:
+        description: "Full 40-character SHA of the CURRENT tip of main (must have a green Nightly QA run)"
+        required: true
+        type: string
+      acknowledge_startup_migrations:
+        description: "I understand the new container runs `prisma migrate deploy` against the PRODUCTION database when it starts"
+        required: true
+        type: boolean
+        default: false
+      force_restart_if_unchanged:
+        description: "Re-apply the Site Container config and restart even if it already points at this image"
+        required: false
+        type: boolean
+        default: false
+
+# One production deploy at a time; a running deploy is never cancelled mid-flight.
+concurrency:
+  group: production-deploy-cdc-api-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 env:
   ACR_NAME: cdcplatformacr
@@ -29,23 +125,83 @@ env:
   TARGET_PORT: "5000"
 
 jobs:
-  build-and-deploy:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
-
+  guard:
+    name: Guard - main only, current tip, green Nightly QA
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha: ${{ steps.validate.outputs.sha }}
+    steps:
+      - name: Validate dispatch (main only, full SHA, acknowledgement)
+        id: validate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          RUN_SHA: ${{ github.sha }}
+          INPUT_SHA: ${{ inputs.deploy_sha }}
+          ACK_MIGRATIONS: ${{ inputs.acknowledge_startup_migrations }}
+        run: |
+          set -euo pipefail
+          fail() { echo "::error title=Production deploy refused::$1"; exit 1; }
 
+          [ "$EVENT_NAME" = "workflow_dispatch" ] || fail "Only a manual dispatch may deploy production (event: $EVENT_NAME)."
+          [ "$REF" = "refs/heads/main" ] || fail "Production deploys run only from main. This run was dispatched from '$REF'. Re-run with 'Use workflow from: main'."
+          printf '%s' "$INPUT_SHA" | grep -Eq '^[0-9a-f]{40}$' || fail "deploy_sha must be a full 40-character lowercase commit SHA."
+          [ "$INPUT_SHA" = "$RUN_SHA" ] || fail "deploy_sha ($INPUT_SHA) is not the tip of main at dispatch time ($RUN_SHA). Only the current tip of main may be deployed."
+          [ "$ACK_MIGRATIONS" = "true" ] || fail "Tick acknowledge_startup_migrations: starting the container runs prisma migrate deploy on the PRODUCTION database."
+
+          echo "sha=$INPUT_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Confirm this SHA is still the tip of main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.validate.outputs.sha }}
+        run: |
+          set -euo pipefail
+          tip="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+          if [ "$tip" != "$SHA" ]; then
+            echo "::error title=Production deploy refused::main has moved on to ${tip}. Re-dispatch with the current tip."
+            exit 1
+          fi
+
+      - name: Require a green Nightly QA run for exactly this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.validate.outputs.sha }}
+        run: |
+          set -euo pipefail
+          green="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/qa-nightly.yml/runs?head_sha=${SHA}&branch=main&status=success&per_page=1" --jq '.total_count')"
+          if [ "${green}" -lt 1 ]; then
+            echo "::error title=Production deploy refused::No successful Nightly QA run found for ${SHA} on main. Wait for QA to pass on this exact commit."
+            exit 1
+          fi
+          echo "Nightly QA is green for ${SHA}."
+
+  deploy:
+    name: Deploy immutable image to cdc-api-prod
+    needs: guard
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Dedicated production environment (exact name, case matters for the Azure OIDC subject).
+    # NOTE: this only gates the job if protection rules are configured on the environment.
+    environment:
+      name: Production
     permissions:
       contents: read
       id-token: write
-
     env:
-      DEPLOY_SHA: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
-
+      DEPLOY_SHA: ${{ needs.guard.outputs.sha }}
+      FORCE_RESTART: ${{ inputs.force_restart_if_unchanged }}
     steps:
-      - name: Checkout tested commit
+      - name: Checkout approved commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.DEPLOY_SHA }}
+          ref: ${{ needs.guard.outputs.sha }}
+          persist-credentials: false
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -54,38 +210,103 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Build and push image via ACR Tasks
+      - name: Preflight (read-only) - configured vs active image, immutable tag, change detection
+        run: |
+          set -euo pipefail
+          TARGET="${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${DEPLOY_SHA}"
+
+          MODE="$(az webapp config show --name "$WEBAPP_NAME" --resource-group "$RESOURCE_GROUP" --query linuxFxVersion --output tsv)"
+          CONFIGURED="$(az webapp sitecontainers list --name "$WEBAPP_NAME" --resource-group "$RESOURCE_GROUP" --query "[?name=='main'].image | [0]" --output tsv)"
+          if DIGEST="$(az acr repository show --name "$ACR_NAME" --image "${IMAGE_NAME}:${DEPLOY_SHA}" --query digest --output tsv 2>/dev/null)"; then
+            EXISTS=true
+          else
+            EXISTS=false
+            DIGEST=""
+          fi
+
+          if [ "$CONFIGURED" = "$TARGET" ] && [ "$FORCE_RESTART" != "true" ]; then APPLY=false; else APPLY=true; fi
+
+          {
+            echo "IMAGE=$TARGET"
+            echo "LINUX_FX_VERSION=$MODE"
+            echo "CONFIGURED_IMAGE=$CONFIGURED"
+            echo "IMAGE_EXISTS=$EXISTS"
+            echo "IMAGE_DIGEST=$DIGEST"
+            echo "NEEDS_APPLY=$APPLY"
+          } >> "$GITHUB_ENV"
+
+          echo "Target image ............ $TARGET"
+          echo "linuxFxVersion (active) . $MODE"
+          echo "Site Containers 'main' .. ${CONFIGURED:-<none>}   <- previous image, kept for rollback"
+          echo "Target tag already in ACR $EXISTS ${DIGEST}"
+          echo "Will update + restart ... $APPLY"
+
+          if [ "$(printf '%s' "$MODE" | tr '[:upper:]' '[:lower:]')" != "sitecontainers" ]; then
+            echo "::warning title=Site Containers config is DORMANT::linuxFxVersion is '${MODE}', not 'sitecontainers'. Updating the Site Container will NOT change the image that runs. This workflow does not verify what runs (see Phase 19 notes in the file header)."
+          fi
+
+      - name: Build and push immutable SHA-tagged image via ACR Tasks
         working-directory: Backend
         run: |
-          az acr build \
-            --registry ${{ env.ACR_NAME }} \
-            --image ${{ env.IMAGE_NAME }}:${{ env.DEPLOY_SHA }} \
-            --image ${{ env.IMAGE_NAME }}:latest \
-            .
+          set -euo pipefail
+          if [ "$IMAGE_EXISTS" = "true" ]; then
+            echo "Image ${IMAGE_NAME}:${DEPLOY_SHA} already exists (${IMAGE_DIGEST}); reusing it. Tags are never overwritten."
+          else
+            az acr build \
+              --registry "$ACR_NAME" \
+              --image "${IMAGE_NAME}:${DEPLOY_SHA}" \
+              .
+          fi
 
-      - name: Point production Site Container at the new image
+      - name: Point production Site Container at the image
+        if: ${{ env.NEEDS_APPLY == 'true' }}
         run: |
           az webapp sitecontainers update \
-            --name ${{ env.WEBAPP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name "$WEBAPP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
             --container-name main \
-            --image ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.DEPLOY_SHA }} \
-            --target-port ${{ env.TARGET_PORT }}
+            --image "$IMAGE" \
+            --target-port "$TARGET_PORT"
 
-      - name: Verify production Site Container configuration
+      - name: Read back Site Container configuration
         run: |
           az webapp sitecontainers list \
-            --name ${{ env.WEBAPP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name "$WEBAPP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
             --query "[].{Name:name,Image:image,TargetPort:targetPort,IsMain:isMain}" \
             --output table
 
-      - name: Restart production Web App to pull new image
+      - name: Restart production Web App to pull the image
+        if: ${{ env.NEEDS_APPLY == 'true' }}
         run: |
           az webapp restart \
-            --name ${{ env.WEBAPP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }}
+            --name "$WEBAPP_NAME" \
+            --resource-group "$RESOURCE_GROUP"
+
+      - name: No change - update and restart skipped
+        if: ${{ env.NEEDS_APPLY == 'false' }}
+        run: |
+          echo "Site Containers already points at ${IMAGE}; nothing changed and the app was NOT restarted."
+          echo "Tick force_restart_if_unchanged to override."
+
+      - name: Job summary (this workflow does NOT verify the running version)
+        if: always()
+        run: |
+          {
+            echo "### Production deploy - configuration commands only, NOT verified"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Approved commit | \`${DEPLOY_SHA}\` |"
+            echo "| Target image | \`${IMAGE:-n/a}\` |"
+            echo "| Previously configured (rollback) | \`${CONFIGURED_IMAGE:-n/a}\` |"
+            echo "| Active mode (linuxFxVersion) | \`${LINUX_FX_VERSION:-n/a}\` |"
+            echo "| Site Container updated + app restarted | ${NEEDS_APPLY:-n/a} |"
+            echo
+            echo "A green run means the commands above executed. It is **not** proof that the container now running is this commit,"
+            echo "that it is healthy, or that migrations succeeded. Post-deploy verification is Phase 19 (see the file header)."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Azure logout
         if: always()
-        run: az logout
+        run: az logout || true
