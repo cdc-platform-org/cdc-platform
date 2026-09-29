@@ -1,8 +1,9 @@
+import AboutNavigationLinks from './AboutNavigationLinks';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { Menu, X, LayoutDashboard, GraduationCap, LogOut, ShieldCheck, ChevronDown, ShoppingBag, CalendarClock, PlayCircle, Users, GalleryHorizontal, Sparkles } from 'lucide-react';
+import { Menu, X, LayoutDashboard, GraduationCap, LogOut, ShieldCheck, ChevronDown, ShoppingBag, CalendarClock, Sparkles } from 'lucide-react';
 import LanguageSwitcher from './LanguageSwitcher';
 import UserMenu from './UserMenu';
 import NotificationBell from './NotificationBell';
@@ -243,10 +244,7 @@ export default function SiteHeader() {
                 <Link href="/community" className="block px-4 py-2.5 no-underline text-slate-900 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                   {t.community}
                 </Link>
-                <Link href="/mentors" className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-900 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
-                  <Users className="w-4 h-4 shrink-0" />
-                  {t.mentors}
-                </Link>
+
                 {canSeeMentorPanel && (
                   <Link
                     href="/dashboard/mentorship-sessions"
@@ -256,21 +254,7 @@ export default function SiteHeader() {
                     {t.mentorPanel}
                   </Link>
                 )}
-                {!(isAuthenticated && user) && (
-                  <>
-                    <Link href="/about" className="block px-4 py-2.5 no-underline text-slate-900 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
-                      {t.about}
-                    </Link>
-                    <Link href="/gallery" className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-900 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
-                      <GalleryHorizontal className="w-4 h-4 shrink-0" />
-                      {t.gallery}
-                    </Link>
-                  </>
-                )}
-                <Link href="/tutorials" className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-900 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
-                  <PlayCircle className="w-4 h-4 shrink-0" />
-                  {t.tutorials}
-                </Link>
+                <AboutNavigationLinks icons="desktop" className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-900 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors" />
               </div>
             </div>
           </div>
@@ -420,9 +404,7 @@ export default function SiteHeader() {
             <Link href="/community" onClick={() => setMobileMenuOpen(false)} className="no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
               {t.community}
             </Link>
-            <Link href="/mentors" onClick={() => setMobileMenuOpen(false)} className="no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
-              {t.mentors}
-            </Link>
+
             <Link href="/courses" onClick={() => setMobileMenuOpen(false)} className="no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
               {t.courses}
             </Link>
@@ -451,24 +433,7 @@ export default function SiteHeader() {
               <Sparkles className="w-5 h-5 shrink-0" />
               {t.careerTest}
             </Link>
-            <Link href="/tutorials" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5 no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
-              <PlayCircle className="w-5 h-5 shrink-0" />
-              {t.tutorials}
-            </Link>
-            {!(isAuthenticated && user) && (
-              <>
-                <Link href="/about" onClick={() => setMobileMenuOpen(false)} className="no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
-                  {t.about}
-                </Link>
-                <Link
-                  href="/gallery"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="no-underline pl-7 pr-3 py-3 rounded-xl text-sm font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                >
-                  {t.gallery}
-                </Link>
-              </>
-            )}
+            <AboutNavigationLinks icons="mobile" onNavigate={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5 no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800" />
 
             {isAuthenticated && user && (
               <>

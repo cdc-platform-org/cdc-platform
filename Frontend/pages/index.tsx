@@ -1,3 +1,4 @@
+import AboutNavigationLinks from '../src/components/layout/AboutNavigationLinks';
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -594,15 +595,7 @@ export default function Home() {
                 className={`absolute left-0 top-full pt-2 w-52 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150`}
               >
                 <div className={`rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-sm backdrop-blur-md ${darkMode ? 'bg-[#0e1422]/95 border-white/10' : 'bg-white/95 border-slate-200'}`}>
-                  <Link href="/about" className={`block px-4 py-3 no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
-                    {t('aboutCenter')}
-                  </Link>
-                  <Link href="/gallery" className={`block px-4 py-3 no-underline hover:text-cyan-500 transition border-t ${darkMode ? 'text-slate-200 border-slate-800' : 'text-slate-700 border-slate-100'}`}>
-                    {t('photoGallery')}
-                  </Link>
-                  <Link href="/tutorials" className={`block px-4 py-3 no-underline hover:text-cyan-500 transition border-t ${darkMode ? 'text-slate-200 border-slate-800' : 'text-slate-700 border-slate-100'}`}>
-                    {t('videoTutorials')}
-                  </Link>
+                  <AboutNavigationLinks className={(index) => `block px-4 py-3 no-underline hover:text-cyan-500 transition ${index ? 'border-t' : ''} ${darkMode ? 'text-slate-200 border-slate-800' : 'text-slate-700 border-slate-100'}`} />
                 </div>
               </div>
             </div>
@@ -699,9 +692,7 @@ export default function Home() {
               <LanguageSwitcher />
             </div>
             <span className={`px-2 pt-3 pb-1 font-black text-xs uppercase tracking-widest ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{t('aboutUs')}</span>
-            <Link href="/about" onClick={() => setIsMobileMenuOpen(false)} className={`px-4 py-2.5 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('mobileAboutCenter')}</Link>
-            <Link href="/gallery" onClick={() => setIsMobileMenuOpen(false)} className={`px-4 py-2.5 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('mobilePhotoGallery')}</Link>
-            <Link href="/tutorials" onClick={() => setIsMobileMenuOpen(false)} className={`px-4 py-2.5 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition mb-1 ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('videoTutorials')}</Link>
+            <AboutNavigationLinks onNavigate={() => setIsMobileMenuOpen(false)} className={`px-4 py-2.5 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`} />
             <a href="#courses" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('courses')}</a>
             <Link href="/marketplace" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('store')}</Link>
             {MARKETPLACE_CATEGORIES.map((cat) => (
