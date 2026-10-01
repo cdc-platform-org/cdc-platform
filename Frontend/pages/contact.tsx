@@ -1,4 +1,4 @@
-import { Mail, Phone, MapPin, Building2 } from 'lucide-react';
+import { Mail, Phone, Building2 } from 'lucide-react';
 import SimpleSiteLayout from '@/src/components/layout/SimpleSiteLayout';
 import { merchantInfo } from '@/src/data/merchantInfo';
 
@@ -8,8 +8,8 @@ const intro = {
   en: 'Have a question about courses, payments, or the platform? Reach us any of the ways below.',
 };
 const labels = {
-  ka: { email: 'ელ-ფოსტა', phone: 'ტელეფონი', address: 'მისამართი', org: 'იურიდიული პირი', idCode: 'ს/კ' },
-  en: { email: 'Email', phone: 'Phone', address: 'Address', org: 'Legal Entity', idCode: 'ID Code' },
+  ka: { email: 'ელ-ფოსტა', phone: 'ტელეფონი', org: 'იურიდიული პირი', idCode: 'ს/კ' },
+  en: { email: 'Email', phone: 'Phone', org: 'Legal Entity', idCode: 'ID Code' },
 };
 
 export default function ContactPage() {
@@ -41,14 +41,6 @@ export default function ContactPage() {
                   <a href={`tel:${merchantInfo.phone.replace(/\s+/g, '')}`} className="text-sm text-slate-200 hover:text-cyan-400 no-underline">
                     {merchantInfo.phone}
                   </a>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-0.5">{t.address}</p>
-                  <p className="text-sm text-slate-200">{l === 'ka' ? merchantInfo.addressKa : merchantInfo.addressEn}</p>
                 </div>
               </div>
 
