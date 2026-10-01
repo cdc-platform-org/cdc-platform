@@ -935,13 +935,13 @@ function DashboardUnlockCards({ user, t }: { user: User; t: typeof dict['ka'] })
         <Link
           key={card.key}
           href={card.href}
-          className={`flex items-center gap-4 rounded-2xl border p-5 no-underline text-current transition-all duration-300 ${
+          className={`flex items-center gap-4 rounded-2xl border p-4 no-underline text-current transition-all duration-300 ${
             card.highlighted
               ? 'border-cyan-400/60 dark:border-cyan-500/40 bg-gradient-to-r from-cyan-500/10 to-purple-600/10 shadow-lg shadow-cyan-500/10'
               : 'border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 hover:border-cyan-400/50 dark:hover:border-cyan-400/40'
           }`}
         >
-          <div className="shrink-0 w-11 h-11 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
+          <div className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
             <card.icon className="w-5 h-5 text-white" />
           </div>
           <div className="min-w-0 flex-1">
@@ -964,14 +964,14 @@ function DashboardUnlockCards({ user, t }: { user: User; t: typeof dict['ka'] })
 function FreelancerExamCard({ user, t }: { user: User; t: typeof dict['ka']; }) {
   if (user.isVerifiedGraduate) {
     return (
-      <div className="rounded-2xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-5 flex items-center justify-between gap-3">
+      <div className="rounded-2xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-4 flex items-center justify-between gap-3 h-full">
         <h2 className="text-sm font-extrabold tracking-wide text-slate-800 dark:text-slate-100">{t.examTitle}</h2>
         <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 whitespace-nowrap">{t.examVerifiedBadge}</span>
       </div>
     );
   }
   return (
-    <div className="rounded-2xl border border-cyan-300 dark:border-cyan-800 bg-cyan-50 dark:bg-cyan-950/30 p-5 flex flex-wrap items-center justify-between gap-3">
+    <div className="rounded-2xl border border-cyan-300 dark:border-cyan-800 bg-cyan-50 dark:bg-cyan-950/30 p-4 flex flex-wrap items-center justify-between gap-3 h-full">
       <div>
         <h2 className="text-sm font-extrabold tracking-wide text-slate-800 dark:text-slate-100">{t.examTitle}</h2>
         <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">{t.examPendingBody}</p>
@@ -994,9 +994,9 @@ function DigitalStoreCTACard({ t }: { t: typeof dict['ka'] }) {
   return (
     <Link
       href="/dashboard?tab=products"
-      className="flex items-center gap-4 rounded-2xl border border-purple-400/40 dark:border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 backdrop-blur-md p-5 no-underline text-current transition-all duration-300 hover:border-purple-400/60 hover:shadow-lg hover:shadow-purple-500/10"
+      className="flex items-center gap-4 rounded-2xl border border-purple-400/40 dark:border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 backdrop-blur-md p-4 no-underline text-current transition-all duration-300 hover:border-purple-400/60 hover:shadow-lg hover:shadow-purple-500/10 h-full"
     >
-      <div className="shrink-0 w-11 h-11 rounded-xl bg-gradient-to-tr from-purple-500 to-cyan-600 flex items-center justify-center">
+      <div className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-500 to-cyan-600 flex items-center justify-center">
         <ShoppingBag className="w-5 h-5 text-white" />
       </div>
       <div className="min-w-0 flex-1">
@@ -1019,9 +1019,9 @@ function MyToolsCard({ lang }: { lang: SupportedLocale }) {
   return (
     <Link
       href="/dashboard/tools"
-      className="flex items-center gap-4 rounded-2xl border border-cyan-400/40 dark:border-cyan-500/30 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 backdrop-blur-md p-5 no-underline text-current transition-all duration-300 hover:border-cyan-400/60 hover:shadow-lg hover:shadow-cyan-500/10"
+      className="flex items-center gap-4 rounded-2xl border border-cyan-400/40 dark:border-cyan-500/30 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 backdrop-blur-md p-4 no-underline text-current transition-all duration-300 hover:border-cyan-400/60 hover:shadow-lg hover:shadow-cyan-500/10 h-full"
     >
-      <div className="shrink-0 w-11 h-11 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
+      <div className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
         <Sparkles className="w-5 h-5 text-white" />
       </div>
       <div className="min-w-0 flex-1">
@@ -1503,11 +1503,18 @@ function DashboardContent() {
 
       <SiteHeader />
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
+      <div className="max-w-7xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 pt-6">
         <BackButton fallbackHref="/" forceFallback className="dark:text-slate-400 dark:hover:text-slate-100" />
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-12 grid md:grid-cols-4 gap-6 md:gap-8 flex-1 w-full">
+      {/* xl:grid-cols-5 (sidebar 1 / content 4) rather than keeping md's 1:3
+          split all the way up — at md's ratio the nav column grows wide
+          enough on a real desktop viewport to visually compete with the
+          content next to it; 1:4 at xl+ keeps it fully legible (icon+label
+          rows, never "tiny") while giving the content column the bulk of
+          the now-wider container (see max-w-7xl/2xl:max-w-screen-2xl above
+          — this grid is what actually spends that extra width). */}
+      <div className="max-w-7xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 py-6 md:py-8 grid md:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8 flex-1 w-full">
         {/* SIDE MENU */}
         <div className="space-y-2 md:sticky md:top-24 self-start">
           {NAV.map((item) => {
@@ -1601,15 +1608,15 @@ function DashboardContent() {
         </div>
 
         {/* CONTENT */}
-        <div className="md:col-span-3 space-y-6">
+        <div className="md:col-span-3 xl:col-span-4 space-y-6">
           {loading ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">{t.loading}</p>
           ) : (
             <>
               {activeTab === 'overview' && (
-                <div className="space-y-8">
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    {[
+                <div className="space-y-6">
+                  {(() => {
+                    const kpiStats = [
                       { label: t.statCourses, value: String(courses.length), color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-500/10', icon: GraduationCap },
                       { label: t.statWallet, value: wallet ? formatGel(wallet.earningsBalance) : '—', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10', icon: Wallet },
                       { label: t.statGigs, value: String(activeGigsCount), color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-500/10', icon: Briefcase },
@@ -1617,53 +1624,74 @@ function DashboardContent() {
                       ...(postQuota && !postQuota.isGraduate
                         ? [{ label: t.statPostsLeft, value: String(postQuota.remaining), color: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-500/10', icon: MessageSquare }]
                         : []),
-                    ].map((stat) => (
-                      <div
-                        key={stat.label}
-                        className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-5"
-                      >
-                        <div className={`w-9 h-9 rounded-xl ${stat.bg} flex items-center justify-center mb-3`}>
-                          <stat.icon className={`w-4 h-4 ${stat.color}`} />
-                        </div>
-                        <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
-                        <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1">{stat.label}</p>
+                    ];
+                    // 5 real columns at xl+ only when there are actually 5
+                    // cards to fill them — otherwise xl:grid-cols-5 would
+                    // leave the 4-card case stretched with an empty 5th
+                    // slot instead of the clean 4-across it already had.
+                    // lg's 3-column middle step (1024–1279px) is the "3+2"
+                    // fallback for the 5-card case called for at that width
+                    // rather than cramming 5 narrow columns in too little
+                    // space.
+                    const kpiGridClass = kpiStats.length === 5 ? 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-5' : 'grid-cols-2 lg:grid-cols-4';
+                    return (
+                      <div className={`grid ${kpiGridClass} gap-4`}>
+                        {kpiStats.map((stat) => (
+                          <div
+                            key={stat.label}
+                            className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-4"
+                          >
+                            <div className={`w-8 h-8 rounded-xl ${stat.bg} flex items-center justify-center mb-2`}>
+                              <stat.icon className={`w-4 h-4 ${stat.color}`} />
+                            </div>
+                            <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
+                            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1">{stat.label}</p>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })()}
                   {postQuota && !postQuota.isGraduate && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400 -mt-4">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 -mt-2">
                       {t.postsLeftValue.replace('{{remaining}}', String(postQuota.remaining))}
                     </p>
                   )}
 
                   {user?.role === 'Student' && <DashboardUnlockCards user={user} t={t} />}
 
-                  {user?.role === 'Student' && <FreelancerExamCard user={user} t={t} />}
+                  {/* Grouped into one 2-col grid at lg+ (each was previously
+                      a separate full-width row stacked vertically) — on a
+                      normal desktop viewport this halves the vertical space
+                      this section needs without touching any card's own
+                      text/icon size. */}
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    {user?.role === 'Student' && <FreelancerExamCard user={user} t={t} />}
 
-                  {user?.role === 'Student' && <DigitalStoreCTACard t={t} />}
+                    {user?.role === 'Student' && <DigitalStoreCTACard t={t} />}
 
-                  <MyToolsCard lang={lang} />
+                    <MyToolsCard lang={lang} />
 
-                  {inProgressCourse && (
-                    <Link
-                      href={`/courses/${inProgressCourse.course.id}/learn`}
-                      className="flex items-center gap-4 rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-cyan-500/5 to-purple-600/5 backdrop-blur-md p-5 no-underline text-current transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10"
-                    >
-                      <div className="shrink-0 w-11 h-11 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
-                        <Bot className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="flex items-center gap-1.5 text-sm font-black text-slate-900 dark:text-white">
-                          <Sparkles className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
-                          {t.aiTutorTitle}
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.aiTutorDesc}</p>
-                      </div>
-                      <span className="shrink-0 text-xs font-bold text-cyan-600 dark:text-cyan-400 whitespace-nowrap hidden sm:inline">
-                        {t.aiTutorCta} →
-                      </span>
-                    </Link>
-                  )}
+                    {inProgressCourse && (
+                      <Link
+                        href={`/courses/${inProgressCourse.course.id}/learn`}
+                        className="flex items-center gap-4 rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-cyan-500/5 to-purple-600/5 backdrop-blur-md p-4 no-underline text-current transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 h-full"
+                      >
+                        <div className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
+                          <Bot className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="flex items-center gap-1.5 text-sm font-black text-slate-900 dark:text-white">
+                            <Sparkles className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+                            {t.aiTutorTitle}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.aiTutorDesc}</p>
+                        </div>
+                        <span className="shrink-0 text-xs font-bold text-cyan-600 dark:text-cyan-400 whitespace-nowrap hidden sm:inline">
+                          {t.aiTutorCta} →
+                        </span>
+                      </Link>
+                    )}
+                  </div>
 
                   <div>
                     <h2 className="text-sm font-extrabold tracking-wide mb-3">{t.progressTitle}</h2>
