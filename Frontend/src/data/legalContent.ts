@@ -67,7 +67,6 @@ export const privacyPolicy: { ka: LegalSection[]; en: LegalSection[] } = {
       heading: '7. კონტაქტი',
       paragraphs: [
         `${entityLineKa}`,
-        `მისამართი: ${merchantInfo.addressKa}`,
         `ელ-ფოსტა: ${merchantInfo.email} · ტელეფონი: ${merchantInfo.phone}`,
       ],
     },
@@ -120,7 +119,6 @@ export const privacyPolicy: { ka: LegalSection[]; en: LegalSection[] } = {
       heading: '7. Contact',
       paragraphs: [
         `${entityLineEn}`,
-        `Address: ${merchantInfo.addressEn}`,
         `Email: ${merchantInfo.email} · Phone: ${merchantInfo.phone}`,
       ],
     },

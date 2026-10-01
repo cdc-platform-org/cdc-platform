@@ -350,9 +350,6 @@ export default function SiteFooter() {
             <p>
               ს/კ / ID Code: {merchantInfo.identificationCode}
             </p>
-            <p>
-              {merchantInfo.addressKa} / {merchantInfo.addressEn}
-            </p>
           </div>
         </div>
 
