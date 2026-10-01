@@ -9,6 +9,4 @@ export const merchantInfo = {
   identificationCode: '438737743',
   email: 'contact@cdc.org.ge',
   phone: '+995 551 14 14 11',
-  addressKa: 'საქართველო, ქალაქი სამტრედია, თამარ მეფის ქ., N 8, ბინა N2',
-  addressEn: 'Tamar Mepe St. N8, Apt. N2, Samtredia, Georgia',
 };
