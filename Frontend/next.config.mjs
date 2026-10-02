@@ -10,6 +10,21 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const nextConfig = {
   i18n,
   reactStrictMode: true,
+  distDir: process.env.NEXT_DIST_DIR || '.next',
+  async rewrites() {
+    const target = process.env.NEXT_LOCAL_API_PROXY_TARGET;
+    if (!target || process.env.NODE_ENV === 'production') return [];
+
+    const backend = new URL(target);
+    if (!['localhost', '127.0.0.1'].includes(backend.hostname)) return [];
+
+    return [
+      ...['auth', 'site-content', 'notifications', 'products', 'childrens-books', 'courses', 'live-trainings'].map((route) => ({
+        source: `/api/${route}/:path*`,
+        destination: `${backend.origin}/api/${route}/:path*`,
+      })),
+    ];
+  },
   // Azure Web App (Linux container) deployment — see Frontend/Dockerfile —
   // needs the self-contained server bundle standalone mode produces
   // (.next/standalone/server.js + only the node_modules it actually

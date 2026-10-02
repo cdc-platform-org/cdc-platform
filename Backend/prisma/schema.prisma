@@ -251,6 +251,10 @@ enum BogPaymentPurpose {
   // real recurring-charge-free purchase, not the full BillingSubscription
   // engine.
   ENGLISH_TUTOR_SUBSCRIPTION
+  // A paid Custom AI Children's Book (referenceId -> BookProject.id). See
+  // schema's BookProject comment and services/bookPurchaseFulfillment.ts —
+  // DIRECT model, same as PRODUCT (flat one-time sale, no escrow).
+  CHILDRENS_BOOK
 }
 
 // Whether a payment settles straight to its destination the moment it
@@ -279,6 +283,75 @@ enum BogPaymentStatus {
   // NOT itself trigger a real bank refund through BOG; the admin still
   // processes the actual refund via BOG's own dashboard/support.
   REFUNDED
+}
+
+// ============================================================
+// CDC CUSTOM AI CHILDREN'S BOOK — enums (Batch A, schema foundation only).
+// Deliberately a rigid, closed enum (not a plain String field, unlike this
+// codebase's usual free-text locale columns) — this product is locked to
+// exactly ka/en with no Russian and no near-term plan to add a locale, the
+// opposite of the site-wide "support every locale" convention, so an enum
+// is the right amount of DB-level friction here. See bookStateService.ts
+// for the transition guards these enums exist to support, and the
+// approved Phase 5/5.1 architecture for the full design.
+// ============================================================
+
+enum BookLanguage {
+  KA
+  EN
+}
+
+// Content/business lifecycle only — PDF artifact lifecycle is the fully
+// separate BookPdfStatus enum below (Phase 5.1 correction: these two must
+// never be interleaved into one linear chain).
+enum BookStatus {
+  DRAFT
+  STORY_PLAN_READY
+  CHARACTER_PREVIEW_GENERATING
+  CHARACTER_PREVIEW_READY
+  CHARACTER_APPROVED
+  PAYMENT_PENDING
+  PAID
+  FINAL_GENERATING
+  FINAL_QA
+  FINAL_READY
+  REVISION_REQUESTED
+  REVISION_GENERATING
+  REVISION_QA
+  COMPLETED
+  // A genuinely-used terminal/parked state — reached when a *_GENERATING
+  // or *_QA step exhausts its retry budget (bookStateService.ts), not a
+  // speculative placeholder. Recoverable only via an explicit
+  // admin/background-worker retry back into the same stage.
+  FAILED
+}
+
+enum BookPdfStatus {
+  NONE
+  GENERATING
+  CURRENT
+  STALE
+  FAILED
+}
+
+enum BookImageGenerationStatus {
+  PENDING
+  GENERATING
+  READY
+  FAILED
+}
+
+enum BookQaStatus {
+  PASS
+  PARTIAL
+  FAIL
+}
+
+enum BookGenerationOperationType {
+  STORY_PLAN
+  CHARACTER_PREVIEW
+  FINAL_PAGE
+  REVISION
 }
 
 // ============================================================
@@ -704,6 +777,7 @@ model User {
   digitalMarketingGenerations   DigitalMarketingGeneration[]
   liveTrainingEnrollments       LiveTrainingEnrollment[]
   careerQuizSubmissions         CareerQuizSubmission[]
+  bookProjects                  BookProject[]
   chatRequestsSent              ChatRequest[]                  @relation("ChatRequestsSent")
   chatRequestsReceived          ChatRequest[]                  @relation("ChatRequestsReceived")
   chatFlagsAsSender             ChatFlag[]                     @relation("ChatFlagsAsSender")
@@ -5346,4 +5420,233 @@ model CareerQuizSubmission {
   // resettable counter field needed.
   @@index([userId, createdAt])
   @@map("career_quiz_submissions")
+}
+
+// ============================================================
+// CDC CUSTOM AI CHILDREN'S BOOK — Batch A (schema + state foundation only).
+// No route/payment/PDF/Azure wiring yet — see bookStateService.ts for the
+// pure transition-guard logic, and scripts/gpt-image-2-*.ts (Phases 1-4 of
+// the product's own design process) for the already-validated
+// CHARACTER_BIBLE/STYLE_BIBLE prompt scaffolding `characterBible`/
+// `styleBible` below are meant to snapshot once a later batch wires up
+// generation.
+// ============================================================
+
+model BookProject {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  language BookLanguage
+  title    String
+
+  // Content lifecycle and PDF artifact lifecycle are deliberately two
+  // independent fields (Phase 5.1 correction) — a book can be `COMPLETED`
+  // while `pdfStatus` cycles GENERATING→CURRENT→STALE→GENERATING again
+  // across a revision, without ever re-entering the content state machine.
+  status    BookStatus    @default(DRAFT)
+  pdfStatus BookPdfStatus @default(NONE)
+
+  // Null until CHARACTER_APPROVED locks it (see styleBible below for the
+  // same lock point). Validated against the (not-yet-implemented) style
+  // catalog at the service layer, not a DB enum — the catalog itself may
+  // grow (more presets) independent of a schema change.
+  illustrationStyle String?
+
+  // Locked product constants, stored per-row (not re-read from shared app
+  // config at generation/PDF time) so a future pricing/page-count/
+  // revision-policy change can never retroactively alter an
+  // already-created book. Never client-configurable — enforced in
+  // bookStateService.ts (ALLOWED_PAGE_COUNTS/calculateBookPrice), not here.
+  // CHECK constraints pin the current variable-page-count/1-GEL-per-page
+  // model at the DB level too (see migration SQL): pageCount IN (5,10,15,20)
+  // and priceGel = pageCount * 100 — the DB itself refuses a row where the
+  // two disagree, not just the application layer.
+  priceGel      Int     @default(1000) // minor units (tetri) — pageCount * 100
+  pageCount     Int     @default(10)
+  revisionLimit Int     @default(1)
+  revisionUsed  Boolean @default(false)
+
+  characterConfig       Json?
+  characterBible        Json?
+  characterBibleVersion Int?
+  styleBible            Json?
+  storyPlan             Json?
+
+  // Payment linkage: deliberately NOT a typed FK to BogPayment or
+  // StripePayment. This codebase's existing convention (BogPayment.
+  // referenceId, PaymentModel/BogPaymentPurpose above) has the PAYMENT row
+  // carry an untyped `referenceId` pointing AT the purchased entity —
+  // COURSE/MENTORSHIP/GIG_ESCROW_FUNDING/PRODUCT all work this way already
+  // — never the other way around. A typed FK here would have to commit to
+  // one gateway table and break for the other. `paymentProvider` is purely
+  // an informational hint ('BOG' | 'STRIPE') so a lookup knows which table
+  // to query (`referenceId = this.id`) — see the 'CHILDRENS_BOOK' value on
+  // BogPaymentPurpose above and services/bookPurchaseFulfillment.ts.
+  paymentProvider String?
+
+  finalPdfBlobRef String?
+  pdfVersion      Int     @default(0)
+
+  // Both stored as plain strings (not enums) deliberately: `previewQuality`
+  // is effectively a locked constant today but gpt-image-2's quality tier
+  // names aren't a CDC-owned enum; `finalQuality` is explicitly
+  // NOT_TESTED/configurable-without-migration per the approved
+  // architecture (Phase 5 §11) — changing the allowed value set must never
+  // require a schema migration.
+  previewQuality String  @default("low")
+  finalQuality   String?
+
+  // Audio Story add-on snapshot for a purchased book. `audioAddOnPurchased`
+  // is a persisted entitlement, not a current UI flag — once the user has
+  // paid, future price changes must not alter their existing access.
+  audioAddOnPurchased Boolean @default(false)
+  audioPriceGel       Int     @default(0)
+  totalPriceGel       Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pages            BookPage[]
+  generationEvents BookGenerationEvent[]
+  narrationArtifacts BookNarrationArtifact[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([pdfStatus])
+  @@map("book_projects")
+}
+
+enum BookNarrationStatus {
+  PENDING
+  GENERATING
+  READY
+  FAILED
+}
+
+model BookPage {
+  id            String      @id @default(uuid())
+  bookProjectId String
+  bookProject   BookProject @relation(fields: [bookProjectId], references: [id], onDelete: Cascade)
+
+  // 1-20 (the DB CHECK's global bound, matching MAX_PAGE_COUNT); page 1 is
+  // the cover/story-opening page by convention (Phase 5.1 correction — no
+  // separate cover model/row). A given book's OWN valid range is narrower —
+  // 1..BookProject.pageCount — which only the application layer can check
+  // (a CHECK constraint can't reference a sibling row's column), enforced
+  // by bookStateService.isValidPageNumber(pageNumber, book.pageCount)
+  // everywhere a page number is accepted.
+  pageNumber Int
+
+  // Descriptive scene content (sceneDescription/composition/emotion/
+  // characterAction/objectInteraction/textSafeZone) — write-once once
+  // copied from BookProject.storyPlan at PAID→FINAL_GENERATING, never
+  // queried into, so JSON is appropriate here (unlike the state/status
+  // columns below).
+  sceneSpec Json?
+  storyText String?
+
+  imageGenerationStatus BookImageGenerationStatus @default(PENDING)
+  // Atomically incremented on each legitimate generation claim (see
+  // bookStateService.ts) — this is what lets BookGenerationEvent give
+  // every real attempt its own row without a unique-key conflict (see that
+  // model's own comment).
+  attemptCount          Int                       @default(0)
+
+  // The one accepted/live artifact for this page. Set only once QA PASSES
+  // (never on generation success alone) — a failed or superseded attempt's
+  // BookGenerationEvent row is simply never pointed to here and stays in
+  // history untouched. Named relation ("AcceptedArtifact") for
+  // self-documentation, even though Prisma doesn't strictly require one
+  // here (BookPage and BookGenerationEvent have only this one relation
+  // between them) — see Git Scope Review notes in the Batch A report for
+  // why it's kept anyway. onDelete: SetNull because an event row should
+  // never actually be deleted (append-only/immutable by design) — this is
+  // a defensive fallback, not an expected path.
+  acceptedEventId String?              @unique
+  acceptedEvent   BookGenerationEvent? @relation("AcceptedArtifact", fields: [acceptedEventId], references: [id], onDelete: SetNull)
+
+  // 0 = original, 1 = the one allowed revision for this specific page
+  // (REVISION_LIMIT is book-wide, but the revision always targets exactly
+  // one page, so the version marker lives here). CHECK constrains this to
+  // {0,1} at the DB level.
+  revisionVersion Int @default(0)
+
+  qaStatus BookQaStatus?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([bookProjectId, pageNumber])
+  @@index([imageGenerationStatus])
+  @@map("book_pages")
+}
+
+model BookNarrationArtifact {
+  id            String               @id @default(uuid())
+  bookProjectId String
+  bookProject   BookProject          @relation(fields: [bookProjectId], references: [id], onDelete: Cascade)
+
+  pageNumber      Int
+  revisionVersion Int                 @default(0)
+  status          BookNarrationStatus @default(PENDING)
+  language        BookLanguage
+  mimeType        String?
+  artifactKey     String?
+  attemptCount    Int                 @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([bookProjectId, pageNumber, revisionVersion])
+  @@index([bookProjectId, status])
+  @@map("book_narration_artifacts")
+}
+
+// Append-only attempt telemetry — doubles as the idempotency guard record
+// and the future cost-correlation log (Phase 5 §23). A row is never
+// updated or deleted once written.
+model BookGenerationEvent {
+  id            String      @id @default(uuid())
+  bookProjectId String
+  bookProject   BookProject @relation(fields: [bookProjectId], references: [id], onDelete: Cascade)
+
+  // Null for STORY_PLAN/CHARACTER_PREVIEW (book-level, not page-level).
+  pageNumber Int?
+
+  operationType BookGenerationOperationType
+
+  // Stable across retries of the SAME logical unit of work, e.g.
+  // "<bookProjectId>:FINAL_PAGE:7:0" (page 7, original) vs.
+  // "<bookProjectId>:FINAL_PAGE:7:1" (page 7's one allowed revision) — see
+  // bookStateService.ts's buildLogicalOperationKey(). Deliberately NOT
+  // unique by itself (Phase 5.1 correction): a legitimate bounded retry is
+  // attempt 2 of the SAME key, and must be representable without
+  // conflicting with attempt 1's row.
+  logicalOperationKey String
+  // What actually makes a row unique, paired with the key above — attempt
+  // 1, 2, 3... of that logical operation. Starts at 1.
+  attemptNumber       Int    @default(1)
+  // Redundant, queryable copy of what's already embedded in the key —
+  // 0 = original generation, 1 = revision attempt.
+  revisionVersion     Int    @default(0)
+
+  deployment          String
+  quality             String
+  requestedSize       String
+  requestId           String?
+  latencyMs           Int?
+  success             Boolean
+  errorClassification String?
+
+  startedAt   DateTime
+  completedAt DateTime?
+
+  // Reverse side of BookPage.acceptedEvent — at most one page will ever
+  // point to a given event as its accepted artifact.
+  acceptedByPage BookPage? @relation("AcceptedArtifact")
+
+  @@unique([logicalOperationKey, attemptNumber])
+  @@index([bookProjectId])
+  @@map("book_generation_events")
 }

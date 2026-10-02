@@ -37,6 +37,10 @@ import { completeLearningPayment } from '../services/learningPaymentFulfillment'
 import { sendRegistrationStatusWhatsApp, formatWhatsAppDate } from '../services/whatsappService';
 import { resolveNotificationLocale } from '../utils/notificationLocale';
 import { completeTutorSubscriptionPurchase, TUTOR_SUBSCRIPTION_PRICE_GEL } from '../services/englishTutorSubscriptionService';
+import { completeChildrensBookPurchase, assertBookReadyForCheckout, BookNotFoundError, BookNotEligibleForCheckoutError } from '../services/bookPurchaseFulfillment';
+import { isBookDevPaymentSimulationEnabled, resolveBookPayableAmountTetri } from '../services/bookMockConfig';
+import { calculateBookPrice } from '../services/bookStateService';
+import { calculateAudioPrice, calculateTotalBookPrice } from '../services/bookNarrationService';
 
 const router = Router();
 
@@ -100,7 +104,7 @@ const PENDING_ORDER_REUSE_WINDOW_MS = 15 * 60 * 1000;
 
 async function findReusablePendingOrder(
   userId: string,
-  purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT' | 'HR_SUPPORT' | 'LIVE_TRAINING' | 'ENGLISH_TUTOR_SUBSCRIPTION',
+  purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT' | 'HR_SUPPORT' | 'LIVE_TRAINING' | 'ENGLISH_TUTOR_SUBSCRIPTION' | 'CHILDRENS_BOOK',
   referenceId: string,
   expectedAmount?: number,
   expectedPromoId?: string | null
@@ -922,6 +926,110 @@ router.post(
 );
 
 // ============================================================
+// CHECKOUT — CHILDREN'S BOOK — same DIRECT/single-purchase shape as
+// CHECKOUT — DIGITAL PRODUCT above, except the eligibility check is the
+// book's own state machine (bookStateService.canInitiatePayment) rather
+// than a ProductPurchase row, and the atomic CHARACTER_APPROVED ->
+// PAYMENT_PENDING claim happens here (not in fulfillment) since this is
+// the one place that transition is legal to make.
+// ============================================================
+router.post(
+  '/checkout/childrens-book/:bookId',
+  checkoutRateLimit,
+  authenticate,
+  requireApproved,
+  async (req: Request, res: Response) => {
+    // Fail closed, not just a hidden frontend button: a real BOG order was
+    // accidentally created during QA because the UI showed both the real
+    // and dev-simulated payment actions together. isBookDevPaymentSimulationEnabled()
+    // is already hard-false in production regardless of env vars (see
+    // bookMockConfig.ts), so this guard is a true no-op in production —
+    // only a local/dev process that has deliberately opted into payment
+    // simulation ever hits this 403.
+    if (isBookDevPaymentSimulationEnabled()) {
+      return res.status(403).json({ message: 'Real checkout is disabled while dev payment simulation is enabled on this server.' });
+    }
+    let book: { id: string; pageCount: number; audioAddOnPurchased: boolean };
+    try {
+      book = await assertBookReadyForCheckout(req.params.bookId, req.user!.id);
+    } catch (err) {
+      if (err instanceof BookNotFoundError) return res.status(404).json({ message: err.message });
+      if (err instanceof BookNotEligibleForCheckoutError) return res.status(400).json({ message: err.message });
+      throw err;
+    }
+
+    // listPriceGel is derived fresh from pageCount (1 GEL/page), never read
+    // off the stored BookProject.priceGel column directly — the DB CHECK
+    // constraint already guarantees they agree, but re-deriving here is the
+    // stricter "never trust a stored/frontend price for an actual charge"
+    // layer the product requires. payableAmountGel is what's actually
+    // charged — identical to listPriceGel for every book except one
+    // operator-named QA book during a controlled local discount test (see
+    // resolveBookPayableAmountTetri's own comment). Both names kept
+    // distinct through this whole function, deliberately never collapsed
+    // into one "amount" variable.
+    const listPriceGel = calculateBookPrice(book.pageCount);
+    const audioPriceGel = calculateAudioPrice(book.audioAddOnPurchased);
+    const totalPriceGel = calculateTotalBookPrice(listPriceGel, book.audioAddOnPurchased);
+    const payableAmountGel = resolveBookPayableAmountTetri(book.id, totalPriceGel);
+
+    const reusable = await findReusablePendingOrder(req.user!.id, 'CHILDRENS_BOOK', book.id, payableAmountGel);
+    if (reusable) {
+      return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.redirectUrl });
+    }
+
+    // Atomic claim: only a book genuinely still in CHARACTER_APPROVED moves
+    // to PAYMENT_PENDING. A concurrent duplicate click loses this race and
+    // falls through to find the winner's reusable PENDING order instead on
+    // its own retry — never two BogPayment rows for one checkout attempt.
+    const claimed = await prisma.bookProject.updateMany({
+      where: { id: book.id, status: 'CHARACTER_APPROVED' },
+      data: { status: 'PAYMENT_PENDING' },
+    });
+    if (claimed.count !== 1) {
+      return res.status(409).json({ message: 'This book already has a checkout in progress.' });
+    }
+
+    const bogPayment = await prisma.bogPayment.create({
+      data: {
+        bogOrderId: `pending-${crypto.randomUUID()}`,
+        userId: req.user!.id,
+        purpose: 'CHILDRENS_BOOK',
+        paymentModel: paymentModelForPurpose('CHILDRENS_BOOK'),
+        referenceId: book.id,
+        amount: payableAmountGel,
+        currency: 'GEL',
+        status: 'PENDING',
+      },
+    });
+    await prisma.bookProject.update({
+      where: { id: book.id },
+      data: {
+        audioPriceGel,
+        totalPriceGel,
+      },
+    });
+    const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
+    const order = await createBogOrderOrRespond(res, {
+      externalOrderId: bogPayment.id,
+      amount: payableAmountGel,
+      currency: 'GEL',
+      basketItemName: payableAmountGel === listPriceGel ? "Custom AI Children's Book" : "Custom AI Children's Book (QA test — discounted)",
+      callbackUrl: CALLBACK_URL,
+      successRedirectUrl,
+      failRedirectUrl,
+      lang: checkoutLang(req),
+    });
+    if (!order) return;
+    const updated = await prisma.bogPayment.update({
+      where: { id: bogPayment.id },
+      data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },
+    });
+    res.status(201).json({ paymentId: updated.id, redirectUrl: order.redirectUrl });
+  }
+);
+
+// ============================================================
 // CALLBACK / WEBHOOK — public, no auth. Authenticity comes entirely from
 // the RSA signature (see bogPaymentService.verifyBogCallbackSignature),
 // verified against the raw request body captured by server.ts's
@@ -1136,6 +1244,10 @@ export async function applyBogPaymentResult(
     await completeLiveTrainingPurchase({ userId: bogPayment.userId, liveTrainingId: bogPayment.referenceId });
   } else if (bogPayment.purpose === 'ENGLISH_TUTOR_SUBSCRIPTION') {
     await completeTutorSubscriptionPurchase(bogPayment.userId);
+  } else if (bogPayment.purpose === 'CHILDRENS_BOOK') {
+    // Idempotent on retry — the underlying updateMany only ever matches a
+    // book still in PAYMENT_PENDING (see bookPurchaseFulfillment.ts).
+    await completeChildrensBookPurchase({ bookProjectId: bogPayment.referenceId });
   } else if (bogPayment.purpose === 'HR_SUPPORT') {
     // Places the payment into escrow — does NOT credit a specialist yet
     // (none is assigned at this point). See hrSupportEscrowService.ts's own

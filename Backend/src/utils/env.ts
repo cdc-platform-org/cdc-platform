@@ -211,6 +211,18 @@ export const AZURE_OPENAI_API_VERSION = (process.env.AZURE_OPENAI_API_VERSION ||
 export const AZURE_OPENAI_DALLE_DEPLOYMENT_NAME = (process.env.AZURE_OPENAI_DALLE_DEPLOYMENT_NAME || '').trim();
 export const AZURE_OPENAI_DALLE_API_VERSION = (process.env.AZURE_OPENAI_DALLE_API_VERSION || '2024-04-01-preview').trim();
 
+// gpt-image-2 (Children's Book generator, Phase 1 smoke test) — a THIRD,
+// fully separate Azure OpenAI resource ("cdc-book-images", own key/
+// endpoint/deployment) addressed via the newer "v1" data-plane surface
+// (POST {endpoint}/openai/v1/images/generations?api-version=preview), the
+// same surface services/azureChatCompletionService.ts's secondary resource
+// already uses — see services/azureImageService.ts. Deliberately NOT
+// requireEnv(): optional until a human adds the key, same "unconfigured
+// until set" posture as every other AI provider here.
+export const AZURE_IMAGE_ENDPOINT = (process.env.AZURE_IMAGE_ENDPOINT || '').trim();
+export const AZURE_IMAGE_API_KEY = (process.env.AZURE_IMAGE_API_KEY || '').trim();
+export const AZURE_IMAGE_DEPLOYMENT = (process.env.AZURE_IMAGE_DEPLOYMENT || '').trim();
+
 // Secondary Azure OpenAI resource (a separate region/deployment) — see
 // services/azureChatCompletionService.ts's multi-region failover. On the
 // newer Azure OpenAI "v1" API surface, so it's addressed with the plain
@@ -256,3 +268,33 @@ export const STRIPE_GEL_TO_EUR_RATE = Number(process.env.STRIPE_GEL_TO_EUR_RATE 
 // Gemini's single global endpoint, Azure Speech is called per-region.
 export const AZURE_SPEECH_KEY = cleanEnv(process.env.AZURE_SPEECH_KEY);
 export const AZURE_SPEECH_REGION = cleanEnv(process.env.AZURE_SPEECH_REGION);
+// Children's Book product (Phase 5+/Batch A+) — controls whether AI calls
+// (story plan/character preview/final generation) are mocked locally
+// instead of hitting real Azure. Mocking is HARD-forced in production
+// regardless of this value; only a non-production process can ever set
+// BOOK_FORCE_REAL_AI=true to intentionally use real Azure during manual
+// testing (see services/bookMockConfig.ts).
+export const BOOK_FORCE_REAL_AI = process.env.BOOK_FORCE_REAL_AI === 'true';
+// Enables POST /api/childrens-books/:id/payment/dev-simulate, a route that
+// marks a book's PENDING payment COMPLETED without a real BOG/Stripe
+// charge — for local wizard QA only. Requires NODE_ENV !== 'production' AND
+// this flag, so it can never be enabled by accident in a deployed
+// environment (see services/bookMockConfig.ts / routes/childrensBook.ts).
+export const ENABLE_BOOK_DEV_PAYMENT_SIMULATION = process.env.ENABLE_BOOK_DEV_PAYMENT_SIMULATION === 'true';
+// Whether Children's Book PDFs/preview images go to the real private Azure
+// Blob container (privateBlobStorage.ts) or a local-disk fallback
+// (bookStorageService.ts). Hard-forced true in production; opt-in
+// elsewhere, since DefaultAzureCredential (Managed Identity) generally
+// cannot authenticate from a developer machine without its own `az login`
+// / service-principal env vars, which this feature doesn't want to require
+// just to run the wizard locally.
+export const BOOK_USE_CLOUD_STORAGE = process.env.BOOK_USE_CLOUD_STORAGE === 'true';
+// Children's Book QA payment discount (BOOK_QA_DISCOUNT_BOOK_ID /
+// BOOK_QA_DISCOUNT_AMOUNT_TETRI) — lets ONE specific, operator-named
+// BookProject be charged a reduced real amount during a controlled local
+// BOG payment test, without touching the real 15 GEL list price anywhere
+// (BookProject.priceGel, the DB CHECK constraint, and every other
+// checkout stay at 1500 tetri). Deliberately NOT re-exported as a frozen
+// constant here — see services/bookMockConfig.ts's resolveBookPayableAmountTetri(),
+// which reads process.env directly (and hard-forces this off in
+// production) for its own stated reason.

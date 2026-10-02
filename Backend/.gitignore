@@ -8,3 +8,8 @@ dist
 # Local-disk fallback for image uploads when Bunny Storage isn't
 # configured (services/imageStorage.ts) — runtime output, not source.
 public/uploads/*
+
+# Local-disk fallback for Children's Book PDFs/preview images when
+# BOOK_USE_CLOUD_STORAGE isn't set (services/bookStorageService.ts) —
+# runtime output, not source.
+local-storage/

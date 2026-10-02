@@ -146,10 +146,8 @@ export default function SiteHeader() {
   const router = useRouter();
   const lang = resolveLocale(router.locale);
   const t = dict[lang];
-  // MARKETPLACE_CATEGORIES.value only ever carries ka/en fields — it's the
-  // literal ?category= filter value, which must match DigitalProduct.category
-  // exactly as sellers type it (ka or en, never de/es/fr/uk), so category
-  // links always resolve through this ka/en-only pair regardless of `lang`.
+  // Marketplace customer-facing categories use ka/en query values; other
+  // locales intentionally fall back to English for category navigation.
   const catLocale = lang === 'ka' ? 'ka' : 'en';
   const { user, isAuthenticated, logout } = useAuth();
   const { openAuthModal } = useAuthModal();

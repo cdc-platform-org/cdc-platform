@@ -5,7 +5,7 @@ import Head from 'next/head';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { Search, SlidersHorizontal, X, Calendar, PlayCircle, GraduationCap, Crown } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Calendar, PlayCircle, GraduationCap } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
@@ -27,17 +27,17 @@ import LearningRatingSummary from '../../src/components/shared/LearningRatingSum
 type SortMode = 'recommended' | 'price_asc' | 'price_desc';
 type PriceFilter = 'all' | 'free' | 'paid';
 type ContentTab = 'all' | 'courses' | 'live' | 'ai-teachers';
+const INTERNAL_TEST_CATEGORY = /(?:^|[^a-z0-9])(?:qa|e2e|test(?:ing)?|fixture|fixtures|demo|seed)(?:$|[^a-z0-9])/i;
 
-// AI tutors/assistants shown under the "AI Digital Teachers" tab — not
+// Personalized AI learning products shown under the "AI Teachers" tab — not
 // Course/LiveTraining DB rows (they're live dashboard tools, same concept
 // as marketplace/index.tsx's SAAS_TOOLS), so this is a small fixed list
 // rendered directly here rather than fetched, reusing each tool's own
 // already-translated copy the same way marketplace/index.tsx and tools.tsx
-// do. Deliberately excludes Media Studio/Proctoring — those aren't
-// teaching tools, they don't belong in a course catalog.
+// do. Educator Hub is a teacher productivity suite, not personalized
+// learner instruction, so it belongs with Digital AI Tools instead.
 const AI_TEACHERS = [
   { id: 'english-tutor', href: '/dashboard/english-tutor', icon: GraduationCap, accent: 'from-purple-500 to-cyan-600' },
-  { id: 'educator-hub', href: '/dashboard/tools/educator-hub', icon: Crown, accent: 'from-amber-500 to-purple-600' },
 ] as const;
 
 export default function CoursesPage() {
@@ -48,13 +48,11 @@ export default function CoursesPage() {
   const lang = router.locale === 'ka' ? 'ka' : 'en';
   const { t } = useTranslation('courses');
   const { t: th } = useTranslation('home');
-  const { t: tEdu } = useTranslation('educatorHub');
   const { isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
 
   const aiTeacherCopy: Record<(typeof AI_TEACHERS)[number]['id'], { title: string; desc: string; badge: string }> = {
     'english-tutor': { title: th('imiakoCardTitle'), desc: th('imiakoFeature1'), badge: th('imiakoBadgeFreeTrial') },
-    'educator-hub': { title: tEdu('pageTitle'), desc: tEdu('pageSubtitle'), badge: tEdu('vipBadge') },
   };
 
   // Same "guest -> auth modal -> resume" pattern as marketplace/index.tsx's
@@ -104,7 +102,7 @@ export default function CoursesPage() {
     setLoading(true);
     try {
       const [courseData, liveTrainingData] = await Promise.all([getCourses(), getLiveTrainings()]);
-      setCourses(courseData.filter((c) => c.published));
+      setCourses(courseData.filter((c) => c.published && !INTERNAL_TEST_CATEGORY.test(c.category)));
       // "Active" = published (already server-filtered — GET /live-trainings
       // only returns published rows for an unauthenticated/non-admin
       // visitor) AND not yet happened. A past session has nothing left to
@@ -112,7 +110,7 @@ export default function CoursesPage() {
       // listing even though the row itself is still published for
       // historical/admin reference.
       const now = Date.now();
-      setLiveTrainings(liveTrainingData.filter((tr) => new Date(tr.scheduledAt).getTime() >= now));
+      setLiveTrainings(liveTrainingData.filter((tr) => new Date(tr.scheduledAt).getTime() >= now && !INTERNAL_TEST_CATEGORY.test(tr.category)));
     } finally {
       setLoading(false);
     }
