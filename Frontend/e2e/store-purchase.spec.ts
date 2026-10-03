@@ -12,9 +12,16 @@ const SEEDED_FREE_PRODUCT_ID = '00000000-0000-4000-8000-00000000f00d';
 test.use({ storageState: AUTH_STATE_PATH });
 
 test.describe('Store Purchases', () => {
-  test('browsing the marketplace shows the seeded free product', async ({ page }) => {
+  test('browsing the marketplace hides internal QA products', async ({ page }) => {
     await page.goto('/marketplace');
-    await expect(page.getByText('QA E2E Free Product')).toBeVisible({ timeout: 10000 });
+    // The catalog fetch is async (see marketplace/index.tsx's load()) — wait
+    // for it to settle before asserting absence, same race-avoidance reason
+    // as the claim-button test below. Without this, the assertion could
+    // resolve true just because the fetch hasn't populated the DOM yet,
+    // proving nothing about the actual filter.
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByText('QA E2E Free Product')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'QA Fixtures', exact: true })).toHaveCount(0);
   });
 
   test('claiming a free product unlocks the download button', async ({ page }) => {

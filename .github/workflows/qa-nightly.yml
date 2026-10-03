@@ -185,6 +185,19 @@ jobs:
       NEXT_PUBLIC_API_URL: http://localhost:4000/api
       QA_TEST_EMAIL: qa-e2e@cdc.test
       QA_TEST_PASSWORD: QaE2ePass123!
+      # childrens-book-audio.spec.ts talks to the Backend API directly
+      # (bypassing the Frontend) and defaults to port 4001 — the port the
+      # local-only `playwright.book-local.config.ts` / `NEXT_LOCAL_API_PROXY_TARGET`
+      # dev convenience setup uses. This job's real Backend listens on 4000
+      # (see PORT above and the wait-on check below), so without this the
+      # spec gets ECONNREFUSED against a port nothing in CI ever binds.
+      BOOK_API_URL: http://localhost:4000/api/
+      # Lets the spec drive payment via POST .../payment/dev-simulate instead
+      # of a real BOG order (see services/bookMockConfig.ts — hard-disabled
+      # in production regardless of this value, so it's safe here). Real AI
+      # stays mocked by default (BOOK_FORCE_REAL_AI is intentionally left
+      # unset) — zero Azure image requests in this job either way.
+      ENABLE_BOOK_DEV_PAYMENT_SIMULATION: 'true'
     steps:
       - uses: actions/checkout@v4
 

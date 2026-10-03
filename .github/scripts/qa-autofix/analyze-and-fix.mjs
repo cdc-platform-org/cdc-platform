@@ -169,12 +169,28 @@ async function main() {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.error('ANTHROPIC_API_KEY is not set — skipping autofix.');
+    // The workflow's next step (peter-evans/create-pull-request) always
+    // reads this file as its PR body via `body-path`, regardless of
+    // whether a PR ends up being opened — an early exit that skips writing
+    // it turns "nothing to do" into a hard workflow failure instead of a
+    // clean no-op. Every exit path from this script must leave the file
+    // behind, same as the billingUnavailable/normal-completion paths below.
+    fs.writeFileSync(
+      'qa-autofix-summary.md',
+      '## Nightly QA auto-fix\n\nSkipped: ANTHROPIC_API_KEY is not configured on this repository. No files were changed.',
+      'utf8'
+    );
     process.exit(0); // not a hard failure of the workflow, just nothing to do
   }
 
   const failures = loadFailures();
   if (failures.length === 0) {
     console.log('No failures found in the report — nothing to fix.');
+    fs.writeFileSync(
+      'qa-autofix-summary.md',
+      '## Nightly QA auto-fix\n\nNo failures found in the Playwright report — nothing to fix.',
+      'utf8'
+    );
     process.exit(0);
   }
 
