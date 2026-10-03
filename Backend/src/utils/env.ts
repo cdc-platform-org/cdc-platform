@@ -244,6 +244,42 @@ export const AZURE_OPENAI_DEPLOYMENT_NAME_SECONDARY = (process.env.AZURE_OPENAI_
 // No Admin Panel DB fallback (unlike BogSettings) — Stripe keys aren't
 // rotated per-deployment the way BOG merchant credentials are.
 export const STRIPE_SECRET_KEY = cleanEnv(process.env.STRIPE_SECRET_KEY);
+// Fail-closed guard against a test-mode Stripe key accidentally running in
+// production: a `sk_test_...` secret still creates Checkout Sessions and
+// receives webhooks that behave exactly like the real thing but never move
+// real money — shipping that in production would look like working
+// payments while silently charging nobody. Exported (not just called
+// below) so it can be unit-tested directly against arbitrary
+// key/environment combinations without needing to reload this module.
+// Never logs/returns any part of the key itself — only whether it was
+// accepted, and if not, why in terms of its prefix category, never its value.
+export function assertStripeKeyModeIsSafe(key: string, nodeEnv: string): void {
+  if (!key) return; // unset is the existing "not configured yet" state — Stripe routes already respond 501
+  const isTestKey = key.startsWith('sk_test_');
+  const isLiveKey = key.startsWith('sk_live_');
+  if (nodeEnv === 'production') {
+    if (isTestKey) {
+      throw new Error(
+        'STRIPE_SECRET_KEY is a test-mode key (sk_test_...) but NODE_ENV=production. Refusing to start — configure a live-mode (sk_live_...) key.'
+      );
+    }
+    if (!isLiveKey) {
+      // Neither recognized prefix matched — fail closed rather than assume
+      // an unexpected string is safe to treat as a live key.
+      throw new Error(
+        'STRIPE_SECRET_KEY does not look like a recognized Stripe secret key (expected an sk_live_... key in production). Refusing to start.'
+      );
+    }
+  } else if (isLiveKey) {
+    // A live key outside production can move real money from a dev/test
+    // run — a real risk, but not one that should block the app (or a test
+    // suite) from starting, so this only warns.
+    console.warn(
+      `[env] WARNING: STRIPE_SECRET_KEY is a LIVE-mode key (sk_live_...) in a non-production environment (NODE_ENV=${nodeEnv}). This can charge real cards — use a test-mode (sk_test_...) key outside production.`
+    );
+  }
+}
+assertStripeKeyModeIsSafe(STRIPE_SECRET_KEY, process.env.NODE_ENV || 'development');
 // Signing secret for the /api/payments/stripe/webhook endpoint (Stripe
 // Dashboard -> Developers -> Webhooks -> your endpoint -> Signing secret,
 // or `stripe listen`'s printed secret for local dev). Required for the

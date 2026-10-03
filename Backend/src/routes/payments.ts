@@ -36,7 +36,11 @@ import { reserveLearningCheckout } from '../services/learningCheckoutService';
 import { completeLearningPayment } from '../services/learningPaymentFulfillment';
 import { sendRegistrationStatusWhatsApp, formatWhatsAppDate } from '../services/whatsappService';
 import { resolveNotificationLocale } from '../utils/notificationLocale';
-import { completeTutorSubscriptionPurchase, TUTOR_SUBSCRIPTION_PRICE_GEL } from '../services/englishTutorSubscriptionService';
+import {
+  completeTutorSubscriptionPurchase,
+  completeTutorSubscriptionBogPayment,
+  TUTOR_SUBSCRIPTION_PRICE_GEL,
+} from '../services/englishTutorSubscriptionService';
 import { completeChildrensBookPurchase, assertBookReadyForCheckout, BookNotFoundError, BookNotEligibleForCheckoutError } from '../services/bookPurchaseFulfillment';
 import { isBookDevPaymentSimulationEnabled, resolveBookPayableAmountTetri } from '../services/bookMockConfig';
 import { calculateBookPrice } from '../services/bookStateService';
@@ -1123,6 +1127,7 @@ export async function applyBogPaymentResult(
   }
 
   if (await completeLearningPayment('BOG', bogPaymentId, rawCallback)) return;
+  if (await completeTutorSubscriptionBogPayment(bogPaymentId, rawCallback)) return;
 
   const bogPayment = await prisma.bogPayment.update({
     where: { id: bogPaymentId },
@@ -1242,8 +1247,6 @@ export async function applyBogPaymentResult(
   } else if (bogPayment.purpose === 'LIVE_TRAINING') {
     // Idempotent on retry — see completeLiveTrainingPurchase's own comment.
     await completeLiveTrainingPurchase({ userId: bogPayment.userId, liveTrainingId: bogPayment.referenceId });
-  } else if (bogPayment.purpose === 'ENGLISH_TUTOR_SUBSCRIPTION') {
-    await completeTutorSubscriptionPurchase(bogPayment.userId);
   } else if (bogPayment.purpose === 'CHILDRENS_BOOK') {
     // Idempotent on retry — the underlying updateMany only ever matches a
     // book still in PAYMENT_PENDING (see bookPurchaseFulfillment.ts).
