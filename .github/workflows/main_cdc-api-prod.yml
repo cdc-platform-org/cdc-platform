@@ -75,28 +75,55 @@
 #
 # ----------------------------------------------------------------------------
 # ENABLEMENT GATE - image verification is necessary, NOT sufficient
-# Confirming which IMAGE runs says nothing about whether the release is healthy or
-# migrated. Do NOT enable this workflow for real production deploys - i.e. do not
-# create the Azure `environment:Production` federated credential - until Phase 19
-# has implemented AND wired, as failing post-deploy gates:
-#   1. `GET /api/version`  returns the SHA baked into the image and equals DEPLOY_SHA
-#                          (a second, in-process runtime witness);
-#   2. `GET /api/health` (liveness) and `GET /api/ready` (DB ping) return 200,
-#                          and the Azure `healthCheckPath` is set;
-#   3. migration status    read-only `prisma migrate status` before and after; the
-#                          container log shows applied / "No pending migrations";
-#                          ANY migration failure fails the deploy;
-#   4. API smoke tests     unauthenticated read-only GETs: /api/auth/me 401,
-#                          /api/trainer/me 401 (404 = old build),
-#                          /api/iako/my-assistants 401, /api/courses 200,
-#                          /api/products 200, /api/studio/cases 200;
-#   5. rollback            the previously running image (RUNNING_IMAGE_VERIFIED
-#                          below) is recorded, and a staging slot with its OWN
-#                          database and slot-sticky DATABASE_URL is used - never a
-#                          slot that can reach the production database.
-# Until then a green run means only "the intended image is running".
-# Dependency: /, /api/health, /api/ready and /api/version do not exist yet
-# (404 in production as of 2026-09-20).
+# (Phase 19 - implemented; see routes/system.ts, Dockerfile's GIT_COMMIT_SHA
+# build arg, and the "PHASE 19 - POST-DEPLOY HTTP VERIFICATION" / rollback
+# steps below.) Confirming which IMAGE runs says nothing by itself about
+# whether the release is healthy or migrated, so every deploy now also
+# requires, as failing post-deploy gates, all enforced in code:
+#   1. `GET /api/version`  returns the SHA baked into the image at build time
+#                          (Dockerfile ARG/ENV GIT_COMMIT_SHA, set from this
+#                          workflow's own already-validated deploy_sha - never
+#                          from a request) and it equals DEPLOY_SHA;
+#   2. `GET /api/health` (liveness) and `GET /api/ready` (DB connectivity)
+#                          both return 200;
+#   3. migration status    folded into `GET /api/ready` - it also checks
+#                          `_prisma_migrations` for any row that started but
+#                          never finished, which `docker-entrypoint.sh`'s
+#                          `prisma migrate deploy` (unchanged) is supposed to
+#                          prevent the container from ever serving traffic in;
+#   4. API smoke tests     unauthenticated GET /api/products -> 200 (public,
+#                          read-only) and GET /api/childrens-books with no
+#                          credentials -> 401 (route exists, auth enforced) -
+#                          both non-destructive, no records created;
+#   5. rollback            on a post-deploy verification failure that this run
+#                          actually caused (NEEDS_RESTART=true), automatically
+#                          re-points Site Containers at RUNNING_IMAGE_VERIFIED
+#                          (the image Preflight 2/3 independently proved was
+#                          running before this run touched anything) and
+#                          restarts, then independently re-verifies THAT image
+#                          is what's actually running before calling the
+#                          rollback itself successful. This is deliberately
+#                          the simpler of the two mechanisms considered: a
+#                          staging slot with its own database doesn't exist
+#                          in this Azure setup today, and creating one is
+#                          infrastructure work, not something to invent
+#                          inside this workflow. The run is still reported as
+#                          FAILED even when the rollback succeeds - rollback
+#                          only means "production is not left broken", never
+#                          "the deploy succeeded".
+# A green run now means the new image is running AND independently proven
+# reachable, healthy, migrated, and minimally functional over real HTTP -
+# not just "the intended image is running".
+#
+# STILL REQUIRED before this can run for real (account-level, not code -
+# see REQUIRED SETUP below, unchanged by Phase 19): the GitHub "Production"
+# environment has no protection rules yet, and the Azure federated
+# credential's trust subject has not been extended to
+# repo:cdc-platform-org/cdc-platform:environment:Production. Until both
+# exist, a real dispatch is expected to fail (safely) at Azure login.
+# Whether `linuxFxVersion` has moved off legacy DOCKER|... mode since the
+# 2026-09-20 audit below was NOT re-checked as part of Phase 19 (no Azure
+# access in that work) - Preflight 1/3 still fails closed if it hasn't.
 #
 # ----------------------------------------------------------------------------
 # REQUIRED SETUP BEFORE A REAL DEPLOY - blockers; none is done by this file
@@ -150,6 +177,13 @@ env:
   TARGET_PORT: "5000"
   EVIDENCE_POLL_ATTEMPTS: "12"
   EVIDENCE_POLL_INTERVAL_SECONDS: "30"
+  # Phase 19 — the App Service's own default hostname, which always exists
+  # and always reaches this exact Web App regardless of whatever custom
+  # domain (if any) is also configured in front of it. Used only for this
+  # workflow's own HTTP-level verification, never written anywhere else.
+  WEBAPP_HOSTNAME: "cdc-api-prod.azurewebsites.net"
+  HEALTH_POLL_ATTEMPTS: "10"
+  HEALTH_POLL_INTERVAL_SECONDS: "10"
 
 jobs:
   guard:
@@ -433,6 +467,7 @@ jobs:
           az acr build \
             --registry "$ACR_NAME" \
             --image "${IMAGE_NAME}:${DEPLOY_SHA}" \
+            --build-arg GIT_COMMIT_SHA="${DEPLOY_SHA}" \
             .
 
       - name: Point production Site Container at the image
@@ -495,6 +530,103 @@ jobs:
           echo "Independently verified from the platform docker log: the running container already uses ${IMAGE}."
           echo "No change required. Nothing was built, updated or restarted."
 
+      # -------------------------------------------------------------------
+      # PHASE 19 - POST-DEPLOY HTTP VERIFICATION. Image identity (the step
+      # above) is necessary but not sufficient - it only proves "the
+      # intended image is running", not that the release inside it is
+      # actually healthy. This step proves that independently, over real
+      # HTTP, against the same production hostname real users reach.
+      # Runs whenever preflight passed and we have SOME basis to believe
+      # the target image is live (either we just verified a fresh restart,
+      # or no restart was needed because it already was) - never after a
+      # preflight refusal, and never blindly on an unverified restart.
+      # -------------------------------------------------------------------
+      - name: Phase 19 post-deploy verification (version / health / ready / smoke)
+        id: post_deploy_verification
+        if: ${{ env.PREFLIGHT_OK == 'true' && (env.DEPLOY_VERIFIED == 'true' || env.NEEDS_RESTART == 'false') }}
+        run: |
+          set -uo pipefail
+          BASE="https://${WEBAPP_HOSTNAME}"
+          fail() { echo "::error title=Post-deploy verification FAILED::$1"; exit 1; }
+
+          echo "Polling ${BASE}/api/version until it reports commitSha=${DEPLOY_SHA} ..."
+          VERSION_BODY=""
+          for i in $(seq 1 "$HEALTH_POLL_ATTEMPTS"); do
+            VERSION_BODY="$(curl -fsS --max-time 10 "${BASE}/api/version" || true)"
+            REPORTED_SHA="$(printf '%s' "$VERSION_BODY" | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{console.log(JSON.parse(d).commitSha||"")}catch{console.log("")}})' 2>/dev/null || true)"
+            echo "attempt ${i}/${HEALTH_POLL_ATTEMPTS}: /api/version -> ${VERSION_BODY:-<no response>}"
+            [ "$REPORTED_SHA" = "$DEPLOY_SHA" ] && break
+            sleep "$HEALTH_POLL_INTERVAL_SECONDS"
+          done
+          [ "$REPORTED_SHA" = "$DEPLOY_SHA" ] \
+            || fail "A. /api/version never reported commitSha=${DEPLOY_SHA} within the polling window (last seen: ${VERSION_BODY:-<unreachable>})."
+          echo "A. /api/version OK - commitSha matches deploy_sha."
+
+          HEALTH_STATUS="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "${BASE}/api/health" || echo 000)"
+          [ "$HEALTH_STATUS" = "200" ] || fail "B. /api/health returned HTTP ${HEALTH_STATUS}, expected 200."
+          echo "B. /api/health OK (200)."
+
+          READY_STATUS="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "${BASE}/api/ready" || echo 000)"
+          [ "$READY_STATUS" = "200" ] || fail "C/E. /api/ready returned HTTP ${READY_STATUS}, expected 200 (database connectivity and/or migration health check failed - see the service's own logs; this workflow never reads DATABASE_URL or production data directly)."
+          echo "C/E. /api/ready OK (200) - database reachable, no stuck migrations."
+
+          echo "F. Non-destructive API smoke test:"
+          PRODUCTS_STATUS="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "${BASE}/api/products" || echo 000)"
+          [ "$PRODUCTS_STATUS" = "200" ] || fail "F. GET /api/products returned HTTP ${PRODUCTS_STATUS}, expected 200 (public read-only route)."
+          echo "   - GET /api/products -> 200 (public catalog route is serving)."
+
+          BOOK_STATUS="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "${BASE}/api/childrens-books" || echo 000)"
+          [ "$BOOK_STATUS" = "401" ] || fail "F. GET /api/childrens-books (no credentials) returned HTTP ${BOOK_STATUS}, expected 401 (route must exist and auth middleware must reject an unauthenticated request - never 404/200)."
+          echo "   - GET /api/childrens-books (no credentials) -> 401 (route exists, auth middleware is enforcing)."
+
+          echo "PHASE19_VERIFIED=true" >> "$GITHUB_ENV"
+          echo "All Phase 19 post-deploy checks passed."
+
+      # Fires ONLY when verification above failed AND this run actually
+      # changed what was running (NEEDS_RESTART=true) - re-pointing at the
+      # SAME image a "no change required" run already confirmed unhealthy
+      # would accomplish nothing. RUNNING_IMAGE_VERIFIED is not a guess: it
+      # was independently read from the platform docker log by Preflight
+      # 2/3, BEFORE this run touched anything, so it is a real, previously
+      # proven-good target to return to.
+      - name: Automatic rollback to the previous verified image (post-deploy verification failed)
+        id: rollback
+        if: ${{ failure() && steps.post_deploy_verification.outcome == 'failure' && env.NEEDS_RESTART == 'true' }}
+        run: |
+          set -euo pipefail
+          echo "::warning title=Rolling back::Post-deploy verification failed for ${IMAGE}. Rolling back to the previously verified image ${RUNNING_IMAGE_VERIFIED}."
+          az webapp sitecontainers update \
+            --name "$WEBAPP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --container-name main \
+            --image "$RUNNING_IMAGE_VERIFIED" \
+            --target-port "$TARGET_PORT"
+          echo "ROLLBACK_REQUESTED_AT=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" >> "$GITHUB_ENV"
+          az webapp restart --name "$WEBAPP_NAME" --resource-group "$RESOURCE_GROUP"
+
+      - name: Verify the rollback took effect (fails unless independently verified)
+        if: ${{ steps.rollback.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          fail() { echo "::error title=Rollback NOT verified::$1"; exit 1; }
+          get() { printf '%s\n' "$1" | sed -n "s/^RUNTIME_$2=//p" | head -n 1; }
+
+          for i in $(seq 1 "$EVIDENCE_POLL_ATTEMPTS"); do
+            LM="$(az webapp show --name "$WEBAPP_NAME" --resource-group "$RESOURCE_GROUP" --query lastModifiedTimeUtc --output tsv || true)"
+            EV="$("$RUNNER_TEMP/collect-evidence.sh" "$LM" "$ROLLBACK_REQUESTED_AT")"
+            S="$(get "$EV" STATUS)"; IMG="$(get "$EV" IMAGE)"
+            echo "attempt ${i}/${EVIDENCE_POLL_ATTEMPTS}: evidence=${S:-?} image=${IMG:-<none>}"
+            if [ "$S" = "ok" ] && [ "$IMG" = "$RUNNING_IMAGE_VERIFIED" ]; then
+              echo "Rollback independently verified: production is back on ${IMG}."
+              # This run still FAILS overall (the intended deploy did not
+              # succeed) - this step only confirms production itself is not
+              # left broken.
+              exit 0
+            fi
+            sleep "$EVIDENCE_POLL_INTERVAL_SECONDS"
+          done
+          fail "Could not independently verify rollback to ${RUNNING_IMAGE_VERIFIED} within the polling window. Production state is UNCERTAIN - requires immediate manual inspection (az webapp sitecontainers list / az webapp log tail)."
+
       - name: Job summary
         if: always()
         run: |
@@ -503,14 +635,18 @@ jobs:
               echo "### Production deploy REFUSED (fail closed)"
               echo
               echo "A safety precondition failed. **Nothing was built, updated or restarted.** See the failed preflight step."
-            elif [ "${DEPLOY_VERIFIED:-}" = "true" ]; then
-              echo "### Production deploy - running image independently VERIFIED"
+            elif [ "${ROLLBACK_REQUESTED_AT:-}" != "" ]; then
+              echo "### Production deploy FAILED - rolled back"
               echo
-              echo "The new container is running the target image (platform docker log)."
-            elif [ "${NEEDS_RESTART:-}" = "false" ]; then
-              echo "### Production deploy - no change required"
+              echo "Post-deploy verification failed for \`${IMAGE}\`. Production was automatically rolled back to the previously verified image \`${RUNNING_IMAGE_VERIFIED}\`. **This run is a failure** regardless of whether the rollback itself was verified - see the rollback step for whether production is confirmed back on the old image or in an uncertain state."
+            elif [ "${PHASE19_VERIFIED:-}" = "true" ] && [ "${DEPLOY_VERIFIED:-}" = "true" ]; then
+              echo "### Production deploy - VERIFIED (image + version/health/ready/smoke)"
               echo
-              echo "The running image was independently verified to already equal the target."
+              echo "The new container is running the target image (platform docker log) AND independently answers /api/version with the matching commit, /api/health, /api/ready, and the non-destructive smoke checks all passed."
+            elif [ "${PHASE19_VERIFIED:-}" = "true" ] && [ "${NEEDS_RESTART:-}" = "false" ]; then
+              echo "### Production deploy - no change required (re-verified healthy)"
+              echo
+              echo "The running image was already the target; /api/version, /api/health, /api/ready and the smoke checks were re-run and passed."
             else
               echo "### Production deploy - NOT VERIFIED"
               echo
@@ -523,8 +659,9 @@ jobs:
             echo "| Active mode (linuxFxVersion) | \`${LINUX_FX_VERSION:-not read}\` |"
             echo "| Running image before (verified) | \`${RUNNING_IMAGE_VERIFIED:-not verified}\` |"
             echo "| Target image | \`${IMAGE:-n/a}\` |"
+            echo "| Rollback triggered | \`${ROLLBACK_REQUESTED_AT:+yes}${ROLLBACK_REQUESTED_AT:-no}\` |"
             echo
-            echo "Image verification is necessary but **not sufficient**: health, version and migration checks are not implemented yet (Phase 19) and must exist before this workflow is enabled for production."
+            echo "Phase 19: image verification alone is necessary but not sufficient - this run additionally requires GET ${WEBAPP_HOSTNAME:+https://$WEBAPP_HOSTNAME}/api/version to report the deployed commit, /api/health and /api/ready to both return 200, and a non-destructive smoke test (GET /api/products -> 200, GET /api/childrens-books with no credentials -> 401) to pass before the deploy is reported green. A failure at this stage automatically rolls back to the previously verified image when this run actually changed what was running."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Azure logout

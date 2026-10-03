@@ -25,6 +25,16 @@ FROM node:20-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
+# Phase 19 production deployment safety — GET /api/version reports this.
+# Set from the CI workflow's already-validated deploy_sha (never from
+# anything inside the build context itself, and never from a request),
+# via `az acr build --build-arg GIT_COMMIT_SHA=<sha>`. Baked in as a plain
+# ENV (not a secret — a commit SHA is already public in the git history)
+# so it survives into the running container without needing an Azure App
+# Setting that could drift from what was actually built.
+ARG GIT_COMMIT_SHA=unknown
+ENV GIT_COMMIT_SHA=$GIT_COMMIT_SHA
+
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 # node_modules is copied wholesale (not reinstalled) so pnpm's symlinked

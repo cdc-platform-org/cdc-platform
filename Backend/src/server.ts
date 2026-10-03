@@ -13,6 +13,7 @@ import cors from 'cors';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import * as Sentry from '@sentry/node';
+import systemRoutes from './routes/system';
 import authRoutes from './routes/auth';
 import courseRoutes from './routes/courses';
 import { createLearningRatingsRouter } from './routes/learningRatings';
@@ -263,6 +264,12 @@ app.use(
 );
 app.use(express.json({ verify: (req, _res, buf) => { (req as express.Request).rawBody = buf; } }));
 app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
+
+// Phase 19 production deployment safety — mounted first, ahead of every
+// other route: these three must stay reachable (and fast) regardless of
+// what any other route/middleware is doing. See routes/system.ts's own
+// comment for why each one is deliberately unauthenticated and side-effect-free.
+app.use('/api', systemRoutes);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', createLearningRatingsRouter('course'));
