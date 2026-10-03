@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 
 // ============================================================
@@ -69,6 +70,56 @@ export async function completeTutorSubscriptionPurchase(userId: string): Promise
     },
   });
   return { tutorSubscriptionPeriodEnd };
+}
+
+// Idempotent counterpart to completeTutorSubscriptionPurchase, for the one
+// call site that can race itself: routes/stripePayments.ts's webhook and
+// its GET /status/:paymentId reconciliation poll can both observe the same
+// StripePayment row as PENDING before either has written, then both call
+// into fulfillment — completeTutorSubscriptionPurchase's own comment above
+// documents that a second call for the same purchase would double-extend
+// by 30 days. This takes the same SELECT...FOR UPDATE row-lock pattern
+// learningPaymentFulfillment.completeLearningPayment already uses for
+// COURSE/LIVE_TRAINING: the StripePayment row is locked inside a
+// transaction, its status re-checked under that lock, and the subscription
+// extension + COMPLETED transition commit together — so only the first
+// caller to reach the lock ever extends the subscription, and a redelivered
+// webhook (or the losing side of the race) sees status !== PENDING and
+// no-ops. Scoped to Stripe only: routes/payments.ts's BOG callback calls
+// completeTutorSubscriptionPurchase directly and has the same latent race,
+// intentionally left untouched here (separate, BOG-scoped fix).
+export async function completeTutorSubscriptionStripePayment(
+  stripePaymentId: string,
+  rawEvent: unknown,
+  paymentIntentId?: string | null
+): Promise<boolean> {
+  const result = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM stripe_payments WHERE id = ${stripePaymentId} FOR UPDATE`;
+    const payment = await tx.stripePayment.findUnique({ where: { id: stripePaymentId } });
+    if (!payment || payment.purpose !== 'ENGLISH_TUTOR_SUBSCRIPTION') return { handled: false };
+    if (payment.status !== 'PENDING') return { handled: true }; // already completed/failed by the other racer — no-op
+
+    const now = new Date();
+    const user = await tx.user.findUnique({ where: { id: payment.userId }, select: { tutorSubscriptionPeriodEnd: true } });
+    const base = user?.tutorSubscriptionPeriodEnd && user.tutorSubscriptionPeriodEnd.getTime() > now.getTime() ? user.tutorSubscriptionPeriodEnd : now;
+    const tutorSubscriptionPeriodEnd = new Date(base.getTime() + TUTOR_SUBSCRIPTION_PERIOD_DAYS * 24 * 60 * 60 * 1000);
+
+    await tx.user.update({
+      where: { id: payment.userId },
+      data: { tutorSubscriptionTier: 'PRO', tutorSubscriptionPeriodEnd, tutorSubscriptionAutoRenew: true },
+    });
+    await tx.stripePayment.update({
+      where: { id: payment.id },
+      data: {
+        status: 'COMPLETED',
+        completedAt: now,
+        rawEvent: rawEvent as Prisma.InputJsonValue,
+        stripePaymentIntentId: paymentIntentId ?? null,
+      },
+    });
+    return { handled: true };
+  });
+  return result.handled;
 }
 
 // POST /english-tutor/subscription/cancel — turns off the pre-expiry

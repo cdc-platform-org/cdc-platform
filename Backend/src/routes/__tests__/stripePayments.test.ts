@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import Stripe from 'stripe';
+import { BogPaymentStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { applyStripePaymentResult } from '../stripePayments';
 import { upsertCommissionPercentage } from '../../services/platformFeeScheduleService';
@@ -91,5 +92,107 @@ describe('applyStripePaymentResult — GEL/USD amount separation', () => {
 
     const creatorAfter = await prisma.user.findUniqueOrThrow({ where: { id: creator.id } });
     expect(creatorAfter.earningsBalance).toBe(8000);
+  });
+});
+
+// Regression coverage for the 2026-10 Stripe audit's MEDIUM finding:
+// GET /payments/stripe/status/:paymentId (the frontend's post-redirect poll)
+// and the Stripe webhook can both observe the same PENDING StripePayment
+// before either has written, then both call applyStripePaymentResult —
+// completeTutorSubscriptionPurchase (unlike every other fulfillment
+// purpose) had no idempotency guard of its own, so a race or a redelivered
+// webhook could extend the subscription by 30 days twice. These tests
+// exercise the fix (completeTutorSubscriptionStripePayment's row-locked
+// claim) through the real entry point, applyStripePaymentResult, against a
+// real test-database transaction/lock — no Stripe network calls anywhere
+// here, same as the suite above.
+describe('applyStripePaymentResult — ENGLISH_TUTOR_SUBSCRIPTION idempotency', () => {
+  const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+  async function createPendingTutorPayment(userId: string, overrides: { status?: BogPaymentStatus; completedAt?: Date } = {}) {
+    return prisma.stripePayment.create({
+      data: {
+        stripeSessionId: `test-${randomUUID()}`,
+        userId,
+        purpose: 'ENGLISH_TUTOR_SUBSCRIPTION',
+        paymentModel: 'DIRECT',
+        referenceId: userId,
+        amount: 1800,
+        amountGel: 5000,
+        currency: 'USD',
+        status: 'PENDING',
+        ...overrides,
+      },
+    });
+  }
+
+  it('first successful fulfillment extends entitlement exactly once', async () => {
+    const user = await createUser();
+    const payment = await createPendingTutorPayment(user.id);
+
+    await applyStripePaymentResult(payment.id, fakeSession, {});
+
+    const userAfter = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    const paymentAfter = await prisma.stripePayment.findUniqueOrThrow({ where: { id: payment.id } });
+    expect(userAfter.tutorSubscriptionTier).toBe('PRO');
+    expect(userAfter.tutorSubscriptionPeriodEnd!.getTime()).toBeGreaterThan(Date.now() + THIRTY_DAYS_MS - 5000);
+    expect(userAfter.tutorSubscriptionPeriodEnd!.getTime()).toBeLessThan(Date.now() + THIRTY_DAYS_MS + 5000);
+    expect(paymentAfter.status).toBe('COMPLETED');
+  });
+
+  it('duplicate webhook delivery for the same payment does not extend again', async () => {
+    const user = await createUser();
+    const payment = await createPendingTutorPayment(user.id);
+
+    await applyStripePaymentResult(payment.id, fakeSession, {});
+    const periodEndAfterFirst = (await prisma.user.findUniqueOrThrow({ where: { id: user.id } })).tutorSubscriptionPeriodEnd;
+
+    // Simulates Stripe redelivering the same checkout.session.completed event.
+    await applyStripePaymentResult(payment.id, fakeSession, {});
+    const periodEndAfterRedelivery = (await prisma.user.findUniqueOrThrow({ where: { id: user.id } })).tutorSubscriptionPeriodEnd;
+
+    expect(periodEndAfterRedelivery!.getTime()).toBe(periodEndAfterFirst!.getTime());
+  });
+
+  it('webhook + status-poll race does not double-extend (30 days once, not 60)', async () => {
+    const user = await createUser();
+    const payment = await createPendingTutorPayment(user.id);
+
+    // Simulates the exact race: the webhook and the frontend's /status poll
+    // both reach applyStripePaymentResult for the same PENDING payment at
+    // the same time.
+    await Promise.all([
+      applyStripePaymentResult(payment.id, fakeSession, { source: 'webhook' }),
+      applyStripePaymentResult(payment.id, fakeSession, { source: 'status-poll' }),
+    ]);
+
+    const userAfter = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(userAfter.tutorSubscriptionPeriodEnd!.getTime()).toBeGreaterThan(Date.now() + THIRTY_DAYS_MS - 5000);
+    expect(userAfter.tutorSubscriptionPeriodEnd!.getTime()).toBeLessThan(Date.now() + THIRTY_DAYS_MS + 5000);
+  });
+
+  it('an already-COMPLETED StripePayment is a no-op', async () => {
+    const fixedPeriodEnd = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000); // 10 days out, from an earlier purchase
+    const user = await createUser({ tutorSubscriptionTier: 'PRO', tutorSubscriptionPeriodEnd: fixedPeriodEnd });
+    const payment = await createPendingTutorPayment(user.id, { status: 'COMPLETED', completedAt: new Date() });
+
+    await applyStripePaymentResult(payment.id, fakeSession, {});
+
+    const userAfter = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(userAfter.tutorSubscriptionPeriodEnd!.getTime()).toBe(fixedPeriodEnd.getTime());
+  });
+
+  it('an unpaid/failed session grants no entitlement', async () => {
+    const user = await createUser();
+    const payment = await createPendingTutorPayment(user.id);
+    const unpaidSession = { payment_intent: 'pi_test_unpaid', payment_status: 'unpaid' } as unknown as Stripe.Checkout.Session;
+
+    await applyStripePaymentResult(payment.id, unpaidSession, {});
+
+    const userAfter = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    const paymentAfter = await prisma.stripePayment.findUniqueOrThrow({ where: { id: payment.id } });
+    expect(userAfter.tutorSubscriptionTier).toBe('FREE');
+    expect(userAfter.tutorSubscriptionPeriodEnd).toBeNull();
+    expect(paymentAfter.status).toBe('PENDING');
   });
 });
