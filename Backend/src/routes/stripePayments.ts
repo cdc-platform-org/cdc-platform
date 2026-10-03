@@ -30,7 +30,11 @@ import { completeLiveTrainingPurchase, notifyLiveTrainingEnrollment } from '../s
 import { getCurrentLiveTrainingPrice } from '../services/liveTrainingPricing';
 import { reserveLearningCheckout } from '../services/learningCheckoutService';
 import { completeLearningPayment } from '../services/learningPaymentFulfillment';
-import { completeTutorSubscriptionPurchase, TUTOR_SUBSCRIPTION_PRICE_GEL } from '../services/englishTutorSubscriptionService';
+import {
+  completeTutorSubscriptionPurchase,
+  completeTutorSubscriptionStripePayment,
+  TUTOR_SUBSCRIPTION_PRICE_GEL,
+} from '../services/englishTutorSubscriptionService';
 
 // ============================================================
 // Stripe Checkout routes — the international-currency (USD/EUR) sibling of
@@ -755,6 +759,7 @@ export async function applyStripePaymentResult(stripePaymentId: string, session:
   // Checkout completion can precede settlement for delayed payment methods.
   if (session.payment_status !== 'paid') return;
   if (await completeLearningPayment('STRIPE', stripePaymentId, rawEvent, typeof session.payment_intent === 'string' ? session.payment_intent : null)) return;
+  if (await completeTutorSubscriptionStripePayment(stripePaymentId, rawEvent, typeof session.payment_intent === 'string' ? session.payment_intent : null)) return;
   const stripePayment = await prisma.stripePayment.update({
     where: { id: stripePaymentId },
     data: {
@@ -869,8 +874,6 @@ export async function applyStripePaymentResult(stripePaymentId: string, session:
     });
   } else if (stripePayment.purpose === 'LIVE_TRAINING') {
     await completeLiveTrainingPurchase({ userId: stripePayment.userId, liveTrainingId: stripePayment.referenceId });
-  } else if (stripePayment.purpose === 'ENGLISH_TUTOR_SUBSCRIPTION') {
-    await completeTutorSubscriptionPurchase(stripePayment.userId);
   }
 }
 
