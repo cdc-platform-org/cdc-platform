@@ -168,5 +168,20 @@
   "exportCopied": "Copied!",
   "exportDocx": "Download Docx",
   "exportTxt": "Download TXT",
-  "exportPrint": "🖨️ Print"
+  "exportPrint": "🖨️ Print",
+  "tabCertificates": "🏆 Certificates",
+  "certificateTypeLabel": "Certificate Type",
+  "certificateTypeWeeklyStar": "Student of the Week",
+  "certificateTypeCourseCompletion": "Course Completion",
+  "certificateTypeOlympiadWinner": "Olympiad Winner",
+  "certificateTypeCustom": "Custom",
+  "customNominationPlaceholder": "e.g. Best Essay",
+  "studentNamesLabel": "Student Names",
+  "studentNamesPlaceholder": "One name per line",
+  "generating": "Generating…",
+  "generateCertificates": "Generate Certificates",
+  "generatedCertificatesHeading": "Generated Certificates",
+  "downloadCertificate": "Download Certificate #{{index}}",
+  "certificatesTitle": "Certificate & Diploma Builder",
+  "certificatesDescription": "Create printable certificates and diplomas for your students in seconds."
 }

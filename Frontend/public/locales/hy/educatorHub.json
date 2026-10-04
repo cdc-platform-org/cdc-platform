@@ -168,5 +168,20 @@
   "exportCopied": "Պատճենվեց!",
   "exportDocx": "Ներբեռնել Docx",
   "exportTxt": "Ներբեռնել TXT",
-  "exportPrint": "🖨️ Տպել"
+  "exportPrint": "🖨️ Տպել",
+  "tabCertificates": "🏆 Վկայականներ",
+  "certificateTypeLabel": "Վկայականի տեսակը",
+  "certificateTypeWeeklyStar": "Շաբաթվա աշակերտ",
+  "certificateTypeCourseCompletion": "Դասընթացի ավարտ",
+  "certificateTypeOlympiadWinner": "Օլիմպիադայի հաղթող",
+  "certificateTypeCustom": "Հատուկ",
+  "customNominationPlaceholder": "օր. Լավագույն շարադրություն",
+  "studentNamesLabel": "Աշակերտների անունները",
+  "studentNamesPlaceholder": "Մեկ անուն մեկ տողում",
+  "generating": "Ստեղծվում է…",
+  "generateCertificates": "Ստեղծել վկայականներ",
+  "generatedCertificatesHeading": "Ստեղծված վկայականներ",
+  "downloadCertificate": "Ներբեռնել վկայական #{{index}}",
+  "certificatesTitle": "Վկայականների և դիպլոմների գեներատոր",
+  "certificatesDescription": "Ստեղծեք տպագրելի վկայականներ և դիպլոմներ ձեր աշակերտների համար ընդամենը մի քանի վայրկյանում:"
 }
