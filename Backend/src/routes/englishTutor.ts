@@ -33,6 +33,15 @@ import {
   cancelTutorSubscriptionAutoRenew,
   TUTOR_TRIAL_DAYS,
 } from '../services/englishTutorSubscriptionService';
+import {
+  FIRST_STAGE_ID,
+  getStage,
+  getVocabItem,
+  translateFor,
+  applyLearnerName,
+  isWriteAnswerCorrect,
+  BeginnerBlock,
+} from '../services/beginnerCurriculumService';
 
 const router = Router();
 router.use(authenticate, requireApproved);
@@ -456,6 +465,204 @@ router.post('/lessons/:id/dialogue-message', dialogueReplyRateLimit, async (req:
     if (err instanceof EnglishTutorError) return res.status(502).json({ message: err.message });
     throw err;
   }
+});
+
+// ============================================================
+// BEGINNER PATH — deterministic, curated A0/A1-start curriculum (see
+// beginnerCurriculumService.ts's own header comment for why this is fixed
+// content rather than another AI-generation call). Three endpoints only:
+// read the current state, advance past the current block (the server
+// alone decides whether a WRITE answer was correct and whether to move
+// on — see isWriteAnswerCorrect), and skip out into the normal
+// lesson-generation flow. No AI call, no rate limiter needed (same
+// zero-cost posture as PUT /goal and PUT /resume-state above).
+// ============================================================
+
+// Resolves one curriculum block into exactly what the client needs to
+// render it — localized text, the learner's name already substituted into
+// any {name} template, and crucially NO answer key for WRITE blocks (the
+// client submits its guess to POST /advance and the server alone judges
+// it, same "never expose the answer key to the grader's own client"
+// posture as sanitizeLessonContentForClient above).
+function serializeBeginnerBlock(block: BeginnerBlock, nativeLang: string, learnerDisplayName: string | null) {
+  const name = learnerDisplayName ?? '';
+  switch (block.type) {
+    case 'GREETING':
+      return { id: block.id, type: block.type, textEn: block.textEn };
+    case 'WORD': {
+      const vocab = getVocabItem(block.vocabId);
+      if (!vocab) return null;
+      return {
+        id: block.id,
+        type: block.type,
+        word: { word: vocab.word, ipa: vocab.ipa, exampleSentenceEn: vocab.exampleSentenceEn, translation: translateFor(block.vocabId, vocab.word, nativeLang) },
+      };
+    }
+    case 'SENTENCE':
+      return { id: block.id, type: block.type, textEn: block.textEn };
+    case 'GRAMMAR_TIP':
+      return {
+        id: block.id,
+        type: block.type,
+        titleEn: block.titleEn,
+        translation: translateFor(block.translationKey, block.titleEn, nativeLang),
+        examplesEn: block.examplesEn.map((e) => applyLearnerName(e, name)),
+      };
+    case 'QUESTION_NAME':
+      return { id: block.id, type: block.type, textEn: block.promptEn, translation: translateFor(block.translationKey, block.promptEn, nativeLang) };
+    case 'PERSONAL_SENTENCE':
+      return { id: block.id, type: block.type, textEn: applyLearnerName(block.templateEn, name) };
+    case 'WRITE':
+      return {
+        id: block.id,
+        type: block.type,
+        textEn: block.instructionEn,
+        translation: translateFor(block.translationKey, block.instructionEn, nativeLang),
+        audioTextEn: block.audioTextEn, // never expectedTemplateEn — that stays server-only
+      };
+    case 'MINI_DIALOGUE':
+      return { id: block.id, type: block.type, turns: block.turns.map((t) => ({ speaker: t.speaker, textEn: applyLearnerName(t.textEn, name) })) };
+    case 'CHECKPOINT':
+      return { id: block.id, type: block.type, textEn: block.titleEn, translation: translateFor(block.translationKey, block.titleEn, nativeLang) };
+  }
+}
+
+async function loadOrLazilyCreateBeginnerProgress(userId: string, tutorNativeLangAlreadySet: boolean) {
+  const existing = await prisma.userTutorBeginnerProgress.findUnique({ where: { userId } });
+  if (existing) return existing;
+  // tutorNativeLang is only ever set as a side effect of the student's
+  // FIRST real AI-generated lesson (see POST /lessons/generate above) — its
+  // presence here means this account predates the Beginner Path and must
+  // never be retroactively dropped into it (preserve existing users'
+  // experience exactly as it was).
+  if (tutorNativeLangAlreadySet) return null;
+  return prisma.userTutorBeginnerProgress.create({ data: { userId, currentStageId: FIRST_STAGE_ID } });
+}
+
+function serializeBeginnerState(
+  progress: { learnerDisplayName: string | null; currentStageId: string; currentBlockIndex: number; completedAt: Date | null; skippedAt: Date | null } | null,
+  nativeLang: string
+) {
+  if (!progress) return { active: false as const };
+  if (progress.completedAt || progress.skippedAt) return { active: false as const, completedAt: progress.completedAt, skippedAt: progress.skippedAt };
+
+  const stage = getStage(progress.currentStageId);
+  if (!stage) return { active: false as const }; // unknown stage id (shouldn't happen) — fail safe into normal flow
+  const block = stage.blocks[progress.currentBlockIndex];
+  if (!block) return { active: false as const };
+
+  return {
+    active: true as const,
+    stageId: stage.id,
+    blockIndex: progress.currentBlockIndex,
+    totalBlocksInStage: stage.blocks.length,
+    // Lets the client distinguish "this checkpoint leads to another stage"
+    // from "this is the last curated stage — finishing it hands the
+    // learner off to the normal lesson-generation flow" (different button
+    // copy: "Next stage" vs "Start practicing").
+    isLastStage: stage.nextStageId === null,
+    learnerDisplayName: progress.learnerDisplayName,
+    block: serializeBeginnerBlock(block, nativeLang, progress.learnerDisplayName),
+  };
+}
+
+router.get('/beginner-path/state', async (req: Request, res: Response) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { tutorNativeLang: true } });
+  if (!user) return res.status(404).json({ message: 'User not found.' });
+
+  const queryNativeLang = typeof req.query.nativeLang === 'string' ? req.query.nativeLang.trim() : '';
+  // An explicit choice on THIS request always wins — the learner may be
+  // actively changing their support language right now (see the Beginner
+  // Path's settings control), and a stale persisted value must never
+  // override that (this was a real bug: `tutorNativeLang || queryNativeLang`
+  // meant that once ANY language was ever persisted, no later query param
+  // could ever change it again — the exact "locked to ka" symptom reported).
+  const nativeLang = queryNativeLang || user.tutorNativeLang || 'en';
+  // Same fire-and-forget "remember it for next time" posture as POST
+  // /lessons/generate — only a convenience write, never blocks the response.
+  if (queryNativeLang && user.tutorNativeLang !== queryNativeLang) {
+    prisma.user.update({ where: { id: req.user!.id }, data: { tutorNativeLang: queryNativeLang } }).catch(() => {});
+  }
+
+  // "Already a pre-existing user" is purely about whether tutorNativeLang
+  // was set in the DB BEFORE this request — independent of whatever
+  // nativeLang this particular call happens to pass (an existing user
+  // changing their support language must never be treated as a brand-new
+  // signup and silently re-enrolled into Beginner Path progress).
+  const progress = await loadOrLazilyCreateBeginnerProgress(req.user!.id, !!user.tutorNativeLang);
+  res.json({ data: serializeBeginnerState(progress, nativeLang) });
+});
+
+const advanceSchema = z.object({
+  blockId: z.string().min(1),
+  responseText: z.string().trim().max(200).optional(),
+  displayName: z.string().trim().min(1).max(40).optional(),
+  nativeLang: z.string().trim().min(2).max(20).optional(),
+});
+
+router.post('/beginner-path/advance', async (req: Request, res: Response) => {
+  const result = advanceSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+  const { blockId, responseText, displayName } = result.data;
+
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { tutorNativeLang: true } });
+  if (!user) return res.status(404).json({ message: 'User not found.' });
+  // Same "explicit choice on this request wins" precedence as GET
+  // /beginner-path/state above — see that route's own comment.
+  const nativeLang = result.data.nativeLang || user.tutorNativeLang || 'en';
+
+  const progress = await prisma.userTutorBeginnerProgress.findUnique({ where: { userId: req.user!.id } });
+  if (!progress || progress.completedAt || progress.skippedAt) {
+    return res.json({ data: serializeBeginnerState(progress, nativeLang) });
+  }
+
+  const stage = getStage(progress.currentStageId);
+  const block = stage?.blocks[progress.currentBlockIndex];
+  // The client can only ever advance the exact block the server last showed
+  // it — a stale/replayed request naming an old blockId is a safe no-op
+  // (returns the current, unchanged state) rather than skipping ahead.
+  if (!stage || !block || block.id !== blockId) {
+    return res.json({ data: serializeBeginnerState(progress, nativeLang) });
+  }
+
+  if (block.type === 'WRITE') {
+    if (!responseText) return res.status(400).json({ errors: [{ message: 'responseText is required for this block.' }] });
+    const correct = isWriteAnswerCorrect(block.expectedTemplateEn, progress.learnerDisplayName, responseText);
+    if (!correct) {
+      return res.json({ data: { ...serializeBeginnerState(progress, nativeLang), correct: false } });
+    }
+  }
+  if (block.type === 'QUESTION_NAME') {
+    if (!displayName) return res.status(400).json({ errors: [{ message: 'displayName is required for this block.' }] });
+  }
+
+  const nextIndexRaw = progress.currentBlockIndex + 1;
+  const masteredConceptIds = progress.masteredConceptIds.includes(block.id) ? progress.masteredConceptIds : [...progress.masteredConceptIds, block.id];
+  const progression =
+    nextIndexRaw < stage.blocks.length
+      ? { currentBlockIndex: nextIndexRaw }
+      : stage.nextStageId
+      ? { currentStageId: stage.nextStageId, currentBlockIndex: 0 }
+      : { completedAt: new Date() };
+
+  const updated = await prisma.userTutorBeginnerProgress.update({
+    where: { userId: req.user!.id },
+    data: {
+      masteredConceptIds,
+      ...(block.type === 'QUESTION_NAME' && displayName ? { learnerDisplayName: displayName } : {}),
+      ...progression,
+    },
+  });
+  res.json({ data: { ...serializeBeginnerState(updated, nativeLang), correct: true } });
+});
+
+router.post('/beginner-path/skip', async (req: Request, res: Response) => {
+  const updated = await prisma.userTutorBeginnerProgress.upsert({
+    where: { userId: req.user!.id },
+    create: { userId: req.user!.id, skippedAt: new Date() },
+    update: { skippedAt: new Date() },
+  });
+  res.json({ data: serializeBeginnerState(updated, 'en') });
 });
 
 export default router;

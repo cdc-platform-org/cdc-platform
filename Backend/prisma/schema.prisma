@@ -793,6 +793,7 @@ model User {
   tutorProgress                 UserTutorProgress[]
   tutorLessonGenerations        TutorLessonGeneration[]
   tutorResumeState              UserTutorResumeState?
+  tutorBeginnerProgress         UserTutorBeginnerProgress?
   tutorContentFlagsRaised       TutorContentFlag[]             @relation("TutorContentFlagsRaised")
   tutorContentFlagsReviewed     TutorContentFlag[]             @relation("TutorContentFlagsReviewed")
   tutorLessonsApproved          TutorLesson[]                  @relation("TutorLessonsApproved")
@@ -5219,6 +5220,52 @@ model UserTutorProgress {
   @@index([userId, status])
   @@index([tutorLessonId])
   @@map("user_tutor_progress")
+}
+
+// A true zero-beginner's deterministic onboarding path (Stage 1 Greetings,
+// Stage 2 Introducing Yourself, …) — curated, fixed curriculum content
+// (see services/beginnerCurriculumService.ts; deliberately NOT stored here,
+// same reasoning as CefrLevel/TutorLearningGoal being enums rather than DB
+// rows: this is prompt-engineering/content-authoring, not per-user data).
+// One row per user (like UserTutorResumeState), overwritten as the student
+// advances — tracks ONLY what differs per learner: which block they're on,
+// which concepts the server has already confirmed mastered (never
+// re-derived from the client), and the display name they typed during the
+// "What is your name?" moment for lesson personalization ("I am Nino.").
+// Fully separate from TutorLesson/UserTutorProgress (the AI-generated-lesson
+// system) — a student who finishes or skips this path moves on to that
+// system entirely unaffected; this table's absence/completed/skipped state
+// is the only thing EnglishTutorPanel checks to decide which UI to show.
+model UserTutorBeginnerProgress {
+  userId             String    @id
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Free-text name the learner typed for themselves during the path (e.g.
+  // "Nino") — intentionally distinct from User.name (their account name),
+  // since a learner may prefer practicing with a different/shorter name.
+  // Null until they reach and complete that step.
+  learnerDisplayName String?
+  // Curated stage id (see beginnerCurriculumService.ts's STAGE_ORDER) —
+  // free-text, not an enum, for the same reason CefrLevel's sibling content
+  // fields aren't: new stages are a content change, never a migration.
+  currentStageId     String    @default("greetings")
+  currentBlockIndex  Int       @default(0)
+  // Concept ids the server has confirmed mastered (e.g. "greeting:hello",
+  // "grammar:i-am") — append-only, never re-derived from client state, so a
+  // client can't fast-forward progress by replaying a stale local value.
+  masteredConceptIds String[]  @default([])
+  // Set once the student finishes the full curated path — EnglishTutorPanel
+  // treats completed OR skipped identically (both mean "show the normal
+  // lesson-generation UI instead"), kept as two separate booleans only so
+  // analytics can tell "finished it" apart from "opted out" later.
+  completedAt        DateTime?
+  // An already-literate student (or an existing user who happens to be at
+  // A1) can opt out immediately via POST .../skip — never trap someone who
+  // doesn't need this path.
+  skippedAt          DateTime?
+  startedAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@map("user_tutor_beginner_progress")
 }
 
 // A student's exact resume point — one row per user (not per lesson),

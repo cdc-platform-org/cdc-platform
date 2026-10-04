@@ -184,3 +184,65 @@ export async function sendDialogueMessage(
   const response = await apiClient.post<{ data: { reply: string } }>(`/english-tutor/lessons/${id}/dialogue-message`, { history, message });
   return response.data.data.reply;
 }
+
+// ---- BEGINNER PATH — see Backend's beginnerCurriculumService.ts/
+// routes/englishTutor.ts own comments. A true zero-beginner's deterministic
+// greetings-first onboarding, served instead of the free-form
+// AI-generated lessons above. ----
+
+export type BeginnerBlockType =
+  | 'GREETING'
+  | 'WORD'
+  | 'SENTENCE'
+  | 'GRAMMAR_TIP'
+  | 'QUESTION_NAME'
+  | 'PERSONAL_SENTENCE'
+  | 'WRITE'
+  | 'MINI_DIALOGUE'
+  | 'CHECKPOINT';
+
+export interface BeginnerBlockClient {
+  id: string;
+  type: BeginnerBlockType;
+  textEn?: string;
+  translation?: string;
+  examplesEn?: string[];
+  word?: { word: string; ipa: string; exampleSentenceEn: string; translation: string };
+  turns?: { speaker: 'IMIAKO' | 'LEARNER'; textEn: string }[];
+  audioTextEn?: string; // WRITE blocks only — what to play for "listen, then write"; never the answer key
+}
+
+export interface BeginnerPathActiveState {
+  active: true;
+  stageId: string;
+  blockIndex: number;
+  totalBlocksInStage: number;
+  isLastStage: boolean;
+  learnerDisplayName: string | null;
+  block: BeginnerBlockClient;
+  correct?: boolean;
+}
+export interface BeginnerPathInactiveState {
+  active: false;
+  completedAt?: string | null;
+  skippedAt?: string | null;
+  reason?: string;
+}
+export type BeginnerPathState = BeginnerPathActiveState | BeginnerPathInactiveState;
+
+export async function getBeginnerPathState(nativeLang?: string): Promise<BeginnerPathState> {
+  const response = await apiClient.get<{ data: BeginnerPathState }>('/english-tutor/beginner-path/state', {
+    params: nativeLang ? { nativeLang } : undefined,
+  });
+  return response.data.data;
+}
+
+export async function advanceBeginnerPath(params: { blockId: string; responseText?: string; displayName?: string; nativeLang?: string }): Promise<BeginnerPathState> {
+  const response = await apiClient.post<{ data: BeginnerPathState }>('/english-tutor/beginner-path/advance', params);
+  return response.data.data;
+}
+
+export async function skipBeginnerPath(): Promise<BeginnerPathState> {
+  const response = await apiClient.post<{ data: BeginnerPathState }>('/english-tutor/beginner-path/skip');
+  return response.data.data;
+}

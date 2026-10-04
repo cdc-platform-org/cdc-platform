@@ -4,6 +4,8 @@ import VIPAudioNarrator from '../ui/VIPAudioNarrator';
 import TutorOnboardingFlow from './TutorOnboardingFlow';
 import TutorPaywallModal from './TutorPaywallModal';
 import VocabWaitingGame from './VocabWaitingGame';
+import BeginnerPathRunner from './beginnerPath/BeginnerPathRunner';
+import { TUTOR_SUPPORT_LANGUAGES } from '../../data/tutorSupportLanguages';
 import {
   TutorTaskType,
   CefrLevel,
@@ -31,6 +33,7 @@ import {
   generateTutorLesson,
   submitTutorLesson,
   sendDialogueMessage,
+  getBeginnerPathState,
 } from '../../services/englishTutorService';
 
 interface EnglishTutorPanelProps {
@@ -57,19 +60,6 @@ const TASK_TYPES: { value: TutorTaskType; icon: typeof BookOpen }[] = [
 ];
 const LEVELS: CefrLevel[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 const PRO_LEVELS: CefrLevel[] = ['B2', 'C1', 'C2'];
-// A short suggestion list — the actual field is free text (see
-// TutorLesson.nativeLang's own comment), this just saves the common case a
-// click. Deliberately not next-i18next's SUPPORTED_LOCALES: a learner's
-// native/support language for this tool is independent of the site UI
-// language, per the RFC.
-const NATIVE_LANG_SUGGESTIONS = [
-  { code: 'ka', label: 'ქართული' },
-  { code: 'az', label: 'Azərbaycan' },
-  { code: 'hy', label: 'Հայերեն' },
-  { code: 'ru', label: 'Русский' },
-  { code: 'tr', label: 'Türkçe' },
-  { code: 'uk', label: 'Українська' },
-];
 
 const dict = {
   ka: {
@@ -85,7 +75,7 @@ const dict = {
     } as Record<TutorTaskType, string>,
     level: 'დონე (CEFR)',
     nativeLang: 'თქვენი მშობლიური/დამხმარე ენა',
-    nativeLangPlaceholder: 'მაგ. ka, az, hy, ru...',
+    nativeLangPlaceholder: 'აირჩიეთ ენა',
     topic: 'თემა (არასავალდებულო)',
     topicPlaceholder: 'მაგ. მოგზაურობა, გასაუბრება...',
     generate: 'გაკვეთილის გენერაცია',
@@ -142,7 +132,7 @@ const dict = {
     } as Record<TutorTaskType, string>,
     level: 'Level (CEFR)',
     nativeLang: 'Your native/support language',
-    nativeLangPlaceholder: 'e.g. ka, az, hy, ru...',
+    nativeLangPlaceholder: 'Choose a language',
     topic: 'Topic (optional)',
     topicPlaceholder: 'e.g. travel, job interviews...',
     generate: 'Generate Lesson',
@@ -198,6 +188,15 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
   const [tutorState, setTutorState] = useState<TutorState | null>(null);
   const [resumeState, setResumeState] = useState<TutorResumeState | null>(null);
   const [history, setHistory] = useState<TutorLessonListItem[]>([]);
+  // Whether to show the Beginner Path instead of the normal lesson-
+  // generation form — null while still deciding (nothing rendered yet, to
+  // avoid a flash of the wrong UI), decided once `history` has loaded (see
+  // the effect below). Only even considered for a learner who picked A1
+  // during onboarding — an existing/returning user, or anyone who tested
+  // into A2+, never sees it at all (the backend independently refuses to
+  // lazily enroll an account that already has tutorNativeLang set, as a
+  // second layer of the same guarantee).
+  const [showBeginnerPath, setShowBeginnerPath] = useState<boolean | null>(null);
   const [taskType, setTaskType] = useState<TutorTaskType>('READING');
   const [level, setLevel] = useState<CefrLevel>('A2');
   const [nativeLang, setNativeLang] = useState('');
@@ -258,6 +257,26 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
   // the lesson-generation form right after finishing onboarding, before
   // that first generation has run — see its own declaration above.
   const needsOnboarding = tutorState !== null && !tutorState.tutorNativeLang && !onboardingJustCompleted;
+
+  // Decides ONCE per session whether to show the Beginner Path instead of
+  // the normal lesson-generation form below — only for a learner who just
+  // picked A1 and has never generated a single lesson (a true first-session
+  // zero-beginner; `level` isn't persisted server-side at all, so this
+  // frontend signal, right after onboarding, is the only place this
+  // decision can be made — see onboarding's own comment on why
+  // tutorNativeLang alone isn't enough). Deliberately skipped entirely
+  // (never even calls the endpoint) for any other level, so a B1+ learner's
+  // account is never lazily enrolled into Beginner Path progress at all.
+  useEffect(() => {
+    if (tutorState === null || needsOnboarding || showBeginnerPath !== null) return;
+    if (level !== 'A1' || history.length > 0) {
+      setShowBeginnerPath(false);
+      return;
+    }
+    getBeginnerPathState(nativeLang || undefined)
+      .then((s) => setShowBeginnerPath(s.active))
+      .catch(() => setShowBeginnerPath(false));
+  }, [tutorState, needsOnboarding, showBeginnerPath, level, history, nativeLang]);
 
   const handleGenerate = async (overrideTaskType?: TutorTaskType, overrideLevel?: CefrLevel, overrideNativeLang?: string) => {
     const effectiveNativeLang = (overrideNativeLang ?? nativeLang).trim();
@@ -340,6 +359,22 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
 
   if (needsOnboarding) {
     return <TutorOnboardingFlow lang={lang} onComplete={handleOnboardingComplete} />;
+  }
+
+  if (showBeginnerPath) {
+    return (
+      <div className="max-w-2xl mx-auto w-full">
+        <BeginnerPathRunner
+          lang={lang}
+          nativeLang={nativeLang || (lang === 'ka' ? 'ka' : 'en')}
+          onNativeLangChange={setNativeLang}
+          onDone={() => {
+            setShowBeginnerPath(false);
+            refresh();
+          }}
+        />
+      </div>
+    );
   }
 
   const trialDaysLeft = tutorState?.tutorTrialEndDate
@@ -494,20 +529,23 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
 
           <div>
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{t.nativeLang}</label>
-            <input
+            {/* A proper dropdown, not a free-text code field — a learner
+                picks a human-readable language name, never types "ka"/"ru".
+                Same canonical list (data/tutorSupportLanguages.ts) every
+                other IMIAKO support-language picker in this feature uses —
+                no second, independently-drifting list. */}
+            <select
               value={nativeLang}
               onChange={(e) => setNativeLang(e.target.value)}
-              placeholder={t.nativeLangPlaceholder}
-              list="tutor-native-lang-suggestions"
               className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-transparent px-3 py-1.5 text-sm"
-            />
-            <datalist id="tutor-native-lang-suggestions">
-              {NATIVE_LANG_SUGGESTIONS.map((s) => (
-                <option key={s.code} value={s.code}>
-                  {s.label}
+            >
+              {!nativeLang && <option value="">{t.nativeLangPlaceholder}</option>}
+              {TUTOR_SUPPORT_LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.nativeName}
                 </option>
               ))}
-            </datalist>
+            </select>
           </div>
         </div>
 
