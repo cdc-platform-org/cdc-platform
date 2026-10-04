@@ -6,11 +6,12 @@ import { useRouter } from 'next/router';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { ShoppingBag, CheckCircle2, Tag, Star, Plus, Crown, Mic, ShieldCheck, Search, SlidersHorizontal, X, ChevronDown, BookOpen, Sparkles } from 'lucide-react';
+import { ShoppingBag, CheckCircle2, Tag, Star, Plus, Search, SlidersHorizontal, X, ChevronDown, Sparkles } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import { getProducts, productTitle, productDescription, DigitalProduct } from '../../src/services/productService';
+import { resolveBlogImageUrl } from '../../src/services/blogService';
 import { formatPrice } from '../../src/utils/coursePricing';
 import { onImageErrorFallback } from '../../src/utils/imageFallback';
 import { MARKETPLACE_CATEGORIES } from '../../src/data/marketplaceCategories';
@@ -18,31 +19,21 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
 import { getSiteContent } from '../../src/services/siteContentService';
 import { ToolCatalogContent } from '../../src/types/siteContent';
-import { findToolEntry, overrideText } from '../../src/utils/toolCatalog';
+import { findToolEntry, resolveLocalizedField } from '../../src/utils/toolCatalog';
+import { PRODUCT_CATALOG_REGISTRY } from '../../src/data/productCatalogRegistry';
+import { resolveLocale } from '../../src/utils/locale';
 
-// CDC-built AI tools cross-listed under the Digital AI Tools category — these are
-// NOT DigitalProduct rows (no price, no file, no seller — they're live
-// dashboard tools, not downloadable purchases), so they're a small fixed
-// list rendered directly here rather than seeded into the real product
-// catalog, which would misrepresent them as purchasable/reviewable items
-// and risk colliding with the real checkout flow. Each pulls its
-// title/description/badge from that tool's OWN existing namespace (already
-// real-translated across all 9 locales) rather than duplicating fresh copy
-// here — only the AI Proctoring system had no reusable 9-locale source
-// (its only existing text lives in tools.tsx's own 6-locale inline dict),
-// so that one gets new keys directly in marketplace.json instead.
-const SAAS_TOOLS = [
-  { id: 'educator-hub', href: '/dashboard/tools/educator-hub', icon: Crown, accent: 'from-amber-500 to-purple-600' },
-  { id: 'media-studio', href: '/dashboard/tools/media-studio', icon: Mic, accent: 'from-cyan-500 to-purple-600' },
-  { id: 'smart-reader', href: '/#ai-tools', icon: BookOpen, accent: 'from-cyan-500 to-emerald-600' },
-  // Self-service practice version — distinct from the Business-gated
-  // candidate-screening system at /dashboard/ai-tools (tools.tsx's Card 2).
-  { id: 'proctoring', href: '/dashboard/tools/proctored-exam', icon: ShieldCheck, accent: 'from-cyan-500 to-purple-600' },
-  // Personalized Children's Book — a server-priced one-time purchase,
-  // linked into the existing dashboard wizard rather than represented by
-  // a downloadable DigitalProduct row.
-  { id: 'childrens-book', href: '/dashboard/tools/childrens-book', icon: BookOpen, accent: 'from-pink-500 to-purple-600' },
-] as const;
+// CDC-built AI tools (+ the Children's Book) cross-listed under the Digital
+// AI Tools category — these are NOT DigitalProduct rows (no price, no
+// file, no seller — they're live dashboard tools/a generative product, not
+// downloadable purchases), so they're rendered directly here from the
+// single shared registry (src/data/productCatalogRegistry.ts, also used by
+// pages/courses/index.tsx and pages/admin/tools.tsx) rather than seeded
+// into the real product catalog, which would misrepresent them as
+// purchasable/reviewable items and risk colliding with the real checkout
+// flow. AI Teachers (english-tutor) are excluded here — they live on
+// pages/courses/index.tsx's own AI Teachers tab instead.
+const SAAS_TOOLS = PRODUCT_CATALOG_REGISTRY.filter((e) => e.category !== 'AI_TEACHER');
 
 type SortOption = 'newest' | 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc' | 'popularity';
 const SORT_OPTIONS: SortOption[] = ['newest', 'name_asc', 'name_desc', 'price_asc', 'price_desc', 'popularity'];
@@ -96,6 +87,11 @@ function MarketplaceContent() {
   // typed it) — falls back to English for de/es/fr/uk visitors rather than
   // Georgian, same boundary as SiteHeader's catLocale.
   const lang = router.locale === 'ka' ? 'ka' : 'en';
+  // Full 9-real-locale resolution specifically for the AI Tools/Children's
+  // Book card copy's admin-editable override layer (product requirement,
+  // 2026-10 — not collapsed to ka/en like the rest of this page's
+  // DigitalProduct listing still is).
+  const siteLocale = resolveLocale(router.locale);
 
   const categoryParam = typeof router.query.category === 'string' ? router.query.category : null;
 
@@ -269,7 +265,14 @@ function MarketplaceContent() {
   // them into the downloadable-product results.
   const showSaasTools = categoryParam === AI_TOOLS_CATEGORY.ka || categoryParam === AI_TOOLS_CATEGORY.en;
 
-  const saasToolDefaults: Record<(typeof SAAS_TOOLS)[number]['id'], { title: string; desc: string; badge: string; cta: string; features?: string[] }> = {
+  // Each tool's existing per-locale default — educator-hub/media-studio/
+  // proctoring already resolve across all 9 real site locales via their
+  // own next-i18next namespace (useTranslation already follows
+  // router.locale); smart-reader/childrens-book used to be inline ka/en-
+  // only ternaries here (collapsing to English for de/es/fr/uk/tr/hy/az) —
+  // an admin can now fill in the other 7 locales for those two via the new
+  // per-locale override below without a code change.
+  const saasToolDefaults: Record<(typeof SAAS_TOOLS)[number]['slug'], { title: string; desc: string; badge: string; cta: string; features?: string[] }> = {
     'educator-hub': { title: tEdu('pageTitle'), desc: tEdu('pageSubtitle'), badge: tEdu('vipBadge'), cta: tEdu('trialCta') },
     'media-studio': { title: tm('catalogTitle'), desc: tm('catalogDesc'), badge: tm('catalogTag'), cta: t('saasLaunchCta') },
     'smart-reader': {
@@ -294,23 +297,24 @@ function MarketplaceContent() {
 
   type SaasToolCopy = { title: string; desc: string; badge: string; cta: string; features?: string[]; status: 'ACTIVE' | 'COMING_SOON' | 'DISABLED' };
 
-  // Layers pages/admin/tools.tsx's saved overrides on top of the defaults
-  // above — a DISABLED entry is hidden entirely, COMING_SOON swaps the CTA
-  // for a non-clickable badge instead of launching the (not yet ready)
-  // tool.
-  const saasToolCopy = SAAS_TOOLS.reduce((acc, { id }) => {
-    const fallback = saasToolDefaults[id];
-    const cms = findToolEntry(toolCatalog?.tools, id);
-    acc[id] = {
-      title: overrideText(fallback.title, lang === 'ka' ? cms?.titleKa : cms?.titleEn),
-      desc: overrideText(fallback.desc, lang === 'ka' ? cms?.descriptionKa : cms?.descriptionEn),
-      badge: overrideText(fallback.badge, lang === 'ka' ? cms?.badgeKa : cms?.badgeEn),
+  // Layers pages/admin/tools.tsx's saved per-locale overrides on top of the
+  // defaults above (resolveLocalizedField — current real site locale first,
+  // then the ka/en pair, then the i18n default) — a DISABLED entry is
+  // hidden entirely, COMING_SOON swaps the CTA for a non-clickable badge
+  // instead of launching the (not yet ready) tool.
+  const saasToolCopy = SAAS_TOOLS.reduce((acc, { slug }) => {
+    const fallback = saasToolDefaults[slug];
+    const cms = findToolEntry(toolCatalog?.tools, slug);
+    acc[slug] = {
+      title: resolveLocalizedField(siteLocale, fallback.title, cms?.titleLocales, cms?.titleKa, cms?.titleEn),
+      desc: resolveLocalizedField(siteLocale, fallback.desc, cms?.descriptionLocales, cms?.descriptionKa, cms?.descriptionEn),
+      badge: resolveLocalizedField(siteLocale, fallback.badge, undefined, cms?.badgeKa, cms?.badgeEn),
       cta: fallback.cta,
       features: fallback.features,
       status: cms?.status ?? 'ACTIVE',
     };
     return acc;
-  }, {} as Record<(typeof SAAS_TOOLS)[number]['id'], SaasToolCopy>);
+  }, {} as Record<(typeof SAAS_TOOLS)[number]['slug'], SaasToolCopy>);
 
   // Same "sign in, then resume" pattern as this page's own product cards
   // (store/[id].tsx's handleBuy/handleClaim) — a guest lands in the auth
@@ -324,19 +328,10 @@ function MarketplaceContent() {
     router.push('/dashboard?tab=products');
   };
 
-  // Same pattern as goToUpload above — a guest clicking a SaaS tool card
-  // gets the auth modal (continuing straight into the tool on success)
-  // rather than a plain <Link> that would silently full-navigate into
-  // ProtectedRoute's own redirect-to-/auth/login dance on the destination
-  // page. Kept as its own handler (not goToUpload) since the destination
-  // varies per card.
-  const goToSaasTool = (href: string) => {
-    if (!isAuthenticated) {
-      openAuthModal({ onSuccess: () => router.push(href) });
-      return;
-    }
-    router.push(href);
-  };
+  // SaaS tool cards now navigate to their public /products/[slug] detail
+  // page (product spec, 2026-10) instead of straight into the gated tool —
+  // that page's own CTA button does the guest -> auth-modal -> resume
+  // handoff goToSaasTool used to do here directly.
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
@@ -404,28 +399,35 @@ function MarketplaceContent() {
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('saasToolsSubheading')}</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {SAAS_TOOLS.filter(({ id }) => saasToolCopy[id].status !== 'DISABLED').map(({ id, href, icon: Icon, accent }) => {
-                const copy = saasToolCopy[id];
+              {SAAS_TOOLS.filter(({ slug }) => saasToolCopy[slug].status !== 'DISABLED').map(({ slug, icon: Icon, accent }) => {
+                const copy = saasToolCopy[slug];
                 const comingSoon = copy.status === 'COMING_SOON';
+                const detailHref = `/products/${slug}`;
+                const cmsImageUrl = findToolEntry(toolCatalog?.tools, slug)?.imageUrl;
                 return (
                   <div
-                    key={id}
+                    key={slug}
                     role="button"
                     tabIndex={0}
-                    onClick={() => !comingSoon && goToSaasTool(href)}
+                    onClick={() => !comingSoon && router.push(detailHref)}
                     onKeyDown={(e) => {
                       if (!comingSoon && (e.key === 'Enter' || e.key === ' ')) {
                         e.preventDefault();
-                        goToSaasTool(href);
+                        router.push(detailHref);
                       }
                     }}
                     className={`group rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 overflow-hidden p-5 flex gap-4 items-start ${
                       comingSoon ? 'opacity-80' : 'cursor-pointer hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10'
                     }`}
                   >
-                    <div className={`shrink-0 w-12 h-12 rounded-xl bg-gradient-to-tr ${accent} flex items-center justify-center`}>
-                      <Icon className="w-6 h-6 text-white" />
-                    </div>
+                    {cmsImageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={resolveBlogImageUrl(cmsImageUrl)} alt="" className="shrink-0 w-12 h-12 rounded-xl object-cover" />
+                    ) : (
+                      <div className={`shrink-0 w-12 h-12 rounded-xl bg-gradient-to-tr ${accent} flex items-center justify-center`}>
+                        <Icon className="w-6 h-6 text-white" />
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5 mb-1">
                         <h3 className="text-sm font-black tracking-wide group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">{copy.title}</h3>

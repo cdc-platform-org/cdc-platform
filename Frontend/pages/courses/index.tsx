@@ -5,7 +5,7 @@ import Head from 'next/head';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { Search, SlidersHorizontal, X, Calendar, PlayCircle, GraduationCap } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Calendar, PlayCircle } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
@@ -21,7 +21,9 @@ import { courseLanguageBadge } from '../../src/utils/courseLanguage';
 import { getSiteContent } from '../../src/services/siteContentService';
 import { resolveBlogImageUrl } from '../../src/services/blogService';
 import { ToolCatalogContent } from '../../src/types/siteContent';
-import { findToolEntry } from '../../src/utils/toolCatalog';
+import { findToolEntry, resolveLocalizedField } from '../../src/utils/toolCatalog';
+import { PRODUCT_CATALOG_REGISTRY } from '../../src/data/productCatalogRegistry';
+import { resolveLocale } from '../../src/utils/locale';
 import LearningRatingSummary from '../../src/components/shared/LearningRatingSummary';
 
 type SortMode = 'recommended' | 'price_asc' | 'price_desc';
@@ -30,15 +32,12 @@ type ContentTab = 'all' | 'courses' | 'live' | 'ai-teachers';
 const INTERNAL_TEST_CATEGORY = /(?:^|[^a-z0-9])(?:qa|e2e|test(?:ing)?|fixture|fixtures|demo|seed)(?:$|[^a-z0-9])/i;
 
 // Personalized AI learning products shown under the "AI Teachers" tab — not
-// Course/LiveTraining DB rows (they're live dashboard tools, same concept
-// as marketplace/index.tsx's SAAS_TOOLS), so this is a small fixed list
-// rendered directly here rather than fetched, reusing each tool's own
-// already-translated copy the same way marketplace/index.tsx and tools.tsx
-// do. Educator Hub is a teacher productivity suite, not personalized
-// learner instruction, so it belongs with Digital AI Tools instead.
-const AI_TEACHERS = [
-  { id: 'english-tutor', href: '/dashboard/english-tutor', icon: GraduationCap, accent: 'from-purple-500 to-cyan-600' },
-] as const;
+// Course/LiveTraining DB rows (they're live dashboard tools), sourced from
+// the single shared registry (src/data/productCatalogRegistry.ts, also used
+// by marketplace/index.tsx and pages/admin/tools.tsx) instead of its own
+// now-removed local copy. Educator Hub is a teacher productivity suite, not
+// personalized learner instruction, so it belongs with AI Tools instead.
+const AI_TEACHERS = PRODUCT_CATALOG_REGISTRY.filter((e) => e.category === 'AI_TEACHER');
 
 export default function CoursesPage() {
   const router = useRouter();
@@ -46,25 +45,19 @@ export default function CoursesPage() {
   // badges, sale countdown) — falls back to English for de/es/fr/uk visitors
   // rather than Georgian.
   const lang = router.locale === 'ka' ? 'ka' : 'en';
+  // Full 9-real-locale resolution specifically for AI Teacher card text
+  // (product requirement, 2026-10 — admin-editable in all 9 CDC locales,
+  // not collapsed to ka/en like the rest of this page's course/live-training
+  // text already is).
+  const siteLocale = resolveLocale(router.locale);
   const { t } = useTranslation('courses');
   const { t: th } = useTranslation('home');
   const { isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
-
-  const aiTeacherCopy: Record<(typeof AI_TEACHERS)[number]['id'], { title: string; desc: string; badge: string }> = {
-    'english-tutor': { title: th('imiakoCardTitle'), desc: th('imiakoFeature1'), badge: th('imiakoBadgeFreeTrial') },
-  };
-
-  // Same "guest -> auth modal -> resume" pattern as marketplace/index.tsx's
-  // goToSaasTool — a plain <Link> here would just full-navigate into
-  // ProtectedRoute's own redirect-to-login on the destination page.
-  const goToAiTeacher = (href: string) => {
-    if (!isAuthenticated) {
-      openAuthModal({ onSuccess: () => router.push(href) });
-      return;
-    }
-    router.push(href);
-  };
+  // AI Teacher cards now navigate to their public /products/[slug] detail
+  // page (product spec, 2026-10) instead of straight into the gated tool —
+  // that page's own CTA button is what does the guest -> auth-modal ->
+  // resume handoff goToAiTeacher used to do here directly.
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [liveTrainings, setLiveTrainings] = useState<LiveTraining[]>([]);
@@ -84,6 +77,28 @@ export default function CoursesPage() {
       .then((row) => setToolCatalog(row?.content ?? {}))
       .catch(() => setToolCatalog({}));
   }, []);
+
+  // AI Teacher card copy — the one real i18n default this page has
+  // (english-tutor/IMIAKO's home.json keys) layered under the admin's
+  // per-locale tool-catalog override (resolveLocalizedField), resolved for
+  // the CURRENT real site locale (siteLocale), not collapsed to ka/en the
+  // way the rest of this page's course/live-training text still is.
+  const aiTeacherI18nDefaults: Record<string, { title: string; desc: string; badge: string }> = {
+    'english-tutor': { title: th('imiakoCardTitle'), desc: th('imiakoFeature1'), badge: th('imiakoBadgeFreeTrial') },
+  };
+  const resolveAiTeacherCopy = useCallback(
+    (slug: string) => {
+      const entry = findToolEntry(toolCatalog?.tools ?? undefined, slug);
+      const d = aiTeacherI18nDefaults[slug] ?? { title: slug, desc: '', badge: '' };
+      return {
+        title: resolveLocalizedField(siteLocale, d.title, entry?.titleLocales, entry?.titleKa, entry?.titleEn),
+        desc: resolveLocalizedField(siteLocale, d.desc, entry?.descriptionLocales, entry?.descriptionKa, entry?.descriptionEn),
+        badge: d.badge,
+      };
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [toolCatalog, siteLocale]
+  );
 
   // Client-side search/filter/sort over the same getCourses()/
   // getLiveTrainings() fetches this page always made (the latter newly
@@ -145,12 +160,13 @@ export default function CoursesPage() {
     if (contentTab !== 'all') return [];
     if (category || language || discountedOnly || priceFilter === 'paid') return [];
     const q = search.trim().toLowerCase();
-    return AI_TEACHERS.filter(({ id }) => {
-      const copy = aiTeacherCopy[id];
+    return AI_TEACHERS.filter(({ slug }) => {
+      const copy = resolveAiTeacherCopy(slug);
       if (q && !copy.title.toLowerCase().includes(q) && !copy.desc.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [contentTab, category, language, discountedOnly, priceFilter, search, aiTeacherCopy]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contentTab, category, language, discountedOnly, priceFilter, search, toolCatalog, siteLocale]);
 
   const filteredCourses = useMemo(() => {
     if (contentTab === 'live') return [];
@@ -282,19 +298,20 @@ export default function CoursesPage() {
           <div>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-2xl">{t('aiTeachersSubtitle')}</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {AI_TEACHERS.map(({ id, href, icon: Icon, accent }) => {
-                const copy = aiTeacherCopy[id];
-                const cmsImageUrl = findToolEntry(toolCatalog?.tools, id)?.imageUrl;
+              {AI_TEACHERS.map(({ slug, icon: Icon, accent }) => {
+                const copy = resolveAiTeacherCopy(slug);
+                const cmsImageUrl = findToolEntry(toolCatalog?.tools, slug)?.imageUrl;
+                const detailHref = `/products/${slug}`;
                 return (
                   <div
-                    key={id}
+                    key={slug}
                     role="button"
                     tabIndex={0}
-                    onClick={() => goToAiTeacher(href)}
+                    onClick={() => router.push(detailHref)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        goToAiTeacher(href);
+                        router.push(detailHref);
                       }
                     }}
                     className="group cursor-pointer rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden p-6 flex gap-4 items-start"
@@ -650,19 +667,20 @@ export default function CoursesPage() {
                       </div>
                     );
                   })}
-                  {filteredAiTeachers.map(({ id, href, icon: Icon, accent }) => {
-                    const copy = aiTeacherCopy[id];
-                    const cmsImageUrl = findToolEntry(toolCatalog?.tools, id)?.imageUrl;
+                  {filteredAiTeachers.map(({ slug, icon: Icon, accent }) => {
+                    const copy = resolveAiTeacherCopy(slug);
+                    const cmsImageUrl = findToolEntry(toolCatalog?.tools, slug)?.imageUrl;
+                    const detailHref = `/products/${slug}`;
                     return (
                       <div
-                        key={id}
+                        key={slug}
                         role="button"
                         tabIndex={0}
-                        onClick={() => goToAiTeacher(href)}
+                        onClick={() => router.push(detailHref)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            goToAiTeacher(href);
+                            router.push(detailHref);
                           }
                         }}
                         className="group cursor-pointer relative h-full overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 flex flex-col justify-between"

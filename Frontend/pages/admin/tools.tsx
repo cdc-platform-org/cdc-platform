@@ -1,30 +1,51 @@
 import { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
 import Head from 'next/head';
-import { Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { Trash2, ExternalLink } from 'lucide-react';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
-import { ToolCatalogContent, ToolCatalogEntry, ToolCatalogStatus } from '../../src/types/siteContent';
+import { ToolCatalogContent, ToolCatalogEntry, ToolCatalogStatus, ToolCatalogCategory } from '../../src/types/siteContent';
 import { getAdminSiteContent, updateSiteContent, uploadCmsImage } from '../../src/services/siteContentService';
 import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../src/utils/imageUpload';
 import { resolveBlogImageUrl } from '../../src/services/blogService';
+import { resolveToolCategory } from '../../src/utils/toolCatalog';
+import { PRODUCT_CATALOG_REGISTRY } from '../../src/data/productCatalogRegistry';
+import { SITE_LOCALES, SiteLocale } from '../../src/utils/seo';
 
-// The 4 real, live self-service SaaS tools this CMS currently covers (see
-// marketplace/index.tsx's SAAS_TOOLS and tools.tsx's own cards for where
-// these slugs are read) — pre-seeded here so an admin sees every real tool
-// immediately rather than an empty list, but the array itself is fully
-// admin-editable (add/remove) for whatever gets built next.
-const KNOWN_TOOLS: { slug: string; route: string }[] = [
-  { slug: 'educator-hub', route: '/dashboard/tools/educator-hub' },
-  { slug: 'media-studio', route: '/dashboard/tools/media-studio' },
-  { slug: 'english-tutor', route: '/dashboard/english-tutor' },
-  { slug: 'proctoring', route: '/dashboard/tools/proctored-exam' },
-];
+// Every real, live AI Tool / AI Teacher / Children's Book this CMS covers —
+// pre-seeded from the single shared registry (src/data/
+// productCatalogRegistry.ts, also used by marketplace/index.tsx and
+// courses/index.tsx) so an admin sees every real entry immediately rather
+// than an empty or stale list — this used to be its own separately
+// hand-maintained 4-entry copy that had already drifted from the real
+// 6-entry list marketplace/index.tsx's SAAS_TOOLS actually renders
+// (missing smart-reader and childrens-book). The array below is still
+// fully admin-editable (add/remove) for whatever gets built next.
+const KNOWN_TOOLS: { slug: string; route: string }[] = PRODUCT_CATALOG_REGISTRY.map(({ slug, route }) => ({ slug, route }));
 
 const STATUS_OPTIONS: { value: ToolCatalogStatus; label: string }[] = [
   { value: 'ACTIVE', label: 'Active' },
   { value: 'COMING_SOON', label: 'Coming Soon / მალე' },
   { value: 'DISABLED', label: 'Disabled' },
 ];
+
+const CATEGORY_OPTIONS: { value: ToolCatalogCategory; label: string }[] = [
+  { value: 'AI_TOOL', label: 'AI Tool' },
+  { value: 'AI_TEACHER', label: 'AI Teacher' },
+  { value: 'DIGITAL_PRODUCT_LINK', label: "Digital Store (e.g. Children's Book)" },
+];
+
+const LOCALE_LABELS: Record<SiteLocale, string> = {
+  ka: 'ქართული (KA)',
+  en: 'English (EN)',
+  de: 'Deutsch (DE)',
+  es: 'Español (ES)',
+  fr: 'Français (FR)',
+  uk: 'Українська (UK)',
+  tr: 'Türkçe (TR)',
+  hy: 'Հայերեն (HY)',
+  az: 'Azərbaycan (AZ)',
+};
 
 function emptyEntry(slug = ''): ToolCatalogEntry {
   return { slug, status: 'ACTIVE' };
@@ -53,10 +74,12 @@ function ToolEntryEditor({
   onRemove: () => void;
 }) {
   const known = KNOWN_TOOLS.find((k) => k.slug === entry.slug);
+  const detailPageHref = entry.slug ? `/products/${entry.slug}` : null;
 
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeLocale, setActiveLocale] = useState<SiteLocale>('ka');
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -95,7 +118,23 @@ function ToolEntryEditor({
             ))}
           </select>
         </div>
+        <div>
+          <label className={labelClass}>Type — drives the unified Products admin filter and public placement</label>
+          <select value={resolveToolCategory(entry)} onChange={(e) => onChange({ category: e.target.value as ToolCatalogCategory })} className={inputClass}>
+            {CATEGORY_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
+
+      {detailPageHref && (
+        <a href={detailPageHref} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[11px] text-indigo-600 hover:text-indigo-800">
+          View public detail page <ExternalLink className="w-3 h-3" />
+        </a>
+      )}
 
       <div>
         <label className={labelClass}>Cover image — shown at the top of the tool&apos;s card in place of the default gradient/icon header</label>
@@ -162,14 +201,95 @@ function ToolEntryEditor({
       </div>
       <div className="grid md:grid-cols-2 gap-2">
         <div>
-          <label className={labelClass}>Description (KA)</label>
+          <label className={labelClass}>Short description (KA) — shown on the card</label>
           <textarea rows={2} value={entry.descriptionKa ?? ''} onChange={(e) => onChange({ descriptionKa: e.target.value })} className={inputClass} />
         </div>
         <div>
-          <label className={labelClass}>Description (EN)</label>
+          <label className={labelClass}>Short description (EN)</label>
           <textarea rows={2} value={entry.descriptionEn ?? ''} onChange={(e) => onChange({ descriptionEn: e.target.value })} className={inputClass} />
         </div>
       </div>
+
+      <div>
+        <label className={labelClass}>
+          Instruction/demo video — a pasted YouTube, Vimeo, or direct hosted file link. Shown as a &quot;▶ Watch how to use&quot; button on the
+          detail page; the button itself doesn&apos;t appear at all when this is empty or unparseable.
+        </label>
+        <input
+          value={entry.videoUrl ?? ''}
+          onChange={(e) => onChange({ videoUrl: e.target.value })}
+          className={inputClass}
+          placeholder="https://www.youtube.com/watch?v=... (leave empty for no video button)"
+        />
+        {!entry.videoUrl && <p className="text-[11px] text-gray-400 mt-1">No instruction video configured.</p>}
+      </div>
+
+      <div>
+        <label className={labelClass}>
+          Title / subtitle / short description / full description — per locale. Leave a locale blank to keep its existing KA/EN default (above).
+          Russian is never offered (platform policy).
+        </label>
+        <div className="flex flex-wrap gap-1 mb-2">
+          {SITE_LOCALES.map((locale) => {
+            const hasOverride = !!(
+              entry.titleLocales?.[locale]?.trim() ||
+              entry.subtitleLocales?.[locale]?.trim() ||
+              entry.descriptionLocales?.[locale]?.trim() ||
+              entry.fullDescriptionLocales?.[locale]?.trim()
+            );
+            return (
+              <button
+                key={locale}
+                type="button"
+                onClick={() => setActiveLocale(locale)}
+                className={`text-[11px] font-semibold px-2.5 py-1 rounded flex items-center gap-1 ${
+                  activeLocale === locale ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}
+              >
+                {LOCALE_LABELS[locale]}
+                {hasOverride && <span className={`w-1.5 h-1.5 rounded-full ${activeLocale === locale ? 'bg-white' : 'bg-emerald-500'}`} />}
+              </button>
+            );
+          })}
+        </div>
+        <div className="grid gap-2">
+          <div>
+            <label className={labelClass}>Title ({activeLocale.toUpperCase()})</label>
+            <input
+              value={entry.titleLocales?.[activeLocale] ?? ''}
+              onChange={(e) => onChange({ titleLocales: { ...entry.titleLocales, [activeLocale]: e.target.value } })}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Subtitle ({activeLocale.toUpperCase()})</label>
+            <input
+              value={entry.subtitleLocales?.[activeLocale] ?? ''}
+              onChange={(e) => onChange({ subtitleLocales: { ...entry.subtitleLocales, [activeLocale]: e.target.value } })}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Short description ({activeLocale.toUpperCase()})</label>
+            <textarea
+              rows={2}
+              value={entry.descriptionLocales?.[activeLocale] ?? ''}
+              onChange={(e) => onChange({ descriptionLocales: { ...entry.descriptionLocales, [activeLocale]: e.target.value } })}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Full description ({activeLocale.toUpperCase()}) — detail page only</label>
+            <textarea
+              rows={4}
+              value={entry.fullDescriptionLocales?.[activeLocale] ?? ''}
+              onChange={(e) => onChange({ fullDescriptionLocales: { ...entry.fullDescriptionLocales, [activeLocale]: e.target.value } })}
+              className={inputClass}
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="grid md:grid-cols-2 gap-2">
         <div>
           <label className={labelClass}>Feature bullets (KA) — one per line</label>
@@ -247,15 +367,20 @@ function ToolsCmsDashboard() {
   return (
     <>
       <Head>
-        <title>Tool Catalog CMS | Admin</title>
+        <title>AI Tools / AI Teachers CMS | Admin</title>
       </Head>
       <div className="max-w-4xl">
         <div className="mb-8 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Tool Catalog CMS</h1>
+            <h1 className="text-2xl font-semibold text-gray-900">AI Tools / AI Teachers / Children&apos;s Book CMS</h1>
             <p className="text-sm text-gray-500 mt-1">
-              Controls the title, subtitle, badge, pricing label, description, and feature bullets for each SaaS tool card on /tools and
-              /marketplace. Leave a field empty to keep that page&apos;s existing default text.
+              Controls cover image, instruction video, and title/subtitle/description (short + full, in all 9 CDC locales) for every AI Tool, AI
+              Teacher, and the Children&apos;s Book listing — shown on their cards on /marketplace and /courses, and on each one&apos;s public
+              /products/[slug] detail page. Leave a field empty to keep that page&apos;s existing default text. See also{' '}
+              <Link href="/admin/product-catalog" className="text-indigo-600 hover:text-indigo-800">
+                the unified Products list
+              </Link>{' '}
+              for Digital Store products alongside these.
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0">

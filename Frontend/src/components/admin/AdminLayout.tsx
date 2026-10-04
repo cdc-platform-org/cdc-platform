@@ -37,6 +37,7 @@ import {
   Star,
   Wrench,
   Sparkles,
+  LayoutGrid,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AdminLangProvider, useAdminLang } from '../../context/AdminLangContext';
@@ -82,6 +83,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/messages', labelKey: 'messages', icon: ShieldAlert, section: 'core' },
   { href: '/admin/chat-moderation', labelKey: 'chatModeration', icon: ShieldBan, tiers: ['SUPER_ADMIN', 'MANAGER', 'MODERATOR'], section: 'core', badgeKey: 'highSeverityChatFlags' },
   { href: '/admin/notifications', labelKey: 'notifications', icon: Bell, section: 'core' },
+  { href: '/admin/product-catalog', labelKey: 'productCatalog', icon: LayoutGrid, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/products', labelKey: 'products', icon: ShoppingBag, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content', badgeKey: 'pendingProducts' },
   { href: '/admin/product-reviews', labelKey: 'productReviews', icon: Star, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/forum', labelKey: 'forum', icon: MessageSquare, section: 'content', badgeKey: 'reportedForumPosts', badgeColor: 'yellow' },

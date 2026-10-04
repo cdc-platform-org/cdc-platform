@@ -22,6 +22,7 @@ export const DEFAULT_LOCALE = 'ka';
 // Mirrors next-i18next.config.js's `locales` exactly — same duplication
 // pattern (and reasoning) as SITE_LOCALES in src/utils/locale.ts.
 export const SITE_LOCALES = ['ka', 'en', 'de', 'es', 'fr', 'uk', 'tr', 'hy', 'az'] as const;
+export type SiteLocale = (typeof SITE_LOCALES)[number];
 
 // schema.org/Open Graph want full BCP-47-ish locale tags, not bare language
 // codes — one real-country guess per language (this platform has no
