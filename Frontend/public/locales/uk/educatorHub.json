@@ -168,5 +168,20 @@
   "exportCopied": "Скопійовано!",
   "exportDocx": "Завантажити Docx",
   "exportTxt": "Завантажити TXT",
-  "exportPrint": "🖨️ Друк"
+  "exportPrint": "🖨️ Друк",
+  "tabCertificates": "🏆 Сертифікати",
+  "certificateTypeLabel": "Тип сертифіката",
+  "certificateTypeWeeklyStar": "Учень тижня",
+  "certificateTypeCourseCompletion": "Завершення курсу",
+  "certificateTypeOlympiadWinner": "Переможець олімпіади",
+  "certificateTypeCustom": "Довільний",
+  "customNominationPlaceholder": "напр. Найкраще есе",
+  "studentNamesLabel": "Імена учнів",
+  "studentNamesPlaceholder": "Одне ім'я на рядок",
+  "generating": "Генерація…",
+  "generateCertificates": "Створити сертифікати",
+  "generatedCertificatesHeading": "Створені сертифікати",
+  "downloadCertificate": "Завантажити сертифікат №{{index}}",
+  "certificatesTitle": "Генератор сертифікатів і дипломів",
+  "certificatesDescription": "Створюйте сертифікати та дипломи для друку для своїх учнів за секунди."
 }

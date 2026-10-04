@@ -168,5 +168,20 @@
   "exportCopied": "¡Copiado!",
   "exportDocx": "Descargar Docx",
   "exportTxt": "Descargar TXT",
-  "exportPrint": "🖨️ Imprimir"
+  "exportPrint": "🖨️ Imprimir",
+  "tabCertificates": "🏆 Certificados",
+  "certificateTypeLabel": "Tipo de certificado",
+  "certificateTypeWeeklyStar": "Alumno de la semana",
+  "certificateTypeCourseCompletion": "Finalización del curso",
+  "certificateTypeOlympiadWinner": "Ganador de la olimpiada",
+  "certificateTypeCustom": "Personalizado",
+  "customNominationPlaceholder": "p. ej. Mejor ensayo",
+  "studentNamesLabel": "Nombres de los alumnos",
+  "studentNamesPlaceholder": "Un nombre por línea",
+  "generating": "Generando…",
+  "generateCertificates": "Generar certificados",
+  "generatedCertificatesHeading": "Certificados generados",
+  "downloadCertificate": "Descargar certificado n.º {{index}}",
+  "certificatesTitle": "Generador de certificados y diplomas",
+  "certificatesDescription": "Crea certificados y diplomas imprimibles para tus alumnos en segundos."
 }

@@ -168,5 +168,20 @@
   "exportCopied": "Copié !",
   "exportDocx": "Télécharger en Docx",
   "exportTxt": "Télécharger en TXT",
-  "exportPrint": "🖨️ Imprimer"
+  "exportPrint": "🖨️ Imprimer",
+  "tabCertificates": "🏆 Certificats",
+  "certificateTypeLabel": "Type de certificat",
+  "certificateTypeWeeklyStar": "Élève de la semaine",
+  "certificateTypeCourseCompletion": "Fin de cours",
+  "certificateTypeOlympiadWinner": "Gagnant de l'olympiade",
+  "certificateTypeCustom": "Personnalisé",
+  "customNominationPlaceholder": "ex. Meilleure dissertation",
+  "studentNamesLabel": "Noms des élèves",
+  "studentNamesPlaceholder": "Un nom par ligne",
+  "generating": "Génération…",
+  "generateCertificates": "Générer les certificats",
+  "generatedCertificatesHeading": "Certificats générés",
+  "downloadCertificate": "Télécharger le certificat n° {{index}}",
+  "certificatesTitle": "Générateur de certificats et diplômes",
+  "certificatesDescription": "Créez des certificats et diplômes imprimables pour vos élèves en quelques secondes."
 }

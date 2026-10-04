@@ -57,6 +57,27 @@ const nextConfig = {
       '@sentry/server-utils',
       '@apm-js-collab/tracing-hooks',
     ],
+    // Root cause of the Educator Hub (and, latent, every other
+    // serverSideTranslations-using page's) raw-i18n-key production bug:
+    // next-i18next resolves which locale JSON files to load per request by
+    // calling fs.readdirSync() on public/locales/<locale>/ at request time
+    // (see createConfig.js). Next's `output: 'standalone'` build traces
+    // files via static analysis (Node File Trace) plus observing ACTUAL
+    // reads made while prerendering getStaticProps pages at build time — a
+    // getServerSideProps page's fs.readdirSync() never executes at build
+    // time, so NFT has no way to discover it, and most of
+    // public/locales/**/*.json silently never made it into
+    // .next/standalone/public/. Frontend/Dockerfile already re-copies the
+    // full public/ directory as a mitigation (and does so in the right
+    // order), but that makes correctness depend entirely on deploy-pipeline
+    // plumbing nobody is reminded to preserve. Forcing the include here
+    // fixes it at the framework level, independent of Docker/CI: it
+    // guarantees every locale namespace file ships inside
+    // .next/standalone/public/locales/ for every route, however it's
+    // eventually deployed.
+    outputFileTracingIncludes: {
+      '/**': ['./public/locales/**/*.json'],
+    },
   },
   // Next 14.2.5's webpack config only auto-derives the "@/*" alias from
   // tsconfig.json when moduleResolution is "node"/"node10"/etc — it doesn't

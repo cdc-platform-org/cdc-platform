@@ -589,7 +589,9 @@ function EducatorHubContent() {
                     ? 'LessonPlan'
                     : id === 'bureaucracy'
                     ? 'Bureaucracy'
-                    : 'ParentReports'
+                    : id === 'parentReports'
+                    ? 'ParentReports'
+                    : 'Certificates'
                 }`,
                 id === 'test'
                   ? 'ტესტები & პასუხები'
@@ -603,7 +605,9 @@ function EducatorHubContent() {
                   ? 'გაკვეთილის გეგმები'
                   : id === 'bureaucracy'
                   ? 'სკოლის დოკუმენტაცია'
-                  : 'მოსწავლის რეპორტები'
+                  : id === 'parentReports'
+                  ? 'მოსწავლის რეპორტები'
+                  : 'სერტიფიკატები'
               )}
             </button>
           ))}
