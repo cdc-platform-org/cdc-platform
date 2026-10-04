@@ -33,28 +33,26 @@ import { SiteLocale } from '../../src/utils/seo';
 // already SSR + real cover + SEOHead — confirmed by audit, no changes
 // needed there). Blog already does the same (pages/blog/[slug].tsx).
 
-const CHROME: Record<SiteLocale, { capabilities: string; howToUse: string; noVideo: string; cta: Record<ToolCatalogEntry['category'] & string, string>; notFound: string }> = {
+const CHROME: Record<SiteLocale, { capabilities: string; howToUse: string; cta: Record<ToolCatalogEntry['category'] & string, string>; notFound: string }> = {
   ka: {
     capabilities: 'შესაძლებლობები',
     howToUse: 'როგორ გამოვიყენოთ',
-    noVideo: 'ინსტრუქციის ვიდეო ჯერ არ არის დამატებული.',
     cta: { AI_TOOL: 'ხელსაწყოს გამოყენება', AI_TEACHER: 'სწავლის დაწყება', DIGITAL_PRODUCT_LINK: 'წიგნის შექმნა' },
     notFound: 'პროდუქტი ვერ მოიძებნა.',
   },
   en: {
     capabilities: 'Capabilities',
     howToUse: 'How to use it',
-    noVideo: 'No instruction video configured.',
     cta: { AI_TOOL: 'Use AI Tool', AI_TEACHER: 'Start Learning', DIGITAL_PRODUCT_LINK: 'Create Your Book' },
     notFound: 'Product not found.',
   },
-  de: { capabilities: 'Funktionen', howToUse: 'So wird es benutzt', noVideo: 'Kein Anleitungsvideo konfiguriert.', cta: { AI_TOOL: 'Tool nutzen', AI_TEACHER: 'Lernen starten', DIGITAL_PRODUCT_LINK: 'Buch erstellen' }, notFound: 'Produkt nicht gefunden.' },
-  es: { capabilities: 'Capacidades', howToUse: 'Cómo usarlo', noVideo: 'No hay video de instrucciones configurado.', cta: { AI_TOOL: 'Usar herramienta', AI_TEACHER: 'Empezar a aprender', DIGITAL_PRODUCT_LINK: 'Crear tu libro' }, notFound: 'Producto no encontrado.' },
-  fr: { capabilities: 'Fonctionnalités', howToUse: 'Comment l’utiliser', noVideo: 'Aucune vidéo d’instructions configurée.', cta: { AI_TOOL: "Utiliser l'outil", AI_TEACHER: "Commencer l'apprentissage", DIGITAL_PRODUCT_LINK: 'Créer votre livre' }, notFound: 'Produit introuvable.' },
-  uk: { capabilities: 'Можливості', howToUse: 'Як користуватися', noVideo: 'Відеоінструкцію ще не додано.', cta: { AI_TOOL: 'Використати інструмент', AI_TEACHER: 'Почати навчання', DIGITAL_PRODUCT_LINK: 'Створити книгу' }, notFound: 'Продукт не знайдено.' },
-  tr: { capabilities: 'Özellikler', howToUse: 'Nasıl kullanılır', noVideo: 'Henüz talimat videosu eklenmedi.', cta: { AI_TOOL: 'Aracı Kullan', AI_TEACHER: 'Öğrenmeye Başla', DIGITAL_PRODUCT_LINK: 'Kitabını Oluştur' }, notFound: 'Ürün bulunamadı.' },
-  hy: { capabilities: 'Հնարավորություններ', howToUse: 'Ինչպես օգտագործել', noVideo: 'Հրահանգիչ տեսանյութը դեռ կարգավորված չէ։', cta: { AI_TOOL: 'Օգտագործել գործիքը', AI_TEACHER: 'Սկսել ուսուցումը', DIGITAL_PRODUCT_LINK: 'Ստեղծել գիրքը' }, notFound: 'Ապրանքը չի գտնվել:' },
-  az: { capabilities: 'İmkanlar', howToUse: 'Necə istifadə etmək olar', noVideo: 'Təlimat videosu hələ əlavə edilməyib.', cta: { AI_TOOL: 'Aləti istifadə et', AI_TEACHER: 'Öyrənməyə başla', DIGITAL_PRODUCT_LINK: 'Kitabını yarat' }, notFound: 'Məhsul tapılmadı.' },
+  de: { capabilities: 'Funktionen', howToUse: 'So wird es benutzt', cta: { AI_TOOL: 'Tool nutzen', AI_TEACHER: 'Lernen starten', DIGITAL_PRODUCT_LINK: 'Buch erstellen' }, notFound: 'Produkt nicht gefunden.' },
+  es: { capabilities: 'Capacidades', howToUse: 'Cómo usarlo', cta: { AI_TOOL: 'Usar herramienta', AI_TEACHER: 'Empezar a aprender', DIGITAL_PRODUCT_LINK: 'Crear tu libro' }, notFound: 'Producto no encontrado.' },
+  fr: { capabilities: 'Fonctionnalités', howToUse: 'Comment l’utiliser', cta: { AI_TOOL: "Utiliser l'outil", AI_TEACHER: "Commencer l'apprentissage", DIGITAL_PRODUCT_LINK: 'Créer votre livre' }, notFound: 'Produit introuvable.' },
+  uk: { capabilities: 'Можливості', howToUse: 'Як користуватися', cta: { AI_TOOL: 'Використати інструмент', AI_TEACHER: 'Почати навчання', DIGITAL_PRODUCT_LINK: 'Створити книгу' }, notFound: 'Продукт не знайдено.' },
+  tr: { capabilities: 'Özellikler', howToUse: 'Nasıl kullanılır', cta: { AI_TOOL: 'Aracı Kullan', AI_TEACHER: 'Öğrenmeye Başla', DIGITAL_PRODUCT_LINK: 'Kitabını Oluştur' }, notFound: 'Ürün bulunamadı.' },
+  hy: { capabilities: 'Հնարավորություններ', howToUse: 'Ինչպես օգտագործել', cta: { AI_TOOL: 'Օգտագործել գործիքը', AI_TEACHER: 'Սկսել ուսուցումը', DIGITAL_PRODUCT_LINK: 'Ստեղծել գիրքը' }, notFound: 'Ապրանքը չի գտնվել:' },
+  az: { capabilities: 'İmkanlar', howToUse: 'Necə istifadə etmək olar', cta: { AI_TOOL: 'Aləti istifadə et', AI_TEACHER: 'Öyrənməyə başla', DIGITAL_PRODUCT_LINK: 'Kitabını yarat' }, notFound: 'Məhsul tapılmadı.' },
 };
 
 interface ProductDetailPageProps {
@@ -166,16 +164,18 @@ export default function ProductDetailPage({ slug, entry }: ProductDetailPageProp
           </button>
         </div>
 
-        {/* HOW TO USE — always shown so an absent video degrades to a
-            visible, localized explanation rather than silently vanishing. */}
-        <div className="mb-8">
-          <h2 className="text-sm font-black uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-3">{t.howToUse}</h2>
-          {entry?.videoUrl ? (
+        {/* HOW TO USE — public-facing: shown only when a real video is
+            configured. No video configured must mean no broken button AND
+            no "missing" messaging — the public page should just not have
+            this section, as if it were never written. The admin editor
+            (pages/admin/tools.tsx) keeps its own "No instruction video
+            configured" hint so the admin can tell the field is empty. */}
+        {entry?.videoUrl && (
+          <div className="mb-8">
+            <h2 className="text-sm font-black uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-3">{t.howToUse}</h2>
             <ProductVideoButton videoUrl={entry.videoUrl} locale={locale} title={title} />
-          ) : (
-            <p className="text-sm text-slate-400 dark:text-slate-500">{t.noVideo}</p>
-          )}
-        </div>
+          </div>
+        )}
 
         {fullDescription && (
           <div className="prose dark:prose-invert max-w-none mb-8 whitespace-pre-wrap text-sm leading-relaxed">{fullDescription}</div>
