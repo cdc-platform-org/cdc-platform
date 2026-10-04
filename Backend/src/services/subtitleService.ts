@@ -12,7 +12,7 @@ import { prisma } from '../lib/prisma';
 import { uploadBunnyCaption } from './bunnyStreamService';
 
 // ============================================================
-// Automated 3-language (ka/en/ru) lesson subtitles AND conspectus —
+// Automated 2-language (ka/en) lesson subtitles AND conspectus —
 // Gemini-powered, both produced from the same transcription pass.
 //
 // Pipeline: extract audio from the just-uploaded video buffer (ffmpeg,
@@ -21,21 +21,34 @@ import { uploadBunnyCaption } from './bunnyStreamService';
 // single request, so no chunking is needed for anything in the realistic
 // range of a course lesson) -> the shared Gemini model cascade (see aiAgentService.ts) transcribes it directly into
 // a WebVTT with timing cues and reports the detected spoken language ->
-// the shared Gemini model cascade (see aiAgentService.ts) translates that base VTT into whichever of ka/en/ru
+// the shared Gemini model cascade (see aiAgentService.ts) translates that base VTT into whichever of ka/en
 // wasn't the detected language, with the timing cues preserved -> each
 // language is uploaded to Bunny Stream via its Captions API. Bunny's own
 // embed player shows the CC toggle automatically once captions exist — no
 // custom player work needed.
 //
+// Russian is deliberately NOT a target language — platform-wide product
+// policy (2026-10): CDC does not offer Russian as a content-generation
+// language anywhere, including new captions/conspectus. A source video
+// that happens to be SPOKEN in Russian is still transcribed/detected
+// correctly (Gemini's own language detection, LANGUAGE_NAMES/
+// parseLanguageCode/CONSPECTUS_FIELD below all still recognize "ru" for
+// exactly this reason) and translated INTO ka/en from that Russian base —
+// what changes is that CDC itself never again produces a NEW Russian
+// caption track or conspectus as an output. Any `conspectusRu`/
+// `synopsisRu` value already stored from before this change is historical
+// data and is left untouched (no migration, nothing deleted) — see
+// Prisma schema comments on those columns.
+//
 // The conspectus stage reuses that same transcript rather than re-touching
 // the audio: the plain-text transcript is fed to Gemini once more to
 // extract only actionable takeaways/step-by-step details (filtering filler
-// talk), in the detected language, then translated into whichever of
-// ka/en/ru wasn't detected — same base-then-translate shape as the
-// subtitles above, just for a summary instead of timed cues, and cheaper
-// since it's a text-only call rather than a second audio upload. Tracked
-// independently (Lesson.conspectusStatus/Error) so a conspectus failure
-// never blocks subtitles succeeding, or vice versa.
+// talk), in the detected language, then translated into whichever of ka/en
+// wasn't detected — same base-then-translate shape as the subtitles above,
+// just for a summary instead of timed cues, and cheaper since it's a
+// text-only call rather than a second audio upload. Tracked independently
+// (Lesson.conspectusStatus/Error) so a conspectus failure never blocks
+// subtitles succeeding, or vice versa.
 //
 // Fire-and-forget, no queue (same posture as videoCompressionService.ts) —
 // triggered right after a successful lesson video upload, never blocks that
@@ -60,11 +73,11 @@ export function isSubtitlePipelineConfigured(): boolean {
 
 // Exported — liveTrainingSynopsisService.ts reuses this exact language set/
 // naming for its own per-language synopsis, so both features stay in sync
-// if a language is ever added or renamed.
-export const TARGET_LANGUAGES: { code: 'ka' | 'en' | 'ru'; label: string }[] = [
+// if a language is ever added or renamed. Russian intentionally excluded —
+// see this file's header comment.
+export const TARGET_LANGUAGES: { code: 'ka' | 'en'; label: string }[] = [
   { code: 'ka', label: 'ქართული' },
   { code: 'en', label: 'English' },
-  { code: 'ru', label: 'Русский' },
 ];
 
 export const LANGUAGE_NAMES: Record<'ka' | 'en' | 'ru', string> = {
@@ -407,7 +420,7 @@ export async function processLessonSubtitles(lessonId: string, videoId: string, 
       } catch (err) {
         const message = err instanceof Error ? err.message : 'unknown error';
         // Logged individually and immediately — previously only surfaced via
-        // the aggregated subtitlesError DB field, so an en/ru-only failure
+        // the aggregated subtitlesError DB field, so an en-only failure
         // (course still marked COMPLETED, since ka succeeded) never showed
         // up in server logs at all until someone thought to check the DB.
         console.error(`[subtitleService] lesson ${lessonId}: "${code}" caption FAILED —`, message);

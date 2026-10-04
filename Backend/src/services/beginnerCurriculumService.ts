@@ -21,11 +21,18 @@
 //
 // Translations/IPA below are a small, curated, hand-checked set for CDC's
 // existing native-language options (see Frontend's
-// TutorOnboardingFlow.NATIVE_LANG_OPTIONS) — common classroom-level
-// greetings/pronouns only, chosen specifically to keep hallucination risk
-// near zero (these are not novel claims, they're standard textbook
-// phrases). Any nativeLang outside this curated set falls back to English
-// rather than inventing a translation — see translateFor()'s own comment.
+// data/tutorSupportLanguages.ts) — common classroom-level greetings/
+// pronouns only, chosen specifically to keep hallucination risk near zero
+// (these are not novel claims, they're standard textbook phrases). Any
+// nativeLang outside this curated set falls back to English rather than
+// inventing a translation — see translateFor()'s own comment.
+//
+// Russian is deliberately NOT a curated language — platform-wide policy
+// (2026-10): CDC does not offer Russian as a selectable explanation
+// language anywhere, including here. A `ru`/"Russian" nativeLang is
+// rejected before it ever reaches this file — see routes/englishTutor.ts's
+// sanitizeNativeLang(), which maps it to English ahead of every call site
+// below.
 // ============================================================
 
 export type BeginnerBlockType =
@@ -40,10 +47,12 @@ export type BeginnerBlockType =
   | 'CHECKPOINT';
 
 // Curated native-support-language codes this file has real translations
-// for — a subset of TutorOnboardingFlow's NATIVE_LANG_OPTIONS (every code
-// that list offers). Anything else (a learner who typed a nativeLang this
-// table doesn't cover) gets the English fallback, never a fabricated guess.
-const CURATED_LANGS = ['ka', 'de', 'es', 'fr', 'uk', 'tr', 'hy', 'az', 'ru'] as const;
+// for — matches data/tutorSupportLanguages.ts exactly (every selectable
+// code). Anything else (a learner who typed a nativeLang this table
+// doesn't cover, including a rejected "ru" that sanitizeNativeLang already
+// mapped to "en" before this is ever reached) gets the English fallback,
+// never a fabricated guess.
+const CURATED_LANGS = ['ka', 'de', 'es', 'fr', 'uk', 'tr', 'hy', 'az'] as const;
 type CuratedLang = (typeof CURATED_LANGS)[number];
 function isCuratedLang(lang: string): lang is CuratedLang {
   return (CURATED_LANGS as readonly string[]).includes(lang);
@@ -52,16 +61,16 @@ function isCuratedLang(lang: string): lang is CuratedLang {
 // Phrase-id -> { lang -> translation }. Small and hand-checked on purpose —
 // see this file's header comment. "en" is always itself (never translated).
 const TRANSLATIONS: Record<string, Partial<Record<CuratedLang, string>>> = {
-  hello: { ka: 'გამარჯობა', de: 'Hallo', es: 'Hola', fr: 'Bonjour', uk: 'Привіт', tr: 'Merhaba', hy: 'Բարև', az: 'Salam', ru: 'Привет' },
-  hi: { ka: 'გამარჯობა', de: 'Hi', es: 'Hola', fr: 'Salut', uk: 'Привіт', tr: 'Selam', hy: 'Բարև', az: 'Salam', ru: 'Привет' },
-  'good-morning': { ka: 'დილა მშვიდობისა', de: 'Guten Morgen', es: 'Buenos días', fr: 'Bonjour', uk: 'Доброго ранку', tr: 'Günaydın', hy: 'Բարի լույս', az: 'Sabahınız xeyir', ru: 'Доброе утро' },
-  goodbye: { ka: 'ნახვამდის', de: 'Auf Wiedersehen', es: 'Adiós', fr: 'Au revoir', uk: 'До побачення', tr: 'Hoşça kal', hy: 'Ցտեսություն', az: 'Sağol', ru: 'До свидания' },
-  i: { ka: 'მე', de: 'ich', es: 'yo', fr: 'je', uk: 'я', tr: 'ben', hy: 'ես', az: 'mən', ru: 'я' },
-  am: { ka: 'ვარ', de: 'bin', es: 'soy', fr: 'suis', uk: '(ø)', tr: '-im', hy: 'եմ', az: '-am', ru: '(ø)' },
-  name: { ka: 'სახელი', de: 'Name', es: 'nombre', fr: 'nom', uk: "ім'я", tr: 'ad', hy: 'անուն', az: 'ad', ru: 'имя' },
-  'my-name-is': { ka: 'ჩემი სახელია...', de: 'Mein Name ist...', es: 'Me llamo...', fr: "Je m'appelle...", uk: 'Мене звати...', tr: 'Benim adım...', hy: 'Իմ անունն է...', az: 'Mənim adım...', ru: 'Меня зовут...' },
-  'what-is-your-name': { ka: 'რა გქვია?', de: 'Wie heißt du?', es: '¿Cómo te llamas?', fr: "Comment tu t'appelles?", uk: 'Як тебе звати?', tr: 'Adın ne?', hy: 'Քո անունը ինչ է?', az: 'Sənin adın nədir?', ru: 'Как тебя зовут?' },
-  'nice-to-meet-you': { ka: 'სასიხარულოა შენი გაცნობა', de: 'Schön, dich kennenzulernen', es: 'Mucho gusto', fr: 'Enchanté(e)', uk: 'Приємно познайомитися', tr: 'Tanıştığımıza memnun oldum', hy: 'Հաճելի է ծանոթանալ', az: 'Tanış olmağıma şadam', ru: 'Приятно познакомиться' },
+  hello: { ka: 'გამარჯობა', de: 'Hallo', es: 'Hola', fr: 'Bonjour', uk: 'Привіт', tr: 'Merhaba', hy: 'Բարև', az: 'Salam' },
+  hi: { ka: 'გამარჯობა', de: 'Hi', es: 'Hola', fr: 'Salut', uk: 'Привіт', tr: 'Selam', hy: 'Բարև', az: 'Salam' },
+  'good-morning': { ka: 'დილა მშვიდობისა', de: 'Guten Morgen', es: 'Buenos días', fr: 'Bonjour', uk: 'Доброго ранку', tr: 'Günaydın', hy: 'Բարի լույս', az: 'Sabahınız xeyir' },
+  goodbye: { ka: 'ნახვამდის', de: 'Auf Wiedersehen', es: 'Adiós', fr: 'Au revoir', uk: 'До побачення', tr: 'Hoşça kal', hy: 'Ցտեսություն', az: 'Sağol' },
+  i: { ka: 'მე', de: 'ich', es: 'yo', fr: 'je', uk: 'я', tr: 'ben', hy: 'ես', az: 'mən' },
+  am: { ka: 'ვარ', de: 'bin', es: 'soy', fr: 'suis', uk: '(ø)', tr: '-im', hy: 'եմ', az: '-am' },
+  name: { ka: 'სახელი', de: 'Name', es: 'nombre', fr: 'nom', uk: "ім'я", tr: 'ad', hy: 'անուն', az: 'ad' },
+  'my-name-is': { ka: 'ჩემი სახელია...', de: 'Mein Name ist...', es: 'Me llamo...', fr: "Je m'appelle...", uk: 'Мене звати...', tr: 'Benim adım...', hy: 'Իմ անունն է...', az: 'Mənim adım...' },
+  'what-is-your-name': { ka: 'რა გქვია?', de: 'Wie heißt du?', es: '¿Cómo te llamas?', fr: "Comment tu t'appelles?", uk: 'Як тебе звати?', tr: 'Adın ne?', hy: 'Քո անունը ինչ է?', az: 'Sənin adın nədir?' },
+  'nice-to-meet-you': { ka: 'სასიხარულოა შენი გაცნობა', de: 'Schön, dich kennenzulernen', es: 'Mucho gusto', fr: 'Enchanté(e)', uk: 'Приємно познайомитися', tr: 'Tanıştığımıza memnun oldum', hy: 'Հաճելի է ծանոթանալ', az: 'Tanış olmağıma şadam' },
 };
 
 // Never fabricates: an uncurated nativeLang (or a phraseId this table

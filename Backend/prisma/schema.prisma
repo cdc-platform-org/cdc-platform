@@ -617,7 +617,9 @@ model User {
   // boolean would only make that worse. See utils/englishTutorAccess.ts.
   tutorSubscriptionTier         TutorSubscriptionTier @default(FREE)
   // The student's chosen native/support language for AI English Tutor
-  // lessons (e.g. "ka", "az", "hy", "ru") — remembered across sessions so
+  // lessons (e.g. "ka", "az", "hy" — never "ru"/Russian, rejected
+  // server-side by routes/englishTutor.ts's sanitizeNativeLang per
+  // platform-wide policy) — remembered across sessions so
   // they don't have to re-pick every time, but deliberately decoupled from
   // router.locale/next-i18next's SUPPORTED_LOCALES (utils/locale.ts): a
   // learner can be on the ka or en site UI while practicing English *from*

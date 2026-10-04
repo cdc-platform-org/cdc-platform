@@ -808,7 +808,13 @@ function AdminLiveTrainingsDashboard() {
                     )}
                   </div>
                   <div className="flex gap-1 mb-1.5">
-                    {(['Ka', 'En', 'Ru'] as const).map((l) => (
+                    {/* "Ru" intentionally removed — platform policy
+                        (2026-10), CDC does not offer Russian as an
+                        admin-authorable content language. synopsisRu
+                        itself is untouched in the schema/save payload
+                        (any already-stored value is preserved, not
+                        deleted — see subtitleService.ts's own comment). */}
+                    {(['Ka', 'En'] as const).map((l) => (
                       <button
                         key={l}
                         type="button"

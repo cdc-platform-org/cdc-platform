@@ -51,6 +51,15 @@ async function completeOnboardingAsA1(page: Page) {
 }
 
 test.describe('IMIAKO Beginner Path — true zero-beginner onboarding', () => {
+  test('the onboarding native-language step does not offer Russian', async ({ page }) => {
+    await registerFreshStudent(page, 'qa-imiako-norussian');
+    await page.goto('/dashboard/english-tutor');
+    await dismissCookieBanner(page);
+
+    await expect(page.getByRole('button', { name: /Русский/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Azərbaycan/ })).toBeVisible(); // a real, still-offered option
+  });
+
   test('a brand-new A1 learner sees a greeting, never a long reading passage', async ({ page }) => {
     await registerFreshStudent(page, 'qa-imiako-greet');
     await completeOnboardingAsA1(page);
@@ -142,6 +151,13 @@ test.describe('IMIAKO Beginner Path — true zero-beginner onboarding', () => {
     await page.getByRole('button', { name: /სწავლის პარამეტრები/ }).click();
     const select = page.locator('#beginner-support-lang');
     await expect(select).toHaveValue('ka');
+
+    // Platform-wide policy (2026-10): Russian must not be offered here.
+    const optionValues = await select.locator('option').evaluateAll((opts) => opts.map((o) => (o as HTMLOptionElement).value));
+    expect(optionValues).not.toContain('ru');
+    const optionLabels = await select.locator('option').allTextContents();
+    expect(optionLabels.join(' ')).not.toMatch(/Русский|Russian/i);
+
     await select.selectOption('de');
 
     // Still the SAME block (English word unchanged, Continue button intact)

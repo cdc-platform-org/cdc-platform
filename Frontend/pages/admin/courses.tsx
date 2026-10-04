@@ -927,7 +927,14 @@ function LessonRow({ lesson, onChanged }: { lesson: AdminLesson; onChanged: () =
               )}
             </div>
             <div className="flex gap-1 mb-1.5">
-              {(['Ka', 'En', 'Ru'] as const).map((l) => (
+              {/* "Ru" intentionally removed from this selector — platform
+                  policy (2026-10), CDC does not offer Russian as an
+                  admin-authorable content language. conspectusRu itself is
+                  untouched in the schema/save payload below (never newly
+                  editable here, but any already-stored value — e.g. from a
+                  Russian-spoken source video's auto-detected base transcript,
+                  see subtitleService.ts — is preserved, not deleted). */}
+              {(['Ka', 'En'] as const).map((l) => (
                 <button
                   key={l}
                   type="button"

@@ -20,13 +20,12 @@ import SiteHeader from '@/src/components/layout/SiteHeader';
 import SiteFooter from '@/src/components/layout/SiteFooter';
 import { resolveLocale } from '@/src/utils/locale';
 
-// Local ka/en/ru content toggle — deliberately NOT a next-i18next namespace.
-// The site's real router locales are ka/en/de/es/fr/uk (next-i18next.config.js);
-// "ru" isn't one of them, and adding a 7th site-wide locale for one page would
-// be wildly disproportionate. This page instead resolves ka/en from the
-// router (via resolveLocale) as its default and offers ru only through the
-// explicit toggle below.
-type PageLang = 'ka' | 'en' | 'ru';
+// Local ka/en content toggle — deliberately NOT a next-i18next namespace.
+// This page resolves ka/en from the router (via resolveLocale). A third
+// "ru" option used to be offered here via an explicit toggle; removed
+// platform-wide (2026-10) — CDC does not offer Russian as a selectable
+// content language anywhere, public pages included.
+type PageLang = 'ka' | 'en';
 
 const BEHANCE_URL = 'https://www.behance.net/ta-beba-';
 const CONTACT_EMAIL = 'iakodigital@gmail.com';
@@ -191,73 +190,6 @@ const CONTENT: Record<
     bookMentorship: 'Book Mentorship Session',
     viewPortfolio: 'View Design Portfolio (Behance)',
   },
-  ru: {
-    langLabel: 'Русский',
-    name: 'Иа Тавдишвили',
-    title: 'Ведущий специалист по AI-инструментам, Vibe Coding, цифровому маркетингу и техническому образованию',
-    badges: ['Сооснователь и директор @ CDC', 'Тренер GITA', 'Выпускница UN Women / Erasmus+'],
-    contactEmail: 'Эл. почта',
-    contactCall: 'Позвонить',
-    contactBehance: 'Behance',
-    bioHeading: 'Биография и экспертиза',
-    bio: [
-      'Более 6 лет обучаю сотни студентов по всей Грузии цифровым навыкам — Prompt Engineering, Vibe Coding и Meta Ads.',
-      'Я стала сооснователем платформы CDC, чтобы дать молодёжи Гурии и всей Грузии реальный доступ к современным AI-инструментам, дизайну и карьере в цифровом маркетинге.',
-    ],
-    skillsHeading: 'Ключевые навыки',
-    skillGroups: [
-      { icon: Sparkles, label: 'AI-инструменты', items: ['ChatGPT', 'Midjourney', 'Claude', 'Gemini', 'CapCut AI'] },
-      { icon: Palette, label: 'Дизайн и анимация', items: ['Adobe Character Animator', 'After Effects', 'Photoshop', 'Illustrator'] },
-      { icon: Code2, label: 'Frontend-разработка', items: ['HTML', 'CSS', 'JavaScript'] },
-      { icon: Megaphone, label: 'SMM и Meta Ads', items: ['SMM-стратегия', 'Кампании Meta Ads'] },
-    ],
-    experienceHeading: 'Опыт работы',
-    experience: [
-      {
-        role: 'Сооснователь и главный тренер',
-        org: 'CDC Platform',
-        period: 'по настоящее время',
-        description: 'Руковожу программами цифровых навыков — AI, Vibe Coding и цифровой маркетинг.',
-      },
-      {
-        role: 'Победитель тендера по видеомонтажу и анимации',
-        org: 'GITA',
-        period: '2025',
-        description: 'Выиграла тендер Грузинского агентства инноваций и технологий по видеомонтажу и анимации.',
-      },
-      {
-        role: 'Тренер',
-        org: 'Women Techmakers / UN Women',
-        period: '',
-        description: 'Провожу тренинги по техническим и цифровым темам в рамках программ поддержки женщин.',
-      },
-      {
-        role: 'Преподаватель и администратор',
-        org: 'Educity / Lingwing',
-        period: '',
-        description: 'Преподаю в Educity и администрирую Lingwing.',
-      },
-      {
-        role: 'Руководитель направления профессионального образования (Frontend & AI)',
-        org: 'Профессиональное образование',
-        period: '',
-        description: 'Руковожу программами профессионального образования по Frontend и AI.',
-      },
-    ],
-    certsHeading: 'Международные сертификаты и образование',
-    certs: [
-      { title: 'Erasmus+ Training of Trainers (ToT)', place: 'Кишинёв, 2025' },
-      { title: 'Erasmus+ Training of Trainers (ToT)', place: 'Ереван, 2026' },
-      { title: 'eGA Masterclass', place: 'Кутаиси, 2025' },
-      { title: 'Do IT with EU / Exactpro — тестирование ПО', place: '' },
-      { title: 'BTU / USAID — графический дизайн', place: '' },
-      { title: 'Web Summit', place: 'Лиссабон' },
-    ],
-    ctaHeading: 'Сотрудничество и запись на сессию',
-    ctaBody: 'Хотите записаться на менторскую сессию или посмотреть дизайн-работы?',
-    bookMentorship: 'Записаться на менторскую сессию',
-    viewPortfolio: 'Портфолио дизайна (Behance)',
-  },
 };
 
 function initialLangFor(routerLocale: string | undefined): PageLang {
@@ -279,11 +211,11 @@ export default function IaTavdishviliPortfolioPage() {
       <SiteHeader />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16 flex-1 w-full">
-        {/* Local ka/en/ru toggle — see CONTENT comment above. */}
+        {/* Local ka/en toggle — see CONTENT comment above. */}
         <div className="flex justify-end mb-6">
           <div className="inline-flex items-center gap-1 p-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60">
             <Globe className="w-3.5 h-3.5 text-slate-400 mx-1.5" />
-            {(['ka', 'en', 'ru'] as const).map((l) => (
+            {(['ka', 'en'] as const).map((l) => (
               <button
                 key={l}
                 type="button"

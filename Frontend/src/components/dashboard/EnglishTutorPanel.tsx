@@ -530,7 +530,7 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
           <div>
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{t.nativeLang}</label>
             {/* A proper dropdown, not a free-text code field — a learner
-                picks a human-readable language name, never types "ka"/"ru".
+                picks a human-readable language name, never types a code.
                 Same canonical list (data/tutorSupportLanguages.ts) every
                 other IMIAKO support-language picker in this feature uses —
                 no second, independently-drifting list. */}

@@ -71,8 +71,13 @@ async function callAndValidate<T>(prompt: string, temperature: number, schema: z
 // from router.locale) — interpreted by the model itself rather than
 // mapped through a fixed code list, so a new native language needs no code
 // change here.
+// Russian is never reached here — routes/englishTutor.ts's
+// sanitizeNativeLang() rejects a `ru`/"Russian" nativeLang (mapping it to
+// English) at every route before generateTutorLesson is ever called,
+// platform-wide policy (2026-10): CDC does not offer Russian as a
+// selectable explanation language anywhere, including to this prompt.
 function nativeLanguageLine(nativeLang: string): string {
-  return `The student's native/support language is "${nativeLang}" — interpret this as the actual language (it may be an ISO 639-1 code like "ka"/"az"/"hy"/"ru" or a language name). Write any translations, glosses, or bridging explanations in that language. The core lesson content itself (passages, questions, example sentences) stays in English — this is an English-learning tool, not a translation tool.`;
+  return `The student's native/support language is "${nativeLang}" — interpret this as the actual language (it may be an ISO 639-1 code like "ka"/"az"/"hy" or a language name). Write any translations, glosses, or bridging explanations in that language. The core lesson content itself (passages, questions, example sentences) stays in English — this is an English-learning tool, not a translation tool.`;
 }
 
 export type TutorLearningGoal = 'TRAVEL' | 'TECHNICAL_IT' | 'BUSINESS' | 'ACADEMIC' | 'GENERAL_DAILY' | 'INTERVIEW_PREP';

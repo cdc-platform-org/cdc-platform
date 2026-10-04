@@ -50,6 +50,26 @@ const TASK_TYPES = ['READING', 'WRITING', 'GRAMMAR', 'VOCABULARY', 'QUIZ', 'LIST
 const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const;
 const LEARNING_GOALS = ['TRAVEL', 'TECHNICAL_IT', 'BUSINESS', 'ACADEMIC', 'GENERAL_DAILY', 'INTERVIEW_PREP'] as const;
 
+// Platform-wide product policy (2026-10): Russian is not offered anywhere
+// on CDC as a selectable language, including here as an IMIAKO
+// explanation/support language. nativeLang is otherwise genuinely
+// free-text (any ISO code or language name a learner types — see
+// englishTutorService.nativeLanguageLine's own comment), by original
+// design, so this can't be a fixed enum without breaking that flexibility
+// for every OTHER language; it specifically targets Russian instead of
+// restricting the field as a whole. Applied at every nativeLang-accepting
+// entry point in this router (never relying on the frontend alone having
+// removed it from its pickers — see data/tutorSupportLanguages.ts) so a
+// request submitted directly to the API can't bypass the UI change.
+// Falls back to English per this task's own stated preference, rather than
+// rejecting the request outright — consistent with how an uncurated (but
+// otherwise legitimate) nativeLang already degrades gracefully elsewhere
+// (beginnerCurriculumService.translateFor's own English-fallback posture).
+const RUSSIAN_LANGUAGE_PATTERN = /^ru(-ru)?$|russian|русск/i;
+export function sanitizeNativeLang(nativeLang: string): string {
+  return RUSSIAN_LANGUAGE_PATTERN.test(nativeLang.trim()) ? 'en' : nativeLang;
+}
+
 // Same abuse-prevention shape as aiAgentsSuite.ts's /generate and ai.ts's
 // courseTutorRateLimit — a real Gemini quota spend sits behind every
 // generation, so this needs its own budget independent of the daily
@@ -187,8 +207,9 @@ router.get('/placement-test', placementTestRateLimit, async (req: Request, res: 
   if (!isEnglishTutorConfigured()) {
     return res.status(501).json({ message: 'AI English Tutor is not configured yet (GEMINI_API_KEY).' });
   }
-  const nativeLang = typeof req.query.nativeLang === 'string' ? req.query.nativeLang.trim() : '';
-  if (!nativeLang) return res.status(400).json({ message: 'nativeLang is required.' });
+  const rawNativeLang = typeof req.query.nativeLang === 'string' ? req.query.nativeLang.trim() : '';
+  if (!rawNativeLang) return res.status(400).json({ message: 'nativeLang is required.' });
+  const nativeLang = sanitizeNativeLang(rawNativeLang);
   try {
     const questions = await generatePlacementTest(nativeLang);
     // Same answer-key-stripping posture as sanitizeLessonContentForClient
@@ -243,7 +264,8 @@ router.post('/lessons/generate', generateRateLimit, async (req: Request, res: Re
 
   const result = generateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
-  const { taskType, level, nativeLang, topic } = result.data;
+  const { taskType, level, topic } = result.data;
+  const nativeLang = sanitizeNativeLang(result.data.nativeLang);
 
   const user = await loadAccessUser(req.user!.id);
   if (!user) return res.status(404).json({ message: 'User not found.' });
@@ -570,14 +592,18 @@ router.get('/beginner-path/state', async (req: Request, res: Response) => {
   const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { tutorNativeLang: true } });
   if (!user) return res.status(404).json({ message: 'User not found.' });
 
-  const queryNativeLang = typeof req.query.nativeLang === 'string' ? req.query.nativeLang.trim() : '';
+  const queryNativeLang = sanitizeNativeLang(typeof req.query.nativeLang === 'string' ? req.query.nativeLang.trim() : '');
   // An explicit choice on THIS request always wins — the learner may be
   // actively changing their support language right now (see the Beginner
   // Path's settings control), and a stale persisted value must never
   // override that (this was a real bug: `tutorNativeLang || queryNativeLang`
   // meant that once ANY language was ever persisted, no later query param
   // could ever change it again — the exact "locked to ka" symptom reported).
-  const nativeLang = queryNativeLang || user.tutorNativeLang || 'en';
+  // Also sanitized even when it falls back to the STORED value — covers a
+  // hypothetical pre-policy row that already has tutorNativeLang="ru" from
+  // before Russian was removed (never deleted/migrated, see section 5 of
+  // the removal task; this is the runtime-fallback half of that promise).
+  const nativeLang = sanitizeNativeLang(queryNativeLang || user.tutorNativeLang || 'en');
   // Same fire-and-forget "remember it for next time" posture as POST
   // /lessons/generate — only a convenience write, never blocks the response.
   if (queryNativeLang && user.tutorNativeLang !== queryNativeLang) {
@@ -609,7 +635,7 @@ router.post('/beginner-path/advance', async (req: Request, res: Response) => {
   if (!user) return res.status(404).json({ message: 'User not found.' });
   // Same "explicit choice on this request wins" precedence as GET
   // /beginner-path/state above — see that route's own comment.
-  const nativeLang = result.data.nativeLang || user.tutorNativeLang || 'en';
+  const nativeLang = sanitizeNativeLang(result.data.nativeLang || user.tutorNativeLang || 'en');
 
   const progress = await prisma.userTutorBeginnerProgress.findUnique({ where: { userId: req.user!.id } });
   if (!progress || progress.completedAt || progress.skippedAt) {

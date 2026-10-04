@@ -9,6 +9,7 @@ import {
   submitPlacementTest,
   setTutorLearningGoal,
 } from '../../services/englishTutorService';
+import { TUTOR_SUPPORT_LANGUAGES } from '../../data/tutorSupportLanguages';
 
 interface TutorOnboardingFlowProps {
   lang: 'ka' | 'en';
@@ -18,17 +19,11 @@ interface TutorOnboardingFlowProps {
   onComplete: (result: { nativeLang: string; learningGoal: TutorLearningGoal; level: CefrLevel }) => void;
 }
 
-const NATIVE_LANG_OPTIONS = [
-  { code: 'ka', label: 'ქართული (Georgian)' },
-  { code: 'de', label: 'Deutsch (German)' },
-  { code: 'es', label: 'Español (Spanish)' },
-  { code: 'fr', label: 'Français (French)' },
-  { code: 'uk', label: 'Українська (Ukrainian)' },
-  { code: 'tr', label: 'Türkçe (Turkish)' },
-  { code: 'hy', label: 'Հայերեն (Armenian)' },
-  { code: 'az', label: 'Azərbaycan (Azerbaijani)' },
-  { code: 'ru', label: 'Русский (Russian)' },
-];
+// Sourced from the same canonical list EnglishTutorPanel's settings picker
+// and BeginnerPathRunner's language switcher use (data/tutorSupportLanguages.ts)
+// — this used to be its own separately hand-maintained 9-entry list that had
+// already drifted from a second one elsewhere in this feature; see that
+// file's own comment, including why Russian is deliberately absent.
 
 const GOAL_OPTIONS: { value: TutorLearningGoal; ka: string; en: string }[] = [
   { value: 'TRAVEL', ka: '✈️ მოგზაურობა', en: '✈️ Travel' },
@@ -160,7 +155,12 @@ export default function TutorOnboardingFlow({ lang, onComplete }: TutorOnboardin
           </div>
           <p className="text-sm font-bold">{t.step1Title}</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {NATIVE_LANG_OPTIONS.map((opt) => (
+            {/* English excluded here (unlike the settings/switcher pickers
+                elsewhere) — this step asks "what is your NATIVE language",
+                and offering English back to an English learner never made
+                sense; preserves the exact pre-existing 8-option set, minus
+                Russian. */}
+            {TUTOR_SUPPORT_LANGUAGES.filter((opt) => opt.code !== 'en').map((opt) => (
               <button
                 key={opt.code}
                 type="button"
@@ -171,7 +171,7 @@ export default function TutorOnboardingFlow({ lang, onComplete }: TutorOnboardin
                     : 'border-slate-200 dark:border-slate-800'
                 }`}
               >
-                {opt.label}
+                {opt.nativeName}
               </button>
             ))}
           </div>
