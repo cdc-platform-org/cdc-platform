@@ -669,6 +669,24 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Buf
   const captionLineHeight = 13;
   const qrRegionBottom = captionY + 10;
   const qrSize = Math.min(frameRight - frameLeft, frameTop - qrRegionBottom) - frameInset * 2;
+  // The navy outline around the QR is baked into the template's flattened
+  // artwork image, so it can't be removed by dropping a draw call; paint
+  // over it with the artwork's own flat background tone (253 grey, sampled
+  // off the rasterised template). The stroke is only ~3pt wide but carries
+  // ~6pt of compression ringing on each side (measured: x 731..744 and
+  // 855..868, pdfY 47.5..56.5 and 175..184.5), so the cover reaches past the
+  // nominal frame by 8pt left/right and 6pt top/bottom to swallow the whole
+  // halo; a tighter patch leaves a grey fringe, a pure-white one a lighter box.
+  const frameCoverPadX = 8;
+  const frameCoverPadY = 6;
+  const frameCoverGrey = 253 / 255;
+  page.drawRectangle({
+    x: frameLeft - frameCoverPadX,
+    y: frameBottom - frameCoverPadY,
+    width: frameRight - frameLeft + frameCoverPadX * 2,
+    height: frameTop - frameBottom + frameCoverPadY * 2,
+    color: rgb(frameCoverGrey, frameCoverGrey, frameCoverGrey),
+  });
   page.drawImage(qrImage, {
     x: (frameLeft + frameRight) / 2 - qrSize / 2,
     y: (qrRegionBottom + frameTop) / 2 - qrSize / 2,
