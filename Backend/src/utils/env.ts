@@ -268,6 +268,13 @@ export const STRIPE_GEL_TO_EUR_RATE = Number(process.env.STRIPE_GEL_TO_EUR_RATE 
 // Gemini's single global endpoint, Azure Speech is called per-region.
 export const AZURE_SPEECH_KEY = cleanEnv(process.env.AZURE_SPEECH_KEY);
 export const AZURE_SPEECH_REGION = cleanEnv(process.env.AZURE_SPEECH_REGION);
+// Children's Book audio narration voices (services/bookNarrationProviders.ts)
+// — optional, with defaults. AZURE_SPEECH_VOICE is the Georgian (KA) book
+// voice; AZURE_SPEECH_VOICE_EN is used for English books. Any Azure Neural
+// voice short name works (e.g. ka-GE-GiorgiNeural); its locale is derived
+// from the name's first two segments.
+export const AZURE_SPEECH_VOICE = cleanEnv(process.env.AZURE_SPEECH_VOICE) || 'ka-GE-EkaNeural';
+export const AZURE_SPEECH_VOICE_EN = cleanEnv(process.env.AZURE_SPEECH_VOICE_EN) || 'en-US-AnaNeural';
 // Children's Book product (Phase 5+/Batch A+) — controls whether AI calls
 // (story plan/character preview/final generation) are mocked locally
 // instead of hitting real Azure. Mocking is HARD-forced in production

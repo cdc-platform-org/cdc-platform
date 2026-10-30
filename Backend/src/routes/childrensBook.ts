@@ -20,10 +20,11 @@ import { buildBookPdf, BookPdfPageInput } from '../services/bookPdfService';
 import { storeBookAsset, getBookAssetUrl, readLocalBookAsset, isUsingCloudBookStorage } from '../services/bookStorageService';
 import { isBookDevPaymentSimulationEnabled } from '../services/bookMockConfig';
 import { completeChildrensBookPurchase } from '../services/bookPurchaseFulfillment';
-import { calculateAudioPrice, calculateTotalBookPrice, canGenerateNarration, MockBookNarrationProvider, narrationLanguageForBook } from '../services/bookNarrationService';
+import { calculateAudioPrice, calculateTotalBookPrice, canGenerateNarration, narrationLanguageForBook } from '../services/bookNarrationService';
+import { getBookNarrationProvider } from '../services/bookNarrationProviders';
+import { AzureSpeechError } from '../services/azureSpeechService';
 
 const router = Router();
-const narrationProvider = new MockBookNarrationProvider();
 
 // Only one illustration style is wired to real generation today (Phase
 // 2/2B/3/4's validated Character Bible / Style Bible pilots) — every other
@@ -556,6 +557,7 @@ router.post('/:id/revision', authenticate, async (req: Request, res: Response) =
   if (result.success && qa.status === 'PASS') {
     const key = `books/${book.id}/events/${event.id}.png`;
     await storeBookAsset(key, result.buffer, result.mimeType);
+    const narrationProvider = getBookNarrationProvider();
     let revisedNarration: Awaited<ReturnType<typeof narrationProvider.generatePageNarration>> | null = null;
     if (book.audioAddOnPurchased) {
       try {
@@ -643,6 +645,7 @@ router.post('/:id/audio/generate', authenticate, async (req: Request, res: Respo
     return res.status(400).json({ message: 'Audio narration is only available for a paid, audio-enabled book.' });
   }
 
+  const narrationProvider = getBookNarrationProvider();
   const artifacts = [] as any[];
   for (const page of book.pages) {
     const storyText = page.storyText ?? '';
@@ -656,15 +659,24 @@ router.post('/:id/audio/generate', authenticate, async (req: Request, res: Respo
       },
     });
 
-    const result = await narrationProvider.generatePageNarration({
-      bookProjectId: book.id,
-      pageNumber: page.pageNumber,
-      revisionVersion: 0,
-      language: narrationLanguageForBook(book.language),
-      text: storyText,
-    });
-
-    await storeBookAsset(result.storageKey, result.buffer, result.mimeType);
+    let result: Awaited<ReturnType<typeof narrationProvider.generatePageNarration>>;
+    try {
+      result = await narrationProvider.generatePageNarration({
+        bookProjectId: book.id,
+        pageNumber: page.pageNumber,
+        revisionVersion: 0,
+        language: narrationLanguageForBook(book.language),
+        text: storyText,
+      });
+      await storeBookAsset(result.storageKey, result.buffer, result.mimeType);
+    } catch (err) {
+      // Pages narrated before the failure are already saved; re-running
+      // this endpoint updates them in place and continues.
+      if (err instanceof AzureSpeechError) {
+        return res.status(err.status).json({ message: err.message });
+      }
+      return res.status(502).json({ message: `Narration for page ${page.pageNumber} could not be generated.` });
+    }
 
     if (existing) {
       const updated = await prisma.bookNarrationArtifact.update({

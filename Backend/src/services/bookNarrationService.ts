@@ -33,7 +33,7 @@ export function narrationLanguageForBook(language: BookLanguage | string): BookL
 
 export interface NarrationGenerationResult {
   buffer: Buffer;
-  mimeType: 'audio/wav';
+  mimeType: 'audio/wav' | 'audio/mpeg';
   storageKey: string;
   language: BookLanguage;
   artifactKey: string;
