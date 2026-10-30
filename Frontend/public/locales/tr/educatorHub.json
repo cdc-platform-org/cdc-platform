@@ -168,5 +168,20 @@
   "exportCopied": "Kopyalandı!",
   "exportDocx": "Docx İndir",
   "exportTxt": "TXT İndir",
-  "exportPrint": "🖨️ Yazdır"
+  "exportPrint": "🖨️ Yazdır",
+  "tabCertificates": "🏆 Sertifikalar",
+  "certificateTypeLabel": "Sertifika Türü",
+  "certificateTypeWeeklyStar": "Haftanın Öğrencisi",
+  "certificateTypeCourseCompletion": "Kurs Tamamlama",
+  "certificateTypeOlympiadWinner": "Olimpiyat Kazananı",
+  "certificateTypeCustom": "Özel",
+  "customNominationPlaceholder": "örn. En İyi Deneme",
+  "studentNamesLabel": "Öğrenci Adları",
+  "studentNamesPlaceholder": "Her satıra bir ad",
+  "generating": "Oluşturuluyor…",
+  "generateCertificates": "Sertifikaları Oluştur",
+  "generatedCertificatesHeading": "Oluşturulan Sertifikalar",
+  "downloadCertificate": "Sertifika #{{index}} İndir",
+  "certificatesTitle": "Sertifika ve Diploma Oluşturucu",
+  "certificatesDescription": "Öğrencileriniz için saniyeler içinde yazdırılabilir sertifikalar ve diplomalar oluşturun."
 }

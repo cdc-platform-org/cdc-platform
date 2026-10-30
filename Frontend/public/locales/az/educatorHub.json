@@ -168,5 +168,20 @@
   "exportCopied": "Kopyalandı!",
   "exportDocx": "Docx Yüklə",
   "exportTxt": "TXT Yüklə",
-  "exportPrint": "🖨️ Çap Et"
+  "exportPrint": "🖨️ Çap Et",
+  "tabCertificates": "🏆 Sertifikatlar",
+  "certificateTypeLabel": "Sertifikat Növü",
+  "certificateTypeWeeklyStar": "Həftənin Şagirdi",
+  "certificateTypeCourseCompletion": "Kursun Tamamlanması",
+  "certificateTypeOlympiadWinner": "Olimpiada Qalibi",
+  "certificateTypeCustom": "Fərdi",
+  "customNominationPlaceholder": "məs. Ən Yaxşı Esse",
+  "studentNamesLabel": "Şagird Adları",
+  "studentNamesPlaceholder": "Hər sətirdə bir ad",
+  "generating": "Yaradılır…",
+  "generateCertificates": "Sertifikatları Yarat",
+  "generatedCertificatesHeading": "Yaradılmış Sertifikatlar",
+  "downloadCertificate": "Sertifikat #{{index}} Yüklə",
+  "certificatesTitle": "Sertifikat və Diplom Generatoru",
+  "certificatesDescription": "Şagirdləriniz üçün saniyələr ərzində çap edilə bilən sertifikatlar və diplomlar yaradın."
 }

@@ -140,6 +140,13 @@ function AdminTeamTrainersDashboard() {
     if (form.name.trim().length < 2) return setFormError('სახელი ძალიან მოკლეა.');
     if (form.role.trim().length < 2) return setFormError('პოზიცია სავალდებულოა.');
 
+    const profileUrl = form.profileUrl?.trim();
+    if (profileUrl && !profileUrl.startsWith('/')) {
+      return setFormError(
+        'სრული პროფილის გვერდი უნდა იყოს CDC-ის შიდა მისამართი, მაგალითად: /about/maia-martikovi'
+      );
+    }
+
     setSubmitting(true);
     try {
       const payload: TeamMemberPayload = {
@@ -162,8 +169,23 @@ function AdminTeamTrainersDashboard() {
         setMembers((prev) => [...prev, created]);
       }
       resetForm();
-    } catch {
-      setFormError('შენახვა ვერ მოხერხდა. სცადეთ თავიდან.');
+    } catch (err: any) {
+      const apiErrors = err?.response?.data?.errors;
+      const apiMessage = err?.response?.data?.message;
+
+      const validationMessage =
+        Array.isArray(apiErrors) && apiErrors.length > 0
+          ? apiErrors
+              .map((item: any) => item?.message)
+              .filter(Boolean)
+              .join(' ')
+          : null;
+
+      setFormError(
+        validationMessage ||
+          apiMessage ||
+          'შენახვა ვერ მოხერხდა. სცადეთ თავიდან.'
+      );
     } finally {
       setSubmitting(false);
     }

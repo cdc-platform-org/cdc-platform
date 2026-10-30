@@ -1,24 +1,145 @@
 # Docs: https://github.com/Azure/login (OIDC), https://github.com/Azure/acr-build (az acr build)
 #
-# MANDATORY E2E GATE:
-# Production deployment is triggered only after the "Nightly QA" workflow
-# completes successfully on main. The exact SHA tested by QA is checked out,
-# built into a container image, and deployed to the production Azure Web App.
+# ============================================================================
+# PRODUCTION DEPLOY - MANUAL, MAIN-ONLY, SHA-PINNED, FAIL-CLOSED
+#   (Phase 18 safety gate + Phase 18.2 fail-closed preflight)
+# ============================================================================
+# This workflow NO LONGER runs after Nightly QA. It used to (`workflow_run`),
+# so a green nightly run unattendedly rebuilt, re-pointed and restarted
+# production every night, and any merge to main could have activated new code
+# - and, through Backend/docker-entrypoint.sh, run `prisma migrate deploy`
+# against the PRODUCTION database - without a human decision.
 #
-# IMPORTANT:
-# cdc-api-prod uses Azure App Service Site Containers.
-# Therefore the production image must be updated with
-# `az webapp sitecontainers update`, not the legacy
-# `az webapp config container set` command.
+# Nightly QA (qa-nightly.yml) is unchanged and keeps running. It is now a gate
+# this workflow CHECKS; it can never TRIGGER a deploy.
+#
+# HOW TO DEPLOY (manual and deliberate)
+#   1. Actions -> this workflow -> Run workflow -> "Use workflow from": main.
+#   2. deploy_sha = full 40-char SHA of the CURRENT tip of main. That exact
+#      commit must already have a green Nightly QA run.
+#   3. Tick acknowledge_startup_migrations.
+#   4. Approve the run in the "Production" environment - but ONLY if protection
+#      rules exist there (see REQUIRED SETUP, item 1).
+#
+# WHAT THE `guard` JOB ENFORCES (before any Azure login)
+#   - the event is workflow_dispatch and the ref is refs/heads/main (a dispatch
+#     from any feature branch is refused);
+#   - deploy_sha is a full SHA, equals the tip of main at dispatch time AND is
+#     still the tip of main when the guard runs;
+#   - a successful "Nightly QA" run exists for exactly that SHA on main;
+#   - the migrations acknowledgement is ticked.
+#
+# WHAT THE `deploy` JOB ENFORCES - FAIL CLOSED, in this order, all BEFORE any
+# Azure mutation (image build, Site Container update, restart):
+#   1. mode      linuxFxVersion must be "sitecontainers". Anything else - including
+#                today's legacy `DOCKER|...` - stops the run with a non-zero exit.
+#   2. evidence  The RUNNING image is read independently of every configuration
+#                value, from the platform docker log: the running container is the
+#                last "Starting container" that was not later stopped, and its
+#                image is the "Creating container with image" line before it. The
+#                run is refused if that evidence is unavailable, ambiguous (not
+#                exactly one running container), stale (that container started
+#                before the last site configuration change) or different from the
+#                active configuration (Site Containers "main").
+#   3. decision  "Site Containers image == target SHA" is NEVER treated as proof.
+#                "No change required" is reported only when the independently
+#                verified RUNNING image equals the target.
+#   4. force     force_restart_if_unchanged is read only AFTER 1-3 have passed. It
+#                can never bypass them.
+#   5. verify    After a restart the run is green only if the NEW container is
+#                independently verified to run the target image (same evidence, and
+#                it must have started after the restart request). Otherwise the run
+#                FAILS as "NOT verified" - it never reports success unverified.
+#   6. no switch This workflow never switches the container mode. Moving
+#                cdc-api-prod from legacy `DOCKER|...` to `sitecontainers` needs a
+#                separate, explicitly approved remediation plan.
+# Also: one deploy at a time (concurrency group, never cancelled mid-flight); the
+# image is tagged with the immutable commit SHA only - no `:latest`, and an
+# existing SHA tag is reused, never overwritten.
+#
+# TODAY (audit of 2026-09-20) production is REFUSED at step 1. Three things exist
+# for cdc-api-prod and they DISAGREE:
+#   site config `linuxFxVersion`   DOCKER|cdcplatformacr.azurecr.io/cdc-platform-backend:14cc1780...
+#                                  ACTIVE. Legacy single-container mode, last written 2026-09-07 21:03 UTC.
+#   Site Containers "main" image   ...:37a79ea4...   DORMANT. Only this workflow ever wrote it.
+#   image the platform pulls       ...:14cc1780...   (docker log at every restart on 09-18, 09-19, 09-20)
+# While `linuxFxVersion` is not "sitecontainers", `az webapp sitecontainers update`
+# changes nothing that runs, and a Site Containers image equal to the target proves
+# nothing - which is how nightly "successes" hid a 13-day-old production backend.
+#
+# Evidence limits (all fail closed): the docker log is retained only for a limited
+# time/size. If the running container's start has rotated out, or the app was
+# modified without a container restart, the evidence is "unavailable"/"stale" and
+# the run refuses. Recovery is an operator-approved restart, or /api/version below.
+# Runner needs: az, node, unzip (all preinstalled on ubuntu-latest).
+#
+# ----------------------------------------------------------------------------
+# ENABLEMENT GATE - image verification is necessary, NOT sufficient
+# Confirming which IMAGE runs says nothing about whether the release is healthy or
+# migrated. Do NOT enable this workflow for real production deploys - i.e. do not
+# create the Azure `environment:Production` federated credential - until Phase 19
+# has implemented AND wired, as failing post-deploy gates:
+#   1. `GET /api/version`  returns the SHA baked into the image and equals DEPLOY_SHA
+#                          (a second, in-process runtime witness);
+#   2. `GET /api/health` (liveness) and `GET /api/ready` (DB ping) return 200,
+#                          and the Azure `healthCheckPath` is set;
+#   3. migration status    read-only `prisma migrate status` before and after; the
+#                          container log shows applied / "No pending migrations";
+#                          ANY migration failure fails the deploy;
+#   4. API smoke tests     unauthenticated read-only GETs: /api/auth/me 401,
+#                          /api/trainer/me 401 (404 = old build),
+#                          /api/iako/my-assistants 401, /api/courses 200,
+#                          /api/products 200, /api/studio/cases 200;
+#   5. rollback            the previously running image (RUNNING_IMAGE_VERIFIED
+#                          below) is recorded, and a staging slot with its OWN
+#                          database and slot-sticky DATABASE_URL is used - never a
+#                          slot that can reach the production database.
+# Until then a green run means only "the intended image is running".
+# Dependency: /, /api/health, /api/ready and /api/version do not exist yet
+# (404 in production as of 2026-09-20).
+#
+# ----------------------------------------------------------------------------
+# REQUIRED SETUP BEFORE A REAL DEPLOY - blockers; none is done by this file
+#   1. GitHub environment "Production" (exact case - it already exists) has NO
+#      protection rules today: no required reviewers, no deployment-branch
+#      policy. Referencing an environment enforces nothing until an admin adds
+#      required reviewers and "Deployment branches: main only".
+#   2. Azure login: federated credential of app `gha-cdc-api-prod-deploy` trusts
+#      only `...cdc-platform@1324272899:ref:refs/heads/main`. A job that uses an
+#      environment presents `repo:cdc-platform-org@313505784/cdc-platform@1324272899:environment:Production`
+#      instead, so Azure login fails (safely) until that subject is added. Once
+#      it works, remove the branch-scoped credential so other main workflows
+#      cannot log in to Azure. Configure item 1 BEFORE adding this credential.
+#   3. main has no branch protection/ruleset and there is no CODEOWNERS, so this
+#      file can be changed by a direct push to main without review.
 
 name: Build and deploy container to Azure Web App - cdc-api-prod
 
 on:
-  workflow_run:
-    workflows: ["Nightly QA"]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      deploy_sha:
+        description: "Full 40-character SHA of the CURRENT tip of main (must have a green Nightly QA run)"
+        required: true
+        type: string
+      acknowledge_startup_migrations:
+        description: "I understand the new container runs `prisma migrate deploy` against the PRODUCTION database when it starts"
+        required: true
+        type: boolean
+        default: false
+      force_restart_if_unchanged:
+        description: "Restart even if the independently verified running image already equals the target. Does NOT bypass any safety check."
+        required: false
+        type: boolean
+        default: false
+
+# One production deploy at a time; a running deploy is never cancelled mid-flight.
+concurrency:
+  group: production-deploy-cdc-api-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 env:
   ACR_NAME: cdcplatformacr
@@ -27,25 +148,87 @@ env:
   WEBAPP_NAME: cdc-api-prod
   RESOURCE_GROUP: CDC-Prod-RG
   TARGET_PORT: "5000"
+  EVIDENCE_POLL_ATTEMPTS: "12"
+  EVIDENCE_POLL_INTERVAL_SECONDS: "30"
 
 jobs:
-  build-and-deploy:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
-
+  guard:
+    name: Guard - main only, current tip, green Nightly QA
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha: ${{ steps.validate.outputs.sha }}
+    steps:
+      - name: Validate dispatch (main only, full SHA, acknowledgement)
+        id: validate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          RUN_SHA: ${{ github.sha }}
+          INPUT_SHA: ${{ inputs.deploy_sha }}
+          ACK_MIGRATIONS: ${{ inputs.acknowledge_startup_migrations }}
+        run: |
+          set -euo pipefail
+          fail() { echo "::error title=Production deploy refused::$1"; exit 1; }
 
+          [ "$EVENT_NAME" = "workflow_dispatch" ] || fail "Only a manual dispatch may deploy production (event: $EVENT_NAME)."
+          [ "$REF" = "refs/heads/main" ] || fail "Production deploys run only from main. This run was dispatched from '$REF'. Re-run with 'Use workflow from: main'."
+          printf '%s' "$INPUT_SHA" | grep -Eq '^[0-9a-f]{40}$' || fail "deploy_sha must be a full 40-character lowercase commit SHA."
+          [ "$INPUT_SHA" = "$RUN_SHA" ] || fail "deploy_sha ($INPUT_SHA) is not the tip of main at dispatch time ($RUN_SHA). Only the current tip of main may be deployed."
+          [ "$ACK_MIGRATIONS" = "true" ] || fail "Tick acknowledge_startup_migrations: starting the container runs prisma migrate deploy on the PRODUCTION database."
+
+          echo "sha=$INPUT_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Confirm this SHA is still the tip of main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.validate.outputs.sha }}
+        run: |
+          set -euo pipefail
+          tip="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+          if [ "$tip" != "$SHA" ]; then
+            echo "::error title=Production deploy refused::main has moved on to ${tip}. Re-dispatch with the current tip."
+            exit 1
+          fi
+
+      - name: Require a green Nightly QA run for exactly this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.validate.outputs.sha }}
+        run: |
+          set -euo pipefail
+          green="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/qa-nightly.yml/runs?head_sha=${SHA}&branch=main&status=success&per_page=1" --jq '.total_count')"
+          if [ "${green}" -lt 1 ]; then
+            echo "::error title=Production deploy refused::No successful Nightly QA run found for ${SHA} on main. Wait for QA to pass on this exact commit."
+            exit 1
+          fi
+          echo "Nightly QA is green for ${SHA}."
+
+  deploy:
+    name: Deploy immutable image to cdc-api-prod (fail closed)
+    needs: guard
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Dedicated production environment (exact name, case matters for the Azure OIDC subject).
+    # NOTE: this only gates the job if protection rules are configured on the environment.
+    environment:
+      name: Production
     permissions:
       contents: read
       id-token: write
-
     env:
-      DEPLOY_SHA: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
-
+      DEPLOY_SHA: ${{ needs.guard.outputs.sha }}
+      FORCE_RESTART: ${{ inputs.force_restart_if_unchanged }}
     steps:
-      - name: Checkout tested commit
+      - name: Checkout approved commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.DEPLOY_SHA }}
+          ref: ${{ needs.guard.outputs.sha }}
+          persist-credentials: false
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -54,38 +237,296 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Build and push image via ACR Tasks
+      # -------------------------------------------------------------------
+      # PREFLIGHT - read-only. Fails closed. Nothing below it may run unless
+      # it finishes with PREFLIGHT_OK=true.
+      # -------------------------------------------------------------------
+      - name: Preflight 1/3 - active container mode (fails closed)
+        run: |
+          set -euo pipefail
+          fail() { echo "::error title=Production deploy REFUSED (fail closed)::$1"; exit 1; }
+
+          MODE="$(az webapp config show --name "$WEBAPP_NAME" --resource-group "$RESOURCE_GROUP" --query linuxFxVersion --output tsv)" \
+            || fail "Could not read the active container mode (linuxFxVersion). Nothing was built, updated or restarted."
+          [ -n "$MODE" ] && [ "$MODE" != "None" ] \
+            || fail "linuxFxVersion is empty. Nothing was built, updated or restarted."
+          echo "LINUX_FX_VERSION=$MODE" >> "$GITHUB_ENV"
+          echo "Active container mode (linuxFxVersion): $MODE"
+
+          if [ "$(printf '%s' "$MODE" | tr '[:upper:]' '[:lower:]')" != "sitecontainers" ]; then
+            fail "linuxFxVersion is '${MODE}', not 'sitecontainers'. The Site Containers configuration is DORMANT: updating it cannot change what runs, and a Site Containers image equal to the target is NOT evidence that production runs it. Nothing was built, updated or restarted. This workflow never switches the container mode (separate, explicitly approved remediation). force_restart_if_unchanged does not bypass this check."
+          fi
+          echo "Container mode is sitecontainers."
+
+      - name: Install runtime-evidence collector (local files only, no Azure calls)
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/runtime-evidence.js" <<'JS'
+          'use strict';
+          var fs = require('fs');
+          var path = require('path');
+          var dir = process.argv[2];
+          var lastModifiedRaw = process.argv[3] || '';
+          var sinceRaw = process.argv[4] || '';
+
+          function emit(status, reason, extra) {
+            var out = { STATUS: status, REASON: reason };
+            if (extra) Object.keys(extra).forEach(function (k) { out[k] = extra[k]; });
+            Object.keys(out).forEach(function (k) {
+              console.log('RUNTIME_' + k + '=' + String(out[k]).replace(/[\r\n]+/g, ' '));
+            });
+            process.exit(0);
+          }
+          function toMs(s) {
+            if (!s) return NaN;
+            var t = String(s).trim().replace(/(\.\d{3})\d+/, '$1');
+            if (!/(Z|[+-]\d{2}:?\d{2})$/i.test(t)) t += 'Z';
+            return Date.parse(t);
+          }
+          var SAFE_IMAGE = /^[a-z0-9][a-z0-9._\/-]{0,200}(:[A-Za-z0-9._-]{1,128})?(@sha256:[a-f0-9]{64})?$/;
+          var SAFE_ID = /^[A-Za-z0-9_.-]{1,100}$/;
+
+          // Platform docker logs only. The app's own stdout (*_default_docker.log) and
+          // the Kudu container log (*_scm_docker.log) can never count as evidence.
+          var files = [];
+          function walk(d) {
+            fs.readdirSync(d, { withFileTypes: true }).forEach(function (e) {
+              var p = path.join(d, e.name);
+              if (e.isDirectory()) { walk(p); return; }
+              if (/_docker\.log$/.test(e.name) && !/_default_docker\.log$/.test(e.name) && !/_scm_docker\.log$/.test(e.name)) files.push(p);
+            });
+          }
+          try { walk(dir); } catch (err) { emit('unavailable', 'the downloaded log bundle could not be read'); }
+          if (files.length === 0) emit('unavailable', 'no platform docker log files in the downloaded log bundle');
+
+          var events = [];
+          files.forEach(function (f) {
+            fs.readFileSync(f, 'utf8').split(/\r?\n/).forEach(function (line) {
+              var m = line.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)\s+(.*)$/);
+              if (m) events.push({ t: m[1], ms: toMs(m[1]), msg: m[2], seq: events.length });
+            });
+          });
+          events.sort(function (a, b) { return (a.ms - b.ms) || (a.seq - b.seq); });
+
+          // Replay: which container(s) are running now, and with which image?
+          var lastImage = null;
+          var running = {};
+          events.forEach(function (ev) {
+            var m;
+            if ((m = ev.msg.match(/^Creating container with image:\s+(\S+)\s+from registry:/))) { lastImage = m[1]; return; }
+            if ((m = ev.msg.match(/^Starting container:\s+(\S+?)\.?$/))) { running[m[1]] = { image: lastImage, t: ev.t, ms: ev.ms }; return; }
+            if ((m = ev.msg.match(/^(?:Stopping|Deleting) container:\s+(\S+?)(?:\.\s|\.$|\s|$)/))) { delete running[m[1]]; }
+          });
+
+          var ids = Object.keys(running);
+          if (ids.length === 0) emit('unavailable', 'no currently-running container can be identified in the retained platform logs (rotated, or the start was not logged)');
+          if (ids.length > 1) emit('ambiguous', 'more than one container appears to be running');
+          var id = ids[0];
+          var c = running[id];
+          if (!SAFE_ID.test(id)) emit('inconsistent', 'the running container id is not in an expected format');
+          if (!c.image || !SAFE_IMAGE.test(c.image)) emit('inconsistent', 'the running container has no valid image reference in the logs');
+
+          var lm = toMs(lastModifiedRaw);
+          if (isNaN(lm)) emit('unavailable', 'the site lastModifiedTimeUtc is unreadable, so freshness cannot be judged');
+          if (c.ms < lm) emit('stale', 'the running container started (' + c.t + ') before the last site configuration change (' + lastModifiedRaw + ')');
+          if (sinceRaw) {
+            var since = toMs(sinceRaw);
+            if (isNaN(since)) emit('unavailable', 'the restart-request timestamp is unreadable');
+            if (c.ms <= since) emit('stale', 'no container has started since the restart was requested (' + sinceRaw + ')');
+          }
+          emit('ok', 'one running container, started ' + c.t, { IMAGE: c.image, STARTED_AT: c.t, CONTAINER: id });
+          JS
+          cat > "$RUNNER_TEMP/collect-evidence.sh" <<'SH'
+          #!/usr/bin/env bash
+          # usage: collect-evidence.sh <site_last_modified> [since_iso]
+          # prints RUNTIME_STATUS / RUNTIME_REASON / RUNTIME_IMAGE / RUNTIME_STARTED_AT lines; always exits 0
+          set -uo pipefail
+          say() { echo "RUNTIME_STATUS=$1"; echo "RUNTIME_REASON=$2"; exit 0; }
+          command -v node  >/dev/null 2>&1 || say unavailable "node is not available on this runner"
+          command -v unzip >/dev/null 2>&1 || say unavailable "unzip is not available on this runner"
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
+          az webapp log download --name "$WEBAPP_NAME" --resource-group "$RESOURCE_GROUP" --log-file "$work/logs.zip" >/dev/null 2>&1 \
+            || say unavailable "az webapp log download failed"
+          [ -s "$work/logs.zip" ] || say unavailable "the downloaded log bundle is empty"
+          unzip -q -o "$work/logs.zip" -d "$work/logs" >/dev/null 2>&1 || say unavailable "the downloaded log bundle could not be unpacked"
+          node "$RUNNER_TEMP/runtime-evidence.js" "$work/logs" "${1:-}" "${2:-}"
+          SH
+          chmod +x "$RUNNER_TEMP/collect-evidence.sh"
+
+      - name: Preflight 2/3 - independent runtime evidence (fails closed)
+        run: |
+          set -euo pipefail
+          fail() { echo "::error title=Production deploy REFUSED (fail closed)::$1"; exit 1; }
+
+          STATE="$(az webapp show --name "$WEBAPP_NAME" --resource-group "$RESOURCE_GROUP" --query state --output tsv)" \
+            || fail "Could not read the web app state. Nothing was built, updated or restarted."
+          [ "$STATE" = "Running" ] || fail "The web app state is '${STATE}', not 'Running'. Nothing was built, updated or restarted."
+
+          SITE_LAST_MODIFIED="$(az webapp show --name "$WEBAPP_NAME" --resource-group "$RESOURCE_GROUP" --query lastModifiedTimeUtc --output tsv)" \
+            || fail "Could not read the site lastModifiedTimeUtc. Nothing was built, updated or restarted."
+          CONFIGURED="$(az webapp sitecontainers list --name "$WEBAPP_NAME" --resource-group "$RESOURCE_GROUP" --query "[?name=='main'].image | [0]" --output tsv)" \
+            || fail "Could not read the Site Containers configuration. Nothing was built, updated or restarted."
+          { [ -n "$CONFIGURED" ] && [ "$CONFIGURED" != "None" ]; } \
+            || fail "No Site Containers 'main' image is configured. Nothing was built, updated or restarted."
+
+          EVIDENCE="$("$RUNNER_TEMP/collect-evidence.sh" "$SITE_LAST_MODIFIED")"
+          get() { printf '%s\n' "$EVIDENCE" | sed -n "s/^RUNTIME_$1=//p" | head -n 1; }
+          R_STATUS="$(get STATUS)"; R_REASON="$(get REASON)"; R_IMAGE="$(get IMAGE)"; R_STARTED="$(get STARTED_AT)"
+
+          echo "Site Containers 'main' (configured) ... $CONFIGURED"
+          echo "Runtime evidence status ............... ${R_STATUS:-<none>} - ${R_REASON:-<none>}"
+          echo "Running image (platform log) .......... ${R_IMAGE:-<none>}"
+
+          [ "$R_STATUS" = "ok" ] \
+            || fail "Independent runtime evidence is '${R_STATUS:-missing}': ${R_REASON:-no reason given}. The running image cannot be verified, so nothing was built, updated or restarted."
+          [ "$R_IMAGE" = "$CONFIGURED" ] \
+            || fail "Runtime evidence CONTRADICTS the active configuration: the platform is running '${R_IMAGE}' but Site Containers 'main' is '${CONFIGURED}'. Nothing was built, updated or restarted."
+
+          {
+            echo "CONFIGURED_IMAGE=$CONFIGURED"
+            echo "RUNNING_IMAGE_VERIFIED=$R_IMAGE"
+            echo "RUNNING_STARTED_AT=$R_STARTED"
+          } >> "$GITHUB_ENV"
+          echo "Running image independently verified: $R_IMAGE (matches the active configuration)."
+
+      - name: Preflight 3/3 - decision (read-only)
+        run: |
+          set -euo pipefail
+          TARGET="${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${DEPLOY_SHA}"
+
+          # Only the independently VERIFIED running image counts - never the configured one.
+          if [ "$RUNNING_IMAGE_VERIFIED" = "$TARGET" ]; then UPDATE=false; else UPDATE=true; fi
+          # force_restart_if_unchanged is consulted only here, after preflight 1 and 2 have passed.
+          if [ "$UPDATE" = "true" ] || [ "$FORCE_RESTART" = "true" ]; then RESTART=true; else RESTART=false; fi
+
+          if DIGEST="$(az acr repository show --name "$ACR_NAME" --image "${IMAGE_NAME}:${DEPLOY_SHA}" --query digest --output tsv 2>/dev/null)"; then
+            EXISTS=true
+          else
+            EXISTS=false
+            DIGEST=""
+          fi
+
+          {
+            echo "IMAGE=$TARGET"
+            echo "NEEDS_UPDATE=$UPDATE"
+            echo "NEEDS_RESTART=$RESTART"
+            echo "IMAGE_EXISTS=$EXISTS"
+            echo "IMAGE_DIGEST=$DIGEST"
+            echo "PREFLIGHT_OK=true"
+          } >> "$GITHUB_ENV"
+
+          echo "Target image ..................... $TARGET"
+          echo "Running image (verified) ......... $RUNNING_IMAGE_VERIFIED   <- previous image, kept for rollback"
+          echo "Target tag already in ACR ........ $EXISTS ${DIGEST}"
+          echo "Update Site Container ............ $UPDATE"
+          echo "Restart .......................... $RESTART (force_restart_if_unchanged=$FORCE_RESTART)"
+
+      # -------------------------------------------------------------------
+      # MUTATING STEPS - each one requires PREFLIGHT_OK=true.
+      # -------------------------------------------------------------------
+      - name: Build and push immutable SHA-tagged image via ACR Tasks
+        if: ${{ env.PREFLIGHT_OK == 'true' && env.NEEDS_UPDATE == 'true' && env.IMAGE_EXISTS == 'false' }}
         working-directory: Backend
         run: |
+          set -euo pipefail
           az acr build \
-            --registry ${{ env.ACR_NAME }} \
-            --image ${{ env.IMAGE_NAME }}:${{ env.DEPLOY_SHA }} \
-            --image ${{ env.IMAGE_NAME }}:latest \
+            --registry "$ACR_NAME" \
+            --image "${IMAGE_NAME}:${DEPLOY_SHA}" \
             .
 
-      - name: Point production Site Container at the new image
+      - name: Point production Site Container at the image
+        if: ${{ env.PREFLIGHT_OK == 'true' && env.NEEDS_UPDATE == 'true' }}
         run: |
           az webapp sitecontainers update \
-            --name ${{ env.WEBAPP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name "$WEBAPP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
             --container-name main \
-            --image ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.DEPLOY_SHA }} \
-            --target-port ${{ env.TARGET_PORT }}
+            --image "$IMAGE" \
+            --target-port "$TARGET_PORT"
 
-      - name: Verify production Site Container configuration
+      - name: Read back Site Container configuration
+        if: ${{ env.PREFLIGHT_OK == 'true' && env.NEEDS_UPDATE == 'true' }}
         run: |
           az webapp sitecontainers list \
-            --name ${{ env.WEBAPP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name "$WEBAPP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
             --query "[].{Name:name,Image:image,TargetPort:targetPort,IsMain:isMain}" \
             --output table
 
-      - name: Restart production Web App to pull new image
+      - name: Restart production Web App to pull the image
+        if: ${{ env.PREFLIGHT_OK == 'true' && env.NEEDS_RESTART == 'true' }}
         run: |
+          set -euo pipefail
+          echo "RESTART_REQUESTED_AT=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" >> "$GITHUB_ENV"
           az webapp restart \
-            --name ${{ env.WEBAPP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }}
+            --name "$WEBAPP_NAME" \
+            --resource-group "$RESOURCE_GROUP"
+
+      - name: Verify the NEW container runs the target image (fails unless independently verified)
+        if: ${{ env.PREFLIGHT_OK == 'true' && env.NEEDS_RESTART == 'true' }}
+        run: |
+          set -euo pipefail
+          fail() { echo "::error title=Deployment NOT verified::$1"; exit 1; }
+          get() { printf '%s\n' "$1" | sed -n "s/^RUNTIME_$2=//p" | head -n 1; }
+
+          for i in $(seq 1 "$EVIDENCE_POLL_ATTEMPTS"); do
+            STATE="$(az webapp show --name "$WEBAPP_NAME" --resource-group "$RESOURCE_GROUP" --query state --output tsv || true)"
+            LM="$(az webapp show --name "$WEBAPP_NAME" --resource-group "$RESOURCE_GROUP" --query lastModifiedTimeUtc --output tsv || true)"
+            EV="$("$RUNNER_TEMP/collect-evidence.sh" "$LM" "$RESTART_REQUESTED_AT")"
+            S="$(get "$EV" STATUS)"; IMG="$(get "$EV" IMAGE)"; WHY="$(get "$EV" REASON)"
+            echo "attempt ${i}/${EVIDENCE_POLL_ATTEMPTS}: state=${STATE:-?} evidence=${S:-?} image=${IMG:-<none>} (${WHY:-})"
+
+            if [ "$S" = "ok" ] && [ "$IMG" != "$IMAGE" ]; then
+              fail "After the restart the platform is running '${IMG}', not the target '${IMAGE}'. The deployment did NOT take effect. No automatic rollback was attempted; the previous image was ${RUNNING_IMAGE_VERIFIED}."
+            fi
+            if [ "$STATE" = "Running" ] && [ "$S" = "ok" ] && [ "$IMG" = "$IMAGE" ]; then
+              echo "DEPLOY_VERIFIED=true" >> "$GITHUB_ENV"
+              echo "Independently verified: the new container is running ${IMG}."
+              exit 0
+            fi
+            sleep "$EVIDENCE_POLL_INTERVAL_SECONDS"
+          done
+          fail "Could not independently verify that the new container runs ${IMAGE} within the polling window. Treat the deployment as NOT verified. No automatic rollback was attempted; the previous image was ${RUNNING_IMAGE_VERIFIED}."
+
+      - name: No change required (running image independently verified)
+        if: ${{ env.PREFLIGHT_OK == 'true' && env.NEEDS_RESTART == 'false' }}
+        run: |
+          echo "Independently verified from the platform docker log: the running container already uses ${IMAGE}."
+          echo "No change required. Nothing was built, updated or restarted."
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            if [ "${PREFLIGHT_OK:-}" != "true" ]; then
+              echo "### Production deploy REFUSED (fail closed)"
+              echo
+              echo "A safety precondition failed. **Nothing was built, updated or restarted.** See the failed preflight step."
+            elif [ "${DEPLOY_VERIFIED:-}" = "true" ]; then
+              echo "### Production deploy - running image independently VERIFIED"
+              echo
+              echo "The new container is running the target image (platform docker log)."
+            elif [ "${NEEDS_RESTART:-}" = "false" ]; then
+              echo "### Production deploy - no change required"
+              echo
+              echo "The running image was independently verified to already equal the target."
+            else
+              echo "### Production deploy - NOT VERIFIED"
+              echo
+              echo "Do not treat this as a successful deployment."
+            fi
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Approved commit | \`${DEPLOY_SHA}\` |"
+            echo "| Active mode (linuxFxVersion) | \`${LINUX_FX_VERSION:-not read}\` |"
+            echo "| Running image before (verified) | \`${RUNNING_IMAGE_VERIFIED:-not verified}\` |"
+            echo "| Target image | \`${IMAGE:-n/a}\` |"
+            echo
+            echo "Image verification is necessary but **not sufficient**: health, version and migration checks are not implemented yet (Phase 19) and must exist before this workflow is enabled for production."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Azure logout
         if: always()
-        run: az logout
+        run: az logout || true

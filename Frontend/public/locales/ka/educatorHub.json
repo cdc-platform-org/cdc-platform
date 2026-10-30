@@ -168,5 +168,20 @@
   "exportCopied": "დაკოპირდა!",
   "exportDocx": "Docx-ის ჩამოტვირთვა",
   "exportTxt": "TXT-ის ჩამოტვირთვა",
-  "exportPrint": "🖨️ ბეჭდვა"
+  "exportPrint": "🖨️ ბეჭდვა",
+  "tabCertificates": "🏆 სერტიფიკატები",
+  "certificateTypeLabel": "სერტიფიკატის ტიპი",
+  "certificateTypeWeeklyStar": "კვირის ვარსკვლავი",
+  "certificateTypeCourseCompletion": "კურსის დასრულება",
+  "certificateTypeOlympiadWinner": "ოლიმპიადის გამარჯვებული",
+  "certificateTypeCustom": "ინდივიდუალური",
+  "customNominationPlaceholder": "მაგ. საუკეთესო ესე",
+  "studentNamesLabel": "მოსწავლეების სახელები",
+  "studentNamesPlaceholder": "თითო სახელი თითო ხაზზე",
+  "generating": "გენერირება…",
+  "generateCertificates": "სერტიფიკატების გენერაცია",
+  "generatedCertificatesHeading": "გენერირებული სერტიფიკატები",
+  "downloadCertificate": "სერტიფიკატის ჩამოტვირთვა #{{index}}",
+  "certificatesTitle": "სერტიფიკატისა და დიპლომის გენერატორი",
+  "certificatesDescription": "შექმენი დასაბეჭდი სერტიფიკატები და დიპლომები შენი მოსწავლეებისთვის წამებში."
 }
