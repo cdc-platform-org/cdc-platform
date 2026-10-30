@@ -168,5 +168,25 @@
   "exportCopied": "Kopyalandı!",
   "exportDocx": "Docx Yüklə",
   "exportTxt": "TXT Yüklə",
-  "exportPrint": "🖨️ Çap Et"
+  "exportPrint": "🖨️ Çap Et",
+
+  "tabCertificates": "🏆 Certificates",
+  "certificatesTitle": "Certificates & Diplomas",
+  "certificatesDescription": "Create personalized certificates for your students — Student of the Week, course completion, Olympiad winner, or your own custom nomination.",
+  "certificateTypeLabel": "Certificate type",
+  "certificateTypeWeeklyStar": "Student of the Week",
+  "certificateTypeCourseCompletion": "Course Completion",
+  "certificateTypeOlympiadWinner": "Olympiad Winner",
+  "certificateTypeCustom": "Custom nomination",
+  "customNominationPlaceholder": "e.g. Best class project",
+  "studentNamesLabel": "Student names (one per line)",
+  "studentNamesPlaceholder": "e.g.\nNino Beridze\nGiorgi Maisuradze",
+  "generating": "Generating…",
+  "generateCertificates": "Generate certificates",
+  "generatedCertificatesHeading": "Ready certificates",
+  "downloadCertificate": "Download certificate #{{index}}",
+
+  "educatorSessionSupersededMessage": "Hesabınıza başqa bir cihazdan giriş edildi. Davam etmək üçün yenidən daxil olun.",
+  "privacyFreeTextWarning": "Şagirdin tam adını, əlaqə məlumatlarını, şəxsiyyət nömrəsini və ya tibbi məlumatları daxil etməkdən çəkinin. Aydın e-poçt ünvanları, telefon nömrələri və şəxsiyyət nömrələri AI-a göndərilmədən əvvəl avtomatik silinir, lakin avtomatik silinmə hər şeyi aşkar edə bilməz.",
+  "privacyImageUploadWarning": "Şagirdin tam adı, əlaqə məlumatları, şəxsiyyət nömrəsi və ya digər həssas məlumatların göründüyü işi yükləməyin. Şəkildəki istənilən mətn AI xidmətinə ötürülə bilər."
 }

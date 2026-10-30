@@ -40,7 +40,7 @@ function TrainerAssignmentsContent() {
         getAdminTrainers(),
       ]);
       setAssignments(assignmentsData);
-        setRoster(rosterData.filter((profile) => profile.active));
+      setRoster(rosterData.filter((profile) => profile.active));
       setSelectedId((current) => rosterData.some((profile) => profile.id === current) ? current : (rosterData.find((profile) => profile.active)?.id ?? ''));
     } catch {
       setError('Unable to load trainer assignments.');

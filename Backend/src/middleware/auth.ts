@@ -143,10 +143,23 @@ export async function requireNotBannedOrDeleted(req: Request, res: Response, nex
 // (routes/auth.ts's signToken → services/educatorVipService.ts's
 // issueSessionId), so a token whose `sid` claim no longer matches the DB
 // value was issued to a session a LATER login has since superseded —
-// reject it distinctly (409, not 401) so the frontend can show "signed in
-// elsewhere" rather than a generic "please log in again".
+// rejected distinctly (409, not 401) so the frontend can show "signed in
+// elsewhere" rather than a generic "please log in again". A missing `sid`
+// (a token signed before this claim existed, or any token minted outside
+// signToken) is treated the same as a mismatch, not silently waved through
+// — this check exists specifically to stop a shared/older login from
+// still working, so an absent claim must fail closed, not open.
 export async function requireCurrentEducatorSession(req: Request, res: Response, next: NextFunction) {
-  // Concurrent login restriction disabled. Allow multiple sessions.
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { currentSessionId: true },
+  });
+  if (!user || !req.user!.sid || user.currentSessionId !== req.user!.sid) {
+    return res.status(409).json({
+      code: 'EDUCATOR_SESSION_SUPERSEDED',
+      message: 'This Educator Hub session was superseded by a more recent login on another device.',
+    });
+  }
   next();
 }
 

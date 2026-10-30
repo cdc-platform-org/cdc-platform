@@ -183,7 +183,10 @@ router.post('/', async (req: Request, res: Response) => {
 router.get('/', async (_req: Request, res: Response) => {
   const products = await prisma.digitalProduct.findMany({
     orderBy: { createdAt: 'desc' },
-    include: { submittedBy: { select: { id: true, name: true, email: true } } },
+    include: {
+      submittedBy: { select: { id: true, name: true, email: true } },
+      additionalFiles: { orderBy: { sortOrder: 'asc' } },
+    },
   });
   res.json({ data: products.map(withCurrentProductPrice) });
 });

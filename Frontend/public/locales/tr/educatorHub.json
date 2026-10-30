@@ -168,5 +168,25 @@
   "exportCopied": "Kopyalandı!",
   "exportDocx": "Docx İndir",
   "exportTxt": "TXT İndir",
-  "exportPrint": "🖨️ Yazdır"
+  "exportPrint": "🖨️ Yazdır",
+
+  "tabCertificates": "🏆 Certificates",
+  "certificatesTitle": "Certificates & Diplomas",
+  "certificatesDescription": "Create personalized certificates for your students — Student of the Week, course completion, Olympiad winner, or your own custom nomination.",
+  "certificateTypeLabel": "Certificate type",
+  "certificateTypeWeeklyStar": "Student of the Week",
+  "certificateTypeCourseCompletion": "Course Completion",
+  "certificateTypeOlympiadWinner": "Olympiad Winner",
+  "certificateTypeCustom": "Custom nomination",
+  "customNominationPlaceholder": "e.g. Best class project",
+  "studentNamesLabel": "Student names (one per line)",
+  "studentNamesPlaceholder": "e.g.\nNino Beridze\nGiorgi Maisuradze",
+  "generating": "Generating…",
+  "generateCertificates": "Generate certificates",
+  "generatedCertificatesHeading": "Ready certificates",
+  "downloadCertificate": "Download certificate #{{index}}",
+
+  "educatorSessionSupersededMessage": "Hesabınız başka bir cihazdan oturum açtı. Devam etmek için yeniden giriş yapın.",
+  "privacyFreeTextWarning": "Öğrencinin tam adını, iletişim bilgilerini, kimlik numarasını veya tıbbi bilgilerini eklemekten kaçının. Açık e-posta adresleri, telefon numaraları ve kimlik numaraları yapay zekaya gönderilmeden önce otomatik olarak kaldırılır; ancak otomatik kaldırma her şeyi yakalayamaz.",
+  "privacyImageUploadWarning": "Öğrencinin tam adını, iletişim bilgilerini, kimlik numarasını veya diğer hassas bilgileri gösteren çalışmaları yüklemekten kaçının. Görselde görünen herhangi bir metin yapay zeka hizmetine gönderilebilir."
 }

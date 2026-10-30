@@ -212,9 +212,8 @@ function AssignedTrainingContent() {
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors bg-transparent cursor-pointer ${
-              activeTab === tab ? 'border-cyan-600 text-cyan-700 dark:text-cyan-300' : 'border-transparent text-slate-400 hover:text-slate-600'
-            }`}
+            className={`px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors bg-transparent cursor-pointer ${activeTab === tab ? 'border-cyan-600 text-cyan-700 dark:text-cyan-300' : 'border-transparent text-slate-400 hover:text-slate-600'
+              }`}
           >
             {copy[lang][tab]}
           </button>
@@ -232,9 +231,8 @@ function AssignedTrainingContent() {
                   <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{participant.user.name}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{participant.user.email}</p>
                 </div>
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded shrink-0 ${
-                  participant.status === 'ACTIVE' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-500 bg-slate-100'
-                }`}>
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded shrink-0 ${participant.status === 'ACTIVE' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-500 bg-slate-100'
+                  }`}>
                   {participant.status}
                 </span>
               </div>

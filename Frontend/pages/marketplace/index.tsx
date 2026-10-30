@@ -6,7 +6,7 @@ import { useRouter } from 'next/router';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { ShoppingBag, CheckCircle2, Tag, Star, Plus, Crown, Mic, GraduationCap, ShieldCheck, Search, SlidersHorizontal, X, ChevronDown } from 'lucide-react';
+import { ShoppingBag, CheckCircle2, Tag, Star, Plus, Crown, Mic, ShieldCheck, Search, SlidersHorizontal, X, ChevronDown, BookOpen, Sparkles } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
@@ -20,8 +20,7 @@ import { getSiteContent } from '../../src/services/siteContentService';
 import { ToolCatalogContent } from '../../src/types/siteContent';
 import { findToolEntry, overrideText } from '../../src/utils/toolCatalog';
 
-// The 4 CDC-built AI SaaS tools cross-listed under the "Business Tools"
-// marketplace category (see the section below the filter chips) — these are
+// CDC-built AI tools cross-listed under the Digital AI Tools category — these are
 // NOT DigitalProduct rows (no price, no file, no seller — they're live
 // dashboard tools, not downloadable purchases), so they're a small fixed
 // list rendered directly here rather than seeded into the real product
@@ -35,10 +34,14 @@ import { findToolEntry, overrideText } from '../../src/utils/toolCatalog';
 const SAAS_TOOLS = [
   { id: 'educator-hub', href: '/dashboard/tools/educator-hub', icon: Crown, accent: 'from-amber-500 to-purple-600' },
   { id: 'media-studio', href: '/dashboard/tools/media-studio', icon: Mic, accent: 'from-cyan-500 to-purple-600' },
-  { id: 'english-tutor', href: '/dashboard/english-tutor', icon: GraduationCap, accent: 'from-purple-500 to-cyan-600' },
+  { id: 'smart-reader', href: '/#ai-tools', icon: BookOpen, accent: 'from-cyan-500 to-emerald-600' },
   // Self-service practice version — distinct from the Business-gated
   // candidate-screening system at /dashboard/ai-tools (tools.tsx's Card 2).
   { id: 'proctoring', href: '/dashboard/tools/proctored-exam', icon: ShieldCheck, accent: 'from-cyan-500 to-purple-600' },
+  // Personalized Children's Book — a server-priced one-time purchase,
+  // linked into the existing dashboard wizard rather than represented by
+  // a downloadable DigitalProduct row.
+  { id: 'childrens-book', href: '/dashboard/tools/childrens-book', icon: BookOpen, accent: 'from-pink-500 to-purple-600' },
 ] as const;
 
 type SortOption = 'newest' | 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc' | 'popularity';
@@ -56,12 +59,35 @@ const PRICE_FILTERS: PriceFilter[] = ['all', 'free', 'paid'];
 const PRICE_FILTER_LABEL_KEYS: Record<PriceFilter, string> = { all: 'all', free: 'free', paid: 'paid' };
 
 const SEARCH_DEBOUNCE_MS = 300;
+const AI_TOOLS_CATEGORY = MARKETPLACE_CATEGORIES[0].value;
+const INTERNAL_CATEGORY_MARKER = /(?:^|[^a-z0-9])(?:qa|e2e|test(?:ing)?|fixture|fixtures|demo|seed)(?:$|[^a-z0-9])/i;
+const PERSONALIZED_LEARNING_MARKER = /\b(?:tutor|tutoring|personalized learning|adaptive learning|ai teacher)\b|პერსონალური სწავლ|რეპეტიტორ/i;
+const AI_UTILITY_CATEGORY_MARKER = /\bai(?:[_\s-]+(?:prompts?[_\s-]+)?)?tools?\b|ai_prompts_tools/i;
+const AI_SIGNAL_MARKER = /\bai\b|artificial intelligence|ხელოვნური ინტელექტ/i;
+const AI_UTILITY_TYPE_MARKER = /\b(?:assistant|generator|reader|prompt|productivity tool|ai tool)\b|ასისტენტ|გენერატორ|მკითხველ|AI ხელსაწყო/i;
+
+function isInternalCatalogProduct(product: DigitalProduct): boolean {
+  return INTERNAL_CATEGORY_MARKER.test(product.category);
+}
+
+function marketplaceProductCategory(product: DigitalProduct, lang: 'ka' | 'en'): string {
+  const content = `${product.category} ${productTitle(product, lang)} ${productDescription(product, lang)}`;
+  const isAiUtility = AI_SIGNAL_MARKER.test(content) && AI_UTILITY_TYPE_MARKER.test(content);
+  if (
+    !PERSONALIZED_LEARNING_MARKER.test(content) &&
+    (AI_UTILITY_CATEGORY_MARKER.test(product.category) || isAiUtility)
+  ) {
+    return AI_TOOLS_CATEGORY[lang];
+  }
+  return product.category;
+}
 
 function MarketplaceContent() {
   const { t } = useTranslation('marketplace');
   const { t: tEdu } = useTranslation('educatorHub');
   const { t: tm } = useTranslation('mediaStudio');
   const { t: th } = useTranslation('home');
+  const { t: tCB } = useTranslation('childrensBook');
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
@@ -87,11 +113,12 @@ function MarketplaceContent() {
       .catch(() => setToolCatalog({}));
   }, []);
 
-  const load = useCallback(async (category: string | null) => {
+  const load = useCallback(async (category: string | null, locale: 'ka' | 'en') => {
     setLoading(true);
     setError(false);
     try {
-      setProducts(await getProducts(category ?? undefined));
+      const catalog = (await getProducts()).filter((product) => !isInternalCatalogProduct(product));
+      setProducts(category ? catalog.filter((product) => marketplaceProductCategory(product, locale) === category) : catalog);
     } catch {
       setError(true);
     } finally {
@@ -101,16 +128,15 @@ function MarketplaceContent() {
 
   useEffect(() => {
     if (!router.isReady) return;
-    load(categoryParam);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router.isReady, categoryParam]);
+    load(categoryParam, lang);
+  }, [router.isReady, categoryParam, lang, load]);
 
   // Curated marketplace taxonomy first, then any other category values
   // actually present on products (so nothing already published silently
   // disappears from "All" while the catalog is still adopting the new
   // categories) — de-duplicated.
   const categoryChips = useMemo(() => {
-    const fromCatalog = Array.from(new Set(products.map((p) => p.category)));
+    const fromCatalog = Array.from(new Set(products.map((product) => marketplaceProductCategory(product, lang))));
     const curated = MARKETPLACE_CATEGORIES.map((c) => c.value[lang]);
     return Array.from(new Set([...curated, ...fromCatalog]));
   }, [products, lang]);
@@ -238,20 +264,35 @@ function MarketplaceContent() {
     });
   }, [products, debouncedSearch, priceFilter, minPriceInput, maxPriceInput, sortBy, lang, collatorLocale]);
 
-  // Shown only under the "Business Tools" filter (matches either the ka or
-  // en literal value products are actually tagged with — see
-  // MARKETPLACE_CATEGORIES' own comment on why category is free text, not
-  // an enum), not under "All" — keeps the main catalog view unchanged.
-  const showSaasTools = categoryParam === MARKETPLACE_CATEGORIES[0].value.ka || categoryParam === MARKETPLACE_CATEGORIES[0].value.en;
+  // Shown only under the dedicated Digital AI Tools filter, not under
+  // "All" — utilities stay grouped with AI products without duplicating
+  // them into the downloadable-product results.
+  const showSaasTools = categoryParam === AI_TOOLS_CATEGORY.ka || categoryParam === AI_TOOLS_CATEGORY.en;
 
-  const saasToolDefaults: Record<(typeof SAAS_TOOLS)[number]['id'], { title: string; desc: string; badge: string; cta: string }> = {
+  const saasToolDefaults: Record<(typeof SAAS_TOOLS)[number]['id'], { title: string; desc: string; badge: string; cta: string; features?: string[] }> = {
     'educator-hub': { title: tEdu('pageTitle'), desc: tEdu('pageSubtitle'), badge: tEdu('vipBadge'), cta: tEdu('trialCta') },
     'media-studio': { title: tm('catalogTitle'), desc: tm('catalogDesc'), badge: tm('catalogTag'), cta: t('saasLaunchCta') },
-    'english-tutor': { title: th('imiakoCardTitle'), desc: th('imiakoFeature1'), badge: th('imiakoBadgeFreeTrial'), cta: t('saasLaunchCta') },
+    'smart-reader': {
+      title: lang === 'ka' ? 'AI ჭკვიანი წამკითხველი' : 'AI Smart Reader',
+      desc: lang === 'ka' ? 'ივარჯიშე კითხვასა და გამოთქმაში AI-ის პერსონალური დახმარებით.' : 'Practice reading and pronunciation with interactive AI guidance.',
+      badge: lang === 'ka' ? 'AI ხელსაწყო' : 'AI tool',
+      cta: lang === 'ka' ? 'წამკითხველის გახსნა' : 'Open Smart Reader',
+    },
     proctoring: { title: t('proctoringTitle'), desc: t('proctoringDesc'), badge: t('proctoringBadge'), cta: t('saasLaunchCta') },
+    'childrens-book': {
+      title: lang === 'ka' ? 'პერსონალური საბავშვო წიგნი' : "Personalized Children's Book",
+      desc: lang === 'ka'
+        ? 'შექმენი უნიკალური ისტორია, სადაც შენი ბავშვი მთავარი გმირია.'
+        : 'Create a unique story where your child is the main character.',
+      badge: tCB('cardBadge'),
+      cta: lang === 'ka' ? 'შექმენი წიგნი' : 'Create your book',
+      features: lang === 'ka'
+        ? ['5–20 გვერდი', '1 გვერდი = 1 ₾', 'პერსონალური გმირი', 'ილუსტრირებული ისტორია', 'PDF ვერსია', 'მოსასმენი ვერსია სურვილისამებრ +5 ₾']
+        : ['5–20 pages', '1 page = 1 GEL', 'Personalized main character', 'Illustrated story', 'PDF version', 'Optional audio story +5 GEL'],
+    },
   };
 
-  type SaasToolCopy = { title: string; desc: string; badge: string; cta: string; status: 'ACTIVE' | 'COMING_SOON' | 'DISABLED' };
+  type SaasToolCopy = { title: string; desc: string; badge: string; cta: string; features?: string[]; status: 'ACTIVE' | 'COMING_SOON' | 'DISABLED' };
 
   // Layers pages/admin/tools.tsx's saved overrides on top of the defaults
   // above — a DISABLED entry is hidden entirely, COMING_SOON swaps the CTA
@@ -265,6 +306,7 @@ function MarketplaceContent() {
       desc: overrideText(fallback.desc, lang === 'ka' ? cms?.descriptionKa : cms?.descriptionEn),
       badge: overrideText(fallback.badge, lang === 'ka' ? cms?.badgeKa : cms?.badgeEn),
       cta: fallback.cta,
+      features: fallback.features,
       status: cms?.status ?? 'ACTIVE',
     };
     return acc;
@@ -392,6 +434,7 @@ function MarketplaceContent() {
                         {comingSoon ? t('comingSoonBadge') : copy.badge}
                       </span>
                       <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 mb-2">{copy.desc}</p>
+                      {copy.features && <ul className="mb-3 grid gap-1 text-xs text-slate-600 dark:text-slate-300">{copy.features.map((feature) => <li key={feature}>• {feature}</li>)}</ul>}
                       {!comingSoon && <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">{copy.cta} →</span>}
                     </div>
                   </div>
@@ -707,5 +750,5 @@ export default function MarketplacePage() {
 }
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'ka', ['marketplace', 'educatorHub', 'mediaStudio', 'home'])) },
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['marketplace', 'educatorHub', 'mediaStudio', 'home', 'childrensBook'])) },
 });
