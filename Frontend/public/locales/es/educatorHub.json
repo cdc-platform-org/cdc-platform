@@ -183,5 +183,8 @@
   "generatedCertificatesHeading": "Certificados generados",
   "downloadCertificate": "Descargar certificado n.º {{index}}",
   "certificatesTitle": "Generador de certificados y diplomas",
-  "certificatesDescription": "Crea certificados y diplomas imprimibles para tus alumnos en segundos."
+  "certificatesDescription": "Crea certificados y diplomas imprimibles para tus alumnos en segundos.",
+  "educatorSessionSupersededMessage": "Su cuenta inició sesión en otro dispositivo. Vuelva a iniciar sesión para continuar.",
+  "privacyFreeTextWarning": "Evite incluir el nombre completo del estudiante, datos de contacto, número de identificación o información médica. Los correos electrónicos, números de teléfono y números de identificación evidentes se eliminan automáticamente antes de enviarse a la IA, pero la eliminación automática no puede detectarlo todo.",
+  "privacyImageUploadWarning": "Evite subir trabajos que muestren el nombre completo del estudiante, datos de contacto, número de identificación u otra información sensible. Cualquier texto visible en la imagen puede enviarse al servicio de IA."
 }

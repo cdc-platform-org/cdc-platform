@@ -216,7 +216,48 @@ export interface QuizSubmissionSummary {
   submittedAt: string;
 }
 
+export interface QuizSubmissionDetailQuestion {
+  id: string;
+  question: string;
+  studentAnswer: string;
+  correctAnswer: string;
+  correct: boolean | null;
+  answerStatus: 'correct' | 'incorrect' | 'unanswered';
+  feedback?: string;
+}
+
+export interface QuizSubmissionDetail {
+  submission: {
+    id: string;
+    studentName: string;
+    score: number;
+    submittedAt: string;
+  };
+  questions: QuizSubmissionDetailQuestion[];
+}
+
 export async function getQuizSubmissions(quizId: string): Promise<QuizSubmissionSummary[]> {
   const response = await apiClient.get<{ data: QuizSubmissionSummary[] }>(`/educator-hub/quizzes/${quizId}/submissions`);
+  return response.data.data;
+}
+
+export async function getQuizSubmissionDetail(quizId: string, submissionId: string): Promise<QuizSubmissionDetail> {
+  const response = await apiClient.get<{ data: QuizSubmissionDetail }>(`/educator-hub/quizzes/${quizId}/submissions/${submissionId}`);
+  return response.data.data;
+}
+
+// ---- Module 8: Certificate builder ----
+
+export type TeacherCertificateType = 'WEEKLY_STAR' | 'COURSE_COMPLETION' | 'OLYMPIAD_WINNER' | 'CUSTOM';
+
+export interface GenerateCertificatesPayload {
+  names: string[];
+  certificateType: TeacherCertificateType;
+  customNomination?: string;
+  language: 'ka' | 'en';
+}
+
+export async function generateCertificates(payload: GenerateCertificatesPayload): Promise<{ certificates: string[] }> {
+  const response = await apiClient.post<{ data: { certificates: string[] } }>('/educator-hub/generate-certificates', payload, { timeout: 90 * 1000 });
   return response.data.data;
 }

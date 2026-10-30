@@ -707,3 +707,168 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Buf
   const bytes = await doc.save();
   return Buffer.from(bytes);
 }
+
+// ============================================================
+// Teacher-issued classroom certificates (Educator Hub Module 8) — a
+// deliberately separate, simpler generator from generateCertificatePdf
+// above. That one is tied to a specific course-completion artwork template
+// with instructor/director/QR-verification fields sourced from a real
+// Course/enrollment record; a teacher awarding a "Weekly Star" or Olympiad
+// certificate to their own student has no course, no instructor-of-record,
+// and nothing to publicly verify. Rather than force these into the
+// mismatched "successfully completed the course" wording, this draws its
+// own simple bordered layout — but reuses every reusable primitive from
+// above (mixed Georgian/Latin font embedding, fitted/wrapped text drawing)
+// instead of duplicating that logic.
+// ============================================================
+
+export type TeacherCertificateType = 'WEEKLY_STAR' | 'COURSE_COMPLETION' | 'OLYMPIAD_WINNER' | 'CUSTOM';
+
+export interface TeacherCertificateData {
+  studentName: string;
+  certificateType: TeacherCertificateType;
+  // Required by the caller (see educatorHub.ts's schema refinement) when
+  // certificateType is CUSTOM — used verbatim as the achievement line
+  // instead of one of the fixed TEACHER_CERT_TYPE_LABELS below.
+  customNomination?: string;
+  language: 'ka' | 'en';
+  issueDate: Date;
+}
+
+const TEACHER_CERT_TYPE_LABELS: Record<Exclude<TeacherCertificateType, 'CUSTOM'>, { ka: string; en: string }> = {
+  WEEKLY_STAR: { ka: 'კვირის ვარსკვლავი', en: 'Student of the Week' },
+  COURSE_COMPLETION: { ka: 'კურსის წარმატებით დასრულება', en: 'Certificate of Completion' },
+  OLYMPIAD_WINNER: { ka: 'ოლიმპიადის გამარჯვებული', en: 'Olympiad Winner' },
+};
+
+export async function generateTeacherCertificatePdf(data: TeacherCertificateData): Promise<Buffer> {
+  const doc = await PDFDocument.create();
+  doc.registerFontkit(fontkit);
+  // Same page proportions as the course-completion template above, for
+  // visual consistency across every certificate this platform issues, even
+  // though this one draws its own background rather than loading one.
+  const page = doc.addPage([1491, 1055]);
+  const { width, height } = page.getSize();
+
+  const latinBold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const latinRegular = await doc.embedFont(StandardFonts.Helvetica);
+  const georgianBold = await doc.embedFont(fs.readFileSync(GEORGIAN_FONT_BOLD_PATH), { subset: true });
+  const georgianRegular = await doc.embedFont(fs.readFileSync(GEORGIAN_FONT_REGULAR_PATH), { subset: true });
+  const boldFonts: MixedFontPair = { georgian: georgianBold, latin: latinBold };
+  const regularFonts: MixedFontPair = { georgian: georgianRegular, latin: latinRegular };
+
+  const navy = rgb(0.06, 0.09, 0.16);
+  const slate = rgb(0.42, 0.45, 0.52);
+  const gold = rgb(0.72, 0.56, 0.15);
+  const centerX = width / 2;
+  const isCustom = data.certificateType === 'CUSTOM';
+
+  page.drawRectangle({ x: 0, y: 0, width, height, color: rgb(1, 1, 1) });
+  page.drawRectangle({ x: 40, y: 40, width: width - 80, height: height - 80, borderColor: gold, borderWidth: 3 });
+  page.drawRectangle({ x: 56, y: 56, width: width - 112, height: height - 112, borderColor: navy, borderWidth: 1 });
+
+  drawFittedLine(page, 'CDC', {
+    centerX,
+    y: height - 140,
+    maxWidth: width * 0.3,
+    startSize: 26,
+    minSize: 18,
+    color: navy,
+    fonts: boldFonts,
+    letterSpacing: 4,
+  });
+
+  const heading = data.language === 'ka' ? 'სერტიფიკატი' : 'Certificate';
+  drawFittedLine(page, heading, {
+    centerX,
+    y: height - 230,
+    maxWidth: width * 0.6,
+    startSize: 36,
+    minSize: 22,
+    color: navy,
+    fonts: boldFonts,
+  });
+
+  if (data.certificateType !== 'CUSTOM') {
+    const typeLabel = TEACHER_CERT_TYPE_LABELS[data.certificateType][data.language];
+    drawFittedLine(page, typeLabel, {
+      centerX,
+      y: height - 285,
+      maxWidth: width * 0.7,
+      startSize: 20,
+      minSize: 14,
+      color: gold,
+      fonts: boldFonts,
+    });
+  }
+
+  const presentedTo = data.language === 'ka' ? 'გადაეცემა' : 'This certificate is presented to';
+  drawFittedLine(page, presentedTo, {
+    centerX,
+    y: height - 390,
+    maxWidth: width * 0.6,
+    startSize: 16,
+    minSize: 10,
+    color: slate,
+    fonts: regularFonts,
+  });
+
+  drawFittedLine(page, data.studentName, {
+    centerX,
+    y: height - 470,
+    maxWidth: width * 0.75,
+    startSize: 46,
+    minSize: 22,
+    color: navy,
+    fonts: boldFonts,
+  });
+
+  // CUSTOM certificates use the teacher's own nomination text as the
+  // achievement line (already validated non-empty by the caller); every
+  // other type gets a fixed, language-appropriate line.
+  const achievementText = isCustom
+    ? data.customNomination!.trim()
+    : data.language === 'ka'
+    ? 'მინიჭებულია წარმატებული მუშაობისთვის'
+    : 'Awarded for outstanding achievement';
+  const { size: achievementSize, lines: achievementLines } = fitMixedTextMultiline(achievementText, width * 0.72, {
+    baseSize: 22,
+    longTitleThreshold: 60,
+    longTitleSize: 18,
+    minSize: 14,
+    maxLines: 2,
+    fonts: regularFonts,
+  });
+  drawMixedScriptBlock(page, achievementLines, {
+    centerX,
+    centerY: height - 570,
+    size: achievementSize,
+    lineHeight: achievementSize * 1.3,
+    color: slate,
+    fonts: regularFonts,
+  });
+
+  const dateLabel = data.language === 'ka' ? 'გაცემის თარიღი' : 'Issue Date';
+  drawFittedLine(page, `${dateLabel}: ${data.issueDate.toISOString().slice(0, 10)}`, {
+    centerX,
+    y: 130,
+    maxWidth: width * 0.4,
+    startSize: 14,
+    minSize: 10,
+    color: slate,
+    fonts: regularFonts,
+  });
+
+  drawFittedLine(page, 'CDC — Center for Digital Careers', {
+    centerX,
+    y: 90,
+    maxWidth: width * 0.5,
+    startSize: 12,
+    minSize: 9,
+    color: slate,
+    fonts: regularFonts,
+  });
+
+  const bytes = await doc.save();
+  return Buffer.from(bytes);
+}
