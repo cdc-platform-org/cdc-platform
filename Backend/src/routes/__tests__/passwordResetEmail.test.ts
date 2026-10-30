@@ -104,6 +104,7 @@ describe('forgot-password / reset-password — token & security behavior unchang
 
     const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
     let forgotRes: Response;
+    let loggedLines: string[] = [];
     try {
       forgotRes = await post('/api/auth/forgot-password', { email: user.email, lang: 'ka' });
     } finally {
@@ -111,7 +112,7 @@ describe('forgot-password / reset-password — token & security behavior unchang
       // covered separately below — this just needs to extract the token
       // that the (pre-existing, unchanged) dev-mode fallback prints when no
       // RESEND_API_KEY is configured, which is always true in this test env.
-      var loggedLines = logSpy.mock.calls.map((args) => args.join(' '));
+      loggedLines = logSpy.mock.calls.map((args) => args.join(' '));
       logSpy.mockRestore();
     }
     expect(forgotRes.status).toBe(200);
