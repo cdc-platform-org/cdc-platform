@@ -13,3 +13,5 @@ public/uploads/*
 # BOOK_USE_CLOUD_STORAGE isn't set (services/bookStorageService.ts) —
 # runtime output, not source.
 local-storage/
+
+test-results/

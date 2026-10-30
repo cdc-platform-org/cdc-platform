@@ -718,22 +718,58 @@ export async function sendMediaStudioExport(params: {
   await resend.emails.send({ from: EMAIL_FROM, to, subject, html, replyTo: senderEmail });
 }
 
-export async function sendPasswordResetEmail(email: string, token: string, lang: 'ka' | 'en' = 'ka'): Promise<void> {
-  const link = `${FRONTEND_URL}/reset-password?token=${token}`;
+// Password-reset emails exist in exactly two content variants — Georgian
+// and English — never per-site-locale. Georgian only for an explicit 'ka';
+// every other site locale (en/de/es/fr/uk/tr/hy/az) and any missing/
+// unrecognized value falls back to English, since English is the safer
+// universal default for a locale this template doesn't have its own copy
+// for. This is the single place that rule is implemented — callers
+// (routes/auth.ts, routes/admin.ts) just pass through whatever lang they
+// have, including undefined.
+function resolvePasswordResetEmailLocale(lang?: string): 'ka' | 'en' {
+  return lang === 'ka' ? 'ka' : 'en';
+}
+
+// Pure content builder, exported only so tests can assert on the exact
+// subject/heading/body/button text per language without needing to scrape
+// console output (the dev-mode fallback log only ever prints Subject+Link,
+// never the HTML body) or mock the Resend SDK. sendPasswordResetEmail below
+// is the only real caller in application code.
+export function buildPasswordResetEmailContent(
+  token: string,
+  lang?: string
+): { resolvedLang: 'ka' | 'en'; subject: string; link: string; html: string } {
+  const resolvedLang = resolvePasswordResetEmailLocale(lang);
+  // /reset-password is a normal Next.js i18n page (defaultLocale 'ka' is
+  // unprefixed, every other locale is path-prefixed) — prefixing with /en
+  // here keeps the page the link opens on in the same language as the email
+  // itself, rather than leaving it to whatever locale the browser happens
+  // to detect at click-through time.
+  const localePrefix = resolvedLang === 'en' ? '/en' : '';
+  const link = `${FRONTEND_URL}${localePrefix}/reset-password?token=${token}`;
   const html =
-    lang === 'en'
+    resolvedLang === 'en'
       ? wrapTemplate(
-          'Reset Your Password',
-          'We received a request to reset your CDC account password. If you did not request this, simply ignore this email — your password will remain unchanged. This link is valid for 1 hour.',
-          'Reset Password',
+          'Reset your password',
+          '<p>We received a request to reset the password for your CDC account.</p>' +
+            '<p>If you did not make this request, you can safely ignore this email. Your password will remain unchanged.</p>' +
+            '<p style="margin-top:16px;font-size:12px;color:#94a3b8;">For security reasons, this password reset link is valid for a limited time.</p>',
+          'Reset password',
           link
         )
       : wrapTemplate(
           'პაროლის აღდგენა',
-          'მიღებულია მოთხოვნა თქვენი CDC ანგარიშის პაროლის აღდგენაზე. თუ ეს თქვენ არ მოგითხოვიათ, უბრალოდ იგნორირება გაუკეთეთ ამ წერილს — თქვენი პაროლი უცვლელი დარჩება. ბმული ვალიდურია 1 საათის განმავლობაში.',
+          '<p>მიღებულია მოთხოვნა თქვენი CDC ანგარიშის პაროლის აღდგენაზე.</p>' +
+            '<p>თუ ეს მოთხოვნა თქვენ არ გამოგიგზავნიათ, შეგიძლიათ უგულებელყოთ ეს წერილი. თქვენი პაროლი უცვლელი დარჩება.</p>' +
+            '<p style="margin-top:16px;font-size:12px;color:#94a3b8;">უსაფრთხოების მიზნით, პაროლის აღდგენის ბმული მოქმედებს შეზღუდული დროით.</p>',
           'პაროლის აღდგენა',
           link
         );
-  const subject = lang === 'en' ? 'CDC — Password Reset' : 'CDC — პაროლის აღდგენა';
+  const subject = resolvedLang === 'en' ? 'Reset your password — CDC' : 'პაროლის აღდგენა — CDC';
+  return { resolvedLang, subject, link, html };
+}
+
+export async function sendPasswordResetEmail(email: string, token: string, lang?: string): Promise<void> {
+  const { subject, link, html } = buildPasswordResetEmailContent(token, lang);
   await sendEmail(email, subject, html, link);
 }

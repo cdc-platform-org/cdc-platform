@@ -3638,15 +3638,25 @@ model TeacherQuizQuestion {
 }
 
 model TeacherQuizSubmission {
-  id          String      @id @default(uuid())
-  quizId      String
-  quiz        TeacherQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  studentName String
+  id             String      @id @default(uuid())
+  quizId         String
+  quiz           TeacherQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  studentName    String
   // { [questionId]: studentAnswer } — same one-JSON-blob convention as
   // ExamSubmission.answers above.
-  answers     Json
-  score       Float
-  submittedAt DateTime    @default(now())
+  answers        Json
+  score          Float
+  // Per-question grading verdicts computed once at submission time — see
+  // teacherQuizService.ts's submitTeacherQuiz/getSubmissionDetailForTeacher.
+  // { questionId, correct, feedback?, gradingFailed? }[]. Nullable so
+  // pre-existing rows (submitted before this field existed) are simply
+  // ungraded-until-first-viewed rather than requiring a backfill — see
+  // getSubmissionDetailForTeacher's lazy-grade-once-then-persist path for
+  // exactly those rows. gradingFailed marks a question whose AI grading
+  // attempt errored (never a fabricated "correct" verdict — see
+  // gradeFreeTextAnswer's own comment).
+  gradingResults Json?
+  submittedAt    DateTime    @default(now())
 
   @@index([quizId])
   @@map("teacher_quiz_submissions")

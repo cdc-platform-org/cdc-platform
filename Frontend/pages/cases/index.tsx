@@ -153,7 +153,7 @@ export default function StudioCasesPage() {
                   )}
                 </div>
                 <div className="p-6">
-                  <span className="text-[11px] font-black uppercase tracking-widest block mb-2 text-cyan-500">{item.category}</span>
+                  <span title={item.category} className="text-[11px] leading-4 font-black uppercase tracking-widest block truncate mb-4 text-cyan-500">{item.category}</span>
                   <h3 className="text-lg font-black mb-2 flex items-center gap-1.5">
                     {studioCaseTitle(item, contentLang)}
                     <ArrowUpRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />

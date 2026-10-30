@@ -20,6 +20,7 @@ import {
   Users,
 } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
+import { useAuth } from '../../../src/context/AuthContext';
 import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
@@ -29,6 +30,7 @@ import RichTextEditor from '../../../src/components/shared/RichTextEditor';
 import FileDropzone from '../../../src/components/shared/FileDropzone';
 import CertificateBuilder from '../../../src/components/certificates/CertificateBuilder';
 import { resolveLocale, contentLocale } from '../../../src/utils/locale';
+import { parseMarkdownBlocks, markdownToPlainText, MarkdownSpan } from '../../../src/utils/richContent';
 import {
   getEducatorHubState,
   startEducatorVipTrial,
@@ -37,6 +39,7 @@ import {
   gradeHomework,
   createQuiz,
   getQuizSubmissions,
+  getQuizSubmissionDetail,
   EducatorHubState,
   QuestionType,
   Difficulty,
@@ -44,6 +47,7 @@ import {
   GeneratedRubric,
   GradedHomework,
   QuizSubmissionSummary,
+  QuizSubmissionDetail,
   generateDifferentiatedTask,
   GeneratedDifferentiatedTask,
   generateLessonPlan,
@@ -71,6 +75,22 @@ const REAL_TABS: { id: TabId; icon: typeof FileText }[] = [
   { id: 'certificates', icon: Crown }, // New tab for certificates
 ];
 
+// Explicit per-tab i18n key + Georgian fallback, one entry per TabId — the
+// previous id-to-label mapping was an inline ternary chain with no branch
+// for 'certificates', so that tab silently fell through to the final
+// `else` (parentReports') label instead of failing loudly. A lookup object
+// makes a missing tab a type error instead of a silent wrong-label bug.
+const TAB_LABELS: Record<TabId, { key: string; fallback: string }> = {
+  test: { key: 'tabTestGenerator', fallback: 'ტესტები & პასუხები' },
+  rubric: { key: 'tabRubric', fallback: 'შეფასების რუბრიკები' },
+  grading: { key: 'tabGrading', fallback: 'დავალებების გასწორება' },
+  sen: { key: 'tabSen', fallback: 'დიფერენცირებული & სსსმ' },
+  lessonPlan: { key: 'tabLessonPlan', fallback: 'გაკვეთილის გეგმები' },
+  bureaucracy: { key: 'tabBureaucracy', fallback: 'სკოლის დოკუმენტაცია' },
+  parentReports: { key: 'tabParentReports', fallback: 'მოსწავლის რეპორტები' },
+  certificates: { key: 'tabCertificates', fallback: '🏆 სერტიფიკატები' },
+};
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -82,13 +102,43 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+// Shared with exportTxt/handleCopy below via richContent.ts's
+// parseMarkdownBlocks — one parser, three output surfaces, rather than each
+// one having its own ad-hoc "strip out the # and *" regex. DOCX gets real
+// structure (HeadingLevel, bold/italic TextRuns, actual list bullets); TXT
+// and Copy get markdownToPlainText's clean-text rendering instead.
 async function exportDocx(sections: { heading: string; body: string }[], filename: string) {
   const { Document, Packer, Paragraph, HeadingLevel, TextRun } = await import('docx');
-  const toParagraphs = (text: string) => text.split('\n').map((line) => new Paragraph({ children: [new TextRun(line)] }));
+  const HEADING_LEVELS = [HeadingLevel.HEADING_1, HeadingLevel.HEADING_2, HeadingLevel.HEADING_3] as const;
+  const spansToRuns = (spans: MarkdownSpan[]) => spans.map((s) => new TextRun({ text: s.text, bold: s.bold, italics: s.italic }));
+
   const children: any[] = [];
   sections.forEach(({ heading, body }) => {
     children.push(new Paragraph({ text: heading, heading: HeadingLevel.HEADING_1 }));
-    children.push(...toParagraphs(body));
+    for (const block of parseMarkdownBlocks(body)) {
+      switch (block.type) {
+        case 'blank':
+          children.push(new Paragraph({ text: '' }));
+          break;
+        case 'heading':
+          children.push(new Paragraph({ children: spansToRuns(block.spans), heading: HEADING_LEVELS[block.level - 1] }));
+          break;
+        case 'bullet':
+          children.push(new Paragraph({ children: spansToRuns(block.spans), bullet: { level: 0 } }));
+          break;
+        case 'numbered':
+          // The visible "N. " prefix is real content, not a hidden syntax
+          // marker (unlike ### / **) — it's kept as plain text rather than
+          // wired into docx's separate numbering-definition API, which
+          // would be real "appropriate DOCX construct" overkill for what's
+          // otherwise a correctly-rendered line already.
+          children.push(new Paragraph({ children: [new TextRun(`${block.index}. `), ...spansToRuns(block.spans)] }));
+          break;
+        case 'paragraph':
+          children.push(new Paragraph({ children: spansToRuns(block.spans) }));
+          break;
+      }
+    }
   });
   const doc = new Document({ sections: [{ children }] });
   const blob = await Packer.toBlob(doc);
@@ -96,7 +146,7 @@ async function exportDocx(sections: { heading: string; body: string }[], filenam
 }
 
 function exportTxt(sections: { heading: string; body: string }[], filename: string) {
-  const text = sections.map(({ heading, body }) => `${heading}\n\n${body}`).join('\n\n---\n\n');
+  const text = sections.map(({ heading, body }) => `${heading}\n\n${markdownToPlainText(body)}`).join('\n\n---\n\n');
   downloadBlob(new Blob([text], { type: 'text/plain;charset=utf-8' }), filename);
 }
 
@@ -111,7 +161,7 @@ function extractErrorMessage(err: any, fallback: string): { message: string; cod
 function ExportBar({ t, sections, filenameBase, printAreaId }: { t: (k: string) => string; sections: { heading: string; body: string }[]; filenameBase: string; printAreaId: string }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(sections.map((s) => `${s.heading}\n\n${s.body}`).join('\n\n---\n\n'));
+    await navigator.clipboard.writeText(sections.map((s) => `${s.heading}\n\n${markdownToPlainText(s.body)}`).join('\n\n---\n\n'));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -165,8 +215,19 @@ const labelClass = 'block text-xs font-bold text-slate-600 dark:text-slate-300 m
 // the option list's default background in some browsers.
 const optionClass = 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white';
 
+// D8 — a lightweight, non-blocking privacy reminder shown beside the
+// free-text/upload fields the D7/D8 audit flagged as the highest-risk
+// surfaces (parent letter notes, bureaucracy key points, homework text/
+// image, test source text/upload). Deliberately just inline text, not a
+// modal or mandatory checkbox — see the approved design report's "no
+// mandatory gate per generation" decision.
+function PrivacyHint({ children }: { children: string }) {
+  return <p className="mt-1.5 text-[11px] leading-snug text-slate-500 dark:text-slate-400">{children}</p>;
+}
+
 function EducatorHubContent() {
   const router = useRouter();
+  const { logout } = useAuth();
   const lang = contentLocale(resolveLocale(router.locale));
   const { t } = useTranslation('educatorHub');
 
@@ -212,6 +273,18 @@ function EducatorHubContent() {
   // what the header CTA should say.
   const handleModuleError = (err: any, fallback: string, setError: (msg: string) => void) => {
     const { message, code } = extractErrorMessage(err, fallback);
+    // D7: this account's Educator Hub session was superseded by a newer
+    // login elsewhere. Show the approved localized message (never the raw
+    // server message), then sign the stale session out locally and send
+    // the teacher back through the existing login flow — same
+    // redirect-on-return pattern ProtectedRoute itself uses — rather than
+    // leaving them stuck on a page every further action will 409 on.
+    if (code === 'EDUCATOR_SESSION_SUPERSEDED') {
+      setError(t('educatorSessionSupersededMessage'));
+      logout();
+      setTimeout(() => router.push(`/auth/login?redirect=${encodeURIComponent(router.asPath)}`), 2500);
+      return;
+    }
     if (code === 'VIP_REQUIRED' || code === 'QUOTA_EXCEEDED') {
       refreshState();
     }
@@ -241,6 +314,9 @@ function EducatorHubContent() {
   const [quizId, setQuizId] = useState<string | null>(null);
   const [quizSubmissions, setQuizSubmissions] = useState<QuizSubmissionSummary[] | null>(null);
   const [quizSubmissionsLoading, setQuizSubmissionsLoading] = useState(false);
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(null);
+  const [selectedSubmissionDetail, setSelectedSubmissionDetail] = useState<QuizSubmissionDetail | null>(null);
+  const [submissionDetailLoading, setSubmissionDetailLoading] = useState(false);
 
   const toggleTestType = (type: QuestionType) => {
     setTestTypes((prev) => (prev.includes(type) ? prev.filter((x) => x !== type) : [...prev, type]));
@@ -299,10 +375,31 @@ function EducatorHubContent() {
     setQuizSubmissionsLoading(true);
     try {
       setQuizSubmissions(await getQuizSubmissions(quizId));
+      setSelectedSubmissionId(null);
+      setSelectedSubmissionDetail(null);
     } catch {
       setQuizSubmissions([]);
     } finally {
       setQuizSubmissionsLoading(false);
+    }
+  };
+
+  const handleLoadSubmissionDetail = async (submissionId: string) => {
+    if (!quizId) return;
+    if (selectedSubmissionId === submissionId) {
+      setSelectedSubmissionId(null);
+      setSelectedSubmissionDetail(null);
+      return;
+    }
+    setSubmissionDetailLoading(true);
+    try {
+      setSelectedSubmissionId(submissionId);
+      setSelectedSubmissionDetail(await getQuizSubmissionDetail(quizId, submissionId));
+    } catch {
+      setSelectedSubmissionDetail(null);
+      setSelectedSubmissionId(null);
+    } finally {
+      setSubmissionDetailLoading(false);
     }
   };
 
@@ -510,7 +607,7 @@ function EducatorHubContent() {
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
             <h2 className="text-xl font-bold mb-4">{t('certificatesTitle')}</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{t('certificatesDescription')}</p>
-            <CertificateBuilder />
+            <CertificateBuilder lang={lang} hasAccess={hasAccess} />
           </div>
         )}
 
@@ -575,40 +672,7 @@ function EducatorHubContent() {
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
-              {t(
-                `tab${
-                  id === 'test'
-                    ? 'TestGenerator'
-                    : id === 'rubric'
-                    ? 'Rubric'
-                    : id === 'grading'
-                    ? 'Grading'
-                    : id === 'sen'
-                    ? 'Sen'
-                    : id === 'lessonPlan'
-                    ? 'LessonPlan'
-                    : id === 'bureaucracy'
-                    ? 'Bureaucracy'
-                    : id === 'parentReports'
-                    ? 'ParentReports'
-                    : 'Certificates'
-                }`,
-                id === 'test'
-                  ? 'ტესტები & პასუხები'
-                  : id === 'rubric'
-                  ? 'შეფასების რუბრიკები'
-                  : id === 'grading'
-                  ? 'დავალებების გასწორება'
-                  : id === 'sen'
-                  ? 'დიფერენცირებული & სსსმ'
-                  : id === 'lessonPlan'
-                  ? 'გაკვეთილის გეგმები'
-                  : id === 'bureaucracy'
-                  ? 'სკოლის დოკუმენტაცია'
-                  : id === 'parentReports'
-                  ? 'მოსწავლის რეპორტები'
-                  : 'სერტიფიკატები'
-              )}
+              {t(TAB_LABELS[id].key, TAB_LABELS[id].fallback)}
             </button>
           ))}
         </div>
@@ -640,6 +704,7 @@ function EducatorHubContent() {
                   hint={t('testSourceUploadHint')}
                   uploadingLabel={t('testSourceUploading')}
                 />
+                <PrivacyHint>{t('privacyImageUploadWarning')}</PrivacyHint>
               </div>
               <div className="sm:col-span-2">
                 <label className={labelClass}>{t('testSourceTextLabel')}</label>
@@ -651,6 +716,7 @@ function EducatorHubContent() {
                   placeholder={t('testSourceTextPlaceholder')}
                   disabled={!hasAccess}
                 />
+                <PrivacyHint>{t('privacyFreeTextWarning')}</PrivacyHint>
               </div>
               <div className="sm:col-span-2">
                 <label className={labelClass}>{t('testQuestionTypesLabel')}</label>
@@ -768,9 +834,50 @@ function EducatorHubContent() {
                               <p className="text-xs text-slate-400 dark:text-slate-500 italic">{t('quizResultsEmpty')}</p>
                             ) : (
                               quizSubmissions.map((s) => (
-                                <div key={s.id} className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/40">
-                                  <span className="font-bold">{s.studentName}</span>
-                                  <span>{s.score}%</span>
+                                <div key={s.id} className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 px-3 py-2">
+                                  <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
+                                    <div>
+                                      <div className="font-bold text-slate-800 dark:text-slate-100">{s.studentName}</div>
+                                      <div className="text-[11px] text-slate-500 dark:text-slate-400">{new Date(s.submittedAt).toLocaleString()}</div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span>{s.score}%</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleLoadSubmissionDetail(s.id)}
+                                        className="text-[11px] font-bold px-2 py-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200"
+                                      >
+                                        {selectedSubmissionId === s.id ? 'Hide' : 'Details'}
+                                      </button>
+                                    </div>
+                                  </div>
+                                  {selectedSubmissionId === s.id && (
+                                    <div className="mt-3 space-y-2 border-t border-slate-200 dark:border-slate-700 pt-3">
+                                      {submissionDetailLoading && selectedSubmissionId === s.id ? (
+                                        <p className="text-[11px] text-slate-400">Loading…</p>
+                                      ) : selectedSubmissionDetail && selectedSubmissionDetail.submission.id === s.id ? (
+                                        selectedSubmissionDetail.questions.map((q: any) => (
+                                          <div key={q.id} className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 p-2">
+                                            <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{q.question}</div>
+                                            <div className="mt-1 text-[11px] text-slate-600 dark:text-slate-300">
+                                              <span className="font-semibold">Student answer:</span> {q.studentAnswer || '—'}
+                                            </div>
+                                            <div className="text-[11px] text-slate-600 dark:text-slate-300">
+                                              <span className="font-semibold">Correct answer:</span> {q.correctAnswer}
+                                            </div>
+                                            <div className="text-[11px] text-slate-600 dark:text-slate-300">
+                                              <span className="font-semibold">Result:</span> {q.answerStatus}
+                                            </div>
+                                            {q.feedback && (
+                                              <div className="text-[11px] text-slate-500 dark:text-slate-400">{q.feedback}</div>
+                                            )}
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <p className="text-[11px] text-rose-600 dark:text-rose-400">Unable to load details.</p>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               ))
                             )}
@@ -884,24 +991,30 @@ function EducatorHubContent() {
                   </button>
                 </div>
                 {workSource === 'text' ? (
-                  <textarea
-                    className={inputClass}
-                    rows={6}
-                    value={studentWorkText}
-                    onChange={(e) => setStudentWorkText(e.target.value)}
-                    placeholder={t('gradingWorkTextPlaceholder')}
-                    disabled={!hasAccess}
-                  />
+                  <>
+                    <textarea
+                      className={inputClass}
+                      rows={6}
+                      value={studentWorkText}
+                      onChange={(e) => setStudentWorkText(e.target.value)}
+                      placeholder={t('gradingWorkTextPlaceholder')}
+                      disabled={!hasAccess}
+                    />
+                    <PrivacyHint>{t('privacyFreeTextWarning')}</PrivacyHint>
+                  </>
                 ) : (
-                  <FileDropzone
-                    accept="image/jpeg,image/png,image/webp"
-                    uploading={false}
-                    selectedFileName={studentWorkImage?.name ?? null}
-                    onFile={setStudentWorkImage}
-                    label={t('gradingUploadCta')}
-                    hint={t('gradingUploadHint')}
-                    uploadingLabel={t('gradingUploading')}
-                  />
+                  <>
+                    <FileDropzone
+                      accept="image/jpeg,image/png,image/webp"
+                      uploading={false}
+                      selectedFileName={studentWorkImage?.name ?? null}
+                      onFile={setStudentWorkImage}
+                      label={t('gradingUploadCta')}
+                      hint={t('gradingUploadHint')}
+                      uploadingLabel={t('gradingUploading')}
+                    />
+                    <PrivacyHint>{t('privacyImageUploadWarning')}</PrivacyHint>
+                  </>
                 )}
               </div>
               <div>
@@ -1115,6 +1228,7 @@ function EducatorHubContent() {
                   placeholder={t('bureaucracyKeyPointsPlaceholder')}
                   disabled={!hasAccess}
                 />
+                <PrivacyHint>{t('privacyFreeTextWarning')}</PrivacyHint>
               </div>
             </div>
             <button
@@ -1174,6 +1288,7 @@ function EducatorHubContent() {
                   placeholder={t('letterTeacherNotesPlaceholder')}
                   disabled={!hasAccess}
                 />
+                <PrivacyHint>{t('privacyFreeTextWarning')}</PrivacyHint>
               </div>
             </div>
             <button

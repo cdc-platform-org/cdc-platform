@@ -454,7 +454,11 @@ router.post('/forgot-password', authRateLimit, async (req, res) => {
     // fire-and-forget: it already catches its own Resend/network failures
     // internally and falls back to a console-logged link (see emailService.ts),
     // so it deliberately isn't awaited or wrapped here.
-    sendPasswordResetEmail(user.email, passwordResetToken, result.data.lang ?? 'ka');
+    // No `?? 'ka'` default here — sendPasswordResetEmail itself is the single
+    // source of truth for the ka-vs-English rule (including what an
+    // undefined/unrecognized lang falls back to), so that rule lives in
+    // exactly one place instead of two that could drift apart.
+    sendPasswordResetEmail(user.email, passwordResetToken, result.data.lang);
 
     res.json({ message: 'If an account exists for that email, a reset link has been sent.' });
   } catch (err) {
