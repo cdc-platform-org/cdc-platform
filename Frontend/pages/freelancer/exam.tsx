@@ -343,7 +343,7 @@ function FreelancerExamContent() {
   }, [phase, currentQuestion?.id]);
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 flex flex-col">
+    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-100 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 flex flex-col">
       <SiteHeader />
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 flex-1 w-full">
         {phase !== 'in-progress' && <BackButton fallbackHref="/dashboard" className="mb-6" />}

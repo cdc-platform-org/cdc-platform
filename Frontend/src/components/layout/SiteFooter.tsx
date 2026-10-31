@@ -201,7 +201,7 @@ const STRINGS = {
 // right and shifts to cyan on hover so it reads as a single deliberate
 // interaction language rather than a plain color change.
 const navLink =
-  'inline-block text-slate-400 hover:text-cyan-400 hover:translate-x-1 transition-all duration-200 no-underline';
+  'inline-block py-1.5 sm:py-0 text-slate-400 hover:text-cyan-400 hover:translate-x-1 transition-all duration-200 no-underline';
 
 export default function SiteFooter() {
   const router = useRouter();
@@ -212,7 +212,11 @@ export default function SiteFooter() {
   const noHoverFx = 'outline-none hover:outline-none focus:outline-none border-none hover:border-none hover:shadow-none hover:ring-0';
 
   return (
-    <footer className={`relative text-sm ${noHoverFx}`}>
+    // -mx-4 sm:-mx-6 cancels _app.tsx's app-shell px-4 sm:px-6 so the dark
+    // footer runs edge to edge (same full-bleed trick as SiteHeader's <nav>).
+    // Without it the footer sat inset with white strips down both sides,
+    // most visible on phones.
+    <footer className={`relative -mx-4 sm:-mx-6 text-sm ${noHoverFx}`}>
       {/* SVG WAVE DIVIDER — sits on whatever page background precedes the
           footer (light or dark mode), so the curve reads correctly either
           way; the solid footer body below carries its own fixed gradient.
@@ -229,12 +233,12 @@ export default function SiteFooter() {
       </div>
 
       <div className={`bg-gradient-to-b from-indigo-950 via-slate-900 to-black text-slate-300 -mt-px ${noHoverFx}`}>
-        <div className={`max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 ${noHoverFx}`}>
+        <div className={`max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-10 grid grid-cols-2 lg:grid-cols-5 gap-x-6 gap-y-8 sm:gap-10 ${noHoverFx}`}>
           {/* Company — glassmorphism card with a soft glow behind the logo badge.
               Deliberately excluded from noHoverFx: this is the one footer
               element meant to react on hover (glowing border), unlike the
               plain text/link blocks around it. */}
-          <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5 transition-colors duration-300 hover:border-cyan-400/50">
+          <div className="relative col-span-2 lg:col-span-1 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5 transition-colors duration-300 hover:border-cyan-400/50">
             <div className={`flex items-center gap-2.5 mb-3 ${noHoverFx}`}>
               <div className="relative">
                 <div className="absolute inset-0 bg-cyan-500/40 blur-xl rounded-lg" aria-hidden="true" />
@@ -266,7 +270,7 @@ export default function SiteFooter() {
           {/* Courses */}
           <div className={noHoverFx}>
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.coursesHeading}</h3>
-            <ul className="space-y-2.5 text-xs">
+            <ul className="space-y-1 sm:space-y-2.5 text-sm sm:text-xs">
               <li><Link href="/courses" className={navLink}>{t.courses}</Link></li>
               <li><Link href="/success-stories" className={navLink}>{t.cases}</Link></li>
               <li><Link href="/trainers" className={navLink}>{t.trainers}</Link></li>
@@ -277,7 +281,7 @@ export default function SiteFooter() {
           {/* Community */}
           <div className={noHoverFx}>
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.communityHeading}</h3>
-            <ul className="space-y-2.5 text-xs">
+            <ul className="space-y-1 sm:space-y-2.5 text-sm sm:text-xs">
               <li><Link href="/community" className={navLink}>{t.jobs}</Link></li>
               <li><Link href="/mentors" className={navLink}>{t.mentors}</Link></li>
               <li><Link href="/marketplace" className={navLink}>{t.marketplace}</Link></li>
@@ -290,7 +294,7 @@ export default function SiteFooter() {
           {/* Help */}
           <div className={noHoverFx}>
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.helpHeading}</h3>
-            <ul className="space-y-2.5 text-xs">
+            <ul className="space-y-1 sm:space-y-2.5 text-sm sm:text-xs">
               <li><Link href="/tutorials" className={navLink}>{t.tutorials}</Link></li>
               <li><Link href="/about" className={navLink}>{t.about}</Link></li>
               <li><Link href="/contact" className={navLink}>{t.contactPage}</Link></li>
@@ -310,7 +314,7 @@ export default function SiteFooter() {
           {/* Legal */}
           <div className={noHoverFx}>
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.legalHeading}</h3>
-            <ul className="space-y-2.5 text-xs">
+            <ul className="space-y-1 sm:space-y-2.5 text-sm sm:text-xs">
               <li><Link href="/privacy" className={navLink}>{t.privacy}</Link></li>
               <li><Link href="/terms" className={navLink}>{t.terms}</Link></li>
               <li><Link href="/refund-policy" className={navLink}>{t.refund}</Link></li>

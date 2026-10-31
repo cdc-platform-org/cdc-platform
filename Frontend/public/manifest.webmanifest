@@ -1,0 +1,23 @@
+{
+  "name": "CDC — ციფრული პროფესიების ცენტრი",
+  "short_name": "CDC",
+  "description": "კურსები, ვაკანსიები და AI ხელსაწყოები ერთ აპლიკაციაში.",
+  "id": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e1422",
+  "theme_color": "#0e1422",
+  "lang": "ka",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "კურსები", "url": "/courses", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "ვაკანსიები", "url": "/community", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "AI ხელსაწყოები", "url": "/tools", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

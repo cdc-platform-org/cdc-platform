@@ -183,7 +183,7 @@ function CommunityPageContent() {
 
   return (
     <div
-      className={`min-h-screen font-sans antialiased transition-colors duration-300 relative overflow-hidden ${
+      className={`-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen font-sans antialiased transition-colors duration-300 relative overflow-hidden ${
         darkMode ? 'text-slate-200 bg-[#0b0f19]' : 'text-slate-800 bg-[#f1f5f9]'
       }`}
     >

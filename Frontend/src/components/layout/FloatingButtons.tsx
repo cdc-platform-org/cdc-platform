@@ -32,6 +32,13 @@ export default function FloatingButtons({ onAssistantClick }: FloatingButtonsPro
 
   useEffect(() => {
     const collapse = () => setAutoExpanded(false);
+    // Phones: start collapsed (icon-only). The expanded pills are ~280px
+    // wide and, on a 375px screen, sit right on top of the hero's CTA
+    // buttons for the first few seconds. Desktop keeps the intro animation.
+    if (window.matchMedia('(max-width: 639px)').matches) {
+      collapse();
+      return undefined;
+    }
     const timer = setTimeout(collapse, AUTO_COLLAPSE_DELAY_MS);
     window.addEventListener('scroll', collapse, { passive: true });
     return () => {
@@ -81,7 +88,7 @@ export default function FloatingButtons({ onAssistantClick }: FloatingButtonsPro
     }`;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 items-end">
+    <div className="fixed bottom-[calc(1.5rem+var(--tabbar-h,0px))] sm:bottom-6 right-6 z-40 flex flex-col gap-3 items-end">
       <button
         type="button"
         onClick={handleAssistantClick}

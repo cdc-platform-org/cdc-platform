@@ -5,7 +5,7 @@ const ProfilePage = () => {
     const { t } = useTranslation('profile');
 
     return (
-        <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center">
+        <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center">
             <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/60 dark:border-slate-800 rounded-3xl shadow-xl p-8 w-full max-w-md">
                 <h1 className="text-2xl font-bold mb-6">{t('profile', 'პროფილი')}</h1>
                 <div className="flex items-center mb-4">

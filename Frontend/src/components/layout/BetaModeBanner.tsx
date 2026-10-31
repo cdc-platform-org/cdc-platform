@@ -90,7 +90,7 @@ export default function BetaModeBanner() {
           type="button"
           onClick={dismiss}
           aria-label={t.dismiss}
-          className="shrink-0 p-1 rounded-lg border-none bg-transparent cursor-pointer text-slate-400 hover:text-white transition-colors"
+          className="shrink-0 p-2.5 -m-1.5 sm:p-1 sm:m-0 rounded-lg border-none bg-transparent cursor-pointer text-slate-400 hover:text-white transition-colors"
         >
           <X className="w-3.5 h-3.5" />
         </button>

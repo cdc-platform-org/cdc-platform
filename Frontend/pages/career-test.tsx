@@ -316,7 +316,7 @@ export default function CareerTestPage() {
   const inputClass = 'w-full rounded-lg border border-slate-700 bg-slate-950/40 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/60 transition-colors';
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-950 text-slate-100 flex flex-col">
       <SEOHead title={t.title} description={t.metaDescription} canonicalPath="/career-test" />
       <SiteHeader />
 

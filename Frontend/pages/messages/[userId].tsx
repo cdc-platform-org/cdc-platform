@@ -243,7 +243,7 @@ function MessagesThreadContent() {
   if (!otherUserId) return null;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-16">
+    <div className="min-h-screen bg-slate-950 text-slate-100 -mx-4 sm:-mx-6 px-4 sm:px-6 py-16">
       <Head>
         <title>{`${t.title} | CDC`}</title>
       </Head>

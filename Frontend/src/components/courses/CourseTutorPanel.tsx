@@ -154,7 +154,7 @@ export default function CourseTutorPanel({ courseId, lessonId, courseTitle, less
         type="button"
         onClick={() => setExpanded(true)}
         aria-label={t.open}
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold text-sm px-5 py-3.5 shadow-lg shadow-cyan-500/30 border-none cursor-pointer hover:-translate-y-0.5 transition-all"
+        className="fixed bottom-[calc(1.5rem+var(--tabbar-h,0px))] sm:bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold text-sm px-5 py-3.5 shadow-lg shadow-cyan-500/30 border-none cursor-pointer hover:-translate-y-0.5 transition-all"
       >
         <Sparkles className="w-4 h-4" />
         {t.open}

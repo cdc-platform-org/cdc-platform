@@ -259,7 +259,7 @@ function BogResultContent() {
   }, [status, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-[#0b0f19] px-4">
+    <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-[#0b0f19] -mx-4 sm:-mx-6 px-4 sm:px-6">
       <div className="max-w-md w-full bg-white/90 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-lg shadow-slate-200/40 dark:shadow-none p-8 text-center transition-colors">
         <div className="mb-4 text-left">
           <BackButton fallbackHref="/" />
