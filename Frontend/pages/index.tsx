@@ -684,7 +684,7 @@ export default function Home() {
             this it sat flush against the nav's now-full-bleed edges (see
             SiteHeader.tsx's own mobile drawer for the same fix). */}
         {isMobileMenuOpen && (
-          <div className={`min-[1420px]:hidden max-w-full overflow-x-hidden mt-4 pt-4 px-4 sm:px-6 border-t flex flex-col gap-1 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+          <div className={`min-[1420px]:hidden max-w-full overflow-x-hidden overflow-y-auto overscroll-contain max-h-[calc(100dvh-5.5rem)] mt-4 pt-4 pb-4 px-4 sm:px-6 border-t flex flex-col gap-1 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
             <div className="px-2 pb-2">
               <HeaderSearch darkMode={darkMode} lang={legacyLang} />
             </div>
@@ -818,14 +818,14 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row items-center sm:items-stretch justify-start gap-3">
                 <a
                   href="#courses"
-                  className="group inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 lg:px-9 lg:py-4 rounded-xl text-sm lg:text-base uppercase tracking-widest no-underline shadow-lg shadow-cyan-500/30 hover:shadow-2xl hover:shadow-cyan-500/40 hover:scale-105 transition-all duration-300 whitespace-nowrap"
+                  className="group inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 lg:px-9 lg:py-4 rounded-xl text-sm lg:text-base uppercase tracking-wider sm:tracking-widest no-underline shadow-lg shadow-cyan-500/30 hover:shadow-2xl hover:shadow-cyan-500/40 hover:scale-105 transition-all duration-300 w-full sm:w-auto text-center sm:whitespace-nowrap"
                 >
                   {t('heroCtaCourses')}
                   <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
                 </a>
                 <Link
                   href="/auth/register"
-                  className="inline-flex items-center justify-center gap-2 bg-white/10 border border-white/20 backdrop-blur-md text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 lg:px-9 lg:py-4 rounded-xl text-sm lg:text-base uppercase tracking-widest no-underline shadow-[0_0_20px_-6px_rgba(255,255,255,0.25)] hover:bg-white/20 hover:border-white/30 transition-all duration-300 whitespace-nowrap"
+                  className="inline-flex items-center justify-center gap-2 bg-white/10 border border-white/20 backdrop-blur-md text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 lg:px-9 lg:py-4 rounded-xl text-sm lg:text-base uppercase tracking-wider sm:tracking-widest no-underline shadow-[0_0_20px_-6px_rgba(255,255,255,0.25)] hover:bg-white/20 hover:border-white/30 transition-all duration-300 w-full sm:w-auto text-center sm:whitespace-nowrap"
                 >
                   {t('heroCtaJoin')}
                 </Link>
@@ -836,7 +836,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setShowPromoVideo(true)}
-                    className="inline-flex items-center justify-center gap-2 bg-transparent border border-white/30 text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 lg:px-9 lg:py-4 rounded-xl text-sm lg:text-base uppercase tracking-widest cursor-pointer hover:bg-white/10 hover:border-white/50 transition-all duration-300 whitespace-nowrap"
+                    className="inline-flex items-center justify-center gap-2 bg-transparent border border-white/30 text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 lg:px-9 lg:py-4 rounded-xl text-sm lg:text-base uppercase tracking-wider sm:tracking-widest cursor-pointer hover:bg-white/10 hover:border-white/50 transition-all duration-300 w-full sm:w-auto text-center sm:whitespace-nowrap"
                   >
                     <Play size={16} className="fill-current" />
                     {t('heroCtaWatchDemo')}

@@ -146,6 +146,21 @@ function App({ Component, pageProps }: AppProps) {
             line-height: 1.65 !important;
           }
 
+          /* ტელეფონი (<640px): ვიწრო ეკრანზე 0.05em ასოთაშორისი და 1.65
+             სათაურის ხაზი ქართულ ტექსტს ზედმეტად აფართოებს — სიტყვები
+             ადრე გადადის ახალ ხაზზე და დიდი სათაურები 4-5 ხაზად იშლება.
+             დესკტოპი უცვლელია. */
+          @media (max-width: 639px) {
+            html, body, button, input, select, textarea {
+              letter-spacing: 0.02em !important;
+              line-height: 1.55 !important;
+            }
+            h1, h2, h3 {
+              letter-spacing: 0.02em !important;
+              line-height: 1.35 !important;
+            }
+          }
+
           /* ბლოკების (ქარდების) გაცოცხლება და ნეონის ცისფერი ნათება —
              შემოსაზღვრულია მხოლოდ მთავარი გვერდის ამ სექციებით. (Deliberately
              scoped to just these homepage sections — an earlier, unscoped

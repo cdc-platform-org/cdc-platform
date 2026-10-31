@@ -83,15 +83,15 @@ function CartContent() {
       </Head>
 
       <nav className={`relative z-10 -mx-4 sm:-mx-6 border-b px-4 sm:px-6 md:px-12 py-4 sm:py-5 transition-colors ${darkMode ? 'border-slate-800/80 bg-[#0e1422]' : 'border-slate-200/60 bg-white'}`}>
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3">
+        <div className="max-w-6xl mx-auto flex justify-between items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="bg-gradient-to-tr from-cyan-500 to-purple-600 text-white px-4 py-1.5 rounded-xl font-black text-sm tracking-wider">CDC</div>
             <span className={`hidden sm:inline font-bold text-xs uppercase tracking-widest ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
               {lang === 'ka' ? 'კალათის ეკოსისტემა' : 'Cart Ecosystem'}
             </span>
           </div>
           
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             <div className={`flex border rounded-xl p-1 text-[11px] font-bold ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
               <button type="button" onClick={() => switchLocale('ka')} className={`px-3 py-1 rounded-lg transition border-none cursor-pointer font-bold ${lang === 'ka' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400 bg-transparent'}`}>KA</button>
               <button type="button" onClick={() => switchLocale('en')} className={`px-3 py-1 rounded-lg transition border-none cursor-pointer font-bold ${lang === 'en' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400 bg-transparent'}`}>EN</button>
@@ -106,8 +106,8 @@ function CartContent() {
         <BackButton fallbackHref="/" className={darkMode ? 'text-slate-400 hover:text-slate-100' : ''} />
       </div>
 
-      <div className="max-w-6xl mx-auto px-0 sm:px-6 py-10 sm:py-16 grid md:grid-cols-3 gap-10">
-        <div className="md:col-span-2 space-y-6">
+      <div className="max-w-6xl mx-auto px-0 sm:px-6 py-8 sm:py-16 grid md:grid-cols-3 gap-6 sm:gap-10">
+        <div className="md:col-span-2 space-y-6 min-w-0">
           <div className="flex items-center gap-3 mb-8">
             <svg className="w-6 h-6 text-cyan-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M2.25 2.25h1.5l1.35 6.75M5.1 9h14.4l1.35-6.75H4.65" strokeLinecap="round" strokeLinejoin="round"/><circle cx="7.5" cy="19.5" r="2.25"/><circle cx="18" cy="19.5" r="2.25"/>
@@ -119,13 +119,13 @@ function CartContent() {
             <div className={`rounded-2xl p-16 text-center border ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200/60'}`}><p className="text-slate-400 font-bold text-sm">{t('cartEmpty')}</p></div>
           ) : (
             cartItems.map((item) => (
-              <div key={item.id} className={`border rounded-2xl p-6 flex justify-between items-center transition-all duration-300 transform hover:-translate-y-0.5 hover:border-transparent hover:ring-2 hover:ring-cyan-500 ${darkMode ? 'bg-[#0e1422] border-slate-800 hover:bg-[#121b2d]' : 'bg-white border-slate-200/80 hover:shadow-md'}`}>
-                <div>
+              <div key={item.id} className={`border rounded-2xl p-4 sm:p-6 flex justify-between items-center gap-3 transition-all duration-300 transform hover:-translate-y-0.5 hover:border-transparent hover:ring-2 hover:ring-cyan-500 ${darkMode ? 'bg-[#0e1422] border-slate-800 hover:bg-[#121b2d]' : 'bg-white border-slate-200/80 hover:shadow-md'}`}>
+                <div className="min-w-0">
                   <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md border ${darkMode ? 'text-purple-400 bg-purple-500/10 border-purple-500/20' : 'text-purple-600 bg-purple-50 border-purple-100'}`}>{lang === 'ka' ? item.typeKA : item.typeEN}</span>
                   <h4 className={`font-bold text-base tracking-wide mt-4 leading-snug ${darkMode ? 'text-white' : 'text-slate-900'}`}>{lang === 'ka' ? item.titleKA : item.titleEN}</h4>
                 </div>
-                <div className="flex items-center gap-6">
-                  <span className={`font-black text-lg tracking-wider ${darkMode ? 'text-cyan-400' : 'text-slate-900'}`}>{convertPrice(item.priceGEL)} {currencySymbols[currency]}</span>
+                <div className="flex items-center gap-3 sm:gap-6 shrink-0">
+                  <span className={`font-black text-base sm:text-lg tracking-wider ${darkMode ? 'text-cyan-400' : 'text-slate-900'}`}>{convertPrice(item.priceGEL)} {currencySymbols[currency]}</span>
                   <button type="button" onClick={() => removeItem(item.id)} className={`font-bold border rounded-xl p-2 cursor-pointer transition ${darkMode ? 'text-rose-400 bg-rose-500/5 border-rose-500/20 hover:bg-rose-500/10' : 'text-rose-600 bg-rose-50 border-rose-100 hover:bg-rose-100'}`}>✕</button>
                 </div>
               </div>
@@ -133,8 +133,8 @@ function CartContent() {
           )}
         </div>
 
-        <div className={`border rounded-2xl p-6 shadow-sm h-fit space-y-6 transition-all duration-300 ${darkMode ? 'bg-[#0e1422] border-slate-800 hover:border-slate-700' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
-          <div className="flex justify-between items-center">
+        <div className={`border rounded-2xl p-4 sm:p-6 shadow-sm h-fit space-y-6 min-w-0 transition-all duration-300 ${darkMode ? 'bg-[#0e1422] border-slate-800 hover:border-slate-700' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+          <div className="flex flex-wrap justify-between items-center gap-2">
             <div className={`flex items-center gap-1.5 border px-3 py-1 rounded-xl text-[10px] font-bold ${darkMode ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`}>
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>{t('securedBadge')}</span>
             </div>

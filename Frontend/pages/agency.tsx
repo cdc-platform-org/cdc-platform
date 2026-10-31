@@ -192,16 +192,19 @@ export default function Agency() {
       {/* 🧭 NAVIGATION */}
       <nav className={`sticky top-0 z-50 -mx-4 sm:-mx-6 border-b px-4 sm:px-6 md:px-12 py-4 sm:py-5 ${darkMode ? 'border-slate-800 bg-[#0e1422]/90 backdrop-blur-md' : 'border-slate-200/60 bg-white/90 backdrop-blur-md'}`}>
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center space-x-3">
-            <div className="bg-gradient-to-tr from-cyan-500 to-purple-600 text-white px-4 py-2 rounded-xl font-black text-sm tracking-wider">{safeText('CDC')}</div>
-            <div>
-              <span className="hidden sm:block font-bold text-lg leading-none tracking-tight">{safeText('CDC Studio')}</span>
-              <span className="hidden sm:block text-[11px] text-slate-400 font-bold mt-1">{translate('სოციალური მეწარმეობა & ციფრული სააგენტო', 'Social Entrepreneurship & Digital Agency')}</span>
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="shrink-0 bg-gradient-to-tr from-cyan-500 to-purple-600 text-white px-3 sm:px-4 py-2 rounded-xl font-black text-sm tracking-wider">{safeText('CDC')}</div>
+            <div className="hidden sm:block">
+              <span className="font-bold text-lg block leading-none tracking-tight">{safeText('CDC Studio')}</span>
+              <span className="text-[11px] text-slate-400 font-bold block mt-1">{translate('სოციალური მეწარმეობა & ციფრული სააგენტო', 'Social Entrepreneurship & Digital Agency')}</span>
             </div>
           </div>
 
-          <div className="flex items-center space-x-3 sm:space-x-6 text-sm sm:text-base font-bold tracking-wide">
-            <Link href="/" className="hover:text-cyan-500 transition no-underline text-current">{translate('მთავარზე დაბრუნება', 'Return Home')}</Link>
+          <div className="flex items-center gap-3 sm:gap-6 shrink-0 text-sm sm:text-base font-bold tracking-wide">
+            <Link href="/" className="hover:text-cyan-500 transition no-underline text-current whitespace-nowrap">
+              <span className="sm:hidden">{translate('მთავარი', 'Home')}</span>
+              <span className="hidden sm:inline">{translate('მთავარზე დაბრუნება', 'Return Home')}</span>
+            </Link>
 
             {/* 🌐 ენის გადამრთველი სააგენტოს გვერდზეც! */}
             <button
@@ -223,19 +226,19 @@ export default function Agency() {
       </nav>
 
       {/* 🏙️ HERO BANNER */}
-      <div className={`border-b text-center py-20 backdrop-blur-md ${darkMode ? 'bg-[#0e1422]/40 border-slate-800' : 'bg-slate-100/40 border-slate-200'}`}>
+      <div className={`border-b text-center py-12 sm:py-20 backdrop-blur-md ${darkMode ? 'bg-[#0e1422]/40 border-slate-800' : 'bg-slate-100/40 border-slate-200'}`}>
         <div className="max-w-4xl mx-auto px-0 sm:px-6">
           <div className="flex justify-start mb-6">
             <BackButton fallbackHref="/" className={darkMode ? 'text-slate-400 hover:text-slate-100' : ''} />
           </div>
           <div className="flex justify-center mb-4">
-            <span className="text-xs font-black uppercase tracking-widest px-4 py-2 bg-purple-500/10 text-purple-500 rounded-full border border-purple-500/20 flex items-center gap-2">
-              <Briefcase className="w-3.5 h-3.5" />
+            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest px-3 sm:px-4 py-2 bg-purple-500/10 text-purple-500 rounded-full border border-purple-500/20 flex items-center gap-2 text-left">
+              <Briefcase className="w-3.5 h-3.5 shrink-0" />
               {translate('სოციალური მეწარმეობა & ციფრული სააგენტო', 'Social Entrepreneurship & Digital Agency')}
             </span>
           </div>
 
-          <h1 className="text-3xl md:text-5xl font-black mt-4 mb-6 tracking-wide text-slate-900 dark:text-white leading-tight">
+          <h1 className="text-2xl sm:text-3xl md:text-5xl font-black mt-4 mb-6 tracking-wide text-slate-900 dark:text-white leading-tight break-words">
             {translate('პროფესიონალური ციფრული სერვისები თქვენი ბიზნესისთვის', 'Professional Digital Services For Your Business')}
           </h1>
 

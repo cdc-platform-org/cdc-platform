@@ -41,10 +41,10 @@ export default function SimpleSiteLayout({ titleKa, titleEn, descriptionKa, desc
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col -mx-4 sm:mx-0 px-4 sm:px-0">
       <SEOHead title={lang === 'GEO' ? titleKa : titleEn} description={lang === 'GEO' ? descriptionKa : descriptionEn} />
 
-      <nav className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md px-6 py-4">
+      <nav className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md -mx-4 sm:mx-0 px-4 sm:px-6 py-3 sm:py-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 no-underline text-current">
             <Image
@@ -66,7 +66,7 @@ export default function SimpleSiteLayout({ titleKa, titleEn, descriptionKa, desc
         </div>
       </nav>
 
-      <main className="flex-1 max-w-3xl mx-auto px-6 py-16 w-full">
+      <main className="flex-1 max-w-3xl mx-auto px-0 sm:px-6 py-8 sm:py-16 w-full min-w-0 break-words">
         <div className="mb-6">
           <BackButton fallbackHref="/" className="text-slate-400 hover:text-slate-100" />
         </div>

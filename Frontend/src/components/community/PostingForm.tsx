@@ -511,7 +511,7 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
 
         {postType === 'vacancy' && (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-4">
               <div>
                 <label className={labelClass}>{t.employmentType}</label>
                 <select
@@ -540,7 +540,7 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-4">
               <div>
                 <label className={labelClass}>{t.minSalary}</label>
                 <input
@@ -599,7 +599,7 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
 
         {isGig && (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-4">
               <div>
                 <label className={labelClass}>{postType === 'gig_offer' ? t.startingPriceType : t.budgetType}</label>
                 <select

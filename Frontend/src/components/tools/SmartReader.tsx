@@ -79,7 +79,7 @@ export const SmartReader: React.FC = () => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-6 bg-slate-900 text-white rounded-2xl shadow-xl space-y-6">
+    <div className="max-w-5xl mx-auto p-4 sm:p-6 bg-slate-900 text-white rounded-2xl shadow-xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
         <div>
           <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
@@ -88,11 +88,11 @@ export const SmartReader: React.FC = () => {
           <p className="text-xs text-slate-400">Interactive Reader, Karaoke Highlight & Pronunciation Coach</p>
         </div>
 
-        <div className="flex items-center space-x-3 text-sm">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm min-w-0 max-w-full">
           <select
             value={learningLang}
             onChange={(e) => setLearningLang(e.target.value)}
-            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200"
+            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 min-w-0 max-w-full"
           >
             <option value="English">🇬🇧 English</option>
             <option value="German">🇩🇪 German</option>
@@ -105,7 +105,7 @@ export const SmartReader: React.FC = () => {
           <select
             value={nativeLang}
             onChange={(e) => setNativeLang(e.target.value)}
-            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200"
+            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 min-w-0 max-w-full"
           >
             <option value="Georgian">🇬🇪 ქართული</option>
             <option value="English">🇬🇧 English</option>

@@ -201,7 +201,7 @@ const STRINGS = {
 // right and shifts to cyan on hover so it reads as a single deliberate
 // interaction language rather than a plain color change.
 const navLink =
-  'inline-block text-slate-400 hover:text-cyan-400 hover:translate-x-1 transition-all duration-200 no-underline';
+  'inline-block py-1.5 sm:py-0 text-slate-400 hover:text-cyan-400 hover:translate-x-1 transition-all duration-200 no-underline';
 
 export default function SiteFooter() {
   const router = useRouter();
@@ -270,7 +270,7 @@ export default function SiteFooter() {
           {/* Courses */}
           <div className={noHoverFx}>
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.coursesHeading}</h3>
-            <ul className="space-y-2.5 text-xs">
+            <ul className="space-y-1 sm:space-y-2.5 text-sm sm:text-xs">
               <li><Link href="/courses" className={navLink}>{t.courses}</Link></li>
               <li><Link href="/success-stories" className={navLink}>{t.cases}</Link></li>
               <li><Link href="/trainers" className={navLink}>{t.trainers}</Link></li>
@@ -281,7 +281,7 @@ export default function SiteFooter() {
           {/* Community */}
           <div className={noHoverFx}>
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.communityHeading}</h3>
-            <ul className="space-y-2.5 text-xs">
+            <ul className="space-y-1 sm:space-y-2.5 text-sm sm:text-xs">
               <li><Link href="/community" className={navLink}>{t.jobs}</Link></li>
               <li><Link href="/mentors" className={navLink}>{t.mentors}</Link></li>
               <li><Link href="/marketplace" className={navLink}>{t.marketplace}</Link></li>
@@ -294,7 +294,7 @@ export default function SiteFooter() {
           {/* Help */}
           <div className={noHoverFx}>
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.helpHeading}</h3>
-            <ul className="space-y-2.5 text-xs">
+            <ul className="space-y-1 sm:space-y-2.5 text-sm sm:text-xs">
               <li><Link href="/tutorials" className={navLink}>{t.tutorials}</Link></li>
               <li><Link href="/about" className={navLink}>{t.about}</Link></li>
               <li><Link href="/contact" className={navLink}>{t.contactPage}</Link></li>
@@ -314,7 +314,7 @@ export default function SiteFooter() {
           {/* Legal */}
           <div className={noHoverFx}>
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.legalHeading}</h3>
-            <ul className="space-y-2.5 text-xs">
+            <ul className="space-y-1 sm:space-y-2.5 text-sm sm:text-xs">
               <li><Link href="/privacy" className={navLink}>{t.privacy}</Link></li>
               <li><Link href="/terms" className={navLink}>{t.terms}</Link></li>
               <li><Link href="/refund-policy" className={navLink}>{t.refund}</Link></li>

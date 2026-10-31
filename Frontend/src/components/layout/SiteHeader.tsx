@@ -369,7 +369,7 @@ export default function SiteHeader() {
         // bleed too — without it the links would run edge-to-edge with no
         // margin. Larger gap/padding throughout vs. the old xs-text version
         // for genuinely touch-friendly tap targets, not just denser text.
-        <div className="xl:hidden mt-3.5 px-4 sm:px-6 pb-2 border-t border-slate-200 dark:border-slate-800">
+        <div className="xl:hidden mt-3.5 px-4 sm:px-6 pb-4 border-t border-slate-200 dark:border-slate-800 overflow-y-auto overscroll-contain max-h-[calc(100dvh-5rem)]">
           {isAuthenticated && user ? (
             <Link
               href={dashboardHref}
