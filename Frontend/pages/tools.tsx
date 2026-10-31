@@ -412,6 +412,7 @@ export default function ToolsPage() {
   // fallback, without retranslating this file's older cards.
   const { t: tm } = useTranslation('mediaStudio');
   const { t: tEdu } = useTranslation('educatorHub');
+  const { t: tCB } = useTranslation('childrensBook');
   const { isAuthenticated, user } = useAuth();
   const { openAuthModal } = useAuthModal();
   const [showWaitlistModal, setShowWaitlistModal] = useState(false);
@@ -431,6 +432,7 @@ export default function ToolsPage() {
   const mediaStudioCms = findToolEntry(toolCatalog?.tools, 'media-studio');
   const educatorHubCms = findToolEntry(toolCatalog?.tools, 'educator-hub');
   const proctoringCms = findToolEntry(toolCatalog?.tools, 'proctoring');
+  const childrensBookCms = findToolEntry(toolCatalog?.tools, 'childrens-book');
 
   // Every AI tool is full-access for any approved account, regardless of
   // role or Business verification — the Employment Forum (forum.ts's
@@ -656,6 +658,44 @@ export default function ToolsPage() {
             </div>
           </div>
 
+          {/* Card 2.65: Personalized AI Children's Book — real, paid
+              (server-priced, 1 GEL/page) tool, previously reachable only
+              by direct link or the marketplace's AI-tools filter. Same
+              open-to-any-logged-in-user posture as Media Studio above;
+              hidden when an admin sets its tool-catalog entry to DISABLED
+              (same rule as marketplace/index.tsx's SaaS cards). */}
+          {childrensBookCms?.status !== 'DISABLED' && (
+          <div className="lg:col-span-3 rounded-3xl border border-pink-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-pink-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
+            <div className="shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center">
+              <BookOpen className="w-7 h-7 text-white" />
+            </div>
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <h2 className="text-xl font-black tracking-wide">{overrideText(tCB('pageTitle'), catLang === 'ka' ? childrensBookCms?.titleKa : childrensBookCms?.titleEn)}</h2>
+                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-pink-500/10 text-pink-600 dark:text-pink-400 border border-pink-500/30">
+                  {overrideText(tCB('cardBadge'), catLang === 'ka' ? childrensBookCms?.badgeKa : childrensBookCms?.badgeEn)}
+                </span>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-2">{overrideText(tCB('pageSubtitle'), catLang === 'ka' ? childrensBookCms?.descriptionKa : childrensBookCms?.descriptionEn)}</p>
+              <p className="text-xs font-bold text-purple-600 dark:text-purple-400 mb-5">{tCB('catalogTag')}</p>
+              {childrensBookCms?.status === 'COMING_SOON' ? (
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                  <Lock className="w-3 h-3" />
+                  {t.comingSoon}
+                </span>
+              ) : (
+                <Link
+                  href="/dashboard/tools/childrens-book"
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-pink-500/30 transition-all"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  {tCB('catalogCta')}
+                </Link>
+              )}
+            </div>
+          </div>
+          )}
+
           {/* Card 2.7: AI Proctored Practice Exam — self-service, open to
               any logged-in user, same posture as Media Studio/Educator Hub
               above. Deliberately distinct from Card 2 above (the real
@@ -863,5 +903,5 @@ export default function ToolsPage() {
 }
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'ka', ['mediaStudio', 'educatorHub'])) },
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['mediaStudio', 'educatorHub', 'childrensBook'])) },
 });

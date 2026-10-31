@@ -231,24 +231,24 @@ function ChildrensBookContent() {
               >
                 <div className="font-semibold text-gray-900 truncate">{b.title}</div>
                 <div className="text-sm text-gray-500 mt-1">{t(`statusValue.${b.status}`, b.status)}</div>
-                <div className="text-xs text-gray-500 mt-2">{b.pageCount} pages · {(b.audioAddOnPurchased ? b.totalPriceGel : b.priceGel) / 100} GEL</div>
-                {b.audioAddOnPurchased && <div className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-purple-700"><Headphones className="w-3.5 h-3.5" /> Audio Story</div>}
+                <div className="text-xs text-gray-500 mt-2">{t('pagesCount', { value: b.pageCount })} · {t('priceGel', { amount: (b.audioAddOnPurchased ? b.totalPriceGel : b.priceGel) / 100 })}</div>
+                {b.audioAddOnPurchased && <div className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-purple-700"><Headphones className="w-3.5 h-3.5" /> {t('audioStoryBadge')}</div>}
                 <div className="text-xs text-gray-400 mt-2">{new Date(b.createdAt).toLocaleDateString()}</div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     onClick={() => router.push({ pathname: '/dashboard/tools/childrens-book/reader/[bookId]', query: { bookId: b.id } })}
                     className="px-3 py-1.5 rounded-md bg-purple-600 text-white text-sm font-medium"
-                  >Read</button>
+                  >{t('readButton')}</button>
                   <button
                     disabled={b.pdfStatus !== 'CURRENT'}
                     onClick={() => run(async () => downloadBookPdf(b.id, b.title))}
                     className="px-3 py-1.5 rounded-md border border-gray-300 text-gray-700 text-sm font-medium disabled:opacity-40"
-                  >Download PDF</button>
+                  >{t('downloadPdfButton')}</button>
                   {b.audioAddOnPurchased && (
                     <button
                       onClick={() => router.push({ pathname: '/dashboard/tools/childrens-book/reader/[bookId]', query: { bookId: b.id } })}
                       className="px-3 py-1.5 rounded-md border border-purple-300 text-purple-700 text-sm font-medium"
-                    >Listen</button>
+                    >{t('listenButton')}</button>
                   )}
                 </div>
               </article>
@@ -262,7 +262,7 @@ function ChildrensBookContent() {
             </h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Book length</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('bookLengthLabel')}</label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {PAGE_OPTIONS.map((count) => (
                     <button
@@ -271,8 +271,8 @@ function ChildrensBookContent() {
                       onClick={() => setForm((current) => ({ ...current, pageCount: count }))}
                       className={`rounded-xl border px-3 py-3 text-left transition ${form.pageCount === count ? 'border-purple-500 bg-purple-50 text-purple-800 shadow-sm' : 'border-gray-200 bg-white text-gray-700 hover:border-purple-300'}`}
                     >
-                      <div className="text-lg font-semibold">{count} pages</div>
-                      <div className="text-xs opacity-75">{count * 100 / 100} GEL</div>
+                      <div className="text-lg font-semibold">{t('pagesCount', { value: count })}</div>
+                      <div className="text-xs opacity-75">{t('priceGel', { amount: count * 100 / 100 })}</div>
                     </button>
                   ))}
                 </div>
@@ -312,8 +312,8 @@ function ChildrensBookContent() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('illustrationStyleLabel')}</label>
                 <div className="flex flex-wrap gap-2">
                   <span className="px-3 py-1.5 rounded-full bg-purple-100 text-purple-800 text-sm font-medium">{t('styleWatercolor')}</span>
-                  {['Modern 3D', 'Soft Digital Painting', 'Cute Cartoon', 'Magical Fantasy', 'Classic Illustrated'].map((s) => (
-                    <span key={s} className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-400 text-sm">{s} — {t('styleComingSoon')}</span>
+                  {['styleModern3d', 'styleSoftDigital', 'styleCartoon', 'styleFantasy', 'styleClassic'].map((s) => (
+                    <span key={s} className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-400 text-sm">{t(s)} — {t('styleComingSoon')}</span>
                   ))}
                 </div>
               </div>
@@ -371,18 +371,18 @@ function ChildrensBookContent() {
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Headphones className="w-5 h-5 text-purple-600" />
-                  <span className="font-medium text-gray-800">Audio Story add-on</span>
+                  <span className="font-medium text-gray-800">{t('audioAddonTitle')}</span>
                 </div>
                 <button
                   disabled={busy}
                   onClick={() => handleAudioToggle(!book.audioAddOnPurchased)}
                   className="px-3 py-1.5 rounded-lg border border-purple-300 bg-white text-purple-700 text-sm font-medium disabled:opacity-50"
                 >
-                  {book.audioAddOnPurchased ? 'Remove audio' : `Add for ${(book.priceGel + 500) / 100} GEL`}
+                  {book.audioAddOnPurchased ? t('removeAudio') : t('addAudioFor', { amount: (book.priceGel + 500) / 100 })}
                 </button>
               </div>
-              <p className="text-sm text-gray-600 mt-2">Book: {book.priceGel / 100} GEL · Audio: {book.audioAddOnPurchased ? book.audioPriceGel / 100 : 0} GEL · Total: {(book.audioAddOnPurchased ? book.totalPriceGel : book.priceGel) / 100} GEL</p>
-              <p className="text-xs text-gray-500 mt-1">Mock audio uses local, browser-playable WAV files; no voice service is contacted.</p>
+              <p className="text-sm text-gray-600 mt-2">{t('priceBreakdown', { book: book.priceGel / 100, audio: book.audioAddOnPurchased ? book.audioPriceGel / 100 : 0, total: (book.audioAddOnPurchased ? book.totalPriceGel : book.priceGel) / 100 })}</p>
+              {mocked && <p className="text-xs text-gray-500 mt-1">{t('mockAudioNotice')}</p>}
             </div>
           )}
 
@@ -452,7 +452,7 @@ function ChildrensBookContent() {
                           onClick={() => handleAudioToggle(!book.audioAddOnPurchased)}
                           className="px-5 py-2 rounded-lg border border-purple-300 bg-purple-50 text-purple-700 font-medium disabled:opacity-50"
                         >
-                          {book.audioAddOnPurchased ? 'Audio enabled' : 'Add audio story'}
+                          {book.audioAddOnPurchased ? t('audioEnabled') : t('addAudioStory')}
                         </button>
                       )}
                       <button
@@ -574,7 +574,7 @@ function ChildrensBookContent() {
                         onClick={() => handleGenerateNarration()}
                         className="px-5 py-2 rounded-lg border border-purple-300 bg-purple-50 text-purple-700 font-medium disabled:opacity-50 flex items-center gap-1"
                       >
-                        <Headphones className="w-4 h-4" /> {audioStatus?.artifacts?.length ? 'Refresh audio story' : 'Generate audio story'}
+                        <Headphones className="w-4 h-4" /> {audioStatus?.artifacts?.length ? t('refreshAudioStory') : t('generateAudioStory')}
                       </button>
                     )}
                   </div>
@@ -582,7 +582,7 @@ function ChildrensBookContent() {
                   {canListenToAudio && (
                     <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4">
                       <div className="flex items-center gap-2 mb-3 text-gray-800 font-medium">
-                        <PlayCircle className="w-4 h-4 text-purple-600" /> Mock story reader
+                        <PlayCircle className="w-4 h-4 text-purple-600" /> {t('storyReaderTitle')}
                       </div>
                       <div className="space-y-2">
                         {book.pages?.map((page) => (
@@ -591,8 +591,8 @@ function ChildrensBookContent() {
                             onClick={() => playPageAudio(page.pageNumber)}
                             className="w-full flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-sm text-gray-700 hover:border-purple-300"
                           >
-                            <span>Page {page.pageNumber}</span>
-                            <span className="text-purple-600 font-medium">Listen</span>
+                            <span>{t('pageLabel', { number: page.pageNumber })}</span>
+                            <span className="text-purple-600 font-medium">{t('listenButton')}</span>
                           </button>
                         ))}
                       </div>
