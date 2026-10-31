@@ -88,7 +88,7 @@ export default function FloatingButtons({ onAssistantClick }: FloatingButtonsPro
     }`;
 
   return (
-    <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3 items-end">
+    <div className="fixed bottom-[calc(1.5rem+var(--tabbar-h,0px))] sm:bottom-6 right-6 z-40 flex flex-col gap-3 items-end">
       <button
         type="button"
         onClick={handleAssistantClick}

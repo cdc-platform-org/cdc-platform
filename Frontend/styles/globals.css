@@ -124,3 +124,9 @@ html, body {
     @apply border-red-500/20 bg-red-500/5 hover:border-red-500/50 hover:bg-red-500/10;
   }
 }
+/* App feel on touch screens: no grey flash on tap, no double-tap zoom
+   delay on controls. Visual styles are untouched. */
+a, button, [role="button"], input, select, textarea, label {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}

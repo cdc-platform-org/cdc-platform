@@ -8,7 +8,7 @@ interface ToastProps {
 // as the ad-hoc toast already used on the homepage (pages/index.tsx).
 export default function Toast({ message, icon = '✅' }: ToastProps) {
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] bg-slate-900 text-white text-sm font-semibold px-5 py-3 rounded-xl shadow-xl border border-slate-700 flex items-center gap-2">
+    <div className="fixed bottom-[calc(1.5rem+var(--tabbar-h,0px))] sm:bottom-6 left-1/2 -translate-x-1/2 z-[200] bg-slate-900 text-white text-sm font-semibold px-5 py-3 rounded-xl shadow-xl border border-slate-700 flex items-center gap-2">
       <span>{icon}</span>
       {message}
     </div>

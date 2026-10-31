@@ -193,7 +193,7 @@ export default function CookieConsentBanner() {
   return (
     <>
       {visible && !showPreferences && (
-        <div className="fixed bottom-4 left-4 right-4 sm:right-auto z-[70] sm:max-w-sm">
+        <div className="fixed bottom-[calc(1rem+var(--tabbar-h,0px))] sm:bottom-4 left-4 right-4 sm:right-auto z-[70] sm:max-w-sm">
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-[#0e1422]/95 backdrop-blur-md shadow-xl p-5">
             <div className="flex items-start gap-3 mb-4">
               <div className="w-9 h-9 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0">

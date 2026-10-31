@@ -15,6 +15,7 @@ import CookieConsentBanner from '@/src/components/layout/CookieConsentBanner';
 import BetaModeBanner from '@/src/components/layout/BetaModeBanner';
 import TermsConsentModal from '@/src/components/auth/TermsConsentModal';
 import AdminModeBar from '@/src/components/layout/AdminModeBar';
+import MobileTabBar from '@/src/components/layout/MobileTabBar';
 import { resolveLocale } from '@/src/utils/locale';
 import type { AppProps } from 'next/app';
 import '@/styles/globals.css';
@@ -85,7 +86,12 @@ function App({ Component, pageProps }: AppProps) {
   // to technically not touch) so it reads as clearly separate rather than
   // crowded on narrow mobile widths; everywhere else it sits at the normal
   // corner.
-  const scrollToTopPosition = router.pathname === '/' ? 'bottom-44 right-6' : 'bottom-6 right-6';
+  // On phones the bottom tab bar (MobileTabBar) sets --tabbar-h; both
+  // positions add it so the button never sits underneath the bar. sm+ is
+  // unchanged (the variable is unset there and the sm: values win anyway).
+  const scrollToTopPosition = router.pathname === '/'
+    ? 'bottom-[calc(11rem+var(--tabbar-h,0px))] sm:bottom-44 right-6'
+    : 'bottom-[calc(1.5rem+var(--tabbar-h,0px))] sm:bottom-6 right-6';
 
   return (
     <>
@@ -95,7 +101,16 @@ function App({ Component, pageProps }: AppProps) {
             AMP-mode branch does). Without it, mobile browsers default to a
             ~980px desktop layout viewport and every sm:/md: Tailwind
             breakpoint below effectively never activates on a real phone. */}
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        {/* Installable web app (Add to Home Screen) — manifest + icons in
+            /public. Opens standalone, without browser chrome. */}
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#0e1422" media="(prefers-color-scheme: dark)" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="CDC" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         {/* AUDIT NOTE (fixed): this block used to also render og:title/
             og:description/og:image/og:url and twitter:*, hardcoded to the
             homepage's own content, in a <Head> that wraps EVERY page. Next's
@@ -229,6 +244,7 @@ function App({ Component, pageProps }: AppProps) {
             <VerificationDrawerProvider>
               <BetaModeBanner />
               <Component {...pageProps} />
+              <MobileTabBar />
               <ScrollToTop positionClassName={scrollToTopPosition} />
               <FloatingButtons />
               <AuthModal />
