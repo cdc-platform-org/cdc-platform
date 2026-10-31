@@ -25,6 +25,10 @@ const dict = {
     mentorship: 'მენტორის სესია',
     gig: 'გარიგების ესქროუ დაფინანსება',
     product: 'ციფრული პროდუქტი',
+    book: 'საბავშვო წიგნი',
+    redirectingToBook: 'გადამისამართება თქვენს წიგნზე…',
+    openBook: 'წიგნის გახსნა',
+    myPurchases: 'ჩემი შენაძენები',
     backHome: 'მთავარ გვერდზე დაბრუნება',
     amount: 'თანხა',
     checkAgain: 'ხელახლა შემოწმება',
@@ -50,6 +54,10 @@ const dict = {
     mentorship: 'Mentorship session',
     gig: 'Gig escrow funding',
     product: 'Digital product',
+    book: "Children's book",
+    redirectingToBook: 'Redirecting to your book…',
+    openBook: 'Open my book',
+    myPurchases: 'My purchases',
     backHome: 'Back to home',
     amount: 'Amount',
     checkAgain: 'Check again',
@@ -75,6 +83,10 @@ const dict = {
     mentorship: 'Mentorship session',
     gig: 'Gig escrow funding',
     product: 'Digital product',
+    book: "Children's book",
+    redirectingToBook: 'Redirecting to your book…',
+    openBook: 'Open my book',
+    myPurchases: 'My purchases',
     backHome: 'Back to home',
     amount: 'Amount',
     checkAgain: 'Check again',
@@ -100,6 +112,10 @@ const dict = {
     mentorship: 'Mentorship session',
     gig: 'Gig escrow funding',
     product: 'Digital product',
+    book: "Children's book",
+    redirectingToBook: 'Redirecting to your book…',
+    openBook: 'Open my book',
+    myPurchases: 'My purchases',
     backHome: 'Back to home',
     amount: 'Amount',
     checkAgain: 'Check again',
@@ -125,6 +141,10 @@ const dict = {
     mentorship: 'Mentorship session',
     gig: 'Gig escrow funding',
     product: 'Digital product',
+    book: "Children's book",
+    redirectingToBook: 'Redirecting to your book…',
+    openBook: 'Open my book',
+    myPurchases: 'My purchases',
     backHome: 'Back to home',
     amount: 'Amount',
     checkAgain: 'Check again',
@@ -150,6 +170,10 @@ const dict = {
     mentorship: 'Mentorship session',
     gig: 'Gig escrow funding',
     product: 'Digital product',
+    book: "Children's book",
+    redirectingToBook: 'Redirecting to your book…',
+    openBook: 'Open my book',
+    myPurchases: 'My purchases',
     backHome: 'Back to home',
     amount: 'Amount',
     checkAgain: 'Check again',
@@ -165,6 +189,7 @@ const purposeKey: Record<string, keyof typeof dict.en> = {
   MENTORSHIP: 'mentorship',
   GIG_ESCROW_FUNDING: 'gig',
   PRODUCT: 'product',
+  CHILDRENS_BOOK: 'book',
 };
 
 function BogResultContent() {
@@ -218,6 +243,16 @@ function BogResultContent() {
     if (status?.status === 'COMPLETED' && status.purpose === 'PRODUCT') {
       const redirect = setTimeout(() => {
         router.push(`/store/${status.referenceId}`);
+      }, 1800);
+      return () => clearTimeout(redirect);
+    }
+    // Children's book purchases used to fall through here with no
+    // redirect and no link except "Back to home", so a buyer who had just
+    // paid saw nothing about their book. Send them back into the book
+    // flow (final generation continues there once the book is PAID).
+    if (status?.status === 'COMPLETED' && status.purpose === 'CHILDRENS_BOOK' && status.referenceId) {
+      const redirect = setTimeout(() => {
+        router.push({ pathname: '/dashboard/tools/childrens-book', query: { bookId: status.referenceId } });
       }, 1800);
       return () => clearTimeout(redirect);
     }
@@ -282,6 +317,17 @@ function BogResultContent() {
             {status.status === 'COMPLETED' && status.purpose === 'PRODUCT' && (
               <p className="text-xs text-gray-400 dark:text-slate-500">{t.redirectingToProduct}</p>
             )}
+            {status.status === 'COMPLETED' && status.purpose === 'CHILDRENS_BOOK' && status.referenceId && (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-400 dark:text-slate-500">{t.redirectingToBook}</p>
+                <Link
+                  href={{ pathname: '/dashboard/tools/childrens-book', query: { bookId: status.referenceId } }}
+                  className="inline-block text-sm font-bold px-4 py-2.5 rounded-lg bg-purple-600 text-white no-underline hover:bg-purple-700"
+                >
+                  {t.openBook}
+                </Link>
+              </div>
+            )}
             {status.status === 'PENDING' && !polling && <p className="text-xs text-gray-400 dark:text-slate-500">{t.pendingLong}</p>}
             <div className="text-xs text-gray-500 dark:text-slate-400 border-t border-gray-100 dark:border-slate-800 pt-4 space-y-1">
               <p>{purposeKey[status.purpose] ? t[purposeKey[status.purpose]] : status.purpose}</p>
@@ -330,9 +376,14 @@ function BogResultContent() {
           </div>
         )}
 
-        <Link href="/" className="block mt-6 text-sm text-indigo-600 hover:underline">
-          {t.backHome}
-        </Link>
+        <div className="mt-6 flex flex-col items-center gap-2">
+          <Link href="/dashboard?tab=purchases" className="text-sm font-semibold text-indigo-600 hover:underline">
+            {t.myPurchases}
+          </Link>
+          <Link href="/" className="text-xs text-gray-500 dark:text-slate-400 hover:underline">
+            {t.backHome}
+          </Link>
+        </div>
       </div>
     </div>
   );
