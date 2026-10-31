@@ -148,7 +148,10 @@ export function canStartFinalGeneration(book: {
   styleBible: unknown;
   storyPlan: unknown;
 }): boolean {
-  const statusOk = book.status === 'PAID' || book.status === 'FINAL_GENERATING';
+  // FAILED is a legal resume point only for a paid book: a Character Bible
+  // exists only after approval, so FAILED + characterBible means the final
+  // run failed after payment (a preview failure has no Character Bible).
+  const statusOk = book.status === 'PAID' || book.status === 'FINAL_GENERATING' || (book.status === 'FAILED' && book.characterBible != null);
   return statusOk && book.characterBible != null && book.styleBible != null && book.storyPlan != null;
 }
 

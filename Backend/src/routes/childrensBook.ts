@@ -20,6 +20,7 @@ import { buildBookPdf, BookPdfPageInput } from '../services/bookPdfService';
 import { storeBookAsset, readBookAsset } from '../services/bookStorageService';
 import { isBookDevPaymentSimulationEnabled } from '../services/bookMockConfig';
 import { completeChildrensBookPurchase } from '../services/bookPurchaseFulfillment';
+import { startFinalGeneration } from '../services/bookFinalGenerationService';
 import { calculateAudioPrice, calculateTotalBookPrice, canGenerateNarration, narrationLanguageForBook } from '../services/bookNarrationService';
 import { getBookNarrationProvider } from '../services/bookNarrationProviders';
 import { AzureSpeechError } from '../services/azureSpeechService';
@@ -214,7 +215,10 @@ router.post('/:id/character-preview', authenticate, async (req: Request, res: Re
   const book = await prisma.bookProject.findUnique({ where: { id: req.params.id } });
   if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
 
-  const eligibleFromStates: string[] = ['STORY_PLAN_READY', 'FAILED'];
+  // FAILED with a Character Bible is a paid book whose final generation
+  // failed — it resumes via final-generation/start, never back into the
+  // pre-payment preview stage.
+  const eligibleFromStates: string[] = book.characterBible ? ['STORY_PLAN_READY'] : ['STORY_PLAN_READY', 'FAILED'];
   if (eligibleFromStates.includes(book.status)) {
     const claim = await prisma.bookProject.updateMany({
       where: { id: book.id, status: { in: eligibleFromStates as any } },
@@ -369,101 +373,29 @@ router.post('/:id/payment/dev-simulate', authenticate, async (req: Request, res:
   // Deliberately create no BogPayment row and no external order in this
   // explicitly enabled local-only path.
   const result = await completeChildrensBookPurchase({ bookProjectId: book.id });
+  if (result.handled) await startFinalGeneration(book.id);
   const fresh = await prisma.bookProject.findUnique({ where: { id: book.id } });
   res.json({ data: fresh, handled: result.handled });
 });
 
 // ============================================================
-// FINAL GENERATION — start/resume (synchronous; mock mode is near-instant,
-// real mode would be slow but this is local-dev-only for now). Per-page
-// retry: only pages without an accepted artifact are (re)generated.
+// FINAL GENERATION — start/resume. Claims the book and runs generation in
+// the background (bookFinalGenerationService); the client polls
+// /final-generation/status. Payment completion starts it automatically, so
+// this route is only the manual Retry / resume path.
 // ============================================================
 router.post('/:id/final-generation/start', authenticate, async (req: Request, res: Response) => {
-  const book = await prisma.bookProject.findUnique({ where: { id: req.params.id }, include: { pages: { orderBy: { pageNumber: 'asc' } } } });
+  const book = await prisma.bookProject.findUnique({ where: { id: req.params.id } });
   if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
 
-  if (!canStartFinalGeneration({ status: book.status, characterBible: book.characterBible, styleBible: book.styleBible, storyPlan: book.storyPlan })) {
+  const outcome = await startFinalGeneration(book.id);
+  if (outcome === 'NOT_ELIGIBLE' || outcome === 'NOT_FOUND') {
     return res.status(400).json({ message: `Final generation cannot start from status ${book.status}.` });
   }
 
-  if (book.status === 'PAID') {
-    const claim = await prisma.bookProject.updateMany({ where: { id: book.id, status: 'PAID' }, data: { status: 'FINAL_GENERATING' } });
-    if (claim.count !== 1) return res.status(409).json({ message: 'Final generation already starting elsewhere.' });
-  }
-
-  const storyPlan = book.storyPlan as unknown as StoryPlan;
-  const characterBible = book.characterBible as any;
-  const styleBible = book.styleBible as any;
-
-  for (const page of book.pages) {
-    if (page.acceptedEventId) continue; // already accepted — per-page retry only touches unfinished pages
-
-    const planPage = storyPlan.pages.find((p) => p.pageNumber === page.pageNumber);
-    const previousAttempts = await prisma.bookGenerationEvent.count({
-      where: { bookProjectId: book.id, operationType: 'FINAL_PAGE', pageNumber: page.pageNumber, revisionVersion: 0 },
-    });
-    const logicalOperationKey = buildLogicalOperationKey({ bookProjectId: book.id, operationType: 'FINAL_PAGE', pageNumber: page.pageNumber, revisionVersion: 0 });
-
-    const prompt = [
-      `Children's storybook illustration, ${styleBible?.illustrationStyle ?? 'STORYBOOK_WATERCOLOR'} style.`,
-      `Character: ${characterBible?.name ?? ''}, consistent with the approved Character Bible.`,
-      planPage ? `Scene: ${planPage.sceneDescription}. Composition: ${planPage.composition}.` : '',
-      'No readable text or letters anywhere in the image. Reserve the upper-left 30% free of detail.',
-    ].filter(Boolean).join(' ');
-
-    await prisma.bookPage.update({ where: { id: page.id }, data: { imageGenerationStatus: 'GENERATING', attemptCount: { increment: 1 } } });
-
-    const started = new Date();
-    const result = await generateBookImage({ prompt, size: '1024x1024', quality: book.finalQuality === 'high' ? 'high' : 'medium' });
-    const completed = new Date();
-    const qa = runImageQa({ imageSuccess: result.success, byteSize: result.success ? result.byteSize : 0 });
-
-    const event = await prisma.bookGenerationEvent.create({
-      data: {
-        bookProjectId: book.id,
-        pageNumber: page.pageNumber,
-        operationType: 'FINAL_PAGE',
-        logicalOperationKey,
-        attemptNumber: previousAttempts + 1,
-        revisionVersion: 0,
-        deployment: result.deployment,
-        quality: result.success ? 'medium' : 'medium',
-        requestedSize: '1024x1024',
-        requestId: result.success ? result.requestId : result.requestId,
-        latencyMs: result.latencyMs,
-        success: result.success && qa.status === 'PASS',
-        errorClassification: result.success ? (qa.status === 'PASS' ? null : 'REQUEST_SCHEMA') : result.errorClassification,
-        startedAt: started,
-        completedAt: completed,
-      },
-    });
-
-    if (result.success && qa.status === 'PASS') {
-      const key = `books/${book.id}/events/${event.id}.png`;
-      await storeBookAsset(key, result.buffer, result.mimeType);
-      await prisma.bookPage.update({
-        where: { id: page.id },
-        data: { imageGenerationStatus: 'READY', qaStatus: 'PASS', acceptedEventId: event.id, sceneSpec: { ...(page.sceneSpec as any), imageKey: key, imageMimeType: result.mimeType } as any },
-      });
-    } else {
-      await prisma.bookPage.update({ where: { id: page.id }, data: { imageGenerationStatus: 'FAILED', qaStatus: 'FAIL' } });
-    }
-  }
-
-  const refreshedPages = await prisma.bookPage.findMany({ where: { bookProjectId: book.id } });
-  const acceptedCount = refreshedPages.filter((p) => p.acceptedEventId).length;
-
-  if (acceptedCount === book.pageCount) {
-    await prisma.bookProject.updateMany({ where: { id: book.id, status: 'FINAL_GENERATING' }, data: { status: 'FINAL_QA' } });
-    await prisma.bookProject.updateMany({ where: { id: book.id, status: 'FINAL_QA' }, data: { status: 'FINAL_READY' } });
-  } else {
-    await prisma.bookProject.updateMany({ where: { id: book.id, status: { in: ['FINAL_GENERATING', 'FINAL_QA'] } }, data: { status: 'FAILED' } });
-  }
-
   const fresh = await prisma.bookProject.findUnique({ where: { id: book.id }, include: { pages: { orderBy: { pageNumber: 'asc' } } } });
-  res.json({ data: fresh, acceptedCount, mocked: isImageGenerationMocked() });
+  res.status(202).json({ data: fresh, started: outcome === 'STARTED', mocked: isImageGenerationMocked() });
 });
-
 router.get('/:id/final-generation/status', authenticate, async (req: Request, res: Response) => {
   const book = await prisma.bookProject.findUnique({ where: { id: req.params.id }, include: { pages: { orderBy: { pageNumber: 'asc' } } } });
   if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
