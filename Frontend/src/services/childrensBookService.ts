@@ -128,8 +128,8 @@ export async function approveCharacter(id: string): Promise<BookProject> {
   return response.data.data;
 }
 
-export async function startCheckout(bookId: string): Promise<{ paymentId: string; redirectUrl: string | null }> {
-  const response = await apiClient.post<{ paymentId: string; redirectUrl: string | null }>(`/payments/checkout/childrens-book/${bookId}`, {});
+export async function startCheckout(bookId: string, promoCode?: string): Promise<{ paymentId: string; redirectUrl: string | null; purchased?: boolean }> {
+  const response = await apiClient.post<{ paymentId: string; redirectUrl: string | null; purchased?: boolean }>(`/payments/checkout/childrens-book/${bookId}`, promoCode ? { promoCode } : {});
   return response.data;
 }
 

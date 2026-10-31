@@ -24,7 +24,7 @@ import { completeCoursePurchase } from '../services/courseSaleService';
 import { paymentModelForPurpose } from '../services/paymentModel';
 import { getCurrentPrice } from '../services/coursePricing';
 import { getCurrentProductPrice } from '../services/productPricing';
-import { applyPromoToCheckout, quotePromoToCheckout, PromoCodeError } from '../services/couponService';
+import { applyPromoToCheckout, quotePromoToCheckout, claimPromoRedemption, PromoCodeError } from '../services/couponService';
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
 import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
 import { captureMentorshipEscrow } from '../services/mentorshipEscrowService';
@@ -102,6 +102,8 @@ function resultRedirects(paymentId: string) {
 // twice if they complete both). 15 minutes comfortably covers a duplicate
 // click without indefinitely blocking a genuinely abandoned/expired attempt.
 const PENDING_ORDER_REUSE_WINDOW_MS = 15 * 60 * 1000;
+
+class BookCheckoutInProgressError extends Error {}
 
 async function findReusablePendingOrder(
   userId: string,
@@ -451,7 +453,14 @@ router.post(
   authenticate,
   requireApproved,
   async (req: Request, res: Response) => {
-    const reusable = await findReusablePendingOrder(req.user!.id, 'ENGLISH_TUTOR_SUBSCRIPTION', req.user!.id);
+    // A pending order is only reused when it was opened with the same promo
+    // code (or none), so a buyer who comes back with a code never lands on
+    // an earlier full-price BOG order.
+    const requestedPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode.trim().toUpperCase() : '';
+    const requestedPromoId = requestedPromoCode
+      ? (await prisma.promoCode.findUnique({ where: { code: requestedPromoCode }, select: { id: true } }))?.id ?? 'unknown-promo'
+      : null;
+    const reusable = await findReusablePendingOrder(req.user!.id, 'ENGLISH_TUTOR_SUBSCRIPTION', req.user!.id, undefined, requestedPromoId);
     if (reusable) return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.redirectUrl });
 
     const requesterAdminRole = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } }))?.adminRole;
@@ -974,7 +983,27 @@ router.post(
     const totalPriceGel = calculateTotalBookPrice(listPriceGel, book.audioAddOnPurchased);
     const payableAmountGel = resolveBookPayableAmountTetri(book.id, totalPriceGel);
 
-    const reusable = await findReusablePendingOrder(req.user!.id, 'CHILDRENS_BOOK', book.id, payableAmountGel);
+    // Optional promo code — same re-validated-server-side rule as every
+    // other checkout (see couponService.ts). Quoted here, but its usage slot
+    // is only claimed inside the transaction below, together with the
+    // book's CHARACTER_APPROVED -> PAYMENT_PENDING move, so a failed claim
+    // never leaves the book stuck in PAYMENT_PENDING and a lost status race
+    // never spends a use.
+    const rawPromoCode = typeof req.body?.promoCode === 'string' && req.body.promoCode.trim() ? req.body.promoCode : null;
+    let chargeAmount = payableAmountGel;
+    let appliedPromo: PromoCode | null = null;
+    if (rawPromoCode) {
+      try {
+        const applied = await quotePromoToCheckout(rawPromoCode, 'CHILDRENS_BOOK', book.id, payableAmountGel);
+        chargeAmount = applied.chargeAmount;
+        appliedPromo = applied.appliedPromo;
+      } catch (err) {
+        if (err instanceof PromoCodeError) return res.status(400).json({ message: err.message });
+        throw err;
+      }
+    }
+
+    const reusable = await findReusablePendingOrder(req.user!.id, 'CHILDRENS_BOOK', book.id, chargeAmount, appliedPromo?.id ?? null);
     if (reusable) {
       return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.redirectUrl });
     }
@@ -983,39 +1012,51 @@ router.post(
     // to PAYMENT_PENDING. A concurrent duplicate click loses this race and
     // falls through to find the winner's reusable PENDING order instead on
     // its own retry — never two BogPayment rows for one checkout attempt.
-    const claimed = await prisma.bookProject.updateMany({
-      where: { id: book.id, status: 'CHARACTER_APPROVED' },
-      data: { status: 'PAYMENT_PENDING' },
-    });
-    if (claimed.count !== 1) {
-      return res.status(409).json({ message: 'This book already has a checkout in progress.' });
+    // A 100% promo (chargeAmount 0) skips BOG entirely: the payment row is
+    // recorded already COMPLETED and the book is fulfilled right away, the
+    // same shape as the product/course free-via-promo paths.
+    const isFree = chargeAmount <= 0;
+    let bogPayment: Awaited<ReturnType<typeof prisma.bogPayment.create>>;
+    try {
+      bogPayment = await prisma.$transaction(async (tx) => {
+        const claimed = await tx.bookProject.updateMany({
+          where: { id: book.id, status: 'CHARACTER_APPROVED' },
+          data: { status: 'PAYMENT_PENDING', audioPriceGel, totalPriceGel },
+        });
+        if (claimed.count !== 1) throw new BookCheckoutInProgressError();
+        if (appliedPromo) await claimPromoRedemption(appliedPromo, tx);
+        return tx.bogPayment.create({
+          data: {
+            bogOrderId: isFree ? `promo-${crypto.randomUUID()}` : `pending-${crypto.randomUUID()}`,
+            userId: req.user!.id,
+            purpose: 'CHILDRENS_BOOK',
+            paymentModel: paymentModelForPurpose('CHILDRENS_BOOK'),
+            referenceId: book.id,
+            amount: isFree ? 0 : chargeAmount,
+            currency: 'GEL',
+            status: isFree ? 'COMPLETED' : 'PENDING',
+            completedAt: isFree ? new Date() : null,
+            promoCodeId: appliedPromo?.id ?? null,
+          },
+        });
+      });
+    } catch (err) {
+      if (err instanceof BookCheckoutInProgressError) return res.status(409).json({ message: 'This book already has a checkout in progress.' });
+      if (err instanceof PromoCodeError) return res.status(400).json({ message: err.message });
+      throw err;
     }
 
-    const bogPayment = await prisma.bogPayment.create({
-      data: {
-        bogOrderId: `pending-${crypto.randomUUID()}`,
-        userId: req.user!.id,
-        purpose: 'CHILDRENS_BOOK',
-        paymentModel: paymentModelForPurpose('CHILDRENS_BOOK'),
-        referenceId: book.id,
-        amount: payableAmountGel,
-        currency: 'GEL',
-        status: 'PENDING',
-      },
-    });
-    await prisma.bookProject.update({
-      where: { id: book.id },
-      data: {
-        audioPriceGel,
-        totalPriceGel,
-      },
-    });
+    if (isFree) {
+      await completeChildrensBookPurchase({ bookProjectId: book.id });
+      return res.status(201).json({ paymentId: bogPayment.id, redirectUrl: null, purchased: true });
+    }
+
     const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
     const order = await createBogOrderOrRespond(res, {
       externalOrderId: bogPayment.id,
-      amount: payableAmountGel,
+      amount: chargeAmount,
       currency: 'GEL',
-      basketItemName: payableAmountGel === listPriceGel ? "Custom AI Children's Book" : "Custom AI Children's Book (QA test — discounted)",
+      basketItemName: payableAmountGel === totalPriceGel ? "Custom AI Children's Book" : "Custom AI Children's Book (QA test — discounted)",
       callbackUrl: CALLBACK_URL,
       successRedirectUrl,
       failRedirectUrl,

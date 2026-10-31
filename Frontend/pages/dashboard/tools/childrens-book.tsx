@@ -35,6 +35,8 @@ import {
   BookLanguage,
   FinalGenerationStatus,
 } from '../../../src/services/childrensBookService';
+import PromoCodeField from '../../../src/components/shared/PromoCodeField';
+import { PromoValidationResult } from '../../../src/services/paymentService';
 
 const GENERATING_STATUSES = ['CHARACTER_PREVIEW_GENERATING', 'FINAL_GENERATING', 'FINAL_QA', 'REVISION_REQUESTED', 'REVISION_GENERATING', 'REVISION_QA'];
 const POLL_MS = 1500;
@@ -54,6 +56,8 @@ function ChildrensBookContent() {
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [genStatus, setGenStatus] = useState<FinalGenerationStatus | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
+  const promoLang: 'ka' | 'en' = router.locale === 'ka' ? 'ka' : 'en';
   const previewUrlRef = useRef<string | null>(null);
   const audioUrlRef = useRef<string | null>(null);
 
@@ -119,6 +123,9 @@ function ChildrensBookContent() {
     await run(async () => {
       const updated = await updateAudioUpgrade(book.id, nextValue);
       setBook(updated);
+      // The previewed discount was priced against the old total — make the
+      // buyer re-apply it so the button never shows a stale amount.
+      setAppliedPromo(null);
       if (nextValue) {
         await loadAudioStatus(book.id);
       } else {
@@ -458,14 +465,24 @@ function ChildrensBookContent() {
                       <button
                         disabled={busy}
                         onClick={() => run(async () => {
-                          const r = await startCheckout(book.id);
+                          const r = await startCheckout(book.id, appliedPromo?.code);
                           if (r.redirectUrl) window.location.href = r.redirectUrl;
                           else setBook(await getBook(book.id).then((x) => x.book));
                         })}
                         className="px-5 py-2 rounded-lg bg-purple-600 text-white font-medium disabled:opacity-50"
                       >
-                        {t('payButton', { amount: (book.audioAddOnPurchased ? book.totalPriceGel : book.priceGel) / 100 })}
+                        {t('payButton', { amount: (appliedPromo ? appliedPromo.discountedAmount : (book.audioAddOnPurchased ? book.totalPriceGel : book.priceGel)) / 100 })}
                       </button>
+                      <div className="basis-full">
+                        <PromoCodeField
+                          targetType="CHILDRENS_BOOK"
+                          targetId={book.id}
+                          lang={promoLang}
+                          applied={appliedPromo}
+                          onChange={setAppliedPromo}
+                          disabled={busy}
+                        />
+                      </div>
                     </div>
                   )}
                 </>

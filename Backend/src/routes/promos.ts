@@ -7,7 +7,7 @@ const router = Router();
 
 const validateSchema = z.object({
   code: z.string().trim().min(1).max(40),
-  targetType: z.enum(['COURSE', 'LIVE_TRAINING', 'DIGITAL_PRODUCT', 'AI_TOOL']),
+  targetType: z.enum(['COURSE', 'LIVE_TRAINING', 'DIGITAL_PRODUCT', 'AI_TOOL', 'CHILDRENS_BOOK']),
   targetId: z.string().trim().min(1),
 });
 

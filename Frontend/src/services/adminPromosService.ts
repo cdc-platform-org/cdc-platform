@@ -1,6 +1,6 @@
 import apiClient from './apiClient';
 
-export type PromoApplicableType = 'ALL' | 'COURSE' | 'LIVE_TRAINING' | 'DIGITAL_PRODUCT' | 'AI_TOOL';
+export type PromoApplicableType = 'ALL' | 'COURSE' | 'LIVE_TRAINING' | 'DIGITAL_PRODUCT' | 'AI_TOOL' | 'CHILDRENS_BOOK';
 
 export interface PromoCode {
   id: string;

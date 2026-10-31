@@ -64,7 +64,7 @@ export interface PromoValidationResult {
 // backend re-checks that the code's own applicableType/applicableTargetIds
 // actually cover this specific item (see couponService.ts), returning the
 // exact Georgian mismatch message when it doesn't.
-export type PromoTargetType = 'COURSE' | 'LIVE_TRAINING' | 'DIGITAL_PRODUCT' | 'AI_TOOL';
+export type PromoTargetType = 'COURSE' | 'LIVE_TRAINING' | 'DIGITAL_PRODUCT' | 'AI_TOOL' | 'CHILDRENS_BOOK';
 
 export async function validatePromoCode(code: string, targetType: PromoTargetType, targetId: string): Promise<PromoValidationResult> {
   const response = await apiClient.post<{ data: PromoValidationResult }>('/promos/validate', { code, targetType, targetId });
@@ -114,8 +114,8 @@ export interface TutorSubscriptionCheckoutResult {
   enrolled?: boolean;
 }
 
-export async function checkoutEnglishTutorSubscription(lang?: 'ka' | 'en'): Promise<TutorSubscriptionCheckoutResult> {
-  const response = await apiClient.post<TutorSubscriptionCheckoutResult>('/payments/checkout/english-tutor', { lang });
+export async function checkoutEnglishTutorSubscription(lang?: 'ka' | 'en', promoCode?: string): Promise<TutorSubscriptionCheckoutResult> {
+  const response = await apiClient.post<TutorSubscriptionCheckoutResult>('/payments/checkout/english-tutor', { lang, promoCode });
   return response.data;
 }
 

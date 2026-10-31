@@ -23,6 +23,7 @@ const TYPE_LABEL: Record<PromoApplicableType, string> = {
   LIVE_TRAINING: 'ლაივ ტრენინგი',
   DIGITAL_PRODUCT: 'ციფრული პროდუქტი',
   AI_TOOL: 'AI ხელსაწყო',
+  CHILDRENS_BOOK: 'საბავშვო AI წიგნი',
 };
 
 interface TargetOption {
@@ -36,6 +37,11 @@ interface TargetOption {
 // checkout couponService.ts's resolveTargetPrice actually supports today.
 // Extend this list as more AI-tool checkouts gain promo support.
 const AI_TOOL_OPTIONS: TargetOption[] = [{ id: 'english-tutor', name: 'IMIAKO — AI English Tutor (1 month)' }];
+
+// Every Children's Book is a one-off per-buyer item, so a book code targets
+// the product line as a whole via this one fixed id (matches
+// CHILDRENS_BOOK_PROMO_TARGET_ID in Backend couponService.ts).
+const CHILDRENS_BOOK_OPTIONS: TargetOption[] = [{ id: 'childrens-book', name: 'ინდივიდუალური AI საბავშვო წიგნი (ყველა წიგნი)' }];
 
 const emptyForm = {
   code: '',
@@ -137,6 +143,8 @@ function AdminPromosDashboard() {
         return productOptions;
       case 'AI_TOOL':
         return AI_TOOL_OPTIONS;
+      case 'CHILDRENS_BOOK':
+        return CHILDRENS_BOOK_OPTIONS;
       default:
         return [];
     }
@@ -147,7 +155,7 @@ function AdminPromosDashboard() {
   // targets, without re-fetching per row.
   const targetNameById = useMemo(() => {
     const map = new Map<string, string>();
-    for (const opt of [...courseOptions, ...trainingOptions, ...productOptions, ...AI_TOOL_OPTIONS]) {
+    for (const opt of [...courseOptions, ...trainingOptions, ...productOptions, ...AI_TOOL_OPTIONS, ...CHILDRENS_BOOK_OPTIONS]) {
       map.set(opt.id, opt.name);
     }
     return map;
@@ -239,7 +247,10 @@ function AdminPromosDashboard() {
               <select
                 className={`${inputClass} appearance-none pr-9`}
                 value={form.applicableType}
-                onChange={(e) => setForm({ ...form, applicableType: e.target.value as PromoApplicableType, applicableTargetIds: [] })}
+                onChange={(e) => {
+                  const applicableType = e.target.value as PromoApplicableType;
+                  setForm({ ...form, applicableType, applicableTargetIds: applicableType === 'CHILDRENS_BOOK' ? CHILDRENS_BOOK_OPTIONS.map((o) => o.id) : [] });
+                }}
               >
                 {(Object.keys(TYPE_LABEL) as PromoApplicableType[]).map((t) => (
                   <option key={t} value={t}>

@@ -3,6 +3,8 @@ import { X, Sparkles, Loader2 } from 'lucide-react';
 import { startTutorTrial } from '../../services/englishTutorService';
 import { checkoutEnglishTutorSubscription } from '../../services/paymentService';
 import { checkoutEnglishTutorSubscriptionStripe } from '../../services/stripePaymentService';
+import { PromoValidationResult } from '../../services/paymentService';
+import PromoCodeField from '../shared/PromoCodeField';
 
 interface TutorPaywallModalProps {
   lang: 'ka' | 'en';
@@ -24,6 +26,7 @@ const dict = {
     startTrial: '5 დღიანი უფასო ტესტის დაწყება (ბარათის გარეშე)',
     startingTrial: 'იწყება…',
     upgrade: 'PRO-ზე გადასვლა — 50 ₾/თვე',
+    upgradeDiscounted: (amount: string) => `PRO-ზე გადასვლა — ${amount} ₾ პირველი თვე`,
     redirecting: 'გადამისამართება…',
     close: 'დახურვა',
   },
@@ -34,6 +37,7 @@ const dict = {
     startTrial: 'Start 5-day free trial (no card required)',
     startingTrial: 'Starting…',
     upgrade: 'Upgrade to PRO — 50 GEL/month',
+    upgradeDiscounted: (amount: string) => `Upgrade to PRO — ${amount} GEL first month`,
     redirecting: 'Redirecting…',
     close: 'Close',
   },
@@ -44,6 +48,7 @@ export default function TutorPaywallModal({ lang, trialAvailable, onClose, onTri
   const [startingTrial, setStartingTrial] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
 
   const handleStartTrial = async () => {
     setStartingTrial(true);
@@ -62,7 +67,7 @@ export default function TutorPaywallModal({ lang, trialAvailable, onClose, onTri
     setCheckingOut(true);
     setError(null);
     try {
-      const result = lang === 'ka' ? await checkoutEnglishTutorSubscription('ka') : await checkoutEnglishTutorSubscriptionStripe(undefined, 'usd');
+      const result = lang === 'ka' ? await checkoutEnglishTutorSubscription('ka', appliedPromo?.code) : await checkoutEnglishTutorSubscriptionStripe(appliedPromo?.code, 'usd');
       if (result.enrolled) {
         onTrialStarted(); // reuse the same "state changed, refetch" callback
         return;
@@ -108,6 +113,14 @@ export default function TutorPaywallModal({ lang, trialAvailable, onClose, onTri
               {startingTrial ? t.startingTrial : t.startTrial}
             </button>
           )}
+          <PromoCodeField
+            targetType="AI_TOOL"
+            targetId="english-tutor"
+            lang={lang}
+            applied={appliedPromo}
+            onChange={setAppliedPromo}
+            disabled={checkingOut}
+          />
           <button
             type="button"
             onClick={handleUpgrade}
@@ -115,7 +128,7 @@ export default function TutorPaywallModal({ lang, trialAvailable, onClose, onTri
             className="rounded-full bg-gradient-to-r from-amber-400 via-purple-500 to-cyan-500 text-white font-bold px-5 py-2.5 text-sm disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {checkingOut && <Loader2 className="w-4 h-4 animate-spin" />}
-            {checkingOut ? t.redirecting : t.upgrade}
+            {checkingOut ? t.redirecting : appliedPromo ? t.upgradeDiscounted((appliedPromo.discountedAmount / 100).toFixed(2).replace(/\.00$/, '')) : t.upgrade}
           </button>
         </div>
       </div>
