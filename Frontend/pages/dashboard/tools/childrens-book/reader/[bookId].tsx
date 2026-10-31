@@ -20,6 +20,10 @@ import {
 
 function BookReaderContent() {
   const { t } = useTranslation('childrensBook');
+  // Effects below read the translator through a ref so a locale switch
+  // doesn't re-run their fetch/playback side effects.
+  const tRef = useRef(t);
+  tRef.current = t;
   const router = useRouter();
   const bookId = typeof router.query.bookId === 'string' ? router.query.bookId : null;
   const [book, setBook] = useState<BookProject | null>(null);
@@ -47,7 +51,7 @@ function BookReaderContent() {
         setAudioStatus(await getNarrationStatus(bookId).catch(() => null));
       }
     }).catch(() => {
-      if (!cancelled) setError('This book could not be loaded.');
+      if (!cancelled) setError(tRef.current('readerLoadFailed'));
     });
     return () => { cancelled = true; };
   }, [bookId]);
@@ -83,7 +87,7 @@ function BookReaderContent() {
         setAudioUrls(nextUrls);
       })
       .catch(() => {
-        if (!cancelled) setError('Some page audio could not be loaded.');
+        if (!cancelled) setError(tRef.current('readerAudioLoadFailed'));
       });
     return () => { cancelled = true; };
   }, [bookId, book?.audioAddOnPurchased, audioStatus?.eligible, audioStatus?.artifacts]);
@@ -104,7 +108,7 @@ function BookReaderContent() {
       try {
         await player.play();
       } catch {
-        setError('Audio playback could not start.');
+        setError(t('readerPlaybackFailed'));
       }
     }
   }
@@ -145,7 +149,7 @@ function BookReaderContent() {
     try {
       setAudioStatus(await generateNarration(bookId));
     } catch {
-      setError('Audio story could not be generated.');
+      setError(t('readerAudioGenerateFailed'));
     } finally {
       setGeneratingAudio(false);
     }
@@ -158,7 +162,7 @@ function BookReaderContent() {
     player.currentTime = 0;
     player.play().catch(() => {
       setPlayingFullStory(false);
-      setError('Audio playback could not continue.');
+      setError(tRef.current('readerPlaybackContinueFailed'));
     });
   }, [audioUrls, pageNumber, playingFullStory]);
 
@@ -180,7 +184,7 @@ function BookReaderContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <SEOHead title={`${book.title} · Reader`} description={book.title} noIndex />
+      <SEOHead title={`${book.title} · ${t('readerLabel')}`} description={book.title} noIndex />
       <SiteHeader />
       <main className="max-w-5xl mx-auto px-4 py-8">
         <button onClick={() => router.push('/dashboard/tools/childrens-book')} className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-purple-700 mb-5">
@@ -189,31 +193,31 @@ function BookReaderContent() {
         <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{book.title}</h1>
-            <p className="text-sm text-gray-500 mt-1">Page {pageNumber} / {book.pageCount}</p>
+            <p className="text-sm text-gray-500 mt-1">{t('readerPageOf', { number: pageNumber, total: book.pageCount })}</p>
           </div>
-          {book.audioAddOnPurchased && <span className="inline-flex items-center gap-1.5 text-sm font-medium text-purple-700"><Headphones className="w-4 h-4" /> Audio Story</span>}
+          {book.audioAddOnPurchased && <span className="inline-flex items-center gap-1.5 text-sm font-medium text-purple-700"><Headphones className="w-4 h-4" /> {t('audioStoryBadge')}</span>}
         </div>
 
         {error && <p role="alert" className="mb-4 text-sm text-red-700">{error}</p>}
         {book.status !== 'FINAL_READY' && book.status !== 'COMPLETED' ? (
-          <p className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">This book is still being prepared.</p>
+          <p className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{t('readerStillPreparing')}</p>
         ) : (
           <>
             <section className="grid gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.7fr)]">
               <div className="min-w-0">
                 <div className="aspect-[4/3] rounded-lg border border-gray-200 bg-white flex items-center justify-center overflow-hidden">
-                  {imageUrl ? <img src={imageUrl} alt={`${book.title}, page ${pageNumber}`} className="w-full h-full object-contain" /> : <span className="text-sm text-gray-400">Illustration unavailable</span>}
+                  {imageUrl ? <img src={imageUrl} alt={`${book.title}, ${t('pageLabel', { number: pageNumber })}`} className="w-full h-full object-contain" /> : <span className="text-sm text-gray-400">{t('readerIllustrationUnavailable')}</span>}
                 </div>
                 <div className="flex items-center justify-between gap-3 mt-4">
-                  <button disabled={pageNumber <= 1} onClick={() => changePage(pageNumber - 1)} className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm disabled:opacity-40"><ChevronLeft className="w-4 h-4" />Previous</button>
-                  <span className="text-sm font-medium text-gray-600">Page {pageNumber} / {book.pageCount}</span>
-                  <button disabled={pageNumber >= book.pageCount} onClick={() => changePage(pageNumber + 1)} className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm disabled:opacity-40">Next<ChevronRight className="w-4 h-4" /></button>
+                  <button disabled={pageNumber <= 1} onClick={() => changePage(pageNumber - 1)} className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm disabled:opacity-40"><ChevronLeft className="w-4 h-4" />{t('readerPrevious')}</button>
+                  <span className="text-sm font-medium text-gray-600">{t('readerPageOf', { number: pageNumber, total: book.pageCount })}</span>
+                  <button disabled={pageNumber >= book.pageCount} onClick={() => changePage(pageNumber + 1)} className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm disabled:opacity-40">{t('readerNext')}<ChevronRight className="w-4 h-4" /></button>
                 </div>
               </div>
 
               <article className="rounded-lg border border-gray-200 bg-white p-5">
-                <h2 className="text-sm font-semibold text-gray-500">Page {pageNumber}</h2>
-                <p className="mt-4 whitespace-pre-wrap text-lg leading-8 text-gray-800">{page?.storyText || 'Story text unavailable.'}</p>
+                <h2 className="text-sm font-semibold text-gray-500">{t('pageLabel', { number: pageNumber })}</h2>
+                <p className="mt-4 whitespace-pre-wrap text-lg leading-8 text-gray-800">{page?.storyText || t('readerStoryTextUnavailable')}</p>
               </article>
             </section>
 
@@ -221,18 +225,18 @@ function BookReaderContent() {
               <section className="mt-6 border-t border-gray-200 pt-5" aria-label="Audio controls">
                 <div className="flex flex-wrap items-center gap-3">
                   <button disabled={!audioReady} onClick={togglePlayback} className="inline-flex items-center gap-2 rounded-md bg-purple-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-40">
-                    {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}{playing ? 'Pause' : 'Play'}
+                    {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}{playing ? t('readerPause') : t('readerPlay')}
                   </button>
                   <button disabled={!fullStoryReady} onClick={startFullStory} className="inline-flex items-center gap-2 rounded-md border border-purple-300 px-4 py-2 text-sm font-medium text-purple-700 disabled:opacity-40">
-                    <Repeat className="w-4 h-4" />Play Full Story
+                    <Repeat className="w-4 h-4" />{t('readerPlayFullStory')}
                   </button>
-                  <span className="text-sm text-gray-500">Page {pageNumber} narration</span>
-                  {audioStatus.artifacts.length === 0 && <button disabled={generatingAudio} onClick={handleGenerateAudio} className="rounded-md border border-gray-300 px-3 py-2 text-sm disabled:opacity-40">{generatingAudio ? 'Preparing audio…' : 'Generate audio story'}</button>}
+                  <span className="text-sm text-gray-500">{t('readerPageNarration', { number: pageNumber })}</span>
+                  {audioStatus.artifacts.length === 0 && <button disabled={generatingAudio} onClick={handleGenerateAudio} className="rounded-md border border-gray-300 px-3 py-2 text-sm disabled:opacity-40">{generatingAudio ? t('readerPreparingAudio') : t('generateAudioStory')}</button>}
                 </div>
                 <div className="mt-3 h-1.5 w-full overflow-hidden rounded bg-gray-200" role="progressbar" aria-label="Audio progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}>
                   <div className="h-full bg-purple-600 transition-[width]" style={{ width: `${progress}%` }} />
                 </div>
-                <div className="mt-1 flex justify-between text-xs text-gray-500"><span>{Math.floor(currentTime)} sec</span><span>{Math.floor(duration)} sec</span></div>
+                <div className="mt-1 flex justify-between text-xs text-gray-500"><span>{t('readerSeconds', { value: Math.floor(currentTime) })}</span><span>{t('readerSeconds', { value: Math.floor(duration) })}</span></div>
                 <audio
                   ref={audioRef}
                   src={audioUrls[pageNumber]}

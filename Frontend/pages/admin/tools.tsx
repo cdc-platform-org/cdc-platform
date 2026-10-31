@@ -18,6 +18,7 @@ const KNOWN_TOOLS: { slug: string; route: string }[] = [
   { slug: 'media-studio', route: '/dashboard/tools/media-studio' },
   { slug: 'english-tutor', route: '/dashboard/english-tutor' },
   { slug: 'proctoring', route: '/dashboard/tools/proctored-exam' },
+  { slug: 'childrens-book', route: '/dashboard/tools/childrens-book' },
 ];
 
 const STATUS_OPTIONS: { value: ToolCatalogStatus; label: string }[] = [
