@@ -17,7 +17,7 @@ import { generateStoryPlan, CharacterConfig, StoryPlan } from '../services/bookS
 import { generateBookImage, isImageGenerationMocked } from '../services/bookImageGenerationService';
 import { runImageQa } from '../services/bookQaService';
 import { buildBookPdf, BookPdfPageInput } from '../services/bookPdfService';
-import { storeBookAsset, getBookAssetUrl, readLocalBookAsset, isUsingCloudBookStorage } from '../services/bookStorageService';
+import { storeBookAsset, readBookAsset } from '../services/bookStorageService';
 import { isBookDevPaymentSimulationEnabled } from '../services/bookMockConfig';
 import { completeChildrensBookPurchase } from '../services/bookPurchaseFulfillment';
 import { calculateAudioPrice, calculateTotalBookPrice, canGenerateNarration, narrationLanguageForBook } from '../services/bookNarrationService';
@@ -295,16 +295,12 @@ router.get('/:id/character-preview/image', authenticate, async (req: Request, re
   const config = (book.characterConfig ?? {}) as any;
   if (!config.previewImageKey) return res.status(404).json({ message: 'No character preview image yet.' });
 
-  if (isUsingCloudBookStorage()) {
-    const url = await getBookAssetUrl(config.previewImageKey);
-    return res.redirect(url!);
-  }
   try {
-    const buffer = await readLocalBookAsset(config.previewImageKey);
+    const buffer = await readBookAsset(config.previewImageKey);
     res.setHeader('Content-Type', config.previewImageMimeType || 'image/png');
     res.send(buffer);
   } catch {
-    res.status(404).json({ message: 'Preview image not found on disk.' });
+    res.status(404).json({ message: 'Preview image not found.' });
   }
 });
 
@@ -316,16 +312,12 @@ router.get('/:id/page/:pageNumber/image', authenticate, async (req: Request, res
   const scene = page?.sceneSpec as any;
   if (!page || !scene?.imageKey) return res.status(404).json({ message: 'Page illustration not found.' });
 
-  if (isUsingCloudBookStorage()) {
-    const url = await getBookAssetUrl(scene.imageKey);
-    return url ? res.redirect(url) : res.status(404).json({ message: 'Page illustration not available.' });
-  }
   try {
-    const buffer = await readLocalBookAsset(scene.imageKey);
+    const buffer = await readBookAsset(scene.imageKey);
     res.setHeader('Content-Type', scene.imageMimeType || 'image/png');
     res.send(buffer);
   } catch {
-    res.status(404).json({ message: 'Page illustration not found on disk.' });
+    res.status(404).json({ message: 'Page illustration not available.' });
   }
 });
 
@@ -774,17 +766,12 @@ router.get('/:id/audio/page/:pageNumber', authenticate, async (req: Request, res
     return res.status(404).json({ message: 'No narration has been generated for this page yet.' });
   }
 
-  if (isUsingCloudBookStorage()) {
-    const url = await getBookAssetUrl(artifact.artifactKey);
-    return url ? res.redirect(url) : res.status(404).json({ message: 'Audio asset not available.' });
-  }
-
   try {
-    const buffer = await readLocalBookAsset(artifact.artifactKey);
+    const buffer = await readBookAsset(artifact.artifactKey);
     res.setHeader('Content-Type', artifact.mimeType || 'audio/wav');
     res.send(buffer);
   } catch {
-    res.status(404).json({ message: 'Narration file not found on disk.' });
+    res.status(404).json({ message: 'Narration file not available.' });
   }
 });
 
@@ -818,9 +805,9 @@ router.post('/:id/pdf', authenticate, async (req: Request, res: Response) => {
       const imageKey = (page.sceneSpec as any)?.imageKey as string | undefined;
       const imageMimeType = (page.sceneSpec as any)?.imageMimeType as string | undefined;
       let imageBuffer: Buffer | null = null;
-      if (imageKey && !isUsingCloudBookStorage()) {
+      if (imageKey) {
         try {
-          imageBuffer = await readLocalBookAsset(imageKey);
+          imageBuffer = await readBookAsset(imageKey);
         } catch {
           imageBuffer = null;
         }
@@ -861,17 +848,13 @@ router.get('/:id/pdf/download', authenticate, async (req: Request, res: Response
   if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
   if (!book.finalPdfBlobRef) return res.status(404).json({ message: 'No PDF has been generated for this book yet.' });
 
-  if (isUsingCloudBookStorage()) {
-    const url = await getBookAssetUrl(book.finalPdfBlobRef);
-    return res.redirect(url!);
-  }
   try {
-    const buffer = await readLocalBookAsset(book.finalPdfBlobRef);
+    const buffer = await readBookAsset(book.finalPdfBlobRef);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${book.title.replace(/[^a-zA-Z0-9 _-]/g, '')}.pdf"`);
     res.send(buffer);
   } catch {
-    res.status(404).json({ message: 'PDF file not found on disk.' });
+    res.status(404).json({ message: 'PDF file not available.' });
   }
 });
 
