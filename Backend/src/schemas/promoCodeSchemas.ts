@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const applicableTypeSchema = z.enum(['ALL', 'COURSE', 'LIVE_TRAINING', 'DIGITAL_PRODUCT', 'AI_TOOL']);
+const applicableTypeSchema = z.enum(['ALL', 'COURSE', 'LIVE_TRAINING', 'DIGITAL_PRODUCT', 'AI_TOOL', 'CHILDRENS_BOOK']);
 
 export const createPromoCodeSchema = z
   .object({

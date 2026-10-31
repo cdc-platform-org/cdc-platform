@@ -4612,6 +4612,10 @@ enum CouponApplicableType {
   LIVE_TRAINING
   DIGITAL_PRODUCT
   AI_TOOL
+  // Children's Book: each BookProject is unique to its buyer, so a code is
+  // never scoped to one bookId — it targets the product line as a whole via
+  // the fixed target id 'childrens-book' (see couponService.ts).
+  CHILDRENS_BOOK
 }
 
 // ============================================================

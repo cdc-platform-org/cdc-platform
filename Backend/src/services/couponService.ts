@@ -4,6 +4,8 @@ import { getCurrentPrice } from './coursePricing';
 import { getCurrentProductPrice } from './productPricing';
 import { getCurrentLiveTrainingPrice } from './liveTrainingPricing';
 import { TUTOR_SUBSCRIPTION_PRICE_GEL } from './englishTutorSubscriptionService';
+import { calculateBookPrice } from './bookStateService';
+import { calculateTotalBookPrice } from './bookNarrationService';
 
 // ============================================================
 // Universal promo-code validation/pricing — the single place every checkout
@@ -26,6 +28,17 @@ export class PromoCodeError extends Error {
 // mismatch — validated in routes/promos.ts, not re-derived per caller.
 export const PROMO_TARGET_MISMATCH_MESSAGE = 'ეს პრომო კოდი არ ვრცელდება არჩეულ პროდუქტზე';
 
+// Every BookProject is a one-off, per-buyer item, so a Children's Book code
+// can't sensibly name a specific bookId. It targets the whole product line
+// through this one fixed id instead (the same way AI_TOOL uses
+// 'english-tutor'), while the actual targetId passed around at checkout/
+// validate time is still the real bookId, used only to price it.
+export const CHILDRENS_BOOK_PROMO_TARGET_ID = 'childrens-book';
+
+function promoMatchTargetId(targetType: CouponTargetType, targetId: string): string {
+  return targetType === 'CHILDRENS_BOOK' ? CHILDRENS_BOOK_PROMO_TARGET_ID : targetId;
+}
+
 // Re-validated at checkout time (never trusting whatever discountedAmount
 // the client saw from a prior POST /promos/validate call), same posture the
 // pre-existing course-only flow already had. Throws PromoCodeError with a
@@ -38,7 +51,7 @@ export async function findValidPromoCode(rawCode: string, targetType: CouponTarg
   if (promo.expiresAt && promo.expiresAt <= new Date()) throw new PromoCodeError('This promo code has expired.');
   if (!allowReservedUse && promo.maxUses != null && promo.currentUses >= promo.maxUses) throw new PromoCodeError('This promo code has reached its usage limit.');
   if (promo.applicableType !== 'ALL') {
-    if (promo.applicableType !== targetType || !promo.applicableTargetIds.includes(targetId)) {
+    if (promo.applicableType !== targetType || !promo.applicableTargetIds.includes(promoMatchTargetId(targetType, targetId))) {
       throw new PromoCodeError(PROMO_TARGET_MISMATCH_MESSAGE);
     }
   }
@@ -104,6 +117,15 @@ export async function resolveTargetPrice(targetType: CouponTargetType, targetId:
       const AI_TOOL_PRICES: Record<string, number> = { 'english-tutor': TUTOR_SUBSCRIPTION_PRICE_GEL };
       const price = AI_TOOL_PRICES[targetId];
       if (price == null) throw new CouponTargetNotFoundError('Unknown AI tool.');
+      return { currentPrice: price, originalPrice: price };
+    }
+    case 'CHILDRENS_BOOK': {
+      // Priced fresh from pageCount + audio add-on (tetri), never from the
+      // stored priceGel/totalPriceGel columns — same rule as the book
+      // checkout route itself.
+      const book = await prisma.bookProject.findUnique({ where: { id: targetId }, select: { pageCount: true, audioAddOnPurchased: true } });
+      if (!book) throw new CouponTargetNotFoundError('Book not found.');
+      const price = calculateTotalBookPrice(calculateBookPrice(book.pageCount), !!book.audioAddOnPurchased);
       return { currentPrice: price, originalPrice: price };
     }
   }
