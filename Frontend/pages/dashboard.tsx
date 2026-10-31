@@ -12,24 +12,25 @@ import {
   LifeBuoy,
   CheckCircle2,
   Wifi,
-  ShoppingBag,
   Download,
   CalendarClock,
   Award,
-  MessageSquare,
   Bot,
   Sparkles,
   Mail,
   Users,
   Crown,
   Video,
+  Store,
+  Receipt,
 } from 'lucide-react';
 import ProtectedRoute from '../src/components/auth/ProtectedRoute';
 import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
-import BackButton from '../src/components/common/BackButton';
 import LaunchKitDrawer from '../src/components/admin/LaunchKitDrawer';
 import AiMarketingAssistantDrawer from '../src/components/dashboard/AiMarketingAssistantDrawer';
+import MyPurchasesPanel, { purchasedBooks } from '../src/components/dashboard/MyPurchasesPanel';
+import { listMyBooks, BookListItem } from '../src/services/childrensBookService';
 import { useAuth } from '../src/context/AuthContext';
 import { MyCourseWithProgress } from '../src/types/lms';
 import { getMyCourses, downloadCertificate } from '../src/services/courseService';
@@ -46,7 +47,6 @@ import {
   PayoutRequestRow,
 } from '../src/services/walletService';
 import { getMyPayments, downloadInvoice, MyPaymentRow } from '../src/services/paymentService';
-import { getForumQuota, ForumPostQuota } from '../src/services/forumService';
 import { createMentorshipRequest } from '../src/services/mentorshipService';
 import {
   getProducts,
@@ -68,19 +68,19 @@ import ImageGalleryUploader from '../src/components/shared/ImageGalleryUploader'
 import VideoTutorialLink from '../src/components/shared/VideoTutorialLink';
 import { assetFilenameFromUrl } from '../src/utils/assetFilename';
 import { User } from '../src/types/auth';
-import { resolveLocale, SupportedLocale } from '@/src/utils/locale';
+import { resolveLocale } from '@/src/utils/locale';
 import { DIGITAL_PRODUCT_CATEGORIES } from '../src/data/digitalProductCategories';
 
 const PRODUCT_ASSET_ACCEPT = '.zip,.pdf,.epub,.rar,.7z,.fig,.sketch,.psd,.ai,.doc,.docx,.mp4,.mov';
 
-type Tab = 'overview' | 'courses' | 'wallet' | 'gigs' | 'products';
+type Tab = 'overview' | 'purchases' | 'courses' | 'wallet' | 'gigs' | 'products';
 
 const dict = {
   ka: {
     title: 'პირადი კაბინეტი',
     tabOverview: 'მიმოხილვა',
-    tabCourses: 'კურსები & სერტიფიკატები',
-    tabWallet: 'საფულე & გადახდები',
+    tabCourses: 'ჩემი კურსები',
+    tabWallet: 'საფულე',
     tabGigs: 'ჩემი პროექტები',
     tabProducts: 'ჩემი ციფრული პროდუქტები',
     tabSettings: 'პარამეტრები',
@@ -903,60 +903,6 @@ function ProgressBar({ percent }: { percent: number }) {
   );
 }
 
-// Two quick-nav cards into the paths a Student account can take (learning
-// vs. freelancing) — purely a display convenience, never a gate: which one
-// is visually first/highlighted follows user.primaryIntent (set at
-// registration, re-editable any time under /dashboard/settings), but both
-// stay fully clickable regardless. See Backend's schemas/authSchemas.ts —
-// primaryIntent never restricts what an account can actually do.
-function DashboardUnlockCards({ user, t }: { user: User; t: typeof dict['ka'] }) {
-  const cards = [
-    {
-      key: 'learner',
-      href: '/courses',
-      icon: GraduationCap,
-      title: t.unlockLearnerTitle,
-      desc: t.unlockLearnerDesc,
-      highlighted: user.primaryIntent !== 'TALENT',
-    },
-    {
-      key: 'freelancer',
-      href: '/gigs',
-      icon: Briefcase,
-      title: t.unlockFreelancerTitle,
-      desc: t.unlockFreelancerDesc,
-      highlighted: user.primaryIntent === 'TALENT',
-    },
-  ].sort((a, b) => Number(b.highlighted) - Number(a.highlighted));
-
-  return (
-    <div className="grid sm:grid-cols-2 gap-4">
-      {cards.map((card) => (
-        <Link
-          key={card.key}
-          href={card.href}
-          className={`flex items-center gap-4 rounded-2xl border p-4 no-underline text-current transition-all duration-300 ${
-            card.highlighted
-              ? 'border-cyan-400/60 dark:border-cyan-500/40 bg-gradient-to-r from-cyan-500/10 to-purple-600/10 shadow-lg shadow-cyan-500/10'
-              : 'border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 hover:border-cyan-400/50 dark:hover:border-cyan-400/40'
-          }`}
-        >
-          <div className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
-            <card.icon className="w-5 h-5 text-white" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-black text-slate-900 dark:text-white">{card.title}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{card.desc}</p>
-          </div>
-          <span className="shrink-0 text-xs font-bold text-cyan-600 dark:text-cyan-400 whitespace-nowrap hidden sm:inline">
-            {t.unlockCta}
-          </span>
-        </Link>
-      ))}
-    </div>
-  );
-}
-
 // isVerifiedGraduate is the app-wide "verified freelancer" flag — set by
 // either graduating a course or passing the freelancer skill exam (see
 // Backend's routes/freelancerExam.ts and routes/courses.ts) — and gates gig/
@@ -986,57 +932,6 @@ function FreelancerExamCard({ user, t }: { user: User; t: typeof dict['ka']; }) 
   );
 }
 
-// Promo card pointing Students at the Digital Store submission flow — shown
-// unconditionally like DashboardUnlockCards/FreelancerExamCard (never gates
-// on canSubmitProduct; the Products tab itself decides whether the actual
-// "Add Product" button renders, based on isVerifiedGraduate/adminRole).
-function DigitalStoreCTACard({ t }: { t: typeof dict['ka'] }) {
-  return (
-    <Link
-      href="/dashboard?tab=products"
-      className="flex items-center gap-4 rounded-2xl border border-purple-400/40 dark:border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 backdrop-blur-md p-4 no-underline text-current transition-all duration-300 hover:border-purple-400/60 hover:shadow-lg hover:shadow-purple-500/10 h-full"
-    >
-      <div className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-500 to-cyan-600 flex items-center justify-center">
-        <ShoppingBag className="w-5 h-5 text-white" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-black text-slate-900 dark:text-white">{t.digitalStoreTitle}</p>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.digitalStoreDesc}</p>
-      </div>
-      <span className="shrink-0 text-xs font-bold text-purple-600 dark:text-purple-400 whitespace-nowrap hidden sm:inline">
-        {t.digitalStoreCta}
-      </span>
-    </Link>
-  );
-}
-
-// Links into the new /dashboard/tools "My Tools" page (chatbot agents/
-// English Tutor/Educator VIP/Media Studio/Cyber Sentinel, each with real
-// status) — a plain link card here rather than a full new dashboard tab,
-// since that page already owns the actual per-tool status logic.
-function MyToolsCard({ lang }: { lang: SupportedLocale }) {
-  const ka = lang === 'ka';
-  return (
-    <Link
-      href="/dashboard/tools"
-      className="flex items-center gap-4 rounded-2xl border border-cyan-400/40 dark:border-cyan-500/30 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 backdrop-blur-md p-4 no-underline text-current transition-all duration-300 hover:border-cyan-400/60 hover:shadow-lg hover:shadow-cyan-500/10 h-full"
-    >
-      <div className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
-        <Sparkles className="w-5 h-5 text-white" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-black text-slate-900 dark:text-white">{ka ? 'ჩემი ხელსაწყოები' : 'My Tools'}</p>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-          {ka ? 'თქვენი AI ხელსაწყოების სტატუსი — Business AI, IMIAKO, Educator VIP და სხვა' : 'Your AI tools at a glance — Business AI, IMIAKO, Educator VIP, and more'}
-        </p>
-      </div>
-      <span className="shrink-0 text-xs font-bold text-cyan-600 dark:text-cyan-400 whitespace-nowrap hidden sm:inline">
-        {ka ? 'ნახვა →' : 'View →'}
-      </span>
-    </Link>
-  );
-}
-
 function DashboardContent() {
   const router = useRouter();
   const lang = resolveLocale(router.locale);
@@ -1058,6 +953,7 @@ function DashboardContent() {
   const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null);
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
   const [purchasedProducts, setPurchasedProducts] = useState<DigitalProduct[]>([]);
+  const [myBooks, setMyBooks] = useState<BookListItem[]>([]);
   const [downloadingProductId, setDownloadingProductId] = useState<string | null>(null);
   const [productDownloadError, setProductDownloadError] = useState<string | null>(null);
   const [mySubmissions, setMySubmissions] = useState<DigitalProduct[]>([]);
@@ -1125,7 +1021,6 @@ function DashboardContent() {
   const [payoutSubmitting, setPayoutSubmitting] = useState(false);
   const [payoutError, setPayoutError] = useState<string | null>(null);
 
-  const [postQuota, setPostQuota] = useState<ForumPostQuota | null>(null);
   const [showMentorshipModal, setShowMentorshipModal] = useState(false);
   const [mentorshipMessage, setMentorshipMessage] = useState('');
   const [mentorshipSubmitting, setMentorshipSubmitting] = useState(false);
@@ -1162,31 +1057,39 @@ function DashboardContent() {
   // button click never changes the URL, so it can never retrigger this.
   useEffect(() => {
     const queryTab = router.query.tab;
-    if (queryTab === 'courses' || queryTab === 'wallet' || queryTab === 'gigs' || queryTab === 'products') {
+    if (queryTab === 'purchases' || queryTab === 'courses' || queryTab === 'wallet' || queryTab === 'gigs') {
       setActiveTab(queryTab);
+    } else if (queryTab === 'products') {
+      // Purchased products now live under "My purchases"; the products tab
+      // itself is only the seller workspace, so a non-seller following an
+      // old ?tab=products link lands on their purchases instead.
+      setActiveTab(canSubmitProduct ? 'products' : 'purchases');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router.isReady, router.query.tab]);
+  }, [router.isReady, router.query.tab, canSubmitProduct]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [coursesData, gigsData, walletData, payoutData, paymentsData, quotaData, productsData] = await Promise.all([
+      // allSettled, not all: with Promise.all a single failing request
+      // (e.g. the forum quota) rejected the whole batch and left every
+      // section empty — including the user's purchases.
+      const [coursesRes, gigsRes, walletRes, payoutRes, paymentsRes, productsRes, booksRes] = await Promise.allSettled([
         getMyCourses(),
         getAssignedGigs(),
         getWalletSummary(),
         getMyPayoutRequests(),
         getMyPayments(),
-        getForumQuota(),
         getProducts(),
+        listMyBooks(),
       ]);
-      setCourses(coursesData);
-      setGigs(gigsData);
-      setWallet(walletData);
-      setPayoutRequests(payoutData);
-      setPayments(paymentsData);
-      setPostQuota(quotaData);
-      setPurchasedProducts(productsData.filter((p) => p.purchased));
+      if (coursesRes.status === 'fulfilled') setCourses(coursesRes.value);
+      if (gigsRes.status === 'fulfilled') setGigs(gigsRes.value);
+      if (walletRes.status === 'fulfilled') setWallet(walletRes.value);
+      if (payoutRes.status === 'fulfilled') setPayoutRequests(payoutRes.value);
+      if (paymentsRes.status === 'fulfilled') setPayments(paymentsRes.value);
+      if (productsRes.status === 'fulfilled') setPurchasedProducts(productsRes.value.filter((p) => p.purchased));
+      if (booksRes.status === 'fulfilled') setMyBooks(booksRes.value);
     } finally {
       setLoading(false);
     }
@@ -1410,7 +1313,13 @@ function DashboardContent() {
     setDownloadingProductId(productId);
     try {
       const { fileUrl } = await getProductDownload(productId);
-      window.open(fileUrl, '_blank', 'noopener,noreferrer');
+      // window.open after an await is often blocked as a popup; fall back
+      // to navigating the current tab so the download still starts. (No
+      // 'noopener' feature string: with it window.open always returns null,
+      // which would make the fallback fire even when the tab did open.)
+      const opened = window.open(fileUrl, '_blank');
+      if (opened) opened.opener = null;
+      else window.location.assign(fileUrl);
     } catch {
       setProductDownloadError(t.downloadFailed);
     } finally {
@@ -1476,7 +1385,6 @@ function DashboardContent() {
   };
 
   const certificatesEarned = courses.filter((c) => c.hasCertificate).length;
-  const activeGigsCount = gigs.filter((g) => g.status === 'assigned' || g.status === 'submitted').length;
   // Points the AI Tutor promo card at whichever enrolled course still has
   // work left — falls back to the first enrolled course if everything's
   // already complete, so the card still links somewhere valid.
@@ -1487,12 +1395,32 @@ function DashboardContent() {
 
   const confirmCourse = courses.find((c) => c.course.id === confirmCourseId)?.course ?? null;
 
+  const ownedBooks = purchasedBooks(myBooks, payments);
+  const purchasesCount = ownedBooks.length + courses.length + purchasedProducts.length;
+  const purchasesLabel = lang === 'ka' ? 'ჩემი შენაძენები' : 'My purchases';
+
+  // Primary sections. Gigs only shows for people who actually freelance
+  // (have a gig, or chose the freelancer path); the products tab is the
+  // seller workspace, so it only shows for people allowed to sell.
   const NAV: { key: Tab; label: string; icon: typeof LayoutDashboard }[] = [
     { key: 'overview', label: t.tabOverview, icon: LayoutDashboard },
+    { key: 'purchases', label: purchasesLabel, icon: Receipt },
     { key: 'courses', label: t.tabCourses, icon: GraduationCap },
     { key: 'wallet', label: t.tabWallet, icon: Wallet },
-    { key: 'gigs', label: t.tabGigs, icon: Briefcase },
-    { key: 'products', label: t.tabProducts, icon: ShoppingBag },
+    ...(gigs.length > 0 || user?.primaryIntent === 'TALENT' ? [{ key: 'gigs' as Tab, label: t.tabGigs, icon: Briefcase }] : []),
+    ...(canSubmitProduct ? [{ key: 'products' as Tab, label: lang === 'ka' ? 'ჩემი პროდუქტების გაყიდვა' : 'Sell products', icon: Store }] : []),
+  ];
+
+  // Secondary destinations: plain links, visually lighter than the tabs so
+  // the sidebar reads as "a few sections + a short list of extras".
+  const MORE_LINKS: { href: string; label: string; icon: typeof LayoutDashboard; show: boolean }[] = [
+    { href: '/dashboard/tools', label: lang === 'ka' ? 'ჩემი ხელსაწყოები' : 'My tools', icon: Sparkles, show: true },
+    { href: '/dashboard/live-trainings', label: lang === 'ka' ? 'ლაივ ტრენინგები' : 'Live trainings', icon: Video, show: true },
+    { href: '/dashboard/mentorship-sessions', label: t.tabMentorshipSessions, icon: CalendarClock, show: true },
+    { href: '/dashboard/mentorship', label: t.mentorWorkspace, icon: Users, show: user?.role === 'Mentor' },
+    { href: '/dashboard/trainer', label: lang === 'ka' ? 'ტრენერის პანელი' : 'Trainer Control Center', icon: GraduationCap, show: isTrainer },
+    { href: '/dashboard/career-quiz', label: lang === 'ka' ? 'ჩემი კარიერული ტესტი' : 'My Career Test', icon: Award, show: true },
+    { href: '/dashboard/settings', label: t.tabSettings, icon: Settings, show: true },
   ];
 
   return (
@@ -1503,226 +1431,144 @@ function DashboardContent() {
 
       <SiteHeader />
 
-      <div className="max-w-7xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 pt-6">
-        <BackButton fallbackHref="/" forceFallback className="dark:text-slate-400 dark:hover:text-slate-100" />
-      </div>
-
-      {/* xl:grid-cols-5 (sidebar 1 / content 4) rather than keeping md's 1:3
-          split all the way up — at md's ratio the nav column grows wide
-          enough on a real desktop viewport to visually compete with the
-          content next to it; 1:4 at xl+ keeps it fully legible (icon+label
-          rows, never "tiny") while giving the content column the bulk of
-          the now-wider container (see max-w-7xl/2xl:max-w-screen-2xl above
-          — this grid is what actually spends that extra width). */}
       <div className="max-w-7xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 py-6 md:py-8 grid md:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8 flex-1 w-full">
         {/* SIDE MENU */}
-        <div className="space-y-2 md:sticky md:top-24 self-start">
-          {NAV.map((item) => {
-            const Icon = item.icon;
-            return (
+        <nav className="md:sticky md:top-24 self-start space-y-4 min-w-0">
+          <div className="space-y-1">
+            {NAV.map((item) => {
+              const Icon = item.icon;
+              const active = activeTab === item.key;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setActiveTab(item.key)}
+                  className={`w-full flex items-center gap-2.5 text-left px-3 py-2.5 rounded-lg text-sm font-semibold transition border-none cursor-pointer ${
+                    active
+                      ? 'bg-slate-900 dark:bg-cyan-600 text-white'
+                      : 'bg-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span className="flex-1">{item.label}</span>
+                  {item.key === 'purchases' && purchasesCount > 0 && (
+                    <span className={`text-[11px] font-bold px-1.5 rounded ${active ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-700'}`}>{purchasesCount}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="border-t border-slate-200 dark:border-slate-800 pt-3 space-y-0.5">
+            {user?.isVerifiedGraduate && (
               <button
-                key={item.key}
                 type="button"
-                onClick={() => setActiveTab(item.key)}
-                className={`w-full flex items-center gap-2.5 text-left p-3.5 rounded-xl text-xs font-bold transition border ${
-                  activeTab === item.key
-                    ? 'bg-slate-900 dark:bg-cyan-600 text-white border-transparent shadow-sm'
-                    : 'bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
+                onClick={() => setShowMentorshipModal(true)}
+                className="w-full flex items-center gap-2.5 text-left px-3 py-2 rounded-lg text-xs font-semibold bg-transparent border-none cursor-pointer text-cyan-700 dark:text-cyan-300 hover:bg-slate-200/60 dark:hover:bg-slate-800"
               >
-                <Icon className="w-4 h-4 shrink-0" />
-                {item.label}
+                <Wifi className="w-3.5 h-3.5 shrink-0" />
+                {t.mentorshipButton}
               </button>
-            );
-          })}
-          {user?.isVerifiedGraduate && (
+            )}
+            {MORE_LINKS.filter((l) => l.show).map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800 no-underline"
+              >
+                <l.icon className="w-3.5 h-3.5 shrink-0" />
+                {l.label}
+              </Link>
+            ))}
             <button
               type="button"
-              onClick={() => setShowMentorshipModal(true)}
-              className="w-full flex items-center gap-2.5 text-left p-3.5 rounded-xl text-xs font-bold transition border border-slate-200 dark:border-cyan-900/50 bg-white dark:bg-slate-900/60 text-cyan-600 dark:text-cyan-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:shadow-[0_0_14px_2px_rgba(34,211,238,0.4)]"
+              onClick={() => { logout(); router.push('/'); }}
+              className="w-full flex items-center gap-2.5 text-left px-3 py-2 rounded-lg text-xs font-semibold bg-transparent border-none cursor-pointer text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
             >
-              <Wifi className="w-4 h-4 shrink-0" />
-              {t.mentorshipButton}
+              <LogOut className="w-3.5 h-3.5 shrink-0" />
+              {t.logout}
             </button>
-          )}
-          {/* Dynamic — only a current Mentor sees this, and it disappears
-              the moment an admin demotes them back to Student/Client (see
-              adminMentorship.ts's promote/demote), since it reads the same
-              `role` value everything else on this page already does. */}
-          {user?.role === 'Mentor' && (
-            <Link
-              href="/dashboard/mentorship"
-              className="flex items-center gap-2.5 w-full text-left p-3.5 rounded-xl text-xs font-bold transition border border-slate-200 dark:border-cyan-900/50 bg-white dark:bg-slate-900/60 text-cyan-600 dark:text-cyan-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:shadow-[0_0_14px_2px_rgba(34,211,238,0.4)] no-underline"
-            >
-              <Users className="w-4 h-4 shrink-0" />
-              {t.mentorWorkspace}
-            </Link>
-          )}
-          <Link
-            href="/dashboard/mentorship-sessions"
-            className="flex items-center gap-2.5 w-full text-left p-3.5 rounded-xl text-xs font-bold transition border bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 no-underline"
-          >
-            <CalendarClock className="w-4 h-4 shrink-0" />
-            {t.tabMentorshipSessions}
-          </Link>
-          {/* IAKO Trainer Tools — server-verified trainer capability; same
-              disappearance-on-demotion posture as the Mentor link above. */}
-          {isTrainer && (
-            <Link
-              href="/dashboard/trainer"
-              className="flex items-center gap-2.5 w-full text-left p-3.5 rounded-xl text-xs font-bold transition border border-slate-200 dark:border-cyan-900/50 bg-white dark:bg-slate-900/60 text-cyan-600 dark:text-cyan-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:shadow-[0_0_14px_2px_rgba(34,211,238,0.4)] no-underline"
-            >
-              <GraduationCap className="w-4 h-4 shrink-0" />
-              {lang === 'ka' ? 'ტრენერის პანელი' : 'Trainer Control Center'}
-            </Link>
-          )}
-          <Link
-            href="/dashboard/live-trainings"
-            className="flex items-center gap-2.5 w-full text-left p-3.5 rounded-xl text-xs font-bold transition border bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 no-underline"
-          >
-            <Video className="w-4 h-4 shrink-0" />
-            {lang === 'ka' ? 'ლაივ ტრენინგები' : 'Live Trainings'}
-          </Link>
-          <Link
-            href="/dashboard/career-quiz"
-            className="flex items-center gap-2.5 w-full text-left p-3.5 rounded-xl text-xs font-bold transition border bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 no-underline"
-          >
-            <Sparkles className="w-4 h-4 shrink-0" />
-            {lang === 'ka' ? 'ჩემი კარიერული ტესტი' : 'My Career Test'}
-          </Link>
-          <Link
-            href="/dashboard/settings"
-            className="flex items-center gap-2.5 w-full text-left p-3.5 rounded-xl text-xs font-bold transition border bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 no-underline"
-          >
-            <Settings className="w-4 h-4 shrink-0" />
-            {t.tabSettings}
-          </Link>
-          <button
-            type="button"
-            onClick={() => { logout(); router.push('/'); }}
-            className="w-full flex items-center gap-2.5 text-left p-3.5 rounded-xl text-xs font-bold transition border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 bg-transparent"
-          >
-            <LogOut className="w-4 h-4 shrink-0" />
-            {t.logout}
-          </button>
-        </div>
+          </div>
+        </nav>
 
         {/* CONTENT */}
-        <div className="md:col-span-3 xl:col-span-4 space-y-6">
+        <div className="md:col-span-3 xl:col-span-4 space-y-6 min-w-0">
           {loading ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">{t.loading}</p>
           ) : (
             <>
               {activeTab === 'overview' && (
                 <div className="space-y-6">
-                  {(() => {
-                    const kpiStats = [
-                      { label: t.statCourses, value: String(courses.length), color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-500/10', icon: GraduationCap },
-                      { label: t.statWallet, value: wallet ? formatGel(wallet.earningsBalance) : '—', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10', icon: Wallet },
-                      { label: t.statGigs, value: String(activeGigsCount), color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-500/10', icon: Briefcase },
-                      { label: t.statCerts, value: String(certificatesEarned), color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/10', icon: Award },
-                      ...(postQuota && !postQuota.isGraduate
-                        ? [{ label: t.statPostsLeft, value: String(postQuota.remaining), color: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-500/10', icon: MessageSquare }]
-                        : []),
-                    ];
-                    // 5 real columns at xl+ only when there are actually 5
-                    // cards to fill them — otherwise xl:grid-cols-5 would
-                    // leave the 4-card case stretched with an empty 5th
-                    // slot instead of the clean 4-across it already had.
-                    // lg's 3-column middle step (1024–1279px) is the "3+2"
-                    // fallback for the 5-card case called for at that width
-                    // rather than cramming 5 narrow columns in too little
-                    // space.
-                    const kpiGridClass = kpiStats.length === 5 ? 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-5' : 'grid-cols-2 lg:grid-cols-4';
-                    return (
-                      <div className={`grid ${kpiGridClass} gap-4`}>
-                        {kpiStats.map((stat) => (
-                          <div
-                            key={stat.label}
-                            className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-4"
-                          >
-                            <div className={`w-8 h-8 rounded-xl ${stat.bg} flex items-center justify-center mb-2`}>
-                              <stat.icon className={`w-4 h-4 ${stat.color}`} />
-                            </div>
-                            <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
-                            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1">{stat.label}</p>
-                          </div>
-                        ))}
+                  <div>
+                    <h1 className="text-xl font-extrabold">
+                      {lang === 'ka' ? 'გამარჯობა' : 'Hello'}{user?.name ? `, ${user.name.split(' ')[0]}` : ''}
+                    </h1>
+                  </div>
+
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    {[
+                      { label: purchasesLabel, value: String(purchasesCount), icon: Receipt, onClick: () => setActiveTab('purchases') },
+                      { label: t.statCourses, value: String(courses.length), icon: GraduationCap, onClick: () => setActiveTab('courses') },
+                      { label: t.statCerts, value: String(certificatesEarned), icon: Award, onClick: () => setActiveTab('courses') },
+                      { label: t.statWallet, value: wallet ? formatGel(wallet.earningsBalance) : '—', icon: Wallet, onClick: () => setActiveTab('wallet') },
+                    ].map((stat) => (
+                      <button
+                        key={stat.label}
+                        type="button"
+                        onClick={stat.onClick}
+                        className="text-left rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-4 cursor-pointer hover:border-cyan-400/60 transition"
+                      >
+                        <stat.icon className="w-4 h-4 text-slate-500 dark:text-slate-400 mb-2" />
+                        <p className="text-xl font-black text-slate-900 dark:text-white">{stat.value}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{stat.label}</p>
+                      </button>
+                    ))}
+                  </div>
+
+                  <MyPurchasesPanel
+                    compact
+                    lang={lang}
+                    books={ownedBooks}
+                    courses={courses}
+                    products={purchasedProducts}
+                    onDownloadProduct={handleDownloadProduct}
+                    downloadingProductId={downloadingProductId}
+                    productDownloadError={productDownloadError}
+                    onSeeAll={() => setActiveTab('purchases')}
+                  />
+
+                  {inProgressCourse && inProgressCourse.progress.percent < 100 && (
+                    <Link
+                      href={`/courses/${inProgressCourse.course.id}/learn`}
+                      className="flex items-center gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-4 no-underline text-current hover:border-cyan-400/60 transition"
+                    >
+                      <div className="shrink-0 w-10 h-10 rounded-lg bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
+                        <Bot className="w-5 h-5 text-white" />
                       </div>
-                    );
-                  })()}
-                  {postQuota && !postQuota.isGraduate && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400 -mt-2">
-                      {t.postsLeftValue.replace('{{remaining}}', String(postQuota.remaining))}
-                    </p>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{inProgressCourse.course.title}</p>
+                        <div className="mt-2"><ProgressBar percent={inProgressCourse.progress.percent} /></div>
+                      </div>
+                      <span className="shrink-0 text-xs font-bold text-cyan-600 dark:text-cyan-400 whitespace-nowrap">
+                        {lang === 'ka' ? 'გაგრძელება →' : 'Continue →'}
+                      </span>
+                    </Link>
                   )}
 
-                  {user?.role === 'Student' && <DashboardUnlockCards user={user} t={t} />}
-
-                  {/* Grouped into one 2-col grid at lg+ (each was previously
-                      a separate full-width row stacked vertically) — on a
-                      normal desktop viewport this halves the vertical space
-                      this section needs without touching any card's own
-                      text/icon size. */}
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    {user?.role === 'Student' && <FreelancerExamCard user={user} t={t} />}
-
-                    {user?.role === 'Student' && <DigitalStoreCTACard t={t} />}
-
-                    <MyToolsCard lang={lang} />
-
-                    {inProgressCourse && (
-                      <Link
-                        href={`/courses/${inProgressCourse.course.id}/learn`}
-                        className="flex items-center gap-4 rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-cyan-500/5 to-purple-600/5 backdrop-blur-md p-4 no-underline text-current transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 h-full"
-                      >
-                        <div className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
-                          <Bot className="w-5 h-5 text-white" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="flex items-center gap-1.5 text-sm font-black text-slate-900 dark:text-white">
-                            <Sparkles className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
-                            {t.aiTutorTitle}
-                          </p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.aiTutorDesc}</p>
-                        </div>
-                        <span className="shrink-0 text-xs font-bold text-cyan-600 dark:text-cyan-400 whitespace-nowrap hidden sm:inline">
-                          {t.aiTutorCta} →
-                        </span>
-                      </Link>
-                    )}
-                  </div>
-
-                  <div>
-                    <h2 className="text-sm font-extrabold tracking-wide mb-3">{t.progressTitle}</h2>
-                    {courses.length === 0 ? (
-                      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-10 text-center">
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t.noCourses}</p>
-                        <Link
-                          href="/courses"
-                          className="inline-block text-xs font-bold text-white bg-slate-900 dark:bg-cyan-600 px-4 py-2.5 rounded-xl no-underline"
-                        >
-                          {t.browseCourses}
-                        </Link>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {courses.map(({ course, progress }) => (
-                          <div
-                            key={course.id}
-                            className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-4"
-                          >
-                            <div className="flex justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-2">
-                              <span className="text-slate-800 dark:text-slate-200">{course.title}</span>
-                              <span>{progress.percent}%</span>
-                            </div>
-                            <ProgressBar percent={progress.percent} />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  {user?.role === 'Student' && !user.isVerifiedGraduate && <FreelancerExamCard user={user} t={t} />}
                 </div>
+              )}
+
+              {activeTab === 'purchases' && (
+                <MyPurchasesPanel
+                  lang={lang}
+                  books={ownedBooks}
+                  courses={courses}
+                  products={purchasedProducts}
+                  onDownloadProduct={handleDownloadProduct}
+                  downloadingProductId={downloadingProductId}
+                  productDownloadError={productDownloadError}
+                />
               )}
 
               {activeTab === 'courses' && (
@@ -2268,44 +2114,12 @@ function DashboardContent() {
                     </div>
                   )}
 
-                  {productDownloadError && (
-                    <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-xs text-red-600 dark:text-red-300">
-                      {productDownloadError}
-                    </div>
-                  )}
-                  {purchasedProducts.length === 0 ? (
-                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-10 text-center">
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t.noProducts}</p>
-                      <Link
-                        href="/marketplace"
-                        className="inline-block text-xs font-bold text-white bg-slate-900 dark:bg-cyan-600 px-4 py-2.5 rounded-xl no-underline"
-                      >
-                        {t.browseProducts}
-                      </Link>
-                    </div>
-                  ) : (
-                    purchasedProducts.map((product) => (
-                      <div
-                        key={product.id}
-                        className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex items-center justify-between gap-4 flex-wrap"
-                      >
-                        <div>
-                          <span className="text-[10px] font-black uppercase tracking-widest text-cyan-600 dark:text-cyan-400">{product.category}</span>
-                          <h3 className="font-bold text-base text-slate-900 dark:text-white tracking-wide">{product.title}</h3>
-                          <span className="text-[11px] text-slate-400">{LICENSE_LABELS[product.licenseType][lang === 'ka' ? 'ka' : 'en']}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleDownloadProduct(product.id)}
-                          disabled={downloadingProductId === product.id}
-                          className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white disabled:opacity-60"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          {downloadingProductId === product.id ? t.loading : t.downloadProduct}
-                        </button>
-                      </div>
-                    ))
-                  )}
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {lang === 'ka' ? 'შენ მიერ ნაყიდი პროდუქტები ახლა „ჩემი შენაძენების“ განყოფილებაშია.' : 'Products you bought are now under "My purchases".'}{' '}
+                    <button type="button" onClick={() => setActiveTab('purchases')} className="font-bold text-cyan-600 dark:text-cyan-400 bg-transparent border-none cursor-pointer p-0">
+                      {lang === 'ka' ? 'ნახვა →' : 'Open →'}
+                    </button>
+                  </p>
                 </div>
               )}
             </>
