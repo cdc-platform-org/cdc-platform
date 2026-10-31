@@ -103,7 +103,7 @@ export default function StudioCaseDetailPage() {
   const galleryImages = (caseStudy?.galleryImages ?? []).map((url) => ({ url, alt: displayTitle }));
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
+    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       <SEOHead
         title={displayTitle ?? t.loading}
         description={caseStudy ? studioCaseDescription(caseStudy, contentLang).slice(0, 200) : t.loading}

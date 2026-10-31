@@ -16,7 +16,7 @@ function PostGigPageContent() {
   const router = useRouter();
   const t = STRINGS[resolveLocale(router.locale) === 'ka' ? 'ka' : 'en'];
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-slate-950 px-4 py-10">
+    <div className="min-h-screen bg-gray-100 dark:bg-slate-950 -mx-4 sm:-mx-6 px-4 sm:px-6 py-10">
       <SiteHeader />
       <div className="max-w-2xl mx-auto mb-4">
         <BackButton fallbackHref="/gigs" />

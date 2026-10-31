@@ -326,12 +326,12 @@ function LearnContent() {
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400 text-sm">{t('loading')}</div>;
+    return <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen flex items-center justify-center bg-slate-950 text-slate-400 text-sm">{t('loading')}</div>;
   }
 
   if (error || !course) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-950 text-slate-300 text-sm">
+      <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-950 text-slate-300 text-sm">
         <SiteHeader />
         <p>{error ?? t('notEnrolled')}</p>
         <BackButton fallbackHref="/courses" className="text-slate-400 hover:text-slate-100" />
@@ -340,7 +340,7 @@ function LearnContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-950 text-slate-100">
       <Head>
         <title>{`${course.title} | CDC Learn`}</title>
       </Head>

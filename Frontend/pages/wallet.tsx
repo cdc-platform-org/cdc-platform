@@ -62,12 +62,12 @@ function WalletContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-16">
+    <div className="min-h-screen bg-slate-950 text-slate-100 -mx-4 sm:-mx-6 px-4 sm:px-6 pb-16">
       <Head>
         <title>Wallet | CDC</title>
       </Head>
       <SiteHeader />
-      <div className="max-w-2xl mx-auto">
+      <div className="pt-8 sm:pt-12 max-w-2xl mx-auto">
         <div className="mb-4">
           <BackButton fallbackHref="/dashboard" className="text-slate-400 hover:text-slate-100" />
         </div>

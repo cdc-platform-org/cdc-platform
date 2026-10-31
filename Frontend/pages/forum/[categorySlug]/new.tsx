@@ -81,7 +81,7 @@ function NewThreadContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-[#0b0f19] px-4 py-10">
+    <div className="min-h-screen bg-slate-100 dark:bg-[#0b0f19] -mx-4 sm:-mx-6 px-4 sm:px-6 py-10">
       <div className="max-w-2xl mx-auto">
         <Link href={`/forum/${categorySlug}`} className="text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200">
           {t('backToCategory', { category: category.name })}

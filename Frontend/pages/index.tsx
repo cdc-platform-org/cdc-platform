@@ -439,7 +439,7 @@ export default function Home() {
   };
 
   return (
-    <div className={`min-h-screen font-sans antialiased transition-colors duration-300 relative ${darkMode ? 'text-slate-200 bg-[#0b0f19]' : 'text-slate-800 bg-[#f8fafc]'}`}>
+    <div className={`-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen font-sans antialiased transition-colors duration-300 relative ${darkMode ? 'text-slate-200 bg-[#0b0f19]' : 'text-slate-800 bg-[#f8fafc]'}`}>
       <SEOHead
         title="ციფრული პროფესიების ცენტრი (CDC) - საუკეთესო პროფესიები საქართველოში"
         description="ციფრული პროფესიების ცენტრი (CDC) გთავაზობთ ტოპ 10 პროფესიას საქართველოში, მათ შორის მაღალანაზღაურებადი პროფესიები, AI ტესტების გენერატორი და მასწავლებლის ასისტენტი."
@@ -770,7 +770,7 @@ export default function Home() {
             legibility insurance now that the scrim is this light. */}
         <div className="absolute inset-0 z-10 bg-slate-950/40 lg:bg-gradient-to-r lg:from-slate-950/55 lg:via-slate-950/10 lg:to-transparent" />
 
-        <header className="relative z-20 w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 py-8 sm:py-12 lg:py-16 text-left flex flex-col justify-center">
+        <header className="relative z-20 w-full max-w-7xl mx-auto px-5 sm:px-10 lg:px-16 py-8 sm:py-12 lg:py-16 text-left flex flex-col justify-center">
           <div className="w-full grid grid-cols-1 lg:grid-cols-12 items-center gap-10">
             <div className="lg:col-span-7 lg:max-w-[700px] drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] outline-none hover:outline-none focus:outline-none border-none hover:border-none hover:shadow-none hover:ring-0">
               {/* Badge — subtle glow ring added alongside the existing
@@ -850,15 +850,15 @@ export default function Home() {
       </div>
 
       {/* 📊 BENTO GRID SECTION */}
-      <section id="about" className="max-w-7xl mx-auto pt-28 px-6">
-        <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('achievementsHeading')}</h2>
+      <section id="about" className="max-w-7xl mx-auto pt-16 sm:pt-28 px-0 sm:px-6">
+        <h2 className="text-center mb-8 sm:mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('achievementsHeading')}</h2>
         {/* auto-rows only pins to a fixed 240px on md+, where the bento
             layout needs it for the row-span-2 HEKS card's math. Below that,
             a fixed row height clipped the HEKS card's image+text (which is
             taller than 240px once row-span-2 collapses to row-span-1 on a
             single mobile column) and the stat cards' wrapped labels — rows
             now size to their own content on mobile instead. */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 auto-rows-auto md:auto-rows-[240px]">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-8 auto-rows-auto md:auto-rows-[240px]">
           <div className={`md:col-span-2 md:row-span-2 rounded-3xl border backdrop-blur-md overflow-hidden flex flex-col transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422]/60 border-slate-800' : 'bg-white/60 border-slate-200'}`}>
             <img
               src={cms?.heksCard?.imageUrl ? resolveBlogImageUrl(cms.heksCard.imageUrl) : '/images/heks-eper.jpg'}
@@ -873,7 +873,7 @@ export default function Home() {
                 HEKS_OBJECT_POSITION_CLASS[cms?.heksCard?.objectPosition ?? 'top']
               } rounded-t-3xl shrink-0`}
             />
-            <div className="p-8 md:p-10 flex-1 flex flex-col justify-center">
+            <div className="p-5 sm:p-8 md:p-10 flex-1 flex flex-col justify-center">
               <div className="flex items-center space-x-3 mb-6 text-sky-500">
                 <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm0-1.5a8.5 8.5 0 1 1 0-17 8.5 8.5 0 0 1 0 17zm0-11.85l.91 1.84 2.04 .3-1.48 1.44 .35 2.02-1.82-.96-1.82 .96 .35-2.02-1.48-1.44 2.04-.3 .91-1.84z" /></svg>
                 <span className="text-xl font-black tracking-widest text-slate-400 font-sans">EU</span>
@@ -894,7 +894,7 @@ export default function Home() {
           {(cms?.stats?.length ? cms.stats : DEFAULT_HOMEPAGE_STATS).map((stat, i) => (
             <div
               key={i}
-              className={`rounded-3xl p-8 border backdrop-blur-md flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422]/60 border-slate-800' : 'bg-white/60 border-slate-200'}`}
+              className={`rounded-3xl p-5 sm:p-8 border backdrop-blur-md flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422]/60 border-slate-800' : 'bg-white/60 border-slate-200'}`}
             >
               <span className={`text-5xl font-black ${i % 2 === 0 ? 'text-cyan-500' : 'text-purple-500'}`}>
                 {translate(stat.valueKa, stat.valueEn)}
@@ -907,8 +907,8 @@ export default function Home() {
 
       {/* 🖼️ CDC LIFE — PHOTO GALLERY PREVIEW */}
       {galleryPreview.length > 0 && (
-        <section className="max-w-7xl mx-auto pt-28 px-6">
-          <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('galleryHeading')}</h2>
+        <section className="max-w-7xl mx-auto pt-16 sm:pt-28 px-0 sm:px-6">
+          <h2 className="text-center mb-8 sm:mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('galleryHeading')}</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
             {galleryPreview.map((img, i) => (
               <Link
@@ -951,8 +951,8 @@ export default function Home() {
           list themselves. mt-16/mb-16 (was a `-mt-4` that pulled this up far
           enough to overlap the gallery section's "See All Photos" link right
           above it) give it real breathing room on both sides instead. */}
-      <section className="max-w-5xl mx-auto px-6 mt-16 mb-16">
-        <div className="rounded-3xl border border-cyan-500/30 bg-gradient-to-r from-cyan-500/10 via-purple-600/10 to-cyan-500/10 p-8 md:p-12 text-center">
+      <section className="max-w-5xl mx-auto px-0 sm:px-6 mt-12 sm:mt-16 mb-12 sm:mb-16">
+        <div className="rounded-3xl border border-cyan-500/30 bg-gradient-to-r from-cyan-500/10 via-purple-600/10 to-cyan-500/10 p-6 sm:p-8 md:p-12 text-center">
           <Sparkles className="w-8 h-8 text-cyan-400 mx-auto mb-4" />
           <h2 className="text-xl md:text-2xl font-black tracking-wide mb-3">{t('careerQuizBannerTitle')}</h2>
           {/* Explicit light/dark colors rather than relying on inherited
@@ -972,9 +972,9 @@ export default function Home() {
       </section>
 
       {/* 📚 COURSES CATALOG */}
-      <section id="courses" className="max-w-7xl mx-auto py-28 px-6">
-        <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('coursesHeading')}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <section id="courses" className="max-w-7xl mx-auto py-16 sm:py-28 px-0 sm:px-6">
+        <h2 className="text-center mb-8 sm:mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('coursesHeading')}</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-8">
           {/* IMIAKO — the AI English Tutor is its own always-on product, not
               a row from the `courses` API, so it's hand-placed as the first
               grid cell (== top of the grid, first grid child, no CSS
@@ -985,7 +985,7 @@ export default function Home() {
               catalog is empty. */}
           <Link
             href="/dashboard/english-tutor"
-            className={`relative overflow-hidden rounded-3xl p-8 flex flex-col justify-between no-underline text-current transition-all duration-300 transform hover:scale-[1.02] border-2 border-transparent bg-origin-border shadow-[0_0_30px_rgba(168,85,247,0.25)] hover:shadow-[0_0_40px_rgba(168,85,247,0.4)] ${darkMode ? 'bg-[#0e1422]' : 'bg-white'}`}
+            className={`relative overflow-hidden rounded-3xl p-5 sm:p-8 flex flex-col justify-between no-underline text-current transition-all duration-300 transform hover:scale-[1.02] border-2 border-transparent bg-origin-border shadow-[0_0_30px_rgba(168,85,247,0.25)] hover:shadow-[0_0_40px_rgba(168,85,247,0.4)] ${darkMode ? 'bg-[#0e1422]' : 'bg-white'}`}
             style={{
               backgroundImage: `linear-gradient(${darkMode ? '#0e1422' : '#ffffff'}, ${darkMode ? '#0e1422' : '#ffffff'}), linear-gradient(135deg, #fbbf24, #a855f7, #06b6d4)`,
               backgroundOrigin: 'border-box',
@@ -1039,7 +1039,7 @@ export default function Home() {
               return (
                 <div
                   key={course.id}
-                  className={`relative overflow-hidden border rounded-3xl p-8 flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200/80'}`}
+                  className={`relative overflow-hidden border rounded-3xl p-5 sm:p-8 flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200/80'}`}
                 >
                   {course.saleActive && (
                     <span className="absolute top-3 right-3 z-10 text-xs font-black text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg shadow-rose-500/30">
@@ -1118,10 +1118,10 @@ export default function Home() {
           rendered once there's at least one published session, same
           "don't show an empty section" posture as the gallery preview above. */}
       {!liveTrainingsLoading && liveTrainings.length > 0 && (
-        <section className="max-w-7xl mx-auto py-28 px-6">
+        <section className="max-w-7xl mx-auto py-16 sm:py-28 px-0 sm:px-6">
           <h2 className="text-center mb-4 text-2xl md:text-3xl font-black tracking-wide">{t('liveTrainingsHeading')}</h2>
-          <p className="text-center mb-16 text-sm text-slate-500 dark:text-slate-400 max-w-xl mx-auto">{t('liveTrainingsSubtitle')}</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <p className="text-center mb-8 sm:mb-16 text-sm text-slate-500 dark:text-slate-400 max-w-xl mx-auto">{t('liveTrainingsSubtitle')}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-8">
             {liveTrainings.slice(0, 3).map((tr) => (
               <Link
                 key={tr.id}
@@ -1143,7 +1143,7 @@ export default function Home() {
                     </div>
                   )}
                 </div>
-                <div className="p-8 flex-1 flex flex-col">
+                <div className="p-5 sm:p-8 flex-1 flex flex-col">
                   <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-cyan-400 bg-cyan-500/10 border-cyan-500/20 self-start mb-4">
                     {tr.category}
                   </span>
@@ -1196,9 +1196,9 @@ export default function Home() {
           free trial, not a one-off sale), the other two are genuinely
           "coming soon" there too — mirrored here rather than inventing
           prices/buy buttons for products that don't have them yet. */}
-      <section className={`py-28 border-t ${darkMode ? 'bg-[#0e1422]/40 border-slate-800' : 'bg-slate-50/60 border-slate-200'}`}>
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center max-w-2xl mx-auto mb-16">
+      <section className={`py-16 sm:py-28 border-t ${darkMode ? 'bg-[#0e1422]/40 border-slate-800' : 'bg-slate-50/60 border-slate-200'}`}>
+        <div className="max-w-7xl mx-auto px-0 sm:px-6">
+          <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-16">
             <span className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-widest px-4 py-2 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-full border border-purple-500/20 mb-4">
               <Sparkles className="w-3.5 h-3.5" />
               CDC AI
@@ -1210,7 +1210,7 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-3 rounded-3xl border border-cyan-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-cyan-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
+            <div className="lg:col-span-3 rounded-3xl border border-cyan-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-cyan-500/5 to-purple-600/5 p-5 sm:p-8 flex flex-col lg:flex-row gap-8 items-start">
               <div className="shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
                 <Bot className="w-7 h-7 text-white" />
               </div>
@@ -1268,7 +1268,7 @@ export default function Home() {
                 own subtitle) and its header link is hidden once a Student/
                 Mentor is logged in, so putting IMIAKO there would hide it
                 from the exact users it's for. */}
-            <div className="lg:col-span-3 rounded-3xl border border-purple-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-amber-400/5 via-purple-500/5 to-cyan-500/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
+            <div className="lg:col-span-3 rounded-3xl border border-purple-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-amber-400/5 via-purple-500/5 to-cyan-500/5 p-5 sm:p-8 flex flex-col lg:flex-row gap-8 items-start">
               <div className="shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-400 via-purple-500 to-cyan-500 flex items-center justify-center">
                 <GraduationCap className="w-7 h-7 text-white" />
               </div>
@@ -1305,7 +1305,7 @@ export default function Home() {
               { icon: ShieldCheck, titleKey: 'examSystemTitle' as const, descKey: 'examSystemBody' as const },
               { icon: Users, titleKey: 'screenerTitle' as const, descKey: 'screenerBody' as const },
             ].map(({ icon: Icon, titleKey, descKey }) => (
-              <div key={titleKey} className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-7 flex flex-col opacity-90">
+              <div key={titleKey} className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 sm:p-7 flex flex-col opacity-90">
                 <div className="flex items-center justify-between mb-4">
                   <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                     <Icon className="w-6 h-6 text-slate-400 dark:text-slate-500" />
@@ -1333,13 +1333,13 @@ export default function Home() {
       </section>
 
       {/* 📰 NEWS & BLOG SECTION — real published posts from GET /api/v1/blog */}
-      <section id="blog" className={`py-28 border-t ${darkMode ? 'bg-[#0e1422]/40 border-slate-800' : 'bg-slate-50/60 border-slate-200'}`}>
-        <div className="max-w-7xl mx-auto px-6">
-          <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('blogHeading')}</h2>
+      <section id="blog" className={`py-16 sm:py-28 border-t ${darkMode ? 'bg-[#0e1422]/40 border-slate-800' : 'bg-slate-50/60 border-slate-200'}`}>
+        <div className="max-w-7xl mx-auto px-0 sm:px-6">
+          <h2 className="text-center mb-8 sm:mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('blogHeading')}</h2>
           {blogPosts.length === 0 ? (
             <p className="text-center text-sm text-slate-400 font-medium">{t('blogEmpty')}</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-8">
               {blogPosts.map((post, idx) => {
                 const badgeColor = [
                   darkMode ? 'text-cyan-400' : 'text-cyan-500',
@@ -1360,7 +1360,7 @@ export default function Home() {
                         <FileText className="w-8 h-8 text-cyan-500/40" />
                       </div>
                     )}
-                    <div className="p-8">
+                    <div className="p-5 sm:p-8">
                       <span className={`text-[11px] font-black uppercase tracking-widest block mb-3 ${badgeColor}`}>{post.category}</span>
                       <h3 className="text-lg font-black mb-3">{blogTitle(post, contentLang)}</h3>
                       <p className="text-sm text-slate-400 leading-relaxed font-medium line-clamp-3">{blogDescription(post, contentLang)}</p>
@@ -1387,12 +1387,12 @@ export default function Home() {
 
       {/* 👥 OFFICIAL TEAM SECTION — real, admin-managed data from GET /api/team */}
       <TeamSection lang={contentLang} darkMode={darkMode} />
-      <section id="ai-tools" className="py-28">
-        <div className="max-w-7xl mx-auto px-6">
-          <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">
+      <section id="ai-tools" className="py-16 sm:py-28">
+        <div className="max-w-7xl mx-auto px-0 sm:px-6">
+          <h2 className="text-center mb-8 sm:mb-16 text-2xl md:text-3xl font-black tracking-wide">
             AI English Learning Tools
           </h2>
-          <div className="bg-slate-100 dark:bg-slate-900 p-8 rounded-3xl shadow-lg">
+          <div className="bg-slate-100 dark:bg-slate-900 p-4 sm:p-8 rounded-3xl shadow-lg">
             <SmartReader />
           </div>
         </div>
@@ -1400,9 +1400,9 @@ export default function Home() {
 
       {/* ❓ FAQ SECTION — CMS-managed, hidden entirely with no questions set */}
       {!!cms?.faq?.length && (
-        <section className={`py-28 border-t ${darkMode ? 'bg-[#0e1422]/20 border-slate-800' : 'bg-slate-100/40 border-slate-200'}`}>
+        <section className={`py-16 sm:py-28 border-t ${darkMode ? 'bg-[#0e1422]/20 border-slate-800' : 'bg-slate-100/40 border-slate-200'}`}>
           <div className="max-w-3xl mx-auto px-6">
-            <h2 className="text-center mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('faqHeading')}</h2>
+            <h2 className="text-center mb-8 sm:mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('faqHeading')}</h2>
             <div className="space-y-3">
               {cms.faq.map((item, i) => (
                 <details

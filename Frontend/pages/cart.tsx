@@ -63,7 +63,7 @@ function CartContent() {
   };
 
   return (
-    <div className={`min-h-screen font-sans antialiased transition-colors duration-300 relative ${darkMode ? 'bg-[#0b0f17] text-slate-200' : 'bg-slate-100 text-slate-800'}`}>
+    <div className={`-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen font-sans antialiased transition-colors duration-300 relative ${darkMode ? 'bg-[#0b0f17] text-slate-200' : 'bg-slate-100 text-slate-800'}`}>
       <Head>
         <title>{`${lang === 'ka' ? 'ჩემი კალათა' : 'My Cart'} | CDC Platform`}</title>
         <style>{`
@@ -82,31 +82,31 @@ function CartContent() {
         `}</style>
       </Head>
 
-      <nav className={`relative z-10 border-b px-6 md:px-12 py-5 transition-colors ${darkMode ? 'border-slate-800/80 bg-[#0e1422]' : 'border-slate-200/60 bg-white'}`}>
+      <nav className={`relative z-10 -mx-4 sm:-mx-6 border-b px-4 sm:px-6 md:px-12 py-4 sm:py-5 transition-colors ${darkMode ? 'border-slate-800/80 bg-[#0e1422]' : 'border-slate-200/60 bg-white'}`}>
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="bg-gradient-to-tr from-cyan-500 to-purple-600 text-white px-4 py-1.5 rounded-xl font-black text-sm tracking-wider">CDC</div>
-            <span className={`font-bold text-xs uppercase tracking-widest ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            <span className={`hidden sm:inline font-bold text-xs uppercase tracking-widest ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
               {lang === 'ka' ? 'კალათის ეკოსისტემა' : 'Cart Ecosystem'}
             </span>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <div className={`flex border rounded-xl p-1 text-[11px] font-bold ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
               <button type="button" onClick={() => switchLocale('ka')} className={`px-3 py-1 rounded-lg transition border-none cursor-pointer font-bold ${lang === 'ka' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400 bg-transparent'}`}>KA</button>
               <button type="button" onClick={() => switchLocale('en')} className={`px-3 py-1 rounded-lg transition border-none cursor-pointer font-bold ${lang === 'en' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400 bg-transparent'}`}>EN</button>
             </div>
             <button type="button" onClick={() => { setDarkMode(!darkMode); localStorage.setItem('darkMode', String(!darkMode)); }} className={`p-2 rounded-xl transition text-base border-none bg-transparent cursor-pointer ${darkMode ? 'text-yellow-400' : 'text-slate-500'}`}>{darkMode ? '☀️' : '🌙'}</button>
-            <Link href="/" className={`text-xs font-bold uppercase tracking-wider transition no-underline px-4 py-2 rounded-xl border ${darkMode ? 'text-slate-300 bg-slate-800 border-slate-700 hover:bg-slate-700' : 'text-slate-700 bg-slate-100 border-slate-200 hover:bg-slate-200'}`}>{t('btnMain')}</Link>
+            <Link href="/" className={`text-xs font-bold uppercase tracking-wider transition no-underline px-3 sm:px-4 py-2 rounded-xl border ${darkMode ? 'text-slate-300 bg-slate-800 border-slate-700 hover:bg-slate-700' : 'text-slate-700 bg-slate-100 border-slate-200 hover:bg-slate-200'}`}>{t('btnMain')}</Link>
           </div>
         </div>
       </nav>
 
-      <div className="max-w-6xl mx-auto px-6 pt-6">
+      <div className="max-w-6xl mx-auto px-0 sm:px-6 pt-6">
         <BackButton fallbackHref="/" className={darkMode ? 'text-slate-400 hover:text-slate-100' : ''} />
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-3 gap-10">
+      <div className="max-w-6xl mx-auto px-0 sm:px-6 py-10 sm:py-16 grid md:grid-cols-3 gap-10">
         <div className="md:col-span-2 space-y-6">
           <div className="flex items-center gap-3 mb-8">
             <svg className="w-6 h-6 text-cyan-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

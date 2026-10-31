@@ -3,7 +3,7 @@ import BackButton from '../src/components/common/BackButton';
 
 export default function ServerError() {
   return (
-    <div className="min-h-screen bg-midnight px-6 py-12 text-slate-100">
+    <div className="min-h-screen bg-midnight -mx-4 sm:-mx-6 px-4 sm:px-6 py-12 text-slate-100">
       <div className="mx-auto max-w-3xl rounded-[32px] border border-white/10 bg-slate-950/80 p-10 shadow-glass">
         <BackButton fallbackHref="/" className="mb-6 text-slate-400 hover:text-slate-100" />
         <h1 className="text-5xl font-semibold">500</h1>

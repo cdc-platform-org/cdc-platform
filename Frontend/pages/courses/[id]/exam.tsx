@@ -151,11 +151,11 @@ function ExamContent() {
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers]);
 
   if (phase === 'loading') {
-    return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400 text-sm">{t('loading')}</div>;
+    return <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen flex items-center justify-center bg-slate-950 text-slate-400 text-sm">{t('loading')}</div>;
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 px-4 py-8 md:py-12">
+    <div className="min-h-screen bg-slate-950 text-slate-100 -mx-4 sm:-mx-6 px-4 sm:px-6 py-8 md:py-12">
       <Head>
         <title>{`${course ? `${t('startTitle')} — ${course.title}` : t('startTitle')} | CDC Learn`}</title>
       </Head>

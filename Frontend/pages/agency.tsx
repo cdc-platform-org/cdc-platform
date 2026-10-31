@@ -184,23 +184,23 @@ export default function Agency() {
   }`;
 
   return (
-    <div className={`min-h-screen font-sans antialiased transition-colors duration-300 relative overflow-hidden ${darkMode ? 'text-slate-200 bg-[#0b0f19]' : 'text-slate-800 bg-[#f1f5f9]'}`}>
+    <div className={`-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen font-sans antialiased transition-colors duration-300 relative overflow-hidden ${darkMode ? 'text-slate-200 bg-[#0b0f19]' : 'text-slate-800 bg-[#f1f5f9]'}`}>
       <Head>
         <title>CDC Studio | ციფრული სააგენტო</title>
       </Head>
 
       {/* 🧭 NAVIGATION */}
-      <nav className={`sticky top-0 z-50 border-b px-6 md:px-12 py-5 ${darkMode ? 'border-slate-800 bg-[#0e1422]/90 backdrop-blur-md' : 'border-slate-200/60 bg-white/90 backdrop-blur-md'}`}>
+      <nav className={`sticky top-0 z-50 -mx-4 sm:-mx-6 border-b px-4 sm:px-6 md:px-12 py-4 sm:py-5 ${darkMode ? 'border-slate-800 bg-[#0e1422]/90 backdrop-blur-md' : 'border-slate-200/60 bg-white/90 backdrop-blur-md'}`}>
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-3">
             <div className="bg-gradient-to-tr from-cyan-500 to-purple-600 text-white px-4 py-2 rounded-xl font-black text-sm tracking-wider">{safeText('CDC')}</div>
             <div>
-              <span className="font-bold text-lg block leading-none tracking-tight">{safeText('CDC Studio')}</span>
-              <span className="text-[11px] text-slate-400 font-bold block mt-1">{translate('სოციალური მეწარმეობა & ციფრული სააგენტო', 'Social Entrepreneurship & Digital Agency')}</span>
+              <span className="hidden sm:block font-bold text-lg leading-none tracking-tight">{safeText('CDC Studio')}</span>
+              <span className="hidden sm:block text-[11px] text-slate-400 font-bold mt-1">{translate('სოციალური მეწარმეობა & ციფრული სააგენტო', 'Social Entrepreneurship & Digital Agency')}</span>
             </div>
           </div>
 
-          <div className="flex items-center space-x-6 text-base font-bold tracking-wide">
+          <div className="flex items-center space-x-3 sm:space-x-6 text-sm sm:text-base font-bold tracking-wide">
             <Link href="/" className="hover:text-cyan-500 transition no-underline text-current">{translate('მთავარზე დაბრუნება', 'Return Home')}</Link>
 
             {/* 🌐 ენის გადამრთველი სააგენტოს გვერდზეც! */}
@@ -224,7 +224,7 @@ export default function Agency() {
 
       {/* 🏙️ HERO BANNER */}
       <div className={`border-b text-center py-20 backdrop-blur-md ${darkMode ? 'bg-[#0e1422]/40 border-slate-800' : 'bg-slate-100/40 border-slate-200'}`}>
-        <div className="max-w-4xl mx-auto px-6">
+        <div className="max-w-4xl mx-auto px-0 sm:px-6">
           <div className="flex justify-start mb-6">
             <BackButton fallbackHref="/" className={darkMode ? 'text-slate-400 hover:text-slate-100' : ''} />
           </div>
@@ -258,7 +258,7 @@ export default function Agency() {
       </div>
 
       {/* 📊 PORTFOLIO PROJECTS FEED */}
-      <main className="max-w-7xl mx-auto px-6 py-16">
+      <main className="max-w-7xl mx-auto px-0 sm:px-6 py-10 sm:py-16">
         <h2 className="text-xl md:text-2xl font-black mb-10 tracking-wide flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-cyan-500" />
           {translate('ჩვენი შესრულებული სამუშაოები', 'Our Portfolio')}
@@ -341,7 +341,7 @@ export default function Agency() {
 
       {/* REQUEST A PROJECT */}
       <section id="request-project" className={`border-t py-20 ${darkMode ? 'border-slate-800 bg-[#0e1422]/40' : 'border-slate-200 bg-slate-100/40'}`}>
-        <div className="max-w-2xl mx-auto px-6">
+        <div className="max-w-2xl mx-auto px-0 sm:px-6">
           <h2 className="text-xl md:text-2xl font-black mb-3 tracking-wide flex items-center gap-2">
             <FileEdit className="w-5 h-5 text-cyan-500" />
             {translate('შეუკვეთე პროექტი', 'Request a Project')}

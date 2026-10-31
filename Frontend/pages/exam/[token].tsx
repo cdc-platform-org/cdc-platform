@@ -607,7 +607,7 @@ export default function CandidateExamPage() {
   const seconds = secondsLeft % 60;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-950 text-white flex flex-col">
       <Head>
         <title>{info ? `${info.title} | CDC Exam` : 'CDC Exam'}</title>
       </Head>

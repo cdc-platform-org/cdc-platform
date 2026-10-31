@@ -164,7 +164,7 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+      <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
         <SiteHeader />
         <div className="flex-1 flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">{t('loading')}</div>
         <SiteFooter />
@@ -173,7 +173,7 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
   }
   if (notFound || !course) {
     return (
-      <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+      <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
         <SiteHeader />
         <div className="flex-1 flex flex-col items-center justify-center gap-4 text-sm text-slate-600 dark:text-slate-300">
           <p>{t('notFound')}</p>
@@ -190,7 +190,7 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
   const effectivePrice = appliedPromo ? appliedPromo.discountedAmount : course.currentPrice;
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
+    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       <SEOHead
         title={course.title}
         description={course.description.replace(/[#*`_>-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 200)}

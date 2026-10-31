@@ -52,7 +52,7 @@ function OnboardingPage() {
 
   if (done) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-[#0b0f19] px-4">
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-[#0b0f19] -mx-4 sm:-mx-6 px-4 sm:px-6">
         <div className="w-full max-w-md bg-white/90 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl shadow-lg shadow-slate-200/40 dark:shadow-none border border-slate-200/80 dark:border-white/10 p-8 text-center transition-colors">
           <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/20">
             <CheckCircle2 className="h-7 w-7 text-emerald-500" />
@@ -78,7 +78,7 @@ function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-[#0b0f19] px-4">
+    <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-[#0b0f19] -mx-4 sm:-mx-6 px-4 sm:px-6">
       <div className="w-full max-w-md bg-white/90 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl shadow-lg shadow-slate-200/40 dark:shadow-none border border-slate-200/80 dark:border-white/10 p-8 transition-colors">
         <div className="flex items-center gap-3 mb-6">
           <span className="shrink-0 w-10 h-10 rounded-lg bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">

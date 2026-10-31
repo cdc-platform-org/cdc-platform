@@ -29,7 +29,7 @@ export default function OAuthCallbackPage() {
   }, [router.isReady, router.query.token, loginWithToken, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-[#0b0f19]">
+    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen flex items-center justify-center bg-slate-100 dark:bg-[#0b0f19]">
       <div className="flex flex-col items-center gap-4">
         <div className="w-10 h-10 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin" />
         <p className="text-sm text-slate-500 dark:text-slate-400">Signing you in…</p>

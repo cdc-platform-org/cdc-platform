@@ -207,9 +207,9 @@ export default function SiteHeader() {
           would leave the nav drifting off-center by however much narrower
           the logo is than the actions cluster — this is the flex
           equivalent of the same fix, not a functional regression from it. */}
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 md:gap-6 px-4 sm:px-6">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4 md:gap-6 px-4 sm:px-6">
         <div className="flex-1 flex items-center min-w-fit">
-          <Link href="/" className="flex items-center gap-2 xl:gap-3 shrink-0 min-w-fit mr-6 no-underline text-current">
+          <Link href="/" className="flex items-center gap-2 xl:gap-3 shrink-0 min-w-fit mr-2 sm:mr-6 no-underline text-current">
             <Image src="/images/cdc-logo.png" alt="CDC" width={40} height={40} className="h-9 w-auto rounded-xl object-cover" />
             <span className="hidden sm:inline font-bold text-sm tracking-wide text-slate-900 dark:text-white">CDC</span>
           </Link>
@@ -324,7 +324,7 @@ export default function SiteHeader() {
             breakpoints here previously caused two login buttons to render
             simultaneously in the 1024-1279px gap. */}
         <div className="flex-1 flex justify-end">
-        <div className="flex items-center gap-1.5 xl:gap-2.5 shrink-0 ml-6">
+        <div className="flex items-center gap-1 sm:gap-1.5 xl:gap-2.5 shrink-0 ml-2 sm:ml-6">
           <LanguageSwitcher />
           <button
             type="button"

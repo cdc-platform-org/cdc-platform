@@ -61,7 +61,7 @@ function MarketingContent() {
   const loading = courses === null || products === null;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <SiteHeader />
       <main className="max-w-3xl mx-auto px-6 py-12">
         <BackButton fallbackHref="/dashboard" className="mb-4 text-slate-400 hover:text-slate-100" />

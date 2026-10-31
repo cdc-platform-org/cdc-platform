@@ -157,7 +157,7 @@ export default function StudentQuizPage() {
   const seconds = elapsedSeconds % 60;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-950 text-white flex flex-col">
       <Head>
         <title>{quiz ? `${quiz.title} | CDC Quiz` : 'CDC Quiz'}</title>
       </Head>
