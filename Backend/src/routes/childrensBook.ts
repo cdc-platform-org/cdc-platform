@@ -20,10 +20,11 @@ import { buildBookPdf, BookPdfPageInput } from '../services/bookPdfService';
 import { storeBookAsset, getBookAssetUrl, readLocalBookAsset, isUsingCloudBookStorage } from '../services/bookStorageService';
 import { isBookDevPaymentSimulationEnabled } from '../services/bookMockConfig';
 import { completeChildrensBookPurchase } from '../services/bookPurchaseFulfillment';
-import { calculateAudioPrice, calculateTotalBookPrice, canGenerateNarration, MockBookNarrationProvider, narrationLanguageForBook } from '../services/bookNarrationService';
+import { calculateAudioPrice, calculateTotalBookPrice, canGenerateNarration, narrationLanguageForBook } from '../services/bookNarrationService';
+import { getBookNarrationProvider } from '../services/bookNarrationProviders';
+import { AzureSpeechError } from '../services/azureSpeechService';
 
 const router = Router();
-const narrationProvider = new MockBookNarrationProvider();
 
 // Only one illustration style is wired to real generation today (Phase
 // 2/2B/3/4's validated Character Bible / Style Bible pilots) — every other
@@ -556,6 +557,7 @@ router.post('/:id/revision', authenticate, async (req: Request, res: Response) =
   if (result.success && qa.status === 'PASS') {
     const key = `books/${book.id}/events/${event.id}.png`;
     await storeBookAsset(key, result.buffer, result.mimeType);
+    const narrationProvider = getBookNarrationProvider();
     let revisedNarration: Awaited<ReturnType<typeof narrationProvider.generatePageNarration>> | null = null;
     if (book.audioAddOnPurchased) {
       try {
@@ -635,6 +637,60 @@ router.get('/:id/audio/status', authenticate, async (req: Request, res: Response
   });
 });
 
+type NarratedPage = { pageNumber: number; storyText: string | null };
+
+// Synthesizes one page's narration, stores it, and creates/updates its
+// artifact row at the given revisionVersion. Throws on provider/storage
+// failure — callers decide how to surface that.
+async function narrateAndSavePage(
+  book: { id: string; language: string },
+  page: NarratedPage,
+  revisionVersion: number,
+  narrationProvider: ReturnType<typeof getBookNarrationProvider>
+) {
+  const result = await narrationProvider.generatePageNarration({
+    bookProjectId: book.id,
+    pageNumber: page.pageNumber,
+    revisionVersion,
+    language: narrationLanguageForBook(book.language),
+    text: page.storyText ?? '',
+  });
+  await storeBookAsset(result.storageKey, result.buffer, result.mimeType);
+  return prisma.bookNarrationArtifact.upsert({
+    where: { bookProjectId_pageNumber_revisionVersion: { bookProjectId: book.id, pageNumber: page.pageNumber, revisionVersion } },
+    update: { status: 'READY', language: result.language, mimeType: result.mimeType, artifactKey: result.storageKey, attemptCount: { increment: 1 } },
+    create: {
+      bookProjectId: book.id,
+      pageNumber: page.pageNumber,
+      revisionVersion,
+      status: 'READY',
+      language: result.language,
+      mimeType: result.mimeType,
+      artifactKey: result.storageKey,
+      attemptCount: 1,
+    },
+  });
+}
+
+function narrationFailureResponse(res: Response, err: unknown, pageNumber: number) {
+  if (err instanceof AzureSpeechError) return res.status(err.status).json({ message: err.message });
+  return res.status(502).json({ message: `Narration for page ${pageNumber} could not be generated.` });
+}
+
+function narrationArtifactDto(artifact: { id: string; pageNumber: number; revisionVersion: number; status: string; language: string; mimeType: string | null }) {
+  return {
+    id: artifact.id,
+    pageNumber: artifact.pageNumber,
+    revisionVersion: artifact.revisionVersion,
+    status: artifact.status,
+    language: artifact.language,
+    mimeType: artifact.mimeType,
+  };
+}
+
+// Narrates only the pages that don't have a READY narration yet, so a retry
+// after a partial failure never re-synthesizes (and re-bills) finished
+// pages. Full regeneration is audio/revision's job, below.
 router.post('/:id/audio/generate', authenticate, async (req: Request, res: Response) => {
   const book = await prisma.bookProject.findUnique({ where: { id: req.params.id }, include: { pages: { orderBy: { pageNumber: 'asc' } } } });
   if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
@@ -643,55 +699,18 @@ router.post('/:id/audio/generate', authenticate, async (req: Request, res: Respo
     return res.status(400).json({ message: 'Audio narration is only available for a paid, audio-enabled book.' });
   }
 
-  const artifacts = [] as any[];
+  const narrationProvider = getBookNarrationProvider();
+  const ready = await prisma.bookNarrationArtifact.findMany({ where: { bookProjectId: book.id, status: 'READY', artifactKey: { not: null } } });
+  const readyPages = new Set(ready.map((artifact) => artifact.pageNumber));
+  const generated = [] as Awaited<ReturnType<typeof narrateAndSavePage>>[];
   for (const page of book.pages) {
-    const storyText = page.storyText ?? '';
-    const existing = await prisma.bookNarrationArtifact.findUnique({
-      where: {
-        bookProjectId_pageNumber_revisionVersion: {
-          bookProjectId: book.id,
-          pageNumber: page.pageNumber,
-          revisionVersion: 0,
-        },
-      },
-    });
-
-    const result = await narrationProvider.generatePageNarration({
-      bookProjectId: book.id,
-      pageNumber: page.pageNumber,
-      revisionVersion: 0,
-      language: narrationLanguageForBook(book.language),
-      text: storyText,
-    });
-
-    await storeBookAsset(result.storageKey, result.buffer, result.mimeType);
-
-    if (existing) {
-      const updated = await prisma.bookNarrationArtifact.update({
-        where: { id: existing.id },
-        data: {
-          status: 'READY',
-          language: result.language,
-          mimeType: result.mimeType,
-          artifactKey: result.storageKey,
-          attemptCount: { increment: 1 },
-        },
-      });
-      artifacts.push(updated);
-    } else {
-      const created = await prisma.bookNarrationArtifact.create({
-        data: {
-          bookProjectId: book.id,
-          pageNumber: page.pageNumber,
-          revisionVersion: 0,
-          status: 'READY',
-          language: result.language,
-          mimeType: result.mimeType,
-          artifactKey: result.storageKey,
-          attemptCount: 1,
-        },
-      });
-      artifacts.push(created);
+    if (readyPages.has(page.pageNumber)) continue;
+    try {
+      generated.push(await narrateAndSavePage(book, page, 0, narrationProvider));
+    } catch (err) {
+      // Pages narrated before the failure are saved; re-running this
+      // endpoint continues from the first missing page.
+      return narrationFailureResponse(res, err, page.pageNumber);
     }
   }
 
@@ -701,30 +720,44 @@ router.post('/:id/audio/generate', authenticate, async (req: Request, res: Respo
       audioPriceGel: book.audioPriceGel,
       totalPriceGel: book.totalPriceGel,
       eligible: true,
-      artifacts: artifacts.map((artifact) => ({
-        id: artifact.id,
-        pageNumber: artifact.pageNumber,
-        revisionVersion: artifact.revisionVersion,
-        status: artifact.status,
-        language: artifact.language,
-        mimeType: artifact.mimeType,
-      })),
+      skippedPages: readyPages.size,
+      artifacts: generated.map(narrationArtifactDto),
     },
   });
 });
 
+// Explicit regeneration of already-narrated audio (this re-bills Azure):
+// one page when `pageNumber` is given, otherwise the whole book. Each page is
+// re-synthesized at the revisionVersion it is currently served from.
 router.post('/:id/audio/revision', authenticate, async (req: Request, res: Response) => {
   const book = await prisma.bookProject.findUnique({ where: { id: req.params.id }, include: { pages: { orderBy: { pageNumber: 'asc' } } } });
   if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
 
+  const hasPageNumber = req.body?.pageNumber !== undefined && req.body?.pageNumber !== null;
   const pageNumber = Number(req.body?.pageNumber);
-  if (!Number.isInteger(pageNumber) || pageNumber < 1 || pageNumber > book.pageCount) {
+  if (hasPageNumber && (!Number.isInteger(pageNumber) || pageNumber < 1 || pageNumber > book.pageCount)) {
     return res.status(400).json({ message: 'Invalid pageNumber for narration revision.' });
   }
   if (!canGenerateNarration({ audioAddOnPurchased: !!book.audioAddOnPurchased, paymentStatus: book.status })) {
     return res.status(400).json({ message: 'Audio narration revision is available only after payment.' });
   }
-  return res.status(400).json({ message: 'Revise a book page to regenerate its narration; page audio is revised together with the illustration.' });
+
+  const pages = hasPageNumber ? book.pages.filter((page) => page.pageNumber === pageNumber) : book.pages;
+  if (pages.length === 0) return res.status(404).json({ message: 'Page not found.' });
+
+  const narrationProvider = getBookNarrationProvider();
+  const existing = await prisma.bookNarrationArtifact.findMany({ where: { bookProjectId: book.id, status: 'READY' }, orderBy: { revisionVersion: 'desc' } });
+  const regenerated = [] as Awaited<ReturnType<typeof narrateAndSavePage>>[];
+  for (const page of pages) {
+    const servedVersion = existing.find((artifact) => artifact.pageNumber === page.pageNumber)?.revisionVersion ?? 0;
+    try {
+      regenerated.push(await narrateAndSavePage(book, page, servedVersion, narrationProvider));
+    } catch (err) {
+      return narrationFailureResponse(res, err, page.pageNumber);
+    }
+  }
+
+  res.status(201).json({ data: { artifacts: regenerated.map(narrationArtifactDto) } });
 });
 
 router.get('/:id/audio/page/:pageNumber', authenticate, async (req: Request, res: Response) => {
