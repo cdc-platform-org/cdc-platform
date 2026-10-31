@@ -120,6 +120,12 @@ describe('final generation eligibility', () => {
     expect(canStartFinalGeneration({ status: 'FINAL_GENERATING' as any, ...base })).toBe(true);
   });
 
+  it('allows resuming a paid book from FAILED only when a Character Bible exists', () => {
+    const base = { characterBible: { x: 1 }, styleBible: { y: 1 }, storyPlan: { z: 1 } };
+    expect(canStartFinalGeneration({ status: 'FAILED' as any, ...base })).toBe(true);
+    expect(canStartFinalGeneration({ status: 'FAILED' as any, ...base, characterBible: null })).toBe(false);
+  });
+
   it('missing Character Bible blocks final generation', () => {
     expect(
       canStartFinalGeneration({ status: 'PAID' as any, characterBible: null, styleBible: { y: 1 }, storyPlan: { z: 1 } })

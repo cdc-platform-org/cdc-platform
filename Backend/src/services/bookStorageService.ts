@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { shouldUseCloudBookStorage } from './bookMockConfig';
-import { uploadPrivateBlob, getSignedBlobUrl, deletePrivateBlob } from './privateBlobStorage';
+import { uploadPrivateBlob, getSignedBlobUrl, deletePrivateBlob, downloadPrivateBlob } from './privateBlobStorage';
 
 // ============================================================
 // Children's Book — storage abstraction. Production (and any environment
@@ -53,6 +53,17 @@ export async function getBookAssetUrl(key: string, expiryMinutes?: number): Prom
 
 export async function readLocalBookAsset(key: string): Promise<Buffer> {
   return fs.promises.readFile(localPathFor(key));
+}
+
+// Reads the asset bytes server-side in either backend. Routes stream these
+// to the browser instead of redirecting to a SAS URL: the frontend fetches
+// assets with axios (responseType: 'blob'), and a cross-origin redirect to
+// Blob Storage fails there because the storage account has no CORS rules.
+export async function readBookAsset(key: string): Promise<Buffer> {
+  if (shouldUseCloudBookStorage()) {
+    return downloadPrivateBlob(key);
+  }
+  return readLocalBookAsset(key);
 }
 
 export function isUsingCloudBookStorage(): boolean {

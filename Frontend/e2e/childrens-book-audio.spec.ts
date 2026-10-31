@@ -32,10 +32,14 @@ async function createBookPath(api: APIRequestContext, pageCount: number, withAud
   expect(beforePayment.priceGel).toBe(pageCount * 100);
   expect(beforePayment.totalPriceGel).toBe(pageCount * 100 + (withAudio ? 500 : 0));
 
+  // Payment completion starts final generation in the background; the
+  // client only polls its status.
   await apiJson(api, 'post', `/childrens-books/${id}/payment/dev-simulate`);
-  const generation = await apiJson(api, 'post', `/childrens-books/${id}/final-generation/start`);
-  expect(generation.acceptedCount).toBe(pageCount);
-  expect(generation.mocked).toBe(true);
+  await expect
+    .poll(async () => (await apiJson(api, 'get', `/childrens-books/${id}/final-generation/status`)).data.status, { timeout: 30_000 })
+    .toBe('FINAL_READY');
+  const generation = (await apiJson(api, 'get', `/childrens-books/${id}/final-generation/status`)).data;
+  expect(generation.pages.filter((p: { accepted: boolean }) => p.accepted)).toHaveLength(pageCount);
 
   let narrationCount = 0;
   if (withAudio) {

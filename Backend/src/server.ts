@@ -127,6 +127,7 @@ import { autoReleaseMentorshipEscrows } from './services/mentorshipEscrowService
 import { autoReleaseHRSupportEscrows } from './services/hrSupportEscrowService';
 import { expireOverdueVacancies } from './services/listingExpiryService';
 import { reconcilePendingPayments } from './services/paymentReconciliationService';
+import { resumePendingFinalGenerations } from './services/bookFinalGenerationService';
 
 // ============================================================
 // PROCESS-LEVEL SAFETY NET
@@ -438,6 +439,9 @@ app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`CDC Platform backend running on http://localhost:${PORT}`);
+  // Paid children's books whose generation never started (PAID) or was cut
+  // off by a restart/deploy (FINAL_GENERATING) resume here.
+  resumePendingFinalGenerations().catch((err) => console.error('[childrens-book] resume sweep failed:', err));
 });
 
 // In-process fallback so 7-day auto-approve works out of the box on a single

@@ -38,6 +38,7 @@ import { sendRegistrationStatusWhatsApp, formatWhatsAppDate } from '../services/
 import { resolveNotificationLocale } from '../utils/notificationLocale';
 import { completeTutorSubscriptionPurchase, TUTOR_SUBSCRIPTION_PRICE_GEL } from '../services/englishTutorSubscriptionService';
 import { completeChildrensBookPurchase, assertBookReadyForCheckout, BookNotFoundError, BookNotEligibleForCheckoutError } from '../services/bookPurchaseFulfillment';
+import { startFinalGeneration } from '../services/bookFinalGenerationService';
 import { isBookDevPaymentSimulationEnabled, resolveBookPayableAmountTetri } from '../services/bookMockConfig';
 import { calculateBookPrice } from '../services/bookStateService';
 import { calculateAudioPrice, calculateTotalBookPrice } from '../services/bookNarrationService';
@@ -1247,7 +1248,13 @@ export async function applyBogPaymentResult(
   } else if (bogPayment.purpose === 'CHILDRENS_BOOK') {
     // Idempotent on retry — the underlying updateMany only ever matches a
     // book still in PAYMENT_PENDING (see bookPurchaseFulfillment.ts).
-    await completeChildrensBookPurchase({ bookProjectId: bogPayment.referenceId });
+    // Generation then starts in the background right away — a paid book
+    // never waits for the user to press a button (and a failure to start
+    // here is retried by the startup resume sweep / the user's Retry).
+    const { handled } = await completeChildrensBookPurchase({ bookProjectId: bogPayment.referenceId });
+    if (handled) {
+      await startFinalGeneration(bogPayment.referenceId).catch((err) => console.error('[bog-callback] Failed to start children\'s book generation:', err));
+    }
   } else if (bogPayment.purpose === 'HR_SUPPORT') {
     // Places the payment into escrow — does NOT credit a specialist yet
     // (none is assigned at this point). See hrSupportEscrowService.ts's own

@@ -72,6 +72,14 @@ export async function deletePrivateBlob(blobName: string): Promise<void> {
   await containerClient.getBlockBlobClient(blobName).deleteIfExists().catch(() => {});
 }
 
+// Server-side read for routes that stream the bytes themselves instead of
+// redirecting to a SAS URL (a cross-origin redirect fails for XHR/fetch
+// callers because the storage account has no CORS rules).
+export async function downloadPrivateBlob(blobName: string): Promise<Buffer> {
+  await privateContainerReady;
+  return containerClient.getBlockBlobClient(blobName).downloadToBuffer();
+}
+
 export async function getSignedBlobUrl(blobName: string, expiryMinutes: number = SAS_EXPIRY_MINUTES): Promise<string> {
   const delegationKey = await getDelegationKey();
   const now = Date.now();
