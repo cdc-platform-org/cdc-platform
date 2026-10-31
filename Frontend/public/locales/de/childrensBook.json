@@ -106,6 +106,7 @@
   "readerPageNarration": "Erzählung Seite {{number}}",
   "readerPreparingAudio": "Audio wird vorbereitet…",
   "readerSeconds": "{{value}} s",
+  "readerImageAlt": "{{title}}, Seite {{number}}",
   "statusValue": {
     "DRAFT": "Draft",
     "STORY_PLAN_READY": "Story plan ready",

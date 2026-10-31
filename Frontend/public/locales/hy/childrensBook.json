@@ -106,6 +106,7 @@
   "readerPageNarration": "Էջ {{number}}-ի ընթերցում",
   "readerPreparingAudio": "Աուդիոն պատրաստվում է…",
   "readerSeconds": "{{value}} վրկ",
+  "readerImageAlt": "{{title}}, էջ {{number}}",
   "statusValue": {
     "DRAFT": "Draft",
     "STORY_PLAN_READY": "Story plan ready",

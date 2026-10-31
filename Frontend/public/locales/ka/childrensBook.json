@@ -106,6 +106,7 @@
   "readerPageNarration": "გვერდი {{number}} — გახმოვანება",
   "readerPreparingAudio": "აუდიო მზადდება…",
   "readerSeconds": "{{value}} წმ",
+  "readerImageAlt": "{{title}}, გვერდი {{number}}",
   "statusValue": {
     "DRAFT": "მონახაზი",
     "STORY_PLAN_READY": "სიუჯეტი მზადაა",

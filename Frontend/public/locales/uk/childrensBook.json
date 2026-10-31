@@ -106,6 +106,7 @@
   "readerPageNarration": "Озвучення сторінки {{number}}",
   "readerPreparingAudio": "Готуємо аудіо…",
   "readerSeconds": "{{value}} с",
+  "readerImageAlt": "{{title}}, сторінка {{number}}",
   "statusValue": {
     "DRAFT": "Draft",
     "STORY_PLAN_READY": "Story plan ready",

@@ -106,6 +106,7 @@
   "readerPageNarration": "Səhifə {{number}} səsləndirməsi",
   "readerPreparingAudio": "Audio hazırlanır…",
   "readerSeconds": "{{value}} san",
+  "readerImageAlt": "{{title}}, səhifə {{number}}",
   "statusValue": {
     "DRAFT": "Draft",
     "STORY_PLAN_READY": "Story plan ready",

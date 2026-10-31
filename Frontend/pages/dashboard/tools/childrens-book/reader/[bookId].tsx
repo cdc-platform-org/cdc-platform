@@ -206,7 +206,7 @@ function BookReaderContent() {
             <section className="grid gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.7fr)]">
               <div className="min-w-0">
                 <div className="aspect-[4/3] rounded-lg border border-gray-200 bg-white flex items-center justify-center overflow-hidden">
-                  {imageUrl ? <img src={imageUrl} alt={`${book.title}, ${t('pageLabel', { number: pageNumber })}`} className="w-full h-full object-contain" /> : <span className="text-sm text-gray-400">{t('readerIllustrationUnavailable')}</span>}
+                  {imageUrl ? <img src={imageUrl} alt={t('readerImageAlt', { title: book.title, number: pageNumber })} className="w-full h-full object-contain" /> : <span className="text-sm text-gray-400">{t('readerIllustrationUnavailable')}</span>}
                 </div>
                 <div className="flex items-center justify-between gap-3 mt-4">
                   <button disabled={pageNumber <= 1} onClick={() => changePage(pageNumber - 1)} className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm disabled:opacity-40"><ChevronLeft className="w-4 h-4" />{t('readerPrevious')}</button>
