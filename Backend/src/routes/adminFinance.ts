@@ -9,6 +9,7 @@ import { applyStripePaymentResult, markStripeCheckoutExpired } from './stripePay
 import { logAdminAction } from '../services/auditLogService';
 import { getBillingSettings } from '../services/billingService';
 import { updateBillingSettingsSchema } from '../schemas/billingSchemas';
+import { refundBogPayment, RefundError } from '../services/bogRefundService';
 
 const router = Router();
 // Financials are SUPER_ADMIN only, per the RBAC hierarchy (MANAGER/MODERATOR
@@ -36,6 +37,20 @@ async function resolveReferenceLabel(purpose: string, referenceId: string): Prom
     const gig = await prisma.gig.findUnique({ where: { id: referenceId }, select: { title: true } });
     return gig?.title ?? '(deleted gig)';
   }
+  if (purpose === 'PRODUCT') {
+    const product = await prisma.digitalProduct.findUnique({ where: { id: referenceId }, select: { title: true } });
+    return product?.title ?? '(deleted product)';
+  }
+  if (purpose === 'LIVE_TRAINING') {
+    const training = await prisma.liveTraining.findUnique({ where: { id: referenceId }, select: { title: true } });
+    return training?.title ?? '(deleted live training)';
+  }
+  if (purpose === 'CHILDRENS_BOOK') {
+    const book = await prisma.bookProject.findUnique({ where: { id: referenceId }, select: { title: true } });
+    return book?.title || "Children's book";
+  }
+  if (purpose === 'ENGLISH_TUTOR_SUBSCRIPTION') return 'AI English Tutor (30 days)';
+  if (purpose === 'HR_SUPPORT') return 'HR support request';
   return referenceId;
 }
 
@@ -74,10 +89,10 @@ router.get('/course-payments', async (req: Request, res: Response) => {
   type MergedRow = { id: string; gateway: 'BOG' | 'STRIPE'; orderId: string } & Pick<
     (typeof bogPayments)[number],
     'user' | 'purpose' | 'referenceId' | 'amount' | 'currency' | 'status' | 'createdAt' | 'completedAt'
-  >;
+  > & { refundedAmount: number };
   const merged: MergedRow[] = [
-    ...bogPayments.map((p) => ({ id: p.id, gateway: 'BOG' as const, orderId: p.bogOrderId, user: p.user, purpose: p.purpose, referenceId: p.referenceId, amount: p.amount, currency: p.currency, status: p.status, createdAt: p.createdAt, completedAt: p.completedAt })),
-    ...stripePayments.map((p) => ({ id: p.id, gateway: 'STRIPE' as const, orderId: p.stripeSessionId, user: p.user, purpose: p.purpose, referenceId: p.referenceId, amount: p.amount, currency: p.currency, status: p.status, createdAt: p.createdAt, completedAt: p.completedAt })),
+    ...bogPayments.map((p) => ({ id: p.id, gateway: 'BOG' as const, orderId: p.bogOrderId, user: p.user, purpose: p.purpose, referenceId: p.referenceId, amount: p.amount, currency: p.currency, status: p.status, createdAt: p.createdAt, completedAt: p.completedAt, refundedAmount: p.refundedAmount })),
+    ...stripePayments.map((p) => ({ id: p.id, gateway: 'STRIPE' as const, orderId: p.stripeSessionId, user: p.user, purpose: p.purpose, referenceId: p.referenceId, amount: p.amount, currency: p.currency, status: p.status, createdAt: p.createdAt, completedAt: p.completedAt, refundedAmount: 0 })),
   ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
   const totalCount = merged.length;
@@ -86,19 +101,31 @@ router.get('/course-payments', async (req: Request, res: Response) => {
   const courseIds = [...new Set(pageRows.filter((p) => p.purpose === 'COURSE').map((p) => p.referenceId))];
   const mentorIds = [...new Set(pageRows.filter((p) => p.purpose === 'MENTORSHIP').map((p) => p.referenceId))];
   const gigIds = [...new Set(pageRows.filter((p) => p.purpose === 'GIG_ESCROW_FUNDING').map((p) => p.referenceId))];
-  const [courses, mentors, gigs] = await Promise.all([
+  const idsFor = (purpose: string) => [...new Set(pageRows.filter((p) => p.purpose === purpose).map((p) => p.referenceId))];
+  const [courses, mentors, gigs, products, trainings, books] = await Promise.all([
     prisma.course.findMany({ where: { id: { in: courseIds } }, select: { id: true, title: true } }),
     prisma.user.findMany({ where: { id: { in: mentorIds } }, select: { id: true, name: true } }),
     prisma.gig.findMany({ where: { id: { in: gigIds } }, select: { id: true, title: true } }),
+    prisma.digitalProduct.findMany({ where: { id: { in: idsFor('PRODUCT') } }, select: { id: true, title: true } }),
+    prisma.liveTraining.findMany({ where: { id: { in: idsFor('LIVE_TRAINING') } }, select: { id: true, title: true } }),
+    prisma.bookProject.findMany({ where: { id: { in: idsFor('CHILDRENS_BOOK') } }, select: { id: true, title: true } }),
   ]);
   const courseTitleById = new Map(courses.map((c) => [c.id, c.title]));
   const mentorNameById = new Map(mentors.map((m) => [m.id, m.name]));
   const gigTitleById = new Map(gigs.map((g) => [g.id, g.title]));
+  const productTitleById = new Map(products.map((p) => [p.id, p.title]));
+  const trainingTitleById = new Map(trainings.map((t) => [t.id, t.title]));
+  const bookTitleById = new Map(books.map((b) => [b.id, b.title]));
 
   function referenceLabel(p: MergedRow): string {
     if (p.purpose === 'COURSE') return courseTitleById.get(p.referenceId) ?? '(deleted course)';
     if (p.purpose === 'MENTORSHIP') return mentorNameById.get(p.referenceId) ?? '(deleted mentor)';
     if (p.purpose === 'GIG_ESCROW_FUNDING') return gigTitleById.get(p.referenceId) ?? '(deleted gig)';
+    if (p.purpose === 'PRODUCT') return productTitleById.get(p.referenceId) ?? '(deleted product)';
+    if (p.purpose === 'LIVE_TRAINING') return trainingTitleById.get(p.referenceId) ?? '(deleted live training)';
+    if (p.purpose === 'CHILDRENS_BOOK') return bookTitleById.get(p.referenceId) || "Children's book";
+    if (p.purpose === 'ENGLISH_TUTOR_SUBSCRIPTION') return 'AI English Tutor (30 days)';
+    if (p.purpose === 'HR_SUPPORT') return 'HR support request';
     return p.referenceId;
   }
 
@@ -116,6 +143,7 @@ router.get('/course-payments', async (req: Request, res: Response) => {
       status: p.status,
       createdAt: p.createdAt,
       completedAt: p.completedAt,
+      refundedAmount: p.refundedAmount,
     })),
     totalCount,
     page,
@@ -159,6 +187,7 @@ router.post('/course-payments/:id/reverify', async (req: Request, res: Response)
       status: fresh.status,
       createdAt: fresh.createdAt,
       completedAt: fresh.completedAt,
+      refundedAmount: fresh.refundedAmount,
     },
   });
 });
@@ -204,29 +233,60 @@ router.post('/course-payments/:id/reverify-stripe', async (req: Request, res: Re
       status: fresh.status,
       createdAt: fresh.createdAt,
       completedAt: fresh.completedAt,
+      refundedAmount: 0,
     },
   });
 });
 
-// Refund & access revocation — marks the payment REFUNDED for bookkeeping
-// and deletes the CourseEnrollment. Does NOT itself move money; the admin
-// still processes the real bank refund via BOG separately.
-router.post('/course-payments/:id/refund', async (req: Request, res: Response) => {
-  const payment = await prisma.bogPayment.findUnique({ where: { id: req.params.id } });
-  if (!payment) return res.status(404).json({ message: 'Payment not found.' });
+// Refund — full or partial — through BOG's refund API (or "record only"
+// when the admin already refunded it in BOG's own dashboard). Records a
+// BogRefund row, updates BogPayment.status/refundedAmount, claws back the
+// creator's share, optionally revokes the buyer's access, and writes an
+// audit log entry. See services/bogRefundService.ts for the full flow.
+const refundSchema = z.object({
+  // Major units as typed by the admin (e.g. 2.50). Omitted = refund
+  // everything that is left.
+  amount: z.number().positive().max(1_000_000).optional(),
+  revokeAccess: z.boolean().default(true),
+  recordOnly: z.boolean().default(false),
+  reason: z.string().trim().max(500).optional(),
+});
 
-  await prisma.$transaction([
-    prisma.bogPayment.update({ where: { id: payment.id }, data: { status: 'REFUNDED' } }),
-    prisma.courseEnrollment.deleteMany({ where: { userId: payment.userId, courseId: payment.referenceId } }),
-  ]);
-  await logAdminAction({
-    action: 'finance.payment.refund',
-    targetType: 'BogPayment',
-    targetId: payment.id,
-    performedById: req.user!.id,
-    metadata: { userId: payment.userId, courseId: payment.referenceId },
+router.post('/course-payments/:id/refund', async (req: Request, res: Response) => {
+  const parsed = refundSchema.safeParse(req.body ?? {});
+  if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
+  const { amount, revokeAccess, recordOnly, reason } = parsed.data;
+  try {
+    const result = await refundBogPayment({
+      bogPaymentId: req.params.id,
+      amount: amount === undefined ? undefined : Math.round(amount * 100),
+      revokeAccess,
+      recordOnly,
+      reason: reason || undefined,
+      adminId: req.user!.id,
+    });
+    const verb = recordOnly ? 'recorded as refunded' : 'sent to BOG';
+    res.json({
+      data: result,
+      message: `Refund of ${(result.amount / 100).toFixed(2)} ${verb}. ${result.access.note}`,
+    });
+  } catch (err) {
+    if (err instanceof RefundError) return res.status(err.httpStatus).json({ message: err.message });
+    throw err;
+  }
+});
+
+// Refund history for one payment — shown in the refund dialog.
+router.get('/course-payments/:id/refunds', async (req: Request, res: Response) => {
+  const refunds = await prisma.bogRefund.findMany({
+    where: { bogPaymentId: req.params.id },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true, amount: true, status: true, recordOnly: true, reason: true, accessRevoked: true,
+      errorMessage: true, createdAt: true, completedAt: true, requestedBy: { select: { id: true, name: true, email: true } },
+    },
   });
-  res.json({ message: 'Payment marked as refunded and course access revoked. Process the actual bank refund via BOG separately.' });
+  res.json({ data: refunds });
 });
 
 // ============================================================
