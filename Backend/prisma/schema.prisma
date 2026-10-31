@@ -147,6 +147,10 @@ enum WalletEntryType {
   // from "an admin changed this by hand" at a glance.
   PAYOUT_REVERSAL
   ADJUSTMENT
+  // Takes back a creator's/instructor's net share of a sale that an admin
+  // refunded to the buyer (services/bogRefundService.ts) — proportional to
+  // the refunded part on a partial refund.
+  REFUND_CLAWBACK
 }
 
 enum EmploymentType {
@@ -278,11 +282,15 @@ enum BogPaymentStatus {
   COMPLETED
   FAILED
   CANCELLED
-  // Set only by an admin's manual "Refund & Access Revocation" action
-  // (see routes/adminFinance.ts) — this is a record-keeping status, it does
-  // NOT itself trigger a real bank refund through BOG; the admin still
-  // processes the actual refund via BOG's own dashboard/support.
+  // Set by the admin Refund action (routes/adminFinance.ts →
+  // services/bogRefundService.ts) once the full amount has been returned —
+  // either through BOG's refund API, or recorded after the admin already
+  // refunded it in BOG's own dashboard ("record only" mode).
   REFUNDED
+  // Some, but not all, of the amount has been refunded (see
+  // BogPayment.refundedAmount for how much). Still counts toward revenue,
+  // net of refundedAmount.
+  PARTIALLY_REFUNDED
 }
 
 // ============================================================
@@ -719,6 +727,7 @@ model User {
   stripeCustomerId              String?
   paymentMethods                PaymentMethod[]
   bogPayments                   BogPayment[]
+  bogRefundsRequested           BogRefund[]                    @relation("BogRefundRequestedBy")
   stripePayments                StripePayment[]
   courseEnrollments             CourseEnrollment[]
   courseRatings                 CourseRating[]
@@ -3750,10 +3759,49 @@ model BogPayment {
   // (or block existing) BogPayment rows that used it.
   promoCodeId       String?
   promoCode         PromoCode?         @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  // Running total of successful refunds, minor units. Never exceeds amount.
+  refundedAmount    Int                @default(0)
+  refundedAt        DateTime?
+  refunds           BogRefund[]
 
   @@index([userId])
   @@index([purpose, referenceId])
   @@map("bog_payments")
+}
+
+enum BogRefundStatus {
+  // Row written, BOG not answered yet (or the process died mid-call — an
+  // admin can see it and check BOG's dashboard).
+  REQUESTED
+  // BOG accepted the refund request (or, in record-only mode, the admin
+  // confirmed it was already refunded outside the platform).
+  SUCCEEDED
+  FAILED
+}
+
+// One row per admin refund attempt on a BogPayment — full or partial.
+// See services/bogRefundService.ts. The row id doubles as BOG's
+// Idempotency-Key, so a retried HTTP call can never refund twice.
+model BogRefund {
+  id            String          @id @default(uuid())
+  bogPaymentId  String
+  bogPayment    BogPayment      @relation(fields: [bogPaymentId], references: [id], onDelete: Restrict)
+  amount        Int // minor units
+  status        BogRefundStatus @default(REQUESTED)
+  // true = the admin already refunded via BOG's own dashboard; no API call made.
+  recordOnly    Boolean         @default(false)
+  reason        String?
+  accessRevoked Boolean         @default(false)
+  bogActionId   String?
+  bogResponse   Json?
+  errorMessage  String?
+  requestedById String
+  requestedBy   User            @relation("BogRefundRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+  createdAt     DateTime        @default(now())
+  completedAt   DateTime?
+
+  @@index([bogPaymentId])
+  @@map("bog_refunds")
 }
 
 // ============================================================

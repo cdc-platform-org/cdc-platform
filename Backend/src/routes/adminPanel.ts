@@ -50,12 +50,18 @@ router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODER
       _sum: { grossAmount: true, commissionAmount: true, netAmount: true },
       _count: { _all: true },
     }),
-    // Course/product/mentorship sales — GIG_ESCROW_FUNDING is deliberately
-    // excluded here since funding a gig's escrow creates a GigTransaction
-    // (captured above), so including it too would double-count that volume.
+    // Every BOG sale (course, product, mentorship, live training, children's
+    // book, tutor subscription, HR support) — GIG_ESCROW_FUNDING is
+    // deliberately excluded here since funding a gig's escrow creates a
+    // GigTransaction (captured above), so including it too would
+    // double-count that volume. Used to be an allow-list of only
+    // COURSE/MENTORSHIP/PRODUCT, so every newer purpose (e.g. a paid
+    // children's book) silently never showed up in this total. Partially
+    // refunded payments count net of refundedAmount; fully refunded ones
+    // are excluded by status.
     prisma.bogPayment.aggregate({
-      where: { status: 'COMPLETED', purpose: { in: ['COURSE', 'MENTORSHIP', 'PRODUCT'] } },
-      _sum: { amount: true },
+      where: { status: { in: ['COMPLETED', 'PARTIALLY_REFUNDED'] }, purpose: { not: 'GIG_ESCROW_FUNDING' } },
+      _sum: { amount: true, refundedAmount: true },
       _count: { _all: true },
     }),
     // Stripe-funded course/product/mentorship sales — previously omitted
@@ -65,7 +71,7 @@ router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODER
     // the raw `amount` column, which is in USD/EUR minor units and would
     // silently mix currencies into this GEL-denominated total.
     prisma.stripePayment.aggregate({
-      where: { status: 'COMPLETED', purpose: { in: ['COURSE', 'MENTORSHIP', 'PRODUCT'] } },
+      where: { status: 'COMPLETED', purpose: { not: 'GIG_ESCROW_FUNDING' } },
       _sum: { amountGel: true },
       _count: { _all: true },
     }),
@@ -104,7 +110,7 @@ router.get('/dashboard-stats', requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODER
       // Commission/net splits are freelancer-marketplace-specific (no
       // equivalent for a straight course/product sale), so those two stay
       // gig-transaction-only — only the gross total blends both sources.
-      totalGrossAmount: (volumeAgg._sum.grossAmount ?? 0) + (salesVolumeAgg._sum.amount ?? 0) + (stripeSalesVolumeAgg._sum.amountGel ?? 0),
+      totalGrossAmount: (volumeAgg._sum.grossAmount ?? 0) + (salesVolumeAgg._sum.amount ?? 0) - (salesVolumeAgg._sum.refundedAmount ?? 0) + (stripeSalesVolumeAgg._sum.amountGel ?? 0),
       totalCommissionAmount: volumeAgg._sum.commissionAmount ?? 0,
       totalNetAmount: volumeAgg._sum.netAmount ?? 0,
       transactionCount: volumeAgg._count._all + salesVolumeAgg._count._all + stripeSalesVolumeAgg._count._all,

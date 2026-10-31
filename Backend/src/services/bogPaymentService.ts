@@ -10,6 +10,7 @@ import { BOG_CLIENT_ID, BOG_SECRET_KEY } from '../utils/env';
 const OAUTH_TOKEN_URL = 'https://oauth2.bog.ge/auth/realms/bog/protocol/openid-connect/token';
 const CREATE_ORDER_URL = 'https://api.bog.ge/payments/v1/ecommerce/orders';
 const RECEIPT_URL = (orderId: string) => `https://api.bog.ge/payments/v1/receipt/${orderId}`;
+const REFUND_URL = (orderId: string) => `https://api.bog.ge/payments/v1/payment/refund/${encodeURIComponent(orderId)}`;
 
 // Published by BOG for verifying the `Callback-Signature` header on
 // POST /api/payments/bog/callback — see routes/payments.ts. Must be verified
@@ -192,6 +193,61 @@ export async function getBogOrderDetails(bogOrderId: string): Promise<BogOrderDe
     throw new Error(`BOG get-order-details request failed (${response.status}): ${body}`);
   }
   return (await response.json()) as BogOrderDetails;
+}
+
+export interface RefundBogOrderParams {
+  bogOrderId: string;
+  // Minor units (tetri). Omit for a full refund of whatever is left — BOG
+  // treats a missing `amount` as "refund everything".
+  amount?: number;
+  // Sent as BOG's Idempotency-Key header (UUID v4) — a retried request with
+  // the same key returns BOG's original answer instead of refunding twice.
+  idempotencyKey: string;
+}
+
+export interface RefundBogOrderResult {
+  key: string;
+  message?: string;
+  actionId?: string;
+  raw: unknown;
+}
+
+// Docs: https://api.bog.ge/docs/en/payments/refund — asynchronous on BOG's
+// side: a 2xx with key "request_received" means BOG accepted the request;
+// the final state is later reported as order_status refunded /
+// refunded_partially (applyBogPaymentResult ignores those for non-PENDING
+// rows, so it never overwrites what the refund flow recorded).
+export async function refundBogOrder(params: RefundBogOrderParams): Promise<RefundBogOrderResult> {
+  const accessToken = await getAccessToken();
+  const body: Record<string, number> = {};
+  if (params.amount !== undefined) body.amount = Math.round(params.amount) / 100;
+  const response = await fetch(REFUND_URL(params.bogOrderId), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      'Idempotency-Key': params.idempotencyKey,
+    },
+    body: JSON.stringify(body),
+  });
+  const text = await response.text().catch(() => '');
+  if (!response.ok) {
+    throw new BogRefundRejectedError(response.status, text);
+  }
+  let data: { key?: string; message?: string; action_id?: string } = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    // BOG answered 2xx with a non-JSON body — still an accepted request.
+  }
+  return { key: data.key ?? 'request_received', message: data.message, actionId: data.action_id, raw: data };
+}
+
+export class BogRefundRejectedError extends Error {
+  constructor(public readonly status: number, public readonly body: string) {
+    super(`BOG refund request failed (${status}): ${body.slice(0, 500)}`);
+    this.name = 'BogRefundRejectedError';
+  }
 }
 
 // Must run against the RAW bytes of the callback request body — see
