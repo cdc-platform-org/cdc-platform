@@ -125,7 +125,7 @@ function GigApplicationsContent() {
 
   if (notFoundOrForbidden || !gig) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-100 dark:bg-[#0b0f19] py-10">
+      <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-100 dark:bg-[#0b0f19] py-10">
         <SiteHeader />
         <p className="text-center text-sm text-gray-500 dark:text-slate-400">{t.notFound}</p>
         <BackButton fallbackHref="/gigs" />
@@ -134,7 +134,7 @@ function GigApplicationsContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-[#0b0f19] px-4 py-10">
+    <div className="min-h-screen bg-slate-100 dark:bg-[#0b0f19] -mx-4 sm:-mx-6 px-4 sm:px-6 py-10">
       <SiteHeader />
       <div className="max-w-2xl mx-auto">
         <div className="mb-4">

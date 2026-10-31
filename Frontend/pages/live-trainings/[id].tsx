@@ -250,7 +250,7 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-16">
+      <div className="min-h-screen bg-slate-950 text-slate-100 -mx-4 sm:-mx-6 px-4 sm:px-6 py-16">
         <SiteHeader />
         <p className="text-slate-400 text-sm max-w-3xl mx-auto">{t.loading}</p>
       </div>
@@ -259,7 +259,7 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
 
   if (!training) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-16">
+      <div className="min-h-screen bg-slate-950 text-slate-100 -mx-4 sm:-mx-6 px-4 sm:px-6 py-16">
         <SiteHeader />
         <p className="text-slate-400 text-sm max-w-3xl mx-auto">{t.notFound}</p>
       </div>
@@ -273,7 +273,7 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
   const requiresCheckout = (training.price ?? 0) > 0;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-16">
+    <div className="min-h-screen bg-slate-950 text-slate-100 -mx-4 sm:-mx-6 px-4 sm:px-6 pb-16">
       <SEOHead
         title={title}
         description={description.replace(/\s+/g, ' ').trim().slice(0, 200)}
@@ -281,7 +281,7 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
         ogType="website"
       />
       <SiteHeader />
-      <div className="max-w-5xl mx-auto">
+      <div className="pt-8 sm:pt-12 max-w-5xl mx-auto">
         <div className="mb-4">
           <BackButton fallbackHref="/live-trainings" className="text-slate-400 hover:text-slate-100" />
         </div>

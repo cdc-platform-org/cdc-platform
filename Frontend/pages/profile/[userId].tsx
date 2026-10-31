@@ -98,7 +98,7 @@ function ProfileContent() {
   const roleLabelKey = ROLE_LABEL_KEY[profileUser.role];
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-slate-950 px-4 py-10">
+    <div className="min-h-screen bg-gray-100 dark:bg-slate-950 -mx-4 sm:-mx-6 px-4 sm:px-6 py-10">
       <SiteHeader />
       <div className="max-w-2xl mx-auto">
         <div className="mb-4">

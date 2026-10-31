@@ -635,7 +635,7 @@ export default function BlogPostPage({ initialPost }: { initialPost: BlogPost | 
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-400 text-sm flex flex-col">
+      <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-950 text-slate-400 text-sm flex flex-col">
         <SiteHeader />
         <div className="flex-1 flex items-center justify-center">{t.loading}</div>
       </div>
@@ -643,7 +643,7 @@ export default function BlogPostPage({ initialPost }: { initialPost: BlogPost | 
   }
   if (loadError) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-300 text-sm flex flex-col">
+      <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-950 text-slate-300 text-sm flex flex-col">
         <SiteHeader />
         <div className="flex-1 flex flex-col items-center justify-center gap-4">
           <p>{t.loadError}</p>
@@ -665,7 +665,7 @@ export default function BlogPostPage({ initialPost }: { initialPost: BlogPost | 
   }
   if (notFound || !post) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-300 text-sm flex flex-col">
+      <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-950 text-slate-300 text-sm flex flex-col">
         <SiteHeader />
         <div className="flex-1 flex flex-col items-center justify-center gap-4">
           <p>{t.notFound}</p>
@@ -683,7 +683,7 @@ export default function BlogPostPage({ initialPost }: { initialPost: BlogPost | 
   const readingMinutes = estimateReadingMinutes(content);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-950 text-slate-100">
       <SEOHead
         title={title}
         description={description}

@@ -444,7 +444,7 @@ export default function ToolsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
+    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       <SEOHead
         title={t.title}
         description={META_DESCRIPTION[router.locale ?? 'ka'] ?? META_DESCRIPTION.en}

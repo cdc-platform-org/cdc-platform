@@ -184,7 +184,7 @@ function StoreProductContent({ initialProduct }: { initialProduct: DigitalProduc
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950">
+      <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950">
         <p className="text-sm text-slate-400">…</p>
       </div>
     );
@@ -192,14 +192,14 @@ function StoreProductContent({ initialProduct }: { initialProduct: DigitalProduc
 
   if (notFound || !product) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950">
+      <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950">
         <p className="text-sm text-slate-500 dark:text-slate-400">{t('productNotFound')}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
+    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       <SEOHead
         title={productTitle(product, contentLang)}
         description={productDescription(product, contentLang).replace(/[#*`_>[\]()-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 200)}

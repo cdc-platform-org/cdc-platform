@@ -11,7 +11,7 @@ import BackButton from '../../src/components/common/BackButton';
 // fake hardcoded "Order #1001"-style rows dressed up to look real.
 function OrdersPage() {
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-[#0b0f19] transition-colors">
+    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-100 dark:bg-[#0b0f19] transition-colors">
       <SiteHeader />
       <div className="max-w-4xl mx-auto px-4 py-10">
         <div className="mb-4">

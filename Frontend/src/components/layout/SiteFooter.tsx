@@ -212,7 +212,11 @@ export default function SiteFooter() {
   const noHoverFx = 'outline-none hover:outline-none focus:outline-none border-none hover:border-none hover:shadow-none hover:ring-0';
 
   return (
-    <footer className={`relative text-sm ${noHoverFx}`}>
+    // -mx-4 sm:-mx-6 cancels _app.tsx's app-shell px-4 sm:px-6 so the dark
+    // footer runs edge to edge (same full-bleed trick as SiteHeader's <nav>).
+    // Without it the footer sat inset with white strips down both sides,
+    // most visible on phones.
+    <footer className={`relative -mx-4 sm:-mx-6 text-sm ${noHoverFx}`}>
       {/* SVG WAVE DIVIDER — sits on whatever page background precedes the
           footer (light or dark mode), so the curve reads correctly either
           way; the solid footer body below carries its own fixed gradient.
@@ -229,12 +233,12 @@ export default function SiteFooter() {
       </div>
 
       <div className={`bg-gradient-to-b from-indigo-950 via-slate-900 to-black text-slate-300 -mt-px ${noHoverFx}`}>
-        <div className={`max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 ${noHoverFx}`}>
+        <div className={`max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-10 grid grid-cols-2 lg:grid-cols-5 gap-x-6 gap-y-8 sm:gap-10 ${noHoverFx}`}>
           {/* Company — glassmorphism card with a soft glow behind the logo badge.
               Deliberately excluded from noHoverFx: this is the one footer
               element meant to react on hover (glowing border), unlike the
               plain text/link blocks around it. */}
-          <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5 transition-colors duration-300 hover:border-cyan-400/50">
+          <div className="relative col-span-2 lg:col-span-1 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5 transition-colors duration-300 hover:border-cyan-400/50">
             <div className={`flex items-center gap-2.5 mb-3 ${noHoverFx}`}>
               <div className="relative">
                 <div className="absolute inset-0 bg-cyan-500/40 blur-xl rounded-lg" aria-hidden="true" />

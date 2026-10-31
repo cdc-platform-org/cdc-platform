@@ -64,7 +64,7 @@ export default function LiveTrainingInvitePage() {
     void attemptRedeem();
   }, [token, isAuthenticated, openAuthModal, attemptRedeem]);
 
-  return <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+  return <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
     <Head><title>{t.title} | CDC</title></Head>
     <SiteHeader />
     <main className="max-w-md mx-auto px-4 py-16 text-center">
