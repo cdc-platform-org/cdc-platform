@@ -7,6 +7,7 @@ import { AgencyContent, AgencyPortfolioItem } from '../../../src/types/siteConte
 import { getAdminSiteContent, updateSiteContent, uploadCmsImage } from '../../../src/services/siteContentService';
 import { resolveBlogImageUrl } from '../../../src/services/blogService';
 import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../../src/utils/imageUpload';
+import KaToEnButton from '../../../src/components/admin/KaToEnButton';
 
 const OBJECT_POSITION: Record<string, string> = {
   top: 'center top',
@@ -139,6 +140,18 @@ function PortfolioItemEditor({
         </div>
       </div>
 
+      <KaToEnButton
+        pairs={[item.badgeKa, item.titleKa, item.subtitleKa, item.descKa, item.statusKa].map((ka) => ({ ka }))}
+        onTranslated={([badgeEn, titleEn, subtitleEn, descEn, statusEn]) => {
+          const patch: Partial<AgencyPortfolioItem> = {};
+          if (badgeEn) patch.badgeEn = badgeEn;
+          if (titleEn) patch.titleEn = titleEn;
+          if (subtitleEn) patch.subtitleEn = subtitleEn;
+          if (descEn) patch.descEn = descEn;
+          if (statusEn) patch.statusEn = statusEn;
+          onChange(patch);
+        }}
+      />
       <div className="grid md:grid-cols-2 gap-2">
         <input placeholder="Badge (KA)" value={item.badgeKa} onChange={(e) => onChange({ badgeKa: e.target.value })} className={inputClass} />
         <input placeholder="Badge (EN)" value={item.badgeEn} onChange={(e) => onChange({ badgeEn: e.target.value })} className={inputClass} />

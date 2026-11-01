@@ -6,6 +6,7 @@ import { GalleryContent, GalleryImage } from '../../../src/types/siteContent';
 import { getAdminSiteContent, updateSiteContent, uploadCmsImage } from '../../../src/services/siteContentService';
 import { resolveBlogImageUrl } from '../../../src/services/blogService';
 import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../../src/utils/imageUpload';
+import KaToEnButton from '../../../src/components/admin/KaToEnButton';
 
 const inputClass = 'w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
 
@@ -176,6 +177,12 @@ function GalleryCmsDashboard() {
                 No images yet — drag & drop images here, upload, or add by URL.
               </p>
             ) : (
+              <>
+              <KaToEnButton
+                className="mb-3"
+                pairs={images.map((img) => ({ ka: img.captionKa }))}
+                onTranslated={(v) => setContent({ ...content, images: images.map((img, i) => (v[i] ? { ...img, captionEn: v[i] } : img)) })}
+              />
               <div className="grid md:grid-cols-2 gap-4">
                 {images.map((img, i) => (
                 <div key={i} className="border border-gray-100 rounded-lg p-3 flex gap-3">
@@ -213,6 +220,7 @@ function GalleryCmsDashboard() {
                 </div>
               ))}
             </div>
+              </>
           )}
           </div>
         </div>

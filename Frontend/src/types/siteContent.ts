@@ -102,6 +102,10 @@ export interface ToolCatalogEntry {
   // Empty/undefined means the reading page falls back to its own default
   // gradient/icon header.
   imageUrl?: string;
+  // Button link for an admin-added tool that has no hard-coded card (a
+  // slug not in BUILT_IN_TOOL_SLUGS): /tools renders it as a generic card
+  // whose button opens this URL (site path like /dashboard/... or https://...).
+  linkUrl?: string;
 }
 
 export interface ToolCatalogContent {

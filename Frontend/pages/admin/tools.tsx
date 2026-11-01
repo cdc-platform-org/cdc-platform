@@ -7,6 +7,7 @@ import { ToolCatalogContent, ToolCatalogEntry, ToolCatalogStatus } from '../../s
 import { getAdminSiteContent, updateSiteContent, uploadCmsImage } from '../../src/services/siteContentService';
 import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../src/utils/imageUpload';
 import { resolveBlogImageUrl } from '../../src/services/blogService';
+import KaToEnButton from '../../src/components/admin/KaToEnButton';
 
 // The 4 real, live self-service SaaS tools this CMS currently covers (see
 // marketplace/index.tsx's SAAS_TOOLS and tools.tsx's own cards for where
@@ -55,10 +56,12 @@ function ToolEntryEditor({
   entry,
   onChange,
   onRemove,
+  highlight = false,
 }: {
   entry: ToolCatalogEntry;
   onChange: (patch: Partial<ToolCatalogEntry>) => void;
   onRemove: () => void;
+  highlight?: boolean;
 }) {
   const known = KNOWN_TOOLS.find((k) => k.slug === entry.slug);
 
@@ -86,11 +89,18 @@ function ToolEntryEditor({
   };
 
   return (
-    <div className="border border-gray-200 rounded-xl p-4 space-y-3">
-      {known && (
+    <div className={`border rounded-xl p-4 space-y-3 scroll-mt-24 ${highlight ? 'border-indigo-400 ring-2 ring-indigo-200' : 'border-gray-200'}`}>
+      {known ? (
         <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-2">
           <h3 className="text-sm font-semibold text-gray-900">{known.name}</h3>
           {!known.statusWired && <span className="text-[11px] text-gray-400">სტატუსი ამ ბარათზე ჯერ არ მოქმედებს</span>}
+        </div>
+      ) : (
+        <div className="border-b border-gray-100 pb-2">
+          <h3 className="text-sm font-semibold text-gray-900">{entry.titleKa || entry.titleEn || 'ახალი ხელსაწყო'}</h3>
+          <p className="text-[11px] text-gray-500 mt-0.5">
+            ახალი ბარათი გამოჩნდება /tools გვერდზე, როცა შეავსებ სათაურს და დააჭერ „Save Changes“-ს. სტატუსი „Disabled“ მას დამალავს.
+          </p>
         </div>
       )}
       <div className="flex items-center justify-between gap-3">
@@ -134,6 +144,27 @@ function ToolEntryEditor({
         )}
       </div>
 
+      {!known && (
+        <div>
+          <label className={labelClass}>ღილაკის ბმული (Link) — სად გადავიდეს მომხმარებელი „გახსნა“ ღილაკზე. მაგ: /dashboard/tools/... ან https://...</label>
+          <input value={entry.linkUrl ?? ''} onChange={(e) => onChange({ linkUrl: e.target.value })} className={inputClass} placeholder="/dashboard/tools/my-tool" />
+        </div>
+      )}
+
+      <KaToEnButton
+        pairs={[entry.titleKa, entry.subtitleKa, entry.badgeKa, entry.pricingLabelKa, entry.descriptionKa, ...(entry.featuresKa ?? [])].map((ka) => ({ ka }))}
+        onTranslated={(v) => {
+          const n = entry.featuresKa?.length ?? 0;
+          const patch: Partial<ToolCatalogEntry> = {};
+          if (v[0]) patch.titleEn = v[0];
+          if (v[1]) patch.subtitleEn = v[1];
+          if (v[2]) patch.badgeEn = v[2];
+          if (v[3]) patch.pricingLabelEn = v[3];
+          if (v[4]) patch.descriptionEn = v[4];
+          if (n > 0) patch.featuresEn = v.slice(5, 5 + n).map((f, i) => f ?? entry.featuresEn?.[i] ?? '').filter(Boolean);
+          onChange(patch);
+        }}
+      />
       <div className="grid md:grid-cols-2 gap-2">
         <div>
           <label className={labelClass}>Title (KA)</label>
@@ -205,6 +236,13 @@ function ToolEntryEditor({
 
 function ToolsCmsDashboard() {
   const [content, setContent] = useState<ToolCatalogContent>({});
+  // Stable React keys kept parallel to content.tools, so adding an entry at
+  // the top doesn't hand every editor below it another entry's local state.
+  const [keys, setKeys] = useState<number[]>([]);
+  const nextKey = useRef(0);
+  const [newKey, setNewKey] = useState<number | null>(null);
+  const newEntryRef = useRef<HTMLDivElement>(null);
+  const makeKeys = (n: number) => Array.from({ length: n }, () => nextKey.current++);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -222,9 +260,11 @@ function ToolsCmsDashboard() {
       // overrides) so saving immediately is a no-op for pages that read it.
       const missing = KNOWN_TOOLS.filter((k) => !existing.some((e) => e.slug === k.slug)).map((k) => emptyEntry(k.slug));
       setContent({ tools: [...existing, ...missing] });
+      setKeys(makeKeys(existing.length + missing.length));
     } catch {
       setError('Could not load the tool catalog.');
       setContent({ tools: KNOWN_TOOLS.map((k) => emptyEntry(k.slug)) });
+      setKeys(makeKeys(KNOWN_TOOLS.length));
     } finally {
       setLoading(false);
     }
@@ -247,6 +287,26 @@ function ToolsCmsDashboard() {
       setSaving(false);
     }
   };
+
+  // New entries go to the TOP of the list (the list is long, so an entry
+  // appended at the bottom looked like the button did nothing) and get a
+  // unique slug so /tools can render them as their own card.
+  const addEntry = () => {
+    const key = nextKey.current++;
+    const entry = emptyEntry(`tool-${Date.now().toString(36)}`);
+    setContent({ ...content, tools: [entry, ...(content.tools ?? [])] });
+    setKeys([key, ...keys]);
+    setNewKey(key);
+  };
+
+  const removeEntry = (i: number) => {
+    setContent({ ...content, tools: (content.tools ?? []).filter((_, idx) => idx !== i) });
+    setKeys(keys.filter((_, idx) => idx !== i));
+  };
+
+  useEffect(() => {
+    if (newKey !== null) newEntryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [newKey]);
 
   const updateEntry = (i: number, patch: Partial<ToolCatalogEntry>) => {
     const tools = [...(content.tools ?? [])];
@@ -290,20 +350,22 @@ function ToolsCmsDashboard() {
             <h2 className="font-semibold text-sm text-gray-900">Tools</h2>
             <button
               type="button"
-              onClick={() => setContent({ ...content, tools: [...(content.tools ?? []), emptyEntry()] })}
-              className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+              onClick={addEntry}
+              className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
             >
-              + Add tool entry
+              + ახალი ხელსაწყოს დამატება
             </button>
           </div>
           <div className="space-y-6">
             {(content.tools ?? []).map((entry, i) => (
-              <ToolEntryEditor
-                key={i}
-                entry={entry}
-                onChange={(patch) => updateEntry(i, patch)}
-                onRemove={() => setContent({ ...content, tools: (content.tools ?? []).filter((_, idx) => idx !== i) })}
-              />
+              <div key={keys[i] ?? `i-${i}`} ref={keys[i] === newKey ? newEntryRef : undefined}>
+                <ToolEntryEditor
+                  entry={entry}
+                  highlight={keys[i] === newKey}
+                  onChange={(patch) => updateEntry(i, patch)}
+                  onRemove={() => removeEntry(i)}
+                />
+              </div>
             ))}
           </div>
         </div>

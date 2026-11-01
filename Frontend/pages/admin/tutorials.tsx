@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, FormEvent } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
+import KaToEnButton from '../../src/components/admin/KaToEnButton';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
 import { Tutorial } from '../../src/types/tutorial';
@@ -201,6 +202,14 @@ function AdminTutorialsDashboard() {
                 </button>
               ))}
             </div>
+
+            <KaToEnButton
+              pairs={[{ ka: form.title }, { ka: form.description }]}
+              onTranslated={([titleEn, descriptionEn]) => {
+                setForm((f) => ({ ...f, ...(titleEn ? { titleEn } : {}), ...(descriptionEn ? { descriptionEn } : {}) }));
+                setActiveLangTab('en');
+              }}
+            />
 
             {activeLangTab === 'ka' ? (
               <>
