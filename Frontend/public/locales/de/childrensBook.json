@@ -153,5 +153,7 @@
   "previewTotal": "Gesamt: {{amount}} GEL",
   "previewConfirmHint": "Die Illustrationen werden nach der Bezahlung mit der bestätigten Figur gemalt.",
   "previewConfirmButton": "Sieht gut aus, weiter zur Bezahlung",
-  "previewViewAgain": "Buchvorschau erneut ansehen"
+  "previewViewAgain": "Buchvorschau erneut ansehen",
+  "storyTextMissing": "Dieses Buch enthält noch Platzhaltertext. Klicke auf die Schaltfläche, und die KI schreibt die echte Geschichte zu den vorhandenen Bildern.",
+  "writeStoryTextButton": "Geschichtentext schreiben"
 }

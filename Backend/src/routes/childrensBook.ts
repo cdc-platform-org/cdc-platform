@@ -15,6 +15,7 @@ import {
   buildLogicalOperationKey,
 } from '../services/bookStateService';
 import { generateStoryPlan, CharacterConfig, StoryPlan } from '../services/bookStoryPlanService';
+import { writeStoryTexts, isPlaceholderStoryText, StoryTextGenerationError } from '../services/bookStoryTextService';
 import { generateBookImage, isImageGenerationMocked } from '../services/bookImageGenerationService';
 import { runImageQa, isAcceptableQaStatus } from '../services/bookQaService';
 import { buildBookPdf, BookPdfPageInput } from '../services/bookPdfService';
@@ -314,7 +315,16 @@ router.post('/:id/story-plan', authenticate, async (req: Request, res: Response)
   }
 
   const character = (book.characterConfig ?? {}) as unknown as CharacterConfig;
-  const plan: StoryPlan = generateStoryPlan({ title: book.title, character, language: book.language, pageCount: book.pageCount });
+  let plan: StoryPlan;
+  try {
+    plan = await generateStoryPlan({ title: book.title, character, language: book.language, pageCount: book.pageCount });
+  } catch (err) {
+    if (err instanceof StoryTextGenerationError) {
+      console.error(`[childrens-book] story text for ${book.id} failed:`, err.message);
+      return res.status(502).json({ message: 'The story could not be written right now. Please try again.' });
+    }
+    throw err;
+  }
 
   const claim = await prisma.bookProject.updateMany({
     where: { id: book.id, status: 'DRAFT' },
@@ -336,6 +346,54 @@ router.post('/:id/story-plan', authenticate, async (req: Request, res: Response)
 
   const fresh = await prisma.bookProject.findUnique({ where: { id: book.id }, include: { pages: { orderBy: { pageNumber: 'asc' } } } });
   res.status(201).json({ data: fresh });
+});
+
+// ============================================================
+// STORY TEXT REWRITE — for books generated before real story text existed,
+// whose pages still carry the placeholder template. Rewrites only the words
+// for the existing scenes (illustrations are kept, no image cost) and marks
+// the PDF stale so it is rebuilt with the new text. Refused once every page
+// has real text, so it can't be used to re-roll stories repeatedly.
+// ============================================================
+router.post('/:id/story-text/rewrite', authenticate, async (req: Request, res: Response) => {
+  const book = await prisma.bookProject.findUnique({ where: { id: req.params.id }, include: { pages: { orderBy: { pageNumber: 'asc' } } } });
+  if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
+  if (book.pages.length !== book.pageCount) return res.status(400).json({ message: 'This book has no story pages yet.' });
+  if (!book.pages.some((p) => isPlaceholderStoryText(p.storyText))) {
+    return res.status(400).json({ message: 'This book already has its story text.' });
+  }
+
+  const character = ((book.characterBible ?? book.characterConfig) ?? {}) as unknown as CharacterConfig;
+  const scenes = book.pages.map((p) => {
+    const spec = (p.sceneSpec ?? {}) as { sceneDescription?: string; emotion?: string };
+    return { pageNumber: p.pageNumber, sceneDescription: spec.sceneDescription || character.name, emotion: spec.emotion };
+  });
+
+  let texts: Map<number, string>;
+  try {
+    texts = await writeStoryTexts({ title: book.title, character: { ...((book.characterConfig ?? {}) as any), ...character }, language: book.language, scenes });
+  } catch (err) {
+    if (err instanceof StoryTextGenerationError) {
+      console.error(`[childrens-book] story text rewrite for ${book.id} failed:`, err.message);
+      return res.status(502).json({ message: 'The story could not be written right now. Please try again.' });
+    }
+    throw err;
+  }
+
+  const plan = book.storyPlan as unknown as StoryPlan | null;
+  await prisma.$transaction([
+    ...book.pages.map((p) => prisma.bookPage.update({ where: { id: p.id }, data: { storyText: texts.get(p.pageNumber)! } })),
+    prisma.bookProject.update({
+      where: { id: book.id },
+      data: {
+        ...(plan ? { storyPlan: { ...plan, pages: plan.pages.map((pp) => ({ ...pp, storyText: texts.get(pp.pageNumber) ?? pp.storyText })) } as any } : {}),
+        ...(book.pdfStatus === 'CURRENT' ? { pdfStatus: 'STALE' } : {}),
+      },
+    }),
+  ]);
+
+  const fresh = await prisma.bookProject.findUnique({ where: { id: book.id }, include: { pages: { orderBy: { pageNumber: 'asc' } } } });
+  res.json({ data: fresh });
 });
 
 // ============================================================
