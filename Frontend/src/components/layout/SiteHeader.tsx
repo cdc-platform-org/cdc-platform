@@ -17,12 +17,12 @@ import { getSiteNavigation, NAV_DICT, type NavEntry, type NavGroup } from '../..
 // getStaticProps, so it resolves its own locale (see utils/locale.ts) and
 // carries its own strings instead. Menu labels live in data/siteNavigation.ts.
 const dict = {
-  ka: { login: 'შესვლა', dashboard: 'ჩემი დაშბორდი', myCourses: 'ჩემი კურსები', admin: 'ადმინ პანელი', mentorPanel: 'მენტორის პანელი', logout: 'გამოსვლა', menu: 'მენიუ', account: 'ანგარიში', toggleMenu: 'მენიუს გახსნა', toggleTheme: 'ფერის რეჟიმის შეცვლა' },
-  en: { login: 'Log In', dashboard: 'My Dashboard', myCourses: 'My Courses', admin: 'Admin Panel', mentorPanel: 'Mentor Panel', logout: 'Log Out', menu: 'Menu', account: 'Account', toggleMenu: 'Toggle menu', toggleTheme: 'Toggle dark mode' },
-  de: { login: 'Anmelden', dashboard: 'Mein Dashboard', myCourses: 'Meine Kurse', admin: 'Admin-Panel', mentorPanel: 'Mentoren-Panel', logout: 'Abmelden', menu: 'Menü', account: 'Konto', toggleMenu: 'Menü umschalten', toggleTheme: 'Dunkelmodus umschalten' },
-  es: { login: 'Iniciar Sesión', dashboard: 'Mi Panel', myCourses: 'Mis Cursos', admin: 'Panel de Administración', mentorPanel: 'Panel de Mentor', logout: 'Cerrar Sesión', menu: 'Menú', account: 'Cuenta', toggleMenu: 'Abrir menú', toggleTheme: 'Cambiar modo oscuro' },
-  fr: { login: 'Connexion', dashboard: 'Mon tableau de bord', myCourses: 'Mes cours', admin: 'Panneau admin', mentorPanel: 'Panneau mentor', logout: 'Déconnexion', menu: 'Menu', account: 'Compte', toggleMenu: 'Ouvrir le menu', toggleTheme: 'Basculer le mode sombre' },
-  uk: { login: 'Увійти', dashboard: 'Моя панель', myCourses: 'Мої курси', admin: 'Панель адміністратора', mentorPanel: 'Панель ментора', logout: 'Вийти', menu: 'Меню', account: 'Акаунт', toggleMenu: 'Відкрити меню', toggleTheme: 'Перемкнути темний режим' },
+  ka: { login: 'შესვლა', dashboard: 'ჩემი დაშბორდი', myCourses: 'ჩემი კურსები', admin: 'ადმინ პანელი', mentorPanel: 'მენტორის პანელი', logout: 'გამოსვლა', menu: 'მენიუ', account: 'ანგარიში' },
+  en: { login: 'Log In', dashboard: 'My Dashboard', myCourses: 'My Courses', admin: 'Admin Panel', mentorPanel: 'Mentor Panel', logout: 'Log Out', menu: 'Menu', account: 'Account' },
+  de: { login: 'Anmelden', dashboard: 'Mein Dashboard', myCourses: 'Meine Kurse', admin: 'Admin-Panel', mentorPanel: 'Mentoren-Panel', logout: 'Abmelden', menu: 'Menü', account: 'Konto' },
+  es: { login: 'Iniciar Sesión', dashboard: 'Mi Panel', myCourses: 'Mis Cursos', admin: 'Panel de Administración', mentorPanel: 'Panel de Mentor', logout: 'Cerrar Sesión', menu: 'Menú', account: 'Cuenta' },
+  fr: { login: 'Connexion', dashboard: 'Mon tableau de bord', myCourses: 'Mes cours', admin: 'Panneau admin', mentorPanel: 'Panneau mentor', logout: 'Déconnexion', menu: 'Menu', account: 'Compte' },
+  uk: { login: 'Увійти', dashboard: 'Моя панель', myCourses: 'Мої курси', admin: 'Панель адміністратора', mentorPanel: 'Панель ментора', logout: 'Вийти', menu: 'Меню', account: 'Акаунт' },
 };
 
 interface SiteHeaderProps {
@@ -134,9 +134,9 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
           </Link>
         </div>
 
-        {/* Desktop menu (xl+). Dropdowns open on hover and on keyboard focus
+        {/* Desktop menu (1420px+; burger drawer below). Dropdowns open on hover and on keyboard focus
             (focus-within), so they work without a mouse too. */}
-        <div className="hidden xl:flex items-center gap-0.5 whitespace-nowrap">
+        <div className="hidden min-[1420px]:flex items-center gap-0.5 whitespace-nowrap">
           {entries.map((entry) =>
             entry.kind === 'link' ? (
               <Link key={entry.key} href={entry.href} className={topLinkClass(isActive(asPath, entry.href))}>
@@ -177,7 +177,7 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
           )}
         </div>
 
-        {/* Actions: search, language, theme, bell, account, burger (< xl). */}
+        {/* Actions: search, language, theme, bell, account, burger (< 1420px). */}
         <div className="flex-1 flex justify-end">
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             <div className="hidden md:block">
@@ -189,14 +189,13 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
             <button
               type="button"
               onClick={toggleDarkMode}
-              aria-label={t.toggleTheme}
+              aria-label="Toggle dark mode"
               className="p-2 rounded-full border-none bg-transparent cursor-pointer text-slate-600 dark:text-slate-300 hover:bg-slate-900/[0.05] dark:hover:bg-white/10 transition-colors"
             >
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
             <NotificationBell />
             <UserMenu
-              className="hidden sm:block"
               loginFallback={
                 <button
                   type="button"
@@ -220,9 +219,9 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
             <button
               type="button"
               onClick={() => setMobileMenuOpen((open) => !open)}
-              aria-label={t.toggleMenu}
+              aria-label="Toggle menu"
               aria-expanded={mobileMenuOpen}
-              className="xl:hidden p-2 rounded-full border-none bg-transparent cursor-pointer text-slate-800 dark:text-slate-200 hover:bg-slate-900/[0.05] dark:hover:bg-white/10"
+              className="min-[1420px]:hidden p-2 rounded-full border-none bg-transparent cursor-pointer text-slate-800 dark:text-slate-200 hover:bg-slate-900/[0.05] dark:hover:bg-white/10"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -231,7 +230,7 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
       </div>
 
       {mobileMenuOpen && (
-        <div className="xl:hidden border-t border-slate-200/80 dark:border-white/10 px-4 sm:px-6 pb-[calc(var(--tabbar-h,0px)+1.5rem)] overflow-y-auto overscroll-contain max-h-[calc(100dvh-4rem)]">
+        <div className="min-[1420px]:hidden border-t border-slate-200/80 dark:border-white/10 px-4 sm:px-6 pb-[calc(var(--tabbar-h,0px)+1.5rem)] overflow-y-auto overscroll-contain max-h-[calc(100dvh-4rem)]">
           <div className="max-w-2xl mx-auto">
             {isAuthenticated && user ? (
               <Link href={dashboardHref} className="mt-4 flex items-center gap-3 rounded-2xl p-3 no-underline text-current bg-slate-100/70 dark:bg-white/[0.05]">
