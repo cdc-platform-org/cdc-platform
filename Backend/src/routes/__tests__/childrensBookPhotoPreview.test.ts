@@ -68,8 +68,9 @@ async function request(path: string, user?: User, method = 'GET', body?: unknown
   });
 }
 
-async function uploadPhoto(bookId: string, user: User, buffer: Buffer, type = 'image/png', filename = 'kid.png') {
+async function uploadPhoto(bookId: string, user: User, buffer: Buffer, type = 'image/png', filename = 'kid.png', consent = true) {
   const form = new FormData();
+  if (consent) form.append('consent', 'true');
   form.append('photo', new Blob([new Uint8Array(buffer)], { type }), filename);
   return fetch(`${baseUrl}/api/childrens-books/${bookId}/character-photo`, { method: 'POST', headers: authHeaders(user), body: form });
 }
@@ -158,6 +159,36 @@ describe("Children's Book — character photo", () => {
     expect(intruderGet.status).toBe(404);
     const intruderUp = await uploadPhoto(body.data.id, intruder, await samplePng());
     expect(intruderUp.status).toBe(404);
+  });
+
+  it('refuses the photo without explicit parental consent', async () => {
+    const user = await createUser();
+    const { body } = await createBook(user);
+    const res = await uploadPhoto(body.data.id, user, await samplePng(), 'image/png', 'kid.png', false);
+    expect(res.status).toBe(400);
+    const book = await prisma.bookProject.findUnique({ where: { id: body.data.id } });
+    expect((book!.characterConfig as any).photoKey).toBeUndefined();
+  });
+
+  it('records when consent was given', async () => {
+    const user = await createUser();
+    const { body } = await createBook(user);
+    const up = await uploadPhoto(body.data.id, user, await samplePng());
+    expect(up.status).toBe(201);
+    expect(((await up.json()) as any).data.characterConfig.photoConsentAt).toBeTruthy();
+  });
+
+  it('deletes the original photo as soon as the character is approved', async () => {
+    const user = await createUser();
+    const { body } = await createBook(user);
+    await uploadPhoto(body.data.id, user, await samplePng());
+    await approve(user, body.data.id);
+    const book = await prisma.bookProject.findUnique({ where: { id: body.data.id } });
+    expect((book!.characterBible as any).useReferencePortrait).toBe(true);
+    expect((book!.characterConfig as any).photoKey).toBeUndefined();
+    expect((book!.characterConfig as any).photoDeletedAt).toBeTruthy();
+    const get = await fetch(`${baseUrl}/api/childrens-books/${body.data.id}/character-photo`, { headers: authHeaders(user) });
+    expect(get.status).toBe(404);
   });
 
   it('refuses a file that is not really an image', async () => {
