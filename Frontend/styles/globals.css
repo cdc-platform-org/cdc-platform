@@ -34,6 +34,12 @@
    the comment there for why. Body text/inputs above use .app-shell's
    georgianSafeFont (Noto Sans Georgian), same as everything else. */
 h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: var(--font-georgian-safe), 'Noto Sans Georgian', var(--font-fallback), sans-serif !important;
+  letter-spacing: -0.01em;
+}
+/* The square display face (BPG ExtraSquare Mtavruli) is kept only where a
+   page opts in explicitly with .font-display. */
+.font-display {
   font-family: var(--font-heading), var(--font-fallback), sans-serif !important;
 }
 
