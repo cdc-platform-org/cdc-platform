@@ -1,4 +1,4 @@
-import AboutNavigationLinks from '../src/components/layout/AboutNavigationLinks';
+import SiteHeader from '../src/components/layout/SiteHeader';
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -7,12 +7,10 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import type { GetStaticProps } from 'next';
-import { CheckCircle2, AlertTriangle, Sun, Moon, User, X, Menu, Link as LinkIcon, Rocket, Clock, Bot, ShieldCheck, Users, Sparkles, Lock, MessageSquareText, BookOpen, Code2, BarChart3, Building2, Calendar, Play, GraduationCap, Gift, Globe, Target, FileText } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, X, Link as LinkIcon, Rocket, Clock, Bot, ShieldCheck, Users, Sparkles, Lock, MessageSquareText, BookOpen, Code2, BarChart3, Building2, Calendar, Play, GraduationCap, Gift, Globe, Target, FileText } from 'lucide-react';
 import { useAuthModal } from '../src/context/AuthModalContext';
 import { useAuth } from '../src/context/AuthContext';
 import SiteFooter from '../src/components/layout/SiteFooter';
-import UserMenu from '../src/components/layout/UserMenu';
-import LanguageSwitcher from '../src/components/layout/LanguageSwitcher';
 import { Course } from '../src/types/lms';
 import { LiveTraining } from '../src/types/liveTraining';
 import { getLiveTrainings } from '../src/services/liveTrainingService';
@@ -20,8 +18,6 @@ import LearningRatingSummary from '../src/components/shared/LearningRatingSummar
 import { HomepageContent, HomepageStat, GalleryImage } from '../src/types/siteContent';
 import { getCourses } from '../src/services/courseService';
 import { getBlogPosts, blogTitle, blogDescription } from '../src/services/blogService';
-import { MARKETPLACE_CATEGORIES } from '../src/data/marketplaceCategories';
-import HeaderSearch from '../src/components/layout/HeaderSearch';
 import { BlogPost } from '../src/types/blog';
 import SuccessStoriesCarousel from '../src/components/shared/SuccessStoriesCarousel';
 import TeamSection from '../src/components/shared/TeamSection';
@@ -106,8 +102,6 @@ export default function Home() {
   const contentLang: 'ka' | 'en' = router.locale === 'ka' ? 'ka' : 'en';
   const legacyLang: 'GEO' | 'ENG' = contentLang === 'ka' ? 'GEO' : 'ENG';
 
-  // 📱 მობილური მენიუს სთეითი
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [aiInfoModal, setAiInfoModal] = useState<'studentBlocked' | 'verificationRequired' | null>(null);
 
   // 🤖 ჩატბოტის ინტერაქტიული სთეითები
@@ -299,11 +293,6 @@ export default function Home() {
       return;
     }
     setAiInfoModal('verificationRequired');
-  };
-
-  // 🛡️ დამცავი მექანიზმი ლათინური ასოებისთვის
-  const safeText = (text: string) => {
-    return <span className="font-sans inline-block font-bold tracking-normal">{text}</span>;
   };
 
   // Streams one request/response round trip, forwarding each Gemini text
@@ -550,182 +539,8 @@ export default function Home() {
         <div className="absolute top-[50%] right-[-10%] w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[150px] dark:bg-purple-500/5" />
       </div>
 
-      {/* 🧭 NAVIGATION */}
-      {/* NO overflow clipping on this element, deliberately. Per the CSS
-          overflow spec, when one axis is a non-visible value the OTHER axis's
-          'visible' computes to 'auto' — so the previous
-          `overflow-x-hidden overflow-y-visible` pair did NOT keep the vertical
-          axis visible, it made the nav a scroll container on both axes. That
-          clipped the "About Us" dropdown (an absolutely positioned child
-          hanging below the nav via top-full) at the nav's bottom edge, which
-          read as the hero covering it, and it also cut off the last nav
-          link(s) at the right edge. Horizontal scroll is already guarded by
-          the page wrapper's own overflow-hidden (see the root div above), so
-          nothing is needed here. The row is sized to FIT at every breakpoint
-          (see the link/search sizing below) rather than relying on clipping. */}
-      {/* -mx-4 sm:-mx-6 cancels _app.tsx's app-shell px-4 sm:px-6 (same
-          full-bleed technique as SiteHeader.tsx's <nav>) — this nav's own
-          horizontal padding moved to the inner row div below so cancelling
-          the app-shell's padding doesn't also strip this nav's own content
-          inset. Without it the header background rendered inset from the
-          real viewport edges, showing white gaps on wide screens. */}
-      <nav className={`sticky top-0 z-50 -mx-4 sm:-mx-6 border-b py-4 sm:py-5 ${darkMode ? 'border-slate-800 bg-[#0e1422]/90 backdrop-blur-md' : 'border-slate-200/60 bg-white/90 backdrop-blur-md'}`}>
-        <div className="max-w-[1536px] mx-auto grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 sm:gap-4 px-4 sm:px-6 lg:px-8 xl:px-10">
-          <Link href="/" className="flex items-center shrink-0 no-underline text-current">
-            <Image
-              src="/images/cdc-logo.png"
-              alt={t('logoAlt') as string}
-              width={48}
-              height={48}
-              priority
-              className="h-10 sm:h-11 w-auto rounded-xl object-cover shadow-sm"
-            />
-          </Link>
-
-          {/* Nav links step down to text-sm at `lg` and only reach text-base at
-              `xl`. At 1024px the five Georgian labels at text-base overflowed
-              the row, so the last one ("ბლოგი") rendered clipped to "ბლ" —
-              sizing the row to fit is the fix; the nav no longer clips. */}
-          <div className={`hidden min-[1420px]:flex min-w-0 items-center justify-center gap-3 2xl:gap-4 text-[12px] 2xl:text-[13px] font-bold leading-none tracking-normal whitespace-nowrap ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
-            <div className="relative group py-2 -my-2">
-              <Link href="/about" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{t('aboutUs')} ▾</Link>
-              {/* z-[60] outranks the hero's own layers and the nav's z-50 base,
-                  so the panel always paints above the hero below it. */}
-              <div
-                className={`absolute left-0 top-full pt-2 w-52 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150`}
-              >
-                <div className={`rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-sm backdrop-blur-md ${darkMode ? 'bg-[#0e1422]/95 border-white/10' : 'bg-white/95 border-slate-200'}`}>
-                  <AboutNavigationLinks className={(index) => `block px-4 py-3 no-underline hover:text-cyan-500 transition ${index ? 'border-t' : ''} ${darkMode ? 'text-slate-200 border-slate-800' : 'text-slate-700 border-slate-100'}`} />
-                </div>
-              </div>
-            </div>
-            <a href="#courses" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{t('courses')}</a>
-            <div className="relative group py-2 -my-2">
-              <Link href="/marketplace" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">
-                {t('store')} ▾
-              </Link>
-              <div className="absolute left-0 top-full pt-2 w-64 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150">
-                <div className={`rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-sm backdrop-blur-md ${darkMode ? 'bg-[#0e1422]/95 border-white/10' : 'bg-white/95 border-slate-200'}`}>
-                  <p className={`px-4 pt-3 pb-1.5 text-[10px] font-black uppercase tracking-widest ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                    {t('categories')}
-                  </p>
-                  {MARKETPLACE_CATEGORIES.map((cat) => (
-                    <Link
-                      key={cat.value.en}
-                      href={`/marketplace?category=${encodeURIComponent(contentLang === 'en' ? cat.value.en : cat.value.ka)}`}
-                      className={`block px-4 py-2.5 no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}
-                    >
-                      {contentLang === 'en' ? cat.value.en : cat.value.ka}
-                    </Link>
-                  ))}
-                  <Link
-                    href="/marketplace"
-                    className={`block px-4 py-2.5 no-underline font-bold text-cyan-600 dark:text-cyan-400 border-t transition ${darkMode ? 'border-slate-800' : 'border-slate-100'}`}
-                  >
-                    {t('viewAllProducts')}
-                  </Link>
-                </div>
-              </div>
-            </div>
-            <Link href="/blog" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{t('blog')}</Link>
-            <Link href="/agency" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{safeText(t('studio'))}</Link>
-            <Link href="/community" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{t('jobs')}</Link>
-            <Link href="/forum" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{t('forum')}</Link>
-            <Link href="/tools" className="inline-flex min-h-9 items-center leading-none hover:text-cyan-500 transition-colors no-underline text-current">{t('toolsHeading')}</Link>
-          </div>
-
-          <div className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0">
-            <div className="hidden md:block">
-              <HeaderSearch darkMode={darkMode} lang={legacyLang} />
-            </div>
-
-            <div className="hidden sm:block">
-              <LanguageSwitcher />
-            </div>
-            <button type="button" onClick={toggleDarkMode} aria-label="Toggle dark mode" className="p-2 rounded-xl transition border-none bg-transparent cursor-pointer hover:rotate-12 duration-200">{darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}</button>
-            <UserMenu
-              className="hidden sm:block"
-              loginFallback={
-                <button type="button" onClick={() => openAuthModal()} className={`hidden sm:inline-flex items-center gap-1.5 border font-black text-xs md:text-sm px-4 py-2.5 rounded-xl transition bg-transparent cursor-pointer ${darkMode ? 'text-white border-slate-700 hover:bg-slate-800' : 'text-slate-700 border-slate-200 hover:bg-slate-100'}`}><User className="w-4 h-4" />{t('login')}</button>
-              }
-            />
-
-            {/* Compact mobile-top-bar Login pill — guests only, always visible
-                next to the burger toggle rather than buried inside the
-                collapsible mobile menu panel. */}
-            {!isAuthenticated && (
-              <button
-                type="button"
-                onClick={() => openAuthModal()}
-                aria-label={t('login')}
-                className={`sm:hidden flex items-center gap-1 border font-black text-xs px-2.5 py-1.5 rounded-lg transition bg-transparent cursor-pointer shrink-0 ${darkMode ? 'text-white border-slate-700 hover:bg-slate-800' : 'text-slate-700 border-slate-200 hover:bg-slate-100'}`}
-              >
-                <User className="w-3.5 h-3.5" />
-                {t('login')}
-              </button>
-            )}
-
-            {/* MOBILE MENU TOGGLE */}
-            <button
-              type="button"
-              onClick={() => setIsMobileMenuOpen((open) => !open)}
-              aria-label="Toggle menu"
-              aria-expanded={isMobileMenuOpen}
-              className={`min-[1420px]:hidden p-2 rounded-xl border-none bg-transparent cursor-pointer transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}
-            >
-              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
-        </div>
-
-        {/* MOBILE MENU PANEL — px-4 sm:px-6 re-added here since it's a
-            sibling of the row div above, not a descendant of it, so it
-            doesn't inherit the row div's own horizontal padding; without
-            this it sat flush against the nav's now-full-bleed edges (see
-            SiteHeader.tsx's own mobile drawer for the same fix). */}
-        {isMobileMenuOpen && (
-          <div className={`min-[1420px]:hidden max-w-full overflow-x-hidden overflow-y-auto overscroll-contain max-h-[calc(100dvh-5.5rem)] mt-4 pt-4 pb-4 px-4 sm:px-6 border-t flex flex-col gap-1 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-            <div className="px-2 pb-2">
-              <HeaderSearch darkMode={darkMode} lang={legacyLang} />
-            </div>
-            <div className="px-2 pb-2">
-              <LanguageSwitcher />
-            </div>
-            <span className={`px-2 pt-3 pb-1 font-black text-xs uppercase tracking-widest ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{t('aboutUs')}</span>
-            <AboutNavigationLinks onNavigate={() => setIsMobileMenuOpen(false)} className={`px-4 py-2.5 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`} />
-            <a href="#courses" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('courses')}</a>
-            <Link href="/marketplace" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('store')}</Link>
-            {MARKETPLACE_CATEGORIES.map((cat) => (
-              <Link
-                key={cat.value.en}
-                href={`/marketplace?category=${encodeURIComponent(contentLang === 'en' ? cat.value.en : cat.value.ka)}`}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`px-4 py-2 rounded-lg font-semibold text-xs no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}
-              >
-                {contentLang === 'en' ? cat.value.en : cat.value.ka}
-              </Link>
-            ))}
-            <Link href="/blog" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('blog')}</Link>
-            <Link href="/agency" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{safeText(t('studio'))}</Link>
-            <Link href="/community" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('jobs')}</Link>
-            <Link href="/forum" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('forum')}</Link>
-            <Link href="/tools" onClick={() => setIsMobileMenuOpen(false)} className={`px-2 py-3 rounded-lg font-bold text-sm no-underline hover:text-cyan-500 transition ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t('toolsHeading')}</Link>
-            <UserMenu
-              className="sm:hidden mt-2"
-              loginFallback={
-                <button
-                  type="button"
-                  onClick={() => { setIsMobileMenuOpen(false); openAuthModal(); }}
-                  className={`sm:hidden mt-2 border font-black text-sm px-4 py-3 rounded-xl transition bg-transparent cursor-pointer text-left flex items-center gap-1.5 ${darkMode ? 'text-white border-slate-700 hover:bg-slate-800' : 'text-slate-700 border-slate-200 hover:bg-slate-100'}`}
-                >
-                  <User className="w-4 h-4" />
-                  {t('login')}
-                </button>
-              }
-            />
-          </div>
-        )}
-      </nav>
+      {/* 🧭 NAVIGATION — the shared site header (same menu on every page). */}
+      <SiteHeader darkMode={darkMode} onToggleDarkMode={toggleDarkMode} />
 
       {/* 🎬 HERO SECTION — left-aligned content on lg+, full-bleed ambient video background below lg */}
       {/* `z-0` is load-bearing: it makes this section its own stacking context
