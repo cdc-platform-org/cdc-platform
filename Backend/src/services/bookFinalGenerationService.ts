@@ -2,7 +2,7 @@ import { prisma } from '../lib/prisma';
 import { buildLogicalOperationKey, canStartFinalGeneration } from './bookStateService';
 import { StoryPlan } from './bookStoryPlanService';
 import { generateBookImage } from './bookImageGenerationService';
-import { runImageQa } from './bookQaService';
+import { runImageQa, isAcceptableQaStatus } from './bookQaService';
 import { storeBookAsset } from './bookStorageService';
 
 // ============================================================
@@ -119,19 +119,19 @@ async function runFinalGeneration(bookProjectId: string): Promise<void> {
           requestedSize: '1024x1024',
           requestId: result.requestId,
           latencyMs: result.latencyMs,
-          success: result.success && qa.status === 'PASS',
-          errorClassification: result.success ? (qa.status === 'PASS' ? null : 'REQUEST_SCHEMA') : result.errorClassification,
+          success: result.success && isAcceptableQaStatus(qa.status),
+          errorClassification: result.success ? (isAcceptableQaStatus(qa.status) ? null : 'REQUEST_SCHEMA') : result.errorClassification,
           startedAt: started,
           completedAt: completed,
         },
       });
 
-      if (result.success && qa.status === 'PASS') {
+      if (result.success && isAcceptableQaStatus(qa.status)) {
         const key = `books/${book.id}/events/${event.id}.png`;
         await storeBookAsset(key, result.buffer, result.mimeType);
         await prisma.bookPage.update({
           where: { id: page.id },
-          data: { imageGenerationStatus: 'READY', qaStatus: 'PASS', acceptedEventId: event.id, sceneSpec: { ...(page.sceneSpec as any), imageKey: key, imageMimeType: result.mimeType } as any },
+          data: { imageGenerationStatus: 'READY', qaStatus: qa.status, acceptedEventId: event.id, sceneSpec: { ...(page.sceneSpec as any), imageKey: key, imageMimeType: result.mimeType } as any },
         });
         break;
       }

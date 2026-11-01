@@ -15,7 +15,7 @@ import {
 } from '../services/bookStateService';
 import { generateStoryPlan, CharacterConfig, StoryPlan } from '../services/bookStoryPlanService';
 import { generateBookImage, isImageGenerationMocked } from '../services/bookImageGenerationService';
-import { runImageQa } from '../services/bookQaService';
+import { runImageQa, isAcceptableQaStatus } from '../services/bookQaService';
 import { buildBookPdf, BookPdfPageInput } from '../services/bookPdfService';
 import { storeBookAsset, readBookAsset } from '../services/bookStorageService';
 import { isBookDevPaymentSimulationEnabled } from '../services/bookMockConfig';
@@ -471,14 +471,14 @@ router.post('/:id/revision', authenticate, async (req: Request, res: Response) =
       requestedSize: '1024x1024',
       requestId: result.success ? result.requestId : result.requestId,
       latencyMs: result.latencyMs,
-      success: result.success && qa.status === 'PASS',
-      errorClassification: result.success ? (qa.status === 'PASS' ? null : 'REQUEST_SCHEMA') : result.errorClassification,
+      success: result.success && isAcceptableQaStatus(qa.status),
+      errorClassification: result.success ? (isAcceptableQaStatus(qa.status) ? null : 'REQUEST_SCHEMA') : result.errorClassification,
       startedAt: started,
       completedAt: completed,
     },
   });
 
-  if (result.success && qa.status === 'PASS') {
+  if (result.success && isAcceptableQaStatus(qa.status)) {
     const key = `books/${book.id}/events/${event.id}.png`;
     await storeBookAsset(key, result.buffer, result.mimeType);
     const narrationProvider = getBookNarrationProvider();
@@ -524,7 +524,7 @@ router.post('/:id/revision', authenticate, async (req: Request, res: Response) =
 
     await prisma.bookPage.update({
       where: { id: page.id },
-      data: { revisionVersion: 1, acceptedEventId: event.id, qaStatus: 'PASS', sceneSpec: { ...(page.sceneSpec as any), imageKey: key, imageMimeType: result.mimeType } as any },
+      data: { revisionVersion: 1, acceptedEventId: event.id, qaStatus: qa.status, sceneSpec: { ...(page.sceneSpec as any), imageKey: key, imageMimeType: result.mimeType } as any },
     });
     await prisma.bookProject.update({ where: { id: book.id }, data: { status: 'FINAL_READY', revisionUsed: true, pdfStatus: 'STALE' } });
   } else {
