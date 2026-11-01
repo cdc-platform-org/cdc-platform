@@ -37,6 +37,10 @@ import { buildSoftwareApplicationSchema } from '@/src/utils/seo';
 import { getSiteContent } from '@/src/services/siteContentService';
 import { ToolCatalogContent } from '@/src/types/siteContent';
 import { findToolEntry, overrideText } from '@/src/utils/toolCatalog';
+import { resolveBlogImageUrl } from '@/src/services/blogService';
+import { onImageErrorFallback } from '@/src/utils/imageFallback';
+import type { LucideIcon } from 'lucide-react';
+import type { ToolCatalogEntry } from '@/src/types/siteContent';
 
 // Real per-locale copy for all 9 site locales (not the 6-locale `dict`
 // below, which still aliases de/es/fr/uk to English strings) — meta
@@ -401,6 +405,30 @@ const dict = {
   },
 };
 
+// Card visual: the admin-set cover image (pages/admin/tools.tsx → imageUrl)
+// when there is one, otherwise the original gradient icon tile.
+function ToolCover({ imageUrl, icon: Icon, gradient, alt }: { imageUrl?: string; icon: LucideIcon; gradient: string; alt: string }) {
+  if (imageUrl && imageUrl.trim()) {
+    return (
+      <div className="shrink-0 w-full lg:w-80 aspect-[16/10] rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 ring-1 ring-black/5 dark:ring-white/10 shadow-sm">
+        {/* eslint-disable-next-line @next/next/no-img-element -- admin-uploaded CMS image on the API origin */}
+        <img src={resolveBlogImageUrl(imageUrl)} alt={alt} onError={onImageErrorFallback} loading="lazy" className="w-full h-full object-cover" />
+      </div>
+    );
+  }
+  return (
+    <div className={`shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr ${gradient} flex items-center justify-center`}>
+      <Icon className="w-7 h-7 text-white" />
+    </div>
+  );
+}
+
+// Admin-set feature bullets replace a card's default bullets when present.
+function withFeatures(fallback: { icon: LucideIcon; label: string }[], cms: ToolCatalogEntry | undefined, lang: 'ka' | 'en') {
+  const list = lang === 'ka' ? cms?.featuresKa : cms?.featuresEn;
+  return list && list.length > 0 ? list.map((label) => ({ icon: Sparkles, label })) : fallback;
+}
+
 export default function ToolsPage() {
   const router = useRouter();
   const lang = resolveLocale(router.locale);
@@ -433,6 +461,12 @@ export default function ToolsPage() {
   const educatorHubCms = findToolEntry(toolCatalog?.tools, 'educator-hub');
   const proctoringCms = findToolEntry(toolCatalog?.tools, 'proctoring');
   const childrensBookCms = findToolEntry(toolCatalog?.tools, 'childrens-book');
+  const enterpriseAiCms = findToolEntry(toolCatalog?.tools, 'enterprise-ai');
+  const examScreeningCms = findToolEntry(toolCatalog?.tools, 'exam-screening');
+  const sentinelCms = findToolEntry(toolCatalog?.tools, 'cyber-sentinel');
+  const agsaiaCms = findToolEntry(toolCatalog?.tools, 'ag-saia');
+  const ov = (fallback: string, cms: ToolCatalogEntry | undefined, field: 'title' | 'description' | 'badge') =>
+    overrideText(fallback, (cms?.[`${field}${catLang === 'ka' ? 'Ka' : 'En'}` as keyof ToolCatalogEntry] as string | undefined) ?? undefined);
 
   // Every AI tool is full-access for any approved account, regardless of
   // role or Business verification — the Employment Forum (forum.ts's
@@ -486,24 +520,22 @@ export default function ToolsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Card 1: Enterprise AI Assistant — real, available product */}
           <div className="lg:col-span-3 rounded-3xl border border-cyan-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-cyan-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <div className="shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
-              <Bot className="w-7 h-7 text-white" />
-            </div>
+            <ToolCover imageUrl={enterpriseAiCms?.imageUrl} icon={Bot} gradient="from-cyan-500 to-purple-600" alt={ov(t.aiTitle, enterpriseAiCms, 'title')} />
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                <h2 className="text-xl font-black tracking-wide">{t.aiTitle}</h2>
+                <h2 className="text-xl font-black tracking-wide">{ov(t.aiTitle, enterpriseAiCms, 'title')}</h2>
                 <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                  {t.aiAvailable}
+                  {ov(t.aiAvailable, enterpriseAiCms, 'badge')}
                 </span>
               </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{t.aiDesc}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{ov(t.aiDesc, enterpriseAiCms, 'description')}</p>
               <ul className="grid sm:grid-cols-2 gap-3 mb-6">
-                {[
+                {withFeatures([
                   { icon: MessageSquareText, label: t.aiBullet1 },
                   { icon: BookOpen, label: t.aiBullet2 },
                   { icon: Code2, label: t.aiBullet3 },
                   { icon: BarChart3, label: t.aiBullet4 },
-                ].map(({ icon: Icon, label }) => (
+                ], enterpriseAiCms, catLang).map(({ icon: Icon, label }) => (
                   <li key={label} className="flex items-center gap-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
                     <Icon className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
                     {label}
@@ -547,24 +579,22 @@ export default function ToolsPage() {
               Same Business-only gating as Card 1 (canUseAiAssistant), since
               it lives on the same /dashboard/ai-tools page. */}
           <div className="lg:col-span-3 rounded-3xl border border-cyan-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-cyan-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <div className="shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
-              <ShieldCheck className="w-7 h-7 text-white" />
-            </div>
+            <ToolCover imageUrl={examScreeningCms?.imageUrl} icon={ShieldCheck} gradient="from-cyan-500 to-purple-600" alt={ov(t.examTitle, examScreeningCms, 'title')} />
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                <h2 className="text-xl font-black tracking-wide">{t.examTitle}</h2>
+                <h2 className="text-xl font-black tracking-wide">{ov(t.examTitle, examScreeningCms, 'title')}</h2>
                 <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                  {t.aiAvailable}
+                  {ov(t.aiAvailable, examScreeningCms, 'badge')}
                 </span>
               </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{t.examDesc}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{ov(t.examDesc, examScreeningCms, 'description')}</p>
               <ul className="grid sm:grid-cols-2 gap-3 mb-6">
-                {[
+                {withFeatures([
                   { icon: Sparkles, label: t.examBullet1 },
                   { icon: ShieldAlert, label: t.examBullet2 },
                   { icon: BarChart3, label: t.examBullet3 },
                   { icon: Code2, label: t.examBullet4 },
-                ].map(({ icon: Icon, label }) => (
+                ], examScreeningCms, catLang).map(({ icon: Icon, label }) => (
                   <li key={label} className="flex items-center gap-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
                     <Icon className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
                     {label}
@@ -608,9 +638,7 @@ export default function ToolsPage() {
               an enterprise feature) — the CTA links straight into
               ProtectedRoute, which handles the login redirect itself. */}
           <div className="lg:col-span-3 rounded-3xl border border-cyan-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-cyan-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <div className="shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
-              <Mic className="w-7 h-7 text-white" />
-            </div>
+            <ToolCover imageUrl={mediaStudioCms?.imageUrl} icon={Mic} gradient="from-cyan-500 to-purple-600" alt={tm('catalogTitle')} />
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h2 className="text-xl font-black tracking-wide">{overrideText(tm('catalogTitle'), catLang === 'ka' ? mediaStudioCms?.titleKa : mediaStudioCms?.titleEn)}</h2>
@@ -637,9 +665,7 @@ export default function ToolsPage() {
               since this one is paid — the page itself (not this card)
               handles trial-start/VIP-required/quota state. */}
           <div className="lg:col-span-3 rounded-3xl border border-amber-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-amber-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <div className="shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-purple-600 flex items-center justify-center">
-              <Crown className="w-7 h-7 text-white" />
-            </div>
+            <ToolCover imageUrl={educatorHubCms?.imageUrl} icon={Crown} gradient="from-amber-500 to-purple-600" alt={tEdu('pageTitle')} />
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h2 className="text-xl font-black tracking-wide">{overrideText(tEdu('pageTitle'), catLang === 'ka' ? educatorHubCms?.titleKa : educatorHubCms?.titleEn)}</h2>
@@ -666,9 +692,7 @@ export default function ToolsPage() {
               (same rule as marketplace/index.tsx's SaaS cards). */}
           {childrensBookCms?.status !== 'DISABLED' && (
           <div className="lg:col-span-3 rounded-3xl border border-pink-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-pink-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <div className="shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center">
-              <BookOpen className="w-7 h-7 text-white" />
-            </div>
+            <ToolCover imageUrl={childrensBookCms?.imageUrl} icon={BookOpen} gradient="from-pink-500 to-purple-600" alt={tCB('pageTitle')} />
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h2 className="text-xl font-black tracking-wide">{overrideText(tCB('pageTitle'), catLang === 'ka' ? childrensBookCms?.titleKa : childrensBookCms?.titleEn)}</h2>
@@ -704,9 +728,7 @@ export default function ToolsPage() {
               assessment tool, not an employer screening tool, so it gets
               its own card and copy rather than overwriting Card 2. */}
           <div className="lg:col-span-3 rounded-3xl border border-cyan-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-cyan-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <div className="shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
-              <ShieldCheck className="w-7 h-7 text-white" />
-            </div>
+            <ToolCover imageUrl={proctoringCms?.imageUrl} icon={ShieldCheck} gradient="from-cyan-500 to-purple-600" alt={t.proctoringPracticeTitle} />
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h2 className="text-xl font-black tracking-wide">{overrideText(t.proctoringPracticeTitle, catLang === 'ka' ? proctoringCms?.titleKa : proctoringCms?.titleEn)}</h2>
@@ -747,25 +769,23 @@ export default function ToolsPage() {
               but coming-soon-styled (muted icon, amber lock badge, no CTA)
               since nothing here is actually usable yet. */}
           <div className="lg:col-span-3 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <div className="shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
-              <ShieldAlert className="w-7 h-7 text-white" />
-            </div>
+            <ToolCover imageUrl={sentinelCms?.imageUrl} icon={ShieldAlert} gradient="from-cyan-500 to-purple-600" alt={ov(t.sentinelTitle, sentinelCms, 'title')} />
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                <h2 className="text-xl font-black tracking-wide">{t.sentinelTitle}</h2>
+                <h2 className="text-xl font-black tracking-wide">{ov(t.sentinelTitle, sentinelCms, 'title')}</h2>
                 <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                   <Lock className="w-3 h-3" />
                   {t.comingSoon}
                 </span>
               </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{t.sentinelDesc}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{ov(t.sentinelDesc, sentinelCms, 'description')}</p>
               <ul className="grid sm:grid-cols-2 gap-3">
-                {[
+                {withFeatures([
                   { icon: Download, label: t.sentinelBullet1 },
                   { icon: ShieldAlert, label: t.sentinelBullet2 },
                   { icon: BarChart3, label: t.sentinelBullet3 },
                   { icon: EyeOff, label: t.sentinelBullet4 },
-                ].map(({ icon: Icon, label }) => (
+                ], sentinelCms, catLang).map(({ icon: Icon, label }) => (
                   <li key={label} className="flex items-center gap-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
                     <Icon className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
                     {label}
@@ -792,25 +812,23 @@ export default function ToolsPage() {
               contact link) — never live status/telemetry, which would
               misrepresent an unbuilt product as an active security system. */}
           <div className="lg:col-span-3 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <div className="shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center">
-              <KeyRound className="w-7 h-7 text-white" />
-            </div>
+            <ToolCover imageUrl={agsaiaCms?.imageUrl} icon={KeyRound} gradient="from-cyan-500 to-purple-600" alt={ov(t.agsaiaTitle, agsaiaCms, 'title')} />
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                <h2 className="text-xl font-black tracking-wide">{t.agsaiaTitle}</h2>
+                <h2 className="text-xl font-black tracking-wide">{ov(t.agsaiaTitle, agsaiaCms, 'title')}</h2>
                 <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                   <Lock className="w-3 h-3" />
                   {t.comingSoon}
                 </span>
               </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{t.agsaiaDesc}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{ov(t.agsaiaDesc, agsaiaCms, 'description')}</p>
               <ul className="grid sm:grid-cols-2 gap-3">
-                {[
+                {withFeatures([
                   { icon: KeyRound, label: t.agsaiaBullet1 },
                   { icon: ShieldAlert, label: t.agsaiaBullet2 },
                   { icon: EyeOff, label: t.agsaiaBullet3 },
                   { icon: BarChart3, label: t.agsaiaBullet4 },
-                ].map(({ icon: Icon, label }) => (
+                ], agsaiaCms, catLang).map(({ icon: Icon, label }) => (
                   <li key={label} className="flex items-center gap-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
                     <Icon className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
                     {label}
