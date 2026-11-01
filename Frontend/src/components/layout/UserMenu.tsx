@@ -155,7 +155,7 @@ export default function UserMenu({ loginFallback, className }: { loginFallback: 
             <span className="text-xs font-black text-slate-400">{(user.name ?? '?').charAt(0).toUpperCase()}</span>
           )}
         </div>
-        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 hidden sm:inline max-w-[10rem] truncate">
+        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 hidden 2xl:inline max-w-[9rem] truncate">
           {user.name}
         </span>
       </button>
@@ -163,7 +163,7 @@ export default function UserMenu({ loginFallback, className }: { loginFallback: 
       {menuOpen && (
         <div
           role="menu"
-          className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0e1422] shadow-xl py-1 z-50"
+          className="absolute right-0 mt-2 w-56 max-w-[calc(100vw-1.5rem)] rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0e1422] shadow-xl py-1 z-50"
         >
           <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-800 mb-1">
             <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">{user.name}</p>

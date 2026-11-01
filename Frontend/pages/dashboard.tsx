@@ -1399,29 +1399,57 @@ function DashboardContent() {
   const purchasesCount = ownedBooks.length + courses.length + purchasedProducts.length;
   const purchasesLabel = lang === 'ka' ? 'ჩემი შენაძენები' : 'My purchases';
 
-  // Primary sections. Gigs only shows for people who actually freelance
-  // (have a gig, or chose the freelancer path); the products tab is the
-  // seller workspace, so it only shows for people allowed to sell.
-  const NAV: { key: Tab; label: string; icon: typeof LayoutDashboard }[] = [
-    { key: 'overview', label: t.tabOverview, icon: LayoutDashboard },
-    { key: 'purchases', label: purchasesLabel, icon: Receipt },
-    { key: 'courses', label: t.tabCourses, icon: GraduationCap },
-    { key: 'wallet', label: t.tabWallet, icon: Wallet },
-    ...(gigs.length > 0 || user?.primaryIntent === 'TALENT' ? [{ key: 'gigs' as Tab, label: t.tabGigs, icon: Briefcase }] : []),
-    ...(canSubmitProduct ? [{ key: 'products' as Tab, label: lang === 'ka' ? 'ჩემი პროდუქტების გაყიდვა' : 'Sell products', icon: Store }] : []),
+  // Sidebar, grouped the way people think about their account: learning,
+  // what they bought / use, money, and account settings. Tabs switch the
+  // panel in place; links go to their own dashboard pages.
+  type SideItem =
+    | { kind: 'tab'; key: Tab; label: string; icon: typeof LayoutDashboard; badge?: number }
+    | { kind: 'link'; href: string; label: string; icon: typeof LayoutDashboard };
+  const ka = lang === 'ka';
+  const SECTIONS: { title: string | null; items: (SideItem | false)[] }[] = [
+    { title: null, items: [{ kind: 'tab', key: 'overview', label: t.tabOverview, icon: LayoutDashboard }] },
+    {
+      title: ka ? 'სწავლა' : 'Learning',
+      items: [
+        { kind: 'tab', key: 'courses', label: t.tabCourses, icon: GraduationCap },
+        { kind: 'link', href: '/dashboard/live-trainings', label: ka ? 'ლაივ ტრენინგები' : 'Live trainings', icon: Video },
+        { kind: 'link', href: '/dashboard/mentorship-sessions', label: t.tabMentorshipSessions, icon: CalendarClock },
+        { kind: 'link', href: '/dashboard/career-quiz', label: ka ? 'ჩემი კარიერული ტესტი' : 'My Career Test', icon: Award },
+      ],
+    },
+    {
+      title: ka ? 'შენაძენები და ხელსაწყოები' : 'Purchases & tools',
+      items: [
+        { kind: 'tab', key: 'purchases', label: purchasesLabel, icon: Receipt, badge: purchasesCount },
+        { kind: 'link', href: '/dashboard/tools', label: ka ? 'ჩემი AI ხელსაწყოები' : 'My AI tools', icon: Sparkles },
+      ],
+    },
+    {
+      title: ka ? 'ფინანსები და გაყიდვები' : 'Money & selling',
+      items: [
+        { kind: 'tab', key: 'wallet', label: t.tabWallet, icon: Wallet },
+        (gigs.length > 0 || user?.primaryIntent === 'TALENT') && { kind: 'tab', key: 'gigs', label: t.tabGigs, icon: Briefcase },
+        canSubmitProduct && { kind: 'tab', key: 'products', label: ka ? 'ჩემი პროდუქტების გაყიდვა' : 'Sell products', icon: Store },
+      ],
+    },
+    {
+      title: ka ? 'სამუშაო სივრცე' : 'Workspace',
+      items: [
+        user?.role === 'Mentor' && { kind: 'link', href: '/dashboard/mentorship', label: t.mentorWorkspace, icon: Users },
+        isTrainer && { kind: 'link', href: '/dashboard/trainer', label: ka ? 'ტრენერის პანელი' : 'Trainer Control Center', icon: GraduationCap },
+      ],
+    },
+    {
+      title: ka ? 'ანგარიში' : 'Account',
+      items: [{ kind: 'link', href: '/dashboard/settings', label: t.tabSettings, icon: Settings }],
+    },
   ];
-
-  // Secondary destinations: plain links, visually lighter than the tabs so
-  // the sidebar reads as "a few sections + a short list of extras".
-  const MORE_LINKS: { href: string; label: string; icon: typeof LayoutDashboard; show: boolean }[] = [
-    { href: '/dashboard/tools', label: lang === 'ka' ? 'ჩემი ხელსაწყოები' : 'My tools', icon: Sparkles, show: true },
-    { href: '/dashboard/live-trainings', label: lang === 'ka' ? 'ლაივ ტრენინგები' : 'Live trainings', icon: Video, show: true },
-    { href: '/dashboard/mentorship-sessions', label: t.tabMentorshipSessions, icon: CalendarClock, show: true },
-    { href: '/dashboard/mentorship', label: t.mentorWorkspace, icon: Users, show: user?.role === 'Mentor' },
-    { href: '/dashboard/trainer', label: lang === 'ka' ? 'ტრენერის პანელი' : 'Trainer Control Center', icon: GraduationCap, show: isTrainer },
-    { href: '/dashboard/career-quiz', label: lang === 'ka' ? 'ჩემი კარიერული ტესტი' : 'My Career Test', icon: Award, show: true },
-    { href: '/dashboard/settings', label: t.tabSettings, icon: Settings, show: true },
-  ];
+  const sideItemClass = (active: boolean) =>
+    `w-full flex items-center gap-2.5 text-left px-3 py-2.5 rounded-xl text-sm font-semibold transition border-none cursor-pointer no-underline ${
+      active
+        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
+        : 'bg-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-white/[0.06]'
+    }`;
 
   return (
     <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
@@ -1433,59 +1461,52 @@ function DashboardContent() {
 
       <div className="max-w-7xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 py-6 md:py-8 grid md:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8 flex-1 w-full">
         {/* SIDE MENU */}
-        <nav className="md:sticky md:top-24 self-start space-y-4 min-w-0">
-          <div className="space-y-1">
-            {NAV.map((item) => {
-              const Icon = item.icon;
-              const active = activeTab === item.key;
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => setActiveTab(item.key)}
-                  className={`w-full flex items-center gap-2.5 text-left px-3 py-2.5 rounded-lg text-sm font-semibold transition border-none cursor-pointer ${
-                    active
-                      ? 'bg-slate-900 dark:bg-cyan-600 text-white'
-                      : 'bg-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span className="flex-1">{item.label}</span>
-                  {item.key === 'purchases' && purchasesCount > 0 && (
-                    <span className={`text-[11px] font-bold px-1.5 rounded ${active ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-700'}`}>{purchasesCount}</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="border-t border-slate-200 dark:border-slate-800 pt-3 space-y-0.5">
-            {user?.isVerifiedGraduate && (
-              <button
-                type="button"
-                onClick={() => setShowMentorshipModal(true)}
-                className="w-full flex items-center gap-2.5 text-left px-3 py-2 rounded-lg text-xs font-semibold bg-transparent border-none cursor-pointer text-cyan-700 dark:text-cyan-300 hover:bg-slate-200/60 dark:hover:bg-slate-800"
-              >
-                <Wifi className="w-3.5 h-3.5 shrink-0" />
-                {t.mentorshipButton}
-              </button>
-            )}
-            {MORE_LINKS.filter((l) => l.show).map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800 no-underline"
-              >
-                <l.icon className="w-3.5 h-3.5 shrink-0" />
-                {l.label}
-              </Link>
-            ))}
+        <nav className="md:sticky md:top-24 self-start min-w-0 rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-white/[0.03] backdrop-blur p-2.5 space-y-3">
+          {SECTIONS.map((section, sectionIndex) => {
+            const items = section.items.filter((item): item is SideItem => Boolean(item));
+            if (items.length === 0) return null;
+            return (
+              <div key={section.title ?? sectionIndex} className="space-y-0.5">
+                {section.title && (
+                  <p className="px-3 pt-1 pb-1 text-[10.5px] font-black uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">{section.title}</p>
+                )}
+                {items.map((item) => {
+                  const Icon = item.icon;
+                  if (item.kind === 'link') {
+                    return (
+                      <Link key={item.href} href={item.href} className={sideItemClass(false)}>
+                        <Icon className="w-4 h-4 shrink-0" />
+                        <span className="flex-1">{item.label}</span>
+                      </Link>
+                    );
+                  }
+                  const active = activeTab === item.key;
+                  return (
+                    <button key={item.key} type="button" onClick={() => setActiveTab(item.key)} className={sideItemClass(active)}>
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="flex-1">{item.label}</span>
+                      {!!item.badge && item.badge > 0 && (
+                        <span className={`text-[11px] font-bold px-1.5 rounded ${active ? 'bg-white/20 dark:bg-slate-900/10' : 'bg-slate-200 dark:bg-slate-700'}`}>{item.badge}</span>
+                      )}
+                    </button>
+                  );
+                })}
+                {section.title === (ka ? 'სწავლა' : 'Learning') && user?.isVerifiedGraduate && (
+                  <button type="button" onClick={() => setShowMentorshipModal(true)} className={`${sideItemClass(false)} !text-cyan-700 dark:!text-cyan-300`}>
+                    <Wifi className="w-4 h-4 shrink-0" />
+                    <span className="flex-1">{t.mentorshipButton}</span>
+                  </button>
+                )}
+              </div>
+            );
+          })}
+          <div className="border-t border-slate-200 dark:border-white/10 pt-2">
             <button
               type="button"
               onClick={() => { logout(); router.push('/'); }}
-              className="w-full flex items-center gap-2.5 text-left px-3 py-2 rounded-lg text-xs font-semibold bg-transparent border-none cursor-pointer text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
+              className="w-full flex items-center gap-2.5 text-left px-3 py-2.5 rounded-xl text-sm font-semibold bg-transparent border-none cursor-pointer text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
             >
-              <LogOut className="w-3.5 h-3.5 shrink-0" />
+              <LogOut className="w-4 h-4 shrink-0" />
               {t.logout}
             </button>
           </div>

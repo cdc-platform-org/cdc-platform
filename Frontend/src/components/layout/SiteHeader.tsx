@@ -1,171 +1,98 @@
-import AboutNavigationLinks from './AboutNavigationLinks';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { Menu, X, LayoutDashboard, GraduationCap, LogOut, ShieldCheck, ChevronDown, ShoppingBag, CalendarClock, Sparkles } from 'lucide-react';
+import { Menu, X, LayoutDashboard, GraduationCap, LogOut, ShieldCheck, ChevronDown, CalendarClock, Sun, Moon, ArrowRight, Sparkles } from 'lucide-react';
 import LanguageSwitcher from './LanguageSwitcher';
 import UserMenu from './UserMenu';
 import NotificationBell from './NotificationBell';
+import HeaderSearch from './HeaderSearch';
 import { useAuth } from '../../context/AuthContext';
 import { useAuthModal } from '../../context/AuthModalContext';
-import { MARKETPLACE_CATEGORIES } from '../../data/marketplaceCategories';
 import { resolveLocale } from '../../utils/locale';
+import { getSiteNavigation, NAV_DICT, type NavEntry, type NavGroup } from '../../data/siteNavigation';
 
 // Inline dict rather than next-i18next: this header is mounted on ~40 pages
 // and can't assume every one of them declares the same namespace in its own
 // getStaticProps, so it resolves its own locale (see utils/locale.ts) and
-// carries its own strings instead.
+// carries its own strings instead. Menu labels live in data/siteNavigation.ts.
 const dict = {
-  ka: {
-    login: 'შესვლა',
-    about: 'ჩვენ შესახებ',
-    gallery: 'გალერეა',
-    community: 'ვაკანსიები',
-    mentors: 'მენტორები',
-    courses: 'კურსები',
-    marketplace: 'ციფრული მაღაზია',
-    categories: 'კატეგორიები',
-    viewAllProducts: 'ყველა პროდუქტი',
-    tools: 'ციფრული ხელსაწყოები',
-    careerTest: 'AI კარიერული ტესტი',
-    tutorials: 'ვიდეო ინსტრუქციები',
-    dashboard: 'ჩემი დაშბორდი',
-    myCourses: 'ჩემი კურსები',
-    admin: 'ადმინ პანელი',
-    mentorPanel: 'მენტორის პანელი',
-    more: 'მეტი',
-    logout: 'გამოსვლა',
-  },
-  en: {
-    login: 'Log In',
-    about: 'About',
-    gallery: 'Gallery',
-    community: 'Jobs',
-    mentors: 'Mentors',
-    courses: 'Courses',
-    marketplace: 'Marketplace',
-    categories: 'Categories',
-    viewAllProducts: 'View All Products',
-    tools: 'Digital Tools',
-    careerTest: 'AI Career Test',
-    tutorials: 'Video Tutorials',
-    dashboard: 'My Dashboard',
-    myCourses: 'My Courses',
-    admin: 'Admin Panel',
-    mentorPanel: 'Mentor Panel',
-    more: 'More',
-    logout: 'Log Out',
-  },
-  de: {
-    login: 'Anmelden',
-    about: 'Über uns',
-    gallery: 'Galerie',
-    community: 'Jobs',
-    mentors: 'Mentoren',
-    courses: 'Kurse',
-    marketplace: 'Marktplatz',
-    categories: 'Kategorien',
-    viewAllProducts: 'Alle Produkte ansehen',
-    tools: 'Digitale Tools',
-    careerTest: 'KI-Karrieretest',
-    tutorials: 'Video-Tutorials',
-    dashboard: 'Mein Dashboard',
-    myCourses: 'Meine Kurse',
-    admin: 'Admin-Panel',
-    mentorPanel: 'Mentoren-Panel',
-    more: 'Mehr',
-    logout: 'Abmelden',
-  },
-  es: {
-    login: 'Iniciar Sesión',
-    about: 'Sobre Nosotros',
-    gallery: 'Galería',
-    community: 'Empleos',
-    mentors: 'Mentores',
-    courses: 'Cursos',
-    marketplace: 'Mercado',
-    categories: 'Categorías',
-    viewAllProducts: 'Ver Todos los Productos',
-    tools: 'Herramientas Digitales',
-    careerTest: 'Test de Carrera IA',
-    tutorials: 'Video Tutoriales',
-    dashboard: 'Mi Panel',
-    myCourses: 'Mis Cursos',
-    admin: 'Panel de Administración',
-    mentorPanel: 'Panel de Mentor',
-    more: 'Más',
-    logout: 'Cerrar Sesión',
-  },
-  fr: {
-    login: 'Connexion',
-    about: 'À propos',
-    gallery: 'Galerie',
-    community: 'Emplois',
-    mentors: 'Mentors',
-    courses: 'Cours',
-    marketplace: 'Marché',
-    categories: 'Catégories',
-    viewAllProducts: 'Voir tous les produits',
-    tools: 'Outils numériques',
-    careerTest: 'Test de Carrière IA',
-    tutorials: 'Tutoriels vidéo',
-    dashboard: 'Mon tableau de bord',
-    myCourses: 'Mes cours',
-    admin: 'Panneau admin',
-    mentorPanel: 'Panneau mentor',
-    more: 'Plus',
-    logout: 'Déconnexion',
-  },
-  uk: {
-    login: 'Увійти',
-    about: 'Про нас',
-    gallery: 'Галерея',
-    community: 'Вакансії',
-    mentors: 'Ментори',
-    courses: 'Курси',
-    marketplace: 'Маркетплейс',
-    categories: 'Категорії',
-    viewAllProducts: 'Переглянути всі товари',
-    tools: 'Цифрові інструменти',
-    careerTest: 'AI Тест Кар\'єри',
-    tutorials: 'Відеоуроки',
-    dashboard: 'Моя панель',
-    myCourses: 'Мої курси',
-    admin: 'Панель адміністратора',
-    mentorPanel: 'Панель ментора',
-    more: 'Більше',
-    logout: 'Вийти',
-  },
+  ka: { login: 'შესვლა', dashboard: 'ჩემი დაშბორდი', myCourses: 'ჩემი კურსები', admin: 'ადმინ პანელი', mentorPanel: 'მენტორის პანელი', logout: 'გამოსვლა', menu: 'მენიუ', account: 'ანგარიში' },
+  en: { login: 'Log In', dashboard: 'My Dashboard', myCourses: 'My Courses', admin: 'Admin Panel', mentorPanel: 'Mentor Panel', logout: 'Log Out', menu: 'Menu', account: 'Account' },
+  de: { login: 'Anmelden', dashboard: 'Mein Dashboard', myCourses: 'Meine Kurse', admin: 'Admin-Panel', mentorPanel: 'Mentoren-Panel', logout: 'Abmelden', menu: 'Menü', account: 'Konto' },
+  es: { login: 'Iniciar Sesión', dashboard: 'Mi Panel', myCourses: 'Mis Cursos', admin: 'Panel de Administración', mentorPanel: 'Panel de Mentor', logout: 'Cerrar Sesión', menu: 'Menú', account: 'Cuenta' },
+  fr: { login: 'Connexion', dashboard: 'Mon tableau de bord', myCourses: 'Mes cours', admin: 'Panneau admin', mentorPanel: 'Panneau mentor', logout: 'Déconnexion', menu: 'Menu', account: 'Compte' },
+  uk: { login: 'Увійти', dashboard: 'Моя панель', myCourses: 'Мої курси', admin: 'Панель адміністратора', mentorPanel: 'Панель ментора', logout: 'Вийти', menu: 'Меню', account: 'Акаунт' },
 };
 
-// Shared, theme-aware header for content pages that don't have their own
-// full custom nav (the homepage's is inline/bespoke and left untouched) —
-// logo/home link, language switcher, dark-mode toggle, auth buttons.
-export default function SiteHeader() {
+interface SiteHeaderProps {
+  // The homepage owns its own dark-mode state (its sections style off it
+  // directly), so it passes it in; every other page lets the header manage
+  // the shared localStorage/`.dark` class itself.
+  darkMode?: boolean;
+  onToggleDarkMode?: () => void;
+}
+
+function isActive(asPath: string, href: string) {
+  const path = href.split(/[?#]/)[0];
+  if (path === '/') return asPath === '/';
+  return asPath === path || asPath.startsWith(`${path}/`) || asPath.startsWith(`${path}?`);
+}
+
+function groupActive(asPath: string, group: NavGroup) {
+  return isActive(asPath, group.href) || group.items.some((item) => isActive(asPath, item.href));
+}
+
+// One shared, theme-aware header for every public page (homepage included):
+// logo, the grouped main menu from data/siteNavigation.ts, search, language,
+// theme, notifications and account.
+export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode }: SiteHeaderProps = {}) {
   const router = useRouter();
   const lang = resolveLocale(router.locale);
   const t = dict[lang];
-  // Marketplace customer-facing categories use ka/en query values; other
-  // locales intentionally fall back to English for category navigation.
-  const catLocale = lang === 'ka' ? 'ka' : 'en';
+  const nav = NAV_DICT[lang];
+  const entries: NavEntry[] = getSiteNavigation(lang);
   const { user, isAuthenticated, logout } = useAuth();
   const { openAuthModal } = useAuthModal();
-  const [darkMode, setDarkMode] = useState(false);
+  const [ownDark, setOwnDark] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const darkMode = controlledDark ?? ownDark;
 
   useEffect(() => {
+    if (controlledDark !== undefined) return;
     const isDark = localStorage.getItem('darkMode') === 'true' || document.documentElement.classList.contains('dark');
-    setDarkMode(isDark);
-  }, []);
+    setOwnDark(isDark);
+  }, [controlledDark]);
 
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [router.asPath]);
 
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Lock page scroll behind the open mobile drawer.
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [mobileMenuOpen]);
+
   const toggleDarkMode = () => {
-    const next = !darkMode;
-    setDarkMode(next);
+    if (onToggleDarkMode) {
+      onToggleDarkMode();
+      return;
+    }
+    const next = !ownDark;
+    setOwnDark(next);
     localStorage.setItem('darkMode', String(next));
     document.documentElement.classList.toggle('dark', next);
   };
@@ -177,293 +104,230 @@ export default function SiteHeader() {
   };
 
   const dashboardHref = user?.adminRole ? '/admin' : '/dashboard';
-  // Mentor role or any admin-team member (SUPER_ADMIN/MANAGER — user.adminRole,
-  // same convention as the Admin Panel link below) — the sessions list at
-  // /dashboard/mentorship-sessions shows "with student" rows for mentors and
-  // "with mentor" rows for everyone else, so it's meaningful for both.
+  // Mentor role or any admin-team member — the sessions list at
+  // /dashboard/mentorship-sessions is meaningful for both.
   const canSeeMentorPanel = isAuthenticated && (user?.role === 'Mentor' || !!user?.adminRole);
+  const asPath = router.asPath;
+
+  const topLinkClass = (active: boolean) =>
+    `relative inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13.5px] font-semibold no-underline transition-colors duration-150 ${
+      active
+        ? 'text-slate-900 dark:text-white bg-slate-900/[0.06] dark:bg-white/10'
+        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-900/[0.04] dark:hover:bg-white/[0.06]'
+    }`;
 
   return (
     // Full-bleed edge-to-edge (-mx-4 sm:-mx-6 cancels _app.tsx's app-shell
-    // wrapper padding, same technique as index.tsx's hero section) so the
-    // glass background/border spans the true viewport width — the header
-    // used to sit inside BOTH its own px-4 sm:px-6 AND the app-shell's
-    // identical padding, doubling up into a visible inset "band" on both
-    // sides compared to every other full-width section on the page. The
-    // px-4 sm:px-6 that used to live on <nav> moves to the inner
-    // max-w-7xl content row instead, so the CONTENT still gets the same
-    // margin from the edge, just without the double-count.
-    <nav className="sticky top-0 z-50 -mx-4 sm:-mx-6 border-b border-slate-200 dark:border-white/10 bg-white dark:bg-[#0e1422]/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white dark:supports-[backdrop-filter]:bg-[#0e1422]/60 py-3.5">
-      {/* Plain flex row, not CSS Grid — three explicit flex items (logo /
-          center nav / actions), each a normal, statically-positioned flex
-          child (no position:absolute, no w-0, nothing pulled out of flow
-          anywhere in this row). Logo and actions both carry `flex-1` —
-          NOT so they stretch to fill visible width (their own content
-          determines that, via shrink-0/min-w-fit and justify-start/end
-          below), but so they claim EQUAL leftover space on either side of
-          the center nav, which is what keeps the nav truly centered on the
-          viewport regardless of the logo being narrower than the actions
-          cluster. A naive `justify-between` on three raw children instead
-          would leave the nav drifting off-center by however much narrower
-          the logo is than the actions cluster — this is the flex
-          equivalent of the same fix, not a functional regression from it. */}
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4 md:gap-6 px-4 sm:px-6">
+    // wrapper padding) so the glass background spans the true viewport width.
+    <nav
+      className={`sticky top-0 z-50 -mx-4 sm:-mx-6 border-b backdrop-blur-xl transition-[background-color,box-shadow,border-color] duration-300 ${
+        scrolled
+          ? 'bg-white/85 dark:bg-[#0b0f19]/80 border-slate-200/80 dark:border-white/10 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.18)]'
+          : 'bg-white/70 dark:bg-[#0b0f19]/60 border-transparent'
+      }`}
+    >
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 px-4 sm:px-6 h-16 sm:h-[72px]">
         <div className="flex-1 flex items-center min-w-fit">
-          <Link href="/" className="flex items-center gap-2 xl:gap-3 shrink-0 min-w-fit mr-2 sm:mr-6 no-underline text-current">
-            <Image src="/images/cdc-logo.png" alt="CDC" width={40} height={40} className="h-9 w-auto rounded-xl object-cover" />
-            <span className="hidden sm:inline font-bold text-sm tracking-wide text-slate-900 dark:text-white">CDC</span>
+          <Link href="/" className="flex items-center gap-2.5 shrink-0 no-underline text-current" aria-label="CDC">
+            <Image src="/images/cdc-logo.png" alt="CDC" width={44} height={44} priority className="h-10 w-auto rounded-xl object-cover shadow-sm ring-1 ring-black/5 dark:ring-white/10" />
+            <span className="hidden sm:inline font-black text-[15px] tracking-tight text-slate-900 dark:text-white">CDC</span>
           </Link>
         </div>
 
-        {/* Center nav — its own flex item, sized to its content
-            (whitespace-nowrap so it never wraps), sitting between the two
-            flex-1 wrappers above/below so it lands on the true viewport
-            center rather than drifting toward whichever side is narrower.
-            Shown from xl (1280px) up, not lg (1024px) — adding the
-            career-test link as a 7th visible item pushed this row's
-            min-content width past what the 1024-1279px band can fit
-            (measured overflow at 1100px), which visually crushed the
-            logo/actions columns together. The mobile drawer (below xl)
-            already carries every one of these links, career-test
-            included, so nothing is lost by raising the breakpoint.
-            Community/Mentors/MentorPanel/About/Gallery/Tutorials stay
-            grouped under "More" — not a spacing workaround anymore, just a
-            reasonable information-architecture choice now that there's
-            room to spare; Courses/Marketplace/Tools remain this site's
-            three primary always-visible traffic drivers. */}
-        <div className="hidden xl:flex items-center gap-6 xl:gap-8 ml-4 text-base font-medium text-slate-900 dark:text-slate-200 whitespace-nowrap">
-          <div className="relative group py-2 -my-2">
-            <button type="button" className="no-underline hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-1.5 bg-transparent border-none cursor-pointer font-medium text-base p-0 text-inherit">
-              {t.more}
-              <ChevronDown className="w-4 h-4" />
-            </button>
-            <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 w-56 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150">
-              <div className="rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-sm bg-white backdrop-blur-md border-slate-200 dark:bg-[#0e1422]/95 dark:border-white/10">
-                <Link href="/community" className="block px-4 py-2.5 no-underline text-slate-900 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
-                  {t.community}
+        {/* Desktop menu (1420px+; burger drawer below). Dropdowns open on hover and on keyboard focus
+            (focus-within), so they work without a mouse too. */}
+        <div className="hidden min-[1420px]:flex items-center gap-0.5 whitespace-nowrap">
+          {entries.map((entry) =>
+            entry.kind === 'link' ? (
+              <Link key={entry.key} href={entry.href} className={topLinkClass(isActive(asPath, entry.href))}>
+                {entry.highlight && <Sparkles className="w-3.5 h-3.5 text-cyan-500" />}
+                {nav.links[entry.key]}
+              </Link>
+            ) : (
+              <div key={entry.key} className="relative group">
+                <Link href={entry.href} className={topLinkClass(groupActive(asPath, entry))} aria-haspopup="true">
+                  {nav.groups[entry.key]}
+                  <ChevronDown className="w-3.5 h-3.5 opacity-60 transition-transform duration-200 group-hover:rotate-180 group-focus-within:rotate-180" />
                 </Link>
-
-                {canSeeMentorPanel && (
-                  <Link
-                    href="/dashboard/mentorship-sessions"
-                    className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-900 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
-                  >
-                    <CalendarClock className="w-4 h-4 shrink-0" />
-                    {t.mentorPanel}
-                  </Link>
-                )}
-                <AboutNavigationLinks icons="desktop" className="flex items-center gap-2 px-4 py-2.5 no-underline text-slate-900 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors" />
+                <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 transition-all duration-200">
+                  <div className="w-[22rem] rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white/95 dark:bg-[#0e1422]/95 backdrop-blur-xl p-2 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.35)]">
+                    {entry.items.map((item) => {
+                      const copy = nav.items[item.key];
+                      const Icon = item.icon;
+                      return (
+                        <Link
+                          key={item.key}
+                          href={item.href}
+                          className="flex items-start gap-3 rounded-xl px-3 py-2.5 no-underline transition-colors hover:bg-slate-100/80 dark:hover:bg-white/[0.06] focus-visible:bg-slate-100/80 dark:focus-visible:bg-white/[0.06] outline-none"
+                        >
+                          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500/15 to-purple-600/15 text-cyan-600 dark:text-cyan-300 ring-1 ring-cyan-500/20">
+                            <Icon className="w-[18px] h-[18px]" />
+                          </span>
+                          <span className="min-w-0 whitespace-normal">
+                            <span className="block text-sm font-bold text-slate-900 dark:text-white">{copy.title}</span>
+                            <span className="block text-xs leading-snug text-slate-500 dark:text-slate-400">{copy.desc}</span>
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          <Link href="/courses" className="no-underline hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">
-            {t.courses}
-          </Link>
-          <div className="relative group py-2 -my-2">
-            <Link
-              href="/marketplace"
-              className="no-underline hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-1.5"
-            >
-              {t.marketplace}
-              <ChevronDown className="w-4 h-4" />
-            </Link>
-            <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 w-64 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150">
-              <div className="rounded-xl border shadow-lg shadow-cyan-500/5 overflow-hidden text-sm bg-white backdrop-blur-md border-slate-200 dark:bg-[#0e1422]/95 dark:border-white/10">
-                <p className="px-4 pt-3 pb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">{t.categories}</p>
-                {MARKETPLACE_CATEGORIES.map((cat) => (
-                  <Link
-                    key={cat.value.en}
-                    href={`/marketplace?category=${encodeURIComponent(cat.value[catLocale])}`}
-                    className="block px-4 py-2.5 no-underline text-slate-900 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
-                  >
-                    {cat.value[catLocale]}
-                  </Link>
-                ))}
-                <Link
-                  href="/marketplace"
-                  className="flex items-center gap-2 px-4 py-2.5 no-underline font-bold text-cyan-600 dark:text-cyan-400 border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
-                >
-                  <ShoppingBag className="w-3.5 h-3.5" />
-                  {t.viewAllProducts}
-                </Link>
-              </div>
-            </div>
-          </div>
-          {/* Visible to every visitor/role — Students/Mentors should be
-              able to see and browse what's on offer here even though
-              the tools themselves are still Business-account-gated (see
-              tools.tsx's own canUseAiAssistant check and its "Business
-              Verification Required"/"Available for Business Accounts
-              Only" modals, both left fully intact). This is a
-              visibility fix, not a paywall removal — actually using a
-              tool still requires the same verification it always did. */}
-          <Link href="/tools" className="relative no-underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors inline-flex items-center gap-2">
-            {t.tools}
-            <span className="inline-flex items-center rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-white shadow-[0_0_8px_rgba(34,211,238,0.6)] animate-pulse">
-              HOT
-            </span>
-          </Link>
-          <Link href="/career-test" className="no-underline text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 dark:hover:text-cyan-300 transition-colors inline-flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 shrink-0" />
-            {t.careerTest}
-          </Link>
-        </div>
-
-        {/* Actions cluster — wrapped in the same flex-1 pattern as the logo
-            wrapper (see the row's own comment above) so it claims equal
-            leftover space on the right, keeping the center nav truly
-            centered rather than drifting toward whichever side is
-            narrower. The actual row inside is shrink-0 so language/theme/
-            login/burger are always fully rendered regardless of how long
-            the KA nav labels above run. Order left-to-right: Language,
-            Theme, Bell (authenticated only), Login (mobile/tablet-only
-            compact pill, guests only — xl+ guests get the same login
-            button via UserMenu's loginFallback below), Burger (< xl).
-            Both login variants' breakpoints must stay in lockstep with
-            the center nav's `hidden xl:flex` above — mismatched
-            breakpoints here previously caused two login buttons to render
-            simultaneously in the 1024-1279px gap. */}
-        <div className="flex-1 flex justify-end">
-        <div className="flex items-center gap-1 sm:gap-1.5 xl:gap-2.5 shrink-0 ml-2 sm:ml-6">
-          <LanguageSwitcher />
-          <button
-            type="button"
-            onClick={toggleDarkMode}
-            aria-label="Toggle dark mode"
-            className="p-2 rounded-xl transition text-lg border-none bg-transparent cursor-pointer hover:rotate-12 duration-200"
-          >
-            {darkMode ? '☀️' : '🌙'}
-          </button>
-          <NotificationBell />
-          {/* UserMenu's own avatar-only-on-narrow-screens sizing (name is
-              `hidden sm:inline`) keeps it compact enough to sit directly in
-              the actions cluster on every viewport, same as the bell. */}
-          <UserMenu
-            loginFallback={
-              <button type="button" onClick={() => openAuthModal()} className="vip-btn-secondary !px-4 !py-2 hidden xl:inline-flex">
-                👤 {t.login}
-              </button>
-            }
-          />
-          {!isAuthenticated && (
-            <button type="button" onClick={() => openAuthModal()} className="vip-btn-secondary xl:hidden !px-3 !py-2 whitespace-nowrap">
-              {t.login}
-            </button>
+            )
           )}
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen((open) => !open)}
-            aria-label="Toggle menu"
-            aria-expanded={mobileMenuOpen}
-            className="xl:hidden p-2 rounded-xl border-none bg-transparent cursor-pointer text-slate-900 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
         </div>
+
+        {/* Actions: search, language, theme, bell, account, burger (< 1420px). */}
+        <div className="flex-1 flex justify-end">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            <div className="hidden md:block">
+              <HeaderSearch darkMode={darkMode} lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+            </div>
+            <div className="hidden sm:block">
+              <LanguageSwitcher />
+            </div>
+            <button
+              type="button"
+              onClick={toggleDarkMode}
+              aria-label="Toggle dark mode"
+              className="p-2 rounded-full border-none bg-transparent cursor-pointer text-slate-600 dark:text-slate-300 hover:bg-slate-900/[0.05] dark:hover:bg-white/10 transition-colors"
+            >
+              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+            <NotificationBell />
+            <UserMenu
+              loginFallback={
+                <button
+                  type="button"
+                  onClick={() => openAuthModal()}
+                  className="hidden sm:inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold border-none cursor-pointer text-white bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 transition-colors shadow-sm"
+                >
+                  {t.login}
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              }
+            />
+            {!isAuthenticated && (
+              <button
+                type="button"
+                onClick={() => openAuthModal()}
+                className="sm:hidden rounded-full px-3.5 py-1.5 text-xs font-bold border-none cursor-pointer text-white bg-slate-900 dark:bg-white dark:text-slate-900 whitespace-nowrap"
+              >
+                {t.login}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((open) => !open)}
+              aria-label="Toggle menu"
+              aria-expanded={mobileMenuOpen}
+              className="min-[1420px]:hidden p-2 rounded-full border-none bg-transparent cursor-pointer text-slate-800 dark:text-slate-200 hover:bg-slate-900/[0.05] dark:hover:bg-white/10"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
         </div>
       </div>
 
       {mobileMenuOpen && (
-        // px-4 sm:px-6 re-applied here (not needed on the row above, which
-        // has its own) since <nav>'s -mx-4 sm:-mx-6 pulls this drawer full-
-        // bleed too — without it the links would run edge-to-edge with no
-        // margin. Larger gap/padding throughout vs. the old xs-text version
-        // for genuinely touch-friendly tap targets, not just denser text.
-        <div className="xl:hidden mt-3.5 px-4 sm:px-6 pb-4 border-t border-slate-200 dark:border-slate-800 overflow-y-auto overscroll-contain max-h-[calc(100dvh-5rem)]">
-          {isAuthenticated && user ? (
-            <Link
-              href={dashboardHref}
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-3 px-2 py-4 no-underline text-current"
-            >
-              <div className="w-11 h-11 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shrink-0 flex items-center justify-center">
-                {user.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-sm font-black text-slate-400">{(user.name ?? '?').charAt(0).toUpperCase()}</span>
-                )}
-              </div>
-              <span className="text-base font-bold text-slate-900 dark:text-white">{user.name}</span>
-            </Link>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                openAuthModal();
-              }}
-              className="w-full my-4 text-base font-bold px-4 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-300 bg-transparent cursor-pointer hover:border-cyan-500/60"
-            >
-              👤 {t.login}
-            </button>
-          )}
+        <div className="min-[1420px]:hidden border-t border-slate-200/80 dark:border-white/10 px-4 sm:px-6 pb-[calc(var(--tabbar-h,0px)+1.5rem)] overflow-y-auto overscroll-contain max-h-[calc(100dvh-4rem)]">
+          <div className="max-w-2xl mx-auto">
+            {isAuthenticated && user ? (
+              <Link href={dashboardHref} className="mt-4 flex items-center gap-3 rounded-2xl p-3 no-underline text-current bg-slate-100/70 dark:bg-white/[0.05]">
+                <div className="w-11 h-11 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800 shrink-0 flex items-center justify-center">
+                  {user.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-sm font-black text-slate-500">{(user.name ?? '?').charAt(0).toUpperCase()}</span>
+                  )}
+                </div>
+                <span className="flex-1 text-base font-bold text-slate-900 dark:text-white truncate">{user.name}</span>
+                <ArrowRight className="w-5 h-5 text-slate-400" />
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  openAuthModal();
+                }}
+                className="w-full mt-4 text-base font-bold px-4 py-3.5 rounded-2xl border-none cursor-pointer text-white bg-slate-900 dark:bg-white dark:text-slate-900"
+              >
+                {t.login}
+              </button>
+            )}
 
-          <div className="flex flex-col gap-1 text-base font-semibold text-slate-900 dark:text-slate-300">
-            <Link href="/community" onClick={() => setMobileMenuOpen(false)} className="no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
-              {t.community}
-            </Link>
-
-            <Link href="/courses" onClick={() => setMobileMenuOpen(false)} className="no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
-              {t.courses}
-            </Link>
-            <Link href="/marketplace" onClick={() => setMobileMenuOpen(false)} className="no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
-              {t.marketplace}
-            </Link>
-            <div className="pl-4 flex flex-col gap-1">
-              {MARKETPLACE_CATEGORIES.map((cat) => (
-                <Link
-                  key={cat.value.en}
-                  href={`/marketplace?category=${encodeURIComponent(cat.value[catLocale])}`}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="no-underline px-3 py-3 rounded-xl text-sm font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                >
-                  {cat.value[catLocale]}
-                </Link>
-              ))}
+            <div className="md:hidden mt-4">
+              <HeaderSearch darkMode={darkMode} lang={lang === 'ka' ? 'GEO' : 'ENG'} />
             </div>
-            {/* Same visibility-for-everyone fix as the desktop nav above —
-                the tools themselves stay Business-account-gated inside
-                tools.tsx. */}
-            <Link href="/tools" onClick={() => setMobileMenuOpen(false)} className="no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
-              {t.tools}
-            </Link>
-            <Link href="/career-test" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5 no-underline px-3 py-3.5 rounded-xl text-cyan-600 dark:text-cyan-400 hover:bg-slate-100 dark:hover:bg-slate-800">
-              <Sparkles className="w-5 h-5 shrink-0" />
-              {t.careerTest}
-            </Link>
-            <AboutNavigationLinks icons="mobile" onNavigate={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5 no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800" />
+            <div className="sm:hidden mt-3">
+              <LanguageSwitcher />
+            </div>
+
+            {entries.map((entry) =>
+              entry.kind === 'link' ? (
+                <Link
+                  key={entry.key}
+                  href={entry.href}
+                  className={`mt-3 flex items-center gap-2 rounded-xl px-3 py-3 text-base font-bold no-underline ${
+                    entry.highlight
+                      ? 'text-white bg-gradient-to-r from-cyan-500 to-purple-600'
+                      : 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06]'
+                  }`}
+                >
+                  {entry.highlight && <Sparkles className="w-5 h-5" />}
+                  {nav.links[entry.key]}
+                </Link>
+              ) : (
+                <div key={entry.key} className="mt-5">
+                  <p className="px-3 mb-1 text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">{nav.groups[entry.key]}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-0.5">
+                    {entry.items.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <Link
+                          key={item.key}
+                          href={item.href}
+                          className="flex items-center gap-3 rounded-xl px-3 py-3 no-underline text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.06]"
+                        >
+                          <Icon className="w-5 h-5 shrink-0 text-cyan-600 dark:text-cyan-400" />
+                          <span className="text-[15px] font-semibold">{nav.items[item.key].title}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              )
+            )}
 
             {isAuthenticated && user && (
-              <>
-                <div className="border-t border-slate-200 dark:border-slate-800 my-2" />
-                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5 no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
+              <div className="mt-5 border-t border-slate-200 dark:border-white/10 pt-4">
+                <p className="px-3 mb-1 text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">{t.account}</p>
+                <Link href="/dashboard" className="flex items-center gap-3 no-underline px-3 py-3 rounded-xl text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.06]">
                   <LayoutDashboard className="w-5 h-5" /> {t.dashboard}
                 </Link>
-                <Link href="/dashboard?tab=courses" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5 no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
+                <Link href="/dashboard?tab=courses" className="flex items-center gap-3 no-underline px-3 py-3 rounded-xl text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.06]">
                   <GraduationCap className="w-5 h-5" /> {t.myCourses}
                 </Link>
                 {canSeeMentorPanel && (
-                  <Link
-                    href="/dashboard/mentorship-sessions"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-2.5 no-underline px-3 py-3.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
-                  >
+                  <Link href="/dashboard/mentorship-sessions" className="flex items-center gap-3 no-underline px-3 py-3 rounded-xl text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.06]">
                     <CalendarClock className="w-5 h-5" /> {t.mentorPanel}
                   </Link>
                 )}
                 {user.adminRole && (
-                  <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5 no-underline px-3 py-3.5 rounded-xl text-cyan-600 dark:text-cyan-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+                  <Link href="/admin" className="flex items-center gap-3 no-underline px-3 py-3 rounded-xl text-cyan-700 dark:text-cyan-400 hover:bg-slate-100 dark:hover:bg-white/[0.06]">
                     <ShieldCheck className="w-5 h-5" /> {t.admin}
                   </Link>
                 )}
                 <button
                   type="button"
                   onClick={handleMobileLogout}
-                  className="flex items-center gap-2.5 text-left px-3 py-3.5 rounded-xl border-none bg-transparent cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="w-full flex items-center gap-3 text-left px-3 py-3 rounded-xl border-none bg-transparent cursor-pointer text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
                 >
                   <LogOut className="w-5 h-5" /> {t.logout}
                 </button>
-              </>
+              </div>
             )}
           </div>
         </div>

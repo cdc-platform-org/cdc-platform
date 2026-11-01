@@ -56,7 +56,7 @@ const META_DESCRIPTION: Record<string, string> = {
 
 const dict = {
   ka: {
-    title: 'ციფრული ხელსაწყოები',
+    title: 'AI ხელსაწყოები',
     subtitle: 'AI-ზე დაფუძნებული პროდუქტები, რომლებიც CDC-მ შექმნა ბიზნესებისა და დამსაქმებლებისთვის.',
     // Card 1 — Enterprise AI Assistant
     aiTitle: 'Enterprise AI ასისტენტი & ცოდნის ბაზა',
