@@ -8,6 +8,7 @@ import { getAdminSiteContent, updateSiteContent, uploadCmsImage } from '../../sr
 import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../src/utils/imageUpload';
 import { resolveBlogImageUrl } from '../../src/services/blogService';
 import KaToEnButton from '../../src/components/admin/KaToEnButton';
+import { parseVideoUrl } from '../../src/components/shared/VideoEmbed';
 
 // The 4 real, live self-service SaaS tools this CMS currently covers (see
 // marketplace/index.tsx's SAAS_TOOLS and tools.tsx's own cards for where
@@ -141,6 +142,19 @@ function ToolEntryEditor({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={resolveBlogImageUrl(entry.imageUrl)} alt="" className="w-full h-full object-cover" />
           </div>
+        )}
+      </div>
+
+      <div>
+        <label className={labelClass}>ვიდეო (არასავალდებულო) — YouTube, Vimeo ან .mp4 ბმული. თუ შევსებულია, ფოტოს ნაცვლად ვიდეო ჩანს ბარათზე და ხელსაწყოს გვერდის თავში</label>
+        <input
+          value={entry.videoUrl ?? ''}
+          onChange={(e) => onChange({ videoUrl: e.target.value })}
+          className={inputClass}
+          placeholder="https://www.youtube.com/watch?v=..."
+        />
+        {entry.videoUrl?.trim() && !parseVideoUrl(entry.videoUrl.trim()) && (
+          <p className="text-[11px] text-red-600 mt-1">ეს ბმული ვერ ვიცანი. ჩასვი YouTube, Vimeo ან .mp4 ფაილის ბმული, თორემ ვიდეო არ გამოჩნდება.</p>
         )}
       </div>
 

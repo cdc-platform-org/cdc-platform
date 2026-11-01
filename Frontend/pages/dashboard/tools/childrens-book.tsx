@@ -37,6 +37,7 @@ import {
 } from '../../../src/services/childrensBookService';
 import PromoCodeField from '../../../src/components/shared/PromoCodeField';
 import { PromoValidationResult } from '../../../src/services/paymentService';
+import ToolMediaBanner from '../../../src/components/tools/ToolMediaBanner';
 
 const GENERATING_STATUSES = ['CHARACTER_PREVIEW_GENERATING', 'FINAL_GENERATING', 'FINAL_QA', 'REVISION_REQUESTED', 'REVISION_GENERATING', 'REVISION_QA'];
 const POLL_MS = 1500;
@@ -227,6 +228,7 @@ function ChildrensBookContent() {
               <p className="text-gray-600">{t('pageSubtitle')}</p>
             </div>
           </div>
+          <ToolMediaBanner slug="childrens-book" alt={t('pageTitle')} />
 
           <h2 className="text-lg font-semibold text-gray-800 mb-4">{t('myBooksTitle')}</h2>
 

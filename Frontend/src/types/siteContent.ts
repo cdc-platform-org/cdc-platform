@@ -106,6 +106,10 @@ export interface ToolCatalogEntry {
   // slug not in BUILT_IN_TOOL_SLUGS): /tools renders it as a generic card
   // whose button opens this URL (site path like /dashboard/... or https://...).
   linkUrl?: string;
+  // Optional video (YouTube / Vimeo / direct .mp4 link). When it is a valid
+  // link it is shown instead of the cover photo, on the /tools card and at
+  // the top of the tool's own page (ToolMediaBanner).
+  videoUrl?: string;
 }
 
 export interface ToolCatalogContent {

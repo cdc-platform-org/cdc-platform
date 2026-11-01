@@ -56,6 +56,7 @@ import {
   GeneratedParentLetter,
   ParentLetterPurpose,
 } from '../../../src/services/educatorHubService';
+import ToolMediaBanner from '../../../src/components/tools/ToolMediaBanner';
 
 type TabId = 'test' | 'rubric' | 'grading' | 'sen' | 'lessonPlan' | 'bureaucracy' | 'parentReports' | 'certificates';
 
@@ -533,6 +534,7 @@ function EducatorHubContent() {
           </div>
           <h1 className="text-2xl md:text-3xl font-black tracking-wide mb-2">{t('pageTitle')}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">{t('pageSubtitle')}</p>
+          <ToolMediaBanner slug="educator-hub" alt={t('pageTitle')} className="mt-5" />
 
           {!stateLoading && !stateError && !hasAccess && (
             <div className="mt-5 rounded-2xl border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-5">

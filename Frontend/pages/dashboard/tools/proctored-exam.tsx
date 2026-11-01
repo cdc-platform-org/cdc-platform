@@ -8,6 +8,7 @@ import SiteFooter from '../../../src/components/layout/SiteFooter';
 import BackButton from '../../../src/components/common/BackButton';
 import ExamProctoringTab from '../../../src/components/dashboard/ExamProctoringTab';
 import { resolveLocale } from '@/src/utils/locale';
+import ToolMediaBanner from '../../../src/components/tools/ToolMediaBanner';
 
 // AI Proctored Exam & Skill Assessment System — split out of
 // /dashboard/ai-tools (now a hub linking here) into its own dedicated
@@ -67,6 +68,7 @@ function ProctoredExamContent() {
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t.subtitle}</p>
         </div>
+        <ToolMediaBanner slug="proctoring" alt={t.title} />
 
         <ExamProctoringTab lang={lang} />
       </div>
