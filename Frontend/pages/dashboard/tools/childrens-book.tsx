@@ -42,6 +42,7 @@ import {
 import PromoCodeField from '../../../src/components/shared/PromoCodeField';
 import BookPreview from '../../../src/components/tools/childrensBook/BookPreview';
 import CharacterPhotoField from '../../../src/components/tools/childrensBook/CharacterPhotoField';
+import PageThumbnail from '../../../src/components/tools/childrensBook/PageThumbnail';
 import { PromoValidationResult } from '../../../src/services/paymentService';
 
 const GENERATING_STATUSES = ['CHARACTER_PREVIEW_GENERATING', 'FINAL_GENERATING', 'FINAL_QA', 'REVISION_REQUESTED', 'REVISION_GENERATING', 'REVISION_QA'];
@@ -689,13 +690,33 @@ function ChildrensBookContent() {
                     {Array.from({ length: book.pageCount }, (_, i) => i + 1).map((n) => {
                       const page = book.pages?.find((p) => p.pageNumber === n);
                       const ready = !!page?.acceptedEventId;
+                      if (!ready) {
+                        return (
+                          <div key={n} className="aspect-square rounded-lg border flex items-center justify-center text-xs border-gray-200 bg-gray-50 text-gray-400">
+                            {t('pageLabel', { number: n })}
+                          </div>
+                        );
+                      }
                       return (
-                        <div key={n} className={`aspect-square rounded-lg border flex items-center justify-center text-xs ${ready ? 'border-green-300 bg-green-50 text-green-700' : 'border-gray-200 bg-gray-50 text-gray-400'}`}>
-                          {t('pageLabel', { number: n })}
-                        </div>
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => router.push({ pathname: '/dashboard/tools/childrens-book/reader/[bookId]', query: { bookId: book.id } })}
+                          className="aspect-square rounded-lg border flex items-center justify-center text-xs border-green-300 bg-green-50 text-green-700 overflow-hidden hover:ring-2 hover:ring-purple-400"
+                        >
+                          <PageThumbnail bookId={book.id} pageNumber={n} version={page?.acceptedEventId} label={t('pageLabel', { number: n })} alt={t('readerImageAlt', { title: book.title, number: n })} />
+                        </button>
                       );
                     })}
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() => router.push({ pathname: '/dashboard/tools/childrens-book/reader/[bookId]', query: { bookId: book.id } })}
+                    className="mb-4 px-5 py-2 rounded-lg bg-purple-600 text-white font-medium inline-flex items-center gap-2"
+                  >
+                    <BookOpen className="w-4 h-4" /> {t('readButton')}
+                  </button>
 
                   {book.status === 'COMPLETED' && <p className="text-green-700 font-medium mb-4 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> {t('bookCompleted')}</p>}
 
