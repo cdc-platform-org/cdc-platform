@@ -7,6 +7,7 @@ import BackButton from '../../../src/components/common/BackButton';
 import EnglishTutorPanel from '../../../src/components/dashboard/EnglishTutorPanel';
 import SEOHead from '../../../src/components/seo/SEOHead';
 import { resolveLocale, contentLocale } from '../../../src/utils/locale';
+import ToolMediaBanner from '../../../src/components/tools/ToolMediaBanner';
 
 const dict = {
   ka: {
@@ -39,6 +40,7 @@ function EnglishTutorContent() {
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t.subtitle}</p>
         </div>
+        <ToolMediaBanner slug="english-tutor" alt={t.title} />
 
         <EnglishTutorPanel lang={lang} />
       </div>
