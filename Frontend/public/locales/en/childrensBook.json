@@ -153,5 +153,7 @@
   "previewTotal": "Total: {{amount}} GEL",
   "previewConfirmHint": "Illustrations are painted after payment, using the character you approved.",
   "previewConfirmButton": "Looks good, continue to payment",
-  "previewViewAgain": "View the book preview again"
+  "previewViewAgain": "View the book preview again",
+  "storyTextMissing": "This book still has placeholder text on its pages. Press the button and the AI will write the real story for the existing pictures.",
+  "writeStoryTextButton": "Write the story text"
 }

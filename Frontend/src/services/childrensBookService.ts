@@ -114,6 +114,19 @@ export async function generateStoryPlan(id: string): Promise<BookProject> {
   return response.data.data;
 }
 
+// Books made before real story text existed still carry the placeholder
+// template ("… — გვერდი 2."); the backend rewrites only the words.
+const PLACEHOLDER_STORY_TEXT = [/ახალ თავგადასავალს — გვერდი \d+\.?$/, /a new page in the adventure \(page \d+\)\.?$/];
+
+export function hasPlaceholderStoryText(book: BookProject): boolean {
+  return (book.pages ?? []).some((p) => !p.storyText?.trim() || PLACEHOLDER_STORY_TEXT.some((re) => re.test(p.storyText!.trim())));
+}
+
+export async function rewriteStoryText(id: string): Promise<BookProject> {
+  const response = await apiClient.post<{ data: BookProject }>(`/childrens-books/${id}/story-text/rewrite`);
+  return response.data.data;
+}
+
 export async function generateCharacterPreview(id: string): Promise<{ book: BookProject; mocked: boolean }> {
   const response = await apiClient.post<{ data: BookProject; mocked: boolean }>(`/childrens-books/${id}/character-preview`);
   return { book: response.data.data, mocked: response.data.mocked };

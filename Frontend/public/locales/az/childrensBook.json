@@ -153,5 +153,7 @@
   "previewTotal": "Cəmi: {{amount}} GEL",
   "previewConfirmHint": "İllüstrasiyalar ödənişdən sonra təsdiqlədiyiniz personajla çəkilir.",
   "previewConfirmButton": "Hər şey yaxşıdır, ödənişə keç",
-  "previewViewAgain": "Kitabın önizləməsinə yenidən bax"
+  "previewViewAgain": "Kitabın önizləməsinə yenidən bax",
+  "storyTextMissing": "Bu kitabın səhifələrində hələ müvəqqəti mətn var. Düyməni basın və AI mövcud şəkillər üçün əsl nağılı yazacaq.",
+  "writeStoryTextButton": "Nağıl mətnini yaz"
 }
