@@ -55,7 +55,7 @@ export default function BookPreview({ book, portraitUrl, busy, onConfirm, onClos
       </div>
 
       {/* What the parent asked for */}
-      {(config?.appearance || config?.extraCharacters || config?.photoKey) && (
+      {(config?.appearance || config?.extraCharacters || config?.photoKey || config?.photoDeletedAt) && (
         <dl className="grid gap-3 sm:grid-cols-2 mb-5 text-sm">
           {config?.appearance && (
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
@@ -69,7 +69,7 @@ export default function BookPreview({ book, portraitUrl, busy, onConfirm, onClos
               <dd className="text-gray-600 mt-1 break-words">{config.extraCharacters}</dd>
             </div>
           )}
-          {config?.photoKey && (
+          {(config?.photoKey || config?.photoDeletedAt) && (
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 sm:col-span-2 text-gray-600">{t('previewPhotoUsed')}</div>
           )}
         </dl>

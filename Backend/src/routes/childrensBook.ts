@@ -200,7 +200,7 @@ router.put('/:id/character-config', authenticate, async (req: Request, res: Resp
     if (!sanitized.ok) return res.status(400).json({ message: sanitized.message });
     // Keep the server-owned photo reference across edits.
     const existing = (book.characterConfig ?? {}) as any;
-    nextConfig = { ...sanitized.value, ...(existing.photoKey ? { photoKey: existing.photoKey, photoMimeType: existing.photoMimeType } : {}) };
+    nextConfig = { ...sanitized.value, ...(existing.photoKey ? { photoKey: existing.photoKey, photoMimeType: existing.photoMimeType, photoConsentAt: existing.photoConsentAt } : {}) };
   }
 
   const updated = await prisma.bookProject.update({
@@ -223,6 +223,11 @@ router.post('/:id/character-photo', authenticate, handlePhotoUpload, async (req:
     return res.status(400).json({ message: 'The photo can only be changed before the character is approved.' });
   }
   if (!req.file) return res.status(400).json({ message: 'No photo was selected.' });
+  // A photo of a child: the parent must explicitly confirm they are the
+  // parent/guardian and agree the photo is sent to the AI image model.
+  if (req.body?.consent !== 'true') {
+    return res.status(400).json({ message: 'Please confirm you are the parent or guardian and agree to the photo being used for the illustrations.' });
+  }
 
   let normalized: Awaited<ReturnType<typeof normalizeCharacterPhoto>>;
   try {
@@ -236,7 +241,7 @@ router.post('/:id/character-photo', authenticate, handlePhotoUpload, async (req:
   await storeBookAsset(key, normalized.buffer, normalized.mimeType);
   const updated = await prisma.bookProject.update({
     where: { id: book.id },
-    data: { characterConfig: { ...config, photoKey: key, photoMimeType: normalized.mimeType } as any },
+    data: { characterConfig: { ...config, photoKey: key, photoMimeType: normalized.mimeType, photoConsentAt: new Date().toISOString() } as any },
   });
   if (config.photoKey && config.photoKey !== key) await deleteBookAsset(config.photoKey).catch(() => {});
   res.status(201).json({ data: updated });
@@ -486,6 +491,19 @@ router.post('/:id/character-approval', authenticate, async (req: Request, res: R
     data: { status: 'CHARACTER_APPROVED', characterBible: characterBible as any, styleBible: styleBible as any, characterBibleVersion: 1 },
   });
   if (claim.count !== 1) return res.status(409).json({ message: 'Character approval already in progress or completed.' });
+
+  // Retention: once the portrait is approved the original photo is no longer
+  // needed (final pages use the approved portrait as their reference), so
+  // the child's photo is deleted right away.
+  if (character.photoKey) {
+    const { photoKey, photoMimeType, ...rest } = character;
+    void photoMimeType;
+    await deleteBookAsset(photoKey).catch(() => {});
+    await prisma.bookProject.update({
+      where: { id: book.id },
+      data: { characterConfig: { ...rest, photoDeletedAt: new Date().toISOString() } as any },
+    });
+  }
 
   const fresh = await prisma.bookProject.findUnique({ where: { id: book.id } });
   res.json({ data: fresh });

@@ -11,6 +11,8 @@ export interface BookCharacterConfig {
   appearance?: string;
   extraCharacters?: string;
   photoKey?: string;
+  photoConsentAt?: string;
+  photoDeletedAt?: string;
   photoMimeType?: string;
   previewImageKey?: string;
   previewImageMimeType?: string;
@@ -130,6 +132,8 @@ export async function fetchCharacterPreviewImageUrl(id: string): Promise<string>
 
 export async function uploadCharacterPhoto(id: string, file: File): Promise<BookProject> {
   const formData = new FormData();
+  // The UI only lets a photo be picked after the consent box is ticked.
+  formData.append('consent', 'true');
   formData.append('photo', file);
   const response = await apiClient.post<{ data: BookProject }>(`/childrens-books/${id}/character-photo`, formData);
   return response.data.data;
