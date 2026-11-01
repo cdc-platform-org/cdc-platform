@@ -818,14 +818,14 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row items-center sm:items-stretch justify-start gap-3">
                 <a
                   href="#courses"
-                  className="group inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 lg:px-9 lg:py-4 rounded-xl text-sm lg:text-base uppercase tracking-wider sm:tracking-widest no-underline shadow-lg shadow-cyan-500/30 hover:shadow-2xl hover:shadow-cyan-500/40 hover:scale-105 transition-all duration-300 w-full sm:w-auto text-center sm:whitespace-nowrap"
+                  className="group inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 lg:px-9 lg:py-4 rounded-full text-sm lg:text-base tracking-wide no-underline shadow-lg shadow-cyan-500/30 hover:shadow-2xl hover:shadow-cyan-500/40 hover:scale-105 transition-all duration-300 w-full sm:w-auto text-center sm:whitespace-nowrap"
                 >
                   {t('heroCtaCourses')}
                   <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
                 </a>
                 <Link
                   href="/auth/register"
-                  className="inline-flex items-center justify-center gap-2 bg-white/10 border border-white/20 backdrop-blur-md text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 lg:px-9 lg:py-4 rounded-xl text-sm lg:text-base uppercase tracking-wider sm:tracking-widest no-underline shadow-[0_0_20px_-6px_rgba(255,255,255,0.25)] hover:bg-white/20 hover:border-white/30 transition-all duration-300 w-full sm:w-auto text-center sm:whitespace-nowrap"
+                  className="inline-flex items-center justify-center gap-2 bg-white/10 border border-white/20 backdrop-blur-md text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 lg:px-9 lg:py-4 rounded-full text-sm lg:text-base tracking-wide no-underline shadow-[0_0_20px_-6px_rgba(255,255,255,0.25)] hover:bg-white/20 hover:border-white/30 transition-all duration-300 w-full sm:w-auto text-center sm:whitespace-nowrap"
                 >
                   {t('heroCtaJoin')}
                 </Link>
@@ -836,7 +836,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setShowPromoVideo(true)}
-                    className="inline-flex items-center justify-center gap-2 bg-transparent border border-white/30 text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 lg:px-9 lg:py-4 rounded-xl text-sm lg:text-base uppercase tracking-wider sm:tracking-widest cursor-pointer hover:bg-white/10 hover:border-white/50 transition-all duration-300 w-full sm:w-auto text-center sm:whitespace-nowrap"
+                    className="inline-flex items-center justify-center gap-2 bg-transparent border border-white/30 text-white font-black px-6 py-3.5 sm:px-8 sm:py-4 lg:px-9 lg:py-4 rounded-full text-sm lg:text-base tracking-wide cursor-pointer hover:bg-white/10 hover:border-white/50 transition-all duration-300 w-full sm:w-auto text-center sm:whitespace-nowrap"
                   >
                     <Play size={16} className="fill-current" />
                     {t('heroCtaWatchDemo')}
@@ -851,7 +851,7 @@ export default function Home() {
 
       {/* 📊 BENTO GRID SECTION */}
       <section id="about" className="max-w-7xl mx-auto pt-16 sm:pt-28 px-0 sm:px-6">
-        <h2 className="text-center mb-8 sm:mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('achievementsHeading')}</h2>
+        <h2 className="section-title text-center mb-10 sm:mb-16 text-2xl md:text-[2.15rem] font-black tracking-wide">{t('achievementsHeading')}</h2>
         {/* auto-rows only pins to a fixed 240px on md+, where the bento
             layout needs it for the row-span-2 HEKS card's math. Below that,
             a fixed row height clipped the HEKS card's image+text (which is
@@ -908,7 +908,7 @@ export default function Home() {
       {/* 🖼️ CDC LIFE — PHOTO GALLERY PREVIEW */}
       {galleryPreview.length > 0 && (
         <section className="max-w-7xl mx-auto pt-16 sm:pt-28 px-0 sm:px-6">
-          <h2 className="text-center mb-8 sm:mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('galleryHeading')}</h2>
+          <h2 className="section-title text-center mb-10 sm:mb-16 text-2xl md:text-[2.15rem] font-black tracking-wide">{t('galleryHeading')}</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
             {galleryPreview.map((img, i) => (
               <Link
@@ -973,7 +973,7 @@ export default function Home() {
 
       {/* 📚 COURSES CATALOG */}
       <section id="courses" className="max-w-7xl mx-auto py-16 sm:py-28 px-0 sm:px-6">
-        <h2 className="text-center mb-8 sm:mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('coursesHeading')}</h2>
+        <h2 className="section-title text-center mb-10 sm:mb-16 text-2xl md:text-[2.15rem] font-black tracking-wide">{t('coursesHeading')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-8">
           {/* IMIAKO — the AI English Tutor is its own always-on product, not
               a row from the `courses` API, so it's hand-placed as the first
@@ -1119,7 +1119,7 @@ export default function Home() {
           "don't show an empty section" posture as the gallery preview above. */}
       {!liveTrainingsLoading && liveTrainings.length > 0 && (
         <section className="max-w-7xl mx-auto py-16 sm:py-28 px-0 sm:px-6">
-          <h2 className="text-center mb-4 text-2xl md:text-3xl font-black tracking-wide">{t('liveTrainingsHeading')}</h2>
+          <h2 className="section-title text-center mb-6 text-2xl md:text-[2.15rem] font-black tracking-wide">{t('liveTrainingsHeading')}</h2>
           <p className="text-center mb-8 sm:mb-16 text-sm text-slate-500 dark:text-slate-400 max-w-xl mx-auto">{t('liveTrainingsSubtitle')}</p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-8">
             {liveTrainings.slice(0, 3).map((tr) => (
@@ -1203,7 +1203,7 @@ export default function Home() {
               <Sparkles className="w-3.5 h-3.5" />
               CDC AI
             </span>
-            <h2 className="text-2xl md:text-3xl font-black tracking-wide mb-3">{t('toolsHeading')}</h2>
+            <h2 className="section-title text-center text-2xl md:text-[2.15rem] font-black tracking-wide mb-4">{t('toolsHeading')}</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
               {t('toolsSubtitle')}
             </p>
@@ -1335,7 +1335,7 @@ export default function Home() {
       {/* 📰 NEWS & BLOG SECTION — real published posts from GET /api/v1/blog */}
       <section id="blog" className={`py-16 sm:py-28 border-t ${darkMode ? 'bg-[#0e1422]/40 border-slate-800' : 'bg-slate-50/60 border-slate-200'}`}>
         <div className="max-w-7xl mx-auto px-0 sm:px-6">
-          <h2 className="text-center mb-8 sm:mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('blogHeading')}</h2>
+          <h2 className="section-title text-center mb-10 sm:mb-16 text-2xl md:text-[2.15rem] font-black tracking-wide">{t('blogHeading')}</h2>
           {blogPosts.length === 0 ? (
             <p className="text-center text-sm text-slate-400 font-medium">{t('blogEmpty')}</p>
           ) : (
@@ -1389,7 +1389,7 @@ export default function Home() {
       <TeamSection lang={contentLang} darkMode={darkMode} />
       <section id="ai-tools" className="py-16 sm:py-28">
         <div className="max-w-7xl mx-auto px-0 sm:px-6">
-          <h2 className="text-center mb-8 sm:mb-16 text-2xl md:text-3xl font-black tracking-wide">
+          <h2 className="section-title text-center mb-10 sm:mb-16 text-2xl md:text-[2.15rem] font-black tracking-wide">
             AI English Learning Tools
           </h2>
           <div className="bg-slate-100 dark:bg-slate-900 p-4 sm:p-8 rounded-3xl shadow-lg">
@@ -1402,7 +1402,7 @@ export default function Home() {
       {!!cms?.faq?.length && (
         <section className={`py-16 sm:py-28 border-t ${darkMode ? 'bg-[#0e1422]/20 border-slate-800' : 'bg-slate-100/40 border-slate-200'}`}>
           <div className="max-w-3xl mx-auto px-6">
-            <h2 className="text-center mb-8 sm:mb-16 text-2xl md:text-3xl font-black tracking-wide">{t('faqHeading')}</h2>
+            <h2 className="section-title text-center mb-10 sm:mb-16 text-2xl md:text-[2.15rem] font-black tracking-wide">{t('faqHeading')}</h2>
             <div className="space-y-3">
               {cms.faq.map((item, i) => (
                 <details

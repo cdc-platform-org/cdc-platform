@@ -130,3 +130,53 @@ a, button, [role="button"], input, select, textarea, label {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
+
+/* ============================================================
+   2026-11 refresh — calmer, more premium finish sitewide.
+   ============================================================ */
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
+::selection {
+  background: rgba(34, 211, 238, 0.28);
+}
+
+/* Section headings get a short brand-gradient accent underneath. Centered
+   titles center the bar; left-aligned ones keep it on the left. */
+.section-title::after {
+  content: '';
+  display: block;
+  width: 56px;
+  height: 4px;
+  margin-top: 14px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #06b6d4, #8b5cf6);
+}
+.section-title.text-center::after {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Slim, theme-aware scrollbar on desktop. */
+@media (pointer: fine) {
+  * { scrollbar-width: thin; scrollbar-color: rgba(100, 116, 139, 0.35) transparent; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.35); border-radius: 9999px; border: 3px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-thumb:hover { background-color: rgba(100, 116, 139, 0.55); }
+}
+
+@layer components {
+  /* Buttons: pill shape to match the new header. */
+  .vip-btn-primary,
+  .vip-btn-secondary,
+  .vip-btn-danger {
+    border-radius: 9999px;
+  }
+}
