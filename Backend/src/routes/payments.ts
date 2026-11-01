@@ -37,7 +37,7 @@ import { completeLearningPayment } from '../services/learningPaymentFulfillment'
 import { sendRegistrationStatusWhatsApp, formatWhatsAppDate } from '../services/whatsappService';
 import { resolveNotificationLocale } from '../utils/notificationLocale';
 import { completeTutorSubscriptionPurchase, TUTOR_SUBSCRIPTION_PRICE_GEL } from '../services/englishTutorSubscriptionService';
-import { completeChildrensBookPurchase, assertBookReadyForCheckout, BookNotFoundError, BookNotEligibleForCheckoutError } from '../services/bookPurchaseFulfillment';
+import { completeChildrensBookPurchase, assertBookReadyForCheckout, BookNotFoundError, BookNotEligibleForCheckoutError, BookPreviewNotConfirmedError } from '../services/bookPurchaseFulfillment';
 import { startFinalGeneration } from '../services/bookFinalGenerationService';
 import { isBookDevPaymentSimulationEnabled, resolveBookPayableAmountTetri } from '../services/bookMockConfig';
 import { calculateBookPrice } from '../services/bookStateService';
@@ -965,6 +965,7 @@ router.post(
     } catch (err) {
       if (err instanceof BookNotFoundError) return res.status(404).json({ message: err.message });
       if (err instanceof BookNotEligibleForCheckoutError) return res.status(400).json({ message: err.message });
+      if (err instanceof BookPreviewNotConfirmedError) return res.status(400).json({ message: err.message, code: 'PREVIEW_NOT_CONFIRMED' });
       throw err;
     }
 

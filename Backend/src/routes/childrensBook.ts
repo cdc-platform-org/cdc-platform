@@ -1,4 +1,5 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
+import multer from 'multer';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved } from '../middleware/auth';
 import {
@@ -17,7 +18,17 @@ import { generateStoryPlan, CharacterConfig, StoryPlan } from '../services/bookS
 import { generateBookImage, isImageGenerationMocked } from '../services/bookImageGenerationService';
 import { runImageQa, isAcceptableQaStatus } from '../services/bookQaService';
 import { buildBookPdf, BookPdfPageInput } from '../services/bookPdfService';
-import { storeBookAsset, readBookAsset } from '../services/bookStorageService';
+import { storeBookAsset, readBookAsset, deleteBookAsset } from '../services/bookStorageService';
+import {
+  validateCharacterExtras,
+  appearancePromptLine,
+  extraCharactersPromptLine,
+  photoReferencePromptLine,
+  normalizeCharacterPhoto,
+  loadReferenceImage,
+  ALLOWED_CHARACTER_PHOTO_TYPES,
+  MAX_CHARACTER_PHOTO_BYTES,
+} from '../services/bookCharacterDetailsService';
 import { isBookDevPaymentSimulationEnabled } from '../services/bookMockConfig';
 import { completeChildrensBookPurchase } from '../services/bookPurchaseFulfillment';
 import { startFinalGeneration } from '../services/bookFinalGenerationService';
@@ -38,6 +49,52 @@ function isOwner(book: { userId: string } | null, userId: string): book is { use
   return !!book && book.userId === userId;
 }
 
+// Builds characterConfig from a client payload using only the fields the
+// client is allowed to set. Server-owned keys (photoKey, previewImageKey,
+// ...) are never read from the request: they point at private storage, so
+// a client-supplied value could otherwise make the image routes read an
+// asset that belongs to someone else's book.
+type CharacterInput = { name: string; age?: number; traits?: string[]; favoriteThing?: string; dedication?: string | null; appearance?: string; extraCharacters?: string };
+function sanitizeCharacterInput(raw: any): { ok: true; value: CharacterInput } | { ok: false; message: string } {
+  const extras = validateCharacterExtras({ appearance: raw?.appearance, extraCharacters: raw?.extraCharacters });
+  if (!extras.ok) return extras;
+  const value: CharacterInput = { name: String(raw.name).trim() };
+  if (typeof raw.age === 'number' && Number.isFinite(raw.age)) value.age = raw.age;
+  if (Array.isArray(raw.traits)) value.traits = raw.traits.filter((t: unknown) => typeof t === 'string' && t.trim()).map((t: string) => t.trim()).slice(0, 10);
+  if (typeof raw.favoriteThing === 'string' && raw.favoriteThing.trim()) value.favoriteThing = raw.favoriteThing.trim();
+  if (typeof raw.dedication === 'string' && raw.dedication.trim()) value.dedication = raw.dedication.trim();
+  else if (raw.dedication === null) value.dedication = null;
+  Object.assign(value, extras.value);
+  return { ok: true, value };
+}
+
+// Photo of the main character: only before the character is approved,
+// since after approval the portrait (and so the look of the whole book) is
+// locked.
+function canChangeCharacterPhoto(book: { status: string; characterBible: unknown }): boolean {
+  if (book.characterBible) return false;
+  return ['DRAFT', 'STORY_PLAN_READY', 'CHARACTER_PREVIEW_READY', 'FAILED'].includes(book.status);
+}
+
+const photoUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    if ((ALLOWED_CHARACTER_PHOTO_TYPES as readonly string[]).includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Only JPG, PNG or WebP photos are allowed.'));
+  },
+  limits: { fileSize: MAX_CHARACTER_PHOTO_BYTES, files: 1 },
+});
+
+function handlePhotoUpload(req: Request, res: Response, next: NextFunction) {
+  photoUpload.single('photo')(req, res, (err: any) => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ message: `Photo must be at most ${MAX_CHARACTER_PHOTO_BYTES / (1024 * 1024)}MB.` });
+    }
+    return res.status(400).json({ message: err.message || 'Only JPG, PNG or WebP photos are allowed.' });
+  });
+}
+
 // ============================================================
 // CREATE
 // ============================================================
@@ -52,6 +109,8 @@ router.post('/', authenticate, requireApproved, async (req: Request, res: Respon
   if (!character || typeof character !== 'object' || typeof character.name !== 'string' || !character.name.trim()) {
     return res.status(400).json({ message: 'character.name is required.' });
   }
+  const sanitized = sanitizeCharacterInput(character);
+  if (!sanitized.ok) return res.status(400).json({ message: sanitized.message });
   const style = typeof illustrationStyle === 'string' ? illustrationStyle : VALIDATED_ILLUSTRATION_STYLES[0];
   if (!VALIDATED_ILLUSTRATION_STYLES.includes(style as typeof VALIDATED_ILLUSTRATION_STYLES[number])) {
     return res.status(400).json({ message: 'This illustration style is coming soon and is not available for real generation yet.' });
@@ -74,7 +133,7 @@ router.post('/', authenticate, requireApproved, async (req: Request, res: Respon
       language,
       title: title.trim(),
       illustrationStyle: style,
-      characterConfig: character,
+      characterConfig: sanitized.value as any,
       priceGel,
       pageCount,
       audioAddOnPurchased: includesAudio,
@@ -134,14 +193,80 @@ router.put('/:id/character-config', authenticate, async (req: Request, res: Resp
   }
   const { character, title } = req.body ?? {};
   if (character && typeof character !== 'object') return res.status(400).json({ message: 'Invalid character payload.' });
+  let nextConfig: any = undefined;
+  if (character) {
+    if (typeof character.name !== 'string' || !character.name.trim()) return res.status(400).json({ message: 'character.name is required.' });
+    const sanitized = sanitizeCharacterInput(character);
+    if (!sanitized.ok) return res.status(400).json({ message: sanitized.message });
+    // Keep the server-owned photo reference across edits.
+    const existing = (book.characterConfig ?? {}) as any;
+    nextConfig = { ...sanitized.value, ...(existing.photoKey ? { photoKey: existing.photoKey, photoMimeType: existing.photoMimeType } : {}) };
+  }
 
   const updated = await prisma.bookProject.update({
     where: { id: book.id },
     data: {
-      characterConfig: character ?? book.characterConfig ?? undefined,
+      characterConfig: nextConfig,
       title: typeof title === 'string' && title.trim() ? title.trim() : undefined,
     },
   });
+  res.json({ data: updated });
+});
+
+// ============================================================
+// CHARACTER PHOTO (optional) — upload / view / remove
+// ============================================================
+router.post('/:id/character-photo', authenticate, handlePhotoUpload, async (req: Request, res: Response) => {
+  const book = await prisma.bookProject.findUnique({ where: { id: req.params.id } });
+  if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
+  if (!canChangeCharacterPhoto(book)) {
+    return res.status(400).json({ message: 'The photo can only be changed before the character is approved.' });
+  }
+  if (!req.file) return res.status(400).json({ message: 'No photo was selected.' });
+
+  let normalized: Awaited<ReturnType<typeof normalizeCharacterPhoto>>;
+  try {
+    normalized = await normalizeCharacterPhoto(req.file.buffer);
+  } catch {
+    return res.status(400).json({ message: 'This file could not be read as an image.' });
+  }
+
+  const config = (book.characterConfig ?? {}) as any;
+  const key = `books/${book.id}/character-photo-${Date.now().toString(36)}.jpg`;
+  await storeBookAsset(key, normalized.buffer, normalized.mimeType);
+  const updated = await prisma.bookProject.update({
+    where: { id: book.id },
+    data: { characterConfig: { ...config, photoKey: key, photoMimeType: normalized.mimeType } as any },
+  });
+  if (config.photoKey && config.photoKey !== key) await deleteBookAsset(config.photoKey).catch(() => {});
+  res.status(201).json({ data: updated });
+});
+
+router.get('/:id/character-photo', authenticate, async (req: Request, res: Response) => {
+  const book = await prisma.bookProject.findUnique({ where: { id: req.params.id } });
+  if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
+  const config = (book.characterConfig ?? {}) as any;
+  if (!config.photoKey) return res.status(404).json({ message: 'No photo uploaded.' });
+  try {
+    const buffer = await readBookAsset(config.photoKey);
+    res.setHeader('Content-Type', config.photoMimeType || 'image/jpeg');
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.send(buffer);
+  } catch {
+    res.status(404).json({ message: 'Photo not found.' });
+  }
+});
+
+router.delete('/:id/character-photo', authenticate, async (req: Request, res: Response) => {
+  const book = await prisma.bookProject.findUnique({ where: { id: req.params.id } });
+  if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
+  if (!canChangeCharacterPhoto(book)) {
+    return res.status(400).json({ message: 'The photo can only be changed before the character is approved.' });
+  }
+  const { photoKey, photoMimeType, ...rest } = (book.characterConfig ?? {}) as any;
+  void photoMimeType;
+  const updated = await prisma.bookProject.update({ where: { id: book.id }, data: { characterConfig: rest } });
+  if (photoKey) await deleteBookAsset(photoKey).catch(() => {});
   res.json({ data: updated });
 });
 
@@ -218,7 +343,9 @@ router.post('/:id/character-preview', authenticate, async (req: Request, res: Re
   // FAILED with a Character Bible is a paid book whose final generation
   // failed — it resumes via final-generation/start, never back into the
   // pre-payment preview stage.
-  const eligibleFromStates: string[] = book.characterBible ? ['STORY_PLAN_READY'] : ['STORY_PLAN_READY', 'FAILED'];
+  // CHARACTER_PREVIEW_READY is the "Regenerate" button on an unapproved
+  // portrait (e.g. after the parent adds or changes the photo).
+  const eligibleFromStates: string[] = book.characterBible ? ['STORY_PLAN_READY'] : ['STORY_PLAN_READY', 'CHARACTER_PREVIEW_READY', 'FAILED'];
   if (eligibleFromStates.includes(book.status)) {
     const claim = await prisma.bookProject.updateMany({
       where: { id: book.id, status: { in: eligibleFromStates as any } },
@@ -244,11 +371,14 @@ router.post('/:id/character-preview', authenticate, async (req: Request, res: Re
     `Character: ${character.name}${character.age ? `, age ${character.age}` : ''}.`,
     character.traits?.length ? `Traits: ${character.traits.join(', ')}.` : '',
     character.favoriteThing ? `Favorite thing: ${character.favoriteThing}.` : '',
+    appearancePromptLine(character),
+    character.photoKey ? photoReferencePromptLine() : '',
     'Soft watercolor textures, consistent body proportions, delicate clean linework, no readable text or letters anywhere in the image, reserve the upper-left 30% free of detail.',
   ].filter(Boolean).join(' ');
 
+  const referenceImages = await loadReferenceImage(character.photoKey, character.photoMimeType);
   const started = new Date();
-  const result = await generateBookImage({ prompt, size: '1024x1024', quality: 'low' });
+  const result = await generateBookImage({ prompt, size: '1024x1024', quality: 'low', referenceImages });
   const completed = new Date();
 
   const event = await prisma.bookGenerationEvent.create({
@@ -336,7 +466,19 @@ router.post('/:id/character-approval', authenticate, async (req: Request, res: R
   }
 
   const character = (book.characterConfig ?? {}) as any;
-  const characterBible = { name: character.name, age: character.age, traits: character.traits, favoriteThing: character.favoriteThing, previewImageKey: character.previewImageKey };
+  const characterBible = {
+    name: character.name,
+    age: character.age,
+    traits: character.traits,
+    favoriteThing: character.favoriteThing,
+    appearance: character.appearance,
+    extraCharacters: character.extraCharacters,
+    previewImageKey: character.previewImageKey,
+    previewImageMimeType: character.previewImageMimeType,
+    // When the parent gave a photo, final pages use the approved portrait
+    // as a reference image so the child looks the same on every page.
+    useReferencePortrait: !!character.photoKey,
+  };
   const styleBible = { illustrationStyle: book.illustrationStyle };
 
   const claim = await prisma.bookProject.updateMany({
@@ -350,6 +492,23 @@ router.post('/:id/character-approval', authenticate, async (req: Request, res: R
 });
 
 // ============================================================
+// BOOK PREVIEW CONFIRMATION — the buyer has seen the full preview (cover,
+// approved character, every page's text) and wants to continue to payment.
+// Checkout and the dev payment simulation both refuse a book without it.
+// ============================================================
+router.post('/:id/preview-confirm', authenticate, async (req: Request, res: Response) => {
+  const book = await prisma.bookProject.findUnique({ where: { id: req.params.id } });
+  if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
+  if (book.status !== 'CHARACTER_APPROVED' && book.status !== 'PAYMENT_PENDING') {
+    return res.status(400).json({ message: `The preview cannot be confirmed from status ${book.status}.` });
+  }
+  const updated = book.previewConfirmedAt
+    ? book
+    : await prisma.bookProject.update({ where: { id: book.id }, data: { previewConfirmedAt: new Date() } });
+  res.json({ data: updated });
+});
+
+// ============================================================
 // DEV-ONLY PAYMENT SIMULATION — never active in production, never active
 // without the explicit opt-in env flag (see bookMockConfig.ts). Mirrors
 // what a real completed BOG webhook would do, without a real charge.
@@ -360,6 +519,7 @@ router.post('/:id/payment/dev-simulate', authenticate, async (req: Request, res:
   }
   const book = await prisma.bookProject.findUnique({ where: { id: req.params.id } });
   if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
+  if (!book.previewConfirmedAt) return res.status(400).json({ message: 'Please review the book preview before paying.' });
   if (book.status === 'CHARACTER_APPROVED') {
     const claimed = await prisma.bookProject.updateMany({
       where: { id: book.id, status: 'CHARACTER_APPROVED' },
@@ -443,10 +603,15 @@ router.post('/:id/revision', authenticate, async (req: Request, res: Response) =
   const prompt = [
     `Children's storybook illustration revision, ${styleBible?.illustrationStyle ?? 'STORYBOOK_WATERCOLOR'} style.`,
     `Character: ${characterBible?.name ?? ''}, consistent with the approved Character Bible.`,
+    appearancePromptLine(characterBible),
+    extraCharactersPromptLine(characterBible),
     planPage ? `Original scene: ${planPage.sceneDescription}.` : '',
     typeof note === 'string' && note.trim() ? `Requested change: ${note.trim()}.` : '',
     'No readable text or letters anywhere in the image.',
   ].filter(Boolean).join(' ');
+  const revisionReferences = characterBible?.useReferencePortrait
+    ? await loadReferenceImage(characterBible.previewImageKey, characterBible.previewImageMimeType)
+    : [];
 
   const previousAttempts = await prisma.bookGenerationEvent.count({
     where: { bookProjectId: book.id, operationType: 'REVISION', pageNumber, revisionVersion: 1 },
@@ -454,7 +619,7 @@ router.post('/:id/revision', authenticate, async (req: Request, res: Response) =
   const logicalOperationKey = buildLogicalOperationKey({ bookProjectId: book.id, operationType: 'REVISION', pageNumber, revisionVersion: 1 });
 
   const started = new Date();
-  const result = await generateBookImage({ prompt, size: '1024x1024', quality: 'medium' });
+  const result = await generateBookImage({ prompt, size: '1024x1024', quality: 'medium', referenceImages: revisionReferences });
   const completed = new Date();
   const qa = runImageQa({ imageSuccess: result.success, byteSize: result.success ? result.byteSize : 0 });
 

@@ -8,6 +8,10 @@ export interface BookCharacterConfig {
   traits?: string[];
   favoriteThing?: string;
   dedication?: string | null;
+  appearance?: string;
+  extraCharacters?: string;
+  photoKey?: string;
+  photoMimeType?: string;
   previewImageKey?: string;
   previewImageMimeType?: string;
   previewEventId?: string;
@@ -61,6 +65,7 @@ export interface BookProject {
   storyPlan: { title: string; dedication: string | null; pages: unknown[] } | null;
   finalPdfBlobRef: string | null;
   pdfVersion: number;
+  previewConfirmedAt: string | null;
   createdAt: string;
   updatedAt: string;
   pages?: BookPage[];
@@ -121,6 +126,29 @@ export async function generateCharacterPreview(id: string): Promise<{ book: Book
 export async function fetchCharacterPreviewImageUrl(id: string): Promise<string> {
   const response = await apiClient.get(`/childrens-books/${id}/character-preview/image`, { responseType: 'blob' });
   return URL.createObjectURL(response.data as Blob);
+}
+
+export async function uploadCharacterPhoto(id: string, file: File): Promise<BookProject> {
+  const formData = new FormData();
+  formData.append('photo', file);
+  const response = await apiClient.post<{ data: BookProject }>(`/childrens-books/${id}/character-photo`, formData);
+  return response.data.data;
+}
+
+export async function removeCharacterPhoto(id: string): Promise<BookProject> {
+  const response = await apiClient.delete<{ data: BookProject }>(`/childrens-books/${id}/character-photo`);
+  return response.data.data;
+}
+
+// Same blob/object-URL pattern as fetchCharacterPreviewImageUrl.
+export async function fetchCharacterPhotoUrl(id: string): Promise<string> {
+  const response = await apiClient.get(`/childrens-books/${id}/character-photo`, { responseType: 'blob' });
+  return URL.createObjectURL(response.data as Blob);
+}
+
+export async function confirmBookPreview(id: string): Promise<BookProject> {
+  const response = await apiClient.post<{ data: BookProject }>(`/childrens-books/${id}/preview-confirm`);
+  return response.data.data;
 }
 
 export async function approveCharacter(id: string): Promise<BookProject> {

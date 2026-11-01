@@ -32,6 +32,8 @@ async function createBookPath(api: APIRequestContext, pageCount: number, withAud
   expect(beforePayment.priceGel).toBe(pageCount * 100);
   expect(beforePayment.totalPriceGel).toBe(pageCount * 100 + (withAudio ? 500 : 0));
 
+  // The buyer must confirm the book preview before paying.
+  await apiJson(api, 'post', `/childrens-books/${id}/preview-confirm`);
   // Payment completion starts final generation in the background; the
   // client only polls its status.
   await apiJson(api, 'post', `/childrens-books/${id}/payment/dev-simulate`);
@@ -169,6 +171,13 @@ test('children book 5/10/20-page mock golden paths, audio revision, and reader U
     await page.getByRole('button', { name: 'Add for 10 GEL' }).click();
     await expect(page.getByText('Book: 5 GEL · Audio: 5 GEL · Total: 10 GEL', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'devSimulateButton' })).toHaveCount(0);
+    // Preview comes before payment: no Pay button until it is confirmed.
+    await expect(page.getByRole('heading', { name: 'Book preview' })).toBeVisible();
+    // (CI runs with dev payment simulation on, so the payment step shows the
+    // simulate button instead of the real Pay button.)
+    await expect(page.getByRole('button', { name: 'Simulate Payment (dev only)' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Looks good, continue to payment' }).click();
+    await expect(page.getByRole('button', { name: 'Simulate Payment (dev only)' })).toBeVisible();
 
     await page.setViewportSize({ width: 375, height: 812 });
     const wizardMobileWidth = await page.evaluate(() => document.documentElement.scrollWidth);

@@ -29,6 +29,10 @@ import {
   requestRevision,
   generatePdf,
   downloadBookPdf,
+  uploadCharacterPhoto,
+  removeCharacterPhoto,
+  fetchCharacterPhotoUrl,
+  confirmBookPreview,
   BookListItem,
   BookProject,
   AudioNarrationStatus,
@@ -36,10 +40,14 @@ import {
   FinalGenerationStatus,
 } from '../../../src/services/childrensBookService';
 import PromoCodeField from '../../../src/components/shared/PromoCodeField';
+import BookPreview from '../../../src/components/tools/childrensBook/BookPreview';
+import CharacterPhotoField from '../../../src/components/tools/childrensBook/CharacterPhotoField';
 import { PromoValidationResult } from '../../../src/services/paymentService';
 
 const GENERATING_STATUSES = ['CHARACTER_PREVIEW_GENERATING', 'FINAL_GENERATING', 'FINAL_QA', 'REVISION_REQUESTED', 'REVISION_GENERATING', 'REVISION_QA'];
 const POLL_MS = 1500;
+const PHOTO_EDITABLE_STATUSES = ['DRAFT', 'STORY_PLAN_READY', 'CHARACTER_PREVIEW_READY'];
+const TEXT_FIELD_MAX = 500;
 
 function ChildrensBookContent() {
   const { t } = useTranslation('childrensBook');
@@ -60,6 +68,18 @@ function ChildrensBookContent() {
   const promoLang: 'ka' | 'en' = router.locale === 'ka' ? 'ka' : 'en';
   const previewUrlRef = useRef<string | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const photoUrlRef = useRef<string | null>(null);
+  const [showPreviewAgain, setShowPreviewAgain] = useState(false);
+  // Photo picked in the create form, uploaded right after the book is created.
+  const [pendingPhoto, setPendingPhoto] = useState<File | null>(null);
+  const [pendingPhotoUrl, setPendingPhotoUrl] = useState<string | null>(null);
+
+  function replacePhotoUrl(url: string | null) {
+    if (photoUrlRef.current) URL.revokeObjectURL(photoUrlRef.current);
+    photoUrlRef.current = url;
+    setPhotoUrl(url);
+  }
 
   const loadMyBooks = useCallback(async () => {
     setMyBooks(await listMyBooks().catch(() => []));
@@ -100,6 +120,8 @@ function ChildrensBookContent() {
   useEffect(() => {
     let cancelled = false;
     if (book?.id && (book.status === 'CHARACTER_PREVIEW_READY' || book.status === 'CHARACTER_APPROVED') && book.characterConfig?.previewImageKey) {
+      // previewImageKey changes on every regeneration, so this effect
+      // re-runs and shows the new portrait.
       fetchCharacterPreviewImageUrl(book.id).then((url) => {
         if (cancelled) return;
         if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
@@ -111,12 +133,49 @@ function ChildrensBookContent() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [book?.id, book?.status]);
+  }, [book?.id, book?.status, book?.characterConfig?.previewImageKey]);
+
+  // The parent's uploaded photo (thumbnail only while it can still change).
+  useEffect(() => {
+    let cancelled = false;
+    if (book?.id && book.characterConfig?.photoKey && PHOTO_EDITABLE_STATUSES.includes(book.status)) {
+      fetchCharacterPhotoUrl(book.id).then((url) => {
+        if (cancelled) URL.revokeObjectURL(url);
+        else replacePhotoUrl(url);
+      }).catch(() => {});
+    } else {
+      replacePhotoUrl(null);
+    }
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [book?.id, book?.status, book?.characterConfig?.photoKey]);
 
   useEffect(() => () => {
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+    if (photoUrlRef.current) URL.revokeObjectURL(photoUrlRef.current);
   }, []);
+
+  useEffect(() => () => {
+    if (pendingPhotoUrl) URL.revokeObjectURL(pendingPhotoUrl);
+  }, [pendingPhotoUrl]);
+
+  function selectPendingPhoto(file: File | null) {
+    setPendingPhoto(file);
+    setPendingPhotoUrl(file ? URL.createObjectURL(file) : null);
+  }
+
+  async function handlePhotoSelect(file: File) {
+    if (!book) return;
+    await run(async () => setBook(await uploadCharacterPhoto(book.id, file)));
+  }
+
+  async function handlePhotoRemove() {
+    if (!book) return;
+    await run(async () => setBook(await removeCharacterPhoto(book.id)));
+  }
 
   async function handleAudioToggle(nextValue: boolean) {
     if (!book) return;
@@ -187,7 +246,7 @@ function ChildrensBookContent() {
 
   // ---- Create form state ----
   const PAGE_OPTIONS = [5, 10, 15, 20] as const;
-  const [form, setForm] = useState({ title: '', name: '', age: '', traits: '', favoriteThing: '', dedication: '', language: 'EN' as BookLanguage, pageCount: 10 as (typeof PAGE_OPTIONS)[number] });
+  const [form, setForm] = useState({ title: '', name: '', age: '', traits: '', favoriteThing: '', dedication: '', appearance: '', extraCharacters: '', language: 'EN' as BookLanguage, pageCount: 10 as (typeof PAGE_OPTIONS)[number] });
 
   async function handleCreate() {
     await run(async () => {
@@ -201,8 +260,21 @@ function ChildrensBookContent() {
           traits: form.traits ? form.traits.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
           favoriteThing: form.favoriteThing || undefined,
           dedication: form.dedication || null,
+          appearance: form.appearance.trim() || undefined,
+          extraCharacters: form.extraCharacters.trim() || undefined,
         },
       });
+      if (pendingPhoto) {
+        try {
+          await uploadCharacterPhoto(created.id, pendingPhoto);
+        } catch (err: any) {
+          // The book exists either way; the photo can be re-added on the next screen.
+          openBook(created.id);
+          selectPendingPhoto(null);
+          throw err;
+        }
+        selectPendingPhoto(null);
+      }
       openBook(created.id);
     });
   }
@@ -312,6 +384,36 @@ function ChildrensBookContent() {
                 <input className="w-full rounded-lg border border-gray-300 px-3 py-2" value={form.favoriteThing} onChange={(e) => setForm({ ...form, favoriteThing: e.target.value })} />
               </div>
               <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('appearanceLabel')}</label>
+                <textarea
+                  rows={2}
+                  maxLength={TEXT_FIELD_MAX}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                  placeholder={t('appearancePlaceholder')}
+                  value={form.appearance}
+                  onChange={(e) => setForm({ ...form, appearance: e.target.value })}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <CharacterPhotoField
+                  photoUrl={pendingPhotoUrl}
+                  disabled={busy}
+                  onSelect={(file) => selectPendingPhoto(file)}
+                  onRemove={() => selectPendingPhoto(null)}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('extraCharactersLabel')}</label>
+                <textarea
+                  rows={2}
+                  maxLength={TEXT_FIELD_MAX}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                  placeholder={t('extraCharactersPlaceholder')}
+                  value={form.extraCharacters}
+                  onChange={(e) => setForm({ ...form, extraCharacters: e.target.value })}
+                />
+              </div>
+              <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('dedicationLabel')}</label>
                 <input className="w-full rounded-lg border border-gray-300 px-3 py-2" placeholder={t('dedicationPlaceholder')} value={form.dedication} onChange={(e) => setForm({ ...form, dedication: e.target.value })} />
               </div>
@@ -351,6 +453,7 @@ function ChildrensBookContent() {
     );
   }
 
+  const showingBookPreview = book.status === 'CHARACTER_APPROVED' && (!book.previewConfirmedAt || showPreviewAgain);
   const acceptedCount = genStatus?.pages.filter((p) => p.accepted).length ?? book.pages?.filter((p) => p.acceptedEventId).length ?? 0;
   const canListenToAudio = (book.audioAddOnPurchased || !!audioStatus?.audioAddOnPurchased) && book.status !== 'DRAFT' && book.status !== 'STORY_PLAN_READY' && book.status !== 'CHARACTER_PREVIEW_GENERATING' && book.status !== 'CHARACTER_PREVIEW_READY' && book.status !== 'CHARACTER_APPROVED' && book.status !== 'PAYMENT_PENDING';
 
@@ -373,6 +476,13 @@ function ChildrensBookContent() {
         {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
         <div className="rounded-xl border border-gray-200 bg-white p-6">
+          {PHOTO_EDITABLE_STATUSES.includes(book.status) && (
+            <div className="mb-5 pb-5 border-b border-gray-100">
+              <CharacterPhotoField photoUrl={photoUrl} disabled={busy} onSelect={handlePhotoSelect} onRemove={handlePhotoRemove} />
+              {book.status === 'CHARACTER_PREVIEW_READY' && <p className="text-xs text-purple-700 mt-2">{t('photoRegenerateHint')}</p>}
+            </div>
+          )}
+
           {book.status === 'CHARACTER_APPROVED' && (
             <div className="mb-5 rounded-xl border border-purple-200 bg-purple-50 p-4">
               <div className="flex items-center justify-between gap-3">
@@ -423,8 +533,12 @@ function ChildrensBookContent() {
 
           {(book.status === 'CHARACTER_PREVIEW_READY' || book.status === 'CHARACTER_APPROVED') && (
             <>
-              <h2 className="font-semibold text-gray-800 mb-3">{t('step3Title')}</h2>
-              {previewUrl && <img src={previewUrl} alt={book.characterConfig?.name || ''} className="w-48 h-48 object-contain rounded-lg border border-gray-200 bg-gray-50 mb-4" />}
+              {!showingBookPreview && (
+                <>
+                  <h2 className="font-semibold text-gray-800 mb-3">{t('step3Title')}</h2>
+                  {previewUrl && <img src={previewUrl} alt={book.characterConfig?.name || ''} className="w-48 h-48 object-contain rounded-lg border border-gray-200 bg-gray-50 mb-4" />}
+                </>
+              )}
               {book.status === 'CHARACTER_PREVIEW_READY' && (
                 <div className="flex gap-3">
                   <button disabled={busy} onClick={() => run(async () => setBook(await approveCharacter(book.id)))} className="px-5 py-2 rounded-lg bg-green-600 text-white font-medium disabled:opacity-50 flex items-center gap-1">
@@ -435,9 +549,21 @@ function ChildrensBookContent() {
                   </button>
                 </div>
               )}
-              {book.status === 'CHARACTER_APPROVED' && (
+              {showingBookPreview && (
+                <div>
+                  <BookPreview
+                    book={book}
+                    portraitUrl={previewUrl}
+                    busy={busy}
+                    onConfirm={book.previewConfirmedAt ? null : () => run(async () => setBook(await confirmBookPreview(book.id)))}
+                    onClose={book.previewConfirmedAt ? () => setShowPreviewAgain(false) : undefined}
+                  />
+                </div>
+              )}
+              {book.status === 'CHARACTER_APPROVED' && book.previewConfirmedAt && !showPreviewAgain && (
                 <>
-                  <p className="text-sm text-gray-600 mb-4">{t('paymentIntro', { count: book.pageCount })}</p>
+                  <p className="text-sm text-gray-600 mb-2">{t('paymentIntro', { count: book.pageCount })}</p>
+                  <button onClick={() => setShowPreviewAgain(true)} className="text-sm text-purple-600 font-medium hover:underline mb-4 inline-block">{t('previewViewAgain')}</button>
                   {devPaymentSimulationEnabled ? (
                     <>
                       <p className="text-xs rounded-lg bg-amber-50 border border-amber-200 text-amber-700 px-3 py-2 mb-3 inline-block">{t('devModeRealPaymentDisabledNotice')}</p>
