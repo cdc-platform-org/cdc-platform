@@ -13,12 +13,19 @@ import { resolveBlogImageUrl } from '../../src/services/blogService';
 // these slugs are read) — pre-seeded here so an admin sees every real tool
 // immediately rather than an empty list, but the array itself is fully
 // admin-editable (add/remove) for whatever gets built next.
-const KNOWN_TOOLS: { slug: string; route: string }[] = [
-  { slug: 'educator-hub', route: '/dashboard/tools/educator-hub' },
-  { slug: 'media-studio', route: '/dashboard/tools/media-studio' },
-  { slug: 'english-tutor', route: '/dashboard/english-tutor' },
-  { slug: 'proctoring', route: '/dashboard/tools/proctored-exam' },
-  { slug: 'childrens-book', route: '/dashboard/tools/childrens-book' },
+const KNOWN_TOOLS: { slug: string; route: string; name: string; statusWired: boolean }[] = [
+  { slug: 'childrens-book', route: '/dashboard/tools/childrens-book', name: 'პერსონალური საბავშვო წიგნი', statusWired: true },
+  { slug: 'media-studio', route: '/dashboard/tools/media-studio', name: 'AI ხმის და ვიდეოს სტუდია', statusWired: true },
+  { slug: 'educator-hub', route: '/dashboard/tools/educator-hub', name: 'AI Educator VIP Hub', statusWired: true },
+  { slug: 'proctoring', route: '/dashboard/tools/proctored-exam', name: 'AI საპრაქტიკო გამოცდა', statusWired: true },
+  { slug: 'english-tutor', route: '/dashboard/english-tutor', name: 'AI ინგლისურის რეპეტიტორი', statusWired: true },
+  { slug: 'smart-reader', route: '/#ai-tools', name: 'AI ჭკვიანი წამკითხველი (მაღაზიის ბარათი)', statusWired: true },
+  // /tools page cards that used to be hard-coded: text, bullets and cover
+  // are editable; their visibility is still fixed in code.
+  { slug: 'enterprise-ai', route: '/dashboard/tools/chatbot-builder', name: 'Enterprise AI ასისტენტი', statusWired: false },
+  { slug: 'exam-screening', route: '/dashboard/tools/proctored-exam', name: 'AI გამოცდა კანდიდატებისთვის (ბიზნესი)', statusWired: false },
+  { slug: 'cyber-sentinel', route: '/tools', name: 'Cyber Sentinel AI', statusWired: false },
+  { slug: 'ag-saia', route: '/tools', name: 'AG-SAIA', statusWired: false },
 ];
 
 const STATUS_OPTIONS: { value: ToolCatalogStatus; label: string }[] = [
@@ -79,7 +86,13 @@ function ToolEntryEditor({
   };
 
   return (
-    <div className="border border-gray-100 rounded-lg p-4 space-y-3">
+    <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+      {known && (
+        <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-2">
+          <h3 className="text-sm font-semibold text-gray-900">{known.name}</h3>
+          {!known.statusWired && <span className="text-[11px] text-gray-400">სტატუსი ამ ბარათზე ჯერ არ მოქმედებს</span>}
+        </div>
+      )}
       <div className="flex items-center justify-between gap-3">
         <div className="flex-1">
           <label className={labelClass}>Slug (matches the tool&apos;s card id — see tools.tsx / marketplace/index.tsx)</label>
@@ -99,7 +112,7 @@ function ToolEntryEditor({
       </div>
 
       <div>
-        <label className={labelClass}>Cover image — shown at the top of the tool&apos;s card in place of the default gradient/icon header</label>
+        <label className={labelClass}>ქავერის ფოტო (Cover) — ჩანს ბარათზე /tools და /marketplace გვერდებზე. ცარიელი = ძველი ხატულა. რეკომენდებული ზომა 1600×1000</label>
         <div className="flex flex-col sm:flex-row gap-2">
           <input
             value={entry.imageUrl ?? ''}
@@ -255,8 +268,7 @@ function ToolsCmsDashboard() {
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Tool Catalog CMS</h1>
             <p className="text-sm text-gray-500 mt-1">
-              Controls the title, subtitle, badge, pricing label, description, and feature bullets for each SaaS tool card on /tools and
-              /marketplace. Leave a field empty to keep that page&apos;s existing default text.
+              აქედან იცვლება თითოეული AI ხელსაწყოს ქავერის ფოტო, სათაური, აღწერა, ბეჯი და ჩამონათვალი /tools და /marketplace გვერდებზე. ცარიელი ველი = გვერდის საწყისი ტექსტი. ცვლილების შემდეგ დააჭირე „Save Changes“.
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0">

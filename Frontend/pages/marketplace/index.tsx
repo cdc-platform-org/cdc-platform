@@ -18,7 +18,8 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
 import { getSiteContent } from '../../src/services/siteContentService';
 import { ToolCatalogContent } from '../../src/types/siteContent';
-import { findToolEntry, overrideText } from '../../src/utils/toolCatalog';
+import { findToolEntry, overrideText, overrideList } from '../../src/utils/toolCatalog';
+import { resolveBlogImageUrl } from '../../src/services/blogService';
 
 // CDC-built AI tools cross-listed under the Digital AI Tools category — these are
 // NOT DigitalProduct rows (no price, no file, no seller — they're live
@@ -292,7 +293,7 @@ function MarketplaceContent() {
     },
   };
 
-  type SaasToolCopy = { title: string; desc: string; badge: string; cta: string; features?: string[]; status: 'ACTIVE' | 'COMING_SOON' | 'DISABLED' };
+  type SaasToolCopy = { title: string; desc: string; badge: string; cta: string; features?: string[]; imageUrl?: string; status: 'ACTIVE' | 'COMING_SOON' | 'DISABLED' };
 
   // Layers pages/admin/tools.tsx's saved overrides on top of the defaults
   // above — a DISABLED entry is hidden entirely, COMING_SOON swaps the CTA
@@ -306,7 +307,8 @@ function MarketplaceContent() {
       desc: overrideText(fallback.desc, lang === 'ka' ? cms?.descriptionKa : cms?.descriptionEn),
       badge: overrideText(fallback.badge, lang === 'ka' ? cms?.badgeKa : cms?.badgeEn),
       cta: fallback.cta,
-      features: fallback.features,
+      features: overrideList(fallback.features ?? [], lang === 'ka' ? cms?.featuresKa : cms?.featuresEn),
+      imageUrl: cms?.imageUrl?.trim() || undefined,
       status: cms?.status ?? 'ACTIVE',
     };
     return acc;
@@ -419,13 +421,21 @@ function MarketplaceContent() {
                         goToSaasTool(href);
                       }
                     }}
-                    className={`group rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 overflow-hidden p-5 flex gap-4 items-start ${
+                    className={`group rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 overflow-hidden p-5 flex flex-wrap gap-4 items-start ${
                       comingSoon ? 'opacity-80' : 'cursor-pointer hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10'
                     }`}
                   >
-                    <div className={`shrink-0 w-12 h-12 rounded-xl bg-gradient-to-tr ${accent} flex items-center justify-center`}>
-                      <Icon className="w-6 h-6 text-white" />
-                    </div>
+                    {copy.imageUrl ? (
+                      // Admin-set cover (pages/admin/tools.tsx), full-bleed across the card top.
+                      <div className="-mx-5 -mt-5 w-[calc(100%+2.5rem)] max-w-none shrink-0 aspect-[2/1] overflow-hidden bg-slate-100 dark:bg-slate-800">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- admin-uploaded CMS image on the API origin */}
+                        <img src={resolveBlogImageUrl(copy.imageUrl)} alt={copy.title} onError={onImageErrorFallback} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                      </div>
+                    ) : (
+                      <div className={`shrink-0 w-12 h-12 rounded-xl bg-gradient-to-tr ${accent} flex items-center justify-center`}>
+                        <Icon className="w-6 h-6 text-white" />
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5 mb-1">
                         <h3 className="text-sm font-black tracking-wide group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">{copy.title}</h3>
@@ -434,7 +444,7 @@ function MarketplaceContent() {
                         {comingSoon ? t('comingSoonBadge') : copy.badge}
                       </span>
                       <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 mb-2">{copy.desc}</p>
-                      {copy.features && <ul className="mb-3 grid gap-1 text-xs text-slate-600 dark:text-slate-300">{copy.features.map((feature) => <li key={feature}>• {feature}</li>)}</ul>}
+                      {copy.features && copy.features.length > 0 && <ul className="mb-3 grid gap-1 text-xs text-slate-600 dark:text-slate-300">{copy.features.map((feature) => <li key={feature}>• {feature}</li>)}</ul>}
                       {!comingSoon && <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">{copy.cta} →</span>}
                     </div>
                   </div>
