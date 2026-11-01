@@ -84,3 +84,12 @@ export function runImageQa(params: { imageSuccess: boolean; byteSize?: number })
     checks: { ...ALL_PASS, STYLE_ADHERENCE: false, SCENE_INSTRUCTION_ADHERENCE: false, CHARACTER_ATTRIBUTES: false, CONTENT_SAFETY: false },
   };
 }
+
+// Whether a generated image may become a page's accepted artifact. PARTIAL
+// is real mode today: the image exists and is valid, but vision-QA isn't
+// wired yet. Requiring PASS there rejected every real page, so a paid book
+// could never finish in production. Only a missing/broken image (FAIL)
+// blocks acceptance.
+export function isAcceptableQaStatus(status: BookQaStatus): boolean {
+  return status === 'PASS' || status === 'PARTIAL';
+}
