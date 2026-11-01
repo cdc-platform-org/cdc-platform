@@ -42,6 +42,9 @@ export interface BookImageParams {
   prompt: string;
   size?: '1024x1024' | '1536x1024' | '1024x1536' | 'auto';
   quality?: 'low' | 'medium' | 'high' | 'auto';
+  // Reference images the character must match (parent's photo, approved
+  // character portrait). Ignored in mock mode.
+  referenceImages?: Array<{ buffer: Buffer; mimeType: string }>;
 }
 
 export type BookImageResult = azureImage.GenerateImageResult;
@@ -82,5 +85,6 @@ export async function generateBookImage(params: BookImageParams): Promise<BookIm
     size: params.size ?? '1024x1024',
     quality: params.quality ?? 'low',
     outputFormat: 'png',
+    referenceImages: params.referenceImages,
   });
 }

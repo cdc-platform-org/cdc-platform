@@ -37,6 +37,11 @@ export interface CharacterConfig {
   traits?: string[];
   favoriteThing?: string;
   dedication?: string | null;
+  // Optional extras (see bookCharacterDetailsService.ts).
+  appearance?: string;
+  extraCharacters?: string;
+  photoKey?: string;
+  photoMimeType?: string;
 }
 
 // 20 distinct beats, one coherent arc — ALLOWED_PAGE_COUNTS (5/10/15/20)
@@ -68,22 +73,26 @@ const ARC = [
 
 function buildMockStoryPlan(title: string, character: CharacterConfig, language: BookLanguage, pageCount: number): StoryPlan {
   const name = character.name || (language === 'KA' ? 'გმირი' : 'the hero');
+  const extras = character.extraCharacters?.replace(/\s+/g, ' ').trim();
   const pages: StoryPlanPage[] = ARC.slice(0, pageCount).map((step, i) => {
     const pageNumber = i + 1;
+    // Supporting characters the parent asked for join on the first page and
+    // stay in the scene descriptions so the illustrations include them.
+    const withExtras = extras && pageNumber === 1;
     const storyText =
       language === 'KA'
-        ? `${name} ${step.beat === ARC[0].beat ? 'პოულობს' : 'აღმოაჩენს'} ახალ თავგადასავალს — გვერდი ${pageNumber}.`
-        : `${name} ${step.beat} — a new page in the adventure (page ${pageNumber}).`;
+        ? `${name}${withExtras ? ` (${extras})` : ''} ${step.beat === ARC[0].beat ? 'პოულობს' : 'აღმოაჩენს'} ახალ თავგადასავალს — გვერდი ${pageNumber}.`
+        : `${name}${withExtras ? `, together with ${extras},` : ''} ${step.beat} — a new page in the adventure (page ${pageNumber}).`;
     return {
       pageNumber,
       storyText,
-      sceneDescription: `${name} ${step.beat}`,
+      sceneDescription: `${name} ${step.beat}${extras ? ` (supporting characters nearby: ${extras})` : ''}`,
       emotion: step.emotion,
       characterAction: step.beat,
       objectInteraction: pageNumber % 3 === 0 ? 'interacts with a glowing magical object' : 'none',
       composition: pageNumber === 1 ? 'wide establishing shot, character centered' : 'medium shot, character slightly off-center, room for text',
       textSafeZone: 'upper-left 30% reserved, no illustration detail or generated text inside it',
-      negativeRules: ['no readable text or letters anywhere in the image', 'no extra characters not described in the scene', 'no logos or watermarks'],
+      negativeRules: ['no readable text or letters anywhere in the image', extras ? 'no characters other than the main character and the listed supporting characters' : 'no extra characters not described in the scene', 'no logos or watermarks'],
     };
   });
   return { title, dedication: character.dedication ?? null, pages };

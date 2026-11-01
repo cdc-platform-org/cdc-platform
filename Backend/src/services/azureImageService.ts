@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+import OpenAI, { toFile } from 'openai';
 import { AZURE_IMAGE_ENDPOINT, AZURE_IMAGE_API_KEY, AZURE_IMAGE_DEPLOYMENT } from '../utils/env';
 
 // ============================================================
@@ -91,6 +91,11 @@ export interface GenerateImageParams {
   quality?: 'low' | 'medium' | 'high' | 'auto';
   outputFormat?: 'png' | 'jpeg' | 'webp';
   n?: number; // 1-10; this phase only ever calls with the default of 1.
+  // Optional reference images (e.g. the parent's photo of the child, or the
+  // approved character portrait). When present the call goes to
+  // /images/edits instead of /images/generations so the model draws the
+  // character to match them. Never logged.
+  referenceImages?: Array<{ buffer: Buffer; mimeType: string }>;
 }
 
 export interface GenerateImageSuccess {
@@ -132,16 +137,32 @@ export async function generateImage(params: GenerateImageParams): Promise<Genera
 
   const start = Date.now();
   try {
-    const { data, response } = await getClient()
-      .images.generate({
-        model: AZURE_IMAGE_DEPLOYMENT,
-        prompt: params.prompt,
-        n: params.n ?? 1,
-        size: params.size,
-        quality: params.quality,
-        output_format: params.outputFormat,
-      })
-      .withResponse();
+    const { data, response } = params.referenceImages?.length
+      ? await getClient()
+          .images.edit({
+            model: AZURE_IMAGE_DEPLOYMENT,
+            prompt: params.prompt,
+            image: await Promise.all(
+              params.referenceImages.map((ref, i) =>
+                toFile(ref.buffer, `reference-${i}.${ref.mimeType.split('/')[1] || 'png'}`, { type: ref.mimeType })
+              )
+            ),
+            n: params.n ?? 1,
+            size: params.size,
+            quality: params.quality,
+            output_format: params.outputFormat,
+          })
+          .withResponse()
+      : await getClient()
+          .images.generate({
+            model: AZURE_IMAGE_DEPLOYMENT,
+            prompt: params.prompt,
+            n: params.n ?? 1,
+            size: params.size,
+            quality: params.quality,
+            output_format: params.outputFormat,
+          })
+          .withResponse();
 
     const latencyMs = Date.now() - start;
     const requestId = response.headers.get('x-request-id') ?? response.headers.get('apim-request-id');

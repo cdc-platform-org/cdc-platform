@@ -35,6 +35,7 @@ export async function assertBookReadyForCheckout(bookProjectId: string, userId: 
   const book = await prisma.bookProject.findUnique({ where: { id: bookProjectId } });
   if (!book || book.userId !== userId) throw new BookNotFoundError();
   if (!canInitiatePayment({ status: book.status })) throw new BookNotEligibleForCheckoutError(book.status);
+  if (!book.previewConfirmedAt) throw new BookPreviewNotConfirmedError();
   return { id: book.id, pageCount: book.pageCount, audioAddOnPurchased: !!book.audioAddOnPurchased };
 }
 
@@ -42,6 +43,15 @@ export class BookNotFoundError extends Error {
   constructor() {
     super('Book not found.');
     this.name = 'BookNotFoundError';
+  }
+}
+
+// The buyer hasn't confirmed the book preview yet (POST
+// /childrens-books/:id/preview-confirm). Mapped to a 400 by the checkout route.
+export class BookPreviewNotConfirmedError extends Error {
+  constructor() {
+    super('Please review the book preview before paying.');
+    this.name = 'BookPreviewNotConfirmedError';
   }
 }
 

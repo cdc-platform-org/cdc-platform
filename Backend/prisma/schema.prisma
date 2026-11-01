@@ -5492,6 +5492,13 @@ model BookProject {
   finalPdfBlobRef String?
   pdfVersion      Int     @default(0)
 
+  // Set when the buyer has looked at the full book preview (cover,
+  // approved character, every page's story text) and pressed "continue to
+  // payment". Checkout refuses a book without it, so nobody pays for a
+  // book they haven't seen. Null on every pre-existing row — those books
+  // simply show the preview once more before paying.
+  previewConfirmedAt DateTime?
+
   // Both stored as plain strings (not enums) deliberately: `previewQuality`
   // is effectively a locked constant today but gpt-image-2's quality tier
   // names aren't a CDC-owned enum; `finalQuality` is explicitly

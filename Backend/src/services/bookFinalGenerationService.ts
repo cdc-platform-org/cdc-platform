@@ -4,6 +4,7 @@ import { StoryPlan } from './bookStoryPlanService';
 import { generateBookImage } from './bookImageGenerationService';
 import { runImageQa } from './bookQaService';
 import { storeBookAsset } from './bookStorageService';
+import { appearancePromptLine, extraCharactersPromptLine, loadReferenceImage } from './bookCharacterDetailsService';
 
 // ============================================================
 // Children's Book — final generation runner. Runs in the background, never
@@ -81,6 +82,11 @@ async function runFinalGeneration(bookProjectId: string): Promise<void> {
   const storyPlan = book.storyPlan as unknown as StoryPlan;
   const characterBible = book.characterBible as any;
   const styleBible = book.styleBible as any;
+  // Loaded once per run: the approved portrait, used as a reference image
+  // only for books where the parent supplied a photo.
+  const referenceImages = characterBible?.useReferencePortrait
+    ? await loadReferenceImage(characterBible.previewImageKey, characterBible.previewImageMimeType)
+    : [];
 
   for (const page of book.pages) {
     if (page.acceptedEventId) continue; // already accepted — per-page retry only touches unfinished pages
@@ -89,6 +95,8 @@ async function runFinalGeneration(bookProjectId: string): Promise<void> {
     const prompt = [
       `Children's storybook illustration, ${styleBible?.illustrationStyle ?? 'STORYBOOK_WATERCOLOR'} style.`,
       `Character: ${characterBible?.name ?? ''}, consistent with the approved Character Bible.`,
+      appearancePromptLine(characterBible),
+      extraCharactersPromptLine(characterBible),
       planPage ? `Scene: ${planPage.sceneDescription}. Composition: ${planPage.composition}.` : '',
       'No readable text or letters anywhere in the image. Reserve the upper-left 30% free of detail.',
     ].filter(Boolean).join(' ');
@@ -102,7 +110,7 @@ async function runFinalGeneration(bookProjectId: string): Promise<void> {
       await prisma.bookPage.update({ where: { id: page.id }, data: { imageGenerationStatus: 'GENERATING', attemptCount: { increment: 1 } } });
 
       const started = new Date();
-      const result = await generateBookImage({ prompt, size: '1024x1024', quality: book.finalQuality === 'high' ? 'high' : 'medium' });
+      const result = await generateBookImage({ prompt, size: '1024x1024', quality: book.finalQuality === 'high' ? 'high' : 'medium', referenceImages });
       const completed = new Date();
       const qa = runImageQa({ imageSuccess: result.success, byteSize: result.success ? result.byteSize : 0 });
 

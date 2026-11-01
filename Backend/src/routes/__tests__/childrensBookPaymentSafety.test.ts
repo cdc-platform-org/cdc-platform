@@ -86,6 +86,7 @@ async function createApprovedBook(user: User): Promise<string> {
   await request(`/api/childrens-books/${book.id}/story-plan`, user, 'POST');
   await request(`/api/childrens-books/${book.id}/character-preview`, user, 'POST');
   await request(`/api/childrens-books/${book.id}/character-approval`, user, 'POST');
+  await request(`/api/childrens-books/${book.id}/preview-confirm`, user, 'POST');
   return book.id;
 }
 
