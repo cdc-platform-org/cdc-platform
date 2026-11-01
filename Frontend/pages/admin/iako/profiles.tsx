@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
+import KaToEnButton from '../../../src/components/admin/KaToEnButton';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -158,6 +159,7 @@ function AdminIakoProfilesContent() {
             <input maxLength={200} value={draft.mentorTagline ?? ''} onChange={(e) => setDraft({ ...draft, mentorTagline: e.target.value || null })} className={`${inputClass} mt-2`} />
           </label>
           <label className="block text-sm font-medium">Description<input maxLength={2000} value={draft.description ?? ''} onChange={(e) => setDraft({ ...draft, description: e.target.value || null })} className={`${inputClass} mt-2`} /></label>
+          <KaToEnButton pairs={[{ ka: draft.welcomeMessageKa, setEn: (en) => setDraft((d) => (d ? { ...d, welcomeMessageEn: en } : d)) }]} />
           <div className="grid sm:grid-cols-2 gap-4">
             <label className="text-sm font-medium">Welcome message (Georgian)<textarea rows={4} maxLength={2000} value={draft.welcomeMessageKa ?? ''} onChange={(e) => setDraft({ ...draft, welcomeMessageKa: e.target.value || null })} className={`${inputClass} mt-2`} /></label>
             <label className="text-sm font-medium">Welcome message (English)<textarea rows={4} maxLength={2000} value={draft.welcomeMessageEn ?? ''} onChange={(e) => setDraft({ ...draft, welcomeMessageEn: e.target.value || null })} className={`${inputClass} mt-2`} /></label>

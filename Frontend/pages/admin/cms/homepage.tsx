@@ -5,6 +5,7 @@ import AdminLayout from '../../../src/components/admin/AdminLayout';
 import { HomepageContent, HomepageStat, HomepageFaqItem } from '../../../src/types/siteContent';
 import { getAdminSiteContent, updateSiteContent, uploadCmsImage } from '../../../src/services/siteContentService';
 import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../../src/utils/imageUpload';
+import KaToEnButton from '../../../src/components/admin/KaToEnButton';
 import { resolveBlogImageUrl } from '../../../src/services/blogService';
 
 const emptyStat: HomepageStat = { valueKa: '', labelKa: '', valueEn: '', labelEn: '' };
@@ -113,7 +114,14 @@ function HomepageCmsDashboard() {
 
         {/* Hero */}
         <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
-          <h2 className="font-semibold text-sm text-gray-900 mb-4">Hero Section</h2>
+          <h2 className="font-semibold text-sm text-gray-900 mb-3">Hero Section</h2>
+          <KaToEnButton
+            className="mb-4"
+            pairs={[{ ka: content.heroTitleKa }, { ka: content.heroSubtitleKa }]}
+            onTranslated={([title, subtitle]) =>
+              setContent({ ...content, ...(title ? { heroTitleEn: title } : {}), ...(subtitle ? { heroSubtitleEn: subtitle } : {}) })
+            }
+          />
           <div className="grid md:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1.5">Title (Georgian)</label>
@@ -244,6 +252,18 @@ function HomepageCmsDashboard() {
               + Add stat
             </button>
           </div>
+          {(content.stats ?? []).length > 0 && (
+            <KaToEnButton
+              className="mb-3"
+              pairs={(content.stats ?? []).flatMap((st) => [{ ka: st.valueKa }, { ka: st.labelKa }])}
+              onTranslated={(v) =>
+                setContent({
+                  ...content,
+                  stats: (content.stats ?? []).map((st, i) => ({ ...st, valueEn: v[2 * i] ?? st.valueEn, labelEn: v[2 * i + 1] ?? st.labelEn })),
+                })
+              }
+            />
+          )}
           {(content.stats ?? []).length === 0 && <p className="text-xs text-gray-400 mb-2">Using default stats (200+ Graduates, 100% Practical Tasks).</p>}
           <div className="space-y-3">
             {(content.stats ?? []).map((stat, i) => (
@@ -276,6 +296,18 @@ function HomepageCmsDashboard() {
               + Add question
             </button>
           </div>
+          {(content.faq ?? []).length > 0 && (
+            <KaToEnButton
+              className="mb-3"
+              pairs={(content.faq ?? []).flatMap((f) => [{ ka: f.questionKa }, { ka: f.answerKa }])}
+              onTranslated={(v) =>
+                setContent({
+                  ...content,
+                  faq: (content.faq ?? []).map((f, i) => ({ ...f, questionEn: v[2 * i] ?? f.questionEn, answerEn: v[2 * i + 1] ?? f.answerEn })),
+                })
+              }
+            />
+          )}
           {(content.faq ?? []).length === 0 && <p className="text-xs text-gray-400 mb-2">No FAQ items — the section is hidden on the homepage until you add one.</p>}
           <div className="space-y-4">
             {(content.faq ?? []).map((item, i) => (

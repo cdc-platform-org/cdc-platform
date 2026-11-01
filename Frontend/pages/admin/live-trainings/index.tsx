@@ -5,6 +5,7 @@ import { Users } from 'lucide-react';
 import AdminGuard from '../../../src/components/admin/AdminGuard';
 import AdminLayout from '../../../src/components/admin/AdminLayout';
 import RichTextEditor from '../../../src/components/shared/RichTextEditor';
+import KaToEnButton from '../../../src/components/admin/KaToEnButton';
 import VideoEmbed, { parseVideoUrl } from '../../../src/components/shared/VideoEmbed';
 import { LiveTraining } from '../../../src/types/liveTraining';
 import { CourseLanguage } from '../../../src/types/lms';
@@ -924,6 +925,14 @@ function AdminLiveTrainingsDashboard() {
                 </button>
               ))}
             </div>
+
+            <KaToEnButton
+              pairs={[{ ka: form.title }, { ka: form.description }]}
+              onTranslated={([titleEn, descriptionEn]) => {
+                setForm((f) => ({ ...f, ...(titleEn ? { titleEn } : {}), ...(descriptionEn ? { descriptionEn } : {}) }));
+                setActiveLangTab('en');
+              }}
+            />
 
             {activeLangTab === 'ka' ? (
               <>

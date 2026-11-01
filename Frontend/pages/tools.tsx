@@ -36,7 +36,7 @@ import SEOHead from '@/src/components/seo/SEOHead';
 import { buildSoftwareApplicationSchema } from '@/src/utils/seo';
 import { getSiteContent } from '@/src/services/siteContentService';
 import { ToolCatalogContent } from '@/src/types/siteContent';
-import { findToolEntry, overrideText } from '@/src/utils/toolCatalog';
+import { customToolEntries, findToolEntry, overrideText } from '@/src/utils/toolCatalog';
 import { resolveBlogImageUrl } from '@/src/services/blogService';
 import { onImageErrorFallback } from '@/src/utils/imageFallback';
 import type { LucideIcon } from 'lucide-react';
@@ -419,6 +419,82 @@ function ToolCover({ imageUrl, icon: Icon, gradient, alt }: { imageUrl?: string;
   return (
     <div className={`shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr ${gradient} flex items-center justify-center`}>
       <Icon className="w-7 h-7 text-white" />
+    </div>
+  );
+}
+
+// Only site paths ("/...") and http(s) URLs are allowed as a custom card's
+// button target; anything else (e.g. "javascript:") renders no button.
+function safeToolHref(url?: string): string | null {
+  const u = (url ?? '').trim();
+  if (u.startsWith('/') && !u.startsWith('//')) return u;
+  if (/^https?:\/\//i.test(u)) return u;
+  return null;
+}
+
+// Generic card for a tool an admin added in /admin/tools (any slug that has
+// no hand-built card on this page).
+function CustomToolCard({ entry, lang, comingSoonLabel }: { entry: ToolCatalogEntry; lang: 'ka' | 'en'; comingSoonLabel: string }) {
+  const pick = (ka?: string, en?: string) => (lang === 'ka' ? ka || en : en || ka) ?? '';
+  const title = pick(entry.titleKa, entry.titleEn);
+  const subtitle = pick(entry.subtitleKa, entry.subtitleEn);
+  const description = pick(entry.descriptionKa, entry.descriptionEn);
+  const badge = pick(entry.badgeKa, entry.badgeEn);
+  const pricing = pick(entry.pricingLabelKa, entry.pricingLabelEn);
+  const features = (lang === 'ka' ? entry.featuresKa?.length ? entry.featuresKa : entry.featuresEn : entry.featuresEn?.length ? entry.featuresEn : entry.featuresKa) ?? [];
+  const comingSoon = entry.status === 'COMING_SOON';
+  const href = comingSoon ? null : safeToolHref(entry.linkUrl);
+  const external = href ? /^https?:/i.test(href) : false;
+  const buttonClass =
+    'inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all';
+  const buttonLabel = lang === 'ka' ? 'გახსნა' : 'Open';
+  return (
+    <div className="lg:col-span-3 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-8 flex flex-col lg:flex-row gap-8 items-start">
+      <ToolCover imageUrl={entry.imageUrl} icon={Sparkles} gradient="from-cyan-500 to-purple-600" alt={title} />
+      <div className="flex-1">
+        <div className="flex flex-wrap items-center gap-2 mb-1">
+          <h2 className="text-xl font-black tracking-wide">{title}</h2>
+          {comingSoon ? (
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+              <Lock className="w-3 h-3" />
+              {comingSoonLabel}
+            </span>
+          ) : (
+            badge && (
+              <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-500/30">
+                {badge}
+              </span>
+            )
+          )}
+        </div>
+        {subtitle && <p className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">{subtitle}</p>}
+        {description && <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5 whitespace-pre-line">{description}</p>}
+        {features.length > 0 && (
+          <ul className="grid sm:grid-cols-2 gap-3">
+            {features.map((label) => (
+              <li key={label} className="flex items-center gap-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                <Sparkles className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
+                {label}
+              </li>
+            ))}
+          </ul>
+        )}
+        {(href || pricing) && (
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            {href &&
+              (external ? (
+                <a href={href} target="_blank" rel="noopener noreferrer" className={buttonClass}>
+                  {buttonLabel} →
+                </a>
+              ) : (
+                <Link href={href} className={buttonClass}>
+                  {buttonLabel} →
+                </Link>
+              ))}
+            {pricing && <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{pricing}</span>}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -854,6 +930,11 @@ export default function ToolsPage() {
               </div>
             </div>
           </div>
+
+          {/* Tools an admin added in /admin/tools that have no hand-built card. */}
+          {customToolEntries(toolCatalog?.tools).map((entry, i) => (
+            <CustomToolCard key={`${entry.slug}-${i}`} entry={entry} lang={catLang} comingSoonLabel={t.comingSoon} />
+          ))}
 
           {/* Store — downloadable products (UI kits, prompts, templates), a
               separate concept from CDC's own SaaS products above. */}
