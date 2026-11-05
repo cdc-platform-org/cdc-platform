@@ -4,6 +4,7 @@ import VIPAudioNarrator from '../ui/VIPAudioNarrator';
 import TutorOnboardingFlow from './TutorOnboardingFlow';
 import TutorPaywallModal from './TutorPaywallModal';
 import VocabWaitingGame from './VocabWaitingGame';
+import A1GuidedCourse from './a1Course/A1GuidedCourse';
 import {
   TutorTaskType,
   CefrLevel,
@@ -227,6 +228,10 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
   // "lesson ready" banner (with the score just earned) after the request
   // finishes, rather than unmounting the instant generating flips false.
   const [showWaitingGame, setShowWaitingGame] = useState(false);
+  // A1 learners get the step-by-step course instead of a generated wall of
+  // text; this flag lets them still reach the AI lesson generator.
+  const [a1UseAi, setA1UseAi] = useState(false);
+  const showA1Course = level === 'A1' && !a1UseAi;
 
   const refresh = useCallback(() => {
     getTutorState()
@@ -300,6 +305,8 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
       const loaded = await getTutorLesson(id);
       setLesson(loaded);
       setTaskType(loaded.taskType);
+      // An existing AI-generated A1 lesson opens in the AI view, not the course.
+      if (loaded.level === 'A1') setA1UseAi(true);
       setLevel(loaded.level);
     } catch (err) {
       setError(extractErrorMessage(err, t.error));
@@ -436,6 +443,7 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
           )}
         </div>
 
+        {!showA1Course && (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-4 mb-5">
           {TASK_TYPES.map(({ value, icon: Icon }) => (
             <button
@@ -453,6 +461,7 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
             </button>
           ))}
         </div>
+        )}
 
         <div className="grid sm:grid-cols-2 gap-4 mb-4">
           <div>
@@ -473,7 +482,10 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
                     // locked after clicking Generate and hitting the
                     // paywall modal. Now the paywall opens immediately.
                     onClick={() => {
-                      if (!locked) return setLevel(lvl);
+                      if (!locked) {
+                        if (lvl === 'A1') setA1UseAi(false);
+                        return setLevel(lvl);
+                      }
                       setPaywallReason(null);
                       setShowPaywall(true);
                     }}
@@ -511,6 +523,8 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
           </div>
         </div>
 
+        {!showA1Course && (
+        <>
         <div className="mb-4">
           <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{t.goalLabel}</label>
           <div className="flex flex-wrap gap-1.5">
@@ -559,9 +573,13 @@ export default function EnglishTutorPanel({ lang }: EnglishTutorPanelProps) {
             <VocabWaitingGame lang={lang} loading={generating} onContinue={() => setShowWaitingGame(false)} />
           </div>
         )}
+        </>
+        )}
       </div>
 
-      {lesson && (
+      {showA1Course && <A1GuidedCourse lang={lang} onUseAiLessons={() => setA1UseAi(true)} />}
+
+      {lesson && !showA1Course && (
         <LessonView
           lesson={lesson}
           lang={lang}
