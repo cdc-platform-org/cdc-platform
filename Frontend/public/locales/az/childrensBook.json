@@ -155,5 +155,18 @@
   "previewConfirmButton": "Hər şey yaxşıdır, ödənişə keç",
   "previewViewAgain": "Kitabın önizləməsinə yenidən bax",
   "storyTextMissing": "Bu kitabın səhifələrində hələ müvəqqəti mətn var. Düyməni basın və AI mövcud şəkillər üçün əsl nağılı yazacaq.",
-  "writeStoryTextButton": "Nağıl mətnini yaz"
+  "writeStoryTextButton": "Nağıl mətnini yaz",
+  "siblingsTitle": "Bacı-qardaşlar (istəyə bağlı)",
+  "siblingsHint": "{{max}} nəfərədək bacı-qardaş əlavə edin. Onlar eyni nağılın qəhrəmanı olacaq və şəkillərdə əsas personajla birlikdə görünəcəklər.",
+  "addSibling": "Bacı və ya qardaş əlavə et",
+  "removeSibling": "Sil",
+  "siblingNumber": "Bacı/qardaş {{number}}",
+  "siblingNameLabel": "Ad",
+  "siblingNamePlaceholder": "məs. Luka",
+  "siblingAgeLabel": "Yaş (istəyə bağlı)",
+  "siblingAppearanceLabel": "Vizual təsvir (istəyə bağlı)",
+  "siblingPhotoLabel": "Foto (istəyə bağlı)",
+  "siblingPhotoHint": "Onu bənzər çəkmək üçün bu uşağın üzünün aydın fotosu.",
+  "siblingPhotoFor": "{{name}} fotosu (istəyə bağlı)",
+  "previewSiblingsLabel": "Bacı-qardaşlar"
 }

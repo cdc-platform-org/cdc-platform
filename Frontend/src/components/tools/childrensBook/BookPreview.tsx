@@ -55,12 +55,20 @@ export default function BookPreview({ book, portraitUrl, busy, onConfirm, onClos
       </div>
 
       {/* What the parent asked for */}
-      {(config?.appearance || config?.extraCharacters || config?.photoKey || config?.photoDeletedAt) && (
+      {(config?.appearance || config?.extraCharacters || config?.siblings?.length || config?.photoKey || config?.photoDeletedAt) && (
         <dl className="grid gap-3 sm:grid-cols-2 mb-5 text-sm">
           {config?.appearance && (
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
               <dt className="flex items-center gap-1 font-medium text-gray-800"><Palette className="w-4 h-4 text-purple-600" /> {t('appearanceLabel')}</dt>
               <dd className="text-gray-600 mt-1 break-words">{config.appearance}</dd>
+            </div>
+          )}
+          {!!config?.siblings?.length && (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+              <dt className="flex items-center gap-1 font-medium text-gray-800"><Users className="w-4 h-4 text-purple-600" /> {t('previewSiblingsLabel')}</dt>
+              <dd className="text-gray-600 mt-1 break-words">
+                {config.siblings.map((s) => `${s.name}${s.age !== undefined ? ` (${s.age})` : ''}`).join(', ')}
+              </dd>
             </div>
           )}
           {config?.extraCharacters && (

@@ -155,5 +155,18 @@
   "previewConfirmButton": "Ամեն ինչ լավ է, անցնել վճարման",
   "previewViewAgain": "Կրկին դիտել գրքի նախադիտումը",
   "storyTextMissing": "Այս գրքի էջերում դեռ ժամանակավոր տեքստ է։ Սեղմեք կոճակը, և AI-ը կգրի իրական հեքիաթը առկա նկարների համար։",
-  "writeStoryTextButton": "Գրել հեքիաթի տեքստը"
+  "writeStoryTextButton": "Գրել հեքիաթի տեքստը",
+  "siblingsTitle": "Եղբայրներ և քույրեր (ըստ ցանկության)",
+  "siblingsHint": "Ավելացրեք մինչև {{max}} եղբայր կամ քույր։ Նրանք կլինեն նույն հեքիաթի հերոսները և նկարներում կհայտնվեն գլխավոր հերոսի հետ։",
+  "addSibling": "Ավելացնել եղբայր կամ քույր",
+  "removeSibling": "Հեռացնել",
+  "siblingNumber": "Եղբայր/քույր {{number}}",
+  "siblingNameLabel": "Անուն",
+  "siblingNamePlaceholder": "օր. Լուկա",
+  "siblingAgeLabel": "Տարիք (ըստ ցանկության)",
+  "siblingAppearanceLabel": "Արտաքինի նկարագրություն (ըստ ցանկության)",
+  "siblingPhotoLabel": "Լուսանկար (ըստ ցանկության)",
+  "siblingPhotoHint": "Այս երեխայի դեմքի հստակ լուսանկար, որպեսզի նրան նման նկարենք։",
+  "siblingPhotoFor": "Լուսանկար՝ {{name}} (ըստ ցանկության)",
+  "previewSiblingsLabel": "Եղբայրներ և քույրեր"
 }

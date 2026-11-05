@@ -104,3 +104,85 @@ export function consistencyPromptLine(hasReference: boolean): string {
     ? 'The main character must look exactly like the reference portrait on every page: same face, hairstyle, outfit, clothing colours and accessories. Do not change their clothes between pages; only pose and expression change with the scene.'
     : 'The main character wears the same outfit, colours and hairstyle on every page; do not change their clothes between pages.';
 }
+// ============================================================
+// Siblings — up to MAX_SIBLINGS brothers/sisters who star in the same story
+// next to the main character. Each has a name and optional age, appearance
+// text and photo (photo fields are server-owned, set only by the upload
+// route). The character portrait becomes a group portrait of all of them,
+// and that approved portrait is the reference for every page, so the
+// siblings look the same throughout the book.
+// ============================================================
+
+export const MAX_SIBLINGS = 3;
+export const MAX_SIBLING_NAME_LENGTH = 60;
+
+export interface SiblingInput {
+  name: string;
+  age?: number;
+  appearance?: string;
+}
+
+export interface SiblingConfig extends SiblingInput {
+  photoKey?: string;
+  photoMimeType?: string;
+  photoConsentAt?: string;
+}
+
+export type SiblingsValidation = { ok: true; value: SiblingInput[] } | { ok: false; message: string };
+
+export function validateSiblings(raw: unknown): SiblingsValidation {
+  if (raw === undefined || raw === null) return { ok: true, value: [] };
+  if (!Array.isArray(raw)) return { ok: false, message: 'character.siblings must be a list.' };
+  const value: SiblingInput[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') return { ok: false, message: 'Each sibling must be an object.' };
+    const name = typeof (entry as any).name === 'string' ? (entry as any).name.trim() : '';
+    // Rows the parent left empty are simply skipped.
+    if (!name) continue;
+    if (name.length > MAX_SIBLING_NAME_LENGTH) return { ok: false, message: `A sibling's name must be at most ${MAX_SIBLING_NAME_LENGTH} characters.` };
+    const sibling: SiblingInput = { name };
+    const age = (entry as any).age;
+    if (typeof age === 'number' && Number.isFinite(age) && age >= 0 && age <= 25) sibling.age = Math.round(age);
+    const appearance = (entry as any).appearance;
+    if (appearance !== undefined && appearance !== null) {
+      if (typeof appearance !== 'string') return { ok: false, message: "A sibling's appearance must be text." };
+      const trimmed = appearance.trim();
+      if (trimmed.length > MAX_APPEARANCE_LENGTH) return { ok: false, message: `A sibling's appearance must be at most ${MAX_APPEARANCE_LENGTH} characters.` };
+      if (trimmed) sibling.appearance = trimmed;
+    }
+    value.push(sibling);
+  }
+  if (value.length > MAX_SIBLINGS) return { ok: false, message: `At most ${MAX_SIBLINGS} siblings can be added.` };
+  return { ok: true, value };
+}
+
+function describeSibling(s: SiblingInput): string {
+  return `${flatten(s.name)}${s.age !== undefined ? ` (age ${s.age})` : ''}${s.appearance ? `: ${flatten(s.appearance)}` : ''}`;
+}
+
+// Image prompts (preview, final pages, revisions).
+export function siblingsPromptLine(config: { siblings?: SiblingInput[] } | null | undefined): string {
+  const siblings = config?.siblings ?? [];
+  if (!siblings.length) return '';
+  return `The main character's siblings appear together with them: "${siblings.map(describeSibling).join('; ')}". Keep every sibling recognisably the same on every page, as in the reference portrait.`;
+}
+
+// Story text prompt.
+export function siblingsStoryLine(config: { siblings?: SiblingInput[] } | null | undefined): string {
+  const siblings = config?.siblings ?? [];
+  if (!siblings.length) return '';
+  return `Siblings who go on the whole adventure together with the main character (give each of them something to do): ${siblings.map(describeSibling).join('; ')}.`;
+}
+
+// Character preview: one group portrait of the main character and siblings,
+// plus which reference photo belongs to whom.
+export function groupPortraitPromptLine(mainName: string, mainHasPhoto: boolean, siblings: SiblingConfig[]): string {
+  if (!siblings.length) return '';
+  const order: string[] = [];
+  if (mainHasPhoto) order.push(mainName);
+  for (const s of siblings) if (s.photoKey) order.push(s.name);
+  return [
+    `Draw a group character sheet: ${flatten(mainName)} together with their siblings ${siblings.map((s) => flatten(s.name)).join(', ')}, standing side by side, full body, each child clearly distinct.`,
+    order.length ? `Reference photos are given in this order: ${order.map((n, i) => `${i + 1}) ${flatten(n)}`).join(', ')}. Use each photo only to match that child's face, hair and skin tone, redrawn as a storybook illustration, never photorealistic.` : '',
+  ].filter(Boolean).join(' ');
+}

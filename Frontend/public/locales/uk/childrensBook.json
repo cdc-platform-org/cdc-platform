@@ -155,5 +155,18 @@
   "previewConfirmButton": "Усе добре, перейти до оплати",
   "previewViewAgain": "Переглянути книгу ще раз",
   "storyTextMissing": "У цій книзі на сторінках ще тимчасовий текст. Натисніть кнопку, і ШІ напише справжню казку до наявних малюнків.",
-  "writeStoryTextButton": "Написати текст казки"
+  "writeStoryTextButton": "Написати текст казки",
+  "siblingsTitle": "Брати й сестри (необов'язково)",
+  "siblingsHint": "Додайте до {{max}} братів чи сестер. Вони стануть героями тієї ж казки й з'являться на малюнках разом із головним персонажем.",
+  "addSibling": "Додати брата чи сестру",
+  "removeSibling": "Видалити",
+  "siblingNumber": "Брат/сестра {{number}}",
+  "siblingNameLabel": "Ім'я",
+  "siblingNamePlaceholder": "напр. Лука",
+  "siblingAgeLabel": "Вік (необов'язково)",
+  "siblingAppearanceLabel": "Опис зовнішності (необов'язково)",
+  "siblingPhotoLabel": "Фото (необов'язково)",
+  "siblingPhotoHint": "Чітке фото обличчя цієї дитини, щоб намалювати її схожою.",
+  "siblingPhotoFor": "Фото {{name}} (необов'язково)",
+  "previewSiblingsLabel": "Брати й сестри"
 }

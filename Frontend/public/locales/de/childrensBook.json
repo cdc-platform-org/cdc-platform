@@ -155,5 +155,18 @@
   "previewConfirmButton": "Sieht gut aus, weiter zur Bezahlung",
   "previewViewAgain": "Buchvorschau erneut ansehen",
   "storyTextMissing": "Dieses Buch enthält noch Platzhaltertext. Klicke auf die Schaltfläche, und die KI schreibt die echte Geschichte zu den vorhandenen Bildern.",
-  "writeStoryTextButton": "Geschichtentext schreiben"
+  "writeStoryTextButton": "Geschichtentext schreiben",
+  "siblingsTitle": "Geschwister (optional)",
+  "siblingsHint": "Füge bis zu {{max}} Geschwister hinzu. Sie spielen in derselben Geschichte mit und erscheinen zusammen mit der Hauptfigur auf den Bildern.",
+  "addSibling": "Bruder oder Schwester hinzufügen",
+  "removeSibling": "Entfernen",
+  "siblingNumber": "Geschwister {{number}}",
+  "siblingNameLabel": "Name",
+  "siblingNamePlaceholder": "z. B. Luka",
+  "siblingAgeLabel": "Alter (optional)",
+  "siblingAppearanceLabel": "Aussehen (optional)",
+  "siblingPhotoLabel": "Foto (optional)",
+  "siblingPhotoHint": "Ein deutliches Foto vom Gesicht dieses Kindes, damit wir es ähnlich zeichnen können.",
+  "siblingPhotoFor": "Foto von {{name}} (optional)",
+  "previewSiblingsLabel": "Geschwister"
 }

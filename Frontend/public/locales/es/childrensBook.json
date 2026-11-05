@@ -155,5 +155,18 @@
   "previewConfirmButton": "Todo bien, continuar al pago",
   "previewViewAgain": "Ver de nuevo la vista previa",
   "storyTextMissing": "Este libro aún tiene texto provisional en sus páginas. Pulsa el botón y la IA escribirá la historia real para las imágenes existentes.",
-  "writeStoryTextButton": "Escribir el texto del cuento"
+  "writeStoryTextButton": "Escribir el texto del cuento",
+  "siblingsTitle": "Hermanos (opcional)",
+  "siblingsHint": "Añade hasta {{max}} hermanos. Serán protagonistas de la misma historia y aparecerán en las ilustraciones junto al personaje principal.",
+  "addSibling": "Añadir un hermano o hermana",
+  "removeSibling": "Quitar",
+  "siblingNumber": "Hermano {{number}}",
+  "siblingNameLabel": "Nombre",
+  "siblingNamePlaceholder": "p. ej. Luka",
+  "siblingAgeLabel": "Edad (opcional)",
+  "siblingAppearanceLabel": "Descripción visual (opcional)",
+  "siblingPhotoLabel": "Foto (opcional)",
+  "siblingPhotoHint": "Una foto clara de la cara de este niño para dibujarlo parecido.",
+  "siblingPhotoFor": "Foto de {{name}} (opcional)",
+  "previewSiblingsLabel": "Hermanos"
 }

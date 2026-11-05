@@ -4,7 +4,7 @@ import { StoryPlan } from './bookStoryPlanService';
 import { generateBookImage } from './bookImageGenerationService';
 import { runImageQa, isAcceptableQaStatus } from './bookQaService';
 import { storeBookAsset } from './bookStorageService';
-import { appearancePromptLine, extraCharactersPromptLine, loadCharacterReference, consistencyPromptLine } from './bookCharacterDetailsService';
+import { appearancePromptLine, extraCharactersPromptLine, siblingsPromptLine, loadCharacterReference, consistencyPromptLine } from './bookCharacterDetailsService';
 
 // ============================================================
 // Children's Book — final generation runner. Runs in the background, never
@@ -95,6 +95,7 @@ async function runFinalGeneration(bookProjectId: string): Promise<void> {
       `Character: ${characterBible?.name ?? ''}, consistent with the approved Character Bible.`,
       consistencyPromptLine(referenceImages.length > 0),
       appearancePromptLine(characterBible),
+      siblingsPromptLine(characterBible),
       extraCharactersPromptLine(characterBible),
       planPage ? `Scene: ${planPage.sceneDescription}. Composition: ${planPage.composition}.` : '',
       'No readable text or letters anywhere in the image. Reserve the upper-left 30% free of detail.',

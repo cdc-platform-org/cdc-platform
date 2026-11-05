@@ -10,11 +10,14 @@ interface CharacterPhotoFieldProps {
   disabled?: boolean;
   onSelect: (file: File) => void;
   onRemove: () => void;
+  // Override the heading/hint, e.g. for a sibling's photo.
+  label?: string;
+  hint?: string;
 }
 
 // Optional photo of the main character. Validates type/size in the browser
 // (the backend validates again and re-encodes the image).
-export default function CharacterPhotoField({ photoUrl, disabled, onSelect, onRemove }: CharacterPhotoFieldProps) {
+export default function CharacterPhotoField({ photoUrl, disabled, onSelect, onRemove, label, hint }: CharacterPhotoFieldProps) {
   const { t } = useTranslation('childrensBook');
   const inputRef = useRef<HTMLInputElement>(null);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -41,8 +44,8 @@ export default function CharacterPhotoField({ photoUrl, disabled, onSelect, onRe
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{t('photoLabel')}</label>
-      <p className="text-xs text-gray-500 mb-2">{t('photoHint')}</p>
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label ?? t('photoLabel')}</label>
+      <p className="text-xs text-gray-500 mb-2">{hint ?? t('photoHint')}</p>
       <div className="flex items-center gap-3">
         {photoUrl ? (
           <div className="relative">

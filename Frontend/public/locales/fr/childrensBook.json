@@ -155,5 +155,18 @@
   "previewConfirmButton": "C'est parfait, passer au paiement",
   "previewViewAgain": "Revoir l'aperçu du livre",
   "storyTextMissing": "Ce livre contient encore un texte provisoire. Appuyez sur le bouton et l'IA écrira la vraie histoire pour les images existantes.",
-  "writeStoryTextButton": "Écrire le texte de l'histoire"
+  "writeStoryTextButton": "Écrire le texte de l'histoire",
+  "siblingsTitle": "Frères et sœurs (facultatif)",
+  "siblingsHint": "Ajoutez jusqu'à {{max}} frères et sœurs. Ils joueront dans la même histoire et apparaîtront sur les illustrations avec le personnage principal.",
+  "addSibling": "Ajouter un frère ou une sœur",
+  "removeSibling": "Supprimer",
+  "siblingNumber": "Frère/sœur {{number}}",
+  "siblingNameLabel": "Prénom",
+  "siblingNamePlaceholder": "ex. Luka",
+  "siblingAgeLabel": "Âge (facultatif)",
+  "siblingAppearanceLabel": "Description visuelle (facultatif)",
+  "siblingPhotoLabel": "Photo (facultatif)",
+  "siblingPhotoHint": "Une photo nette du visage de cet enfant pour le dessiner à son image.",
+  "siblingPhotoFor": "Photo de {{name}} (facultatif)",
+  "previewSiblingsLabel": "Frères et sœurs"
 }
