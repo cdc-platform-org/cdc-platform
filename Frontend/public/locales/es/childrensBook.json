@@ -153,5 +153,7 @@
   "previewTotal": "Total: {{amount}} GEL",
   "previewConfirmHint": "Las ilustraciones se pintan después del pago, con el personaje que aprobaste.",
   "previewConfirmButton": "Todo bien, continuar al pago",
-  "previewViewAgain": "Ver de nuevo la vista previa"
+  "previewViewAgain": "Ver de nuevo la vista previa",
+  "storyTextMissing": "Este libro aún tiene texto provisional en sus páginas. Pulsa el botón y la IA escribirá la historia real para las imágenes existentes.",
+  "writeStoryTextButton": "Escribir el texto del cuento"
 }

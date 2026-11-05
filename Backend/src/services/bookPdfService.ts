@@ -189,6 +189,16 @@ export async function buildBookPdf(input: BookPdfInput): Promise<Buffer> {
           y -= 18;
         }
       }
+      // Page 1's story text opens the tale on the cover page itself (it is
+      // one of the purchased pages, so its words must not be dropped).
+      if (pageInput.storyText?.trim()) {
+        y -= 14;
+        for (const line of wrapText(pageInput.storyText, textMaxWidth, 13, fonts, false)) {
+          if (y < MARGIN) break;
+          drawCenteredMixedLine(page, line, A4_WIDTH / 2, y, 13, fonts, false);
+          y -= 17;
+        }
+      }
     } else {
       const lines = wrapText(pageInput.storyText, textMaxWidth, 15, fonts, false);
       let y = textAreaTop;

@@ -10,6 +10,7 @@ import childrensBookRoutes from '../childrensBook';
 import { errorHandler } from '../../middleware/errorHandler';
 import { ALLOWED_PAGE_COUNTS, calculateBookPrice } from '../../services/bookStateService';
 import * as bookMockConfig from '../../services/bookMockConfig';
+import { writeStoryTexts } from '../../services/bookStoryTextService';
 import { waitForFinalGeneration, resumePendingFinalGenerations } from '../../services/bookFinalGenerationService';
 
 // bookMockConfig's ENABLE_BOOK_DEV_PAYMENT_SIMULATION read is frozen at
@@ -24,6 +25,12 @@ jest.mock('../../services/bookMockConfig', () => ({
   isBookDevPaymentSimulationEnabled: jest.fn(() => false),
 }));
 // re-require, since bookMockConfig reads process.env at call time.
+// Never call a real text model from route tests — the rewrite route's AI
+// step is stubbed per test.
+jest.mock('../../services/bookStoryTextService', () => ({
+  ...jest.requireActual('../../services/bookStoryTextService'),
+  writeStoryTexts: jest.fn(),
+}));
 
 type User = Awaited<ReturnType<typeof createUser>>;
 let server: Server;
@@ -301,6 +308,37 @@ describe("Children's Book — payment gate", () => {
     const bookId = await createBookThroughStoryPlan(user);
     const res = await request(`/api/childrens-books/${bookId}/payment/dev-simulate`, user, 'POST');
     expect(res.status).toBe(403);
+  });
+});
+
+describe("Children's Book — story text rewrite (placeholder books)", () => {
+  it('rewrites placeholder text for the existing scenes, keeps illustrations, and marks the PDF stale', async () => {
+    const user = await createUser();
+    const bookId = await createBookThroughStoryPlan(user, 5);
+    await advanceToPaid(user, bookId);
+    await startAndWaitForFinal(user, bookId);
+    await request(`/api/childrens-books/${bookId}/pdf`, user, 'POST');
+    const before = await prisma.bookPage.findMany({ where: { bookProjectId: bookId }, orderBy: { pageNumber: 'asc' } });
+
+    jest.mocked(writeStoryTexts).mockImplementationOnce(async ({ scenes }) => new Map(scenes.map((s) => [s.pageNumber, `Real story text for page ${s.pageNumber}, written for Mimi.`])));
+    const res = await request(`/api/childrens-books/${bookId}/story-text/rewrite`, user, 'POST');
+    expect(res.status).toBe(200);
+
+    const after = await prisma.bookPage.findMany({ where: { bookProjectId: bookId }, orderBy: { pageNumber: 'asc' } });
+    expect(after.map((p) => p.storyText)).toEqual([1, 2, 3, 4, 5].map((n) => `Real story text for page ${n}, written for Mimi.`));
+    expect(after.map((p) => p.acceptedEventId)).toEqual(before.map((p) => p.acceptedEventId));
+    const book = await prisma.bookProject.findUnique({ where: { id: bookId } });
+    expect(book!.pdfStatus).toBe('STALE');
+
+    const again = await request(`/api/childrens-books/${bookId}/story-text/rewrite`, user, 'POST');
+    expect(again.status).toBe(400);
+  });
+
+  it('404s for a non-owner', async () => {
+    const owner = await createUser();
+    const bookId = await createBookThroughStoryPlan(owner, 5);
+    const res = await request(`/api/childrens-books/${bookId}/story-text/rewrite`, await createUser(), 'POST');
+    expect(res.status).toBe(404);
   });
 });
 

@@ -1,5 +1,7 @@
 import { BookLanguage } from '@prisma/client';
 import { isAllowedPageCount } from './bookStateService';
+import { isBookAiMocked } from './bookMockConfig';
+import { writeStoryTexts } from './bookStoryTextService';
 
 // ============================================================
 // Children's Book — Story Plan generation.
@@ -98,18 +100,20 @@ function buildMockStoryPlan(title: string, character: CharacterConfig, language:
   return { title, dedication: character.dedication ?? null, pages };
 }
 
-export function generateStoryPlan(params: { title: string; character: CharacterConfig; language: BookLanguage; pageCount: number }): StoryPlan {
+export async function generateStoryPlan(params: { title: string; character: CharacterConfig; language: BookLanguage; pageCount: number }): Promise<StoryPlan> {
   if (!isAllowedPageCount(params.pageCount)) {
     throw new Error(`Story plan requires an allowed page count, got ${params.pageCount}.`);
   }
-  // Mock-first by design (Phase/Batch policy: never spend a paid text-AI
-  // call during routine plumbing). A real LLM-backed implementation would
-  // branch on isBookAiMocked() here exactly like bookCharacterPreviewService
-  // does for images — deliberately not wired to a real provider yet since
-  // no real text-AI call has been authorized for this product.
+  // The scene beats (what each illustration shows) always come from the
+  // fixed arc above. In real mode the page text is then written by the text
+  // model for those exact scenes (bookStoryTextService); mock mode keeps the
+  // deterministic template so local/CI runs never spend a paid AI call.
   const plan = buildMockStoryPlan(params.title, params.character, params.language, params.pageCount);
   if (plan.pages.length !== params.pageCount) {
     throw new Error(`Story plan invariant violated: expected exactly ${params.pageCount} pages, got ${plan.pages.length}.`);
   }
-  return plan;
+  if (isBookAiMocked()) return plan;
+
+  const texts = await writeStoryTexts({ title: params.title, character: params.character, language: params.language, scenes: plan.pages });
+  return { ...plan, pages: plan.pages.map((page) => ({ ...page, storyText: texts.get(page.pageNumber)! })) };
 }

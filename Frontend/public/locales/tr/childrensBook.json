@@ -153,5 +153,7 @@
   "previewTotal": "Toplam: {{amount}} GEL",
   "previewConfirmHint": "Resimler, onayladığınız karakterle ödemeden sonra çizilir.",
   "previewConfirmButton": "Her şey iyi, ödemeye geç",
-  "previewViewAgain": "Kitap önizlemesini tekrar gör"
+  "previewViewAgain": "Kitap önizlemesini tekrar gör",
+  "storyTextMissing": "Bu kitabın sayfalarında hâlâ geçici metin var. Düğmeye bas, yapay zekâ mevcut resimler için gerçek masalı yazsın.",
+  "writeStoryTextButton": "Masal metnini yaz"
 }

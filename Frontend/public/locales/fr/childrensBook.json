@@ -153,5 +153,7 @@
   "previewTotal": "Total : {{amount}} GEL",
   "previewConfirmHint": "Les illustrations sont peintes après le paiement, avec le personnage que vous avez validé.",
   "previewConfirmButton": "C'est parfait, passer au paiement",
-  "previewViewAgain": "Revoir l'aperçu du livre"
+  "previewViewAgain": "Revoir l'aperçu du livre",
+  "storyTextMissing": "Ce livre contient encore un texte provisoire. Appuyez sur le bouton et l'IA écrira la vraie histoire pour les images existantes.",
+  "writeStoryTextButton": "Écrire le texte de l'histoire"
 }
