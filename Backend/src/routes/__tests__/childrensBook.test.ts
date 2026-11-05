@@ -185,6 +185,18 @@ describe("Children's Book — variable page count invariant", () => {
     }
   });
 
+  it('accepts every offered illustration style and refuses unknown ones', async () => {
+    const user = await createUser();
+    const ok = await request('/api/childrens-books', user, 'POST', { language: 'EN', title: '3D Adventure', character: { name: 'Mimi' }, pageCount: 5, illustrationStyle: 'MODERN_3D' });
+    expect(ok.status).toBe(201);
+    const { data } = (await ok.json()) as { data: { id: string } };
+    const stored = await prisma.bookProject.findUnique({ where: { id: data.id } });
+    expect(stored!.illustrationStyle).toBe('MODERN_3D');
+
+    const bad = await request('/api/childrens-books', user, 'POST', { language: 'EN', title: 'Bad Style', character: { name: 'Mimi' }, pageCount: 5, illustrationStyle: 'BOGUS' });
+    expect(bad.status).toBe(400);
+  });
+
   it('rejects a disallowed pageCount at creation (e.g. 7 pages is not an offered size)', async () => {
     const res = await request('/api/childrens-books', await createUser(), 'POST', {
       language: 'EN',
