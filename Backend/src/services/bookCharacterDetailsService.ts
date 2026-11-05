@@ -104,3 +104,15 @@ export function consistencyPromptLine(hasReference: boolean): string {
     ? 'The main character must look exactly like the reference portrait on every page: same face, hairstyle, outfit, clothing colours and accessories. Do not change their clothes between pages; only pose and expression change with the scene.'
     : 'The main character wears the same outfit, colours and hairstyle on every page; do not change their clothes between pages.';
 }
+// The page's own story text, so the illustration follows what the reader is
+// told on that page (scene beats alone drifted from the text), plus the
+// child's age so the character is never drawn as an older girl or boy.
+export function pageStoryPromptLines(characterBible: { name?: string; age?: number | null } | null | undefined, storyText: string | null | undefined): string {
+  const lines: string[] = [];
+  if (characterBible?.age) {
+    lines.push(`The main character is a ${characterBible.age}-year-old child and must look exactly that age (child proportions, not a teenager or adult).`);
+  }
+  const text = storyText ? flatten(storyText) : '';
+  if (text) lines.push(`Illustrate exactly what this page's story text describes (the text may be in Georgian): "${text}".`);
+  return lines.join(' ');
+}
