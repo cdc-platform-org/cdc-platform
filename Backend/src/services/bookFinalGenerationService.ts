@@ -4,6 +4,7 @@ import { StoryPlan } from './bookStoryPlanService';
 import { generateBookImage } from './bookImageGenerationService';
 import { runImageQa, isAcceptableQaStatus } from './bookQaService';
 import { storeBookAsset } from './bookStorageService';
+import { illustrationStylePromptLine } from './bookIllustrationStyles';
 import { appearancePromptLine, extraCharactersPromptLine, loadCharacterReference, consistencyPromptLine } from './bookCharacterDetailsService';
 
 // ============================================================
@@ -91,7 +92,8 @@ async function runFinalGeneration(bookProjectId: string): Promise<void> {
 
     const planPage = storyPlan.pages.find((p) => p.pageNumber === page.pageNumber);
     const prompt = [
-      `Children's storybook illustration, ${styleBible?.illustrationStyle ?? 'STORYBOOK_WATERCOLOR'} style.`,
+      `Children's storybook illustration.`,
+      illustrationStylePromptLine(styleBible?.illustrationStyle),
       `Character: ${characterBible?.name ?? ''}, consistent with the approved Character Bible.`,
       consistencyPromptLine(referenceImages.length > 0),
       appearancePromptLine(characterBible),

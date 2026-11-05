@@ -38,15 +38,12 @@ import { startFinalGeneration } from '../services/bookFinalGenerationService';
 import { calculateAudioPrice, calculateTotalBookPrice, canGenerateNarration, narrationLanguageForBook } from '../services/bookNarrationService';
 import { getBookNarrationProvider } from '../services/bookNarrationProviders';
 import { AzureSpeechError } from '../services/azureSpeechService';
+import { isIllustrationStyle, illustrationStylePromptLine } from '../services/bookIllustrationStyles';
 
 const router = Router();
 
-// Only one illustration style is wired to real generation today (Phase
-// 2/2B/3/4's validated Character Bible / Style Bible pilots) — every other
-// value on the product's style selector must stay purely cosmetic
-// ("Coming Soon") until its own pilot exists. Enforced server-side, not
-// just hidden in the UI, per FAST BUILD MODE's own instruction.
-const VALIDATED_ILLUSTRATION_STYLES = ['STORYBOOK_WATERCOLOR'] as const;
+// Illustration styles the wizard offers live in bookIllustrationStyles.ts;
+// anything else is refused server-side, not just hidden in the UI.
 
 function isOwner(book: { userId: string } | null, userId: string): book is { userId: string } {
   return !!book && book.userId === userId;
@@ -114,9 +111,9 @@ router.post('/', authenticate, requireApproved, async (req: Request, res: Respon
   }
   const sanitized = sanitizeCharacterInput(character);
   if (!sanitized.ok) return res.status(400).json({ message: sanitized.message });
-  const style = typeof illustrationStyle === 'string' ? illustrationStyle : VALIDATED_ILLUSTRATION_STYLES[0];
-  if (!VALIDATED_ILLUSTRATION_STYLES.includes(style as typeof VALIDATED_ILLUSTRATION_STYLES[number])) {
-    return res.status(400).json({ message: 'This illustration style is coming soon and is not available for real generation yet.' });
+  const style = illustrationStyle === undefined || illustrationStyle === null ? 'STORYBOOK_WATERCOLOR' : illustrationStyle;
+  if (!isIllustrationStyle(style)) {
+    return res.status(400).json({ message: 'Unknown illustration style.' });
   }
   // Server decides the price — pageCount is the only thing the client
   // chooses, and even that is validated against the fixed allowed set
@@ -432,13 +429,14 @@ router.post('/:id/character-preview', authenticate, async (req: Request, res: Re
   // TEXT-SAFE LOCK) summarized here, not reproduced verbatim — the real
   // validated wording lives in scripts/gpt-image-2-character-pilot-2b.ts.
   const prompt = [
-    `Children's storybook character design, STORYBOOK_WATERCOLOR style.`,
+    `Children's storybook character design.`,
+    illustrationStylePromptLine(book.illustrationStyle),
     `Character: ${character.name}${character.age ? `, age ${character.age}` : ''}.`,
     character.traits?.length ? `Traits: ${character.traits.join(', ')}.` : '',
     character.favoriteThing ? `Favorite thing: ${character.favoriteThing}.` : '',
     appearancePromptLine(character),
     character.photoKey ? photoReferencePromptLine() : '',
-    'Soft watercolor textures, consistent body proportions, delicate clean linework, no readable text or letters anywhere in the image, reserve the upper-left 30% free of detail.',
+    'Consistent body proportions, clean linework, no readable text or letters anywhere in the image, reserve the upper-left 30% free of detail.',
   ].filter(Boolean).join(' ');
 
   const referenceImages = await loadReferenceImage(character.photoKey, character.photoMimeType);
@@ -680,7 +678,8 @@ router.post('/:id/revision', authenticate, async (req: Request, res: Response) =
   const planPage = (book.storyPlan as unknown as StoryPlan)?.pages?.find((p) => p.pageNumber === pageNumber);
   const revisionReferences = await loadCharacterReference(characterBible);
   const prompt = [
-    `Children's storybook illustration revision, ${styleBible?.illustrationStyle ?? 'STORYBOOK_WATERCOLOR'} style.`,
+    `Children's storybook illustration revision.`,
+    illustrationStylePromptLine(styleBible?.illustrationStyle),
     `Character: ${characterBible?.name ?? ''}, consistent with the approved Character Bible.`,
     consistencyPromptLine(revisionReferences.length > 0),
     appearancePromptLine(characterBible),

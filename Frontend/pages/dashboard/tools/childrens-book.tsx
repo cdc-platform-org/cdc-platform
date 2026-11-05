@@ -51,6 +51,8 @@ const GENERATING_STATUSES = ['CHARACTER_PREVIEW_GENERATING', 'FINAL_GENERATING',
 const POLL_MS = 1500;
 const PHOTO_EDITABLE_STATUSES = ['DRAFT', 'STORY_PLAN_READY', 'CHARACTER_PREVIEW_READY'];
 const TEXT_FIELD_MAX = 500;
+// Must match Backend/src/services/bookIllustrationStyles.ts.
+type IllustrationStyleValue = 'STORYBOOK_WATERCOLOR' | 'MODERN_3D' | 'SOFT_DIGITAL' | 'CARTOON' | 'FANTASY' | 'CLASSIC';
 
 function ChildrensBookContent() {
   const { t } = useTranslation('childrensBook');
@@ -249,7 +251,15 @@ function ChildrensBookContent() {
 
   // ---- Create form state ----
   const PAGE_OPTIONS = [5, 10, 15, 20] as const;
-  const [form, setForm] = useState({ title: '', name: '', age: '', traits: '', favoriteThing: '', dedication: '', appearance: '', extraCharacters: '', language: 'EN' as BookLanguage, pageCount: 10 as (typeof PAGE_OPTIONS)[number] });
+  const ILLUSTRATION_STYLE_OPTIONS: Array<{ value: IllustrationStyleValue; labelKey: string }> = [
+    { value: 'STORYBOOK_WATERCOLOR', labelKey: 'styleWatercolor' },
+    { value: 'MODERN_3D', labelKey: 'styleModern3d' },
+    { value: 'SOFT_DIGITAL', labelKey: 'styleSoftDigital' },
+    { value: 'CARTOON', labelKey: 'styleCartoon' },
+    { value: 'FANTASY', labelKey: 'styleFantasy' },
+    { value: 'CLASSIC', labelKey: 'styleClassic' },
+  ];
+  const [form, setForm] = useState({ title: '', name: '', age: '', traits: '', favoriteThing: '', dedication: '', appearance: '', extraCharacters: '', language: 'EN' as BookLanguage, pageCount: 10 as (typeof PAGE_OPTIONS)[number], illustrationStyle: 'STORYBOOK_WATERCOLOR' as IllustrationStyleValue });
 
   async function handleCreate() {
     await run(async () => {
@@ -257,6 +267,7 @@ function ChildrensBookContent() {
         title: form.title,
         language: form.language,
         pageCount: form.pageCount,
+        illustrationStyle: form.illustrationStyle,
         character: {
           name: form.name,
           age: form.age ? Number(form.age) : undefined,
@@ -423,9 +434,16 @@ function ChildrensBookContent() {
               <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('illustrationStyleLabel')}</label>
                 <div className="flex flex-wrap gap-2">
-                  <span className="px-3 py-1.5 rounded-full bg-purple-100 text-purple-800 text-sm font-medium">{t('styleWatercolor')}</span>
-                  {['styleModern3d', 'styleSoftDigital', 'styleCartoon', 'styleFantasy', 'styleClassic'].map((s) => (
-                    <span key={s} className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-400 text-sm">{t(s)} — {t('styleComingSoon')}</span>
+                  {ILLUSTRATION_STYLE_OPTIONS.map(({ value, labelKey }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={form.illustrationStyle === value}
+                      onClick={() => setForm({ ...form, illustrationStyle: value })}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium border ${form.illustrationStyle === value ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-300 hover:border-purple-400'}`}
+                    >
+                      {t(labelKey)}
+                    </button>
                   ))}
                 </div>
               </div>
