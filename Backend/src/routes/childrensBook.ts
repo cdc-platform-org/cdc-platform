@@ -26,6 +26,8 @@ import {
   photoReferencePromptLine,
   normalizeCharacterPhoto,
   loadReferenceImage,
+  loadCharacterReference,
+  consistencyPromptLine,
   ALLOWED_CHARACTER_PHOTO_TYPES,
   MAX_CHARACTER_PHOTO_BYTES,
 } from '../services/bookCharacterDetailsService';
@@ -480,8 +482,8 @@ router.post('/:id/character-approval', authenticate, async (req: Request, res: R
     extraCharacters: character.extraCharacters,
     previewImageKey: character.previewImageKey,
     previewImageMimeType: character.previewImageMimeType,
-    // When the parent gave a photo, final pages use the approved portrait
-    // as a reference image so the child looks the same on every page.
+    // Kept for older readers of the Character Bible; every page now uses the
+    // approved portrait as its reference (see loadCharacterReference).
     useReferencePortrait: !!character.photoKey,
   };
   const styleBible = { illustrationStyle: book.illustrationStyle };
@@ -618,18 +620,17 @@ router.post('/:id/revision', authenticate, async (req: Request, res: Response) =
   const characterBible = book.characterBible as any;
   const styleBible = book.styleBible as any;
   const planPage = (book.storyPlan as unknown as StoryPlan)?.pages?.find((p) => p.pageNumber === pageNumber);
+  const revisionReferences = await loadCharacterReference(characterBible);
   const prompt = [
     `Children's storybook illustration revision, ${styleBible?.illustrationStyle ?? 'STORYBOOK_WATERCOLOR'} style.`,
     `Character: ${characterBible?.name ?? ''}, consistent with the approved Character Bible.`,
+    consistencyPromptLine(revisionReferences.length > 0),
     appearancePromptLine(characterBible),
     extraCharactersPromptLine(characterBible),
     planPage ? `Original scene: ${planPage.sceneDescription}.` : '',
     typeof note === 'string' && note.trim() ? `Requested change: ${note.trim()}.` : '',
     'No readable text or letters anywhere in the image.',
   ].filter(Boolean).join(' ');
-  const revisionReferences = characterBible?.useReferencePortrait
-    ? await loadReferenceImage(characterBible.previewImageKey, characterBible.previewImageMimeType)
-    : [];
 
   const previousAttempts = await prisma.bookGenerationEvent.count({
     where: { bookProjectId: book.id, operationType: 'REVISION', pageNumber, revisionVersion: 1 },

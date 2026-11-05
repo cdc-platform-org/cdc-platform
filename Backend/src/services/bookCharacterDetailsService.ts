@@ -91,3 +91,16 @@ export async function loadReferenceImage(key: string | undefined | null, mimeTyp
     return [];
   }
 }
+
+// The approved character portrait is the reference for every page of every
+// book (not only books with a parent photo): without it each page was drawn
+// from text alone, so the child's clothes and look changed from page to page.
+export async function loadCharacterReference(characterBible: { previewImageKey?: string | null; previewImageMimeType?: string | null } | null | undefined): Promise<Array<{ buffer: Buffer; mimeType: string }>> {
+  return loadReferenceImage(characterBible?.previewImageKey, characterBible?.previewImageMimeType);
+}
+
+export function consistencyPromptLine(hasReference: boolean): string {
+  return hasReference
+    ? 'The main character must look exactly like the reference portrait on every page: same face, hairstyle, outfit, clothing colours and accessories. Do not change their clothes between pages; only pose and expression change with the scene.'
+    : 'The main character wears the same outfit, colours and hairstyle on every page; do not change their clothes between pages.';
+}
