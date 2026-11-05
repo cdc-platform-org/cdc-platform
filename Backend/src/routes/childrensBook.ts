@@ -29,6 +29,7 @@ import {
   loadReferenceImage,
   loadCharacterReference,
   consistencyPromptLine,
+  pageStoryPromptLines,
   ALLOWED_CHARACTER_PHOTO_TYPES,
   MAX_CHARACTER_PHOTO_BYTES,
 } from '../services/bookCharacterDetailsService';
@@ -683,6 +684,7 @@ router.post('/:id/revision', authenticate, async (req: Request, res: Response) =
     `Children's storybook illustration revision, ${styleBible?.illustrationStyle ?? 'STORYBOOK_WATERCOLOR'} style.`,
     `Character: ${characterBible?.name ?? ''}, consistent with the approved Character Bible.`,
     consistencyPromptLine(revisionReferences.length > 0),
+    pageStoryPromptLines(characterBible, page.storyText),
     appearancePromptLine(characterBible),
     extraCharactersPromptLine(characterBible),
     planPage ? `Original scene: ${planPage.sceneDescription}.` : '',
