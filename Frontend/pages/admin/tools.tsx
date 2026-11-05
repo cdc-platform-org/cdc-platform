@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
 import Head from 'next/head';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Pencil } from 'lucide-react';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
 import { ToolCatalogContent, ToolCatalogEntry, ToolCatalogStatus } from '../../src/types/siteContent';
@@ -92,12 +92,33 @@ function ToolEntryEditor({
     <div className={`border rounded-xl p-4 space-y-3 scroll-mt-24 ${highlight ? 'border-indigo-400 ring-2 ring-indigo-200' : 'border-gray-200'}`}>
       {known ? (
         <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-2">
-          <h3 className="text-sm font-semibold text-gray-900">{known.name}</h3>
-          {!known.statusWired && <span className="text-[11px] text-gray-400">სტატუსი ამ ბარათზე ჯერ არ მოქმედებს</span>}
+          {/* Editable admin-only card name — saved with the rest of the
+              catalog; clearing it falls back to the built-in name. */}
+          <input
+            value={entry.adminLabel ?? known.name}
+            onChange={(e) => onChange({ adminLabel: e.target.value })}
+            onBlur={(e) => {
+              if (!e.target.value.trim()) onChange({ adminLabel: undefined });
+            }}
+            aria-label="ბარათის სახელი"
+            title="ბარათის სახელი — დააჭირე და შეცვალე"
+            className="min-w-0 flex-1 text-sm font-semibold text-gray-900 bg-transparent rounded-md border border-transparent px-1.5 py-0.5 -mx-1.5 hover:border-gray-300 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+          />
+          <Pencil className="w-3.5 h-3.5 text-gray-400 shrink-0" aria-hidden />
+          {!known.statusWired && <span className="text-[11px] text-gray-400 shrink-0">სტატუსი ამ ბარათზე ჯერ არ მოქმედებს</span>}
         </div>
       ) : (
         <div className="border-b border-gray-100 pb-2">
-          <h3 className="text-sm font-semibold text-gray-900">{entry.titleKa || entry.titleEn || 'ახალი ხელსაწყო'}</h3>
+          <input
+            value={entry.adminLabel ?? (entry.titleKa || entry.titleEn || '')}
+            onChange={(e) => onChange({ adminLabel: e.target.value })}
+            onBlur={(e) => {
+              if (!e.target.value.trim()) onChange({ adminLabel: undefined });
+            }}
+            placeholder="ახალი ხელსაწყო"
+            aria-label="ბარათის სახელი"
+            className="w-full text-sm font-semibold text-gray-900 bg-transparent rounded-md border border-transparent px-1.5 py-0.5 -mx-1.5 hover:border-gray-300 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+          />
           <p className="text-[11px] text-gray-500 mt-0.5">
             ახალი ბარათი გამოჩნდება /tools გვერდზე, როცა შეავსებ სათაურს და დააჭერ „Save Changes“-ს. სტატუსი „Disabled“ მას დამალავს.
           </p>

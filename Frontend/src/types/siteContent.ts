@@ -85,6 +85,10 @@ export type ToolCatalogStatus = 'ACTIVE' | 'COMING_SOON' | 'DISABLED';
 export interface ToolCatalogEntry {
   slug: string;
   status: ToolCatalogStatus;
+  // Name shown on this tool's card header in the admin Tool Catalog CMS
+  // (admin/tools.tsx) only — never rendered on the public site. Empty/
+  // undefined falls back to the built-in name for a known slug.
+  adminLabel?: string;
   titleKa?: string;
   titleEn?: string;
   subtitleKa?: string;

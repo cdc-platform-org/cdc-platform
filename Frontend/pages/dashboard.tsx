@@ -51,6 +51,7 @@ import { createMentorshipRequest } from '../src/services/mentorshipService';
 import {
   getProducts,
   getProductDownload,
+  ProductDownload,
   submitProduct,
   updateMyProduct,
   getMySubmissions,
@@ -63,6 +64,7 @@ import {
   validateProductDiscount,
 } from '../src/services/productService';
 import RichTextEditor from '../src/components/shared/RichTextEditor';
+import ProductDownloadList from '../src/components/store/ProductDownloadList';
 import FileDropzone from '../src/components/shared/FileDropzone';
 import ImageGalleryUploader from '../src/components/shared/ImageGalleryUploader';
 import VideoTutorialLink from '../src/components/shared/VideoTutorialLink';
@@ -956,6 +958,7 @@ function DashboardContent() {
   const [myBooks, setMyBooks] = useState<BookListItem[]>([]);
   const [downloadingProductId, setDownloadingProductId] = useState<string | null>(null);
   const [productDownloadError, setProductDownloadError] = useState<string | null>(null);
+  const [productDownloadList, setProductDownloadList] = useState<ProductDownload | null>(null);
   const [mySubmissions, setMySubmissions] = useState<DigitalProduct[]>([]);
   const [launchKitTarget, setLaunchKitTarget] = useState<{ productId: string; title: string } | null>(null);
   const [showAiMarketingAssistant, setShowAiMarketingAssistant] = useState(false);
@@ -1312,7 +1315,13 @@ function DashboardContent() {
     setProductDownloadError(null);
     setDownloadingProductId(productId);
     try {
-      const { fileUrl } = await getProductDownload(productId);
+      const download = await getProductDownload(productId);
+      // More than one file → a clickable list instead (see ProductDownloadList).
+      if (download.files.length > 1) {
+        setProductDownloadList(download);
+        return;
+      }
+      const { fileUrl } = download;
       // window.open after an await is often blocked as a popup; fall back
       // to navigating the current tab so the download still starts. (No
       // 'noopener' feature string: with it window.open always returns null,
@@ -2286,6 +2295,14 @@ function DashboardContent() {
       )}
 
       <SiteFooter />
+      {productDownloadList && (
+        <ProductDownloadList
+          files={productDownloadList.files}
+          licenseType={productDownloadList.licenseType}
+          lang={lang === 'ka' ? 'ka' : 'en'}
+          onClose={() => setProductDownloadList(null)}
+        />
+      )}
 
       {launchKitTarget && (
         <LaunchKitDrawer

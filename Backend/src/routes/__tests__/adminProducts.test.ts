@@ -175,3 +175,62 @@ describe('Digital Store product bilingual title/description', () => {
     expect(list.find((p) => p.id === created.id)?.titleEn).toBe('Original EN Title');
   });
 });
+
+describe('Digital Store product files (main file + additional files)', () => {
+  it('an admin can replace the main file and add/remove extra files, and a buyer gets every file from /download', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const created = await data<{ id: string }>(await request('/admin/products', admin, 'POST', productInput({ fileName: 'original.zip' })));
+
+    const updated = await data<{ fileUrl: string; fileName: string | null; additionalFiles: Array<{ url: string; name: string }> }>(
+      await request(`/admin/products/${created.id}`, admin, 'PUT', {
+        fileUrl: 'https://cdn.example.test/new-main.pdf',
+        fileName: 'new-main.pdf',
+        additionalFiles: [
+          { url: 'https://cdn.example.test/extra-a4.pdf', name: 'A4 version.pdf' },
+          { url: 'https://cdn.example.test/extra-a3.pdf', name: 'A3 version.pdf' },
+        ],
+      })
+    );
+    expect(updated.fileUrl).toBe('https://cdn.example.test/new-main.pdf');
+    expect(updated.fileName).toBe('new-main.pdf');
+    expect(updated.additionalFiles).toHaveLength(2);
+
+    // Removing one extra file is just saving the shorter list.
+    const trimmed = await data<{ additionalFiles: Array<{ name: string }> }>(
+      await request(`/admin/products/${created.id}`, admin, 'PUT', { additionalFiles: [{ url: 'https://cdn.example.test/extra-a3.pdf', name: 'A3 version.pdf' }] })
+    );
+    expect(trimmed.additionalFiles.map((f) => f.name)).toEqual(['A3 version.pdf']);
+
+    const buyer = await createUser();
+    await prisma.productPurchase.create({ data: { userId: buyer.id, productId: created.id, amount: 1000, paymentStatus: 'COMPLETED' } });
+    const download = await data<{ fileUrl: string; files: Array<{ name: string; url: string }> }>(await request(`/products/${created.id}/download`, buyer));
+    expect(download.fileUrl).toBe('https://cdn.example.test/new-main.pdf');
+    expect(download.files).toEqual([
+      { name: 'new-main.pdf', url: 'https://cdn.example.test/new-main.pdf' },
+      { name: 'A3 version.pdf', url: 'https://cdn.example.test/extra-a3.pdf' },
+    ]);
+  });
+
+  it('never exposes the extra files on the public catalog/detail routes', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const created = await data<{ id: string }>(await request('/admin/products', admin, 'POST', productInput({
+      additionalFiles: [{ url: 'https://cdn.example.test/secret-extra.zip', name: 'secret.zip' }],
+    })));
+    await prisma.digitalProduct.update({ where: { id: created.id }, data: { status: 'APPROVED' } });
+    const detailText = await (await request(`/products/${created.id}`)).text();
+    const listText = await (await request('/products')).text();
+    expect(detailText).not.toContain('secret-extra');
+    expect(listText).not.toContain('secret-extra');
+  });
+
+  it('rejects clearing the main file, and a non-admin cannot resolve a file link', async () => {
+    const admin = await createUser({ adminRole: 'MANAGER' });
+    const created = await data<{ id: string }>(await request('/admin/products', admin, 'POST', productInput()));
+    expect((await request(`/admin/products/${created.id}`, admin, 'PUT', { fileUrl: '' })).status).toBe(400);
+
+    const link = await data<{ url: string }>(await request('/admin/products/file-link', admin, 'POST', { url: 'https://cdn.example.test/file.zip' }));
+    expect(link.url).toBe('https://cdn.example.test/file.zip');
+    const user = await createUser();
+    expect((await request('/admin/products/file-link', user, 'POST', { url: 'https://cdn.example.test/file.zip' })).status).toBe(403);
+  });
+});

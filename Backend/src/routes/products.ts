@@ -9,7 +9,7 @@ import { hasFreelancerRights } from '../utils/freelancerVerification';
 import { uploadImage } from '../services/imageStorage';
 import { BunnyStorageUploadError } from '../services/bunnyStorage';
 import { imageUpload, fileUpload, videoUpload, multerErrorHandler } from '../middleware/productUploads';
-import { fileFormatFromUrl } from '../utils/fileFormat';
+import { fileFormatFromUrl, fileNameFromUrl, parseAdditionalFiles } from '../utils/fileFormat';
 import { moderateProduct, ModerationInput } from '../services/productModerationService';
 import { getAiAutomationSettings } from '../services/aiAutomationSettingsService';
 import { autoTranslateIfBlank } from '../services/aiTranslateService';
@@ -587,8 +587,19 @@ router.get('/:id/download', authenticate, requireApproved, async (req: Request, 
         }),
   ]);
 
-  const fileUrl = await resolveProductFileDeliveryUrl(product.fileUrl);
-  res.json({ data: { fileUrl, licenseType: purchase.licenseType ?? product.licenseType } });
+  // fileUrl stays the main file (older clients only read that); `files` is
+  // the main file followed by every DigitalProduct.additionalFiles entry,
+  // each resolved to its own fresh short-lived link.
+  const extraFiles = parseAdditionalFiles(product.additionalFiles);
+  const [fileUrl, ...extraUrls] = await Promise.all([
+    resolveProductFileDeliveryUrl(product.fileUrl),
+    ...extraFiles.map((f) => resolveProductFileDeliveryUrl(f.url)),
+  ]);
+  const files = [
+    { name: product.fileName ?? fileNameFromUrl(product.fileUrl), url: fileUrl },
+    ...extraFiles.map((f, i) => ({ name: f.name, url: extraUrls[i] })),
+  ];
+  res.json({ data: { fileUrl, files, licenseType: purchase.licenseType ?? product.licenseType } });
 });
 
 export default router;
