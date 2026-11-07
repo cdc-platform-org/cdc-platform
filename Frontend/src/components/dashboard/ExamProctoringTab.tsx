@@ -909,7 +909,7 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
           <button
             type="button"
             onClick={() => setShowCreateForm(true)}
-            className="inline-flex items-center gap-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl"
+            className="inline-flex items-center gap-1.5 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl"
           >
             <Plus className="w-3.5 h-3.5" />
             {t.createFirst}
@@ -1142,7 +1142,7 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
               <button type="button" onClick={() => setShowCreateForm(false)} className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-300">
                 {t.cancel}
               </button>
-              <button type="submit" disabled={creating || uploadingSource} className="flex-1 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60">
+              <button type="submit" disabled={creating || uploadingSource} className="flex-1 rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60">
                 {creating ? t.creating : t.create}
               </button>
             </div>
@@ -1174,7 +1174,7 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
             <button
               type="button"
               onClick={() => setShowCreateForm(true)}
-              className="inline-flex items-center gap-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl"
+              className="inline-flex items-center gap-1.5 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl"
             >
               <Plus className="w-3.5 h-3.5" />
               {t.newExam}
