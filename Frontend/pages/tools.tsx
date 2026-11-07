@@ -22,6 +22,7 @@ import {
   KeyRound,
   Mic,
   Crown,
+  GraduationCap,
 } from 'lucide-react';
 import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
@@ -82,6 +83,10 @@ const dict = {
     examBullet4: '1-სტრიქონიანი ჩასაშენებელი კოდი',
     examCta: '10 დღე უფასოდ',
     // Card 3 — Candidate Screener
+    tutorTitle: 'IMIAKO — AI ინგლისურის რეპეტიტორი',
+    tutorDesc: 'ინგლისური ნულიდან, ნაბიჯ-ნაბიჯ: A1 კურსი, კითხვა, წერა, გრამატიკა, ლექსიკა, მოსმენა და დიალოგი — ახსნილი ქართულად.',
+    tutorBadge: 'უფასო საცდელი',
+    tutorCta: 'სწავლის დაწყება',
     screenerTitle: 'AI Candidate Screener & HR Assistant',
     screenerDesc: 'AI ასისტენტი, რომელიც დამსაქმებლებს ეხმარება კანდიდატების პირველად გადარჩევასა და HR პროცესების ავტომატიზაციაში.',
     // Card 4 — Cyber Sentinel AI
@@ -143,6 +148,10 @@ const dict = {
     examBullet3: 'Automated skill assessment matrix',
     examBullet4: '1-line embed script',
     examCta: '10 Days Free',
+    tutorTitle: 'IMIAKO — AI English Tutor',
+    tutorDesc: 'English from zero, step by step: an A1 course plus reading, writing, grammar, vocabulary, listening and dialogue practice — explained in your language.',
+    tutorBadge: 'Free trial',
+    tutorCta: 'Start learning',
     screenerTitle: 'AI Candidate Screener & HR Assistant',
     screenerDesc: 'An AI assistant that helps employers pre-screen candidates and automate HR workflows.',
     sentinelTitle: 'CDC Cyber Sentinel AI & Threat Protection',
@@ -199,6 +208,10 @@ const dict = {
     examBullet3: 'Automated skill assessment matrix',
     examBullet4: '1-line embed script',
     examCta: '10 Days Free',
+    tutorTitle: 'IMIAKO — AI English Tutor',
+    tutorDesc: 'English from zero, step by step: an A1 course plus reading, writing, grammar, vocabulary, listening and dialogue practice — explained in your language.',
+    tutorBadge: 'Free trial',
+    tutorCta: 'Start learning',
     screenerTitle: 'AI Candidate Screener & HR Assistant',
     screenerDesc: 'An AI assistant that helps employers pre-screen candidates and automate HR workflows.',
     sentinelTitle: 'CDC Cyber Sentinel AI & Threat Protection',
@@ -255,6 +268,10 @@ const dict = {
     examBullet3: 'Automated skill assessment matrix',
     examBullet4: '1-line embed script',
     examCta: '10 Days Free',
+    tutorTitle: 'IMIAKO — AI English Tutor',
+    tutorDesc: 'English from zero, step by step: an A1 course plus reading, writing, grammar, vocabulary, listening and dialogue practice — explained in your language.',
+    tutorBadge: 'Free trial',
+    tutorCta: 'Start learning',
     screenerTitle: 'AI Candidate Screener & HR Assistant',
     screenerDesc: 'An AI assistant that helps employers pre-screen candidates and automate HR workflows.',
     sentinelTitle: 'CDC Cyber Sentinel AI & Threat Protection',
@@ -311,6 +328,10 @@ const dict = {
     examBullet3: 'Automated skill assessment matrix',
     examBullet4: '1-line embed script',
     examCta: '10 Days Free',
+    tutorTitle: 'IMIAKO — AI English Tutor',
+    tutorDesc: 'English from zero, step by step: an A1 course plus reading, writing, grammar, vocabulary, listening and dialogue practice — explained in your language.',
+    tutorBadge: 'Free trial',
+    tutorCta: 'Start learning',
     screenerTitle: 'AI Candidate Screener & HR Assistant',
     screenerDesc: 'An AI assistant that helps employers pre-screen candidates and automate HR workflows.',
     sentinelTitle: 'CDC Cyber Sentinel AI & Threat Protection',
@@ -367,6 +388,10 @@ const dict = {
     examBullet3: 'Automated skill assessment matrix',
     examBullet4: '1-line embed script',
     examCta: '10 Days Free',
+    tutorTitle: 'IMIAKO — AI English Tutor',
+    tutorDesc: 'English from zero, step by step: an A1 course plus reading, writing, grammar, vocabulary, listening and dialogue practice — explained in your language.',
+    tutorBadge: 'Free trial',
+    tutorCta: 'Start learning',
     screenerTitle: 'AI Candidate Screener & HR Assistant',
     screenerDesc: 'An AI assistant that helps employers pre-screen candidates and automate HR workflows.',
     sentinelTitle: 'CDC Cyber Sentinel AI & Threat Protection',
@@ -546,6 +571,7 @@ export default function ToolsPage() {
   const educatorHubCms = findToolEntry(toolCatalog?.tools, 'educator-hub');
   const proctoringCms = findToolEntry(toolCatalog?.tools, 'proctoring');
   const childrensBookCms = findToolEntry(toolCatalog?.tools, 'childrens-book');
+  const englishTutorCms = findToolEntry(toolCatalog?.tools, 'english-tutor');
   const enterpriseAiCms = findToolEntry(toolCatalog?.tools, 'enterprise-ai');
   const examScreeningCms = findToolEntry(toolCatalog?.tools, 'exam-screening');
   const sentinelCms = findToolEntry(toolCatalog?.tools, 'cyber-sentinel');
@@ -799,6 +825,39 @@ export default function ToolsPage() {
                 >
                   <BookOpen className="w-4 h-4" />
                   {tCB('catalogCta')}
+                </Link>
+              )}
+            </div>
+          </div>
+          )}
+
+          {/* Card 2.66: IMIAKO AI English Tutor — previously missing from
+              this catalog entirely (reachable only from the homepage and
+              /courses). Hidden when its catalog entry is DISABLED, same
+              rule as the Children's Book card above. */}
+          {englishTutorCms?.status !== 'DISABLED' && (
+          <div className="lg:col-span-3 rounded-3xl border border-purple-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-purple-500/5 to-cyan-500/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
+            <ToolCover imageUrl={englishTutorCms?.imageUrl} videoUrl={englishTutorCms?.videoUrl} icon={GraduationCap} gradient="from-purple-600 to-cyan-500" alt={t.tutorTitle} />
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <h2 className="text-xl font-black tracking-wide">{overrideText(t.tutorTitle, catLang === 'ka' ? englishTutorCms?.titleKa : englishTutorCms?.titleEn)}</h2>
+                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                  {overrideText(t.tutorBadge, catLang === 'ka' ? englishTutorCms?.badgeKa : englishTutorCms?.badgeEn)}
+                </span>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{overrideText(t.tutorDesc, catLang === 'ka' ? englishTutorCms?.descriptionKa : englishTutorCms?.descriptionEn)}</p>
+              {englishTutorCms?.status === 'COMING_SOON' ? (
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                  <Lock className="w-3 h-3" />
+                  {t.comingSoon}
+                </span>
+              ) : (
+                <Link
+                  href="/dashboard/english-tutor"
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-cyan-500 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-purple-500/30 transition-all"
+                >
+                  <GraduationCap className="w-4 h-4" />
+                  {t.tutorCta}
                 </Link>
               )}
             </div>
