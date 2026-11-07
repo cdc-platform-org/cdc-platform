@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { X, Sparkles, Loader2 } from 'lucide-react';
 import { startTutorTrial } from '../../services/englishTutorService';
 import { checkoutEnglishTutorSubscription } from '../../services/paymentService';
-import { checkoutEnglishTutorSubscriptionStripe } from '../../services/stripePaymentService';
+import { checkoutEnglishTutorSubscriptionStripe, stripeWithBogFallback } from '../../services/stripePaymentService';
 import { PromoValidationResult } from '../../services/paymentService';
 import PromoCodeField from '../shared/PromoCodeField';
 
@@ -67,7 +67,13 @@ export default function TutorPaywallModal({ lang, trialAvailable, onClose, onTri
     setCheckingOut(true);
     setError(null);
     try {
-      const result = lang === 'ka' ? await checkoutEnglishTutorSubscription('ka', appliedPromo?.code) : await checkoutEnglishTutorSubscriptionStripe(appliedPromo?.code, 'usd');
+      const result =
+        lang === 'ka'
+          ? await checkoutEnglishTutorSubscription('ka', appliedPromo?.code)
+          : await stripeWithBogFallback(
+              () => checkoutEnglishTutorSubscriptionStripe(appliedPromo?.code, 'usd'),
+              () => checkoutEnglishTutorSubscription('en', appliedPromo?.code),
+            );
       if (result.enrolled) {
         onTrialStarted(); // reuse the same "state changed, refetch" callback
         return;

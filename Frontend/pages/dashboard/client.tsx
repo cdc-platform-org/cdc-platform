@@ -38,7 +38,7 @@ import { MyGig } from '../../src/types/community';
 import { getMyGigs, approveGigWork, openGigDispute } from '../../src/services/gigService';
 import { createReview } from '../../src/services/reviewService';
 import { checkoutGigEscrow } from '../../src/services/paymentService';
-import { checkoutGigEscrowStripe } from '../../src/services/stripePaymentService';
+import { checkoutGigEscrowStripe, stripeWithBogFallback } from '../../src/services/stripePaymentService';
 import { MyVacancy, EmploymentType, VacancyStatus } from '../../src/types/community';
 import { getMyVacancies, updateVacancy, UpdateVacancyPayload } from '../../src/services/vacancyService';
 import { resolveLocale, SupportedLocale } from '../../src/utils/locale';
@@ -645,7 +645,9 @@ function BusinessDashboardContent() {
     try {
       // Georgian users pay via BOG (GEL); everyone else via Stripe (USD/EUR).
       const { redirectUrl } =
-        lang === 'ka' ? await checkoutGigEscrow(gigId, 'ka') : await checkoutGigEscrowStripe(gigId, 'usd');
+        lang === 'ka'
+          ? await checkoutGigEscrow(gigId, 'ka')
+          : await stripeWithBogFallback(() => checkoutGigEscrowStripe(gigId, 'usd'), () => checkoutGigEscrow(gigId, 'en'));
       window.location.href = redirectUrl;
     } catch (err: any) {
       const serverMessage = err?.response?.data?.message;

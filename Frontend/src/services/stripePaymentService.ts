@@ -84,3 +84,21 @@ export async function getStripePaymentStatus(paymentId: string): Promise<StripeP
   const response = await apiClient.get<{ data: StripePaymentStatusData }>(`/payments/stripe/status/${paymentId}`);
   return response.data.data;
 }
+
+// The backend answers 501 on every /payments/stripe/* checkout while
+// STRIPE_SECRET_KEY isn't set (StripeNotConfiguredError). Until Stripe is
+// switched on, a non-Georgian visitor would otherwise hit a dead end at
+// checkout — so fall back to BOG, which takes international cards too
+// (charged in GEL). Any other error is re-thrown unchanged.
+export function isStripeNotConfiguredError(err: unknown): boolean {
+  return (err as { response?: { status?: number } })?.response?.status === 501;
+}
+
+export async function stripeWithBogFallback<S, B>(stripeCheckout: () => Promise<S>, bogCheckout: () => Promise<B>): Promise<S | B> {
+  try {
+    return await stripeCheckout();
+  } catch (err) {
+    if (isStripeNotConfiguredError(err)) return bogCheckout();
+    throw err;
+  }
+}

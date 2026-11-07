@@ -15,7 +15,7 @@ import { useEscapeToClose } from '../../../src/hooks/useEscapeToClose';
 import { Course, SyllabusSection, SyllabusLesson } from '../../../src/types/lms';
 import { getCourse, getProgressSummary, getSyllabus } from '../../../src/services/courseService';
 import { checkoutCourse, validatePromoCode, PromoValidationResult } from '../../../src/services/paymentService';
-import { checkoutCourseStripe } from '../../../src/services/stripePaymentService';
+import { checkoutCourseStripe, stripeWithBogFallback } from '../../../src/services/stripePaymentService';
 import { formatPrice, getSaleCountdownLabel } from '../../../src/utils/coursePricing';
 import { courseLanguageBadge } from '../../../src/utils/courseLanguage';
 import { useAuth } from '../../../src/context/AuthContext';
@@ -118,7 +118,10 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
       const result =
         lang === 'ka'
           ? await checkoutCourse(courseId, appliedPromo?.code, 'ka')
-          : await checkoutCourseStripe(courseId, appliedPromo?.code, 'usd');
+          : await stripeWithBogFallback(
+              () => checkoutCourseStripe(courseId, appliedPromo?.code, 'usd'),
+              () => checkoutCourse(courseId, appliedPromo?.code, 'en'),
+            );
       if (result.enrolled) {
         router.push(`/courses/${courseId}/learn`);
         return;

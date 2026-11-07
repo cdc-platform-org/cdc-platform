@@ -13,7 +13,7 @@ import { useAuth } from '../src/context/AuthContext';
 import { useAuthModal } from '../src/context/AuthModalContext';
 import { getMentors, getMentorSlots, mentorTitle, mentorBio, PublicMentor, MentorSlot } from '../src/services/mentorshipService';
 import { checkoutMentorship } from '../src/services/paymentService';
-import { checkoutMentorshipStripe } from '../src/services/stripePaymentService';
+import { checkoutMentorshipStripe, stripeWithBogFallback } from '../src/services/stripePaymentService';
 import { formatPrice } from '../src/utils/coursePricing';
 import { resolveLocale, SupportedLocale } from '@/src/utils/locale';
 import VideoTutorialLink from '../src/components/shared/VideoTutorialLink';
@@ -103,13 +103,24 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: S
               consultationDescription: topic.trim() || undefined,
               lang: 'ka',
             })
-          : await checkoutMentorshipStripe({
-              mentorId: mentor.id,
-              scheduledAt: selectedSlot,
-              studentPhone: phone.trim(),
-              consultationDescription: topic.trim() || undefined,
-              currency: 'usd',
-            });
+          : await stripeWithBogFallback(
+              () =>
+                checkoutMentorshipStripe({
+                  mentorId: mentor.id,
+                  scheduledAt: selectedSlot,
+                  studentPhone: phone.trim(),
+                  consultationDescription: topic.trim() || undefined,
+                  currency: 'usd',
+                }),
+              () =>
+                checkoutMentorship({
+                  mentorId: mentor.id,
+                  scheduledAt: selectedSlot,
+                  studentPhone: phone.trim(),
+                  consultationDescription: topic.trim() || undefined,
+                  lang: 'en',
+                }),
+            );
       window.location.href = redirectUrl;
     } catch (err: any) {
       setError(err?.response?.data?.message || t('bookingError'));

@@ -11,7 +11,7 @@ import SocialShareButtons from '../../src/components/shared/SocialShareButtons';
 import GiftThisButton from '../../src/components/giftCards/GiftThisButton';
 import { LiveTraining } from '../../src/types/liveTraining';
 import { getLiveTraining, registerForLiveTraining, enrollInLiveTraining, checkoutLiveTraining } from '../../src/services/liveTrainingService';
-import { checkoutLiveTrainingStripe } from '../../src/services/stripePaymentService';
+import { checkoutLiveTrainingStripe, stripeWithBogFallback } from '../../src/services/stripePaymentService';
 import { validatePromoCode, PromoValidationResult } from '../../src/services/paymentService';
 import { resolveLocale } from '@/src/utils/locale';
 import { courseLanguageBadge } from '@/src/utils/courseLanguage';
@@ -230,7 +230,10 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
         const result =
           lang === 'ka'
             ? await checkoutLiveTraining(id, appliedPromo?.code, 'ka')
-            : await checkoutLiveTrainingStripe(id, appliedPromo?.code, 'usd');
+            : await stripeWithBogFallback(
+                () => checkoutLiveTrainingStripe(id, appliedPromo?.code, 'usd'),
+                () => checkoutLiveTraining(id, appliedPromo?.code, 'en'),
+              );
         if (result.redirectUrl) {
           window.location.href = result.redirectUrl;
         } else if (result.enrolled) {
