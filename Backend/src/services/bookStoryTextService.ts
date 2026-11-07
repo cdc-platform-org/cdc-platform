@@ -97,3 +97,42 @@ export async function writeStoryTexts(params: {
   }
   return texts;
 }
+
+// ============================================================
+// Parent edits of the story text. The parent reviews (and may edit) every
+// page's words before any image is generated, because the pictures are
+// drawn from this text. Only the words change here — the scene beats stay.
+// ============================================================
+
+export const MAX_EDITED_STORY_TEXT_LENGTH = 1200;
+// How many times the parent may ask for a brand-new version of the story
+// before approving it (text only, no image cost, but not unlimited).
+export const MAX_STORY_TEXT_REGENERATIONS = 3;
+
+export type StoryTextEdit = { pageNumber: number; storyText: string };
+
+export function validateStoryTextEdits(
+  raw: unknown,
+  pageNumbers: number[],
+): { ok: true; value: StoryTextEdit[] } | { ok: false; message: string } {
+  if (!Array.isArray(raw) || raw.length === 0) return { ok: false, message: 'No page text was sent.' };
+  if (raw.length > pageNumbers.length) return { ok: false, message: 'Too many pages.' };
+  const seen = new Set<number>();
+  const value: StoryTextEdit[] = [];
+  for (const entry of raw) {
+    const pageNumber = Number((entry as any)?.pageNumber);
+    if (!Number.isInteger(pageNumber) || !pageNumbers.includes(pageNumber)) return { ok: false, message: 'Unknown page.' };
+    if (seen.has(pageNumber)) return { ok: false, message: `Page ${pageNumber} was sent twice.` };
+    seen.add(pageNumber);
+    const rawText = (entry as any)?.storyText;
+    if (typeof rawText !== 'string') return { ok: false, message: `Page ${pageNumber} has no text.` };
+    // Keep line breaks, drop other control characters.
+    const storyText = rawText.replace(/\r\n?/g, '\n').replace(/[\u0000-\u0009\u000B-\u001F\u007F]/g, '').replace(/\n{3,}/g, '\n\n').trim();
+    if (!storyText) return { ok: false, message: `Page ${pageNumber} cannot be empty.` };
+    if (storyText.length > MAX_EDITED_STORY_TEXT_LENGTH) {
+      return { ok: false, message: `Page ${pageNumber} is too long (at most ${MAX_EDITED_STORY_TEXT_LENGTH} characters).` };
+    }
+    value.push({ pageNumber, storyText });
+  }
+  return { ok: true, value };
+}

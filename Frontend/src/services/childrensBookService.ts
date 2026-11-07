@@ -73,7 +73,7 @@ export interface BookProject {
   characterConfig: BookCharacterConfig | null;
   characterBible: Record<string, unknown> | null;
   styleBible: Record<string, unknown> | null;
-  storyPlan: { title: string; dedication: string | null; pages: unknown[] } | null;
+  storyPlan: { title: string; dedication: string | null; pages: unknown[]; textApprovedAt?: string | null; textRegenerations?: number } | null;
   finalPdfBlobRef: string | null;
   pdfVersion: number;
   previewConfirmedAt: string | null;
@@ -133,6 +133,28 @@ export function hasPlaceholderStoryText(book: BookProject): boolean {
 
 export async function rewriteStoryText(id: string): Promise<BookProject> {
   const response = await apiClient.post<{ data: BookProject }>(`/childrens-books/${id}/story-text/rewrite`);
+  return response.data.data;
+}
+
+// Story text review: the parent reads and edits the text, then approves it.
+// No image is generated for a new book before approval. Must match
+// Backend/src/services/bookStoryTextService.ts.
+export const MAX_EDITED_STORY_TEXT_LENGTH = 1200;
+export const MAX_STORY_TEXT_REGENERATIONS = 3;
+export type StoryTextEdit = { pageNumber: number; storyText: string };
+
+export async function updateStoryText(id: string, pages: StoryTextEdit[]): Promise<BookProject> {
+  const response = await apiClient.put<{ data: BookProject }>(`/childrens-books/${id}/story-text`, { pages });
+  return response.data.data;
+}
+
+export async function approveStoryText(id: string, pages?: StoryTextEdit[]): Promise<BookProject> {
+  const response = await apiClient.post<{ data: BookProject }>(`/childrens-books/${id}/story-text/approve`, pages?.length ? { pages } : {});
+  return response.data.data;
+}
+
+export async function regenerateStoryText(id: string): Promise<BookProject> {
+  const response = await apiClient.post<{ data: BookProject }>(`/childrens-books/${id}/story-text/regenerate`);
   return response.data.data;
 }
 
@@ -249,6 +271,39 @@ export async function generatePdf(id: string): Promise<BookProject> {
 
 export async function downloadBookPdf(id: string, filename: string): Promise<void> {
   const response = await apiClient.get(`/childrens-books/${id}/pdf/download`, { responseType: 'blob' });
+  const url = URL.createObjectURL(response.data as Blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+// Print-ready PDF at a chosen paper size. Must match
+// Backend/src/services/bookPdfService.ts (PRINT_SIZE_PRESETS and limits).
+export type PrintSizePreset = 'A4' | 'A5' | 'A3' | 'LETTER' | 'SQUARE_210' | 'SQUARE_200';
+export const PRINT_SIZE_PRESETS: Record<PrintSizePreset, { widthMm: number; heightMm: number }> = {
+  A4: { widthMm: 210, heightMm: 297 },
+  A5: { widthMm: 148, heightMm: 210 },
+  A3: { widthMm: 297, heightMm: 420 },
+  LETTER: { widthMm: 215.9, heightMm: 279.4 },
+  SQUARE_210: { widthMm: 210, heightMm: 210 },
+  SQUARE_200: { widthMm: 200, heightMm: 200 },
+};
+export const CUSTOM_PRINT_SIZE_MIN_MM = 90;
+export const CUSTOM_PRINT_SIZE_MAX_MM = 500;
+export interface PrintRequest {
+  size: PrintSizePreset | 'CUSTOM';
+  orientation: 'portrait' | 'landscape';
+  widthMm?: number;
+  heightMm?: number;
+  bleedMm: 0 | 3 | 5;
+}
+
+export async function downloadPrintPdf(id: string, settings: PrintRequest, filename: string): Promise<void> {
+  const response = await apiClient.post(`/childrens-books/${id}/pdf/print`, settings, { responseType: 'blob' });
   const url = URL.createObjectURL(response.data as Blob);
   const link = document.createElement('a');
   link.href = url;

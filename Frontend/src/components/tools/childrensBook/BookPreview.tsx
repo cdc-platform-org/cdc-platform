@@ -1,5 +1,5 @@
 import { useTranslation } from 'next-i18next';
-import { BookOpen, CheckCircle2, Eye, Loader2, Lock, Users, Palette } from 'lucide-react';
+import { BookOpen, CheckCircle2, Eye, Loader2, Lock, Users, Palette, PenLine } from 'lucide-react';
 import { BookProject } from '../../../services/childrensBookService';
 
 interface BookPreviewProps {
@@ -9,6 +9,8 @@ interface BookPreviewProps {
   // Null when the preview was already confirmed and is only being re-viewed.
   onConfirm: (() => void) | null;
   onClose?: () => void;
+  // Lets the parent fix the text before paying (pictures follow the text).
+  onEditText?: () => void;
 }
 
 type PlanPage = { pageNumber: number; storyText: string };
@@ -18,7 +20,7 @@ type PlanPage = { pageNumber: number; storyText: string };
 // order, and what the buyer is about to pay for. Illustrations are painted
 // only after payment, so each page shows the approved portrait as a stand-in
 // and says so plainly.
-export default function BookPreview({ book, portraitUrl, busy, onConfirm, onClose }: BookPreviewProps) {
+export default function BookPreview({ book, portraitUrl, busy, onConfirm, onClose, onEditText }: BookPreviewProps) {
   const { t } = useTranslation('childrensBook');
   const pages = ((book.storyPlan?.pages ?? []) as PlanPage[]).slice().sort((a, b) => a.pageNumber - b.pageNumber);
   const config = book.characterConfig;
@@ -31,9 +33,16 @@ export default function BookPreview({ book, portraitUrl, busy, onConfirm, onClos
         <h2 id="book-preview-title" className="font-semibold text-gray-800 flex items-center gap-2">
           <Eye className="w-5 h-5 text-purple-600" /> {t('previewTitle')}
         </h2>
-        {onClose && (
-          <button onClick={onClose} className="text-sm text-purple-600 font-medium hover:underline">{t('previewClose')}</button>
-        )}
+        <div className="flex items-center gap-4">
+          {onEditText && (
+            <button disabled={busy} onClick={onEditText} className="text-sm text-purple-600 font-medium hover:underline inline-flex items-center gap-1 disabled:opacity-50">
+              <PenLine className="w-3.5 h-3.5" /> {t('storyEditButton')}
+            </button>
+          )}
+          {onClose && (
+            <button onClick={onClose} className="text-sm text-purple-600 font-medium hover:underline">{t('previewClose')}</button>
+          )}
+        </div>
       </div>
       <p className="text-sm text-gray-600 mb-5">{t('previewIntro')}</p>
 
@@ -99,7 +108,7 @@ export default function BookPreview({ book, portraitUrl, busy, onConfirm, onClos
             </div>
             <div className="p-3 min-w-0">
               <div className="text-xs font-semibold text-purple-700 mb-1">{t('pageLabel', { number: page.pageNumber })}</div>
-              <p className="text-sm text-gray-700 break-words">{page.storyText}</p>
+              <p className="text-sm text-gray-700 break-words whitespace-pre-line">{page.storyText}</p>
             </div>
           </li>
         ))}

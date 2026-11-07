@@ -1,5 +1,6 @@
 import 'express-async-errors';
 import express from 'express';
+import { PDFDocument } from 'pdf-lib';
 import { Server } from 'http';
 import { AddressInfo } from 'net';
 import jwt from 'jsonwebtoken';
@@ -67,7 +68,7 @@ async function request(path: string, user?: User, method = 'GET', body?: unknown
   });
 }
 
-async function createBookThroughStoryPlan(user: User, pageCount = 10) {
+async function createBookThroughStoryPlan(user: User, pageCount = 10, approveText = true) {
   const createRes = await request('/api/childrens-books', user, 'POST', {
     language: 'EN',
     title: 'Test Adventure',
@@ -76,6 +77,7 @@ async function createBookThroughStoryPlan(user: User, pageCount = 10) {
   });
   const { data: book } = (await createRes.json()) as { data: { id: string } };
   await request(`/api/childrens-books/${book.id}/story-plan`, user, 'POST');
+  if (approveText) await request(`/api/childrens-books/${book.id}/story-text/approve`, user, 'POST');
   return book.id;
 }
 
@@ -378,5 +380,118 @@ describe("Children's Book — private download authorization", () => {
     expect(after!.status).toBe(before!.status);
     expect(after!.pdfVersion).toBe(before!.pdfVersion);
     expect(after!.revisionUsed).toBe(before!.revisionUsed);
+  });
+});
+
+describe("Children's Book — story text review before any image", () => {
+  async function pagesOf(bookId: string) {
+    return prisma.bookPage.findMany({ where: { bookProjectId: bookId }, orderBy: { pageNumber: 'asc' } });
+  }
+
+  it('refuses the first image until the parent approves the text, then allows it', async () => {
+    const user = await createUser();
+    const bookId = await createBookThroughStoryPlan(user, 5, false);
+
+    const early = await request(`/api/childrens-books/${bookId}/character-preview`, user, 'POST');
+    expect(early.status).toBe(400);
+    expect(await prisma.bookGenerationEvent.count({ where: { bookProjectId: bookId } })).toBe(0);
+
+    const approve = await request(`/api/childrens-books/${bookId}/story-text/approve`, user, 'POST', {
+      pages: [{ pageNumber: 2, storyText: '  Mimi found a tiny dragon.\r\nIt was friendly.  ' }],
+    });
+    expect(approve.status).toBe(200);
+    const approved = (await approve.json()) as any;
+    expect(approved.data.storyPlan.textApprovedAt).toBeTruthy();
+    expect(approved.data.storyPlan.pages[1].storyText).toBe('Mimi found a tiny dragon.\nIt was friendly.');
+    expect((await pagesOf(bookId))[1].storyText).toBe('Mimi found a tiny dragon.\nIt was friendly.');
+
+    const preview = await request(`/api/childrens-books/${bookId}/character-preview`, user, 'POST');
+    expect(preview.status).toBe(201);
+  });
+
+  it('saves edits, validates them, and only lets the owner edit', async () => {
+    const user = await createUser();
+    const bookId = await createBookThroughStoryPlan(user, 5, false);
+
+    const ok = await request(`/api/childrens-books/${bookId}/story-text`, user, 'PUT', { pages: [{ pageNumber: 1, storyText: 'A new first page.' }] });
+    expect(ok.status).toBe(200);
+    expect((await pagesOf(bookId))[0].storyText).toBe('A new first page.');
+    const book = await prisma.bookProject.findUnique({ where: { id: bookId } });
+    expect((book!.storyPlan as any).pages[0].storyText).toBe('A new first page.');
+    expect((book!.storyPlan as any).textApprovedAt).toBeFalsy();
+
+    for (const pages of [[{ pageNumber: 1, storyText: '   ' }], [{ pageNumber: 9, storyText: 'x' }], [{ pageNumber: 1, storyText: 'x'.repeat(1201) }], [], 'nope']) {
+      const bad = await request(`/api/childrens-books/${bookId}/story-text`, user, 'PUT', { pages });
+      expect(bad.status).toBe(400);
+    }
+    const stranger = await request(`/api/childrens-books/${bookId}/story-text`, await createUser(), 'PUT', { pages: [{ pageNumber: 1, storyText: 'hijack' }] });
+    expect(stranger.status).toBe(404);
+    expect((await pagesOf(bookId))[0].storyText).toBe('A new first page.');
+  });
+
+  it('an edit after the preview was confirmed asks for the preview again; no edits after payment', async () => {
+    const user = await createUser();
+    const bookId = await createBookThroughStoryPlan(user, 5);
+    await request(`/api/childrens-books/${bookId}/character-preview`, user, 'POST');
+    await request(`/api/childrens-books/${bookId}/character-approval`, user, 'POST');
+    await request(`/api/childrens-books/${bookId}/preview-confirm`, user, 'POST');
+    expect((await prisma.bookProject.findUnique({ where: { id: bookId } }))!.previewConfirmedAt).toBeTruthy();
+
+    const edit = await request(`/api/childrens-books/${bookId}/story-text`, user, 'PUT', { pages: [{ pageNumber: 3, storyText: 'Fixed a typo.' }] });
+    expect(edit.status).toBe(200);
+    expect((await prisma.bookProject.findUnique({ where: { id: bookId } }))!.previewConfirmedAt).toBeNull();
+
+    await prisma.bookProject.update({ where: { id: bookId }, data: { status: 'PAID' } });
+    const late = await request(`/api/childrens-books/${bookId}/story-text`, user, 'PUT', { pages: [{ pageNumber: 3, storyText: 'Too late.' }] });
+    expect(late.status).toBe(400);
+  });
+
+  it('writes a new version a limited number of times, only before approval', async () => {
+    const user = await createUser();
+    const bookId = await createBookThroughStoryPlan(user, 5, false);
+    for (let i = 1; i <= 3; i += 1) {
+      jest.mocked(writeStoryTexts).mockImplementationOnce(async ({ scenes }) => new Map(scenes.map((s) => [s.pageNumber, `Version ${i} of page ${s.pageNumber}.`])));
+      const res = await request(`/api/childrens-books/${bookId}/story-text/regenerate`, user, 'POST');
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.data.storyPlan.textRegenerations).toBe(i);
+      expect(body.data.pages[0].storyText).toBe(`Version ${i} of page 1.`);
+    }
+    const fourth = await request(`/api/childrens-books/${bookId}/story-text/regenerate`, user, 'POST');
+    expect(fourth.status).toBe(400);
+
+    const other = await createBookThroughStoryPlan(user, 5);
+    const afterApproval = await request(`/api/childrens-books/${other}/story-text/regenerate`, user, 'POST');
+    expect(afterApproval.status).toBe(400);
+  });
+});
+
+describe("Children's Book — print-size PDF", () => {
+  it('refuses before the book is ready, then streams a PDF at the chosen size without touching the stored one', async () => {
+    const user = await createUser();
+    const bookId = await createBookThroughStoryPlan(user, 5);
+    const early = await request(`/api/childrens-books/${bookId}/pdf/print`, user, 'POST', { size: 'A5' });
+    expect(early.status).toBe(400);
+
+    await advanceToPaid(user, bookId);
+    await startAndWaitForFinal(user, bookId);
+    const before = await prisma.bookProject.findUnique({ where: { id: bookId } });
+
+    const bad = await request(`/api/childrens-books/${bookId}/pdf/print`, user, 'POST', { size: 'CUSTOM', widthMm: 20, heightMm: 20 });
+    expect(bad.status).toBe(400);
+    const stranger = await request(`/api/childrens-books/${bookId}/pdf/print`, await createUser(), 'POST', { size: 'A5' });
+    expect(stranger.status).toBe(404);
+
+    const res = await request(`/api/childrens-books/${bookId}/pdf/print`, user, 'POST', { size: 'A5', orientation: 'landscape', bleedMm: 3 });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('application/pdf');
+    expect(res.headers.get('content-disposition')).toContain('A5-landscape-bleed3mm');
+    const doc = await PDFDocument.load(Buffer.from(await res.arrayBuffer()));
+    expect(doc.getPageCount()).toBe(5);
+    expect(doc.getPage(0).getTrimBox().width).toBeCloseTo(210 * 72 / 25.4, 1);
+
+    const after = await prisma.bookProject.findUnique({ where: { id: bookId } });
+    expect(after!.pdfStatus).toBe(before!.pdfStatus);
+    expect(after!.pdfVersion).toBe(before!.pdfVersion);
   });
 });
