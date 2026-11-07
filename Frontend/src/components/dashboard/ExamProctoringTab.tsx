@@ -64,6 +64,22 @@ const dictBase = {
     duration: 'ხანგრძლივობა (წუთი)',
     includeCode: 'დაამატე პროგრამირების კითხვა',
     includePractical: 'დაამატე 1 ღია კითხვა (მოსწავლე წერს პასუხს, AI აფასებს)',
+    summaryTitle: 'გამოცდის შეჯამება',
+    summaryUntitled: 'უსახელო გამოცდა',
+    summaryQuestions: 'კითხვები',
+    summaryDuration: 'ხანგრძლივობა',
+    summaryMinutes: 'წთ',
+    summaryPerQuestion: 'დრო ერთ კითხვაზე',
+    summarySeconds: 'წამი',
+    summaryMaterial: 'სასწავლო მასალა',
+    summaryMaterialNone: 'არ არის — მხოლოდ თემიდან',
+    summaryMaterialWords: (n: number) => `მიბმულია (${n} სიტყვა)`,
+    summaryShuffle: 'არევა თითოეულ მოსწავლესთან',
+    howTitle: 'როგორ მუშაობს',
+    howStep1: 'AI შეადგენს კითხვებს მასალიდან. „კითხვები“ ჩანართში გადახედეთ მათ და სწორ პასუხებს.',
+    howStep2: 'გაუზიარეთ ერთი „მოსწავლის ბმული“ მთელ კლასს.',
+    howStep3: 'მოსწავლე რთავს კამერას და მიკროფონს, კითხვებს არეული რიგით ხედავს. 3 ტაბის გადართვა ან ჩასმა გამოცდას ასრულებს.',
+    howStep4: '„შედეგები & ანალიტიკა“-ში ნახავთ ქულებს, ყველაზე რთულ კითხვებს და ჩამოტვირთავთ Excel-ს.',
     shuffleNote: 'თითოეულ მოსწავლეს კითხვების რიგი და პასუხების (A-D) რიგი ავტომატურად ერევა — მეზობლები ვერ გადაიწერენ.',
     tabQuestions: 'კითხვები',
     questionsTitle: 'გამოცდის კითხვები და სწორი პასუხები',
@@ -178,6 +194,22 @@ const dictBase = {
     duration: 'Duration (minutes)',
     includeCode: 'Add a coding question',
     includePractical: 'Add 1 open-ended question (written answer, graded by AI)',
+    summaryTitle: 'Exam summary',
+    summaryUntitled: 'Untitled exam',
+    summaryQuestions: 'Questions',
+    summaryDuration: 'Duration',
+    summaryMinutes: 'min',
+    summaryPerQuestion: 'Time per question',
+    summarySeconds: 'sec',
+    summaryMaterial: 'Study material',
+    summaryMaterialNone: 'None — topic only',
+    summaryMaterialWords: (n: number) => `Attached (${n} words)`,
+    summaryShuffle: 'Shuffled per student',
+    howTitle: 'How it works',
+    howStep1: 'AI writes the questions from your material. Review them and the answer key in the Questions tab.',
+    howStep2: 'Share one student link with the whole class.',
+    howStep3: 'Students turn on camera and mic and see questions in a shuffled order. 3 tab switches or pastes end the exam.',
+    howStep4: 'Results & Analytics shows scores, the hardest questions, and an Excel download.',
     shuffleNote: 'Each student automatically gets a different question order and A-D answer order, so neighbours can\'t copy.',
     tabQuestions: 'Questions',
     questionsTitle: 'Exam questions & answer key',
@@ -479,6 +511,52 @@ function ClassAnalytics({ detail, t }: { detail: ExamSessionDetail; t: Dict }) {
         </>
       )}
     </div>
+  );
+}
+
+// Right-hand column of the create form on desktop: a live summary of what
+// will be generated, plus a short "how it works" for the teacher. Stacks
+// under the form on mobile.
+function CreateSidePanel({ form, t }: { form: typeof emptyForm; t: Dict }) {
+  const words = form.rawContent.trim() ? form.rawContent.trim().split(/\s+/).length : 0;
+  const totalQuestions = form.mcqCount + (form.includePracticalQuestion ? 1 : 0) + (form.includeCodeQuestion ? 1 : 0);
+  const steps = [t.howStep1, t.howStep2, t.howStep3, t.howStep4];
+  const row = (label: string, value: string, ok = true) => (
+    <div className="flex items-center justify-between gap-3 py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
+      <span className="text-xs text-slate-500 dark:text-slate-400">{label}</span>
+      <span className={`text-xs font-bold text-right ${ok ? 'text-slate-900 dark:text-white' : 'text-amber-600 dark:text-amber-400'}`}>{value}</span>
+    </div>
+  );
+  return (
+    <aside className="space-y-4 lg:sticky lg:top-24">
+      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 shadow-md shadow-slate-200/40 dark:shadow-none p-6">
+        <h3 className="text-sm font-black tracking-wide mb-3 flex items-center gap-1.5">
+          <ClipboardList className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+          {t.summaryTitle}
+        </h3>
+        <p className="text-base font-black text-slate-900 dark:text-white mb-1 break-words">{form.title.trim() || t.summaryUntitled}</p>
+        {form.topic.trim() && <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 break-words">{form.topic}</p>}
+        {row(t.summaryQuestions, String(totalQuestions))}
+        {row(t.summaryDuration, `${form.durationMinutes} ${t.summaryMinutes}`)}
+        {row(t.summaryPerQuestion, totalQuestions > 0 ? `≈ ${Math.max(1, Math.round((form.durationMinutes * 60) / totalQuestions))} ${t.summarySeconds}` : '—')}
+        {row(t.summaryMaterial, words > 0 ? t.summaryMaterialWords(words) : t.summaryMaterialNone, words > 0)}
+        {row(t.summaryShuffle, '✓')}
+      </div>
+      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 shadow-md shadow-slate-200/40 dark:shadow-none p-6">
+        <h3 className="text-sm font-black tracking-wide mb-3 flex items-center gap-1.5">
+          <ShieldAlert className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+          {t.howTitle}
+        </h3>
+        <ol className="space-y-3">
+          {steps.map((step, i) => (
+            <li key={i} className="flex gap-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              <span className="shrink-0 w-5 h-5 rounded-full bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 font-black text-[11px] flex items-center justify-center">{i + 1}</span>
+              {step}
+            </li>
+          ))}
+        </ol>
+      </div>
+    </aside>
   );
 }
 
@@ -841,7 +919,8 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
           </button>
         </div>
       ) : showCreateForm ? (
-        <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none p-6 space-y-4 max-w-lg">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,32rem)_minmax(0,1fr)] items-start">
+        <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none p-6 space-y-4 min-w-0">
           {createError && <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-xs text-red-600 dark:text-red-300">{createError}</div>}
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
@@ -1071,6 +1150,8 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
               </button>
             </div>
           </form>
+        </div>
+        <CreateSidePanel form={createForm} t={t} />
         </div>
       ) : (
         <>
