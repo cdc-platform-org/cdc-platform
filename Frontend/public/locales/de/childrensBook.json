@@ -212,6 +212,17 @@
   "printBleedNone": "None",
   "printBleedHint": "For a print shop: adds an extra edge that is cut off after printing. For home printing choose None.",
   "printDownloadButton": "Download PDF for print",
+  "fontLabel": "Schriftart",
+  "fontHint": "Wählen Sie die Schrift für die Geschichte im Buch und im PDF. Sie können sie jederzeit kostenlos ändern.",
+  "font": {
+    "SIMPLE": "Schlicht",
+    "ROUNDED": "Rund und freundlich",
+    "MODERN": "Modern",
+    "FAIRYTALE": "Märchen (klassisch)",
+    "PLAYFUL": "Verspielt (handschriftlich)",
+    "EASY_READ": "Leicht lesbar"
+  },
+  "fontChangedPdfStale": "Schrift geändert. Klicken Sie auf „{{button}}“, um das PDF in der neuen Schrift zu erzeugen.",
   "styleWatercolorHint": "Soft colours and watercolour texture",
   "styleModern3dHint": "A 3D world like an animated film",
   "styleSoftDigitalHint": "Gentle pastel digital painting",

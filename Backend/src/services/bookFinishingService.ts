@@ -56,7 +56,7 @@ export async function buildAndStoreBookPdf(bookId: string): Promise<PdfBuildOutc
 
   try {
     const pdfPages = await collectPdfPages(book.pages);
-    const pdfBuffer = await buildBookPdf({ title: book.title, dedication: (book.characterConfig as any)?.dedication ?? null, pageCount: book.pageCount, pages: pdfPages });
+    const pdfBuffer = await buildBookPdf({ title: book.title, dedication: (book.characterConfig as any)?.dedication ?? null, pageCount: book.pageCount, pages: pdfPages, fontId: (book.characterConfig as any)?.fontId ?? null });
     const newVersion = book.pdfVersion + 1;
     const pdfKey = `books/${book.id}/final-v${newVersion}.pdf`;
     await storeBookAsset(pdfKey, pdfBuffer, 'application/pdf');

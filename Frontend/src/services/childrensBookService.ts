@@ -19,6 +19,7 @@ export interface BookCharacterConfig {
   appearance?: string;
   extraCharacters?: string;
   siblings?: BookSibling[];
+  fontId?: string; // see components/tools/childrensBook/bookFonts.ts
   photoKey?: string;
   photoConsentAt?: string;
   photoDeletedAt?: string;
@@ -109,13 +110,19 @@ export async function getBook(id: string): Promise<{ book: BookProject; mocked: 
   return { book: response.data.data, mocked: response.data.mocked, devPaymentSimulationEnabled: response.data.devPaymentSimulationEnabled };
 }
 
-export async function createBook(payload: { language: BookLanguage; title: string; character: BookCharacterConfig; illustrationStyle?: string; pageCount: number }): Promise<BookProject> {
+export async function createBook(payload: { language: BookLanguage; title: string; character: BookCharacterConfig; illustrationStyle?: string; pageCount: number; fontId?: string }): Promise<BookProject> {
   const response = await apiClient.post<{ data: BookProject }>('/childrens-books', payload);
   return response.data.data;
 }
 
 export async function updateCharacterConfig(id: string, payload: { character?: BookCharacterConfig; title?: string }): Promise<BookProject> {
   const response = await apiClient.put<{ data: BookProject }>(`/childrens-books/${id}/character-config`, payload);
+  return response.data.data;
+}
+
+// Free at any time; a finished book's stored PDF becomes STALE.
+export async function updateBookFont(id: string, fontId: string): Promise<BookProject> {
+  const response = await apiClient.put<{ data: BookProject }>(`/childrens-books/${id}/font`, { fontId });
   return response.data.data;
 }
 

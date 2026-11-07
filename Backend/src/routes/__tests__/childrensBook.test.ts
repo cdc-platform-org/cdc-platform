@@ -499,3 +499,44 @@ describe("Children's Book — print-size PDF", () => {
     expect(after!.pdfVersion).toBe(before!.pdfVersion);
   });
 });
+
+describe("Children's Book — font choice", () => {
+  it('stores the font picked on the create form, defaults to SIMPLE, refuses unknown fonts', async () => {
+    const user = await createUser();
+    const base = { language: 'KA', title: 'ზღაპარი', character: { name: 'ნინო' }, pageCount: 5 };
+    const picked = (await (await request('/api/childrens-books', user, 'POST', { ...base, fontId: 'FAIRYTALE' })).json()) as any;
+    expect(picked.data.characterConfig.fontId).toBe('FAIRYTALE');
+    const plain = (await (await request('/api/childrens-books', user, 'POST', base)).json()) as any;
+    expect(plain.data.characterConfig.fontId).toBe('SIMPLE');
+    const bad = await request('/api/childrens-books', user, 'POST', { ...base, fontId: 'Comic Sans' });
+    expect(bad.status).toBe(400);
+  });
+
+  it('keeps the font when the character is edited', async () => {
+    const user = await createUser();
+    const created = (await (await request('/api/childrens-books', user, 'POST', { language: 'EN', title: 'T', character: { name: 'Mimi' }, pageCount: 5, fontId: 'PLAYFUL' })).json()) as any;
+    const edited = (await (await request(`/api/childrens-books/${created.data.id}/character-config`, user, 'PUT', { character: { name: 'Mimi', age: 6 } })).json()) as any;
+    expect(edited.data.characterConfig.fontId).toBe('PLAYFUL');
+    expect(edited.data.characterConfig.age).toBe(6);
+  });
+
+  it('changes the font, marks a current PDF stale, and is owner-only', async () => {
+    const owner = await createUser();
+    const intruder = await createUser();
+    const bookId = await createBookThroughStoryPlan(owner, 5);
+    await prisma.bookProject.update({ where: { id: bookId }, data: { pdfStatus: 'CURRENT' } });
+
+    expect((await request(`/api/childrens-books/${bookId}/font`, intruder, 'PUT', { fontId: 'MODERN' })).status).toBe(404);
+    expect((await request(`/api/childrens-books/${bookId}/font`, owner, 'PUT', { fontId: 'nope' })).status).toBe(400);
+
+    const res = await request(`/api/childrens-books/${bookId}/font`, owner, 'PUT', { fontId: 'MODERN' });
+    expect(res.status).toBe(200);
+    const { data } = (await res.json()) as any;
+    expect(data.characterConfig.fontId).toBe('MODERN');
+    expect(data.characterConfig.name).toBe('Mimi');
+    expect(data.pdfStatus).toBe('STALE');
+
+    await prisma.bookProject.update({ where: { id: bookId }, data: { pdfStatus: 'GENERATING' } });
+    expect((await request(`/api/childrens-books/${bookId}/font`, owner, 'PUT', { fontId: 'ROUNDED' })).status).toBe(409);
+  });
+});

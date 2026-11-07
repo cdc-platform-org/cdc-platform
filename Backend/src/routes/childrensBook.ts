@@ -52,6 +52,7 @@ import { calculateAudioPrice, calculateTotalBookPrice, canGenerateNarration, nar
 import { getBookNarrationProvider } from '../services/bookNarrationProviders';
 import { AzureSpeechError } from '../services/azureSpeechService';
 import { isIllustrationStyle, illustrationStylePromptLine } from '../services/bookIllustrationStyles';
+import { isBookFontId, DEFAULT_BOOK_FONT } from '../services/bookFonts';
 
 const router = Router();
 
@@ -141,7 +142,7 @@ function handlePhotoUpload(req: Request, res: Response, next: NextFunction) {
 // CREATE
 // ============================================================
 router.post('/', authenticate, requireApproved, async (req: Request, res: Response) => {
-  const { language, title, character, illustrationStyle, pageCount, audioAddOnPurchased } = req.body ?? {};
+  const { language, title, character, illustrationStyle, pageCount, audioAddOnPurchased, fontId } = req.body ?? {};
   if (typeof language !== 'string' || !isSupportedLanguage(language)) {
     return res.status(400).json({ message: 'language must be KA or EN.' });
   }
@@ -156,6 +157,9 @@ router.post('/', authenticate, requireApproved, async (req: Request, res: Respon
   const style = illustrationStyle === undefined || illustrationStyle === null ? 'STORYBOOK_WATERCOLOR' : illustrationStyle;
   if (!isIllustrationStyle(style)) {
     return res.status(400).json({ message: 'Unknown illustration style.' });
+  }
+  if (fontId !== undefined && fontId !== null && !isBookFontId(fontId)) {
+    return res.status(400).json({ message: 'Unknown font.' });
   }
   // Server decides the price — pageCount is the only thing the client
   // chooses, and even that is validated against the fixed allowed set
@@ -175,7 +179,7 @@ router.post('/', authenticate, requireApproved, async (req: Request, res: Respon
       language,
       title: title.trim(),
       illustrationStyle: style,
-      characterConfig: sanitized.value as any,
+      characterConfig: { ...sanitized.value, fontId: isBookFontId(fontId) ? fontId : DEFAULT_BOOK_FONT } as any,
       priceGel,
       pageCount,
       audioAddOnPurchased: includesAudio,
@@ -265,7 +269,7 @@ router.put('/:id/character-config', authenticate, async (req: Request, res: Resp
     if (!sanitized.ok) return res.status(400).json({ message: sanitized.message });
     // Keep the server-owned photo reference across edits.
     const existing = (book.characterConfig ?? {}) as any;
-    nextConfig = { ...sanitized.value, ...(existing.photoKey ? { photoKey: existing.photoKey, photoMimeType: existing.photoMimeType, photoConsentAt: existing.photoConsentAt } : {}) };
+    nextConfig = { ...sanitized.value, ...(existing.fontId ? { fontId: existing.fontId } : {}), ...(existing.photoKey ? { photoKey: existing.photoKey, photoMimeType: existing.photoMimeType, photoConsentAt: existing.photoConsentAt } : {}) };
     // Sibling photos follow the sibling's name; a removed sibling's photo is deleted.
     const oldSiblings: SiblingConfig[] = Array.isArray(existing.siblings) ? existing.siblings : [];
     const keptKeys = new Set<string>();
@@ -285,6 +289,32 @@ router.put('/:id/character-config', authenticate, async (req: Request, res: Resp
     data: {
       characterConfig: nextConfig,
       title: typeof title === 'string' && title.trim() ? title.trim() : undefined,
+    },
+  });
+  res.json({ data: updated });
+});
+
+// ============================================================
+// BOOK FONT — the parent can change it at any time: it costs no image, so
+// the only effect on a finished book is that the stored PDF goes STALE and
+// "create PDF" builds it again in the new font (print copies are built on
+// demand, so they always use the current font).
+// ============================================================
+router.put('/:id/font', authenticate, async (req: Request, res: Response) => {
+  const book = await prisma.bookProject.findUnique({ where: { id: req.params.id } });
+  if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
+  const { fontId } = req.body ?? {};
+  if (!isBookFontId(fontId)) return res.status(400).json({ message: 'Unknown font.' });
+  const config = (book.characterConfig ?? {}) as any;
+  if (config.fontId === fontId) return res.json({ data: book });
+  // Not while a PDF is being written, so it can't finish in the old font
+  // and still be marked CURRENT.
+  if (book.pdfStatus === 'GENERATING') return res.status(409).json({ message: 'The PDF is being created right now. Try again in a moment.' });
+  const updated = await prisma.bookProject.update({
+    where: { id: book.id },
+    data: {
+      characterConfig: { ...config, fontId } as any,
+      ...(book.pdfStatus === 'CURRENT' ? { pdfStatus: 'STALE' as const } : {}),
     },
   });
   res.json({ data: updated });
@@ -1194,6 +1224,7 @@ router.post('/:id/pdf/print', authenticate, async (req: Request, res: Response) 
     pageCount: book.pageCount,
     pages: await collectPdfPages(book.pages),
     print: settings.value,
+    fontId: (book.characterConfig as any)?.fontId ?? null,
   });
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="book-${book.id.slice(0, 8)}-${printFileSuffix(settings.value)}.pdf"`);

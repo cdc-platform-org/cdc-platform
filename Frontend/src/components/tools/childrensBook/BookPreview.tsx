@@ -1,5 +1,6 @@
 import { useTranslation } from 'next-i18next';
 import { BookOpen, CheckCircle2, Eye, Loader2, Lock, Users, Palette, PenLine } from 'lucide-react';
+import { bookFontFamily } from './bookFonts';
 import { BookProject } from '../../../services/childrensBookService';
 import { PromoValidationResult } from '../../../services/paymentService';
 
@@ -62,9 +63,9 @@ export default function BookPreview({ book, portraitUrl, busy, onConfirm, onClos
         )}
         <div className="text-center sm:text-left min-w-0">
           <div className="text-xs uppercase tracking-wide text-purple-600 font-semibold mb-1">{t('previewCoverLabel')}</div>
-          <h3 className="text-2xl font-bold text-gray-900 break-words">{book.title}</h3>
+          <h3 className="text-2xl font-bold text-gray-900 break-words"><span style={{ fontFamily: bookFontFamily(config?.fontId) }}>{book.title}</span></h3>
           <p className="text-gray-700 mt-1">{t('previewStarring', { name: config?.name ?? '' })}</p>
-          {dedication && <p className="text-sm italic text-gray-600 mt-3">“{dedication}”</p>}
+          {dedication && <p className="text-sm italic text-gray-600 mt-3" style={{ fontFamily: bookFontFamily(config?.fontId) }}>“{dedication}”</p>}
         </div>
       </div>
 
@@ -113,7 +114,7 @@ export default function BookPreview({ book, portraitUrl, busy, onConfirm, onClos
             </div>
             <div className="p-3 min-w-0">
               <div className="text-xs font-semibold text-purple-700 mb-1">{t('pageLabel', { number: page.pageNumber })}</div>
-              <p className="text-sm text-gray-700 break-words whitespace-pre-line">{page.storyText}</p>
+              <p className="text-sm text-gray-700 break-words whitespace-pre-line" style={{ fontFamily: bookFontFamily(config?.fontId) }}>{page.storyText}</p>
             </div>
           </li>
         ))}
