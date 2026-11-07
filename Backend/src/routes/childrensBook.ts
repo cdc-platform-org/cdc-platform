@@ -1205,6 +1205,9 @@ router.post('/:id/pdf', authenticate, async (req: Request, res: Response) => {
   const book = await prisma.bookProject.findUnique({ where: { id: req.params.id } });
   if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
 
+  // Finished books get their PDF automatically, so a request for an
+  // already-current PDF just returns the book (idempotent, no rebuild).
+  if (book.pdfStatus === 'CURRENT' && book.finalPdfBlobRef) return res.status(200).json({ data: book });
   const outcome = await buildAndStoreBookPdf(book.id);
   if (outcome === 'NOT_ELIGIBLE') return res.status(400).json({ message: 'PDF cannot be generated yet.' });
   if (outcome === 'IN_PROGRESS') return res.status(409).json({ message: 'PDF generation already in progress.' });
