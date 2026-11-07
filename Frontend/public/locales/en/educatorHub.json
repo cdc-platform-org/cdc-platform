@@ -183,5 +183,8 @@
   "generatedCertificatesHeading": "Generated Certificates",
   "downloadCertificate": "Download Certificate #{{index}}",
   "certificatesTitle": "Certificate & Diploma Builder",
-  "certificatesDescription": "Create printable certificates and diplomas for your students in seconds."
+  "certificatesDescription": "Create printable certificates and diplomas for your students in seconds.",
+  "vipTrialUsedDesc": "Your free trial has ended. To continue with VIP (50 GEL/month), message us and we will activate it.",
+  "vipRequestCta": "Request VIP activation",
+  "vipRequestSubject": "AI Educator VIP activation"
 }

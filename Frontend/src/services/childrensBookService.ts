@@ -1,4 +1,4 @@
-import apiClient from './apiClient';
+import apiClient, { API_BASE_URL } from './apiClient';
 
 export type BookLanguage = 'KA' | 'EN';
 
@@ -89,6 +89,7 @@ export interface BookListItem {
   language: BookLanguage;
   status: string;
   pdfStatus: BookProject['pdfStatus'];
+  generationRecovering?: boolean;
   pageCount: number;
   priceGel: number;
   audioAddOnPurchased: boolean;
@@ -319,4 +320,10 @@ export async function downloadPrintPdf(id: string, settings: PrintRequest, filen
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+// Public sample picture of an illustration style (drawn once by the
+// backend and cached), used by the style picker as a plain <img src>.
+export function styleSampleUrl(style: string): string {
+  return `${API_BASE_URL}/childrens-books/style-samples/${encodeURIComponent(style)}`;
 }

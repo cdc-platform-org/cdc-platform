@@ -132,6 +132,7 @@
   "photoChange": "Fotoğrafı değiştir",
   "photoRemove": "Fotoğrafı kaldır",
   "photoConsent": "Çocuğun ebeveyni veya yasal vasisi olduğumu onaylıyor ve bu fotoğrafın kitabın çizimleri için kullanılmasını kabul ediyorum.",
+  "photoConsentRequired": "Fotoğraf yüklemek için önce yukarıdaki onay kutusunu işaretleyin.",
   "photoPrivacy": "JPG, PNG veya WebP, en fazla 8 MB. Fotoğraf gizli saklanır, konum bilgileri silinir. Karakteri çizmek için bir yapay zekâ görsel hizmetine (Azure OpenAI) gönderilir ve başka hiçbir amaçla kullanılmaz. Karakteri onayladığınız anda otomatik olarak silinir; öncesinde istediğiniz zaman kaldırabilirsiniz.",
   "photoWrongType": "Lütfen JPG, PNG veya WebP bir fotoğraf seçin.",
   "photoTooLarge": "Fotoğraf en fazla {{mb}} MB olmalıdır.",
@@ -221,5 +222,23 @@
     "PLAYFUL": "Eğlenceli (el yazısı)",
     "EASY_READ": "Kolay okunur"
   },
-  "fontChangedPdfStale": "Yazı tipi değişti. PDF'i yeni yazı tipiyle yenilemek için \"{{button}}\" düğmesine basın."
+  "fontChangedPdfStale": "Yazı tipi değişti. PDF'i yeni yazı tipiyle yenilemek için \"{{button}}\" düğmesine basın.",
+  "styleWatercolorHint": "Soft colours and watercolour texture",
+  "styleModern3dHint": "A 3D world like an animated film",
+  "styleSoftDigitalHint": "Gentle pastel digital painting",
+  "styleCartoonHint": "Bright colours and bold outlines",
+  "styleFantasyHint": "Magical light and sparkle",
+  "styleClassicHint": "The look of a classic storybook",
+  "illustrationStyleHint": "See a sample and choose how the whole book will be drawn.",
+  "createIntro": "Three short steps. You will see the text and the character before paying.",
+  "formSectionBook": "Book",
+  "formSectionBookHint": "Length, title and language.",
+  "formSectionHero": "Main character",
+  "formSectionHeroHint": "The more you tell us about the child, the more personal the story.",
+  "generationAutoRetrying": "A few pages are taking a little longer. They are being finished automatically; nothing is needed from you. You can close this page and come back later.",
+  "generationContinueNow": "Continue now",
+  "generatingCanLeave": "This takes a few minutes. You can close this page; the book will finish on its own.",
+  "previewFailed": "The character could not be drawn. Please try again.",
+  "pdfPreparing": "Preparing PDF…",
+  "audioPreparingAuto": "The narration is being prepared automatically and will be ready in a few minutes."
 }

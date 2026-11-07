@@ -8,9 +8,10 @@ import BackButton from '../../src/components/common/BackButton';
 import VideoEmbed, { parseVideoUrl } from '../../src/components/shared/VideoEmbed';
 import SEOHead from '../../src/components/seo/SEOHead';
 import SocialShareButtons from '../../src/components/shared/SocialShareButtons';
+import GiftThisButton from '../../src/components/giftCards/GiftThisButton';
 import { LiveTraining } from '../../src/types/liveTraining';
 import { getLiveTraining, registerForLiveTraining, enrollInLiveTraining, checkoutLiveTraining } from '../../src/services/liveTrainingService';
-import { checkoutLiveTrainingStripe } from '../../src/services/stripePaymentService';
+import { checkoutLiveTrainingStripe, stripeWithBogFallback } from '../../src/services/stripePaymentService';
 import { validatePromoCode, PromoValidationResult } from '../../src/services/paymentService';
 import { resolveLocale } from '@/src/utils/locale';
 import { courseLanguageBadge } from '@/src/utils/courseLanguage';
@@ -19,6 +20,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
 import LearningRatingsSection from '../../src/components/shared/LearningRatingsSection';
 import LearningRatingSummary from '../../src/components/shared/LearningRatingSummary';
+import { localizePromoError } from '../../src/components/shared/PromoCodeField';
 
 const EN_STRINGS = {
   loading: 'Loading…',
@@ -186,7 +188,7 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
       const result = await validatePromoCode(promoInput.trim(), 'LIVE_TRAINING', id);
       setAppliedPromo(result);
     } catch (err: any) {
-      setPromoError(err?.response?.data?.message ?? t.invalidPromo);
+      setPromoError(localizePromoError(err?.response?.data?.message, contentLang) ?? t.invalidPromo);
     } finally {
       setApplyingPromo(false);
     }
@@ -229,7 +231,10 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
         const result =
           lang === 'ka'
             ? await checkoutLiveTraining(id, appliedPromo?.code, 'ka')
-            : await checkoutLiveTrainingStripe(id, appliedPromo?.code, 'usd');
+            : await stripeWithBogFallback(
+                () => checkoutLiveTrainingStripe(id, appliedPromo?.code, 'usd'),
+                () => checkoutLiveTraining(id, appliedPromo?.code, 'en'),
+              );
         if (result.redirectUrl) {
           window.location.href = result.redirectUrl;
         } else if (result.enrolled) {
@@ -314,8 +319,9 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
         </div>
         <h1 className="blog-heading-safe text-3xl font-black mb-3">{title}</h1>
         <LearningRatingSummary {...training} lang={contentLang} />
-        <div className="mb-4">
+        <div className="mb-4 flex flex-wrap items-center gap-3">
           <SocialShareButtons title={title} lang={lang} variant="dark" />
+          <GiftThisButton priceMinor={currentPrice} itemTitle={title} itemPath={`/live-trainings/${training.id}`} lang={lang} variant="dark" />
         </div>
         {training.videoUrl && parseVideoUrl(training.videoUrl) && (
           <div className="w-full mb-8">

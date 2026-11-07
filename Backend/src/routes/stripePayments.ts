@@ -20,7 +20,7 @@ import { completeCoursePurchase } from '../services/courseSaleService';
 import { paymentModelForPurpose } from '../services/paymentModel';
 import { getCurrentPrice } from '../services/coursePricing';
 import { getCurrentProductPrice } from '../services/productPricing';
-import { applyPromoToCheckout, quotePromoToCheckout, PromoCodeError } from '../services/couponService';
+import { applyPromoToCheckout, quotePromoToCheckout, PromoCodeError, rejectGiftCardCode } from '../services/couponService';
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
 import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
 import { captureMentorshipEscrow } from '../services/mentorshipEscrowService';
@@ -141,6 +141,7 @@ router.post('/checkout/course/:courseId', checkoutRateLimit, authenticate, requi
   let appliedPromo: PromoCode | null = null;
   if (rawPromoCode && chargeAmountGel > 0) {
     try {
+      await rejectGiftCardCode(rawPromoCode);
       const applied = await quotePromoToCheckout(rawPromoCode, 'COURSE', course.id, chargeAmountGel);
       chargeAmountGel = applied.chargeAmount;
       appliedPromo = applied.appliedPromo;
@@ -249,6 +250,7 @@ router.post('/checkout/live-training/:id', checkoutRateLimit, authenticate, requ
   let appliedPromo: PromoCode | null = null;
   if (rawPromoCode && chargeAmountGel > 0) {
     try {
+      await rejectGiftCardCode(rawPromoCode);
       const applied = await quotePromoToCheckout(rawPromoCode, 'LIVE_TRAINING', training.id, chargeAmountGel);
       chargeAmountGel = applied.chargeAmount;
       appliedPromo = applied.appliedPromo;
@@ -337,6 +339,7 @@ router.post('/checkout/english-tutor', checkoutRateLimit, authenticate, requireA
   let appliedPromo: { id: string } | null = null;
   if (rawPromoCode && chargeAmountGel > 0) {
     try {
+      await rejectGiftCardCode(rawPromoCode);
       const applied = await applyPromoToCheckout(rawPromoCode, 'AI_TOOL', 'english-tutor', chargeAmountGel);
       chargeAmountGel = applied.chargeAmount;
       appliedPromo = applied.appliedPromo;
@@ -609,6 +612,7 @@ router.post('/checkout/product/:productId', checkoutRateLimit, authenticate, req
   let appliedPromo: { id: string } | null = null;
   if (rawPromoCode) {
     try {
+      await rejectGiftCardCode(rawPromoCode);
       const applied = await applyPromoToCheckout(rawPromoCode, 'DIGITAL_PRODUCT', product.id, productPriceGel);
       productPriceGel = applied.chargeAmount;
       appliedPromo = applied.appliedPromo;

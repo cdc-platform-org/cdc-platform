@@ -26,6 +26,8 @@ const dict = {
     gig: 'გარიგების ესქროუ დაფინანსება',
     product: 'ციფრული პროდუქტი',
     book: 'საბავშვო წიგნი',
+    giftCard: 'სასაჩუქრე ბარათი',
+    redirectingToGift: 'საჩუქარი მზადაა! გადაგიყვანთ თქვენს სასაჩუქრე ბარათებზე…',
     redirectingToBook: 'გადამისამართება თქვენს წიგნზე…',
     openBook: 'წიგნის გახსნა',
     myPurchases: 'ჩემი შენაძენები',
@@ -55,6 +57,8 @@ const dict = {
     gig: 'Gig escrow funding',
     product: 'Digital product',
     book: "Children's book",
+    giftCard: 'Gift card',
+    redirectingToGift: 'Your gift is ready! Taking you to your gift cards…',
     redirectingToBook: 'Redirecting to your book…',
     openBook: 'Open my book',
     myPurchases: 'My purchases',
@@ -84,6 +88,8 @@ const dict = {
     gig: 'Gig escrow funding',
     product: 'Digital product',
     book: "Children's book",
+    giftCard: 'Gift card',
+    redirectingToGift: 'Your gift is ready! Taking you to your gift cards…',
     redirectingToBook: 'Redirecting to your book…',
     openBook: 'Open my book',
     myPurchases: 'My purchases',
@@ -113,6 +119,8 @@ const dict = {
     gig: 'Gig escrow funding',
     product: 'Digital product',
     book: "Children's book",
+    giftCard: 'Gift card',
+    redirectingToGift: 'Your gift is ready! Taking you to your gift cards…',
     redirectingToBook: 'Redirecting to your book…',
     openBook: 'Open my book',
     myPurchases: 'My purchases',
@@ -142,6 +150,8 @@ const dict = {
     gig: 'Gig escrow funding',
     product: 'Digital product',
     book: "Children's book",
+    giftCard: 'Gift card',
+    redirectingToGift: 'Your gift is ready! Taking you to your gift cards…',
     redirectingToBook: 'Redirecting to your book…',
     openBook: 'Open my book',
     myPurchases: 'My purchases',
@@ -171,6 +181,8 @@ const dict = {
     gig: 'Gig escrow funding',
     product: 'Digital product',
     book: "Children's book",
+    giftCard: 'Gift card',
+    redirectingToGift: 'Your gift is ready! Taking you to your gift cards…',
     redirectingToBook: 'Redirecting to your book…',
     openBook: 'Open my book',
     myPurchases: 'My purchases',
@@ -190,6 +202,7 @@ const purposeKey: Record<string, keyof typeof dict.en> = {
   GIG_ESCROW_FUNDING: 'gig',
   PRODUCT: 'product',
   CHILDRENS_BOOK: 'book',
+  GIFT_CARD: 'giftCard',
 };
 
 function BogResultContent() {
@@ -250,6 +263,12 @@ function BogResultContent() {
     // redirect and no link except "Back to home", so a buyer who had just
     // paid saw nothing about their book. Send them back into the book
     // flow (final generation continues there once the book is PAID).
+    if (status?.status === 'COMPLETED' && status.purpose === 'GIFT_CARD' && status.referenceId) {
+      const redirect = setTimeout(() => {
+        router.push({ pathname: '/dashboard/gift-cards', query: { new: status.referenceId } });
+      }, 1800);
+      return () => clearTimeout(redirect);
+    }
     if (status?.status === 'COMPLETED' && status.purpose === 'CHILDRENS_BOOK' && status.referenceId) {
       const redirect = setTimeout(() => {
         router.push({ pathname: '/dashboard/tools/childrens-book', query: { bookId: status.referenceId } });
@@ -313,6 +332,9 @@ function BogResultContent() {
                   {t.refundGuarantee}
                 </p>
               </>
+            )}
+            {status.status === 'COMPLETED' && status.purpose === 'GIFT_CARD' && (
+              <p className="text-xs text-gray-400 dark:text-slate-500">{t.redirectingToGift}</p>
             )}
             {status.status === 'COMPLETED' && status.purpose === 'PRODUCT' && (
               <p className="text-xs text-gray-400 dark:text-slate-500">{t.redirectingToProduct}</p>

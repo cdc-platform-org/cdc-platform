@@ -18,7 +18,9 @@ export async function completeLearningPayment(
       : await tx.stripePayment.findUnique({ where: { id: paymentId } });
     if (!payment || (payment.purpose !== 'COURSE' && payment.purpose !== 'LIVE_TRAINING')) return { handled: false };
     if (payment.status !== 'PENDING') return { handled: true };
-    const amount = 'amountGel' in payment ? payment.amountGel : payment.amount;
+    // A gift-card-paid part is real (prepaid) revenue too, so the instructor's
+    // share is computed on cash + gift card, not just the cash part.
+    const amount = 'amountGel' in payment ? payment.amountGel : payment.amount + payment.giftCardAmount;
     const course = payment.purpose === 'COURSE'
       ? await completeCoursePurchase({ userId: payment.userId, courseId: payment.referenceId, amount }, tx)
       : null;

@@ -10,8 +10,6 @@ import {
   canApproveCharacter,
   canStartFinalGeneration,
   canClaimRevision,
-  canGeneratePdf,
-  canComplete,
   buildLogicalOperationKey,
 } from '../services/bookStateService';
 import { generateStoryPlan, CharacterConfig, StoryPlan } from '../services/bookStoryPlanService';
@@ -25,7 +23,7 @@ import {
 } from '../services/bookStoryTextService';
 import { generateBookImage, isImageGenerationMocked } from '../services/bookImageGenerationService';
 import { runImageQa, isAcceptableQaStatus } from '../services/bookQaService';
-import { buildBookPdf, BookPdfPageInput, parsePrintSettings, printFileSuffix } from '../services/bookPdfService';
+import { buildBookPdf, parsePrintSettings, printFileSuffix } from '../services/bookPdfService';
 import { storeBookAsset, readBookAsset, deleteBookAsset } from '../services/bookStorageService';
 import {
   validateCharacterExtras,
@@ -47,6 +45,9 @@ import {
 import { isBookDevPaymentSimulationEnabled, isBookAiMocked } from '../services/bookMockConfig';
 import { completeChildrensBookPurchase } from '../services/bookPurchaseFulfillment';
 import { startFinalGeneration } from '../services/bookFinalGenerationService';
+import { buildAndStoreBookPdf, collectPdfPages } from '../services/bookFinishingService';
+import { readCast, castPromptLine } from '../services/bookCastService';
+import { getStyleSample } from '../services/bookStyleSamples';
 import { calculateAudioPrice, calculateTotalBookPrice, canGenerateNarration, narrationLanguageForBook } from '../services/bookNarrationService';
 import { getBookNarrationProvider } from '../services/bookNarrationProviders';
 import { AzureSpeechError } from '../services/azureSpeechService';
@@ -190,6 +191,24 @@ router.post('/', authenticate, requireApproved, async (req: Request, res: Respon
 });
 
 // ============================================================
+// STYLE SAMPLES — public thumbnail per illustration style for the picker.
+// Drawn once and cached in storage (see bookStyleSamples.ts). Registered
+// before '/:id' routes and without auth so a plain <img src> works.
+// ============================================================
+router.get('/style-samples/:style', async (req: Request, res: Response) => {
+  const style = req.params.style;
+  if (!isIllustrationStyle(style)) return res.status(404).json({ message: 'Unknown illustration style.' });
+  const image = await getStyleSample(style);
+  if (!image) {
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(404).json({ message: 'Sample not available yet.' });
+  }
+  res.setHeader('Content-Type', 'image/webp');
+  res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+  res.send(image);
+});
+
+// ============================================================
 // MY BOOKS — list
 // ============================================================
 router.get('/', authenticate, async (req: Request, res: Response) => {
@@ -210,9 +229,14 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
       audioAddOnPurchased: true,
       audioPriceGel: true,
       totalPriceGel: true,
+      characterBible: true,
     },
   });
-  res.json({ data: books });
+  // A paid book that ended FAILED is retried automatically, so the list
+  // shows it as still being drawn (generationRecovering), never "failed".
+  res.json({
+    data: books.map(({ characterBible, ...book }) => ({ ...book, generationRecovering: book.status === 'FAILED' && characterBible != null })),
+  });
 });
 
 // ============================================================
@@ -891,16 +915,20 @@ router.post('/:id/revision', authenticate, async (req: Request, res: Response) =
   const characterBible = book.characterBible as any;
   const styleBible = book.styleBible as any;
   const planPage = (book.storyPlan as unknown as StoryPlan)?.pages?.find((p) => p.pageNumber === pageNumber);
-  const revisionReferences = await loadCharacterReference(characterBible);
+  const portraitReference = await loadCharacterReference(characterBible);
+  const cast = readCast(book.storyPlan);
+  const castSheet = cast?.sheetKey ? await loadReferenceImage(cast.sheetKey, cast.sheetMimeType) : [];
+  const revisionReferences = [...portraitReference, ...castSheet];
   const prompt = [
     `Children's storybook illustration revision.`,
     illustrationStylePromptLine(styleBible?.illustrationStyle),
     `Character: ${characterBible?.name ?? ''}, consistent with the approved Character Bible.`,
-    consistencyPromptLine(revisionReferences.length > 0),
+    consistencyPromptLine(portraitReference.length > 0),
     pageStoryPromptLines(characterBible, page.storyText),
     appearancePromptLine(characterBible),
     siblingsPromptLine(characterBible),
     extraCharactersPromptLine(characterBible),
+    castPromptLine(cast, pageNumber, castSheet.length > 0),
     planPage ? `Original scene: ${planPage.sceneDescription}.` : '',
     typeof note === 'string' && note.trim() ? `Requested change: ${note.trim()}.` : '',
     'No readable text or letters anywhere in the image.',
@@ -1174,24 +1202,6 @@ router.get('/:id/audio/full-story', authenticate, async (req: Request, res: Resp
 // ============================================================
 // PDF
 // ============================================================
-async function collectPdfPages(pages: Array<{ pageNumber: number; storyText: string | null; sceneSpec: unknown }>): Promise<BookPdfPageInput[]> {
-  const pdfPages: BookPdfPageInput[] = [];
-  for (const page of pages) {
-    const imageKey = (page.sceneSpec as any)?.imageKey as string | undefined;
-    const imageMimeType = (page.sceneSpec as any)?.imageMimeType as string | undefined;
-    let imageBuffer: Buffer | null = null;
-    if (imageKey) {
-      try {
-        imageBuffer = await readBookAsset(imageKey);
-      } catch {
-        imageBuffer = null;
-      }
-    }
-    pdfPages.push({ pageNumber: page.pageNumber, storyText: page.storyText ?? '', imageBuffer, imageMimeType: imageMimeType ?? null });
-  }
-  return pdfPages;
-}
-
 // ============================================================
 // PRINT PDF — a print-ready copy at the paper size the parent picks (A4,
 // A5, A3, US Letter, square, or a custom size in mm, optional bleed). Built
@@ -1223,44 +1233,20 @@ router.post('/:id/pdf/print', authenticate, async (req: Request, res: Response) 
 });
 
 router.post('/:id/pdf', authenticate, async (req: Request, res: Response) => {
-  const book = await prisma.bookProject.findUnique({ where: { id: req.params.id }, include: { pages: { orderBy: { pageNumber: 'asc' } } } });
+  const book = await prisma.bookProject.findUnique({ where: { id: req.params.id }, include: { pages: { select: { acceptedEventId: true } } } });
   if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
 
-  const acceptedPageCount = book.pages.filter((p) => p.acceptedEventId).length;
-  if (!canGeneratePdf({ acceptedPageCount, pageCount: book.pageCount, status: book.status, pdfStatus: book.pdfStatus })) {
-    return res.status(400).json({ message: 'PDF cannot be generated yet.' });
-  }
-
-  const claim = await prisma.bookProject.updateMany({
-    where: { id: book.id, pdfStatus: { in: ['NONE', 'STALE', 'FAILED'] } },
-    data: { pdfStatus: 'GENERATING' },
-  });
-  if (claim.count !== 1) return res.status(409).json({ message: 'PDF generation already in progress.' });
-
-  try {
-    const pdfPages = await collectPdfPages(book.pages);
-
-    const pdfBuffer = await buildBookPdf({ title: book.title, dedication: (book.characterConfig as any)?.dedication ?? null, pageCount: book.pageCount, pages: pdfPages, fontId: (book.characterConfig as any)?.fontId ?? null });
-    const newVersion = book.pdfVersion + 1;
-    const pdfKey = `books/${book.id}/final-v${newVersion}.pdf`;
-    await storeBookAsset(pdfKey, pdfBuffer, 'application/pdf');
-
-    const updated = await prisma.bookProject.update({
-      where: { id: book.id },
-      data: { pdfStatus: 'CURRENT', pdfVersion: newVersion, finalPdfBlobRef: pdfKey },
-    });
-
-    if (canComplete({ pdfStatus: updated.pdfStatus })) {
-      await prisma.bookProject.updateMany({ where: { id: book.id, status: 'FINAL_READY' }, data: { status: 'COMPLETED' } });
-    }
-
-    const fresh = await prisma.bookProject.findUnique({ where: { id: book.id } });
-    res.status(201).json({ data: fresh });
-  } catch (err) {
-    await prisma.bookProject.update({ where: { id: book.id }, data: { pdfStatus: 'FAILED' } });
-    console.error('[childrens-book] PDF generation failed:', err);
-    res.status(500).json({ message: 'PDF generation failed.' });
-  }
+  // Finished books get their PDF automatically, so a request for an
+  // already-current PDF of a complete book just returns it (no rebuild).
+  const { pages, ...bookData } = book;
+  const complete = pages.filter((p) => p.acceptedEventId).length === book.pageCount && (book.status === 'FINAL_READY' || book.status === 'COMPLETED');
+  if (complete && book.pdfStatus === 'CURRENT' && book.finalPdfBlobRef) return res.status(200).json({ data: bookData });
+  const outcome = await buildAndStoreBookPdf(book.id);
+  if (outcome === 'NOT_ELIGIBLE') return res.status(400).json({ message: 'PDF cannot be generated yet.' });
+  if (outcome === 'IN_PROGRESS') return res.status(409).json({ message: 'PDF generation already in progress.' });
+  if (outcome === 'FAILED') return res.status(500).json({ message: 'PDF generation failed.' });
+  const fresh = await prisma.bookProject.findUnique({ where: { id: book.id } });
+  res.status(201).json({ data: fresh });
 });
 
 // ============================================================

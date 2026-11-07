@@ -24,7 +24,7 @@ import { completeCoursePurchase } from '../services/courseSaleService';
 import { paymentModelForPurpose } from '../services/paymentModel';
 import { getCurrentPrice } from '../services/coursePricing';
 import { getCurrentProductPrice } from '../services/productPricing';
-import { applyPromoToCheckout, quotePromoToCheckout, claimPromoRedemption, PromoCodeError } from '../services/couponService';
+import { applyPromoToCheckout, quotePromoToCheckout, claimPromoRedemption, PromoCodeError, giftCardAmountOf } from '../services/couponService';
 import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
 import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
 import { captureMentorshipEscrow } from '../services/mentorshipEscrowService';
@@ -42,6 +42,8 @@ import { startFinalGeneration } from '../services/bookFinalGenerationService';
 import { isBookDevPaymentSimulationEnabled, resolveBookPayableAmountTetri } from '../services/bookMockConfig';
 import { calculateBookPrice } from '../services/bookStateService';
 import { calculateAudioPrice, calculateTotalBookPrice } from '../services/bookNarrationService';
+import { fulfillGiftCardPurchase, cancelGiftCardPurchase, releaseGiftCardHold } from '../services/giftCardService';
+import { checkoutGiftCardSchema } from '../schemas/giftCardSchemas';
 
 const router = Router();
 
@@ -107,7 +109,7 @@ class BookCheckoutInProgressError extends Error {}
 
 async function findReusablePendingOrder(
   userId: string,
-  purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT' | 'HR_SUPPORT' | 'LIVE_TRAINING' | 'ENGLISH_TUTOR_SUBSCRIPTION' | 'CHILDRENS_BOOK',
+  purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT' | 'HR_SUPPORT' | 'LIVE_TRAINING' | 'ENGLISH_TUTOR_SUBSCRIPTION' | 'CHILDRENS_BOOK' | 'GIFT_CARD',
   referenceId: string,
   expectedAmount?: number,
   expectedPromoId?: string | null
@@ -242,9 +244,10 @@ router.post(
           status: 'COMPLETED',
           completedAt: new Date(),
           promoCodeId: appliedPromo?.id ?? null,
+          giftCardAmount: giftCardAmountOf(appliedPromo),
         },
       });
-      const { isNewEnrollment } = await completeCoursePurchase({ userId: req.user!.id, courseId: course.id, amount: 0 }, tx);
+      const { isNewEnrollment } = await completeCoursePurchase({ userId: req.user!.id, courseId: course.id, amount: giftCardAmountOf(appliedPromo) }, tx);
         return { freePayment, isNewEnrollment };
       });
       const { freePayment, isNewEnrollment } = freeResult;
@@ -263,6 +266,7 @@ router.post(
         currency: 'GEL',
         status: 'PENDING',
         promoCodeId: appliedPromo?.id ?? null,
+        giftCardAmount: giftCardAmountOf(appliedPromo),
       },
     }));
     // Initial-registration WhatsApp, fired the moment checkout is initiated
@@ -377,6 +381,7 @@ router.post(
           status: 'COMPLETED',
           completedAt: new Date(),
           promoCodeId: appliedPromo?.id ?? null,
+          giftCardAmount: giftCardAmountOf(appliedPromo),
         },
       });
       const fulfillment = await completeLiveTrainingPurchase({ userId: req.user!.id, liveTrainingId: training.id }, tx);
@@ -398,6 +403,7 @@ router.post(
         currency: 'GEL',
         status: 'PENDING',
         promoCodeId: appliedPromo?.id ?? null,
+        giftCardAmount: giftCardAmountOf(appliedPromo),
       },
     }));
     // Same initial-registration WhatsApp as the COURSE checkout above — see
@@ -470,7 +476,7 @@ router.post(
     // see couponService.ts's applyPromoToCheckout. AI_TOOL targetId
     // 'english-tutor' — see couponService.ts's resolveTargetPrice.
     const rawPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode : null;
-    let appliedPromo: { id: string } | null = null;
+    let appliedPromo: PromoCode | null = null;
     if (rawPromoCode && chargeAmount > 0) {
       try {
         const applied = await applyPromoToCheckout(rawPromoCode, 'AI_TOOL', 'english-tutor', chargeAmount);
@@ -495,6 +501,7 @@ router.post(
           status: 'COMPLETED',
           completedAt: new Date(),
           promoCodeId: appliedPromo?.id ?? null,
+          giftCardAmount: giftCardAmountOf(appliedPromo),
         },
       });
       await completeTutorSubscriptionPurchase(req.user!.id);
@@ -512,6 +519,7 @@ router.post(
         currency: 'GEL',
         status: 'PENDING',
         promoCodeId: appliedPromo?.id ?? null,
+        giftCardAmount: giftCardAmountOf(appliedPromo),
       },
     });
     const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
@@ -871,7 +879,7 @@ router.post(
     // Same re-validated-server-side promo handling as CHECKOUT — COURSE —
     // see couponService.ts's applyPromoToCheckout.
     const rawPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode : null;
-    let appliedPromo: { id: string } | null = null;
+    let appliedPromo: PromoCode | null = null;
     if (rawPromoCode) {
       try {
         const applied = await applyPromoToCheckout(rawPromoCode, 'DIGITAL_PRODUCT', product.id, chargeAmount);
@@ -896,9 +904,10 @@ router.post(
           status: 'COMPLETED',
           completedAt: new Date(),
           promoCodeId: appliedPromo?.id ?? null,
+          giftCardAmount: giftCardAmountOf(appliedPromo),
         },
       });
-      await completeProductPurchase({ userId: req.user!.id, productId: product.id, amount: 0 });
+      await completeProductPurchase({ userId: req.user!.id, productId: product.id, amount: giftCardAmountOf(appliedPromo) });
       return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, purchased: true });
     }
 
@@ -913,6 +922,7 @@ router.post(
         currency: 'GEL',
         status: 'PENDING',
         promoCodeId: appliedPromo?.id ?? null,
+        giftCardAmount: giftCardAmountOf(appliedPromo),
       },
     });
     const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
@@ -1038,6 +1048,7 @@ router.post(
             status: isFree ? 'COMPLETED' : 'PENDING',
             completedAt: isFree ? new Date() : null,
             promoCodeId: appliedPromo?.id ?? null,
+            giftCardAmount: giftCardAmountOf(appliedPromo),
           },
         });
       });
@@ -1069,6 +1080,78 @@ router.post(
       data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },
     });
     res.status(201).json({ paymentId: updated.id, redirectUrl: order.redirectUrl });
+  }
+);
+
+// ============================================================
+// CHECKOUT — GIFT CARD
+// The buyer pays the card's face value. No promo code (a gift card can't be
+// bought with another promo/gift card). The GiftCard row is created
+// PENDING_PAYMENT; the BOG callback mints the code (giftCardService).
+// ============================================================
+router.post(
+  '/checkout/gift-card',
+  checkoutRateLimit,
+  authenticate,
+  requireApproved,
+  async (req: Request, res: Response) => {
+    const parsed = checkoutGiftCardSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? 'Invalid gift card details.', errors: parsed.error.errors });
+    const input = parsed.data;
+    const amount = Math.round(input.amountGel * 100);
+    const deliverAt = input.deliverAt ? new Date(input.deliverAt) : new Date();
+
+    const { giftCard, bogPayment } = await prisma.$transaction(async (tx) => {
+      const giftCard = await tx.giftCard.create({
+        data: {
+          purchaserId: req.user!.id,
+          amount,
+          senderName: input.senderName,
+          recipientName: input.recipientName,
+          recipientEmail: input.recipientEmail ?? null,
+          message: input.message ?? null,
+          design: input.design,
+          deliverAt,
+          suggestedItem: input.suggestedItem ?? null,
+          suggestedUrl: input.suggestedUrl ?? null,
+        },
+      });
+      const bogPayment = await tx.bogPayment.create({
+        data: {
+          bogOrderId: `pending-${crypto.randomUUID()}`,
+          userId: req.user!.id,
+          purpose: 'GIFT_CARD',
+          paymentModel: paymentModelForPurpose('GIFT_CARD'),
+          referenceId: giftCard.id,
+          amount,
+          currency: 'GEL',
+          status: 'PENDING',
+        },
+      });
+      return { giftCard, bogPayment };
+    });
+
+    const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
+    const order = await createBogOrderOrRespond(res, {
+      externalOrderId: bogPayment.id,
+      amount,
+      currency: 'GEL',
+      basketItemName: `CDC Gift Card ${input.amountGel} GEL`,
+      callbackUrl: CALLBACK_URL,
+      successRedirectUrl,
+      failRedirectUrl,
+      lang: checkoutLang(req),
+    });
+    if (!order) {
+      await prisma.bogPayment.update({ where: { id: bogPayment.id }, data: { status: 'FAILED' } });
+      await cancelGiftCardPurchase(giftCard.id);
+      return;
+    }
+    const updated = await prisma.bogPayment.update({
+      where: { id: bogPayment.id },
+      data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },
+    });
+    res.status(201).json({ paymentId: updated.id, giftCardId: giftCard.id, redirectUrl: order.redirectUrl });
   }
 );
 
@@ -1140,6 +1223,9 @@ export async function applyBogPaymentResult(
     });
     if (!changed.count) return;
     const failedPayment = await prisma.bogPayment.findUniqueOrThrow({ where: { id: bogPaymentId } });
+    // Whatever part of a gift card balance this checkout had spent goes
+    // back on the card (runs once: only the PENDING -> FAILED winner gets here).
+    await releaseGiftCardHold(failedPayment);
     // A mentorship booking is created up-front at checkout (before payment
     // completes) so the chosen slot survives the BOG redirect round-trip —
     // but that means a declined card / abandoned checkout otherwise leaves
@@ -1153,6 +1239,8 @@ export async function applyBogPaymentResult(
         where: { bogPaymentId: failedPayment.id, status: 'SCHEDULED' },
         data: { status: 'CANCELLED' },
       });
+    } else if (failedPayment.purpose === 'GIFT_CARD') {
+      await cancelGiftCardPurchase(failedPayment.referenceId);
     } else if (failedPayment.purpose === 'HR_SUPPORT') {
       // Same reasoning as MENTORSHIP above — the request row is created
       // up-front (see routes/payments.ts's checkout/hr-support route) so a
@@ -1180,7 +1268,7 @@ export async function applyBogPaymentResult(
     const { isNewEnrollment, course } = await completeCoursePurchase({
       userId: bogPayment.userId,
       courseId: bogPayment.referenceId,
-      amount: bogPayment.amount,
+      amount: bogPayment.amount + bogPayment.giftCardAmount,
     });
     if (isNewEnrollment && course) await notifyCourseEnrollment(bogPayment.userId, course);
   } else if (bogPayment.purpose === 'GIG_ESCROW_FUNDING') {
@@ -1280,7 +1368,7 @@ export async function applyBogPaymentResult(
     await completeProductPurchase({
       userId: bogPayment.userId,
       productId: bogPayment.referenceId,
-      amount: bogPayment.amount,
+      amount: bogPayment.amount + bogPayment.giftCardAmount,
     });
   } else if (bogPayment.purpose === 'LIVE_TRAINING') {
     // Idempotent on retry — see completeLiveTrainingPurchase's own comment.
@@ -1297,6 +1385,10 @@ export async function applyBogPaymentResult(
     if (handled) {
       await startFinalGeneration(bogPayment.referenceId).catch((err) => console.error('[bog-callback] Failed to start children\'s book generation:', err));
     }
+  } else if (bogPayment.purpose === 'GIFT_CARD') {
+    // Mints the code and emails the recipient now (or on the chosen date).
+    // Idempotent on retry — see giftCardService.fulfillGiftCardPurchase.
+    await fulfillGiftCardPurchase(bogPayment.referenceId);
   } else if (bogPayment.purpose === 'HR_SUPPORT') {
     // Places the payment into escrow — does NOT credit a specialist yet
     // (none is assigned at this point). See hrSupportEscrowService.ts's own

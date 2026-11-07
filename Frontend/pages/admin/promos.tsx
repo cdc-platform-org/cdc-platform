@@ -43,6 +43,20 @@ const AI_TOOL_OPTIONS: TargetOption[] = [{ id: 'english-tutor', name: 'IMIAKO �
 // CHILDRENS_BOOK_PROMO_TARGET_ID in Backend couponService.ts).
 const CHILDRENS_BOOK_OPTIONS: TargetOption[] = [{ id: 'childrens-book', name: 'ინდივიდუალური AI საბავშვო წიგნი (ყველა წიგნი)' }];
 
+// A date-only <input type="date"> value ("2026-11-07") parsed by new Date()
+// is midnight UTC of that day, so a code "valid until today" was already
+// expired the moment it was created. Treat the picked date as valid through
+// the END of that day in the admin's local time.
+function endOfDayIso(dateOnly: string): string {
+  return new Date(`${dateOnly}T23:59:59.999`).toISOString();
+}
+
+function toDateInputValue(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 const emptyForm = {
   code: '',
   discountType: 'percent' as 'percent' | 'amount',
@@ -172,7 +186,7 @@ function AdminPromosDashboard() {
         discountAmount: form.discountType === 'amount' ? Math.round(Number(form.discountValue) * 100) : null,
         applicableType: form.applicableType,
         applicableTargetIds: form.applicableType === 'ALL' ? [] : form.applicableTargetIds,
-        expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
+        expiresAt: form.expiresAt ? endOfDayIso(form.expiresAt) : null,
         maxUses: form.maxUses ? Number(form.maxUses) : null,
       });
       setForm(emptyForm);
@@ -182,6 +196,19 @@ function AdminPromosDashboard() {
       setError(Array.isArray(apiErrors) ? apiErrors.map((e: any) => e.message).join(' ') : err?.response?.data?.message ?? 'Unable to create promo code.');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleChangeExpiry = async (code: PromoCode, dateOnly: string) => {
+    setBusyId(code.id);
+    setError(null);
+    try {
+      await updatePromoCode(code.id, { expiresAt: dateOnly ? endOfDayIso(dateOnly) : null });
+      load();
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? 'Unable to update this promo code.');
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -310,6 +337,9 @@ function AdminPromosDashboard() {
                       {!c.isActive && (
                         <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Inactive</span>
                       )}
+                      {c.expiresAt && new Date(c.expiresAt) <= new Date() && (
+                        <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-red-50 text-red-600">Expired · ვადაგასული</span>
+                      )}
                     </div>
                     <p className="text-xs text-gray-500 mt-0.5">
                       {c.discountPercent ? `${c.discountPercent}% off` : `${((c.discountAmount ?? 0) / 100).toFixed(2)} GEL off`}
@@ -324,6 +354,17 @@ function AdminPromosDashboard() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  <label className="text-[11px] text-gray-500 flex items-center gap-1 mr-1">
+                    <span className="hidden sm:inline">ვადა</span>
+                    <input
+                      type="date"
+                      aria-label={`Expiry date for ${c.code}`}
+                      disabled={busyId === c.id}
+                      value={c.expiresAt ? toDateInputValue(c.expiresAt) : ''}
+                      onChange={(e) => handleChangeExpiry(c, e.target.value)}
+                      className="rounded-md border border-gray-300 px-1.5 py-1 text-xs"
+                    />
+                  </label>
                   <button
                     type="button"
                     disabled={busyId === c.id}

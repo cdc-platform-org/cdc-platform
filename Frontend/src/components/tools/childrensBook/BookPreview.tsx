@@ -2,6 +2,7 @@ import { useTranslation } from 'next-i18next';
 import { BookOpen, CheckCircle2, Eye, Loader2, Lock, Users, Palette, PenLine } from 'lucide-react';
 import { bookFontFamily } from './bookFonts';
 import { BookProject } from '../../../services/childrensBookService';
+import { PromoValidationResult } from '../../../services/paymentService';
 
 interface BookPreviewProps {
   book: BookProject;
@@ -12,6 +13,9 @@ interface BookPreviewProps {
   onClose?: () => void;
   // Lets the parent fix the text before paying (pictures follow the text).
   onEditText?: () => void;
+  // Promo already applied to this book (typed on the create form or at the
+  // payment step) — the total must show the discounted amount, not the list price.
+  promo?: PromoValidationResult | null;
 }
 
 type PlanPage = { pageNumber: number; storyText: string };
@@ -21,12 +25,13 @@ type PlanPage = { pageNumber: number; storyText: string };
 // order, and what the buyer is about to pay for. Illustrations are painted
 // only after payment, so each page shows the approved portrait as a stand-in
 // and says so plainly.
-export default function BookPreview({ book, portraitUrl, busy, onConfirm, onClose, onEditText }: BookPreviewProps) {
+export default function BookPreview({ book, portraitUrl, busy, onConfirm, onClose, onEditText, promo }: BookPreviewProps) {
   const { t } = useTranslation('childrensBook');
   const pages = ((book.storyPlan?.pages ?? []) as PlanPage[]).slice().sort((a, b) => a.pageNumber - b.pageNumber);
   const config = book.characterConfig;
   const dedication = book.storyPlan?.dedication ?? config?.dedication ?? null;
-  const total = (book.audioAddOnPurchased ? book.totalPriceGel : book.priceGel) / 100;
+  const listTotal = (book.audioAddOnPurchased ? book.totalPriceGel : book.priceGel) / 100;
+  const total = promo ? promo.discountedAmount / 100 : listTotal;
 
   return (
     <section aria-labelledby="book-preview-title">
@@ -123,7 +128,11 @@ export default function BookPreview({ book, portraitUrl, busy, onConfirm, onClos
           <li>{t('previewIncludesRevision')}</li>
           {book.audioAddOnPurchased && <li>{t('previewIncludesAudio')}</li>}
         </ul>
-        <p className="mt-2 font-semibold text-gray-900">{t('previewTotal', { amount: total })}</p>
+        <p className="mt-2 font-semibold text-gray-900" data-testid="book-preview-total">
+          {t('previewTotal', { amount: total })}
+          {promo && total !== listTotal && <s className="font-normal text-gray-500 ml-2">{t('previewTotal', { amount: listTotal })}</s>}
+        </p>
+        {promo && <p className="text-xs font-bold text-emerald-600 mt-1">✓ {promo.code}</p>}
       </div>
 
       {onConfirm && (

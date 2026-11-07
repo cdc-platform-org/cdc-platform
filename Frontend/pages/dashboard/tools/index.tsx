@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
-import { Bot, GraduationCap, Mic, Bug, Sparkles, Calendar } from 'lucide-react';
+import { Bot, GraduationCap, Mic, Bug, Sparkles, Calendar, BookOpen, ShieldCheck } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
@@ -17,7 +17,7 @@ import { listMyIakoAssistants, hasDigitalToolAccess, iakoAssistantHref, MyIakoAs
 
 const EN_STRINGS = {
   title: 'My Tools',
-  subtitle: 'Your active AI tools and subscriptions in one place.',
+  subtitle: 'All your AI tools and subscriptions in one place.',
   loading: 'Loading…',
   empty: 'You have no active tools yet — browse the catalog to get started.',
   browseCatalog: 'Browse AI Tools',
@@ -39,13 +39,21 @@ const EN_STRINGS = {
   mediaStudioDescLocked: 'Requires access — contact us to request it',
   cyberSentinel: 'Cyber Sentinel (AG-SAIA)',
   cyberSentinelDesc: 'Sovereign AI security node — launching soon',
+  businessAiAvailableDesc: 'Build an AI chatbot for your website — free trial',
+  englishTutorAvailableDesc: 'Learn English step by step — free trial',
+  educatorAvailableDesc: 'Tests, rubrics and lesson plans for teachers — 5-day free trial',
+  childrensBook: "AI Children's Book",
+  childrensBookDesc: 'A personalized illustrated book starring your child',
+  proctoredExam: 'AI-Proctored Exam',
+  proctoredExamDesc: 'Create exams and send students a supervised exam link',
+  open: 'Open',
   iakoDesc: 'AI training mentor', openIako: 'Open IAKO', todayGuide: "Today's Guide", requestsUsed: 'requests used',
 };
 
 const dict = {
   ka: {
     title: 'ჩემი ხელსაწყოები',
-    subtitle: 'თქვენი აქტიური AI ხელსაწყოები და გამოწერები ერთ ადგილას.',
+    subtitle: 'ყველა თქვენი AI ხელსაწყო და გამოწერა ერთ ადგილას.',
     loading: 'იტვირთება…',
     empty: 'თქვენ ჯერ არცერთი აქტიური ხელსაწყო არ გაქვთ — დაათვალიერეთ კატალოგი დასაწყებად.',
     browseCatalog: 'AI ხელსაწყოების ნახვა',
@@ -67,6 +75,14 @@ const dict = {
     mediaStudioDescLocked: 'საჭიროებს წვდომას — დაგვიკავშირდით მოთხოვნისთვის',
     cyberSentinel: 'Cyber Sentinel (AG-SAIA)',
     cyberSentinelDesc: 'სუვერენული AI უსაფრთხოების კვანძი — მალე გაეშვება',
+    businessAiAvailableDesc: 'შექმენით AI ჩატბოტი თქვენი საიტისთვის — უფასო საცდელი',
+    englishTutorAvailableDesc: 'ისწავლეთ ინგლისური ნაბიჯ-ნაბიჯ — უფასო საცდელი',
+    educatorAvailableDesc: 'ტესტები, რუბრიკები და გაკვეთილის გეგმები მასწავლებლებისთვის — 5 დღე უფასოდ',
+    childrensBook: 'AI საბავშვო წიგნი',
+    childrensBookDesc: 'პერსონალური ილუსტრირებული წიგნი, სადაც მთავარი გმირი თქვენი შვილია',
+    proctoredExam: 'AI ზედამხედველობით გამოცდა',
+    proctoredExamDesc: 'შექმენით გამოცდა და გაუგზავნეთ სტუდენტებს ბმული',
+    open: 'გახსნა',
     iakoDesc: 'AI ტრენინგის მენტორი', openIako: 'IAKO-ს გახსნა', todayGuide: 'დღევანდელი გზამკვლევი', requestsUsed: 'მოთხოვნა გამოყენებულია',
   },
   en: EN_STRINGS,
@@ -185,6 +201,20 @@ function MyToolsContent() {
     });
   }
 
+  if (agents.length === 0) {
+    cards.push({
+      key: 'business-ai',
+      icon: Bot,
+      title: t.businessAi,
+      description: t.businessAiAvailableDesc,
+      badge: 'AVAILABLE',
+      badgeLabel: t.statusAvailable,
+      dateLine: null,
+      manageHref: '/dashboard/tools/chatbot-builder',
+      actionLabel: t.open,
+    });
+  }
+
   // English Tutor — only shown once the user has actually engaged with it
   // (started a trial or subscribed), not for every account site-wide.
   if (tutorState && (tutorState.trialActive || tutorState.subscriptionTier === 'PRO' || (!tutorState.trialAvailable && !tutorState.trialActive))) {
@@ -205,6 +235,19 @@ function MyToolsContent() {
       dateLine,
       manageHref: '/dashboard/english-tutor',
     });
+  } else {
+    // Not engaged yet — still list it so the tool is discoverable from here.
+    cards.push({
+      key: 'english-tutor',
+      icon: GraduationCap,
+      title: t.englishTutor,
+      description: t.englishTutorAvailableDesc,
+      badge: 'AVAILABLE',
+      badgeLabel: t.statusAvailable,
+      dateLine: null,
+      manageHref: '/dashboard/english-tutor',
+      actionLabel: t.open,
+    });
   }
 
   // Educator VIP Hub — same "only if engaged" gating as English Tutor above.
@@ -224,7 +267,44 @@ function MyToolsContent() {
       dateLine,
       manageHref: '/dashboard/tools/educator-hub',
     });
+  } else {
+    cards.push({
+      key: 'educator-vip',
+      icon: Sparkles,
+      title: t.educatorVip,
+      description: t.educatorAvailableDesc,
+      badge: 'AVAILABLE',
+      badgeLabel: t.statusAvailable,
+      dateLine: null,
+      manageHref: '/dashboard/tools/educator-hub',
+      actionLabel: t.open,
+    });
   }
+
+  // Children's Book and the AI-proctored exam are open to every signed-in
+  // user (pay-per-book / free to create), so they're always listed.
+  cards.push({
+    key: 'childrens-book',
+    icon: BookOpen,
+    title: t.childrensBook,
+    description: t.childrensBookDesc,
+    badge: 'AVAILABLE',
+    badgeLabel: t.statusAvailable,
+    dateLine: null,
+    manageHref: '/dashboard/tools/childrens-book',
+    actionLabel: t.open,
+  });
+  cards.push({
+    key: 'proctored-exam',
+    icon: ShieldCheck,
+    title: t.proctoredExam,
+    description: t.proctoredExamDesc,
+    badge: 'AVAILABLE',
+    badgeLabel: t.statusAvailable,
+    dateLine: null,
+    manageHref: '/dashboard/tools/proctored-exam',
+    actionLabel: t.open,
+  });
 
   // AI Voice & Video Studio — gated by digitalToolAccessService's
   // requireDigitalToolAccess('media-studio') on the backend (an

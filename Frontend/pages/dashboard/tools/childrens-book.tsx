@@ -6,6 +6,7 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { BookOpen, Sparkles, CheckCircle2, Loader2, Download, RefreshCw, ArrowLeft, Headphones, PlayCircle, PenLine } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
+import GiftThisButton from '../../../src/components/giftCards/GiftThisButton';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
 import BackButton from '../../../src/components/common/BackButton';
@@ -46,7 +47,7 @@ import {
   FinalGenerationStatus,
   updateBookFont,
 } from '../../../src/services/childrensBookService';
-import PromoCodeField from '../../../src/components/shared/PromoCodeField';
+import PromoCodeField, { localizePromoError } from '../../../src/components/shared/PromoCodeField';
 import BookPreview from '../../../src/components/tools/childrensBook/BookPreview';
 import CharacterPhotoField from '../../../src/components/tools/childrensBook/CharacterPhotoField';
 import SiblingsFields, { SiblingDraft, SiblingPhotoEditor } from '../../../src/components/tools/childrensBook/SiblingsFields';
@@ -55,10 +56,12 @@ import StoryTextEditor from '../../../src/components/tools/childrensBook/StoryTe
 import PrintSettingsPanel from '../../../src/components/tools/childrensBook/PrintSettingsPanel';
 import BookFontPicker from '../../../src/components/tools/childrensBook/BookFontPicker';
 import { BookFontId, DEFAULT_BOOK_FONT, bookFontFamily, bookFontOptions } from '../../../src/components/tools/childrensBook/bookFonts';
+// Style keys must match Backend/src/services/bookIllustrationStyles.ts.
+import StylePicker, { IllustrationStyleValue } from '../../../src/components/tools/childrensBook/StylePicker';
 import { PromoValidationResult, validatePromoCode } from '../../../src/services/paymentService';
 import ToolMediaBanner from '../../../src/components/tools/ToolMediaBanner';
 
-const GENERATING_STATUSES = ['CHARACTER_PREVIEW_GENERATING', 'FINAL_GENERATING', 'FINAL_QA', 'REVISION_REQUESTED', 'REVISION_GENERATING', 'REVISION_QA'];
+const GENERATING_STATUSES = ['CHARACTER_PREVIEW_GENERATING', 'PAID', 'FINAL_GENERATING', 'FINAL_QA', 'REVISION_REQUESTED', 'REVISION_GENERATING', 'REVISION_QA'];
 const POLL_MS = 1500;
 const PHOTO_EDITABLE_STATUSES = ['DRAFT', 'STORY_PLAN_READY', 'CHARACTER_PREVIEW_READY'];
 // Story text stays editable until payment (no page picture exists yet).
@@ -82,8 +85,23 @@ const bookPromoCopy = {
   ka: { label: 'პრომო კოდი (არასავალდებულო)', placeholder: 'მაგ. SALE20', hint: 'ფასდაკლება ავტომატურად გამოიყენება გადახდის ნაბიჯზე.', failed: 'შენახული პრომო კოდი ვერ გამოვიყენეთ' },
   en: { label: 'Promo code (optional)', placeholder: 'e.g. SALE20', hint: 'The discount is applied automatically at the payment step.', failed: 'Could not apply your saved promo code' },
 };
-// Must match Backend/src/services/bookIllustrationStyles.ts.
-type IllustrationStyleValue = 'STORYBOOK_WATERCOLOR' | 'MODERN_3D' | 'SOFT_DIGITAL' | 'CARTOON' | 'FANTASY' | 'CLASSIC';
+
+function GenerationProgress({ accepted, total }: { accepted: number; total: number }) {
+  const { t } = useTranslation('childrensBook');
+  const percent = total > 0 ? Math.round((accepted / total) * 100) : 0;
+  return (
+    <div className="rounded-xl border border-purple-100 bg-purple-50/60 p-4">
+      <div className="mb-2 flex items-center gap-2 font-medium text-purple-900">
+        <Loader2 className="h-5 w-5 animate-spin text-purple-600" /> {t('generatingPages')}
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-white" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={accepted}>
+        <div className="h-full rounded-full bg-purple-600 transition-[width] duration-700" style={{ width: `${Math.max(percent, 4)}%` }} />
+      </div>
+      <p className="mt-2 text-sm text-gray-600">{t('pagesReady', { count: accepted, total })}</p>
+      <p className="mt-1 text-xs text-gray-500">{t('generatingCanLeave')}</p>
+    </div>
+  );
+}
 
 function ChildrensBookContent() {
   const { t } = useTranslation('childrensBook');
@@ -108,12 +126,15 @@ function ChildrensBookContent() {
   const [formPromo, setFormPromo] = useState('');
   const [savedPromoNotice, setSavedPromoNotice] = useState<string | null>(null);
 
-  const atPaymentStep = !!book && book.status === 'CHARACTER_APPROVED' && !!book.previewConfirmedAt && !devPaymentSimulationEnabled;
+  // Any not-yet-paid stage: the book (and so its price) exists, so the saved
+  // code can already be priced — the preview's total shows it too, not only
+  // the pay button.
+  const promoApplicable = !!book && TEXT_EDITABLE_STATUSES.includes(book.status) && !devPaymentSimulationEnabled;
   const bookTotal = book ? (book.audioAddOnPurchased ? book.totalPriceGel : book.priceGel) : 0;
-  // Apply the create-form code once the payment step is showing (and again
+  // Apply the create-form code as soon as the book can be priced (and again
   // after the audio add-on changes the price, which clears the preview).
   useEffect(() => {
-    if (!book || !atPaymentStep || appliedPromo) return;
+    if (!book || !promoApplicable || appliedPromo) return;
     const code = readPendingBookPromo(book.id);
     if (!code) return;
     let cancelled = false;
@@ -122,10 +143,10 @@ function ChildrensBookContent() {
       .catch((err: any) => {
         if (cancelled) return;
         clearPendingBookPromo(book.id);
-        setSavedPromoNotice(`${bookPromoCopy[promoLang].failed} (${code}): ${err?.response?.data?.message ?? ''}`.replace(/: $/, ''));
+        setSavedPromoNotice(`${bookPromoCopy[promoLang].failed} (${code}): ${localizePromoError(err?.response?.data?.message, promoLang) ?? ''}`.replace(/: $/, ''));
       });
     return () => { cancelled = true; };
-  }, [book?.id, atPaymentStep, bookTotal, appliedPromo, promoLang]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [book?.id, promoApplicable, bookTotal, appliedPromo, promoLang]); // eslint-disable-line react-hooks/exhaustive-deps
   const previewUrlRef = useRef<string | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -274,17 +295,28 @@ function ChildrensBookContent() {
     });
   }
 
+  // A paid book starts drawing on its own (payment webhook / server resume
+  // sweep). If the page still sees PAID, nudge it once instead of asking the
+  // parent to press a start button; the server ignores duplicate starts.
+  const nudgedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!book || book.status !== 'PAID' || nudgedRef.current === book.id) return;
+    nudgedRef.current = book.id;
+    startFinalGeneration(book.id).then((r) => setBook(r.book)).catch(() => { /* the server resume sweep picks it up */ });
+  }, [book?.id, book?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Poll while a background transition is in flight.
   useEffect(() => {
-    if (!bookId || !book || !GENERATING_STATUSES.includes(book.status)) return;
+    const paidAndRecovering = book?.status === 'FAILED' && !!book.characterBible;
+    if (!bookId || !book || (!GENERATING_STATUSES.includes(book.status) && !paidAndRecovering)) return;
     const interval = setInterval(async () => {
       const fresh = await loadBook(bookId);
-      if (fresh?.status === 'FINAL_GENERATING' || fresh?.status === 'FINAL_QA') {
+      if (fresh?.status === 'FINAL_GENERATING' || fresh?.status === 'FINAL_QA' || fresh?.status === 'FAILED') {
         setGenStatus(await getFinalGenerationStatus(bookId).catch(() => null));
       }
-    }, POLL_MS);
+    }, paidAndRecovering ? 15_000 : POLL_MS);
     return () => clearInterval(interval);
-  }, [bookId, book?.status, loadBook]);
+  }, [bookId, book?.status, book?.characterBible, loadBook]);
 
   async function run(action: () => Promise<void>) {
     setBusy(true);
@@ -308,14 +340,6 @@ function ChildrensBookContent() {
 
   // ---- Create form state ----
   const PAGE_OPTIONS = [5, 10, 15, 20] as const;
-  const ILLUSTRATION_STYLE_OPTIONS: Array<{ value: IllustrationStyleValue; labelKey: string }> = [
-    { value: 'STORYBOOK_WATERCOLOR', labelKey: 'styleWatercolor' },
-    { value: 'MODERN_3D', labelKey: 'styleModern3d' },
-    { value: 'SOFT_DIGITAL', labelKey: 'styleSoftDigital' },
-    { value: 'CARTOON', labelKey: 'styleCartoon' },
-    { value: 'FANTASY', labelKey: 'styleFantasy' },
-    { value: 'CLASSIC', labelKey: 'styleClassic' },
-  ];
   const [form, setForm] = useState({ title: '', name: '', age: '', traits: '', favoriteThing: '', dedication: '', appearance: '', extraCharacters: '', language: 'EN' as BookLanguage, pageCount: 10 as (typeof PAGE_OPTIONS)[number], illustrationStyle: 'STORYBOOK_WATERCOLOR' as IllustrationStyleValue, fontId: DEFAULT_BOOK_FONT as BookFontId });
   const [fontNotice, setFontNotice] = useState<string | null>(null);
 
@@ -379,10 +403,12 @@ function ChildrensBookContent() {
           <BackButton />
           <div className="flex items-center gap-3 mb-6">
             <BookOpen className="w-8 h-8 text-purple-600" />
-            <div>
+            <div className="flex-1">
               <h1 className="text-2xl font-bold text-gray-900">{t('pageTitle')}</h1>
               <p className="text-gray-600">{t('pageSubtitle')}</p>
             </div>
+            {/* 20 GEL covers a 20-page book; the card works on any product. */}
+            <GiftThisButton priceMinor={2000} itemTitle={router.locale === 'ka' ? 'ინდივიდუალური AI საბავშვო წიგნი' : "Custom AI children's book"} itemPath="/dashboard/tools/childrens-book" lang={router.locale === 'ka' ? 'ka' : 'en'} design="kids" className="shrink-0" />
           </div>
           <ToolMediaBanner slug="childrens-book" alt={t('pageTitle')} />
 
@@ -395,7 +421,7 @@ function ChildrensBookContent() {
                 className="p-4 rounded-xl border border-gray-200 bg-white"
               >
                 <div className="font-semibold text-gray-900 truncate">{b.title}</div>
-                <div className="text-sm text-gray-500 mt-1">{t(`statusValue.${b.status}`, b.status)}</div>
+                <div className="text-sm text-gray-500 mt-1">{t(`statusValue.${b.generationRecovering ? 'FINAL_GENERATING' : b.status}`, b.status)}</div>
                 <div className="text-xs text-gray-500 mt-2">{t('pagesCount', { value: b.pageCount })} · {t('priceGel', { amount: (b.audioAddOnPurchased ? b.totalPriceGel : b.priceGel) / 100 })}</div>
                 {b.audioAddOnPurchased && <div className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-purple-700"><Headphones className="w-3.5 h-3.5" /> {t('audioStoryBadge')}</div>}
                 <div className="text-xs text-gray-400 mt-2">{new Date(b.createdAt).toLocaleDateString()}</div>
@@ -404,11 +430,23 @@ function ChildrensBookContent() {
                     onClick={() => router.push({ pathname: '/dashboard/tools/childrens-book/reader/[bookId]', query: { bookId: b.id } })}
                     className="px-3 py-1.5 rounded-md bg-purple-600 text-white text-sm font-medium"
                   >{t('readButton')}</button>
-                  <button
-                    disabled={b.pdfStatus !== 'CURRENT'}
-                    onClick={() => run(async () => downloadBookPdf(b.id, b.title))}
-                    className="px-3 py-1.5 rounded-md border border-gray-300 text-gray-700 text-sm font-medium disabled:opacity-40"
-                  >{t('downloadPdfButton')}</button>
+                  {(() => {
+                    // A finished book always offers the PDF: if it isn't
+                    // built yet (older books), the click builds it first.
+                    const finished = b.status === 'FINAL_READY' || b.status === 'COMPLETED';
+                    const pdfBuilding = b.pdfStatus === 'GENERATING';
+                    return (
+                      <button
+                        disabled={busy || !finished || pdfBuilding}
+                        onClick={() => run(async () => {
+                          if (b.pdfStatus !== 'CURRENT') await generatePdf(b.id);
+                          await downloadBookPdf(b.id, b.title);
+                          await loadMyBooks();
+                        })}
+                        className="px-3 py-1.5 rounded-md border border-gray-300 text-gray-700 text-sm font-medium disabled:opacity-40 inline-flex items-center gap-1"
+                      ><Download className="w-3.5 h-3.5" />{pdfBuilding ? t('pdfPreparing') : t('downloadPdfButton')}</button>
+                    );
+                  })()}
                   {b.audioAddOnPurchased && (
                     <button
                       onClick={() => router.push({ pathname: '/dashboard/tools/childrens-book/reader/[bookId]', query: { bookId: b.id } })}
@@ -421,10 +459,14 @@ function ChildrensBookContent() {
             {myBooks?.length === 0 && <p className="text-gray-500 col-span-full">{t('noBooksYet')}</p>}
           </div>
 
-          <div className="rounded-xl border border-purple-200 bg-white p-6">
+          <div className="rounded-2xl border border-purple-200 bg-white p-4 shadow-sm sm:p-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-purple-600" /> {t('createNew')}
             </h2>
+            <p className="-mt-2 mb-2 text-sm text-gray-600">{t('createIntro')}</p>
+            <section className="mt-4 rounded-xl border border-gray-100 bg-gray-50/60 p-4 sm:p-5">
+              <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-gray-900"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white">1</span>{t('formSectionBook')}</h3>
+              <p className="mb-4 text-sm text-gray-500">{t('formSectionBookHint')}</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">{t('bookLengthLabel')}</label>
@@ -457,6 +499,13 @@ function ChildrensBookContent() {
                   <option value="KA">ქართული</option>
                 </select>
               </div>
+            </div>
+            </section>
+
+            <section className="mt-6 rounded-xl border border-gray-100 bg-gray-50/60 p-4 sm:p-5">
+              <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-gray-900"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white">2</span>{t('formSectionHero')}</h3>
+              <p className="mb-4 text-sm text-gray-500">{t('formSectionHeroHint')}</p>
+            <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('characterNameLabel')}</label>
                 <input className="w-full rounded-lg border border-gray-300 px-3 py-2" placeholder={t('characterNamePlaceholder')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
@@ -511,25 +560,16 @@ function ChildrensBookContent() {
                 <input className="w-full rounded-lg border border-gray-300 px-3 py-2" placeholder={t('dedicationPlaceholder')} value={form.dedication} onChange={(e) => setForm({ ...form, dedication: e.target.value })} />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('illustrationStyleLabel')}</label>
-                <div className="flex flex-wrap gap-2">
-                  {ILLUSTRATION_STYLE_OPTIONS.map(({ value, labelKey }) => (
-                    <button
-                      key={value}
-                      type="button"
-                      aria-pressed={form.illustrationStyle === value}
-                      onClick={() => setForm({ ...form, illustrationStyle: value })}
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium border ${form.illustrationStyle === value ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-300 hover:border-purple-400'}`}
-                    >
-                      {t(labelKey)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="sm:col-span-2">
                 <BookFontPicker value={form.fontId} language={form.language} disabled={busy} onChange={(fontId) => setForm({ ...form, fontId })} />
               </div>
             </div>
+            </section>
+
+            <section className="mt-6 rounded-xl border border-gray-100 bg-gray-50/60 p-4 sm:p-5">
+              <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-gray-900"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white">3</span>{t('illustrationStyleLabel')}</h3>
+              <p className="mb-4 text-sm text-gray-500">{t('illustrationStyleHint')}</p>
+              <StylePicker value={form.illustrationStyle} onChange={(value) => setForm({ ...form, illustrationStyle: value })} />
+            </section>
             <div className="mt-5" data-testid="book-form-promo">
               <label htmlFor="book-form-promo" className="block text-sm font-medium text-gray-700 mb-1">{bookPromoCopy[promoLang].label}</label>
               <input
@@ -581,7 +621,7 @@ function ChildrensBookContent() {
 
         <div className="mb-6">
           <h1 className="text-xl font-bold text-gray-900">{book.title}</h1>
-          <p className="text-sm text-gray-500">{t('statusLabel')}: {t(`statusValue.${book.status}`, book.status)}</p>
+          <p className="text-sm text-gray-500">{t('statusLabel')}: {t(`statusValue.${book.status === 'FAILED' && book.characterBible ? 'FINAL_GENERATING' : book.status}`, book.status)}</p>
         </div>
 
         {mocked && (
@@ -718,6 +758,7 @@ function ChildrensBookContent() {
                     onConfirm={book.previewConfirmedAt ? null : () => run(async () => setBook(await confirmBookPreview(book.id)))}
                     onClose={book.previewConfirmedAt ? () => setShowPreviewAgain(false) : undefined}
                     onEditText={() => { setShowPreviewAgain(false); setEditingText(true); }}
+                    promo={appliedPromo}
                   />
                 </div>
               )}
@@ -815,33 +856,37 @@ function ChildrensBookContent() {
           {(book.status === 'PAID' || book.status === 'FINAL_GENERATING' || book.status === 'FINAL_QA') && (
             <>
               <h2 className="font-semibold text-gray-800 mb-3">{t('step5Title')}</h2>
-              {book.status === 'PAID' ? (
-                <button disabled={busy} onClick={() => run(async () => { const r = await startFinalGeneration(book.id); setBook(r.book); })} className="px-5 py-2 rounded-lg bg-purple-600 text-white font-medium disabled:opacity-50">
-                  {busy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : t('startGenerationButton')}
-                </button>
-              ) : (
-                <div>
-                  <div className="flex items-center gap-2 text-gray-600 mb-2">
-                    <Loader2 className="w-5 h-5 animate-spin" /> {t('generatingPages')}
-                  </div>
-                  <p className="text-sm text-gray-500">{t('pagesReady', { count: acceptedCount, total: book.pageCount })}</p>
-                </div>
-              )}
+              <GenerationProgress accepted={acceptedCount} total={book.pageCount} />
             </>
           )}
 
-          {book.status === 'FAILED' && (
+          {book.status === 'FAILED' && !book.characterBible && (
             <>
-              <p className="text-red-600 mb-4">{t('generationFailed')}</p>
+              <p className="text-red-600 mb-4">{t('previewFailed')}</p>
               <button
                 disabled={busy}
-                onClick={() => run(async () => {
-                  if (!book.characterBible) setBook((await generateCharacterPreview(book.id)).book);
-                  else setBook((await startFinalGeneration(book.id)).book);
-                })}
+                onClick={() => run(async () => setBook((await generateCharacterPreview(book.id)).book))}
                 className="px-5 py-2 rounded-lg bg-purple-600 text-white font-medium disabled:opacity-50"
               >
                 {t('retryButton')}
+              </button>
+            </>
+          )}
+
+          {/* A paid book is never shown as "failed": the server keeps retrying
+              on its own (see recoverStalledBooks), so the parent just sees the
+              book is still being drawn, plus an optional way to nudge it. */}
+          {book.status === 'FAILED' && !!book.characterBible && (
+            <>
+              <h2 className="font-semibold text-gray-800 mb-3">{t('step5Title')}</h2>
+              <GenerationProgress accepted={acceptedCount} total={book.pageCount} />
+              <p className="mt-3 text-sm text-gray-600">{t('generationAutoRetrying')}</p>
+              <button
+                disabled={busy}
+                onClick={() => run(async () => setBook((await startFinalGeneration(book.id)).book))}
+                className="mt-3 text-sm font-medium text-purple-700 hover:underline disabled:opacity-50"
+              >
+                {t('generationContinueNow')}
               </button>
             </>
           )}
@@ -900,8 +945,8 @@ function ChildrensBookContent() {
 
                   <div className="flex flex-wrap gap-3 mb-4">
                     {book.pdfStatus !== 'CURRENT' && (
-                      <button disabled={busy} onClick={() => run(async () => setBook(await generatePdf(book.id)))} className="px-5 py-2 rounded-lg bg-purple-600 text-white font-medium disabled:opacity-50">
-                        {busy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : t('generatePdfButton')}
+                      <button disabled={busy || book.pdfStatus === 'GENERATING'} onClick={() => run(async () => { const updated = await generatePdf(book.id); setBook(updated); await downloadBookPdf(book.id, book.title); })} className="px-5 py-2 rounded-lg bg-green-600 text-white font-medium disabled:opacity-50 flex items-center gap-1">
+                        {busy || book.pdfStatus === 'GENERATING' ? <Loader2 className="w-4 h-4 animate-spin inline" /> : <Download className="w-4 h-4" />} {book.pdfStatus === 'GENERATING' ? t('pdfPreparing') : t('downloadPdfButton')}
                       </button>
                     )}
                     {book.pdfStatus === 'CURRENT' && (
@@ -920,6 +965,10 @@ function ChildrensBookContent() {
                       </button>
                     )}
                   </div>
+
+                  {canListenToAudio && new Set(audioStatus?.artifacts?.filter((a) => a.status === 'READY').map((a) => a.pageNumber) ?? []).size < book.pageCount && (
+                    <p className="mb-4 -mt-2 flex items-center gap-1.5 text-sm text-purple-700"><Loader2 className="h-4 w-4 animate-spin" /> {t('audioPreparingAuto')}</p>
+                  )}
 
                   {(book.status === 'FINAL_READY' || book.status === 'COMPLETED') && acceptedCount === book.pageCount && (
                     <PrintSettingsPanel

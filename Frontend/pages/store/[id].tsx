@@ -8,6 +8,7 @@ import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag, Zap, Upload, 
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SEOHead from '../../src/components/seo/SEOHead';
 import SocialShareButtons from '../../src/components/shared/SocialShareButtons';
+import GiftThisButton from '../../src/components/giftCards/GiftThisButton';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import MarkdownContent from '../../src/components/shared/MarkdownContent';
@@ -30,9 +31,10 @@ import {
   HowItWorksIcon,
 } from '../../src/services/productService';
 import { checkoutProduct, validatePromoCode, PromoValidationResult } from '../../src/services/paymentService';
-import { checkoutProductStripe } from '../../src/services/stripePaymentService';
+import { checkoutProductStripe, stripeWithBogFallback } from '../../src/services/stripePaymentService';
 import { formatPrice } from '../../src/utils/coursePricing';
 import { resolveLocale } from '@/src/utils/locale';
+import { localizePromoError } from '../../src/components/shared/PromoCodeField';
 
 // Fixed id of the seeded "AI Business Assistant" trial listing (see
 // Backend's 20260807010000_seed_ai_business_trial_product migration) — a
@@ -106,7 +108,10 @@ function StoreProductContent({ initialProduct }: { initialProduct: DigitalProduc
       const result =
         lang === 'ka'
           ? await checkoutProduct(product.id, appliedPromo?.code, 'ka')
-          : await checkoutProductStripe(product.id, appliedPromo?.code, 'usd');
+          : await stripeWithBogFallback(
+              () => checkoutProductStripe(product.id, appliedPromo?.code, 'usd'),
+              () => checkoutProduct(product.id, appliedPromo?.code, 'en'),
+            );
       if (result.purchased) {
         // Admin test-mode bypass fired server-side — already owned, no
         // gateway redirect to follow. Reload so the page's own
@@ -156,7 +161,7 @@ function StoreProductContent({ initialProduct }: { initialProduct: DigitalProduc
       const result = await validatePromoCode(promoInput.trim(), 'DIGITAL_PRODUCT', product.id);
       setAppliedPromo(result);
     } catch (err: any) {
-      setPromoError(err?.response?.data?.message ?? (lang === 'ka' ? 'პრომო კოდი არასწორია.' : 'Invalid promo code.'));
+      setPromoError(localizePromoError(err?.response?.data?.message, contentLang) ?? (lang === 'ka' ? 'პრომო კოდი არასწორია.' : 'Invalid promo code.'));
     } finally {
       setApplyingPromo(false);
     }
@@ -251,8 +256,9 @@ function StoreProductContent({ initialProduct }: { initialProduct: DigitalProduc
               )}
             </div>
             <h1 className="blog-heading-safe text-2xl md:text-3xl font-black tracking-wide mb-3">{productTitle(product, contentLang)}</h1>
-            <div className="mb-3">
+            <div className="mb-3 flex flex-wrap items-center gap-3">
               <SocialShareButtons title={productTitle(product, contentLang)} lang={lang} />
+              <GiftThisButton priceMinor={product.currentPrice} itemTitle={productTitle(product, contentLang)} itemPath={`/store/${product.id}`} lang={lang} />
             </div>
             {product.reviewCount > 0 && (
               <div className="flex items-center gap-2 mb-3">

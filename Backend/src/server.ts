@@ -107,6 +107,8 @@ import creatorMarketingRoutes from './routes/creatorMarketing';
 import productReviewRoutes from './routes/productReviews';
 import adminProductReviewRoutes from './routes/adminProductReviews';
 import promoRoutes from './routes/promos';
+import giftCardRoutes from './routes/giftCards';
+import adminGiftCardRoutes from './routes/adminGiftCards';
 import aiAgentsSuiteRoutes from './routes/aiAgentsSuite';
 import englishTutorRoutes from './routes/englishTutor';
 import adminEnglishTutorRoutes from './routes/adminEnglishTutor';
@@ -127,7 +129,7 @@ import { autoReleaseMentorshipEscrows } from './services/mentorshipEscrowService
 import { autoReleaseHRSupportEscrows } from './services/hrSupportEscrowService';
 import { expireOverdueVacancies } from './services/listingExpiryService';
 import { reconcilePendingPayments } from './services/paymentReconciliationService';
-import { resumePendingFinalGenerations } from './services/bookFinalGenerationService';
+import { resumePendingFinalGenerations, recoverStalledBooks } from './services/bookFinalGenerationService';
 
 // ============================================================
 // PROCESS-LEVEL SAFETY NET
@@ -339,6 +341,7 @@ app.use('/api/agents', agentsRoutes);
 app.use('/api/v1', chatApiRoutes);
 app.use('/api/v1/success-stories', successStoriesRoutes);
 app.use('/api/admin/promos', adminPromosRoutes);
+app.use('/api/admin/gift-cards', adminGiftCardRoutes);
 app.use('/api/admin/projects', adminProjectsRoutes);
 app.use('/api/admin/success-stories', adminSuccessStoriesRoutes);
 app.use('/api/team', teamRoutes);
@@ -371,6 +374,7 @@ app.use('/api/admin/product-reviews', adminProductReviewRoutes);
 app.use('/api/language-teacher', languageTeacherRoutes); // Add this line
 app.use('/api/admin', adminRoutes);
 app.use('/api/promos', promoRoutes);
+app.use('/api/gift-cards', giftCardRoutes);
 app.use('/api/projects', projectsRoutes);
 app.use('/api/ai-agents', aiAgentsSuiteRoutes);
 app.use('/api/english-tutor', englishTutorRoutes);
@@ -452,6 +456,18 @@ app.listen(PORT, () => {
 // caught), but the real production trigger should be POST /api/cron/auto-approve
 // from a single external scheduler, not this timer.
 import { scheduleJob } from './utils/scheduler';
+import { sweepScheduledGiftCards } from './services/giftCardService';
+
+// Gift cards scheduled for a later date (e.g. a birthday) are emailed by
+// this sweep; deliverGiftCard's atomic claim makes overlapping runs safe.
+scheduleJob('sweepScheduledGiftCards', '*/15 * * * *', async () => {
+  try {
+    const { deliveredIds } = await sweepScheduledGiftCards();
+    if (deliveredIds.length > 0) console.log(`[gift-cards] delivered=${deliveredIds.length}`);
+  } catch (err) {
+    console.error('[gift-cards] scheduled delivery sweep failed:', err);
+  }
+});
 
 scheduleJob('autoApproveOverdueGigs', '0 * * * *', async () => {
   try {
@@ -613,3 +629,12 @@ setInterval(() => {
     })
     .catch((err) => console.error('[tutor-subscription-sweep] run failed:', err));
 }, TUTOR_SUBSCRIPTION_SWEEP_INTERVAL_MS);
+
+// Children's books: restart paid books that ended FAILED (within their
+// attempt budget) and finish books still missing their PDF or narration,
+// so a parent never has to press "retry" for a book they paid for. The
+// in-process guards in bookFinalGenerationService keep one run per book.
+const BOOK_RECOVERY_INTERVAL_MS = 10 * 60 * 1000;
+setInterval(() => {
+  recoverStalledBooks().catch((err) => console.error('[childrens-book] recovery sweep failed:', err));
+}, BOOK_RECOVERY_INTERVAL_MS);

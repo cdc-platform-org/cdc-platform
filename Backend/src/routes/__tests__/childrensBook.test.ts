@@ -159,13 +159,17 @@ describe('Children\'s Book — state transitions', () => {
     const statusRes = await request(`/api/childrens-books/${bookId}/final-generation/status`, user);
     const statusBody = (await statusRes.json()) as { data: { status: string; pages: { accepted: boolean }[] } };
     expect(statusBody.data.pages.filter((p) => p.accepted)).toHaveLength(10);
-    expect(statusBody.data.status).toBe('FINAL_READY');
+    // The PDF is built automatically right after the last page, so the
+    // parent never has to press a button for it.
+    expect(statusBody.data.status).toBe('COMPLETED');
+    const finished = await prisma.bookProject.findUnique({ where: { id: bookId } });
+    expect(finished!.pdfStatus).toBe('CURRENT');
+    expect(finished!.finalPdfBlobRef).toBeTruthy();
 
+    // A manual request on an already-current PDF returns it, no rebuild.
     const pdfRes = await request(`/api/childrens-books/${bookId}/pdf`, user, 'POST');
-    expect(pdfRes.status).toBe(201);
-    const pdfBody = (await pdfRes.json()) as { data: { status: string; pdfStatus: string } };
-    expect(pdfBody.data.pdfStatus).toBe('CURRENT');
-    expect(pdfBody.data.status).toBe('COMPLETED');
+    expect(pdfRes.status).toBe(200);
+    expect((await prisma.bookProject.findUnique({ where: { id: bookId } }))!.pdfVersion).toBe(finished!.pdfVersion);
   });
 });
 
@@ -294,7 +298,7 @@ describe("Children's Book — payment gate", () => {
     await resumePendingFinalGenerations();
     await waitForFinalGeneration(bookId);
     const book = await prisma.bookProject.findUnique({ where: { id: bookId } });
-    expect(book!.status).toBe('FINAL_READY');
+    expect(book!.status).toBe('COMPLETED');
   });
 
   it('a paid book whose final run FAILED resumes via start, and cannot be reset to the preview stage', async () => {
@@ -310,7 +314,7 @@ describe("Children's Book — payment gate", () => {
     expect(res.status).toBe(202);
     await waitForFinalGeneration(bookId);
     const book = await prisma.bookProject.findUnique({ where: { id: bookId } });
-    expect(book!.status).toBe('FINAL_READY');
+    expect(book!.status).toBe('COMPLETED');
   });
 
   it('dev payment simulation is refused when the feature flag is off (the default)', async () => {
@@ -500,9 +504,9 @@ describe("Children's Book — font choice", () => {
   it('stores the font picked on the create form, defaults to SIMPLE, refuses unknown fonts', async () => {
     const user = await createUser();
     const base = { language: 'KA', title: 'ზღაპარი', character: { name: 'ნინო' }, pageCount: 5 };
-    const picked = await (await request('/api/childrens-books', user, 'POST', { ...base, fontId: 'FAIRYTALE' })).json();
+    const picked = (await (await request('/api/childrens-books', user, 'POST', { ...base, fontId: 'FAIRYTALE' })).json()) as any;
     expect(picked.data.characterConfig.fontId).toBe('FAIRYTALE');
-    const plain = await (await request('/api/childrens-books', user, 'POST', base)).json();
+    const plain = (await (await request('/api/childrens-books', user, 'POST', base)).json()) as any;
     expect(plain.data.characterConfig.fontId).toBe('SIMPLE');
     const bad = await request('/api/childrens-books', user, 'POST', { ...base, fontId: 'Comic Sans' });
     expect(bad.status).toBe(400);
@@ -510,8 +514,8 @@ describe("Children's Book — font choice", () => {
 
   it('keeps the font when the character is edited', async () => {
     const user = await createUser();
-    const created = await (await request('/api/childrens-books', user, 'POST', { language: 'EN', title: 'T', character: { name: 'Mimi' }, pageCount: 5, fontId: 'PLAYFUL' })).json();
-    const edited = await (await request(`/api/childrens-books/${created.data.id}/character-config`, user, 'PUT', { character: { name: 'Mimi', age: 6 } })).json();
+    const created = (await (await request('/api/childrens-books', user, 'POST', { language: 'EN', title: 'T', character: { name: 'Mimi' }, pageCount: 5, fontId: 'PLAYFUL' })).json()) as any;
+    const edited = (await (await request(`/api/childrens-books/${created.data.id}/character-config`, user, 'PUT', { character: { name: 'Mimi', age: 6 } })).json()) as any;
     expect(edited.data.characterConfig.fontId).toBe('PLAYFUL');
     expect(edited.data.characterConfig.age).toBe(6);
   });
@@ -527,7 +531,7 @@ describe("Children's Book — font choice", () => {
 
     const res = await request(`/api/childrens-books/${bookId}/font`, owner, 'PUT', { fontId: 'MODERN' });
     expect(res.status).toBe(200);
-    const { data } = await res.json();
+    const { data } = (await res.json()) as any;
     expect(data.characterConfig.fontId).toBe('MODERN');
     expect(data.characterConfig.name).toBe('Mimi');
     expect(data.pdfStatus).toBe('STALE');

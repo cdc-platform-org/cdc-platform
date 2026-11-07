@@ -35,20 +35,25 @@ async function createBookPath(api: APIRequestContext, pageCount: number, withAud
 
   // The buyer must confirm the book preview before paying.
   await apiJson(api, 'post', `/childrens-books/${id}/preview-confirm`);
-  // Payment completion starts final generation in the background; the
-  // client only polls its status.
+  // Payment completion starts final generation in the background, and the
+  // finished book gets its PDF (and narration, when bought) automatically;
+  // the client only polls.
   await apiJson(api, 'post', `/childrens-books/${id}/payment/dev-simulate`);
   await expect
     .poll(async () => (await apiJson(api, 'get', `/childrens-books/${id}/final-generation/status`)).data.status, { timeout: 30_000 })
-    .toBe('FINAL_READY');
+    .toBe('COMPLETED');
   const generation = (await apiJson(api, 'get', `/childrens-books/${id}/final-generation/status`)).data;
   expect(generation.pages.filter((p: { accepted: boolean }) => p.accepted)).toHaveLength(pageCount);
 
   let narrationCount = 0;
   if (withAudio) {
+    await expect
+      .poll(async () => (await apiJson(api, 'get', `/childrens-books/${id}/audio/status`)).data.artifacts.filter((a: { status: string }) => a.status === 'READY').length, { timeout: 30_000 })
+      .toBe(pageCount);
+    narrationCount = pageCount;
+    // A manual request afterwards narrates nothing twice.
     const narration = await apiJson(api, 'post', `/childrens-books/${id}/audio/generate`);
-    narrationCount = narration.data.artifacts.length;
-    expect(narrationCount).toBe(pageCount);
+    expect(narration.data.artifacts).toHaveLength(0);
   } else {
     const status = await apiJson(api, 'get', `/childrens-books/${id}/audio/status`);
     expect(status.data.artifacts).toHaveLength(0);
