@@ -123,12 +123,15 @@ function ChildrensBookContent() {
   const [formPromo, setFormPromo] = useState('');
   const [savedPromoNotice, setSavedPromoNotice] = useState<string | null>(null);
 
-  const atPaymentStep = !!book && book.status === 'CHARACTER_APPROVED' && !!book.previewConfirmedAt && !devPaymentSimulationEnabled;
+  // Any not-yet-paid stage: the book (and so its price) exists, so the saved
+  // code can already be priced — the preview's total shows it too, not only
+  // the pay button.
+  const promoApplicable = !!book && TEXT_EDITABLE_STATUSES.includes(book.status) && !devPaymentSimulationEnabled;
   const bookTotal = book ? (book.audioAddOnPurchased ? book.totalPriceGel : book.priceGel) : 0;
-  // Apply the create-form code once the payment step is showing (and again
+  // Apply the create-form code as soon as the book can be priced (and again
   // after the audio add-on changes the price, which clears the preview).
   useEffect(() => {
-    if (!book || !atPaymentStep || appliedPromo) return;
+    if (!book || !promoApplicable || appliedPromo) return;
     const code = readPendingBookPromo(book.id);
     if (!code) return;
     let cancelled = false;
@@ -140,7 +143,7 @@ function ChildrensBookContent() {
         setSavedPromoNotice(`${bookPromoCopy[promoLang].failed} (${code}): ${err?.response?.data?.message ?? ''}`.replace(/: $/, ''));
       });
     return () => { cancelled = true; };
-  }, [book?.id, atPaymentStep, bookTotal, appliedPromo, promoLang]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [book?.id, promoApplicable, bookTotal, appliedPromo, promoLang]); // eslint-disable-line react-hooks/exhaustive-deps
   const previewUrlRef = useRef<string | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -743,6 +746,7 @@ function ChildrensBookContent() {
                     onConfirm={book.previewConfirmedAt ? null : () => run(async () => setBook(await confirmBookPreview(book.id)))}
                     onClose={book.previewConfirmedAt ? () => setShowPreviewAgain(false) : undefined}
                     onEditText={() => { setShowPreviewAgain(false); setEditingText(true); }}
+                    promo={appliedPromo}
                   />
                 </div>
               )}
