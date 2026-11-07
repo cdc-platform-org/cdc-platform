@@ -318,6 +318,32 @@ jobs:
             if ((m = ev.msg.match(/^(?:Stopping|Deleting) container:\s+(\S+?)(?:\.\s|\.$|\s|$)/))) { delete running[m[1]]; }
           });
 
+          // App Service names each platform log after the worker (VM) that wrote
+          // it: <date>_<worker>_docker.log. When the platform moves a
+          // single-instance app to another worker, the old worker's log just
+          // ends - no "Stopping container" line is ever written for the
+          // container that ran there. On a plan with exactly ONE instance, a
+          // container is therefore treated as gone only if BOTH hold: a later
+          // container started on a DIFFERENT worker, and its own worker's log
+          // has no line at all after that later start (the worker went quiet).
+          // Anything else stays counted, so the check still fails closed.
+          function workerOf(file) { var m = /^\d{4}_\d{2}_\d{2}_(.+)_docker\.log$/.exec(file || ''); return m ? m[1] : null; }
+          if (process.env.INSTANCE_COUNT === '1' && Object.keys(running).length > 1) {
+            var lastSeen = {};
+            events.forEach(function (ev) { var w = workerOf(ev.file); if (w && (!(w in lastSeen) || ev.ms > lastSeen[w])) lastSeen[w] = ev.ms; });
+            var newestId = Object.keys(running).sort(function (a, b) { return running[b].ms - running[a].ms; })[0];
+            var newest = running[newestId];
+            var newestWorker = workerOf(newest.file);
+            Object.keys(running).forEach(function (k) {
+              if (k === newestId) return;
+              var w = workerOf(running[k].file);
+              if (newestWorker && w && w !== newestWorker && running[k].ms < newest.ms && lastSeen[w] < newest.ms) {
+                console.error('Not counted as running: ' + k + ' (worker ' + w + ' has no log line after ' + newest.t + ', when ' + newestId + ' started on worker ' + newestWorker + '; plan has 1 instance)');
+                delete running[k];
+              }
+            });
+          }
+
           var ids = Object.keys(running);
           if (ids.length === 0) emit('unavailable', 'no currently-running container can be identified in the retained platform logs (rotated, or the start was not logged)');
           if (ids.length > 1) {
@@ -362,7 +388,13 @@ jobs:
             || say unavailable "az webapp log download failed"
           [ -s "$work/logs.zip" ] || say unavailable "the downloaded log bundle is empty"
           unzip -q -o "$work/logs.zip" -d "$work/logs" >/dev/null 2>&1 || say unavailable "the downloaded log bundle could not be unpacked"
-          node "$RUNNER_TEMP/runtime-evidence.js" "$work/logs" "${1:-}" "${2:-}"
+          # Instance count of the App Service plan (only "1" enables the
+          # worker-move rule in runtime-evidence.js; empty/unknown keeps it off).
+          PLAN_ID="$(az webapp show --name "$WEBAPP_NAME" --resource-group "$RESOURCE_GROUP" --query appServicePlanId --output tsv 2>/dev/null || true)"
+          INSTANCE_COUNT=""
+          [ -n "$PLAN_ID" ] && INSTANCE_COUNT="$(az appservice plan show --ids "$PLAN_ID" --query sku.capacity --output tsv 2>/dev/null || true)"
+          echo "App Service plan instance count: ${INSTANCE_COUNT:-unknown}" >&2
+          INSTANCE_COUNT="$INSTANCE_COUNT" node "$RUNNER_TEMP/runtime-evidence.js" "$work/logs" "${1:-}" "${2:-}"
           SH
           chmod +x "$RUNNER_TEMP/collect-evidence.sh"
 
