@@ -46,75 +46,183 @@ const dict = {
   },
 };
 
+// Fix D6: draft storage used to be keyed by quizId ALONE — any two visitors
+// to the same quiz link on the same browser shared one draft, so a second
+// student opening the link after a first student left one unsubmitted
+// would silently inherit their in-progress answers. Keys are now scoped by
+// quizId + the student's own typed name (normalized), computed once the
+// name is submitted on the landing screen (see handleStart) — never read
+// or written before that point, so nothing before a name exists can leak
+// into whatever gets read after one does.
+//
+// This is deliberately NOT a real identity/security boundary (there is no
+// login, no server-issued attempt token here, and nothing stops two
+// different students from typing the exact same name on the same device —
+// see the file-level note in Fix Batch 2's report on why a heavier
+// mechanism wasn't introduced). It is a local draft-isolation convenience:
+// distinct names get distinct drafts, which is the realistic common case.
+const normalizeStudentKey = (name: string) => name.trim().toLowerCase().replace(/\s+/g, ' ');
+
+const getQuizStorageKeys = (quizId: string, studentKey: string) => ({
+  answers: `quiz-${quizId}-${studentKey}-answers`,
+  startTime: `quiz-${quizId}-${studentKey}-start-time`,
+  elapsedSeconds: `quiz-${quizId}-${studentKey}-elapsed-seconds`,
+});
+
+// Pre-fix key shape (quizId only, no student component) — never read under
+// the new scheme (that's the whole point of the fix), only removed
+// best-effort so a stale entry doesn't linger in localStorage forever or
+// get discovered by some future unrelated code path.
+const getLegacyQuizStorageKeys = (quizId: string) => ({
+  answers: `quiz-${quizId}-answers`,
+  startTime: `quiz-${quizId}-start-time`,
+  elapsedSeconds: `quiz-${quizId}-elapsed-seconds`,
+});
+
+const sanitizeStoredAnswers = (storageKey: string, validQuestionIds: Set<string>) => {
+  const raw = localStorage.getItem(storageKey);
+  if (!raw) return {};
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      localStorage.removeItem(storageKey);
+      return {};
+    }
+
+    const filtered = Object.entries(parsed).reduce<Record<string, string>>((acc, [questionId, value]) => {
+      if (validQuestionIds.has(questionId) && typeof value === 'string') {
+        acc[questionId] = value;
+      }
+      return acc;
+    }, {});
+
+    if (Object.keys(filtered).length === 0) {
+      localStorage.removeItem(storageKey);
+      return {};
+    }
+
+    const normalized = JSON.stringify(filtered);
+    if (normalized !== raw) {
+      localStorage.setItem(storageKey, normalized);
+    }
+    return filtered;
+  } catch {
+    localStorage.removeItem(storageKey);
+    return {};
+  }
+};
+
 export default function StudentQuizPage() {
   const router = useRouter();
   const lang = resolveLocale(router.locale) === 'ka' ? 'ka' : 'en';
   const t = dict[lang];
-  const quizId = typeof router.query.quizId === 'string' ? router.query.quizId : null;
+  const quizId = typeof router.query.quizId === 'string' && router.query.quizId.trim() ? router.query.quizId : null;
 
   const [phase, setPhase] = useState<Phase>('loading');
   const [quiz, setQuiz] = useState<PublicQuiz | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [studentName, setStudentName] = useState('');
+  // Set once (in handleStart) from the name the student actually typed on
+  // the landing screen — see the storage-key comment above for why this,
+  // not quizId alone, scopes every draft read/write from that point on.
+  const [studentKey, setStudentKey] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [result, setResult] = useState<QuizSubmitResult | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  // localStorage doesn't exist during Next's server-side static-generation
-  // pass (Node has no `window`) — reading it in a useState lazy initializer
-  // (as this page used to) runs at first render, which for a page with no
-  // getStaticProps/getServerSideProps includes that build-time prerender,
-  // throwing ReferenceError and failing the whole `next build`. Hydrating
-  // here instead, post-mount, keeps this browser-only exactly where it
-  // belongs — same posture as useAuth.ts's hydrateFromStorage.
   useEffect(() => {
-    if (!quizId) return;
-    const savedAnswers = localStorage.getItem(`quiz-${quizId}-answers`);
-    if (savedAnswers) setAnswers(JSON.parse(savedAnswers));
-    const savedStartTime = localStorage.getItem(`quiz-${quizId}-start-time`);
-    const savedElapsed = localStorage.getItem(`quiz-${quizId}-elapsed-seconds`);
-    if (savedStartTime && savedElapsed) {
-      setElapsedSeconds(Math.floor((Date.now() - parseInt(savedStartTime, 10)) / 1000) + parseInt(savedElapsed, 10));
-    }
-  }, [quizId]);
+    setError(null);
+    setResult(null);
+    setStudentName('');
+    setStudentKey(null);
+    setAnswers({});
+    setElapsedSeconds(0);
+    setPhase('loading');
 
-  useEffect(() => {
-    if (!quizId) return;
+    if (!router.isReady || !quizId) return;
+
     getPublicQuiz(quizId)
       .then((q) => {
         setQuiz(q);
         setPhase('landing');
       })
       .catch(() => {
+        setQuiz(null);
         setError(t.loadFailed);
         setPhase('error');
       });
-  }, [quizId, t.loadFailed]);
+  }, [router.isReady, quizId, t.loadFailed]);
+
+  // Fix D6: draft restoration intentionally does NOT happen here anymore —
+  // this effect used to fire as soon as the quiz loaded, for whatever
+  // visitor happened to be looking at the page, before any name was even
+  // typed. It now happens inside handleStart below, once we actually know
+  // which student is asking (see that function for the restoration logic
+  // itself, keyed by quizId + their name).
 
   useEffect(() => {
-    if (phase !== 'in-progress') return;
+    if (phase !== 'in-progress' || !quizId || !studentKey) return;
     const interval = setInterval(() => {
       setElapsedSeconds((s) => {
         const newElapsed = s + 1;
-        const currentTime = Date.now();
-        localStorage.setItem(`quiz-${quizId}-start-time`, currentTime.toString());
-        localStorage.setItem(`quiz-${quizId}-elapsed-seconds`, newElapsed.toString());
+        const storageKeys = getQuizStorageKeys(quizId, studentKey);
+        localStorage.setItem(storageKeys.startTime, Date.now().toString());
+        localStorage.setItem(storageKeys.elapsedSeconds, newElapsed.toString());
         return newElapsed;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [phase]);
+  }, [phase, quizId, studentKey]);
 
   const handleStart = (e: FormEvent) => {
     e.preventDefault();
-    if (!studentName.trim()) return;
+    const trimmedName = studentName.trim();
+    if (!trimmedName || !quiz || !quizId) return;
+
+    const key = normalizeStudentKey(trimmedName);
+    setStudentKey(key);
+
+    // Best-effort cleanup of the pre-fix, unscoped key shape — never read
+    // (see getLegacyQuizStorageKeys' own comment), only removed so it can't
+    // linger indefinitely or be picked up by some future code path.
+    const legacyKeys = getLegacyQuizStorageKeys(quizId);
+    localStorage.removeItem(legacyKeys.answers);
+    localStorage.removeItem(legacyKeys.startTime);
+    localStorage.removeItem(legacyKeys.elapsedSeconds);
+
+    // Restore THIS student's own draft, if any — sanitizeStoredAnswers
+    // already drops anything malformed or referencing a question ID that
+    // no longer exists on this quiz.
+    const validQuestionIds = new Set(quiz.questions.map((q) => q.id));
+    const storageKeys = getQuizStorageKeys(quizId, key);
+    setAnswers(sanitizeStoredAnswers(storageKeys.answers, validQuestionIds));
+
+    const savedStartTime = localStorage.getItem(storageKeys.startTime);
+    const savedElapsed = localStorage.getItem(storageKeys.elapsedSeconds);
+    if (savedStartTime && savedElapsed) {
+      const parsedStart = Number.parseInt(savedStartTime, 10);
+      const parsedElapsed = Number.parseInt(savedElapsed, 10);
+      if (Number.isFinite(parsedStart) && Number.isFinite(parsedElapsed)) {
+        setElapsedSeconds(Math.max(0, parsedElapsed + Math.floor((Date.now() - parsedStart) / 1000)));
+      } else {
+        localStorage.removeItem(storageKeys.startTime);
+        localStorage.removeItem(storageKeys.elapsedSeconds);
+        setElapsedSeconds(0);
+      }
+    } else {
+      setElapsedSeconds(0);
+    }
+
     setPhase('in-progress');
   };
 
   const handleSubmit = useCallback(async (autoSubmit = false) => {
-    if (autoSubmit) {
-      localStorage.removeItem(`quiz-${quizId}-start-time`);
-      localStorage.removeItem(`quiz-${quizId}-answers`);
+    if (autoSubmit && quizId && studentKey) {
+      const storageKeys = getQuizStorageKeys(quizId, studentKey);
+      localStorage.removeItem(storageKeys.startTime);
+      localStorage.removeItem(storageKeys.answers);
+      localStorage.removeItem(storageKeys.elapsedSeconds);
     }
     if (!quizId) return;
 
@@ -145,13 +253,19 @@ export default function StudentQuizPage() {
     setError(null);
     try {
       const res = await submitPublicQuiz(quizId, studentName, answers);
+      if (studentKey) {
+        const storageKeys = getQuizStorageKeys(quizId, studentKey);
+        localStorage.removeItem(storageKeys.startTime);
+        localStorage.removeItem(storageKeys.answers);
+        localStorage.removeItem(storageKeys.elapsedSeconds);
+      }
       setResult(res);
       setPhase('done');
     } catch {
       setError(t.errorGeneric);
       setPhase('error');
     }
-  }, [quizId, studentName, answers, t.errorGeneric, quiz]);
+  }, [quizId, studentKey, studentName, answers, t.errorGeneric, quiz]);
 
   const minutes = Math.floor(elapsedSeconds / 60);
   const seconds = elapsedSeconds % 60;
@@ -218,7 +332,9 @@ export default function StudentQuizPage() {
                             onChange={() =>
                               setAnswers((prev) => {
                                 const updatedAnswers = { ...prev, [q.id]: letter };
-                                localStorage.setItem(`quiz-${quizId}-answers`, JSON.stringify(updatedAnswers));
+                                if (quizId && studentKey) {
+                                  localStorage.setItem(getQuizStorageKeys(quizId, studentKey).answers, JSON.stringify(updatedAnswers));
+                                }
                                 return updatedAnswers;
                               })
                             }
@@ -234,7 +350,9 @@ export default function StudentQuizPage() {
                       onChange={(e) =>
                         setAnswers((prev) => {
                           const updatedAnswers = { ...prev, [q.id]: e.target.value };
-                          localStorage.setItem(`quiz-${quizId}-answers`, JSON.stringify(updatedAnswers));
+                          if (quizId && studentKey) {
+                            localStorage.setItem(getQuizStorageKeys(quizId, studentKey).answers, JSON.stringify(updatedAnswers));
+                          }
                           return updatedAnswers;
                         })
                       }

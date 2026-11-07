@@ -62,7 +62,12 @@ export const forgotPasswordSchema = z.object({
   email: z.string().email(),
   // Which language to render the reset email in — sent by the frontend
   // based on the current site locale (see services/emailService.ts).
-  lang: z.enum(['ka', 'en']).optional(),
+  // Accepts the full site locale set (mirrors aiTranslationAgent.ts's
+  // FALLBACK_LOCALES) rather than just 'ka'/'en', so a request from any
+  // non-Georgian/English locale still validates instead of failing outright
+  // with a 400 — sendPasswordResetEmail is what actually collapses anything
+  // other than 'ka' down to English, not this schema.
+  lang: z.enum(['ka', 'en', 'de', 'es', 'fr', 'uk', 'tr', 'hy', 'az']).optional(),
 });
 
 export const resetPasswordSchema = z.object({

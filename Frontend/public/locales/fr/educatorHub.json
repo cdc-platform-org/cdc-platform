@@ -183,5 +183,8 @@
   "generatedCertificatesHeading": "Certificats générés",
   "downloadCertificate": "Télécharger le certificat n° {{index}}",
   "certificatesTitle": "Générateur de certificats et diplômes",
-  "certificatesDescription": "Créez des certificats et diplômes imprimables pour vos élèves en quelques secondes."
+  "certificatesDescription": "Créez des certificats et diplômes imprimables pour vos élèves en quelques secondes.",
+  "educatorSessionSupersededMessage": "Votre compte a été connecté sur un autre appareil. Veuillez vous reconnecter pour continuer.",
+  "privacyFreeTextWarning": "Évitez d'indiquer le nom complet de l'élève, ses coordonnées, son numéro d'identité ou des informations médicales. Les adresses e-mail, numéros de téléphone et numéros d'identité évidents sont automatiquement supprimés avant l'envoi à l'IA, mais cette suppression automatique ne peut pas tout détecter.",
+  "privacyImageUploadWarning": "Évitez de téléverser un travail montrant le nom complet de l'élève, ses coordonnées, son numéro d'identité ou d'autres informations sensibles. Tout texte visible sur l'image peut être transmis au service d'IA."
 }

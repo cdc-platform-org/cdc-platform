@@ -1,8 +1,36 @@
 import { useRef, useState, useLayoutEffect, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import DOMPurify from 'dompurify';
 import { Bold, Italic, Heading2, List, ListOrdered, Smile, Eye, Pencil } from 'lucide-react';
 import MarkdownContent from './MarkdownContent';
-import { isHtmlContent, HTML_CONTENT_ALLOWED_TAGS, HTML_CONTENT_ALLOWED_ATTR } from '../../utils/richContent';
+import { isHtmlContent, isMarkdownLike, HTML_CONTENT_ALLOWED_TAGS, HTML_CONTENT_ALLOWED_ATTR } from '../../utils/richContent';
+import { resolveLocale, contentLocale } from '../../utils/locale';
+
+// This component is shared across ~14 pages spanning several different
+// i18next namespaces (educatorHub, blog admin, courses admin, etc.), many of
+// which don't preload a common namespace this could safely depend on — a
+// useTranslation() call here risks the exact "raw key" bug this fix exists
+// to prevent, in whichever pages don't happen to load that namespace. Same
+// fix as ToolErrorBoundary.tsx's own DICT: read the app's actual current
+// locale straight from the router (the one global, always-available
+// language source) and use a small inline dictionary, rather than adding a
+// namespace dependency or any independent/local language state.
+const RTE_LABELS = {
+  ka: {
+    preview: 'გადახედვა',
+    source: 'წყარო',
+    editSourceTooltip: 'წყაროს რედაქტირება',
+    previewTooltip: 'გენერირებული შედეგის გადახედვა',
+    emptyPreview: 'გადასახედი ჯერ არაფერია.',
+  },
+  en: {
+    preview: 'Preview',
+    source: 'Source',
+    editSourceTooltip: 'Edit source',
+    previewTooltip: 'Preview rendered output',
+    emptyPreview: 'Nothing to preview yet.',
+  },
+} as const;
 
 // Lightweight Markdown-source editor — no Tiptap/Quill dependency (this repo's
 // npm workspace can't currently take new packages locally, see apiClient.ts's
@@ -35,11 +63,21 @@ interface RichTextEditorProps {
   className?: string;
 }
 
+// HTML content always auto-previews (unreadable otherwise); Markdown
+// content now does too, so a teacher's first look at freshly AI-generated
+// content is the rendered heading/bold/list, never raw "### "/"**" syntax
+// (same reasoning the original HTML-only check already documented above).
+function shouldAutoPreview(value: string): boolean {
+  return isHtmlContent(value) || isMarkdownLike(value);
+}
+
 export default function RichTextEditor({ value, onChange, placeholder, rows = 6, required, className = '' }: RichTextEditorProps) {
+  const router = useRouter();
+  const rt = RTE_LABELS[contentLocale(resolveLocale(router.locale))];
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
-  const [previewMode, setPreviewMode] = useState(() => isHtmlContent(value));
+  const [previewMode, setPreviewMode] = useState(() => shouldAutoPreview(value));
 
   // Tracks the last value *this editor* produced, so we can tell "the admin
   // typed a character" apart from "the parent replaced the value out from
@@ -51,7 +89,7 @@ export default function RichTextEditor({ value, onChange, placeholder, rows = 6,
   useEffect(() => {
     if (value !== lastEmittedRef.current) {
       lastEmittedRef.current = value;
-      setPreviewMode(isHtmlContent(value));
+      setPreviewMode(shouldAutoPreview(value));
     }
   }, [value]);
 
@@ -162,12 +200,12 @@ export default function RichTextEditor({ value, onChange, placeholder, rows = 6,
         <div className="ml-auto">
           <button
             type="button"
-            title={previewMode ? 'Edit source' : 'Preview rendered output'}
+            title={previewMode ? rt.editSourceTooltip : rt.previewTooltip}
             onClick={() => setPreviewMode((p) => !p)}
             className="inline-flex items-center gap-1 px-2 h-7 rounded text-xs font-medium text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 bg-transparent border-none cursor-pointer"
           >
             {previewMode ? <Pencil className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-            {previewMode ? 'Source' : 'Preview'}
+            {previewMode ? rt.source : rt.preview}
           </button>
         </div>
       </div>
@@ -178,7 +216,7 @@ export default function RichTextEditor({ value, onChange, placeholder, rows = 6,
           style={{ minHeight: `${rows * 1.6}rem` }}
         >
           {value.trim() === '' ? (
-            <p className="text-gray-400 dark:text-slate-500 italic">{placeholder || 'Nothing to preview yet.'}</p>
+            <p className="text-gray-400 dark:text-slate-500 italic">{placeholder || rt.emptyPreview}</p>
           ) : contentIsHtml ? (
             <div className="rte-html-preview text-gray-700 dark:text-slate-200" dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />
           ) : (

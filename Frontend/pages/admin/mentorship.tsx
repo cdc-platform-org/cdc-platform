@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, ChangeEvent } from 'react';
+import { useState, useEffect, useCallback, ChangeEvent, useRef } from 'react';
 import Head from 'next/head';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
@@ -14,6 +14,7 @@ import {
   deleteMentorAvailabilityRule,
   updateMentorProfile,
   setMentorPublished,
+  demoteFromMentor,
   uploadMentorCv,
   uploadMentorAvatar,
   translateMentorProfile,
@@ -26,6 +27,7 @@ import {
   MentorAvailabilityRule,
   AdminMentorshipBooking,
 } from '../../src/services/adminMentorshipService';
+import { useMentorAdminT } from '../../src/services/adminMentorI18n';
 
 // Curated checklist, not a DB enum (see mentorLanguages' schema comment) —
 // values are stored/displayed exactly as written here (mixed-script by
@@ -52,9 +54,21 @@ function timeToMinutes(time: string): number {
   return h * 60 + m;
 }
 
-function MentorAvailabilitySection() {
-  const [mentors, setMentors] = useState<MentorProfile[]>([]);
-  const [selectedMentorId, setSelectedMentorId] = useState('');
+// Shared mentors state + the selected-mentor id are owned by the page
+// (AdminMentorshipDashboard) so the Mentor Management list and this editor
+// always show the same data — there is exactly ONE editor and ONE source of
+// edit state (the task's requirement). innerRef is where Edit in the
+// management list scrolls to.
+interface MentorAvailabilitySectionProps {
+  mentors: MentorProfile[];
+  setMentors: React.Dispatch<React.SetStateAction<MentorProfile[]>>;
+  selectedMentorId: string;
+  setSelectedMentorId: (id: string) => void;
+  innerRef: React.RefObject<HTMLDivElement>;
+}
+
+function MentorAvailabilitySection({ mentors, setMentors, selectedMentorId, setSelectedMentorId, innerRef }: MentorAvailabilitySectionProps) {
+  const t = useMentorAdminT();
   const [rules, setRules] = useState<MentorAvailabilityRule[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -94,21 +108,11 @@ function MentorAvailabilitySection() {
       const updated = await setMentorPublished(selectedMentor.id, !selectedMentor.mentorPublished);
       setMentors((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
     } catch {
-      setPublishError('Could not update publish status.');
+      setPublishError(t('publishError'));
     } finally {
       setTogglingPublish(false);
     }
   };
-
-  const loadMentors = useCallback(async () => {
-    const data = await getMentors();
-    setMentors(data);
-    setSelectedMentorId((prev) => prev || (data.length > 0 ? data[0].id : ''));
-  }, []);
-
-  useEffect(() => {
-    loadMentors();
-  }, [loadMentors]);
 
   useEffect(() => {
     const mentor = mentors.find((m) => m.id === selectedMentorId);
@@ -122,10 +126,19 @@ function MentorAvailabilitySection() {
       bio: mentor.bio ?? '',
       bioEn: mentor.bioEn ?? '',
     });
+  }, [selectedMentorId, mentors]);
+
+  // Deliberately separate from the form-population effect above, and keyed
+  // ONLY on selectedMentorId (not `mentors`) — handleSaveProfile's own
+  // setMentors() call was re-triggering that combined effect and wiping
+  // profileSaved back to false the instant it was set true, so the "Saved."
+  // confirmation could never actually become visible. Switching mentors is
+  // the only thing that should clear this stale per-mentor UI state.
+  useEffect(() => {
     setProfileSaved(false);
     setActiveLangTab('ka');
     setTranslateError(null);
-  }, [selectedMentorId, mentors]);
+  }, [selectedMentorId]);
 
   const toggleLanguage = (lang: string) => {
     setProfileForm((f) => ({
@@ -164,7 +177,7 @@ function MentorAvailabilitySection() {
   const handleAutoTranslate = async () => {
     setTranslateError(null);
     if (profileForm.mentorTitle.trim().length < 2 || profileForm.bio.trim().length < 5) {
-      setTranslateError('Fill in the Georgian Title and Bio before translating.');
+      setTranslateError(t('translateHint'));
       return;
     }
     setTranslating(true);
@@ -173,7 +186,7 @@ function MentorAvailabilitySection() {
       setProfileForm((f) => ({ ...f, mentorTitleEn: translated.titleEn, bioEn: translated.bioEn }));
       setActiveLangTab('en');
     } catch (err: any) {
-      setTranslateError(err?.response?.data?.message ?? 'Translation failed. Please try again.');
+      setTranslateError(err?.response?.data?.message ?? t('translateFailed'));
     } finally {
       setTranslating(false);
     }
@@ -188,7 +201,7 @@ function MentorAvailabilitySection() {
       const updated = await uploadMentorCv(selectedMentorId, file);
       setMentors((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
     } catch (err: any) {
-      setCvError(err?.response?.data?.message || 'CV upload failed. Please try again.');
+      setCvError(err?.response?.data?.message || t('cvUploadFailed'));
     } finally {
       setUploadingCv(false);
       e.target.value = '';
@@ -204,7 +217,7 @@ function MentorAvailabilitySection() {
       const updated = await uploadMentorAvatar(selectedMentorId, file);
       setMentors((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
     } catch (err: any) {
-      setAvatarError(err?.response?.data?.message || 'Avatar upload failed. Please try again.');
+      setAvatarError(err?.response?.data?.message || t('avatarUploadFailed'));
     } finally {
       setUploadingAvatar(false);
       e.target.value = '';
@@ -292,17 +305,14 @@ function MentorAvailabilitySection() {
   };
 
   return (
-    <div className="mb-10">
+    <div className="mb-10" ref={innerRef}>
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">Mentor Availability (Google Calendar bookings)</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          Recurring weekly slots (Asia/Tbilisi time) a mentor can be booked for a paid session. Enforced server-side
-          at checkout, and used to create the Google Calendar invite once payment completes.
-        </p>
+        <h2 className="text-lg font-semibold text-gray-900">{t('availabilityHeading')}</h2>
+        <p className="text-sm text-gray-500 mt-1">{t('availabilityHint')}</p>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl p-5 max-w-2xl">
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">Mentor</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('mentorLabel')}</label>
         <select
           value={selectedMentorId}
           onChange={(e) => setSelectedMentorId(e.target.value)}
@@ -310,7 +320,7 @@ function MentorAvailabilitySection() {
         >
           {mentors.map((m) => (
             <option key={m.id} value={m.id}>
-              {m.name} ({m.email}) {m.mentorPublished ? '— Published' : '— Not Published'}
+              {m.name} ({m.email}) {m.mentorPublished ? t('publishedOption') : t('notPublishedOption')}
             </option>
           ))}
         </select>
@@ -318,12 +328,8 @@ function MentorAvailabilitySection() {
         {selectedMentor && (
           <div className="mb-4 flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3">
             <div>
-              <p className="text-xs font-semibold text-gray-700">Public directory visibility</p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                {selectedMentor.mentorPublished
-                  ? 'This mentor is live on the public /mentors page.'
-                  : 'Hidden from the public /mentors page until published.'}
-              </p>
+              <p className="text-xs font-semibold text-gray-700">{t('visibilityLabel')}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{selectedMentor.mentorPublished ? t('visibilityLive') : t('visibilityHidden')}</p>
               {publishError && <p className="text-xs text-red-600 mt-1">{publishError}</p>}
             </div>
             <button
@@ -336,13 +342,13 @@ function MentorAvailabilitySection() {
                   : 'border-transparent text-white bg-emerald-600 hover:bg-emerald-700'
               }`}
             >
-              {togglingPublish ? '…' : selectedMentor.mentorPublished ? 'Unpublish' : 'Publish'}
+              {togglingPublish ? '…' : selectedMentor.mentorPublished ? t('unpublish') : t('publish')}
             </button>
           </div>
         )}
 
         <div className="mb-4">
-          <label className="block text-xs font-medium text-gray-700 mb-1">Avatar / Profile Photo (PNG or JPG)</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">{t('avatarLabel')}</label>
           <div className="flex items-center gap-3">
             {selectedMentor?.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -358,7 +364,7 @@ function MentorAvailabilitySection() {
             )}
             <label className="inline-block text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-2 rounded-lg cursor-pointer hover:bg-indigo-100">
               <input type="file" accept="image/png,image/jpeg" onChange={handleUploadAvatar} disabled={uploadingAvatar || !selectedMentorId} className="hidden" />
-              {uploadingAvatar ? 'Uploading…' : selectedMentor?.avatarUrl ? 'Replace Photo' : 'Upload Photo'}
+              {uploadingAvatar ? t('uploading') : selectedMentor?.avatarUrl ? t('replacePhoto') : t('uploadPhoto')}
             </label>
           </div>
           {avatarError && <p className="text-xs text-red-600 mt-1.5">{avatarError}</p>}
@@ -385,14 +391,14 @@ function MentorAvailabilitySection() {
             disabled={translating}
             className="mb-1.5 text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg disabled:opacity-60"
           >
-            {translating ? 'Translating…' : '✨ Auto-Translate to English'}
+            {translating ? t('translating') : t('autoTranslate')}
           </button>
         </div>
         {translateError && <p className="text-xs text-red-600 mb-3">{translateError}</p>}
 
         {activeLangTab === 'ka' ? (
           <div className="mb-3">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Title / Position (KA)</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{t('titleKa')}</label>
             <input
               value={profileForm.mentorTitle}
               onChange={(e) => setProfileForm({ ...profileForm, mentorTitle: e.target.value })}
@@ -402,7 +408,7 @@ function MentorAvailabilitySection() {
           </div>
         ) : (
           <div className="mb-3">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Title / Position (EN)</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{t('titleEn')}</label>
             <input
               value={profileForm.mentorTitleEn}
               onChange={(e) => setProfileForm({ ...profileForm, mentorTitleEn: e.target.value })}
@@ -413,7 +419,7 @@ function MentorAvailabilitySection() {
         )}
 
         <div className="mb-3">
-          <label className="block text-xs font-medium text-gray-700 mb-1">Hourly Rate (GEL / ₾)</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">{t('hourlyRate')}</label>
           <input
             type="number"
             min={0}
@@ -424,7 +430,7 @@ function MentorAvailabilitySection() {
           />
         </div>
         <div className="mb-3">
-          <label className="block text-xs font-medium text-gray-700 mb-1">Core Skills (comma-separated)</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">{t('coreSkills')}</label>
           <input
             value={profileForm.mentorSkills}
             onChange={(e) => setProfileForm({ ...profileForm, mentorSkills: e.target.value })}
@@ -433,7 +439,7 @@ function MentorAvailabilitySection() {
           />
         </div>
         <div className="mb-3">
-          <label className="block text-xs font-medium text-gray-700 mb-1">Spoken Languages / საუბრის ენები</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">{t('spokenLanguages')} / საუბრის ენები</label>
           <div className="flex flex-wrap gap-1.5">
             {LANGUAGE_OPTIONS.map((langOption) => (
               <button
@@ -450,10 +456,35 @@ function MentorAvailabilitySection() {
               </button>
             ))}
           </div>
+          {/* A stored value outside LANGUAGE_OPTIONS (legacy data, or a
+              corrupted value from before this profile was ever edited here)
+              had no chip to remove it through — it just silently persisted
+              on every save. Surfacing it generically (no reference to any
+              specific value) and reusing toggleLanguage removes it the same
+              way any known language would be deselected. */}
+          {profileForm.mentorLanguages.some((l) => !LANGUAGE_OPTIONS.includes(l)) && (
+            <div className="mt-2">
+              <p className="text-[11px] text-amber-700 mb-1">{t('unknownLanguagesLabel')}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {profileForm.mentorLanguages
+                  .filter((l) => !LANGUAGE_OPTIONS.includes(l))
+                  .map((langOption) => (
+                    <button
+                      key={langOption}
+                      type="button"
+                      onClick={() => toggleLanguage(langOption)}
+                      className="text-xs font-bold px-3 py-1.5 rounded-full border border-dashed border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
+                    >
+                      {langOption} ✕
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
         {activeLangTab === 'ka' ? (
           <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Bio (KA)</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{t('bioKa')}</label>
             <textarea
               value={profileForm.bio}
               onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
@@ -463,7 +494,7 @@ function MentorAvailabilitySection() {
           </div>
         ) : (
           <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Bio (EN)</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{t('bioEn')}</label>
             <textarea
               value={profileForm.bioEn}
               onChange={(e) => setProfileForm({ ...profileForm, bioEn: e.target.value })}
@@ -473,7 +504,7 @@ function MentorAvailabilitySection() {
           </div>
         )}
         <div className="mb-5">
-          <label className="block text-xs font-medium text-gray-700 mb-1">CV / Resume (PDF or DOCX)</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">{t('cvLabel')}</label>
           <div className="flex items-center gap-3">
             {selectedMentor?.cvUrl && (
               <a
@@ -482,12 +513,12 @@ function MentorAvailabilitySection() {
                 rel="noopener noreferrer"
                 className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline"
               >
-                View current CV
+                {t('viewCurrentCv')}
               </a>
             )}
             <label className="inline-block text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-2 rounded-lg cursor-pointer hover:bg-indigo-100">
               <input type="file" accept=".pdf,.doc,.docx" onChange={handleUploadCv} disabled={uploadingCv || !selectedMentorId} className="hidden" />
-              {uploadingCv ? 'Uploading…' : selectedMentor?.cvUrl ? 'Replace CV' : 'Upload CV'}
+              {uploadingCv ? t('uploading') : selectedMentor?.cvUrl ? t('replaceCv') : t('uploadCv')}
             </label>
           </div>
           {cvError && <p className="text-xs text-red-600 mt-1.5">{cvError}</p>}
@@ -499,9 +530,9 @@ function MentorAvailabilitySection() {
             disabled={savingProfile || !selectedMentorId}
             className="rounded-lg bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-900 disabled:opacity-60"
           >
-            {savingProfile ? 'Saving…' : 'Save Profile'}
+            {savingProfile ? t('saving') : t('saveProfile')}
           </button>
-          {profileSaved && <span className="text-xs text-emerald-600">Saved.</span>}
+          {profileSaved && <span className="text-xs text-emerald-600">{t('saved')}</span>}
         </div>
 
         {loading ? (
@@ -616,6 +647,285 @@ function MentorAvailabilitySection() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ============================================================
+// MENTOR MANAGEMENT — list of every current Mentor-role user, reusing the
+// same GET /api/admin/mentorship/mentors endpoint and the same mentor state
+// as the profile/availability editor above (ONE list, ONE editor). Edit
+// selects the mentor in the existing editor and scrolls to it; Publish/
+// Unpublish reuses the mentorPublished pipeline (setMentorPublished → PUT
+// /profile); Remove reuses the existing demote endpoint, which only
+// prisma.user.update()s the role — the User account is NEVER deleted.
+// ============================================================
+function MentorManagementSection({
+  mentors,
+  setMentors,
+  onEdit,
+  reloadMentors,
+}: {
+  mentors: MentorProfile[];
+  setMentors: React.Dispatch<React.SetStateAction<MentorProfile[]>>;
+  onEdit: (mentorId: string) => void;
+  reloadMentors: () => void;
+}) {
+  const t = useMentorAdminT();
+  const [confirmingDemoteId, setConfirmingDemoteId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  const confirmingMentor = mentors.find((m) => m.id === confirmingDemoteId) ?? null;
+
+  const handleTogglePublish = async (mentor: MentorProfile) => {
+    setTogglingId(mentor.id);
+    setRemoveError(null);
+    try {
+      const updated = await setMentorPublished(mentor.id, !mentor.mentorPublished);
+      setMentors((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+    } catch {
+      setRemoveError(t('publishError'));
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  // Safe removal: POST /demote only flips role back to preMentorRole ??
+  // 'Student' — the User row (and all its related history) stays in place.
+  const handleRemove = async () => {
+    if (!confirmingMentor || removingId) return;
+    setRemovingId(confirmingMentor.id);
+    setRemoveError(null);
+    try {
+      await demoteFromMentor(confirmingMentor.id);
+      setConfirmingDemoteId(null);
+      reloadMentors();
+    } catch {
+      setRemoveError(t('removeError'));
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  const renderAvatar = (mentor: MentorProfile) =>
+    mentor.avatarUrl ? (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={mentor.avatarUrl}
+        alt={mentor.name}
+        className="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0"
+      />
+    ) : (
+      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white font-black text-sm shrink-0">
+        {mentor.name.charAt(0).toUpperCase() || '?'}
+      </div>
+    );
+
+  const statusBadge = (published: boolean) =>
+    published ? (
+      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded border bg-emerald-50 text-emerald-700 border-emerald-200 whitespace-nowrap">
+        {t('published')}
+      </span>
+    ) : (
+      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded border bg-gray-100 text-gray-500 border-gray-200 whitespace-nowrap">
+        {t('draft')}
+      </span>
+    );
+
+  const actionButtons = (mentor: MentorProfile) => (
+    <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={() => onEdit(mentor.id)}
+        className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+      >
+        {t('edit')}
+      </button>
+      <button
+        type="button"
+        disabled={togglingId === mentor.id}
+        onClick={() => handleTogglePublish(mentor)}
+        className={`text-xs font-bold px-3 py-1.5 rounded-lg border disabled:opacity-60 whitespace-nowrap ${
+          mentor.mentorPublished
+            ? 'border-gray-300 text-gray-700 hover:bg-gray-50'
+            : 'border-transparent text-white bg-emerald-600 hover:bg-emerald-700'
+        }`}
+      >
+        {togglingId === mentor.id ? '…' : mentor.mentorPublished ? t('unpublish') : t('publish')}
+      </button>
+      <button
+        type="button"
+        onClick={() => setConfirmingDemoteId(mentor.id)}
+        disabled={removingId !== null}
+        className="text-xs font-medium px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-60 whitespace-nowrap"
+      >
+        {t('removeMentor')}
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="mb-10">
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-gray-900">{t('mentorsHeading')}</h2>
+        <p className="text-sm text-gray-500 mt-1">{t('mentorsDescription')}</p>
+      </div>
+
+      {removeError && (
+        <div className="mb-3 rounded-lg bg-red-50 border border-red-200 px-4 py-2.5 text-xs text-red-700">{removeError}</div>
+      )}
+
+      {mentors.length === 0 ? (
+        <p className="text-sm text-gray-500">{t('noMentors')}</p>
+      ) : (
+        <>
+          {/* Desktop: one row per mentor — hidden on narrow screens where the
+              stacked cards below take over. */}
+          <div className="hidden md:block rounded-xl border border-gray-200 bg-white overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-[11px] uppercase tracking-wide text-gray-400">
+                  <th className="px-4 py-3 font-medium">{t('mentorColumn')}</th>
+                  <th className="px-4 py-3 font-medium">{t('skillsColumn')}</th>
+                  <th className="px-4 py-3 font-medium">{t('rateColumn')}</th>
+                  <th className="px-4 py-3 font-medium">{t('languagesColumn')}</th>
+                  <th className="px-4 py-3 font-medium">{t('cvColumn')}</th>
+                  <th className="px-4 py-3 font-medium">{t('statusColumn')}</th>
+                  <th className="px-4 py-3 font-medium">{t('actionsColumn')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mentors.map((mentor) => (
+                  <tr key={mentor.id} className="border-b border-gray-100 last:border-0 align-top">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3 min-w-[160px]">
+                        {renderAvatar(mentor)}
+                        <div>
+                          <p className="font-semibold text-gray-900">{mentor.name}</p>
+                          <p className="text-[11px] text-gray-400">{mentor.email}</p>
+                          <p className="text-xs text-gray-600">{mentor.mentorTitle || '—'}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 max-w-[220px]">
+                      {mentor.mentorSkills.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {mentor.mentorSkills.map((skill) => (
+                            <span key={skill} className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 whitespace-nowrap">
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-800">
+                      {mentor.mentorHourlyRate != null ? `${mentor.mentorHourlyRate / 100} ₾ ${t('perHour')}` : '—'}
+                    </td>
+                    <td className="px-4 py-3 max-w-[140px] text-gray-800">
+                      {mentor.mentorLanguages.length > 0 ? mentor.mentorLanguages.join(', ') : '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      {mentor.cvUrl ? (
+                        <a href={mentor.cvUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline whitespace-nowrap">
+                          {t('cvAttached')}
+                        </a>
+                      ) : (
+                        <span className="text-xs text-gray-400">{t('noCv')}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">{statusBadge(mentor.mentorPublished)}</td>
+                    <td className="px-4 py-3">{actionButtons(mentor)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile/tablet: stacked cards (no horizontal page overflow). */}
+          <div className="md:hidden space-y-3">
+            {mentors.map((mentor) => (
+              <div key={mentor.id} className="bg-white border border-gray-200 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  {renderAvatar(mentor)}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-gray-900 truncate">{mentor.name}</p>
+                        <p className="text-[11px] text-gray-400 truncate">{mentor.email}</p>
+                        <p className="text-xs text-gray-600">{mentor.mentorTitle || '—'}</p>
+                      </div>
+                      {statusBadge(mentor.mentorPublished)}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 space-y-1.5 text-xs text-gray-600">
+                  <p>
+                    <span className="font-semibold text-gray-500">{t('skillsColumn')}:</span>{' '}
+                    {mentor.mentorSkills.length > 0 ? mentor.mentorSkills.join(', ') : '—'}
+                  </p>
+                  <p>
+                    <span className="font-semibold text-gray-500">{t('rateColumn')}:</span>{' '}
+                    {mentor.mentorHourlyRate != null ? `${mentor.mentorHourlyRate / 100} ₾ ${t('perHour')}` : '—'}
+                  </p>
+                  <p>
+                    <span className="font-semibold text-gray-500">{t('languagesColumn')}:</span>{' '}
+                    {mentor.mentorLanguages.length > 0 ? mentor.mentorLanguages.join(', ') : '—'}
+                  </p>
+                  <p>
+                    <span className="font-semibold text-gray-500">{t('cvColumn')}:</span>{' '}
+                    {mentor.cvUrl ? (
+                      <a href={mentor.cvUrl} target="_blank" rel="noopener noreferrer" className="font-bold text-indigo-600 hover:text-indigo-800 underline">
+                        {t('cvAttached')}
+                      </a>
+                    ) : (
+                      <span className="text-gray-400">{t('noCv')}</span>
+                    )}
+                  </p>
+                </div>
+                <div className="mt-3 pt-3 border-t border-gray-100">{actionButtons(mentor)}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {confirmingMentor && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-5">
+            <h3 className="text-base font-semibold text-gray-900 mb-2">{t('removeConfirmTitle')}</h3>
+            <p className="text-sm text-gray-700 mb-1">
+              <span className="font-semibold">{confirmingMentor.name}</span> ({confirmingMentor.email})
+            </p>
+            <p className="text-sm text-gray-500 mb-4">{t('removeConfirmBody')}</p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmingDemoteId(null)}
+                disabled={removingId !== null}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={handleRemove}
+                disabled={removingId !== null}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                {removingId ? t('removing') : t('removeMentor')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -982,6 +1292,31 @@ function BookingsSection() {
 }
 
 function AdminMentorshipDashboard() {
+  // Shared mentor list + selection — ONE source of state feeding both the
+  // profile/availability editor and the Mentor Management list.
+  const [mentors, setMentors] = useState<MentorProfile[]>([]);
+  const [selectedMentorId, setSelectedMentorId] = useState('');
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  const loadMentors = useCallback(async () => {
+    const data = await getMentors();
+    setMentors(data);
+    // Keep a valid selection (first mentor) unless one is already picked —
+    // same fallback behavior the editor had when it owned this state.
+    setSelectedMentorId((prev) => prev || (data.length > 0 ? data[0].id : ''));
+  }, []);
+
+  useEffect(() => {
+    loadMentors();
+  }, [loadMentors]);
+
+  const handleEditFromList = useCallback((mentorId: string) => {
+    setSelectedMentorId(mentorId);
+    requestAnimationFrame(() => {
+      editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, []);
+
   const [queue, setQueue] = useState<MentorshipGig[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -1017,7 +1352,14 @@ function AdminMentorshipDashboard() {
       </Head>
       <div className="max-w-4xl">
         <BookingsSection />
-        <MentorAvailabilitySection />
+        <MentorAvailabilitySection
+          mentors={mentors}
+          setMentors={setMentors}
+          selectedMentorId={selectedMentorId}
+          setSelectedMentorId={setSelectedMentorId}
+          innerRef={editorRef}
+        />
+        <MentorManagementSection mentors={mentors} setMentors={setMentors} onEdit={handleEditFromList} reloadMentors={loadMentors} />
         <GeneralHelpRequests />
 
         <div className="mb-8">

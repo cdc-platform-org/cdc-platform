@@ -183,5 +183,8 @@
   "generatedCertificatesHeading": "Erstellte Zertifikate",
   "downloadCertificate": "Zertifikat Nr. {{index}} herunterladen",
   "certificatesTitle": "Zertifikat- und Diplom-Generator",
-  "certificatesDescription": "Erstellen Sie druckbare Zertifikate und Diplome für Ihre Schüler in Sekunden."
+  "certificatesDescription": "Erstellen Sie druckbare Zertifikate und Diplome für Ihre Schüler in Sekunden.",
+  "educatorSessionSupersededMessage": "Ihr Konto wurde auf einem anderen Gerät angemeldet. Bitte melden Sie sich erneut an, um fortzufahren.",
+  "privacyFreeTextWarning": "Vermeiden Sie die Angabe des vollständigen Namens, der Kontaktdaten, der Ausweisnummer oder medizinischer Informationen eines Schülers. Offensichtliche E-Mail-Adressen, Telefonnummern und Ausweisnummern werden automatisch entfernt, bevor dies an die KI gesendet wird — die automatische Entfernung kann jedoch nicht alles erfassen.",
+  "privacyImageUploadWarning": "Laden Sie keine Arbeiten hoch, die den vollständigen Namen, Kontaktdaten, eine Ausweisnummer oder andere sensible Informationen eines Schülers zeigen. Jeglicher im Bild sichtbare Text kann an den KI-Dienst übermittelt werden."
 }

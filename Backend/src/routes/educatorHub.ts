@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
+import crypto from 'crypto';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved, requireCurrentEducatorSession } from '../middleware/auth';
@@ -19,7 +20,9 @@ import {
   generateParentLetter,
   EducatorAiError,
 } from '../services/educatorHubAiService';
-import { createTeacherQuiz, getQuizSubmissionsForTeacher, TeacherQuizError } from '../services/teacherQuizService';
+import { createTeacherQuiz, getQuizSubmissionsForTeacher, getSubmissionDetailForTeacher, TeacherQuizError } from '../services/teacherQuizService';
+import { generateTeacherCertificatePdf } from '../services/certificateService';
+import { uploadPrivateBlob, getSignedBlobUrl } from '../services/privateBlobStorage';
 
 const router = Router();
 router.use(authenticate, requireApproved);
@@ -192,6 +195,16 @@ router.get('/quizzes/:quizId/submissions', requireCurrentEducatorSession, requir
   try {
     const submissions = await getQuizSubmissionsForTeacher(req.user!.id, req.params.quizId);
     res.json({ data: submissions });
+  } catch (err) {
+    if (err instanceof TeacherQuizError) return res.status(err.status).json({ message: err.message });
+    throw err;
+  }
+});
+
+router.get('/quizzes/:quizId/submissions/:submissionId', requireCurrentEducatorSession, requireEducatorVipAccess, async (req: Request, res: Response) => {
+  try {
+    const detail = await getSubmissionDetailForTeacher(req.user!.id, req.params.quizId, req.params.submissionId);
+    res.json({ data: detail });
   } catch (err) {
     if (err instanceof TeacherQuizError) return res.status(err.status).json({ message: err.message });
     throw err;
@@ -395,6 +408,54 @@ router.post('/generate-parent-letter', generateRateLimit, requireCurrentEducator
   } catch (err) {
     handleAiError(err, res);
   }
+});
+
+// ---- Module 8: Student Certificate & Diploma Builder ----
+// No AI call here (pure PDF composition, see certificateService.ts), so
+// none of the isAiAgentConfigured/quota-limit checks the other 7 modules
+// use apply — this route is gated on VIP access only, same as every other
+// generation route. Deliberately NOT counted against the shared
+// generations quota (recordEducatorGeneration) in this batch — that's a
+// separate product decision, not part of the confirmed "Generate is
+// completely broken" defect this route exists to fix.
+
+const generateCertificatesSchema = z
+  .object({
+    names: z.array(z.string().min(1).max(200)).min(1).max(50),
+    certificateType: z.enum(['WEEKLY_STAR', 'COURSE_COMPLETION', 'OLYMPIAD_WINNER', 'CUSTOM']),
+    customNomination: z.string().max(200).optional(),
+    language: z.enum(['ka', 'en']),
+  })
+  .refine((data) => data.certificateType !== 'CUSTOM' || !!data.customNomination?.trim(), {
+    message: 'customNomination is required when certificateType is CUSTOM.',
+    path: ['customNomination'],
+  });
+
+router.post('/generate-certificates', generateRateLimit, requireCurrentEducatorSession, requireEducatorVipAccess, async (req: Request, res: Response) => {
+  const parsed = generateCertificatesSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
+
+  const issueDate = new Date();
+  // Each certificate is a separate private blob + its own short-lived signed
+  // URL (same pattern as productFileDelivery.ts) — never a public path, and
+  // scoped under the requesting teacher's own id so one teacher's generated
+  // certificates are never guessable/reachable via another's blob name.
+  const certificates = await Promise.all(
+    parsed.data.names.map(async (studentName) => {
+      const pdfBuffer = await generateTeacherCertificatePdf({
+        studentName,
+        certificateType: parsed.data.certificateType,
+        customNomination: parsed.data.customNomination,
+        language: parsed.data.language,
+        issueDate,
+      });
+      const blobName = `teacher-certificates/${req.user!.id}/${crypto.randomUUID()}.pdf`;
+      await uploadPrivateBlob(blobName, pdfBuffer, 'application/pdf');
+      return getSignedBlobUrl(blobName);
+    })
+  );
+
+  res.json({ data: { certificates } });
 });
 
 export default router;

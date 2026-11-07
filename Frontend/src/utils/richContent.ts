@@ -13,3 +13,122 @@ export function isHtmlContent(content: string): boolean {
 
 export const HTML_CONTENT_ALLOWED_TAGS = ['h2', 'h3', 'p', 'ul', 'ol', 'li', 'strong', 'em', 'b', 'i', 'a', 'img', 'blockquote', 'code', 'pre', 'br'];
 export const HTML_CONTENT_ALLOWED_ATTR = ['href', 'target', 'rel', 'src', 'alt', 'id'];
+
+// True when `content` uses at least one of the Markdown markers
+// RichTextEditor's own toolbar can produce (## heading, **bold**, - bullet,
+// 1. numbered) — i.e. "this looks like real structure, not just prose with
+// a stray asterisk in it." Used to auto-switch RichTextEditor into Preview
+// for freshly-generated Markdown the same way it already does for HTML (see
+// RichTextEditor.tsx's lastEmittedRef effect), so a teacher's first look at
+// an AI-generated test/rubric/letter is never raw "### heading" syntax.
+export function isMarkdownLike(content: string): boolean {
+  return /^#{1,3}\s|\*\*[^*\n]+\*\*|^[-*]\s|^\d+\.\s/m.test(content);
+}
+
+// ============================================================
+// Single shared Markdown -> {structured blocks} parser, covering exactly
+// the subset RichTextEditor's toolbar can write (headings, paragraphs,
+// bold, italic, bullet/numbered lists, line breaks) — this is the ONE
+// transformation strategy every export surface (DOCX, TXT, Copy) builds on,
+// instead of each one having its own ad-hoc regex. Screen rendering already
+// has its own equivalent (react-markdown, in MarkdownContent.tsx); this
+// exists for the surfaces that aren't a React render tree — DOCX
+// generation and plain-text/clipboard output both need the parsed
+// structure, not JSX.
+// ============================================================
+
+export interface MarkdownSpan {
+  text: string;
+  bold?: boolean;
+  italic?: boolean;
+}
+
+export type MarkdownBlock =
+  | { type: 'heading'; level: 1 | 2 | 3; spans: MarkdownSpan[] }
+  | { type: 'paragraph'; spans: MarkdownSpan[] }
+  | { type: 'bullet'; spans: MarkdownSpan[] }
+  | { type: 'numbered'; index: number; spans: MarkdownSpan[] }
+  | { type: 'blank' };
+
+// Splits one line's text into bold/italic/plain runs. Bold (**text**) is
+// matched first so "**_x_**" and "_**x**_" both still resolve sensibly;
+// italic then runs only over the plain segments bold's split already
+// produced, so "**a** _b_" can't have its `_b_` swallowed by a bold match
+// spanning both. Deliberately only the two emphasis markers the toolbar
+// actually writes (** for bold, _ for italic) — not a general CommonMark
+// inline parser.
+function parseInlineSpans(line: string): MarkdownSpan[] {
+  const spans: MarkdownSpan[] = [];
+  const boldSplit = line.split(/(\*\*[^*]+\*\*)/g);
+  for (const part of boldSplit) {
+    if (!part) continue;
+    const boldMatch = part.match(/^\*\*([^*]+)\*\*$/);
+    if (boldMatch) {
+      spans.push({ text: boldMatch[1], bold: true });
+      continue;
+    }
+    const italicSplit = part.split(/(_[^_]+_)/g);
+    for (const seg of italicSplit) {
+      if (!seg) continue;
+      const italicMatch = seg.match(/^_([^_]+)_$/);
+      if (italicMatch) spans.push({ text: italicMatch[1], italic: true });
+      else spans.push({ text: seg });
+    }
+  }
+  return spans.length > 0 ? spans : [{ text: line }];
+}
+
+export function parseMarkdownBlocks(markdown: string): MarkdownBlock[] {
+  const lines = markdown.replace(/\r\n/g, '\n').split('\n');
+  const blocks: MarkdownBlock[] = [];
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (line === '') {
+      blocks.push({ type: 'blank' });
+      continue;
+    }
+    const heading = line.match(/^(#{1,3})\s+(.*)$/);
+    if (heading) {
+      blocks.push({ type: 'heading', level: heading[1].length as 1 | 2 | 3, spans: parseInlineSpans(heading[2]) });
+      continue;
+    }
+    const bullet = line.match(/^[-*]\s+(.*)$/);
+    if (bullet) {
+      blocks.push({ type: 'bullet', spans: parseInlineSpans(bullet[1]) });
+      continue;
+    }
+    const numbered = line.match(/^(\d+)\.\s+(.*)$/);
+    if (numbered) {
+      blocks.push({ type: 'numbered', index: Number(numbered[1]), spans: parseInlineSpans(numbered[2]) });
+      continue;
+    }
+    blocks.push({ type: 'paragraph', spans: parseInlineSpans(line) });
+  }
+  return blocks;
+}
+
+// Plain-text/clipboard surface (Copy, TXT export) — drops every formatting
+// marker (###, **, _, -, list numbers get kept since they're already plain
+// digits) while keeping paragraph/list line breaks, so hierarchy stays
+// readable without any raw syntax characters leaking through.
+export function markdownToPlainText(markdown: string): string {
+  const blocks = parseMarkdownBlocks(markdown);
+  const spansToText = (spans: MarkdownSpan[]) => spans.map((s) => s.text).join('');
+  const lines = blocks.map((block) => {
+    switch (block.type) {
+      case 'blank':
+        return '';
+      case 'heading':
+        return spansToText(block.spans);
+      case 'bullet':
+        return `• ${spansToText(block.spans)}`;
+      case 'numbered':
+        return `${block.index}. ${spansToText(block.spans)}`;
+      case 'paragraph':
+        return spansToText(block.spans);
+    }
+  });
+  // Collapse 3+ consecutive blank lines down to at most one, so a run of
+  // Markdown blank-line separators doesn't turn into visible dead space.
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}

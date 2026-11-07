@@ -183,5 +183,8 @@
   "generatedCertificatesHeading": "Yaradılmış Sertifikatlar",
   "downloadCertificate": "Sertifikat #{{index}} Yüklə",
   "certificatesTitle": "Sertifikat və Diplom Generatoru",
-  "certificatesDescription": "Şagirdləriniz üçün saniyələr ərzində çap edilə bilən sertifikatlar və diplomlar yaradın."
+  "certificatesDescription": "Şagirdləriniz üçün saniyələr ərzində çap edilə bilən sertifikatlar və diplomlar yaradın.",
+  "educatorSessionSupersededMessage": "Hesabınıza başqa bir cihazdan giriş edildi. Davam etmək üçün yenidən daxil olun.",
+  "privacyFreeTextWarning": "Şagirdin tam adını, əlaqə məlumatlarını, şəxsiyyət nömrəsini və ya tibbi məlumatları daxil etməkdən çəkinin. Aydın e-poçt ünvanları, telefon nömrələri və şəxsiyyət nömrələri AI-a göndərilmədən əvvəl avtomatik silinir, lakin avtomatik silinmə hər şeyi aşkar edə bilməz.",
+  "privacyImageUploadWarning": "Şagirdin tam adı, əlaqə məlumatları, şəxsiyyət nömrəsi və ya digər həssas məlumatların göründüyü işi yükləməyin. Şəkildəki istənilən mətn AI xidmətinə ötürülə bilər."
 }

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { callTextModel, isAiAgentConfigured, AiAgentError, InlineImagePart } from './aiAgentService';
+import { minimizeForAi } from './educatorPrivacyService';
 
 // ============================================================
 // AI Educator VIP Hub — all 7 modules (test generator, rubric builder,
@@ -99,7 +100,7 @@ export async function generateTestAndAnswerKey(params: GenerateTestParams): Prom
   const sourceBlock = params.sourceFile
     ? '\n\nA source page (textbook photo or scanned PDF page) is attached as an image — read its content carefully, and base every question strictly on the material it actually contains, not on the topic in general.'
     : params.sourceText
-    ? `\n\nBase every question strictly on this source material, not on the topic in general:\n${params.sourceText.slice(0, 12000)}`
+    ? `\n\nBase every question strictly on this source material, not on the topic in general:\n${minimizeForAi(params.sourceText).slice(0, 12000)}`
     : '';
 
   const prompt = `You are an experienced ${params.subject} teacher writing a real classroom test for grade ${params.grade} students, on the topic: "${params.topic}".${sourceBlock}
@@ -179,7 +180,7 @@ export async function gradeHomework(params: GradeHomeworkParams): Promise<Graded
   const lang = LANGUAGE_NAME[params.language];
   const workBlock = params.studentWorkImage
     ? '\n\nThe student\'s handwritten/typed work is attached as an image — read it carefully, including handwriting, before grading.'
-    : `\n\nThe student's submitted work (as text):\n${params.studentWorkText!.slice(0, 12000)}`;
+    : `\n\nThe student's submitted work (as text):\n${minimizeForAi(params.studentWorkText!).slice(0, 12000)}`;
 
   const prompt = `You are an experienced, fair teacher grading one student's homework submission against this assignment/rubric: "${params.assignmentPrompt}".${workBlock}
 
@@ -313,7 +314,7 @@ export async function generateBureaucracyDoc(params: GenerateBureaucracyDocParam
   const lang = LANGUAGE_NAME[params.language];
   const docLabel = BUREAUCRACY_DOC_LABEL[params.documentType];
 
-  const prompt = `You are an experienced ${params.subject} teacher in Georgia preparing ${docLabel} for grade ${params.grade}, for submission to school administration. Base it on these key points from the teacher: "${params.keyPoints}".
+  const prompt = `You are an experienced ${params.subject} teacher in Georgia preparing ${docLabel} for grade ${params.grade}, for submission to school administration. Base it on these key points from the teacher: "${minimizeForAi(params.keyPoints)}".
 
 Write ${lang}, formatted as clean Markdown structured as a formal, ready-to-print document matching the conventions Georgian public/private school administration expects for this document type — appropriate headings/sections, a formal register, and administratively complete (nothing a reviewer would send back asking to be filled in). Expand the given key points into full, well-organized prose/sections rather than just restating them as a list.
 
@@ -349,11 +350,22 @@ const PARENT_LETTER_PURPOSE_LABEL: Record<ParentLetterPurpose, string> = {
   ATTENDANCE: 'an attendance report — informing the parent about the student\'s attendance record',
 };
 
+// D8: the AI never sees the real student name — it's purely stylistic
+// personalization the provider doesn't need the identity for. The model is
+// told to write this exact placeholder token wherever the name belongs,
+// and the real name is substituted back in locally afterwards (see the
+// .replaceAll below), so the letter still reads as fully personalized to
+// the teacher despite the provider never learning who it's actually about.
+const PARENT_LETTER_NAME_PLACEHOLDER = 'STUDENT_NAME_PLACEHOLDER_TOKEN';
+
 export async function generateParentLetter(params: GenerateParentLetterParams): Promise<GeneratedParentLetter> {
   const lang = LANGUAGE_NAME[params.language];
   const purposeLabel = PARENT_LETTER_PURPOSE_LABEL[params.letterPurpose];
+  const minimizedNotes = minimizeForAi(params.teacherNotes);
 
-  const prompt = `You are ${params.grade ? `grade ${params.grade}'s` : 'a'} teacher writing a letter to the parent(s) of student "${params.studentName}". The letter's purpose is: ${purposeLabel}. The teacher's specific notes to base it on: "${params.teacherNotes}".
+  const prompt = `You are ${params.grade ? `grade ${params.grade}'s` : 'a'} teacher writing a letter to the parent(s) of a student. The letter's purpose is: ${purposeLabel}. The teacher's specific notes to base it on: "${minimizedNotes}".
+
+Do not invent or guess the student's name — you were not given it. Wherever the student's name would naturally appear (e.g. "Dear parent(s) of ...", or any other reference to the student by name), write the exact literal token ${PARENT_LETTER_NAME_PLACEHOLDER} instead, unchanged and untranslated — it will be substituted with the real name afterwards.
 
 Write ${lang}, formatted as clean Markdown. The letter should be polished, warm, and professional — ready for the teacher to copy, print, or send directly via email/chat with no further editing. Address the parent respectfully, reference the specific notes given (don't be generic), and close with an appropriate, professional sign-off placeholder for the teacher's name.
 
@@ -361,5 +373,6 @@ Respond with strict JSON matching this shape, where the field is a single Markdo
 {"letter": string}`;
 
   const raw = await callTextModel(prompt, 0.6);
-  return parseOrThrow(raw, parentLetterSchema);
+  const result = parseOrThrow(raw, parentLetterSchema);
+  return { letter: result.letter.split(PARENT_LETTER_NAME_PLACEHOLDER).join(params.studentName) };
 }

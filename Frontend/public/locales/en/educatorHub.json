@@ -183,5 +183,8 @@
   "generatedCertificatesHeading": "Generated Certificates",
   "downloadCertificate": "Download Certificate #{{index}}",
   "certificatesTitle": "Certificate & Diploma Builder",
-  "certificatesDescription": "Create printable certificates and diplomas for your students in seconds."
+  "certificatesDescription": "Create printable certificates and diplomas for your students in seconds.",
+  "educatorSessionSupersededMessage": "Your account was signed in on another device. Please sign in again to continue.",
+  "privacyFreeTextWarning": "Avoid including a student's full name, contact details, ID number, or medical information here. Obvious emails, phone numbers, and ID numbers are automatically removed before this is sent to AI, but automatic removal can't catch everything.",
+  "privacyImageUploadWarning": "Avoid uploading work that shows a student's full name, contact details, ID number, or other sensitive information. Any text visible in the image may be sent to the AI service."
 }
