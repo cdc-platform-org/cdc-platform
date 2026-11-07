@@ -2031,6 +2031,18 @@ model DigitalProduct {
   // keep a plain URL, returned as-is — same protection level those had
   // before this existed, not a regression.
   fileUrl            String
+  // Original filename of fileUrl as the uploader picked it (e.g.
+  // "wall-art-prints.zip") — only for display in the admin editor and the
+  // buyer's download list; the stored blob itself keeps its random name.
+  // Null on rows uploaded before this existed.
+  fileName           String?
+  // Extra downloadable files beyond fileUrl (the main one) — an array of
+  // { url, name } using the exact same url conventions as fileUrl
+  // (cdcblob:// marker or a plain external URL). Same "never exposed until a
+  // verified purchase" rule as fileUrl: only routes/products.ts's
+  // GET /:id/download resolves these, all together. Validated (max count,
+  // shape) in adminProducts.ts's zod schemas, not here.
+  additionalFiles    Json               @default("[]")
   downloadsCount     Int                @default(0)
   // Denormalized rollup of ProductPurchase rows that reached COMPLETED —
   // same "avoid an aggregate query on every list read" posture as

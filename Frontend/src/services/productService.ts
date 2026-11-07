@@ -25,8 +25,10 @@ export const LICENSE_LABELS: Record<ProductLicenseType, { ka: string; en: string
   PERSONAL_USE: {
     ka: 'პირადი გამოყენება',
     en: 'Personal Use Only',
-    descriptionKa: 'გამოსაყენებლად პირადი/არაკომერციული პროექტებისთვის.',
-    descriptionEn: 'For personal, non-commercial projects only.',
+    descriptionKa:
+      'ფაილი განკუთვნილია მხოლოდ პირადი მოხმარებისთვის. მისი კომერციული მიზნით გამოყენება, გაყიდვა, გადაცემა ან გავრცელება მკაცრად აკრძალულია და წარმოადგენს საავტორო უფლებების დარღვევას.',
+    descriptionEn:
+      'This file is for personal use only. Using it for any commercial purpose, reselling, sharing or redistributing it is strictly prohibited and is a violation of copyright.',
   },
   COMMERCIAL_USE: {
     ka: 'კომერციული ლიცენზია',
@@ -107,6 +109,18 @@ export interface DigitalProduct {
   aiReviewConfidence?: number | null;
   aiReviewReasoning?: string | null;
   aiReviewedAt?: string | null;
+  // Admin-only (raw row from GET /admin/products) — never on the public
+  // /products responses. fileUrl is the main downloadable file;
+  // additionalFiles are any extra ones, all delivered together after
+  // purchase (see Backend's products.ts GET /:id/download).
+  fileUrl?: string;
+  fileName?: string | null;
+  additionalFiles?: ProductFile[];
+}
+
+export interface ProductFile {
+  url: string;
+  name: string;
 }
 
 // English falls back to the Georgian (primary) field whenever a product
@@ -136,9 +150,19 @@ export async function claimFreeProduct(id: string): Promise<void> {
 // fileUrl is short-lived for private-storage products (see Backend's
 // productFileDelivery.ts) — always call this fresh right before opening the
 // download, never cache/reuse a previously-returned link.
-export async function getProductDownload(id: string): Promise<{ fileUrl: string; licenseType: ProductLicenseType | null }> {
-  const response = await apiClient.get<{ data: { fileUrl: string; licenseType: ProductLicenseType | null } }>(`/products/${id}/download`);
-  return response.data.data;
+// `files` is the main file followed by any extra files (absent from an
+// older backend, hence the fallback to just fileUrl).
+export interface ProductDownload {
+  fileUrl: string;
+  files: ProductFile[];
+  licenseType: ProductLicenseType | null;
+}
+export async function getProductDownload(id: string): Promise<ProductDownload> {
+  const response = await apiClient.get<{ data: { fileUrl: string; files?: ProductFile[]; licenseType: ProductLicenseType | null } }>(
+    `/products/${id}/download`
+  );
+  const { fileUrl, files, licenseType } = response.data.data;
+  return { fileUrl, licenseType, files: files && files.length > 0 ? files : [{ url: fileUrl, name: '' }] };
 }
 
 // Minor units (tetri) — 2.00 GEL. Mirrors Backend's pricingRules.ts exactly;
@@ -181,6 +205,7 @@ export interface CreateProductPayload {
   previewImages?: string[]; // up to 15
   previewVideoUrl?: string | null; // uploaded MP4/MOV CDN URL or a pasted YouTube/Vimeo link
   fileUrl: string;
+  fileName?: string | null; // original filename of fileUrl, for display only
   licenseType?: ProductLicenseType; // omit to default to PERSONAL_USE (see Backend schema)
   discountedPrice?: number | null; // major-unit GEL — null clears an existing sale
   saleEndsAt?: string | null; // ISO string from <input type="datetime-local">, or null for "never expires"
@@ -236,6 +261,11 @@ export interface UpdateProductPayload {
   // fallback copy — enforced server-side (adminProducts.ts).
   howItWorksSteps?: HowItWorksStep[] | null;
   toolRoute?: string | null;
+  // Main file can be replaced but never cleared; additionalFiles is the
+  // full replacement list (send [] to remove every extra file).
+  fileUrl?: string;
+  fileName?: string | null;
+  additionalFiles?: ProductFile[];
 }
 
 export async function updateProductAdmin(id: string, payload: UpdateProductPayload): Promise<DigitalProduct> {
@@ -267,10 +297,17 @@ export async function uploadProductImage(file: File): Promise<string> {
   return response.data.data.url;
 }
 
-export async function uploadProductFile(file: File): Promise<string> {
+export async function uploadProductFile(file: File): Promise<ProductFile> {
   const formData = new FormData();
   formData.append('file', file);
-  const response = await apiClient.post<{ data: { url: string } }>('/admin/products/upload-file', formData);
+  const response = await apiClient.post<{ data: { url: string; name?: string } }>('/admin/products/upload-file', formData);
+  return { url: response.data.data.url, name: response.data.data.name || file.name };
+}
+
+// Short-lived link an admin can open to check an attached product file
+// (saved or just uploaded) — never cache it, same as getProductDownload.
+export async function getAdminProductFileLink(url: string): Promise<string> {
+  const response = await apiClient.post<{ data: { url: string } }>('/admin/products/file-link', { url });
   return response.data.data.url;
 }
 

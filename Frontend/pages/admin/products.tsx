@@ -29,6 +29,8 @@ import {
   LICENSE_LABELS,
   validateProductDiscount,
   UpdateProductPayload,
+  ProductFile,
+  getAdminProductFileLink,
   HowItWorksStep,
   HOW_IT_WORKS_ICONS,
 } from '../../src/services/productService';
@@ -126,6 +128,154 @@ function BilingualTitleDescriptionFields({
   );
 }
 
+// Main file first, then any extras — the shape ProductFilesEditor edits.
+// Rows saved before fileName existed fall back to the stored url's last
+// segment (a random blob name, but at least something to tell them apart).
+function productFilesOf(p: AdminProduct): ProductFile[] {
+  if (!p.fileUrl) return [];
+  return [
+    { url: p.fileUrl, name: p.fileName || assetFilenameFromUrl(p.fileUrl) || 'file' },
+    ...(p.additionalFiles ?? []),
+  ];
+}
+
+const MAX_PRODUCT_FILES = 21; // main file + Backend's MAX_ADDITIONAL_FILES (20)
+
+// The downloadable files a buyer gets after purchase (the first one is the
+// main file, DigitalProduct.fileUrl). Lets an admin open each file to check
+// it, replace it with a new upload, remove it, or add more. Nothing is
+// persisted until the card's Save — uploads land in private storage right
+// away, but only the saved list is ever delivered to buyers.
+function ProductFilesEditor({
+  files,
+  onChange,
+  onBusyChange,
+}: {
+  files: ProductFile[];
+  onChange: (files: ProductFile[]) => void;
+  onBusyChange: (busy: boolean) => void;
+}) {
+  // Index being replaced, 'new' for the add dropzone, or null when idle.
+  const [uploading, setUploading] = useState<number | 'new' | null>(null);
+  const [opening, setOpening] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const upload = async (file: File, target: number | 'new') => {
+    setError(null);
+    setUploading(target);
+    onBusyChange(true);
+    try {
+      const uploaded = await uploadProductFile(file);
+      onChange(target === 'new' ? [...files, uploaded] : files.map((f, i) => (i === target ? uploaded : f)));
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? 'File upload failed.');
+    } finally {
+      setUploading(null);
+      onBusyChange(false);
+    }
+  };
+
+  const pickReplacement = (index: number) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = ASSET_ACCEPT;
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (file) upload(file, index);
+    };
+    input.click();
+  };
+
+  const open = async (index: number) => {
+    setError(null);
+    setOpening(index);
+    // Open the tab synchronously (before the await) so it isn't popup-blocked,
+    // then point it at the freshly signed link.
+    const tab = window.open('', '_blank');
+    try {
+      const url = await getAdminProductFileLink(files[index].url);
+      if (tab) {
+        tab.opener = null;
+        tab.location.href = url;
+      } else {
+        window.location.assign(url);
+      }
+    } catch (err: any) {
+      tab?.close();
+      setError(err?.response?.data?.message ?? 'Could not open the file.');
+    } finally {
+      setOpening(null);
+    }
+  };
+
+  const remove = (index: number) => {
+    if (files.length <= 1) return;
+    if (!window.confirm(`Remove "${files[index].name}" from this product? Buyers will no longer get it (after you click Save).`)) return;
+    onChange(files.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-700 mb-1">
+        Product Files <span className="text-gray-400">({files.length})</span>
+      </label>
+      <p className="text-[11px] text-gray-400 mb-2">
+        What buyers download after purchase (e.g. the printable file). The first one is the main file. Changes apply after Save.
+      </p>
+      {files.length === 0 && (
+        <p className="text-xs text-amber-600 mb-2">No file attached — upload one below before saving.</p>
+      )}
+      <ul className="space-y-1.5 mb-2">
+        {files.map((f, i) => (
+          <li key={`${i}-${f.url}`} className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 px-3 py-2">
+            <span className="min-w-0 flex-1 truncate text-xs text-gray-800" title={f.name}>
+              {i === 0 && <span className="mr-1.5 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-600">MAIN</span>}
+              {f.name}
+            </span>
+            <button
+              type="button"
+              onClick={() => open(i)}
+              disabled={opening !== null}
+              className="text-[11px] font-medium text-gray-700 border border-gray-200 px-2 py-1 rounded-md hover:bg-gray-50 disabled:opacity-60"
+            >
+              {opening === i ? 'Opening…' : 'View'}
+            </button>
+            <button
+              type="button"
+              onClick={() => pickReplacement(i)}
+              disabled={uploading !== null}
+              className="text-[11px] font-medium text-indigo-700 border border-indigo-200 px-2 py-1 rounded-md hover:bg-indigo-50 disabled:opacity-60"
+            >
+              {uploading === i ? 'Uploading…' : 'Replace'}
+            </button>
+            <button
+              type="button"
+              onClick={() => remove(i)}
+              disabled={files.length <= 1 || uploading !== null}
+              title={files.length <= 1 ? 'A product needs at least one file — use Replace instead.' : undefined}
+              className="text-[11px] font-medium text-red-600 border border-red-200 px-2 py-1 rounded-md hover:bg-red-50 disabled:opacity-40"
+            >
+              Delete
+            </button>
+          </li>
+        ))}
+      </ul>
+      {files.length < MAX_PRODUCT_FILES && (
+        <FileDropzone
+          accept={ASSET_ACCEPT}
+          uploading={uploading === 'new'}
+          selectedFileName={null}
+          onFile={(file) => upload(file, 'new')}
+          label="Add another file — drag & drop or click to browse"
+          hint="ZIP, PDF, EPUB, RAR, 7Z, FIG, SKETCH, PSD, AI, DOC, DOCX, MP4, or MOV — up to 200MB"
+          uploadingLabel="Uploading…"
+        />
+      )}
+      {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+    </div>
+  );
+}
+
 function ModerationProductCard({
   product: p,
   acting,
@@ -153,6 +303,8 @@ function ModerationProductCard({
   const [editVideoUrl, setEditVideoUrl] = useState(p.previewVideoUrl ?? '');
   const [editVideoUploading, setEditVideoUploading] = useState(false);
   const [editToolRoute, setEditToolRoute] = useState(p.toolRoute ?? '');
+  const [editFiles, setEditFiles] = useState<ProductFile[]>(() => productFilesOf(p));
+  const [editFilesBusy, setEditFilesBusy] = useState(false);
   const [useCustomSteps, setUseCustomSteps] = useState(!!p.howItWorksSteps);
   const [steps, setSteps] = useState<HowItWorksStep[]>(
     p.howItWorksSteps ?? [emptyHowItWorksStep(), emptyHowItWorksStep(), emptyHowItWorksStep()]
@@ -189,6 +341,7 @@ function ModerationProductCard({
     setEditPreviewImages(p.previewImages);
     setEditVideoUrl(p.previewVideoUrl ?? '');
     setEditToolRoute(p.toolRoute ?? '');
+    setEditFiles(productFilesOf(p));
     setUseCustomSteps(!!p.howItWorksSteps);
     setSteps(p.howItWorksSteps ?? [emptyHowItWorksStep(), emptyHowItWorksStep(), emptyHowItWorksStep()]);
     setEditing(true);
@@ -230,6 +383,11 @@ function ModerationProductCard({
         previewVideoUrl: editVideoUrl || null,
         howItWorksSteps: useCustomSteps ? steps : null,
         toolRoute: editToolRoute.trim() || null,
+        // Only sent when the product actually has a main file to keep —
+        // ProductFilesEditor never lets the list drop to empty.
+        ...(editFiles.length > 0
+          ? { fileUrl: editFiles[0].url, fileName: editFiles[0].name || null, additionalFiles: editFiles.slice(1) }
+          : {}),
       });
       setEditing(false);
     } catch {
@@ -307,6 +465,8 @@ function ModerationProductCard({
                 uploadingLabel="Uploading…"
               />
             </div>
+
+            <ProductFilesEditor files={editFiles} onChange={setEditFiles} onBusyChange={setEditFilesBusy} />
 
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Tool Route (optional)</label>
@@ -386,7 +546,7 @@ function ModerationProductCard({
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={saving || (useCustomSteps && !stepsValid)}
+                disabled={saving || editFilesBusy || editFiles.length === 0 || (useCustomSteps && !stepsValid)}
                 className="text-xs font-medium text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60"
               >
                 {saving ? 'Saving…' : 'Save'}
@@ -554,6 +714,7 @@ function AdminProductsDashboard() {
   const [imageUrl, setImageUrl] = useState('');
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [fileUrl, setFileUrl] = useState('');
+  const [fileName, setFileName] = useState('');
   const [licenseType, setLicenseType] = useState<ProductLicenseType>('PERSONAL_USE');
   const [discountedPrice, setDiscountedPrice] = useState('');
   const [saleEndsAt, setSaleEndsAt] = useState('');
@@ -627,6 +788,7 @@ function AdminProductsDashboard() {
         imageUrl,
         previewImages,
         fileUrl,
+        fileName: fileName || null,
         licenseType,
         discountedPrice: discountedPrice ? Number(discountedPrice) : null,
         saleEndsAt: saleEndsAt || null,
@@ -640,6 +802,7 @@ function AdminProductsDashboard() {
       setImageUrl('');
       setPreviewImages([]);
       setFileUrl('');
+      setFileName('');
       setLicenseType('PERSONAL_USE');
       setDiscountedPrice('');
       setSaleEndsAt('');
@@ -655,7 +818,9 @@ function AdminProductsDashboard() {
     setFileUploadError(null);
     setFileUploading(true);
     try {
-      setFileUrl(await uploadProductFile(file));
+      const uploaded = await uploadProductFile(file);
+      setFileUrl(uploaded.url);
+      setFileName(uploaded.name);
     } catch (err: any) {
       setFileUploadError(err?.response?.data?.message ?? 'File upload failed.');
     } finally {
@@ -832,7 +997,7 @@ function AdminProductsDashboard() {
             <FileDropzone
               accept={ASSET_ACCEPT}
               uploading={fileUploading}
-              selectedFileName={assetFilenameFromUrl(fileUrl)}
+              selectedFileName={fileName || assetFilenameFromUrl(fileUrl)}
               onFile={handleAssetFile}
               label="Drag & drop the product file here, or click to browse"
               hint="ZIP, PDF, EPUB, RAR, 7Z, FIG, SKETCH, PSD, AI, DOC, DOCX, MP4, or MOV — up to 200MB"

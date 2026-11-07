@@ -10,7 +10,7 @@ import { BunnyStorageUploadError } from '../services/bunnyStorage';
 import { imageUpload, fileUpload, videoUpload, multerErrorHandler } from '../middleware/productUploads';
 import { autoTranslateIfBlank } from '../services/aiTranslateService';
 import { protectProductPreviewImage } from '../services/productImageProtection';
-import { uploadProductFile } from '../services/productFileDelivery';
+import { uploadProductFile, resolveProductFileDeliveryUrl } from '../services/productFileDelivery';
 import { withCurrentProductPrice, validateProductDiscount } from '../services/productPricing';
 
 function toPrismaSaleEndsAt(value: string | null | undefined): Date | null | undefined {
@@ -52,6 +52,15 @@ const howItWorksStepsSchema = z
   .length(3)
   .optional()
   .nullable();
+
+// One extra downloadable file (DigitalProduct.additionalFiles) — same url
+// conventions as fileUrl (cdcblob:// marker from /upload-file, or a plain
+// external URL), plus the original filename for display.
+const productFileSchema = z.object({
+  url: z.string().url().max(2000),
+  name: z.string().trim().min(1).max(255),
+});
+const MAX_ADDITIONAL_FILES = 20;
 
 const router = Router();
 router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
@@ -100,7 +109,7 @@ router.post(
       // `url` is a cdcblob:// marker, resolved to a real short-lived link
       // only by products.ts's purchase-gated GET /:id/download.
       const url = await uploadProductFile(req.file.buffer, req.file.mimetype, req.file.originalname);
-      res.status(201).json({ data: { url } });
+      res.status(201).json({ data: { url, name: req.file.originalname } });
     } catch (err) {
       const message = err instanceof BunnyStorageUploadError ? err.message : 'File upload failed. Please try again.';
       res.status(500).json({ message });
@@ -126,6 +135,8 @@ const createSchema = z.object({
   previewImages: z.array(z.string().url()).max(15).optional().default([]),
   previewVideoUrl: z.string().url().optional().nullable(),
   fileUrl: z.string().url(),
+  fileName: z.string().trim().min(1).max(255).optional().nullable(),
+  additionalFiles: z.array(productFileSchema).max(MAX_ADDITIONAL_FILES).optional().default([]),
   licenseType: z.nativeEnum(ProductLicenseType).optional(),
   discountedPrice: z.number().min(0).optional().nullable(),
   saleEndsAt: z.string().datetime().optional().nullable().or(z.literal('')),
@@ -174,6 +185,18 @@ router.post('/', async (req: Request, res: Response) => {
   res.status(201).json({ data: withCurrentProductPrice(product) });
 });
 
+// Lets an admin open/check an attached product file from the edit form —
+// including one just uploaded and not saved yet — without having to buy the
+// product. Same resolution as the buyer's GET /products/:id/download (a
+// short-lived signed link for cdcblob:// markers, external URLs as-is), so
+// never cache the result.
+router.post('/file-link', async (req: Request, res: Response) => {
+  const result = z.object({ url: z.string().url().max(2000) }).safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.errors });
+  const url = await resolveProductFileDeliveryUrl(result.data.url);
+  res.json({ data: { url } });
+});
+
 // Full list across every status — the public GET /api/products only ever
 // shows APPROVED, so the moderation queue needs its own view. No locale or
 // submitter filter: every SUPER_ADMIN/MANAGER (see router.use above) sees
@@ -211,6 +234,12 @@ const updateSchema = z.object({
   imageUrl: z.string().url().optional(),
   previewImages: z.array(z.string().url()).max(15).optional(),
   previewVideoUrl: z.string().url().optional().nullable(),
+  // Replacing the main downloadable file / managing extra ones from the
+  // edit form. fileUrl can be swapped but never cleared — the column is
+  // required and every purchase flow assumes a main file exists.
+  fileUrl: z.string().url().optional(),
+  fileName: z.string().trim().min(1).max(255).optional().nullable(),
+  additionalFiles: z.array(productFileSchema).max(MAX_ADDITIONAL_FILES).optional(),
   licenseType: z.nativeEnum(ProductLicenseType).optional(),
   discountedPrice: z.number().min(0).optional().nullable(),
   saleEndsAt: z.string().datetime().optional().nullable().or(z.literal('')),

@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { GetServerSideProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag, Zap, Upload, Code2, ShieldCheck, Tag, ExternalLink } from 'lucide-react';
+import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag, Zap, Upload, Code2, ShieldCheck, Tag, ExternalLink, ShieldAlert } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SEOHead from '../../src/components/seo/SEOHead';
 import SocialShareButtons from '../../src/components/shared/SocialShareButtons';
@@ -14,6 +14,7 @@ import MarkdownContent from '../../src/components/shared/MarkdownContent';
 import ProductGallery from '../../src/components/shared/ProductGallery';
 import VideoEmbed from '../../src/components/shared/VideoEmbed';
 import ProductReviewsSection from '../../src/components/store/ProductReviewsSection';
+import ProductDownloadList from '../../src/components/store/ProductDownloadList';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
 import StarRating from '../../src/components/community/StarRating';
@@ -21,6 +22,7 @@ import {
   getProduct,
   claimFreeProduct,
   getProductDownload,
+  ProductDownload,
   productTitle,
   productDescription,
   DigitalProduct,
@@ -64,6 +66,7 @@ function StoreProductContent({ initialProduct }: { initialProduct: DigitalProduc
   const [notFound, setNotFound] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [downloadList, setDownloadList] = useState<ProductDownload | null>(null);
   const [guideOpen, setGuideOpen] = useState(true);
   const [promoInput, setPromoInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
@@ -173,8 +176,11 @@ function StoreProductContent({ initialProduct }: { initialProduct: DigitalProduc
     setActionError(null);
     setSubmitting(true);
     try {
-      const { fileUrl } = await getProductDownload(product.id);
-      window.open(fileUrl, '_blank', 'noopener,noreferrer');
+      const download = await getProductDownload(product.id);
+      // More than one file → let the buyer click each one from a list
+      // (opening several tabs after an await gets popup-blocked).
+      if (download.files.length > 1) setDownloadList(download);
+      else window.open(download.fileUrl, '_blank', 'noopener,noreferrer');
     } catch (err: any) {
       setActionError(err?.response?.data?.message ?? t('downloadFailed'));
     } finally {
@@ -256,7 +262,14 @@ function StoreProductContent({ initialProduct }: { initialProduct: DigitalProduc
               </div>
             )}
             <MarkdownContent content={productDescription(product, contentLang)} className="mb-6 flex-1" />
-            <p className="text-xs text-slate-500 dark:text-slate-400 -mt-4 mb-6">{LICENSE_LABELS[product.licenseType][contentLang === 'ka' ? 'descriptionKa' : 'descriptionEn']}</p>
+            {product.licenseType === 'PERSONAL_USE' ? (
+              <div className="-mt-3 mb-6 flex gap-2 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/40 px-3 py-2.5 text-xs font-medium text-amber-800 dark:text-amber-200">
+                <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{LICENSE_LABELS.PERSONAL_USE[contentLang === 'ka' ? 'descriptionKa' : 'descriptionEn']}</span>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 dark:text-slate-400 -mt-4 mb-6">{LICENSE_LABELS[product.licenseType][contentLang === 'ka' ? 'descriptionKa' : 'descriptionEn']}</p>
+            )}
 
             {actionError && (
               <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-xs text-red-600 dark:text-red-300">{actionError}</div>
@@ -391,6 +404,14 @@ function StoreProductContent({ initialProduct }: { initialProduct: DigitalProduc
       </div>
 
       <SiteFooter />
+      {downloadList && (
+        <ProductDownloadList
+          files={downloadList.files}
+          licenseType={downloadList.licenseType ?? product.licenseType}
+          lang={contentLang}
+          onClose={() => setDownloadList(null)}
+        />
+      )}
     </div>
   );
 }
