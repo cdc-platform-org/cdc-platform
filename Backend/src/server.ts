@@ -127,7 +127,7 @@ import { autoReleaseMentorshipEscrows } from './services/mentorshipEscrowService
 import { autoReleaseHRSupportEscrows } from './services/hrSupportEscrowService';
 import { expireOverdueVacancies } from './services/listingExpiryService';
 import { reconcilePendingPayments } from './services/paymentReconciliationService';
-import { resumePendingFinalGenerations } from './services/bookFinalGenerationService';
+import { resumePendingFinalGenerations, recoverStalledBooks } from './services/bookFinalGenerationService';
 
 // ============================================================
 // PROCESS-LEVEL SAFETY NET
@@ -613,3 +613,12 @@ setInterval(() => {
     })
     .catch((err) => console.error('[tutor-subscription-sweep] run failed:', err));
 }, TUTOR_SUBSCRIPTION_SWEEP_INTERVAL_MS);
+
+// Children's books: restart paid books that ended FAILED (within their
+// attempt budget) and finish books still missing their PDF or narration,
+// so a parent never has to press "retry" for a book they paid for. The
+// in-process guards in bookFinalGenerationService keep one run per book.
+const BOOK_RECOVERY_INTERVAL_MS = 10 * 60 * 1000;
+setInterval(() => {
+  recoverStalledBooks().catch((err) => console.error('[childrens-book] recovery sweep failed:', err));
+}, BOOK_RECOVERY_INTERVAL_MS);

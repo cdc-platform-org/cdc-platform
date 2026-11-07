@@ -92,6 +92,27 @@ function BookReaderContent() {
     return () => { cancelled = true; };
   }, [bookId, book?.audioAddOnPurchased, audioStatus?.eligible, audioStatus?.artifacts]);
 
+  // Narration is produced on the server right after the pictures; poll for
+  // it for a while instead of asking the parent to press a button. After
+  // ~10 minutes the manual button appears as a fallback.
+  const [audioPollGaveUp, setAudioPollGaveUp] = useState(false);
+  const readyAudioCount = new Set(audioStatus?.artifacts.filter((artifact) => artifact.status === 'READY').map((artifact) => artifact.pageNumber) ?? []).size;
+  useEffect(() => {
+    if (!bookId || !book?.audioAddOnPurchased || !audioStatus?.eligible || readyAudioCount >= book.pageCount) return;
+    let polls = 0;
+    const interval = setInterval(async () => {
+      polls += 1;
+      if (polls > 60) {
+        setAudioPollGaveUp(true);
+        clearInterval(interval);
+        return;
+      }
+      const fresh = await getNarrationStatus(bookId).catch(() => null);
+      if (fresh) setAudioStatus(fresh);
+    }, 10_000);
+    return () => clearInterval(interval);
+  }, [bookId, book?.audioAddOnPurchased, book?.pageCount, audioStatus?.eligible, readyAudioCount]);
+
   useEffect(() => () => {
     if (imageUrlRef.current) URL.revokeObjectURL(imageUrlRef.current);
     Object.values(audioUrlsRef.current).forEach((url) => URL.revokeObjectURL(url));
@@ -176,6 +197,12 @@ function BookReaderContent() {
   }
 
   const page = book.pages?.find((entry) => entry.pageNumber === pageNumber);
+  // Readable as soon as every page has its picture: a finished book that is
+  // mid-revision or whose status lags behind must not say "still preparing".
+  const acceptedPages = book.pages?.filter((entry) => !!entry.acceptedEventId).length ?? 0;
+  const readable = book.status === 'FINAL_READY' || book.status === 'COMPLETED' || (book.pageCount > 0 && acceptedPages >= book.pageCount);
+  const readyAudioPages = new Set(audioStatus?.artifacts.filter((artifact) => artifact.status === 'READY').map((artifact) => artifact.pageNumber) ?? []).size;
+  const audioPreparing = !!book.audioAddOnPurchased && !!audioStatus?.eligible && readyAudioPages < book.pageCount;
   const audioReady = (audioStatus?.artifacts.some((artifact) => artifact.pageNumber === pageNumber && artifact.status === 'READY') ?? false) && !!audioUrls[pageNumber];
   const fullStoryReady = !!book && Array.from({ length: book.pageCount }, (_, index) => index + 1).every((number) =>
     audioStatus?.artifacts.some((artifact) => artifact.pageNumber === number && artifact.status === 'READY') && !!audioUrls[number]
@@ -199,7 +226,7 @@ function BookReaderContent() {
         </div>
 
         {error && <p role="alert" className="mb-4 text-sm text-red-700">{error}</p>}
-        {book.status !== 'FINAL_READY' && book.status !== 'COMPLETED' ? (
+        {!readable ? (
           <p className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{t('readerStillPreparing')}</p>
         ) : (
           <>
@@ -231,7 +258,10 @@ function BookReaderContent() {
                     <Repeat className="w-4 h-4" />{t('readerPlayFullStory')}
                   </button>
                   <span className="text-sm text-gray-500">{t('readerPageNarration', { number: pageNumber })}</span>
-                  {audioStatus.artifacts.length === 0 && <button disabled={generatingAudio} onClick={handleGenerateAudio} className="rounded-md border border-gray-300 px-3 py-2 text-sm disabled:opacity-40">{generatingAudio ? t('readerPreparingAudio') : t('generateAudioStory')}</button>}
+                  {audioPreparing && (
+                    <span className="inline-flex items-center gap-1.5 text-sm text-purple-700"><Loader2 className="w-4 h-4 animate-spin" />{t('readerPreparingAudio')}</span>
+                  )}
+                  {audioPreparing && audioPollGaveUp && <button disabled={generatingAudio} onClick={handleGenerateAudio} className="rounded-md border border-gray-300 px-3 py-2 text-sm disabled:opacity-40">{generatingAudio ? t('readerPreparingAudio') : t('generateAudioStory')}</button>}
                 </div>
                 <div className="mt-3 h-1.5 w-full overflow-hidden rounded bg-gray-200" role="progressbar" aria-label="Audio progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}>
                   <div className="h-full bg-purple-600 transition-[width]" style={{ width: `${progress}%` }} />
