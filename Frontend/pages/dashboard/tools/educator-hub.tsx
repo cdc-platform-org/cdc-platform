@@ -550,6 +550,17 @@ function EducatorHubContent() {
                   {trialStarting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crown className="w-4 h-4" />}
                   {t('trialCta')}
                 </button>
+              ) : hubState ? (
+                <>
+                  <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">{t('vipTrialUsedDesc')}</p>
+                  <a
+                    href={`mailto:contact@cdc.org.ge?subject=${encodeURIComponent(t('vipRequestSubject'))}`}
+                    className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-amber-500/30 transition-all"
+                  >
+                    <Crown className="w-4 h-4" />
+                    {t('vipRequestCta')}
+                  </a>
+                </>
               ) : null}
               {trialError && <p className="text-xs text-rose-600 dark:text-rose-400 mt-2">{trialError}</p>}
             </div>
