@@ -59,7 +59,7 @@
   "emailModalSuccess": "Sent successfully!",
   "emailModalError": "Could not send the email.",
   "catalogTitle": "AI Voice & Video Studio",
-  "catalogTag": "🎙️ Text-to-Speech & 📹 Video Notes",
+  "catalogTag": "Text-to-Speech · Video Notes",
   "catalogDesc": "Turn text into natural speech in any language, or get a full transcript and structured notes from any video.",
   "catalogCta": "Open the tool"
 }

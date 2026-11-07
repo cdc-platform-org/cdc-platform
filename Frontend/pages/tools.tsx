@@ -21,8 +21,9 @@ import {
   Info,
   KeyRound,
   Mic,
-  Crown,
   GraduationCap,
+  Check,
+  ArrowRight,
 } from 'lucide-react';
 import SiteHeader from '../src/components/layout/SiteHeader';
 import SiteFooter from '../src/components/layout/SiteFooter';
@@ -43,6 +44,7 @@ import { onImageErrorFallback } from '@/src/utils/imageFallback';
 import VideoEmbed, { parseVideoUrl } from '@/src/components/shared/VideoEmbed';
 import type { LucideIcon } from 'lucide-react';
 import type { ToolCatalogEntry } from '@/src/types/siteContent';
+import { ToolIconTile, ToolChip, toolPrimaryButton, toolSecondaryButton, type ToolAccent } from '@/src/components/tools/ToolShell';
 
 // Real per-locale copy for all 9 site locales (not the 6-locale `dict`
 // below, which still aliases de/es/fr/uk to English strings) — meta
@@ -65,7 +67,7 @@ const dict = {
     title: 'AI ხელსაწყოები',
     subtitle: 'AI-ზე დაფუძნებული პროდუქტები, რომლებიც CDC-მ შექმნა ბიზნესებისა და დამსაქმებლებისთვის.',
     // Card 1 — Enterprise AI Assistant
-    aiTitle: 'Enterprise AI ასისტენტი & ცოდნის ბაზა',
+    aiTitle: 'ბიზნეს AI ჩატბოტი და ცოდნის ბაზა',
     aiDesc:
       'შექმენით საკუთარი AI ჩატბოტი თქვენი კომპანიისთვის — ის სწავლობს თქვენს ბიზნესზე და პასუხობს ვიზიტორებს თქვენი საიტიდან პირდაპირ.',
     aiBullet1: 'პერსონალიზებული AI ჩატბოტი თქვენი საიტისთვის',
@@ -75,7 +77,7 @@ const dict = {
     aiCta: '7 დღე უფასოდ',
     aiAvailable: 'ხელმისაწვდომია',
     // Card 2 — Proctored Exam
-    examTitle: 'AI Proctored Exam & Skill Assessment System',
+    examTitle: 'AI გამოცდა ზედამხედველობით',
     examDesc: 'AI-ზე დაფუძნებული ონლაინ გამოცდები რეალურ დროში მონიტორინგით და კანდიდატების უნარების ავტომატური შეფასებით.',
     examBullet1: 'AI კითხვების გენერატორი — ნებისმიერი პოზიციისთვის',
     examBullet2: 'რეალურ დროში ქცევითი მონიტორინგი',
@@ -87,7 +89,7 @@ const dict = {
     tutorDesc: 'ინგლისური ნულიდან, ნაბიჯ-ნაბიჯ: A1 კურსი, კითხვა, წერა, გრამატიკა, ლექსიკა, მოსმენა და დიალოგი — ახსნილი ქართულად.',
     tutorBadge: 'უფასო საცდელი',
     tutorCta: 'სწავლის დაწყება',
-    screenerTitle: 'AI Candidate Screener & HR Assistant',
+    screenerTitle: 'AI კანდიდატების შერჩევა და HR ასისტენტი',
     screenerDesc: 'AI ასისტენტი, რომელიც დამსაქმებლებს ეხმარება კანდიდატების პირველად გადარჩევასა და HR პროცესების ავტომატიზაციაში.',
     // Card 4 — Cyber Sentinel AI
     sentinelTitle: 'CDC Cyber Sentinel AI & Threat Protection',
@@ -99,6 +101,8 @@ const dict = {
     sentinelBullet4: 'პერსონალური მონაცემების გაჟონვისგან დაცვა',
     sentinelCta: 'ადრეული წვდომის მიღება',
     comingSoon: 'მალე',
+    availableHeading: 'ხელმისაწვდომია ახლა',
+    comingSoonHeading: 'მალე დაემატება',
     // Card 5 — AG-SAIA (pre-launch, informational card only — see
     // ProductOverviewCard's own "coming soon" posture: no live threat data
     // is ever shown until this is an actual running product).
@@ -163,6 +167,8 @@ const dict = {
     sentinelBullet4: 'Protection against personal data leaks',
     sentinelCta: 'Get Early Access',
     comingSoon: 'Coming Soon',
+    availableHeading: 'Available now',
+    comingSoonHeading: 'Coming soon',
     agsaiaTitle: 'AG-SAIA — Sovereign AI Security',
     agsaiaTagline: 'A sovereign AI security node — coming soon',
     agsaiaDesc:
@@ -223,6 +229,8 @@ const dict = {
     sentinelBullet4: 'Protection against personal data leaks',
     sentinelCta: 'Get Early Access',
     comingSoon: 'Coming Soon',
+    availableHeading: 'Available now',
+    comingSoonHeading: 'Coming soon',
     agsaiaTitle: 'AG-SAIA — Sovereign AI Security',
     agsaiaTagline: 'A sovereign AI security node — coming soon',
     agsaiaDesc:
@@ -283,6 +291,8 @@ const dict = {
     sentinelBullet4: 'Protection against personal data leaks',
     sentinelCta: 'Get Early Access',
     comingSoon: 'Coming Soon',
+    availableHeading: 'Available now',
+    comingSoonHeading: 'Coming soon',
     agsaiaTitle: 'AG-SAIA — Sovereign AI Security',
     agsaiaTagline: 'A sovereign AI security node — coming soon',
     agsaiaDesc:
@@ -343,6 +353,8 @@ const dict = {
     sentinelBullet4: 'Protection against personal data leaks',
     sentinelCta: 'Get Early Access',
     comingSoon: 'Coming Soon',
+    availableHeading: 'Available now',
+    comingSoonHeading: 'Coming soon',
     agsaiaTitle: 'AG-SAIA — Sovereign AI Security',
     agsaiaTagline: 'A sovereign AI security node — coming soon',
     agsaiaDesc:
@@ -403,6 +415,8 @@ const dict = {
     sentinelBullet4: 'Protection against personal data leaks',
     sentinelCta: 'Get Early Access',
     comingSoon: 'Coming Soon',
+    availableHeading: 'Available now',
+    comingSoonHeading: 'Coming soon',
     agsaiaTitle: 'AG-SAIA — Sovereign AI Security',
     agsaiaTagline: 'A sovereign AI security node — coming soon',
     agsaiaDesc:
@@ -431,32 +445,6 @@ const dict = {
   },
 };
 
-// Card visual: the admin-set cover image (pages/admin/tools.tsx → imageUrl)
-// when there is one, otherwise the original gradient icon tile.
-function ToolCover({ imageUrl, videoUrl, icon: Icon, gradient, alt }: { imageUrl?: string; videoUrl?: string; icon: LucideIcon; gradient: string; alt: string }) {
-  const video = videoUrl?.trim();
-  if (video && parseVideoUrl(video)) {
-    return (
-      <div className="shrink-0 w-full lg:w-80">
-        <VideoEmbed url={video} title={alt} />
-      </div>
-    );
-  }
-  if (imageUrl && imageUrl.trim()) {
-    return (
-      <div className="shrink-0 w-full lg:w-80 aspect-[16/10] rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 ring-1 ring-black/5 dark:ring-white/10 shadow-sm">
-        {/* eslint-disable-next-line @next/next/no-img-element -- admin-uploaded CMS image on the API origin */}
-        <img src={resolveBlogImageUrl(imageUrl)} alt={alt} onError={onImageErrorFallback} loading="lazy" className="w-full h-full object-cover" />
-      </div>
-    );
-  }
-  return (
-    <div className={`shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-tr ${gradient} flex items-center justify-center`}>
-      <Icon className="w-7 h-7 text-white" />
-    </div>
-  );
-}
-
 // Only site paths ("/...") and http(s) URLs are allowed as a custom card's
 // button target; anything else (e.g. "javascript:") renders no button.
 function safeToolHref(url?: string): string | null {
@@ -466,71 +454,130 @@ function safeToolHref(url?: string): string | null {
   return null;
 }
 
-// Generic card for a tool an admin added in /admin/tools (any slug that has
-// no hand-built card on this page).
-function CustomToolCard({ entry, lang, comingSoonLabel }: { entry: ToolCatalogEntry; lang: 'ka' | 'en'; comingSoonLabel: string }) {
-  const pick = (ka?: string, en?: string) => (lang === 'ka' ? ka || en : en || ka) ?? '';
-  const title = pick(entry.titleKa, entry.titleEn);
-  const subtitle = pick(entry.subtitleKa, entry.subtitleEn);
-  const description = pick(entry.descriptionKa, entry.descriptionEn);
-  const badge = pick(entry.badgeKa, entry.badgeEn);
-  const pricing = pick(entry.pricingLabelKa, entry.pricingLabelEn);
-  const features = (lang === 'ka' ? entry.featuresKa?.length ? entry.featuresKa : entry.featuresEn : entry.featuresEn?.length ? entry.featuresEn : entry.featuresKa) ?? [];
-  const comingSoon = entry.status === 'COMING_SOON';
-  const href = comingSoon ? null : safeToolHref(entry.linkUrl);
-  const external = href ? /^https?:/i.test(href) : false;
-  const buttonClass =
-    'inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all';
-  const buttonLabel = lang === 'ka' ? 'გახსნა' : 'Open';
+interface CatalogCardData {
+  key: string;
+  icon: LucideIcon;
+  accent: ToolAccent;
+  title: string;
+  badge?: string;
+  comingSoon?: boolean;
+  description: string;
+  tag?: string;
+  features: { icon: LucideIcon; label: string }[];
+  imageUrl?: string;
+  videoUrl?: string;
+  cta?: { label: string; href?: string; onClick?: () => void; external?: boolean };
+  onLearnMore?: () => void;
+}
+
+// Media area at the top of every catalog card, always the same 16:10 box so
+// cards line up in the grid: the admin-set video or cover image
+// (pages/admin/tools.tsx) when there is one, otherwise a soft brand panel
+// with the tool's icon tile.
+function CatalogCardMedia({ card }: { card: CatalogCardData }) {
+  const video = card.videoUrl?.trim();
+  if (video && parseVideoUrl(video)) {
+    return (
+      <div className="w-full">
+        <VideoEmbed url={video} title={card.title} />
+      </div>
+    );
+  }
+  if (card.imageUrl && card.imageUrl.trim()) {
+    return (
+      <div className="w-full aspect-[16/10] overflow-hidden bg-slate-100 dark:bg-slate-800">
+        {/* eslint-disable-next-line @next/next/no-img-element -- admin-uploaded CMS image on the API origin */}
+        <img src={resolveBlogImageUrl(card.imageUrl)} alt={card.title} onError={onImageErrorFallback} loading="lazy" className="w-full h-full object-cover" />
+      </div>
+    );
+  }
   return (
-    <div className="lg:col-span-3 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-8 flex flex-col lg:flex-row gap-8 items-start">
-      <ToolCover imageUrl={entry.imageUrl} videoUrl={entry.videoUrl} icon={Sparkles} gradient="from-cyan-500 to-purple-600" alt={title} />
-      <div className="flex-1">
-        <div className="flex flex-wrap items-center gap-2 mb-1">
-          <h2 className="text-xl font-black tracking-wide">{title}</h2>
-          {comingSoon ? (
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-              <Lock className="w-3 h-3" />
-              {comingSoonLabel}
-            </span>
+    <div className={`w-full aspect-[16/10] flex items-center justify-center bg-gradient-to-br ${card.comingSoon ? 'from-slate-100 to-slate-50 dark:from-slate-800/60 dark:to-slate-900' : 'from-cyan-50 via-white to-purple-50 dark:from-cyan-500/10 dark:via-slate-900 dark:to-purple-500/10'}`}>
+      <div className={card.comingSoon ? 'opacity-70 grayscale-[30%]' : ''}>
+        <ToolIconTile icon={card.icon} accent={card.accent} size="lg" />
+      </div>
+    </div>
+  );
+}
+
+function CatalogCard({ card, learnMoreLabel, comingSoonLabel }: { card: CatalogCardData; learnMoreLabel: string; comingSoonLabel: string }) {
+  const cta = card.cta;
+  const ctaClass = `${card.comingSoon ? toolSecondaryButton : toolPrimaryButton} w-full`;
+  return (
+    <article className="group rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 overflow-hidden flex flex-col shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-cyan-300 dark:hover:border-cyan-500/40 transition-all">
+      <CatalogCardMedia card={card} />
+      <div className="p-5 md:p-6 flex flex-col flex-1">
+        <div className="flex items-center gap-2 mb-2 min-h-[24px]">
+          {card.comingSoon ? (
+            <ToolChip tone="warning" icon={Lock}>{comingSoonLabel}</ToolChip>
           ) : (
-            badge && (
-              <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-500/30">
-                {badge}
-              </span>
-            )
+            card.badge && <ToolChip tone="success">{card.badge}</ToolChip>
           )}
         </div>
-        {subtitle && <p className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">{subtitle}</p>}
-        {description && <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5 whitespace-pre-line">{description}</p>}
-        {features.length > 0 && (
-          <ul className="grid sm:grid-cols-2 gap-3">
-            {features.map((label) => (
-              <li key={label} className="flex items-center gap-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                <Sparkles className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
-                {label}
+        <h3 className="text-lg font-black tracking-tight text-slate-900 dark:text-white leading-snug mb-2">{card.title}</h3>
+        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3 mb-3">{card.description}</p>
+        {card.tag && <p className="text-xs font-bold text-purple-700 dark:text-purple-300 mb-3">{card.tag}</p>}
+        {card.features.length > 0 && (
+          <ul className="space-y-2 mb-5">
+            {card.features.slice(0, 3).map(({ label }) => (
+              <li key={label} className="flex items-start gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                <Check className="w-4 h-4 text-emerald-500 shrink-0" aria-hidden />
+                <span>{label}</span>
               </li>
             ))}
           </ul>
         )}
-        {(href || pricing) && (
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            {href &&
-              (external ? (
-                <a href={href} target="_blank" rel="noopener noreferrer" className={buttonClass}>
-                  {buttonLabel} →
-                </a>
-              ) : (
-                <Link href={href} className={buttonClass}>
-                  {buttonLabel} →
-                </Link>
-              ))}
-            {pricing && <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{pricing}</span>}
-          </div>
-        )}
+        <div className="mt-auto pt-2 flex flex-col gap-2">
+          {cta && (cta.href ? (
+            cta.external ? (
+              <a href={cta.href} target="_blank" rel="noopener noreferrer" className={ctaClass}>{cta.label} <ArrowRight className="w-4 h-4" aria-hidden /></a>
+            ) : cta.href.startsWith('mailto:') ? (
+              <a href={cta.href} className={ctaClass}>{cta.label} <ArrowRight className="w-4 h-4" aria-hidden /></a>
+            ) : (
+              <Link href={cta.href} className={ctaClass}>{cta.label} <ArrowRight className="w-4 h-4" aria-hidden /></Link>
+            )
+          ) : (
+            <button type="button" onClick={cta.onClick} className={ctaClass}>{cta.label} <ArrowRight className="w-4 h-4" aria-hidden /></button>
+          ))}
+          {card.onLearnMore && (
+            <button
+              type="button"
+              onClick={card.onLearnMore}
+              className="inline-flex items-center justify-center gap-1.5 text-sm font-bold text-cyan-700 dark:text-cyan-400 bg-transparent border-none cursor-pointer py-2 hover:underline"
+            >
+              <Info className="w-4 h-4" aria-hidden />
+              {learnMoreLabel}
+            </button>
+          )}
+        </div>
       </div>
-    </div>
+    </article>
   );
+}
+
+// Turns an admin-added /admin/tools entry (any slug with no hand-built
+// card) into the same catalog card.
+function customEntryCard(entry: ToolCatalogEntry, lang: 'ka' | 'en', i: number): CatalogCardData {
+  const pick = (ka?: string, en?: string) => (lang === 'ka' ? ka || en : en || ka) ?? '';
+  const features = (lang === 'ka' ? entry.featuresKa?.length ? entry.featuresKa : entry.featuresEn : entry.featuresEn?.length ? entry.featuresEn : entry.featuresKa) ?? [];
+  const comingSoon = entry.status === 'COMING_SOON';
+  const href = comingSoon ? null : safeToolHref(entry.linkUrl);
+  const subtitle = pick(entry.subtitleKa, entry.subtitleEn);
+  const description = pick(entry.descriptionKa, entry.descriptionEn);
+  return {
+    key: `custom-${entry.slug}-${i}`,
+    icon: Sparkles,
+    accent: 'cyan',
+    title: pick(entry.titleKa, entry.titleEn),
+    badge: pick(entry.badgeKa, entry.badgeEn) || undefined,
+    comingSoon,
+    description: [subtitle, description].filter(Boolean).join(' — '),
+    tag: pick(entry.pricingLabelKa, entry.pricingLabelEn) || undefined,
+    features: features.map((label) => ({ icon: Sparkles, label })),
+    imageUrl: entry.imageUrl,
+    videoUrl: entry.videoUrl,
+    cta: href ? { label: lang === 'ka' ? 'გახსნა' : 'Open', href, external: /^https?:/i.test(href) } : undefined,
+  };
 }
 
 // Admin-set feature bullets replace a card's default bullets when present.
@@ -590,6 +637,157 @@ export default function ToolsPage() {
     openAuthModal({ mode: 'register', initialRole: 'Client' });
   };
 
+  const pickCms = (cms: ToolCatalogEntry | undefined, field: 'title' | 'description' | 'badge', fallback: string) =>
+    overrideText(fallback, (cms?.[`${field}${catLang === 'ka' ? 'Ka' : 'En'}` as keyof ToolCatalogEntry] as string | undefined) ?? undefined);
+  const aiCta = (label: string, href: string) => (canUseAiAssistant ? { label, href } : { label, onClick: handleAiCtaClick });
+
+  const allCards: CatalogCardData[] = ([
+    {
+      key: 'enterprise-ai',
+      icon: Bot,
+      accent: 'indigo',
+      title: ov(t.aiTitle, enterpriseAiCms, 'title'),
+      badge: ov(t.aiAvailable, enterpriseAiCms, 'badge'),
+      description: ov(t.aiDesc, enterpriseAiCms, 'description'),
+      features: withFeatures([
+        { icon: MessageSquareText, label: t.aiBullet1 },
+        { icon: BookOpen, label: t.aiBullet2 },
+        { icon: Code2, label: t.aiBullet3 },
+        { icon: BarChart3, label: t.aiBullet4 },
+      ], enterpriseAiCms, catLang),
+      imageUrl: enterpriseAiCms?.imageUrl,
+      videoUrl: enterpriseAiCms?.videoUrl,
+      cta: aiCta(t.aiCta, '/dashboard/tools/chatbot-builder'),
+      onLearnMore: () => setOverviewModal('enterpriseAi'),
+    },
+    // One card for the proctored exam. There used to be two (the employer
+    // "screening" card and a "practice exam" card) that both opened the same
+    // /dashboard/tools/proctored-exam page; the practice tool was retired
+    // (see proctored-exam.tsx). Its CMS cover is still used as a fallback.
+    {
+      key: 'exam',
+      icon: ShieldCheck,
+      accent: 'cyan',
+      title: ov(t.examTitle, examScreeningCms, 'title'),
+      badge: ov(t.aiAvailable, examScreeningCms, 'badge'),
+      description: ov(t.examDesc, examScreeningCms, 'description'),
+      features: withFeatures([
+        { icon: Sparkles, label: t.examBullet1 },
+        { icon: ShieldAlert, label: t.examBullet2 },
+        { icon: BarChart3, label: t.examBullet3 },
+        { icon: Code2, label: t.examBullet4 },
+      ], examScreeningCms, catLang),
+      imageUrl: examScreeningCms?.imageUrl || proctoringCms?.imageUrl,
+      videoUrl: examScreeningCms?.videoUrl || proctoringCms?.videoUrl,
+      cta: aiCta(t.examCta, '/dashboard/tools/proctored-exam'),
+      onLearnMore: () => setOverviewModal('examProctoring'),
+    },
+    {
+      key: 'childrens-book',
+      icon: BookOpen,
+      accent: 'pink',
+      title: pickCms(childrensBookCms, 'title', tCB('pageTitle')),
+      badge: pickCms(childrensBookCms, 'badge', tCB('cardBadge')),
+      comingSoon: childrensBookCms?.status === 'COMING_SOON',
+      description: pickCms(childrensBookCms, 'description', tCB('pageSubtitle')),
+      tag: tCB('catalogTag'),
+      features: withFeatures([], childrensBookCms, catLang),
+      imageUrl: childrensBookCms?.imageUrl,
+      videoUrl: childrensBookCms?.videoUrl,
+      cta: childrensBookCms?.status === 'COMING_SOON' ? undefined : { label: tCB('catalogCta'), href: '/dashboard/tools/childrens-book' },
+    },
+    {
+      key: 'english-tutor',
+      icon: GraduationCap,
+      accent: 'purple',
+      title: pickCms(englishTutorCms, 'title', t.tutorTitle),
+      badge: pickCms(englishTutorCms, 'badge', t.tutorBadge),
+      comingSoon: englishTutorCms?.status === 'COMING_SOON',
+      description: pickCms(englishTutorCms, 'description', t.tutorDesc),
+      features: withFeatures([], englishTutorCms, catLang),
+      imageUrl: englishTutorCms?.imageUrl,
+      videoUrl: englishTutorCms?.videoUrl,
+      cta: englishTutorCms?.status === 'COMING_SOON' ? undefined : { label: t.tutorCta, href: '/dashboard/english-tutor' },
+    },
+    {
+      key: 'educator-hub',
+      icon: Sparkles,
+      accent: 'amber',
+      title: pickCms(educatorHubCms, 'title', tEdu('pageTitle')),
+      badge: pickCms(educatorHubCms, 'badge', tEdu('vipBadge')),
+      description: pickCms(educatorHubCms, 'description', tEdu('pageSubtitle')),
+      features: withFeatures([], educatorHubCms, catLang),
+      imageUrl: educatorHubCms?.imageUrl,
+      videoUrl: educatorHubCms?.videoUrl,
+      cta: { label: tEdu('trialCta'), href: '/dashboard/tools/educator-hub' },
+    },
+    {
+      key: 'media-studio',
+      icon: Mic,
+      accent: 'pink',
+      title: pickCms(mediaStudioCms, 'title', tm('catalogTitle')),
+      badge: pickCms(mediaStudioCms, 'badge', t.aiAvailable),
+      description: pickCms(mediaStudioCms, 'description', tm('catalogDesc')),
+      tag: tm('catalogTag'),
+      features: withFeatures([], mediaStudioCms, catLang),
+      imageUrl: mediaStudioCms?.imageUrl,
+      videoUrl: mediaStudioCms?.videoUrl,
+      cta: { label: tm('catalogCta'), href: '/dashboard/tools/media-studio' },
+    },
+    {
+      key: 'screener',
+      icon: Users,
+      accent: 'emerald',
+      title: t.screenerTitle,
+      comingSoon: true,
+      description: t.screenerDesc,
+      features: [],
+    },
+    {
+      key: 'cyber-sentinel',
+      icon: ShieldAlert,
+      accent: 'cyan',
+      title: ov(t.sentinelTitle, sentinelCms, 'title'),
+      comingSoon: true,
+      description: ov(t.sentinelDesc, sentinelCms, 'description'),
+      features: withFeatures([
+        { icon: Download, label: t.sentinelBullet1 },
+        { icon: ShieldAlert, label: t.sentinelBullet2 },
+        { icon: BarChart3, label: t.sentinelBullet3 },
+        { icon: EyeOff, label: t.sentinelBullet4 },
+      ], sentinelCms, catLang),
+      imageUrl: sentinelCms?.imageUrl,
+      videoUrl: sentinelCms?.videoUrl,
+      cta: { label: t.sentinelCta, onClick: () => setShowWaitlistModal(true) },
+    },
+    {
+      key: 'ag-saia',
+      icon: KeyRound,
+      accent: 'indigo',
+      title: ov(t.agsaiaTitle, agsaiaCms, 'title'),
+      comingSoon: true,
+      description: ov(t.agsaiaDesc, agsaiaCms, 'description'),
+      features: withFeatures([
+        { icon: KeyRound, label: t.agsaiaBullet1 },
+        { icon: ShieldAlert, label: t.agsaiaBullet2 },
+        { icon: EyeOff, label: t.agsaiaBullet3 },
+        { icon: BarChart3, label: t.agsaiaBullet4 },
+      ], agsaiaCms, catLang),
+      imageUrl: agsaiaCms?.imageUrl,
+      videoUrl: agsaiaCms?.videoUrl,
+      cta: { label: t.agsaiaContact, href: 'mailto:contact@cdc.org.ge', external: false },
+      onLearnMore: () => setOverviewModal('agsaia'),
+    },
+    ...customToolEntries(toolCatalog?.tools).map((entry, i) => customEntryCard(entry, catLang, i)),
+  ] as CatalogCardData[]).filter((card) => {
+    // Hidden when an admin sets the tool-catalog entry to DISABLED (same
+    // rule as marketplace/index.tsx's SaaS cards).
+    const cms = card.key === 'childrens-book' ? childrensBookCms : card.key === 'english-tutor' ? englishTutorCms : undefined;
+    return cms?.status !== 'DISABLED';
+  });
+  const availableCards = allCards.filter((c) => !c.comingSoon);
+  const comingSoonCards = allCards.filter((c) => c.comingSoon);
+
   return (
     <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       <SEOHead
@@ -611,412 +809,61 @@ export default function ToolsPage() {
           <BackButton fallbackHref="/" className="dark:text-slate-400 dark:hover:text-slate-100" />
         </div>
 
-        <div className="mb-10 text-center max-w-2xl mx-auto">
+        <div className="mb-10 md:mb-12 text-center max-w-2xl mx-auto">
           <span className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-widest px-4 py-2 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-full border border-purple-500/20 mb-4">
             <Sparkles className="w-3.5 h-3.5" />
             CDC AI
           </span>
-          <h1 className="text-3xl md:text-4xl font-black tracking-wide mb-3">{t.title}</h1>
-          <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 leading-relaxed mb-3">{t.subtitle}</p>
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-3">{t.title}</h1>
+          <p className="text-sm md:text-base text-slate-600 dark:text-slate-400 leading-relaxed mb-3">{t.subtitle}</p>
           <a
             href="https://www.cdc.org.ge/"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors"
+            className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors"
           >
             {t.poweredBy}
           </a>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Card 1: Enterprise AI Assistant — real, available product */}
-          <div className="lg:col-span-3 rounded-3xl border border-cyan-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-cyan-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <ToolCover imageUrl={enterpriseAiCms?.imageUrl} videoUrl={enterpriseAiCms?.videoUrl} icon={Bot} gradient="from-cyan-500 to-purple-600" alt={ov(t.aiTitle, enterpriseAiCms, 'title')} />
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <h2 className="text-xl font-black tracking-wide">{ov(t.aiTitle, enterpriseAiCms, 'title')}</h2>
-                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                  {ov(t.aiAvailable, enterpriseAiCms, 'badge')}
-                </span>
-              </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{ov(t.aiDesc, enterpriseAiCms, 'description')}</p>
-              <ul className="grid sm:grid-cols-2 gap-3 mb-6">
-                {withFeatures([
-                  { icon: MessageSquareText, label: t.aiBullet1 },
-                  { icon: BookOpen, label: t.aiBullet2 },
-                  { icon: Code2, label: t.aiBullet3 },
-                  { icon: BarChart3, label: t.aiBullet4 },
-                ], enterpriseAiCms, catLang).map(({ icon: Icon, label }) => (
-                  <li key={label} className="flex items-center gap-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                    <Icon className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
-                    {label}
-                  </li>
-                ))}
-              </ul>
-
-              <div className="flex flex-wrap items-center gap-3">
-                {canUseAiAssistant ? (
-                  <Link
-                    href="/dashboard/tools/chatbot-builder"
-                    className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    {t.aiCta}
-                  </Link>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleAiCtaClick}
-                    className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    {t.aiCta}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setOverviewModal('enterpriseAi')}
-                  className="inline-flex items-center gap-1.5 text-sm font-bold text-cyan-700 dark:text-cyan-400 bg-transparent border-none cursor-pointer hover:underline"
-                >
-                  <Info className="w-4 h-4" />
-                  {t.learnMore}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 2: AI Proctored Exam — real, available product (activated
-              alongside routes/examProctoring.ts + pages/exam/[token].tsx).
-              Same Business-only gating as Card 1 (canUseAiAssistant), since
-              it lives on the same /dashboard/ai-tools page. */}
-          <div className="lg:col-span-3 rounded-3xl border border-cyan-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-cyan-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <ToolCover imageUrl={examScreeningCms?.imageUrl} videoUrl={examScreeningCms?.videoUrl} icon={ShieldCheck} gradient="from-cyan-500 to-purple-600" alt={ov(t.examTitle, examScreeningCms, 'title')} />
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <h2 className="text-xl font-black tracking-wide">{ov(t.examTitle, examScreeningCms, 'title')}</h2>
-                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                  {ov(t.aiAvailable, examScreeningCms, 'badge')}
-                </span>
-              </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{ov(t.examDesc, examScreeningCms, 'description')}</p>
-              <ul className="grid sm:grid-cols-2 gap-3 mb-6">
-                {withFeatures([
-                  { icon: Sparkles, label: t.examBullet1 },
-                  { icon: ShieldAlert, label: t.examBullet2 },
-                  { icon: BarChart3, label: t.examBullet3 },
-                  { icon: Code2, label: t.examBullet4 },
-                ], examScreeningCms, catLang).map(({ icon: Icon, label }) => (
-                  <li key={label} className="flex items-center gap-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                    <Icon className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
-                    {label}
-                  </li>
-                ))}
-              </ul>
-              <div className="flex flex-wrap items-center gap-3">
-                {canUseAiAssistant ? (
-                  <Link
-                    href="/dashboard/tools/proctored-exam"
-                    className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    {t.examCta}
-                  </Link>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleAiCtaClick}
-                    className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    {t.examCta}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setOverviewModal('examProctoring')}
-                  className="inline-flex items-center gap-1.5 text-sm font-bold text-cyan-700 dark:text-cyan-400 bg-transparent border-none cursor-pointer hover:underline"
-                >
-                  <Info className="w-4 h-4" />
-                  {t.learnMore}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 2.5: AI Voice & Video Media Studio — real, available
-              product, open to any logged-in user (not Business-gated like
-              Cards 1/2 above, since it's a general productivity tool, not
-              an enterprise feature) — the CTA links straight into
-              ProtectedRoute, which handles the login redirect itself. */}
-          <div className="lg:col-span-3 rounded-3xl border border-cyan-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-cyan-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <ToolCover imageUrl={mediaStudioCms?.imageUrl} videoUrl={mediaStudioCms?.videoUrl} icon={Mic} gradient="from-cyan-500 to-purple-600" alt={tm('catalogTitle')} />
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <h2 className="text-xl font-black tracking-wide">{overrideText(tm('catalogTitle'), catLang === 'ka' ? mediaStudioCms?.titleKa : mediaStudioCms?.titleEn)}</h2>
-                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                  {overrideText(t.aiAvailable, catLang === 'ka' ? mediaStudioCms?.badgeKa : mediaStudioCms?.badgeEn)}
-                </span>
-              </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-2">{overrideText(tm('catalogDesc'), catLang === 'ka' ? mediaStudioCms?.descriptionKa : mediaStudioCms?.descriptionEn)}</p>
-              <p className="text-xs font-bold text-purple-600 dark:text-purple-400 mb-5">{tm('catalogTag')}</p>
-              <Link
-                href="/dashboard/tools/media-studio"
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
-              >
-                <Mic className="w-4 h-4" />
-                {tm('catalogCta')}
-              </Link>
-            </div>
-          </div>
-
-          {/* Card 2.6: AI Educator VIP Hub — real, available product, same
-              open-to-any-logged-in-user posture as Media Studio above (no
-              dedicated Teacher role exists). VIP badge + 5-day trial hook
-              replace the plain "Available now" pill Cards 1/2/2.5 use,
-              since this one is paid — the page itself (not this card)
-              handles trial-start/VIP-required/quota state. */}
-          <div className="lg:col-span-3 rounded-3xl border border-amber-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-amber-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <ToolCover imageUrl={educatorHubCms?.imageUrl} videoUrl={educatorHubCms?.videoUrl} icon={Crown} gradient="from-amber-500 to-purple-600" alt={tEdu('pageTitle')} />
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <h2 className="text-xl font-black tracking-wide">{overrideText(tEdu('pageTitle'), catLang === 'ka' ? educatorHubCms?.titleKa : educatorHubCms?.titleEn)}</h2>
-                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                  {overrideText(tEdu('vipBadge'), catLang === 'ka' ? educatorHubCms?.badgeKa : educatorHubCms?.badgeEn)}
-                </span>
-              </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{overrideText(tEdu('pageSubtitle'), catLang === 'ka' ? educatorHubCms?.descriptionKa : educatorHubCms?.descriptionEn)}</p>
-              <Link
-                href="/dashboard/tools/educator-hub"
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-amber-500/30 transition-all"
-              >
-                <Crown className="w-4 h-4" />
-                {tEdu('trialCta')}
-              </Link>
-            </div>
-          </div>
-
-          {/* Card 2.65: Personalized AI Children's Book — real, paid
-              (server-priced, 1 GEL/page) tool, previously reachable only
-              by direct link or the marketplace's AI-tools filter. Same
-              open-to-any-logged-in-user posture as Media Studio above;
-              hidden when an admin sets its tool-catalog entry to DISABLED
-              (same rule as marketplace/index.tsx's SaaS cards). */}
-          {childrensBookCms?.status !== 'DISABLED' && (
-          <div className="lg:col-span-3 rounded-3xl border border-pink-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-pink-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <ToolCover imageUrl={childrensBookCms?.imageUrl} videoUrl={childrensBookCms?.videoUrl} icon={BookOpen} gradient="from-pink-500 to-purple-600" alt={tCB('pageTitle')} />
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <h2 className="text-xl font-black tracking-wide">{overrideText(tCB('pageTitle'), catLang === 'ka' ? childrensBookCms?.titleKa : childrensBookCms?.titleEn)}</h2>
-                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-pink-500/10 text-pink-600 dark:text-pink-400 border border-pink-500/30">
-                  {overrideText(tCB('cardBadge'), catLang === 'ka' ? childrensBookCms?.badgeKa : childrensBookCms?.badgeEn)}
-                </span>
-              </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-2">{overrideText(tCB('pageSubtitle'), catLang === 'ka' ? childrensBookCms?.descriptionKa : childrensBookCms?.descriptionEn)}</p>
-              <p className="text-xs font-bold text-purple-600 dark:text-purple-400 mb-5">{tCB('catalogTag')}</p>
-              {childrensBookCms?.status === 'COMING_SOON' ? (
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                  <Lock className="w-3 h-3" />
-                  {t.comingSoon}
-                </span>
-              ) : (
-                <Link
-                  href="/dashboard/tools/childrens-book"
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-pink-500/30 transition-all"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  {tCB('catalogCta')}
-                </Link>
-              )}
-            </div>
-          </div>
-          )}
-
-          {/* Card 2.66: IMIAKO AI English Tutor — previously missing from
-              this catalog entirely (reachable only from the homepage and
-              /courses). Hidden when its catalog entry is DISABLED, same
-              rule as the Children's Book card above. */}
-          {englishTutorCms?.status !== 'DISABLED' && (
-          <div className="lg:col-span-3 rounded-3xl border border-purple-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-purple-500/5 to-cyan-500/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <ToolCover imageUrl={englishTutorCms?.imageUrl} videoUrl={englishTutorCms?.videoUrl} icon={GraduationCap} gradient="from-purple-600 to-cyan-500" alt={t.tutorTitle} />
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <h2 className="text-xl font-black tracking-wide">{overrideText(t.tutorTitle, catLang === 'ka' ? englishTutorCms?.titleKa : englishTutorCms?.titleEn)}</h2>
-                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                  {overrideText(t.tutorBadge, catLang === 'ka' ? englishTutorCms?.badgeKa : englishTutorCms?.badgeEn)}
-                </span>
-              </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{overrideText(t.tutorDesc, catLang === 'ka' ? englishTutorCms?.descriptionKa : englishTutorCms?.descriptionEn)}</p>
-              {englishTutorCms?.status === 'COMING_SOON' ? (
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                  <Lock className="w-3 h-3" />
-                  {t.comingSoon}
-                </span>
-              ) : (
-                <Link
-                  href="/dashboard/english-tutor"
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-cyan-500 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-purple-500/30 transition-all"
-                >
-                  <GraduationCap className="w-4 h-4" />
-                  {t.tutorCta}
-                </Link>
-              )}
-            </div>
-          </div>
-          )}
-
-          {/* Card 2.7: AI Proctored Practice Exam — self-service, open to
-              any logged-in user, same posture as Media Studio/Educator Hub
-              above. Deliberately distinct from Card 2 above (the real
-              Business-gated candidate-screening product at
-              /dashboard/ai-tools) — this is an individual practice/skill-
-              assessment tool, not an employer screening tool, so it gets
-              its own card and copy rather than overwriting Card 2. */}
-          <div className="lg:col-span-3 rounded-3xl border border-cyan-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-cyan-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <ToolCover imageUrl={proctoringCms?.imageUrl} videoUrl={proctoringCms?.videoUrl} icon={ShieldCheck} gradient="from-cyan-500 to-purple-600" alt={t.proctoringPracticeTitle} />
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <h2 className="text-xl font-black tracking-wide">{overrideText(t.proctoringPracticeTitle, catLang === 'ka' ? proctoringCms?.titleKa : proctoringCms?.titleEn)}</h2>
-                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                  {overrideText(t.proctoringLiveBadge, catLang === 'ka' ? proctoringCms?.badgeKa : proctoringCms?.badgeEn)}
-                </span>
-              </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{overrideText(t.proctoringPracticeDesc, catLang === 'ka' ? proctoringCms?.descriptionKa : proctoringCms?.descriptionEn)}</p>
-              <Link
-                href="/dashboard/tools/proctored-exam"
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                {t.proctoringPracticeCta}
-              </Link>
-            </div>
-          </div>
-
-          {/* Card 3: AI Candidate Screener — coming soon */}
-          <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-7 flex flex-col opacity-90">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                <Users className="w-6 h-6 text-slate-400 dark:text-slate-500" />
-              </div>
-              <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                <Lock className="w-3 h-3" />
-                {t.comingSoon}
-              </span>
-            </div>
-            <h3 className="text-base font-black tracking-wide mb-2">{t.screenerTitle}</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{t.screenerDesc}</p>
-          </div>
-
-          {/* Card 4: Cyber Sentinel AI — coming soon, no desktop agent built
-              yet (see Backend's CyberSentinelDevice model — schema
-              placeholder only, no routes/UI wired to it). Bulleted like
-              Card 1 since there's more to say than Cards 2/3's one-liner,
-              but coming-soon-styled (muted icon, amber lock badge, no CTA)
-              since nothing here is actually usable yet. */}
-          <div className="lg:col-span-3 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <ToolCover imageUrl={sentinelCms?.imageUrl} videoUrl={sentinelCms?.videoUrl} icon={ShieldAlert} gradient="from-cyan-500 to-purple-600" alt={ov(t.sentinelTitle, sentinelCms, 'title')} />
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <h2 className="text-xl font-black tracking-wide">{ov(t.sentinelTitle, sentinelCms, 'title')}</h2>
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                  <Lock className="w-3 h-3" />
-                  {t.comingSoon}
-                </span>
-              </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{ov(t.sentinelDesc, sentinelCms, 'description')}</p>
-              <ul className="grid sm:grid-cols-2 gap-3">
-                {withFeatures([
-                  { icon: Download, label: t.sentinelBullet1 },
-                  { icon: ShieldAlert, label: t.sentinelBullet2 },
-                  { icon: BarChart3, label: t.sentinelBullet3 },
-                  { icon: EyeOff, label: t.sentinelBullet4 },
-                ], sentinelCms, catLang).map(({ icon: Icon, label }) => (
-                  <li key={label} className="flex items-center gap-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                    <Icon className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
-                    {label}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowWaitlistModal(true)}
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
-                >
-                  <ShieldAlert className="w-4 h-4" />
-                  {t.sentinelCta}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 5: AG-SAIA — Sovereign AI Security. Pre-launch, same
-              "Coming Soon" posture as Card 4: no ZKP handshake, threat
-              detection, or honeypot exist yet, so this is purely
-              informational (description + "Learn More" detail + a plain
-              contact link) — never live status/telemetry, which would
-              misrepresent an unbuilt product as an active security system. */}
-          <div className="lg:col-span-3 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <ToolCover imageUrl={agsaiaCms?.imageUrl} videoUrl={agsaiaCms?.videoUrl} icon={KeyRound} gradient="from-cyan-500 to-purple-600" alt={ov(t.agsaiaTitle, agsaiaCms, 'title')} />
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <h2 className="text-xl font-black tracking-wide">{ov(t.agsaiaTitle, agsaiaCms, 'title')}</h2>
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                  <Lock className="w-3 h-3" />
-                  {t.comingSoon}
-                </span>
-              </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">{ov(t.agsaiaDesc, agsaiaCms, 'description')}</p>
-              <ul className="grid sm:grid-cols-2 gap-3">
-                {withFeatures([
-                  { icon: KeyRound, label: t.agsaiaBullet1 },
-                  { icon: ShieldAlert, label: t.agsaiaBullet2 },
-                  { icon: EyeOff, label: t.agsaiaBullet3 },
-                  { icon: BarChart3, label: t.agsaiaBullet4 },
-                ], agsaiaCms, catLang).map(({ icon: Icon, label }) => (
-                  <li key={label} className="flex items-center gap-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                    <Icon className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
-                    {label}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <a
-                  href="mailto:contact@cdc.org.ge"
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
-                >
-                  <KeyRound className="w-4 h-4" />
-                  {t.agsaiaContact}
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setOverviewModal('agsaia')}
-                  className="inline-flex items-center gap-1.5 text-sm font-bold text-cyan-700 dark:text-cyan-400 bg-transparent border-none cursor-pointer hover:underline"
-                >
-                  <Info className="w-4 h-4" />
-                  {t.learnMore}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Tools an admin added in /admin/tools that have no hand-built card. */}
-          {customToolEntries(toolCatalog?.tools).map((entry, i) => (
-            <CustomToolCard key={`${entry.slug}-${i}`} entry={entry} lang={catLang} comingSoonLabel={t.comingSoon} />
+        {/* Available tools: one uniform card per product (same size, same
+            button style). A tool's own color appears only on its icon tile. */}
+        <h2 className="text-lg font-black mb-4 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden />
+          {t.availableHeading}
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 mb-12">
+          {availableCards.map((card) => (
+            <CatalogCard key={card.key} card={card} learnMoreLabel={t.learnMore} comingSoonLabel={t.comingSoon} />
           ))}
-
-          {/* Store — downloadable products (UI kits, prompts, templates), a
-              separate concept from CDC's own SaaS products above. */}
-          <Link
-            href="/marketplace"
-            className="lg:col-span-3 rounded-3xl border border-purple-500/30 bg-gradient-to-r from-purple-500/5 to-cyan-500/5 p-7 flex items-center justify-between gap-4 no-underline text-current hover:border-purple-400 transition-colors"
-          >
-            <div>
-              <h3 className="text-base font-black tracking-wide mb-1">{t.storeCta}</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{t.storeCtaDesc}</p>
-            </div>
-            <span className="text-xs font-bold text-purple-600 dark:text-purple-400 whitespace-nowrap">{t.storeCtaButton} →</span>
-          </Link>
         </div>
+
+        {comingSoonCards.length > 0 && (
+          <>
+            <h2 className="text-lg font-black mb-4 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-500" aria-hidden />
+              {t.comingSoonHeading}
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 mb-12">
+              {comingSoonCards.map((card) => (
+                <CatalogCard key={card.key} card={card} learnMoreLabel={t.learnMore} comingSoonLabel={t.comingSoon} />
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Store — downloadable products (UI kits, prompts, templates), a
+            separate concept from CDC's own SaaS products above. */}
+        <Link
+          href="/marketplace"
+          className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 md:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4 no-underline text-current hover:border-purple-400 transition-colors"
+        >
+          <div>
+            <h3 className="text-base font-black tracking-wide mb-1">{t.storeCta}</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400">{t.storeCtaDesc}</p>
+          </div>
+          <span className={toolSecondaryButton}>{t.storeCtaButton} →</span>
+        </Link>
       </div>
 
       <SiteFooter />

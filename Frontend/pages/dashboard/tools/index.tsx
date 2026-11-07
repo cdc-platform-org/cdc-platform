@@ -2,24 +2,22 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
-import { Bot, GraduationCap, Mic, Bug, Sparkles, Calendar, BookOpen, ShieldCheck } from 'lucide-react';
+import { Bot, GraduationCap, Mic, Bug, Sparkles, Calendar, BookOpen, ShieldCheck, LayoutGrid, Loader2 } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
-import SiteHeader from '../../../src/components/layout/SiteHeader';
-import SiteFooter from '../../../src/components/layout/SiteFooter';
-import BackButton from '../../../src/components/common/BackButton';
 import { useAuth } from '../../../src/context/AuthContext';
 import { getMyAgents } from '../../../src/services/agentService';
 import { Agent } from '../../../src/types/agent';
 import { getTutorState, TutorState } from '../../../src/services/englishTutorService';
 import { getEducatorHubState, EducatorHubState } from '../../../src/services/educatorHubService';
 import { resolveLocale } from '@/src/utils/locale';
+import ToolShell, { ToolPageHeader, ToolIconTile, ToolChip, ToolLinkButton, toolPrimaryButton, toolSecondaryButton, type ToolAccent, type ToolChipTone } from '@/src/components/tools/ToolShell';
 import { listMyIakoAssistants, hasDigitalToolAccess, iakoAssistantHref, MyIakoAssistant } from '../../../src/services/iakoAssistantService';
 
 const EN_STRINGS = {
   title: 'My Tools',
   subtitle: 'All your AI tools and subscriptions in one place.',
   loading: 'Loading…',
-  empty: 'You have no active tools yet — browse the catalog to get started.',
+  empty: 'No active tools yet. Pick one below to get started.',
   browseCatalog: 'Browse AI Tools',
   manage: 'Manage Tool',
   statusTrial: 'Trial',
@@ -47,6 +45,12 @@ const EN_STRINGS = {
   proctoredExam: 'AI-Proctored Exam',
   proctoredExamDesc: 'Create exams and send students a supervised exam link',
   open: 'Open',
+  start: 'Get started',
+  sectionMine: 'My active tools',
+  sectionAvailable: 'Available to start',
+  sectionSoon: 'Coming soon',
+  learnMore: 'Learn more',
+  allTools: 'All AI tools',
   iakoDesc: 'AI training mentor', openIako: 'Open IAKO', todayGuide: "Today's Guide", requestsUsed: 'requests used',
 };
 
@@ -55,7 +59,7 @@ const dict = {
     title: 'ჩემი ხელსაწყოები',
     subtitle: 'ყველა თქვენი AI ხელსაწყო და გამოწერა ერთ ადგილას.',
     loading: 'იტვირთება…',
-    empty: 'თქვენ ჯერ არცერთი აქტიური ხელსაწყო არ გაქვთ — დაათვალიერეთ კატალოგი დასაწყებად.',
+    empty: 'ჯერ არცერთი აქტიური ხელსაწყო არ გაქვთ. ქვემოთ აირჩიეთ და დაიწყეთ.',
     browseCatalog: 'AI ხელსაწყოების ნახვა',
     manage: 'მართვა',
     statusTrial: 'საცდელი',
@@ -83,6 +87,12 @@ const dict = {
     proctoredExam: 'AI ზედამხედველობით გამოცდა',
     proctoredExamDesc: 'შექმენით გამოცდა და გაუგზავნეთ სტუდენტებს ბმული',
     open: 'გახსნა',
+    start: 'დაწყება',
+    sectionMine: 'ჩემი აქტიური ხელსაწყოები',
+    sectionAvailable: 'შეგიძლიათ დაიწყოთ',
+    sectionSoon: 'მალე',
+    learnMore: 'გაიგეთ მეტი',
+    allTools: 'ყველა AI ხელსაწყო',
     iakoDesc: 'AI ტრენინგის მენტორი', openIako: 'IAKO-ს გახსნა', todayGuide: 'დღევანდელი გზამკვლევი', requestsUsed: 'მოთხოვნა გამოყენებულია',
   },
   en: EN_STRINGS,
@@ -94,18 +104,19 @@ const dict = {
 
 type ToolBadge = 'TRIAL' | 'ACTIVE' | 'EXPIRED' | 'PAUSED' | 'AVAILABLE' | 'COMING_SOON';
 
-const BADGE_CLASS: Record<ToolBadge, string> = {
-  TRIAL: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30',
-  ACTIVE: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
-  EXPIRED: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30',
-  PAUSED: 'bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-500/30',
-  AVAILABLE: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/30',
-  COMING_SOON: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30',
+const BADGE_TONE: Record<ToolBadge, ToolChipTone> = {
+  TRIAL: 'brand',
+  ACTIVE: 'success',
+  EXPIRED: 'danger',
+  PAUSED: 'neutral',
+  AVAILABLE: 'neutral',
+  COMING_SOON: 'warning',
 };
 
 interface ToolCardData {
   key: string;
   icon: typeof Bot;
+  accent: ToolAccent;
   title: string;
   description: string;
   badge: ToolBadge;
@@ -118,35 +129,55 @@ interface ToolCardData {
   guideLabel?: string;
 }
 
-function ToolCard({ tool, manageLabel }: { tool: ToolCardData; manageLabel: string }) {
-  const Icon = tool.icon;
+function ToolCard({ tool, manageLabel, learnMoreLabel }: { tool: ToolCardData; manageLabel: string; learnMoreLabel: string }) {
+  const soon = tool.badge === 'COMING_SOON';
+  const available = tool.badge === 'AVAILABLE';
   return (
-    <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 flex flex-col">
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center shrink-0">
-          <Icon className="w-5 h-5 text-white" />
+    <div className={`rounded-2xl border bg-white dark:bg-slate-900/60 p-5 flex flex-col shadow-sm hover:shadow-md transition-shadow ${soon ? 'border-dashed border-slate-300 dark:border-slate-700' : 'border-slate-200 dark:border-slate-800'}`}>
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className={soon ? 'opacity-60' : ''}>
+          <ToolIconTile icon={tool.icon} accent={tool.accent} size="sm" />
         </div>
-        <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${BADGE_CLASS[tool.badge]}`}>
-          {tool.badgeLabel}
-        </span>
+        {!available && <ToolChip tone={BADGE_TONE[tool.badge]}>{tool.badgeLabel}</ToolChip>}
       </div>
-      <h3 className="font-black text-sm mb-1">{tool.title}</h3>
-      <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 flex-1">{tool.description}</p>
+      <h3 className="font-black text-base leading-snug text-slate-900 dark:text-white mb-1">{tool.title}</h3>
+      <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 flex-1">{tool.description}</p>
       {tool.dateLine && (
-        <p className="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1 mb-3">
-          <Calendar className="w-3 h-3" />
+        <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-3">
+          <Calendar className="w-3.5 h-3.5" />
           {tool.dateLine}
         </p>
       )}
       {tool.usageLine && <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{tool.usageLine}</p>}
-      <Link
-        href={tool.manageHref}
-        className="mt-auto inline-flex items-center justify-center text-xs font-bold px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 no-underline hover:bg-slate-50 dark:hover:bg-slate-800"
-      >
-        {tool.actionLabel || manageLabel}
-      </Link>
+      {soon ? (
+        <Link href={tool.manageHref} className="mt-auto text-sm font-bold text-cyan-700 dark:text-cyan-400 no-underline hover:underline">
+          {learnMoreLabel} →
+        </Link>
+      ) : (
+        <Link href={tool.manageHref} className={`mt-auto w-full ${available ? toolSecondaryButton : toolPrimaryButton}`}>
+          {tool.actionLabel || manageLabel}
+        </Link>
+      )}
       {tool.guideHref && <Link href={tool.guideHref} className="mt-2 text-center text-xs font-bold text-cyan-700 dark:text-cyan-300 py-2">{tool.guideLabel}</Link>}
     </div>
+  );
+}
+
+function ToolSection({ title, cards, manageLabel, learnMoreLabel, empty }: { title: string; cards: ToolCardData[]; manageLabel: string; learnMoreLabel: string; empty?: string }) {
+  if (cards.length === 0 && !empty) return null;
+  return (
+    <section className="mb-10">
+      <h2 className="text-sm font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4">{title}</h2>
+      {cards.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 px-5 py-6 text-sm text-slate-600 dark:text-slate-400">{empty}</p>
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+          {cards.map((card) => (
+            <ToolCard key={card.key} tool={card} manageLabel={manageLabel} learnMoreLabel={learnMoreLabel} />
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -192,6 +223,7 @@ function MyToolsContent() {
     cards.push({
       key: `agent-${agent.id}`,
       icon: Bot,
+      accent: 'indigo',
       title: `${t.businessAi} — ${agent.name}`,
       description: t.businessAiDesc(1),
       badge,
@@ -205,13 +237,14 @@ function MyToolsContent() {
     cards.push({
       key: 'business-ai',
       icon: Bot,
+      accent: 'indigo',
       title: t.businessAi,
       description: t.businessAiAvailableDesc,
       badge: 'AVAILABLE',
       badgeLabel: t.statusAvailable,
       dateLine: null,
       manageHref: '/dashboard/tools/chatbot-builder',
-      actionLabel: t.open,
+      actionLabel: t.start,
     });
   }
 
@@ -228,6 +261,7 @@ function MyToolsContent() {
     cards.push({
       key: 'english-tutor',
       icon: GraduationCap,
+      accent: 'purple',
       title: t.englishTutor,
       description: badgeLabel,
       badge,
@@ -240,13 +274,14 @@ function MyToolsContent() {
     cards.push({
       key: 'english-tutor',
       icon: GraduationCap,
+      accent: 'purple',
       title: t.englishTutor,
       description: t.englishTutorAvailableDesc,
       badge: 'AVAILABLE',
       badgeLabel: t.statusAvailable,
       dateLine: null,
       manageHref: '/dashboard/english-tutor',
-      actionLabel: t.open,
+      actionLabel: t.start,
     });
   }
 
@@ -260,6 +295,7 @@ function MyToolsContent() {
     cards.push({
       key: 'educator-vip',
       icon: Sparkles,
+      accent: 'amber',
       title: t.educatorVip,
       description: badgeLabel,
       badge,
@@ -271,13 +307,14 @@ function MyToolsContent() {
     cards.push({
       key: 'educator-vip',
       icon: Sparkles,
+      accent: 'amber',
       title: t.educatorVip,
       description: t.educatorAvailableDesc,
       badge: 'AVAILABLE',
       badgeLabel: t.statusAvailable,
       dateLine: null,
       manageHref: '/dashboard/tools/educator-hub',
-      actionLabel: t.open,
+      actionLabel: t.start,
     });
   }
 
@@ -286,24 +323,26 @@ function MyToolsContent() {
   cards.push({
     key: 'childrens-book',
     icon: BookOpen,
+    accent: 'pink',
     title: t.childrensBook,
     description: t.childrensBookDesc,
     badge: 'AVAILABLE',
     badgeLabel: t.statusAvailable,
     dateLine: null,
     manageHref: '/dashboard/tools/childrens-book',
-    actionLabel: t.open,
+    actionLabel: t.start,
   });
   cards.push({
     key: 'proctored-exam',
     icon: ShieldCheck,
+    accent: 'cyan',
     title: t.proctoredExam,
     description: t.proctoredExamDesc,
     badge: 'AVAILABLE',
     badgeLabel: t.statusAvailable,
     dateLine: null,
     manageHref: '/dashboard/tools/proctored-exam',
-    actionLabel: t.open,
+    actionLabel: t.start,
   });
 
   // AI Voice & Video Studio — gated by digitalToolAccessService's
@@ -313,12 +352,14 @@ function MyToolsContent() {
   cards.push({
     key: 'media-studio',
     icon: Mic,
+    accent: 'pink',
     title: t.mediaStudio,
     description: mediaStudioAccess ? t.mediaStudioDescActive : t.mediaStudioDescLocked,
     badge: mediaStudioAccess ? 'ACTIVE' : 'AVAILABLE',
     badgeLabel: mediaStudioAccess ? t.statusActive : t.statusAvailable,
     dateLine: null,
     manageHref: '/dashboard/tools/media-studio',
+    actionLabel: mediaStudioAccess ? undefined : t.open,
   });
 
   // IAKO — one card per Live Training or Digital Tool this learner
@@ -329,6 +370,7 @@ function MyToolsContent() {
     cards.push({
       key: `iako-${assistant.resourceType}-${assistant.resourceId}`,
       icon: Sparkles,
+      accent: 'emerald',
       title: `IAKO — ${assistant.mentorTagline || assistant.resourceTitle}`,
       description: t.iakoDesc,
       badge: expired ? 'EXPIRED' : 'ACTIVE',
@@ -348,6 +390,7 @@ function MyToolsContent() {
   cards.push({
     key: 'cyber-sentinel',
     icon: Bug,
+    accent: 'cyan',
     title: t.cyberSentinel,
     description: t.cyberSentinelDesc,
     badge: 'COMING_SOON',
@@ -356,35 +399,36 @@ function MyToolsContent() {
     manageHref: '/dashboard/cyber-security',
   });
 
+  const mine = cards.filter((c) => c.badge !== 'AVAILABLE' && c.badge !== 'COMING_SOON');
+  const available = cards.filter((c) => c.badge === 'AVAILABLE');
+  const soon = cards.filter((c) => c.badge === 'COMING_SOON');
+
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
+    <ToolShell backHref="/dashboard">
       <Head>
         <title>{`${t.title} | CDC Platform`}</title>
       </Head>
-      <SiteHeader />
+      <ToolPageHeader
+        icon={LayoutGrid}
+        accent="cyan"
+        title={t.title}
+        subtitle={t.subtitle}
+        actions={<ToolLinkButton href="/tools" variant="secondary">{t.allTools}</ToolLinkButton>}
+      />
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 md:py-12 flex-1 w-full">
-        <div className="mb-4">
-          <BackButton fallbackHref="/dashboard" className="dark:text-slate-400 dark:hover:text-slate-100" />
-        </div>
-        <div className="mb-8">
-          <h1 className="text-2xl font-black tracking-wide">{t.title}</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t.subtitle}</p>
-        </div>
-
-        {loading ? (
-          <p className="text-sm text-slate-400">{t.loading}</p>
-        ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {cards.map((card) => (
-              <ToolCard key={card.key} tool={card} manageLabel={t.manage} />
-            ))}
-          </div>
-        )}
-      </div>
-
-      <SiteFooter />
-    </div>
+      {loading ? (
+        <p role="status" className="flex items-center gap-2 py-10 text-sm text-slate-500 dark:text-slate-400">
+          <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+          {t.loading}
+        </p>
+      ) : (
+        <>
+          <ToolSection title={t.sectionMine} cards={mine} manageLabel={t.manage} learnMoreLabel={t.learnMore} empty={t.empty} />
+          <ToolSection title={t.sectionAvailable} cards={available} manageLabel={t.manage} learnMoreLabel={t.learnMore} />
+          <ToolSection title={t.sectionSoon} cards={soon} manageLabel={t.manage} learnMoreLabel={t.learnMore} />
+        </>
+      )}
+    </ToolShell>
   );
 }
 
