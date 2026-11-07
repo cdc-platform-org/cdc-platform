@@ -34,6 +34,7 @@ import { checkoutProduct, validatePromoCode, PromoValidationResult } from '../..
 import { checkoutProductStripe, stripeWithBogFallback } from '../../src/services/stripePaymentService';
 import { formatPrice } from '../../src/utils/coursePricing';
 import { resolveLocale } from '@/src/utils/locale';
+import { localizePromoError } from '../../src/components/shared/PromoCodeField';
 
 // Fixed id of the seeded "AI Business Assistant" trial listing (see
 // Backend's 20260807010000_seed_ai_business_trial_product migration) — a
@@ -160,7 +161,7 @@ function StoreProductContent({ initialProduct }: { initialProduct: DigitalProduc
       const result = await validatePromoCode(promoInput.trim(), 'DIGITAL_PRODUCT', product.id);
       setAppliedPromo(result);
     } catch (err: any) {
-      setPromoError(err?.response?.data?.message ?? (lang === 'ka' ? 'პრომო კოდი არასწორია.' : 'Invalid promo code.'));
+      setPromoError(localizePromoError(err?.response?.data?.message, contentLang) ?? (lang === 'ka' ? 'პრომო კოდი არასწორია.' : 'Invalid promo code.'));
     } finally {
       setApplyingPromo(false);
     }

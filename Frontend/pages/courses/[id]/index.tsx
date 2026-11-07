@@ -30,6 +30,7 @@ import VIPAudioNarrator from '../../../src/components/ui/VIPAudioNarrator';
 import SEOHead from '../../../src/components/seo/SEOHead';
 import LearningRatingsSection from '../../../src/components/shared/LearningRatingsSection';
 import LearningRatingSummary from '../../../src/components/shared/LearningRatingSummary';
+import { localizePromoError } from '../../../src/components/shared/PromoCodeField';
 
 function formatTotalDuration(totalSeconds: number, lang: 'ka' | 'en'): string {
   const totalMinutes = Math.round(totalSeconds / 60);
@@ -146,7 +147,7 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
       const result = await validatePromoCode(promoInput.trim(), 'COURSE', courseId);
       setAppliedPromo(result);
     } catch (err: any) {
-      setPromoError(err?.response?.data?.message ?? t('promoInvalid'));
+      setPromoError(localizePromoError(err?.response?.data?.message, lang) ?? t('promoInvalid'));
     } finally {
       setApplyingPromo(false);
     }

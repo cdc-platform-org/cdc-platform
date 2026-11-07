@@ -20,6 +20,21 @@ const copy = {
   en: { placeholder: 'Promo code', apply: 'Apply', applied: 'Promo applied', remove: 'Remove', invalid: 'Invalid promo code.' },
 };
 
+// The backend's promo errors are English; show Georgian visitors the same
+// reasons in Georgian (the target-mismatch message already is Georgian).
+const KA_PROMO_ERRORS: Record<string, string> = {
+  'Invalid promo code.': 'პრომო კოდი არასწორია.',
+  'This promo code is no longer active.': 'ეს პრომო კოდი აღარ არის აქტიური.',
+  'This promo code has expired.': 'ამ პრომო კოდს ვადა გაუვიდა.',
+  'This promo code has reached its usage limit.': 'ამ პრომო კოდის გამოყენების ლიმიტი ამოწურულია.',
+  'This promo code is no longer available or has reached its usage limit.': 'ეს პრომო კოდი აღარ არის ხელმისაწვდომი ან ლიმიტი ამოწურულია.',
+};
+
+export function localizePromoError(message: string | undefined, lang: 'ka' | 'en'): string | undefined {
+  if (!message || lang !== 'ka') return message;
+  return KA_PROMO_ERRORS[message] ?? message;
+}
+
 export default function PromoCodeField({ targetType, targetId, lang, applied, onChange, disabled }: PromoCodeFieldProps) {
   const t = copy[lang];
   const [input, setInput] = useState('');
@@ -34,7 +49,7 @@ export default function PromoCodeField({ targetType, targetId, lang, applied, on
     try {
       onChange(await validatePromoCode(code, targetType, targetId));
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? t.invalid);
+      setError(localizePromoError(err?.response?.data?.message, lang) ?? t.invalid);
     } finally {
       setApplying(false);
     }
