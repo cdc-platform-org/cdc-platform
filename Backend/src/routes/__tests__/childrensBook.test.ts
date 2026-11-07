@@ -166,9 +166,10 @@ describe('Children\'s Book — state transitions', () => {
     expect(finished!.pdfStatus).toBe('CURRENT');
     expect(finished!.finalPdfBlobRef).toBeTruthy();
 
-    // A manual request on an already-current PDF is refused, not rebuilt.
+    // A manual request on an already-current PDF returns it, no rebuild.
     const pdfRes = await request(`/api/childrens-books/${bookId}/pdf`, user, 'POST');
-    expect(pdfRes.status).toBe(400);
+    expect(pdfRes.status).toBe(200);
+    expect((await prisma.bookProject.findUnique({ where: { id: bookId } }))!.pdfVersion).toBe(finished!.pdfVersion);
   });
 });
 
