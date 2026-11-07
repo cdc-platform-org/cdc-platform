@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, FormEvent, ChangeEvent } from 'react';
-import { ClipboardList, Plus, Trash2, Copy, Check, Lock, Unlock, Users, UploadCloud, Download, RefreshCw, ShieldAlert, FileText, Type, Video, Link2, Image as ImageIcon } from 'lucide-react';
+import { ClipboardList, Plus, Trash2, Copy, Check, Lock, Unlock, Users, UploadCloud, Download, RefreshCw, ShieldAlert, FileText, Type, Video, Link2, Image as ImageIcon, BarChart3, ListChecks, Shuffle } from 'lucide-react';
 import {
   getMyExamSessions,
   createExamSession,
@@ -15,6 +15,7 @@ import {
   ExamSessionSummary,
   ExamSessionDetail,
   ExamSubmissionRow,
+  ExamQuestionWithAnswer,
 } from '../../services/examProctoringService';
 import { SupportedLocale } from '../../utils/locale';
 
@@ -24,21 +25,21 @@ type VideoSourceMode = 'youtube' | 'upload';
 type SetupGuidePlatform = 'wordpress' | 'shopify' | 'html';
 type QuestionPreset = 'quick' | 'standard' | 'deep';
 
-const PRESET_COUNTS: Record<QuestionPreset, number> = { quick: 4, standard: 12, deep: 24 };
+const PRESET_COUNTS: Record<QuestionPreset, number> = { quick: 5, standard: 15, deep: 25 };
 
 const dictBase = {
   ka: {
     title: 'AI გამოცდის პროქტორინგი',
-    subtitle: 'შექმენით AI-გენერირებული სკრინინგ-გამოცდები კანდიდატებისთვის — უნიკალური ბმულით.',
+    subtitle: 'მიეცით ტექსტი, PDF, ფოტო ან ვიდეო — AI შეადგენს კითხვებს. თითოეულ მოსწავლესთან კითხვები და პასუხები სხვადასხვა რიგითაა არეული.',
     newExam: '+ ახალი გამოცდა',
     noExams: 'ჯერ არცერთი გამოცდა არ შეგიქმნიათ.',
     createFirst: 'შექმენით პირველი გამოცდა',
     examTitle: 'გამოცდის სახელი',
-    topic: 'თემა / პოზიცია',
-    topicPlaceholder: 'მაგ: Senior React დეველოპერი — hooks, state მართვა, წარმადობა',
+    topic: 'თემა / საგანი',
+    topicPlaceholder: 'მაგ: ბიოლოგია, VIII კლასი — უჯრედის აგებულება',
     description: 'აღწერა (არასავალდებულო)',
-    sourceUpload: 'წყარო მასალა (არასავალდებულო)',
-    sourceUploadHint: 'AI გამოიყენებს ამ მასალას დამატებით კონტექსტად კითხვების გენერირებისას.',
+    sourceUpload: 'სასწავლო მასალა (რეკომენდებული)',
+    sourceUploadHint: 'თუ მასალას მიუთითებთ, AI კითხვებს მხოლოდ ამ მასალიდან შეადგენს, მასალის ენაზე.',
     uploadFile: 'ფაილის ატვირთვა',
     uploadingFile: 'მუშავდება…',
     sourceAttached: 'მასალა მიბმულია ✓',
@@ -52,16 +53,33 @@ const dictBase = {
     sourceVideoYoutubePlaceholder: 'https://www.youtube.com/watch?v=...',
     sourceVideoTranscribeButton: 'ტრანსკრიფციის გენერაცია',
     sourceVideoTranscribing: 'მუშავდება… (შეიძლება რამდენიმე წუთი დასჭირდეს)',
-    sourceImageUploadCta: 'სურათის ატვირთვა',
-    sourceImageHint: 'ფოტო სახელმძღვანელოდან, სლაიდი ან სამუშაო ფურცელი — AI ამოიღებს ტექსტს ხედვის მეშვეობით.',
+    sourceImageUploadCta: 'ფოტოების ატვირთვა',
+    sourceImageHint: 'ერთი ან რამდენიმე ფოტო სახელმძღვანელოდან, სლაიდი ან სამუშაო ფურცელი — AI ამოიკითხავს ტექსტს.',
     sourceImageProcessing: 'სურათის ანალიზი…',
     presetTitle: 'კითხვების რაოდენობა',
-    presetQuick: 'სწრაფი ტესტი (3-5)',
-    presetStandard: 'სტანდარტული (10-15)',
-    presetDeep: 'ღრმა შეფასება (20+)',
-    mcqCount: 'ტესტის კითხვების რაოდენობა',
+    presetQuick: 'სწრაფი ტესტი (5)',
+    presetStandard: 'სტანდარტული (15)',
+    presetDeep: 'ღრმა შეფასება (25)',
+    mcqCount: 'ტესტის კითხვების რაოდენობა (1-50)',
     duration: 'ხანგრძლივობა (წუთი)',
     includeCode: 'დაამატე პროგრამირების კითხვა',
+    includePractical: 'დაამატე 1 ღია კითხვა (მოსწავლე წერს პასუხს, AI აფასებს)',
+    shuffleNote: 'თითოეულ მოსწავლეს კითხვების რიგი და პასუხების (A-D) რიგი ავტომატურად ერევა — მეზობლები ვერ გადაიწერენ.',
+    tabQuestions: 'კითხვები',
+    questionsTitle: 'გამოცდის კითხვები და სწორი პასუხები',
+    questionsHint: 'გადახედეთ კითხვებს მოსწავლეებისთვის გაგზავნამდე. მოსწავლეები ამ კითხვებს არეული რიგით ნახავენ.',
+    rubric: 'შეფასების კრიტერიუმი',
+    classSummary: 'კლასის შედეგები',
+    finishedCount: 'დაასრულა',
+    avgScore: 'საშუალო ქულა',
+    highLow: 'მაქს. / მინ.',
+    flaggedCount: 'დარღვევით',
+    questionStats: 'კითხვების ანალიზი (ყველაზე რთული ზემოთ)',
+    correctPct: 'სწორად უპასუხა',
+    exportCsv: 'შედეგების ჩამოტვირთვა (Excel/CSV)',
+    csvName: 'სახელი',
+    csvEmail: 'ელ. ფოსტა',
+    csvStarted: 'დაწყება',
     create: 'გამოცდის გენერირება',
     creating: 'AI აგენერირებს კითხვებს…',
     cancel: 'გაუქმება',
@@ -71,11 +89,11 @@ const dictBase = {
     reopen: 'ხელახლა გახსნა',
     delete: 'წაშლა',
     deleteConfirm: 'დარწმუნებული ხართ, რომ გსურთ ამ გამოცდის წაშლა?',
-    tabCandidate: 'კანდიდატის ბმული',
+    tabCandidate: 'მოსწავლის ბმული',
     tabEmbed: 'ჩაშენება',
     tabResults: 'შედეგები & ანალიტიკა',
-    candidateLinkTitle: 'კანდიდატის ბმული',
-    candidateLinkHint: 'გაუზიარეთ ეს ბმული კანდიდატებს პირდაპირ.',
+    candidateLinkTitle: 'მოსწავლის ბმული',
+    candidateLinkHint: 'გაუზიარეთ ეს ერთი ბმული ყველა მოსწავლეს — თითოეული შეიყვანს სახელს და ელ. ფოსტას.',
     embedTitle: 'ჩაშენების კოდი',
     embedHint: 'ჩასვით ეს კოდი თქვენი კარიერის გვერდზე — გამოჩნდება "შეფასების გავლა" ღილაკი.',
     setupGuideTitle: 'დაყენებისა და ინტეგრაციის სახელმძღვანელო',
@@ -99,8 +117,8 @@ const dictBase = {
     ],
     copy: 'კოპირება',
     copied: 'დაკოპირდა ✓',
-    submissionsTitle: 'კანდიდატების შედეგები',
-    noSubmissions: 'ჯერ არცერთ კანდიდატს არ ჩაუბარებია.',
+    submissionsTitle: 'მოსწავლეების შედეგები',
+    noSubmissions: 'ჯერ არცერთ მოსწავლეს არ ჩაუბარებია.',
     mcqScore: 'ტესტი',
     practicalScore: 'პრაქტიკული',
     totalScore: 'ჯამური',
@@ -126,7 +144,7 @@ const dictBase = {
   },
   en: {
     title: 'AI Exam Proctoring',
-    subtitle: 'Create AI-generated candidate screening exams — each with a unique link.',
+    subtitle: 'Give it text, a PDF, photos or a video — AI writes the questions. Every student gets the questions and answers in a different shuffled order.',
     newExam: '+ New Exam',
     noExams: "You haven't created any exams yet.",
     createFirst: 'Create your first exam',
@@ -134,8 +152,8 @@ const dictBase = {
     topic: 'Topic / Role',
     topicPlaceholder: 'e.g. Senior React Developer — hooks, state management, performance',
     description: 'Description (optional)',
-    sourceUpload: 'Source Material (optional)',
-    sourceUploadHint: 'AI will use this material as extra context when generating questions.',
+    sourceUpload: 'Study Material (recommended)',
+    sourceUploadHint: 'When you add material, AI writes the questions only from it, in the material\'s language.',
     uploadFile: 'Upload File',
     uploadingFile: 'Processing…',
     sourceAttached: 'Material attached ✓',
@@ -149,16 +167,33 @@ const dictBase = {
     sourceVideoYoutubePlaceholder: 'https://www.youtube.com/watch?v=...',
     sourceVideoTranscribeButton: 'Generate Transcript',
     sourceVideoTranscribing: 'Processing… (this can take a few minutes)',
-    sourceImageUploadCta: 'Upload Image',
-    sourceImageHint: 'A textbook photo, slide, or worksheet — AI will extract the text via vision.',
+    sourceImageUploadCta: 'Upload Photos',
+    sourceImageHint: 'One or more textbook photos, slides, or worksheets — AI will read the text.',
     sourceImageProcessing: 'Analyzing image…',
     presetTitle: 'Question Count',
-    presetQuick: 'Quick Quiz (3-5)',
-    presetStandard: 'Standard (10-15)',
-    presetDeep: 'Deep Assessment (20+)',
-    mcqCount: 'Multiple-choice question count',
+    presetQuick: 'Quick Quiz (5)',
+    presetStandard: 'Standard (15)',
+    presetDeep: 'Deep Assessment (25)',
+    mcqCount: 'Multiple-choice question count (1-50)',
     duration: 'Duration (minutes)',
     includeCode: 'Add a coding question',
+    includePractical: 'Add 1 open-ended question (written answer, graded by AI)',
+    shuffleNote: 'Each student automatically gets a different question order and A-D answer order, so neighbours can\'t copy.',
+    tabQuestions: 'Questions',
+    questionsTitle: 'Exam questions & answer key',
+    questionsHint: 'Review the questions before sharing the link. Students see them in a shuffled order.',
+    rubric: 'Grading rubric',
+    classSummary: 'Class summary',
+    finishedCount: 'Finished',
+    avgScore: 'Average score',
+    highLow: 'High / Low',
+    flaggedCount: 'Flagged',
+    questionStats: 'Question analysis (hardest first)',
+    correctPct: 'Answered correctly',
+    exportCsv: 'Download results (Excel/CSV)',
+    csvName: 'Name',
+    csvEmail: 'Email',
+    csvStarted: 'Started',
     create: 'Generate Exam',
     creating: 'AI is generating questions…',
     cancel: 'Cancel',
@@ -246,7 +281,7 @@ const inputClass =
   'w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500';
 const labelClass = 'block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5';
 
-const emptyForm = { title: '', topic: '', description: '', mcqCount: 5, durationMinutes: 30, includeCodeQuestion: false, rawContent: '' };
+const emptyForm = { title: '', topic: '', description: '', mcqCount: 15, durationMinutes: 30, includeCodeQuestion: false, includePracticalQuestion: false, rawContent: '' };
 
 function CopyButton({ text, label, copiedLabel }: { text: string; label: string; copiedLabel: string }) {
   const [copied, setCopied] = useState(false);
@@ -263,6 +298,187 @@ function CopyButton({ text, label, copiedLabel }: { text: string; label: string;
       {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
       {copied ? copiedLabel : label}
     </button>
+  );
+}
+
+type Dict = typeof dict[SupportedLocale];
+
+function QuestionsPanel({ questions, t }: { questions: ExamQuestionWithAnswer[]; t: Dict }) {
+  return (
+    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 p-6">
+      <h3 className="text-sm font-black tracking-wide flex items-center gap-1.5 mb-1">
+        <ListChecks className="w-4 h-4 text-slate-400" />
+        {t.questionsTitle} ({questions.length})
+      </h3>
+      <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t.questionsHint}</p>
+      <ol className="space-y-4">
+        {questions.map((q, i) => (
+          <li key={q.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+            <p className="text-sm font-bold text-slate-900 dark:text-white mb-2">
+              {i + 1}. {q.question}
+            </p>
+            {q.type === 'MCQ' && q.options ? (
+              <ul className="space-y-1">
+                {(['A', 'B', 'C', 'D'] as const).map((letter) => {
+                  const correct = q.correctAnswer === letter;
+                  return (
+                    <li
+                      key={letter}
+                      className={`text-xs rounded-md px-2 py-1 ${
+                        correct ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold' : 'text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      {letter}. {q.options![letter]} {correct && '✓'}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              q.correctAnswer && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <span className="font-bold">{t.rubric}:</span> {q.correctAnswer}
+                </p>
+              )
+            )}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function csvCell(value: unknown): string {
+  const text = value == null ? '' : String(value);
+  return /[",\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function ClassAnalytics({ detail, t }: { detail: ExamSessionDetail; t: Dict }) {
+  const finished = detail.submissions.filter((s) => s.status !== 'IN_PROGRESS');
+  const scores = finished.map((s) => s.totalScore ?? s.mcqScore).filter((v): v is number => v != null);
+  const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+  const high = scores.length ? Math.max(...scores) : null;
+  const low = scores.length ? Math.min(...scores) : null;
+  const flagged = finished.filter((s) => s.status === 'FLAGGED').length;
+
+  const mcqQuestions = detail.questions.filter((q) => q.type === 'MCQ');
+  const questionStats = mcqQuestions
+    .map((q, index) => {
+      const answered = finished.filter((s) => s.answers && s.answers[q.id]);
+      const correct = answered.filter((s) => s.answers![q.id] === q.correctAnswer).length;
+      const pct = finished.length ? Math.round((correct / finished.length) * 100) : 0;
+      return { q, index, correct, pct };
+    })
+    .sort((a, b) => a.pct - b.pct);
+
+  const handleExport = () => {
+    const header = [
+      t.csvName,
+      t.csvEmail,
+      t.status,
+      t.mcqScore,
+      t.practicalScore,
+      t.totalScore,
+      t.integrityScore,
+      t.tabSwitches,
+      t.copyPasteCount,
+      t.cameraAudioViolations,
+      t.csvStarted,
+      ...mcqQuestions.map((_, i) => `Q${i + 1}`),
+    ];
+    const rows = detail.submissions.map((s) => [
+      s.candidateName,
+      s.candidateEmail,
+      s.status,
+      s.mcqScore,
+      s.practicalScore,
+      s.totalScore,
+      s.integrityScore,
+      s.tabSwitches,
+      s.copyPasteCount,
+      s.cameraAudioViolations,
+      new Date(s.startedAt).toLocaleString('en-GB'),
+      ...mcqQuestions.map((q) => {
+        const a = s.answers?.[q.id];
+        if (!a) return '';
+        return a === q.correctAnswer ? `${a} ✓` : `${a} ✗`;
+      }),
+    ]);
+    // BOM so Excel opens Georgian text correctly.
+    const csv = '\ufeff' + [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${detail.title.replace(/[^\p{L}\p{N}]+/gu, '-').slice(0, 60) || 'exam'}-results.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4 mb-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <p className="text-xs font-black uppercase tracking-wide text-slate-500 flex items-center gap-1.5">
+          <BarChart3 className="w-4 h-4" />
+          {t.classSummary}
+        </p>
+        <button
+          type="button"
+          onClick={handleExport}
+          className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+        >
+          <Download className="w-3.5 h-3.5" />
+          {t.exportCsv}
+        </button>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center mb-4">
+        <div>
+          <p className="text-[10px] text-slate-400">{t.finishedCount}</p>
+          <p className="text-lg font-black">
+            {finished.length}/{detail.submissions.length}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] text-slate-400">{t.avgScore}</p>
+          <p className="text-lg font-black text-cyan-600 dark:text-cyan-400">{avg ?? '—'}</p>
+        </div>
+        <div>
+          <p className="text-[10px] text-slate-400">{t.highLow}</p>
+          <p className="text-lg font-black">
+            {high ?? '—'} / {low ?? '—'}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] text-slate-400">{t.flaggedCount}</p>
+          <p className="text-lg font-black text-rose-600 dark:text-rose-400">{flagged}</p>
+        </div>
+      </div>
+      {finished.length > 0 && questionStats.length > 0 && (
+        <>
+          <p className="text-[11px] font-bold text-slate-500 mb-2">{t.questionStats}</p>
+          <ul className="space-y-1.5">
+            {questionStats.map(({ q, index, correct, pct }) => (
+              <li key={q.id} className="text-xs">
+                <div className="flex items-center justify-between gap-3 mb-0.5">
+                  <span className="truncate text-slate-700 dark:text-slate-300">
+                    {index + 1}. {q.question}
+                  </span>
+                  <span className="shrink-0 font-bold text-slate-500">
+                    {t.correctPct}: {correct}/{finished.length} ({pct}%)
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                  <div
+                    className={`h-full ${pct < 40 ? 'bg-rose-500' : pct < 70 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -406,7 +622,7 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<ExamSessionDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
-  const [detailTab, setDetailTab] = useState<'candidate' | 'embed' | 'results'>('candidate');
+  const [detailTab, setDetailTab] = useState<'candidate' | 'questions' | 'embed' | 'results'>('candidate');
   const [setupPlatform, setSetupPlatform] = useState<SetupGuidePlatform>('wordpress');
 
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -504,13 +720,19 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
     }
   };
 
+  // Several photographed pages at once — each is read separately and the
+  // texts are joined in the order selected.
   const handleImageFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
     setUploadingSource(true);
     setCreateError(null);
     try {
-      const rawContent = await parseExamSourceImage(file);
+      const parts: string[] = [];
+      for (const file of files) {
+        parts.push(await parseExamSourceImage(file));
+      }
+      const rawContent = parts.join('\n\n---\n\n');
       setCreateForm((f) => ({ ...f, rawContent }));
     } catch (err: any) {
       setCreateError(err?.response?.data?.message ?? 'Unable to analyze this image.');
@@ -532,6 +754,7 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
         rawContent: createForm.rawContent || undefined,
         mcqCount: createForm.mcqCount,
         includeCodeQuestion: createForm.includeCodeQuestion,
+        includePracticalQuestion: createForm.includePracticalQuestion,
         durationMinutes: createForm.durationMinutes,
       });
       await loadSessions();
@@ -683,7 +906,7 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
 
               {sourceMode === 'text' && (
                 <textarea
-                  rows={4}
+                  rows={8}
                   className={inputClass}
                   value={createForm.rawContent}
                   onChange={(e) => setCreateForm({ ...createForm, rawContent: e.target.value })}
@@ -765,7 +988,7 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
                   </div>
                   <label className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 shrink-0">
                     {uploadingSource ? t.uploadingFile : t.sourceImageUploadCta}
-                    <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageFileChange} className="hidden" disabled={uploadingSource} />
+                    <input ref={imageInputRef} type="file" accept="image/*" multiple onChange={handleImageFileChange} className="hidden" disabled={uploadingSource} />
                   </label>
                 </div>
               )}
@@ -795,7 +1018,7 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
                 <input
                   type="number"
                   min={1}
-                  max={30}
+                  max={50}
                   required
                   className={inputClass}
                   value={createForm.mcqCount}
@@ -825,6 +1048,19 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
               />
               {t.includeCode}
             </label>
+            <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300">
+              <input
+                type="checkbox"
+                checked={createForm.includePracticalQuestion}
+                onChange={(e) => setCreateForm({ ...createForm, includePracticalQuestion: e.target.checked })}
+                className="w-4 h-4 rounded border-slate-300 dark:border-slate-700"
+              />
+              {t.includePractical}
+            </label>
+            <p className="flex items-start gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400">
+              <Shuffle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              {t.shuffleNote}
+            </p>
 
             <div className="flex gap-3">
               <button type="button" onClick={() => setShowCreateForm(false)} className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-300">
@@ -897,9 +1133,10 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
                 </button>
               </div>
 
-              <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+              <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
                 {([
                   ['candidate', t.tabCandidate],
+                  ['questions', t.tabQuestions],
                   ['embed', t.tabEmbed],
                   ['results', t.tabResults],
                 ] as [typeof detailTab, string][]).map(([key, label]) => (
@@ -925,6 +1162,7 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
                 </div>
               )}
 
+              {detailTab === 'questions' && <QuestionsPanel questions={detail.questions} t={t} />}
               {detailTab === 'embed' && (
                 <div className="space-y-4">
                   <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none p-6 space-y-3">
@@ -974,6 +1212,7 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
                     <p className="text-sm text-slate-500 dark:text-slate-400">{t.noSubmissions}</p>
                   ) : (
                     <div className="space-y-3">
+                      <ClassAnalytics detail={detail} t={t} />
                       {detail.submissions.map((sub) => (
                         <SubmissionCard key={sub.id} sub={sub} t={t} onError={setActionError} />
                       ))}

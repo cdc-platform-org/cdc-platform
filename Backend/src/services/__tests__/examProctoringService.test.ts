@@ -75,3 +75,35 @@ describe('examProctoringService.generateExamQuestions', () => {
     expect(result.filter((q) => q.type === 'CODE')).toHaveLength(1);
   });
 });
+
+describe('examProctoringService.generateExamQuestions — multiple-choice only', () => {
+  beforeEach(() => {
+    mockGenerateContent.mockReset();
+  });
+
+  it('returns only MCQs when includePracticalQuestion is false', async () => {
+    mockGeminiJson({ mcqQuestions: Array.from({ length: 15 }, (_, i) => makeMcq(i)) });
+    const result = await generateExamQuestions({ topic: 'Biology — cells', mcqCount: 15, includePracticalQuestion: false });
+    expect(result).toHaveLength(15);
+    expect(result.every((q) => q.type === 'MCQ')).toBe(true);
+  });
+
+  it('still requires the practical question when it was requested', async () => {
+    mockGeminiJson({ mcqQuestions: Array.from({ length: 5 }, (_, i) => makeMcq(i)) });
+    await expect(generateExamQuestions({ topic: 'Biology', mcqCount: 5 })).rejects.toThrow(ExamProctoringAiError);
+  });
+
+  it('trims extra MCQs down to the requested count', async () => {
+    mockGeminiJson({ mcqQuestions: Array.from({ length: 18 }, (_, i) => makeMcq(i)) });
+    const result = await generateExamQuestions({ topic: 'History', mcqCount: 15, includePracticalQuestion: false });
+    expect(result).toHaveLength(15);
+  });
+
+  it('puts the source material into the prompt so questions come from it', async () => {
+    mockGeminiJson({ mcqQuestions: Array.from({ length: 3 }, (_, i) => makeMcq(i)) });
+    await generateExamQuestions({ topic: 'ფოტოსინთეზი', mcqCount: 3, includePracticalQuestion: false, rawContent: 'მცენარეები იყენებენ მზის სინათლეს' });
+    const prompt = mockGenerateContent.mock.calls[0][0] as string;
+    expect(prompt).toContain('მცენარეები იყენებენ მზის სინათლეს');
+    expect(prompt).toContain('SOURCE MATERIAL');
+  });
+});

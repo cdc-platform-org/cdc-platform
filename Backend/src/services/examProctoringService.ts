@@ -16,8 +16,11 @@ import { callTextModel, isAiAgentConfigured, AiAgentError, InlineImagePart } fro
 // ExamQuestion rows (see that model's own comment), not regenerated per
 // attempt, since every candidate for a given exam needs the identical set.
 
+// generateJson() below falls back to Azure OpenAI when Gemini is missing or
+// down, so either provider is enough — the old Gemini-only check returned
+// 501 "not configured" on a server that only had Azure set up.
 export function isExamProctoringConfigured(): boolean {
-  return !!GEMINI_API_KEY;
+  return !!GEMINI_API_KEY || isAzureOpenAiConfigured();
 }
 
 // Extracts exam source material (photographed textbook page, slide,
@@ -192,7 +195,9 @@ const practicalSchema = z.object({
 });
 const generationResponseSchema = z.object({
   mcqQuestions: z.array(mcqSchema).min(1),
-  practicalQuestion: practicalSchema,
+  // Optional in the schema: omitted when includePracticalQuestion is false.
+  // generateExamQuestions checks it's present when it was requested.
+  practicalQuestion: practicalSchema.optional(),
   // Present only when includeCodeQuestion was requested — see
   // generateExamQuestions's own comment.
   codeQuestion: practicalSchema.optional(),
@@ -226,29 +231,47 @@ export interface GenerateExamQuestionsParams {
   // Adds one additional AI-graded question asking the candidate to write
   // or describe code, distinct from the open-ended PRACTICAL question.
   includeCodeQuestion?: boolean;
+  // Defaults to true (previous behaviour). false = multiple-choice only.
+  includePracticalQuestion?: boolean;
 }
+
+// How much uploaded/pasted source text is sent to the model. 8k used to cut
+// a textbook chapter off after a couple of pages, so questions only ever
+// covered the beginning of the material.
+const SOURCE_CONTEXT_CHARS = 40000;
 
 // Generates mcqCount multiple-choice questions, exactly 1 open-ended
 // practical question, and optionally 1 code question — scoped to the
 // business's free-text `topic` (e.g. "Senior React Developer — hooks,
 // state management, performance") plus any uploaded source material.
 export async function generateExamQuestions(params: GenerateExamQuestionsParams): Promise<GeneratedExamQuestion[]> {
-  const contextBlock = params.rawContent
-    ? `\n\nAdditional source material provided by the employer (job description, existing test bank, or reference document) — ground the questions in this where relevant:\n${params.rawContent.slice(0, 8000)}`
+  const includePractical = params.includePracticalQuestion !== false;
+  const source = params.rawContent?.trim() ? params.rawContent.trim().slice(0, SOURCE_CONTEXT_CHARS) : '';
+
+  // With source material (pasted text / PDF / photo / video transcript) the
+  // questions must come FROM that material — this is how a teacher builds a
+  // test from a lesson. Without it, fall back to the topic alone.
+  const sourceBlock = source
+    ? `\n\nSOURCE MATERIAL (the exam must be based on this content):\n"""\n${source}\n"""\n\nBase every question on facts, concepts and examples that actually appear in the SOURCE MATERIAL above. Cover the whole material evenly (beginning, middle and end), not just the first part. Do not ask about things the material does not contain.`
+    : '';
+  const languageRule = `\n\nLANGUAGE: write every question, option${includePractical ? ', practical question and rubric' : ''} in the same language as the ${source ? 'source material' : 'topic text'} (for example, Georgian material → Georgian questions). Keep code, formulas and technical terms exactly as written.`;
+  const mcqRules = `\n\nMultiple-choice rules: exactly 4 options (A, B, C, D), exactly one clearly correct answer, plausible distractors of similar length, no "all of the above" / "none of the above", no two questions testing the same fact. Distribute the correct letter roughly evenly across A, B, C and D.`;
+
+  const practicalInstruction = includePractical
+    ? `\n\nThen generate exactly 1 open-ended practical question that asks the test-taker to explain or apply the material in their own words (a few sentences of free-text answer expected). Also produce a grading rubric for that question — a short paragraph describing what a strong answer should include, for an AI grader to score against later.`
     : '';
   const codeInstruction = params.includeCodeQuestion
-    ? `\n\nThen generate exactly 1 coding question that asks the candidate to write or describe an implementation for a realistic problem related to "${params.topic}". Also produce a grading rubric for it — what a strong, correct, well-structured solution should include.`
+    ? `\n\nThen generate exactly 1 coding question that asks the test-taker to write or describe an implementation for a realistic problem related to "${params.topic}". Also produce a grading rubric for it — what a strong, correct, well-structured solution should include.`
     : '';
+  const practicalShapeField = includePractical ? `, "practicalQuestion": {"question": string, "rubric": string}` : '';
   const codeShapeField = params.includeCodeQuestion ? `, "codeQuestion": {"question": string, "rubric": string}` : '';
 
-  const prompt = `You are building a professional candidate-screening exam for an employer. The role/topic being tested is: "${params.topic}".${contextBlock}
+  const prompt = `You are an experienced teacher and assessment designer building a fair, high-quality exam. Topic / subject: "${params.topic}".${sourceBlock}
 
-Generate exactly ${params.mcqCount} multiple-choice questions that test real, practical job-relevant competence — a mix of theory and applied/scenario-based questions (not trivia). Each must have exactly 4 options (A, B, C, D) and one correct answer.
-
-Then generate exactly 1 open-ended practical question that asks the candidate to describe how they would approach a realistic task or problem related to "${params.topic}" (a few sentences of free-text answer expected). Also produce a grading rubric for that practical question — a short paragraph describing what a strong, competent answer should include, for an AI grader to score against later.${codeInstruction}
+Generate exactly ${params.mcqCount} multiple-choice questions that test real understanding — a mix of recall, comprehension and applied/scenario questions (not trivia).${mcqRules}${practicalInstruction}${codeInstruction}${languageRule}
 
 Respond with strict JSON matching this shape:
-{"mcqQuestions": [{"question": string, "options": {"A": string, "B": string, "C": string, "D": string}, "correctAnswer": "A"|"B"|"C"|"D"}], "practicalQuestion": {"question": string, "rubric": string}${codeShapeField}}`;
+{"mcqQuestions": [{"question": string, "options": {"A": string, "B": string, "C": string, "D": string}, "correctAnswer": "A"|"B"|"C"|"D"}]${practicalShapeField}${codeShapeField}}`;
 
   const { raw } = await generateJson(prompt, 0.7);
 
@@ -275,12 +298,17 @@ Respond with strict JSON matching this shape:
   if (result.data.mcqQuestions.length < params.mcqCount) {
     throw new ExamProctoringAiError('Gemini returned fewer questions than requested.');
   }
+  if (includePractical && !result.data.practicalQuestion) {
+    throw new ExamProctoringAiError('Gemini returned an unexpected question format.');
+  }
 
-  const mcqQuestions: GeneratedMcqQuestion[] = result.data.mcqQuestions.map((q, i) => ({ type: 'MCQ', order: i, ...q }));
-  const questions: GeneratedExamQuestion[] = [
-    ...mcqQuestions,
-    { type: 'PRACTICAL', order: mcqQuestions.length, ...result.data.practicalQuestion },
-  ];
+  const mcqQuestions: GeneratedMcqQuestion[] = result.data.mcqQuestions
+    .slice(0, params.mcqCount)
+    .map((q, i) => ({ type: 'MCQ', order: i, ...q }));
+  const questions: GeneratedExamQuestion[] = [...mcqQuestions];
+  if (includePractical && result.data.practicalQuestion) {
+    questions.push({ type: 'PRACTICAL', order: questions.length, ...result.data.practicalQuestion });
+  }
   if (result.data.codeQuestion) {
     questions.push({ type: 'CODE', order: questions.length, ...result.data.codeQuestion });
   }
@@ -322,13 +350,13 @@ export async function gradePracticalAnswer(params: {
     params.questionType === 'CODE'
       ? 'a coding question — evaluate correctness, structure, and whether it actually solves the problem, not just style'
       : 'a practical, open-ended screening question';
-  const prompt = `You are grading a job candidate's answer to ${framing} for the role/topic "${params.topic}".
+  const prompt = `You are grading a test-taker's answer (a student or a job candidate) to ${framing} for the topic "${params.topic}". Write the feedback in the same language as the question.
 
 Question: ${params.question}
 Grading rubric (what a strong answer should include): ${params.rubric}
 Candidate's answer: ${params.answer || '(no answer submitted)'}
 
-Score the answer from 0 to 100 based on how well it demonstrates real competence per the rubric — a genuinely strong, specific, correct answer should score 80+; a vague, generic, or incorrect answer should score well below that. Also write one short sentence of feedback for the hiring team.
+Score the answer from 0 to 100 based on how well it demonstrates real competence per the rubric — a genuinely strong, specific, correct answer should score 80+; a vague, generic, or incorrect answer should score well below that. Also write one short sentence of feedback for the teacher / reviewer.
 
 Respond with strict JSON matching this shape:
 {"score": number, "feedback": string}`;

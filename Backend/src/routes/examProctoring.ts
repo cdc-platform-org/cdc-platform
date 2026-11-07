@@ -33,16 +33,32 @@ import {
 } from '../services/mediaStudioService';
 import { recordExamGradingUsage } from '../services/billingService';
 import { generateExamReportPdf } from '../services/examReportService';
+import { shuffleQuestionsForSubmission, displayedToCanonicalLetter } from '../utils/examShuffle';
 
 const router = Router();
 
 // A candidate never has (or needs) a CDC account — this strike limit stops
 // one visitor from hammering the free-text grading endpoint, same posture
 // as chatApi.ts's public widget rate limit.
+//
+// Keyed per opaque token, not per IP alone: a whole classroom of students
+// usually shares ONE public IP (school NAT / one Wi-Fi), and a plain IP key
+// let only the first ~7 students in before everyone else got a 429 on
+// start/submit. Per-attempt routes are keyed by the student's own
+// submission token; the shared exam link routes get a classroom-sized
+// budget per IP + exam link.
 const candidateRateLimit = rateLimit({
   windowMs: 10 * 60 * 1000,
   max: 20,
   message: 'Too many requests. Please try again shortly.',
+  keyGenerator: (req) => `sub:${req.params.submissionToken ?? ''}:${req.ip}`,
+});
+
+const examLinkRateLimit = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 400,
+  message: 'Too many requests. Please try again shortly.',
+  keyGenerator: (req) => `link:${req.params.candidateToken ?? ''}:${req.ip}`,
 });
 
 // Separate, much looser budget for proctoring event logging — this fires
@@ -54,6 +70,7 @@ const proctoringEventRateLimit = rateLimit({
   windowMs: 10 * 60 * 1000,
   max: 200,
   message: 'Too many events reported. Please try again shortly.',
+  keyGenerator: (req) => `evt:${req.params.submissionToken ?? ''}:${req.ip}`,
 });
 
 // Grace window added on top of ExamSession.durationMinutes before a
@@ -62,10 +79,16 @@ const proctoringEventRateLimit = rateLimit({
 // request actually arriving, not an invitation to keep working past time.
 const SUBMIT_GRACE_MS = 2 * 60 * 1000;
 
-// Violations at or above this count force-submits the attempt as FLAGGED —
-// same "disqualified" concept as freelancerExam.ts's strike limit, just
-// named for what a business reviewing candidate reports needs to see.
-const PROCTORING_FLAG_THRESHOLD = 5;
+// "Hard" violations (tab switch / leaving fullscreen / paste) at or above
+// this count mark the attempt FLAGGED — matches the exam page's own
+// MAX_STRIKES auto-submit. Camera/microphone signals (face missing, looking
+// away, background voice) are deliberately NOT counted here: in a real
+// classroom they fire on normal behaviour (looking down at paper, a
+// neighbour or the teacher talking) and used to end students' exams within
+// a minute. They're still logged, lower the integrity score, and are shown
+// to the teacher in the report.
+const PROCTORING_FLAG_THRESHOLD = 3;
+const INTEGRITY_PENALTY_PER_SOFT_SIGNAL = 2;
 // Below this score (MCQ correctness or AI-graded PRACTICAL/CODE score), a
 // question counts toward AdaptiveStudyGuide.weakTopics.
 const PASS_MARK = 70;
@@ -79,7 +102,7 @@ const questionForCandidate = { id: true, order: true, type: true, question: true
 // PUBLIC — CANDIDATE-FACING (no CDC account, addressed by opaque tokens)
 // ============================================================
 
-router.get('/candidate/:candidateToken', candidateRateLimit, async (req: Request, res: Response) => {
+router.get('/candidate/:candidateToken', examLinkRateLimit, async (req: Request, res: Response) => {
   const session = await prisma.examSession.findUnique({ where: { candidateToken: req.params.candidateToken } });
   if (!session || session.status !== 'ACTIVE') {
     return res.status(404).json({ message: 'This exam link is no longer active.' });
@@ -89,7 +112,7 @@ router.get('/candidate/:candidateToken', candidateRateLimit, async (req: Request
   });
 });
 
-router.post('/candidate/:candidateToken/start', candidateRateLimit, async (req: Request, res: Response) => {
+router.post('/candidate/:candidateToken/start', examLinkRateLimit, async (req: Request, res: Response) => {
   const session = await prisma.examSession.findUnique({ where: { candidateToken: req.params.candidateToken } });
   if (!session || session.status !== 'ACTIVE') {
     return res.status(404).json({ message: 'This exam link is no longer active.' });
@@ -114,7 +137,40 @@ router.post('/candidate/:candidateToken/start', candidateRateLimit, async (req: 
     data: {
       submissionToken: submission.candidateToken,
       durationMinutes: session.durationMinutes,
-      questions,
+      secondsLeft: session.durationMinutes * 60,
+      // Personal order + re-lettered options for this student only — see
+      // utils/examShuffle.ts. /submit maps the letters back.
+      questions: shuffleQuestionsForSubmission(questions, submission.candidateToken),
+    },
+  });
+});
+
+// Lets a student who accidentally refreshed / closed the tab continue the
+// SAME attempt (same shuffled layout, same server-side timer) instead of
+// losing their work and starting a duplicate attempt. The exam page keeps
+// the submission token in the browser for this.
+router.get('/submissions/:submissionToken/resume', candidateRateLimit, async (req: Request, res: Response) => {
+  const submission = await prisma.examSubmission.findUnique({ where: { candidateToken: req.params.submissionToken } });
+  if (!submission) return res.status(404).json({ message: 'Exam attempt not found.' });
+  if (submission.status !== 'IN_PROGRESS') {
+    return res.status(409).json({ message: 'This exam attempt was already submitted.' });
+  }
+  const session = await prisma.examSession.findUnique({ where: { id: submission.examSessionId } });
+  if (!session) return res.status(404).json({ message: 'Exam session not found.' });
+
+  const endsAt = submission.startedAt.getTime() + session.durationMinutes * 60_000;
+  const secondsLeft = Math.max(0, Math.floor((endsAt - Date.now()) / 1000));
+  const questions = await prisma.examQuestion.findMany({
+    where: { examSessionId: session.id },
+    select: questionForCandidate,
+    orderBy: { order: 'asc' },
+  });
+  res.json({
+    data: {
+      submissionToken: submission.candidateToken,
+      durationMinutes: session.durationMinutes,
+      secondsLeft,
+      questions: shuffleQuestionsForSubmission(questions, submission.candidateToken),
     },
   });
 });
@@ -164,7 +220,14 @@ router.post('/submissions/:submissionToken/submit', candidateRateLimit, async (r
   });
   const mcqQuestions = questions.filter((q) => q.type === 'MCQ');
   const openQuestions = questions.filter((q) => q.type === 'PRACTICAL' || q.type === 'CODE');
-  const answers = result.data.answers;
+  // The student answered in their own shuffled layout — translate each MCQ
+  // letter back to the canonical letter stored on ExamQuestion before
+  // grading/storing, so reports and correctAnswer comparisons line up.
+  const mcqIds = new Set(mcqQuestions.map((q) => q.id));
+  const answers: Record<string, string> = {};
+  for (const [questionId, value] of Object.entries(result.data.answers)) {
+    answers[questionId] = mcqIds.has(questionId) ? displayedToCanonicalLetter(submission.candidateToken, questionId, value) : value;
+  }
 
   const mcqCorrectCount = mcqQuestions.filter((q) => answers[q.id] === q.correctAnswer).length;
   const mcqScore = mcqQuestions.length > 0 ? Math.round((mcqCorrectCount / mcqQuestions.length) * 100) : null;
@@ -187,6 +250,7 @@ router.post('/submissions/:submissionToken/submit', candidateRateLimit, async (r
   const copyPasteCount = countOf('COPY_PASTE');
   const cameraAudioViolations = countOf('FACE_MISSING') + countOf('MULTIPLE_FACES') + countOf('LOOKING_AWAY') + countOf('BACKGROUND_VOICE');
   const proctoringViolations = tabSwitches + copyPasteCount + cameraAudioViolations;
+  const hardViolations = tabSwitches + copyPasteCount;
   // Server-side timer enforcement — startedAt/durationMinutes, not anything
   // client-supplied, so stopping the browser's JS countdown (or simply
   // taking hours to call this endpoint) can no longer buy unlimited extra
@@ -196,8 +260,11 @@ router.post('/submissions/:submissionToken/submit', candidateRateLimit, async (r
   // of losing the candidate's answers outright.
   const deadline = submission.startedAt.getTime() + session.durationMinutes * 60_000 + SUBMIT_GRACE_MS;
   const timedOut = Date.now() > deadline;
-  const disqualified = proctoringViolations >= PROCTORING_FLAG_THRESHOLD || timedOut;
-  const integrityScore = Math.max(0, 100 - proctoringViolations * INTEGRITY_PENALTY_PER_VIOLATION);
+  const disqualified = hardViolations >= PROCTORING_FLAG_THRESHOLD || timedOut;
+  const integrityScore = Math.max(
+    0,
+    100 - hardViolations * INTEGRITY_PENALTY_PER_VIOLATION - cameraAudioViolations * INTEGRITY_PENALTY_PER_SOFT_SIGNAL
+  );
 
   // Atomically claim this submission for grading/completion before doing
   // any AI work — a concurrent submit call (double-click, client retry, or
@@ -529,6 +596,7 @@ router.post('/sessions', async (req: Request, res: Response) => {
       mcqCount: result.data.mcqCount,
       rawContent: result.data.rawContent,
       includeCodeQuestion: result.data.includeCodeQuestion,
+      includePracticalQuestion: result.data.includePracticalQuestion,
     });
   } catch (err) {
     const message = err instanceof ExamProctoringAiError ? err.message : 'Failed to generate exam questions.';

@@ -8,9 +8,23 @@ export const createExamSessionSchema = z.object({
   // POST /sessions/parse-source) — passed back on this call rather than
   // combining file-upload + JSON in one request, same two-step pattern as
   // PaymentMethod/Agent's own upload-then-submit flows.
-  rawContent: z.string().trim().max(20000).optional(),
-  mcqCount: z.number().int().min(1).max(30).default(5),
+  //
+  // Long PDFs / several photographed pages easily exceed the old 20k-char
+  // cap, which rejected the whole request with a 400 the UI could only show
+  // as "Unable to create exam". Now accepted up to 120k chars and simply
+  // truncated (generateExamQuestions only sends the first ~40k to the AI).
+  rawContent: z
+    .string()
+    .trim()
+    .max(200000)
+    .transform((v) => v.slice(0, 120000))
+    .optional(),
+  mcqCount: z.number().int().min(1).max(50).default(15),
   includeCodeQuestion: z.boolean().optional().default(false),
+  // The extra AI-graded open-ended question. Defaults to true so existing
+  // API callers keep today's behaviour; the dashboard form lets a teacher
+  // turn it off for a pure multiple-choice test.
+  includePracticalQuestion: z.boolean().optional().default(true),
   durationMinutes: z.number().int().min(5).max(180).default(30),
 });
 

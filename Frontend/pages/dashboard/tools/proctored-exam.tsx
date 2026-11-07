@@ -20,27 +20,27 @@ import ToolMediaBanner from '../../../src/components/tools/ToolMediaBanner';
 const dict = {
   ka: {
     title: 'AI გამოცდის პროქტორინგი',
-    subtitle: 'შექმენით AI-გენერირებული სკრინინგ-გამოცდები კანდიდატებისთვის — უნიკალური ბმულით, კამერისა და მიკროფონის კონტროლით.',
+    subtitle: 'შექმენით AI-გენერირებული გამოცდები მოსწავლეებისთვის ან კანდიდატებისთვის — ერთი ბმულით, არეული კითხვებით, კამერისა და მიკროფონის კონტროლით.',
   },
   en: {
     title: 'AI Exam Proctoring',
-    subtitle: 'Create AI-generated candidate screening exams — each with a unique link, camera and microphone monitoring.',
+    subtitle: 'Create AI-generated exams for students or candidates — one link, shuffled questions, camera and microphone monitoring.',
   },
   de: {
     title: 'AI Exam Proctoring',
-    subtitle: 'Create AI-generated candidate screening exams — each with a unique link, camera and microphone monitoring.',
+    subtitle: 'Create AI-generated exams for students or candidates — one link, shuffled questions, camera and microphone monitoring.',
   },
   es: {
     title: 'AI Exam Proctoring',
-    subtitle: 'Create AI-generated candidate screening exams — each with a unique link, camera and microphone monitoring.',
+    subtitle: 'Create AI-generated exams for students or candidates — one link, shuffled questions, camera and microphone monitoring.',
   },
   fr: {
     title: 'AI Exam Proctoring',
-    subtitle: 'Create AI-generated candidate screening exams — each with a unique link, camera and microphone monitoring.',
+    subtitle: 'Create AI-generated exams for students or candidates — one link, shuffled questions, camera and microphone monitoring.',
   },
   uk: {
     title: 'AI Exam Proctoring',
-    subtitle: 'Create AI-generated candidate screening exams — each with a unique link, camera and microphone monitoring.',
+    subtitle: 'Create AI-generated exams for students or candidates — one link, shuffled questions, camera and microphone monitoring.',
   },
 };
 
