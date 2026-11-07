@@ -45,7 +45,7 @@ import {
   BookLanguage,
   FinalGenerationStatus,
 } from '../../../src/services/childrensBookService';
-import PromoCodeField from '../../../src/components/shared/PromoCodeField';
+import PromoCodeField, { localizePromoError } from '../../../src/components/shared/PromoCodeField';
 import BookPreview from '../../../src/components/tools/childrensBook/BookPreview';
 import CharacterPhotoField from '../../../src/components/tools/childrensBook/CharacterPhotoField';
 import SiblingsFields, { SiblingDraft, SiblingPhotoEditor } from '../../../src/components/tools/childrensBook/SiblingsFields';
@@ -119,7 +119,7 @@ function ChildrensBookContent() {
       .catch((err: any) => {
         if (cancelled) return;
         clearPendingBookPromo(book.id);
-        setSavedPromoNotice(`${bookPromoCopy[promoLang].failed} (${code}): ${err?.response?.data?.message ?? ''}`.replace(/: $/, ''));
+        setSavedPromoNotice(`${bookPromoCopy[promoLang].failed} (${code}): ${localizePromoError(err?.response?.data?.message, promoLang) ?? ''}`.replace(/: $/, ''));
       });
     return () => { cancelled = true; };
   }, [book?.id, atPaymentStep, bookTotal, appliedPromo, promoLang]); // eslint-disable-line react-hooks/exhaustive-deps

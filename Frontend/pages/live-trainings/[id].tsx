@@ -19,6 +19,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
 import LearningRatingsSection from '../../src/components/shared/LearningRatingsSection';
 import LearningRatingSummary from '../../src/components/shared/LearningRatingSummary';
+import { localizePromoError } from '../../src/components/shared/PromoCodeField';
 
 const EN_STRINGS = {
   loading: 'Loading…',
@@ -186,7 +187,7 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
       const result = await validatePromoCode(promoInput.trim(), 'LIVE_TRAINING', id);
       setAppliedPromo(result);
     } catch (err: any) {
-      setPromoError(err?.response?.data?.message ?? t.invalidPromo);
+      setPromoError(localizePromoError(err?.response?.data?.message, contentLang) ?? t.invalidPromo);
     } finally {
       setApplyingPromo(false);
     }
