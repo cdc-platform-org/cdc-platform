@@ -1,0 +1,2019 @@
+{
+  "config": {
+    "argv": [
+      "/opt/hostedtoolcache/node/24.22.2/x64/bin/node",
+      "/home/runner/work/cdc-platform/cdc-platform/Frontend/node_modules/.bin/playwright",
+      "test"
+    ],
+    "configFile": "/home/runner/work/cdc-platform/cdc-platform/Frontend/playwright.config.ts",
+    "rootDir": "/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": true,
+    "fullyParallel": true,
+    "globalSetup": "/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/global-setup.ts",
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "ci": {
+        "commitHref": "https://github.com/cdc-platform-org/cdc-platform/commit/5eb583fc4cdf3c97e6799e1a175e03e6bb0c502f",
+        "commitHash": "5eb583fc4cdf3c97e6799e1a175e03e6bb0c502f",
+        "buildHref": "https://github.com/cdc-platform-org/cdc-platform/actions/runs/42398604438"
+      },
+      "gitCommit": {
+        "shortHash": "5eb583f",
+        "hash": "5eb583fc4cdf3c97e6799e1a175e03e6bb0c502f",
+        "subject": "feat(exam): live summary + how-it-works side panel on the create form (#56)",
+        "body": "feat(exam): live summary + how-it-works side panel on the create form (#56)\n\nFills the empty right half of the create page on desktop; stacks under\nthe form on mobile. Frontend-only.\n\n\nClaude-Session: https://claude.ai/code/session_019KqNLZUkksSUHZfNAPc7hH\n\nCo-authored-by: Claude <noreply@anthropic.com>",
+        "author": {
+          "name": "Iako Digital",
+          "email": "iakodigital@gmail.com",
+          "time": 1794074067000
+        },
+        "committer": {
+          "name": "GitHub",
+          "email": "noreply@github.com",
+          "time": 1794074067000
+        },
+        "branch": "main"
+      },
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/home/runner/work/cdc-platform/cdc-platform/Frontend/test-results",
+        "repeatEach": 1,
+        "retries": 2,
+        "metadata": {
+          "ci": {
+            "commitHref": "https://github.com/cdc-platform-org/cdc-platform/commit/5eb583fc4cdf3c97e6799e1a175e03e6bb0c502f",
+            "commitHash": "5eb583fc4cdf3c97e6799e1a175e03e6bb0c502f",
+            "buildHref": "https://github.com/cdc-platform-org/cdc-platform/actions/runs/42398604438"
+          },
+          "gitCommit": {
+            "shortHash": "5eb583f",
+            "hash": "5eb583fc4cdf3c97e6799e1a175e03e6bb0c502f",
+            "subject": "feat(exam): live summary + how-it-works side panel on the create form (#56)",
+            "body": "feat(exam): live summary + how-it-works side panel on the create form (#56)\n\nFills the empty right half of the create page on desktop; stacks under\nthe form on mobile. Frontend-only.\n\n\nClaude-Session: https://claude.ai/code/session_019KqNLZUkksSUHZfNAPc7hH\n\nCo-authored-by: Claude <noreply@anthropic.com>",
+            "author": {
+              "name": "Iako Digital",
+              "email": "iakodigital@gmail.com",
+              "time": 1794074067000
+            },
+            "committer": {
+              "name": "GitHub",
+              "email": "noreply@github.com",
+              "time": 1794074067000
+            },
+            "branch": "main"
+          },
+          "actualWorkers": 1
+        },
+        "id": "desktop",
+        "name": "desktop",
+        "testDir": "/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e",
+        "testIgnore": [
+          "/mobile-navigation\\.spec\\.ts/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/runner/work/cdc-platform/cdc-platform/Frontend/test-results",
+        "repeatEach": 1,
+        "retries": 2,
+        "metadata": {
+          "ci": {
+            "commitHref": "https://github.com/cdc-platform-org/cdc-platform/commit/5eb583fc4cdf3c97e6799e1a175e03e6bb0c502f",
+            "commitHash": "5eb583fc4cdf3c97e6799e1a175e03e6bb0c502f",
+            "buildHref": "https://github.com/cdc-platform-org/cdc-platform/actions/runs/42398604438"
+          },
+          "gitCommit": {
+            "shortHash": "5eb583f",
+            "hash": "5eb583fc4cdf3c97e6799e1a175e03e6bb0c502f",
+            "subject": "feat(exam): live summary + how-it-works side panel on the create form (#56)",
+            "body": "feat(exam): live summary + how-it-works side panel on the create form (#56)\n\nFills the empty right half of the create page on desktop; stacks under\nthe form on mobile. Frontend-only.\n\n\nClaude-Session: https://claude.ai/code/session_019KqNLZUkksSUHZfNAPc7hH\n\nCo-authored-by: Claude <noreply@anthropic.com>",
+            "author": {
+              "name": "Iako Digital",
+              "email": "iakodigital@gmail.com",
+              "time": 1794074067000
+            },
+            "committer": {
+              "name": "GitHub",
+              "email": "noreply@github.com",
+              "time": 1794074067000
+            },
+            "branch": "main"
+          },
+          "actualWorkers": 1
+        },
+        "id": "mobile",
+        "name": "mobile",
+        "testDir": "/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "/mobile-navigation\\.spec\\.ts/"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "html",
+        {
+          "open": "never"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "playwright-report/results.json"
+        }
+      ],
+      [
+        "github",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.62.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "auth.spec.ts",
+      "file": "auth.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "User Authentication",
+          "file": "auth.spec.ts",
+          "line": 4,
+          "column": 6,
+          "specs": [
+            {
+              "title": "registers a new self-serve Student account and lands authenticated",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1539,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:57:32.547Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "d748ac400d08b85935ef-60e1714b47b4a3614ed6",
+              "file": "auth.spec.ts",
+              "line": 5,
+              "column": 7
+            },
+            {
+              "title": "logs in with valid seeded credentials",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1431,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:57:34.195Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "d748ac400d08b85935ef-a6146e07c7f29656096a",
+              "file": "auth.spec.ts",
+              "line": 30,
+              "column": 7
+            },
+            {
+              "title": "rejects invalid credentials with an error and stays on the login page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1449,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:57:35.642Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "d748ac400d08b85935ef-1877ccb15af94114fb3b",
+              "file": "auth.spec.ts",
+              "line": 35,
+              "column": 7
+            },
+            {
+              "title": "logs out and returns to a guest header state",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1949,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:57:37.112Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "d748ac400d08b85935ef-4c139c31607e5160bba7",
+              "file": "auth.spec.ts",
+              "line": 45,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "blog-seo.spec.ts",
+      "file": "blog-seo.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Blog navigation",
+          "file": "blog-seo.spec.ts",
+          "line": 18,
+          "column": 6,
+          "specs": [
+            {
+              "title": "main nav \"Blog\" links go directly to /blog, never a homepage anchor",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 201,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:57:39.077Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1d0d3a59ebe6e0e691d7-92834865dc95356e0ff1",
+              "file": "blog-seo.spec.ts",
+              "line": 19,
+              "column": 7
+            },
+            {
+              "title": "the wide-viewport nav \"Blog\" link (>=1420px) lands on /blog",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1173,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:57:39.290Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1d0d3a59ebe6e0e691d7-862fb19c47d7470845fc",
+              "file": "blog-seo.spec.ts",
+              "line": 32,
+              "column": 7
+            },
+            {
+              "title": "the collapsed-menu \"Blog\" link (<1420px) lands on /blog",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1540,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:57:40.495Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1d0d3a59ebe6e0e691d7-7cfe5daf036a712b4118",
+              "file": "blog-seo.spec.ts",
+              "line": 39,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "Blog article social-share metadata (server-rendered)",
+          "file": "blog-seo.spec.ts",
+          "line": 54,
+          "column": 6,
+          "specs": [
+            {
+              "title": "each article gets its own real, absolute, distinct og:image; no cover falls back to the platform default",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 360,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:57:42.056Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1d0d3a59ebe6e0e691d7-56cef1b544d5915484d3",
+              "file": "blog-seo.spec.ts",
+              "line": 55,
+              "column": 7
+            },
+            {
+              "title": "Georgian title/description render correctly in the default-locale metadata",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 203,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:57:42.432Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1d0d3a59ebe6e0e691d7-ae532d8de71bf5099c27",
+              "file": "blog-seo.spec.ts",
+              "line": 93,
+              "column": 7
+            },
+            {
+              "title": "the English locale renders the English title/description instead",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 208,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:57:42.646Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1d0d3a59ebe6e0e691d7-fc13157a663cfa750987",
+              "file": "blog-seo.spec.ts",
+              "line": 99,
+              "column": 7
+            },
+            {
+              "title": "social share buttons target the article's own URL, not the homepage",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 611,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:57:42.863Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1d0d3a59ebe6e0e691d7-c79fce5d2ee85357f56e",
+              "file": "blog-seo.spec.ts",
+              "line": 105,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "childrens-book-audio.spec.ts",
+      "file": "childrens-book-audio.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "children book 5/10/20-page mock golden paths, audio revision, and reader UI",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 4313,
+                  "error": {
+                    "message": "Error: POST /childrens-books/2bf1a398-5dff-4639-9488-06c82851a701/pdf returned 400\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m",
+                    "stack": "Error: POST /childrens-books/2bf1a398-5dff-4639-9488-06c82851a701/pdf returned 400\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n    at apiJson (/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts:14:91)\n    at createBookPath (/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts:57:3)\n    at /home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts:130:16",
+                    "location": {
+                      "file": "/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts",
+                      "column": 91,
+                      "line": 14
+                    },
+                    "snippet": "\u001b[0m \u001b[90m 12 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m apiJson(api\u001b[33m:\u001b[39m \u001b[33mAPIRequestContext\u001b[39m\u001b[33m,\u001b[39m method\u001b[33m:\u001b[39m \u001b[32m'get'\u001b[39m \u001b[33m|\u001b[39m \u001b[32m'post'\u001b[39m \u001b[33m|\u001b[39m \u001b[32m'patch'\u001b[39m\u001b[33m,\u001b[39m route\u001b[33m:\u001b[39m string\u001b[33m,\u001b[39m data\u001b[33m?\u001b[39m\u001b[33m:\u001b[39m unknown) {\n \u001b[90m 13 |\u001b[39m   \u001b[36mconst\u001b[39m response \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m api[method](route\u001b[33m.\u001b[39mreplace(\u001b[35m/^\\//\u001b[39m\u001b[33m,\u001b[39m \u001b[32m''\u001b[39m)\u001b[33m,\u001b[39m data \u001b[33m===\u001b[39m undefined \u001b[33m?\u001b[39m undefined \u001b[33m:\u001b[39m { data })\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 14 |\u001b[39m   expect(response\u001b[33m.\u001b[39mok()\u001b[33m,\u001b[39m \u001b[32m`${method.toUpperCase()} ${route} returned ${response.status()}`\u001b[39m)\u001b[33m.\u001b[39mtoBeTruthy()\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                                                                           \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 15 |\u001b[39m   \u001b[36mreturn\u001b[39m response\u001b[33m.\u001b[39mjson()\u001b[33m;\u001b[39m\n \u001b[90m 16 |\u001b[39m }\n \u001b[90m 17 |\u001b[39m\u001b[0m"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts",
+                        "column": 91,
+                        "line": 14
+                      },
+                      "message": "Error: POST /childrens-books/2bf1a398-5dff-4639-9488-06c82851a701/pdf returned 400\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n\n  12 | async function apiJson(api: APIRequestContext, method: 'get' | 'post' | 'patch', route: string, data?: unknown) {\n  13 |   const response = await api[method](route.replace(/^\\//, ''), data === undefined ? undefined : { data });\n> 14 |   expect(response.ok(), `${method.toUpperCase()} ${route} returned ${response.status()}`).toBeTruthy();\n     |                                                                                           ^\n  15 |   return response.json();\n  16 | }\n  17 |\n    at apiJson (/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts:14:91)\n    at createBookPath (/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts:57:3)\n    at /home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts:130:16"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T17:57:43.577Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/home/runner/work/cdc-platform/cdc-platform/Frontend/test-results/childrens-book-audio-child-ddcf2-udio-revision-and-reader-UI-desktop/test-failed-1.png"
+                    },
+                    {
+                      "name": "video",
+                      "contentType": "video/webm",
+                      "path": "/home/runner/work/cdc-platform/cdc-platform/Frontend/test-results/childrens-book-audio-child-ddcf2-udio-revision-and-reader-UI-desktop/video.webm"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/runner/work/cdc-platform/cdc-platform/Frontend/test-results/childrens-book-audio-child-ddcf2-udio-revision-and-reader-UI-desktop/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts",
+                    "column": 91,
+                    "line": 14
+                  }
+                },
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 2530,
+                  "error": {
+                    "message": "Error: POST /childrens-books/7bb1a20e-3faa-4e8d-8c9b-b8bcb62932d1/pdf returned 400\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m",
+                    "stack": "Error: POST /childrens-books/7bb1a20e-3faa-4e8d-8c9b-b8bcb62932d1/pdf returned 400\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n    at apiJson (/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts:14:91)\n    at createBookPath (/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts:57:3)\n    at /home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts:130:16",
+                    "location": {
+                      "file": "/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts",
+                      "column": 91,
+                      "line": 14
+                    },
+                    "snippet": "\u001b[0m \u001b[90m 12 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m apiJson(api\u001b[33m:\u001b[39m \u001b[33mAPIRequestContext\u001b[39m\u001b[33m,\u001b[39m method\u001b[33m:\u001b[39m \u001b[32m'get'\u001b[39m \u001b[33m|\u001b[39m \u001b[32m'post'\u001b[39m \u001b[33m|\u001b[39m \u001b[32m'patch'\u001b[39m\u001b[33m,\u001b[39m route\u001b[33m:\u001b[39m string\u001b[33m,\u001b[39m data\u001b[33m?\u001b[39m\u001b[33m:\u001b[39m unknown) {\n \u001b[90m 13 |\u001b[39m   \u001b[36mconst\u001b[39m response \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m api[method](route\u001b[33m.\u001b[39mreplace(\u001b[35m/^\\//\u001b[39m\u001b[33m,\u001b[39m \u001b[32m''\u001b[39m)\u001b[33m,\u001b[39m data \u001b[33m===\u001b[39m undefined \u001b[33m?\u001b[39m undefined \u001b[33m:\u001b[39m { data })\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 14 |\u001b[39m   expect(response\u001b[33m.\u001b[39mok()\u001b[33m,\u001b[39m \u001b[32m`${method.toUpperCase()} ${route} returned ${response.status()}`\u001b[39m)\u001b[33m.\u001b[39mtoBeTruthy()\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                                                                           \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 15 |\u001b[39m   \u001b[36mreturn\u001b[39m response\u001b[33m.\u001b[39mjson()\u001b[33m;\u001b[39m\n \u001b[90m 16 |\u001b[39m }\n \u001b[90m 17 |\u001b[39m\u001b[0m"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts",
+                        "column": 91,
+                        "line": 14
+                      },
+                      "message": "Error: POST /childrens-books/7bb1a20e-3faa-4e8d-8c9b-b8bcb62932d1/pdf returned 400\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n\n  12 | async function apiJson(api: APIRequestContext, method: 'get' | 'post' | 'patch', route: string, data?: unknown) {\n  13 |   const response = await api[method](route.replace(/^\\//, ''), data === undefined ? undefined : { data });\n> 14 |   expect(response.ok(), `${method.toUpperCase()} ${route} returned ${response.status()}`).toBeTruthy();\n     |                                                                                           ^\n  15 |   return response.json();\n  16 | }\n  17 |\n    at apiJson (/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts:14:91)\n    at createBookPath (/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts:57:3)\n    at /home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts:130:16"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 1,
+                  "startTime": "2026-11-07T17:57:48.468Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/home/runner/work/cdc-platform/cdc-platform/Frontend/test-results/childrens-book-audio-child-ddcf2-udio-revision-and-reader-UI-desktop-retry1/test-failed-1.png"
+                    },
+                    {
+                      "name": "video",
+                      "contentType": "video/webm",
+                      "path": "/home/runner/work/cdc-platform/cdc-platform/Frontend/test-results/childrens-book-audio-child-ddcf2-udio-revision-and-reader-UI-desktop-retry1/video.webm"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/runner/work/cdc-platform/cdc-platform/Frontend/test-results/childrens-book-audio-child-ddcf2-udio-revision-and-reader-UI-desktop-retry1/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/home/runner/work/cdc-platform/cdc-platform/Frontend/test-results/childrens-book-audio-child-ddcf2-udio-revision-and-reader-UI-desktop-retry1/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts",
+                    "column": 91,
+                    "line": 14
+                  }
+                },
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 1874,
+                  "error": {
+                    "message": "Error: POST /childrens-books/84e49b16-d8fc-42e1-869a-a26007590ad2/pdf returned 400\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m",
+                    "stack": "Error: POST /childrens-books/84e49b16-d8fc-42e1-869a-a26007590ad2/pdf returned 400\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n    at apiJson (/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts:14:91)\n    at createBookPath (/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts:57:3)\n    at /home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts:130:16",
+                    "location": {
+                      "file": "/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts",
+                      "column": 91,
+                      "line": 14
+                    },
+                    "snippet": "\u001b[0m \u001b[90m 12 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m apiJson(api\u001b[33m:\u001b[39m \u001b[33mAPIRequestContext\u001b[39m\u001b[33m,\u001b[39m method\u001b[33m:\u001b[39m \u001b[32m'get'\u001b[39m \u001b[33m|\u001b[39m \u001b[32m'post'\u001b[39m \u001b[33m|\u001b[39m \u001b[32m'patch'\u001b[39m\u001b[33m,\u001b[39m route\u001b[33m:\u001b[39m string\u001b[33m,\u001b[39m data\u001b[33m?\u001b[39m\u001b[33m:\u001b[39m unknown) {\n \u001b[90m 13 |\u001b[39m   \u001b[36mconst\u001b[39m response \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m api[method](route\u001b[33m.\u001b[39mreplace(\u001b[35m/^\\//\u001b[39m\u001b[33m,\u001b[39m \u001b[32m''\u001b[39m)\u001b[33m,\u001b[39m data \u001b[33m===\u001b[39m undefined \u001b[33m?\u001b[39m undefined \u001b[33m:\u001b[39m { data })\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 14 |\u001b[39m   expect(response\u001b[33m.\u001b[39mok()\u001b[33m,\u001b[39m \u001b[32m`${method.toUpperCase()} ${route} returned ${response.status()}`\u001b[39m)\u001b[33m.\u001b[39mtoBeTruthy()\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                                                                           \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 15 |\u001b[39m   \u001b[36mreturn\u001b[39m response\u001b[33m.\u001b[39mjson()\u001b[33m;\u001b[39m\n \u001b[90m 16 |\u001b[39m }\n \u001b[90m 17 |\u001b[39m\u001b[0m"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts",
+                        "column": 91,
+                        "line": 14
+                      },
+                      "message": "Error: POST /childrens-books/84e49b16-d8fc-42e1-869a-a26007590ad2/pdf returned 400\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n\n  12 | async function apiJson(api: APIRequestContext, method: 'get' | 'post' | 'patch', route: string, data?: unknown) {\n  13 |   const response = await api[method](route.replace(/^\\//, ''), data === undefined ? undefined : { data });\n> 14 |   expect(response.ok(), `${method.toUpperCase()} ${route} returned ${response.status()}`).toBeTruthy();\n     |                                                                                           ^\n  15 |   return response.json();\n  16 | }\n  17 |\n    at apiJson (/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts:14:91)\n    at createBookPath (/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts:57:3)\n    at /home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts:130:16"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 2,
+                  "startTime": "2026-11-07T17:57:51.904Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/home/runner/work/cdc-platform/cdc-platform/Frontend/test-results/childrens-book-audio-child-ddcf2-udio-revision-and-reader-UI-desktop-retry2/test-failed-1.png"
+                    },
+                    {
+                      "name": "video",
+                      "contentType": "video/webm",
+                      "path": "/home/runner/work/cdc-platform/cdc-platform/Frontend/test-results/childrens-book-audio-child-ddcf2-udio-revision-and-reader-UI-desktop-retry2/video.webm"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/runner/work/cdc-platform/cdc-platform/Frontend/test-results/childrens-book-audio-child-ddcf2-udio-revision-and-reader-UI-desktop-retry2/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/childrens-book-audio.spec.ts",
+                    "column": 91,
+                    "line": 14
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "8c6f42a01c34675ef9ff-b4ba2a1ba29a0bebf90f",
+          "file": "childrens-book-audio.spec.ts",
+          "line": 90,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "course-enrollment.spec.ts",
+      "file": "course-enrollment.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Course Enrollment",
+          "file": "course-enrollment.spec.ts",
+          "line": 18,
+          "column": 6,
+          "specs": [
+            {
+              "title": "enrolled course appears on the student dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 851,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:57:54.345Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "69d395c0702f8d397709-0f97e1dab38dd8f20b90",
+              "file": "course-enrollment.spec.ts",
+              "line": 19,
+              "column": 7
+            },
+            {
+              "title": "enrolled student can open the course curriculum without a purchase prompt",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 6462,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  getByText(/checkout|ყიდვა|შეიძინე/i)\nExpected: \u001b[32m0\u001b[39m\nReceived: \u001b[31m1\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/checkout|ყიდვა|შეიძინე/i)\u001b[22m\n\u001b[2m    14 × locator resolved to 1 element\u001b[22m\n\u001b[2m       - unexpected value \"1\"\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  getByText(/checkout|ყიდვა|შეიძინე/i)\nExpected: \u001b[32m0\u001b[39m\nReceived: \u001b[31m1\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/checkout|ყიდვა|შეიძინე/i)\u001b[22m\n\u001b[2m    14 × locator resolved to 1 element\u001b[22m\n\u001b[2m       - unexpected value \"1\"\u001b[22m\n\n    at /home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/course-enrollment.spec.ts:31:61",
+                        "location": {
+                          "file": "/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/course-enrollment.spec.ts",
+                          "column": 61,
+                          "line": 31
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 29 |\u001b[39m     \u001b[90m// non-enrolled visitor gets on the same route (routes/courses.ts's\u001b[39m\n \u001b[90m 30 |\u001b[39m     \u001b[90m// checkCourseAccess would 403 the curriculum API call for them instead).\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 31 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[35m/checkout|ყიდვა|შეიძინე/i\u001b[39m))\u001b[33m.\u001b[39mtoHaveCount(\u001b[35m0\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                                             \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 32 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[32m'Section 1'\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible({ timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 33 |\u001b[39m   })\u001b[33m;\u001b[39m\n \u001b[90m 34 |\u001b[39m })\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/course-enrollment.spec.ts",
+                            "column": 61,
+                            "line": 31
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  getByText(/checkout|ყიდვა|შეიძინე/i)\nExpected: \u001b[32m0\u001b[39m\nReceived: \u001b[31m1\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/checkout|ყიდვა|შეიძინე/i)\u001b[22m\n\u001b[2m    14 × locator resolved to 1 element\u001b[22m\n\u001b[2m       - unexpected value \"1\"\u001b[22m\n\n\n  29 |     // non-enrolled visitor gets on the same route (routes/courses.ts's\n  30 |     // checkCourseAccess would 403 the curriculum API call for them instead).\n> 31 |     await expect(page.getByText(/checkout|ყიდვა|შეიძინე/i)).toHaveCount(0);\n     |                                                             ^\n  32 |     await expect(page.getByText('Section 1')).toBeVisible({ timeout: 10000 });\n  33 |   });\n  34 | });\n    at /home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/course-enrollment.spec.ts:31:61"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:57:55.298Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/cdc-platform/cdc-platform/Frontend/test-results/course-enrollment-Course-E-761c0-m-without-a-purchase-prompt-desktop/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/home/runner/work/cdc-platform/cdc-platform/Frontend/test-results/course-enrollment-Course-E-761c0-m-without-a-purchase-prompt-desktop/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/home/runner/work/cdc-platform/cdc-platform/Frontend/test-results/course-enrollment-Course-E-761c0-m-without-a-purchase-prompt-desktop/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/course-enrollment.spec.ts",
+                        "column": 61,
+                        "line": 31
+                      }
+                    },
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1140,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-11-07T17:58:02.211Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/home/runner/work/cdc-platform/cdc-platform/Frontend/test-results/course-enrollment-Course-E-761c0-m-without-a-purchase-prompt-desktop-retry1/trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "flaky"
+                }
+              ],
+              "id": "69d395c0702f8d397709-fdcdb21c9b2a129cdf97",
+              "file": "course-enrollment.spec.ts",
+              "line": 25,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "digital-tool-access-gate.spec.ts",
+      "file": "digital-tool-access-gate.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "an unentitled learner sees an access-required state instead of the Media Studio tool",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 495,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T17:58:03.597Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "eef80dcf60348fa90da7-84319a08fd6e3e6e36b6",
+          "file": "digital-tool-access-gate.spec.ts",
+          "line": 6,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "educator-hub-i18n.spec.ts",
+      "file": "educator-hub-i18n.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "Educator Hub (ka) renders real copy, not raw i18n keys, on direct load and after refresh",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1286,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T17:58:04.110Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "133831f5dd3b0479da4a-7ecc1cdb74e4aa41fcac",
+          "file": "educator-hub-i18n.spec.ts",
+          "line": 40,
+          "column": 5
+        },
+        {
+          "title": "Educator Hub (en) renders real English copy, not raw i18n keys or Georgian fallback text, on direct load",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 739,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T17:58:05.408Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "133831f5dd3b0479da4a-45ca9c6a51b7d600e7f4",
+          "file": "educator-hub-i18n.spec.ts",
+          "line": 54,
+          "column": 5
+        },
+        {
+          "title": "Educator Hub (de) renders real German copy on direct load — spot-checks a third locale beyond ka/en",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 702,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T17:58:06.161Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "133831f5dd3b0479da4a-d0a84f0085c1ac1b975c",
+          "file": "educator-hub-i18n.spec.ts",
+          "line": 68,
+          "column": 5
+        },
+        {
+          "title": "every Educator Hub tab (including Certificates) is free of raw i18n keys after a hard refresh",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2194,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T17:58:06.878Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "133831f5dd3b0479da4a-575f55db55e97b407f4a",
+          "file": "educator-hub-i18n.spec.ts",
+          "line": 74,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "iako-mentor-journey.spec.ts",
+      "file": "iako-mentor-journey.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "realistic learner journey: Digital Tools -> IAKO -> in-scope help, screenshot, refusal, Today's Guide",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "description": "Requires a real, working AI provider key — CI only ever sets placeholder Azure OpenAI values and no Gemini key, so this must be run locally with real credentials before a PR.",
+                  "location": {
+                    "file": "/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/iako-mentor-journey.spec.ts",
+                    "line": 29,
+                    "column": 6
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T17:58:09.090Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "Requires a real, working AI provider key — CI only ever sets placeholder Azure OpenAI values and no Gemini key, so this must be run locally with real credentials before a PR.",
+                      "location": {
+                        "file": "/home/runner/work/cdc-platform/cdc-platform/Frontend/e2e/iako-mentor-journey.spec.ts",
+                        "line": 29,
+                        "column": 6
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "3373a62d65bced53a5f3-bc729eb06853e21d5218",
+          "file": "iako-mentor-journey.spec.ts",
+          "line": 31,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "learning-ratings.spec.ts",
+      "file": "learning-ratings.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "course review persists and editing keeps one review per learner",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3400,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T17:58:09.094Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d290d251173cc671613c-fe699d5d174a11b55560",
+          "file": "learning-ratings.spec.ts",
+          "line": 14,
+          "column": 7
+        },
+        {
+          "title": "live training review persists and editing keeps one review per learner",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2936,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T17:58:12.508Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d290d251173cc671613c-88be6059f930d7a3ade3",
+          "file": "learning-ratings.spec.ts",
+          "line": 14,
+          "column": 7
+        }
+      ]
+    },
+    {
+      "title": "live-training-checkout.spec.ts",
+      "file": "live-training-checkout.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Public live training registration",
+          "file": "live-training-checkout.spec.ts",
+          "line": 35,
+          "column": 6,
+          "specs": [
+            {
+              "title": "callback form collects contact details without granting enrollment",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2068,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:58:15.463Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c733ae98182a0d165a6e-60a5859e330bb7726a2d",
+              "file": "live-training-checkout.spec.ts",
+              "line": 36,
+              "column": 7
+            },
+            {
+              "title": "paid registration opens authentication and public videos use safe embeds",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 978,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:58:17.544Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c733ae98182a0d165a6e-0ee2a15b3c4deb77f495",
+              "file": "live-training-checkout.spec.ts",
+              "line": 54,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "Live training promo code field",
+          "file": "live-training-checkout.spec.ts",
+          "line": 68,
+          "column": 6,
+          "specs": [
+            {
+              "title": "guests see the promo field, and applying asks them to sign in first",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1775,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:58:18.534Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c733ae98182a0d165a6e-44ee2a9d0fa9de66552f",
+              "file": "live-training-checkout.spec.ts",
+              "line": 69,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "Authenticated live training checkout",
+          "file": "live-training-checkout.spec.ts",
+          "line": 81,
+          "column": 6,
+          "specs": [
+            {
+              "title": "ka uses the expected gateway and never reports enrollment on failure",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 764,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:58:20.322Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c733ae98182a0d165a6e-e2b3768fd342232610ca",
+              "file": "live-training-checkout.spec.ts",
+              "line": 85,
+              "column": 9
+            },
+            {
+              "title": "en uses the expected gateway and never reports enrollment on failure",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 779,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:58:21.099Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c733ae98182a0d165a6e-da862375e274d4efad2d",
+              "file": "live-training-checkout.spec.ts",
+              "line": 85,
+              "column": 9
+            },
+            {
+              "title": "promo removal restores price and free checkout requires server-confirmed enrollment",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2138,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:58:21.890Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c733ae98182a0d165a6e-fc2c01b92f210506b39f",
+              "file": "live-training-checkout.spec.ts",
+              "line": 109,
+              "column": 7
+            },
+            {
+              "title": "checkout redirects to the provided gateway without creating a local enrollment",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 685,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:58:24.041Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c733ae98182a0d165a6e-5c61334936c061685b0c",
+              "file": "live-training-checkout.spec.ts",
+              "line": 145,
+              "column": 7
+            },
+            {
+              "title": "admin can preview and remove both saved video URLs",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1276,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:58:24.739Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c733ae98182a0d165a6e-8c44a9546e5ea80a116b",
+              "file": "live-training-checkout.spec.ts",
+              "line": 156,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "live-training-invite.spec.ts",
+      "file": "live-training-invite.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Live Training QR/link invite redemption — signed-in learner",
+          "file": "live-training-invite.spec.ts",
+          "line": 9,
+          "column": 6,
+          "specs": [
+            {
+              "title": "a signed-in learner redeems a free-training invite and lands enrolled",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2386,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:58:26.032Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e1fd83b61cd0c6a3cb5a-6e47939e9a700c670693",
+              "file": "live-training-invite.spec.ts",
+              "line": 12,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "Live Training QR/link invite redemption — fresh guest",
+          "file": "live-training-invite.spec.ts",
+          "line": 19,
+          "column": 6,
+          "specs": [
+            {
+              "title": "a paid training invite is rejected — payment can never be bypassed by a QR/link",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1696,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:58:28.434Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e1fd83b61cd0c6a3cb5a-c711d8d539b81c652070",
+              "file": "live-training-invite.spec.ts",
+              "line": 25,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "notification-bell.spec.ts",
+      "file": "notification-bell.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Notification Bell",
+          "file": "notification-bell.spec.ts",
+          "line": 12,
+          "column": 6,
+          "specs": [
+            {
+              "title": "shows an unread badge and the seeded notification in the dropdown",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 842,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:58:30.145Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "46ffc6b787edacf52477-dee728d2157724ffe91d",
+              "file": "notification-bell.spec.ts",
+              "line": 13,
+              "column": 7
+            },
+            {
+              "title": "clicking a notification marks it read and navigates to the notifications page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 926,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:58:31.000Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "46ffc6b787edacf52477-2583b7a90a8524295c53",
+              "file": "notification-bell.spec.ts",
+              "line": 28,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "store-purchase.spec.ts",
+      "file": "store-purchase.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Store Purchases",
+          "file": "store-purchase.spec.ts",
+          "line": 14,
+          "column": 6,
+          "specs": [
+            {
+              "title": "browsing the marketplace hides internal QA products",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1197,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:58:31.939Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e36426c0bbfa7d734536-d79004ccd9ce742aecaa",
+              "file": "store-purchase.spec.ts",
+              "line": 15,
+              "column": 7
+            },
+            {
+              "title": "claiming a free product unlocks the download button",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1299,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:58:33.149Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e36426c0bbfa7d734536-42c4866811ae6337f38a",
+              "file": "store-purchase.spec.ts",
+              "line": 27,
+              "column": 7
+            },
+            {
+              "title": "a verified-purchase review can be submitted on an owned product",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1000,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:58:34.459Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e36426c0bbfa7d734536-09abde6bb76a96ce19b8",
+              "file": "store-purchase.spec.ts",
+              "line": 49,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "mobile-navigation.spec.ts",
+      "file": "mobile-navigation.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Mobile Navigation — guest",
+          "file": "mobile-navigation.spec.ts",
+          "line": 17,
+          "column": 6,
+          "specs": [
+            {
+              "title": "guest sees a login button directly in the header, not only inside the hamburger drawer",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile",
+                  "projectName": "mobile",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 959,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:58:35.938Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c5769ca8d3a9eeb2f0b2-87e86539c40058de234f",
+              "file": "mobile-navigation.spec.ts",
+              "line": 18,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "Mobile Navigation — authenticated",
+          "file": "mobile-navigation.spec.ts",
+          "line": 25,
+          "column": 6,
+          "specs": [
+            {
+              "title": "authenticated user sees the avatar and notification bell directly in the header",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile",
+                  "projectName": "mobile",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1066,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:58:36.994Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c5769ca8d3a9eeb2f0b2-8d562ee845e696a02323",
+              "file": "mobile-navigation.spec.ts",
+              "line": 31,
+              "column": 7
+            },
+            {
+              "title": "hamburger drawer opens and closes, and its own auth-state row still works",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile",
+                  "projectName": "mobile",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1198,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:58:38.086Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c5769ca8d3a9eeb2f0b2-a38aa8018aed3cd23ac5",
+              "file": "mobile-navigation.spec.ts",
+              "line": 40,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "Mobile Navigation — back button",
+          "file": "mobile-navigation.spec.ts",
+          "line": 52,
+          "column": 6,
+          "specs": [
+            {
+              "title": "browser back navigation after login still shows authenticated header state",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile",
+                  "projectName": "mobile",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2016,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T17:58:39.296Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c5769ca8d3a9eeb2f0b2-ca0764c8b7b753fb4ad6",
+              "file": "mobile-navigation.spec.ts",
+              "line": 57,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-07T17:57:30.251Z",
+    "duration": 71133.216,
+    "expected": 38,
+    "skipped": 1,
+    "unexpected": 1,
+    "flaky": 1
+  }
+}
