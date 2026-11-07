@@ -52,7 +52,7 @@ import SiblingsFields, { SiblingDraft, SiblingPhotoEditor } from '../../../src/c
 import PageThumbnail from '../../../src/components/tools/childrensBook/PageThumbnail';
 import StoryTextEditor from '../../../src/components/tools/childrensBook/StoryTextEditor';
 import PrintSettingsPanel from '../../../src/components/tools/childrensBook/PrintSettingsPanel';
-import { PromoValidationResult } from '../../../src/services/paymentService';
+import { PromoValidationResult, validatePromoCode } from '../../../src/services/paymentService';
 import ToolMediaBanner from '../../../src/components/tools/ToolMediaBanner';
 
 const GENERATING_STATUSES = ['CHARACTER_PREVIEW_GENERATING', 'FINAL_GENERATING', 'FINAL_QA', 'REVISION_REQUESTED', 'REVISION_GENERATING', 'REVISION_QA'];
@@ -61,6 +61,24 @@ const PHOTO_EDITABLE_STATUSES = ['DRAFT', 'STORY_PLAN_READY', 'CHARACTER_PREVIEW
 // Story text stays editable until payment (no page picture exists yet).
 const TEXT_EDITABLE_STATUSES = ['STORY_PLAN_READY', 'CHARACTER_PREVIEW_READY', 'CHARACTER_APPROVED'];
 const TEXT_FIELD_MAX = 500;
+
+// Promo code typed on the create form, kept per book until the payment step
+// applies it. Browser storage can be unavailable (private mode), so every
+// access is guarded; the payment step's own promo field still works then.
+const BOOK_PROMO_KEY = (bookId: string) => `cdc_book_promo_${bookId}`;
+function savePendingBookPromo(bookId: string, code: string) {
+  try { localStorage.setItem(BOOK_PROMO_KEY(bookId), code); } catch { /* ignore */ }
+}
+function readPendingBookPromo(bookId: string): string | null {
+  try { return localStorage.getItem(BOOK_PROMO_KEY(bookId)); } catch { return null; }
+}
+function clearPendingBookPromo(bookId: string) {
+  try { localStorage.removeItem(BOOK_PROMO_KEY(bookId)); } catch { /* ignore */ }
+}
+const bookPromoCopy = {
+  ka: { label: 'პრომო კოდი (არასავალდებულო)', placeholder: 'მაგ. SALE20', hint: 'ფასდაკლება ავტომატურად გამოიყენება გადახდის ნაბიჯზე.', failed: 'შენახული პრომო კოდი ვერ გამოვიყენეთ' },
+  en: { label: 'Promo code (optional)', placeholder: 'e.g. SALE20', hint: 'The discount is applied automatically at the payment step.', failed: 'Could not apply your saved promo code' },
+};
 // Must match Backend/src/services/bookIllustrationStyles.ts.
 type IllustrationStyleValue = 'STORYBOOK_WATERCOLOR' | 'MODERN_3D' | 'SOFT_DIGITAL' | 'CARTOON' | 'FANTASY' | 'CLASSIC';
 
@@ -81,6 +99,30 @@ function ChildrensBookContent() {
   const [genStatus, setGenStatus] = useState<FinalGenerationStatus | null>(null);
   const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
   const promoLang: 'ka' | 'en' = router.locale === 'ka' ? 'ka' : 'en';
+  // Code typed on the create form. A book's price only exists once the book
+  // does, so the code is saved per book and applied automatically when the
+  // payment step opens (validated server-side against the real book there).
+  const [formPromo, setFormPromo] = useState('');
+  const [savedPromoNotice, setSavedPromoNotice] = useState<string | null>(null);
+
+  const atPaymentStep = !!book && book.status === 'CHARACTER_APPROVED' && !!book.previewConfirmedAt && !devPaymentSimulationEnabled;
+  const bookTotal = book ? (book.audioAddOnPurchased ? book.totalPriceGel : book.priceGel) : 0;
+  // Apply the create-form code once the payment step is showing (and again
+  // after the audio add-on changes the price, which clears the preview).
+  useEffect(() => {
+    if (!book || !atPaymentStep || appliedPromo) return;
+    const code = readPendingBookPromo(book.id);
+    if (!code) return;
+    let cancelled = false;
+    validatePromoCode(code, 'CHILDRENS_BOOK', book.id)
+      .then((result) => { if (!cancelled) { setAppliedPromo(result); setSavedPromoNotice(null); } })
+      .catch((err: any) => {
+        if (cancelled) return;
+        clearPendingBookPromo(book.id);
+        setSavedPromoNotice(`${bookPromoCopy[promoLang].failed} (${code}): ${err?.response?.data?.message ?? ''}`.replace(/: $/, ''));
+      });
+    return () => { cancelled = true; };
+  }, [book?.id, atPaymentStep, bookTotal, appliedPromo, promoLang]); // eslint-disable-line react-hooks/exhaustive-deps
   const previewUrlRef = useRef<string | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -296,6 +338,7 @@ function ChildrensBookContent() {
           })),
         },
       });
+      if (formPromo.trim()) savePendingBookPromo(created.id, formPromo.trim().toUpperCase());
       // Photos go up after the book exists. Sibling index = position among
       // the named siblings, the same order the server stored them in.
       const uploads: Array<{ file: File; sibling?: number }> = [];
@@ -474,6 +517,17 @@ function ChildrensBookContent() {
                   ))}
                 </div>
               </div>
+            </div>
+            <div className="mt-5" data-testid="book-form-promo">
+              <label htmlFor="book-form-promo" className="block text-sm font-medium text-gray-700 mb-1">{bookPromoCopy[promoLang].label}</label>
+              <input
+                id="book-form-promo"
+                value={formPromo}
+                onChange={(e) => setFormPromo(e.target.value.toUpperCase())}
+                placeholder={bookPromoCopy[promoLang].placeholder}
+                className="w-full sm:max-w-xs rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">{bookPromoCopy[promoLang].hint}</p>
             </div>
             {error && <p className="text-red-600 text-sm mt-3">{error}</p>}
             <button
@@ -703,9 +757,15 @@ function ChildrensBookContent() {
                           targetId={book.id}
                           lang={promoLang}
                           applied={appliedPromo}
-                          onChange={setAppliedPromo}
+                          onChange={(promo) => {
+                            setAppliedPromo(promo);
+                            setSavedPromoNotice(null);
+                            // A code removed by hand must not come back on its own.
+                            if (!promo) clearPendingBookPromo(book.id);
+                          }}
                           disabled={busy}
                         />
+                        {savedPromoNotice && <p className="text-xs text-red-500 mt-1">{savedPromoNotice}</p>}
                       </div>
                     </div>
                   )}
