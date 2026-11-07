@@ -11,7 +11,7 @@ import { prisma } from '../lib/prisma';
 
 export const TUTOR_TRIAL_DAYS = 5;
 export const TUTOR_SUBSCRIPTION_PRICE_GEL = 5000; // 50.00 GEL, minor units (tetri)
-const TUTOR_SUBSCRIPTION_PERIOD_DAYS = 30;
+export const TUTOR_SUBSCRIPTION_PERIOD_DAYS = 30;
 
 export class TutorTrialAlreadyUsedError extends Error {
   constructor() {

@@ -1,18 +1,30 @@
 import apiClient from './apiClient';
 
+export type PaymentPurpose =
+  | 'COURSE'
+  | 'MENTORSHIP'
+  | 'GIG_ESCROW_FUNDING'
+  | 'PRODUCT'
+  | 'HR_SUPPORT'
+  | 'LIVE_TRAINING'
+  | 'ENGLISH_TUTOR_SUBSCRIPTION'
+  | 'CHILDRENS_BOOK';
+
 export interface CoursePaymentRow {
   id: string;
   gateway: 'BOG' | 'STRIPE';
   bogOrderId: string;
   user: { id: string; name: string; email: string };
-  purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING';
+  purpose: PaymentPurpose;
   courseId: string;
   courseTitle: string;
   amount: number;
   currency: string;
-  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'REFUNDED';
+  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'REFUNDED' | 'PARTIALLY_REFUNDED';
   createdAt: string;
   completedAt: string | null;
+  // Minor units already refunded (BOG only; always 0 for Stripe rows).
+  refundedAmount: number;
 }
 
 export async function getCoursePayments(params?: { page?: number; pageSize?: number; status?: string; purpose?: string }): Promise<{
@@ -35,9 +47,45 @@ export async function reverifyStripePayment(paymentId: string): Promise<CoursePa
   return response.data.data;
 }
 
-export async function refundCoursePayment(paymentId: string): Promise<{ message: string }> {
-  const response = await apiClient.post<{ message: string }>(`/admin/finance/course-payments/${paymentId}/refund`);
+export interface RefundPaymentPayload {
+  // Major units (e.g. 2.5 = 2.50 GEL). Omit to refund everything that is left.
+  amount?: number;
+  revokeAccess: boolean;
+  // true = already refunded in BOG's own dashboard; only record it here.
+  recordOnly: boolean;
+  reason?: string;
+}
+
+export interface RefundPaymentResult {
+  refundId: string;
+  amount: number;
+  refundedAmount: number;
+  status: 'REFUNDED' | 'PARTIALLY_REFUNDED';
+  access: { revoked: boolean; note: string };
+  clawbackAmount: number;
+}
+
+export async function refundPayment(paymentId: string, payload: RefundPaymentPayload): Promise<{ data: RefundPaymentResult; message: string }> {
+  const response = await apiClient.post<{ data: RefundPaymentResult; message: string }>(`/admin/finance/course-payments/${paymentId}/refund`, payload);
   return response.data;
+}
+
+export interface PaymentRefundRow {
+  id: string;
+  amount: number;
+  status: 'REQUESTED' | 'SUCCEEDED' | 'FAILED';
+  recordOnly: boolean;
+  reason: string | null;
+  accessRevoked: boolean;
+  errorMessage: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  requestedBy: { id: string; name: string; email: string };
+}
+
+export async function getPaymentRefunds(paymentId: string): Promise<PaymentRefundRow[]> {
+  const response = await apiClient.get<{ data: PaymentRefundRow[] }>(`/admin/finance/course-payments/${paymentId}/refunds`);
+  return response.data.data;
 }
 
 export async function grantCourseAccess(payload: { userEmail: string; courseId: string; note?: string }): Promise<void> {

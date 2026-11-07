@@ -6,12 +6,12 @@ import {
   getCoursePayments,
   reverifyCoursePayment,
   reverifyStripePayment,
-  refundCoursePayment,
   grantCourseAccess,
   getAdminBillingSettings,
   updateAdminBillingSettings,
   CoursePaymentRow,
 } from '../../src/services/adminFinanceService';
+import RefundPaymentDialog from '../../src/components/admin/RefundPaymentDialog';
 
 function formatGel(minorUnits: number, currency: string): string {
   return `${(minorUnits / 100).toFixed(2)} ${currency}`;
@@ -22,6 +22,7 @@ const STATUS_BADGE: Record<string, string> = {
   COMPLETED: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20 shadow-emerald-400/30 dark:shadow-emerald-500/20',
   FAILED: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/20 shadow-red-400/30 dark:shadow-red-500/20',
   CANCELLED: 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 border-gray-200 dark:border-slate-700 shadow-transparent',
+  PARTIALLY_REFUNDED: 'bg-fuchsia-50 dark:bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-400 border-fuchsia-200 dark:border-fuchsia-500/20 shadow-fuchsia-400/30 dark:shadow-fuchsia-500/20',
   REFUNDED: 'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-500/20 shadow-purple-400/30 dark:shadow-purple-500/20',
 };
 
@@ -164,10 +165,15 @@ const PURPOSE_LABEL: Record<CoursePaymentRow['purpose'], string> = {
   COURSE: 'Course',
   MENTORSHIP: 'Mentorship',
   GIG_ESCROW_FUNDING: 'Gig Escrow',
+  PRODUCT: 'Product',
+  HR_SUPPORT: 'HR Support',
+  LIVE_TRAINING: 'Live Training',
+  ENGLISH_TUTOR_SUBSCRIPTION: 'AI Tutor',
+  CHILDRENS_BOOK: "Children's Book",
 };
 
 function exportPaymentsCsv(payments: CoursePaymentRow[]) {
-  const header = ['Order ID', 'Gateway', 'User', 'Email', 'Purpose', 'Reference', 'Amount', 'Currency', 'Status', 'Created At', 'Completed At'];
+  const header = ['Order ID', 'Gateway', 'User', 'Email', 'Purpose', 'Reference', 'Amount', 'Refunded', 'Currency', 'Status', 'Created At', 'Completed At'];
   const rows = payments.map((p) => [
     p.bogOrderId,
     p.gateway,
@@ -176,6 +182,7 @@ function exportPaymentsCsv(payments: CoursePaymentRow[]) {
     PURPOSE_LABEL[p.purpose] ?? p.purpose,
     p.courseTitle,
     (p.amount / 100).toFixed(2),
+    ((p.refundedAmount ?? 0) / 100).toFixed(2),
     p.currency,
     p.status,
     p.createdAt,
@@ -198,6 +205,8 @@ function AdminFinanceDashboard() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [purposeFilter, setPurposeFilter] = useState('');
+  const [refundTarget, setRefundTarget] = useState<CoursePaymentRow | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -225,15 +234,10 @@ function AdminFinanceDashboard() {
     }
   };
 
-  const handleRefund = async (id: string) => {
-    if (!window.confirm('Mark as refunded and revoke course access? This does NOT trigger a real bank refund — process that via BOG separately.')) return;
-    setBusyId(id);
-    try {
-      await refundCoursePayment(id);
-      load();
-    } finally {
-      setBusyId(null);
-    }
+  const handleRefunded = (message: string) => {
+    setRefundTarget(null);
+    setNotice(message);
+    load();
   };
 
   return (
@@ -245,7 +249,7 @@ function AdminFinanceDashboard() {
         <div className="mb-8 flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Payment Finance</h1>
-            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">BOG Pay + Stripe transaction ledger — course sales, mentorship, and gig escrow funding.</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">BOG Pay + Stripe transaction ledger — every purchase type (courses, products, books, live trainings, mentorship, gig escrow…). BOG payments can be refunded from here.</p>
           </div>
           <button
             type="button"
@@ -257,22 +261,29 @@ function AdminFinanceDashboard() {
           </button>
         </div>
 
+        {notice && (
+          <div className="mb-6 flex items-start justify-between gap-4 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200">
+            <span>{notice}</span>
+            <button type="button" onClick={() => setNotice(null)} className="text-emerald-700 dark:text-emerald-300" aria-label="Dismiss">×</button>
+          </div>
+        )}
+
         <GrantAccessForm onGranted={load} />
         <BankTransferSettingsForm />
 
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          {['', 'PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'].map((s) => (
+          {['', 'PENDING', 'COMPLETED', 'FAILED', 'PARTIALLY_REFUNDED', 'REFUNDED'].map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => setStatusFilter(s)}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${statusFilter === s ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-slate-900/60 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-700'}`}
             >
-              {s || 'All statuses'}
+              {s ? s.replace('_', ' ') : 'All statuses'}
             </button>
           ))}
           <span className="w-px h-5 bg-gray-200 dark:bg-slate-700 mx-1" />
-          {(['', 'COURSE', 'MENTORSHIP', 'GIG_ESCROW_FUNDING'] as const).map((p) => (
+          {(['', 'COURSE', 'PRODUCT', 'CHILDRENS_BOOK', 'LIVE_TRAINING', 'ENGLISH_TUTOR_SUBSCRIPTION', 'MENTORSHIP', 'HR_SUPPORT', 'GIG_ESCROW_FUNDING'] as const).map((p) => (
             <button
               key={p}
               type="button"
@@ -315,9 +326,14 @@ function AdminFinanceDashboard() {
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-600 dark:text-slate-400">{PURPOSE_LABEL[p.purpose] ?? p.purpose}</td>
                     <td className="px-4 py-3 max-w-[180px] truncate">{p.courseTitle}</td>
-                    <td className="px-4 py-3 font-semibold">{formatGel(p.amount, p.currency)}</td>
+                    <td className="px-4 py-3 font-semibold">
+                      {formatGel(p.amount, p.currency)}
+                      {(p.refundedAmount ?? 0) > 0 && (
+                        <div className="text-[11px] font-normal text-purple-600 dark:text-purple-400">−{formatGel(p.refundedAmount, p.currency)} refunded</div>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
-                      <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded border shadow-[0_0_10px_-3px] ${STATUS_BADGE[p.status]}`}>{p.status}</span>
+                      <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded border shadow-[0_0_10px_-3px] ${STATUS_BADGE[p.status]}`}>{p.status.replace('_', ' ')}</span>
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-500 dark:text-slate-400">{new Date(p.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
@@ -333,14 +349,14 @@ function AdminFinanceDashboard() {
                             Re-verify
                           </button>
                         )}
-                        {p.status === 'COMPLETED' && p.purpose === 'COURSE' && p.gateway === 'BOG' && (
+                        {(p.status === 'COMPLETED' || p.status === 'PARTIALLY_REFUNDED') && p.gateway === 'BOG' && (
                           <button
                             type="button"
                             disabled={busyId === p.id}
-                            onClick={() => handleRefund(p.id)}
+                            onClick={() => setRefundTarget(p)}
                             className="text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 disabled:opacity-60"
                           >
-                            Refund & Revoke
+                            Refund
                           </button>
                         )}
                       </div>
@@ -352,6 +368,7 @@ function AdminFinanceDashboard() {
           </div>
         )}
       </div>
+      {refundTarget && <RefundPaymentDialog payment={refundTarget} onClose={() => setRefundTarget(null)} onRefunded={handleRefunded} />}
     </>
   );
 }
