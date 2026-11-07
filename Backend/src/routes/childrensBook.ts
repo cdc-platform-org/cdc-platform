@@ -28,6 +28,10 @@ import {
   normalizeCharacterPhoto,
   loadReferenceImage,
   loadCharacterReference,
+  validateSiblings,
+  siblingsPromptLine,
+  groupPortraitPromptLine,
+  SiblingConfig,
   consistencyPromptLine,
   pageStoryPromptLines,
   ALLOWED_CHARACTER_PHOTO_TYPES,
@@ -55,10 +59,12 @@ function isOwner(book: { userId: string } | null, userId: string): book is { use
 // ...) are never read from the request: they point at private storage, so
 // a client-supplied value could otherwise make the image routes read an
 // asset that belongs to someone else's book.
-type CharacterInput = { name: string; age?: number; traits?: string[]; favoriteThing?: string; dedication?: string | null; appearance?: string; extraCharacters?: string };
+type CharacterInput = { name: string; age?: number; traits?: string[]; favoriteThing?: string; dedication?: string | null; appearance?: string; extraCharacters?: string; siblings?: SiblingConfig[] };
 function sanitizeCharacterInput(raw: any): { ok: true; value: CharacterInput } | { ok: false; message: string } {
   const extras = validateCharacterExtras({ appearance: raw?.appearance, extraCharacters: raw?.extraCharacters });
   if (!extras.ok) return extras;
+  const siblings = validateSiblings(raw?.siblings);
+  if (!siblings.ok) return siblings;
   const value: CharacterInput = { name: String(raw.name).trim() };
   if (typeof raw.age === 'number' && Number.isFinite(raw.age)) value.age = raw.age;
   if (Array.isArray(raw.traits)) value.traits = raw.traits.filter((t: unknown) => typeof t === 'string' && t.trim()).map((t: string) => t.trim()).slice(0, 10);
@@ -66,7 +72,34 @@ function sanitizeCharacterInput(raw: any): { ok: true; value: CharacterInput } |
   if (typeof raw.dedication === 'string' && raw.dedication.trim()) value.dedication = raw.dedication.trim();
   else if (raw.dedication === null) value.dedication = null;
   Object.assign(value, extras.value);
+  if (siblings.value.length) value.siblings = siblings.value;
   return { ok: true, value };
+}
+
+// Which photo a photo route acts on: the main character's (no ?sibling) or
+// sibling N's (?sibling=N, 0-based, must already exist by name).
+type PhotoSlot = { kind: 'main' } | { kind: 'sibling'; index: number };
+function resolvePhotoSlot(req: Request, config: any): { ok: true; slot: PhotoSlot } | { ok: false; message: string } {
+  const raw = req.query.sibling;
+  if (raw === undefined) return { ok: true, slot: { kind: 'main' } };
+  const index = Number(raw);
+  const siblings = Array.isArray(config?.siblings) ? config.siblings : [];
+  if (!Number.isInteger(index) || index < 0 || index >= siblings.length) return { ok: false, message: 'Unknown sibling.' };
+  return { ok: true, slot: { kind: 'sibling', index } };
+}
+function photoOf(config: any, slot: PhotoSlot): { photoKey?: string; photoMimeType?: string } {
+  return slot.kind === 'main' ? config : (config.siblings?.[slot.index] ?? {});
+}
+function withPhoto(config: any, slot: PhotoSlot, photo: { photoKey: string; photoMimeType: string; photoConsentAt: string } | null): any {
+  const strip = (o: any) => {
+    const { photoKey, photoMimeType, photoConsentAt, ...rest } = o ?? {};
+    void photoKey; void photoMimeType; void photoConsentAt;
+    return rest;
+  };
+  if (slot.kind === 'main') return photo ? { ...config, ...photo } : strip(config);
+  const siblings = [...(config.siblings ?? [])];
+  siblings[slot.index] = photo ? { ...siblings[slot.index], ...photo } : strip(siblings[slot.index]);
+  return { ...config, siblings };
 }
 
 // Photo of the main character: only before the character is approved,
@@ -202,6 +235,18 @@ router.put('/:id/character-config', authenticate, async (req: Request, res: Resp
     // Keep the server-owned photo reference across edits.
     const existing = (book.characterConfig ?? {}) as any;
     nextConfig = { ...sanitized.value, ...(existing.photoKey ? { photoKey: existing.photoKey, photoMimeType: existing.photoMimeType, photoConsentAt: existing.photoConsentAt } : {}) };
+    // Sibling photos follow the sibling's name; a removed sibling's photo is deleted.
+    const oldSiblings: SiblingConfig[] = Array.isArray(existing.siblings) ? existing.siblings : [];
+    const keptKeys = new Set<string>();
+    if (nextConfig.siblings) {
+      nextConfig.siblings = nextConfig.siblings.map((s: SiblingConfig) => {
+        const old = oldSiblings.find((o) => o.name === s.name && o.photoKey && !keptKeys.has(o.photoKey));
+        if (!old?.photoKey) return s;
+        keptKeys.add(old.photoKey);
+        return { ...s, photoKey: old.photoKey, photoMimeType: old.photoMimeType, photoConsentAt: old.photoConsentAt };
+      });
+    }
+    for (const o of oldSiblings) if (o.photoKey && !keptKeys.has(o.photoKey)) await deleteBookAsset(o.photoKey).catch(() => {});
   }
 
   const updated = await prisma.bookProject.update({
@@ -224,6 +269,9 @@ router.post('/:id/character-photo', authenticate, handlePhotoUpload, async (req:
     return res.status(400).json({ message: 'The photo can only be changed before the character is approved.' });
   }
   if (!req.file) return res.status(400).json({ message: 'No photo was selected.' });
+  const config = (book.characterConfig ?? {}) as any;
+  const target = resolvePhotoSlot(req, config);
+  if (!target.ok) return res.status(400).json({ message: target.message });
   // A photo of a child: the parent must explicitly confirm they are the
   // parent/guardian and agree the photo is sent to the AI image model.
   if (req.body?.consent !== 'true') {
@@ -237,14 +285,15 @@ router.post('/:id/character-photo', authenticate, handlePhotoUpload, async (req:
     return res.status(400).json({ message: 'This file could not be read as an image.' });
   }
 
-  const config = (book.characterConfig ?? {}) as any;
-  const key = `books/${book.id}/character-photo-${Date.now().toString(36)}.jpg`;
+  const previous = photoOf(config, target.slot).photoKey;
+  const prefix = target.slot.kind === 'main' ? 'character-photo' : `sibling-${target.slot.index}-photo`;
+  const key = `books/${book.id}/${prefix}-${Date.now().toString(36)}.jpg`;
   await storeBookAsset(key, normalized.buffer, normalized.mimeType);
   const updated = await prisma.bookProject.update({
     where: { id: book.id },
-    data: { characterConfig: { ...config, photoKey: key, photoMimeType: normalized.mimeType, photoConsentAt: new Date().toISOString() } as any },
+    data: { characterConfig: withPhoto(config, target.slot, { photoKey: key, photoMimeType: normalized.mimeType, photoConsentAt: new Date().toISOString() }) },
   });
-  if (config.photoKey && config.photoKey !== key) await deleteBookAsset(config.photoKey).catch(() => {});
+  if (previous && previous !== key) await deleteBookAsset(previous).catch(() => {});
   res.status(201).json({ data: updated });
 });
 
@@ -252,10 +301,13 @@ router.get('/:id/character-photo', authenticate, async (req: Request, res: Respo
   const book = await prisma.bookProject.findUnique({ where: { id: req.params.id } });
   if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
   const config = (book.characterConfig ?? {}) as any;
-  if (!config.photoKey) return res.status(404).json({ message: 'No photo uploaded.' });
+  const target = resolvePhotoSlot(req, config);
+  if (!target.ok) return res.status(404).json({ message: target.message });
+  const photo = photoOf(config, target.slot);
+  if (!photo.photoKey) return res.status(404).json({ message: 'No photo uploaded.' });
   try {
-    const buffer = await readBookAsset(config.photoKey);
-    res.setHeader('Content-Type', config.photoMimeType || 'image/jpeg');
+    const buffer = await readBookAsset(photo.photoKey);
+    res.setHeader('Content-Type', photo.photoMimeType || 'image/jpeg');
     res.setHeader('Cache-Control', 'private, no-store');
     res.send(buffer);
   } catch {
@@ -269,9 +321,11 @@ router.delete('/:id/character-photo', authenticate, async (req: Request, res: Re
   if (!canChangeCharacterPhoto(book)) {
     return res.status(400).json({ message: 'The photo can only be changed before the character is approved.' });
   }
-  const { photoKey, photoMimeType, ...rest } = (book.characterConfig ?? {}) as any;
-  void photoMimeType;
-  const updated = await prisma.bookProject.update({ where: { id: book.id }, data: { characterConfig: rest } });
+  const config = (book.characterConfig ?? {}) as any;
+  const target = resolvePhotoSlot(req, config);
+  if (!target.ok) return res.status(400).json({ message: target.message });
+  const photoKey = photoOf(config, target.slot).photoKey;
+  const updated = await prisma.bookProject.update({ where: { id: book.id }, data: { characterConfig: withPhoto(config, target.slot, null) } });
   if (photoKey) await deleteBookAsset(photoKey).catch(() => {});
   res.json({ data: updated });
 });
@@ -436,11 +490,20 @@ router.post('/:id/character-preview', authenticate, async (req: Request, res: Re
     character.traits?.length ? `Traits: ${character.traits.join(', ')}.` : '',
     character.favoriteThing ? `Favorite thing: ${character.favoriteThing}.` : '',
     appearancePromptLine(character),
-    character.photoKey ? photoReferencePromptLine() : '',
+    siblingsPromptLine(character as any),
+    (character as any).siblings?.length
+      ? groupPortraitPromptLine(character.name, !!character.photoKey, (character as any).siblings)
+      : character.photoKey ? photoReferencePromptLine() : '',
     'Consistent body proportions, clean linework, no readable text or letters anywhere in the image, reserve the upper-left 30% free of detail.',
   ].filter(Boolean).join(' ');
 
-  const referenceImages = await loadReferenceImage(character.photoKey, character.photoMimeType);
+  // Main character's photo first, then each sibling's, in the order the
+  // group-portrait prompt lists them.
+  const siblingConfigs: SiblingConfig[] = (character as any).siblings ?? [];
+  const referenceImages = [
+    ...(await loadReferenceImage(character.photoKey, character.photoMimeType)),
+    ...(await Promise.all(siblingConfigs.map((s) => loadReferenceImage(s.photoKey, s.photoMimeType)))).flat(),
+  ];
   const started = new Date();
   const result = await generateBookImage({ prompt, size: '1024x1024', quality: 'low', referenceImages });
   const completed = new Date();
@@ -537,11 +600,12 @@ router.post('/:id/character-approval', authenticate, async (req: Request, res: R
     favoriteThing: character.favoriteThing,
     appearance: character.appearance,
     extraCharacters: character.extraCharacters,
+    siblings: (character.siblings ?? []).map((s: SiblingConfig) => ({ name: s.name, age: s.age, appearance: s.appearance })),
     previewImageKey: character.previewImageKey,
     previewImageMimeType: character.previewImageMimeType,
     // Kept for older readers of the Character Bible; every page now uses the
     // approved portrait as its reference (see loadCharacterReference).
-    useReferencePortrait: !!character.photoKey,
+    useReferencePortrait: !!character.photoKey || (character.siblings ?? []).some((s: SiblingConfig) => s.photoKey),
   };
   const styleBible = { illustrationStyle: book.illustrationStyle };
 
@@ -554,13 +618,16 @@ router.post('/:id/character-approval', authenticate, async (req: Request, res: R
   // Retention: once the portrait is approved the original photo is no longer
   // needed (final pages use the approved portrait as their reference), so
   // the child's photo is deleted right away.
-  if (character.photoKey) {
-    const { photoKey, photoMimeType, ...rest } = character;
-    void photoMimeType;
-    await deleteBookAsset(photoKey).catch(() => {});
+  const siblingPhotoKeys = (character.siblings ?? []).map((s: SiblingConfig) => s.photoKey).filter(Boolean) as string[];
+  if (character.photoKey || siblingPhotoKeys.length) {
+    let cleaned = withPhoto(character, { kind: 'main' }, null);
+    (character.siblings ?? []).forEach((_: unknown, index: number) => {
+      cleaned = withPhoto(cleaned, { kind: 'sibling', index }, null);
+    });
+    for (const key of [character.photoKey, ...siblingPhotoKeys].filter(Boolean)) await deleteBookAsset(key).catch(() => {});
     await prisma.bookProject.update({
       where: { id: book.id },
-      data: { characterConfig: { ...rest, photoDeletedAt: new Date().toISOString() } as any },
+      data: { characterConfig: { ...cleaned, photoDeletedAt: new Date().toISOString() } as any },
     });
   }
 
@@ -685,6 +752,7 @@ router.post('/:id/revision', authenticate, async (req: Request, res: Response) =
     consistencyPromptLine(revisionReferences.length > 0),
     pageStoryPromptLines(characterBible, page.storyText),
     appearancePromptLine(characterBible),
+    siblingsPromptLine(characterBible),
     extraCharactersPromptLine(characterBible),
     planPage ? `Original scene: ${planPage.sceneDescription}.` : '',
     typeof note === 'string' && note.trim() ? `Requested change: ${note.trim()}.` : '',

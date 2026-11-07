@@ -2,6 +2,7 @@ import { BookLanguage } from '@prisma/client';
 import { z } from 'zod';
 import { callTextModel } from './aiAgentService';
 import type { CharacterConfig } from './bookStoryPlanService';
+import { siblingsStoryLine } from './bookCharacterDetailsService';
 
 // ============================================================
 // Children's Book — real story text. The story plan's scene beats (what each
@@ -53,6 +54,7 @@ export async function writeStoryTexts(params: {
     character.favoriteThing ? `Favourite thing: ${character.favoriteThing}.` : '',
     character.appearance ? `Appearance: ${character.appearance}.` : '',
     character.extraCharacters ? `Other characters who appear: ${character.extraCharacters}.` : '',
+    siblingsStoryLine(character),
   ].filter(Boolean).join('\n');
 
   const sceneList = scenes

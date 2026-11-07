@@ -155,5 +155,18 @@
   "previewConfirmButton": "ყველაფერი კარგია, გადახდაზე გადასვლა",
   "previewViewAgain": "წიგნის პრევიუს ხელახლა ნახვა",
   "storyTextMissing": "ამ წიგნის გვერდებზე ჯერ დროებითი ტექსტია. დააჭირე ღილაკს და AI არსებულ სურათებზე ნამდვილ ზღაპარს დაწერს.",
-  "writeStoryTextButton": "ზღაპრის ტექსტის დაწერა"
+  "writeStoryTextButton": "ზღაპრის ტექსტის დაწერა",
+  "siblingsTitle": "და-ძმები (არასავალდებულო)",
+  "siblingsHint": "დაამატეთ {{max}}-მდე და-ძმა. ისინი იმავე ზღაპრის გმირები იქნებიან და ნახატებზე მთავარ პერსონაჟთან ერთად გამოჩნდებიან.",
+  "addSibling": "და-ძმის დამატება",
+  "removeSibling": "წაშლა",
+  "siblingNumber": "და/ძმა {{number}}",
+  "siblingNameLabel": "სახელი",
+  "siblingNamePlaceholder": "მაგ. ლუკა",
+  "siblingAgeLabel": "ასაკი (არასავალდებულო)",
+  "siblingAppearanceLabel": "ვიზუალური აღწერა (არასავალდებულო)",
+  "siblingPhotoLabel": "ფოტო (არასავალდებულო)",
+  "siblingPhotoHint": "ამ ბავშვის სახის მკაფიო ფოტო, რომ მის მსგავსად დავხატოთ.",
+  "siblingPhotoFor": "ფოტო: {{name}} (არასავალდებულო)",
+  "previewSiblingsLabel": "და-ძმები"
 }

@@ -155,5 +155,18 @@
   "previewConfirmButton": "Looks good, continue to payment",
   "previewViewAgain": "View the book preview again",
   "storyTextMissing": "This book still has placeholder text on its pages. Press the button and the AI will write the real story for the existing pictures.",
-  "writeStoryTextButton": "Write the story text"
+  "writeStoryTextButton": "Write the story text",
+  "siblingsTitle": "Brothers and sisters (optional)",
+  "siblingsHint": "Add up to {{max}} siblings. They will star in the same story and appear on the pictures together with the main character.",
+  "addSibling": "Add a brother or sister",
+  "removeSibling": "Remove",
+  "siblingNumber": "Sibling {{number}}",
+  "siblingNameLabel": "Name",
+  "siblingNamePlaceholder": "e.g. Luka",
+  "siblingAgeLabel": "Age (optional)",
+  "siblingAppearanceLabel": "Visual description (optional)",
+  "siblingPhotoLabel": "Photo (optional)",
+  "siblingPhotoHint": "A clear photo of this child's face, so we can draw them to look like them.",
+  "siblingPhotoFor": "Photo of {{name}} (optional)",
+  "previewSiblingsLabel": "Brothers and sisters"
 }

@@ -44,6 +44,7 @@ export interface CharacterConfig {
   extraCharacters?: string;
   photoKey?: string;
   photoMimeType?: string;
+  siblings?: Array<{ name: string; age?: number; appearance?: string }>;
 }
 
 // 20 distinct beats, one coherent arc — ALLOWED_PAGE_COUNTS (5/10/15/20)
@@ -75,7 +76,8 @@ const ARC = [
 
 function buildMockStoryPlan(title: string, character: CharacterConfig, language: BookLanguage, pageCount: number): StoryPlan {
   const name = character.name || (language === 'KA' ? 'გმირი' : 'the hero');
-  const extras = character.extraCharacters?.replace(/\s+/g, ' ').trim();
+  const siblingNames = (character.siblings ?? []).map((sib) => sib.name).filter(Boolean);
+  const extras = [siblingNames.join(', '), character.extraCharacters?.replace(/\s+/g, ' ').trim()].filter(Boolean).join(', ') || undefined;
   const pages: StoryPlanPage[] = ARC.slice(0, pageCount).map((step, i) => {
     const pageNumber = i + 1;
     // Supporting characters the parent asked for join on the first page and

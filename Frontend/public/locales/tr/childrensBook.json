@@ -155,5 +155,18 @@
   "previewConfirmButton": "Her şey iyi, ödemeye geç",
   "previewViewAgain": "Kitap önizlemesini tekrar gör",
   "storyTextMissing": "Bu kitabın sayfalarında hâlâ geçici metin var. Düğmeye bas, yapay zekâ mevcut resimler için gerçek masalı yazsın.",
-  "writeStoryTextButton": "Masal metnini yaz"
+  "writeStoryTextButton": "Masal metnini yaz",
+  "siblingsTitle": "Kardeşler (isteğe bağlı)",
+  "siblingsHint": "En fazla {{max}} kardeş ekleyin. Aynı hikâyede rol alacak ve resimlerde ana karakterle birlikte görünecekler.",
+  "addSibling": "Kardeş ekle",
+  "removeSibling": "Kaldır",
+  "siblingNumber": "Kardeş {{number}}",
+  "siblingNameLabel": "Ad",
+  "siblingNamePlaceholder": "örn. Luka",
+  "siblingAgeLabel": "Yaş (isteğe bağlı)",
+  "siblingAppearanceLabel": "Görsel tanım (isteğe bağlı)",
+  "siblingPhotoLabel": "Fotoğraf (isteğe bağlı)",
+  "siblingPhotoHint": "Onu benzer çizebilmemiz için bu çocuğun yüzünün net bir fotoğrafı.",
+  "siblingPhotoFor": "{{name}} fotoğrafı (isteğe bağlı)",
+  "previewSiblingsLabel": "Kardeşler"
 }

@@ -276,3 +276,83 @@ describe("Children's Book — preview before payment", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("Children's Book — siblings", () => {
+  async function uploadSiblingPhoto(bookId: string, user: User, index: number, consent = true) {
+    const form = new FormData();
+    if (consent) form.append('consent', 'true');
+    form.append('photo', new Blob([new Uint8Array(await samplePng())], { type: 'image/png' }), 'sib.png');
+    return fetch(`${baseUrl}/api/childrens-books/${bookId}/character-photo?sibling=${index}`, { method: 'POST', headers: authHeaders(user), body: form });
+  }
+
+  it('stores up to three siblings and skips empty rows', async () => {
+    const user = await createUser();
+    const { res, body } = await createBook(user, {
+      name: 'Nino',
+      siblings: [{ name: ' Luka ', age: 4, appearance: 'red cap' }, { name: '' }, { name: 'Mariam' }],
+    });
+    expect(res.status).toBe(201);
+    expect(body.data.characterConfig.siblings).toEqual([{ name: 'Luka', age: 4, appearance: 'red cap' }, { name: 'Mariam' }]);
+  });
+
+  it('rejects more than three siblings', async () => {
+    const user = await createUser();
+    const { res } = await createBook(user, { name: 'Nino', siblings: [{ name: 'A' }, { name: 'B' }, { name: 'C' }, { name: 'D' }] });
+    expect(res.status).toBe(400);
+  });
+
+  it('ignores client-sent photo keys on siblings', async () => {
+    const user = await createUser();
+    const { body } = await createBook(user, { name: 'Nino', siblings: [{ name: 'Luka', photoKey: 'books/other/secret.jpg' }] });
+    expect(body.data.characterConfig.siblings[0].photoKey).toBeUndefined();
+  });
+
+  it('uploads, serves and removes a photo per sibling, owner only, consent required', async () => {
+    const owner = await createUser();
+    const intruder = await createUser();
+    const { body } = await createBook(owner, { name: 'Nino', siblings: [{ name: 'Luka' }, { name: 'Mariam' }] });
+    const id = body.data.id;
+
+    expect((await uploadSiblingPhoto(id, owner, 1, false)).status).toBe(400);
+    expect((await uploadSiblingPhoto(id, owner, 5)).status).toBe(400);
+    expect((await uploadSiblingPhoto(id, intruder, 1)).status).toBe(404);
+
+    const up = await uploadSiblingPhoto(id, owner, 1);
+    expect(up.status).toBe(201);
+    const config = ((await up.json()) as any).data.characterConfig;
+    expect(config.siblings[1].photoKey).toMatch(new RegExp(`^books/${id}/sibling-1-photo-`));
+    expect(config.siblings[0].photoKey).toBeUndefined();
+    expect(config.photoKey).toBeUndefined();
+
+    const get = await fetch(`${baseUrl}/api/childrens-books/${id}/character-photo?sibling=1`, { headers: authHeaders(owner) });
+    expect(get.status).toBe(200);
+    expect((await fetch(`${baseUrl}/api/childrens-books/${id}/character-photo?sibling=0`, { headers: authHeaders(owner) })).status).toBe(404);
+
+    const del = await request(`/api/childrens-books/${id}/character-photo?sibling=1`, owner, 'DELETE');
+    expect(del.status).toBe(200);
+    expect(((await del.json()) as any).data.characterConfig.siblings[1].photoKey).toBeUndefined();
+  });
+
+  it('puts the siblings in the story plan and the Character Bible, and deletes their photos at approval', async () => {
+    const user = await createUser();
+    const { body } = await createBook(user, { name: 'Nino', siblings: [{ name: 'Luka', appearance: 'red cap' }] });
+    const id = body.data.id;
+    await uploadPhoto(id, user, await samplePng());
+    await uploadSiblingPhoto(id, user, 0);
+
+    const planRes = await request(`/api/childrens-books/${id}/story-plan`, user, 'POST');
+    const plan = (await planRes.json()) as any;
+    expect(plan.data.storyPlan.pages[1].sceneDescription).toContain('Luka');
+
+    await request(`/api/childrens-books/${id}/character-preview`, user, 'POST');
+    await request(`/api/childrens-books/${id}/character-approval`, user, 'POST');
+    const book = await prisma.bookProject.findUnique({ where: { id } });
+    const bible = book!.characterBible as any;
+    expect(bible.siblings).toEqual([{ name: 'Luka', appearance: 'red cap' }]);
+    expect(bible.useReferencePortrait).toBe(true);
+    const cfg = book!.characterConfig as any;
+    expect(cfg.photoKey).toBeUndefined();
+    expect(cfg.siblings[0].photoKey).toBeUndefined();
+    expect(cfg.photoDeletedAt).toBeTruthy();
+  });
+});

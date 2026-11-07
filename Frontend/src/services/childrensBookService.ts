@@ -2,6 +2,14 @@ import apiClient from './apiClient';
 
 export type BookLanguage = 'KA' | 'EN';
 
+export interface BookSibling {
+  name: string;
+  age?: number;
+  appearance?: string;
+  photoKey?: string;
+  photoMimeType?: string;
+}
+
 export interface BookCharacterConfig {
   name: string;
   age?: number;
@@ -10,6 +18,7 @@ export interface BookCharacterConfig {
   dedication?: string | null;
   appearance?: string;
   extraCharacters?: string;
+  siblings?: BookSibling[];
   photoKey?: string;
   photoConsentAt?: string;
   photoDeletedAt?: string;
@@ -143,23 +152,28 @@ export async function fetchCharacterPreviewImageUrl(id: string): Promise<string>
   return URL.createObjectURL(response.data as Blob);
 }
 
-export async function uploadCharacterPhoto(id: string, file: File): Promise<BookProject> {
+// `sibling` (0-based) targets that sibling's photo instead of the main character's.
+function photoPath(id: string, sibling?: number): string {
+  return `/childrens-books/${id}/character-photo${sibling === undefined ? '' : `?sibling=${sibling}`}`;
+}
+
+export async function uploadCharacterPhoto(id: string, file: File, sibling?: number): Promise<BookProject> {
   const formData = new FormData();
   // The UI only lets a photo be picked after the consent box is ticked.
   formData.append('consent', 'true');
   formData.append('photo', file);
-  const response = await apiClient.post<{ data: BookProject }>(`/childrens-books/${id}/character-photo`, formData);
+  const response = await apiClient.post<{ data: BookProject }>(photoPath(id, sibling), formData);
   return response.data.data;
 }
 
-export async function removeCharacterPhoto(id: string): Promise<BookProject> {
-  const response = await apiClient.delete<{ data: BookProject }>(`/childrens-books/${id}/character-photo`);
+export async function removeCharacterPhoto(id: string, sibling?: number): Promise<BookProject> {
+  const response = await apiClient.delete<{ data: BookProject }>(photoPath(id, sibling));
   return response.data.data;
 }
 
 // Same blob/object-URL pattern as fetchCharacterPreviewImageUrl.
-export async function fetchCharacterPhotoUrl(id: string): Promise<string> {
-  const response = await apiClient.get(`/childrens-books/${id}/character-photo`, { responseType: 'blob' });
+export async function fetchCharacterPhotoUrl(id: string, sibling?: number): Promise<string> {
+  const response = await apiClient.get(photoPath(id, sibling), { responseType: 'blob' });
   return URL.createObjectURL(response.data as Blob);
 }
 

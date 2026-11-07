@@ -44,6 +44,7 @@ import {
 import PromoCodeField from '../../../src/components/shared/PromoCodeField';
 import BookPreview from '../../../src/components/tools/childrensBook/BookPreview';
 import CharacterPhotoField from '../../../src/components/tools/childrensBook/CharacterPhotoField';
+import SiblingsFields, { SiblingDraft, SiblingPhotoEditor } from '../../../src/components/tools/childrensBook/SiblingsFields';
 import PageThumbnail from '../../../src/components/tools/childrensBook/PageThumbnail';
 import { PromoValidationResult } from '../../../src/services/paymentService';
 import ToolMediaBanner from '../../../src/components/tools/ToolMediaBanner';
@@ -80,6 +81,7 @@ function ChildrensBookContent() {
   // Photo picked in the create form, uploaded right after the book is created.
   const [pendingPhoto, setPendingPhoto] = useState<File | null>(null);
   const [pendingPhotoUrl, setPendingPhotoUrl] = useState<string | null>(null);
+  const [siblingDrafts, setSiblingDrafts] = useState<SiblingDraft[]>([]);
 
   function replacePhotoUrl(url: string | null) {
     if (photoUrlRef.current) URL.revokeObjectURL(photoUrlRef.current);
@@ -263,6 +265,7 @@ function ChildrensBookContent() {
   const [form, setForm] = useState({ title: '', name: '', age: '', traits: '', favoriteThing: '', dedication: '', appearance: '', extraCharacters: '', language: 'EN' as BookLanguage, pageCount: 10 as (typeof PAGE_OPTIONS)[number], illustrationStyle: 'STORYBOOK_WATERCOLOR' as IllustrationStyleValue });
 
   async function handleCreate() {
+    const namedSiblings = siblingDrafts.filter((s) => s.name.trim());
     await run(async () => {
       const created = await createBook({
         title: form.title,
@@ -277,18 +280,28 @@ function ChildrensBookContent() {
           dedication: form.dedication || null,
           appearance: form.appearance.trim() || undefined,
           extraCharacters: form.extraCharacters.trim() || undefined,
+          siblings: namedSiblings.map((s) => ({
+            name: s.name.trim(),
+            age: s.age ? Number(s.age) : undefined,
+            appearance: s.appearance.trim() || undefined,
+          })),
         },
       });
-      if (pendingPhoto) {
-        try {
-          await uploadCharacterPhoto(created.id, pendingPhoto);
-        } catch (err: any) {
-          // The book exists either way; the photo can be re-added on the next screen.
-          openBook(created.id);
-          selectPendingPhoto(null);
-          throw err;
-        }
+      // Photos go up after the book exists. Sibling index = position among
+      // the named siblings, the same order the server stored them in.
+      const uploads: Array<{ file: File; sibling?: number }> = [];
+      if (pendingPhoto) uploads.push({ file: pendingPhoto });
+      namedSiblings.forEach((s, index) => { if (s.photo) uploads.push({ file: s.photo, sibling: index }); });
+      try {
+        for (const u of uploads) await uploadCharacterPhoto(created.id, u.file, u.sibling);
+      } catch (err: any) {
+        // The book exists either way; photos can be re-added on the next screen.
+        openBook(created.id);
+        throw err;
+      } finally {
         selectPendingPhoto(null);
+        siblingDrafts.forEach((s) => { if (s.photoUrl) URL.revokeObjectURL(s.photoUrl); });
+        setSiblingDrafts([]);
       }
       openBook(created.id);
     });
@@ -419,6 +432,9 @@ function ChildrensBookContent() {
                 />
               </div>
               <div className="sm:col-span-2">
+                <SiblingsFields value={siblingDrafts} onChange={setSiblingDrafts} disabled={busy} />
+              </div>
+              <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('extraCharactersLabel')}</label>
                 <textarea
                   rows={2}
@@ -502,6 +518,11 @@ function ChildrensBookContent() {
           {PHOTO_EDITABLE_STATUSES.includes(book.status) && (
             <div className="mb-5 pb-5 border-b border-gray-100">
               <CharacterPhotoField photoUrl={photoUrl} disabled={busy} onSelect={handlePhotoSelect} onRemove={handlePhotoRemove} />
+              {book.characterConfig?.siblings?.map((sibling, index) => (
+                <div key={`${sibling.name}-${index}`} className="mt-4">
+                  <SiblingPhotoEditor book={book} index={index} disabled={busy} run={run} onUpdated={setBook} />
+                </div>
+              ))}
               {book.status === 'CHARACTER_PREVIEW_READY' && <p className="text-xs text-purple-700 mt-2">{t('photoRegenerateHint')}</p>}
             </div>
           )}
