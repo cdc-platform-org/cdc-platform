@@ -210,5 +210,16 @@
   "printBleed": "Bleed",
   "printBleedNone": "None",
   "printBleedHint": "For a print shop: adds an extra edge that is cut off after printing. For home printing choose None.",
-  "printDownloadButton": "Download PDF for print"
+  "printDownloadButton": "Download PDF for print",
+  "fontLabel": "Şrift",
+  "fontHint": "Kitabda və PDF-də nağılın hansı hərflərlə yazılacağını seçin. İstənilən vaxt pulsuz dəyişə bilərsiniz.",
+  "font": {
+    "SIMPLE": "Sadə",
+    "ROUNDED": "Yumru və mehriban",
+    "MODERN": "Müasir",
+    "FAIRYTALE": "Nağıl (klassik)",
+    "PLAYFUL": "Şən (əlyazma)",
+    "EASY_READ": "Asan oxunan"
+  },
+  "fontChangedPdfStale": "Şrift dəyişdi. PDF-i yeni şriftlə yeniləmək üçün \"{{button}}\" düyməsini basın."
 }

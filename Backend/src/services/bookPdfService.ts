@@ -1,7 +1,8 @@
-import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from 'pdf-lib';
+import { PDFDocument, rgb, PDFFont, PDFPage } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import fs from 'fs';
 import { isAllowedPageCount } from './bookStateService';
+import { BOOK_FONTS, BookFontChoice, BookFontFace, BookFontId, FALLBACK_BOOK_FONTS, resolveBookFont } from './bookFonts';
 
 // ============================================================
 // Children's Book — final PDF assembly. Exactly the purchased book's own
@@ -11,16 +12,11 @@ import { isAllowedPageCount } from './bookStateService';
 // enforced here at the one place the PDF is actually built, not just
 // trusted from callers.
 //
-// Mixed Georgian/Latin text support follows certificateService.ts's own
-// precedent (separate Georgian-script font file + Latin StandardFont,
-// split per run) — a small, independent implementation here rather than
-// importing certificateService's private helpers, since this file's layout
-// needs (a simple wrapped paragraph block, not an auto-scaling certificate
-// title) are much simpler.
+// Mixed Georgian/Latin text: each character is drawn with the parent's
+// chosen font for its script (bookFonts.ts), falling back to the next face
+// that has the glyph; consecutive characters with the same face form one
+// run.
 // ============================================================
-
-const GEORGIAN_FONT_REGULAR_PATH = require.resolve('@fontsource/noto-sans-georgian/files/noto-sans-georgian-georgian-400-normal.woff');
-const GEORGIAN_FONT_BOLD_PATH = require.resolve('@fontsource/noto-sans-georgian/files/noto-sans-georgian-georgian-700-normal.woff');
 
 const A4_WIDTH = 595.28;
 const A4_HEIGHT = 841.89;
@@ -91,46 +87,96 @@ export function printFileSuffix(settings: PrintSettings): string {
   return settings.bleedMm ? `${base}-bleed${settings.bleedMm}mm` : base;
 }
 
-const GEORGIAN_RANGE = /[Ⴀ-ჿ]/;
+const GEORGIAN_RANGE = /[\u10A0-\u10FF\u1C90-\u1CBF\u2D00-\u2D2F]/;
+
+// One embedded typeface (regular + bold) and which characters it can draw.
+interface Face {
+  regular: PDFFont;
+  bold: PDFFont;
+  covers: (codePoint: number) => boolean;
+}
+
+// The chosen font for each script, then fallbacks, so a character the
+// chosen face lacks is drawn by the next face that has it instead of an
+// empty box.
+interface Fonts {
+  georgianChain: Face[];
+  latinChain: Face[];
+}
 
 interface Run {
   text: string;
-  georgian: boolean;
+  face: Face;
 }
 
-function splitScriptRuns(text: string): Run[] {
-  const runs: Run[] = [];
-  let current = '';
-  let currentIsGeorgian: boolean | null = null;
-  for (const ch of text) {
-    const isGeorgian = GEORGIAN_RANGE.test(ch);
-    if (currentIsGeorgian === null || isGeorgian === currentIsGeorgian) {
-      current += ch;
-      currentIsGeorgian = isGeorgian;
-    } else {
-      runs.push({ text: current, georgian: currentIsGeorgian });
-      current = ch;
-      currentIsGeorgian = isGeorgian;
-    }
+// Font files are read once per process; they never change at runtime.
+const fontFileCache = new Map<string, { bytes: Buffer; covers: (codePoint: number) => boolean }>();
+function loadFontFile(path: string) {
+  let entry = fontFileCache.get(path);
+  if (!entry) {
+    const bytes = fs.readFileSync(path);
+    const parsed: any = fontkit.create(bytes);
+    entry = { bytes, covers: (cp: number) => Boolean(parsed.hasGlyphForCodePoint(cp)) };
+    fontFileCache.set(path, entry);
   }
-  if (current) runs.push({ text: current, georgian: currentIsGeorgian ?? false });
+  return entry;
+}
+
+async function embedFonts(doc: PDFDocument, fontId: BookFontId): Promise<Fonts> {
+  const choice: BookFontChoice = BOOK_FONTS[fontId];
+  const embedded = new Map<string, Face>();
+  const embedFace = async (f: BookFontFace): Promise<Face> => {
+    const existing = embedded.get(f.regular);
+    if (existing) return existing;
+    const regular = loadFontFile(f.regular);
+    const bold = loadFontFile(f.bold);
+    const result: Face = {
+      regular: await doc.embedFont(regular.bytes, { subset: true }),
+      bold: await doc.embedFont(bold.bytes, { subset: true }),
+      covers: regular.covers,
+    };
+    embedded.set(f.regular, result);
+    return result;
+  };
+  const chain = async (faces: BookFontFace[]) => {
+    const out: Face[] = [];
+    for (const f of faces) {
+      const e = await embedFace(f);
+      if (!out.includes(e)) out.push(e);
+    }
+    return out;
+  };
+  return {
+    georgianChain: await chain([choice.georgian, choice.latin, ...FALLBACK_BOOK_FONTS]),
+    latinChain: await chain([choice.latin, choice.georgian, ...FALLBACK_BOOK_FONTS]),
+  };
+}
+
+function faceForChar(fonts: Fonts, ch: string): Face {
+  const chain = GEORGIAN_RANGE.test(ch) ? fonts.georgianChain : fonts.latinChain;
+  const cp = ch.codePointAt(0) ?? 32;
+  return chain.find((f) => f.covers(cp)) ?? chain[0];
+}
+
+function splitFontRuns(text: string, fonts: Fonts): Run[] {
+  const runs: Run[] = [];
+  for (const ch of text) {
+    // Spaces stay with the run they are in, so a line is not split into
+    // a run per word.
+    const face = /\s/.test(ch) && runs.length ? runs[runs.length - 1].face : faceForChar(fonts, ch);
+    const last = runs[runs.length - 1];
+    if (last && last.face === face) last.text += ch;
+    else runs.push({ text: ch, face });
+  }
   return runs;
 }
 
-interface Fonts {
-  latin: PDFFont;
-  latinBold: PDFFont;
-  georgian: PDFFont;
-  georgianBold: PDFFont;
+function fontFor(face: Face, bold: boolean): PDFFont {
+  return bold ? face.bold : face.regular;
 }
 
-function fontFor(fonts: Fonts, georgian: boolean, bold: boolean): PDFFont {
-  if (georgian) return bold ? fonts.georgianBold : fonts.georgian;
-  return bold ? fonts.latinBold : fonts.latin;
-}
-
-function widthOfRuns(runs: Run[], size: number, fonts: Fonts, bold: boolean): number {
-  return runs.reduce((sum, run) => sum + fontFor(fonts, run.georgian, bold).widthOfTextAtSize(run.text, size), 0);
+function widthOfRuns(runs: Run[], size: number, bold: boolean): number {
+  return runs.reduce((sum, run) => sum + fontFor(run.face, bold).widthOfTextAtSize(run.text, size), 0);
 }
 
 // Greedy word-wrap across mixed-script runs, wrapping on spaces only
@@ -141,7 +187,7 @@ function wrapText(text: string, maxWidth: number, size: number, fonts: Fonts, bo
   let current = '';
   for (const word of words) {
     const candidate = current ? `${current} ${word}` : word;
-    const width = widthOfRuns(splitScriptRuns(candidate), size, fonts, bold);
+    const width = widthOfRuns(splitFontRuns(candidate, fonts), size, bold);
     if (width > maxWidth && current) {
       lines.push(current);
       current = word;
@@ -155,15 +201,15 @@ function wrapText(text: string, maxWidth: number, size: number, fonts: Fonts, bo
 
 function drawMixedLine(page: PDFPage, line: string, x: number, y: number, size: number, fonts: Fonts, bold: boolean, color = rgb(0.15, 0.1, 0.05)): void {
   let cursorX = x;
-  for (const run of splitScriptRuns(line)) {
-    const font = fontFor(fonts, run.georgian, bold);
+  for (const run of splitFontRuns(line, fonts)) {
+    const font = fontFor(run.face, bold);
     page.drawText(run.text, { x: cursorX, y, size, font, color });
     cursorX += font.widthOfTextAtSize(run.text, size);
   }
 }
 
 function drawCenteredMixedLine(page: PDFPage, line: string, centerX: number, y: number, size: number, fonts: Fonts, bold: boolean, color = rgb(0.15, 0.1, 0.05)): void {
-  const width = widthOfRuns(splitScriptRuns(line), size, fonts, bold);
+  const width = widthOfRuns(splitFontRuns(line, fonts), size, bold);
   drawMixedLine(page, line, centerX - width / 2, y, size, fonts, bold, color);
 }
 
@@ -180,6 +226,7 @@ export interface BookPdfInput {
   pageCount: number; // the purchased book's own pageCount — 5/10/15/20
   pages: BookPdfPageInput[];
   print?: PrintSettings; // default A4 portrait, no bleed
+  fontId?: string | null; // a BOOK_FONTS key; unknown/missing = the default font
 }
 
 export class InvalidBookPdfPageCountError extends Error {
@@ -196,12 +243,7 @@ export async function buildBookPdf(input: BookPdfInput): Promise<Buffer> {
 
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
-  const fonts: Fonts = {
-    latin: await doc.embedFont(StandardFonts.Helvetica),
-    latinBold: await doc.embedFont(StandardFonts.HelveticaBold),
-    georgian: await doc.embedFont(fs.readFileSync(GEORGIAN_FONT_REGULAR_PATH), { subset: true }),
-    georgianBold: await doc.embedFont(fs.readFileSync(GEORGIAN_FONT_BOLD_PATH), { subset: true }),
-  };
+  const fonts = await embedFonts(doc, resolveBookFont(input.fontId));
 
   const sorted = [...input.pages].sort((a, b) => a.pageNumber - b.pageNumber);
   const print = input.print ?? DEFAULT_PRINT_SETTINGS;
@@ -310,7 +352,7 @@ export async function buildBookPdf(input: BookPdfInput): Promise<Buffer> {
         x: ox + trimW - margin - 10 * typeScale,
         y: oy + margin / 2,
         size: 10 * typeScale,
-        font: fonts.latin,
+        font: fonts.latinChain[0].regular,
         color: rgb(0.5, 0.5, 0.5),
       });
     }

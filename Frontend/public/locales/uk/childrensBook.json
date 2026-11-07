@@ -210,5 +210,16 @@
   "printBleed": "Bleed",
   "printBleedNone": "None",
   "printBleedHint": "For a print shop: adds an extra edge that is cut off after printing. For home printing choose None.",
-  "printDownloadButton": "Download PDF for print"
+  "printDownloadButton": "Download PDF for print",
+  "fontLabel": "Шрифт",
+  "fontHint": "Оберіть шрифт казки в книзі та PDF. Змінити можна будь-коли, безкоштовно.",
+  "font": {
+    "SIMPLE": "Простий",
+    "ROUNDED": "Круглий і дружній",
+    "MODERN": "Сучасний",
+    "FAIRYTALE": "Казковий (класичний)",
+    "PLAYFUL": "Грайливий (рукописний)",
+    "EASY_READ": "Легкий для читання"
+  },
+  "fontChangedPdfStale": "Шрифт змінено. Натисніть «{{button}}», щоб оновити PDF новим шрифтом."
 }

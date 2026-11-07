@@ -210,5 +210,16 @@
   "printBleed": "Bleed",
   "printBleedNone": "None",
   "printBleedHint": "For a print shop: adds an extra edge that is cut off after printing. For home printing choose None.",
-  "printDownloadButton": "Download PDF for print"
+  "printDownloadButton": "Download PDF for print",
+  "fontLabel": "Yazı tipi",
+  "fontHint": "Kitaptaki ve PDF'teki hikâyenin yazı tipini seçin. İstediğiniz zaman ücretsiz değiştirebilirsiniz.",
+  "font": {
+    "SIMPLE": "Sade",
+    "ROUNDED": "Yuvarlak ve sevimli",
+    "MODERN": "Modern",
+    "FAIRYTALE": "Masal (klasik)",
+    "PLAYFUL": "Eğlenceli (el yazısı)",
+    "EASY_READ": "Kolay okunur"
+  },
+  "fontChangedPdfStale": "Yazı tipi değişti. PDF'i yeni yazı tipiyle yenilemek için \"{{button}}\" düğmesine basın."
 }

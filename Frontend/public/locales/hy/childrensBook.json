@@ -210,5 +210,16 @@
   "printBleed": "Bleed",
   "printBleedNone": "None",
   "printBleedHint": "For a print shop: adds an extra edge that is cut off after printing. For home printing choose None.",
-  "printDownloadButton": "Download PDF for print"
+  "printDownloadButton": "Download PDF for print",
+  "fontLabel": "Տառատեսակ",
+  "fontHint": "Ընտրեք, թե ինչ տառերով գրվի հեքիաթը գրքում և PDF-ում։ Կարող եք փոխել ցանկացած պահի, անվճար։",
+  "font": {
+    "SIMPLE": "Պարզ",
+    "ROUNDED": "Կլոր և ընկերական",
+    "MODERN": "Ժամանակակից",
+    "FAIRYTALE": "Հեքիաթային (դասական)",
+    "PLAYFUL": "Զվարճալի (ձեռագիր)",
+    "EASY_READ": "Հեշտ ընթեռնելի"
+  },
+  "fontChangedPdfStale": "Տառատեսակը փոխվեց։ Սեղմեք «{{button}}», որպեսզի PDF-ը թարմացվի նոր տառատեսակով։"
 }

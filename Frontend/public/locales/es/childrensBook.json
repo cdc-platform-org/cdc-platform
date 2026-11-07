@@ -210,5 +210,16 @@
   "printBleed": "Bleed",
   "printBleedNone": "None",
   "printBleedHint": "For a print shop: adds an extra edge that is cut off after printing. For home printing choose None.",
-  "printDownloadButton": "Download PDF for print"
+  "printDownloadButton": "Download PDF for print",
+  "fontLabel": "Tipo de letra",
+  "fontHint": "Elige la letra del cuento en el libro y en el PDF. Puedes cambiarla cuando quieras, sin coste.",
+  "font": {
+    "SIMPLE": "Sencilla",
+    "ROUNDED": "Redonda y amable",
+    "MODERN": "Moderna",
+    "FAIRYTALE": "De cuento (clásica)",
+    "PLAYFUL": "Divertida (manuscrita)",
+    "EASY_READ": "Fácil de leer"
+  },
+  "fontChangedPdfStale": "Letra cambiada. Pulsa «{{button}}» para generar el PDF con la nueva letra."
 }

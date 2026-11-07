@@ -8,6 +8,7 @@ import ProtectedRoute from '../../../../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../../../src/components/layout/SiteFooter';
 import SEOHead from '../../../../../src/components/seo/SEOHead';
+import { bookFontFamily } from '../../../../../src/components/tools/childrensBook/bookFonts';
 import {
   AudioNarrationStatus,
   BookProject,
@@ -192,7 +193,8 @@ function BookReaderContent() {
         </button>
         <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{book.title}</h1>
+            {/* Headings carry a sitewide !important font, so the book font goes on an inner span. */}
+            <h1 className="text-2xl font-bold text-gray-900"><span style={{ fontFamily: bookFontFamily(book.characterConfig?.fontId) }}>{book.title}</span></h1>
             <p className="text-sm text-gray-500 mt-1">{t('readerPageOf', { number: pageNumber, total: book.pageCount })}</p>
           </div>
           {book.audioAddOnPurchased && <span className="inline-flex items-center gap-1.5 text-sm font-medium text-purple-700"><Headphones className="w-4 h-4" /> {t('audioStoryBadge')}</span>}
@@ -217,7 +219,7 @@ function BookReaderContent() {
 
               <article className="rounded-lg border border-gray-200 bg-white p-5">
                 <h2 className="text-sm font-semibold text-gray-500">{t('pageLabel', { number: pageNumber })}</h2>
-                <p className="mt-4 whitespace-pre-wrap text-lg leading-8 text-gray-800">{page?.storyText || t('readerStoryTextUnavailable')}</p>
+                <p className="mt-4 whitespace-pre-wrap text-lg leading-8 text-gray-800" style={{ fontFamily: bookFontFamily(book.characterConfig?.fontId) }}>{page?.storyText || t('readerStoryTextUnavailable')}</p>
               </article>
             </section>
 

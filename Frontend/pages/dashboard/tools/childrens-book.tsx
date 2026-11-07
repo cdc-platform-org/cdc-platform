@@ -44,6 +44,7 @@ import {
   AudioNarrationStatus,
   BookLanguage,
   FinalGenerationStatus,
+  updateBookFont,
 } from '../../../src/services/childrensBookService';
 import PromoCodeField from '../../../src/components/shared/PromoCodeField';
 import BookPreview from '../../../src/components/tools/childrensBook/BookPreview';
@@ -52,6 +53,8 @@ import SiblingsFields, { SiblingDraft, SiblingPhotoEditor } from '../../../src/c
 import PageThumbnail from '../../../src/components/tools/childrensBook/PageThumbnail';
 import StoryTextEditor from '../../../src/components/tools/childrensBook/StoryTextEditor';
 import PrintSettingsPanel from '../../../src/components/tools/childrensBook/PrintSettingsPanel';
+import BookFontPicker from '../../../src/components/tools/childrensBook/BookFontPicker';
+import { BookFontId, DEFAULT_BOOK_FONT, bookFontFamily, bookFontOptions } from '../../../src/components/tools/childrensBook/bookFonts';
 import { PromoValidationResult, validatePromoCode } from '../../../src/services/paymentService';
 import ToolMediaBanner from '../../../src/components/tools/ToolMediaBanner';
 
@@ -313,7 +316,8 @@ function ChildrensBookContent() {
     { value: 'FANTASY', labelKey: 'styleFantasy' },
     { value: 'CLASSIC', labelKey: 'styleClassic' },
   ];
-  const [form, setForm] = useState({ title: '', name: '', age: '', traits: '', favoriteThing: '', dedication: '', appearance: '', extraCharacters: '', language: 'EN' as BookLanguage, pageCount: 10 as (typeof PAGE_OPTIONS)[number], illustrationStyle: 'STORYBOOK_WATERCOLOR' as IllustrationStyleValue });
+  const [form, setForm] = useState({ title: '', name: '', age: '', traits: '', favoriteThing: '', dedication: '', appearance: '', extraCharacters: '', language: 'EN' as BookLanguage, pageCount: 10 as (typeof PAGE_OPTIONS)[number], illustrationStyle: 'STORYBOOK_WATERCOLOR' as IllustrationStyleValue, fontId: DEFAULT_BOOK_FONT as BookFontId });
+  const [fontNotice, setFontNotice] = useState<string | null>(null);
 
   async function handleCreate() {
     const namedSiblings = siblingDrafts.filter((s) => s.name.trim());
@@ -323,6 +327,7 @@ function ChildrensBookContent() {
         language: form.language,
         pageCount: form.pageCount,
         illustrationStyle: form.illustrationStyle,
+        fontId: form.fontId,
         character: {
           name: form.name,
           age: form.age ? Number(form.age) : undefined,
@@ -443,7 +448,11 @@ function ChildrensBookContent() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('languageLabel')}</label>
-                <select className="w-full rounded-lg border border-gray-300 px-3 py-2" value={form.language} onChange={(e) => setForm({ ...form, language: e.target.value as BookLanguage })}>
+                <select className="w-full rounded-lg border border-gray-300 px-3 py-2" value={form.language} onChange={(e) => {
+                  const language = e.target.value as BookLanguage;
+                  // A Georgian book only offers the fonts that look different in Georgian.
+                  setForm({ ...form, language, fontId: bookFontOptions(language).includes(form.fontId) ? form.fontId : DEFAULT_BOOK_FONT });
+                }}>
                   <option value="EN">English</option>
                   <option value="KA">ქართული</option>
                 </select>
@@ -516,6 +525,9 @@ function ChildrensBookContent() {
                     </button>
                   ))}
                 </div>
+              </div>
+              <div className="sm:col-span-2">
+                <BookFontPicker value={form.fontId} language={form.language} disabled={busy} onChange={(fontId) => setForm({ ...form, fontId })} />
               </div>
             </div>
             <div className="mt-5" data-testid="book-form-promo">
@@ -656,7 +668,7 @@ function ChildrensBookContent() {
             <>
               <h2 className="font-semibold text-gray-800 mb-3">{t('step2Title')}</h2>
               <p className="text-sm text-green-700 mb-4 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> {t('storyApprovedNotice')}</p>
-              <ul className="text-sm text-gray-500 mb-4 space-y-1 list-decimal list-inside">
+              <ul className="text-sm text-gray-500 mb-4 space-y-1 list-decimal list-inside" style={{ fontFamily: bookFontFamily(book.characterConfig?.fontId) }}>
                 {book.storyPlan?.pages?.map((p: any) => <li key={p.pageNumber} className="whitespace-pre-line">{p.storyText}</li>)}
               </ul>
               <div className="flex flex-wrap gap-3">
@@ -982,6 +994,23 @@ function ChildrensBookContent() {
             </>
           )}
         </div>
+
+        {book.status !== 'FAILED' && (
+          <div className="mt-6 rounded-xl border border-gray-200 bg-white p-6" data-testid="book-font-panel">
+            <BookFontPicker
+              value={book.characterConfig?.fontId}
+              language={book.language}
+              disabled={busy || book.pdfStatus === 'GENERATING'}
+              onChange={(fontId) => run(async () => {
+                const hadPdf = book.pdfStatus === 'CURRENT';
+                const updated = await updateBookFont(book.id, fontId);
+                setBook(updated);
+                setFontNotice(hadPdf && updated.pdfStatus === 'STALE' ? t('fontChangedPdfStale', { button: t('generatePdfButton') }) : null);
+              })}
+            />
+            {fontNotice && <p className="text-sm text-purple-700 mt-3">{fontNotice}</p>}
+          </div>
+        )}
       </main>
       <SiteFooter />
     </div>

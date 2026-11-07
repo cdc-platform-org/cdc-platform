@@ -210,5 +210,16 @@
   "printBleed": "Bleed",
   "printBleedNone": "None",
   "printBleedHint": "For a print shop: adds an extra edge that is cut off after printing. For home printing choose None.",
-  "printDownloadButton": "Download PDF for print"
+  "printDownloadButton": "Download PDF for print",
+  "fontLabel": "Font",
+  "fontHint": "Choose the lettering for the story in the book and the PDF. You can change it any time, free of charge.",
+  "font": {
+    "SIMPLE": "Simple",
+    "ROUNDED": "Round and friendly",
+    "MODERN": "Modern",
+    "FAIRYTALE": "Fairy tale (classic)",
+    "PLAYFUL": "Playful (handwritten)",
+    "EASY_READ": "Easy to read"
+  },
+  "fontChangedPdfStale": "Font changed. Press \"{{button}}\" to rebuild the PDF in the new font."
 }

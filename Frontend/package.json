@@ -14,6 +14,13 @@
     "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
+    "@fontsource/andika": "^5.3.0",
+    "@fontsource/firago": "^5.3.0",
+    "@fontsource/google-sans": "^5.3.2",
+    "@fontsource/literata": "^5.3.0",
+    "@fontsource/noto-sans-georgian": "^5.3.0",
+    "@fontsource/noto-serif-georgian": "^5.3.0",
+    "@fontsource/playpen-sans": "^5.3.0",
     "@google/generative-ai": "^0.24.1",
     "@sentry/nextjs": "10.70.0",
     "@stripe/stripe-js": "^9.13.0",
