@@ -132,6 +132,7 @@
   "photoChange": "Cambiar foto",
   "photoRemove": "Quitar foto",
   "photoConsent": "Confirmo que soy el padre, la madre o el tutor legal del niño y acepto que esta foto se use para crear las ilustraciones del libro.",
+  "photoConsentRequired": "Para subir una foto, primero marque la casilla de consentimiento de arriba.",
   "photoPrivacy": "JPG, PNG o WebP, hasta 8 MB. La foto se guarda de forma privada y se eliminan los datos de ubicación. Para dibujar al personaje se envía a un servicio de imágenes con IA (Azure OpenAI) y no se usa para nada más. Se borra automáticamente en cuanto apruebas el personaje, y puedes eliminarla en cualquier momento antes.",
   "photoWrongType": "Elige una foto JPG, PNG o WebP.",
   "photoTooLarge": "La foto debe pesar como máximo {{mb}} MB.",
