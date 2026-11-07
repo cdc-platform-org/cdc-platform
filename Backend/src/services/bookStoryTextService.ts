@@ -36,8 +36,24 @@ const responseSchema = z.object({
   pages: z.array(z.object({ pageNumber: z.number().int(), storyText: z.string().trim().min(20).max(900) })),
 });
 
+// Georgian needs much more than "write in Georgian": the model's first
+// draft tended to be a literal translation of English with wrong case
+// endings and verb forms ("ველი მათ პატივს აძლევდა", "ხეების ჭალა ... რომლებიც
+// ჰგავდნენ"). The rules below name the mistakes it actually made, and every
+// KA text then goes through a separate proofreading pass (proofreadGeorgian).
+const GEORGIAN_RULES = [
+  'Write directly in Georgian (ქართული) as an experienced native Georgian children\'s author would. Do NOT think in English and translate: no calques or English word order.',
+  'Grammar must be flawless literary Georgian (სალიტერატურო ქართული):',
+  '- correct case for the subject: ergative (-მა/-მ) with transitive verbs in the aorist (სოფიმ დაინახა), nominative with present/future (სოფი ხედავს), dative subject with inversive verbs (სოფის უყვარს, სოფის შეეძლო);',
+  '- verb agreement in person and number with subject and objects, and correct preverbs and screeves (მიადგნენ, ამოისუნთქა, გაიღიმა);',
+  '- correct noun cases and postpositions (-ში, -ზე, -თან, -ისკენ, -ით, -ად), adjective agreement and correct plural forms;',
+  '- natural word choice: everyday words a 4-8 year old understands; no invented words, no rare or bookish words, no archaisms; idioms only if they are real Georgian idioms;',
+  '- short, clear sentences (mostly 6-14 words); correct punctuation with Georgian quotation marks „...“ for speech;',
+  '- keep the child\'s name exactly as given and decline it correctly (სოფი → სოფიმ, სოფის, სოფისთვის).',
+].join('\n');
+
 const LANGUAGE_INSTRUCTIONS: Record<BookLanguage, string> = {
-  KA: 'Write in natural, correct, warm Georgian (ქართული) as a native Georgian children\'s author would — not a translation.',
+  KA: GEORGIAN_RULES,
   EN: 'Write in natural, warm English as a native children\'s author would.',
 };
 
@@ -67,7 +83,7 @@ export async function writeStoryTexts(params: {
     details,
     LANGUAGE_INSTRUCTIONS[language],
     `The book has exactly ${scenes.length} pages. Each page already has an illustration showing the scene below. Write the story text for every page so the whole book reads as one continuous, gentle, age-appropriate story with a clear beginning and a warm ending.`,
-    'Rules: 2-4 short sentences per page (at most about 60 words); use the child\'s name; match each page\'s scene; no page numbers, headings or meta text; nothing scary, violent or unsafe.',
+    'Rules: 2-4 short sentences per page (at most about 60 words); any companion creature or animal keeps the same name and description on every page; use the child\'s name; match each page\'s scene; no page numbers, headings or meta text; nothing scary, violent or unsafe.',
     'Scenes:',
     sceneList,
     'Reply with JSON only: {"pages":[{"pageNumber":1,"storyText":"..."}, ...]} with one entry per page.',
@@ -75,7 +91,7 @@ export async function writeStoryTexts(params: {
 
   let raw: string;
   try {
-    raw = await callTextModel(prompt, 0.8, undefined, { timeoutMs: 90_000 });
+    raw = await callTextModel(prompt, language === 'KA' ? 0.6 : 0.8, undefined, { timeoutMs: 90_000 });
   } catch (err) {
     throw new StoryTextGenerationError(`Story text generation failed: ${err instanceof Error ? err.message : String(err)}`);
   }
@@ -87,6 +103,8 @@ export async function writeStoryTexts(params: {
     throw new StoryTextGenerationError('Story text generation returned an invalid response.');
   }
 
+  if (language === 'KA') parsed = { pages: await proofreadGeorgian(parsed.pages, character.name) };
+
   const texts = new Map<number, string>();
   for (const page of parsed.pages) texts.set(page.pageNumber, page.storyText.trim());
   for (const scene of scenes) {
@@ -96,6 +114,41 @@ export async function writeStoryTexts(params: {
     }
   }
   return texts;
+}
+
+// ============================================================
+// Georgian proofreading pass: a second, low-temperature call whose only job
+// is to correct grammar, morphology, spelling and unnatural (translated)
+// phrasing while keeping the story. If the proofreader fails or returns
+// something unusable the original draft is kept, page by page, so this
+// step can only improve a text, never lose one.
+// ============================================================
+export async function proofreadGeorgian(
+  pages: Array<{ pageNumber: number; storyText: string }>,
+  childName: string,
+): Promise<Array<{ pageNumber: number; storyText: string }>> {
+  const prompt = [
+    'You are a senior Georgian language editor (ქართული ენის რედაქტორი) of children\'s books. Proofread the story below.',
+    GEORGIAN_RULES,
+    'Check every sentence word by word: case endings, verb person/number agreement, preverbs and tense, postpositions, plural and adjective agreement, spelling, punctuation, and whether a native Georgian would actually say it that way. Rewrite any sentence that sounds translated or unnatural into simple, natural Georgian with the same meaning.',
+    `Keep the plot, the events of each page and the name "${childName}" (declined correctly). Keep 2-4 short sentences per page. Do not add page numbers, headings or comments.`,
+    'Story (JSON):',
+    JSON.stringify({ pages }),
+    'Reply with JSON only, same shape: {"pages":[{"pageNumber":1,"storyText":"..."}, ...]} with every page.',
+  ].join('\n\n');
+
+  try {
+    const raw = await callTextModel(prompt, 0.2, undefined, { timeoutMs: 90_000 });
+    const parsed = responseSchema.parse(JSON.parse(raw));
+    const byPage = new Map(parsed.pages.map((p) => [p.pageNumber, p.storyText.trim()]));
+    return pages.map((page) => {
+      const fixed = byPage.get(page.pageNumber);
+      return fixed && !isPlaceholderStoryText(fixed) ? { pageNumber: page.pageNumber, storyText: fixed } : page;
+    });
+  } catch (err) {
+    console.warn('[childrens-book] Georgian proofreading failed, keeping the draft:', err instanceof Error ? err.message : err);
+    return pages;
+  }
 }
 
 // ============================================================
