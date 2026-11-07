@@ -18,12 +18,10 @@ import {
   Loader2,
   Link2,
   Users,
+  Sparkles,
 } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
-import SiteHeader from '../../../src/components/layout/SiteHeader';
-import SiteFooter from '../../../src/components/layout/SiteFooter';
-import BackButton from '../../../src/components/common/BackButton';
 import SEOHead from '../../../src/components/seo/SEOHead';
 import RichTextEditor from '../../../src/components/shared/RichTextEditor';
 import FileDropzone from '../../../src/components/shared/FileDropzone';
@@ -57,6 +55,7 @@ import {
   ParentLetterPurpose,
 } from '../../../src/services/educatorHubService';
 import ToolMediaBanner from '../../../src/components/tools/ToolMediaBanner';
+import ToolShell, { ToolPageHeader, ToolTabs, ToolChip } from '../../../src/components/tools/ToolShell';
 
 type TabId = 'test' | 'rubric' | 'grading' | 'sen' | 'lessonPlan' | 'bureaucracy' | 'parentReports' | 'certificates';
 
@@ -71,6 +70,17 @@ const REAL_TABS: { id: TabId; icon: typeof FileText }[] = [
   { id: 'parentReports', icon: Mail },
   { id: 'certificates', icon: Crown }, // New tab for certificates
 ];
+
+const TAB_LABEL_KEY: Record<TabId, { key: string; fallback: string }> = {
+  test: { key: 'tabTestGenerator', fallback: 'ტესტები' },
+  rubric: { key: 'tabRubric', fallback: 'რუბრიკები' },
+  grading: { key: 'tabGrading', fallback: 'დავალებების გასწორება' },
+  sen: { key: 'tabSen', fallback: 'დიფერენცირება & სსსმ' },
+  lessonPlan: { key: 'tabLessonPlan', fallback: 'გაკვეთილის გეგმები' },
+  bureaucracy: { key: 'tabBureaucracy', fallback: 'დოკუმენტაცია' },
+  parentReports: { key: 'tabParentReports', fallback: 'მშობლის რეპორტები' },
+  certificates: { key: 'tabCertificates', fallback: 'სერტიფიკატები' },
+};
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -498,43 +508,28 @@ function EducatorHubContent() {
   const usage = hubState?.usage;
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
-      <SiteHeader />
-
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 md:py-12 flex-1 w-full">
-        <div className="mb-4 no-print">
-          <BackButton fallbackHref="/tools" className="dark:text-slate-400 dark:hover:text-slate-100" />
-        </div>
-
-        {/* Module 8: Student Certificate & Diploma Builder */}
-        {tab === 'certificates' && (
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
-            <h2 className="text-xl font-bold mb-4">{t('certificatesTitle')}</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{t('certificatesDescription')}</p>
-            <CertificateBuilder />
-          </div>
-        )}
-
+    <ToolShell>
         <div className="mb-8 no-print">
-          <div className="flex flex-wrap items-center gap-3 mb-2">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest px-3 py-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-full border border-amber-500/20">
-              <Crown className="w-3.5 h-3.5" />
-              {t('vipBadge', 'VIP 50 ₾/თვე')}
-            </span>
-            {hubState?.isVipActive && (
-              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{t('vipActiveLabel')}</span>
-            )}
-            {!hubState?.isVipActive && hubState?.trialActive && (
-              <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">
-                {t('trialActiveLabel', {
-                  days: Math.max(1, Math.ceil((new Date(hubState.educatorVipTrialEndDate ?? 0).getTime() - Date.now()) / (24 * 60 * 60 * 1000))),
-                })}
-              </span>
-            )}
-          </div>
-          <h1 className="text-2xl md:text-3xl font-black tracking-wide mb-2">{t('pageTitle')}</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">{t('pageSubtitle')}</p>
-          <ToolMediaBanner slug="educator-hub" alt={t('pageTitle')} className="mt-5" />
+          <ToolPageHeader
+            icon={Sparkles}
+            accent="amber"
+            title={t('pageTitle')}
+            subtitle={t('pageSubtitle')}
+            chips={
+              <>
+                <ToolChip tone="vip" icon={Crown}>{t('vipBadge', 'VIP 50 ₾/თვე')}</ToolChip>
+                {hubState?.isVipActive && <ToolChip tone="success">{t('vipActiveLabel')}</ToolChip>}
+                {!hubState?.isVipActive && hubState?.trialActive && (
+                  <ToolChip tone="brand">
+                    {t('trialActiveLabel', {
+                      days: Math.max(1, Math.ceil((new Date(hubState.educatorVipTrialEndDate ?? 0).getTime() - Date.now()) / (24 * 60 * 60 * 1000))),
+                    })}
+                  </ToolChip>
+                )}
+              </>
+            }
+          />
+          <ToolMediaBanner slug="educator-hub" alt={t('pageTitle')} />
 
           {!stateLoading && !stateError && !hasAccess && (
             <div className="mt-5 rounded-2xl border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-5">
@@ -574,57 +569,23 @@ function EducatorHubContent() {
           )}
         </div>
 
-        {/* Tabs */}
-        <div className="flex flex-wrap gap-2 mb-6 no-print">
-          {REAL_TABS.map(({ id, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setTab(id)}
-              className={`inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-full border cursor-pointer transition-all duration-300 ${
-                tab === id
-                  ? 'bg-gradient-to-r from-amber-500 to-purple-600 text-white border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.15)] backdrop-blur-md'
-                  : 'bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-amber-400'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {t(
-                `tab${
-                  id === 'test'
-                    ? 'TestGenerator'
-                    : id === 'rubric'
-                    ? 'Rubric'
-                    : id === 'grading'
-                    ? 'Grading'
-                    : id === 'sen'
-                    ? 'Sen'
-                    : id === 'lessonPlan'
-                    ? 'LessonPlan'
-                    : id === 'bureaucracy'
-                    ? 'Bureaucracy'
-                    : id === 'parentReports'
-                    ? 'ParentReports'
-                    : 'Certificates'
-                }`,
-                id === 'test'
-                  ? 'ტესტები & პასუხები'
-                  : id === 'rubric'
-                  ? 'შეფასების რუბრიკები'
-                  : id === 'grading'
-                  ? 'დავალებების გასწორება'
-                  : id === 'sen'
-                  ? 'დიფერენცირებული & სსსმ'
-                  : id === 'lessonPlan'
-                  ? 'გაკვეთილის გეგმები'
-                  : id === 'bureaucracy'
-                  ? 'სკოლის დოკუმენტაცია'
-                  : id === 'parentReports'
-                  ? 'მოსწავლის რეპორტები'
-                  : 'სერტიფიკატები'
-              )}
-            </button>
-          ))}
-        </div>
+        <ToolTabs
+          ariaLabel={t('pageTitle')}
+          tabs={REAL_TABS.map(({ id, icon }) => ({ key: id, icon, label: t(TAB_LABEL_KEY[id].key, TAB_LABEL_KEY[id].fallback) }))}
+          active={tab}
+          onChange={setTab}
+        />
+
+        {/* Module 8: Student Certificate & Diploma Builder (used to render
+            above the page title; now sits with the other modules). */}
+        {tab === 'certificates' && (
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
+            <h2 className="text-xl font-bold mb-4">{t('certificatesTitle')}</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{t('certificatesDescription')}</p>
+            <CertificateBuilder />
+          </div>
+        )}
+
 
         {/* Module 1: Test generator */}
         {tab === 'test' && (
@@ -1215,11 +1176,6 @@ function EducatorHubContent() {
             </div>
           </div>
         )}
-      </div>
-
-      <div className="no-print">
-        <SiteFooter />
-      </div>
 
       {/* Print mode: only the active module's #print-<tab> subtree stays
           visible — everything else (nav, forms, other tabs, buttons) is
@@ -1261,7 +1217,7 @@ function EducatorHubContent() {
           }
         }
       `}</style>
-    </div>
+    </ToolShell>
   );
 }
 

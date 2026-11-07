@@ -74,7 +74,7 @@ test('Educator Hub (de) renders real German copy on direct load — spot-checks 
 test('every Educator Hub tab (including Certificates) is free of raw i18n keys after a hard refresh', async ({ page }) => {
   await page.goto('/dashboard/tools/educator-hub');
   await page.reload({ waitUntil: 'networkidle' });
-  const tabButtons = page.locator('.flex.flex-wrap.gap-2.mb-6.no-print button');
+  const tabButtons = page.getByRole('tablist').getByRole('tab');
   const count = await tabButtons.count();
   expect(count).toBeGreaterThanOrEqual(8); // Tests, Rubric, Grading, SEN, Lesson Plan, Bureaucracy, Parent Reports, Certificates
   for (let i = 0; i < count; i++) {

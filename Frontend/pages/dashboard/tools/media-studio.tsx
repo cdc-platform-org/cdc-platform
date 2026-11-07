@@ -25,9 +25,6 @@ import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
 import DigitalToolAccessGate from '../../../src/components/tools/DigitalToolAccessGate';
 import SEOHead from '../../../src/components/seo/SEOHead';
-import SiteHeader from '../../../src/components/layout/SiteHeader';
-import SiteFooter from '../../../src/components/layout/SiteFooter';
-import BackButton from '../../../src/components/common/BackButton';
 import FileDropzone from '../../../src/components/shared/FileDropzone';
 import { useAuth } from '../../../src/context/AuthContext';
 import {
@@ -40,6 +37,7 @@ import {
   TtsVoice,
 } from '../../../src/services/mediaStudioService';
 import ToolMediaBanner from '../../../src/components/tools/ToolMediaBanner';
+import ToolShell, { ToolPageHeader, ToolTabs } from '../../../src/components/tools/ToolShell';
 
 // ============================================================
 // AI Voice & Video Media Studio.
@@ -523,44 +521,18 @@ function MediaStudioContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
-      <SiteHeader />
-
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 md:py-12 flex-1 w-full">
-        <div className="mb-4">
-          <BackButton fallbackHref="/tools" className="dark:text-slate-400 dark:hover:text-slate-100" />
-        </div>
-        <div className="mb-8">
-          <h1 className="text-2xl font-black flex items-center gap-2">
-            <Mic className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
-            {t('pageTitle')}
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t('pageSubtitle')}</p>
-        </div>
+    <ToolShell>
+        <ToolPageHeader icon={Mic} accent="pink" title={t('pageTitle')} subtitle={t('pageSubtitle')} />
         <ToolMediaBanner slug="media-studio" alt={t('pageTitle')} />
 
-        <div className="flex gap-2 mb-6 border-b border-slate-200 dark:border-slate-800">
-          <button
-            type="button"
-            onClick={() => setTab('tts')}
-            className={`px-4 py-2.5 text-sm font-bold border-b-2 -mb-px transition-colors bg-transparent cursor-pointer flex items-center gap-1.5 ${
-              tab === 'tts' ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-            }`}
-          >
-            <Mic className="w-4 h-4" />
-            {t('tabTts')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('video')}
-            className={`px-4 py-2.5 text-sm font-bold border-b-2 -mb-px transition-colors bg-transparent cursor-pointer flex items-center gap-1.5 ${
-              tab === 'video' ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-            }`}
-          >
-            <Video className="w-4 h-4" />
-            {t('tabVideo')}
-          </button>
-        </div>
+        <ToolTabs
+          tabs={[
+            { key: 'tts', label: t('tabTts'), icon: Mic },
+            { key: 'video', label: t('tabVideo'), icon: Video },
+          ]}
+          active={tab}
+          onChange={setTab}
+        />
 
         {tab === 'tts' && (
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
@@ -880,9 +852,6 @@ function MediaStudioContent() {
             )}
           </div>
         )}
-      </div>
-
-      <SiteFooter />
 
       {showEmailModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={() => setShowEmailModal(false)}>
@@ -925,7 +894,7 @@ function MediaStudioContent() {
           </div>
         </div>
       )}
-    </div>
+    </ToolShell>
   );
 }
 
@@ -939,7 +908,7 @@ export default function MediaStudioPage() {
       <SEOHead title={t('pageTitle')} description={t('catalogDesc')} noIndex />
       <ProtectedRoute>
         <ToolErrorBoundary>
-          <DigitalToolAccessGate toolKey="media-studio">
+          <DigitalToolAccessGate toolKey="media-studio" toolTitle={t('pageTitle')} toolSubtitle={t('pageSubtitle')} toolIcon={Mic} accent="pink">
             <MediaStudioContent />
           </DigitalToolAccessGate>
         </ToolErrorBoundary>
