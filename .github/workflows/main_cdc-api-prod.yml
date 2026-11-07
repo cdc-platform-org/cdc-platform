@@ -303,7 +303,7 @@ jobs:
           files.forEach(function (f) {
             fs.readFileSync(f, 'utf8').split(/\r?\n/).forEach(function (line) {
               var m = line.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)\s+(.*)$/);
-              if (m) events.push({ t: m[1], ms: toMs(m[1]), msg: m[2], seq: events.length });
+              if (m) events.push({ t: m[1], ms: toMs(m[1]), msg: m[2], seq: events.length, file: path.basename(f) });
             });
           });
           events.sort(function (a, b) { return (a.ms - b.ms) || (a.seq - b.seq); });
@@ -314,13 +314,25 @@ jobs:
           events.forEach(function (ev) {
             var m;
             if ((m = ev.msg.match(/^Creating container with image:\s+(\S+)\s+from registry:/))) { lastImage = m[1]; return; }
-            if ((m = ev.msg.match(/^Starting container:\s+(\S+?)\.?$/))) { running[m[1]] = { image: lastImage, t: ev.t, ms: ev.ms }; return; }
+            if ((m = ev.msg.match(/^Starting container:\s+(\S+?)\.?$/))) { running[m[1]] = { image: lastImage, t: ev.t, ms: ev.ms, file: ev.file }; return; }
             if ((m = ev.msg.match(/^(?:Stopping|Deleting) container:\s+(\S+?)(?:\.\s|\.$|\s|$)/))) { delete running[m[1]]; }
           });
 
           var ids = Object.keys(running);
           if (ids.length === 0) emit('unavailable', 'no currently-running container can be identified in the retained platform logs (rotated, or the start was not logged)');
-          if (ids.length > 1) emit('ambiguous', 'more than one container appears to be running');
+          if (ids.length > 1) {
+            // Diagnostics only (stderr, shown in the job log; never parsed as
+            // evidence): which containers count as running, and the recent
+            // container lifecycle lines, so the cause can be seen.
+            console.error('Containers counted as running (' + ids.length + '):');
+            ids.forEach(function (k) { console.error('  ' + k + '  started ' + running[k].t + '  image ' + running[k].image + '  log ' + running[k].file); });
+            console.error('Log files read: ' + files.map(function (f) { return path.basename(f); }).join(', '));
+            console.error('Last 40 container lifecycle lines:');
+            events.filter(function (ev) { return /container/i.test(ev.msg); }).slice(-40).forEach(function (ev) {
+              console.error('  ' + ev.t + '  [' + ev.file + ']  ' + ev.msg.slice(0, 200));
+            });
+            emit('ambiguous', 'more than one container appears to be running');
+          }
           var id = ids[0];
           var c = running[id];
           if (!SAFE_ID.test(id)) emit('inconsistent', 'the running container id is not in an expected format');
