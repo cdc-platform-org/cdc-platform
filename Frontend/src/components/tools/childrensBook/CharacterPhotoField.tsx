@@ -24,7 +24,19 @@ export default function CharacterPhotoField({ photoUrl, disabled, onSelect, onRe
   // Explicit parent/guardian consent before a child's photo can be picked.
   // Already-uploaded photos count as consented.
   const [consent, setConsent] = useState(false);
+  const [consentMissing, setConsentMissing] = useState(false);
   const consented = consent || !!photoUrl;
+
+  // The button stays clickable: a greyed-out button looked broken to
+  // parents who had not noticed the consent checkbox. Without consent we
+  // explain what is missing instead of opening the file picker.
+  function choose() {
+    if (!consented) {
+      setConsentMissing(true);
+      return;
+    }
+    inputRef.current?.click();
+  }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -46,6 +58,19 @@ export default function CharacterPhotoField({ photoUrl, disabled, onSelect, onRe
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">{label ?? t('photoLabel')}</label>
       <p className="text-xs text-gray-500 mb-2">{hint ?? t('photoHint')}</p>
+      <label className={`flex items-start gap-2 mb-3 text-xs text-gray-700 cursor-pointer rounded-lg p-2 ${consentMissing && !consented ? 'bg-red-50 ring-1 ring-red-300' : ''}`}>
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={consented}
+          disabled={disabled || !!photoUrl}
+          onChange={(e) => {
+            setConsent(e.target.checked);
+            if (e.target.checked) setConsentMissing(false);
+          }}
+        />
+        <span>{t('photoConsent')}</span>
+      </label>
       <div className="flex items-center gap-3">
         {photoUrl ? (
           <div className="relative">
@@ -67,25 +92,16 @@ export default function CharacterPhotoField({ photoUrl, disabled, onSelect, onRe
         )}
         <button
           type="button"
-          disabled={disabled || !consented}
-          onClick={() => inputRef.current?.click()}
+          disabled={disabled}
+          onClick={choose}
           className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:border-purple-300 disabled:opacity-50"
         >
           {photoUrl ? t('photoChange') : t('photoChoose')}
         </button>
         <input ref={inputRef} type="file" accept={ACCEPTED_TYPES.join(',')} className="hidden" onChange={handleChange} />
       </div>
-      <label className="flex items-start gap-2 mt-3 text-xs text-gray-700 cursor-pointer">
-        <input
-          type="checkbox"
-          className="mt-0.5"
-          checked={consented}
-          disabled={disabled || !!photoUrl}
-          onChange={(e) => setConsent(e.target.checked)}
-        />
-        <span>{t('photoConsent')}</span>
-      </label>
       <p className="text-xs text-gray-400 mt-2">{t('photoPrivacy')}</p>
+      {consentMissing && !consented && <p className="text-xs text-red-600 mt-1">{t('photoConsentRequired')}</p>}
       {localError && <p className="text-xs text-red-600 mt-1">{localError}</p>}
     </div>
   );

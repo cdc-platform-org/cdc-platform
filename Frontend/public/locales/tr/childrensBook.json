@@ -132,6 +132,7 @@
   "photoChange": "Fotoğrafı değiştir",
   "photoRemove": "Fotoğrafı kaldır",
   "photoConsent": "Çocuğun ebeveyni veya yasal vasisi olduğumu onaylıyor ve bu fotoğrafın kitabın çizimleri için kullanılmasını kabul ediyorum.",
+  "photoConsentRequired": "Fotoğraf yüklemek için önce yukarıdaki onay kutusunu işaretleyin.",
   "photoPrivacy": "JPG, PNG veya WebP, en fazla 8 MB. Fotoğraf gizli saklanır, konum bilgileri silinir. Karakteri çizmek için bir yapay zekâ görsel hizmetine (Azure OpenAI) gönderilir ve başka hiçbir amaçla kullanılmaz. Karakteri onayladığınız anda otomatik olarak silinir; öncesinde istediğiniz zaman kaldırabilirsiniz.",
   "photoWrongType": "Lütfen JPG, PNG veya WebP bir fotoğraf seçin.",
   "photoTooLarge": "Fotoğraf en fazla {{mb}} MB olmalıdır.",
