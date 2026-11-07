@@ -1,6 +1,6 @@
 jest.mock('../bookStorageService', () => ({ readBookAsset: jest.fn(async () => Buffer.from('portrait')) }));
 
-import { loadCharacterReference, consistencyPromptLine } from '../bookCharacterDetailsService';
+import { loadCharacterReference, consistencyPromptLine, pageStoryPromptLines } from '../bookCharacterDetailsService';
 import { readBookAsset } from '../bookStorageService';
 
 describe('character consistency across pages', () => {
@@ -14,6 +14,13 @@ describe('character consistency across pages', () => {
   it('returns no reference when there is no approved portrait', async () => {
     expect(await loadCharacterReference({})).toEqual([]);
     expect(await loadCharacterReference(null)).toEqual([]);
+  });
+
+  it('ties each picture to its page text and the child\'s real age', () => {
+    const line = pageStoryPromptLines({ name: 'სოფი', age: 5 }, 'სოფიმ ჩანთა მოიმარჯვა და\n რუკის მიხედვით გზას დაადგა.');
+    expect(line).toContain('5-year-old');
+    expect(line).toContain('სოფიმ ჩანთა მოიმარჯვა და რუკის მიხედვით გზას დაადგა.');
+    expect(pageStoryPromptLines({ name: 'x' }, '')).toBe('');
   });
 
   it('tells the model to keep the same outfit on every page', () => {

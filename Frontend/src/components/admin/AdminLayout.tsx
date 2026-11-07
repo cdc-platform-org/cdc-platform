@@ -37,6 +37,13 @@ import {
   Star,
   Wrench,
   Sparkles,
+  UserCog,
+  KeyRound,
+  Video,
+  Bot,
+  Gauge,
+  Languages,
+  Search,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AdminLangProvider, useAdminLang } from '../../context/AdminLangContext';
@@ -73,52 +80,106 @@ interface NavItem {
   seenSection?: AdminSeenSection;
 }
 
+// Grouped to mirror the public site's own menu (src/data/siteNavigation.ts:
+// სწავლა · AI ხელსაწყოები · მაღაზია · კარიერა · ბლოგი · ჩვენ შესახებ), plus the
+// admin-only areas (people, moderation, finance, system). Every admin page
+// that renders inside AdminLayout has exactly one entry here; nested pages
+// (e.g. /admin/live-trainings/[id]/leads) highlight their parent entry.
 const NAV_ITEMS: NavItem[] = [
-  { href: '/admin', labelKey: 'dashboard', icon: LayoutDashboard, section: 'core' },
-  { href: '/admin/users', labelKey: 'users', icon: Users, section: 'core' },
-  { href: '/admin/gigs', labelKey: 'gigs', icon: Briefcase, section: 'core' },
-  { href: '/admin/disputes', labelKey: 'disputes', icon: Scale, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'core' },
-  { href: '/admin/mentorship', labelKey: 'mentorship', icon: GraduationCap, section: 'core' },
-  { href: '/admin/messages', labelKey: 'messages', icon: ShieldAlert, section: 'core' },
-  { href: '/admin/chat-moderation', labelKey: 'chatModeration', icon: ShieldBan, tiers: ['SUPER_ADMIN', 'MANAGER', 'MODERATOR'], section: 'core', badgeKey: 'highSeverityChatFlags' },
-  { href: '/admin/notifications', labelKey: 'notifications', icon: Bell, section: 'core' },
-  { href: '/admin/products', labelKey: 'products', icon: ShoppingBag, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content', badgeKey: 'pendingProducts' },
-  { href: '/admin/product-reviews', labelKey: 'productReviews', icon: Star, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
-  { href: '/admin/forum', labelKey: 'forum', icon: MessageSquare, section: 'content', badgeKey: 'reportedForumPosts', badgeColor: 'yellow' },
-  { href: '/admin/bot-knowledge', labelKey: 'botKnowledge', icon: BrainCircuit, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  // Overview
+  { href: '/admin', labelKey: 'dashboard', icon: LayoutDashboard, section: 'overview' },
+  { href: '/admin/analytics', labelKey: 'analytics', icon: BarChart3, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'overview' },
+
+  // Users & verification
+  { href: '/admin/users', labelKey: 'users', icon: Users, section: 'people' },
+  { href: '/admin/companies', labelKey: 'companies', icon: ShieldCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'people', badgeKey: 'businessVerifications' },
+  { href: '/admin/candidate-verifications', labelKey: 'candidateVerifications', icon: UserCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'people' },
+  { href: '/admin/mentor-applications', labelKey: 'mentorApplications', icon: UserCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'people', badgeKey: 'pendingMentorApplications' },
+  { href: '/admin/trainers', labelKey: 'trainers', icon: UserCog, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'people' },
+  { href: '/admin/access-grants', labelKey: 'accessGrants', icon: KeyRound, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'people' },
+
+  // Learning (site: სწავლა)
+  { href: '/admin/courses', labelKey: 'courses', icon: GraduationCap, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'learning', badgeKey: 'newCourseEnrollments', badgeColor: 'blue', seenSection: 'courses' },
+  { href: '/admin/course-moderation', labelKey: 'courseModeration', icon: ClipboardList, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'learning', badgeKey: 'pendingCourseReviews', badgeColor: 'yellow' },
+  { href: '/admin/live-trainings', labelKey: 'liveTrainings', icon: Video, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'learning', badgeKey: 'newLiveTrainingLeads', badgeColor: 'blue', seenSection: 'liveTrainings' },
+  { href: '/admin/assignments', labelKey: 'assignments', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'learning' },
+  { href: '/admin/mentorship', labelKey: 'mentorship', icon: GraduationCap, section: 'learning' },
+  { href: '/admin/certificates/issue', labelKey: 'certificates', icon: Award, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'learning' },
+  { href: '/admin/tutorials', labelKey: 'tutorials', icon: PlayCircle, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'learning' },
+  { href: '/admin/tutor', labelKey: 'tutor', icon: BrainCircuit, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'learning' },
+  { href: '/admin/iako/profiles', labelKey: 'iakoProfiles', icon: Bot, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'learning' },
+  { href: '/admin/iako/usage', labelKey: 'iakoUsage', icon: Gauge, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'learning' },
+
+  // AI tools & store (site: AI ხელსაწყოები, მაღაზია)
+  { href: '/admin/tools', labelKey: 'toolsCms', icon: Wrench, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'tools' },
+  { href: '/admin/products', labelKey: 'products', icon: ShoppingBag, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'tools', badgeKey: 'pendingProducts' },
+  { href: '/admin/product-reviews', labelKey: 'productReviews', icon: Star, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'tools' },
+  { href: '/admin/cyber-sentinel', labelKey: 'cyberSentinel', icon: Bug, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'tools', badgeKey: 'waitlistEntries', seenSection: 'waitlist' },
+
+  // Career & gigs (site: კარიერა)
+  { href: '/admin/gigs', labelKey: 'gigs', icon: Briefcase, section: 'career' },
+  { href: '/admin/disputes', labelKey: 'disputes', icon: Scale, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'career' },
+  { href: '/admin/opportunities', labelKey: 'opportunities', icon: Radar, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'career' },
+
+  // Site content (site: მთავარი, ბლოგი, ჩვენ შესახებ)
   { href: '/admin/cms/homepage', labelKey: 'cms', icon: PenTool, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
-  { href: '/admin/cms/gallery', labelKey: 'gallery', icon: ImageIcon, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
-  { href: '/admin/cms/agency', labelKey: 'agencyCms', icon: Building2, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  { href: '/admin/blog', labelKey: 'blog', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  { href: '/admin/success-stories', labelKey: 'successStories', icon: Award, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  { href: '/admin/team-trainers', labelKey: 'teamTrainers', icon: UsersRound, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/projects', labelKey: 'projects', icon: Sparkles, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
-  { href: '/admin/tools', labelKey: 'toolsCms', icon: Wrench, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
-  { href: '/admin/studio', labelKey: 'studio', icon: ClipboardList, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content', badgeKey: 'studioInquiries' },
-  { href: '/admin/companies', labelKey: 'companies', icon: ShieldCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business', badgeKey: 'businessVerifications' },
-  { href: '/admin/blog', labelKey: 'blog', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
-  { href: '/admin/tutorials', labelKey: 'tutorials', icon: PlayCircle, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
-  { href: '/admin/opportunities', labelKey: 'opportunities', icon: Radar, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
-  { href: '/admin/marketing', labelKey: 'marketing', icon: Megaphone, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
-  { href: '/admin/live-trainings', labelKey: 'liveTrainings', icon: Users, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic', badgeKey: 'newLiveTrainingLeads', badgeColor: 'blue', seenSection: 'liveTrainings' },
-  { href: '/admin/success-stories', labelKey: 'successStories', icon: Award, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
-  { href: '/admin/team-trainers', labelKey: 'teamTrainers', icon: UsersRound, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
-  { href: '/admin/studio-cases', labelKey: 'studioCases', icon: Layers, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business' },
-  { href: '/admin/cyber-sentinel', labelKey: 'cyberSentinel', icon: Bug, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'business', badgeKey: 'waitlistEntries', seenSection: 'waitlist' },
-  { href: '/admin/courses', labelKey: 'courses', icon: GraduationCap, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic', badgeKey: 'newCourseEnrollments', badgeColor: 'blue', seenSection: 'courses' },
-  { href: '/admin/tutor', labelKey: 'tutor', icon: BrainCircuit, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },
-  { href: '/admin/mentor-applications', labelKey: 'mentorApplications', icon: UserCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic', badgeKey: 'pendingMentorApplications' },
-  { href: '/admin/course-moderation', labelKey: 'courseModeration', icon: ClipboardList, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic', badgeKey: 'pendingCourseReviews', badgeColor: 'yellow' },
-  { href: '/admin/assignments', labelKey: 'assignments', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },
-  { href: '/admin/candidate-verifications', labelKey: 'candidateVerifications', icon: UserCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },
-  { href: '/admin/analytics', labelKey: 'analytics', icon: BarChart3, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'academic' },
+  { href: '/admin/cms/gallery', labelKey: 'gallery', icon: ImageIcon, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  { href: '/admin/bot-knowledge', labelKey: 'botKnowledge', icon: BrainCircuit, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  { href: '/admin/marketing', labelKey: 'marketing', icon: Megaphone, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+
+  // CDC Studio (agency)
+  { href: '/admin/studio', labelKey: 'studio', icon: ClipboardList, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'studio', badgeKey: 'studioInquiries' },
+  { href: '/admin/cms/agency', labelKey: 'agencyCms', icon: Building2, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'studio' },
+  { href: '/admin/studio-cases', labelKey: 'studioCases', icon: Layers, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'studio' },
+
+  // Communication & moderation
+  { href: '/admin/notifications', labelKey: 'notifications', icon: Bell, section: 'moderation' },
+  { href: '/admin/messages', labelKey: 'messages', icon: ShieldAlert, section: 'moderation' },
+  { href: '/admin/chat-moderation', labelKey: 'chatModeration', icon: ShieldBan, tiers: ['SUPER_ADMIN', 'MANAGER', 'MODERATOR'], section: 'moderation', badgeKey: 'highSeverityChatFlags' },
+  { href: '/admin/forum', labelKey: 'forum', icon: MessageSquare, section: 'moderation', badgeKey: 'reportedForumPosts', badgeColor: 'yellow' },
+
+  // Finance
   { href: '/admin/finance', labelKey: 'finance', icon: CreditCard, tiers: ['SUPER_ADMIN'], section: 'financial' },
-  { href: '/admin/finance/payouts', labelKey: 'payouts', icon: Landmark, tiers: ['SUPER_ADMIN'], section: 'financial' },
   { href: '/admin/financials', labelKey: 'financials', icon: Wallet, tiers: ['SUPER_ADMIN'], section: 'financial' },
+  { href: '/admin/finance/payouts', labelKey: 'payouts', icon: Landmark, tiers: ['SUPER_ADMIN'], section: 'financial' },
   { href: '/admin/commissions', labelKey: 'commissions', icon: Percent, tiers: ['SUPER_ADMIN'], section: 'financial' },
   { href: '/admin/promos', labelKey: 'promos', icon: Tag, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'financial' },
-  { href: '/admin/certificates/issue', labelKey: 'certificates', icon: Award, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'financial' },
+
+  // System
   { href: '/admin/team', labelKey: 'team', icon: Lock, tiers: ['SUPER_ADMIN'], section: 'admin' },
+  { href: '/admin/i18n', labelKey: 'i18n', icon: Languages, tiers: ['SUPER_ADMIN'], section: 'admin' },
 ];
 
-const SECTION_ORDER: (keyof typeof adminDict.en.navSections)[] = ['core', 'content', 'business', 'academic', 'financial', 'admin'];
+const SECTION_ORDER: (keyof typeof adminDict.en.navSections)[] = [
+  'overview',
+  'people',
+  'learning',
+  'tools',
+  'career',
+  'content',
+  'studio',
+  'moderation',
+  'financial',
+  'admin',
+];
+
+// The nav entry for the current page: exact match, otherwise the longest
+// entry whose href is a path prefix (so /admin/live-trainings/[id]/leads
+// highlights "Live Trainings", while /admin/finance/payouts keeps its own).
+function activeHref(pathname: string): string | undefined {
+  let best: string | undefined;
+  for (const item of NAV_ITEMS) {
+    const h = item.href;
+    if (pathname === h || (h !== '/admin' && pathname.startsWith(`${h}/`))) {
+      if (!best || h.length > best.length) best = h;
+    }
+  }
+  return best;
+}
 
 const TIER_BADGE: Record<string, string> = {
   SUPER_ADMIN: 'bg-gradient-to-r from-amber-400 to-orange-500 text-white',
@@ -132,7 +193,13 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
   const { lang, toggleLang } = useAdminLang();
   const t = adminDict[lang];
 
-  const visibleNav = NAV_ITEMS.filter((item) => !item.tiers || (user?.adminRole && item.tiers.includes(user.adminRole)));
+  // Quick filter over the menu (matches the label in either language).
+  const [navQuery, setNavQuery] = useState('');
+  const q = navQuery.trim().toLowerCase();
+  const currentHref = activeHref(router.pathname);
+  const visibleNav = NAV_ITEMS.filter((item) => !item.tiers || (user?.adminRole && item.tiers.includes(user.adminRole))).filter(
+    (item) => !q || adminDict.ka.nav[item.labelKey].toLowerCase().includes(q) || adminDict.en.nav[item.labelKey].toLowerCase().includes(q),
+  );
   const groupedNav = SECTION_ORDER.map((section) => ({
     section,
     items: visibleNav.filter((item) => item.section === section),
@@ -220,7 +287,22 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
           )}
         </div>
 
+        <div className="px-3 pt-4">
+          <label className="relative block">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
+            <input
+              type="search"
+              value={navQuery}
+              onChange={(e) => setNavQuery(e.target.value)}
+              placeholder={lang === 'ka' ? 'მენიუში ძებნა…' : 'Search menu…'}
+              aria-label={lang === 'ka' ? 'მენიუში ძებნა' : 'Search menu'}
+              className="w-full rounded-lg bg-slate-800/70 border border-slate-700 pl-8 pr-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+            />
+          </label>
+        </div>
+
         <nav className="flex-1 px-3 py-4 space-y-5">
+          {groupedNav.length === 0 && <p className="px-3 text-xs text-slate-500">{t.common.noResults}</p>}
           {groupedNav.map(({ section, items }) => (
             <div key={section}>
               <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">
@@ -228,7 +310,7 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
               </p>
               <div className="space-y-1">
                 {items.map((item) => {
-                  const isActive = router.pathname === item.href;
+                  const isActive = currentHref === item.href;
                   const Icon = item.icon;
                   const badgeCount = item.badgeKey ? badgeCounts?.[item.badgeKey] : undefined;
                   return (

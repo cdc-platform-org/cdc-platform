@@ -4,7 +4,8 @@ import { StoryPlan } from './bookStoryPlanService';
 import { generateBookImage } from './bookImageGenerationService';
 import { runImageQa, isAcceptableQaStatus } from './bookQaService';
 import { storeBookAsset } from './bookStorageService';
-import { appearancePromptLine, extraCharactersPromptLine, siblingsPromptLine, loadCharacterReference, consistencyPromptLine } from './bookCharacterDetailsService';
+import { illustrationStylePromptLine } from './bookIllustrationStyles';
+import { appearancePromptLine, extraCharactersPromptLine, siblingsPromptLine, loadCharacterReference, consistencyPromptLine, pageStoryPromptLines } from './bookCharacterDetailsService';
 
 // ============================================================
 // Children's Book — final generation runner. Runs in the background, never
@@ -91,9 +92,11 @@ async function runFinalGeneration(bookProjectId: string): Promise<void> {
 
     const planPage = storyPlan.pages.find((p) => p.pageNumber === page.pageNumber);
     const prompt = [
-      `Children's storybook illustration, ${styleBible?.illustrationStyle ?? 'STORYBOOK_WATERCOLOR'} style.`,
+      `Children's storybook illustration.`,
+      illustrationStylePromptLine(styleBible?.illustrationStyle),
       `Character: ${characterBible?.name ?? ''}, consistent with the approved Character Bible.`,
       consistencyPromptLine(referenceImages.length > 0),
+      pageStoryPromptLines(characterBible, page.storyText),
       appearancePromptLine(characterBible),
       siblingsPromptLine(characterBible),
       extraCharactersPromptLine(characterBible),

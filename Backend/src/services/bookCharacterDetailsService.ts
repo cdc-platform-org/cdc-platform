@@ -186,3 +186,16 @@ export function groupPortraitPromptLine(mainName: string, mainHasPhoto: boolean,
     order.length ? `Reference photos are given in this order: ${order.map((n, i) => `${i + 1}) ${flatten(n)}`).join(', ')}. Use each photo only to match that child's face, hair and skin tone, redrawn as a storybook illustration, never photorealistic.` : '',
   ].filter(Boolean).join(' ');
 }
+
+// The page's own story text, so the illustration follows what the reader is
+// told on that page (scene beats alone drifted from the text), plus the
+// child's age so the character is never drawn as an older girl or boy.
+export function pageStoryPromptLines(characterBible: { name?: string; age?: number | null } | null | undefined, storyText: string | null | undefined): string {
+  const lines: string[] = [];
+  if (characterBible?.age) {
+    lines.push(`The main character is a ${characterBible.age}-year-old child and must look exactly that age (child proportions, not a teenager or adult).`);
+  }
+  const text = storyText ? flatten(storyText) : '';
+  if (text) lines.push(`Illustrate exactly what this page's story text describes (the text may be in Georgian): "${text}".`);
+  return lines.join(' ');
+}
