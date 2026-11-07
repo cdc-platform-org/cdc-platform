@@ -121,7 +121,11 @@ test('children book 5/10/20-page mock golden paths, audio revision, and reader U
 
     await page.getByText('5 pages', { exact: true }).click();
     await page.getByPlaceholder("e.g. Mimi's Great Adventure").fill(wizardTitle);
+    // The create form is a 4-step wizard: book → hero → extras → style.
+    await page.getByRole('button', { name: 'Next' }).click();
     await page.getByPlaceholder('e.g. Mimi', { exact: true }).fill('Milo');
+    await page.getByRole('button', { name: 'Next' }).click();
+    await page.getByRole('button', { name: 'Skip' }).click();
     await page.getByRole('button', { name: 'Create Book' }).click();
     await expect(page.getByRole('heading', { name: wizardTitle })).toBeVisible();
     const wizardBookId = new URL(page.url()).searchParams.get('bookId');

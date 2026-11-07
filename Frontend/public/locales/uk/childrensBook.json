@@ -230,7 +230,7 @@
   "styleFantasyHint": "Magical light and sparkle",
   "styleClassicHint": "The look of a classic storybook",
   "illustrationStyleHint": "See a sample and choose how the whole book will be drawn.",
-  "createIntro": "Three short steps. You will see the text and the character before paying.",
+  "createIntro": "Four short steps; only the first two are required. You will see the text and the character before paying.",
   "formSectionBook": "Book",
   "formSectionBookHint": "Length, title and language.",
   "formSectionHero": "Main character",
@@ -240,5 +240,15 @@
   "generatingCanLeave": "This takes a few minutes. You can close this page; the book will finish on its own.",
   "previewFailed": "The character could not be drawn. Please try again.",
   "pdfPreparing": "Preparing PDF…",
-  "audioPreparingAuto": "The narration is being prepared automatically and will be ready in a few minutes."
+  "audioPreparingAuto": "The narration is being prepared automatically and will be ready in a few minutes.",
+  "formSectionDetails": "Додаткові деталі",
+  "formSectionDetailsHint": "Необов'язково: брати й сестри, інші персонажі, присвята та шрифт.",
+  "formSectionOrder": "Стиль і замовлення",
+  "formSectionOrderHint": "Оберіть стиль ілюстрацій. Текст і персонажа ви побачите до оплати.",
+  "wizardNext": "Далі",
+  "wizardBack": "Назад",
+  "wizardSkip": "Пропустити",
+  "summaryTitle": "Ваша книга",
+  "summaryPrice": "Ціна",
+  "summaryNote": "Оплата лише після того, як ви затвердите текст і персонажа."
 }
