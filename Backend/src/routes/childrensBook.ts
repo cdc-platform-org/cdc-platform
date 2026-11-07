@@ -1202,12 +1202,14 @@ router.post('/:id/pdf/print', authenticate, async (req: Request, res: Response) 
 });
 
 router.post('/:id/pdf', authenticate, async (req: Request, res: Response) => {
-  const book = await prisma.bookProject.findUnique({ where: { id: req.params.id } });
+  const book = await prisma.bookProject.findUnique({ where: { id: req.params.id }, include: { pages: { select: { acceptedEventId: true } } } });
   if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
 
   // Finished books get their PDF automatically, so a request for an
-  // already-current PDF just returns the book (idempotent, no rebuild).
-  if (book.pdfStatus === 'CURRENT' && book.finalPdfBlobRef) return res.status(200).json({ data: book });
+  // already-current PDF of a complete book just returns it (no rebuild).
+  const { pages, ...bookData } = book;
+  const complete = pages.filter((p) => p.acceptedEventId).length === book.pageCount && (book.status === 'FINAL_READY' || book.status === 'COMPLETED');
+  if (complete && book.pdfStatus === 'CURRENT' && book.finalPdfBlobRef) return res.status(200).json({ data: bookData });
   const outcome = await buildAndStoreBookPdf(book.id);
   if (outcome === 'NOT_ELIGIBLE') return res.status(400).json({ message: 'PDF cannot be generated yet.' });
   if (outcome === 'IN_PROGRESS') return res.status(409).json({ message: 'PDF generation already in progress.' });
