@@ -24,6 +24,7 @@ async function createBookPath(api: APIRequestContext, pageCount: number, withAud
   });
   const id = created.data.id as string;
   await apiJson(api, 'post', `/childrens-books/${id}/story-plan`);
+  await apiJson(api, 'post', `/childrens-books/${id}/story-text/approve`);
   await apiJson(api, 'post', `/childrens-books/${id}/character-preview`);
   await apiJson(api, 'post', `/childrens-books/${id}/character-approval`);
   if (withAudio) await apiJson(api, 'patch', `/childrens-books/${id}/audio-upgrade`, { audioAddOnPurchased: true });
@@ -75,6 +76,7 @@ async function createApprovedAudioUpsellBook(api: APIRequestContext, title: stri
   });
   const id = created.data.id as string;
   await apiJson(api, 'post', `/childrens-books/${id}/story-plan`);
+  await apiJson(api, 'post', `/childrens-books/${id}/story-text/approve`);
   await apiJson(api, 'post', `/childrens-books/${id}/character-preview`);
   await apiJson(api, 'post', `/childrens-books/${id}/character-approval`);
   return id;

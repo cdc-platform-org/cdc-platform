@@ -89,6 +89,7 @@ async function createBook(user: User, character: Record<string, unknown> = { nam
 
 async function approve(user: User, bookId: string) {
   await request(`/api/childrens-books/${bookId}/story-plan`, user, 'POST');
+  await request(`/api/childrens-books/${bookId}/story-text/approve`, user, 'POST');
   await request(`/api/childrens-books/${bookId}/character-preview`, user, 'POST');
   await request(`/api/childrens-books/${bookId}/character-approval`, user, 'POST');
 }
@@ -229,6 +230,7 @@ describe("Children's Book — character photo", () => {
     const user = await createUser();
     const { body } = await createBook(user);
     await request(`/api/childrens-books/${body.data.id}/story-plan`, user, 'POST');
+    await request(`/api/childrens-books/${body.data.id}/story-text/approve`, user, 'POST');
     await request(`/api/childrens-books/${body.data.id}/character-preview`, user, 'POST');
     await uploadPhoto(body.data.id, user, await samplePng());
     const again = await request(`/api/childrens-books/${body.data.id}/character-preview`, user, 'POST');
@@ -263,6 +265,7 @@ describe("Children's Book — preview before payment", () => {
     const user = await createUser();
     const { body } = await createBook(user);
     await request(`/api/childrens-books/${body.data.id}/story-plan`, user, 'POST');
+    await request(`/api/childrens-books/${body.data.id}/story-text/approve`, user, 'POST');
     const res = await request(`/api/childrens-books/${body.data.id}/preview-confirm`, user, 'POST');
     expect(res.status).toBe(400);
   });
@@ -343,6 +346,7 @@ describe("Children's Book — siblings", () => {
     const planRes = await request(`/api/childrens-books/${id}/story-plan`, user, 'POST');
     const plan = (await planRes.json()) as any;
     expect(plan.data.storyPlan.pages[1].sceneDescription).toContain('Luka');
+    await request(`/api/childrens-books/${id}/story-text/approve`, user, 'POST');
 
     await request(`/api/childrens-books/${id}/character-preview`, user, 'POST');
     await request(`/api/childrens-books/${id}/character-approval`, user, 'POST');

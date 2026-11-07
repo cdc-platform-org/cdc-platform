@@ -31,6 +31,11 @@ export interface StoryPlan {
   title: string;
   dedication: string | null;
   pages: StoryPlanPage[];
+  // Set when the parent approves the (possibly edited) story text; no image
+  // is generated for a new book before this (see routes/childrensBook.ts).
+  textApprovedAt?: string | null;
+  // Number of "write a new version" requests used before approval.
+  textRegenerations?: number;
 }
 
 export interface CharacterConfig {

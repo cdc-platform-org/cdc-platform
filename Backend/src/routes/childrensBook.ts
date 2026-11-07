@@ -15,10 +15,17 @@ import {
   buildLogicalOperationKey,
 } from '../services/bookStateService';
 import { generateStoryPlan, CharacterConfig, StoryPlan } from '../services/bookStoryPlanService';
-import { writeStoryTexts, isPlaceholderStoryText, StoryTextGenerationError } from '../services/bookStoryTextService';
+import {
+  writeStoryTexts,
+  isPlaceholderStoryText,
+  StoryTextGenerationError,
+  validateStoryTextEdits,
+  StoryTextEdit,
+  MAX_STORY_TEXT_REGENERATIONS,
+} from '../services/bookStoryTextService';
 import { generateBookImage, isImageGenerationMocked } from '../services/bookImageGenerationService';
 import { runImageQa, isAcceptableQaStatus } from '../services/bookQaService';
-import { buildBookPdf, BookPdfPageInput } from '../services/bookPdfService';
+import { buildBookPdf, BookPdfPageInput, parsePrintSettings, printFileSuffix } from '../services/bookPdfService';
 import { storeBookAsset, readBookAsset, deleteBookAsset } from '../services/bookStorageService';
 import {
   validateCharacterExtras,
@@ -37,7 +44,7 @@ import {
   ALLOWED_CHARACTER_PHOTO_TYPES,
   MAX_CHARACTER_PHOTO_BYTES,
 } from '../services/bookCharacterDetailsService';
-import { isBookDevPaymentSimulationEnabled } from '../services/bookMockConfig';
+import { isBookDevPaymentSimulationEnabled, isBookAiMocked } from '../services/bookMockConfig';
 import { completeChildrensBookPurchase } from '../services/bookPurchaseFulfillment';
 import { startFinalGeneration } from '../services/bookFinalGenerationService';
 import { calculateAudioPrice, calculateTotalBookPrice, canGenerateNarration, narrationLanguageForBook } from '../services/bookNarrationService';
@@ -451,6 +458,111 @@ router.post('/:id/story-text/rewrite', authenticate, async (req: Request, res: R
 });
 
 // ============================================================
+// STORY TEXT REVIEW — text first, pictures second. After the story plan is
+// written the parent reads every page, may edit the words, may ask for a
+// new version, and approves. Only then can the first image (the character
+// portrait) be generated, and every page illustration is later drawn from
+// this approved text. Edits stay possible until payment (no page image
+// exists yet); an edit after the preview was confirmed asks for the preview
+// to be confirmed again.
+// ============================================================
+const TEXT_EDITABLE_STATUSES = ['STORY_PLAN_READY', 'CHARACTER_PREVIEW_READY', 'CHARACTER_APPROVED'];
+
+async function saveStoryTextEdits(
+  book: { id: string; storyPlan: unknown; status: string; previewConfirmedAt: Date | null; pages: Array<{ id: string; pageNumber: number }> },
+  edits: StoryTextEdit[],
+  planChanges: Partial<StoryPlan> = {},
+) {
+  const plan = book.storyPlan as unknown as StoryPlan;
+  const byPage = new Map(edits.map((e) => [e.pageNumber, e.storyText]));
+  const pagesToUpdate = book.pages.filter((p) => byPage.has(p.pageNumber));
+  await prisma.$transaction([
+    ...pagesToUpdate.map((p) => prisma.bookPage.update({ where: { id: p.id }, data: { storyText: byPage.get(p.pageNumber)! } })),
+    prisma.bookProject.update({
+      where: { id: book.id },
+      data: {
+        storyPlan: { ...plan, ...planChanges, pages: plan.pages.map((pp) => ({ ...pp, storyText: byPage.get(pp.pageNumber) ?? pp.storyText })) } as any,
+        ...(book.status === 'CHARACTER_APPROVED' && book.previewConfirmedAt && edits.length ? { previewConfirmedAt: null } : {}),
+      },
+    }),
+  ]);
+}
+
+async function loadBookWithPages(id: string) {
+  return prisma.bookProject.findUnique({ where: { id }, include: { pages: { orderBy: { pageNumber: 'asc' } } } });
+}
+
+router.put('/:id/story-text', authenticate, async (req: Request, res: Response) => {
+  const book = await loadBookWithPages(req.params.id);
+  if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
+  if (!TEXT_EDITABLE_STATUSES.includes(book.status) || !book.storyPlan || book.pages.length !== book.pageCount) {
+    return res.status(400).json({ message: `The story text cannot be edited from status ${book.status}.` });
+  }
+  const edits = validateStoryTextEdits(req.body?.pages, book.pages.map((p) => p.pageNumber));
+  if (!edits.ok) return res.status(400).json({ message: edits.message });
+
+  await saveStoryTextEdits(book, edits.value);
+  res.json({ data: await loadBookWithPages(book.id) });
+});
+
+router.post('/:id/story-text/approve', authenticate, async (req: Request, res: Response) => {
+  const book = await loadBookWithPages(req.params.id);
+  if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
+  if (book.status !== 'STORY_PLAN_READY' || !book.storyPlan || book.pages.length !== book.pageCount) {
+    return res.status(400).json({ message: `The story text cannot be approved from status ${book.status}.` });
+  }
+  // Optional: the editor sends its latest text with the approval so nothing
+  // typed since the last save is lost.
+  let edits: StoryTextEdit[] = [];
+  if (req.body?.pages !== undefined) {
+    const parsed = validateStoryTextEdits(req.body.pages, book.pages.map((p) => p.pageNumber));
+    if (!parsed.ok) return res.status(400).json({ message: parsed.message });
+    edits = parsed.value;
+  }
+  const finalTexts = new Map(book.pages.map((p) => [p.pageNumber, p.storyText]));
+  for (const e of edits) finalTexts.set(e.pageNumber, e.storyText);
+  // Mock mode (local/CI) keeps the template text on purpose, so the check
+  // only applies where real story text is written.
+  if (!isBookAiMocked() && [...finalTexts.values()].some((text) => isPlaceholderStoryText(text))) {
+    return res.status(400).json({ message: 'Every page needs its story text before approval.' });
+  }
+
+  const plan = book.storyPlan as unknown as StoryPlan;
+  await saveStoryTextEdits(book, edits, { textApprovedAt: plan.textApprovedAt ?? new Date().toISOString() });
+  res.json({ data: await loadBookWithPages(book.id) });
+});
+
+router.post('/:id/story-text/regenerate', authenticate, async (req: Request, res: Response) => {
+  const book = await loadBookWithPages(req.params.id);
+  if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
+  const plan = book.storyPlan as unknown as StoryPlan | null;
+  if (book.status !== 'STORY_PLAN_READY' || !plan || plan.textApprovedAt || book.pages.length !== book.pageCount) {
+    return res.status(400).json({ message: 'A new version can only be written before the story text is approved.' });
+  }
+  const used = plan.textRegenerations ?? 0;
+  if (used >= MAX_STORY_TEXT_REGENERATIONS) {
+    return res.status(400).json({ message: 'No new versions are left for this book. You can still edit the text yourself.' });
+  }
+
+  const character = (book.characterConfig ?? {}) as unknown as CharacterConfig;
+  const scenes = plan.pages.map((p) => ({ pageNumber: p.pageNumber, sceneDescription: p.sceneDescription || character.name, emotion: p.emotion }));
+  let texts: Map<number, string>;
+  try {
+    texts = await writeStoryTexts({ title: book.title, character, language: book.language, scenes });
+  } catch (err) {
+    if (err instanceof StoryTextGenerationError) {
+      console.error(`[childrens-book] story text regenerate for ${book.id} failed:`, err.message);
+      return res.status(502).json({ message: 'The story could not be written right now. Please try again.' });
+    }
+    throw err;
+  }
+
+  const edits = book.pages.map((p) => ({ pageNumber: p.pageNumber, storyText: texts.get(p.pageNumber)! }));
+  await saveStoryTextEdits(book, edits, { textRegenerations: used + 1 });
+  res.json({ data: await loadBookWithPages(book.id) });
+});
+
+// ============================================================
 // CHARACTER PREVIEW
 // ============================================================
 router.post('/:id/character-preview', authenticate, async (req: Request, res: Response) => {
@@ -463,6 +575,11 @@ router.post('/:id/character-preview', authenticate, async (req: Request, res: Re
   // CHARACTER_PREVIEW_READY is the "Regenerate" button on an unapproved
   // portrait (e.g. after the parent adds or changes the photo).
   const eligibleFromStates: string[] = book.characterBible ? ['STORY_PLAN_READY'] : ['STORY_PLAN_READY', 'CHARACTER_PREVIEW_READY', 'FAILED'];
+  // Text first: a new book's first image waits for the parent to approve
+  // the story text (see STORY TEXT REVIEW above).
+  if (book.status === 'STORY_PLAN_READY' && !book.characterBible && !(book.storyPlan as unknown as StoryPlan | null)?.textApprovedAt) {
+    return res.status(400).json({ message: 'Please read and approve the story text before the pictures are created.' });
+  }
   if (eligibleFromStates.includes(book.status)) {
     const claim = await prisma.bookProject.updateMany({
       where: { id: book.id, status: { in: eligibleFromStates as any } },
@@ -1027,6 +1144,53 @@ router.get('/:id/audio/full-story', authenticate, async (req: Request, res: Resp
 // ============================================================
 // PDF
 // ============================================================
+async function collectPdfPages(pages: Array<{ pageNumber: number; storyText: string | null; sceneSpec: unknown }>): Promise<BookPdfPageInput[]> {
+  const pdfPages: BookPdfPageInput[] = [];
+  for (const page of pages) {
+    const imageKey = (page.sceneSpec as any)?.imageKey as string | undefined;
+    const imageMimeType = (page.sceneSpec as any)?.imageMimeType as string | undefined;
+    let imageBuffer: Buffer | null = null;
+    if (imageKey) {
+      try {
+        imageBuffer = await readBookAsset(imageKey);
+      } catch {
+        imageBuffer = null;
+      }
+    }
+    pdfPages.push({ pageNumber: page.pageNumber, storyText: page.storyText ?? '', imageBuffer, imageMimeType: imageMimeType ?? null });
+  }
+  return pdfPages;
+}
+
+// ============================================================
+// PRINT PDF — a print-ready copy at the paper size the parent picks (A4,
+// A5, A3, US Letter, square, or a custom size in mm, optional bleed). Built
+// on demand from the finished pages and streamed back; nothing is stored
+// and no image is generated, so the stored A4 PDF stays as it is.
+// ============================================================
+router.post('/:id/pdf/print', authenticate, async (req: Request, res: Response) => {
+  const book = await prisma.bookProject.findUnique({ where: { id: req.params.id }, include: { pages: { orderBy: { pageNumber: 'asc' } } } });
+  if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
+  const acceptedPageCount = book.pages.filter((p) => p.acceptedEventId).length;
+  if (acceptedPageCount !== book.pageCount || (book.status !== 'FINAL_READY' && book.status !== 'COMPLETED')) {
+    return res.status(400).json({ message: 'The book is not ready to print yet.' });
+  }
+  const settings = parsePrintSettings(req.body ?? {});
+  if (!settings.ok) return res.status(400).json({ message: settings.message });
+
+  const pdf = await buildBookPdf({
+    title: book.title,
+    dedication: (book.characterConfig as any)?.dedication ?? null,
+    pageCount: book.pageCount,
+    pages: await collectPdfPages(book.pages),
+    print: settings.value,
+  });
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="book-${book.id.slice(0, 8)}-${printFileSuffix(settings.value)}.pdf"`);
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.send(pdf);
+});
+
 router.post('/:id/pdf', authenticate, async (req: Request, res: Response) => {
   const book = await prisma.bookProject.findUnique({ where: { id: req.params.id }, include: { pages: { orderBy: { pageNumber: 'asc' } } } });
   if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
@@ -1043,20 +1207,7 @@ router.post('/:id/pdf', authenticate, async (req: Request, res: Response) => {
   if (claim.count !== 1) return res.status(409).json({ message: 'PDF generation already in progress.' });
 
   try {
-    const pdfPages: BookPdfPageInput[] = [];
-    for (const page of book.pages) {
-      const imageKey = (page.sceneSpec as any)?.imageKey as string | undefined;
-      const imageMimeType = (page.sceneSpec as any)?.imageMimeType as string | undefined;
-      let imageBuffer: Buffer | null = null;
-      if (imageKey) {
-        try {
-          imageBuffer = await readBookAsset(imageKey);
-        } catch {
-          imageBuffer = null;
-        }
-      }
-      pdfPages.push({ pageNumber: page.pageNumber, storyText: page.storyText ?? '', imageBuffer, imageMimeType: imageMimeType ?? null });
-    }
+    const pdfPages = await collectPdfPages(book.pages);
 
     const pdfBuffer = await buildBookPdf({ title: book.title, dedication: (book.characterConfig as any)?.dedication ?? null, pageCount: book.pageCount, pages: pdfPages });
     const newVersion = book.pdfVersion + 1;

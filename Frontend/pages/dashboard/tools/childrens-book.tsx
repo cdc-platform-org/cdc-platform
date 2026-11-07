@@ -3,7 +3,7 @@ import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { BookOpen, Sparkles, CheckCircle2, Loader2, Download, RefreshCw, ArrowLeft, Headphones, PlayCircle } from 'lucide-react';
+import { BookOpen, Sparkles, CheckCircle2, Loader2, Download, RefreshCw, ArrowLeft, Headphones, PlayCircle, PenLine } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
@@ -35,6 +35,10 @@ import {
   removeCharacterPhoto,
   fetchCharacterPhotoUrl,
   confirmBookPreview,
+  updateStoryText,
+  approveStoryText,
+  regenerateStoryText,
+  downloadPrintPdf,
   BookListItem,
   BookProject,
   AudioNarrationStatus,
@@ -46,12 +50,16 @@ import BookPreview from '../../../src/components/tools/childrensBook/BookPreview
 import CharacterPhotoField from '../../../src/components/tools/childrensBook/CharacterPhotoField';
 import SiblingsFields, { SiblingDraft, SiblingPhotoEditor } from '../../../src/components/tools/childrensBook/SiblingsFields';
 import PageThumbnail from '../../../src/components/tools/childrensBook/PageThumbnail';
+import StoryTextEditor from '../../../src/components/tools/childrensBook/StoryTextEditor';
+import PrintSettingsPanel from '../../../src/components/tools/childrensBook/PrintSettingsPanel';
 import { PromoValidationResult } from '../../../src/services/paymentService';
 import ToolMediaBanner from '../../../src/components/tools/ToolMediaBanner';
 
 const GENERATING_STATUSES = ['CHARACTER_PREVIEW_GENERATING', 'FINAL_GENERATING', 'FINAL_QA', 'REVISION_REQUESTED', 'REVISION_GENERATING', 'REVISION_QA'];
 const POLL_MS = 1500;
 const PHOTO_EDITABLE_STATUSES = ['DRAFT', 'STORY_PLAN_READY', 'CHARACTER_PREVIEW_READY'];
+// Story text stays editable until payment (no page picture exists yet).
+const TEXT_EDITABLE_STATUSES = ['STORY_PLAN_READY', 'CHARACTER_PREVIEW_READY', 'CHARACTER_APPROVED'];
 const TEXT_FIELD_MAX = 500;
 // Must match Backend/src/services/bookIllustrationStyles.ts.
 type IllustrationStyleValue = 'STORYBOOK_WATERCOLOR' | 'MODERN_3D' | 'SOFT_DIGITAL' | 'CARTOON' | 'FANTASY' | 'CLASSIC';
@@ -78,6 +86,7 @@ function ChildrensBookContent() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const photoUrlRef = useRef<string | null>(null);
   const [showPreviewAgain, setShowPreviewAgain] = useState(false);
+  const [editingText, setEditingText] = useState(false);
   // Photo picked in the create form, uploaded right after the book is created.
   const [pendingPhoto, setPendingPhoto] = useState<File | null>(null);
   const [pendingPhotoUrl, setPendingPhotoUrl] = useState<string | null>(null);
@@ -556,16 +565,54 @@ function ChildrensBookContent() {
             </>
           )}
 
-          {book.status === 'STORY_PLAN_READY' && (
+          {editingText && TEXT_EDITABLE_STATUSES.includes(book.status) && (
+            <StoryTextEditor
+              book={book}
+              busy={busy}
+              mode="edit"
+              onSave={(pages) => run(async () => { setBook(await updateStoryText(book.id, pages)); setEditingText(false); })}
+              onCancel={() => setEditingText(false)}
+            />
+          )}
+
+          {!editingText && book.status === 'STORY_PLAN_READY' && !book.storyPlan?.textApprovedAt && (
+            <StoryTextEditor
+              book={book}
+              busy={busy}
+              mode="review"
+              onSave={(pages) => run(async () => setBook(await updateStoryText(book.id, pages)))}
+              onRegenerate={() => run(async () => setBook(await regenerateStoryText(book.id)))}
+              onApprove={(pages) => run(async () => {
+                try {
+                  setBook(await approveStoryText(book.id, pages));
+                } catch (err: any) {
+                  // The site can go live a little before the server update
+                  // that adds this step; an older server has no approval
+                  // route and no approval gate, so continue straight on.
+                  if (err?.response?.status !== 404) throw err;
+                }
+                const r = await generateCharacterPreview(book.id);
+                setBook(r.book);
+                setMocked(r.mocked);
+              })}
+            />
+          )}
+
+          {!editingText && book.status === 'STORY_PLAN_READY' && !!book.storyPlan?.textApprovedAt && (
             <>
               <h2 className="font-semibold text-gray-800 mb-3">{t('step2Title')}</h2>
-              <p className="text-sm text-gray-600 mb-4">{t('storyPlanReady', { count: book.pageCount })}</p>
+              <p className="text-sm text-green-700 mb-4 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> {t('storyApprovedNotice')}</p>
               <ul className="text-sm text-gray-500 mb-4 space-y-1 list-decimal list-inside">
-                {book.storyPlan?.pages?.map((p: any) => <li key={p.pageNumber}>{p.storyText}</li>)}
+                {book.storyPlan?.pages?.map((p: any) => <li key={p.pageNumber} className="whitespace-pre-line">{p.storyText}</li>)}
               </ul>
-              <button disabled={busy} onClick={() => run(async () => { const r = await generateCharacterPreview(book.id); setBook(r.book); setMocked(r.mocked); })} className="px-5 py-2 rounded-lg bg-purple-600 text-white font-medium disabled:opacity-50">
-                {busy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : t('generateCharacterPreviewButton')}
-              </button>
+              <div className="flex flex-wrap gap-3">
+                <button disabled={busy} onClick={() => run(async () => { const r = await generateCharacterPreview(book.id); setBook(r.book); setMocked(r.mocked); })} className="px-5 py-2 rounded-lg bg-purple-600 text-white font-medium disabled:opacity-50">
+                  {busy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : t('generateCharacterPreviewButton')}
+                </button>
+                <button disabled={busy} onClick={() => setEditingText(true)} className="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium disabled:opacity-50 flex items-center gap-1">
+                  <PenLine className="w-4 h-4" /> {t('storyEditButton')}
+                </button>
+              </div>
             </>
           )}
 
@@ -575,7 +622,7 @@ function ChildrensBookContent() {
             </div>
           )}
 
-          {(book.status === 'CHARACTER_PREVIEW_READY' || book.status === 'CHARACTER_APPROVED') && (
+          {!editingText && (book.status === 'CHARACTER_PREVIEW_READY' || book.status === 'CHARACTER_APPROVED') && (
             <>
               {!showingBookPreview && (
                 <>
@@ -591,6 +638,9 @@ function ChildrensBookContent() {
                   <button disabled={busy} onClick={() => run(async () => { const r = await generateCharacterPreview(book.id); setBook(r.book); })} className="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium disabled:opacity-50 flex items-center gap-1">
                     <RefreshCw className="w-4 h-4" /> {t('regenerateButton')}
                   </button>
+                  <button disabled={busy} onClick={() => setEditingText(true)} className="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium disabled:opacity-50 flex items-center gap-1">
+                    <PenLine className="w-4 h-4" /> {t('storyEditButton')}
+                  </button>
                 </div>
               )}
               {showingBookPreview && (
@@ -601,13 +651,17 @@ function ChildrensBookContent() {
                     busy={busy}
                     onConfirm={book.previewConfirmedAt ? null : () => run(async () => setBook(await confirmBookPreview(book.id)))}
                     onClose={book.previewConfirmedAt ? () => setShowPreviewAgain(false) : undefined}
+                    onEditText={() => { setShowPreviewAgain(false); setEditingText(true); }}
                   />
                 </div>
               )}
               {book.status === 'CHARACTER_APPROVED' && book.previewConfirmedAt && !showPreviewAgain && (
                 <>
                   <p className="text-sm text-gray-600 mb-2">{t('paymentIntro', { count: book.pageCount })}</p>
-                  <button onClick={() => setShowPreviewAgain(true)} className="text-sm text-purple-600 font-medium hover:underline mb-4 inline-block">{t('previewViewAgain')}</button>
+                  <div className="flex flex-wrap gap-4 mb-4">
+                    <button onClick={() => setShowPreviewAgain(true)} className="text-sm text-purple-600 font-medium hover:underline">{t('previewViewAgain')}</button>
+                    <button onClick={() => setEditingText(true)} className="text-sm text-purple-600 font-medium hover:underline inline-flex items-center gap-1"><PenLine className="w-3.5 h-3.5" /> {t('storyEditButton')}</button>
+                  </div>
                   {devPaymentSimulationEnabled ? (
                     <>
                       <p className="text-xs rounded-lg bg-amber-50 border border-amber-200 text-amber-700 px-3 py-2 mb-3 inline-block">{t('devModeRealPaymentDisabledNotice')}</p>
@@ -794,6 +848,13 @@ function ChildrensBookContent() {
                       </button>
                     )}
                   </div>
+
+                  {(book.status === 'FINAL_READY' || book.status === 'COMPLETED') && acceptedCount === book.pageCount && (
+                    <PrintSettingsPanel
+                      busy={busy}
+                      onDownload={(settings, suffix) => run(async () => downloadPrintPdf(book.id, settings, `${book.title}-${suffix}`))}
+                    />
+                  )}
 
                   {canListenToAudio && (
                     <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4">

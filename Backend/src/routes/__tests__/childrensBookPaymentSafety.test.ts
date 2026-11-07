@@ -84,6 +84,7 @@ async function createApprovedBook(user: User): Promise<string> {
   });
   const { data: book } = (await createRes.json()) as { data: { id: string } };
   await request(`/api/childrens-books/${book.id}/story-plan`, user, 'POST');
+  await request(`/api/childrens-books/${book.id}/story-text/approve`, user, 'POST');
   await request(`/api/childrens-books/${book.id}/character-preview`, user, 'POST');
   await request(`/api/childrens-books/${book.id}/character-approval`, user, 'POST');
   await request(`/api/childrens-books/${book.id}/preview-confirm`, user, 'POST');
