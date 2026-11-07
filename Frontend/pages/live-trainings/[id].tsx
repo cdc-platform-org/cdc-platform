@@ -174,6 +174,12 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
 
   const handleApplyPromo = async () => {
     if (!id || !promoInput.trim()) return;
+    // Shown to guests too (same as the course and store pages); the
+    // validate endpoint needs a signed-in user, so sign in first.
+    if (!isAuthenticated) {
+      openAuthModal({ message: t.signInToEnroll, redirectPath: router.asPath, onSuccess: () => { void load(); } });
+      return;
+    }
     setPromoError(null);
     setApplyingPromo(true);
     try {
@@ -406,8 +412,8 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
                 {enrollError && (
                   <div role="alert" className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-xs text-red-300 mb-3">{enrollError}</div>
                 )}
-                {isAuthenticated && requiresCheckout && currentPrice > 0 && !training.saleActive && (
-                  <div className="mb-3">
+                {requiresCheckout && currentPrice > 0 && (
+                  <div className="mb-3" data-testid="live-training-promo" data-signed-in={isAuthenticated ? 'true' : 'false'}>
                     {appliedPromo ? (
                       <div className="flex flex-wrap items-center gap-3 text-xs">
                         <p role="status" className="font-bold text-emerald-400">✓ {t.promoApplied}: {appliedPromo.code}</p>

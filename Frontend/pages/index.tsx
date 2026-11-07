@@ -30,6 +30,7 @@ import { formatPrice, getSaleCountdownLabel } from '../src/utils/coursePricing';
 import { Tutorial } from '../src/types/tutorial';
 import { getFeaturedTutorial, tutorialTitle } from '../src/services/tutorialService';
 import TutorialVideoModal from '../src/components/shared/TutorialVideoModal';
+import PromoCheckoutModal from '../src/components/shared/PromoCheckoutModal';
 import SEOHead from '../src/components/seo/SEOHead';
 import { ORGANIZATION_SCHEMA, buildSoftwareApplicationSchema, buildWebSiteSchema } from '../src/utils/seo';
 import SmartReader from '@/src/components/tools/SmartReader';
@@ -164,6 +165,8 @@ export default function Home() {
   // isn't reacting" from a user's perspective. courses/index.tsx already
   // surfaces this correctly; this mirrors that pattern.
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  // Paid course picked from a homepage card — opens the promo-code + pay step first.
+  const [checkoutCourseItem, setCheckoutCourseItem] = useState<Course | null>(null);
   const checkoutErrorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     return () => {
@@ -238,11 +241,11 @@ export default function Home() {
       .catch(() => setGalleryPreview([]));
   }, []);
 
-  const startCheckout = async (course: Course) => {
+  const startCheckout = async (course: Course, promoCode?: string) => {
     setEnrollingId(course.id);
     setCheckoutError(null);
     try {
-      const result = await checkoutCourse(course.id, undefined, contentLang);
+      const result = await checkoutCourse(course.id, promoCode, contentLang);
       if (result.enrolled) {
         router.push(`/courses/${course.id}/learn`);
         return;
@@ -259,15 +262,26 @@ export default function Home() {
     }
   };
 
+  // Free courses enroll straight away; paid ones first show the promo-code
+  // step so a code can be applied from the homepage too.
+  const openCheckout = (course: Course) => {
+    if (course.currentPrice > 0) {
+      setCheckoutError(null);
+      setCheckoutCourseItem(course);
+      return;
+    }
+    startCheckout(course);
+  };
+
   const handleEnroll = (course: Course) => {
     if (!isAuthenticated) {
       openAuthModal({
         message: { ka: 'გთხოვთ გაიაროთ ავტორიზაცია კურსზე ჩასარიცხად', en: 'Please sign in to enroll in a course' },
-        onSuccess: () => startCheckout(course),
+        onSuccess: () => openCheckout(course),
       });
       return;
     }
-    startCheckout(course);
+    openCheckout(course);
   };
 
   // CMS/DB content (hero override, stats, FAQ) only ever has ka/en fields,
@@ -512,6 +526,21 @@ export default function Home() {
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           {toastMessage}
         </div>
+      )}
+
+      {checkoutCourseItem && (
+        <PromoCheckoutModal
+          title={checkoutCourseItem.title}
+          currentPrice={checkoutCourseItem.currentPrice}
+          originalPrice={checkoutCourseItem.originalPrice}
+          targetType="COURSE"
+          targetId={checkoutCourseItem.id}
+          lang={contentLang}
+          busy={enrollingId === checkoutCourseItem.id}
+          error={checkoutError}
+          onConfirm={(code) => startCheckout(checkoutCourseItem, code)}
+          onClose={() => { setCheckoutCourseItem(null); setCheckoutError(null); }}
+        />
       )}
 
       {/* CHECKOUT ERROR TOAST */}

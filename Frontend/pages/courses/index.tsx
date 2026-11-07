@@ -23,6 +23,7 @@ import { resolveBlogImageUrl } from '../../src/services/blogService';
 import { ToolCatalogContent } from '../../src/types/siteContent';
 import { findToolEntry } from '../../src/utils/toolCatalog';
 import LearningRatingSummary from '../../src/components/shared/LearningRatingSummary';
+import PromoCheckoutModal from '../../src/components/shared/PromoCheckoutModal';
 
 type SortMode = 'recommended' | 'price_asc' | 'price_desc';
 type PriceFilter = 'all' | 'free' | 'paid';
@@ -71,6 +72,8 @@ export default function CoursesPage() {
   const [loading, setLoading] = useState(true);
   const [enrollingId, setEnrollingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Paid course picked from a card — opens the promo-code + pay step first.
+  const [checkoutCourseItem, setCheckoutCourseItem] = useState<Course | null>(null);
   const [contentTab, setContentTab] = useState<ContentTab>('all');
   // Admin-editable cover image override for each AI teacher card (see
   // pages/admin/tools.tsx) — null until loaded, at which point a missing
@@ -205,30 +208,42 @@ export default function CoursesPage() {
     setPriceFilter('all');
   };
 
-  const startCheckout = async (course: Course) => {
+  const startCheckout = async (course: Course, promoCode?: string) => {
     setError(null);
     setEnrollingId(course.id);
     try {
-      const result = await checkoutCourse(course.id, undefined, lang);
+      const result = await checkoutCourse(course.id, promoCode, lang);
       if (result.enrolled) {
         router.push(`/courses/${course.id}/learn`);
         return;
       }
       window.location.href = result.redirectUrl!;
-    } catch {
-      setError(t('checkoutError'));
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? t('checkoutError'));
       setEnrollingId(null);
     }
+  };
+
+  // Free courses enroll straight away; paid ones first show the promo-code
+  // step so a code can be applied from the list too, not only on the
+  // course page.
+  const openCheckout = (course: Course) => {
+    if (course.currentPrice > 0) {
+      setError(null);
+      setCheckoutCourseItem(course);
+      return;
+    }
+    startCheckout(course);
   };
 
   const handleEnroll = (course: Course) => {
     if (!isAuthenticated) {
       // Guests never proceed to checkout directly — sign in first, then
-      // resume straight into BOG checkout for this exact course.
-      openAuthModal({ message: t('signInToEnroll'), onSuccess: () => startCheckout(course) });
+      // resume straight into checkout for this exact course.
+      openAuthModal({ message: t('signInToEnroll'), onSuccess: () => openCheckout(course) });
       return;
     }
-    startCheckout(course);
+    openCheckout(course);
   };
 
   return (
@@ -237,6 +252,20 @@ export default function CoursesPage() {
         <title>{`${t('title')} | CDC`}</title>
       </Head>
       <SiteHeader />
+      {checkoutCourseItem && (
+        <PromoCheckoutModal
+          title={checkoutCourseItem.title}
+          currentPrice={checkoutCourseItem.currentPrice}
+          originalPrice={checkoutCourseItem.originalPrice}
+          targetType="COURSE"
+          targetId={checkoutCourseItem.id}
+          lang={lang}
+          busy={enrollingId === checkoutCourseItem.id}
+          error={error}
+          onConfirm={(code) => startCheckout(checkoutCourseItem, code)}
+          onClose={() => { setCheckoutCourseItem(null); setError(null); }}
+        />
+      )}
       <div className="max-w-7xl mx-auto px-6 py-16 flex-1 w-full">
         <div className="mb-4">
           <BackButton fallbackHref="/" className="dark:text-slate-400 dark:hover:text-slate-100" />
