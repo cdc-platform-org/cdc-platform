@@ -388,12 +388,23 @@ jobs:
             || say unavailable "az webapp log download failed"
           [ -s "$work/logs.zip" ] || say unavailable "the downloaded log bundle is empty"
           unzip -q -o "$work/logs.zip" -d "$work/logs" >/dev/null 2>&1 || say unavailable "the downloaded log bundle could not be unpacked"
-          # Instance count of the App Service plan (only "1" enables the
+          # Number of instances the app runs on (only "1" enables the
           # worker-move rule in runtime-evidence.js; empty/unknown keeps it off).
-          PLAN_ID="$(az webapp show --name "$WEBAPP_NAME" --resource-group "$RESOURCE_GROUP" --query appServicePlanId --output tsv 2>/dev/null || true)"
-          INSTANCE_COUNT=""
-          [ -n "$PLAN_ID" ] && INSTANCE_COUNT="$(az appservice plan show --ids "$PLAN_ID" --query sku.capacity --output tsv 2>/dev/null || true)"
-          echo "App Service plan instance count: ${INSTANCE_COUNT:-unknown}" >&2
+          # First the site's own instance list (needs only read access on the
+          # web app, which this workflow already has), then the plan's
+          # sku.capacity as a fallback. Errors are printed, never hidden.
+          INSTANCE_COUNT="$(az webapp list-instances --name "$WEBAPP_NAME" --resource-group "$RESOURCE_GROUP" --query "length(@)" --output tsv 2>"$work/ic.err")" || {
+            echo "Could not list web app instances: $(head -c 400 "$work/ic.err" | tr '\n' ' ')" >&2; INSTANCE_COUNT=""; }
+          if [ -z "$INSTANCE_COUNT" ]; then
+            PLAN_ID="$(az webapp show --name "$WEBAPP_NAME" --resource-group "$RESOURCE_GROUP" --query serverFarmId --output tsv 2>"$work/ic.err")" || {
+              echo "Could not read the web app's plan id: $(head -c 400 "$work/ic.err" | tr '\n' ' ')" >&2; PLAN_ID=""; }
+            if [ -n "$PLAN_ID" ]; then
+              INSTANCE_COUNT="$(az appservice plan show --ids "$PLAN_ID" --query sku.capacity --output tsv 2>"$work/ic.err")" || {
+                echo "Could not read the plan's instance count: $(head -c 400 "$work/ic.err" | tr '\n' ' ')" >&2; INSTANCE_COUNT=""; }
+            fi
+          fi
+          case "$INSTANCE_COUNT" in ''|*[!0-9]*) INSTANCE_COUNT="" ;; esac
+          echo "App Service instance count: ${INSTANCE_COUNT:-unknown}" >&2
           INSTANCE_COUNT="$INSTANCE_COUNT" node "$RUNNER_TEMP/runtime-evidence.js" "$work/logs" "${1:-}" "${2:-}"
           SH
           chmod +x "$RUNNER_TEMP/collect-evidence.sh"
