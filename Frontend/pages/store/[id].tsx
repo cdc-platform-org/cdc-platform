@@ -8,6 +8,7 @@ import { Download, FolderOpen, Sparkles, ChevronDown, ShoppingBag, Zap, Upload, 
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SEOHead from '../../src/components/seo/SEOHead';
 import SocialShareButtons from '../../src/components/shared/SocialShareButtons';
+import GiftThisButton from '../../src/components/giftCards/GiftThisButton';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import MarkdownContent from '../../src/components/shared/MarkdownContent';
@@ -251,8 +252,9 @@ function StoreProductContent({ initialProduct }: { initialProduct: DigitalProduc
               )}
             </div>
             <h1 className="blog-heading-safe text-2xl md:text-3xl font-black tracking-wide mb-3">{productTitle(product, contentLang)}</h1>
-            <div className="mb-3">
+            <div className="mb-3 flex flex-wrap items-center gap-3">
               <SocialShareButtons title={productTitle(product, contentLang)} lang={lang} />
+              <GiftThisButton priceMinor={product.currentPrice} itemTitle={productTitle(product, contentLang)} itemPath={`/store/${product.id}`} lang={lang} />
             </div>
             {product.reviewCount > 0 && (
               <div className="flex items-center gap-2 mb-3">

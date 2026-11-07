@@ -170,6 +170,7 @@ const PURPOSE_LABEL: Record<CoursePaymentRow['purpose'], string> = {
   LIVE_TRAINING: 'Live Training',
   ENGLISH_TUTOR_SUBSCRIPTION: 'AI Tutor',
   CHILDRENS_BOOK: "Children's Book",
+  GIFT_CARD: 'Gift card',
 };
 
 function exportPaymentsCsv(payments: CoursePaymentRow[]) {
@@ -283,7 +284,7 @@ function AdminFinanceDashboard() {
             </button>
           ))}
           <span className="w-px h-5 bg-gray-200 dark:bg-slate-700 mx-1" />
-          {(['', 'COURSE', 'PRODUCT', 'CHILDRENS_BOOK', 'LIVE_TRAINING', 'ENGLISH_TUTOR_SUBSCRIPTION', 'MENTORSHIP', 'HR_SUPPORT', 'GIG_ESCROW_FUNDING'] as const).map((p) => (
+          {(['', 'COURSE', 'PRODUCT', 'CHILDRENS_BOOK', 'LIVE_TRAINING', 'ENGLISH_TUTOR_SUBSCRIPTION', 'GIFT_CARD', 'MENTORSHIP', 'HR_SUPPORT', 'GIG_ESCROW_FUNDING'] as const).map((p) => (
             <button
               key={p}
               type="button"

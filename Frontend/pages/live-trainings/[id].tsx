@@ -8,6 +8,7 @@ import BackButton from '../../src/components/common/BackButton';
 import VideoEmbed, { parseVideoUrl } from '../../src/components/shared/VideoEmbed';
 import SEOHead from '../../src/components/seo/SEOHead';
 import SocialShareButtons from '../../src/components/shared/SocialShareButtons';
+import GiftThisButton from '../../src/components/giftCards/GiftThisButton';
 import { LiveTraining } from '../../src/types/liveTraining';
 import { getLiveTraining, registerForLiveTraining, enrollInLiveTraining, checkoutLiveTraining } from '../../src/services/liveTrainingService';
 import { checkoutLiveTrainingStripe } from '../../src/services/stripePaymentService';
@@ -314,8 +315,9 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
         </div>
         <h1 className="blog-heading-safe text-3xl font-black mb-3">{title}</h1>
         <LearningRatingSummary {...training} lang={contentLang} />
-        <div className="mb-4">
+        <div className="mb-4 flex flex-wrap items-center gap-3">
           <SocialShareButtons title={title} lang={lang} variant="dark" />
+          <GiftThisButton priceMinor={currentPrice} itemTitle={title} itemPath={`/live-trainings/${training.id}`} lang={lang} variant="dark" />
         </div>
         {training.videoUrl && parseVideoUrl(training.videoUrl) && (
           <div className="w-full mb-8">

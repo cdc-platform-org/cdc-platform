@@ -8,7 +8,8 @@ export type PaymentPurpose =
   | 'HR_SUPPORT'
   | 'LIVE_TRAINING'
   | 'ENGLISH_TUTOR_SUBSCRIPTION'
-  | 'CHILDRENS_BOOK';
+  | 'CHILDRENS_BOOK'
+  | 'GIFT_CARD';
 
 export interface CoursePaymentRow {
   id: string;
