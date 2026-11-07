@@ -26,6 +26,12 @@ export interface ExamQuestionRow {
   options: { A: string; B: string; C: string; D: string } | null;
 }
 
+// Teacher-side view of a question (GET /sessions/:id) — includes the answer
+// key (MCQ letter, or the AI grading rubric for open questions).
+export interface ExamQuestionWithAnswer extends ExamQuestionRow {
+  correctAnswer: string | null;
+}
+
 export interface AnswerGradeEntry {
   questionId: string;
   questionType: ExamQuestionType;
@@ -54,6 +60,9 @@ export interface ExamSubmissionRow {
   practicalScore: number | null;
   totalScore: number | null;
   aiEvaluation: string | null;
+  // { [questionId]: canonical letter (MCQ) or free text } — already mapped
+  // back from each student's shuffled layout by the server.
+  answers: Record<string, string> | null;
   answerGrades: AnswerGradeEntry[] | null;
   proctoringViolations: number;
   tabSwitches: number;
@@ -69,7 +78,7 @@ export interface ExamSubmissionRow {
 
 export interface ExamSessionDetail extends Omit<ExamSessionSummary, '_count'> {
   rawContent: string | null;
-  questions: ExamQuestionRow[];
+  questions: ExamQuestionWithAnswer[];
   submissions: ExamSubmissionRow[];
 }
 
@@ -80,6 +89,7 @@ export interface CreateExamSessionPayload {
   rawContent?: string;
   mcqCount: number;
   includeCodeQuestion?: boolean;
+  includePracticalQuestion?: boolean;
   durationMinutes: number;
 }
 
@@ -134,7 +144,8 @@ export async function parseExamSourceImage(file: File): Promise<string> {
 }
 
 export async function createExamSession(payload: CreateExamSessionPayload): Promise<ExamSessionDetail> {
-  const response = await apiClient.post<{ data: ExamSessionDetail }>('/exam-proctoring/sessions', payload);
+  // Generating 15-50 questions from a long PDF can take a minute or two.
+  const response = await apiClient.post<{ data: ExamSessionDetail }>('/exam-proctoring/sessions', payload, { timeout: 4 * 60 * 1000 });
   return response.data.data;
 }
 
@@ -182,7 +193,18 @@ export async function getCandidateExamInfo(candidateToken: string): Promise<Cand
 export interface StartCandidateExamResult {
   submissionToken: string;
   durationMinutes: number;
+  // Server-side remaining time (equals durationMinutes*60 on a fresh start;
+  // less when resuming after a refresh).
+  secondsLeft?: number;
+  // Already in this student's personal shuffled order, with re-lettered
+  // options — see Backend utils/examShuffle.ts.
   questions: ExamQuestionRow[];
+}
+
+// Continue an in-progress attempt after an accidental refresh / closed tab.
+export async function resumeCandidateExam(submissionToken: string): Promise<StartCandidateExamResult> {
+  const response = await apiClient.get<{ data: StartCandidateExamResult }>(`/exam-proctoring/submissions/${submissionToken}/resume`);
+  return response.data.data;
 }
 
 export async function startCandidateExam(

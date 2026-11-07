@@ -5,6 +5,7 @@ import { ShieldAlert, Clock, CheckCircle2, AlertTriangle, Camera, Mic } from 'lu
 import {
   getCandidateExamInfo,
   startCandidateExam,
+  resumeCandidateExam,
   submitCandidateExam,
   logProctoringEvent,
   CandidateExamInfo,
@@ -68,6 +69,41 @@ async function ensureFaceApiReady(): Promise<void> {
 
 type Phase = 'landing' | 'starting' | 'in-progress' | 'submitting' | 'done' | 'error';
 
+// The in-progress attempt (submission token + answers so far) is kept in
+// this browser so an accidental refresh / closed tab can continue the SAME
+// attempt — same questions, same shuffled layout, same server-side timer —
+// instead of losing everything. Wrapped in try/catch: storage can be
+// unavailable (private mode, blocked site data) and the exam must still work.
+interface SavedAttempt {
+  submissionToken: string;
+  answers: Record<string, string>;
+}
+const storageKey = (examToken: string) => `cdc-exam-attempt:${examToken}`;
+function readSavedAttempt(examToken: string): SavedAttempt | null {
+  try {
+    const raw = window.localStorage.getItem(storageKey(examToken));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed.submissionToken === 'string' ? { submissionToken: parsed.submissionToken, answers: parsed.answers ?? {} } : null;
+  } catch {
+    return null;
+  }
+}
+function writeSavedAttempt(examToken: string, attempt: SavedAttempt) {
+  try {
+    window.localStorage.setItem(storageKey(examToken), JSON.stringify(attempt));
+  } catch {
+    // ignore — resume just won't be available
+  }
+}
+function clearSavedAttempt(examToken: string) {
+  try {
+    window.localStorage.removeItem(storageKey(examToken));
+  } catch {
+    // ignore
+  }
+}
+
 const dict = {
   ka: {
     loadFailed: 'ეს გამოცდის ბმული აღარ არის აქტიური.',
@@ -79,9 +115,9 @@ const dict = {
     submit: 'დასრულება და გაგზავნა',
     submitting: 'იგზავნება…',
     doneTitle: 'გმადლობთ!',
-    doneBody: 'თქვენი პასუხები წარმატებით გაიგზავნა. დამსაქმებელი დაგიკავშირდებათ შედეგების შესახებ.',
+    doneBody: 'თქვენი პასუხები წარმატებით გაიგზავნა. შედეგებს გამოცდის ორგანიზატორი (მასწავლებელი) გაგიზიარებთ.',
     warningNote: (n: number) => `⚠️ დარღვევა შეინიშნა (${n}/${MAX_STRIKES}). კიდევ ერთი და გამოცდა ავტომატურად დასრულდება.`,
-    proctoringNotice: `ტაბის გადართვა, ფოკუსის დაკარგვა ან სრულეკრანიანი რეჟიმიდან გამოსვლა ითვლება დარღვევად — ${MAX_STRIKES} დარღვევის შემთხვევაში გამოცდა ავტომატურად წყდება.`,
+    proctoringNotice: `ტაბის გადართვა, ფოკუსის დაკარგვა, ტექსტის ჩასმა ან სრულეკრანიანი რეჟიმიდან გამოსვლა ითვლება დარღვევად — ${MAX_STRIKES} დარღვევის შემთხვევაში გამოცდა ავტომატურად წყდება. კამერა და მიკროფონი აკვირდება სახესა და ხმას — ეს ჩანიშნება მასწავლებლისთვის, მაგრამ გამოცდას არ წყვეტს.`,
     practicalPlaceholder: 'დაწერეთ თქვენი პასუხი აქ…',
     codePlaceholder: '// დაწერეთ თქვენი კოდი აქ…',
     errorGeneric: 'დაფიქსირდა შეცდომა. სცადეთ თავიდან.',
@@ -97,6 +133,12 @@ const dict = {
     warningLookingAway: '⚠️ გთხოვთ, შეხედოთ ეკრანს',
     warningBackgroundVoice: '⚠️ ფონური ხმა/საუბარი აღმოჩენილია',
     warningFullscreenExit: '⚠️ სრულეკრანიანი რეჟიმიდან გამოსვლა',
+    softWarningSuffix: 'ეს ჩანიშნება მასწავლებლისთვის.',
+    resumeTitle: 'თქვენ უკვე დაიწყეთ ეს გამოცდა ამ მოწყობილობაზე.',
+    resumeCta: 'გამოცდის გაგრძელება',
+    resumeFailed: 'წინა მცდელობის გაგრძელება ვერ მოხერხდა — შეგიძლიათ დაიწყოთ თავიდან.',
+    submitFailed: 'პასუხების გაგზავნა ვერ მოხერხდა (ინტერნეტი?). პასუხები შენახულია — დააჭირეთ „დასრულება და გაგზავნა“ კიდევ ერთხელ.',
+    answeredCount: (a: number, n: number) => `პასუხი გაცემულია: ${a}/${n}`,
   },
   en: {
     loadFailed: 'This exam link is no longer active.',
@@ -108,9 +150,9 @@ const dict = {
     submit: 'Finish & Submit',
     submitting: 'Submitting…',
     doneTitle: 'Thank you!',
-    doneBody: 'Your answers were submitted successfully. The employer will be in touch about next steps.',
+    doneBody: 'Your answers were submitted successfully. The exam organizer will share the results with you.',
     warningNote: (n: number) => `⚠️ Violation detected (${n}/${MAX_STRIKES}). One more and the exam will auto-submit.`,
-    proctoringNotice: `Tab switching, losing window focus, or exiting fullscreen counts as a violation — ${MAX_STRIKES} violations auto-submit and end the exam.`,
+    proctoringNotice: `Tab switching, losing window focus, pasting, or exiting fullscreen counts as a violation — ${MAX_STRIKES} violations auto-submit and end the exam. Camera and microphone signals are recorded for the organizer but do not end the exam.`,
     practicalPlaceholder: 'Write your answer here…',
     codePlaceholder: '// Write your code here…',
     errorGeneric: 'Something went wrong. Please try again.',
@@ -126,6 +168,12 @@ const dict = {
     warningLookingAway: '⚠️ Please look at the screen',
     warningBackgroundVoice: '⚠️ Background voice/talking detected',
     warningFullscreenExit: '⚠️ Exited fullscreen mode',
+    softWarningSuffix: 'This is noted for the organizer.',
+    resumeTitle: 'You already started this exam on this device.',
+    resumeCta: 'Continue Exam',
+    resumeFailed: 'Could not continue the previous attempt — you can start again.',
+    submitFailed: 'Could not submit your answers (internet?). Your answers are saved — press "Finish & Submit" again.',
+    answeredCount: (a: number, n: number) => `Answered: ${a}/${n}`,
   },
   de: {
     loadFailed: 'This exam link is no longer active.',
@@ -137,9 +185,9 @@ const dict = {
     submit: 'Finish & Submit',
     submitting: 'Submitting…',
     doneTitle: 'Thank you!',
-    doneBody: 'Your answers were submitted successfully. The employer will be in touch about next steps.',
+    doneBody: 'Your answers were submitted successfully. The exam organizer will share the results with you.',
     warningNote: (n: number) => `⚠️ Violation detected (${n}/${MAX_STRIKES}). One more and the exam will auto-submit.`,
-    proctoringNotice: `Tab switching, losing window focus, or exiting fullscreen counts as a violation — ${MAX_STRIKES} violations auto-submit and end the exam.`,
+    proctoringNotice: `Tab switching, losing window focus, pasting, or exiting fullscreen counts as a violation — ${MAX_STRIKES} violations auto-submit and end the exam. Camera and microphone signals are recorded for the organizer but do not end the exam.`,
     practicalPlaceholder: 'Write your answer here…',
     codePlaceholder: '// Write your code here…',
     errorGeneric: 'Something went wrong. Please try again.',
@@ -155,6 +203,12 @@ const dict = {
     warningLookingAway: '⚠️ Please look at the screen',
     warningBackgroundVoice: '⚠️ Background voice/talking detected',
     warningFullscreenExit: '⚠️ Exited fullscreen mode',
+    softWarningSuffix: 'This is noted for the organizer.',
+    resumeTitle: 'You already started this exam on this device.',
+    resumeCta: 'Continue Exam',
+    resumeFailed: 'Could not continue the previous attempt — you can start again.',
+    submitFailed: 'Could not submit your answers (internet?). Your answers are saved — press "Finish & Submit" again.',
+    answeredCount: (a: number, n: number) => `Answered: ${a}/${n}`,
   },
   es: {
     loadFailed: 'This exam link is no longer active.',
@@ -166,9 +220,9 @@ const dict = {
     submit: 'Finish & Submit',
     submitting: 'Submitting…',
     doneTitle: 'Thank you!',
-    doneBody: 'Your answers were submitted successfully. The employer will be in touch about next steps.',
+    doneBody: 'Your answers were submitted successfully. The exam organizer will share the results with you.',
     warningNote: (n: number) => `⚠️ Violation detected (${n}/${MAX_STRIKES}). One more and the exam will auto-submit.`,
-    proctoringNotice: `Tab switching, losing window focus, or exiting fullscreen counts as a violation — ${MAX_STRIKES} violations auto-submit and end the exam.`,
+    proctoringNotice: `Tab switching, losing window focus, pasting, or exiting fullscreen counts as a violation — ${MAX_STRIKES} violations auto-submit and end the exam. Camera and microphone signals are recorded for the organizer but do not end the exam.`,
     practicalPlaceholder: 'Write your answer here…',
     codePlaceholder: '// Write your code here…',
     errorGeneric: 'Something went wrong. Please try again.',
@@ -184,6 +238,12 @@ const dict = {
     warningLookingAway: '⚠️ Please look at the screen',
     warningBackgroundVoice: '⚠️ Background voice/talking detected',
     warningFullscreenExit: '⚠️ Exited fullscreen mode',
+    softWarningSuffix: 'This is noted for the organizer.',
+    resumeTitle: 'You already started this exam on this device.',
+    resumeCta: 'Continue Exam',
+    resumeFailed: 'Could not continue the previous attempt — you can start again.',
+    submitFailed: 'Could not submit your answers (internet?). Your answers are saved — press "Finish & Submit" again.',
+    answeredCount: (a: number, n: number) => `Answered: ${a}/${n}`,
   },
   fr: {
     loadFailed: 'This exam link is no longer active.',
@@ -195,9 +255,9 @@ const dict = {
     submit: 'Finish & Submit',
     submitting: 'Submitting…',
     doneTitle: 'Thank you!',
-    doneBody: 'Your answers were submitted successfully. The employer will be in touch about next steps.',
+    doneBody: 'Your answers were submitted successfully. The exam organizer will share the results with you.',
     warningNote: (n: number) => `⚠️ Violation detected (${n}/${MAX_STRIKES}). One more and the exam will auto-submit.`,
-    proctoringNotice: `Tab switching, losing window focus, or exiting fullscreen counts as a violation — ${MAX_STRIKES} violations auto-submit and end the exam.`,
+    proctoringNotice: `Tab switching, losing window focus, pasting, or exiting fullscreen counts as a violation — ${MAX_STRIKES} violations auto-submit and end the exam. Camera and microphone signals are recorded for the organizer but do not end the exam.`,
     practicalPlaceholder: 'Write your answer here…',
     codePlaceholder: '// Write your code here…',
     errorGeneric: 'Something went wrong. Please try again.',
@@ -213,6 +273,12 @@ const dict = {
     warningLookingAway: '⚠️ Please look at the screen',
     warningBackgroundVoice: '⚠️ Background voice/talking detected',
     warningFullscreenExit: '⚠️ Exited fullscreen mode',
+    softWarningSuffix: 'This is noted for the organizer.',
+    resumeTitle: 'You already started this exam on this device.',
+    resumeCta: 'Continue Exam',
+    resumeFailed: 'Could not continue the previous attempt — you can start again.',
+    submitFailed: 'Could not submit your answers (internet?). Your answers are saved — press "Finish & Submit" again.',
+    answeredCount: (a: number, n: number) => `Answered: ${a}/${n}`,
   },
   uk: {
     loadFailed: 'This exam link is no longer active.',
@@ -224,9 +290,9 @@ const dict = {
     submit: 'Finish & Submit',
     submitting: 'Submitting…',
     doneTitle: 'Thank you!',
-    doneBody: 'Your answers were submitted successfully. The employer will be in touch about next steps.',
+    doneBody: 'Your answers were submitted successfully. The exam organizer will share the results with you.',
     warningNote: (n: number) => `⚠️ Violation detected (${n}/${MAX_STRIKES}). One more and the exam will auto-submit.`,
-    proctoringNotice: `Tab switching, losing window focus, or exiting fullscreen counts as a violation — ${MAX_STRIKES} violations auto-submit and end the exam.`,
+    proctoringNotice: `Tab switching, losing window focus, pasting, or exiting fullscreen counts as a violation — ${MAX_STRIKES} violations auto-submit and end the exam. Camera and microphone signals are recorded for the organizer but do not end the exam.`,
     practicalPlaceholder: 'Write your answer here…',
     codePlaceholder: '// Write your code here…',
     errorGeneric: 'Something went wrong. Please try again.',
@@ -242,6 +308,12 @@ const dict = {
     warningLookingAway: '⚠️ Please look at the screen',
     warningBackgroundVoice: '⚠️ Background voice/talking detected',
     warningFullscreenExit: '⚠️ Exited fullscreen mode',
+    softWarningSuffix: 'This is noted for the organizer.',
+    resumeTitle: 'You already started this exam on this device.',
+    resumeCta: 'Continue Exam',
+    resumeFailed: 'Could not continue the previous attempt — you can start again.',
+    submitFailed: 'Could not submit your answers (internet?). Your answers are saved — press "Finish & Submit" again.',
+    answeredCount: (a: number, n: number) => `Answered: ${a}/${n}`,
   },
 };
 
@@ -266,6 +338,8 @@ export default function CandidateExamPage() {
   const [copyPasteCount, setCopyPasteCount] = useState(0);
   const [warningToast, setWarningToast] = useState<string | null>(null);
   const [examStartedAt, setExamStartedAt] = useState<Date | null>(null);
+  const [savedAttempt, setSavedAttempt] = useState<SavedAttempt | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // ---- Camera & microphone gate ----
   const [mediaStatus, setMediaStatus] = useState<'idle' | 'requesting' | 'live' | 'denied'>('idle');
@@ -297,7 +371,14 @@ export default function CandidateExamPage() {
     getCandidateExamInfo(token)
       .then(setInfo)
       .catch(() => setError(t.loadFailed));
+    setSavedAttempt(readSavedAttempt(token));
   }, [token, t.loadFailed]);
+
+  // Keep the saved attempt's answers current so a refresh loses nothing.
+  useEffect(() => {
+    if (!token || !submissionToken || phase !== 'in-progress') return;
+    writeSavedAttempt(token, { submissionToken, answers });
+  }, [token, submissionToken, answers, phase]);
 
   const stopMedia = useCallback(() => {
     streamRef.current?.getTracks().forEach((tr) => tr.stop());
@@ -347,14 +428,26 @@ export default function CandidateExamPage() {
       // registerStrike) and the server recomputes the integrity score from
       // those at submit time, rather than trusting anything this call sends.
       await submitCandidateExam(submissionTokenRef.current, { answers: answersRef.current });
+      if (token) clearSavedAttempt(token);
+      setSubmitError(null);
       setPhase('done');
       stopMedia();
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-    } catch {
-      setError(t.errorGeneric);
-      setPhase('error');
+    } catch (err: any) {
+      // "already submitted" means the server has it — treat as done.
+      if (err?.response?.status === 400 && /already submitted/i.test(err?.response?.data?.message ?? '')) {
+        if (token) clearSavedAttempt(token);
+        setPhase('done');
+        stopMedia();
+        return;
+      }
+      // Otherwise (network hiccup in a busy classroom) keep the student on
+      // their answers so they can press submit again — previously this
+      // dropped them on a dead error screen with no way to retry.
+      setSubmitError(t.submitFailed);
+      setPhase('in-progress');
     }
-  }, [t.errorGeneric, stopMedia]);
+  }, [t.submitFailed, stopMedia, token]);
 
   type StrikeKind = 'tab' | 'copyPaste' | 'fullscreen' | 'faceMissing' | 'multipleFaces' | 'lookingAway' | 'backgroundVoice';
 
@@ -409,6 +502,17 @@ export default function CandidateExamPage() {
           : kind === 'fullscreen'
           ? t.warningFullscreenExit
           : null;
+
+      // Camera/microphone signals are logged (server-side) and shown as a
+      // warning, but don't count toward the auto-submit limit — in a real
+      // classroom they fire on normal behaviour (looking down at paper, a
+      // neighbour or the teacher talking) and used to end exams within a
+      // minute. The teacher still sees them in the report.
+      const isSoftSignal = kind === 'faceMissing' || kind === 'multipleFaces' || kind === 'lookingAway' || kind === 'backgroundVoice';
+      if (isSoftSignal) {
+        setWarningToast(`${reason} — ${t.softWarningSuffix}`);
+        return;
+      }
 
       setStrikes((prev) => {
         const next = prev + 1;
@@ -467,14 +571,18 @@ export default function CandidateExamPage() {
   // position) each register their own strike kind.
   useEffect(() => {
     if (phase !== 'in-progress') return;
-    const faceapi = (window as any).faceapi;
-    if (!faceapi || !videoRef.current) return;
-
-    const video = videoRef.current;
+    // The landing-screen <video> (videoRef) is unmounted once the exam
+    // starts, so face detection must read from the in-progress preview —
+    // reading videoRef here meant face checks silently never ran at all.
+    const video = inProgressVideoRef.current ?? videoRef.current;
+    if (!video) return;
     if (!canvasRef.current) canvasRef.current = document.createElement('canvas');
     const canvas = canvasRef.current;
 
     const interval = setInterval(async () => {
+      const faceapi = (window as any).faceapi;
+      // face-api.js loads lazily in the background — skip until it's ready.
+      if (!faceapi?.nets?.tinyFaceDetector?.isLoaded) return;
       if (!video.videoWidth || !video.videoHeight) return;
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
@@ -589,12 +697,35 @@ export default function CandidateExamPage() {
       // the listeners above just won't catch a fullscreen-exit that never
       // entered fullscreen to begin with.
     }
+    if (savedAttempt) {
+      try {
+        const result = await resumeCandidateExam(savedAttempt.submissionToken);
+        if ((result.secondsLeft ?? 0) <= 0) throw new Error('expired');
+        setSubmissionToken(result.submissionToken);
+        submissionTokenRef.current = result.submissionToken;
+        setQuestions(result.questions);
+        setAnswers(savedAttempt.answers);
+        answersRef.current = savedAttempt.answers;
+        setSecondsLeft(result.secondsLeft ?? result.durationMinutes * 60);
+        setExamStartedAt(new Date());
+        setPhase('in-progress');
+        return;
+      } catch {
+        // Already submitted / expired / unknown — fall back to a fresh start.
+        clearSavedAttempt(token);
+        setSavedAttempt(null);
+        setError(t.resumeFailed);
+        setPhase('landing');
+        return;
+      }
+    }
     try {
       const result = await startCandidateExam(token, { candidateName, candidateEmail });
       setSubmissionToken(result.submissionToken);
       submissionTokenRef.current = result.submissionToken;
+      writeSavedAttempt(token, { submissionToken: result.submissionToken, answers: {} });
       setQuestions(result.questions);
-      setSecondsLeft(result.durationMinutes * 60);
+      setSecondsLeft(result.secondsLeft ?? result.durationMinutes * 60);
       setExamStartedAt(new Date());
       setPhase('in-progress');
     } catch {
@@ -662,6 +793,10 @@ export default function CandidateExamPage() {
             </div>
 
             <form onSubmit={handleStart} className="space-y-4">
+              {savedAttempt && (
+                <p className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200">{t.resumeTitle}</p>
+              )}
+              {!savedAttempt && (<>
               <div>
                 <label className="block text-xs font-bold text-slate-400 mb-1.5">{t.name}</label>
                 <input
@@ -681,12 +816,13 @@ export default function CandidateExamPage() {
                   className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 />
               </div>
+              </>)}
               <button
                 type="submit"
                 disabled={mediaStatus !== 'live'}
                 className="w-full rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-3 text-sm font-black text-white disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {t.start}
+                {savedAttempt ? t.resumeCta : t.start}
               </button>
             </form>
           </div>
@@ -754,10 +890,16 @@ export default function CandidateExamPage() {
               ))}
             </div>
 
+            {submitError && (
+              <div className="mt-6 rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-300">{submitError}</div>
+            )}
+            <p className="mt-6 text-xs text-slate-400 text-center">
+              {t.answeredCount(questions.filter((q) => (answers[q.id] ?? '').trim() !== '').length, questions.length)}
+            </p>
             <button
               type="button"
               onClick={() => handleSubmit()}
-              className="mt-6 w-full rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-3 text-sm font-black text-white"
+              className="mt-3 w-full rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-3 text-sm font-black text-white"
             >
               {t.submit}
             </button>
