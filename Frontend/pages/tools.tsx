@@ -39,6 +39,7 @@ import { ToolCatalogContent } from '@/src/types/siteContent';
 import { customToolEntries, findToolEntry, overrideText } from '@/src/utils/toolCatalog';
 import { resolveBlogImageUrl } from '@/src/services/blogService';
 import { onImageErrorFallback } from '@/src/utils/imageFallback';
+import VideoEmbed, { parseVideoUrl } from '@/src/components/shared/VideoEmbed';
 import type { LucideIcon } from 'lucide-react';
 import type { ToolCatalogEntry } from '@/src/types/siteContent';
 
@@ -407,7 +408,15 @@ const dict = {
 
 // Card visual: the admin-set cover image (pages/admin/tools.tsx → imageUrl)
 // when there is one, otherwise the original gradient icon tile.
-function ToolCover({ imageUrl, icon: Icon, gradient, alt }: { imageUrl?: string; icon: LucideIcon; gradient: string; alt: string }) {
+function ToolCover({ imageUrl, videoUrl, icon: Icon, gradient, alt }: { imageUrl?: string; videoUrl?: string; icon: LucideIcon; gradient: string; alt: string }) {
+  const video = videoUrl?.trim();
+  if (video && parseVideoUrl(video)) {
+    return (
+      <div className="shrink-0 w-full lg:w-80">
+        <VideoEmbed url={video} title={alt} />
+      </div>
+    );
+  }
   if (imageUrl && imageUrl.trim()) {
     return (
       <div className="shrink-0 w-full lg:w-80 aspect-[16/10] rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 ring-1 ring-black/5 dark:ring-white/10 shadow-sm">
@@ -450,7 +459,7 @@ function CustomToolCard({ entry, lang, comingSoonLabel }: { entry: ToolCatalogEn
   const buttonLabel = lang === 'ka' ? 'გახსნა' : 'Open';
   return (
     <div className="lg:col-span-3 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-8 flex flex-col lg:flex-row gap-8 items-start">
-      <ToolCover imageUrl={entry.imageUrl} icon={Sparkles} gradient="from-cyan-500 to-purple-600" alt={title} />
+      <ToolCover imageUrl={entry.imageUrl} videoUrl={entry.videoUrl} icon={Sparkles} gradient="from-cyan-500 to-purple-600" alt={title} />
       <div className="flex-1">
         <div className="flex flex-wrap items-center gap-2 mb-1">
           <h2 className="text-xl font-black tracking-wide">{title}</h2>
@@ -596,7 +605,7 @@ export default function ToolsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Card 1: Enterprise AI Assistant — real, available product */}
           <div className="lg:col-span-3 rounded-3xl border border-cyan-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-cyan-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <ToolCover imageUrl={enterpriseAiCms?.imageUrl} icon={Bot} gradient="from-cyan-500 to-purple-600" alt={ov(t.aiTitle, enterpriseAiCms, 'title')} />
+            <ToolCover imageUrl={enterpriseAiCms?.imageUrl} videoUrl={enterpriseAiCms?.videoUrl} icon={Bot} gradient="from-cyan-500 to-purple-600" alt={ov(t.aiTitle, enterpriseAiCms, 'title')} />
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h2 className="text-xl font-black tracking-wide">{ov(t.aiTitle, enterpriseAiCms, 'title')}</h2>
@@ -655,7 +664,7 @@ export default function ToolsPage() {
               Same Business-only gating as Card 1 (canUseAiAssistant), since
               it lives on the same /dashboard/ai-tools page. */}
           <div className="lg:col-span-3 rounded-3xl border border-cyan-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-cyan-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <ToolCover imageUrl={examScreeningCms?.imageUrl} icon={ShieldCheck} gradient="from-cyan-500 to-purple-600" alt={ov(t.examTitle, examScreeningCms, 'title')} />
+            <ToolCover imageUrl={examScreeningCms?.imageUrl} videoUrl={examScreeningCms?.videoUrl} icon={ShieldCheck} gradient="from-cyan-500 to-purple-600" alt={ov(t.examTitle, examScreeningCms, 'title')} />
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h2 className="text-xl font-black tracking-wide">{ov(t.examTitle, examScreeningCms, 'title')}</h2>
@@ -714,7 +723,7 @@ export default function ToolsPage() {
               an enterprise feature) — the CTA links straight into
               ProtectedRoute, which handles the login redirect itself. */}
           <div className="lg:col-span-3 rounded-3xl border border-cyan-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-cyan-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <ToolCover imageUrl={mediaStudioCms?.imageUrl} icon={Mic} gradient="from-cyan-500 to-purple-600" alt={tm('catalogTitle')} />
+            <ToolCover imageUrl={mediaStudioCms?.imageUrl} videoUrl={mediaStudioCms?.videoUrl} icon={Mic} gradient="from-cyan-500 to-purple-600" alt={tm('catalogTitle')} />
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h2 className="text-xl font-black tracking-wide">{overrideText(tm('catalogTitle'), catLang === 'ka' ? mediaStudioCms?.titleKa : mediaStudioCms?.titleEn)}</h2>
@@ -741,7 +750,7 @@ export default function ToolsPage() {
               since this one is paid — the page itself (not this card)
               handles trial-start/VIP-required/quota state. */}
           <div className="lg:col-span-3 rounded-3xl border border-amber-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-amber-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <ToolCover imageUrl={educatorHubCms?.imageUrl} icon={Crown} gradient="from-amber-500 to-purple-600" alt={tEdu('pageTitle')} />
+            <ToolCover imageUrl={educatorHubCms?.imageUrl} videoUrl={educatorHubCms?.videoUrl} icon={Crown} gradient="from-amber-500 to-purple-600" alt={tEdu('pageTitle')} />
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h2 className="text-xl font-black tracking-wide">{overrideText(tEdu('pageTitle'), catLang === 'ka' ? educatorHubCms?.titleKa : educatorHubCms?.titleEn)}</h2>
@@ -768,7 +777,7 @@ export default function ToolsPage() {
               (same rule as marketplace/index.tsx's SaaS cards). */}
           {childrensBookCms?.status !== 'DISABLED' && (
           <div className="lg:col-span-3 rounded-3xl border border-pink-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-pink-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <ToolCover imageUrl={childrensBookCms?.imageUrl} icon={BookOpen} gradient="from-pink-500 to-purple-600" alt={tCB('pageTitle')} />
+            <ToolCover imageUrl={childrensBookCms?.imageUrl} videoUrl={childrensBookCms?.videoUrl} icon={BookOpen} gradient="from-pink-500 to-purple-600" alt={tCB('pageTitle')} />
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h2 className="text-xl font-black tracking-wide">{overrideText(tCB('pageTitle'), catLang === 'ka' ? childrensBookCms?.titleKa : childrensBookCms?.titleEn)}</h2>
@@ -804,7 +813,7 @@ export default function ToolsPage() {
               assessment tool, not an employer screening tool, so it gets
               its own card and copy rather than overwriting Card 2. */}
           <div className="lg:col-span-3 rounded-3xl border border-cyan-500/30 bg-white dark:bg-slate-900/60 bg-gradient-to-br from-cyan-500/5 to-purple-600/5 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <ToolCover imageUrl={proctoringCms?.imageUrl} icon={ShieldCheck} gradient="from-cyan-500 to-purple-600" alt={t.proctoringPracticeTitle} />
+            <ToolCover imageUrl={proctoringCms?.imageUrl} videoUrl={proctoringCms?.videoUrl} icon={ShieldCheck} gradient="from-cyan-500 to-purple-600" alt={t.proctoringPracticeTitle} />
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h2 className="text-xl font-black tracking-wide">{overrideText(t.proctoringPracticeTitle, catLang === 'ka' ? proctoringCms?.titleKa : proctoringCms?.titleEn)}</h2>
@@ -845,7 +854,7 @@ export default function ToolsPage() {
               but coming-soon-styled (muted icon, amber lock badge, no CTA)
               since nothing here is actually usable yet. */}
           <div className="lg:col-span-3 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <ToolCover imageUrl={sentinelCms?.imageUrl} icon={ShieldAlert} gradient="from-cyan-500 to-purple-600" alt={ov(t.sentinelTitle, sentinelCms, 'title')} />
+            <ToolCover imageUrl={sentinelCms?.imageUrl} videoUrl={sentinelCms?.videoUrl} icon={ShieldAlert} gradient="from-cyan-500 to-purple-600" alt={ov(t.sentinelTitle, sentinelCms, 'title')} />
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h2 className="text-xl font-black tracking-wide">{ov(t.sentinelTitle, sentinelCms, 'title')}</h2>
@@ -888,7 +897,7 @@ export default function ToolsPage() {
               contact link) — never live status/telemetry, which would
               misrepresent an unbuilt product as an active security system. */}
           <div className="lg:col-span-3 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-8 flex flex-col lg:flex-row gap-8 items-start">
-            <ToolCover imageUrl={agsaiaCms?.imageUrl} icon={KeyRound} gradient="from-cyan-500 to-purple-600" alt={ov(t.agsaiaTitle, agsaiaCms, 'title')} />
+            <ToolCover imageUrl={agsaiaCms?.imageUrl} videoUrl={agsaiaCms?.videoUrl} icon={KeyRound} gradient="from-cyan-500 to-purple-600" alt={ov(t.agsaiaTitle, agsaiaCms, 'title')} />
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h2 className="text-xl font-black tracking-wide">{ov(t.agsaiaTitle, agsaiaCms, 'title')}</h2>

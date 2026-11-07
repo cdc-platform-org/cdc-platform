@@ -8,6 +8,7 @@ import SiteFooter from '../../../src/components/layout/SiteFooter';
 import BackButton from '../../../src/components/common/BackButton';
 import BusinessAiTab from '../../../src/components/dashboard/BusinessAiTab';
 import { resolveLocale } from '@/src/utils/locale';
+import ToolMediaBanner from '../../../src/components/tools/ToolMediaBanner';
 
 // Enterprise AI Chatbot & Knowledge Base — split out of /dashboard/ai-tools
 // (now a hub linking here) into its own dedicated route, same reasoning as
@@ -64,6 +65,7 @@ function ChatbotBuilderContent() {
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t.subtitle}</p>
         </div>
+        <ToolMediaBanner slug="enterprise-ai" alt={t.title} />
 
         <BusinessAiTab lang={lang} />
       </div>

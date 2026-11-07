@@ -39,6 +39,7 @@ import {
   translateText,
   TtsVoice,
 } from '../../../src/services/mediaStudioService';
+import ToolMediaBanner from '../../../src/components/tools/ToolMediaBanner';
 
 // ============================================================
 // AI Voice & Video Media Studio.
@@ -536,6 +537,7 @@ function MediaStudioContent() {
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t('pageSubtitle')}</p>
         </div>
+        <ToolMediaBanner slug="media-studio" alt={t('pageTitle')} />
 
         <div className="flex gap-2 mb-6 border-b border-slate-200 dark:border-slate-800">
           <button
