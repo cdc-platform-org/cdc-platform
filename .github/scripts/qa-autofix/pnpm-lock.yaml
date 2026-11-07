@@ -1,0 +1,50 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.70.0
+        version: 0.70.1
+
+packages:
+
+  '@anthropic-ai/sdk@0.70.1':
+    resolution: {integrity: sha512-AGEhifuvE22VxfQ5ROxViTgM8NuVQzEvqcN8bttR4AP24ythmNE/cL/SrOz79xiv7/osrsmCyErjsistJi7Z8A==}
+    hasBin: true
+    peerDependencies:
+      zod: ^3.25.0 || ^4.0.0
+    peerDependenciesMeta:
+      zod:
+        optional: true
+
+  '@babel/runtime@7.29.13':
+    resolution: {integrity: sha512-v+oN26xP4YIlQsbQ/CbTH1WG5m/l/DjKKZNy/Kp3f/AFvbgt7Em/D0FeMM3O2hX0YzeN2M16W8lOpyhIkfCBcQ==}
+    engines: {node: '>=6.9.0'}
+
+  json-schema-to-ts@3.1.1:
+    resolution: {integrity: sha512-+DWg8jCJG2TEnpy7kOm/7/AxaYoaRbjVB4LFZLySZlWn8exGs3A4OLJR966cVvU26N7X9TWxl+Jsw7dzAqKT6g==}
+    engines: {node: '>=16'}
+
+  ts-algebra@2.0.0:
+    resolution: {integrity: sha512-FPAhNPFMrkwz76P7cdjdmiShwMynZYN6SgOujD1urY4oNm80Ou9oMdmbR45LotcKOXoy7wSmHkRFE6Mxbrhefw==}
+
+snapshots:
+
+  '@anthropic-ai/sdk@0.70.1':
+    dependencies:
+      json-schema-to-ts: 3.1.1
+
+  '@babel/runtime@7.29.13': {}
+
+  json-schema-to-ts@3.1.1:
+    dependencies:
+      '@babel/runtime': 7.29.13
+      ts-algebra: 2.0.0
+
+  ts-algebra@2.0.0: {}
