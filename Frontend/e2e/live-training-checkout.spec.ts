@@ -65,6 +65,19 @@ test.describe('Public live training registration', () => {
   });
 });
 
+test.describe('Live training promo code field', () => {
+  test('guests see the promo field, and applying asks them to sign in first', async ({ page }) => {
+    await mockTraining(page, { saleActive: true, isOnSale: true, currentPrice: 8000, discountedPrice: 8000 });
+    let validateCalls = 0;
+    page.on('request', (request) => { if (request.url().includes('/api/promos/validate')) validateCalls++; });
+    await page.goto(`/en${TRAINING_PATH}`);
+    await page.getByRole('textbox', { name: 'Promo code', exact: true }).fill('qa10');
+    await page.getByRole('button', { name: 'Apply', exact: true }).click();
+    await expect(page.getByText('Sign in or create an account to register for this training.')).toBeVisible();
+    expect(validateCalls).toBe(0);
+  });
+});
+
 test.describe('Authenticated live training checkout', () => {
   test.use({ storageState: AUTH_STATE_PATH });
 
@@ -79,7 +92,9 @@ test.describe('Authenticated live training checkout', () => {
         await route.fulfill({ status: 503, json: { message: 'Test gateway unavailable. Please retry.' } });
       });
       await page.goto(`${locale === 'en' ? '/en' : ''}${TRAINING_PATH}`);
-      // This field appears only after authentication hydration finishes.
+      // The promo field is shown to guests too, so wait for auth hydration
+      // explicitly before clicking (a guest click would open the sign-in modal).
+      await expect(page.getByTestId('live-training-promo')).toHaveAttribute('data-signed-in', 'true');
       await expect(page.getByRole('textbox', { name: /Promo code|პრომო კოდი/ })).toBeVisible();
       const checkoutButton = page.getByRole('button', { name: /Register & Pay|რეგისტრაცია და გადახდა/ });
       await checkoutButton.click();
@@ -107,6 +122,7 @@ test.describe('Authenticated live training checkout', () => {
       await route.fulfill({ json: { paymentId: 'test-free-checkout', redirectUrl: null, enrolled: true } });
     });
     await page.goto(`/en${TRAINING_PATH}`);
+    await expect(page.getByTestId('live-training-promo')).toHaveAttribute('data-signed-in', 'true');
     const applyPromo = async () => {
       await page.getByRole('textbox', { name: 'Promo code', exact: true }).fill('qa100');
       await page.getByRole('button', { name: 'Apply', exact: true }).click();
@@ -131,7 +147,7 @@ test.describe('Authenticated live training checkout', () => {
     await page.route(paidCheckout, (route) => route.fulfill({ json: { paymentId: 'test-payment', redirectUrl: 'https://checkout.invalid/e2e-only' } }));
     await page.route('https://checkout.invalid/e2e-only', (route) => route.fulfill({ contentType: 'text/html', body: '<h1>Mock secure checkout</h1>' }));
     await page.goto(`/en${TRAINING_PATH}`);
-    await expect(page.getByRole('textbox', { name: 'Promo code', exact: true })).toBeVisible();
+    await expect(page.getByTestId('live-training-promo')).toHaveAttribute('data-signed-in', 'true');
     await page.getByRole('button', { name: /Register & Pay/ }).click();
     await expect(page).toHaveURL('https://checkout.invalid/e2e-only');
     await expect(page.getByRole('heading', { name: 'Mock secure checkout' })).toBeVisible();
