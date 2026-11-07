@@ -16,6 +16,7 @@ const ACCESS_LABEL: Record<CoursePaymentRow['purpose'], string> = {
   PRODUCT: 'Remove download access to the product',
   ENGLISH_TUTOR_SUBSCRIPTION: 'Take back the 30 days of AI English Tutor access',
   CHILDRENS_BOOK: 'Mark as refunded (the book itself is not changed automatically)',
+  GIFT_CARD: 'Deactivate the gift card code (its unspent balance can no longer be used)',
   MENTORSHIP: 'Cancel the mentorship booking',
   HR_SUPPORT: 'Cancel the HR support request',
   GIG_ESCROW_FUNDING: 'Cancel the gig',

@@ -259,6 +259,10 @@ enum BogPaymentPurpose {
   // schema's BookProject comment and services/bookPurchaseFulfillment.ts —
   // DIRECT model, same as PRODUCT (flat one-time sale, no escrow).
   CHILDRENS_BOOK
+  // A purchased gift card (referenceId -> GiftCard.id). On completion a
+  // single PromoCode (isGiftCard) holding the card's balance is minted and
+  // emailed to the recipient — see services/giftCardService.ts.
+  GIFT_CARD
 }
 
 // Whether a payment settles straight to its destination the moment it
@@ -727,6 +731,7 @@ model User {
   stripeCustomerId              String?
   paymentMethods                PaymentMethod[]
   bogPayments                   BogPayment[]
+  giftCardsPurchased            GiftCard[]                     @relation("GiftCardsPurchased")
   bogRefundsRequested           BogRefund[]                    @relation("BogRefundRequestedBy")
   stripePayments                StripePayment[]
   courseEnrollments             CourseEnrollment[]
@@ -3775,6 +3780,10 @@ model BogPayment {
   refundedAmount    Int                @default(0)
   refundedAt        DateTime?
   refunds           BogRefund[]
+  // Part of the price paid with a gift card balance (tetri), on top of
+  // `amount` (the card/cash part). Restored to the card if this payment
+  // fails, and added back for creator/instructor revenue share.
+  giftCardAmount    Int                @default(0)
 
   @@index([userId])
   @@index([purpose, referenceId])
@@ -4659,11 +4668,59 @@ model PromoCode {
   expiresAt           DateTime?
   maxUses             Int?
   currentUses         Int                  @default(0)
+  // Gift card code (see GiftCard below): discountAmount is the card's
+  // REMAINING balance in tetri, decremented by what each purchase used and
+  // restored if that payment fails. A gift card is money, not a discount, so
+  // it applies on top of a sale price (couponService.computePromoPrice).
+  isGiftCard          Boolean              @default(false)
   createdAt           DateTime             @default(now())
   bogPayments         BogPayment[]
   stripePayments      StripePayment[]
+  giftCard            GiftCard?
 
   @@map("promo_codes")
+}
+
+enum GiftCardStatus {
+  // Checkout started, BOG has not confirmed payment yet.
+  PENDING_PAYMENT
+  // Paid, code minted; waiting for deliverAt to email the recipient.
+  SCHEDULED
+  // Recipient email sent (or the buyer chose to hand it over themselves).
+  DELIVERED
+  // Payment failed / was cancelled — no code was ever minted.
+  CANCELLED
+}
+
+// A gift card someone bought for someone else. The redeemable code itself
+// is a normal PromoCode (isGiftCard = true, applicableType ALL), so it works
+// in every existing promo field across the site. See giftCardService.ts.
+model GiftCard {
+  id             String         @id @default(uuid())
+  purchaserId    String
+  purchaser      User           @relation("GiftCardsPurchased", fields: [purchaserId], references: [id], onDelete: Restrict)
+  amount         Int // initial value, tetri
+  status         GiftCardStatus @default(PENDING_PAYMENT)
+  senderName     String
+  recipientName  String
+  // Null when the buyer prints the card and hands it over themselves.
+  recipientEmail String?
+  message        String?
+  design         String         @default("classic")
+  // When to email the recipient (now, or e.g. their birthday).
+  deliverAt      DateTime
+  deliveredAt    DateTime?
+  // Optional: the product the buyer had in mind when gifting (shown on the
+  // card as a suggestion only — the code still works on every product).
+  suggestedItem  String?
+  suggestedUrl   String?
+  promoCodeId    String?        @unique
+  promoCode      PromoCode?     @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  createdAt      DateTime       @default(now())
+
+  @@index([purchaserId])
+  @@index([status, deliverAt])
+  @@map("gift_cards")
 }
 
 enum CouponApplicableType {

@@ -35,6 +35,19 @@ export const PROMO_TARGET_MISMATCH_MESSAGE = 'ეს პრომო კოდ�
 // validate time is still the real bookId, used only to price it.
 export const CHILDRENS_BOOK_PROMO_TARGET_ID = 'childrens-book';
 
+export const GIFT_CARD_EMPTY_MESSAGE = 'ამ სასაჩუქრე ბარათზე ნაშთი აღარ არის.';
+
+// How much gift-card balance a quoted checkout will spend, keyed by the
+// exact PromoCode object quotePromoToCheckout returned. claimPromoRedemption
+// reads it to decrement the balance atomically, and giftCardAmountOf() lets
+// the checkout route record it on the BogPayment row (so a failed payment
+// can give it back — see giftCardService.releaseGiftCardHold).
+const giftCardHolds = new WeakMap<PromoCode, number>();
+
+export function giftCardAmountOf(promo: PromoCode | null | undefined): number {
+  return promo ? giftCardHolds.get(promo) ?? 0 : 0;
+}
+
 function promoMatchTargetId(targetType: CouponTargetType, targetId: string): string {
   return targetType === 'CHILDRENS_BOOK' ? CHILDRENS_BOOK_PROMO_TARGET_ID : targetId;
 }
@@ -50,6 +63,7 @@ export async function findValidPromoCode(rawCode: string, targetType: CouponTarg
   if (!promo.isActive) throw new PromoCodeError('This promo code is no longer active.');
   if (promo.expiresAt && promo.expiresAt <= new Date()) throw new PromoCodeError('This promo code has expired.');
   if (!allowReservedUse && promo.maxUses != null && promo.currentUses >= promo.maxUses) throw new PromoCodeError('This promo code has reached its usage limit.');
+  if (promo.isGiftCard && (promo.discountAmount ?? 0) <= 0) throw new PromoCodeError(GIFT_CARD_EMPTY_MESSAGE);
   if (promo.applicableType !== 'ALL') {
     if (promo.applicableType !== targetType || !promo.applicableTargetIds.includes(promoMatchTargetId(targetType, targetId))) {
       throw new PromoCodeError(PROMO_TARGET_MISMATCH_MESSAGE);
@@ -73,7 +87,10 @@ export function computeDiscount(promo: { discountPercent: number | null; discoun
 // price, or whatever the item's own active sale price already is. Same
 // rule coursePricing.ts's pre-existing computeCoursePriceWithPromo already
 // enforced for courses; generalized here for every product type.
-export function computePromoPrice(currentPrice: number, originalPrice: number, promo: { discountPercent: number | null; discountAmount: number | null }): number {
+export function computePromoPrice(currentPrice: number, originalPrice: number, promo: { discountPercent: number | null; discountAmount: number | null; isGiftCard?: boolean }): number {
+  // A gift card is prepaid money, not a discount: it pays down whatever the
+  // item costs right now (sale price included), never below zero.
+  if (promo.isGiftCard) return Math.max(0, currentPrice - Math.max(0, promo.discountAmount ?? 0));
   const promoPrice = computeDiscount(promo, originalPrice);
   return Math.min(promoPrice, currentPrice);
 }
@@ -165,6 +182,7 @@ export async function quotePromoToCheckout(
   const promo = await findValidPromoCode(rawPromoCode, targetType, targetId, true);
   const { originalPrice } = await resolveTargetPrice(targetType, targetId);
   const chargeAmount = computePromoPrice(baseChargeAmount, originalPrice, promo);
+  if (promo.isGiftCard) giftCardHolds.set(promo, Math.max(0, baseChargeAmount - chargeAmount));
 
   return { chargeAmount, appliedPromo: promo };
 }
@@ -181,7 +199,10 @@ export async function claimPromoRedemption(promo: PromoCode, client: Prisma.Tran
       OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       ...(promo.maxUses != null ? { currentUses: { lt: promo.maxUses } } : {}),
     },
-    data: { currentUses: { increment: 1 } },
+    // Gift card: spend exactly the quoted part of the balance. The
+    // discountAmount equality above makes this a compare-and-swap, so two
+    // concurrent checkouts can never both spend the same balance.
+    data: { currentUses: { increment: 1 }, ...(promo.isGiftCard ? { discountAmount: { decrement: giftCardAmountOf(promo) } } : {}) },
   });
   if (claim.count === 0) throw new PromoCodeError('This promo code is no longer available or has reached its usage limit.');
 }
@@ -192,4 +213,11 @@ export async function applyPromoToCheckout(
   const quoted = await quotePromoToCheckout(rawPromoCode, targetType, targetId, baseChargeAmount);
   if (quoted.appliedPromo) await claimPromoRedemption(quoted.appliedPromo);
   return quoted;
+}
+
+// Gift card balances are only tracked (spent, and given back on a failed
+// payment) on the BOG checkout path. Stripe checkout rejects them up-front.
+export async function rejectGiftCardCode(rawPromoCode: string): Promise<void> {
+  const promo = await prisma.promoCode.findUnique({ where: { code: rawPromoCode.trim().toUpperCase() }, select: { isGiftCard: true } });
+  if (promo?.isGiftCard) throw new PromoCodeError('სასაჩუქრე ბარათით გადახდა მხოლოდ საქართველოს ბანკის ბარათით (ლარში) შეიძლება.');
 }

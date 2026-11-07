@@ -35,6 +35,7 @@ const copy = {
     createBook: 'წიგნის შექმნა',
     seeAll: 'ყველას ნახვა',
     progress: 'პროგრესი',
+    giftCards: 'ჩემი ნაყიდი სასაჩუქრე ბარათები',
   },
   en: {
     title: 'My purchases',
@@ -58,6 +59,7 @@ const copy = {
     createBook: 'Create a book',
     seeAll: 'See all',
     progress: 'Progress',
+    giftCards: 'Gift cards I bought',
   },
 };
 
@@ -253,6 +255,9 @@ export default function MyPurchasesPanel({
       <div>
         <h2 className="text-lg font-extrabold">{t.title}</h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t.subtitle}</p>
+        <Link href="/dashboard/gift-cards" className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-pink-600 dark:text-pink-400">
+          🎁 {t.giftCards}
+        </Link>
       </div>
       {errors.map((e) => (
         <div key={e} className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-xs text-red-600 dark:text-red-300">{e}</div>

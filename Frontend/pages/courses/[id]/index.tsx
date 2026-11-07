@@ -21,6 +21,7 @@ import { courseLanguageBadge } from '../../../src/utils/courseLanguage';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useAuthModal } from '../../../src/context/AuthModalContext';
 import SocialShareButtons from '../../../src/components/shared/SocialShareButtons';
+import GiftThisButton from '../../../src/components/giftCards/GiftThisButton';
 import SuccessStoriesCarousel from '../../../src/components/shared/SuccessStoriesCarousel';
 import CourseLeaderboard from '../../../src/components/shared/CourseLeaderboard';
 import CourseHeroBanner from '../../../src/components/shared/CourseHeroBanner';
@@ -230,8 +231,9 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
         </div>
         <h1 className="blog-heading-safe text-3xl md:text-4xl font-black mt-4 mb-4">{course.title}</h1>
         <LearningRatingSummary {...course} lang={lang} />
-        <div className="mb-6">
+        <div className="mb-6 flex flex-wrap items-center gap-3">
           <SocialShareButtons title={course.title} lang={lang} />
+          <GiftThisButton priceMinor={course.currentPrice} itemTitle={course.title} itemPath={`/courses/${course.id}`} lang={lang} />
         </div>
         <div className="mb-4">
           <VIPAudioNarrator

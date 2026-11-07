@@ -22,6 +22,7 @@ import {
   Lock,
   ShieldCheck,
   Tag,
+  Gift,
   Award,
   UsersRound,
   Layers,
@@ -148,6 +149,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/finance/payouts', labelKey: 'payouts', icon: Landmark, tiers: ['SUPER_ADMIN'], section: 'financial' },
   { href: '/admin/commissions', labelKey: 'commissions', icon: Percent, tiers: ['SUPER_ADMIN'], section: 'financial' },
   { href: '/admin/promos', labelKey: 'promos', icon: Tag, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'financial' },
+  { href: '/admin/gift-cards', labelKey: 'giftCards', icon: Gift, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'financial' },
 
   // System
   { href: '/admin/team', labelKey: 'team', icon: Lock, tiers: ['SUPER_ADMIN'], section: 'admin' },

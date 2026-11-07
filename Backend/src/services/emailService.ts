@@ -737,3 +737,118 @@ export async function sendPasswordResetEmail(email: string, token: string, lang:
   const subject = lang === 'en' ? 'CDC — Password Reset' : 'CDC — პაროლის აღდგენა';
   await sendEmail(email, subject, html, link);
 }
+
+// ============================================================
+// GIFT CARDS — see services/giftCardService.ts. A branded, table-based card
+// (renders in Gmail/Outlook/Apple Mail; the gradient has a solid bgcolor
+// fallback for clients that drop CSS gradients). Every user-typed field
+// (names, message, product name) is HTML-escaped.
+// ============================================================
+const GIFT_CARD_THEMES: Record<string, { from: string; to: string; solid: string; accent: string; emoji: string; label: string }> = {
+  classic: { from: '#4f46e5', to: '#7c3aed', solid: '#5b3fe0', accent: '#c7d2fe', emoji: '🎁', label: 'სასაჩუქრე ბარათი' },
+  birthday: { from: '#ec4899', to: '#f97316', solid: '#f0567a', accent: '#fde68a', emoji: '🎂', label: 'გილოცავ დაბადების დღეს!' },
+  celebration: { from: '#0f172a', to: '#334155', solid: '#1e293b', accent: '#facc15', emoji: '✨', label: 'გილოცავ!' },
+  kids: { from: '#06b6d4', to: '#22c55e', solid: '#14b8a6', accent: '#fef08a', emoji: '🧸', label: 'საჩუქარი შენთვის' },
+};
+
+export interface GiftCardEmailParams {
+  to: string;
+  code: string;
+  amountTetri: number;
+  senderName: string;
+  recipientName: string;
+  message: string | null;
+  design: string;
+  expiresAt: Date | null;
+  suggestedItem: string | null;
+  suggestedUrl: string | null;
+}
+
+function formatGel(tetri: number): string {
+  const gel = tetri / 100;
+  return Number.isInteger(gel) ? `${gel}` : gel.toFixed(2);
+}
+
+function formatKaDate(d: Date): string {
+  const months = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
+  return `${d.getUTCDate()} ${months[d.getUTCMonth()]}, ${d.getUTCFullYear()}`;
+}
+
+// Only same-site links may appear as a button in our email.
+function safeSuggestedUrl(url: string | null): string | null {
+  if (!url || !url.startsWith('/') || url.startsWith('//')) return null;
+  return `${FRONTEND_URL}${url}`;
+}
+
+export function buildGiftCardEmailHtml(p: GiftCardEmailParams): string {
+  const t = GIFT_CARD_THEMES[p.design] ?? GIFT_CARD_THEMES.classic;
+  const redeemUrl = `${FRONTEND_URL}/gift-cards/redeem?code=${encodeURIComponent(p.code)}`;
+  const suggested = safeSuggestedUrl(p.suggestedUrl);
+  const message = p.message ? escapeHtml(p.message).replace(/\n/g, '<br/>') : '';
+  return `<!DOCTYPE html>
+<html>
+  <body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 12px;">
+      <tr><td align="center">
+        <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="max-width:520px;width:100%;">
+          <tr><td style="padding:0 4px 16px;font-size:15px;color:#334155;">
+            გამარჯობა, <strong>${escapeHtml(p.recipientName)}</strong>! <strong>${escapeHtml(p.senderName)}</strong> გიგზავნის საჩუქარს CDC-დან ${t.emoji}
+          </td></tr>
+          <tr><td>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${t.solid}" style="background:${t.solid};background-image:linear-gradient(135deg,${t.from},${t.to});border-radius:20px;overflow:hidden;">
+              <tr><td style="padding:28px 28px 8px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+                  <td style="color:#ffffff;font-weight:900;font-size:20px;letter-spacing:0.08em;">CDC</td>
+                  <td align="right" style="color:${t.accent};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">GIFT CARD</td>
+                </tr></table>
+              </td></tr>
+              <tr><td style="padding:20px 28px 0;color:${t.accent};font-size:14px;font-weight:600;">${t.emoji} ${t.label}</td></tr>
+              <tr><td style="padding:4px 28px 0;color:#ffffff;font-size:56px;font-weight:900;line-height:1.1;">${formatGel(p.amountTetri)} <span style="font-size:30px;">₾</span></td></tr>
+              <tr><td style="padding:8px 28px 0;color:#e2e8f0;font-size:13px;">ვის: ${escapeHtml(p.recipientName)} · ვისგან: ${escapeHtml(p.senderName)}</td></tr>
+              ${message ? `<tr><td style="padding:18px 28px 0;"><div style="background:rgba(255,255,255,0.14);border-radius:14px;padding:14px 16px;color:#ffffff;font-size:14px;line-height:1.6;font-style:italic;">“${message}”</div></td></tr>` : ''}
+              <tr><td style="padding:22px 28px 28px;">
+                <div style="background:#ffffff;border-radius:14px;padding:14px 16px;text-align:center;">
+                  <div style="font-size:11px;color:#64748b;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;">შენი კოდი · Your code</div>
+                  <div style="font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:24px;font-weight:800;color:#0f172a;letter-spacing:0.12em;">${escapeHtml(p.code)}</div>
+                </div>
+              </td></tr>
+            </table>
+          </td></tr>
+          <tr><td style="padding:24px 4px 0;font-size:14px;line-height:1.7;color:#475569;">
+            <strong>როგორ გამოვიყენო?</strong><br/>
+            1. აირჩიე ნებისმიერი კურსი, ტრენინგი, პროდუქტი ან AI საბავშვო წიგნი cdc.org.ge-ზე.<br/>
+            2. გადახდისას ჩაწერე ეს კოდი „პრომო კოდის“ ველში.<br/>
+            3. თანხა ჩამოგეჭრება ბარათიდან. ნაშთი შემდეგი ყიდვისთვის შეგრჩება.
+            ${p.expiresAt ? `<br/><span style="color:#94a3b8;font-size:12px;">მოქმედებს ${formatKaDate(p.expiresAt)}-მდე.</span>` : ''}
+            ${p.suggestedItem ? `<br/><br/>🎯 ${escapeHtml(p.senderName)} ფიქრობს, რომ მოგეწონება: <strong>${escapeHtml(p.suggestedItem)}</strong>` : ''}
+          </td></tr>
+          <tr><td style="padding:24px 4px 0;">
+            <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+              <td style="border-radius:12px;background:${t.solid};background-image:linear-gradient(135deg,${t.from},${t.to});">
+                <a href="${suggested ?? redeemUrl}" style="display:inline-block;padding:14px 30px;color:#ffffff;text-decoration:none;font-weight:800;font-size:15px;">საჩუქრის გამოყენება →</a>
+              </td>
+            </tr></table>
+          </td></tr>
+          <tr><td style="padding:28px 4px 0;font-size:11px;color:#94a3b8;">CDC — Center for Digital Careers · <a href="${redeemUrl}" style="color:#94a3b8;">ნაშთის შემოწმება</a></td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>`;
+}
+
+export async function sendGiftCardEmail(p: GiftCardEmailParams): Promise<void> {
+  const html = buildGiftCardEmailHtml(p);
+  await sendEmail(p.to, `🎁 ${p.senderName} გიგზავნის ${formatGel(p.amountTetri)} ₾-იან საჩუქარს CDC-დან`, html, `${FRONTEND_URL}/gift-cards/redeem?code=${p.code}`);
+}
+
+export async function sendGiftCardDeliveredToBuyerEmail(p: GiftCardEmailParams & { recipientEmail: string }): Promise<void> {
+  const link = `${FRONTEND_URL}/dashboard/gift-cards`;
+  const html = wrapTemplate(
+    'შენი საჩუქარი გაიგზავნა 🎉',
+    `${formatGel(p.amountTetri)} ₾-იანი სასაჩუქრე ბარათი გაეგზავნა მიმღებს: <strong>${escapeHtml(p.recipientName)}</strong> (${escapeHtml(p.recipientEmail)}). შენს დაფაზე ხედავ, გამოიყენა თუ არა, და იქიდანვე შეგიძლია ბარათის დაბეჭდვა ან ხელახლა გაგზავნა.`,
+    'ჩემი სასაჩუქრე ბარათები',
+    link
+  );
+  await sendEmail(p.to, 'შენი სასაჩუქრე ბარათი გაიგზავნა', html, link);
+}

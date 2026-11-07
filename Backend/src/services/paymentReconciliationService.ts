@@ -55,7 +55,21 @@ export async function reconcilePendingPayments(): Promise<ReconcilePendingPaymen
     where: { status: 'PENDING', createdAt: { lte: cutoff } },
   });
   for (const payment of staleBogPayments) {
-    if (!hasRealGatewayId(payment.bogOrderId, 'pending-')) continue;
+    if (!hasRealGatewayId(payment.bogOrderId, 'pending-')) {
+      // The BOG order was never created, so nothing can ever be paid. If it
+      // had reserved part of a gift card balance, fail it so the balance
+      // goes back on the card (applyBogPaymentResult -> releaseGiftCardHold).
+      if (payment.giftCardAmount > 0) {
+        try {
+          await applyBogPaymentResult(payment.id, 'rejected', { reconciledFrom: 'cron-sweep', reason: 'gateway order never created' });
+          result.bogFailedIds.push(payment.id);
+        } catch (err) {
+          console.error(`[payment-reconciliation] BOG placeholder ${payment.id} release failed:`, err);
+          result.errorIds.push(payment.id);
+        }
+      }
+      continue;
+    }
     try {
       const details = await getBogOrderDetails(payment.bogOrderId);
       await applyBogPaymentResult(payment.id, details.order_status.key, { reconciledFrom: 'cron-sweep', details });

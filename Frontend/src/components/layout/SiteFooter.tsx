@@ -43,6 +43,7 @@ const STRINGS = {
     tagline: 'ვასწავლით ციფრულ პროფესიებს გურიაში — HEKS/EPER Georgia-ს მხარდაჭერით.',
     coursesHeading: 'კურსები',
     courses: 'კურსები',
+    giftCards: 'სასაჩუქრე ბარათი',
     cases: 'წარმატებული სტუდენტები',
     caseStudies: 'ქეისები',
     trainers: 'ტრენერები',
@@ -69,6 +70,7 @@ const STRINGS = {
     tagline: 'Teaching digital professions in Guria — supported by HEKS/EPER Georgia.',
     coursesHeading: 'Courses',
     courses: 'All Courses',
+    giftCards: 'Gift cards',
     cases: 'Success Stories',
     caseStudies: 'Case Studies',
     trainers: 'Trainers',
@@ -95,6 +97,7 @@ const STRINGS = {
     tagline: 'Wir unterrichten digitale Berufe in Guria — unterstützt von HEKS/EPER Georgia.',
     coursesHeading: 'Kurse',
     courses: 'Alle Kurse',
+    giftCards: 'Geschenkkarten',
     cases: 'Erfolgsgeschichten',
     caseStudies: 'Fallstudien',
     trainers: 'Trainer',
@@ -121,6 +124,7 @@ const STRINGS = {
     tagline: 'Enseñamos profesiones digitales en Guria — con el apoyo de HEKS/EPER Georgia.',
     coursesHeading: 'Cursos',
     courses: 'Todos los Cursos',
+    giftCards: 'Tarjetas regalo',
     cases: 'Historias de Éxito',
     caseStudies: 'Casos de Estudio',
     trainers: 'Formadores',
@@ -147,6 +151,7 @@ const STRINGS = {
     tagline: 'Nous enseignons les métiers numériques en Gourie — avec le soutien de HEKS/EPER Georgia.',
     coursesHeading: 'Cours',
     courses: 'Tous les cours',
+    giftCards: 'Cartes cadeaux',
     cases: 'Témoignages de réussite',
     caseStudies: 'Études de cas',
     trainers: 'Formateurs',
@@ -173,6 +178,7 @@ const STRINGS = {
     tagline: 'Ми навчаємо цифрових професій у Гурії — за підтримки HEKS/EPER Georgia.',
     coursesHeading: 'Курси',
     courses: 'Усі курси',
+    giftCards: 'Подарункові картки',
     cases: 'Історії успіху',
     caseStudies: 'Кейси',
     trainers: 'Тренери',
@@ -272,6 +278,7 @@ export default function SiteFooter() {
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-200 mb-4">{t.coursesHeading}</h3>
             <ul className="space-y-1 sm:space-y-2.5 text-sm sm:text-xs">
               <li><Link href="/courses" className={navLink}>{t.courses}</Link></li>
+              <li><Link href="/gift-cards" className={navLink}>🎁 {t.giftCards}</Link></li>
               <li><Link href="/success-stories" className={navLink}>{t.cases}</Link></li>
               <li><Link href="/trainers" className={navLink}>{t.trainers}</Link></li>
               <li><Link href="/gallery" className={navLink}>{t.gallery}</Link></li>

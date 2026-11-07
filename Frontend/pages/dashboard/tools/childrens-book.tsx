@@ -6,6 +6,7 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { BookOpen, Sparkles, CheckCircle2, Loader2, Download, RefreshCw, ArrowLeft, Headphones, PlayCircle, PenLine } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
+import GiftThisButton from '../../../src/components/giftCards/GiftThisButton';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
 import BackButton from '../../../src/components/common/BackButton';
@@ -394,10 +395,12 @@ function ChildrensBookContent() {
           <BackButton />
           <div className="flex items-center gap-3 mb-6">
             <BookOpen className="w-8 h-8 text-purple-600" />
-            <div>
+            <div className="flex-1">
               <h1 className="text-2xl font-bold text-gray-900">{t('pageTitle')}</h1>
               <p className="text-gray-600">{t('pageSubtitle')}</p>
             </div>
+            {/* 20 GEL covers a 20-page book; the card works on any product. */}
+            <GiftThisButton priceMinor={2000} itemTitle={router.locale === 'ka' ? 'ინდივიდუალური AI საბავშვო წიგნი' : "Custom AI children's book"} itemPath="/dashboard/tools/childrens-book" lang={router.locale === 'ka' ? 'ka' : 'en'} design="kids" className="shrink-0" />
           </div>
           <ToolMediaBanner slug="childrens-book" alt={t('pageTitle')} />
 

@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/node';
 import { BogPayment, Prisma } from '@prisma/client';
+import { releaseGiftCardHold } from './giftCardService';
 import { prisma } from '../lib/prisma';
 import { BogNotConfiguredError, refundBogOrder } from './bogPaymentService';
 import { logAdminAction } from './auditLogService';
@@ -152,6 +153,18 @@ async function revokeAccess(tx: Tx, payment: BogPayment): Promise<AccessRevocati
       });
       return { revoked: true, note: expired ? 'Tutor subscription ended.' : `Tutor subscription shortened by ${TUTOR_SUBSCRIPTION_PERIOD_DAYS} days.` };
     }
+    case 'GIFT_CARD': {
+      // Refunding the card purchase itself: switch the code off so the
+      // remaining balance can't be spent any more.
+      const card = await tx.giftCard.findUnique({ where: { id: payment.referenceId }, include: { promoCode: true } });
+      if (!card?.promoCode) {
+        await tx.giftCard.updateMany({ where: { id: payment.referenceId, status: 'PENDING_PAYMENT' }, data: { status: 'CANCELLED' } });
+        return { revoked: false, note: 'No gift card code was minted for this payment.' };
+      }
+      await tx.promoCode.update({ where: { id: card.promoCode.id }, data: { isActive: false } });
+      const left = Math.max(0, card.promoCode.discountAmount ?? 0);
+      return { revoked: true, note: `Gift card ${card.promoCode.code} deactivated (unspent balance was ${(left / 100).toFixed(2)} GEL of ${(card.amount / 100).toFixed(2)} GEL).` };
+    }
     case 'CHILDRENS_BOOK':
       // The book's own lifecycle (generation, PDF, delivery) is owned by the
       // book services; the refund is marked on the payment (status
@@ -267,6 +280,12 @@ export async function refundBogPayment(params: RefundBogPaymentParams): Promise<
       // Escrow refunds are always full, so the escrow is always unwound.
       const shouldRevoke = params.revokeAccess || ESCROW_PURPOSES.has(fresh.purpose);
       const access = shouldRevoke ? await revokeAccess(tx, fresh) : { revoked: false, note: 'Access kept (not requested).' };
+      // The purchase is undone: the gift-card-paid part goes back on the card
+      // (only once — on the refund that takes it to fully REFUNDED).
+      if (shouldRevoke && status === 'REFUNDED' && fresh.status !== 'REFUNDED' && fresh.giftCardAmount > 0 && fresh.purpose !== 'GIFT_CARD') {
+        await releaseGiftCardHold(fresh, tx);
+        access.note += ` Gift card balance restored: ${(fresh.giftCardAmount / 100).toFixed(2)} GEL.`;
+      }
 
       await tx.bogPayment.update({
         where: { id: fresh.id },
