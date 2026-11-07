@@ -30,7 +30,7 @@ import {
   HowItWorksIcon,
 } from '../../src/services/productService';
 import { checkoutProduct, validatePromoCode, PromoValidationResult } from '../../src/services/paymentService';
-import { checkoutProductStripe } from '../../src/services/stripePaymentService';
+import { checkoutProductStripe, stripeWithBogFallback } from '../../src/services/stripePaymentService';
 import { formatPrice } from '../../src/utils/coursePricing';
 import { resolveLocale } from '@/src/utils/locale';
 
@@ -106,7 +106,10 @@ function StoreProductContent({ initialProduct }: { initialProduct: DigitalProduc
       const result =
         lang === 'ka'
           ? await checkoutProduct(product.id, appliedPromo?.code, 'ka')
-          : await checkoutProductStripe(product.id, appliedPromo?.code, 'usd');
+          : await stripeWithBogFallback(
+              () => checkoutProductStripe(product.id, appliedPromo?.code, 'usd'),
+              () => checkoutProduct(product.id, appliedPromo?.code, 'en'),
+            );
       if (result.purchased) {
         // Admin test-mode bypass fired server-side — already owned, no
         // gateway redirect to follow. Reload so the page's own
