@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import confetti from 'canvas-confetti';
-import { X, Volume2, Snail, Mic, Loader2, Lightbulb, Flame, BookOpen, PenLine, Headphones, MessageCircle, Check } from 'lucide-react';
+import { X, Volume2, Snail, Mic, Loader2, Lightbulb, Flame, BookOpen, PenLine, Headphones, MessageCircle, Check, RotateCcw } from 'lucide-react';
 import { CourseLesson, Exercise, EXERCISE_SKILLS, Skill } from './curriculum';
 import { checkAnswer, CheckResult, fillName } from './answerCheck';
 import { speakEnglish, canSpeak, canRecognize, listenOnce } from './speech';
@@ -36,6 +36,9 @@ const dict = {
     fill: 'შეავსე გამოტოვებული სიტყვა',
     placeholder: 'ჩაწერე აქ…',
     check: 'შემოწმება',
+    tryAgain: 'ხელახლა ცდა',
+    clearAll: 'გასუფთავება',
+    removeWord: (w: string) => `„${w}“ ამოშლა`,
     continue: 'გაგრძელება',
     gotIt: 'გასაგებია',
     hint: 'მინიშნება',
@@ -80,6 +83,9 @@ const dict = {
     fill: 'Fill in the missing word',
     placeholder: 'Type here…',
     check: 'Check',
+    tryAgain: 'Try again',
+    clearAll: 'Clear',
+    removeWord: (w: string) => `Remove “${w}”`,
     continue: 'Continue',
     gotIt: 'Got it',
     hint: 'Hint',
@@ -148,6 +154,8 @@ export default function LessonPlayer({ lesson, lang, nameEn, nameKa, onExit, onC
   const [retried, setRetried] = useState<Set<number>>(new Set());
   const [praise, setPraise] = useState('');
   const [done, setDone] = useState(false);
+  // Bumped by "Try again" so the exercise view remounts with an empty answer.
+  const [attempt, setAttempt] = useState(0);
 
   const ex = queue[pos];
   const en = (s: string) => fillName(s, nameEn);
@@ -232,9 +240,29 @@ export default function LessonPlayer({ lesson, lang, nameEn, nameKa, onExit, onC
     setFeedback({ status: 'skipped' });
   };
 
+  // "Try again" right after a wrong answer: clear it and let the learner redo
+  // the same exercise now, instead of only at the end of the lesson. The copy
+  // that handleCheck queued for the end is dropped (a new miss queues it again),
+  // and the retry doesn't count toward first-try accuracy.
+  const retryNow = () => {
+    if (!feedback || feedback.status !== 'wrong') return;
+    const queuedAt = queue.length - 1;
+    setQueue((q) => q.slice(0, -1));
+    setRetried((r) => {
+      const next = new Set(r);
+      next.delete(queuedAt);
+      next.add(pos);
+      return next;
+    });
+    setFeedback(null);
+    setAnswer('');
+    setAttempt((n) => n + 1);
+  };
+
   const advance = () => {
     setFeedback(null);
     setAnswer('');
+    setAttempt(0);
     if (pos + 1 >= queue.length) {
       finish();
     } else {
@@ -332,12 +360,12 @@ export default function LessonPlayer({ lesson, lang, nameEn, nameKa, onExit, onC
         )}
       </div>
 
-      <div className="min-h-[300px]" key={pos}>
+      <div className="min-h-[300px]" key={`${pos}-${attempt}`}>
         <ExerciseView ex={ex} t={t} en={en} ka={ka} nameEn={nameEn} answer={answer} setAnswer={setAnswer} locked={!!feedback} onSkipSpeaking={handleSkipSpeaking} />
       </div>
 
       {feedback ? (
-        <FeedbackBar feedback={feedback} t={t} praise={praise} streak={streak} onContinue={advance} />
+        <FeedbackBar feedback={feedback} t={t} praise={praise} streak={streak} onContinue={advance} onRetry={retryNow} />
       ) : (
         <div className="flex justify-end border-t border-slate-200 dark:border-slate-800 pt-4">
           <button
@@ -356,7 +384,7 @@ export default function LessonPlayer({ lesson, lang, nameEn, nameKa, onExit, onC
 
 // ---- Feedback ----
 
-function FeedbackBar({ feedback, t, praise, streak, onContinue }: { feedback: Feedback; t: Dict; praise: string; streak: number; onContinue: () => void }) {
+function FeedbackBar({ feedback, t, praise, streak, onContinue, onRetry }: { feedback: Feedback; t: Dict; praise: string; streak: number; onContinue: () => void; onRetry: () => void }) {
   const ok = feedback.status === 'correct' || feedback.status === 'typo' || feedback.status === 'skipped';
   const r = feedback.result;
   return (
@@ -406,6 +434,18 @@ function FeedbackBar({ feedback, t, praise, streak, onContinue }: { feedback: Fe
         )}
         {ok && r?.lowercaseI && !feedback.heard && <p className="text-xs">✍️ {t.capitalI}</p>}
       </div>
+      <div className="flex flex-col-reverse sm:flex-row gap-2">
+      {feedback.status === 'wrong' && (
+        <button
+          type="button"
+          onClick={onRetry}
+          data-testid="a1-try-again"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-rose-300 dark:border-rose-500/40 bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-200 font-black px-6 py-3 hover:bg-rose-50 dark:hover:bg-slate-800"
+        >
+          <RotateCcw className="w-4 h-4" aria-hidden />
+          {t.tryAgain}
+        </button>
+      )}
       <button
         type="button"
         onClick={onContinue}
@@ -416,6 +456,7 @@ function FeedbackBar({ feedback, t, praise, streak, onContinue }: { feedback: Fe
       >
         {t.continue}
       </button>
+      </div>
     </div>
   );
 }
@@ -704,7 +745,7 @@ function BuildExercise({ ex, t, ka, nameEn, setAnswer, locked }: ExerciseViewPro
         <span className="text-4xl">💬</span>
         <p className="rounded-2xl border-2 border-slate-200 dark:border-slate-700 px-4 py-3 text-lg font-bold">{ka(ex.ka)}</p>
       </div>
-      <div className="min-h-[64px] border-b-2 border-t-2 border-slate-200 dark:border-slate-700 py-3 flex flex-wrap gap-2 mb-5" data-testid="a1-build-answer">
+      <div className="min-h-[64px] border-b-2 border-t-2 border-slate-200 dark:border-slate-700 py-3 flex flex-wrap items-center gap-2 mb-5" data-testid="a1-build-answer">
         {picked.map((id) => {
           const tile = tiles.find((x) => x.id === id)!;
           return (
@@ -712,13 +753,33 @@ function BuildExercise({ ex, t, ka, nameEn, setAnswer, locked }: ExerciseViewPro
               key={id}
               type="button"
               disabled={locked}
+              aria-label={t.removeWord(tile.w)}
               onClick={() => setPicked((p) => p.filter((x) => x !== id))}
-              className="rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 font-bold shadow-[0_3px_0_0_rgb(226,232,240)] dark:shadow-[0_3px_0_0_rgb(51,65,85)]"
+              className="group relative rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 pl-3 pr-4 py-2 font-bold shadow-[0_3px_0_0_rgb(226,232,240)] dark:shadow-[0_3px_0_0_rgb(51,65,85)] hover:border-rose-300 dark:hover:border-rose-500/50"
             >
               {tile.w}
+              {!locked && (
+                <span
+                  aria-hidden
+                  className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-slate-500 group-hover:bg-rose-500 text-white flex items-center justify-center shadow ring-2 ring-white dark:ring-slate-900"
+                >
+                  <X className="w-3 h-3" strokeWidth={3} />
+                </span>
+              )}
             </button>
           );
         })}
+        {picked.length > 0 && !locked && (
+          <button
+            type="button"
+            onClick={() => setPicked([])}
+            data-testid="a1-build-clear"
+            className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-800"
+          >
+            <RotateCcw className="w-3.5 h-3.5" aria-hidden />
+            {t.clearAll}
+          </button>
+        )}
       </div>
       <div className="flex flex-wrap gap-2 justify-center">
         {tiles.map((tile) => {
