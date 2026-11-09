@@ -1,5 +1,5 @@
 import { PDFDocument } from 'pdf-lib';
-import { buildBookPdf, parsePrintSettings, printFileSuffix, PrintSettings } from '../bookPdfService';
+import { buildBookPdf, parsePrintSettings, printFileSuffix, PrintSettings, BOOK_PDF_EXTRA_PAGES } from '../bookPdfService';
 
 const MM = 72 / 25.4;
 
@@ -46,7 +46,7 @@ describe('book print settings', () => {
 
   it('builds the stored PDF at A4 by default', async () => {
     const result = await sizes();
-    expect(result).toHaveLength(5);
+    expect(result).toHaveLength(5 + BOOK_PDF_EXTRA_PAGES); // + front cover, title page, back cover
     expect(result[0].width).toBeCloseTo(595.28, 1);
     expect(result[0].height).toBeCloseTo(841.89, 1);
   });

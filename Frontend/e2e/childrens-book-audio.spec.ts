@@ -63,7 +63,7 @@ async function createBookPath(api: APIRequestContext, pageCount: number, withAud
   const pdfResponse = await api.get(`childrens-books/${id}/pdf/download`);
   expect(pdfResponse.ok()).toBeTruthy();
   const pdf = await PDFDocument.load(await pdfResponse.body());
-  expect(pdf.getPageCount()).toBe(pageCount);
+  expect(pdf.getPageCount()).toBe(pageCount + 3); // + front cover, title page, back cover
 
   const book = (await apiJson(api, 'get', `/childrens-books/${id}`)).data;
   expect(['FINAL_READY', 'COMPLETED']).toContain(book.status);
@@ -173,7 +173,7 @@ test('children book 5/10/20-page mock golden paths, audio revision, and reader U
     await apiJson(authenticatedApi, 'post', `/childrens-books/${audioBook.id}/pdf`);
     const revisedPdfResponse = await authenticatedApi.get(`childrens-books/${audioBook.id}/pdf/download`);
     const revisedPdf = await PDFDocument.load(await revisedPdfResponse.body());
-    expect(revisedPdf.getPageCount()).toBe(10);
+    expect(revisedPdf.getPageCount()).toBe(10 + 3);
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`/en/dashboard/tools/childrens-book?bookId=${upsellBookId}`);

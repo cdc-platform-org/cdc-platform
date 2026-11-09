@@ -6,6 +6,8 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../../lib/prisma';
 import { JWT_SECRET } from '../../utils/env';
 import { createUser } from '../../test/factories';
+import { PDFDocument } from 'pdf-lib';
+import { readExtras, BOOK_PDF_LAYOUT_VERSION } from '../../services/bookExtrasService';
 import childrensBookRoutes from '../childrensBook';
 import { errorHandler } from '../../middleware/errorHandler';
 import {
@@ -241,5 +243,106 @@ describe("Children's Book — style picker samples", () => {
     const res = await fetch(`${baseUrl}/api/childrens-books/style-samples/NOPE`);
     expect(res.status).toBe(404);
     expect(imageCalls).toHaveLength(0);
+  });
+});
+
+describe("Children's Book — real-book extras: introduction, share link, audiobook", () => {
+  async function finishedBook(audio: boolean) {
+    const user = await createUser();
+    const bookId = await createPaidBook(user, { audio });
+    await startFinalGeneration(bookId);
+    await waitForFinalGeneration(bookId);
+    return { user, bookId };
+  }
+
+  it('a finished book gets an introduction, a share token and a cover/title/back-cover PDF', async () => {
+    const { user, bookId } = await finishedBook(true);
+    const book = await prisma.bookProject.findUnique({ where: { id: bookId } });
+    const extras = readExtras(book!.storyPlan);
+    expect(extras.blurb).toContain('Mimi');
+    expect(extras.shareToken).toMatch(/^[A-Za-z0-9_-]{20,40}$/);
+    expect(extras.pdfLayout).toBe(BOOK_PDF_LAYOUT_VERSION);
+    // Mock mode never bills a cover picture: page 1's picture is the cover.
+    expect(extras.coverKey).toBeUndefined();
+
+    const pdfRes = await request(`/api/childrens-books/${bookId}/pdf/download`, user);
+    const pdf = await PDFDocument.load(Buffer.from(await pdfRes.arrayBuffer()));
+    expect(pdf.getPageCount()).toBe(5 + 3);
+    expect(pdfRes.headers.get('content-disposition')).toContain("filename*=UTF-8''");
+
+    const cover = await request(`/api/childrens-books/${bookId}/cover/image`, user);
+    expect(cover.status).toBe(200);
+  });
+
+  it('the public page reads and plays the book by its token, and the parent can switch it off', async () => {
+    const { user, bookId } = await finishedBook(true);
+    const token = readExtras((await prisma.bookProject.findUnique({ where: { id: bookId } }))!.storyPlan).shareToken!;
+
+    const shared = await fetch(`${baseUrl}/api/childrens-books/shared/${token}`);
+    expect(shared.status).toBe(200);
+    expect(shared.headers.get('x-robots-tag')).toContain('noindex');
+    const { data } = (await shared.json()) as { data: any };
+    expect(data.title).toBe('Recovery Adventure');
+    expect(data.pages).toHaveLength(5);
+    expect(data.pages.every((p: any) => p.hasImage && p.hasAudio)).toBe(true);
+    expect(data.fullStoryAudio).toBe(true);
+    expect(data).not.toHaveProperty('userId');
+
+    expect((await fetch(`${baseUrl}/api/childrens-books/shared/${token}/cover`)).status).toBe(200);
+    expect((await fetch(`${baseUrl}/api/childrens-books/shared/${token}/page/3/image`)).status).toBe(200);
+    const pageAudio = await fetch(`${baseUrl}/api/childrens-books/shared/${token}/audio/page/2`);
+    expect(pageAudio.headers.get('content-type')).toContain('audio/mpeg');
+    const full = await fetch(`${baseUrl}/api/childrens-books/shared/${token}/audio/full-story.mp3`);
+    expect(full.status).toBe(200);
+    expect(Buffer.from(await full.arrayBuffer()).toString()).toBe('mp3'.repeat(5));
+
+    expect((await fetch(`${baseUrl}/api/childrens-books/shared/not-a-real-token-at-all-xx`)).status).toBe(404);
+    const stranger = await request(`/api/childrens-books/${bookId}/share`, await createUser(), 'POST', { enabled: false });
+    expect(stranger.status).toBe(404);
+
+    const versionBefore = (await prisma.bookProject.findUnique({ where: { id: bookId } }))!.pdfVersion;
+    const off = await request(`/api/childrens-books/${bookId}/share`, user, 'POST', { enabled: false });
+    expect(off.status).toBe(200);
+    expect(((await off.json()) as any).data).toEqual({ shareEnabled: false, shareToken: null });
+    expect((await fetch(`${baseUrl}/api/childrens-books/shared/${token}`)).status).toBe(404);
+    const afterOff = await prisma.bookProject.findUnique({ where: { id: bookId } });
+    expect(afterOff!.pdfVersion).toBe(versionBefore + 1); // QR code removed from the PDF
+    expect(afterOff!.pdfStatus).toBe('CURRENT');
+
+    const on = await request(`/api/childrens-books/${bookId}/share`, user, 'POST', { enabled: true });
+    const onBody = (await on.json()) as any;
+    expect(onBody.data.shareEnabled).toBe(true);
+    expect(onBody.data.shareToken).not.toBe(token); // the old link stays dead
+    expect((await fetch(`${baseUrl}/api/childrens-books/shared/${onBody.data.shareToken}`)).status).toBe(200);
+  });
+
+  it('downloads the whole story as one mp3 for the owner only', async () => {
+    const { user, bookId } = await finishedBook(true);
+    const res = await request(`/api/childrens-books/${bookId}/audio/full-story.mp3`, user);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('audio/mpeg');
+    expect(res.headers.get('content-disposition')).toContain('.mp3');
+    expect((await request(`/api/childrens-books/${bookId}/audio/full-story.mp3`, await createUser())).status).toBe(404);
+
+    const silent = await finishedBook(false);
+    expect((await request(`/api/childrens-books/${silent.bookId}/audio/full-story.mp3`, silent.user)).status).toBe(404);
+  });
+
+  it('the sweep rebuilds a PDF stored in the old layout once, without drawing any picture', async () => {
+    const { bookId } = await finishedBook(false);
+    const book = await prisma.bookProject.findUnique({ where: { id: bookId } });
+    const { pdfLayout: _old, ...plan } = book!.storyPlan as any;
+    await prisma.bookProject.update({ where: { id: bookId }, data: { storyPlan: plan } });
+    imageCalls.length = 0;
+
+    await recoverStalledBooks();
+    const rebuilt = await prisma.bookProject.findUnique({ where: { id: bookId } });
+    expect(rebuilt!.pdfVersion).toBe(book!.pdfVersion + 1);
+    expect(rebuilt!.pdfStatus).toBe('CURRENT');
+    expect(readExtras(rebuilt!.storyPlan).pdfLayout).toBe(BOOK_PDF_LAYOUT_VERSION);
+    expect(imageCalls).toHaveLength(0);
+
+    await recoverStalledBooks();
+    expect((await prisma.bookProject.findUnique({ where: { id: bookId } }))!.pdfVersion).toBe(rebuilt!.pdfVersion);
   });
 });
