@@ -3,13 +3,12 @@ import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { BookOpen, Sparkles, CheckCircle2, Loader2, Download, RefreshCw, ArrowLeft, Headphones, PlayCircle, PenLine } from 'lucide-react';
+import { BookOpen, Sparkles, CheckCircle2, Loader2, Download, RefreshCw, ArrowLeft, ArrowRight, Headphones, PlayCircle, PenLine } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
 import GiftThisButton from '../../../src/components/giftCards/GiftThisButton';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
-import BackButton from '../../../src/components/common/BackButton';
 import SEOHead from '../../../src/components/seo/SEOHead';
 import {
   listMyBooks,
@@ -60,6 +59,7 @@ import { BookFontId, DEFAULT_BOOK_FONT, bookFontFamily, bookFontOptions } from '
 import StylePicker, { IllustrationStyleValue } from '../../../src/components/tools/childrensBook/StylePicker';
 import { PromoValidationResult, validatePromoCode } from '../../../src/services/paymentService';
 import ToolMediaBanner from '../../../src/components/tools/ToolMediaBanner';
+import ToolShell, { ToolPageHeader, ToolChip } from '../../../src/components/tools/ToolShell';
 
 const GENERATING_STATUSES = ['CHARACTER_PREVIEW_GENERATING', 'PAID', 'FINAL_GENERATING', 'FINAL_QA', 'REVISION_REQUESTED', 'REVISION_GENERATING', 'REVISION_QA'];
 const POLL_MS = 1500;
@@ -340,6 +340,8 @@ function ChildrensBookContent() {
 
   // ---- Create form state ----
   const PAGE_OPTIONS = [5, 10, 15, 20] as const;
+  const [createStep, setCreateStep] = useState(0);
+  const createFormRef = useRef<HTMLDivElement>(null);
   const [form, setForm] = useState({ title: '', name: '', age: '', traits: '', favoriteThing: '', dedication: '', appearance: '', extraCharacters: '', language: 'EN' as BookLanguage, pageCount: 10 as (typeof PAGE_OPTIONS)[number], illustrationStyle: 'STORYBOOK_WATERCOLOR' as IllustrationStyleValue, fontId: DEFAULT_BOOK_FONT as BookFontId });
   const [fontNotice, setFontNotice] = useState<string | null>(null);
 
@@ -396,46 +398,61 @@ function ChildrensBookContent() {
   // MY BOOKS (no bookId)
   // ============================================================
   if (!bookId) {
+    const inputCls = 'w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500';
+    const labelCls = 'block text-sm font-semibold text-gray-700 mb-1.5';
+    const steps = [
+      { title: t('formSectionBook'), hint: t('formSectionBookHint') },
+      { title: t('formSectionHero'), hint: t('formSectionHeroHint') },
+      { title: t('formSectionDetails'), hint: t('formSectionDetailsHint') },
+      { title: t('formSectionOrder'), hint: t('formSectionOrderHint') },
+    ];
+    // Required fields per step; the create button is on the last step.
+    const stepReady = [!!form.title.trim(), !!form.name.trim(), true, true];
+    const lastStep = steps.length - 1;
+    const goTo = (i: number) => {
+      setCreateStep(i);
+      createFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    const hasBooks = (myBooks?.length ?? 0) > 0;
     return (
-      <div className="min-h-screen bg-gray-50">
-        <SiteHeader />
-        <main className="max-w-5xl mx-auto px-4 py-10">
-          <BackButton />
-          <div className="flex items-center gap-3 mb-6">
-            <BookOpen className="w-8 h-8 text-purple-600" />
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold text-gray-900">{t('pageTitle')}</h1>
-              <p className="text-gray-600">{t('pageSubtitle')}</p>
-            </div>
-            {/* 20 GEL covers a 20-page book; the card works on any product. */}
+      <ToolShell>
+        <ToolPageHeader
+          icon={BookOpen}
+          accent="pink"
+          title={t('pageTitle')}
+          subtitle={t('pageSubtitle')}
+          chips={<ToolChip tone="vip">{t('catalogTag')}</ToolChip>}
+          actions={
+            // 20 GEL covers a 20-page book; the card works on any product.
             <GiftThisButton priceMinor={2000} itemTitle={router.locale === 'ka' ? 'ინდივიდუალური AI საბავშვო წიგნი' : "Custom AI children's book"} itemPath="/dashboard/tools/childrens-book" lang={router.locale === 'ka' ? 'ka' : 'en'} design="kids" className="shrink-0" />
-          </div>
-          <ToolMediaBanner slug="childrens-book" alt={t('pageTitle')} />
+          }
+        />
+        <ToolMediaBanner slug="childrens-book" alt={t('pageTitle')} />
 
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">{t('myBooksTitle')}</h2>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-10">
-            {myBooks?.map((b) => (
-              <article
-                key={b.id}
-                className="p-4 rounded-xl border border-gray-200 bg-white"
-              >
-                <div className="font-semibold text-gray-900 truncate">{b.title}</div>
-                <div className="text-sm text-gray-500 mt-1">{t(`statusValue.${b.generationRecovering ? 'FINAL_GENERATING' : b.status}`, b.status)}</div>
-                <div className="text-xs text-gray-500 mt-2">{t('pagesCount', { value: b.pageCount })} · {t('priceGel', { amount: (b.audioAddOnPurchased ? b.totalPriceGel : b.priceGel) / 100 })}</div>
-                {b.audioAddOnPurchased && <div className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-purple-700"><Headphones className="w-3.5 h-3.5" /> {t('audioStoryBadge')}</div>}
-                <div className="text-xs text-gray-400 mt-2">{new Date(b.createdAt).toLocaleDateString()}</div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button
-                    onClick={() => router.push({ pathname: '/dashboard/tools/childrens-book/reader/[bookId]', query: { bookId: b.id } })}
-                    className="px-3 py-1.5 rounded-md bg-purple-600 text-white text-sm font-medium"
-                  >{t('readButton')}</button>
-                  {(() => {
-                    // A finished book always offers the PDF: if it isn't
-                    // built yet (older books), the click builds it first.
-                    const finished = b.status === 'FINAL_READY' || b.status === 'COMPLETED';
-                    const pdfBuilding = b.pdfStatus === 'GENERATING';
-                    return (
+        {hasBooks && (
+          <section className="mb-10">
+            <h2 className="text-lg font-black text-slate-900 dark:text-white mb-4">{t('myBooksTitle')}</h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {myBooks?.map((b) => {
+                // A finished book always offers the PDF: if it isn't
+                // built yet (older books), the click builds it first.
+                const finished = b.status === 'FINAL_READY' || b.status === 'COMPLETED';
+                const pdfBuilding = b.pdfStatus === 'GENERATING';
+                return (
+                  <article key={b.id} className="p-5 rounded-2xl border border-gray-200 bg-white shadow-sm flex flex-col">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="font-bold text-gray-900 truncate">{b.title}</div>
+                      <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full border ${finished ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
+                        {t(`statusValue.${b.generationRecovering ? 'FINAL_GENERATING' : b.status}`, b.status)}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-2">{t('pagesCount', { value: b.pageCount })} · {t('priceGel', { amount: (b.audioAddOnPurchased ? b.totalPriceGel : b.priceGel) / 100 })} · {new Date(b.createdAt).toLocaleDateString()}</div>
+                    {b.audioAddOnPurchased && <div className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-purple-700"><Headphones className="w-3.5 h-3.5" /> {t('audioStoryBadge')}</div>}
+                    <div className="mt-4 pt-3 border-t border-gray-100 flex flex-wrap gap-2">
+                      <button
+                        onClick={() => router.push({ pathname: '/dashboard/tools/childrens-book/reader/[bookId]', query: { bookId: b.id } })}
+                        className="px-3.5 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 text-white text-sm font-bold"
+                      >{t('readButton')}</button>
                       <button
                         disabled={busy || !finished || pdfBuilding}
                         onClick={() => run(async () => {
@@ -443,156 +460,219 @@ function ChildrensBookContent() {
                           await downloadBookPdf(b.id, b.title);
                           await loadMyBooks();
                         })}
-                        className="px-3 py-1.5 rounded-md border border-gray-300 text-gray-700 text-sm font-medium disabled:opacity-40 inline-flex items-center gap-1"
+                        className="px-3.5 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-semibold disabled:opacity-40 inline-flex items-center gap-1"
                       ><Download className="w-3.5 h-3.5" />{pdfBuilding ? t('pdfPreparing') : t('downloadPdfButton')}</button>
-                    );
-                  })()}
-                  {b.audioAddOnPurchased && (
-                    <button
-                      onClick={() => router.push({ pathname: '/dashboard/tools/childrens-book/reader/[bookId]', query: { bookId: b.id } })}
-                      className="px-3 py-1.5 rounded-md border border-purple-300 text-purple-700 text-sm font-medium"
-                    >{t('listenButton')}</button>
-                  )}
-                </div>
-              </article>
-            ))}
-            {myBooks?.length === 0 && <p className="text-gray-500 col-span-full">{t('noBooksYet')}</p>}
-          </div>
+                      {b.audioAddOnPurchased && (
+                        <button
+                          onClick={() => router.push({ pathname: '/dashboard/tools/childrens-book/reader/[bookId]', query: { bookId: b.id } })}
+                          className="px-3.5 py-2 rounded-lg border border-purple-300 text-purple-700 text-sm font-semibold"
+                        >{t('listenButton')}</button>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
-          <div className="rounded-2xl border border-purple-200 bg-white p-4 shadow-sm sm:p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+        {/* Create form as a 4-step wizard (it used to be one ~4000px page
+            with every optional field open at once). The values live in the
+            same `form` state, so moving between steps never loses input. */}
+        <div ref={createFormRef} className="scroll-mt-24 grid gap-6 lg:grid-cols-[1fr_300px] items-start">
+          <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
+            <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-purple-600" /> {t('createNew')}
             </h2>
-            <p className="-mt-2 mb-2 text-sm text-gray-600">{t('createIntro')}</p>
-            <section className="mt-4 rounded-xl border border-gray-100 bg-gray-50/60 p-4 sm:p-5">
-              <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-gray-900"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white">1</span>{t('formSectionBook')}</h3>
-              <p className="mb-4 text-sm text-gray-500">{t('formSectionBookHint')}</p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('bookLengthLabel')}</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {PAGE_OPTIONS.map((count) => (
+            <p className="mt-1 text-sm text-gray-600">{t('createIntro')}</p>
+
+            <ol className="mt-5 mb-6 grid grid-cols-4 gap-2" aria-label={t('createNew')}>
+              {steps.map((s, i) => {
+                const done = i < createStep;
+                const current = i === createStep;
+                const reachable = i <= createStep || stepReady.slice(0, i).every(Boolean);
+                return (
+                  <li key={s.title}>
                     <button
-                      key={count}
                       type="button"
-                      onClick={() => setForm((current) => ({ ...current, pageCount: count }))}
-                      className={`rounded-xl border px-3 py-3 text-left transition ${form.pageCount === count ? 'border-purple-500 bg-purple-50 text-purple-800 shadow-sm' : 'border-gray-200 bg-white text-gray-700 hover:border-purple-300'}`}
+                      disabled={!reachable}
+                      onClick={() => goTo(i)}
+                      aria-current={current ? 'step' : undefined}
+                      className="w-full text-left disabled:cursor-not-allowed"
                     >
-                      <div className="text-lg font-semibold">{t('pagesCount', { value: count })}</div>
-                      <div className="text-xs opacity-75">{t('priceGel', { amount: count * 100 / 100 })}</div>
+                      <span className={`block h-1.5 rounded-full mb-2 ${done || current ? 'bg-gradient-to-r from-cyan-500 to-purple-600' : 'bg-gray-200'}`} />
+                      <span className={`flex items-center gap-1.5 text-xs font-bold ${current ? 'text-purple-700' : done ? 'text-gray-700' : 'text-gray-400'}`}>
+                        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] ${done ? 'bg-emerald-500 text-white' : current ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                          {done ? <CheckCircle2 className="w-3.5 h-3.5" /> : i + 1}
+                        </span>
+                        <span className="hidden sm:inline truncate">{s.title}</span>
+                      </span>
                     </button>
-                  ))}
+                  </li>
+                );
+              })}
+            </ol>
+
+            <h3 className="text-base font-bold text-gray-900">{steps[createStep].title}</h3>
+            <p className="mb-5 text-sm text-gray-500">{steps[createStep].hint}</p>
+
+            {createStep === 0 && (
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label className={labelCls}>{t('bookLengthLabel')}</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {PAGE_OPTIONS.map((count) => (
+                      <button
+                        key={count}
+                        type="button"
+                        onClick={() => setForm((current) => ({ ...current, pageCount: count }))}
+                        className={`rounded-xl border-2 px-3 py-3 text-left transition ${form.pageCount === count ? 'border-purple-500 bg-purple-50 text-purple-800 shadow-sm' : 'border-gray-200 bg-white text-gray-700 hover:border-purple-300'}`}
+                      >
+                        <div className="text-lg font-bold">{t('pagesCount', { value: count })}</div>
+                        <div className="text-xs opacity-75">{t('priceGel', { amount: count * 100 / 100 })}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className={labelCls}>{t('titleLabel')} *</label>
+                  <input className={inputCls} placeholder={t('titlePlaceholder')} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+                </div>
+                <div>
+                  <label className={labelCls}>{t('languageLabel')}</label>
+                  <select className={inputCls} value={form.language} onChange={(e) => {
+                    const language = e.target.value as BookLanguage;
+                    // A Georgian book only offers the fonts that look different in Georgian.
+                    setForm({ ...form, language, fontId: bookFontOptions(language).includes(form.fontId) ? form.fontId : DEFAULT_BOOK_FONT });
+                  }}>
+                    <option value="EN">English</option>
+                    <option value="KA">ქართული</option>
+                  </select>
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('titleLabel')}</label>
-                <input className="w-full rounded-lg border border-gray-300 px-3 py-2" placeholder={t('titlePlaceholder')} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('languageLabel')}</label>
-                <select className="w-full rounded-lg border border-gray-300 px-3 py-2" value={form.language} onChange={(e) => {
-                  const language = e.target.value as BookLanguage;
-                  // A Georgian book only offers the fonts that look different in Georgian.
-                  setForm({ ...form, language, fontId: bookFontOptions(language).includes(form.fontId) ? form.fontId : DEFAULT_BOOK_FONT });
-                }}>
-                  <option value="EN">English</option>
-                  <option value="KA">ქართული</option>
-                </select>
-              </div>
-            </div>
-            </section>
+            )}
 
-            <section className="mt-6 rounded-xl border border-gray-100 bg-gray-50/60 p-4 sm:p-5">
-              <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-gray-900"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white">2</span>{t('formSectionHero')}</h3>
-              <p className="mb-4 text-sm text-gray-500">{t('formSectionHeroHint')}</p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('characterNameLabel')}</label>
-                <input className="w-full rounded-lg border border-gray-300 px-3 py-2" placeholder={t('characterNamePlaceholder')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            {createStep === 1 && (
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label className={labelCls}>{t('characterNameLabel')} *</label>
+                  <input className={inputCls} placeholder={t('characterNamePlaceholder')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                </div>
+                <div>
+                  <label className={labelCls}>{t('characterAgeLabel')}</label>
+                  <input type="number" className={inputCls} value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className={labelCls}>{t('characterTraitsLabel')}</label>
+                  <input className={inputCls} placeholder={t('characterTraitsPlaceholder')} value={form.traits} onChange={(e) => setForm({ ...form, traits: e.target.value })} />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className={labelCls}>{t('characterFavoriteThingLabel')}</label>
+                  <input className={inputCls} value={form.favoriteThing} onChange={(e) => setForm({ ...form, favoriteThing: e.target.value })} />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className={labelCls}>{t('appearanceLabel')}</label>
+                  <textarea rows={2} maxLength={TEXT_FIELD_MAX} className={inputCls} placeholder={t('appearancePlaceholder')} value={form.appearance} onChange={(e) => setForm({ ...form, appearance: e.target.value })} />
+                </div>
+                <div className="sm:col-span-2">
+                  <CharacterPhotoField photoUrl={pendingPhotoUrl} disabled={busy} onSelect={(file) => selectPendingPhoto(file)} onRemove={() => selectPendingPhoto(null)} />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('characterAgeLabel')}</label>
-                <input type="number" className="w-full rounded-lg border border-gray-300 px-3 py-2" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('characterTraitsLabel')}</label>
-                <input className="w-full rounded-lg border border-gray-300 px-3 py-2" placeholder={t('characterTraitsPlaceholder')} value={form.traits} onChange={(e) => setForm({ ...form, traits: e.target.value })} />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('characterFavoriteThingLabel')}</label>
-                <input className="w-full rounded-lg border border-gray-300 px-3 py-2" value={form.favoriteThing} onChange={(e) => setForm({ ...form, favoriteThing: e.target.value })} />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('appearanceLabel')}</label>
-                <textarea
-                  rows={2}
-                  maxLength={TEXT_FIELD_MAX}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2"
-                  placeholder={t('appearancePlaceholder')}
-                  value={form.appearance}
-                  onChange={(e) => setForm({ ...form, appearance: e.target.value })}
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <CharacterPhotoField
-                  photoUrl={pendingPhotoUrl}
-                  disabled={busy}
-                  onSelect={(file) => selectPendingPhoto(file)}
-                  onRemove={() => selectPendingPhoto(null)}
-                />
-              </div>
-              <div className="sm:col-span-2">
+            )}
+
+            {createStep === 2 && (
+              <div className="grid gap-5">
                 <SiblingsFields value={siblingDrafts} onChange={setSiblingDrafts} disabled={busy} />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('extraCharactersLabel')}</label>
-                <textarea
-                  rows={2}
-                  maxLength={TEXT_FIELD_MAX}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2"
-                  placeholder={t('extraCharactersPlaceholder')}
-                  value={form.extraCharacters}
-                  onChange={(e) => setForm({ ...form, extraCharacters: e.target.value })}
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('dedicationLabel')}</label>
-                <input className="w-full rounded-lg border border-gray-300 px-3 py-2" placeholder={t('dedicationPlaceholder')} value={form.dedication} onChange={(e) => setForm({ ...form, dedication: e.target.value })} />
-              </div>
-              <div className="sm:col-span-2">
+                <div>
+                  <label className={labelCls}>{t('extraCharactersLabel')}</label>
+                  <textarea rows={2} maxLength={TEXT_FIELD_MAX} className={inputCls} placeholder={t('extraCharactersPlaceholder')} value={form.extraCharacters} onChange={(e) => setForm({ ...form, extraCharacters: e.target.value })} />
+                </div>
+                <div>
+                  <label className={labelCls}>{t('dedicationLabel')}</label>
+                  <input className={inputCls} placeholder={t('dedicationPlaceholder')} value={form.dedication} onChange={(e) => setForm({ ...form, dedication: e.target.value })} />
+                </div>
                 <BookFontPicker value={form.fontId} language={form.language} disabled={busy} onChange={(fontId) => setForm({ ...form, fontId })} />
               </div>
-            </div>
-            </section>
+            )}
 
-            <section className="mt-6 rounded-xl border border-gray-100 bg-gray-50/60 p-4 sm:p-5">
-              <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-gray-900"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white">3</span>{t('illustrationStyleLabel')}</h3>
-              <p className="mb-4 text-sm text-gray-500">{t('illustrationStyleHint')}</p>
-              <StylePicker value={form.illustrationStyle} onChange={(value) => setForm({ ...form, illustrationStyle: value })} />
-            </section>
-            <div className="mt-5" data-testid="book-form-promo">
-              <label htmlFor="book-form-promo" className="block text-sm font-medium text-gray-700 mb-1">{bookPromoCopy[promoLang].label}</label>
-              <input
-                id="book-form-promo"
-                value={formPromo}
-                onChange={(e) => setFormPromo(e.target.value.toUpperCase())}
-                placeholder={bookPromoCopy[promoLang].placeholder}
-                className="w-full sm:max-w-xs rounded-lg border border-gray-300 px-3 py-2 text-sm"
-              />
-              <p className="text-xs text-gray-500 mt-1">{bookPromoCopy[promoLang].hint}</p>
+            {createStep === 3 && (
+              <div className="grid gap-5">
+                <div>
+                  <label className={labelCls}>{t('illustrationStyleLabel')}</label>
+                  <p className="-mt-1 mb-3 text-sm text-gray-500">{t('illustrationStyleHint')}</p>
+                  <StylePicker value={form.illustrationStyle} onChange={(value) => setForm({ ...form, illustrationStyle: value })} />
+                </div>
+                <div data-testid="book-form-promo">
+                  <label htmlFor="book-form-promo" className={labelCls}>{bookPromoCopy[promoLang].label}</label>
+                  <input
+                    id="book-form-promo"
+                    value={formPromo}
+                    onChange={(e) => setFormPromo(e.target.value.toUpperCase())}
+                    placeholder={bookPromoCopy[promoLang].placeholder}
+                    className={`${inputCls} sm:max-w-xs text-sm`}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">{bookPromoCopy[promoLang].hint}</p>
+                </div>
+              </div>
+            )}
+
+            {error && <p className="text-red-600 text-sm mt-4">{error}</p>}
+
+            <div className="mt-7 pt-5 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => goTo(createStep - 1)}
+                className={`px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 text-sm font-semibold inline-flex items-center gap-1.5 ${createStep === 0 ? 'invisible' : ''}`}
+              >
+                <ArrowLeft className="w-4 h-4" /> {t('wizardBack')}
+              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                {createStep === 2 && (
+                  <button type="button" onClick={() => goTo(3)} className="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:text-gray-900">
+                    {t('wizardSkip')}
+                  </button>
+                )}
+                {createStep < lastStep ? (
+                  <button
+                    type="button"
+                    disabled={!stepReady[createStep]}
+                    onClick={() => goTo(createStep + 1)}
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 text-white text-sm font-bold shadow-md shadow-purple-500/20 disabled:opacity-50 inline-flex items-center gap-1.5"
+                  >
+                    {t('wizardNext')} <ArrowRight className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <button
+                    disabled={busy || !form.title || !form.name}
+                    onClick={handleCreate}
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 text-white text-sm font-bold shadow-md shadow-purple-500/20 disabled:opacity-50 inline-flex items-center gap-1.5"
+                  >
+                    {busy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : <Sparkles className="w-4 h-4" />} {t('createBookButton')}
+                  </button>
+                )}
+              </div>
             </div>
-            {error && <p className="text-red-600 text-sm mt-3">{error}</p>}
-            <button
-              disabled={busy || !form.title || !form.name}
-              onClick={handleCreate}
-              className="mt-5 w-full sm:w-auto px-6 py-2.5 rounded-lg bg-purple-600 text-white font-medium hover:bg-purple-700 disabled:opacity-50"
-            >
-              {busy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : t('createBookButton')}
-            </button>
           </div>
-        </main>
-        <SiteFooter />
-      </div>
+
+          {/* Running summary: what the customer has chosen so far and the
+              price, so it is clear before the last step what they'll pay. */}
+          <aside className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm lg:sticky lg:top-24">
+            <h3 className="text-sm font-black uppercase tracking-wider text-gray-500 mb-4">{t('summaryTitle')}</h3>
+            <dl className="space-y-3 text-sm">
+              <div className="flex justify-between gap-3"><dt className="text-gray-500">{t('titleLabel')}</dt><dd className="font-semibold text-gray-900 text-right truncate max-w-[160px]">{form.title || '—'}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-gray-500">{t('characterNameLabel')}</dt><dd className="font-semibold text-gray-900 text-right truncate max-w-[160px]">{form.name || '—'}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-gray-500">{t('languageLabel')}</dt><dd className="font-semibold text-gray-900">{form.language === 'KA' ? 'ქართული' : 'English'}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-gray-500">{t('bookLengthLabel')}</dt><dd className="font-semibold text-gray-900">{t('pagesCount', { value: form.pageCount })}</dd></div>
+            </dl>
+            <div className="mt-4 pt-4 border-t border-gray-100 flex items-baseline justify-between">
+              <span className="text-sm font-semibold text-gray-700">{t('summaryPrice')}</span>
+              <span className="text-2xl font-black text-gray-900">{t('priceGel', { amount: form.pageCount })}</span>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">{t('summaryNote')}</p>
+          </aside>
+        </div>
+
+      </ToolShell>
     );
   }
 

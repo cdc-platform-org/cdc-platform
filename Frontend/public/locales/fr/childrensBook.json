@@ -230,7 +230,7 @@
   "styleFantasyHint": "Magical light and sparkle",
   "styleClassicHint": "The look of a classic storybook",
   "illustrationStyleHint": "See a sample and choose how the whole book will be drawn.",
-  "createIntro": "Three short steps. You will see the text and the character before paying.",
+  "createIntro": "Four short steps; only the first two are required. You will see the text and the character before paying.",
   "formSectionBook": "Book",
   "formSectionBookHint": "Length, title and language.",
   "formSectionHero": "Main character",
@@ -240,5 +240,15 @@
   "generatingCanLeave": "This takes a few minutes. You can close this page; the book will finish on its own.",
   "previewFailed": "The character could not be drawn. Please try again.",
   "pdfPreparing": "Preparing PDF…",
-  "audioPreparingAuto": "The narration is being prepared automatically and will be ready in a few minutes."
+  "audioPreparingAuto": "The narration is being prepared automatically and will be ready in a few minutes.",
+  "formSectionDetails": "Détails supplémentaires",
+  "formSectionDetailsHint": "Facultatif : frères et sœurs, autres personnages, dédicace et police.",
+  "formSectionOrder": "Style et commande",
+  "formSectionOrderHint": "Choisissez un style d'illustration. Vous verrez le texte et le personnage avant de payer.",
+  "wizardNext": "Suivant",
+  "wizardBack": "Retour",
+  "wizardSkip": "Passer",
+  "summaryTitle": "Votre livre",
+  "summaryPrice": "Prix",
+  "summaryNote": "Vous ne payez qu'après avoir validé le texte et le personnage."
 }
