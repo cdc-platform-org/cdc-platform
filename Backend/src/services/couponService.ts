@@ -37,6 +37,16 @@ export const PROMO_TARGET_MISMATCH_MESSAGE = 'ეს პრომო კოდ�
 // validate time is still the real bookId, used only to price it.
 export const CHILDRENS_BOOK_PROMO_TARGET_ID = 'childrens-book';
 
+// A product that already has its own discount (course/live-training/store
+// sale, or any other reduced current price) takes no promo code on top: the
+// owner's rule is "a discounted product needs no promo code". Gift cards are
+// prepaid money, not a discount, so they still pay for sale items.
+export const PROMO_ON_DISCOUNTED_MESSAGE = 'This product is already discounted, so a promo code cannot be applied to it.';
+
+export function assertPromoAllowedOnPrice(promo: Pick<PromoCode, 'isGiftCard'>, currentPrice: number, originalPrice: number): void {
+  if (!promo.isGiftCard && currentPrice < originalPrice) throw new PromoCodeError(PROMO_ON_DISCOUNTED_MESSAGE);
+}
+
 export const GIFT_CARD_EMPTY_MESSAGE = 'ამ სასაჩუქრე ბარათზე ნაშთი აღარ არის.';
 
 // How much gift-card balance a quoted checkout will spend, keyed by the
@@ -186,7 +196,8 @@ export async function quotePromoToCheckout(
   // A matching pending payment already owns its use. The atomic claim below
   // still enforces maxUses for every genuinely new checkout.
   const promo = await findValidPromoCode(rawPromoCode, targetType, targetId, true);
-  const { originalPrice } = await resolveTargetPrice(targetType, targetId);
+  const { currentPrice, originalPrice } = await resolveTargetPrice(targetType, targetId);
+  assertPromoAllowedOnPrice(promo, currentPrice, originalPrice);
   const chargeAmount = computePromoPrice(baseChargeAmount, originalPrice, promo);
   if (promo.isGiftCard) giftCardHolds.set(promo, Math.max(0, baseChargeAmount - chargeAmount));
 

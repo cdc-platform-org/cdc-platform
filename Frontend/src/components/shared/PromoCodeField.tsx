@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Router from 'next/router';
 import { validatePromoCode, PromoTargetType, PromoValidationResult } from '../../services/paymentService';
 
 // Shared promo-code input for checkout surfaces that don't already carry
@@ -20,19 +21,119 @@ const copy = {
   en: { placeholder: 'Promo code', apply: 'Apply', applied: 'Promo applied', remove: 'Remove', invalid: 'Invalid promo code.' },
 };
 
-// The backend's promo errors are English; show Georgian visitors the same
-// reasons in Georgian (the target-mismatch message already is Georgian).
-const KA_PROMO_ERRORS: Record<string, string> = {
-  'Invalid promo code.': 'პრომო კოდი არასწორია.',
-  'This promo code is no longer active.': 'ეს პრომო კოდი აღარ არის აქტიური.',
-  'This promo code has expired.': 'ამ პრომო კოდს ვადა გაუვიდა.',
-  'This promo code has reached its usage limit.': 'ამ პრომო კოდის გამოყენების ლიმიტი ამოწურულია.',
-  'This promo code is no longer available or has reached its usage limit.': 'ეს პრომო კოდი აღარ არის ხელმისაწვდომი ან ლიმიტი ამოწურულია.',
+// The backend's promo errors are English (the target mismatch one is
+// Georgian). Show every visitor the reason in the language their account /
+// site is switched to: the router locale wins, the caller's ka/en is the
+// fallback (e.g. during SSR before the router exists).
+const PROMO_ERROR_KEYS: Record<string, string> = {
+  'Invalid promo code.': 'invalid',
+  'This promo code is no longer active.': 'inactive',
+  'This promo code has expired.': 'expired',
+  'This promo code has reached its usage limit.': 'limit',
+  'This promo code is no longer available or has reached its usage limit.': 'unavailable',
+  'This product is already discounted, so a promo code cannot be applied to it.': 'discounted',
+  'ეს პრომო კოდი არ ვრცელდება არჩეულ პროდუქტზე': 'mismatch',
 };
 
-export function localizePromoError(message: string | undefined, lang: 'ka' | 'en'): string | undefined {
-  if (!message || lang !== 'ka') return message;
-  return KA_PROMO_ERRORS[message] ?? message;
+const PROMO_ERRORS: Record<string, Record<string, string>> = {
+  ka: {
+    invalid: 'პრომო კოდი არასწორია.',
+    inactive: 'ეს პრომო კოდი აღარ არის აქტიური.',
+    expired: 'ამ პრომო კოდს ვადა გაუვიდა.',
+    limit: 'ამ პრომო კოდის გამოყენების ლიმიტი ამოწურულია.',
+    unavailable: 'ეს პრომო კოდი აღარ არის ხელმისაწვდომი ან ლიმიტი ამოწურულია.',
+    discounted: 'ეს პროდუქტი უკვე ფასდაკლებულია, ამიტომ პრომო კოდი მასზე არ ვრცელდება.',
+    mismatch: 'ეს პრომო კოდი არ ვრცელდება არჩეულ პროდუქტზე',
+  },
+  en: {
+    invalid: 'Invalid promo code.',
+    inactive: 'This promo code is no longer active.',
+    expired: 'This promo code has expired.',
+    limit: 'This promo code has reached its usage limit.',
+    unavailable: 'This promo code is no longer available or has reached its usage limit.',
+    discounted: 'This product is already discounted, so a promo code cannot be applied to it.',
+    mismatch: 'This promo code does not apply to the selected product.',
+  },
+  az: {
+    invalid: 'Promo kod yanlışdır.',
+    inactive: 'Bu promo kod artıq aktiv deyil.',
+    expired: 'Bu promo kodun müddəti bitib.',
+    limit: 'Bu promo kodun istifadə limiti dolub.',
+    unavailable: 'Bu promo kod artıq mövcud deyil və ya limiti dolub.',
+    discounted: 'Bu məhsul artıq endirimdədir, ona görə promo kod tətbiq edilə bilməz.',
+    mismatch: 'Bu promo kod seçilmiş məhsula aid deyil.',
+  },
+  de: {
+    invalid: 'Ungültiger Promo-Code.',
+    inactive: 'Dieser Promo-Code ist nicht mehr aktiv.',
+    expired: 'Dieser Promo-Code ist abgelaufen.',
+    limit: 'Dieser Promo-Code hat sein Nutzungslimit erreicht.',
+    unavailable: 'Dieser Promo-Code ist nicht mehr verfügbar oder hat sein Limit erreicht.',
+    discounted: 'Dieses Produkt ist bereits reduziert, daher kann kein Promo-Code angewendet werden.',
+    mismatch: 'Dieser Promo-Code gilt nicht für das ausgewählte Produkt.',
+  },
+  es: {
+    invalid: 'Código promocional no válido.',
+    inactive: 'Este código promocional ya no está activo.',
+    expired: 'Este código promocional ha caducado.',
+    limit: 'Este código promocional ha alcanzado su límite de usos.',
+    unavailable: 'Este código promocional ya no está disponible o ha alcanzado su límite.',
+    discounted: 'Este producto ya tiene descuento, por lo que no se puede aplicar un código promocional.',
+    mismatch: 'Este código promocional no se aplica al producto seleccionado.',
+  },
+  fr: {
+    invalid: 'Code promo invalide.',
+    inactive: "Ce code promo n'est plus actif.",
+    expired: 'Ce code promo a expiré.',
+    limit: "Ce code promo a atteint sa limite d'utilisation.",
+    unavailable: "Ce code promo n'est plus disponible ou a atteint sa limite.",
+    discounted: 'Ce produit est déjà en promotion, un code promo ne peut donc pas être appliqué.',
+    mismatch: "Ce code promo ne s'applique pas au produit sélectionné.",
+  },
+  hy: {
+    invalid: 'Պրոմո կոդը սխալ է։',
+    inactive: 'Այս պրոմո կոդն այլևս ակտիվ չէ։',
+    expired: 'Այս պրոմո կոդի ժամկետը լրացել է։',
+    limit: 'Այս պրոմո կոդի օգտագործման սահմանաչափը սպառվել է։',
+    unavailable: 'Այս պրոմո կոդն այլևս հասանելի չէ կամ սահմանաչափը սպառվել է։',
+    discounted: 'Այս ապրանքն արդեն զեղչված է, ուստի պրոմո կոդ կիրառել հնարավոր չէ։',
+    mismatch: 'Այս պրոմո կոդը չի վերաբերում ընտրված ապրանքին։',
+  },
+  tr: {
+    invalid: 'Promosyon kodu geçersiz.',
+    inactive: 'Bu promosyon kodu artık aktif değil.',
+    expired: 'Bu promosyon kodunun süresi doldu.',
+    limit: 'Bu promosyon kodunun kullanım limiti doldu.',
+    unavailable: 'Bu promosyon kodu artık kullanılamıyor veya limiti doldu.',
+    discounted: 'Bu ürün zaten indirimli, bu nedenle promosyon kodu uygulanamaz.',
+    mismatch: 'Bu promosyon kodu seçilen ürün için geçerli değil.',
+  },
+  uk: {
+    invalid: 'Недійсний промокод.',
+    inactive: 'Цей промокод більше не активний.',
+    expired: 'Термін дії цього промокоду минув.',
+    limit: 'Ліміт використання цього промокоду вичерпано.',
+    unavailable: 'Цей промокод більше не доступний або його ліміт вичерпано.',
+    discounted: 'Цей товар уже зі знижкою, тому промокод до нього не застосовується.',
+    mismatch: 'Цей промокод не діє для вибраного товару.',
+  },
+};
+
+function activeLocale(fallback: string): string {
+  try {
+    const locale = Router.locale;
+    if (locale && PROMO_ERRORS[locale]) return locale;
+  } catch {
+    // No router yet (SSR / tests): use the caller's language.
+  }
+  return PROMO_ERRORS[fallback] ? fallback : 'en';
+}
+
+export function localizePromoError(message: string | undefined, lang: string): string | undefined {
+  if (!message) return message;
+  const key = PROMO_ERROR_KEYS[message];
+  if (!key) return message;
+  return PROMO_ERRORS[activeLocale(lang)][key] ?? message;
 }
 
 export default function PromoCodeField({ targetType, targetId, lang, applied, onChange, disabled }: PromoCodeFieldProps) {

@@ -204,7 +204,7 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
       setSuccess(true);
       load(); // refresh capacity counters
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? t.genericError);
+      setError(localizePromoError(err?.response?.data?.message, contentLang) ?? t.genericError);
     } finally {
       setSubmitting(false);
     }
@@ -252,7 +252,7 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
       if (err?.response?.status === 400 && err.response.data?.message?.includes('already enrolled')) {
         await load();
       } else {
-        setEnrollError(err?.response?.data?.message ?? t.genericError);
+        setEnrollError(localizePromoError(err?.response?.data?.message, contentLang) ?? t.genericError);
       }
     } finally {
       setEnrolling(false);

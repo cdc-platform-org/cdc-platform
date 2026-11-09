@@ -130,7 +130,7 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
       window.location.href = result.redirectUrl!;
     } catch (err: any) {
       const serverMessage = err?.response?.data?.message;
-      setError(serverMessage || t('checkoutError'));
+      setError(localizePromoError(serverMessage, lang) || t('checkoutError'));
       setProcessing(false);
     }
   };
