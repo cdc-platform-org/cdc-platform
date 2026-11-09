@@ -1,4 +1,5 @@
 import { useRouter } from 'next/router';
+import ToolGuideButton from '../../../src/components/tools/ToolGuideButton';
 import { GraduationCap } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import EnglishTutorPanel from '../../../src/components/dashboard/EnglishTutorPanel';
@@ -25,7 +26,7 @@ function EnglishTutorContent() {
 
   return (
     <ToolShell backHref="/dashboard/tools" width="narrow">
-      <ToolPageHeader icon={GraduationCap} accent="purple" title={t.title} subtitle={t.subtitle} />
+      <ToolPageHeader icon={GraduationCap} accent="purple" title={t.title} subtitle={t.subtitle} actions={<ToolGuideButton guide="englishTutor" />} />
       <ToolMediaBanner slug="english-tutor" alt={t.title} />
       <EnglishTutorPanel lang={lang} />
     </ToolShell>

@@ -1,4 +1,5 @@
 import { useRouter } from 'next/router';
+import ToolGuideButton from '../../../src/components/tools/ToolGuideButton';
 import Head from 'next/head';
 import { Bot } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
@@ -49,7 +50,7 @@ function ChatbotBuilderContent() {
       <Head>
         <title>{`${t.title} | CDC Platform`}</title>
       </Head>
-      <ToolPageHeader icon={Bot} accent="indigo" title={t.title} subtitle={t.subtitle} />
+      <ToolPageHeader icon={Bot} accent="indigo" title={t.title} subtitle={t.subtitle} actions={<ToolGuideButton guide="businessAi" />} />
       <ToolMediaBanner slug="enterprise-ai" alt={t.title} />
       <BusinessAiTab lang={lang} />
     </ToolShell>

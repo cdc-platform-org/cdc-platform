@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import ToolGuideButton from '../../../src/components/tools/ToolGuideButton';
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
@@ -423,8 +424,11 @@ function ChildrensBookContent() {
           subtitle={t('pageSubtitle')}
           chips={<ToolChip tone="vip">{t('catalogTag')}</ToolChip>}
           actions={
-            // 20 GEL covers a 20-page book; the card works on any product.
+            <>
+            <ToolGuideButton guide="childrensBook" />
+            {/* 20 GEL covers a 20-page book; the card works on any product. */}
             <GiftThisButton priceMinor={2000} itemTitle={router.locale === 'ka' ? 'ინდივიდუალური AI საბავშვო წიგნი' : "Custom AI children's book"} itemPath="/dashboard/tools/childrens-book" lang={router.locale === 'ka' ? 'ka' : 'en'} design="kids" className="shrink-0" />
+            </>
           }
         />
         <ToolMediaBanner slug="childrens-book" alt={t('pageTitle')} />
