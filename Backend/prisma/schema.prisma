@@ -4743,6 +4743,12 @@ model GiftCard {
   suggestedUrl   String?
   promoCodeId    String?        @unique
   promoCode      PromoCode?     @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  // Issued free of charge by an admin (POST /api/admin/gift-cards): no
+  // payment exists, purchaserId is the admin who issued it. Kept out of the
+  // "sold" totals.
+  complimentary  Boolean        @default(false)
+  // PERSON or ORGANIZATION — only changes the wording in the admin list.
+  recipientType  String         @default("PERSON")
   createdAt      DateTime       @default(now())
 
   @@index([purchaserId])
