@@ -41,7 +41,7 @@ const responseSchema = z.object({
 // endings and verb forms ("ველი მათ პატივს აძლევდა", "ხეების ჭალა ... რომლებიც
 // ჰგავდნენ"). The rules below name the mistakes it actually made, and every
 // KA text then goes through a separate proofreading pass (proofreadGeorgian).
-const GEORGIAN_RULES = [
+export const GEORGIAN_RULES = [
   'Write directly in Georgian (ქართული) as an experienced native Georgian children\'s author would. Do NOT think in English and translate: no calques or English word order.',
   'Grammar must be flawless literary Georgian (სალიტერატურო ქართული):',
   '- correct case for the subject: ergative (-მა/-მ) with transitive verbs in the aorist (სოფიმ დაინახა), nominative with present/future (სოფი ხედავს), dative subject with inversive verbs (სოფის უყვარს, სოფის შეეძლო);',

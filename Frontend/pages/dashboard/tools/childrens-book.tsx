@@ -32,6 +32,7 @@ import {
   requestRevision,
   generatePdf,
   downloadBookPdf,
+  downloadFullStoryMp3,
   uploadCharacterPhoto,
   removeCharacterPhoto,
   fetchCharacterPhotoUrl,
@@ -54,6 +55,7 @@ import SiblingsFields, { SiblingDraft, SiblingPhotoEditor } from '../../../src/c
 import PageThumbnail from '../../../src/components/tools/childrensBook/PageThumbnail';
 import StoryTextEditor from '../../../src/components/tools/childrensBook/StoryTextEditor';
 import PrintSettingsPanel from '../../../src/components/tools/childrensBook/PrintSettingsPanel';
+import BookSharePanel from '../../../src/components/tools/childrensBook/BookSharePanel';
 import BookFontPicker from '../../../src/components/tools/childrensBook/BookFontPicker';
 import { BookFontId, DEFAULT_BOOK_FONT, bookFontFamily, bookFontOptions } from '../../../src/components/tools/childrensBook/bookFonts';
 // Style keys must match Backend/src/services/bookIllustrationStyles.ts.
@@ -1039,6 +1041,12 @@ function ChildrensBookContent() {
                       </button>
                     )}
 
+                    {canListenToAudio && new Set(audioStatus?.artifacts?.filter((a) => a.status === 'READY').map((a) => a.pageNumber) ?? []).size >= book.pageCount && (
+                      <button disabled={busy} onClick={() => run(async () => downloadFullStoryMp3(book.id, book.title))} className="px-5 py-2 rounded-lg border border-purple-300 bg-white text-purple-700 font-medium disabled:opacity-50 flex items-center gap-1">
+                        <Download className="w-4 h-4" /> {t('flipDownloadMp3')}
+                      </button>
+                    )}
+
                     {canListenToAudio && (
                       <button
                         disabled={busy}
@@ -1052,6 +1060,16 @@ function ChildrensBookContent() {
 
                   {canListenToAudio && new Set(audioStatus?.artifacts?.filter((a) => a.status === 'READY').map((a) => a.pageNumber) ?? []).size < book.pageCount && (
                     <p className="mb-4 -mt-2 flex items-center gap-1.5 text-sm text-purple-700"><Loader2 className="h-4 w-4 animate-spin" /> {t('audioPreparingAuto')}</p>
+                  )}
+
+                  {(book.status === 'FINAL_READY' || book.status === 'COMPLETED') && acceptedCount === book.pageCount && (
+                    <BookSharePanel
+                      bookId={book.id}
+                      language={book.language}
+                      token={book.storyPlan?.extras?.shareToken ?? null}
+                      disabled={!!book.storyPlan?.extras?.shareDisabled}
+                      onChanged={() => { getBook(book.id).then((x) => setBook(x.book)).catch(() => {}); }}
+                    />
                   )}
 
                   {(book.status === 'FINAL_READY' || book.status === 'COMPLETED') && acceptedCount === book.pageCount && (

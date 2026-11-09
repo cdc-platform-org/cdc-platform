@@ -46,6 +46,8 @@ import { isBookDevPaymentSimulationEnabled, isBookAiMocked } from '../services/b
 import { completeChildrensBookPurchase } from '../services/bookPurchaseFulfillment';
 import { startFinalGeneration } from '../services/bookFinalGenerationService';
 import { buildAndStoreBookPdf, collectPdfPages } from '../services/bookFinishingService';
+import { createBookUrl, findBookByShareToken, newShareToken, pdfExtrasForBook, readExtras, saveExtras } from '../services/bookExtrasService';
+import { attachmentHeader, buildFullStoryMp3, latestNarrations } from '../services/bookAudioBundle';
 import { readCast, castPromptLine } from '../services/bookCastService';
 import { getStyleSample } from '../services/bookStyleSamples';
 import { calculateAudioPrice, calculateTotalBookPrice, canGenerateNarration, narrationLanguageForBook } from '../services/bookNarrationService';
@@ -206,6 +208,107 @@ router.get('/style-samples/:style', async (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'image/webp');
   res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
   res.send(image);
+});
+
+// ============================================================
+// SHARED BOOK — the public "read & listen" page behind the QR code on the
+// back cover (/book/<token>). No login: the 144-bit token is the access
+// key, the parent can switch it off (POST /:id/share), and only the story
+// itself is exposed (no owner, no photos, no settings).
+// ============================================================
+async function sharedBookOr404(req: Request, res: Response) {
+  const book = await findBookByShareToken(req.params.token);
+  if (!book) {
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(404).json({ message: 'Book not found.' });
+    return null;
+  }
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  return book;
+}
+
+async function sendAsset(res: Response, key: string | null | undefined, mimeType: string | null | undefined, cache: string) {
+  if (!key) return res.status(404).json({ message: 'Not found.' });
+  try {
+    const buffer = await readBookAsset(key);
+    res.setHeader('Content-Type', mimeType || 'application/octet-stream');
+    res.setHeader('Cache-Control', cache);
+    return res.send(buffer);
+  } catch {
+    return res.status(404).json({ message: 'Not available.' });
+  }
+}
+
+function coverAsset(book: { storyPlan: unknown; pages: Array<{ pageNumber: number; sceneSpec: unknown }> }) {
+  const extras = readExtras(book.storyPlan);
+  if (extras.coverKey) return { key: extras.coverKey, mimeType: extras.coverMimeType ?? 'image/png' };
+  const first = book.pages.find((p) => (p.sceneSpec as any)?.imageKey);
+  return first ? { key: (first.sceneSpec as any).imageKey as string, mimeType: ((first.sceneSpec as any).imageMimeType as string) ?? 'image/png' } : null;
+}
+
+async function readerPayload(book: NonNullable<Awaited<ReturnType<typeof findBookByShareToken>>>) {
+  const extras = readExtras(book.storyPlan);
+  const narrations = await latestNarrations(book.id);
+  const narrated = new Set(narrations.map((n) => n.pageNumber));
+  return {
+    title: book.title,
+    language: book.language,
+    heroName: (book.characterBible as any)?.name ?? (book.characterConfig as any)?.name ?? null,
+    dedication: (book.characterConfig as any)?.dedication ?? null,
+    fontId: (book.characterConfig as any)?.fontId ?? null,
+    blurb: extras.blurb ?? null,
+    pageCount: book.pageCount,
+    hasDedicatedCover: !!extras.coverKey,
+    pages: book.pages.map((p) => ({ pageNumber: p.pageNumber, storyText: p.storyText ?? '', hasImage: !!(p.sceneSpec as any)?.imageKey, hasAudio: narrated.has(p.pageNumber) })),
+    fullStoryAudio: narrations.length >= book.pageCount,
+    createUrl: createBookUrl(book.language),
+  };
+}
+
+router.get('/shared/:token', async (req: Request, res: Response) => {
+  const book = await sharedBookOr404(req, res);
+  if (!book) return;
+  res.setHeader('Cache-Control', 'private, max-age=60');
+  res.json({ data: await readerPayload(book) });
+});
+
+router.get('/shared/:token/cover', async (req: Request, res: Response) => {
+  const book = await sharedBookOr404(req, res);
+  if (!book) return;
+  const cover = coverAsset(book);
+  return sendAsset(res, cover?.key, cover?.mimeType, 'private, max-age=3600');
+});
+
+router.get('/shared/:token/portrait', async (req: Request, res: Response) => {
+  const book = await sharedBookOr404(req, res);
+  if (!book) return;
+  const bible = (book.characterBible ?? {}) as any;
+  return sendAsset(res, bible.previewImageKey ?? (book.characterConfig as any)?.previewImageKey, bible.previewImageMimeType ?? (book.characterConfig as any)?.previewImageMimeType, 'private, max-age=3600');
+});
+
+router.get('/shared/:token/page/:pageNumber/image', async (req: Request, res: Response) => {
+  const book = await sharedBookOr404(req, res);
+  if (!book) return;
+  const scene = book.pages.find((p) => p.pageNumber === Number(req.params.pageNumber))?.sceneSpec as any;
+  return sendAsset(res, scene?.imageKey, scene?.imageMimeType ?? 'image/png', 'private, max-age=3600');
+});
+
+router.get('/shared/:token/audio/page/:pageNumber', async (req: Request, res: Response) => {
+  const book = await sharedBookOr404(req, res);
+  if (!book) return;
+  const narration = (await latestNarrations(book.id)).find((n) => n.pageNumber === Number(req.params.pageNumber));
+  return sendAsset(res, narration?.artifactKey, narration?.mimeType ?? 'audio/mpeg', 'private, max-age=3600');
+});
+
+router.get('/shared/:token/audio/full-story.mp3', async (req: Request, res: Response) => {
+  const book = await sharedBookOr404(req, res);
+  if (!book) return;
+  const mp3 = await buildFullStoryMp3(book.id, book.pageCount);
+  if (!mp3) return res.status(404).json({ message: 'The audiobook is not ready yet.' });
+  res.setHeader('Content-Type', 'audio/mpeg');
+  res.setHeader('Content-Disposition', attachmentHeader(book.title, 'mp3'));
+  res.setHeader('Cache-Control', 'private, max-age=600');
+  res.send(mp3);
 });
 
 // ============================================================
@@ -1199,6 +1302,48 @@ router.get('/:id/audio/full-story', authenticate, async (req: Request, res: Resp
   return res.json({ data: { available: canGenerateNarration({ audioAddOnPurchased: !!book.audioAddOnPurchased, paymentStatus: book.status }) } });
 });
 
+// The whole story as one MP3 file to download and keep.
+router.get('/:id/audio/full-story.mp3', authenticate, async (req: Request, res: Response) => {
+  const book = await prisma.bookProject.findUnique({ where: { id: req.params.id } });
+  if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
+  const mp3 = await buildFullStoryMp3(book.id, book.pageCount);
+  if (!mp3) return res.status(404).json({ message: 'The audiobook is not ready yet.' });
+  res.setHeader('Content-Type', 'audio/mpeg');
+  res.setHeader('Content-Disposition', attachmentHeader(book.title, 'mp3'));
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.send(mp3);
+});
+
+// Cover picture for the reader and the book list (the dedicated cover, or
+// page 1's picture for books drawn before covers existed).
+router.get('/:id/cover/image', authenticate, async (req: Request, res: Response) => {
+  const book = await prisma.bookProject.findUnique({ where: { id: req.params.id }, include: { pages: { orderBy: { pageNumber: 'asc' } } } });
+  if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
+  const cover = coverAsset(book);
+  return sendAsset(res, cover?.key, cover?.mimeType, 'private, max-age=600');
+});
+
+// Public read & listen link: on (default once the book is finished) or off.
+// The PDF's back-cover QR code follows the switch, so the stored PDF is
+// rebuilt when it changes. Turning it back on issues a NEW token, so an old
+// printed or forwarded link stays dead.
+router.post('/:id/share', authenticate, async (req: Request, res: Response) => {
+  const book = await prisma.bookProject.findUnique({ where: { id: req.params.id } });
+  if (!isOwner(book, req.user!.id)) return res.status(404).json({ message: 'Book not found.' });
+  if (typeof req.body?.enabled !== 'boolean') return res.status(400).json({ message: 'enabled must be true or false.' });
+  if (book.status !== 'FINAL_READY' && book.status !== 'COMPLETED') return res.status(400).json({ message: 'The book is not finished yet.' });
+  const extras = readExtras(book.storyPlan);
+  const enabled = req.body.enabled as boolean;
+  const changed = enabled === !!extras.shareDisabled || (enabled && !extras.shareToken);
+  if (changed) {
+    await saveExtras(book.id, enabled ? { shareDisabled: false, shareToken: extras.shareDisabled || !extras.shareToken ? newShareToken() : extras.shareToken } : { shareDisabled: true });
+    await prisma.bookProject.updateMany({ where: { id: book.id, pdfStatus: 'CURRENT' }, data: { pdfStatus: 'STALE' } });
+    await buildAndStoreBookPdf(book.id);
+  }
+  const fresh = readExtras((await prisma.bookProject.findUnique({ where: { id: book.id }, select: { storyPlan: true } }))?.storyPlan);
+  res.json({ data: { shareEnabled: !fresh.shareDisabled && !!fresh.shareToken, shareToken: fresh.shareDisabled ? null : fresh.shareToken ?? null } });
+});
+
 // ============================================================
 // PDF
 // ============================================================
@@ -1225,6 +1370,7 @@ router.post('/:id/pdf/print', authenticate, async (req: Request, res: Response) 
     pages: await collectPdfPages(book.pages),
     print: settings.value,
     fontId: (book.characterConfig as any)?.fontId ?? null,
+    ...(await pdfExtrasForBook(book)),
   });
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="book-${book.id.slice(0, 8)}-${printFileSuffix(settings.value)}.pdf"`);
@@ -1262,7 +1408,7 @@ router.get('/:id/pdf/download', authenticate, async (req: Request, res: Response
   try {
     const buffer = await readBookAsset(book.finalPdfBlobRef);
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${book.title.replace(/[^a-zA-Z0-9 _-]/g, '')}.pdf"`);
+    res.setHeader('Content-Disposition', attachmentHeader(book.title, 'pdf'));
     res.send(buffer);
   } catch {
     res.status(404).json({ message: 'PDF file not available.' });

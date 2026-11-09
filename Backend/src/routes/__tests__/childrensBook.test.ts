@@ -491,7 +491,7 @@ describe("Children's Book — print-size PDF", () => {
     expect(res.headers.get('content-type')).toContain('application/pdf');
     expect(res.headers.get('content-disposition')).toContain('A5-landscape-bleed3mm');
     const doc = await PDFDocument.load(Buffer.from(await res.arrayBuffer()));
-    expect(doc.getPageCount()).toBe(5);
+    expect(doc.getPageCount()).toBe(5 + 3); // + front cover, title page, back cover
     expect(doc.getPage(0).getTrimBox().width).toBeCloseTo(210 * 72 / 25.4, 1);
 
     const after = await prisma.bookProject.findUnique({ where: { id: bookId } });

@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { ensureBookCast, castPromptLine, BookCast } from './bookCastService';
 import { finishBook } from './bookFinishingService';
+import { readExtras, BOOK_PDF_LAYOUT_VERSION } from './bookExtrasService';
 import { buildLogicalOperationKey, canStartFinalGeneration } from './bookStateService';
 import { StoryPlan } from './bookStoryPlanService';
 import { generateBookImage } from './bookImageGenerationService';
@@ -253,7 +254,7 @@ async function runFinalGeneration(bookProjectId: string): Promise<void> {
   if (acceptedCount === book.pageCount) {
     await prisma.bookProject.updateMany({ where: { id: book.id, status: 'FINAL_GENERATING' }, data: { status: 'FINAL_QA' } });
     await prisma.bookProject.updateMany({ where: { id: book.id, status: 'FINAL_QA' }, data: { status: 'FINAL_READY' } });
-    await finishBook(book.id);
+    await finishBook(book.id, { drawCoverImage: true });
   } else {
     console.error(`[childrens-book] ${book.id}: ${book.pageCount - acceptedCount} page(s) still missing after automatic retries${stopReason ? ` (${stopReason})` : ''}; the recovery sweep will try again later`);
     await prisma.bookPage.updateMany({ where: { bookProjectId: book.id, acceptedEventId: null }, data: { imageGenerationStatus: 'FAILED' } });
@@ -296,6 +297,18 @@ export async function recoverStalledBooks(): Promise<{ restarted: number; finish
     },
     select: { id: true, pageCount: true, pdfStatus: true, audioAddOnPurchased: true },
   });
+  // Stored PDFs from before the current layout (cover, title page, back
+  // cover with QR codes) are rebuilt once. No image is generated for that.
+  const outdated = await prisma.bookProject.findMany({
+    where: { status: { in: ['FINAL_READY', 'COMPLETED'] }, pdfStatus: 'CURRENT', updatedAt: { gte: since } },
+    select: { id: true, pageCount: true, pdfStatus: true, audioAddOnPurchased: true, storyPlan: true },
+  });
+  for (const book of outdated) {
+    if (readExtras(book.storyPlan).pdfLayout === BOOK_PDF_LAYOUT_VERSION || finishingInFlight.has(book.id) || inFlight.has(book.id)) continue;
+    const marked = await prisma.bookProject.updateMany({ where: { id: book.id, pdfStatus: 'CURRENT' }, data: { pdfStatus: 'STALE' } });
+    if (marked.count === 1 && !unfinished.some((b) => b.id === book.id)) unfinished.push({ id: book.id, pageCount: book.pageCount, pdfStatus: 'STALE', audioAddOnPurchased: book.audioAddOnPurchased });
+    else if (marked.count === 1) unfinished.find((b) => b.id === book.id)!.pdfStatus = 'STALE';
+  }
   for (const book of unfinished) {
     if (finishingInFlight.has(book.id) || inFlight.has(book.id)) continue;
     let needsWork = book.pdfStatus !== 'CURRENT';

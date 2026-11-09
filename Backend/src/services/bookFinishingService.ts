@@ -4,6 +4,7 @@ import { storeBookAsset, readBookAsset } from './bookStorageService';
 import { canComplete, canGeneratePdf } from './bookStateService';
 import { canGenerateNarration, narrationLanguageForBook } from './bookNarrationService';
 import { getBookNarrationProvider } from './bookNarrationProviders';
+import { ensureBookExtras, markPdfLayout, pdfExtrasForBook } from './bookExtrasService';
 
 // ============================================================
 // Children's Book — finishing a book once every page is drawn: the stored
@@ -56,7 +57,14 @@ export async function buildAndStoreBookPdf(bookId: string): Promise<PdfBuildOutc
 
   try {
     const pdfPages = await collectPdfPages(book.pages);
-    const pdfBuffer = await buildBookPdf({ title: book.title, dedication: (book.characterConfig as any)?.dedication ?? null, pageCount: book.pageCount, pages: pdfPages, fontId: (book.characterConfig as any)?.fontId ?? null });
+    const pdfBuffer = await buildBookPdf({
+      title: book.title,
+      dedication: (book.characterConfig as any)?.dedication ?? null,
+      pageCount: book.pageCount,
+      pages: pdfPages,
+      fontId: (book.characterConfig as any)?.fontId ?? null,
+      ...(await pdfExtrasForBook(book)),
+    });
     const newVersion = book.pdfVersion + 1;
     const pdfKey = `books/${book.id}/final-v${newVersion}.pdf`;
     await storeBookAsset(pdfKey, pdfBuffer, 'application/pdf');
@@ -65,6 +73,7 @@ export async function buildAndStoreBookPdf(bookId: string): Promise<PdfBuildOutc
       where: { id: book.id },
       data: { pdfStatus: 'CURRENT', pdfVersion: newVersion, finalPdfBlobRef: pdfKey },
     });
+    await markPdfLayout(book.id).catch(() => {});
     if (canComplete({ pdfStatus: updated.pdfStatus })) {
       await prisma.bookProject.updateMany({ where: { id: book.id, status: 'FINAL_READY' }, data: { status: 'COMPLETED' } });
     }
@@ -121,9 +130,16 @@ export async function narrateMissingPages(bookId: string): Promise<{ narrated: n
   return { narrated, missing: 0 };
 }
 
-// PDF first (the parent is waiting for the download), then audio. Each
-// step logs and swallows its own failure so one never blocks the other.
-export async function finishBook(bookId: string): Promise<void> {
+// Book extras (introduction, share link, and for a freshly drawn book its
+// cover picture) first, then the PDF (the parent is waiting for the
+// download), then audio. Each step logs and swallows its own failure so one
+// never blocks the next.
+export async function finishBook(bookId: string, opts: { drawCoverImage?: boolean } = {}): Promise<void> {
+  try {
+    await ensureBookExtras(bookId, opts);
+  } catch (err) {
+    console.error(`[childrens-book] finishing extras crashed for ${bookId}:`, err);
+  }
   try {
     await buildAndStoreBookPdf(bookId);
   } catch (err) {
