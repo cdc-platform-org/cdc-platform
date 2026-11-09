@@ -6,7 +6,7 @@ import { authenticate, requireApproved, requireCurrentEducatorSession } from '..
 import { rateLimit } from '../middleware/rateLimit';
 import { multerErrorHandler } from '../middleware/productUploads';
 import { hasEducatorVipAccess } from '../utils/educatorVipAccess';
-import { startEducatorVipTrial, EducatorTrialAlreadyUsedError, EDUCATOR_TRIAL_DAYS } from '../services/educatorVipService';
+import { startEducatorVipTrial, EducatorTrialAlreadyUsedError, EDUCATOR_TRIAL_DAYS, EDUCATOR_VIP_PRICE_GEL } from '../services/educatorVipService';
 import { getEducatorUsage, hasReachedGenerationLimit, hasReachedGradingLimit, recordEducatorGeneration } from '../services/educatorUsageService';
 import {
   isAiAgentConfigured,
@@ -30,7 +30,7 @@ router.use(authenticate, requireApproved);
 async function requireEducatorVipAccess(req: Request, res: Response, next: NextFunction) {
   const user = await prisma.user.findUnique({
     where: { id: req.user!.id },
-    select: { role: true, educatorVipActive: true, educatorVipTrialEndDate: true },
+    select: { role: true, educatorVipActive: true, educatorVipTrialEndDate: true, educatorVipPaidUntil: true },
   });
   if (!user || !hasEducatorVipAccess(user)) {
     return res.status(403).json({
@@ -50,7 +50,7 @@ const generateRateLimit = rateLimit({ windowMs: 10 * 60 * 1000, max: 20, message
 router.get('/state', async (req: Request, res: Response) => {
   const user = await prisma.user.findUnique({
     where: { id: req.user!.id },
-    select: { role: true, educatorVipActive: true, educatorVipTrialStartDate: true, educatorVipTrialEndDate: true },
+    select: { role: true, educatorVipActive: true, educatorVipTrialStartDate: true, educatorVipTrialEndDate: true, educatorVipPaidUntil: true },
   });
   if (!user) return res.status(404).json({ message: 'User not found.' });
 
@@ -61,7 +61,10 @@ router.get('/state', async (req: Request, res: Response) => {
   res.json({
     data: {
       hasAccess,
-      isVipActive: user.educatorVipActive,
+      isVipActive: user.educatorVipActive || (!!user.educatorVipPaidUntil && user.educatorVipPaidUntil.getTime() > Date.now()),
+      // When the paid period ends (null for an admin grant or no purchase).
+      educatorVipPaidUntil: user.educatorVipPaidUntil,
+      priceGel: EDUCATOR_VIP_PRICE_GEL / 100,
       trialAvailable: !user.educatorVipTrialStartDate,
       trialActive,
       educatorVipTrialEndDate: user.educatorVipTrialEndDate,

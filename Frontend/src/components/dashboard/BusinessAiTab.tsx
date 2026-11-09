@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef, ChangeEvent, FormEvent } from 'react';
+import AiToolCheckoutCard from '../tools/AiToolCheckoutCard';
+import { checkoutBusinessAiAgent } from '../../services/paymentService';
 import {
   Bot,
   Plus,
@@ -53,6 +55,10 @@ const dictBase = {
     active: 'აქტიური',
     paused: 'შეჩერებული',
     trialEndsAt: 'საცდელი პერიოდი მთავრდება',
+    paidUntil: 'გადახდილია',
+    payTitlePaused: 'აგენტი შეჩერებულია. ჩასართავად გადაიხადეთ 30 დღის საფასური.',
+    payTitleTrial: 'გააგრძელეთ საცდელის შემდეგაც: გადაიხადეთ 30 დღე წინასწარ.',
+    payTitleRenew: 'გაახანგრძლივეთ კიდევ 30 დღით.',
     pause: 'შეჩერება',
     resume: 'განახლება',
     delete: 'წაშლა',
@@ -129,6 +135,10 @@ const dictBase = {
     active: 'Active',
     paused: 'Paused',
     trialEndsAt: 'Trial ends',
+    paidUntil: 'Paid until',
+    payTitlePaused: 'This agent is paused. Pay for 30 days to switch it on.',
+    payTitleTrial: 'Keep it running after the trial: pay for 30 days in advance.',
+    payTitleRenew: 'Extend by another 30 days.',
     pause: 'Pause',
     resume: 'Resume',
     delete: 'Delete',
@@ -209,6 +219,10 @@ const inputClass =
 const labelClass = 'block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5';
 
 const emptyForm: AgentFormPayload = { name: '', primaryColor: '#06b6d4', systemPrompt: '', allowedOrigins: [], fallbackPhone: '' };
+
+function isPaid(agent: Agent): boolean {
+  return !!agent.paidUntil && new Date(agent.paidUntil).getTime() > Date.now();
+}
 
 export default function BusinessAiTab({ lang }: { lang: SupportedLocale }) {
   const t = dict[lang];
@@ -328,8 +342,9 @@ export default function BusinessAiTab({ lang }: { lang: SupportedLocale }) {
       const nextStatus = selectedAgent.status === 'PAUSED' ? 'ACTIVE' : 'PAUSED';
       const updated = await updateAgent(selectedAgent.id, { status: nextStatus });
       setAgents((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
-    } catch {
-      setActionError(t.genericError);
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number; data?: { message?: string } } })?.response;
+      setActionError(status?.status === 402 || status?.status === 403 ? t.payTitlePaused : t.genericError);
     }
   };
 
@@ -547,6 +562,12 @@ export default function BusinessAiTab({ lang }: { lang: SupportedLocale }) {
                 {t.trialEndsAt}: {new Date(selectedAgent.trialEndsAt).toLocaleDateString()}
               </span>
             )}
+            {selectedAgent.paidUntil && new Date(selectedAgent.paidUntil).getTime() > Date.now() && (
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                {t.paidUntil}: {new Date(selectedAgent.paidUntil).toLocaleDateString()}
+              </span>
+            )}
+            {(selectedAgent.status !== 'PAUSED' || isPaid(selectedAgent)) && (
             <button
               type="button"
               onClick={handleToggleStatus}
@@ -555,6 +576,7 @@ export default function BusinessAiTab({ lang }: { lang: SupportedLocale }) {
               {selectedAgent.status === 'PAUSED' ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
               {selectedAgent.status === 'PAUSED' ? t.resume : t.pause}
             </button>
+            )}
             <button
               type="button"
               onClick={handleDelete}
@@ -564,6 +586,24 @@ export default function BusinessAiTab({ lang }: { lang: SupportedLocale }) {
               {t.delete}
             </button>
           </div>
+
+          {(selectedAgent.status !== 'ACTIVE' || isPaid(selectedAgent)) && !(selectedAgent.status === 'PAUSED' && isPaid(selectedAgent)) && (
+            <details open={selectedAgent.status === 'PAUSED'} className="rounded-2xl border border-slate-200 dark:border-slate-800 p-3">
+              <summary className="cursor-pointer text-sm font-bold text-slate-800 dark:text-slate-100">
+                {selectedAgent.status === 'PAUSED' ? t.payTitlePaused : selectedAgent.status === 'TRIAL' ? t.payTitleTrial : t.payTitleRenew}
+              </summary>
+              <div className="mt-3 max-w-sm">
+                <AiToolCheckoutCard
+                  lang={lang === 'ka' ? 'ka' : 'en'}
+                  priceGel={49}
+                  promoTargetId="business-ai"
+                  checkout={(code) => checkoutBusinessAiAgent(selectedAgent.id, lang === 'ka' ? 'ka' : 'en', code)}
+                  onActivated={loadAgents}
+                  compact
+                />
+              </div>
+            </details>
+          )}
 
           <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
             {SUB_NAV.map((item) => {

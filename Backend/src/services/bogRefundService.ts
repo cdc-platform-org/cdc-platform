@@ -5,6 +5,8 @@ import { prisma } from '../lib/prisma';
 import { BogNotConfiguredError, refundBogOrder } from './bogPaymentService';
 import { logAdminAction } from './auditLogService';
 import { TUTOR_SUBSCRIPTION_PERIOD_DAYS } from './englishTutorSubscriptionService';
+import { EDUCATOR_VIP_PERIOD_DAYS } from './educatorVipService';
+import { BUSINESS_AI_PERIOD_DAYS } from './agentSubscriptionService';
 
 // ============================================================
 // Admin refunds for BOG payments — full or partial.
@@ -152,6 +154,22 @@ async function revokeAccess(tx: Tx, payment: BogPayment): Promise<AccessRevocati
           : { tutorSubscriptionPeriodEnd: newEnd },
       });
       return { revoked: true, note: expired ? 'Tutor subscription ended.' : `Tutor subscription shortened by ${TUTOR_SUBSCRIPTION_PERIOD_DAYS} days.` };
+    }
+    case 'EDUCATOR_VIP': {
+      const user = await tx.user.findUnique({ where: { id: payment.userId }, select: { educatorVipPaidUntil: true } });
+      if (!user?.educatorVipPaidUntil) return { revoked: false, note: 'No paid Educator VIP period found.' };
+      const newEnd = new Date(user.educatorVipPaidUntil.getTime() - EDUCATOR_VIP_PERIOD_DAYS * 24 * 60 * 60 * 1000);
+      const ended = newEnd.getTime() <= Date.now();
+      await tx.user.update({ where: { id: payment.userId }, data: { educatorVipPaidUntil: ended ? null : newEnd } });
+      return { revoked: true, note: ended ? 'Educator VIP paid period ended.' : `Educator VIP shortened by ${EDUCATOR_VIP_PERIOD_DAYS} days.` };
+    }
+    case 'BUSINESS_AI_AGENT': {
+      const agent = await tx.agent.findUnique({ where: { id: payment.referenceId }, select: { paidUntil: true } });
+      if (!agent?.paidUntil) return { revoked: false, note: 'No paid period found on this agent (it may have been deleted).' };
+      const newEnd = new Date(agent.paidUntil.getTime() - BUSINESS_AI_PERIOD_DAYS * 24 * 60 * 60 * 1000);
+      const ended = newEnd.getTime() <= Date.now();
+      await tx.agent.update({ where: { id: payment.referenceId }, data: ended ? { paidUntil: null, status: 'PAUSED' } : { paidUntil: newEnd } });
+      return { revoked: true, note: ended ? 'Agent paused, paid period ended.' : `Agent paid period shortened by ${BUSINESS_AI_PERIOD_DAYS} days.` };
     }
     case 'GIFT_CARD': {
       // Refunding the card purchase itself: switch the code off so the

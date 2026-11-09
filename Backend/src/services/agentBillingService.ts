@@ -17,11 +17,18 @@ export async function pauseExpiredTrialAgents(): Promise<AgentTrialSweepResult> 
     where: { status: 'TRIAL', trialEndsAt: { lte: new Date() } },
     select: { id: true },
   });
-  if (expired.length === 0) return { pausedAgentIds: [] };
+  // A paid period that has run out (see agentSubscriptionService). ACTIVE
+  // agents with no paidUntil were switched on by an admin and are left alone.
+  const lapsed = await prisma.agent.findMany({
+    where: { status: 'ACTIVE', paidUntil: { lte: new Date() } },
+    select: { id: true },
+  });
+  const ids = [...expired, ...lapsed].map((a) => a.id);
+  if (ids.length === 0) return { pausedAgentIds: [] };
 
   await prisma.agent.updateMany({
-    where: { id: { in: expired.map((a) => a.id) } },
+    where: { id: { in: ids } },
     data: { status: 'PAUSED' },
   });
-  return { pausedAgentIds: expired.map((a) => a.id) };
+  return { pausedAgentIds: ids };
 }

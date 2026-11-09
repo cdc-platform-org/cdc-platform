@@ -50,6 +50,8 @@ async function resolveReferenceLabel(purpose: string, referenceId: string): Prom
     return book?.title || "Children's book";
   }
   if (purpose === 'ENGLISH_TUTOR_SUBSCRIPTION') return 'AI English Tutor (30 days)';
+  if (purpose === 'EDUCATOR_VIP') return 'Educator VIP (30 days)';
+  if (purpose === 'BUSINESS_AI_AGENT') return 'Business AI agent (30 days)';
   if (purpose === 'HR_SUPPORT') return 'HR support request';
   return referenceId;
 }
@@ -125,6 +127,8 @@ router.get('/course-payments', async (req: Request, res: Response) => {
     if (p.purpose === 'LIVE_TRAINING') return trainingTitleById.get(p.referenceId) ?? '(deleted live training)';
     if (p.purpose === 'CHILDRENS_BOOK') return bookTitleById.get(p.referenceId) || "Children's book";
     if (p.purpose === 'ENGLISH_TUTOR_SUBSCRIPTION') return 'AI English Tutor (30 days)';
+    if (p.purpose === 'EDUCATOR_VIP') return 'Educator VIP (30 days)';
+    if (p.purpose === 'BUSINESS_AI_AGENT') return 'Business AI agent (30 days)';
     if (p.purpose === 'HR_SUPPORT') return 'HR support request';
     return p.referenceId;
   }

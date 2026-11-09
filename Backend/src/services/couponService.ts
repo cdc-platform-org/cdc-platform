@@ -4,6 +4,8 @@ import { getCurrentPrice } from './coursePricing';
 import { getCurrentProductPrice } from './productPricing';
 import { getCurrentLiveTrainingPrice } from './liveTrainingPricing';
 import { TUTOR_SUBSCRIPTION_PRICE_GEL } from './englishTutorSubscriptionService';
+import { EDUCATOR_VIP_PRICE_GEL } from './educatorVipService';
+import { BUSINESS_AI_PRICE_GEL } from './agentSubscriptionService';
 import { calculateBookPrice } from './bookStateService';
 import { calculateTotalBookPrice } from './bookNarrationService';
 
@@ -131,7 +133,11 @@ export async function resolveTargetPrice(targetType: CouponTargetType, targetId:
       // trial+billing subscription, not a one-off checkout) — English
       // Tutor is the one flat-price AI-tool purchase with a real checkout
       // route today. Extend this map as more are added.
-      const AI_TOOL_PRICES: Record<string, number> = { 'english-tutor': TUTOR_SUBSCRIPTION_PRICE_GEL };
+      const AI_TOOL_PRICES: Record<string, number> = {
+        'english-tutor': TUTOR_SUBSCRIPTION_PRICE_GEL,
+        'educator-hub': EDUCATOR_VIP_PRICE_GEL,
+        'business-ai': BUSINESS_AI_PRICE_GEL,
+      };
       const price = AI_TOOL_PRICES[targetId];
       if (price == null) throw new CouponTargetNotFoundError('Unknown AI tool.');
       return { currentPrice: price, originalPrice: price };
