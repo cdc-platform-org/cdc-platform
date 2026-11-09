@@ -36,7 +36,11 @@ interface TargetOption {
 // a one-off purchase) — English Tutor is the one flat-price AI-tool
 // checkout couponService.ts's resolveTargetPrice actually supports today.
 // Extend this list as more AI-tool checkouts gain promo support.
-const AI_TOOL_OPTIONS: TargetOption[] = [{ id: 'english-tutor', name: 'IMIAKO — AI English Tutor (1 month)' }];
+const AI_TOOL_OPTIONS: TargetOption[] = [
+  { id: 'english-tutor', name: 'IMIAKO — AI English Tutor (1 month)' },
+  { id: 'educator-hub', name: 'მასწავლებლის VIP — Educator VIP (30 days)' },
+  { id: 'business-ai', name: 'ბიზნეს AI ჩატბოტი — Business AI agent (30 days)' },
+];
 
 // Every Children's Book is a one-off per-buyer item, so a book code targets
 // the product line as a whole via this one fixed id (matches

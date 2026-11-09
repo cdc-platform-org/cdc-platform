@@ -184,7 +184,7 @@
   "downloadCertificate": "Завантажити сертифікат №{{index}}",
   "certificatesTitle": "Генератор сертифікатів і дипломів",
   "certificatesDescription": "Створюйте сертифікати та дипломи для друку для своїх учнів за секунди.",
-  "vipTrialUsedDesc": "Your free trial has ended. To continue with VIP (50 GEL/month), message us and we will activate it.",
+  "vipTrialUsedDesc": "Your free trial has ended. To keep VIP, pay 50 GEL for 30 days. Have a promo code? Enter it below.",
   "vipRequestCta": "Request VIP activation",
   "vipRequestSubject": "AI Educator VIP activation"
 }

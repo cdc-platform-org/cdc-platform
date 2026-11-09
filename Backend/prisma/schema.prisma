@@ -263,6 +263,14 @@ enum BogPaymentPurpose {
   // single PromoCode (isGiftCard) holding the card's balance is minted and
   // emailed to the recipient — see services/giftCardService.ts.
   GIFT_CARD
+  // 30 days of AI Educator VIP Hub access (referenceId -> the buyer's own
+  // User.id, same shape as ENGLISH_TUTOR_SUBSCRIPTION). Fulfillment extends
+  // User.educatorVipPaidUntil — see services/educatorVipService.ts.
+  EDUCATOR_VIP
+  // 30 days of one CDC Business AI agent (referenceId -> Agent.id).
+  // Fulfillment extends Agent.paidUntil and sets it ACTIVE — see
+  // services/agentSubscriptionService.ts.
+  BUSINESS_AI_AGENT
 }
 
 // Whether a payment settles straight to its destination the moment it
@@ -689,6 +697,10 @@ model User {
   // cardless and self-service (see educatorVipTrialStartDate below),
   // matching tutorTrialStartDate's model. See utils/educatorVipAccess.ts.
   educatorVipActive             Boolean               @default(false)
+  // End of the self-service paid period (BOG checkout EDUCATOR_VIP, 30 days
+  // per purchase, extended from the later of now/this value). Separate from
+  // educatorVipActive, which stays the admin's open-ended manual grant.
+  educatorVipPaidUntil          DateTime?
   // Cardless 5-day trial, one account-lifetime use — same
   // "trialStartDate already set = already used" check as
   // tutorTrialStartDate, started explicitly via POST
@@ -4513,6 +4525,11 @@ model Agent {
   // 60-day free trial, set at creation (now() + 60 days). See the status
   // enum's comment — nothing here auto-charges when this passes.
   trialEndsAt    DateTime
+  // End of the paid period (BOG checkout BUSINESS_AI_AGENT, 30 days per
+  // purchase). An owner can only set ACTIVE while this is in the future;
+  // the hourly sweep pauses an ACTIVE agent once it passes. Null = never
+  // paid (older ACTIVE agents set by an admin keep running).
+  paidUntil      DateTime?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 

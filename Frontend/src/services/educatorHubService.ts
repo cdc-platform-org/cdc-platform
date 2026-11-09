@@ -17,6 +17,9 @@ export interface EducatorHubState {
   trialAvailable: boolean;
   trialActive: boolean;
   educatorVipTrialEndDate: string | null;
+  // End of the paid 30-day period (BOG checkout); null for an admin grant.
+  educatorVipPaidUntil?: string | null;
+  priceGel?: number;
   usage: EducatorUsage | null;
 }
 

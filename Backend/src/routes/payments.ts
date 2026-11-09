@@ -37,6 +37,8 @@ import { completeLearningPayment } from '../services/learningPaymentFulfillment'
 import { sendRegistrationStatusWhatsApp, formatWhatsAppDate } from '../services/whatsappService';
 import { resolveNotificationLocale } from '../utils/notificationLocale';
 import { completeTutorSubscriptionPurchase, TUTOR_SUBSCRIPTION_PRICE_GEL } from '../services/englishTutorSubscriptionService';
+import { completeEducatorVipPurchase, EDUCATOR_VIP_PRICE_GEL } from '../services/educatorVipService';
+import { assertAgentPurchasable, completeAgentPurchase, AgentCheckoutError, BUSINESS_AI_PRICE_GEL } from '../services/agentSubscriptionService';
 import { completeChildrensBookPurchase, assertBookReadyForCheckout, BookNotFoundError, BookNotEligibleForCheckoutError, BookPreviewNotConfirmedError } from '../services/bookPurchaseFulfillment';
 import { startFinalGeneration } from '../services/bookFinalGenerationService';
 import { isBookDevPaymentSimulationEnabled, resolveBookPayableAmountTetri } from '../services/bookMockConfig';
@@ -109,7 +111,7 @@ class BookCheckoutInProgressError extends Error {}
 
 async function findReusablePendingOrder(
   userId: string,
-  purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT' | 'HR_SUPPORT' | 'LIVE_TRAINING' | 'ENGLISH_TUTOR_SUBSCRIPTION' | 'CHILDRENS_BOOK' | 'GIFT_CARD',
+  purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT' | 'HR_SUPPORT' | 'LIVE_TRAINING' | 'ENGLISH_TUTOR_SUBSCRIPTION' | 'CHILDRENS_BOOK' | 'GIFT_CARD' | 'EDUCATOR_VIP' | 'BUSINESS_AI_AGENT',
   referenceId: string,
   expectedAmount?: number,
   expectedPromoId?: string | null
@@ -541,6 +543,130 @@ router.post(
     res.status(201).json({ paymentId: updated.id, redirectUrl: order.redirectUrl });
   }
 );
+
+// ============================================================
+// CHECKOUT — EDUCATOR VIP (50 GEL / 30 days) and BUSINESS AI AGENT
+// (49 GEL / 30 days per agent). Same flat, non-recurring shape as the
+// English tutor checkout above, with the promo code re-validated here
+// (AI_TOOL targets 'educator-hub' / 'business-ai', see couponService).
+// ============================================================
+async function flatAiToolCheckout(
+  req: Request,
+  res: Response,
+  opts: {
+    purpose: 'EDUCATOR_VIP' | 'BUSINESS_AI_AGENT';
+    referenceId: string;
+    price: number;
+    promoTargetId: string;
+    basketItemName: string;
+    complete: () => Promise<unknown>;
+  }
+) {
+  const requestedPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode.trim().toUpperCase() : '';
+  const requestedPromoId = requestedPromoCode
+    ? (await prisma.promoCode.findUnique({ where: { code: requestedPromoCode }, select: { id: true } }))?.id ?? 'unknown-promo'
+    : null;
+  const reusable = await findReusablePendingOrder(req.user!.id, opts.purpose, opts.referenceId, undefined, requestedPromoId);
+  if (reusable) return res.status(200).json({ paymentId: reusable.id, redirectUrl: reusable.redirectUrl });
+
+  const requesterAdminRole = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } }))?.adminRole;
+  let chargeAmount = requesterAdminRole ? 0 : opts.price;
+  let appliedPromo: PromoCode | null = null;
+  if (requestedPromoCode && chargeAmount > 0) {
+    try {
+      const applied = await applyPromoToCheckout(requestedPromoCode, 'AI_TOOL', opts.promoTargetId, chargeAmount);
+      chargeAmount = applied.chargeAmount;
+      appliedPromo = applied.appliedPromo;
+    } catch (err) {
+      if (err instanceof PromoCodeError) return res.status(400).json({ message: err.message });
+      throw err;
+    }
+  }
+
+  if (chargeAmount <= 0) {
+    const freePayment = await prisma.bogPayment.create({
+      data: {
+        bogOrderId: `admin-test-${crypto.randomUUID()}`,
+        userId: req.user!.id,
+        purpose: opts.purpose,
+        paymentModel: paymentModelForPurpose(opts.purpose),
+        referenceId: opts.referenceId,
+        amount: 0,
+        currency: 'GEL',
+        status: 'COMPLETED',
+        completedAt: new Date(),
+        promoCodeId: appliedPromo?.id ?? null,
+        giftCardAmount: giftCardAmountOf(appliedPromo),
+      },
+    });
+    await opts.complete();
+    return res.status(201).json({ paymentId: freePayment.id, redirectUrl: null, enrolled: true });
+  }
+
+  const bogPayment = await prisma.bogPayment.create({
+    data: {
+      bogOrderId: `pending-${crypto.randomUUID()}`,
+      userId: req.user!.id,
+      purpose: opts.purpose,
+      paymentModel: paymentModelForPurpose(opts.purpose),
+      referenceId: opts.referenceId,
+      amount: chargeAmount,
+      currency: 'GEL',
+      status: 'PENDING',
+      promoCodeId: appliedPromo?.id ?? null,
+      giftCardAmount: giftCardAmountOf(appliedPromo),
+    },
+  });
+  const { successRedirectUrl, failRedirectUrl } = resultRedirects(bogPayment.id);
+  const order = await createBogOrderOrRespond(res, {
+    externalOrderId: bogPayment.id,
+    amount: chargeAmount,
+    currency: 'GEL',
+    basketItemName: opts.basketItemName,
+    callbackUrl: CALLBACK_URL,
+    successRedirectUrl,
+    failRedirectUrl,
+    lang: checkoutLang(req),
+  });
+  if (!order) return;
+  const updated = await prisma.bogPayment.update({
+    where: { id: bogPayment.id },
+    data: { bogOrderId: order.bogOrderId, redirectUrl: order.redirectUrl },
+  });
+  res.status(201).json({ paymentId: updated.id, redirectUrl: order.redirectUrl });
+}
+
+router.post('/checkout/educator-vip', checkoutRateLimit, authenticate, requireApproved, async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+  await flatAiToolCheckout(req, res, {
+    purpose: 'EDUCATOR_VIP',
+    referenceId: userId,
+    price: EDUCATOR_VIP_PRICE_GEL,
+    promoTargetId: 'educator-hub',
+    basketItemName: 'AI Educator VIP (1 month)',
+    complete: () => completeEducatorVipPurchase(userId),
+  });
+});
+
+router.post('/checkout/business-ai/:agentId', checkoutRateLimit, authenticate, requireApproved, async (req: Request, res: Response) => {
+  const agentId = req.params.agentId;
+  try {
+    await assertAgentPurchasable(agentId, req.user!.id);
+  } catch (err) {
+    if (err instanceof AgentCheckoutError) {
+      return res.status(err.code === 'NOT_FOUND' ? 404 : 409).json({ code: err.code, message: err.message });
+    }
+    throw err;
+  }
+  await flatAiToolCheckout(req, res, {
+    purpose: 'BUSINESS_AI_AGENT',
+    referenceId: agentId,
+    price: BUSINESS_AI_PRICE_GEL,
+    promoTargetId: 'business-ai',
+    basketItemName: 'CDC Business AI agent (1 month)',
+    complete: () => completeAgentPurchase(agentId),
+  });
+});
 
 // The availability check and the booking INSERT run inside one Serializable
 // transaction so two concurrent checkouts for the same mentor/time can't
@@ -1375,6 +1501,11 @@ export async function applyBogPaymentResult(
     await completeLiveTrainingPurchase({ userId: bogPayment.userId, liveTrainingId: bogPayment.referenceId });
   } else if (bogPayment.purpose === 'ENGLISH_TUTOR_SUBSCRIPTION') {
     await completeTutorSubscriptionPurchase(bogPayment.userId);
+  } else if (bogPayment.purpose === 'EDUCATOR_VIP') {
+    await completeEducatorVipPurchase(bogPayment.userId);
+  } else if (bogPayment.purpose === 'BUSINESS_AI_AGENT') {
+    const done = await completeAgentPurchase(bogPayment.referenceId);
+    if (!done) console.warn(`[bog-callback] Business AI agent ${bogPayment.referenceId} was deleted before payment ${bogPayment.id} completed.`);
   } else if (bogPayment.purpose === 'CHILDRENS_BOOK') {
     // Idempotent on retry — the underlying updateMany only ever matches a
     // book still in PAYMENT_PENDING (see bookPurchaseFulfillment.ts).

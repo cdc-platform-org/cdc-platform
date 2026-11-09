@@ -26,6 +26,9 @@ const dict = {
     gig: 'გარიგების ესქროუ დაფინანსება',
     product: 'ციფრული პროდუქტი',
     book: 'საბავშვო წიგნი',
+    educatorVip: 'მასწავლებლის VIP (30 დღე)',
+    businessAi: 'ბიზნეს AI ჩატბოტი (30 დღე)',
+    redirectingToTool: 'გადაგიყვანთ ხელსაწყოზე…',
     giftCard: 'სასაჩუქრე ბარათი',
     redirectingToGift: 'საჩუქარი მზადაა! გადაგიყვანთ თქვენს სასაჩუქრე ბარათებზე…',
     redirectingToBook: 'გადამისამართება თქვენს წიგნზე…',
@@ -57,6 +60,9 @@ const dict = {
     gig: 'Gig escrow funding',
     product: 'Digital product',
     book: "Children's book",
+    educatorVip: 'Educator VIP (30 days)',
+    businessAi: 'Business AI chatbot (30 days)',
+    redirectingToTool: 'Taking you to the tool…',
     giftCard: 'Gift card',
     redirectingToGift: 'Your gift is ready! Taking you to your gift cards…',
     redirectingToBook: 'Redirecting to your book…',
@@ -88,6 +94,9 @@ const dict = {
     gig: 'Gig escrow funding',
     product: 'Digital product',
     book: "Children's book",
+    educatorVip: 'Educator VIP (30 days)',
+    businessAi: 'Business AI chatbot (30 days)',
+    redirectingToTool: 'Taking you to the tool…',
     giftCard: 'Gift card',
     redirectingToGift: 'Your gift is ready! Taking you to your gift cards…',
     redirectingToBook: 'Redirecting to your book…',
@@ -119,6 +128,9 @@ const dict = {
     gig: 'Gig escrow funding',
     product: 'Digital product',
     book: "Children's book",
+    educatorVip: 'Educator VIP (30 days)',
+    businessAi: 'Business AI chatbot (30 days)',
+    redirectingToTool: 'Taking you to the tool…',
     giftCard: 'Gift card',
     redirectingToGift: 'Your gift is ready! Taking you to your gift cards…',
     redirectingToBook: 'Redirecting to your book…',
@@ -150,6 +162,9 @@ const dict = {
     gig: 'Gig escrow funding',
     product: 'Digital product',
     book: "Children's book",
+    educatorVip: 'Educator VIP (30 days)',
+    businessAi: 'Business AI chatbot (30 days)',
+    redirectingToTool: 'Taking you to the tool…',
     giftCard: 'Gift card',
     redirectingToGift: 'Your gift is ready! Taking you to your gift cards…',
     redirectingToBook: 'Redirecting to your book…',
@@ -181,6 +196,9 @@ const dict = {
     gig: 'Gig escrow funding',
     product: 'Digital product',
     book: "Children's book",
+    educatorVip: 'Educator VIP (30 days)',
+    businessAi: 'Business AI chatbot (30 days)',
+    redirectingToTool: 'Taking you to the tool…',
     giftCard: 'Gift card',
     redirectingToGift: 'Your gift is ready! Taking you to your gift cards…',
     redirectingToBook: 'Redirecting to your book…',
@@ -203,6 +221,8 @@ const purposeKey: Record<string, keyof typeof dict.en> = {
   PRODUCT: 'product',
   CHILDRENS_BOOK: 'book',
   GIFT_CARD: 'giftCard',
+  EDUCATOR_VIP: 'educatorVip',
+  BUSINESS_AI_AGENT: 'businessAi',
 };
 
 function BogResultContent() {
@@ -266,6 +286,12 @@ function BogResultContent() {
     if (status?.status === 'COMPLETED' && status.purpose === 'GIFT_CARD' && status.referenceId) {
       const redirect = setTimeout(() => {
         router.push({ pathname: '/dashboard/gift-cards', query: { new: status.referenceId } });
+      }, 1800);
+      return () => clearTimeout(redirect);
+    }
+    if (status?.status === 'COMPLETED' && (status.purpose === 'EDUCATOR_VIP' || status.purpose === 'BUSINESS_AI_AGENT')) {
+      const redirect = setTimeout(() => {
+        router.push(status.purpose === 'EDUCATOR_VIP' ? '/dashboard/tools/educator-hub' : '/dashboard/tools/chatbot-builder');
       }, 1800);
       return () => clearTimeout(redirect);
     }
@@ -335,6 +361,9 @@ function BogResultContent() {
             )}
             {status.status === 'COMPLETED' && status.purpose === 'GIFT_CARD' && (
               <p className="text-xs text-gray-400 dark:text-slate-500">{t.redirectingToGift}</p>
+            )}
+            {status.status === 'COMPLETED' && (status.purpose === 'EDUCATOR_VIP' || status.purpose === 'BUSINESS_AI_AGENT') && (
+              <p className="text-xs text-gray-400 dark:text-slate-500">{t.redirectingToTool}</p>
             )}
             {status.status === 'COMPLETED' && status.purpose === 'PRODUCT' && (
               <p className="text-xs text-gray-400 dark:text-slate-500">{t.redirectingToProduct}</p>

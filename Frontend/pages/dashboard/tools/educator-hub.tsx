@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import AiToolCheckoutCard from '../../../src/components/tools/AiToolCheckoutCard';
+import { checkoutEducatorVip } from '../../../src/services/paymentService';
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
@@ -546,19 +548,38 @@ function EducatorHubContent() {
                   {t('trialCta')}
                 </button>
               ) : hubState ? (
-                <>
+                <div className="max-w-sm">
                   <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">{t('vipTrialUsedDesc')}</p>
-                  <a
-                    href={`mailto:contact@cdc.org.ge?subject=${encodeURIComponent(t('vipRequestSubject'))}`}
-                    className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
-                  >
-                    <Crown className="w-4 h-4" />
-                    {t('vipRequestCta')}
-                  </a>
-                </>
+                  <AiToolCheckoutCard
+                    lang={lang}
+                    priceGel={hubState.priceGel ?? 50}
+                    promoTargetId="educator-hub"
+                    checkout={(code) => checkoutEducatorVip(lang, code)}
+                    onActivated={refreshState}
+                  />
+                </div>
               ) : null}
               {trialError && <p className="text-xs text-rose-600 dark:text-rose-400 mt-2">{trialError}</p>}
             </div>
+          )}
+
+          {hasAccess && hubState && !hubState.isVipActive && hubState.trialActive && (
+            <details className="mt-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-4">
+              <summary className="cursor-pointer text-sm font-bold text-slate-800 dark:text-slate-100">
+                {lang === 'ka' ? 'VIP-ის შეძენა საცდელის დასრულებამდე' : 'Get VIP before your trial ends'}
+              </summary>
+              <div className="mt-3 max-w-sm">
+                <AiToolCheckoutCard lang={lang} priceGel={hubState.priceGel ?? 50} promoTargetId="educator-hub" checkout={(code) => checkoutEducatorVip(lang, code)} onActivated={refreshState} compact />
+              </div>
+            </details>
+          )}
+
+          {hubState?.isVipActive && hubState.educatorVipPaidUntil && (
+            <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">
+              {lang === 'ka' ? 'VIP აქტიურია ' : 'VIP active until '}
+              {new Date(hubState.educatorVipPaidUntil).toLocaleDateString(lang === 'ka' ? 'ka-GE' : 'en-GB')}
+              {lang === 'ka' ? '-მდე.' : '.'}
+            </p>
           )}
 
           {hasAccess && usage && (

@@ -11,6 +11,8 @@ export interface EducatorVipAccessUser {
   // The cardless 5-day trial window (User.educatorVipTrialStartDate/
   // educatorVipTrialEndDate) — null when the teacher has never started it.
   educatorVipTrialEndDate: Date | null;
+  // End of the self-service paid period (EDUCATOR_VIP checkout).
+  educatorVipPaidUntil?: Date | null;
 }
 
 // SuperAdmin always has VIP-equivalent access, same posture as
@@ -22,5 +24,6 @@ export function hasEducatorVipAccess(user: EducatorVipAccessUser | null | undefi
   if (!user) return false;
   if (user.role === 'SuperAdmin') return true;
   if (user.educatorVipActive) return true;
+  if (user.educatorVipPaidUntil && user.educatorVipPaidUntil.getTime() > Date.now()) return true;
   return !!user.educatorVipTrialEndDate && user.educatorVipTrialEndDate.getTime() > Date.now();
 }

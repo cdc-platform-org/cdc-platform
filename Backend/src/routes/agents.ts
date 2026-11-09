@@ -79,6 +79,21 @@ router.put('/:id', loadOwnedAgent, async (req: Request, res: Response) => {
   const result = updateAgentSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
+  // Switching an agent on is only allowed inside a paid period (or for an
+  // admin). Before this, an owner could set ACTIVE after the trial paused
+  // the agent and keep it running for free, past the 1-agent limit too.
+  if (result.data.status === 'ACTIVE' && req.agent!.status !== 'ACTIVE') {
+    const isAdmin = req.user!.role === 'SuperAdmin';
+    const paid = !!req.agent!.paidUntil && req.agent!.paidUntil.getTime() > Date.now();
+    if (!isAdmin && !paid) {
+      return res.status(402).json({ code: 'PAYMENT_REQUIRED', message: 'To switch this agent on, pay for a month first.' });
+    }
+    const others = await prisma.agent.count({ where: { businessId: req.agent!.businessId, id: { not: req.agent!.id }, status: { in: ['TRIAL', 'ACTIVE'] } } });
+    if (!isAdmin && others >= MAX_ACTIVE_AGENTS_PER_ACCOUNT) {
+      return res.status(403).json({ code: 'AGENT_LIMIT_REACHED', message: 'Starter Plan allows 1 active AI agent per account. Pause or delete your other agent first.' });
+    }
+  }
+
   const agent = await prisma.agent.update({ where: { id: req.agent!.id }, data: result.data });
   res.json({ data: agent });
 });

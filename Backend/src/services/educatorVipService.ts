@@ -11,6 +11,23 @@ import crypto from 'crypto';
 // ============================================================
 
 export const EDUCATOR_TRIAL_DAYS = 5;
+export const EDUCATOR_VIP_PRICE_GEL = 5000; // 50.00 GEL, minor units (tetri)
+export const EDUCATOR_VIP_PERIOD_DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Fulfillment for a confirmed EDUCATOR_VIP payment (BOG callback in
+// routes/payments.ts). Extends from the later of now or the current paid
+// period, so an early renewal never loses days. No recurring charge: access
+// simply lapses when educatorVipPaidUntil passes (hasEducatorVipAccess
+// compares the date, no sweep needed).
+export async function completeEducatorVipPurchase(userId: string): Promise<{ educatorVipPaidUntil: Date }> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { educatorVipPaidUntil: true } });
+  const now = Date.now();
+  const base = user?.educatorVipPaidUntil && user.educatorVipPaidUntil.getTime() > now ? user.educatorVipPaidUntil.getTime() : now;
+  const educatorVipPaidUntil = new Date(base + EDUCATOR_VIP_PERIOD_DAYS * DAY_MS);
+  await prisma.user.update({ where: { id: userId }, data: { educatorVipPaidUntil } });
+  return { educatorVipPaidUntil };
+}
 
 export class EducatorTrialAlreadyUsedError extends Error {
   constructor() {

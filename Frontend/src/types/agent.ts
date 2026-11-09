@@ -10,6 +10,8 @@ export interface Agent {
   fallbackPhone: string | null;
   status: AgentStatus;
   trialEndsAt: string;
+  // End of the paid 30-day period (BOG checkout); null if never paid.
+  paidUntil?: string | null;
   createdAt: string;
   updatedAt: string;
 }
