@@ -161,14 +161,14 @@ function UsageMeter({ label, used, limit }: { label: string; used: number; limit
         <span>{used} / {limit}</span>
       </div>
       <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-        <div className="h-full bg-gradient-to-r from-amber-400 to-purple-600 rounded-full" style={{ width: `${pct}%` }} />
+        <div className="h-full bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full" style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
 }
 
 const inputClass =
-  'w-full px-3.5 py-2.5 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900/40 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500';
+  'w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/40 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500';
 const labelClass = 'block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5';
 // Native <select> renders its <option> popup via the OS, outside the page's
 // own light/dark styling — without an explicit color here, dark mode's
@@ -540,7 +540,7 @@ function EducatorHubContent() {
                   type="button"
                   disabled={trialStarting}
                   onClick={handleStartTrial}
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-amber-500/30 transition-all disabled:opacity-60"
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all disabled:opacity-60"
                 >
                   {trialStarting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crown className="w-4 h-4" />}
                   {t('trialCta')}
@@ -550,7 +550,7 @@ function EducatorHubContent() {
                   <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">{t('vipTrialUsedDesc')}</p>
                   <a
                     href={`mailto:contact@cdc.org.ge?subject=${encodeURIComponent(t('vipRequestSubject'))}`}
-                    className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-amber-500/30 transition-all"
+                    className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl no-underline hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
                   >
                     <Crown className="w-4 h-4" />
                     {t('vipRequestCta')}
@@ -672,7 +672,7 @@ function EducatorHubContent() {
               type="button"
               disabled={!hasAccess || testGenerating}
               onClick={handleGenerateTest}
-              className="no-print inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-amber-500/30 transition-all disabled:opacity-50"
+              className="no-print inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all disabled:opacity-50"
             >
               {testGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
               {testGenerating ? t('testGenerating') : t('testGenerateButton')}
@@ -801,7 +801,7 @@ function EducatorHubContent() {
               type="button"
               disabled={!hasAccess || rubricGenerating}
               onClick={handleGenerateRubric}
-              className="no-print inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-amber-500/30 transition-all disabled:opacity-50"
+              className="no-print inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all disabled:opacity-50"
             >
               {rubricGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ClipboardList className="w-4 h-4" />}
               {rubricGenerating ? t('rubricGenerating') : t('rubricGenerateButton')}
@@ -845,14 +845,14 @@ function EducatorHubContent() {
                   <button
                     type="button"
                     onClick={() => setWorkSource('text')}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-full border cursor-pointer ${workSource === 'text' ? 'bg-amber-500 text-white border-transparent' : 'bg-transparent text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700'}`}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-full border cursor-pointer ${workSource === 'text' ? 'bg-cyan-600 text-white border-transparent' : 'bg-transparent text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700'}`}
                   >
                     {t('gradingWorkTextTab')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setWorkSource('image')}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-full border cursor-pointer ${workSource === 'image' ? 'bg-amber-500 text-white border-transparent' : 'bg-transparent text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700'}`}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-full border cursor-pointer ${workSource === 'image' ? 'bg-cyan-600 text-white border-transparent' : 'bg-transparent text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700'}`}
                   >
                     {t('gradingWorkImageTab')}
                   </button>
@@ -887,7 +887,7 @@ function EducatorHubContent() {
               type="button"
               disabled={!hasAccess || gradingInProgress}
               onClick={handleGradeHomework}
-              className="no-print inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-amber-500/30 transition-all disabled:opacity-50"
+              className="no-print inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all disabled:opacity-50"
             >
               {gradingInProgress ? <Loader2 className="w-4 h-4 animate-spin" /> : <PenSquare className="w-4 h-4" />}
               {gradingInProgress ? t('gradingInProgress') : t('gradingButton')}
@@ -950,7 +950,7 @@ function EducatorHubContent() {
               type="button"
               disabled={!hasAccess || senGenerating}
               onClick={handleGenerateSen}
-              className="no-print inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-amber-500/30 transition-all disabled:opacity-50"
+              className="no-print inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all disabled:opacity-50"
             >
               {senGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Puzzle className="w-4 h-4" />}
               {senGenerating ? t('senGenerating') : t('senGenerateButton')}
@@ -1036,7 +1036,7 @@ function EducatorHubContent() {
               type="button"
               disabled={!hasAccess || lessonGenerating}
               onClick={handleGenerateLessonPlan}
-              className="no-print inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-amber-500/30 transition-all disabled:opacity-50"
+              className="no-print inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all disabled:opacity-50"
             >
               {lessonGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}
               {lessonGenerating ? t('lessonGenerating') : t('lessonGenerateButton')}
@@ -1095,7 +1095,7 @@ function EducatorHubContent() {
               type="button"
               disabled={!hasAccess || bureaucracyGenerating}
               onClick={handleGenerateBureaucracyDoc}
-              className="no-print inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-amber-500/30 transition-all disabled:opacity-50"
+              className="no-print inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all disabled:opacity-50"
             >
               {bureaucracyGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FolderKanban className="w-4 h-4" />}
               {bureaucracyGenerating ? t('bureaucracyGenerating') : t('bureaucracyGenerateButton')}
@@ -1154,7 +1154,7 @@ function EducatorHubContent() {
               type="button"
               disabled={!hasAccess || letterGenerating}
               onClick={handleGenerateParentLetter}
-              className="no-print inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-amber-500/30 transition-all disabled:opacity-50"
+              className="no-print inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-black text-sm px-6 py-3 rounded-xl border-none cursor-pointer hover:shadow-lg hover:shadow-cyan-500/30 transition-all disabled:opacity-50"
             >
               {letterGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
               {letterGenerating ? t('letterGenerating') : t('letterGenerateButton')}

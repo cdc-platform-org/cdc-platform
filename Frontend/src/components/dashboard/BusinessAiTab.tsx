@@ -39,6 +39,14 @@ const dictBase = {
     title: 'CDC ბიზნეს AI',
     subtitle: 'შექმენით და მართეთ AI ჩატბოტი თქვენი საიტისთვის.',
     newAgent: '+ ახალი აგენტი',
+    newAgentTitle: 'ახალი AI აგენტი',
+    howTitle: 'როგორ მუშაობს',
+    how1: 'შექმენით აგენტი: სახელი, ფერი და როგორ უნდა უპასუხოს.',
+    how2: '„ცოდნის ბაზაში“ ატვირთეთ თქვენი ფაილები ან ტექსტი, რომ აგენტმა ზუსტად გიპასუხოთ.',
+    how3: '„ჩაშენების“ ჩანართიდან დააკოპირეთ ერთი ხაზი კოდი და ჩასვით თქვენს საიტზე.',
+    previewTitle: 'ვიჯეტის გადახედვა',
+    previewGreeting: 'გამარჯობა! რით შემიძლია დაგეხმაროთ?',
+    previewDefaultName: 'თქვენი ასისტენტი',
     noAgents: 'ჯერ არცერთი AI აგენტი არ გაქვთ.',
     createFirst: 'შექმენით პირველი აგენტი',
     trial: 'საცდელი პერიოდი',
@@ -107,6 +115,14 @@ const dictBase = {
     title: 'CDC Business AI',
     subtitle: 'Create and manage an AI chatbot for your website.',
     newAgent: '+ New Agent',
+    newAgentTitle: 'New AI agent',
+    howTitle: 'How it works',
+    how1: 'Create the agent: a name, a color and how it should answer.',
+    how2: 'Upload your files or text in "Knowledge base" so it answers accurately.',
+    how3: 'Copy one line of code from the "Embed" tab and paste it into your site.',
+    previewTitle: 'Widget preview',
+    previewGreeting: 'Hi! How can I help you today?',
+    previewDefaultName: 'Your assistant',
     noAgents: "You don't have any AI agents yet.",
     createFirst: 'Create your first agent',
     trial: 'Trial',
@@ -395,7 +411,7 @@ export default function BusinessAiTab({ lang }: { lang: SupportedLocale }) {
         <button
           type="button"
           onClick={() => setShowCreateForm(true)}
-          className="inline-flex items-center gap-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl"
+          className="inline-flex items-center gap-1.5 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl"
         >
           <Plus className="w-3.5 h-3.5" />
           {t.createFirst}
@@ -406,42 +422,72 @@ export default function BusinessAiTab({ lang }: { lang: SupportedLocale }) {
 
   if (showCreateForm) {
     return (
-      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4 max-w-lg">
-        <h2 className="text-sm font-bold flex items-center gap-2">
-          <Bot className="w-4 h-4" />
-          {t.newAgent}
-        </h2>
-        {createError && <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-xs text-red-600 dark:text-red-300">{createError}</div>}
-        <form onSubmit={handleCreate} className="space-y-4">
-          <div>
-            <label className={labelClass}>{t.name}</label>
-            <input required className={inputClass} value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] items-start">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-sm p-6 space-y-4">
+          <h2 className="text-lg font-black flex items-center gap-2">
+            <Bot className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            {t.newAgentTitle}
+          </h2>
+          {createError && <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-xs text-red-600 dark:text-red-300">{createError}</div>}
+          <form onSubmit={handleCreate} className="space-y-4">
+            <div>
+              <label className={labelClass}>{t.name}</label>
+              <input required className={inputClass} value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} />
+            </div>
+            <div>
+              <label className={labelClass}>{t.primaryColor}</label>
+              <div className="flex items-center gap-3"><input type="color" className="h-10 w-16 rounded-lg border border-slate-300 dark:border-slate-700 cursor-pointer" value={createForm.primaryColor} onChange={(e) => setCreateForm({ ...createForm, primaryColor: e.target.value })} /><span className="text-xs font-mono text-slate-500 dark:text-slate-400 uppercase">{createForm.primaryColor}</span></div>
+            </div>
+            <div>
+              <label className={labelClass}>{t.systemPrompt}</label>
+              <textarea required rows={4} className={inputClass} value={createForm.systemPrompt} onChange={(e) => setCreateForm({ ...createForm, systemPrompt: e.target.value })} placeholder={t.systemPromptPlaceholder} />
+            </div>
+            <div>
+              <label className={labelClass}>{t.allowedOrigins}</label>
+              <textarea required rows={2} className={inputClass} value={createOriginsText} onChange={(e) => setCreateOriginsText(e.target.value)} placeholder={t.allowedOriginsPlaceholder} />
+            </div>
+            <div>
+              <label className={labelClass}>{t.fallbackPhone}</label>
+              <input className={inputClass} value={createForm.fallbackPhone ?? ''} onChange={(e) => setCreateForm({ ...createForm, fallbackPhone: e.target.value })} />
+            </div>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setShowCreateForm(false)} className="flex-1 rounded-xl border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-300">
+                {t.cancel}
+              </button>
+              <button type="submit" disabled={creating} className="flex-1 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 px-4 py-2.5 shadow-md shadow-cyan-500/20 text-sm font-bold text-white disabled:opacity-60">
+                {creating ? t.creating : t.createButton}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Live preview of the website widget (name + color update as the
+            owner types) and the 3 steps from "create" to "on my site". */}
+        <div className="space-y-4 lg:sticky lg:top-24">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-sm p-5">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">{t.previewTitle}</h3>
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="px-4 py-3 text-white text-sm font-bold flex items-center gap-2" style={{ backgroundColor: createForm.primaryColor }}>
+                <Bot className="w-4 h-4" />
+                <span className="truncate">{createForm.name.trim() || t.previewDefaultName}</span>
+              </div>
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/60 space-y-2">
+                <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs text-slate-700 dark:text-slate-200">{t.previewGreeting}</div>
+              </div>
+            </div>
           </div>
-          <div>
-            <label className={labelClass}>{t.primaryColor}</label>
-            <input type="color" className="h-10 w-20 rounded-lg border border-slate-300 dark:border-slate-700" value={createForm.primaryColor} onChange={(e) => setCreateForm({ ...createForm, primaryColor: e.target.value })} />
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-sm p-5">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">{t.howTitle}</h3>
+            <ol className="space-y-3">
+              {[t.how1, t.how2, t.how3].map((step, i) => (
+                <li key={i} className="flex gap-3 text-sm text-slate-600 dark:text-slate-300">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-50 dark:bg-cyan-500/10 text-xs font-bold text-cyan-700 dark:text-cyan-300">{i + 1}</span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
           </div>
-          <div>
-            <label className={labelClass}>{t.systemPrompt}</label>
-            <textarea required rows={4} className={inputClass} value={createForm.systemPrompt} onChange={(e) => setCreateForm({ ...createForm, systemPrompt: e.target.value })} placeholder={t.systemPromptPlaceholder} />
-          </div>
-          <div>
-            <label className={labelClass}>{t.allowedOrigins}</label>
-            <textarea required rows={2} className={inputClass} value={createOriginsText} onChange={(e) => setCreateOriginsText(e.target.value)} placeholder={t.allowedOriginsPlaceholder} />
-          </div>
-          <div>
-            <label className={labelClass}>{t.fallbackPhone}</label>
-            <input className={inputClass} value={createForm.fallbackPhone ?? ''} onChange={(e) => setCreateForm({ ...createForm, fallbackPhone: e.target.value })} />
-          </div>
-          <div className="flex gap-3">
-            <button type="button" onClick={() => setShowCreateForm(false)} className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-300">
-              {t.cancel}
-            </button>
-            <button type="submit" disabled={creating} className="flex-1 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60">
-              {creating ? t.creating : t.createButton}
-            </button>
-          </div>
-        </form>
+        </div>
       </div>
     );
   }
@@ -483,7 +529,7 @@ export default function BusinessAiTab({ lang }: { lang: SupportedLocale }) {
         <button
           type="button"
           onClick={() => setShowCreateForm(true)}
-          className="inline-flex items-center gap-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl"
+          className="inline-flex items-center gap-1.5 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl"
         >
           <Plus className="w-3.5 h-3.5" />
           {t.newAgent}
@@ -566,7 +612,7 @@ export default function BusinessAiTab({ lang }: { lang: SupportedLocale }) {
                 <label className={labelClass}>{t.fallbackPhone}</label>
                 <input className={inputClass} value={configForm.fallbackPhone ?? ''} onChange={(e) => setConfigForm({ ...configForm, fallbackPhone: e.target.value })} />
               </div>
-              <button type="submit" disabled={saving} className="rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-3 text-sm font-bold text-white disabled:opacity-60">
+              <button type="submit" disabled={saving} className="rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 px-6 py-3 text-sm font-bold text-white disabled:opacity-60">
                 {saving ? t.saving : saved ? t.saved : t.save}
               </button>
             </form>
@@ -582,7 +628,7 @@ export default function BusinessAiTab({ lang }: { lang: SupportedLocale }) {
                   type="button"
                   disabled={addingKnowledge || !newContent.trim()}
                   onClick={handleAddKnowledge}
-                  className="inline-flex items-center gap-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl disabled:opacity-60"
+                  className="inline-flex items-center gap-1.5 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl disabled:opacity-60"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   {t.addKnowledge}
