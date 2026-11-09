@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import ToolGuideButton from '../../../src/components/tools/ToolGuideButton';
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
@@ -528,6 +529,7 @@ function EducatorHubContent() {
                 )}
               </>
             }
+            actions={<ToolGuideButton guide="educatorHub" />}
           />
           <ToolMediaBanner slug="educator-hub" alt={t('pageTitle')} />
 

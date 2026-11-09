@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, SyntheticEvent } from 'react';
+import ToolGuideButton from '../../../src/components/tools/ToolGuideButton';
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
@@ -522,7 +523,7 @@ function MediaStudioContent() {
 
   return (
     <ToolShell>
-        <ToolPageHeader icon={Mic} accent="pink" title={t('pageTitle')} subtitle={t('pageSubtitle')} />
+        <ToolPageHeader icon={Mic} accent="pink" title={t('pageTitle')} subtitle={t('pageSubtitle')} actions={<ToolGuideButton guide="mediaStudio" />} />
         <ToolMediaBanner slug="media-studio" alt={t('pageTitle')} />
 
         <ToolTabs
