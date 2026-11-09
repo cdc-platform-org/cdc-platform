@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Crown, Loader2 } from 'lucide-react';
-import PromoCodeField from '../shared/PromoCodeField';
+import PromoCodeField, { localizePromoError } from '../shared/PromoCodeField';
 import { PromoValidationResult, TutorSubscriptionCheckoutResult } from '../../services/paymentService';
 import { toolPrimaryButton } from './ToolShell';
 
@@ -57,7 +57,7 @@ export default function AiToolCheckoutCard({ lang, priceGel, promoTargetId, chec
       else setBusy(false);
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(message || t.error);
+      setError(localizePromoError(message, lang) || t.error);
       setBusy(false);
     }
   };

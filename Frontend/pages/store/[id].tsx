@@ -121,7 +121,7 @@ function StoreProductContent({ initialProduct }: { initialProduct: DigitalProduc
       }
       window.location.href = result.redirectUrl!;
     } catch (err: any) {
-      setActionError(err?.response?.data?.message ?? t('checkoutFailed'));
+      setActionError(localizePromoError(err?.response?.data?.message, contentLang) ?? t('checkoutFailed'));
       setSubmitting(false);
     }
   };
@@ -134,7 +134,7 @@ function StoreProductContent({ initialProduct }: { initialProduct: DigitalProduc
       await claimFreeProduct(product.id);
       setProduct({ ...product, purchased: true });
     } catch (err: any) {
-      setActionError(err?.response?.data?.message ?? t('checkoutFailed'));
+      setActionError(localizePromoError(err?.response?.data?.message, contentLang) ?? t('checkoutFailed'));
     } finally {
       setSubmitting(false);
     }

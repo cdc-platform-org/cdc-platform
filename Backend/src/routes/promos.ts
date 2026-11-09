@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { authenticate } from '../middleware/auth';
-import { findValidPromoCode, computePromoPrice, resolveTargetPrice, PromoCodeError, CouponTargetNotFoundError } from '../services/couponService';
+import { findValidPromoCode, assertPromoAllowedOnPrice, computePromoPrice, resolveTargetPrice, PromoCodeError, CouponTargetNotFoundError } from '../services/couponService';
 
 const router = Router();
 
@@ -19,6 +19,7 @@ router.post('/validate', authenticate, async (req: Request, res: Response) => {
   try {
     const promo = await findValidPromoCode(code, targetType, targetId);
     const { currentPrice, originalPrice } = await resolveTargetPrice(targetType, targetId);
+    assertPromoAllowedOnPrice(promo, currentPrice, originalPrice);
     const discountedAmount = computePromoPrice(currentPrice, originalPrice, promo);
 
     res.json({

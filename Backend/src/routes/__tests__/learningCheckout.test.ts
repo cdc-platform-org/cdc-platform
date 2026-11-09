@@ -16,7 +16,7 @@ import { createBogOrder } from '../../services/bogPaymentService';
 import { createStripeCheckoutSession } from '../../services/stripePaymentService';
 import { notifyCourseEnrollment } from '../../services/courseEnrollmentNotification';
 import * as feeSchedule from '../../services/platformFeeScheduleService';
-import { quotePromoToCheckout, claimPromoRedemption } from '../../services/couponService';
+import { quotePromoToCheckout, claimPromoRedemption, PROMO_ON_DISCOUNTED_MESSAGE } from '../../services/couponService';
 
 jest.mock('../../services/bogPaymentService', () => ({
   ...jest.requireActual('../../services/bogPaymentService'),
@@ -106,9 +106,8 @@ describe('learning checkout pricing and retries', () => {
     const admin = await createUser({ adminRole: 'MANAGER' });
     const target = await training();
     await prisma.liveTraining.update({ where: { id: target.id }, data: { isOnSale: true, discountPercent: 30 } });
-    const code = await promo(20);
     const prefix = gateway === 'STRIPE' ? '/payments/stripe' : '/payments';
-    const response = await post(`${prefix}/checkout/live-training/${target.id}`, admin, { promoCode: code.code, currency: 'EUR' });
+    const response = await post(`${prefix}/checkout/live-training/${target.id}`, admin, { currency: 'EUR' });
     expect(response.status).toBe(201);
     const { paymentId } = await response.json() as { paymentId: string };
     const payment = gateway === 'BOG'
@@ -119,6 +118,20 @@ describe('learning checkout pricing and retries', () => {
     expect(await prisma.liveTrainingEnrollment.count({ where: { liveTrainingId: target.id } })).toBe(0);
     if (gateway === 'BOG') expect(createBogOrder).toHaveBeenCalledWith(expect.objectContaining({ amount: 7000 }));
     else expect(createStripeCheckoutSession).toHaveBeenCalledWith(expect.objectContaining({ currency: 'eur' }));
+  });
+
+  it.each(['BOG', 'STRIPE'] as const)('%s rejects a promo code on a live training that is already on sale', async (gateway) => {
+    const buyer = await createUser();
+    const target = await training();
+    await prisma.liveTraining.update({ where: { id: target.id }, data: { isOnSale: true, discountPercent: 30 } });
+    const code = await promo(20);
+    const prefix = gateway === 'STRIPE' ? '/payments/stripe' : '/payments';
+    const response = await post(`${prefix}/checkout/live-training/${target.id}`, buyer, { promoCode: code.code });
+    expect(response.status).toBe(400);
+    expect(((await response.json()) as { message: string }).message).toBe(PROMO_ON_DISCOUNTED_MESSAGE);
+    expect(await prisma.bogPayment.count({ where: { userId: buyer.id } })).toBe(0);
+    expect(await prisma.stripePayment.count({ where: { userId: buyer.id } })).toBe(0);
+    expect((await prisma.promoCode.findUniqueOrThrow({ where: { id: code.id } })).currentUses).toBe(0);
   });
 
   it.each(['BOG', 'STRIPE'] as const)('%s reuses a pending checkout without spending a single-use promo again', async (gateway) => {

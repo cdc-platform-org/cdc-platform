@@ -6,7 +6,8 @@ import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../../lib/prisma';
 import { JWT_SECRET } from '../../utils/env';
-import { createUser } from '../../test/factories';
+import { createUser, createCourse } from '../../test/factories';
+import { PROMO_ON_DISCOUNTED_MESSAGE } from '../../services/couponService';
 import childrensBookRoutes from '../childrensBook';
 import paymentsRouter from '../payments';
 import promosRouter from '../promos';
@@ -200,5 +201,40 @@ describe('IMIAKO PRO (English Tutor) — promo codes', () => {
     const again = await request('/api/payments/checkout/english-tutor', user, 'POST', { promoCode: promo.code.toLowerCase() });
     expect(again.status).toBe(200);
     expect(createBogOrder).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('Promo codes on already-discounted products', () => {
+  it('POST /promos/validate rejects a promo code for a course that is on sale', async () => {
+    const user = await createUser();
+    const course = await createCourse({ originalPrice: 10000 });
+    await prisma.course.update({ where: { id: course.id }, data: { isOnSale: true, discountPercent: 30 } });
+    const promo = await createPromo({ applicableType: 'ALL', applicableTargetIds: [] });
+
+    const res = await request('/api/promos/validate', user, 'POST', { code: promo.code, targetType: 'COURSE', targetId: course.id });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { message: string }).message).toBe(PROMO_ON_DISCOUNTED_MESSAGE);
+  });
+
+  it('the same code still works once the sale has ended', async () => {
+    const user = await createUser();
+    const course = await createCourse({ originalPrice: 10000 });
+    await prisma.course.update({ where: { id: course.id }, data: { isOnSale: true, discountPercent: 30, discountEndDate: new Date('2020-01-01') } });
+    const promo = await createPromo({ applicableType: 'ALL', applicableTargetIds: [] });
+
+    const res = await request('/api/promos/validate', user, 'POST', { code: promo.code, targetType: 'COURSE', targetId: course.id });
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { data: { discountedAmount: number } }).data.discountedAmount).toBe(5000);
+  });
+
+  it('a gift card (prepaid money, not a discount) still pays for a sale item', async () => {
+    const user = await createUser();
+    const course = await createCourse({ originalPrice: 10000 });
+    await prisma.course.update({ where: { id: course.id }, data: { isOnSale: true, discountPercent: 30 } });
+    const card = await createPromo({ applicableType: 'ALL', applicableTargetIds: [], discountPercent: null, discountAmount: 2000, isGiftCard: true });
+
+    const res = await request('/api/promos/validate', user, 'POST', { code: card.code, targetType: 'COURSE', targetId: course.id });
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { data: { discountedAmount: number } }).data.discountedAmount).toBe(5000);
   });
 });
