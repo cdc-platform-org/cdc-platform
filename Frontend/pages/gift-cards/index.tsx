@@ -176,7 +176,7 @@ export default function GiftCardsPage() {
 
   const amountGel = amount > 0 ? amount : Number(customAmount.replace(',', '.'));
   const amountValid = Number.isFinite(amountGel) && amountGel >= MIN_GEL && amountGel <= MAX_GEL && Math.round(amountGel * 100) === amountGel * 100;
-  const amountLabel = amountValid ? (Number.isInteger(amountGel) ? String(amountGel) : amountGel.toFixed(2)) : '—';
+  const amountLabel = amountValid ? (Number.isInteger(amountGel) ? String(amountGel) : amountGel.toFixed(2)) : '0';
   const minDate = todayInTbilisi();
   const maxDate = useMemo(() => new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10), []);
 

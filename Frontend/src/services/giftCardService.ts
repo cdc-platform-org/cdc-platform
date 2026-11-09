@@ -26,6 +26,8 @@ export interface MyGiftCard {
   suggestedItem: string | null;
   suggestedUrl: string | null;
   createdAt: string;
+  complimentary?: boolean;
+  recipientType?: 'PERSON' | 'ORGANIZATION';
   code: string | null;
   balance: number | null;
   expiresAt: string | null;
@@ -94,9 +96,34 @@ export interface AdminGiftCard extends MyGiftCard {
   purchaser: { id: string; name: string; email: string };
 }
 
-export async function getAdminGiftCards(): Promise<{ data: AdminGiftCard[]; totals: { soldCount: number; soldAmount: number; outstandingBalance: number } }> {
+export interface AdminGiftCardTotals {
+  soldCount: number;
+  soldAmount: number;
+  complimentaryCount: number;
+  complimentaryAmount: number;
+  outstandingBalance: number;
+}
+
+export async function getAdminGiftCards(): Promise<{ data: AdminGiftCard[]; totals: AdminGiftCardTotals }> {
   const res = await apiClient.get('/admin/gift-cards');
   return res.data;
+}
+
+export interface IssueGiftCardInput {
+  amountGel: number;
+  senderName: string;
+  recipientName: string;
+  recipientType: 'PERSON' | 'ORGANIZATION';
+  recipientEmail: string | null;
+  message: string | null;
+  design: GiftCardDesign;
+  deliverAt: string | null;
+}
+
+// Admin: free gift card, no payment.
+export async function issueComplimentaryGiftCard(input: IssueGiftCardInput): Promise<MyGiftCard> {
+  const res = await apiClient.post<{ data: MyGiftCard }>('/admin/gift-cards', input);
+  return res.data.data;
 }
 
 export async function deliverGiftCardNow(id: string): Promise<void> {
