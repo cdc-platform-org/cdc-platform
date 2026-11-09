@@ -34,6 +34,9 @@ import {
 import { recordExamGradingUsage } from '../services/billingService';
 import { generateExamReportPdf } from '../services/examReportService';
 import { shuffleQuestionsForSubmission, displayedToCanonicalLetter } from '../utils/examShuffle';
+import { buildCandidateResults, ensureMcqExplanations, CandidateResults } from '../services/examResultsService';
+import { sendExamResultsEmail, examResultsUrl } from '../services/emailService';
+import { resolveNotificationLocale } from '../utils/notificationLocale';
 
 const router = Router();
 
@@ -108,7 +111,12 @@ router.get('/candidate/:candidateToken', examLinkRateLimit, async (req: Request,
     return res.status(404).json({ message: 'This exam link is no longer active.' });
   }
   res.json({
-    data: { title: session.title, description: session.description, durationMinutes: session.durationMinutes },
+    data: {
+      title: session.title,
+      description: session.description,
+      durationMinutes: session.durationMinutes,
+      showResultsToCandidate: session.showResultsToCandidate,
+    },
   });
 });
 
@@ -399,7 +407,7 @@ router.post('/submissions/:submissionToken/submit', candidateRateLimit, async (r
   // Plain update, not another atomic claim — this submission was already
   // exclusively claimed above (status flipped out of IN_PROGRESS), so no
   // concurrent submit call can still be racing us here.
-  await prisma.examSubmission.update({
+  const finalSubmission = await prisma.examSubmission.update({
     where: { id: submission.id },
     data: {
       practicalScore,
@@ -440,10 +448,58 @@ router.post('/submissions/:submissionToken/submit', candidateRateLimit, async (r
       .catch((err) => console.error('[examProctoring] generateAdaptiveStudyGuide failed:', err));
   }
 
-  // Deliberately no score in the response — this is a screening tool for
-  // the business, not a self-assessment result for the candidate (unlike
-  // freelancerExam.ts, where the taker IS the one being credentialed).
-  res.json({ data: { submitted: true } });
+  // Results for the student — only when the teacher left "show results to
+  // students" on (the default). With it off this stays a pure screening
+  // tool: no score in the response and no email, same as before.
+  if (!session.showResultsToCandidate) {
+    return res.json({ data: { submitted: true, results: null } });
+  }
+
+  let results: CandidateResults | null = null;
+  try {
+    const withExplanations = await ensureMcqExplanations(session, questions);
+    results = buildCandidateResults(session, finalSubmission, withExplanations);
+  } catch (err) {
+    // Never fail a submission that is already saved and graded.
+    console.error('[examProctoring] building candidate results failed:', err);
+  }
+
+  res.json({ data: { submitted: true, results, resultsToken: submission.candidateToken } });
+
+  if (results) {
+    const locale = resolveNotificationLocale(result.data.locale);
+    sendExamResultsEmail({
+      to: submission.candidateEmail,
+      locale,
+      examTitle: results.examTitle,
+      candidateName: results.candidateName,
+      totalScore: results.totalScore,
+      correctCount: results.correctCount,
+      mcqTotal: results.mcqTotal,
+      flagged: results.flagged,
+      questions: results.questions,
+      resultsUrl: examResultsUrl(submission.candidateToken, locale),
+    }).catch((err) => console.error('[examProctoring] sendExamResultsEmail failed:', err));
+  }
+});
+
+// The student's own results page (/exam/result/<token>, linked from the
+// results email). Addressed by the same opaque per-attempt token as every
+// other candidate route, so only the student who took the attempt has it.
+router.get('/submissions/:submissionToken/results', candidateRateLimit, async (req: Request, res: Response) => {
+  const submission = await prisma.examSubmission.findUnique({ where: { candidateToken: req.params.submissionToken } });
+  if (!submission) return res.status(404).json({ message: 'Exam attempt not found.' });
+  if (submission.status === 'IN_PROGRESS') {
+    return res.status(409).json({ message: 'This exam attempt has not been submitted yet.' });
+  }
+  const session = await prisma.examSession.findUnique({ where: { id: submission.examSessionId } });
+  if (!session) return res.status(404).json({ message: 'Exam session not found.' });
+  if (!session.showResultsToCandidate) {
+    return res.status(403).json({ message: 'The exam organizer has not shared results for this exam.' });
+  }
+  const questions = await prisma.examQuestion.findMany({ where: { examSessionId: session.id }, orderBy: { order: 'asc' } });
+  const withExplanations = await ensureMcqExplanations(session, questions);
+  res.json({ data: buildCandidateResults(session, submission, withExplanations) });
 });
 
 // ============================================================
@@ -613,6 +669,7 @@ router.post('/sessions', async (req: Request, res: Response) => {
       rawContent: result.data.rawContent ?? null,
       mcqCount: result.data.mcqCount,
       durationMinutes: result.data.durationMinutes,
+      showResultsToCandidate: result.data.showResultsToCandidate,
       questions: {
         create: generated.map((q) => ({
           order: q.order,
@@ -620,6 +677,7 @@ router.post('/sessions', async (req: Request, res: Response) => {
           question: q.question,
           options: q.type === 'MCQ' ? q.options : undefined,
           correctAnswer: q.type === 'MCQ' ? q.correctAnswer : q.rubric,
+          explanation: q.type === 'MCQ' ? (q.explanation ?? null) : null,
         })),
       },
     },
@@ -726,6 +784,7 @@ router.post('/submissions/:id/generate-retest', async (req: Request, res: Respon
       topic: owned.session.topic,
       mcqCount: generated.filter((q) => q.type === 'MCQ').length,
       durationMinutes: owned.session.durationMinutes,
+      showResultsToCandidate: owned.session.showResultsToCandidate,
       questions: {
         create: generated.map((q) => ({
           order: q.order,
@@ -733,6 +792,7 @@ router.post('/submissions/:id/generate-retest', async (req: Request, res: Respon
           question: q.question,
           options: q.type === 'MCQ' ? q.options : undefined,
           correctAnswer: q.type === 'MCQ' ? q.correctAnswer : q.rubric,
+          explanation: q.type === 'MCQ' ? (q.explanation ?? null) : null,
         })),
       },
     },

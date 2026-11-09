@@ -522,6 +522,7 @@ router.post('/:id/exam-sessions', async (req: Request, res: Response) => {
           question: q.question,
           options: q.type === 'MCQ' ? q.options : undefined,
           correctAnswer: q.type === 'MCQ' ? q.correctAnswer : q.rubric,
+          explanation: q.type === 'MCQ' ? (q.explanation ?? null) : null,
         })),
       },
     },

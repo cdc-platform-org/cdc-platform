@@ -5,6 +5,7 @@ import {
   createExamSession,
   getExamSession,
   updateExamSessionStatus,
+  updateExamSessionShowResults,
   deleteExamSession,
   parseExamSourceFile,
   parseExamSourceVideoFile,
@@ -64,6 +65,9 @@ const dictBase = {
     duration: 'ხანგრძლივობა (წუთი)',
     includeCode: 'დაამატე პროგრამირების კითხვა',
     includePractical: 'დაამატე 1 ღია კითხვა (მოსწავლე წერს პასუხს, AI აფასებს)',
+    showResults: 'დასრულებისთანავე აჩვენე მოსწავლეს ქულა და პასუხები ახსნებით, და გაუგზავნე მეილზე',
+    showResultsHint: 'გამორთე, თუ იგივე გამოცდა სხვა ჯგუფსაც აქვს ჩასაბარებელი და არ გინდა, რომ სწორი პასუხები გავრცელდეს.',
+    explanationLabel: 'ახსნა მოსწავლისთვის',
     summaryTitle: 'გამოცდის შეჯამება',
     summaryUntitled: 'უსახელო გამოცდა',
     summaryQuestions: 'კითხვები',
@@ -194,6 +198,9 @@ const dictBase = {
     duration: 'Duration (minutes)',
     includeCode: 'Add a coding question',
     includePractical: 'Add 1 open-ended question (written answer, graded by AI)',
+    showResults: 'Show students their score and answers with explanations right after they finish, and email them',
+    showResultsHint: 'Turn this off if another group still has to sit the same exam and you don\'t want the correct answers to spread.',
+    explanationLabel: 'Explanation for students',
     summaryTitle: 'Exam summary',
     summaryUntitled: 'Untitled exam',
     summaryQuestions: 'Questions',
@@ -313,7 +320,7 @@ const inputClass =
   'w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500';
 const labelClass = 'block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5';
 
-const emptyForm = { title: '', topic: '', description: '', mcqCount: 15, durationMinutes: 30, includeCodeQuestion: false, includePracticalQuestion: false, rawContent: '' };
+const emptyForm = { title: '', topic: '', description: '', mcqCount: 15, durationMinutes: 30, includeCodeQuestion: false, includePracticalQuestion: false, showResultsToCandidate: true, rawContent: '' };
 
 function CopyButton({ text, label, copiedLabel }: { text: string; label: string; copiedLabel: string }) {
   const [copied, setCopied] = useState(false);
@@ -371,6 +378,11 @@ function QuestionsPanel({ questions, t }: { questions: ExamQuestionWithAnswer[];
                   <span className="font-bold">{t.rubric}:</span> {q.correctAnswer}
                 </p>
               )
+            )}
+            {q.explanation && (
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                <span className="font-bold">{t.explanationLabel}:</span> {q.explanation}
+              </p>
             )}
           </li>
         ))}
@@ -833,6 +845,7 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
         mcqCount: createForm.mcqCount,
         includeCodeQuestion: createForm.includeCodeQuestion,
         includePracticalQuestion: createForm.includePracticalQuestion,
+        showResultsToCandidate: createForm.showResultsToCandidate,
         durationMinutes: createForm.durationMinutes,
       });
       await loadSessions();
@@ -859,6 +872,18 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
       setDetail(fresh);
       setSessions((prev) => prev.map((s) => (s.id === fresh.id ? { ...s, status: fresh.status } : s)));
     } catch {
+      setActionError(t.genericError);
+    }
+  };
+
+  const handleToggleShowResults = async (value: boolean) => {
+    if (!detail) return;
+    setActionError(null);
+    setDetail({ ...detail, showResultsToCandidate: value });
+    try {
+      await updateExamSessionShowResults(detail.id, value);
+    } catch {
+      setDetail({ ...detail, showResultsToCandidate: !value });
       setActionError(t.genericError);
     }
   };
@@ -1133,6 +1158,15 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
               />
               {t.includePractical}
             </label>
+            <label className="flex items-start gap-2 text-xs font-bold text-slate-600 dark:text-slate-300">
+              <input
+                type="checkbox"
+                checked={createForm.showResultsToCandidate}
+                onChange={(e) => setCreateForm({ ...createForm, showResultsToCandidate: e.target.checked })}
+                className="w-4 h-4 mt-0.5 shrink-0 rounded border-slate-300 dark:border-slate-700"
+              />
+              {t.showResults}
+            </label>
             <p className="flex items-start gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400">
               <Shuffle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               {t.shuffleNote}
@@ -1237,6 +1271,18 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
                   <p className="text-xs text-slate-500 dark:text-slate-400">{t.candidateLinkHint}</p>
                   <pre className="rounded-lg bg-slate-950 text-slate-100 p-4 text-xs overflow-x-auto"><code>{candidateUrl}</code></pre>
                   <CopyButton text={candidateUrl} label={t.copy} copiedLabel={t.copied} />
+                  <label className="flex items-start gap-2 pt-3 border-t border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={detail.showResultsToCandidate}
+                      onChange={(e) => handleToggleShowResults(e.target.checked)}
+                      className="w-4 h-4 mt-0.5 shrink-0 rounded border-slate-300 dark:border-slate-700"
+                    />
+                    <span>
+                      {t.showResults}
+                      <span className="block font-normal text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{t.showResultsHint}</span>
+                    </span>
+                  </label>
                 </div>
               )}
 

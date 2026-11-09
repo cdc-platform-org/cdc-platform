@@ -26,10 +26,14 @@ export const createExamSessionSchema = z.object({
   // turn it off for a pure multiple-choice test.
   includePracticalQuestion: z.boolean().optional().default(true),
   durationMinutes: z.number().int().min(5).max(180).default(30),
+  // Show score + answers with explanations to the student after submit and
+  // email them. On by default.
+  showResultsToCandidate: z.boolean().optional().default(true),
 });
 
 export const updateExamSessionSchema = z.object({
   status: z.enum(['ACTIVE', 'CLOSED']).optional(),
+  showResultsToCandidate: z.boolean().optional(),
 });
 
 export const startExamAttemptSchema = z.object({
@@ -49,6 +53,9 @@ export const startExamAttemptSchema = z.object({
 // one per real violation, timestamped by server receipt).
 export const submitExamAttemptSchema = z.object({
   answers: z.record(z.string(), z.string().max(5000)),
+  // Site language of the exam page — only picks the language of the
+  // results email (ka, or en for anything English).
+  locale: z.string().max(10).optional(),
 });
 
 export const proctoringEventSchema = z.object({

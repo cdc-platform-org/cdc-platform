@@ -13,6 +13,9 @@ export interface ExamSessionSummary {
   durationMinutes: number;
   status: ExamSessionStatus;
   candidateToken: string;
+  // Student sees score + answers with explanations after submitting, and
+  // gets them by email.
+  showResultsToCandidate: boolean;
   createdAt: string;
   updatedAt: string;
   _count: { submissions: number };
@@ -30,6 +33,7 @@ export interface ExamQuestionRow {
 // key (MCQ letter, or the AI grading rubric for open questions).
 export interface ExamQuestionWithAnswer extends ExamQuestionRow {
   correctAnswer: string | null;
+  explanation: string | null;
 }
 
 export interface AnswerGradeEntry {
@@ -91,6 +95,7 @@ export interface CreateExamSessionPayload {
   includeCodeQuestion?: boolean;
   includePracticalQuestion?: boolean;
   durationMinutes: number;
+  showResultsToCandidate?: boolean;
 }
 
 // ============================================================
@@ -159,6 +164,11 @@ export async function updateExamSessionStatus(id: string, status: ExamSessionSta
   return response.data.data;
 }
 
+export async function updateExamSessionShowResults(id: string, showResultsToCandidate: boolean): Promise<ExamSessionSummary> {
+  const response = await apiClient.patch<{ data: ExamSessionSummary }>(`/exam-proctoring/sessions/${id}`, { showResultsToCandidate });
+  return response.data.data;
+}
+
 export async function deleteExamSession(id: string): Promise<void> {
   await apiClient.delete(`/exam-proctoring/sessions/${id}`);
 }
@@ -183,6 +193,42 @@ export interface CandidateExamInfo {
   title: string;
   description: string | null;
   durationMinutes: number;
+  // Optional: older backend builds don't send it.
+  showResultsToCandidate?: boolean;
+}
+
+// The student's own results, in their own shuffled layout (same question
+// order and A-D letters they saw) — see Backend services/examResultsService.ts.
+export interface CandidateResultQuestion {
+  number: number;
+  type: ExamQuestionType;
+  question: string;
+  options: { A: string; B: string; C: string; D: string } | null;
+  candidateAnswer: string | null;
+  correctAnswer: string | null;
+  isCorrect: boolean | null;
+  explanation: string | null;
+  aiScore: number | null;
+  aiFeedback: string | null;
+  expectedAnswer: string | null;
+}
+
+export interface CandidateResults {
+  examTitle: string;
+  candidateName: string;
+  totalScore: number | null;
+  mcqScore: number | null;
+  practicalScore: number | null;
+  correctCount: number;
+  mcqTotal: number;
+  flagged: boolean;
+  completedAt: string | null;
+  questions: CandidateResultQuestion[];
+}
+
+export async function getCandidateResults(submissionToken: string): Promise<CandidateResults> {
+  const response = await apiClient.get<{ data: CandidateResults }>(`/exam-proctoring/submissions/${submissionToken}/results`);
+  return response.data.data;
 }
 
 export async function getCandidateExamInfo(candidateToken: string): Promise<CandidateExamInfo> {
@@ -215,8 +261,18 @@ export async function startCandidateExam(
   return response.data.data;
 }
 
-export async function submitCandidateExam(submissionToken: string, payload: { answers: Record<string, string> }): Promise<void> {
-  await apiClient.post(`/exam-proctoring/submissions/${submissionToken}/submit`, payload);
+// results is null when the teacher turned "show results to students" off.
+// Grading an open question can take a little while, hence the timeout.
+export async function submitCandidateExam(
+  submissionToken: string,
+  payload: { answers: Record<string, string>; locale?: string }
+): Promise<{ results: CandidateResults | null }> {
+  const response = await apiClient.post<{ data: { submitted: boolean; results?: CandidateResults | null } }>(
+    `/exam-proctoring/submissions/${submissionToken}/submit`,
+    payload,
+    { timeout: 2 * 60 * 1000 }
+  );
+  return { results: response.data.data?.results ?? null };
 }
 
 // Fire-and-forget: called the instant a real violation happens (tab switch,
