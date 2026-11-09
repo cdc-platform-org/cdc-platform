@@ -888,13 +888,10 @@ export default function ExamProctoringTab({ lang }: { lang: SupportedLocale }) {
 
   return (
     <div id="exam-proctoring" className="mb-10 scroll-mt-24">
-      <div className="mb-4">
-        <h2 className="text-lg font-black tracking-wide flex items-center gap-2">
-          <ClipboardList className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
-          {t.title}
-        </h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t.subtitle}</p>
-      </div>
+      {/* The page (proctored-exam.tsx) renders the tool title via
+          ToolPageHeader; this tab used to repeat the same title, so only
+          the how-it-works line stays here. */}
+      <p className="text-sm text-slate-600 dark:text-slate-400 mb-5">{t.subtitle}</p>
 
       {actionError && (
         <div className="rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-medium px-4 py-2.5 mb-4 flex items-center justify-between gap-3">
