@@ -87,13 +87,19 @@ async function createApprovedAudioUpsellBook(api: APIRequestContext, title: stri
   return id;
 }
 
+// The reader opens on the front cover like a real book; "Open the book"
+// turns to the title page and "Next" to the first story page.
 async function openAuthenticatedBook(page: Page, bookId: string) {
   await page.goto(`/en/dashboard/tools/childrens-book/reader/${bookId}`);
+  await expect(page.getByText('Cover', { exact: true })).toBeVisible({ timeout: 15000 });
+  await page.getByRole('button', { name: 'Open the book' }).click();
+  await expect(page.getByText('Title page', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Next' }).click();
   await expect(page.getByText(/^Page 1 \/ \d+$/).first()).toBeVisible({ timeout: 15000 });
 }
 
 test('children book 5/10/20-page mock golden paths, audio revision, and reader UI', async ({ page }) => {
-  test.setTimeout(90000);
+  test.setTimeout(180000);
   const books: Array<{ id: string; book: any; narrationCount: number }> = [];
   const api = await playwrightRequest.newContext({ baseURL: apiBaseUrl });
   const pageErrors: string[] = [];
@@ -233,7 +239,8 @@ test('children book 5/10/20-page mock golden paths, audio revision, and reader U
     await expect.poll(async () => Number(await page.getByRole('progressbar', { name: 'Audio progress' }).getAttribute('aria-valuenow'))).toBeGreaterThan(0);
     await page.getByRole('button', { name: 'Pause', exact: true }).click();
     await page.getByRole('button', { name: 'Play Full Story' }).click();
-    await expect(page.getByText('Page 10 / 10', { exact: true }).first()).toBeVisible({ timeout: 15000 });
+    // Read-aloud turns each page itself after its narration (plus the page-turn animation).
+    await expect(page.getByText('Page 10 / 10', { exact: true }).first()).toBeVisible({ timeout: 60000 });
 
     await openAuthenticatedBook(page, books[0].id);
     await expect(page.getByRole('region', { name: 'Audio controls' })).toHaveCount(0);

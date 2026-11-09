@@ -1,46 +1,51 @@
 import { useEffect, useRef, useState } from 'react';
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
-import { ArrowLeft, ChevronLeft, ChevronRight, Headphones, Loader2, Pause, Play, Repeat } from 'lucide-react';
+import { ArrowLeft, Headphones, Loader2 } from 'lucide-react';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
 import ProtectedRoute from '../../../../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../../../src/components/layout/SiteFooter';
 import SEOHead from '../../../../../src/components/seo/SEOHead';
-import { bookFontFamily } from '../../../../../src/components/tools/childrensBook/bookFonts';
+import FlipBook from '../../../../../src/components/tools/childrensBook/FlipBook';
 import {
   AudioNarrationStatus,
   BookProject,
+  downloadFullStoryMp3,
   fetchBookPageImageUrl,
+  fetchCharacterPreviewImageUrl,
+  fetchCoverImageUrl,
   fetchNarrationAudioUrl,
   generateNarration,
   getBook,
   getNarrationStatus,
 } from '../../../../../src/services/childrensBookService';
 
+// The owner's reader: the finished book as a flip book that opens on its
+// cover (see FlipBook). Pictures and narration need the owner's login, so
+// they are fetched here as blob URLs.
+
 function BookReaderContent() {
   const { t } = useTranslation('childrensBook');
-  // Effects below read the translator through a ref so a locale switch
-  // doesn't re-run their fetch/playback side effects.
   const tRef = useRef(t);
   tRef.current = t;
   const router = useRouter();
   const bookId = typeof router.query.bookId === 'string' ? router.query.bookId : null;
   const [book, setBook] = useState<BookProject | null>(null);
   const [audioStatus, setAudioStatus] = useState<AudioNarrationStatus | null>(null);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [portraitUrl, setPortraitUrl] = useState<string | null>(null);
+  const [imageUrls, setImageUrls] = useState<Record<number, string>>({});
   const [audioUrls, setAudioUrls] = useState<Record<number, string>>({});
-  const [playing, setPlaying] = useState(false);
-  const [playingFullStory, setPlayingFullStory] = useState(false);
   const [generatingAudio, setGeneratingAudio] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [downloadingMp3, setDownloadingMp3] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const imageUrlRef = useRef<string | null>(null);
-  const audioUrlsRef = useRef<Record<number, string>>({});
+  const objectUrls = useRef<string[]>([]);
+  const track = (url: string) => {
+    objectUrls.current.push(url);
+    return url;
+  };
 
   useEffect(() => {
     if (!bookId) return;
@@ -48,56 +53,54 @@ function BookReaderContent() {
     getBook(bookId).then(async ({ book: loadedBook }) => {
       if (cancelled) return;
       setBook(loadedBook);
-      if (loadedBook.audioAddOnPurchased) {
-        setAudioStatus(await getNarrationStatus(bookId).catch(() => null));
-      }
+      if (loadedBook.audioAddOnPurchased) setAudioStatus(await getNarrationStatus(bookId).catch(() => null));
     }).catch(() => {
       if (!cancelled) setError(tRef.current('readerLoadFailed'));
     });
     return () => { cancelled = true; };
   }, [bookId]);
 
+  // Cover and portrait first (the book opens on them), then every page.
   useEffect(() => {
     if (!bookId || !book?.pages?.length) return;
     let cancelled = false;
-    fetchBookPageImageUrl(bookId, pageNumber).then((url) => {
-      if (cancelled) {
-        URL.revokeObjectURL(url);
-        return;
+    (async () => {
+      const [cover, portrait] = await Promise.all([
+        fetchCoverImageUrl(bookId).catch(() => null),
+        fetchCharacterPreviewImageUrl(bookId).catch(() => null),
+      ]);
+      if (cancelled) return;
+      if (cover) setCoverUrl(track(cover));
+      if (portrait) setPortraitUrl(track(portrait));
+      for (const page of book.pages ?? []) {
+        const url = await fetchBookPageImageUrl(bookId, page.pageNumber).catch(() => null);
+        if (cancelled) return;
+        if (url) setImageUrls((current) => ({ ...current, [page.pageNumber]: track(url) }));
       }
-      if (imageUrlRef.current) URL.revokeObjectURL(imageUrlRef.current);
-      imageUrlRef.current = url;
-      setImageUrl(url);
-    }).catch(() => setImageUrl(null));
+    })();
     return () => { cancelled = true; };
-  }, [bookId, book?.pages?.length, pageNumber]);
+  }, [bookId, book?.pages]);
 
   useEffect(() => {
-    if (!bookId || !book?.audioAddOnPurchased || !audioStatus?.eligible) return;
+    if (!bookId || !audioStatus?.eligible) return;
     let cancelled = false;
-    const pageNumbers = [...new Set(audioStatus.artifacts.filter((artifact) => artifact.status === 'READY').map((artifact) => artifact.pageNumber))];
-    Promise.all(pageNumbers.map(async (number) => [number, await fetchNarrationAudioUrl(bookId, number)] as const))
+    const ready = [...new Set(audioStatus.artifacts.filter((a) => a.status === 'READY').map((a) => a.pageNumber))].filter((n) => !audioUrls[n]);
+    Promise.all(ready.map(async (number) => [number, await fetchNarrationAudioUrl(bookId, number)] as const))
       .then((entries) => {
-        const nextUrls = Object.fromEntries(entries);
-        if (cancelled) {
-          Object.values(nextUrls).forEach((url) => URL.revokeObjectURL(url));
-          return;
-        }
-        Object.values(audioUrlsRef.current).forEach((url) => URL.revokeObjectURL(url));
-        audioUrlsRef.current = nextUrls;
-        setAudioUrls(nextUrls);
+        if (cancelled) return;
+        setAudioUrls((current) => ({ ...current, ...Object.fromEntries(entries.map(([n, url]) => [n, track(url)])) }));
       })
       .catch(() => {
         if (!cancelled) setError(tRef.current('readerAudioLoadFailed'));
       });
     return () => { cancelled = true; };
-  }, [bookId, book?.audioAddOnPurchased, audioStatus?.eligible, audioStatus?.artifacts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookId, audioStatus?.eligible, audioStatus?.artifacts]);
 
   // Narration is produced on the server right after the pictures; poll for
-  // it for a while instead of asking the parent to press a button. After
-  // ~10 minutes the manual button appears as a fallback.
+  // it for a while. After ~10 minutes a manual button appears as a fallback.
   const [audioPollGaveUp, setAudioPollGaveUp] = useState(false);
-  const readyAudioCount = new Set(audioStatus?.artifacts.filter((artifact) => artifact.status === 'READY').map((artifact) => artifact.pageNumber) ?? []).size;
+  const readyAudioCount = new Set(audioStatus?.artifacts.filter((a) => a.status === 'READY').map((a) => a.pageNumber) ?? []).size;
   useEffect(() => {
     if (!bookId || !book?.audioAddOnPurchased || !audioStatus?.eligible || readyAudioCount >= book.pageCount) return;
     let polls = 0;
@@ -114,62 +117,15 @@ function BookReaderContent() {
     return () => clearInterval(interval);
   }, [bookId, book?.audioAddOnPurchased, book?.pageCount, audioStatus?.eligible, readyAudioCount]);
 
-  useEffect(() => () => {
-    if (imageUrlRef.current) URL.revokeObjectURL(imageUrlRef.current);
-    Object.values(audioUrlsRef.current).forEach((url) => URL.revokeObjectURL(url));
-  }, []);
-
-  async function togglePlayback() {
-    const player = audioRef.current;
-    if (playing && player) {
-      player.pause();
-      setPlayingFullStory(false);
-      return;
-    }
-    if (audioUrls[pageNumber] && player) {
-      try {
-        await player.play();
-      } catch {
-        setError(t('readerPlaybackFailed'));
-      }
-    }
-  }
-
-  function changePage(nextPage: number) {
-    if (!book) return;
-    audioRef.current?.pause();
-    setPlaying(false);
-    setPlayingFullStory(false);
-    setCurrentTime(0);
-    setDuration(0);
-    setPageNumber(Math.max(1, Math.min(book.pageCount, nextPage)));
-  }
-
-  async function handleAudioEnded() {
-    setPlaying(false);
-    setCurrentTime(0);
-    if (playingFullStory && book && pageNumber < book.pageCount) {
-      setPageNumber(pageNumber + 1);
-    } else if (playingFullStory) {
-      setPlayingFullStory(false);
-    }
-  }
-
-  async function startFullStory() {
-    if (!book || !audioStatus?.eligible || !audioUrls[1]) return;
-    audioRef.current?.pause();
-    setError(null);
-    setCurrentTime(0);
-    setPlayingFullStory(true);
-    setPageNumber(1);
-  }
+  useEffect(() => () => objectUrls.current.forEach((url) => URL.revokeObjectURL(url)), []);
 
   async function handleGenerateAudio() {
     if (!bookId) return;
     setGeneratingAudio(true);
     setError(null);
     try {
-      setAudioStatus(await generateNarration(bookId));
+      await generateNarration(bookId);
+      setAudioStatus(await getNarrationStatus(bookId));
     } catch {
       setError(t('readerAudioGenerateFailed'));
     } finally {
@@ -177,16 +133,17 @@ function BookReaderContent() {
     }
   }
 
-  useEffect(() => {
-    if (!playingFullStory || !audioUrls[pageNumber]) return;
-    const player = audioRef.current;
-    if (!player) return;
-    player.currentTime = 0;
-    player.play().catch(() => {
-      setPlayingFullStory(false);
-      setError(tRef.current('readerPlaybackContinueFailed'));
-    });
-  }, [audioUrls, pageNumber, playingFullStory]);
+  async function handleDownloadMp3() {
+    if (!book) return;
+    setDownloadingMp3(true);
+    try {
+      await downloadFullStoryMp3(book.id, book.title);
+    } catch {
+      setError(t('flipDownloadMp3Failed'));
+    } finally {
+      setDownloadingMp3(false);
+    }
+  }
 
   if (!book) {
     return (
@@ -197,92 +154,56 @@ function BookReaderContent() {
     );
   }
 
-  const page = book.pages?.find((entry) => entry.pageNumber === pageNumber);
   // Readable as soon as every page has its picture: a finished book that is
   // mid-revision or whose status lags behind must not say "still preparing".
   const acceptedPages = book.pages?.filter((entry) => !!entry.acceptedEventId).length ?? 0;
   const readable = book.status === 'FINAL_READY' || book.status === 'COMPLETED' || (book.pageCount > 0 && acceptedPages >= book.pageCount);
-  const readyAudioPages = new Set(audioStatus?.artifacts.filter((artifact) => artifact.status === 'READY').map((artifact) => artifact.pageNumber) ?? []).size;
-  const audioPreparing = !!book.audioAddOnPurchased && !!audioStatus?.eligible && readyAudioPages < book.pageCount;
-  const audioReady = (audioStatus?.artifacts.some((artifact) => artifact.pageNumber === pageNumber && artifact.status === 'READY') ?? false) && !!audioUrls[pageNumber];
-  const fullStoryReady = !!book && Array.from({ length: book.pageCount }, (_, index) => index + 1).every((number) =>
-    audioStatus?.artifacts.some((artifact) => artifact.pageNumber === number && artifact.status === 'READY') && !!audioUrls[number]
-  );
-  const progress = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
+  const narrationOn = !!book.audioAddOnPurchased && !!audioStatus?.eligible;
+  const audioPreparing = narrationOn && readyAudioCount < book.pageCount;
+  const config = book.characterConfig as (Record<string, unknown> & { name?: string; dedication?: string | null; fontId?: string | null }) | null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-[#f7f2fd] to-white">
       <SEOHead title={`${book.title} · ${t('readerLabel')}`} description={book.title} noIndex />
       <SiteHeader />
-      <main className="max-w-5xl mx-auto px-4 py-8">
-        <button onClick={() => router.push('/dashboard/tools/childrens-book')} className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-purple-700 mb-5">
-          <ArrowLeft className="w-4 h-4" /> {t('backToMyBooks')}
-        </button>
-        <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
-          <div>
-            {/* Headings carry a sitewide !important font, so the book font goes on an inner span. */}
-            <h1 className="text-2xl font-bold text-gray-900"><span style={{ fontFamily: bookFontFamily(book.characterConfig?.fontId) }}>{book.title}</span></h1>
-            <p className="text-sm text-gray-500 mt-1">{t('readerPageOf', { number: pageNumber, total: book.pageCount })}</p>
-          </div>
+      <main className="mx-auto max-w-6xl px-4 py-6">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <button onClick={() => router.push(`/dashboard/tools/childrens-book?bookId=${book.id}`)} className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-purple-700">
+            <ArrowLeft className="w-4 h-4" /> {t('backToMyBooks')}
+          </button>
           {book.audioAddOnPurchased && <span className="inline-flex items-center gap-1.5 text-sm font-medium text-purple-700"><Headphones className="w-4 h-4" /> {t('audioStoryBadge')}</span>}
         </div>
-
         {error && <p role="alert" className="mb-4 text-sm text-red-700">{error}</p>}
         {!readable ? (
           <p className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{t('readerStillPreparing')}</p>
         ) : (
-          <>
-            <section className="grid gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.7fr)]">
-              <div className="min-w-0">
-                <div className="aspect-[4/3] rounded-lg border border-gray-200 bg-white flex items-center justify-center overflow-hidden">
-                  {imageUrl ? <img src={imageUrl} alt={t('readerImageAlt', { title: book.title, number: pageNumber })} className="w-full h-full object-contain" /> : <span className="text-sm text-gray-400">{t('readerIllustrationUnavailable')}</span>}
-                </div>
-                <div className="flex items-center justify-between gap-3 mt-4">
-                  <button disabled={pageNumber <= 1} onClick={() => changePage(pageNumber - 1)} className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm disabled:opacity-40"><ChevronLeft className="w-4 h-4" />{t('readerPrevious')}</button>
-                  <span className="text-sm font-medium text-gray-600">{t('readerPageOf', { number: pageNumber, total: book.pageCount })}</span>
-                  <button disabled={pageNumber >= book.pageCount} onClick={() => changePage(pageNumber + 1)} className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm disabled:opacity-40">{t('readerNext')}<ChevronRight className="w-4 h-4" /></button>
-                </div>
+          <FlipBook
+            book={{
+              title: book.title,
+              heroName: (book.characterBible as { name?: string } | null)?.name ?? config?.name ?? null,
+              dedication: config?.dedication ?? null,
+              blurb: book.storyPlan?.extras?.blurb ?? null,
+              fontId: config?.fontId ?? null,
+              coverUrl,
+              portraitUrl,
+              pages: (book.pages ?? []).map((page) => ({
+                pageNumber: page.pageNumber,
+                storyText: page.storyText ?? '',
+                imageUrl: imageUrls[page.pageNumber] ?? null,
+                audioUrl: audioUrls[page.pageNumber] ?? null,
+              })),
+            }}
+            hasNarration={narrationOn}
+            audioPreparing={audioPreparing}
+            onDownloadMp3={narrationOn ? handleDownloadMp3 : null}
+            downloadingMp3={downloadingMp3}
+            createUrl={`${router.locale && router.locale !== 'ka' ? `/${router.locale}` : ''}/dashboard/tools/childrens-book`}
+            footer={audioPreparing && audioPollGaveUp ? (
+              <div className="mx-auto mt-3 max-w-[1100px]">
+                <button disabled={generatingAudio} onClick={handleGenerateAudio} className="rounded-md border border-gray-300 px-3 py-2 text-sm disabled:opacity-40">{generatingAudio ? t('readerPreparingAudio') : t('generateAudioStory')}</button>
               </div>
-
-              <article className="rounded-lg border border-gray-200 bg-white p-5">
-                <h2 className="text-sm font-semibold text-gray-500">{t('pageLabel', { number: pageNumber })}</h2>
-                <p className="mt-4 whitespace-pre-wrap text-lg leading-8 text-gray-800" style={{ fontFamily: bookFontFamily(book.characterConfig?.fontId) }}>{page?.storyText || t('readerStoryTextUnavailable')}</p>
-              </article>
-            </section>
-
-            {book.audioAddOnPurchased && audioStatus?.eligible && (
-              <section className="mt-6 border-t border-gray-200 pt-5" aria-label="Audio controls">
-                <div className="flex flex-wrap items-center gap-3">
-                  <button disabled={!audioReady} onClick={togglePlayback} className="inline-flex items-center gap-2 rounded-md bg-purple-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-40">
-                    {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}{playing ? t('readerPause') : t('readerPlay')}
-                  </button>
-                  <button disabled={!fullStoryReady} onClick={startFullStory} className="inline-flex items-center gap-2 rounded-md border border-purple-300 px-4 py-2 text-sm font-medium text-purple-700 disabled:opacity-40">
-                    <Repeat className="w-4 h-4" />{t('readerPlayFullStory')}
-                  </button>
-                  <span className="text-sm text-gray-500">{t('readerPageNarration', { number: pageNumber })}</span>
-                  {audioPreparing && (
-                    <span className="inline-flex items-center gap-1.5 text-sm text-purple-700"><Loader2 className="w-4 h-4 animate-spin" />{t('readerPreparingAudio')}</span>
-                  )}
-                  {audioPreparing && audioPollGaveUp && <button disabled={generatingAudio} onClick={handleGenerateAudio} className="rounded-md border border-gray-300 px-3 py-2 text-sm disabled:opacity-40">{generatingAudio ? t('readerPreparingAudio') : t('generateAudioStory')}</button>}
-                </div>
-                <div className="mt-3 h-1.5 w-full overflow-hidden rounded bg-gray-200" role="progressbar" aria-label="Audio progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}>
-                  <div className="h-full bg-purple-600 transition-[width]" style={{ width: `${progress}%` }} />
-                </div>
-                <div className="mt-1 flex justify-between text-xs text-gray-500"><span>{t('readerSeconds', { value: Math.floor(currentTime) })}</span><span>{t('readerSeconds', { value: Math.floor(duration) })}</span></div>
-                <audio
-                  ref={audioRef}
-                  src={audioUrls[pageNumber]}
-                  preload="none"
-                  onPlay={() => setPlaying(true)}
-                  onPause={() => setPlaying(false)}
-                  onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
-                  onDurationChange={(event) => setDuration(event.currentTarget.duration || 0)}
-                  onEnded={handleAudioEnded}
-                  className="sr-only"
-                />
-              </section>
-            )}
-          </>
+            ) : null}
+          />
         )}
       </main>
       <SiteFooter />

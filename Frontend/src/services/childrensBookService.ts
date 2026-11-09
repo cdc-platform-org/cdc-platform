@@ -56,6 +56,14 @@ export interface AudioNarrationStatus {
   artifacts: BookNarrationArtifact[];
 }
 
+// Real-book extras kept on storyPlan by the backend (bookExtrasService.ts).
+export interface BookExtras {
+  blurb?: string | null;
+  coverKey?: string | null;
+  shareToken?: string | null;
+  shareDisabled?: boolean;
+}
+
 export interface BookProject {
   id: string;
   userId: string;
@@ -74,7 +82,7 @@ export interface BookProject {
   characterConfig: BookCharacterConfig | null;
   characterBible: Record<string, unknown> | null;
   styleBible: Record<string, unknown> | null;
-  storyPlan: { title: string; dedication: string | null; pages: unknown[]; textApprovedAt?: string | null; textRegenerations?: number } | null;
+  storyPlan: { title: string; dedication: string | null; pages: unknown[]; textApprovedAt?: string | null; textRegenerations?: number; extras?: BookExtras } | null;
   finalPdfBlobRef: string | null;
   pdfVersion: number;
   previewConfirmedAt: string | null;
@@ -326,4 +334,62 @@ export async function downloadPrintPdf(id: string, settings: PrintRequest, filen
 // backend and cached), used by the style picker as a plain <img src>.
 export function styleSampleUrl(style: string): string {
   return `${API_BASE_URL}/childrens-books/style-samples/${encodeURIComponent(style)}`;
+}
+
+function saveBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+// Front cover (the dedicated cover, or page 1's picture for older books).
+export async function fetchCoverImageUrl(id: string): Promise<string> {
+  const response = await apiClient.get(`/childrens-books/${id}/cover/image`, { responseType: 'blob' });
+  return URL.createObjectURL(response.data as Blob);
+}
+
+// The whole story as one MP3 (every page's narration, in order).
+export async function downloadFullStoryMp3(id: string, title: string): Promise<void> {
+  const response = await apiClient.get(`/childrens-books/${id}/audio/full-story.mp3`, { responseType: 'blob' });
+  saveBlob(response.data as Blob, `${title}.mp3`);
+}
+
+// Public "read & listen" link (and the QR code on the PDF's back cover).
+export async function setBookSharing(id: string, enabled: boolean): Promise<{ shareEnabled: boolean; shareToken: string | null }> {
+  const response = await apiClient.post<{ data: { shareEnabled: boolean; shareToken: string | null } }>(`/childrens-books/${id}/share`, { enabled });
+  return response.data.data;
+}
+
+export function bookShareUrl(token: string, language: BookLanguage): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://cdc.org.ge';
+  return `${origin}${language === 'EN' ? '/en' : ''}/book/${token}`;
+}
+
+export interface SharedBook {
+  title: string;
+  language: BookLanguage;
+  heroName: string | null;
+  dedication: string | null;
+  fontId: string | null;
+  blurb: string | null;
+  pageCount: number;
+  hasDedicatedCover: boolean;
+  pages: Array<{ pageNumber: number; storyText: string; hasImage: boolean; hasAudio: boolean }>;
+  fullStoryAudio: boolean;
+  createUrl: string;
+}
+
+export async function getSharedBook(token: string): Promise<SharedBook> {
+  const response = await apiClient.get<{ data: SharedBook }>(`/childrens-books/shared/${encodeURIComponent(token)}`);
+  return response.data.data;
+}
+
+// Plain URLs (no login) for <img>/<audio> on the public page.
+export function sharedBookAssetUrl(token: string, path: string): string {
+  return `${API_BASE_URL}/childrens-books/shared/${encodeURIComponent(token)}/${path}`;
 }
