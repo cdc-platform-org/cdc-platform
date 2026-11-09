@@ -1,4 +1,5 @@
 import { useRouter } from 'next/router';
+import ToolGuideButton from '../../../src/components/tools/ToolGuideButton';
 import Head from 'next/head';
 import { ShieldCheck } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
@@ -52,7 +53,7 @@ function ProctoredExamContent() {
       <Head>
         <title>{`${t.title} | CDC Platform`}</title>
       </Head>
-      <ToolPageHeader icon={ShieldCheck} accent="cyan" title={t.title} subtitle={t.subtitle} />
+      <ToolPageHeader icon={ShieldCheck} accent="cyan" title={t.title} subtitle={t.subtitle} actions={<ToolGuideButton guide="exam" />} />
       <ToolMediaBanner slug="proctoring" alt={t.title} />
       <ExamProctoringTab lang={lang} />
     </ToolShell>
