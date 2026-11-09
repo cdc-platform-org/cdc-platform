@@ -1,4 +1,4 @@
-import { shuffleQuestionsForSubmission, displayedToCanonicalLetter } from '../examShuffle';
+import { shuffleQuestionsForSubmission, displayedToCanonicalLetter, canonicalToDisplayedLetter } from '../examShuffle';
 
 const questions = Array.from({ length: 15 }, (_, i) => ({
   id: `q${i}`,
@@ -52,5 +52,14 @@ describe('examShuffle', () => {
   it('passes through non A-D values unchanged', () => {
     expect(displayedToCanonicalLetter('t', 'q0', '')).toBe('');
     expect(displayedToCanonicalLetter('t', 'q0', 'Z')).toBe('Z');
+  });
+
+  it('canonicalToDisplayedLetter is the inverse of displayedToCanonicalLetter', () => {
+    for (const token of ['a', 'b', 'c']) {
+      for (const letter of ['A', 'B', 'C', 'D']) {
+        expect(canonicalToDisplayedLetter(token, 'q1', displayedToCanonicalLetter(token, 'q1', letter))).toBe(letter);
+      }
+    }
+    expect(canonicalToDisplayedLetter('t', 'q0', '')).toBe('');
   });
 });

@@ -85,3 +85,10 @@ export function displayedToCanonicalLetter(submissionToken: string, questionId: 
   if (idx === -1) return displayed;
   return optionPermutation(submissionToken, questionId)[idx];
 }
+
+// Inverse of displayedToCanonicalLetter: which letter this student saw for
+// a canonical option. Used to show results in the student's own layout.
+export function canonicalToDisplayedLetter(submissionToken: string, questionId: string, canonical: string): string {
+  const idx = optionPermutation(submissionToken, questionId).indexOf(canonical as OptionLetter);
+  return idx === -1 ? canonical : LETTERS[idx];
+}

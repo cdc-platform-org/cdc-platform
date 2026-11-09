@@ -3444,6 +3444,12 @@ model ExamSession {
   rawContent      String?
   mcqCount        Int               @default(5)
   durationMinutes Int               @default(30)
+  // When true, a student sees their score plus every question with the
+  // correct answer and an explanation right after submitting, and the same
+  // results are emailed to the address they typed before starting. The
+  // teacher can switch it off (e.g. while other groups still have to sit
+  // the same exam) from the dashboard.
+  showResultsToCandidate Boolean    @default(true)
   status          ExamSessionStatus @default(ACTIVE)
   // Public shareable link uses this, never the real id — same reasoning as
   // AgentConversation.visitorRef being client-opaque, but here it's the
@@ -3494,6 +3500,10 @@ model ExamQuestion {
   // totalScore) — defaults to 1 (all questions equal), same "opt-in
   // complexity" posture as Course.originalPrice-style defaults elsewhere.
   weight        Int              @default(1)
+  // Short teaching explanation of why the correct answer is correct, shown
+  // to the student in their results (screen + email). Generated together
+  // with the question; filled in lazily for exams created before it existed.
+  explanation   String?
   createdAt     DateTime         @default(now())
 
   @@index([examSessionId])

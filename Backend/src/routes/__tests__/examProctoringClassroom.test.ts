@@ -15,8 +15,13 @@ jest.mock('../../services/examProctoringService', () => {
     gradePracticalAnswer: jest.fn(),
     estimateAiTextScore: jest.fn(),
     generateAdaptiveStudyGuide: jest.fn().mockResolvedValue({ guideText: 'Review the material.' }),
+    generateMcqExplanations: jest.fn().mockResolvedValue({}),
   };
 });
+jest.mock('../../services/emailService', () => ({
+  ...jest.requireActual('../../services/emailService'),
+  sendExamResultsEmail: jest.fn().mockResolvedValue(undefined),
+}));
 
 let server: Server;
 let baseUrl: string;

@@ -852,3 +852,153 @@ export async function sendGiftCardDeliveredToBuyerEmail(p: GiftCardEmailParams &
   );
   await sendEmail(p.to, 'შენი სასაჩუქრე ბარათი გაიგზავნა', html, link);
 }
+
+// ============================================================
+// AI PROCTORED EXAM — the student's own results (score + every question
+// with the correct answer and explanation), sent to the email they typed
+// before starting. Everything shown comes from AI output or student input,
+// so every field is HTML-escaped.
+// ============================================================
+export interface ExamResultsEmailQuestion {
+  number: number;
+  type: 'MCQ' | 'PRACTICAL' | 'CODE';
+  question: string;
+  options: Record<string, string> | null;
+  candidateAnswer: string | null;
+  correctAnswer: string | null;
+  isCorrect: boolean | null;
+  explanation: string | null;
+  aiScore: number | null;
+  aiFeedback: string | null;
+  expectedAnswer: string | null;
+}
+
+export interface ExamResultsEmailParams {
+  to: string;
+  locale: NotificationLocale;
+  examTitle: string;
+  candidateName: string;
+  totalScore: number | null;
+  correctCount: number;
+  mcqTotal: number;
+  flagged: boolean;
+  questions: ExamResultsEmailQuestion[];
+  resultsUrl: string;
+}
+
+const EXAM_RESULTS_COPY = {
+  ka: {
+    subject: (title: string) => `შენი შედეგები: ${title}`,
+    hello: (name: string) => `გამარჯობა, ${name}!`,
+    intro: 'გამოცდა დასრულდა. ქვემოთ არის შენი ქულა და ყველა კითხვა სწორი პასუხითა და ახსნით.',
+    score: 'ქულა',
+    correctOf: (c: number, n: number) => `სწორი პასუხი: ${c} / ${n}`,
+    flagged: 'გამოცდა დაფიქსირდა დარღვევების ან დროის ამოწურვის გამო. ღია კითხვები AI-მ არ შეაფასა, საბოლოო შედეგს მასწავლებელი გადახედავს.',
+    yourAnswer: 'შენი პასუხი',
+    noAnswer: 'პასუხი არ გაცემულა',
+    correct: 'სწორი პასუხი',
+    explanation: 'ახსნა',
+    feedback: 'შეფასება',
+    expected: 'რა უნდა ყოფილიყო პასუხში',
+    points: (s: number) => `${s} / 100`,
+    notGraded: 'ჯერ არ შეფასებულა',
+    cta: 'შედეგების ნახვა საიტზე',
+  },
+  en: {
+    subject: (title: string) => `Your results: ${title}`,
+    hello: (name: string) => `Hi ${name},`,
+    intro: 'Your exam is complete. Below are your score and every question with the correct answer and an explanation.',
+    score: 'Score',
+    correctOf: (c: number, n: number) => `Correct answers: ${c} / ${n}`,
+    flagged: 'This attempt was flagged (violations or time limit). Open questions were not AI-graded; your teacher will review the final result.',
+    yourAnswer: 'Your answer',
+    noAnswer: 'No answer',
+    correct: 'Correct answer',
+    explanation: 'Explanation',
+    feedback: 'Feedback',
+    expected: 'What a strong answer includes',
+    points: (s: number) => `${s} / 100`,
+    notGraded: 'Not graded yet',
+    cta: 'View results online',
+  },
+};
+
+export function buildExamResultsEmailHtml(p: ExamResultsEmailParams): string {
+  const c = EXAM_RESULTS_COPY[p.locale];
+  const e = (s: string) => escapeHtml(s).replace(/\n/g, '<br/>');
+  const optionText = (q: ExamResultsEmailQuestion, letter: string | null) =>
+    letter && q.options && q.options[letter] ? `${letter}. ${q.options[letter]}` : letter ?? '';
+
+  const rows = p.questions
+    .map((q) => {
+      let body = '';
+      if (q.type === 'MCQ') {
+        const mark = q.isCorrect ? '✅' : '❌';
+        const yours = q.candidateAnswer ? optionText(q, q.candidateAnswer) : c.noAnswer;
+        body += `<div style="margin-top:8px;color:${q.isCorrect ? '#047857' : '#b91c1c'};">${mark} ${c.yourAnswer}: <strong>${e(yours)}</strong></div>`;
+        if (!q.isCorrect && q.correctAnswer) {
+          body += `<div style="margin-top:4px;color:#047857;">${c.correct}: <strong>${e(optionText(q, q.correctAnswer))}</strong></div>`;
+        }
+        if (q.explanation) {
+          body += `<div style="margin-top:8px;padding:10px 12px;background:#f1f5f9;border-radius:8px;color:#334155;"><strong>${c.explanation}:</strong> ${e(q.explanation)}</div>`;
+        }
+      } else {
+        body += `<div style="margin-top:8px;color:#334155;">${c.yourAnswer}:</div>`;
+        body += `<div style="margin-top:4px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;color:#0f172a;${q.type === 'CODE' ? "font-family:Menlo,Consolas,monospace;font-size:12px;" : ''}">${q.candidateAnswer?.trim() ? e(q.candidateAnswer) : c.noAnswer}</div>`;
+        body += `<div style="margin-top:8px;color:#334155;"><strong>${c.score}:</strong> ${q.aiScore != null ? c.points(q.aiScore) : c.notGraded}</div>`;
+        if (q.aiFeedback) body += `<div style="margin-top:6px;padding:10px 12px;background:#f1f5f9;border-radius:8px;color:#334155;"><strong>${c.feedback}:</strong> ${e(q.aiFeedback)}</div>`;
+        if (q.expectedAnswer) body += `<div style="margin-top:6px;color:#475569;font-size:13px;"><strong>${c.expected}:</strong> ${e(q.expectedAnswer)}</div>`;
+      }
+      return `<tr><td style="padding:14px 0;border-top:1px solid #e2e8f0;font-size:14px;line-height:1.55;">
+        <div style="font-weight:700;color:#0f172a;">${q.number}. ${e(q.question)}</div>${body}
+      </td></tr>`;
+    })
+    .join('');
+
+  const scoreLine = p.totalScore != null ? `${Math.round(p.totalScore)}%` : '—';
+  return `<!DOCTYPE html>
+<html>
+  <body style="margin:0;padding:0;background-color:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 12px;">
+      <tr><td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+          <tr><td style="background:#2563eb;background-image:linear-gradient(135deg,#06b6d4,#7c3aed);padding:24px 28px;">
+            <span style="color:#ffffff;font-weight:900;font-size:18px;letter-spacing:0.05em;">CDC</span>
+            <div style="color:#e0f2fe;font-size:14px;margin-top:6px;">${e(p.examTitle)}</div>
+          </td></tr>
+          <tr><td style="padding:28px;">
+            <p style="margin:0 0 6px;font-size:15px;color:#0f172a;">${e(c.hello(p.candidateName))}</p>
+            <p style="margin:0 0 18px;font-size:14px;color:#475569;line-height:1.6;">${c.intro}</p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;border-radius:12px;">
+              <tr><td style="padding:16px 18px;">
+                <div style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">${c.score}</div>
+                <div style="font-size:36px;font-weight:900;color:#0f172a;line-height:1.2;">${scoreLine}</div>
+                ${p.mcqTotal > 0 ? `<div style="font-size:13px;color:#475569;">${c.correctOf(p.correctCount, p.mcqTotal)}</div>` : ''}
+              </td></tr>
+            </table>
+            ${p.flagged ? `<p style="margin:14px 0 0;padding:10px 12px;background:#fef3c7;border-radius:8px;font-size:13px;color:#92400e;">${c.flagged}</p>` : ''}
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:18px;">${rows}</table>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:22px;"><tr>
+              <td style="border-radius:10px;background:#2563eb;background-image:linear-gradient(135deg,#06b6d4,#2563eb);">
+                <a href="${p.resultsUrl}" style="display:inline-block;padding:12px 26px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;">${c.cta}</a>
+              </td>
+            </tr></table>
+          </td></tr>
+          <tr><td style="padding:16px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;">
+            <p style="margin:0;font-size:11px;color:#94a3b8;">CDC — Center for Digital Careers</p>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>`;
+}
+
+export function examResultsUrl(submissionToken: string, locale: NotificationLocale): string {
+  return `${FRONTEND_URL}${locale === 'en' ? '/en' : ''}/exam/result/${encodeURIComponent(submissionToken)}`;
+}
+
+export async function sendExamResultsEmail(p: ExamResultsEmailParams): Promise<void> {
+  const html = buildExamResultsEmailHtml(p);
+  await sendEmail(p.to, EXAM_RESULTS_COPY[p.locale].subject(p.examTitle), html, p.resultsUrl);
+}

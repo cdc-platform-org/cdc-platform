@@ -188,6 +188,10 @@ const mcqSchema = z.object({
   question: z.string().min(1),
   options: z.object({ A: z.string().min(1), B: z.string().min(1), C: z.string().min(1), D: z.string().min(1) }),
   correctAnswer: z.enum(['A', 'B', 'C', 'D']),
+  // Shown to the student in their results. Optional so one missing
+  // explanation never fails a whole (paid) generation call — results simply
+  // show no explanation for that question.
+  explanation: z.string().optional(),
 });
 const practicalSchema = z.object({
   question: z.string().min(1),
@@ -209,6 +213,7 @@ export interface GeneratedMcqQuestion {
   question: string;
   options: { A: string; B: string; C: string; D: string };
   correctAnswer: 'A' | 'B' | 'C' | 'D';
+  explanation?: string;
 }
 export interface GeneratedOpenQuestion {
   type: 'PRACTICAL' | 'CODE';
@@ -254,8 +259,8 @@ export async function generateExamQuestions(params: GenerateExamQuestionsParams)
   const sourceBlock = source
     ? `\n\nSOURCE MATERIAL (the exam must be based on this content):\n"""\n${source}\n"""\n\nBase every question on facts, concepts and examples that actually appear in the SOURCE MATERIAL above. Cover the whole material evenly (beginning, middle and end), not just the first part. Do not ask about things the material does not contain.`
     : '';
-  const languageRule = `\n\nLANGUAGE: write every question, option${includePractical ? ', practical question and rubric' : ''} in the same language as the ${source ? 'source material' : 'topic text'} (for example, Georgian material → Georgian questions). Keep code, formulas and technical terms exactly as written.`;
-  const mcqRules = `\n\nMultiple-choice rules: exactly 4 options (A, B, C, D), exactly one clearly correct answer, plausible distractors of similar length, no "all of the above" / "none of the above", no two questions testing the same fact. Distribute the correct letter roughly evenly across A, B, C and D.`;
+  const languageRule = `\n\nLANGUAGE: write every question, option, explanation${includePractical ? ', practical question and rubric' : ''} in the same language as the ${source ? 'source material' : 'topic text'} (for example, Georgian material → Georgian questions). Keep code, formulas and technical terms exactly as written.`;
+  const mcqRules = `\n\nMultiple-choice rules: exactly 4 options (A, B, C, D), exactly one clearly correct answer, plausible distractors of similar length, no "all of the above" / "none of the above", no two questions testing the same fact. Distribute the correct letter roughly evenly across A, B, C and D. For every question also write an "explanation": 1-3 short sentences a student reads after the exam, saying why the correct answer is right (and, where useful, why the most tempting wrong option is wrong). Do not refer to option letters in the explanation, since each student sees the options in a different order; refer to the answer by its content.`;
 
   const practicalInstruction = includePractical
     ? `\n\nThen generate exactly 1 open-ended practical question that asks the test-taker to explain or apply the material in their own words (a few sentences of free-text answer expected). Also produce a grading rubric for that question — a short paragraph describing what a strong answer should include, for an AI grader to score against later.`
@@ -271,7 +276,7 @@ export async function generateExamQuestions(params: GenerateExamQuestionsParams)
 Generate exactly ${params.mcqCount} multiple-choice questions that test real understanding — a mix of recall, comprehension and applied/scenario questions (not trivia).${mcqRules}${practicalInstruction}${codeInstruction}${languageRule}
 
 Respond with strict JSON matching this shape:
-{"mcqQuestions": [{"question": string, "options": {"A": string, "B": string, "C": string, "D": string}, "correctAnswer": "A"|"B"|"C"|"D"}]${practicalShapeField}${codeShapeField}}`;
+{"mcqQuestions": [{"question": string, "options": {"A": string, "B": string, "C": string, "D": string}, "correctAnswer": "A"|"B"|"C"|"D", "explanation": string}]${practicalShapeField}${codeShapeField}}`;
 
   const { raw } = await generateJson(prompt, 0.7);
 
@@ -304,7 +309,7 @@ Respond with strict JSON matching this shape:
 
   const mcqQuestions: GeneratedMcqQuestion[] = result.data.mcqQuestions
     .slice(0, params.mcqCount)
-    .map((q, i) => ({ type: 'MCQ', order: i, ...q }));
+    .map((q, i) => ({ type: 'MCQ', order: i, ...q, explanation: q.explanation?.trim() || undefined }));
   const questions: GeneratedExamQuestion[] = [...mcqQuestions];
   if (includePractical && result.data.practicalQuestion) {
     questions.push({ type: 'PRACTICAL', order: questions.length, ...result.data.practicalQuestion });
@@ -313,6 +318,50 @@ Respond with strict JSON matching this shape:
     questions.push({ type: 'CODE', order: questions.length, ...result.data.codeQuestion });
   }
   return questions;
+}
+
+const explanationsResponseSchema = z.object({
+  explanations: z.array(z.object({ id: z.string(), explanation: z.string() })),
+});
+
+// Writes the student-facing explanation for multiple-choice questions that
+// don't have one yet (exams created before explanations were generated
+// together with the questions). One call for the whole batch; returns
+// { [questionId]: explanation } for the ones the model answered.
+export async function generateMcqExplanations(params: {
+  topic: string;
+  questions: { id: string; question: string; options: { A: string; B: string; C: string; D: string }; correctAnswer: string }[];
+}): Promise<Record<string, string>> {
+  if (params.questions.length === 0) return {};
+  const list = params.questions
+    .map((q) => {
+      const correctText = (q.options as Record<string, string>)[q.correctAnswer] ?? '';
+      return JSON.stringify({ id: q.id, question: q.question, options: Object.values(q.options), correctAnswer: correctText });
+    })
+    .join('\n');
+  const prompt = `You are a helpful teacher. Topic: "${params.topic}". For each multiple-choice question below, write a short explanation (1-3 sentences) that a student reads after the exam: why the correct answer is right and, where useful, why the most tempting wrong option is wrong. Write each explanation in the same language as its question. Do not mention option letters; refer to answers by their content.
+
+Questions (one JSON object per line):
+${list}
+
+Respond with strict JSON matching this shape:
+{"explanations": [{"id": string, "explanation": string}]}`;
+
+  const { raw } = await generateJson(prompt, 0.3);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new ExamProctoringAiError('Gemini returned malformed JSON.');
+  }
+  const result = explanationsResponseSchema.safeParse(parsed);
+  if (!result.success) throw new ExamProctoringAiError('Gemini returned an unexpected explanation format.');
+  const wanted = new Set(params.questions.map((q) => q.id));
+  const out: Record<string, string> = {};
+  for (const e of result.data.explanations) {
+    if (wanted.has(e.id) && e.explanation.trim()) out[e.id] = e.explanation.trim();
+  }
+  return out;
 }
 
 const gradeResponseSchema = z.object({
@@ -356,7 +405,7 @@ Question: ${params.question}
 Grading rubric (what a strong answer should include): ${params.rubric}
 Candidate's answer: ${params.answer || '(no answer submitted)'}
 
-Score the answer from 0 to 100 based on how well it demonstrates real competence per the rubric — a genuinely strong, specific, correct answer should score 80+; a vague, generic, or incorrect answer should score well below that. Also write one short sentence of feedback for the teacher / reviewer.
+Score the answer from 0 to 100 based on how well it demonstrates real competence per the rubric — a genuinely strong, specific, correct answer should score 80+; a vague, generic, or incorrect answer should score well below that. Also write feedback (1-3 sentences) addressed to the test-taker: what was good, and what was missing or wrong compared with a strong answer. The teacher reads the same feedback.
 
 Respond with strict JSON matching this shape:
 {"score": number, "feedback": string}`;

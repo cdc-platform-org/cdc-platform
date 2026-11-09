@@ -11,8 +11,11 @@ import {
   CandidateExamInfo,
   ExamQuestionRow,
   ProctoringEventType,
+  CandidateResults,
+  getCandidateResults,
 } from '../../src/services/examProctoringService';
 import { resolveLocale } from '@/src/utils/locale';
+import ExamResultsView from '@/src/components/exam/ExamResultsView';
 
 // Same anti-cheat mechanism as pages/freelancer/exam.tsx's registerStrike —
 // tab-switch / window-blur / fullscreen-exit strikes, auto-submitting (here,
@@ -139,6 +142,7 @@ const dict = {
     resumeFailed: 'წინა მცდელობის გაგრძელება ვერ მოხერხდა — შეგიძლიათ დაიწყოთ თავიდან.',
     submitFailed: 'პასუხების გაგზავნა ვერ მოხერხდა (ინტერნეტი?). პასუხები შენახულია — დააჭირეთ „დასრულება და გაგზავნა“ კიდევ ერთხელ.',
     answeredCount: (a: number, n: number) => `პასუხი გაცემულია: ${a}/${n}`,
+    resultsNotice: 'დასრულებისთანავე ნახავთ ქულას და ყველა პასუხს ახსნით. იგივე გამოგეგზავნებათ აქ მითითებულ ელ. ფოსტაზე.',
   },
   en: {
     loadFailed: 'This exam link is no longer active.',
@@ -174,6 +178,7 @@ const dict = {
     resumeFailed: 'Could not continue the previous attempt — you can start again.',
     submitFailed: 'Could not submit your answers (internet?). Your answers are saved — press "Finish & Submit" again.',
     answeredCount: (a: number, n: number) => `Answered: ${a}/${n}`,
+    resultsNotice: 'When you finish you will see your score and every answer with an explanation. The same results are emailed to the address you enter here.',
   },
   de: {
     loadFailed: 'This exam link is no longer active.',
@@ -209,6 +214,7 @@ const dict = {
     resumeFailed: 'Could not continue the previous attempt — you can start again.',
     submitFailed: 'Could not submit your answers (internet?). Your answers are saved — press "Finish & Submit" again.',
     answeredCount: (a: number, n: number) => `Answered: ${a}/${n}`,
+    resultsNotice: 'When you finish you will see your score and every answer with an explanation. The same results are emailed to the address you enter here.',
   },
   es: {
     loadFailed: 'This exam link is no longer active.',
@@ -244,6 +250,7 @@ const dict = {
     resumeFailed: 'Could not continue the previous attempt — you can start again.',
     submitFailed: 'Could not submit your answers (internet?). Your answers are saved — press "Finish & Submit" again.',
     answeredCount: (a: number, n: number) => `Answered: ${a}/${n}`,
+    resultsNotice: 'When you finish you will see your score and every answer with an explanation. The same results are emailed to the address you enter here.',
   },
   fr: {
     loadFailed: 'This exam link is no longer active.',
@@ -279,6 +286,7 @@ const dict = {
     resumeFailed: 'Could not continue the previous attempt — you can start again.',
     submitFailed: 'Could not submit your answers (internet?). Your answers are saved — press "Finish & Submit" again.',
     answeredCount: (a: number, n: number) => `Answered: ${a}/${n}`,
+    resultsNotice: 'When you finish you will see your score and every answer with an explanation. The same results are emailed to the address you enter here.',
   },
   uk: {
     loadFailed: 'This exam link is no longer active.',
@@ -314,6 +322,7 @@ const dict = {
     resumeFailed: 'Could not continue the previous attempt — you can start again.',
     submitFailed: 'Could not submit your answers (internet?). Your answers are saved — press "Finish & Submit" again.',
     answeredCount: (a: number, n: number) => `Answered: ${a}/${n}`,
+    resultsNotice: 'When you finish you will see your score and every answer with an explanation. The same results are emailed to the address you enter here.',
   },
 };
 
@@ -340,6 +349,7 @@ export default function CandidateExamPage() {
   const [examStartedAt, setExamStartedAt] = useState<Date | null>(null);
   const [savedAttempt, setSavedAttempt] = useState<SavedAttempt | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [results, setResults] = useState<CandidateResults | null>(null);
 
   // ---- Camera & microphone gate ----
   const [mediaStatus, setMediaStatus] = useState<'idle' | 'requesting' | 'live' | 'denied'>('idle');
@@ -427,7 +437,8 @@ export default function CandidateExamPage() {
       // server-side in real time by logProctoringEvent below (see
       // registerStrike) and the server recomputes the integrity score from
       // those at submit time, rather than trusting anything this call sends.
-      await submitCandidateExam(submissionTokenRef.current, { answers: answersRef.current });
+      const submitted = await submitCandidateExam(submissionTokenRef.current, { answers: answersRef.current, locale: lang });
+      setResults(submitted.results);
       if (token) clearSavedAttempt(token);
       setSubmitError(null);
       setPhase('done');
@@ -436,6 +447,8 @@ export default function CandidateExamPage() {
     } catch (err: any) {
       // "already submitted" means the server has it — treat as done.
       if (err?.response?.status === 400 && /already submitted/i.test(err?.response?.data?.message ?? '')) {
+        const sub = submissionTokenRef.current;
+        if (sub) getCandidateResults(sub).then(setResults).catch(() => {});
         if (token) clearSavedAttempt(token);
         setPhase('done');
         stopMedia();
@@ -447,7 +460,7 @@ export default function CandidateExamPage() {
       setSubmitError(t.submitFailed);
       setPhase('in-progress');
     }
-  }, [t.submitFailed, stopMedia, token]);
+  }, [t.submitFailed, stopMedia, token, lang]);
 
   type StrikeKind = 'tab' | 'copyPaste' | 'fullscreen' | 'faceMissing' | 'multipleFaces' | 'lookingAway' | 'backgroundVoice';
 
@@ -766,6 +779,12 @@ export default function CandidateExamPage() {
               <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
               <p className="text-xs text-slate-300">{t.proctoringNotice}</p>
             </div>
+            {info.showResultsToCandidate && (
+              <div className="rounded-xl bg-cyan-500/10 border border-cyan-500/30 p-4 flex items-start gap-3 mb-6">
+                <CheckCircle2 className="w-4 h-4 text-cyan-300 shrink-0 mt-0.5" />
+                <p className="text-xs text-slate-300">{t.resultsNotice}</p>
+              </div>
+            )}
 
             <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-4 mb-6">
               <p className="text-xs font-bold text-slate-300 mb-1 flex items-center gap-1.5">
@@ -908,7 +927,9 @@ export default function CandidateExamPage() {
 
         {phase === 'submitting' && <p className="text-sm text-slate-400">{t.submitting}</p>}
 
-        {phase === 'done' && (
+        {phase === 'done' && results && <ExamResultsView results={results} locale={lang} email={candidateEmail || undefined} />}
+
+        {phase === 'done' && !results && (
           <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-8 text-center">
             <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto mb-4" />
             <h1 className="text-lg font-black mb-2">{t.doneTitle}</h1>
