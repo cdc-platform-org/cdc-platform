@@ -1,0 +1,22 @@
+{
+  "title": "Als Animationsvideo – {{price}}₾",
+  "readyTitle": "Das Animationsvideo deines Buches",
+  "description": "Die Illustrationen deines Buches werden lebendig: sanfte Bewegung, Seitenübergänge, jede Seite vorgelesen und ruhige Musik. Hier ansehen und herunterladen.",
+  "featureMotion": "Bewegte Illustrationen (KI-Animation)",
+  "featureNarration": "Vorlesestimme auf jeder Seite",
+  "featureMusic": "Sanfte Hintergrundmusik",
+  "featureDownload": "HD-MP4 zum Herunterladen",
+  "buyButton": "Video erstellen – {{price}}₾",
+  "devSimulate": "Zahlung simulieren (dev)",
+  "confirmingPayment": "Zahlung wird bestätigt…",
+  "queued": "Dein Video ist in der Warteschlange und startet gleich…",
+  "rendering": "Wir erwecken dein Buch zum Leben…",
+  "renderingHint": "Das dauert meist 5–15 Minuten. Du kannst die Seite schließen — das Video wartet hier auf dich.",
+  "videoLabel": "„{{title}}“ — Animationsvideo",
+  "download": "Video herunterladen",
+  "shareHint": "Wenn der Teilen-Link des Buches aktiv ist, erscheint das Video auch dort.",
+  "failed": "Das Video konnte nicht erstellt werden. Versuche es erneut — es fallen keine weiteren Kosten an.",
+  "retry": "Erneut versuchen",
+  "error": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+  "sharedTitle": "Die animierte Geschichte ansehen"
+}

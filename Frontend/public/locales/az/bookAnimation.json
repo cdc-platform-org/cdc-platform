@@ -1,0 +1,22 @@
+{
+  "title": "Animasiya videosuna çevir – {{price}}₾",
+  "readyTitle": "Kitabınızın animasiya videosu",
+  "description": "Kitabın illüstrasiyaları canlanır: yumşaq hərəkət, səhifə keçidləri, hər səhifənin səsləndirilməsi və sakit musiqi. Burada izləyin və yükləyin.",
+  "featureMotion": "Hərəkətli illüstrasiyalar (Sİ animasiyası)",
+  "featureNarration": "Hər səhifədə səsləndirmə",
+  "featureMusic": "Yumşaq fon musiqisi",
+  "featureDownload": "Yüklənə bilən HD MP4",
+  "buyButton": "Videonu yarat – {{price}}₾",
+  "devSimulate": "Ödənişi simulyasiya et (dev)",
+  "confirmingPayment": "Ödənişiniz təsdiqlənir…",
+  "queued": "Videonuz növbədədir, tezliklə başlayacaq…",
+  "rendering": "Kitabınızı canlandırırıq…",
+  "renderingHint": "Adətən 5–15 dəqiqə çəkir. Səhifəni bağlaya bilərsiniz — video sizi burada gözləyəcək.",
+  "videoLabel": "“{{title}}” — animasiya videosu",
+  "download": "Videonu yüklə",
+  "shareHint": "Kitabın paylaşım linki aktivdirsə, video orada da görünəcək.",
+  "failed": "Videonu yaratmaq mümkün olmadı. Yenidən cəhd edin — təkrar ödəniş tutulmayacaq.",
+  "retry": "Yenidən cəhd et",
+  "error": "Nəsə alınmadı. Zəhmət olmasa yenidən cəhd edin.",
+  "sharedTitle": "Animasiyalı nağılı izlə"
+}

@@ -1,0 +1,22 @@
+{
+  "title": "Make it an animated video – {{price}}₾",
+  "readyTitle": "Your book's animated video",
+  "description": "Your book's illustrations come to life: gentle motion, page-turn transitions, narration of every page and soft music. Watch it right here and download it.",
+  "featureMotion": "Moving illustrations (AI animation)",
+  "featureNarration": "Narration on every page",
+  "featureMusic": "Soft background music",
+  "featureDownload": "HD MP4 to download",
+  "buyButton": "Create the video – {{price}}₾",
+  "devSimulate": "Simulate payment (dev)",
+  "confirmingPayment": "Confirming your payment…",
+  "queued": "Your video is in the queue and will start shortly…",
+  "rendering": "Bringing your book to life…",
+  "renderingHint": "This usually takes 5–15 minutes. You can close this page — the video will be waiting here.",
+  "videoLabel": "\"{{title}}\" — animated video",
+  "download": "Download video",
+  "shareHint": "If the book's share link is on, the video shows there too.",
+  "failed": "We couldn't create the video. Try again — you won't be charged again.",
+  "retry": "Try again",
+  "error": "Something went wrong. Please try again.",
+  "sharedTitle": "Watch the animated story"
+}

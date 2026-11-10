@@ -1,0 +1,22 @@
+{
+  "title": "En faire une vidéo animée – {{price}}₾",
+  "readyTitle": "La vidéo animée de votre livre",
+  "description": "Les illustrations de votre livre prennent vie : mouvements doux, transitions de pages, narration de chaque page et musique apaisante. Regardez-la ici et téléchargez-la.",
+  "featureMotion": "Illustrations animées (animation IA)",
+  "featureNarration": "Narration sur chaque page",
+  "featureMusic": "Douce musique de fond",
+  "featureDownload": "MP4 HD à télécharger",
+  "buyButton": "Créer la vidéo – {{price}}₾",
+  "devSimulate": "Simuler le paiement (dev)",
+  "confirmingPayment": "Confirmation du paiement…",
+  "queued": "Votre vidéo est en file d'attente et va bientôt commencer…",
+  "rendering": "Nous donnons vie à votre livre…",
+  "renderingHint": "Cela prend généralement 5 à 15 minutes. Vous pouvez fermer cette page : la vidéo vous attendra ici.",
+  "videoLabel": "« {{title}} » — vidéo animée",
+  "download": "Télécharger la vidéo",
+  "shareHint": "Si le lien de partage du livre est activé, la vidéo y apparaît aussi.",
+  "failed": "La vidéo n'a pas pu être créée. Réessayez — vous ne serez pas débité à nouveau.",
+  "retry": "Réessayer",
+  "error": "Une erreur s'est produite. Veuillez réessayer.",
+  "sharedTitle": "Regarder l'histoire animée"
+}

@@ -8,6 +8,7 @@ import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import SEOHead from '../../src/components/seo/SEOHead';
 import FlipBook from '../../src/components/tools/childrensBook/FlipBook';
+import { SharedAnimation } from '../../src/components/tools/childrensBook/AnimationCard';
 import { SharedBook, getSharedBook, sharedBookAssetUrl } from '../../src/services/childrensBookService';
 
 // Public "read & listen" page of a finished children's book, opened from
@@ -80,7 +81,7 @@ export default function SharedBookPage() {
             onDownloadMp3={book.fullStoryAudio ? downloadMp3 : null}
             downloadingMp3={downloading}
             createUrl={createPath}
-            footer={<p className="mt-8 text-center text-xs text-gray-400">{t('sharedPoweredBy')}</p>}
+            footer={<><SharedAnimation token={token} /><p className="mt-8 text-center text-xs text-gray-400">{t('sharedPoweredBy')}</p></>}
           />
         )}
       </main>
@@ -90,5 +91,5 @@ export default function SharedBookPage() {
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'ka', ['common', 'childrensBook'])) },
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['common', 'childrensBook', 'bookAnimation'])) },
 });

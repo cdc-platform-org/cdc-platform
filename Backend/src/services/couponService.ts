@@ -137,6 +137,8 @@ export async function resolveTargetPrice(targetType: CouponTargetType, targetId:
         'english-tutor': TUTOR_SUBSCRIPTION_PRICE_GEL,
         'educator-hub': EDUCATOR_VIP_PRICE_GEL,
         'business-ai': BUSINESS_AI_PRICE_GEL,
+        // Children's book animated video add-on (bookAnimationPlan.ts).
+        'book-animation': 2000,
       };
       const price = AI_TOOL_PRICES[targetId];
       if (price == null) throw new CouponTargetNotFoundError('Unknown AI tool.');

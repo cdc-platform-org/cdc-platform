@@ -34,6 +34,7 @@ module.exports = {
   ns: [
     'auth',
     'billing',
+    'bookAnimation',
     'childrensBook',
     'common',
     'courses',

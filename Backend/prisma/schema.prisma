@@ -271,6 +271,11 @@ enum BogPaymentPurpose {
   // Fulfillment extends Agent.paidUntil and sets it ACTIVE — see
   // services/agentSubscriptionService.ts.
   BUSINESS_AI_AGENT
+  // The paid "animated video" add-on of a finished children's book
+  // (referenceId -> BookProject.id; the one BookAnimation row of that book
+  // is looked up by bookProjectId). DIRECT model, flat 20 GEL. See
+  // services/bookAnimationService.ts.
+  BOOK_ANIMATION
 }
 
 // Whether a payment settles straight to its destination the moment it
@@ -5665,6 +5670,7 @@ model BookProject {
   pages            BookPage[]
   generationEvents BookGenerationEvent[]
   narrationArtifacts BookNarrationArtifact[]
+  animation          BookAnimation?
 
   @@index([userId])
   @@index([status])
@@ -5735,6 +5741,48 @@ model BookPage {
   @@unique([bookProjectId, pageNumber])
   @@index([imageGenerationStatus])
   @@map("book_pages")
+}
+
+enum BookAnimationStatus {
+  // Created at checkout, waiting for the BOG callback.
+  PAYMENT_PENDING
+  QUEUED
+  RENDERING
+  READY
+  FAILED
+}
+
+// The paid "animated video" add-on of a finished book (one per book). The
+// video is a slideshow-style film: a few key pages animated by Sora 2
+// (image-to-video), the rest Ken Burns, narration + quiet music. Rendered
+// in the background by services/bookAnimationService.ts; the startup/cron
+// recovery sweep resumes QUEUED/RENDERING rows and retries a paid FAILED
+// row once (autoRetried).
+model BookAnimation {
+  id            String              @id @default(uuid())
+  bookProjectId String              @unique
+  bookProject   BookProject         @relation(fields: [bookProjectId], references: [id], onDelete: Cascade)
+  userId        String
+  status        BookAnimationStatus @default(PAYMENT_PENDING)
+  // 'BOG' | 'PROMO' | 'ADMIN' — informational only.
+  paidVia       String?
+  paidAt        DateTime?
+  videoKey      String?
+  durationSec   Float?
+  error         String?
+  // Cost tracking: Sora seconds actually billed (successful clips only)
+  // and which pages got a Sora clip.
+  soraSecondsUsed Int     @default(0)
+  soraPages       Int[]   @default([])
+  renderMs        Int?
+  attemptCount    Int     @default(0)
+  autoRetried     Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("book_animations")
 }
 
 model BookNarrationArtifact {
