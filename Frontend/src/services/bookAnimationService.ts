@@ -21,6 +21,7 @@ export interface BookAnimationStatus {
   promoTargetId: string;
   eligible: boolean;
   devPaymentSimulation: boolean;
+  soraEnabled: boolean;
   animation: BookAnimationInfo | null;
 }
 

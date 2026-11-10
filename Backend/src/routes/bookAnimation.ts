@@ -8,7 +8,8 @@ import { JWT_SECRET } from '../utils/env';
 import { createBogOrder, BogNotConfiguredError } from '../services/bogPaymentService';
 import { paymentModelForPurpose } from '../services/paymentModel';
 import { quotePromoToCheckout, claimPromoRedemption, PromoCodeError, giftCardAmountOf } from '../services/couponService';
-import { isBookDevPaymentSimulationEnabled } from '../services/bookMockConfig';
+import { isBookAiMocked, isBookDevPaymentSimulationEnabled } from '../services/bookMockConfig';
+import { readSoraConfig } from '../services/bookAnimationSora';
 import { findBookByShareToken } from '../services/bookExtrasService';
 import { getBookAssetUrl, isUsingCloudBookStorage, readBookAsset } from '../services/bookStorageService';
 import { attachmentHeader } from '../services/bookAudioBundle';
@@ -102,6 +103,8 @@ async function statusPayload(req: Request, bookId: string, bookStatus: string) {
     promoTargetId: ANIMATION_PROMO_TARGET_ID,
     eligible: isBookAnimatable(bookStatus),
     devPaymentSimulation: isBookDevPaymentSimulationEnabled(),
+    // AI (Sora) motion is only promised when it is actually configured.
+    soraEnabled: !isBookAiMocked() && !!readSoraConfig(),
     animation: animation
       ? {
           id: animation.id,

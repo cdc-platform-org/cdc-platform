@@ -1,6 +1,6 @@
 # Children's book — animated video add-on
 
-A paid add-on (20 GEL) that turns a finished book (`FINAL_READY` / `COMPLETED`) into a 1280×720 H.264/AAC MP4.
+A paid add-on (10 GEL; `ANIMATION_PRICE_TETRI` in `bookAnimationPlan.ts`) that turns a finished book (`FINAL_READY` / `COMPLETED`) into a 1280×720 H.264/AAC MP4.
 
 ## What the video contains
 
@@ -30,6 +30,10 @@ The music is **synthesised by code** in `Backend/src/services/bookAnimationMusic
 - **Admin testing:** `POST /api/childrens-books/:id/animation/admin-render` (`SUPER_ADMIN` / `MANAGER`), body `{ "force": true }` to re-render a ready video. It's free.
 - **Playback:** `GET /:id/animation` returns `videoUrl` and `downloadUrl`. In cloud storage the player uses a 2-hour SAS URL. Otherwise, and for every download, it uses an HMAC-signed backend link (`/api/childrens-books/animation-video/:id?exp&sig`, with Range support).
 - **Share page:** `GET /api/childrens-books/shared/:token/animation` returns the video only when it's `READY` and sharing is on.
+
+## Sora availability
+
+Azure's model retirement schedule lists `sora-2` (2025-12-08, Preview) as retired on **2026-10-15** with no replacement. Until another video model is deployed, the add-on renders every page with Ken Burns. That is why the price is 10 GEL and not 20 GEL. The buy card only promises "AI animation" when `soraEnabled` is true, which means `AZURE_VIDEO_*` is set and AI isn't mocked. Otherwise it describes animated pages with narration and music. Turning Sora back on later only needs the env vars, no code change.
 
 ## Environment
 

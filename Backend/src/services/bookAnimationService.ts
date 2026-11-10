@@ -1,5 +1,5 @@
 // ============================================================
-// Children's Book animation — the paid "animated video" add-on (20 GEL).
+// Children's Book animation — the paid "animated video" add-on (10 GEL).
 //
 // Lifecycle of a BookAnimation row (one per book):
 //   PAYMENT_PENDING  checkout created, waiting for BOG (routes/bookAnimation.ts)

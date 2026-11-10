@@ -273,7 +273,7 @@ enum BogPaymentPurpose {
   BUSINESS_AI_AGENT
   // The paid "animated video" add-on of a finished children's book
   // (referenceId -> BookProject.id; the one BookAnimation row of that book
-  // is looked up by bookProjectId). DIRECT model, flat 20 GEL. See
+  // is looked up by bookProjectId). DIRECT model, flat 10 GEL. See
   // services/bookAnimationService.ts.
   BOOK_ANIMATION
 }

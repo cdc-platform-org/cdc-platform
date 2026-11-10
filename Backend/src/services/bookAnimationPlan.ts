@@ -5,7 +5,7 @@
 // (bookAnimationService.ts) only consume what is computed here.
 // ============================================================
 
-export const ANIMATION_PRICE_TETRI = 2000; // 20 GEL
+export const ANIMATION_PRICE_TETRI = 1000; // 10 GEL
 // Promo codes target the animation through the AI_TOOL type with this fixed
 // id (same pattern as 'english-tutor'), so no new coupon enum is needed.
 export const ANIMATION_PROMO_TARGET_ID = 'book-animation';

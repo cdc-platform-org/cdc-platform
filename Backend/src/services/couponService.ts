@@ -8,6 +8,7 @@ import { EDUCATOR_VIP_PRICE_GEL } from './educatorVipService';
 import { BUSINESS_AI_PRICE_GEL } from './agentSubscriptionService';
 import { calculateBookPrice } from './bookStateService';
 import { calculateTotalBookPrice } from './bookNarrationService';
+import { ANIMATION_PRICE_TETRI } from './bookAnimationPlan';
 
 // ============================================================
 // Universal promo-code validation/pricing — the single place every checkout
@@ -138,7 +139,7 @@ export async function resolveTargetPrice(targetType: CouponTargetType, targetId:
         'educator-hub': EDUCATOR_VIP_PRICE_GEL,
         'business-ai': BUSINESS_AI_PRICE_GEL,
         // Children's book animated video add-on (bookAnimationPlan.ts).
-        'book-animation': 2000,
+        'book-animation': ANIMATION_PRICE_TETRI,
       };
       const price = AI_TOOL_PRICES[targetId];
       if (price == null) throw new CouponTargetNotFoundError('Unknown AI tool.');

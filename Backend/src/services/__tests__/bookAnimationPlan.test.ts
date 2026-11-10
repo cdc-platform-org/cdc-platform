@@ -1,4 +1,6 @@
 import {
+  ANIMATION_PRICE_TETRI,
+  ANIMATION_PROMO_TARGET_ID,
   MIN_SEGMENT_SECONDS,
   SORA_CLIP_SECONDS,
   TRANSITION_SECONDS,
@@ -15,6 +17,13 @@ import { buildAssemblyGraph } from '../bookAnimationRenderer';
 import { MUSIC_THEMES, pickMusicTheme, synthesizeMusicWav } from '../bookAnimationMusic';
 
 jest.mock('../../lib/prisma', () => ({ prisma: {} }));
+
+describe('book animation — product', () => {
+  it('costs 10 GEL and is promo-targeted as an AI tool', () => {
+    expect(ANIMATION_PRICE_TETRI).toBe(1000);
+    expect(ANIMATION_PROMO_TARGET_ID).toBe('book-animation');
+  });
+});
 
 describe('book animation — key page selection', () => {
   it('spreads the fallback pages evenly and never repeats one', () => {
