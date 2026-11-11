@@ -165,8 +165,8 @@ describe('AI proctored exam — results for the student', () => {
     expect(open.aiScore).toBe(60);
     expect(open.aiFeedback).toMatch(/photosynthesis/);
     expect(open.expectedAnswer).toBe('Mentions photosynthesis.');
-    // (100 MCQ + 60 open) / 2
-    expect(submit.body.data.results.totalScore).toBe(80);
+    // Every question weighs the same: (4 correct MCQ + 0.6 open) / 5 questions
+    expect(submit.body.data.results.totalScore).toBe(92);
   });
 
   it('fills in missing explanations once (older exams) and stores them', async () => {
