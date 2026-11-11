@@ -189,3 +189,168 @@ export function validateStoryTextEdits(
   }
   return { ok: true, value };
 }
+
+// ============================================================
+// A fresh, original plot for every book. The old flow always drew the same
+// fixed 20-beat arc (glowing map in the attic -> forest -> owl ...) and only
+// re-worded it, so every book, and every "new version", told the same story.
+// Now the text model invents the plot, the text AND what each illustration
+// shows, steered by a randomly picked story idea and told what to avoid.
+// ============================================================
+
+export const STORY_IDEAS = [
+  'a lost baby star that fell into the garden and must get back to the sky',
+  'a kite that carries the child over a village of friendly clouds',
+  'an underwater kingdom where a shy little fish needs a friend',
+  'a toy that comes to life at night and needs help finding its missing button',
+  'a snowy mountain where a baby snow leopard has lost its mother',
+  'a baking day where the bread rises so high it floats away',
+  'a lighthouse whose light went out before a stormy night',
+  'a tiny dragon who is afraid of the dark',
+  'a garden where every flower plays a different musical note',
+  'a rainbow that lost one of its colours',
+  'a hot-air balloon trip to an island of giant fruit',
+  'a sleepy moon who forgot how to shine',
+  'a circus of animals preparing their very first show',
+  'a seed that grows into a beanstalk overnight',
+  'a ladybug postman who needs help delivering letters before the rain',
+  'a rocket made of cardboard boxes that really flies to the moon',
+  'a forest festival where every animal must bring a gift',
+  'a little boat sailing down a river to the sea',
+  "a grandmother's old clock that can pause time for one afternoon",
+  "a playful wind that keeps hiding people's hats",
+  'a puppy who wants to learn to swim',
+  'a library where characters step out of the books',
+  'a vineyard harvest day with talking grapes',
+  'a magic paintbrush whose drawings come to life',
+] as const;
+
+export function pickStoryIdea(exclude: string[] = [], random: () => number = Math.random): string {
+  const pool = STORY_IDEAS.filter((idea) => !exclude.includes(idea));
+  const list = pool.length ? pool : [...STORY_IDEAS];
+  return list[Math.floor(random() * list.length) % list.length];
+}
+
+const freshStorySchema = z.object({
+  pages: z.array(z.object({
+    pageNumber: z.number().int(),
+    storyText: z.string().trim().min(20).max(900),
+    sceneDescription: z.string().trim().min(10).max(600),
+    emotion: z.string().trim().min(2).max(40),
+  })),
+});
+
+export interface FreshStoryPage {
+  pageNumber: number;
+  storyText: string;
+  sceneDescription: string;
+  emotion: string;
+}
+
+function characterDetails(character: CharacterConfig): string {
+  return [
+    `Main character: ${character.name}${character.age ? `, ${character.age} years old` : ''}.`,
+    character.traits?.length ? `Personality: ${character.traits.join(', ')}.` : '',
+    character.favoriteThing ? `Favourite thing: ${character.favoriteThing}.` : '',
+    character.appearance ? `Appearance: ${character.appearance}.` : '',
+    character.extraCharacters ? `Other characters who appear: ${character.extraCharacters}.` : '',
+    siblingsStoryLine(character),
+  ].filter(Boolean).join('\n');
+}
+
+export async function writeFreshStory(params: {
+  title: string;
+  character: CharacterConfig;
+  language: BookLanguage;
+  pageCount: number;
+  // Short summaries of earlier versions of this book: the new one must differ.
+  avoidPlots?: string[];
+  idea?: string;
+}): Promise<{ idea: string; pages: FreshStoryPage[] }> {
+  const { title, character, language, pageCount } = params;
+  const idea = params.idea ?? pickStoryIdea();
+  const avoid = (params.avoidPlots ?? []).filter(Boolean);
+  const prompt = [
+    'You are an award-winning author of personalised illustrated fairy tales for young children.',
+    `Book title: "${title}".`,
+    characterDetails(character),
+    LANGUAGE_INSTRUCTIONS[language],
+    `Invent an ORIGINAL story for this book. If the title names a place or theme, the story happens there; otherwise build it around this idea: ${idea}. Make the plot your own: a specific little problem, a surprising turn, a clever or kind solution and a warm ending. Avoid cliches such as finding a magic map in the attic or a box in the fridge.`,
+    avoid.length ? `These versions were already written for this book. The new story must be clearly different (different problem, places and events):\n- ${avoid.join('\n- ')}` : '',
+    `The book has exactly ${pageCount} pages. For every page write:`,
+    "- \"storyText\": 2-4 short sentences (at most about 60 words) in the book's language; any companion creature keeps the same name and look on every page; use the child's name; nothing scary, violent or unsafe; no page numbers or headings;",
+    "- \"sceneDescription\": in ENGLISH, one or two sentences describing exactly what the illustration of that page shows: who is there, where, what they are doing and the key objects. It must match that page's storyText precisely;",
+    "- \"emotion\": one English word for the main character's mood.",
+    'Reply with JSON only: {"pages":[{"pageNumber":1,"storyText":"...","sceneDescription":"...","emotion":"..."}, ...]} with one entry per page.',
+  ].filter(Boolean).join('\n\n');
+
+  let raw: string;
+  try {
+    raw = await callTextModel(prompt, 0.95, undefined, { timeoutMs: 120_000 });
+  } catch (err) {
+    throw new StoryTextGenerationError(`Story generation failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  let parsed: z.infer<typeof freshStorySchema>;
+  try {
+    parsed = freshStorySchema.parse(JSON.parse(raw));
+  } catch {
+    throw new StoryTextGenerationError('Story generation returned an invalid response.');
+  }
+
+  const byPage = new Map(parsed.pages.map((p) => [p.pageNumber, p]));
+  let pages: FreshStoryPage[] = [];
+  for (let n = 1; n <= pageCount; n += 1) {
+    const page = byPage.get(n);
+    if (!page || isPlaceholderStoryText(page.storyText)) throw new StoryTextGenerationError(`Story generation returned no text for page ${n}.`);
+    pages.push({ pageNumber: n, storyText: page.storyText.trim(), sceneDescription: page.sceneDescription.trim(), emotion: page.emotion.trim() });
+  }
+  if (language === 'KA') {
+    const proofread = await proofreadGeorgian(pages.map(({ pageNumber, storyText }) => ({ pageNumber, storyText })), character.name);
+    const fixed = new Map(proofread.map((p) => [p.pageNumber, p.storyText]));
+    pages = pages.map((p) => ({ ...p, storyText: fixed.get(p.pageNumber) ?? p.storyText }));
+  }
+  return { idea, pages };
+}
+
+// ============================================================
+// Pictures follow the words. When the parent edits (or fully rewrites) a
+// page, the illustration must show the NEW text, not the scene the old text
+// was written for. This turns each page's final text into an English scene
+// description for the image model. Fails loudly; the caller decides the
+// fallback (the image prompt then uses the page text alone).
+// ============================================================
+const sceneSchema = z.object({
+  pages: z.array(z.object({ pageNumber: z.number().int(), sceneDescription: z.string().trim().min(10).max(600), emotion: z.string().trim().max(40).optional() })),
+});
+
+export async function describeScenesFromText(params: {
+  character: CharacterConfig;
+  pages: Array<{ pageNumber: number; storyText: string }>;
+}): Promise<Map<number, { sceneDescription: string; emotion?: string }>> {
+  const prompt = [
+    "You turn the pages of a children's picture book into illustration briefs. The story text may be in Georgian.",
+    characterDetails(params.character),
+    "For every page write \"sceneDescription\" in ENGLISH: one or two sentences describing exactly what that page's text describes, as a single picture: who is there (by name), where, what they are doing, and the key objects. Use only what the text (and the earlier pages, for continuity) says; do not invent other events. Also give \"emotion\": one English word for the main character's mood.",
+    'Pages (JSON):',
+    JSON.stringify({ pages: params.pages }),
+    'Reply with JSON only: {"pages":[{"pageNumber":1,"sceneDescription":"...","emotion":"..."}, ...]} with one entry per page.',
+  ].join('\n\n');
+  let raw: string;
+  try {
+    raw = await callTextModel(prompt, 0.2, undefined, { timeoutMs: 90_000 });
+  } catch (err) {
+    throw new StoryTextGenerationError(`Scene description failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  let parsed: z.infer<typeof sceneSchema>;
+  try {
+    parsed = sceneSchema.parse(JSON.parse(raw));
+  } catch {
+    throw new StoryTextGenerationError('Scene description returned an invalid response.');
+  }
+  const result = new Map<number, { sceneDescription: string; emotion?: string }>();
+  for (const p of parsed.pages) result.set(p.pageNumber, { sceneDescription: p.sceneDescription.trim(), emotion: p.emotion?.trim() || undefined });
+  for (const page of params.pages) {
+    if (!result.has(page.pageNumber)) throw new StoryTextGenerationError(`Scene description missing for page ${page.pageNumber}.`);
+  }
+  return result;
+}

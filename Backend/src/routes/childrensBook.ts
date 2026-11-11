@@ -12,9 +12,11 @@ import {
   canClaimRevision,
   buildLogicalOperationKey,
 } from '../services/bookStateService';
-import { generateStoryPlan, CharacterConfig, StoryPlan } from '../services/bookStoryPlanService';
+import { generateStoryPlan, planPagesFromFreshStory, CharacterConfig, StoryPlan } from '../services/bookStoryPlanService';
 import {
   writeStoryTexts,
+  writeFreshStory,
+  pickStoryIdea,
   isPlaceholderStoryText,
   StoryTextGenerationError,
   validateStoryTextEdits,
@@ -706,11 +708,20 @@ router.post('/:id/story-text/regenerate', authenticate, async (req: Request, res
     return res.status(400).json({ message: 'No new versions are left for this book. You can still edit the text yourself.' });
   }
 
+  // A new version is a NEW story (new plot, new scenes), not the same
+  // scenes re-worded, and it is told to differ from the versions before it.
   const character = (book.characterConfig ?? {}) as unknown as CharacterConfig;
-  const scenes = plan.pages.map((p) => ({ pageNumber: p.pageNumber, sceneDescription: p.sceneDescription || character.name, emotion: p.emotion }));
-  let texts: Map<number, string>;
+  const usedIdeas = plan.storyIdeas ?? [];
+  let fresh: Awaited<ReturnType<typeof writeFreshStory>>;
   try {
-    texts = await writeStoryTexts({ title: book.title, character, language: book.language, scenes });
+    fresh = await writeFreshStory({
+      title: book.title,
+      character,
+      language: book.language,
+      pageCount: book.pageCount,
+      idea: pickStoryIdea(usedIdeas),
+      avoidPlots: [plan.pages.map((p) => p.sceneDescription).join(' / ').slice(0, 700)],
+    });
   } catch (err) {
     if (err instanceof StoryTextGenerationError) {
       console.error(`[childrens-book] story text regenerate for ${book.id} failed:`, err.message);
@@ -719,8 +730,15 @@ router.post('/:id/story-text/regenerate', authenticate, async (req: Request, res
     throw err;
   }
 
-  const edits = book.pages.map((p) => ({ pageNumber: p.pageNumber, storyText: texts.get(p.pageNumber)! }));
-  await saveStoryTextEdits(book, edits, { textRegenerations: used + 1 });
+  const newPages = planPagesFromFreshStory(character, fresh.pages);
+  const byNumber = new Map(newPages.map((p) => [p.pageNumber, p]));
+  await prisma.$transaction([
+    ...book.pages.map((p) => prisma.bookPage.update({ where: { id: p.id }, data: { storyText: byNumber.get(p.pageNumber)!.storyText, sceneSpec: byNumber.get(p.pageNumber)! as any } })),
+    prisma.bookProject.update({
+      where: { id: book.id },
+      data: { storyPlan: { ...plan, pages: newPages, textRegenerations: used + 1, storyIdeas: [...usedIdeas, fresh.idea] } as any },
+    }),
+  ]);
   res.json({ data: await loadBookWithPages(book.id) });
 });
 

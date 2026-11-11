@@ -11,7 +11,7 @@ import childrensBookRoutes from '../childrensBook';
 import { errorHandler } from '../../middleware/errorHandler';
 import { ALLOWED_PAGE_COUNTS, calculateBookPrice } from '../../services/bookStateService';
 import * as bookMockConfig from '../../services/bookMockConfig';
-import { writeStoryTexts } from '../../services/bookStoryTextService';
+import { writeStoryTexts, writeFreshStory } from '../../services/bookStoryTextService';
 import { waitForFinalGeneration, resumePendingFinalGenerations } from '../../services/bookFinalGenerationService';
 
 // bookMockConfig's ENABLE_BOOK_DEV_PAYMENT_SIMULATION read is frozen at
@@ -31,6 +31,7 @@ jest.mock('../../services/bookMockConfig', () => ({
 jest.mock('../../services/bookStoryTextService', () => ({
   ...jest.requireActual('../../services/bookStoryTextService'),
   writeStoryTexts: jest.fn(),
+  writeFreshStory: jest.fn(),
 }));
 
 type User = Awaited<ReturnType<typeof createUser>>;
@@ -454,12 +455,19 @@ describe("Children's Book — story text review before any image", () => {
     const user = await createUser();
     const bookId = await createBookThroughStoryPlan(user, 5, false);
     for (let i = 1; i <= 3; i += 1) {
-      jest.mocked(writeStoryTexts).mockImplementationOnce(async ({ scenes }) => new Map(scenes.map((s) => [s.pageNumber, `Version ${i} of page ${s.pageNumber}.`])));
+      jest.mocked(writeFreshStory).mockImplementationOnce(async ({ pageCount, idea }) => ({
+        idea: idea ?? 'x',
+        pages: Array.from({ length: pageCount }, (_, k) => ({ pageNumber: k + 1, storyText: `Version ${i} of page ${k + 1}.`, sceneDescription: `Scene of version ${i}, page ${k + 1}`, emotion: 'happy' })),
+      }));
       const res = await request(`/api/childrens-books/${bookId}/story-text/regenerate`, user, 'POST');
       expect(res.status).toBe(200);
       const body = (await res.json()) as any;
       expect(body.data.storyPlan.textRegenerations).toBe(i);
       expect(body.data.pages[0].storyText).toBe(`Version ${i} of page 1.`);
+      // A new version is a new story: the scenes the pictures are drawn from change too.
+      expect(body.data.storyPlan.pages[0].sceneDescription).toContain(`Scene of version ${i}, page 1`);
+      expect(body.data.pages[0].sceneSpec.sceneDescription).toContain(`Scene of version ${i}, page 1`);
+      expect(body.data.storyPlan.storyIdeas).toHaveLength(i);
     }
     const fourth = await request(`/api/childrens-books/${bookId}/story-text/regenerate`, user, 'POST');
     expect(fourth.status).toBe(400);

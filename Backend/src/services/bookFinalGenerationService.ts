@@ -5,7 +5,7 @@ import { finishBook } from './bookFinishingService';
 import { queuePrepaidAnimations } from './bookAnimationService';
 import { readExtras, BOOK_PDF_LAYOUT_VERSION } from './bookExtrasService';
 import { buildLogicalOperationKey, canStartFinalGeneration } from './bookStateService';
-import { StoryPlan } from './bookStoryPlanService';
+import { StoryPlan, syncScenesWithText } from './bookStoryPlanService';
 import { generateBookImage } from './bookImageGenerationService';
 import { runImageQa, isAcceptableQaStatus } from './bookQaService';
 import { storeBookAsset } from './bookStorageService';
@@ -127,7 +127,10 @@ function buildPagePrompt(params: {
     siblingsPromptLine(characterBible),
     extraCharactersPromptLine(characterBible),
     castPromptLine(params.cast, params.pageNumber, params.hasCastSheet),
-    planPage ? `Scene: ${planPage.sceneDescription}. Composition: ${planPage.composition}.` : '',
+    // The scene line is only used while it still describes this page's text;
+    // after an edit that could not be re-described, the text alone leads.
+    planPage && planPage.sceneSourceText === (params.storyText ?? '').trim() ? `Scene: ${planPage.sceneDescription}. Composition: ${planPage.composition}.` : '',
+    planPage && planPage.sceneSourceText !== (params.storyText ?? '').trim() ? `Composition: ${planPage.composition}.` : '',
     params.safer ? 'A gentle, wholesome, family-friendly picture-book scene for young children; everyone fully clothed, nothing scary.' : '',
     'No readable text or letters anywhere in the image. Reserve the upper-left 30% free of detail.',
   ].filter(Boolean).join(' ');
@@ -137,8 +140,25 @@ async function runFinalGeneration(bookProjectId: string): Promise<void> {
   const book = await prisma.bookProject.findUnique({ where: { id: bookProjectId }, include: { pages: { orderBy: { pageNumber: 'asc' } } } });
   if (!book) return;
 
-  const storyPlan = book.storyPlan as unknown as StoryPlan;
+  let storyPlan = book.storyPlan as unknown as StoryPlan;
   const characterBible = book.characterBible as any;
+  // Pictures follow the words: pages whose text was edited after their scene
+  // was written get a new scene description from the current text first.
+  try {
+    const synced = await syncScenesWithText({ plan: storyPlan, pages: book.pages, character: (characterBible ?? book.characterConfig ?? {}) as any });
+    if (synced) {
+      const byNumber = new Map(synced.pages.map((pp) => [pp.pageNumber, pp]));
+      await prisma.$transaction([
+        prisma.bookProject.update({ where: { id: book.id }, data: { storyPlan: { ...((book.storyPlan as any) ?? {}), pages: synced.pages } as any } }),
+        ...book.pages
+          .filter((pg) => byNumber.has(pg.pageNumber) && pg.acceptedEventId === null)
+          .map((pg) => prisma.bookPage.update({ where: { id: pg.id }, data: { sceneSpec: { ...((pg.sceneSpec as any) ?? {}), ...byNumber.get(pg.pageNumber)! } as any } })),
+      ]);
+      storyPlan = synced;
+    }
+  } catch (err) {
+    console.error(`[childrens-book] ${book.id}: could not re-describe edited pages, drawing from the page text alone:`, err instanceof Error ? err.message : err);
+  }
   const styleBible = book.styleBible as any;
   // Loaded once per run: the approved portrait is the reference for every
   // page so the child keeps the same look and outfit throughout.
