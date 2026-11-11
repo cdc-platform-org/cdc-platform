@@ -1096,7 +1096,7 @@ router.post(
     if (isBookDevPaymentSimulationEnabled()) {
       return res.status(403).json({ message: 'Real checkout is disabled while dev payment simulation is enabled on this server.' });
     }
-    let book: { id: string; pageCount: number; audioAddOnPurchased: boolean };
+    let book: { id: string; pageCount: number; audioAddOnPurchased: boolean; animationAddOnPurchased: boolean };
     try {
       book = await assertBookReadyForCheckout(req.params.bookId, req.user!.id);
     } catch (err) {
@@ -1118,7 +1118,7 @@ router.post(
     // into one "amount" variable.
     const listPriceGel = calculateBookPrice(book.pageCount);
     const audioPriceGel = calculateAudioPrice(book.audioAddOnPurchased);
-    const totalPriceGel = calculateTotalBookPrice(listPriceGel, book.audioAddOnPurchased);
+    const totalPriceGel = calculateTotalBookPrice(listPriceGel, book.audioAddOnPurchased, book.animationAddOnPurchased);
     const payableAmountGel = resolveBookPayableAmountTetri(book.id, totalPriceGel);
 
     // Optional promo code — same re-validated-server-side rule as every

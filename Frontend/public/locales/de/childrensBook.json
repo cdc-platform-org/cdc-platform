@@ -276,5 +276,10 @@
   "shareUpdating": "Link und PDF werden aktualisiert…",
   "shareCopy": "Link kopieren",
   "shareCopied": "Kopiert!",
-  "shareFailed": "Der Link konnte nicht geändert werden. Bitte versuche es erneut."
+  "shareFailed": "Der Link konnte nicht geändert werden. Bitte versuche es erneut.",
+  "animationAddonTitle": "Animiertes Video",
+  "animationAddonHint": "Ihr Buch wird mit Erzählung, Musik und bewegten Szenen lebendig. Es entsteht direkt nach Fertigstellung des Buches.",
+  "removeAnimation": "Animation entfernen",
+  "addAnimationFor": "Hinzufügen +{{amount}} GEL",
+  "animationPriceLine": "Animation: {{amount}} GEL (im Gesamtbetrag enthalten)"
 }

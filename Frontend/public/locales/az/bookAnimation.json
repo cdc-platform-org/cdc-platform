@@ -20,5 +20,6 @@
   "failed": "Videonu yaratmaq mümkün olmadı. Yenidən cəhd edin — təkrar ödəniş tutulmayacaq.",
   "retry": "Yenidən cəhd et",
   "error": "Nəsə alınmadı. Zəhmət olmasa yenidən cəhd edin.",
-  "sharedTitle": "Animasiyalı nağılı izlə"
+  "sharedTitle": "Animasiyalı nağılı izlə",
+  "prepaidStarting": "Animasiya kitabla birlikdə ödənilib və avtomatik başlayır…"
 }

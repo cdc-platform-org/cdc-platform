@@ -60,7 +60,9 @@ export default function AnimationCard({ bookId, bookTitle }: { bookId: string; b
   }, [load]);
 
   const state = status?.animation?.status ?? null;
-  const working = state === 'QUEUED' || state === 'RENDERING';
+  // Bought with the book: the render starts by itself right after the book is finished.
+  const prepaidWaiting = !!status?.prepaid && state === null;
+  const working = state === 'QUEUED' || state === 'RENDERING' || prepaidWaiting;
   // Right after returning from the payment page the BOG callback may still be on its way.
   const awaitingPayment = state === 'PAYMENT_PENDING' && router.query.animation === 'paid';
 
@@ -101,11 +103,15 @@ export default function AnimationCard({ bookId, bookTitle }: { bookId: string; b
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-600 text-white"><Clapperboard className="h-5 w-5" /></div>
         <div className="min-w-0 flex-1">
           <h3 className="font-semibold text-gray-800">{state === 'READY' ? t('readyTitle') : t('title', { price: formatGel(status.priceTetri) })}</h3>
-          {(state === null || state === 'PAYMENT_PENDING') && <p className="mt-1 text-sm text-gray-600">{status.soraEnabled ? t('description') : t('descriptionBasic')}</p>}
+          {!prepaidWaiting && (state === null || state === 'PAYMENT_PENDING') && <p className="mt-1 text-sm text-gray-600">{status.soraEnabled ? t('description') : t('descriptionBasic')}</p>}
         </div>
       </div>
 
-      {(state === null || state === 'PAYMENT_PENDING') && (
+      {prepaidWaiting && (
+        <p className="mt-3 flex items-center gap-1.5 text-sm text-purple-700" data-testid="book-animation-prepaid"><Loader2 className="h-4 w-4 animate-spin" />{t('prepaidStarting')}</p>
+      )}
+
+      {!prepaidWaiting && (state === null || state === 'PAYMENT_PENDING') && (
         <div className="mt-3">
           <ul className="mb-3 grid gap-1 text-sm text-gray-700 sm:grid-cols-2">
             <li className="flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5 shrink-0 text-purple-500" />{status.soraEnabled ? t('featureMotion') : t('featureAnimatedPages')}</li>

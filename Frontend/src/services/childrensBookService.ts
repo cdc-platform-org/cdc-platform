@@ -74,6 +74,7 @@ export interface BookProject {
   illustrationStyle: string | null;
   priceGel: number;
   audioAddOnPurchased: boolean;
+  animationAddOnPurchased?: boolean;
   audioPriceGel: number;
   totalPriceGel: number;
   pageCount: number;
@@ -101,6 +102,7 @@ export interface BookListItem {
   pageCount: number;
   priceGel: number;
   audioAddOnPurchased: boolean;
+  animationAddOnPurchased?: boolean;
   audioPriceGel: number;
   totalPriceGel: number;
   createdAt: string;
@@ -228,6 +230,12 @@ export async function approveCharacter(id: string): Promise<BookProject> {
 export async function startCheckout(bookId: string, promoCode?: string): Promise<{ paymentId: string; redirectUrl: string | null; purchased?: boolean }> {
   const response = await apiClient.post<{ paymentId: string; redirectUrl: string | null; purchased?: boolean }>(`/payments/checkout/childrens-book/${bookId}`, promoCode ? { promoCode } : {});
   return response.data;
+}
+
+// Animated video add-on chosen at checkout (+10 GEL on the same payment).
+export async function updateAnimationAddOn(id: string, animationAddOnPurchased: boolean): Promise<BookProject> {
+  const response = await apiClient.patch<{ data: BookProject }>(`/childrens-books/${id}/audio-upgrade`, { animationAddOnPurchased });
+  return response.data.data;
 }
 
 export async function updateAudioUpgrade(id: string, audioAddOnPurchased: boolean): Promise<BookProject> {

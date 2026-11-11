@@ -20,5 +20,6 @@
   "failed": "La vidéo n'a pas pu être créée. Réessayez — vous ne serez pas débité à nouveau.",
   "retry": "Réessayer",
   "error": "Une erreur s'est produite. Veuillez réessayer.",
-  "sharedTitle": "Regarder l'histoire animée"
+  "sharedTitle": "Regarder l'histoire animée",
+  "prepaidStarting": "L'animation a été payée avec le livre et démarre automatiquement…"
 }

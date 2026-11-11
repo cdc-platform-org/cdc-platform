@@ -276,5 +276,10 @@
   "shareUpdating": "Bağlantı ve PDF güncelleniyor…",
   "shareCopy": "Bağlantıyı kopyala",
   "shareCopied": "Kopyalandı!",
-  "shareFailed": "Bağlantı değiştirilemedi. Lütfen tekrar deneyin."
+  "shareFailed": "Bağlantı değiştirilemedi. Lütfen tekrar deneyin.",
+  "animationAddonTitle": "Animasyonlu video",
+  "animationAddonHint": "Kitabınız seslendirme, müzik ve hareketli sahnelerle canlanır. Kitap bittikten hemen sonra hazırlanır.",
+  "removeAnimation": "Animasyonu kaldır",
+  "addAnimationFor": "Ekle +{{amount}} GEL",
+  "animationPriceLine": "Animasyon: {{amount}} GEL (toplama dahil)"
 }

@@ -20,5 +20,6 @@
   "failed": "No pudimos crear el vídeo. Inténtalo de nuevo; no se te cobrará otra vez.",
   "retry": "Reintentar",
   "error": "Algo salió mal. Inténtalo de nuevo.",
-  "sharedTitle": "Mira el cuento animado"
+  "sharedTitle": "Mira el cuento animado",
+  "prepaidStarting": "La animación se pagó junto con el libro y empieza automáticamente…"
 }

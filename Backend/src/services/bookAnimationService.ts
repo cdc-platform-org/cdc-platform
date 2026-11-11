@@ -253,9 +253,38 @@ export async function runBookAnimation(animationId: string, options: { sora?: So
   }
 }
 
+// Animation bought together with the book at checkout
+// (BookProject.animationAddOnPurchased): once the book is finished, queue its
+// render as already paid. Idempotent — a book that already has an animation
+// row is left alone. Called right after a book is finished and by the
+// startup/recovery sweeps, so a restart between the two never loses it.
+export async function queuePrepaidAnimations(bookProjectId?: string): Promise<number> {
+  const books = await prisma.bookProject.findMany({
+    where: {
+      ...(bookProjectId ? { id: bookProjectId } : {}),
+      animationAddOnPurchased: true,
+      status: { in: [...ANIMATABLE_BOOK_STATUSES] },
+      animation: null,
+    },
+    select: { id: true, userId: true },
+  });
+  let queued = 0;
+  for (const book of books) {
+    try {
+      await queueFreeAnimation({ bookProjectId: book.id, userId: book.userId, paidVia: 'BOOK_CHECKOUT' });
+      queued += 1;
+    } catch (err) {
+      // A concurrent sweep may have created the row first (unique bookProjectId).
+      console.error(`[book-animation] could not queue prepaid animation for ${book.id}:`, err instanceof Error ? err.message : err);
+    }
+  }
+  return queued;
+}
+
 // Startup / periodic recovery: resumes QUEUED and RENDERING (cut off by a
 // restart) animations, and gives a paid FAILED animation one automatic retry.
 export async function resumeBookAnimations(): Promise<number> {
+  await queuePrepaidAnimations().catch((err) => console.error('[book-animation] prepaid queue sweep failed:', err));
   const failed = await prisma.bookAnimation.findMany({ where: { status: 'FAILED', paidAt: { not: null }, autoRetried: false }, select: { id: true } });
   for (const { id } of failed) {
     await prisma.bookAnimation.updateMany({ where: { id, status: 'FAILED', autoRetried: false }, data: { status: 'QUEUED', autoRetried: true } });

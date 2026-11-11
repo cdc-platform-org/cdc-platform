@@ -20,5 +20,6 @@
   "failed": "Das Video konnte nicht erstellt werden. Versuche es erneut — es fallen keine weiteren Kosten an.",
   "retry": "Erneut versuchen",
   "error": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
-  "sharedTitle": "Die animierte Geschichte ansehen"
+  "sharedTitle": "Die animierte Geschichte ansehen",
+  "prepaidStarting": "Die Animation wurde mit dem Buch bezahlt und startet automatisch…"
 }

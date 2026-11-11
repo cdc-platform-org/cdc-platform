@@ -18,7 +18,7 @@ export async function completeChildrensBookPurchase(params: { bookProjectId: str
   if (!book) return { handled: false };
 
   const audioPriceGel = calculateAudioPrice(!!book.audioAddOnPurchased);
-  const totalPriceGel = calculateTotalBookPrice(book.priceGel, !!book.audioAddOnPurchased);
+  const totalPriceGel = calculateTotalBookPrice(book.priceGel, !!book.audioAddOnPurchased, !!book.animationAddOnPurchased);
 
   const result = await prisma.bookProject.updateMany({
     where: { id: params.bookProjectId, status: 'PAYMENT_PENDING' },
@@ -31,12 +31,12 @@ export async function completeChildrensBookPurchase(params: { bookProjectId: str
 // non-atomic pre-check only (the real guarantee is the updateMany above at
 // fulfillment time); this just avoids creating a payment row for a book
 // that obviously isn't eligible yet.
-export async function assertBookReadyForCheckout(bookProjectId: string, userId: string): Promise<{ id: string; pageCount: number; audioAddOnPurchased: boolean }> {
+export async function assertBookReadyForCheckout(bookProjectId: string, userId: string): Promise<{ id: string; pageCount: number; audioAddOnPurchased: boolean; animationAddOnPurchased: boolean }> {
   const book = await prisma.bookProject.findUnique({ where: { id: bookProjectId } });
   if (!book || book.userId !== userId) throw new BookNotFoundError();
   if (!canInitiatePayment({ status: book.status })) throw new BookNotEligibleForCheckoutError(book.status);
   if (!book.previewConfirmedAt) throw new BookPreviewNotConfirmedError();
-  return { id: book.id, pageCount: book.pageCount, audioAddOnPurchased: !!book.audioAddOnPurchased };
+  return { id: book.id, pageCount: book.pageCount, audioAddOnPurchased: !!book.audioAddOnPurchased, animationAddOnPurchased: !!book.animationAddOnPurchased };
 }
 
 export class BookNotFoundError extends Error {

@@ -20,5 +20,6 @@
   "failed": "We couldn't create the video. Try again — you won't be charged again.",
   "retry": "Try again",
   "error": "Something went wrong. Please try again.",
-  "sharedTitle": "Watch the animated story"
+  "sharedTitle": "Watch the animated story",
+  "prepaidStarting": "The animation was paid together with the book and is starting automatically…"
 }

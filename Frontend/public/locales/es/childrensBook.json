@@ -276,5 +276,10 @@
   "shareUpdating": "Actualizando el enlace y el PDF…",
   "shareCopy": "Copiar enlace",
   "shareCopied": "¡Copiado!",
-  "shareFailed": "No se pudo cambiar el enlace. Inténtalo de nuevo."
+  "shareFailed": "No se pudo cambiar el enlace. Inténtalo de nuevo.",
+  "animationAddonTitle": "Vídeo animado",
+  "animationAddonHint": "Tu libro cobra vida con narración, música y escenas en movimiento. Se crea justo después de terminar el libro.",
+  "removeAnimation": "Quitar animación",
+  "addAnimationFor": "Añadir +{{amount}} GEL",
+  "animationPriceLine": "Animación: {{amount}} GEL (incluida en el total)"
 }

@@ -1,4 +1,5 @@
 import type { BookLanguage } from '@prisma/client';
+import { ANIMATION_PRICE_TETRI } from './bookAnimationPlan';
 
 export const AUDIO_ADDON_PRICE_TETRI = 500;
 
@@ -6,8 +7,14 @@ export function calculateAudioPrice(audioAddOnPurchased: boolean): number {
   return audioAddOnPurchased ? AUDIO_ADDON_PRICE_TETRI : 0;
 }
 
-export function calculateTotalBookPrice(bookPriceTetri: number, audioAddOnPurchased: boolean): number {
-  return bookPriceTetri + calculateAudioPrice(audioAddOnPurchased);
+// Animated video add-on chosen at checkout — same price as buying it after
+// the book is finished (bookAnimationPlan.ANIMATION_PRICE_TETRI).
+export function calculateAnimationAddOnPrice(animationAddOnPurchased: boolean): number {
+  return animationAddOnPurchased ? ANIMATION_PRICE_TETRI : 0;
+}
+
+export function calculateTotalBookPrice(bookPriceTetri: number, audioAddOnPurchased: boolean, animationAddOnPurchased = false): number {
+  return bookPriceTetri + calculateAudioPrice(audioAddOnPurchased) + calculateAnimationAddOnPrice(animationAddOnPurchased);
 }
 
 export function canGenerateNarration(params: { audioAddOnPurchased: boolean; paymentStatus: string }): boolean {

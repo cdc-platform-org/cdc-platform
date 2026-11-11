@@ -276,5 +276,10 @@
   "shareUpdating": "Link və PDF yenilənir…",
   "shareCopy": "Linki kopyala",
   "shareCopied": "Kopyalandı!",
-  "shareFailed": "Link dəyişdirilmədi. Yenidən cəhd edin."
+  "shareFailed": "Link dəyişdirilmədi. Yenidən cəhd edin.",
+  "animationAddonTitle": "Animasiya videosu",
+  "animationAddonHint": "Kitab səsləndirmə, musiqi və hərəkətli səhnələrlə canlanır. Kitab hazır olandan sonra hazırlanır.",
+  "removeAnimation": "Animasiyanı sil",
+  "addAnimationFor": "Əlavə et +{{amount}} GEL",
+  "animationPriceLine": "Animasiya: {{amount}} GEL (cəmə daxildir)"
 }

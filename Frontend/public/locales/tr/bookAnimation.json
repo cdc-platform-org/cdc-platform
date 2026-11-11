@@ -20,5 +20,6 @@
   "failed": "Video oluşturulamadı. Tekrar dene — yeniden ücret alınmaz.",
   "retry": "Tekrar dene",
   "error": "Bir şeyler ters gitti. Lütfen tekrar dene.",
-  "sharedTitle": "Animasyonlu masalı izle"
+  "sharedTitle": "Animasyonlu masalı izle",
+  "prepaidStarting": "Animasyon kitapla birlikte ödendi ve otomatik olarak başlıyor…"
 }

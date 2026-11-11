@@ -79,7 +79,7 @@ async function videoUrls(req: Request, animation: { id: string; videoKey: string
 // ---- helpers ---------------------------------------------------------------------
 
 async function bookFor(req: Request, res: Response, opts: { allowAdmin?: boolean } = {}) {
-  const book = await prisma.bookProject.findUnique({ where: { id: req.params.id }, select: { id: true, userId: true, status: true, title: true } });
+  const book = await prisma.bookProject.findUnique({ where: { id: req.params.id }, select: { id: true, userId: true, status: true, title: true, animationAddOnPurchased: true } });
   if (!book) {
     res.status(404).json({ message: 'Book not found.' });
     return null;
@@ -94,7 +94,7 @@ async function bookFor(req: Request, res: Response, opts: { allowAdmin?: boolean
   return book;
 }
 
-async function statusPayload(req: Request, bookId: string, bookStatus: string) {
+async function statusPayload(req: Request, bookId: string, bookStatus: string, prepaid = false) {
   const animation = await prisma.bookAnimation.findUnique({ where: { bookProjectId: bookId } });
   const urls = animation?.status === 'READY' ? await videoUrls(req, animation) : { videoUrl: null, downloadUrl: null };
   return {
@@ -102,6 +102,8 @@ async function statusPayload(req: Request, bookId: string, bookStatus: string) {
     promoTargetType: 'AI_TOOL' as const,
     promoTargetId: ANIMATION_PROMO_TARGET_ID,
     eligible: isBookAnimatable(bookStatus),
+    // Bought together with the book at checkout: no second payment.
+    prepaid,
     devPaymentSimulation: isBookDevPaymentSimulationEnabled(),
     // AI (Sora) motion is only promised when it is actually configured.
     soraEnabled: !isBookAiMocked() && !!readSoraConfig(),
@@ -126,13 +128,19 @@ router.get('/:id/animation', authenticate, async (req: Request, res: Response) =
   const book = await bookFor(req, res, { allowAdmin: true });
   if (!book) return;
   res.setHeader('Cache-Control', 'no-store');
-  res.json({ data: await statusPayload(req, book.id, book.status) });
+  res.json({ data: await statusPayload(req, book.id, book.status, !!book.animationAddOnPurchased) });
 });
 
 router.post('/:id/animation', checkoutRateLimit, authenticate, requireApproved, async (req: Request, res: Response) => {
   const book = await bookFor(req, res);
   if (!book) return;
   if (!isBookAnimatable(book.status)) return res.status(400).json({ message: 'The book must be finished before it can be animated.' });
+
+  // Already paid as part of the book checkout: just (re)queue, never charge again.
+  if (book.animationAddOnPurchased) {
+    await queueFreeAnimation({ bookProjectId: book.id, userId: req.user!.id, paidVia: 'BOOK_CHECKOUT' });
+    return res.status(200).json({ purchased: true, redirectUrl: null });
+  }
 
   const existing = await prisma.bookAnimation.findUnique({ where: { bookProjectId: book.id } });
   if (existing && existing.status !== 'PAYMENT_PENDING') {

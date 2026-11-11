@@ -276,5 +276,10 @@
   "shareUpdating": "ბმული და PDF ახლდება…",
   "shareCopy": "ბმულის კოპირება",
   "shareCopied": "დაკოპირდა!",
-  "shareFailed": "ბმული ვერ შეიცვალა. სცადე თავიდან."
+  "shareFailed": "ბმული ვერ შეიცვალა. სცადე თავიდან.",
+  "animationAddonTitle": "ანიმაციური ვიდეო",
+  "animationAddonHint": "წიგნი გაცოცხლდება: გახმოვანება, მუსიკა და მოძრავი სცენები. მზადდება წიგნის დასრულების შემდეგ.",
+  "removeAnimation": "ანიმაციის მოხსნა",
+  "addAnimationFor": "დამატება +{{amount}} ₾",
+  "animationPriceLine": "ანიმაცია: {{amount}} ₾ (შედის ჯამში)"
 }

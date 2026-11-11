@@ -4,7 +4,7 @@ import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { BookOpen, Sparkles, CheckCircle2, Loader2, Download, RefreshCw, ArrowLeft, ArrowRight, Headphones, PlayCircle, PenLine } from 'lucide-react';
+import { BookOpen, Sparkles, CheckCircle2, Loader2, Download, RefreshCw, ArrowLeft, ArrowRight, Headphones, PlayCircle, PenLine, Clapperboard } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
 import GiftThisButton from '../../../src/components/giftCards/GiftThisButton';
@@ -24,6 +24,7 @@ import {
   startCheckout,
   devSimulatePayment,
   updateAudioUpgrade,
+  updateAnimationAddOn,
   getNarrationStatus,
   generateNarration,
   fetchNarrationAudioUrl,
@@ -134,7 +135,7 @@ function ChildrensBookContent() {
   // code can already be priced — the preview's total shows it too, not only
   // the pay button.
   const promoApplicable = !!book && TEXT_EDITABLE_STATUSES.includes(book.status) && !devPaymentSimulationEnabled;
-  const bookTotal = book ? (book.audioAddOnPurchased ? book.totalPriceGel : book.priceGel) : 0;
+  const bookTotal = book ? book.totalPriceGel || book.priceGel : 0;
   // Apply the create-form code as soon as the book can be priced (and again
   // after the audio add-on changes the price, which clears the preview).
   useEffect(() => {
@@ -277,6 +278,15 @@ function ChildrensBookContent() {
       } else {
         setAudioStatus((current) => current ? { ...current, audioAddOnPurchased: false } : current);
       }
+    });
+  }
+
+  async function handleAnimationToggle(nextValue: boolean) {
+    if (!book) return;
+    await run(async () => {
+      setBook(await updateAnimationAddOn(book.id, nextValue));
+      // Same as the audio toggle: a previewed discount was priced on the old total.
+      setAppliedPromo(null);
     });
   }
 
@@ -453,7 +463,7 @@ function ChildrensBookContent() {
                         {t(`statusValue.${b.generationRecovering ? 'FINAL_GENERATING' : b.status}`, b.status)}
                       </span>
                     </div>
-                    <div className="text-xs text-gray-500 mt-2">{t('pagesCount', { value: b.pageCount })} · {t('priceGel', { amount: (b.audioAddOnPurchased ? b.totalPriceGel : b.priceGel) / 100 })} · {new Date(b.createdAt).toLocaleDateString()}</div>
+                    <div className="text-xs text-gray-500 mt-2">{t('pagesCount', { value: b.pageCount })} · {t('priceGel', { amount: (b.totalPriceGel || b.priceGel) / 100 })} · {new Date(b.createdAt).toLocaleDateString()}</div>
                     {b.audioAddOnPurchased && <div className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-purple-700"><Headphones className="w-3.5 h-3.5" /> {t('audioStoryBadge')}</div>}
                     <div className="mt-4 pt-3 border-t border-gray-100 flex flex-wrap gap-2">
                       <button
@@ -744,8 +754,28 @@ function ChildrensBookContent() {
                   {book.audioAddOnPurchased ? t('removeAudio') : t('addAudioFor', { amount: (book.priceGel + 500) / 100 })}
                 </button>
               </div>
-              <p className="text-sm text-gray-600 mt-2">{t('priceBreakdown', { book: book.priceGel / 100, audio: book.audioAddOnPurchased ? book.audioPriceGel / 100 : 0, total: (book.audioAddOnPurchased ? book.totalPriceGel : book.priceGel) / 100 })}</p>
               {mocked && <p className="text-xs text-gray-500 mt-1">{t('mockAudioNotice')}</p>}
+              <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-purple-200">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Clapperboard className="w-5 h-5 shrink-0 text-purple-600" />
+                  <div className="min-w-0">
+                    <span className="font-medium text-gray-800">{t('animationAddonTitle')}</span>
+                    <p className="text-xs text-gray-600">{t('animationAddonHint')}</p>
+                  </div>
+                </div>
+                <button
+                  disabled={busy}
+                  onClick={() => handleAnimationToggle(!book.animationAddOnPurchased)}
+                  className="shrink-0 px-3 py-1.5 rounded-lg border border-purple-300 bg-white text-purple-700 text-sm font-medium disabled:opacity-50"
+                  data-testid="book-animation-addon-toggle"
+                >
+                  {book.animationAddOnPurchased ? t('removeAnimation') : t('addAnimationFor', { amount: 10 })}
+                </button>
+              </div>
+              <p className="text-sm text-gray-600 mt-3">
+                {t('priceBreakdown', { book: book.priceGel / 100, audio: book.audioAddOnPurchased ? book.audioPriceGel / 100 : 0, total: bookTotal / 100 })}
+                {book.animationAddOnPurchased && <> · {t('animationPriceLine', { amount: 10 })}</>}
+              </p>
             </div>
           )}
 
@@ -889,7 +919,7 @@ function ChildrensBookContent() {
                         })}
                         className="px-5 py-2 rounded-lg bg-purple-600 text-white font-medium disabled:opacity-50"
                       >
-                        {t('payButton', { amount: (appliedPromo ? appliedPromo.discountedAmount : (book.audioAddOnPurchased ? book.totalPriceGel : book.priceGel)) / 100 })}
+                        {t('payButton', { amount: (appliedPromo ? appliedPromo.discountedAmount : bookTotal) / 100 })}
                       </button>
                       <div className="basis-full">
                         <PromoCodeField

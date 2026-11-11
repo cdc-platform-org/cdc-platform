@@ -149,9 +149,9 @@ export async function resolveTargetPrice(targetType: CouponTargetType, targetId:
       // Priced fresh from pageCount + audio add-on (tetri), never from the
       // stored priceGel/totalPriceGel columns — same rule as the book
       // checkout route itself.
-      const book = await prisma.bookProject.findUnique({ where: { id: targetId }, select: { pageCount: true, audioAddOnPurchased: true } });
+      const book = await prisma.bookProject.findUnique({ where: { id: targetId }, select: { pageCount: true, audioAddOnPurchased: true, animationAddOnPurchased: true } });
       if (!book) throw new CouponTargetNotFoundError('Book not found.');
-      const price = calculateTotalBookPrice(calculateBookPrice(book.pageCount), !!book.audioAddOnPurchased);
+      const price = calculateTotalBookPrice(calculateBookPrice(book.pageCount), !!book.audioAddOnPurchased, !!book.animationAddOnPurchased);
       return { currentPrice: price, originalPrice: price };
     }
   }

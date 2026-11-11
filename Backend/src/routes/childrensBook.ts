@@ -330,6 +330,7 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
       pageCount: true,
       priceGel: true,
       audioAddOnPurchased: true,
+      animationAddOnPurchased: true,
       audioPriceGel: true,
       totalPriceGel: true,
       characterBible: true,
@@ -502,14 +503,18 @@ router.patch('/:id/audio-upgrade', authenticate, async (req: Request, res: Respo
     return res.status(400).json({ message: 'Audio add-on cannot be changed after payment has been completed.' });
   }
 
-  const audioAddOnPurchased = Boolean(req.body?.audioAddOnPurchased);
+  // Each add-on changes only when the request names it, so the audio and
+  // animation toggles never reset each other.
+  const audioAddOnPurchased = typeof req.body?.audioAddOnPurchased === 'boolean' ? req.body.audioAddOnPurchased : !!book.audioAddOnPurchased;
+  const animationAddOnPurchased = typeof req.body?.animationAddOnPurchased === 'boolean' ? req.body.animationAddOnPurchased : !!book.animationAddOnPurchased;
   const audioPriceGel = calculateAudioPrice(audioAddOnPurchased);
-  const totalPriceGel = calculateTotalBookPrice(book.priceGel, audioAddOnPurchased);
+  const totalPriceGel = calculateTotalBookPrice(book.priceGel, audioAddOnPurchased, animationAddOnPurchased);
 
   const updated = await prisma.bookProject.update({
     where: { id: book.id },
     data: {
       audioAddOnPurchased,
+      animationAddOnPurchased,
       audioPriceGel,
       totalPriceGel,
     },

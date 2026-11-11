@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { ensureBookCast, castPromptLine, BookCast } from './bookCastService';
 import { finishBook } from './bookFinishingService';
+import { queuePrepaidAnimations } from './bookAnimationService';
 import { readExtras, BOOK_PDF_LAYOUT_VERSION } from './bookExtrasService';
 import { buildLogicalOperationKey, canStartFinalGeneration } from './bookStateService';
 import { StoryPlan } from './bookStoryPlanService';
@@ -255,6 +256,8 @@ async function runFinalGeneration(bookProjectId: string): Promise<void> {
     await prisma.bookProject.updateMany({ where: { id: book.id, status: 'FINAL_GENERATING' }, data: { status: 'FINAL_QA' } });
     await prisma.bookProject.updateMany({ where: { id: book.id, status: 'FINAL_QA' }, data: { status: 'FINAL_READY' } });
     await finishBook(book.id, { drawCoverImage: true });
+    // Animation bought at checkout starts once the book (and its narration) is done.
+    await queuePrepaidAnimations(book.id).catch((err) => console.error(`[book-animation] ${book.id}: prepaid animation not queued:`, err));
   } else {
     console.error(`[childrens-book] ${book.id}: ${book.pageCount - acceptedCount} page(s) still missing after automatic retries${stopReason ? ` (${stopReason})` : ''}; the recovery sweep will try again later`);
     await prisma.bookPage.updateMany({ where: { bookProjectId: book.id, acceptedEventId: null }, data: { imageGenerationStatus: 'FAILED' } });
@@ -326,5 +329,6 @@ export async function recoverStalledBooks(): Promise<{ restarted: number; finish
     }
   }
   if (restarted || finished) console.log(`[childrens-book] recovery sweep: restarted=${restarted} finished=${finished}`);
+  await queuePrepaidAnimations().catch((err) => console.error('[book-animation] prepaid queue sweep failed:', err));
   return { restarted, finished };
 }

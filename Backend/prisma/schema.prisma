@@ -5669,6 +5669,10 @@ model BookProject {
   audioAddOnPurchased Boolean @default(false)
   audioPriceGel       Int     @default(0)
   totalPriceGel       Int     @default(0)
+  // Animated video add-on chosen at book checkout (paid together with the
+  // book; totalPriceGel includes it). The render is queued once the book is
+  // finished — bookAnimationService.queuePrepaidAnimations.
+  animationAddOnPurchased Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

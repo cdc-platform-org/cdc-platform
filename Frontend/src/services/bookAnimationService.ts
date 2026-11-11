@@ -22,6 +22,8 @@ export interface BookAnimationStatus {
   eligible: boolean;
   devPaymentSimulation: boolean;
   soraEnabled: boolean;
+  // Bought together with the book at checkout: no buy button, it starts by itself.
+  prepaid?: boolean;
   animation: BookAnimationInfo | null;
 }
 
