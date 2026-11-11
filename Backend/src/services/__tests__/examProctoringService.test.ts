@@ -11,6 +11,16 @@ jest.mock('@google/generative-ai', () => ({
     getGenerativeModel: () => ({ generateContent: mockGenerateContent }),
   })),
 }));
+// When every Gemini call fails, generateJson falls back to Azure OpenAI if
+// AZURE_OPENAI_* is set. A developer's local .env has it set, so without this
+// mock the "repair call fails" test made a real Azure request (which repaired
+// the text and failed the test). These tests cover the Gemini path only, so
+// the Azure fallback is switched off for the whole file.
+jest.mock('../azureOpenAiService', () => ({
+  ...jest.requireActual('../azureOpenAiService'),
+  isAzureOpenAiConfigured: () => false,
+  generateJsonViaAzureOpenAI: jest.fn().mockRejectedValue(new Error('Azure OpenAI is mocked off in this test file')),
+}));
 
 import { generateExamQuestions, ExamProctoringAiError } from '../examProctoringService';
 
