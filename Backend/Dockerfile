@@ -25,7 +25,13 @@ FROM node:20-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+# ffmpeg: the children's book animated video burns the title and page text
+# into the video with the `drawtext` filter. The ffmpeg-static Linux binary
+# is built without libfreetype (no drawtext), so every render failed in
+# production with "No such filter: 'drawtext'". Debian's ffmpeg has it;
+# FFMPEG_PATH makes bookAnimationRenderer (and fluent-ffmpeg) use it.
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ffmpeg && rm -rf /var/lib/apt/lists/*
+ENV FFMPEG_PATH=/usr/bin/ffmpeg
 
 # node_modules is copied wholesale (not reinstalled) so pnpm's symlinked
 # .pnpm virtual store — where the generated Prisma client actually lives —
