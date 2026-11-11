@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
+import { stripMarkdown } from '../../src/utils/markdownLite';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
 import { ModeratedListing } from '../../src/types/adminPanel';
@@ -134,7 +135,7 @@ function GigsVacanciesModeration() {
                         </span>
                       </div>
                       <h3 className="font-semibold text-sm text-gray-900 dark:text-white mt-1.5 truncate">{listing.title}</h3>
-                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 line-clamp-2">{listing.description}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 line-clamp-2">{stripMarkdown(listing.description)}</p>
                       <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">
                         Posted by {listing.postedBy.name} ({listing.postedBy.email})
                       </p>
