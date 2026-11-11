@@ -1,4 +1,5 @@
 import { AZURE_SPEECH_KEY, AZURE_SPEECH_REGION } from '../utils/env';
+import { AZURE_TTS_OUTPUT_FORMAT, buildSsml, normalizeTextForSpeech } from './speechSsml';
 
 // ============================================================
 // Azure AI Speech (Cognitive Services) — text-to-speech for the Media
@@ -113,19 +114,6 @@ export async function listVoices(): Promise<TtsVoice[]> {
 // narration at typical speaking pace).
 export const MAX_TTS_TEXT_LENGTH = 8000;
 
-function escapeSsml(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
-}
-
-// speed is a plain 0.5-2.0 multiplier from the UI slider (1.0 = normal) —
-// translated to SSML's percentage-based prosody rate here so the route/
-// frontend never need to know SSML exists.
-function speedToProsodyRate(speed: number): string {
-  const clamped = Math.max(0.5, Math.min(2, speed));
-  const percent = Math.round((clamped - 1) * 100);
-  return `${percent >= 0 ? '+' : ''}${percent}%`;
-}
-
 export async function synthesizeSpeech(params: { text: string; voiceShortName: string; voiceLocale: string; speed: number }): Promise<Buffer> {
   if (!isTtsConfigured()) {
     throw new AzureSpeechError('Azure Speech is not configured (AZURE_SPEECH_KEY/AZURE_SPEECH_REGION missing).', 501);
@@ -134,11 +122,12 @@ export async function synthesizeSpeech(params: { text: string; voiceShortName: s
     throw new AzureSpeechError(`Text is too long for a single narration (max ${MAX_TTS_TEXT_LENGTH} characters).`, 400);
   }
 
-  const ssml =
-    `<speak version="1.0" xml:lang="${escapeSsml(params.voiceLocale)}">` +
-    `<voice name="${escapeSsml(params.voiceShortName)}">` +
-    `<prosody rate="${speedToProsodyRate(params.speed)}">${escapeSsml(params.text)}</prosody>` +
-    `</voice></speak>`;
+  // Clean-up + pauses + native 24 kHz output live in speechSsml.ts — see
+  // that file for why each rule makes narration sound more natural.
+  if (!normalizeTextForSpeech(params.text, params.voiceLocale)) {
+    throw new AzureSpeechError('There is no readable text to narrate.', 400);
+  }
+  const ssml = buildSsml({ text: params.text, voiceShortName: params.voiceShortName, locale: params.voiceLocale, speed: params.speed });
 
   let response: Response;
   try {
@@ -147,7 +136,7 @@ export async function synthesizeSpeech(params: { text: string; voiceShortName: s
       headers: {
         'Ocp-Apim-Subscription-Key': AZURE_SPEECH_KEY,
         'Content-Type': 'application/ssml+xml',
-        'X-Microsoft-OutputFormat': 'audio-16khz-128kbitrate-mono-mp3',
+        'X-Microsoft-OutputFormat': AZURE_TTS_OUTPUT_FORMAT,
         'User-Agent': 'cdc-platform-media-studio',
       },
       body: ssml,

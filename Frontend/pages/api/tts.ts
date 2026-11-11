@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { AZURE_TTS_OUTPUT_FORMAT, buildSsml, normalizeTextForSpeech } from '../../src/utils/speechSsml';
 
 // Server-side proxy for VIPAudioNarrator's Georgian narration fallback
 // (src/components/ui/VIPAudioNarrator.tsx), backed by Azure Cognitive
@@ -19,18 +20,10 @@ const ALLOWED_VOICES = new Set(['ka-GE-EkaNeural', 'ka-GE-GiorgiNeural']);
 const DEFAULT_VOICE = 'ka-GE-EkaNeural';
 
 // `text` narrated here can originate from user-generated content (forum
-// posts, AI chat replies) that this route embeds into an SSML request body
-// — escaped so it can't break out of the <voice> element or inject its own
-// SSML/XML (e.g. a forum post containing literal `</voice><voice name=...>`).
-function escapeSsmlText(input: string): string {
-  return input
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
-
+// posts, AI chat replies) — buildSsml escapes it so it can't break out of
+// the <voice> element or inject its own SSML/XML, and also cleans it up
+// (markdown, emoji, Georgian abbreviations, paragraph pauses) so the voice
+// sounds natural. See src/utils/speechSsml.ts.
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -54,7 +47,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(501).json({ error: 'Azure Speech is not configured (AZURE_SPEECH_KEY/AZURE_SPEECH_REGION).' });
   }
 
-  const ssml = `<speak version="1.0" xml:lang="${lang}"><voice xml:lang="${lang}" name="${effectiveVoice}">${escapeSsmlText(truncatedText)}</voice></speak>`;
+  if (!normalizeTextForSpeech(truncatedText, lang)) {
+    return res.status(400).json({ error: 'No readable text.' });
+  }
+  const ssml = buildSsml({ text: truncatedText, voiceShortName: effectiveVoice, locale: lang });
 
   try {
     const upstream = await fetch(`https://${azureRegion}.tts.speech.microsoft.com/cognitiveservices/v1`, {
@@ -62,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       headers: {
         'Ocp-Apim-Subscription-Key': azureKey,
         'Content-Type': 'application/ssml+xml',
-        'X-Microsoft-OutputFormat': 'audio-16khz-128kbitrate-mono-mp3',
+        'X-Microsoft-OutputFormat': AZURE_TTS_OUTPUT_FORMAT,
         'User-Agent': 'cdc-platform-tts-proxy',
       },
       body: ssml,

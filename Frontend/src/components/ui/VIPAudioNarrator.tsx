@@ -75,10 +75,17 @@ function splitForTts(input: string): string[] {
     if ((current + sentence).length > TTS_CHUNK_LIMIT) {
       if (current.trim()) chunks.push(current.trim());
       if (sentence.length > TTS_CHUNK_LIMIT) {
-        for (let i = 0; i < sentence.length; i += TTS_CHUNK_LIMIT) {
-          chunks.push(sentence.slice(i, i + TTS_CHUNK_LIMIT).trim());
+        // Over-long run-on sentence: cut at the last comma/space before the
+        // limit rather than mid-word, so the voice never stops inside a word.
+        let rest = sentence;
+        while (rest.length > TTS_CHUNK_LIMIT) {
+          const window = rest.slice(0, TTS_CHUNK_LIMIT);
+          const cut = Math.max(window.lastIndexOf(', '), window.lastIndexOf(' '));
+          const at = cut > TTS_CHUNK_LIMIT / 2 ? cut + 1 : TTS_CHUNK_LIMIT;
+          chunks.push(rest.slice(0, at).trim());
+          rest = rest.slice(at);
         }
-        current = '';
+        current = rest;
       } else {
         current = sentence;
       }
