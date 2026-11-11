@@ -33,6 +33,7 @@ import { useEscapeToClose } from '../../src/hooks/useEscapeToClose';
 import { updateProfile, uploadAvatar, uploadVerificationDoc, resolveMyVerificationDoc } from '../../src/services/authService';
 import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../src/utils/imageUpload';
 import Toast from '../../src/components/shared/Toast';
+import WysiwygEditor from '../../src/components/shared/WysiwygEditor';
 import { getVerificationStatus, VerificationStatus } from '../../src/types/auth';
 import { MyGig } from '../../src/types/community';
 import { getMyGigs, approveGigWork, openGigDispute } from '../../src/services/gigService';
@@ -338,7 +339,17 @@ function VacancyEditModal({ vacancy, lang, onClose, onSaved }: VacancyEditModalP
           </div>
           <div>
             <label className={labelClass}>{t.fieldDescription}</label>
-            <textarea rows={4} className={inputClass} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            <WysiwygEditor
+              rows={4}
+              ariaLabel={t.fieldDescription}
+              value={form.description}
+              onChange={(v) => setForm((f) => ({ ...f, description: v }))}
+              labels={
+                lang === 'ka'
+                  ? { bold: 'მუქი', italic: 'დახრილი', heading: 'სათაური', bulletList: 'პუნქტებიანი სია', numberedList: 'დანომრილი სია', emoji: 'ემოჯი' }
+                  : undefined
+              }
+            />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>

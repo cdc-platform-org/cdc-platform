@@ -7,7 +7,7 @@ import { JOB_CATEGORIES, JOB_CATEGORY_LABEL } from '../../utils/jobCategory';
 import { resolveLocale } from '../../utils/locale';
 import { classifyApiError, ApiErrorReason } from '../../utils/apiErrorMessages';
 import PermissionDeniedModal from '../shared/PermissionDeniedModal';
-import RichTextEditor from '../shared/RichTextEditor';
+import WysiwygEditor from '../shared/WysiwygEditor';
 import VideoTutorialLink from '../shared/VideoTutorialLink';
 
 // Three distinct posting types, two directions:
@@ -78,6 +78,12 @@ const EN_STRINGS = {
   descriptionOffer: 'Skill Description',
   descriptionPlaceholder: 'Describe the role or project in detail…',
   descriptionOfferPlaceholder: 'Describe the service you offer and your experience…',
+  editorBold: 'Bold',
+  editorItalic: 'Italic',
+  editorHeading: 'Heading',
+  editorBulletList: 'Bulleted list',
+  editorNumberedList: 'Numbered list',
+  editorEmoji: 'Emoji',
   skills: 'Required skills',
   skillsHint: '(comma-separated)',
   skillsPlaceholder: 'React, TypeScript, Figma',
@@ -144,6 +150,12 @@ const dict = {
     description: 'აღწერა',
     descriptionOffer: 'უნარების აღწერა',
     descriptionPlaceholder: 'დეტალურად აღწერეთ პოზიცია ან პროექტი…',
+    editorBold: 'მუქი',
+    editorItalic: 'დახრილი',
+    editorHeading: 'სათაური',
+    editorBulletList: 'პუნქტებიანი სია',
+    editorNumberedList: 'დანომრილი სია',
+    editorEmoji: 'ემოჯი',
     descriptionOfferPlaceholder: 'აღწერეთ თქვენი მომსახურება და გამოცდილება…',
     skills: 'საჭირო უნარები',
     skillsHint: '(მძიმით გამოყოფილი)',
@@ -440,15 +452,24 @@ export default function PostingForm({ initialType, allowTypeToggle = false, clas
 
         <div>
           <label className={labelClass}>{postType === 'gig_offer' ? t.descriptionOffer : t.description}</label>
-          <RichTextEditor
+          <WysiwygEditor
             rows={5}
+            ariaLabel={postType === 'gig_offer' ? t.descriptionOffer : t.description}
+            labels={{
+              bold: t.editorBold,
+              italic: t.editorItalic,
+              heading: t.editorHeading,
+              bulletList: t.editorBulletList,
+              numberedList: t.editorNumberedList,
+              emoji: t.editorEmoji,
+            }}
             value={postType === 'vacancy' ? vacancyForm.description : gigForm.description}
             onChange={(v) =>
               postType === 'vacancy'
                 ? setVacancyForm({ ...vacancyForm, description: v })
                 : setGigForm({ ...gigForm, description: v })
             }
-            className={errors.description ? 'border-red-300' : ''}
+            className={errors.description ? '!border-red-300' : ''}
             placeholder={descriptionPlaceholder}
           />
           {errors.description && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.description}</p>}

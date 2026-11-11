@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, ChangeEvent } from 'react';
 import Head from 'next/head';
+import MarkdownContent from '../../src/components/shared/MarkdownContent';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
 import {
@@ -1055,7 +1056,7 @@ function AdminMentorshipDashboard() {
 
                 {expandedId === gig.id && (
                   <div className="bg-gray-50 rounded-lg p-3 mb-3 text-sm">
-                    <p className="text-gray-700 mb-2">{gig.description}</p>
+                    <MarkdownContent content={gig.description} className="text-gray-700 mb-2" />
                     {gig.deliveryComment && (
                       <>
                         <p className="text-xs font-semibold text-gray-500 mt-2">Draft submission:</p>
