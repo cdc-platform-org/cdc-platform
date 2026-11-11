@@ -60,6 +60,40 @@ export async function fulfillGiftCardPurchase(giftCardId: string): Promise<{ han
   return { handled: true };
 }
 
+// Admin-issued, free gift card (founder gifting a person or an
+// organization). Same card, code, email and printable card as a paid one —
+// it simply skips payment: the row is created and minted right away.
+export const COMPLIMENTARY_GIFT_CARD_MAX_GEL = 5000;
+
+export async function issueComplimentaryGiftCard(params: {
+  issuedById: string;
+  amountTetri: number;
+  senderName: string;
+  recipientName: string;
+  recipientType: 'PERSON' | 'ORGANIZATION';
+  recipientEmail: string | null;
+  message: string | null;
+  design: GiftCardDesign;
+  deliverAt: Date;
+}): Promise<GiftCard & { promoCode: PromoCode | null }> {
+  const card = await prisma.giftCard.create({
+    data: {
+      purchaserId: params.issuedById,
+      amount: params.amountTetri,
+      senderName: params.senderName,
+      recipientName: params.recipientName,
+      recipientType: params.recipientType,
+      recipientEmail: params.recipientEmail,
+      message: params.message,
+      design: params.design,
+      deliverAt: params.deliverAt,
+      complimentary: true,
+    },
+  });
+  await fulfillGiftCardPurchase(card.id);
+  return prisma.giftCard.findUniqueOrThrow({ where: { id: card.id }, include: { promoCode: true } });
+}
+
 export async function cancelGiftCardPurchase(giftCardId: string): Promise<void> {
   await prisma.giftCard.updateMany({ where: { id: giftCardId, status: 'PENDING_PAYMENT' }, data: { status: 'CANCELLED' } });
 }
@@ -199,6 +233,8 @@ export function publicGiftCard(card: GiftCard & { promoCode?: PromoCode | null }
     suggestedItem: card.suggestedItem,
     suggestedUrl: card.suggestedUrl,
     createdAt: card.createdAt,
+    complimentary: card.complimentary,
+    recipientType: card.recipientType,
     code: promo?.code ?? null,
     balance: promo ? Math.max(0, promo.discountAmount ?? 0) : null,
     expiresAt: promo?.expiresAt ?? null,
