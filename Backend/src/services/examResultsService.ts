@@ -1,6 +1,7 @@
 import { ExamQuestion, ExamSession, ExamSubmission } from '@prisma/client';
 import { prisma } from '../lib/prisma';
-import { generateMcqExplanations } from './examProctoringService';
+import { generateMcqExplanations, repairGarbledTexts } from './examProctoringService';
+import { hasGarbledGeorgian } from '../utils/georgianTextCheck';
 import { shuffleQuestionsForSubmission, canonicalToDisplayedLetter, isOptionMap, OptionMap } from '../utils/examShuffle';
 
 // Student-facing results for the AI Proctored Exam: score plus every
@@ -119,7 +120,14 @@ export function buildCandidateResults(session: ExamSession, submission: ExamSubm
 // explanations.
 const inFlight = new Map<string, Promise<void>>();
 
-export async function ensureMcqExplanations(session: ExamSession, questions: ExamQuestion[]): Promise<ExamQuestion[]> {
+// opts.timeoutMs: stop waiting after this long (the submit request uses it
+// so students are never kept waiting on a slow AI call); the explanations
+// keep generating in the background and are saved for later views/emails.
+export async function ensureMcqExplanations(
+  session: ExamSession,
+  questions: ExamQuestion[],
+  opts: { timeoutMs?: number } = {}
+): Promise<ExamQuestion[]> {
   const missing = questions.filter((q) => q.type === 'MCQ' && !q.explanation && q.correctAnswer && isOptionMap(q.options));
   if (missing.length === 0) return questions;
 
@@ -146,10 +154,68 @@ export async function ensureMcqExplanations(session: ExamSession, questions: Exa
   }
 
   try {
-    await job;
+    if (opts.timeoutMs != null) {
+      const finished = await Promise.race([
+        job.then(() => true),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), opts.timeoutMs)),
+      ]);
+      if (!finished) {
+        job.catch((err) => console.error('[examResults] generateMcqExplanations failed:', err));
+        return questions;
+      }
+    } else {
+      await job;
+    }
   } catch (err) {
     console.error('[examResults] generateMcqExplanations failed:', err);
     return questions;
   }
   return prisma.examQuestion.findMany({ where: { examSessionId: session.id }, orderBy: { order: 'asc' } });
+}
+
+// Exams generated before the Georgian-text check existed (or where the
+// model's repair failed) can still hold garbled Georgian words. The first
+// time such an exam is opened (by a student starting it, or the teacher
+// viewing it) the broken fields are repaired with one AI call and saved on
+// the question rows, so everyone after that sees clean text. Concurrent
+// callers share one repair; on any failure the questions are returned
+// unchanged. Callers that must stay fast pass timeoutMs: the repair keeps
+// running in the background and the next request gets the fixed text.
+const repairInFlight = new Map<string, Promise<void>>();
+
+export async function ensureCleanQuestionText(sessionId: string, opts: { timeoutMs?: number } = {}): Promise<void> {
+  let job = repairInFlight.get(sessionId);
+  if (!job) {
+    job = (async () => {
+      const questions = await prisma.examQuestion.findMany({ where: { examSessionId: sessionId } });
+      const fields: Record<string, string> = {};
+      for (const q of questions) {
+        fields[`${q.id}|question`] = q.question;
+        if (q.explanation) fields[`${q.id}|explanation`] = q.explanation;
+        if (q.type !== 'MCQ' && q.correctAnswer) fields[`${q.id}|correctAnswer`] = q.correctAnswer;
+        if (isOptionMap(q.options)) {
+          for (const letter of ['A', 'B', 'C', 'D'] as const) fields[`${q.id}|option|${letter}`] = q.options[letter];
+        }
+      }
+      if (!Object.values(fields).some((t) => hasGarbledGeorgian(t))) return;
+      const fixed = await repairGarbledTexts(fields);
+      for (const q of questions) {
+        const get = (key: string) => fixed[`${q.id}|${key}`];
+        const data: Record<string, unknown> = {};
+        if (get('question')) data.question = get('question');
+        if (get('explanation')) data.explanation = get('explanation');
+        if (get('correctAnswer')) data.correctAnswer = get('correctAnswer');
+        if (isOptionMap(q.options)) {
+          const opts = q.options;
+          const next = { A: get('option|A') ?? opts.A, B: get('option|B') ?? opts.B, C: get('option|C') ?? opts.C, D: get('option|D') ?? opts.D };
+          if (next.A !== opts.A || next.B !== opts.B || next.C !== opts.C || next.D !== opts.D) data.options = next;
+        }
+        if (Object.keys(data).length > 0) await prisma.examQuestion.update({ where: { id: q.id }, data });
+      }
+    })().finally(() => repairInFlight.delete(sessionId));
+    repairInFlight.set(sessionId, job);
+  }
+  const guarded = job.catch((err) => console.error('[examResults] ensureCleanQuestionText failed:', err));
+  if (opts.timeoutMs == null) return guarded;
+  await Promise.race([guarded, new Promise<void>((resolve) => setTimeout(resolve, opts.timeoutMs))]);
 }

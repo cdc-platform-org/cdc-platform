@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { ShieldAlert, Clock, CheckCircle2, AlertTriangle, Camera, Mic } from 'lucide-react';
+import { ShieldAlert, Clock, CheckCircle2, AlertTriangle, Camera, Mic, Loader2, Circle } from 'lucide-react';
 import {
   getCandidateExamInfo,
   startCandidateExam,
@@ -325,6 +325,119 @@ const dict = {
     resultsNotice: 'When you finish you will see your score and every answer with an explanation. The same results are emailed to the address you enter here.',
   },
 };
+
+// Shown while the answers are being submitted and graded (it can take a
+// while when there is an AI-graded open question). The submit is one
+// request, so the steps follow the order the server works in, paced by
+// typical timings: save answers -> check multiple-choice -> AI grades the
+// open answers -> prepare results. Before this a student saw only a small
+// "Submitting..." on a black screen and thought the page had frozen.
+const submitStepsDict = {
+  ka: {
+    title: 'პასუხები იგზავნება და მოწმდება',
+    send: 'პასუხები იგზავნება სერვერზე',
+    mcq: 'ტესტური კითხვები მოწმდება',
+    open: 'AI აფასებს წერით პასუხს',
+    results: 'შედეგები და ახსნები მზადდება',
+    elapsed: (s: number) => `გავიდა ${s} წამი`,
+    keepOpen: 'გთხოვთ, არ დახუროთ და არ განაახლოთ ეს გვერდი. ჩვეულებრივ 5–30 წამი სჭირდება.',
+    slow: 'ჯერ კიდევ მუშავდება — AI სერვისი ახლა ნელა პასუხობს. თქვენი პასუხები უკვე შენახულია, უბრალოდ დაელოდეთ.',
+  },
+  en: {
+    title: 'Submitting and checking your answers',
+    send: 'Sending your answers to the server',
+    mcq: 'Checking multiple-choice answers',
+    open: 'AI is grading your written answer',
+    results: 'Preparing your results and explanations',
+    elapsed: (s: number) => `${s} seconds so far`,
+    keepOpen: 'Please do not close or refresh this page. It usually takes 5–30 seconds.',
+    slow: 'Still working — the AI service is slow right now. Your answers are already saved, please wait.',
+  },
+  de: {
+    title: 'Antworten werden gesendet und geprüft',
+    send: 'Antworten werden an den Server gesendet',
+    mcq: 'Multiple-Choice-Antworten werden geprüft',
+    open: 'KI bewertet deine schriftliche Antwort',
+    results: 'Ergebnisse und Erklärungen werden vorbereitet',
+    elapsed: (s: number) => `${s} Sekunden`,
+    keepOpen: 'Bitte diese Seite nicht schließen oder neu laden. Das dauert meist 5–30 Sekunden.',
+    slow: 'Wird noch bearbeitet — der KI-Dienst ist gerade langsam. Deine Antworten sind bereits gespeichert.',
+  },
+  es: {
+    title: 'Enviando y revisando tus respuestas',
+    send: 'Enviando tus respuestas al servidor',
+    mcq: 'Revisando las preguntas de opción múltiple',
+    open: 'La IA está calificando tu respuesta escrita',
+    results: 'Preparando tus resultados y explicaciones',
+    elapsed: (s: number) => `${s} segundos`,
+    keepOpen: 'No cierres ni recargues esta página. Suele tardar 5–30 segundos.',
+    slow: 'Todavía en proceso: el servicio de IA va lento. Tus respuestas ya están guardadas.',
+  },
+  fr: {
+    title: 'Envoi et vérification de vos réponses',
+    send: 'Envoi de vos réponses au serveur',
+    mcq: 'Vérification des questions à choix multiples',
+    open: "L'IA évalue votre réponse écrite",
+    results: 'Préparation de vos résultats et explications',
+    elapsed: (s: number) => `${s} secondes`,
+    keepOpen: 'Ne fermez pas et ne rechargez pas cette page. Cela prend généralement 5 à 30 secondes.',
+    slow: "Toujours en cours : le service d'IA est lent en ce moment. Vos réponses sont déjà enregistrées.",
+  },
+  uk: {
+    title: 'Відповіді надсилаються та перевіряються',
+    send: 'Відповіді надсилаються на сервер',
+    mcq: 'Перевіряються тестові питання',
+    open: 'ШІ оцінює вашу письмову відповідь',
+    results: 'Готуються результати та пояснення',
+    elapsed: (s: number) => `Минуло ${s} с`,
+    keepOpen: 'Будь ласка, не закривайте й не оновлюйте цю сторінку. Зазвичай це 5–30 секунд.',
+    slow: 'Ще обробляється — сервіс ШІ зараз працює повільно. Ваші відповіді вже збережено.',
+  },
+};
+
+function SubmittingPanel({ lang, hasOpenQuestions, showResults }: { lang: keyof typeof submitStepsDict; hasOpenQuestions: boolean; showResults: boolean }) {
+  const t = submitStepsDict[lang] ?? submitStepsDict.en;
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  // [label, second at which this step usually starts]
+  const steps: [string, number][] = [
+    [t.send, 0],
+    [t.mcq, 2],
+    ...(hasOpenQuestions ? ([[t.open, 4]] as [string, number][]) : []),
+    ...(showResults ? ([[t.results, hasOpenQuestions ? 18 : 5]] as [string, number][]) : []),
+  ];
+  let active = 0;
+  steps.forEach(([, start], i) => {
+    if (elapsed >= start) active = i;
+  });
+  return (
+    <div className="mt-10 rounded-2xl border border-cyan-500/30 bg-slate-900/80 p-6 sm:p-8" role="status" aria-live="polite">
+      <div className="flex items-center gap-3 mb-5">
+        <Loader2 className="w-6 h-6 text-cyan-400 animate-spin shrink-0" />
+        <h2 className="text-lg font-black text-white">{t.title}</h2>
+      </div>
+      <ol className="space-y-3 mb-5">
+        {steps.map(([label], i) => (
+          <li key={label} className="flex items-center gap-3 text-sm">
+            {i < active ? (
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            ) : i === active ? (
+              <Loader2 className="w-5 h-5 text-cyan-300 animate-spin shrink-0" />
+            ) : (
+              <Circle className="w-5 h-5 text-slate-600 shrink-0" />
+            )}
+            <span className={i < active ? 'text-slate-400' : i === active ? 'text-white font-bold' : 'text-slate-500'}>{label}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="text-xs text-slate-400 mb-1">{t.elapsed(elapsed)}</p>
+      <p className="text-xs text-amber-300">{elapsed >= 40 ? t.slow : t.keepOpen}</p>
+    </div>
+  );
+}
 
 export default function CandidateExamPage() {
   const router = useRouter();
@@ -925,7 +1038,13 @@ export default function CandidateExamPage() {
           </div>
         )}
 
-        {phase === 'submitting' && <p className="text-sm text-slate-400">{t.submitting}</p>}
+        {phase === 'submitting' && (
+          <SubmittingPanel
+            lang={lang}
+            hasOpenQuestions={questions.some((q) => q.type !== 'MCQ')}
+            showResults={info?.showResultsToCandidate ?? true}
+          />
+        )}
 
         {phase === 'done' && results && <ExamResultsView results={results} locale={lang} email={candidateEmail || undefined} />}
 

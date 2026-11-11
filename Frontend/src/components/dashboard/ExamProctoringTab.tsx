@@ -154,6 +154,9 @@ const dictBase = {
     aiFeedback: 'AI შეფასება',
     downloadReport: 'PDF ანგარიშის ჩამოტვირთვა',
     downloading: 'იტვირთება…',
+    reportLanguageQuestion: 'რა ენაზე ჩამოვტვირთო ანგარიში?',
+    reportLangKa: 'ქართულად',
+    reportLangEn: 'ინგლისურად',
     generateRetest: 'ადაპტური Retest-ის გენერირება',
     generatingRetest: 'გენერირდება…',
     retestGenerated: 'Retest შექმნილია — იხილეთ ახალი გამოცდა სიაში.',
@@ -287,6 +290,9 @@ const dictBase = {
     aiFeedback: 'AI Feedback',
     downloadReport: 'Download PDF Report',
     downloading: 'Downloading…',
+    reportLanguageQuestion: 'Which language should the report be in?',
+    reportLangKa: 'Georgian',
+    reportLangEn: 'English',
     generateRetest: 'Generate Adaptive Retest',
     generatingRetest: 'Generating…',
     retestGenerated: 'Retest created — see the new exam in the list.',
@@ -574,17 +580,21 @@ function CreateSidePanel({ form, t }: { form: typeof emptyForm; t: Dict }) {
 
 function SubmissionCard({ sub, t, onError }: { sub: ExamSubmissionRow; t: typeof dict[SupportedLocale]; onError: (msg: string) => void }) {
   const [downloading, setDownloading] = useState(false);
+  const [choosingLanguage, setChoosingLanguage] = useState(false);
   const [generatingRetest, setGeneratingRetest] = useState(false);
   const [retestDone, setRetestDone] = useState(false);
 
-  const handleDownload = async () => {
+  // The teacher picks the report language (Georgian or English) each time
+  // before the PDF is downloaded.
+  const handleDownload = async (reportLang: 'ka' | 'en') => {
+    setChoosingLanguage(false);
     setDownloading(true);
     try {
-      const blob = await downloadExamReport(sub.id);
+      const blob = await downloadExamReport(sub.id, reportLang);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `exam-report-${sub.id}.pdf`;
+      a.download = `exam-report-${sub.candidateName.trim().replace(/[\\/:*?"<>|\s]+/g, '-') || sub.id}-${reportLang}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -678,15 +688,42 @@ function SubmissionCard({ sub, t, onError }: { sub: ExamSubmissionRow; t: typeof
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={handleDownload}
-              disabled={downloading}
-              className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-60"
-            >
-              <Download className="w-3.5 h-3.5" />
-              {downloading ? t.downloading : t.downloadReport}
-            </button>
+            {choosingLanguage ? (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/5 px-3 py-2">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{t.reportLanguageQuestion}</span>
+                <button
+                  type="button"
+                  onClick={() => handleDownload('ka')}
+                  className="text-xs font-bold px-3 py-1.5 rounded-lg bg-cyan-600 text-white hover:bg-cyan-700"
+                >
+                  {t.reportLangKa}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownload('en')}
+                  className="text-xs font-bold px-3 py-1.5 rounded-lg bg-cyan-600 text-white hover:bg-cyan-700"
+                >
+                  {t.reportLangEn}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChoosingLanguage(false)}
+                  className="text-xs font-bold px-2 py-1.5 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                >
+                  {t.cancel}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setChoosingLanguage(true)}
+                disabled={downloading}
+                className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-60"
+              >
+                <Download className="w-3.5 h-3.5" />
+                {downloading ? t.downloading : t.downloadReport}
+              </button>
+            )}
             {sub.studyGuide && !sub.studyGuide.retestExamSessionId && !retestDone && (
               <button
                 type="button"

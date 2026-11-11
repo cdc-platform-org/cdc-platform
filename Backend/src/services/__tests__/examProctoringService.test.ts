@@ -11,6 +11,16 @@ jest.mock('@google/generative-ai', () => ({
     getGenerativeModel: () => ({ generateContent: mockGenerateContent }),
   })),
 }));
+// When every Gemini call fails, generateJson falls back to Azure OpenAI if
+// AZURE_OPENAI_* is set. A developer's local .env has it set, so without this
+// mock the "repair call fails" test made a real Azure request (which repaired
+// the text and failed the test). These tests cover the Gemini path only, so
+// the Azure fallback is switched off for the whole file.
+jest.mock('../azureOpenAiService', () => ({
+  ...jest.requireActual('../azureOpenAiService'),
+  isAzureOpenAiConfigured: () => false,
+  generateJsonViaAzureOpenAI: jest.fn().mockRejectedValue(new Error('Azure OpenAI is mocked off in this test file')),
+}));
 
 import { generateExamQuestions, ExamProctoringAiError } from '../examProctoringService';
 
@@ -105,5 +115,48 @@ describe('examProctoringService.generateExamQuestions — multiple-choice only',
     const prompt = mockGenerateContent.mock.calls[0][0] as string;
     expect(prompt).toContain('მცენარეები იყენებენ მზის სინათლეს');
     expect(prompt).toContain('SOURCE MATERIAL');
+  });
+
+  // Classroom test 2026-11-10: a Georgian option came back with foreign
+  // glyphs inside a word ("hieroglyphs" on the students' screens). The
+  // generated set is checked and the broken text repaired before saving.
+  it('repairs garbled Georgian words in generated questions', async () => {
+    const garbled = 'დაუნომжავ სიას';
+    mockGenerateContent
+      .mockResolvedValueOnce({
+        response: {
+          text: () =>
+            JSON.stringify({
+              mcqQuestions: [{ question: 'რა ტიპის სიას ქმნის <ul>?', options: { A: garbled, B: 'b', C: 'c', D: 'd' }, correctAnswer: 'A' }],
+            }),
+        },
+      })
+      .mockResolvedValueOnce({
+        response: { text: () => JSON.stringify({ items: [{ id: '0.option.A', text: 'დაუნომრავ სიას' }] }) },
+      });
+
+    const result = await generateExamQuestions({ topic: 'HTML', mcqCount: 1, includePracticalQuestion: false });
+    const q = result[0];
+    expect(q.type).toBe('MCQ');
+    if (q.type === 'MCQ') expect(q.options.A).toBe('დაუნომრავ სიას');
+    expect(mockGenerateContent).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the original text when the repair call fails', async () => {
+    const garbled = 'დაუნომжავ სიას';
+    mockGenerateContent
+      .mockResolvedValueOnce({
+        response: {
+          text: () =>
+            JSON.stringify({
+              mcqQuestions: [{ question: 'Q?', options: { A: garbled, B: 'b', C: 'c', D: 'd' }, correctAnswer: 'A' }],
+            }),
+        },
+      })
+      .mockRejectedValue(new Error('400 bad request'));
+
+    const result = await generateExamQuestions({ topic: 'HTML', mcqCount: 1, includePracticalQuestion: false });
+    const q = result[0];
+    if (q.type === 'MCQ') expect(q.options.A).toBe(garbled);
   });
 });

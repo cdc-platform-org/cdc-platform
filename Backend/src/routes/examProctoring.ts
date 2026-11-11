@@ -34,7 +34,8 @@ import {
 import { recordExamGradingUsage } from '../services/billingService';
 import { generateExamReportPdf } from '../services/examReportService';
 import { shuffleQuestionsForSubmission, displayedToCanonicalLetter } from '../utils/examShuffle';
-import { buildCandidateResults, ensureMcqExplanations, CandidateResults } from '../services/examResultsService';
+import { buildCandidateResults, ensureMcqExplanations, ensureCleanQuestionText, CandidateResults } from '../services/examResultsService';
+import { computeExamTotalScore } from '../utils/examScoring';
 import { sendExamResultsEmail, examResultsUrl } from '../services/emailService';
 import { resolveNotificationLocale } from '../utils/notificationLocale';
 
@@ -135,6 +136,9 @@ router.post('/candidate/:candidateToken/start', examLinkRateLimit, async (req: R
       candidateEmail: result.data.candidateEmail,
     },
   });
+  // Repairs garbled Georgian words in older exams before the student sees
+  // them (bounded wait; see examResultsService.ensureCleanQuestionText).
+  await ensureCleanQuestionText(session.id, { timeoutMs: 8000 });
   const questions = await prisma.examQuestion.findMany({
     where: { examSessionId: session.id },
     select: questionForCandidate,
@@ -168,6 +172,7 @@ router.get('/submissions/:submissionToken/resume', candidateRateLimit, async (re
 
   const endsAt = submission.startedAt.getTime() + session.durationMinutes * 60_000;
   const secondsLeft = Math.max(0, Math.floor((endsAt - Date.now()) / 1000));
+  await ensureCleanQuestionText(session.id, { timeoutMs: 8000 });
   const questions = await prisma.examQuestion.findMany({
     where: { examSessionId: session.id },
     select: questionForCandidate,
@@ -329,80 +334,78 @@ router.post('/submissions/:submissionToken/submit', candidateRateLimit, async (r
   // A disqualified (proctoring-flagged) attempt is never graded by AI — the
   // business reviews it manually instead, and this also avoids spending a
   // billed grading call on an attempt that's already being thrown out.
+  // Each open question is graded, and checked for AI-written text, in
+  // parallel (they used to run one after another, which is what kept a
+  // classroom of students staring at "Submitting..." for a long time).
   if (!disqualified) {
-    for (const q of openQuestions) {
-      const answerText = answers[q.id] ?? '';
-      try {
-        const grade = await gradePracticalAnswer({
-          topic: session.topic,
-          questionType: q.type as 'PRACTICAL' | 'CODE',
-          question: q.question,
-          rubric: q.correctAnswer ?? '',
-          answer: answerText,
-          examEndTime: new Date(deadline),
-        });
+    const recordUsage = (usage: { promptTokens: number; completionTokens: number } | undefined, label: string) => {
+      if (!usage) return;
+      recordExamGradingUsage({
+        businessId: session.businessId,
+        examSessionId: session.id,
+        examSubmissionId: submission.id,
+        promptTokens: usage.promptTokens,
+        completionTokens: usage.completionTokens,
+      }).catch((err) => console.error(`[examProctoring] recordExamGradingUsage (${label}) failed:`, err));
+    };
+    const openGrades = await Promise.all(
+      openQuestions.map(async (q): Promise<AnswerGrade> => {
+        const answerText = answers[q.id] ?? '';
+        const [gradeResult, detectionResult] = await Promise.allSettled([
+          gradePracticalAnswer({
+            topic: session.topic,
+            questionType: q.type as 'PRACTICAL' | 'CODE',
+            question: q.question,
+            rubric: q.correctAnswer ?? '',
+            answer: answerText,
+            examEndTime: new Date(deadline),
+          }),
+          answerText.trim().length >= 40 ? estimateAiTextScore(answerText) : Promise.resolve(null),
+        ]);
         let questionAiTextScore: number | null = null;
-        if (answerText.trim().length >= 40) {
-          try {
-            const detection = await estimateAiTextScore(answerText);
-            questionAiTextScore = detection.score;
-            aiTextScores.push(detection.score);
-            if (detection.usage) {
-              recordExamGradingUsage({
-                businessId: session.businessId,
-                examSessionId: session.id,
-                examSubmissionId: submission.id,
-                promptTokens: detection.usage.promptTokens,
-                completionTokens: detection.usage.completionTokens,
-              }).catch((err) => console.error('[examProctoring] recordExamGradingUsage (ai-text) failed:', err));
-            }
-          } catch (err) {
-            console.error('[examProctoring] estimateAiTextScore failed:', err);
-          }
+        if (detectionResult.status === 'fulfilled' && detectionResult.value) {
+          questionAiTextScore = detectionResult.value.score;
+          aiTextScores.push(detectionResult.value.score);
+          recordUsage(detectionResult.value.usage, 'ai-text');
+        } else if (detectionResult.status === 'rejected') {
+          console.error('[examProctoring] estimateAiTextScore failed:', detectionResult.reason);
         }
-        answerGrades.push({
+        if (gradeResult.status === 'rejected') {
+          // Grading failure never blocks the candidate's submission from
+          // being recorded — the business sees a null score for this
+          // question and can follow up manually.
+          console.error('[examProctoring] gradePracticalAnswer failed:', gradeResult.reason);
+          return {
+            questionId: q.id,
+            questionType: q.type,
+            question: q.question,
+            candidateAnswer: answerText,
+            aiScore: null,
+            aiFeedback: null,
+            aiTextScore: questionAiTextScore,
+          };
+        }
+        recordUsage(gradeResult.value.usage, 'grading');
+        return {
           questionId: q.id,
           questionType: q.type,
           question: q.question,
           candidateAnswer: answerText,
-          aiScore: grade.score,
-          aiFeedback: grade.feedback,
+          aiScore: gradeResult.value.score,
+          aiFeedback: gradeResult.value.feedback,
           aiTextScore: questionAiTextScore,
-        });
-        if (grade.usage) {
-          recordExamGradingUsage({
-            businessId: session.businessId,
-            examSessionId: session.id,
-            examSubmissionId: submission.id,
-            promptTokens: grade.usage.promptTokens,
-            completionTokens: grade.usage.completionTokens,
-          }).catch((err) => console.error('[examProctoring] recordExamGradingUsage failed:', err));
-        }
-      } catch (err) {
-        // Grading failure never blocks the candidate's submission from being
-        // recorded — the business sees a null score for this question and
-        // can follow up manually, same "never lose the submission" posture
-        // as the rest of this codebase's AI-dependent flows.
-        console.error('[examProctoring] gradePracticalAnswer failed:', err);
-        answerGrades.push({
-          questionId: q.id,
-          questionType: q.type,
-          question: q.question,
-          candidateAnswer: answerText,
-          aiScore: null,
-          aiFeedback: null,
-          aiTextScore: null,
-        });
-      }
-    }
+        };
+      })
+    );
+    answerGrades.push(...openGrades);
   }
 
   const openScores = answerGrades.filter((g) => g.aiScore != null).map((g) => g.aiScore as number);
   const practicalScore = openScores.length > 0 ? Math.round(openScores.reduce((a, b) => a + b, 0) / openScores.length) : null;
   const aiTextScore = aiTextScores.length > 0 ? Math.round(aiTextScores.reduce((a, b) => a + b, 0) / aiTextScores.length) : null;
 
-  const scores = [mcqScore, practicalScore].filter((s): s is number => s != null);
-  const totalScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+  // Every question weighs the same — see utils/examScoring.ts.
+  const totalScore = computeExamTotalScore({ mcqCorrect: mcqCorrectCount, mcqTotal: mcqQuestions.length, openScores });
 
   // Plain update, not another atomic claim — this submission was already
   // exclusively claimed above (status flipped out of IN_PROGRESS), so no
@@ -457,7 +460,10 @@ router.post('/submissions/:submissionToken/submit', candidateRateLimit, async (r
 
   let results: CandidateResults | null = null;
   try {
-    const withExplanations = await ensureMcqExplanations(session, questions);
+    // Bounded: an exam created before explanations existed backfills them
+    // with an AI call; the student isn't kept waiting on it for more than a
+    // few seconds (the email and results page pick them up later).
+    const withExplanations = await ensureMcqExplanations(session, questions, { timeoutMs: 12000 });
     results = buildCandidateResults(session, finalSubmission, withExplanations);
   } catch (err) {
     // Never fail a submission that is already saved and graded.
@@ -697,6 +703,7 @@ router.get('/sessions/:id', async (req: Request, res: Response) => {
   const session = await loadOwnedSession(req.params.id, req.user!.id);
   if (!session) return res.status(404).json({ message: 'Exam session not found.' });
 
+  await ensureCleanQuestionText(session.id, { timeoutMs: 15000 });
   const [questions, submissions] = await Promise.all([
     prisma.examQuestion.findMany({ where: { examSessionId: session.id }, orderBy: { order: 'asc' } }),
     prisma.examSubmission.findMany({
@@ -744,9 +751,12 @@ router.get('/submissions/:id/report.pdf', async (req: Request, res: Response) =>
   const owned = await loadOwnedSubmission(req.params.id, req.user!.id);
   if (!owned) return res.status(404).json({ message: 'Submission not found.' });
 
-  const pdf = await generateExamReportPdf({ session: owned.session, submission: owned.submission });
+  // ?lang=ka|en — the teacher picks the report language before downloading.
+  const lang = req.query.lang === 'en' ? 'en' : 'ka';
+  const questions = await prisma.examQuestion.findMany({ where: { examSessionId: owned.session.id }, orderBy: { order: 'asc' } });
+  const pdf = await generateExamReportPdf({ session: owned.session, submission: owned.submission, questions, lang });
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="exam-report-${owned.submission.id}.pdf"`);
+  res.setHeader('Content-Disposition', `attachment; filename="exam-report-${owned.submission.id}-${lang}.pdf"`);
   res.send(pdf);
 });
 

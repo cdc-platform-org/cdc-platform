@@ -7,6 +7,7 @@ import { GEMINI_API_KEY } from '../utils/env';
 import { GEMINI_REQUEST_OPTIONS } from '../utils/geminiRequestOptions';
 import { isAzureOpenAiConfigured, generateJsonViaAzureOpenAI } from './azureOpenAiService';
 import { callTextModel, isAiAgentConfigured, AiAgentError, InlineImagePart } from './aiAgentService';
+import { findGarbledGeorgianWords, hasGarbledGeorgian, GEORGIAN_SCRIPT_RULE } from '../utils/georgianTextCheck';
 
 // AI question generation + practical-answer grading for the AI Proctored
 // Exam & Skill Assessment System (ExamSession/ExamQuestion/ExamSubmission).
@@ -259,7 +260,7 @@ export async function generateExamQuestions(params: GenerateExamQuestionsParams)
   const sourceBlock = source
     ? `\n\nSOURCE MATERIAL (the exam must be based on this content):\n"""\n${source}\n"""\n\nBase every question on facts, concepts and examples that actually appear in the SOURCE MATERIAL above. Cover the whole material evenly (beginning, middle and end), not just the first part. Do not ask about things the material does not contain.`
     : '';
-  const languageRule = `\n\nLANGUAGE: write every question, option, explanation${includePractical ? ', practical question and rubric' : ''} in the same language as the ${source ? 'source material' : 'topic text'} (for example, Georgian material → Georgian questions). Keep code, formulas and technical terms exactly as written.`;
+  const languageRule = `\n\nLANGUAGE: write every question, option, explanation${includePractical ? ', practical question and rubric' : ''} in the same language as the ${source ? 'source material' : 'topic text'} (for example, Georgian material → Georgian questions). Keep code, formulas and technical terms exactly as written. ${GEORGIAN_SCRIPT_RULE}`;
   const mcqRules = `\n\nMultiple-choice rules: exactly 4 options (A, B, C, D), exactly one clearly correct answer, plausible distractors of similar length, no "all of the above" / "none of the above", no two questions testing the same fact. Distribute the correct letter roughly evenly across A, B, C and D. For every question also write an "explanation": 1-3 short sentences a student reads after the exam, saying why the correct answer is right (and, where useful, why the most tempting wrong option is wrong). Do not refer to option letters in the explanation, since each student sees the options in a different order; refer to the answer by its content.`;
 
   const practicalInstruction = includePractical
@@ -317,7 +318,83 @@ Respond with strict JSON matching this shape:
   if (result.data.codeQuestion) {
     questions.push({ type: 'CODE', order: questions.length, ...result.data.codeQuestion });
   }
-  return questions;
+  return repairGeneratedQuestions(questions);
+}
+
+// Fixes Georgian words the model garbled (see utils/georgianTextCheck.ts)
+// in every student-visible field of a freshly generated question set.
+// Best-effort: if the repair call fails the questions are returned as they
+// are, since failing a whole (paid) generation over one bad word is worse.
+async function repairGeneratedQuestions(questions: GeneratedExamQuestion[]): Promise<GeneratedExamQuestion[]> {
+  const fields: Record<string, string> = {};
+  questions.forEach((q, i) => {
+    fields[`${i}.question`] = q.question;
+    if (q.type === 'MCQ') {
+      (['A', 'B', 'C', 'D'] as const).forEach((l) => (fields[`${i}.option.${l}`] = q.options[l]));
+      if (q.explanation) fields[`${i}.explanation`] = q.explanation;
+    } else {
+      fields[`${i}.rubric`] = q.rubric;
+    }
+  });
+  const fixed = await repairGarbledTexts(fields);
+  if (Object.keys(fixed).length === 0) return questions;
+  return questions.map((q, i) => {
+    const get = (key: string, fallback: string) => fixed[`${i}.${key}`] ?? fallback;
+    if (q.type === 'MCQ') {
+      return {
+        ...q,
+        question: get('question', q.question),
+        options: {
+          A: get('option.A', q.options.A),
+          B: get('option.B', q.options.B),
+          C: get('option.C', q.options.C),
+          D: get('option.D', q.options.D),
+        },
+        explanation: q.explanation ? get('explanation', q.explanation) : q.explanation,
+      };
+    }
+    return { ...q, question: get('question', q.question), rubric: get('rubric', q.rubric) };
+  });
+}
+
+const repairResponseSchema = z.object({
+  items: z.array(z.object({ id: z.string(), text: z.string() })),
+});
+
+// Takes { key: text } and returns { key: correctedText } for the texts that
+// had garbled Georgian words AND came back clean from the model. Texts that
+// were fine, or that the model could not fix, are left out, so callers keep
+// their original value. Never throws.
+export async function repairGarbledTexts(texts: Record<string, string>): Promise<Record<string, string>> {
+  const broken = Object.entries(texts)
+    .map(([id, text]) => ({ id, text, bad: findGarbledGeorgianWords(text) }))
+    .filter((t) => t.bad.length > 0);
+  if (broken.length === 0) return {};
+  console.warn(`[examProctoringService] repairing ${broken.length} text(s) with garbled Georgian:`, broken.map((b) => b.bad.join(' ')).join(' | '));
+
+  const prompt = `The Georgian texts below were written by an AI and some words in them are corrupted: a few letters were replaced by characters from other alphabets or by broken symbols. For each text, the corrupted words are listed in "badWords". Rewrite each text, replacing ONLY those corrupted words with the correct Georgian word that fits the meaning of the sentence. Change nothing else: keep every other word, code, HTML tags, numbers and punctuation exactly as they are. ${GEORGIAN_SCRIPT_RULE}
+
+Texts (one JSON object per line):
+${broken.map((b) => JSON.stringify({ id: b.id, text: b.text, badWords: b.bad })).join('\n')}
+
+Respond with strict JSON matching this shape:
+{"items": [{"id": string, "text": string}]}`;
+
+  try {
+    const { raw } = await generateJson(prompt, 0);
+    const parsed = repairResponseSchema.safeParse(JSON.parse(raw));
+    if (!parsed.success) return {};
+    const wanted = new Set(broken.map((b) => b.id));
+    const out: Record<string, string> = {};
+    for (const item of parsed.data.items) {
+      const text = item.text.trim();
+      if (wanted.has(item.id) && text && !hasGarbledGeorgian(text)) out[item.id] = text;
+    }
+    return out;
+  } catch (err) {
+    console.error('[examProctoringService] repairGarbledTexts failed:', err instanceof Error ? err.message : err);
+    return {};
+  }
 }
 
 const explanationsResponseSchema = z.object({
@@ -339,7 +416,7 @@ export async function generateMcqExplanations(params: {
       return JSON.stringify({ id: q.id, question: q.question, options: Object.values(q.options), correctAnswer: correctText });
     })
     .join('\n');
-  const prompt = `You are a helpful teacher. Topic: "${params.topic}". For each multiple-choice question below, write a short explanation (1-3 sentences) that a student reads after the exam: why the correct answer is right and, where useful, why the most tempting wrong option is wrong. Write each explanation in the same language as its question. Do not mention option letters; refer to answers by their content.
+  const prompt = `You are a helpful teacher. Topic: "${params.topic}". For each multiple-choice question below, write a short explanation (1-3 sentences) that a student reads after the exam: why the correct answer is right and, where useful, why the most tempting wrong option is wrong. Write each explanation in the same language as its question. Do not mention option letters; refer to answers by their content. ${GEORGIAN_SCRIPT_RULE}
 
 Questions (one JSON object per line):
 ${list}
@@ -361,7 +438,7 @@ Respond with strict JSON matching this shape:
   for (const e of result.data.explanations) {
     if (wanted.has(e.id) && e.explanation.trim()) out[e.id] = e.explanation.trim();
   }
-  return out;
+  return { ...out, ...(await repairGarbledTexts(out)) };
 }
 
 const gradeResponseSchema = z.object({
@@ -399,7 +476,7 @@ export async function gradePracticalAnswer(params: {
     params.questionType === 'CODE'
       ? 'a coding question — evaluate correctness, structure, and whether it actually solves the problem, not just style'
       : 'a practical, open-ended screening question';
-  const prompt = `You are grading a test-taker's answer (a student or a job candidate) to ${framing} for the topic "${params.topic}". Write the feedback in the same language as the question.
+  const prompt = `You are grading a test-taker's answer (a student or a job candidate) to ${framing} for the topic "${params.topic}". Write the feedback in the same language as the question. ${GEORGIAN_SCRIPT_RULE}
 
 Question: ${params.question}
 Grading rubric (what a strong answer should include): ${params.rubric}
@@ -423,7 +500,8 @@ Respond with strict JSON matching this shape:
   if (!result.success) {
     throw new ExamProctoringAiError('Gemini returned an unexpected grading format.');
   }
-  return { ...result.data, usage };
+  const repaired = await repairGarbledTexts({ feedback: result.data.feedback });
+  return { ...result.data, feedback: repaired.feedback ?? result.data.feedback, usage };
 }
 
 const aiTextScoreResponseSchema = z.object({

@@ -1,102 +1,25 @@
-import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from 'pdf-lib';
+import { PDFDocument, rgb, PDFFont, PDFPage, RGB } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import fs from 'fs';
-import { ExamSession, ExamSubmission } from '@prisma/client';
+import { ExamQuestion, ExamSession, ExamSubmission } from '@prisma/client';
+import { isOptionMap } from '../utils/examShuffle';
 
-// Same Georgian-script font-embedding approach as invoiceService.ts/
-// certificateService.ts (see those files' own comments for why pdf-lib's
-// built-in StandardFonts can't render Georgian at all) — duplicated rather
-// than shared since candidate reports draw a genuinely different layout
-// (a variable-length per-question breakdown, not a fixed line-item table).
-const GEORGIAN_FONT_BOLD_PATH = require.resolve('@fontsource/noto-sans-georgian/files/noto-sans-georgian-georgian-700-normal.woff');
-const GEORGIAN_FONT_REGULAR_PATH = require.resolve('@fontsource/noto-sans-georgian/files/noto-sans-georgian-georgian-400-normal.woff');
+// Per-student PDF report for the AI Proctored Exam, downloaded by the
+// teacher from the dashboard. Rewritten 2026-11-10 after a classroom test:
+// the old one-page report had English-only labels, cut off after ~11
+// questions, and showed only "Correct"/"Incorrect" without the answers.
+// Now: Georgian or English labels (the teacher picks), every question on as
+// many pages as needed, the student's answer and the correct answer as
+// text, AI score + feedback for open questions, and a clear summary box.
+//
+// Fonts: Noto Sans Georgian's Georgian, Latin and Latin-Extended subsets
+// (one design, so mixed "HTML-ის" text looks even). Each character is drawn
+// with the first of those fonts that has a glyph for it.
 
-const GEORGIAN_CHAR = /[Ⴀ-ჿᲐ-Ჿⴀ-⴯]/;
+export type ReportLang = 'ka' | 'en';
 
-interface ScriptRun {
-  text: string;
-  georgian: boolean;
-}
-
-function sanitizeLatinForWinAnsi(text: string): string {
-  const normalized = text
-    .replace(/[–—]/g, '-')
-    .replace(/[''']/g, "'")
-    .replace(/[""]/g, '"')
-    .replace(/…/g, '...');
-  return Array.from(normalized)
-    .map((ch) => {
-      const code = ch.codePointAt(0) ?? 0;
-      return (code >= 0x20 && code <= 0x7e) || (code >= 0xa0 && code <= 0xff) ? ch : '?';
-    })
-    .join('');
-}
-
-function splitScriptRuns(text: string): ScriptRun[] {
-  const runs: ScriptRun[] = [];
-  let current = '';
-  let currentIsGeorgian: boolean | null = null;
-  const flush = (chunk: string, isGeorgian: boolean) => (isGeorgian ? chunk : sanitizeLatinForWinAnsi(chunk));
-  for (const ch of text) {
-    const isGeorgian = GEORGIAN_CHAR.test(ch);
-    if (currentIsGeorgian === null || isGeorgian === currentIsGeorgian) {
-      current += ch;
-      currentIsGeorgian = isGeorgian;
-    } else {
-      runs.push({ text: flush(current, currentIsGeorgian), georgian: currentIsGeorgian });
-      current = ch;
-      currentIsGeorgian = isGeorgian;
-    }
-  }
-  if (current) runs.push({ text: flush(current, currentIsGeorgian ?? false), georgian: currentIsGeorgian ?? false });
-  return runs;
-}
-
-interface MixedFontPair {
-  georgian: PDFFont;
-  latin: PDFFont;
-}
-
-function drawWrappedText(
-  page: PDFPage,
-  text: string,
-  opts: { x: number; y: number; size: number; color: ReturnType<typeof rgb>; fonts: MixedFontPair; maxWidth: number; lineHeight: number }
-): number {
-  // Word-wraps at maxWidth, drawing each line and returning the y position
-  // after the last line — used for multi-line question/answer/feedback text
-  // where a fixed single-line truncation (invoiceService's drawText) would
-  // lose most of the content.
-  const words = text.split(/\s+/).filter(Boolean);
-  let line = '';
-  let y = opts.y;
-  const widthOf = (s: string) =>
-    splitScriptRuns(s).reduce((sum, r) => sum + (r.georgian ? opts.fonts.georgian : opts.fonts.latin).widthOfTextAtSize(r.text, opts.size), 0);
-
-  const drawLine = (s: string) => {
-    let x = opts.x;
-    for (const run of splitScriptRuns(s)) {
-      const font = run.georgian ? opts.fonts.georgian : opts.fonts.latin;
-      page.drawText(run.text, { x, y, size: opts.size, font, color: opts.color });
-      x += font.widthOfTextAtSize(run.text, opts.size);
-    }
-  };
-
-  for (const word of words) {
-    const candidate = line ? `${line} ${word}` : word;
-    if (widthOf(candidate) > opts.maxWidth && line) {
-      drawLine(line);
-      y -= opts.lineHeight;
-      line = word;
-    } else {
-      line = candidate;
-    }
-  }
-  if (line) {
-    drawLine(line);
-    y -= opts.lineHeight;
-  }
-  return y;
-}
+const fontFile = (subset: string, weight: number) =>
+  require.resolve(`@fontsource/noto-sans-georgian/files/noto-sans-georgian-${subset}-${weight}-normal.woff`);
 
 export interface AnswerGradeEntry {
   questionId: string;
@@ -109,89 +32,495 @@ export interface AnswerGradeEntry {
   correct?: boolean;
 }
 
-// Candidate proctoring/scoring report — one PDF per ExamSubmission, for the
-// business to keep/share outside the dashboard. Not an invoice (nothing was
-// paid for this specific document), so it uses its own simple letterhead-
-// free layout rather than invoiceService's MERCHANT block.
-export async function generateExamReportPdf(params: { session: ExamSession; submission: ExamSubmission }): Promise<Buffer> {
+const LABELS = {
+  ka: {
+    reportTitle: 'გამოცდის შედეგების ანგარიში',
+    student: 'მოსწავლე',
+    email: 'ელ. ფოსტა',
+    started: 'დაწყება',
+    finished: 'დასრულება',
+    timeSpent: 'დახარჯული დრო',
+    minutes: 'წთ',
+    status: 'სტატუსი',
+    statusCompleted: 'დასრულებული',
+    statusFlagged: 'მონიშნული — დარღვევა ან დროის ამოწურვა',
+    statusInProgress: 'ჯერ არ დასრულებულა',
+    totalScore: 'საერთო ქულა',
+    correctAnswers: 'სწორი პასუხები (ტესტი)',
+    openScore: 'ღია კითხვ(ებ)ის AI შეფასება',
+    perQuestion: (pts: string) => `ყოველი კითხვა ${pts} ქულაა 100-დან`,
+    integrityTitle: 'გამოცდის კეთილსინდისიერება',
+    integrityScore: 'კეთილსინდისიერების ქულა',
+    tabSwitches: 'ტაბიდან / სრული ეკრანიდან გასვლა',
+    copyPaste: 'ტექსტის ჩასმა (Paste)',
+    cameraAudio: 'კამერის / მიკროფონის სიგნალები',
+    aiWritten: 'AI-ით დაწერის ალბათობა (სავარაუდო)',
+    questionsTitle: 'კითხვები და პასუხები',
+    mcq: 'ტესტი',
+    practical: 'ღია კითხვა',
+    code: 'კოდი',
+    correct: 'სწორია',
+    incorrect: 'არასწორია',
+    skipped: 'პასუხი არ არის',
+    notGraded: 'არ შეფასებულა',
+    studentAnswer: 'მოსწავლის პასუხი',
+    correctAnswer: 'სწორი პასუხი',
+    explanation: 'ახსნა',
+    aiFeedback: 'AI შეფასება',
+    score: 'ქულა',
+    noAnswer: '(პასუხი არ დაუწერია)',
+    footer: 'CDC — AI საგამოცდო სისტემა',
+    page: (n: number, total: number) => `გვ. ${n} / ${total}`,
+    generated: 'შექმნილია',
+  },
+  en: {
+    reportTitle: 'Exam Results Report',
+    student: 'Student',
+    email: 'Email',
+    started: 'Started',
+    finished: 'Finished',
+    timeSpent: 'Time spent',
+    minutes: 'min',
+    status: 'Status',
+    statusCompleted: 'Completed',
+    statusFlagged: 'Flagged — violations or time limit',
+    statusInProgress: 'Not finished yet',
+    totalScore: 'Total score',
+    correctAnswers: 'Correct answers (multiple choice)',
+    openScore: 'Open question AI score',
+    perQuestion: (pts: string) => `Each question is worth ${pts} of 100 points`,
+    integrityTitle: 'Exam integrity',
+    integrityScore: 'Integrity score',
+    tabSwitches: 'Left the tab / fullscreen',
+    copyPaste: 'Paste events',
+    cameraAudio: 'Camera / microphone signals',
+    aiWritten: 'AI-written likelihood (estimate)',
+    questionsTitle: 'Questions and answers',
+    mcq: 'Multiple choice',
+    practical: 'Open question',
+    code: 'Code',
+    correct: 'Correct',
+    incorrect: 'Incorrect',
+    skipped: 'No answer',
+    notGraded: 'Not graded',
+    studentAnswer: "Student's answer",
+    correctAnswer: 'Correct answer',
+    explanation: 'Explanation',
+    aiFeedback: 'AI feedback',
+    score: 'Score',
+    noAnswer: '(no answer written)',
+    footer: 'CDC — AI Exam System',
+    page: (n: number, total: number) => `Page ${n} / ${total}`,
+    generated: 'Generated',
+  },
+} as const;
+
+const COLORS = {
+  ink: rgb(0.07, 0.09, 0.15),
+  body: rgb(0.2, 0.23, 0.3),
+  muted: rgb(0.42, 0.45, 0.52),
+  line: rgb(0.86, 0.88, 0.92),
+  panel: rgb(0.96, 0.97, 0.985),
+  brand: rgb(0.03, 0.57, 0.7),
+  green: rgb(0.02, 0.5, 0.3),
+  greenBg: rgb(0.9, 0.97, 0.93),
+  amber: rgb(0.72, 0.44, 0.0),
+  amberBg: rgb(1, 0.96, 0.88),
+  red: rgb(0.75, 0.12, 0.16),
+  redBg: rgb(0.99, 0.92, 0.92),
+  white: rgb(1, 1, 1),
+};
+
+const PAGE_W = 595.28;
+const PAGE_H = 841.89;
+const MARGIN_X = 48;
+const TOP = PAGE_H - 48;
+const BOTTOM = 60;
+const CONTENT_W = PAGE_W - MARGIN_X * 2;
+
+// Tbilisi time (UTC+4, no DST) — teachers read local time, not UTC.
+function formatTbilisi(date: Date): string {
+  const d = new Date(date.getTime() + 4 * 3600_000);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getUTCDate())}.${pad(d.getUTCMonth() + 1)}.${d.getUTCFullYear()} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+}
+
+function scoreColors(score: number | null): { fg: RGB; bg: RGB } {
+  if (score == null) return { fg: COLORS.muted, bg: COLORS.panel };
+  if (score >= 70) return { fg: COLORS.green, bg: COLORS.greenBg };
+  if (score >= 40) return { fg: COLORS.amber, bg: COLORS.amberBg };
+  return { fg: COLORS.red, bg: COLORS.redBg };
+}
+
+// A font "family" = the same weight in several subsets; text is split into
+// runs by which subset has the glyph.
+class FontFamily {
+  private sets: { font: PDFFont; chars: Set<number> }[];
+  constructor(fonts: PDFFont[]) {
+    this.sets = fonts.map((font) => ({ font, chars: new Set(font.getCharacterSet()) }));
+  }
+  private fontFor(cp: number): PDFFont | null {
+    for (const s of this.sets) if (s.chars.has(cp)) return s.font;
+    return null;
+  }
+  runs(text: string): { text: string; font: PDFFont }[] {
+    const out: { text: string; font: PDFFont }[] = [];
+    for (const ch of normalizeForPdf(text)) {
+      const cp = ch.codePointAt(0) ?? 63;
+      let font = this.fontFor(cp);
+      let drawn = ch;
+      if (!font) {
+        drawn = '?';
+        font = this.fontFor(63) ?? this.sets[0].font;
+      }
+      const last = out[out.length - 1];
+      if (last && last.font === font) last.text += drawn;
+      else out.push({ text: drawn, font });
+    }
+    return out;
+  }
+  width(text: string, size: number): number {
+    return this.runs(text).reduce((w, r) => w + r.font.widthOfTextAtSize(r.text, size), 0);
+  }
+  draw(page: PDFPage, text: string, x: number, y: number, size: number, color: RGB) {
+    for (const r of this.runs(text)) {
+      page.drawText(r.text, { x, y, size, font: r.font, color });
+      x += r.font.widthOfTextAtSize(r.text, size);
+    }
+  }
+}
+
+function normalizeForPdf(text: string): string {
+  return text
+    .replace(/\r\n?/g, '\n')
+    .replace(/\t/g, '    ')
+    .replace(/[​-‍﻿]/g, '');
+}
+
+// Word-wraps text (keeping explicit line breaks) to maxWidth. Words longer
+// than a line (code, URLs) are broken by character.
+function wrap(family: FontFamily, text: string, size: number, maxWidth: number): string[] {
+  const lines: string[] = [];
+  for (const paragraph of normalizeForPdf(text).split('\n')) {
+    const words = paragraph.split(/ +/).filter((w) => w.length > 0);
+    if (words.length === 0) {
+      lines.push('');
+      continue;
+    }
+    let line = '';
+    for (let word of words) {
+      while (family.width(word, size) > maxWidth) {
+        let cut = word.length - 1;
+        while (cut > 1 && family.width(word.slice(0, cut), size) > maxWidth) cut--;
+        if (line) {
+          lines.push(line);
+          line = '';
+        }
+        lines.push(word.slice(0, cut));
+        word = word.slice(cut);
+      }
+      const candidate = line ? `${line} ${word}` : word;
+      if (line && family.width(candidate, size) > maxWidth) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = candidate;
+      }
+    }
+    if (line) lines.push(line);
+  }
+  // Drop trailing empty lines from trailing newlines.
+  while (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+  return lines;
+}
+
+interface ReportQuestion {
+  number: number;
+  type: 'MCQ' | 'PRACTICAL' | 'CODE';
+  question: string;
+  options: Record<'A' | 'B' | 'C' | 'D', string> | null;
+  chosen: string | null; // MCQ letter (canonical) or open answer text
+  correctLetter: string | null;
+  isCorrect: boolean | null;
+  explanation: string | null;
+  aiScore: number | null;
+  aiFeedback: string | null;
+}
+
+function buildReportQuestions(submission: ExamSubmission, questions: ExamQuestion[]): ReportQuestion[] {
+  const answers = (submission.answers ?? {}) as Record<string, string>;
+  const grades = Array.isArray(submission.answerGrades) ? (submission.answerGrades as unknown as AnswerGradeEntry[]) : [];
+  const gradeById = new Map(grades.map((g) => [g.questionId, g]));
+  const sorted = [...questions].sort((a, b) => a.order - b.order);
+  // Exam deleted questions / legacy data: fall back to the stored grades.
+  if (sorted.length === 0) {
+    return grades.map((g, i) => ({
+      number: i + 1,
+      type: (g.questionType as ReportQuestion['type']) ?? 'MCQ',
+      question: g.question,
+      options: null,
+      chosen: g.candidateAnswer || null,
+      correctLetter: null,
+      isCorrect: g.correct ?? null,
+      explanation: null,
+      aiScore: g.aiScore,
+      aiFeedback: g.aiFeedback,
+    }));
+  }
+  return sorted.map((q, i) => {
+    const type = q.type as ReportQuestion['type'];
+    const answer = answers[q.id] ?? '';
+    if (type === 'MCQ') {
+      return {
+        number: i + 1,
+        type,
+        question: q.question,
+        options: isOptionMap(q.options) ? q.options : null,
+        chosen: answer || null,
+        correctLetter: q.correctAnswer ?? null,
+        isCorrect: answer ? answer === q.correctAnswer : false,
+        explanation: q.explanation ?? null,
+        aiScore: null,
+        aiFeedback: null,
+      };
+    }
+    const grade = gradeById.get(q.id);
+    return {
+      number: i + 1,
+      type,
+      question: q.question,
+      options: null,
+      chosen: answer.trim() ? answer : null,
+      correctLetter: null,
+      isCorrect: null,
+      explanation: null,
+      aiScore: grade?.aiScore ?? null,
+      aiFeedback: grade?.aiFeedback ?? null,
+    };
+  });
+}
+
+export async function generateExamReportPdf(params: {
+  session: ExamSession;
+  submission: ExamSubmission;
+  questions?: ExamQuestion[];
+  lang?: ReportLang;
+}): Promise<Buffer> {
   const { session, submission } = params;
+  const L = LABELS[params.lang === 'en' ? 'en' : 'ka'];
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
-  const page = doc.addPage([595.28, 841.89]); // A4
-  const { width, height } = page.getSize();
+  doc.setTitle(`${L.reportTitle} — ${submission.candidateName}`);
+  doc.setCreator('CDC');
 
-  const latinBold = await doc.embedFont(StandardFonts.HelveticaBold);
-  const latinRegular = await doc.embedFont(StandardFonts.Helvetica);
-  const georgianBold = await doc.embedFont(fs.readFileSync(GEORGIAN_FONT_BOLD_PATH), { subset: true });
-  const georgianRegular = await doc.embedFont(fs.readFileSync(GEORGIAN_FONT_REGULAR_PATH), { subset: true });
-  const boldFonts: MixedFontPair = { georgian: georgianBold, latin: latinBold };
-  const regularFonts: MixedFontPair = { georgian: georgianRegular, latin: latinRegular };
+  const embedFamily = async (weight: number) =>
+    new FontFamily(
+      await Promise.all(
+        ['georgian', 'latin', 'latin-ext'].map((subset) => doc.embedFont(fs.readFileSync(fontFile(subset, weight)), { subset: true }))
+      )
+    );
+  const regular = await embedFamily(400);
+  const semibold = await embedFamily(600);
+  const bold = await embedFamily(700);
 
-  const navy = rgb(0.06, 0.09, 0.16);
-  const slate = rgb(0.42, 0.45, 0.52);
-  const emerald = rgb(0.02, 0.45, 0.34);
-  const amber = rgb(0.7, 0.45, 0.02);
-  const rose = rgb(0.7, 0.1, 0.15);
-  const marginX = 50;
-  let y = height - 60;
-
-  drawWrappedText(page, 'CDC AI Exam Proctoring — Candidate Report', { x: marginX, y, size: 18, color: navy, fonts: boldFonts, maxWidth: width - marginX * 2, lineHeight: 22 });
-  y -= 28;
-
-  y = drawWrappedText(page, session.title, { x: marginX, y, size: 13, color: navy, fonts: boldFonts, maxWidth: width - marginX * 2, lineHeight: 16 });
-  y -= 6;
-  y = drawWrappedText(page, `Topic: ${session.topic}`, { x: marginX, y, size: 9, color: slate, fonts: regularFonts, maxWidth: width - marginX * 2, lineHeight: 12 });
-  y -= 16;
-
-  y = drawWrappedText(page, `Candidate: ${submission.candidateName} (${submission.candidateEmail})`, {
-    x: marginX, y, size: 11, color: navy, fonts: boldFonts, maxWidth: width - marginX * 2, lineHeight: 14,
-  });
-  y = drawWrappedText(page, `Status: ${submission.status} · Started: ${submission.startedAt.toISOString().slice(0, 16).replace('T', ' ')}${submission.completedAt ? ` · Completed: ${submission.completedAt.toISOString().slice(0, 16).replace('T', ' ')}` : ''}`, {
-    x: marginX, y, size: 9, color: slate, fonts: regularFonts, maxWidth: width - marginX * 2, lineHeight: 12,
-  });
-  y -= 20;
-
-  page.drawLine({ start: { x: marginX, y: y + 10 }, end: { x: width - marginX, y: y + 10 }, thickness: 1, color: rgb(0.85, 0.86, 0.9) });
-  y -= 10;
-
-  const scoreColor = (score: number | null) => (score == null ? slate : score >= PASS_MARK_COLOR ? emerald : score >= 40 ? amber : rose);
-  const PASS_MARK_COLOR = 70;
-
-  const scoreLine = (label: string, value: string, color: ReturnType<typeof rgb>) => {
-    page.drawText(label, { x: marginX, y, size: 10, font: latinRegular, color: slate });
-    page.drawText(value, { x: marginX + 180, y, size: 11, font: latinBold, color });
-    y -= 18;
+  const pages: PDFPage[] = [];
+  let page!: PDFPage;
+  let y = TOP;
+  const newPage = () => {
+    page = doc.addPage([PAGE_W, PAGE_H]);
+    pages.push(page);
+    y = TOP;
   };
+  const ensure = (needed: number) => {
+    if (y - needed < BOTTOM) newPage();
+  };
+  // Draws wrapped text at x; returns nothing, advances y. Breaks across
+  // pages line by line if needed.
+  const text = (s: string, opts: { family?: FontFamily; size?: number; color?: RGB; x?: number; width?: number; lineGap?: number }) => {
+    const family = opts.family ?? regular;
+    const size = opts.size ?? 10;
+    const x = opts.x ?? MARGIN_X;
+    const width = opts.width ?? CONTENT_W - (x - MARGIN_X);
+    const lh = size * 1.45 + (opts.lineGap ?? 0);
+    for (const line of wrap(family, s, size, width)) {
+      ensure(lh);
+      y -= lh;
+      family.draw(page, line, x, y + size * 0.3, size, opts.color ?? COLORS.body);
+    }
+  };
+  const textHeight = (s: string, family: FontFamily, size: number, width: number) => wrap(family, s, size, width).length * size * 1.45;
 
-  scoreLine('Total Score', submission.totalScore != null ? `${submission.totalScore}/100` : 'N/A', scoreColor(submission.totalScore));
-  scoreLine('MCQ Score', submission.mcqScore != null ? `${submission.mcqScore}/100` : 'N/A', scoreColor(submission.mcqScore));
-  scoreLine('Practical/Code Score', submission.practicalScore != null ? `${submission.practicalScore}/100` : 'N/A', scoreColor(submission.practicalScore));
-  y -= 6;
-  scoreLine('Integrity Score', submission.integrityScore != null ? `${submission.integrityScore}/100` : 'N/A', scoreColor(submission.integrityScore));
-  scoreLine('Tab Switches', String(submission.tabSwitches), slate);
-  scoreLine('Copy/Paste Events', String(submission.copyPasteCount), slate);
-  if (submission.aiTextScore != null) {
-    scoreLine('AI-Written Likelihood (advisory)', `${submission.aiTextScore}/100`, submission.aiTextScore >= 70 ? rose : slate);
+  newPage();
+
+  // ---- Header ----
+  page.drawRectangle({ x: 0, y: PAGE_H - 6, width: PAGE_W, height: 6, color: COLORS.brand });
+  y -= 4;
+  text('CDC', { family: bold, size: 9, color: COLORS.brand });
+  text(L.reportTitle, { family: bold, size: 20, color: COLORS.ink });
+  y -= 2;
+  text(session.title, { family: semibold, size: 13, color: COLORS.body });
+  if (session.topic && session.topic.trim() && session.topic.trim() !== session.title.trim()) {
+    text(session.topic, { size: 9.5, color: COLORS.muted });
   }
-  y -= 10;
-
-  page.drawLine({ start: { x: marginX, y: y + 10 }, end: { x: width - marginX, y: y + 10 }, thickness: 1, color: rgb(0.85, 0.86, 0.9) });
   y -= 14;
 
-  y = drawWrappedText(page, 'Question Breakdown', { x: marginX, y, size: 12, color: navy, fonts: boldFonts, maxWidth: width - marginX * 2, lineHeight: 16 });
+  // ---- Student panel ----
+  const statusText =
+    submission.status === 'FLAGGED' ? L.statusFlagged : submission.status === 'IN_PROGRESS' ? L.statusInProgress : L.statusCompleted;
+  const spentMin =
+    submission.completedAt != null ? Math.max(1, Math.round((submission.completedAt.getTime() - submission.startedAt.getTime()) / 60000)) : null;
+  const infoRows: [string, string][] = [
+    [L.student, submission.candidateName],
+    [L.email, submission.candidateEmail],
+    [L.started, formatTbilisi(submission.startedAt)],
+    ...(submission.completedAt ? ([[L.finished, formatTbilisi(submission.completedAt)]] as [string, string][]) : []),
+    ...(spentMin != null ? ([[L.timeSpent, `${spentMin} ${L.minutes}`]] as [string, string][]) : []),
+    [L.status, statusText],
+  ];
+  const labelW = 120;
+  const rowH = 16;
+  const panelH = infoRows.length * rowH + 16;
+  ensure(panelH);
+  page.drawRectangle({ x: MARGIN_X, y: y - panelH, width: CONTENT_W, height: panelH, color: COLORS.panel, borderColor: COLORS.line, borderWidth: 0.8 });
+  let ry = y - 8;
+  for (const [label, value] of infoRows) {
+    ry -= rowH;
+    regular.draw(page, label, MARGIN_X + 14, ry + 4, 9.5, COLORS.muted);
+    const color = label === L.status && submission.status === 'FLAGGED' ? COLORS.red : COLORS.ink;
+    const shown = wrap(semibold, value, 10, CONTENT_W - labelW - 28)[0] ?? '';
+    semibold.draw(page, shown, MARGIN_X + 14 + labelW, ry + 4, 10, color);
+  }
+  y -= panelH + 18;
+
+  // ---- Score summary ----
+  const reportQuestions = buildReportQuestions(submission, params.questions ?? []);
+  const mcq = reportQuestions.filter((q) => q.type === 'MCQ');
+  const open = reportQuestions.filter((q) => q.type !== 'MCQ');
+  const mcqCorrect = mcq.filter((q) => q.isCorrect).length;
+  const total = submission.totalScore;
+  const tc = scoreColors(total);
+  const boxH = 86;
+  ensure(boxH);
+  const bigW = 150;
+  page.drawRectangle({ x: MARGIN_X, y: y - boxH, width: bigW, height: boxH, color: tc.bg });
+  regular.draw(page, L.totalScore, MARGIN_X + 14, y - 22, 9.5, tc.fg);
+  const totalText = total != null ? `${total}%` : '—';
+  bold.draw(page, totalText, MARGIN_X + 14, y - 62, 32, tc.fg);
+
+  const sx = MARGIN_X + bigW + 18;
+  let sy = y - 20;
+  const stat = (label: string, value: string, color: RGB) => {
+    regular.draw(page, label, sx, sy, 9.5, COLORS.muted);
+    bold.draw(page, value, sx + 200, sy, 11, color);
+    sy -= 20;
+  };
+  if (mcq.length > 0) {
+    const pct = Math.round((mcqCorrect / mcq.length) * 100);
+    stat(L.correctAnswers, `${mcqCorrect} / ${mcq.length}`, scoreColors(pct).fg);
+  }
+  if (open.length > 0) {
+    stat(L.openScore, submission.practicalScore != null ? `${submission.practicalScore}/100` : L.notGraded, scoreColors(submission.practicalScore).fg);
+  }
+  const questionCount = reportQuestions.length;
+  if (questionCount > 0) {
+    const pts = Math.round((100 / questionCount) * 100) / 100;
+    regular.draw(page, L.perQuestion(String(pts)), sx, sy, 9, COLORS.muted);
+  }
+  y -= boxH + 22;
+
+  // ---- Integrity ----
+  ensure(110);
+  text(L.integrityTitle, { family: bold, size: 12, color: COLORS.ink });
+  y -= 4;
+  const integrityRows: [string, string, RGB][] = [
+    [L.integrityScore, submission.integrityScore != null ? `${submission.integrityScore}/100` : '—', scoreColors(submission.integrityScore).fg],
+    [L.tabSwitches, String(submission.tabSwitches), submission.tabSwitches > 0 ? COLORS.amber : COLORS.body],
+    [L.copyPaste, String(submission.copyPasteCount), submission.copyPasteCount > 0 ? COLORS.amber : COLORS.body],
+    [L.cameraAudio, String(submission.cameraAudioViolations ?? 0), COLORS.body],
+  ];
+  if (submission.aiTextScore != null) {
+    integrityRows.push([L.aiWritten, `${submission.aiTextScore}%`, submission.aiTextScore >= 70 ? COLORS.red : COLORS.body]);
+  }
+  for (const [label, value, color] of integrityRows) {
+    ensure(18);
+    y -= 17;
+    regular.draw(page, label, MARGIN_X, y + 4, 9.5, COLORS.muted);
+    semibold.draw(page, value, MARGIN_X + 260, y + 4, 10, color);
+    page.drawLine({ start: { x: MARGIN_X, y: y - 1 }, end: { x: MARGIN_X + CONTENT_W, y: y - 1 }, thickness: 0.5, color: COLORS.line });
+  }
+  y -= 22;
+
+  // ---- Questions ----
+  ensure(60);
+  text(L.questionsTitle, { family: bold, size: 12, color: COLORS.ink });
   y -= 6;
 
-  const grades = (submission.answerGrades as unknown as AnswerGradeEntry[] | null) ?? [];
-  for (const grade of grades) {
-    if (y < 100) break; // stop before running off the page — full detail also lives in the dashboard
-    y = drawWrappedText(page, `[${grade.questionType}] ${grade.question}`, {
-      x: marginX, y, size: 9.5, color: navy, fonts: boldFonts, maxWidth: width - marginX * 2, lineHeight: 12,
-    });
-    const resultText =
-      grade.aiScore != null ? `Score: ${grade.aiScore}/100${grade.aiFeedback ? ` — ${grade.aiFeedback}` : ''}` : grade.correct != null ? (grade.correct ? 'Correct' : 'Incorrect') : 'Not graded';
-    y = drawWrappedText(page, resultText, { x: marginX, y, size: 9, color: slate, fonts: regularFonts, maxWidth: width - marginX * 2, lineHeight: 12 });
-    y -= 8;
+  const indent = MARGIN_X + 12;
+  const innerW = CONTENT_W - 12;
+  for (const q of reportQuestions) {
+    // Keep the question title + status together with at least the first
+    // answer line.
+    const titleText = `${q.number}. ${q.question}`;
+    const titleH = textHeight(titleText, semibold, 10.5, CONTENT_W - 110);
+    ensure(titleH + 40);
+    y -= 6;
+    page.drawLine({ start: { x: MARGIN_X, y }, end: { x: MARGIN_X + CONTENT_W, y }, thickness: 0.6, color: COLORS.line });
+
+    // Status pill (right side)
+    let pill: { label: string; fg: RGB; bg: RGB };
+    if (q.type === 'MCQ') {
+      pill = !q.chosen
+        ? { label: L.skipped, fg: COLORS.muted, bg: COLORS.panel }
+        : q.isCorrect
+          ? { label: L.correct, fg: COLORS.green, bg: COLORS.greenBg }
+          : { label: L.incorrect, fg: COLORS.red, bg: COLORS.redBg };
+    } else {
+      const c = scoreColors(q.aiScore);
+      pill = { label: q.aiScore != null ? `${L.score}: ${q.aiScore}/100` : L.notGraded, fg: c.fg, bg: c.bg };
+    }
+    const pillW = semibold.width(pill.label, 8.5) + 14;
+    page.drawRectangle({ x: MARGIN_X + CONTENT_W - pillW, y: y - 20, width: pillW, height: 15, color: pill.bg });
+    semibold.draw(page, pill.label, MARGIN_X + CONTENT_W - pillW + 7, y - 15.5, 8.5, pill.fg);
+
+    const typeLabel = q.type === 'MCQ' ? L.mcq : q.type === 'CODE' ? L.code : L.practical;
+    y -= 2;
+    text(typeLabel, { family: semibold, size: 7.5, color: COLORS.brand });
+    text(titleText, { family: semibold, size: 10.5, color: COLORS.ink, width: CONTENT_W - 110 });
+    y -= 2;
+
+    if (q.type === 'MCQ') {
+      const optText = (letter: string | null) => (letter && q.options ? `${letter}. ${q.options[letter as 'A' | 'B' | 'C' | 'D'] ?? ''}` : letter ?? '—');
+      text(`${L.studentAnswer}: ${q.chosen ? optText(q.chosen) : L.skipped}`, {
+        x: indent,
+        width: innerW,
+        size: 9.5,
+        color: q.isCorrect ? COLORS.green : q.chosen ? COLORS.red : COLORS.muted,
+      });
+      if (!q.isCorrect && q.correctLetter) {
+        text(`${L.correctAnswer}: ${optText(q.correctLetter)}`, { x: indent, width: innerW, size: 9.5, color: COLORS.green });
+      }
+      if (!q.isCorrect && q.explanation) {
+        text(`${L.explanation}: ${q.explanation}`, { x: indent, width: innerW, size: 9, color: COLORS.muted });
+      }
+    } else {
+      text(`${L.studentAnswer}:`, { x: indent, width: innerW, size: 9, family: semibold, color: COLORS.muted });
+      text(q.chosen ?? L.noAnswer, { x: indent + 8, width: innerW - 8, size: 9.5, color: COLORS.body });
+      if (q.aiFeedback) {
+        y -= 2;
+        text(`${L.aiFeedback}: ${q.aiFeedback}`, { x: indent, width: innerW, size: 9, color: COLORS.muted });
+      }
+    }
+    y -= 6;
   }
+
+  // ---- Footer on every page ----
+  const generatedAt = formatTbilisi(new Date());
+  pages.forEach((p, i) => {
+    p.drawLine({ start: { x: MARGIN_X, y: 40 }, end: { x: PAGE_W - MARGIN_X, y: 40 }, thickness: 0.5, color: COLORS.line });
+    regular.draw(p, `${L.footer} · ${L.generated}: ${generatedAt}`, MARGIN_X, 28, 8, COLORS.muted);
+    const label = L.page(i + 1, pages.length);
+    regular.draw(p, label, PAGE_W - MARGIN_X - regular.width(label, 8), 28, 8, COLORS.muted);
+  });
 
   const bytes = await doc.save();
   return Buffer.from(bytes);

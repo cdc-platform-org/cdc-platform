@@ -173,8 +173,8 @@ export async function deleteExamSession(id: string): Promise<void> {
   await apiClient.delete(`/exam-proctoring/sessions/${id}`);
 }
 
-export async function downloadExamReport(submissionId: string): Promise<Blob> {
-  const response = await apiClient.get(`/exam-proctoring/submissions/${submissionId}/report.pdf`, { responseType: 'blob' });
+export async function downloadExamReport(submissionId: string, lang: 'ka' | 'en' = 'ka'): Promise<Blob> {
+  const response = await apiClient.get(`/exam-proctoring/submissions/${submissionId}/report.pdf`, { params: { lang }, responseType: 'blob' });
   return response.data;
 }
 
