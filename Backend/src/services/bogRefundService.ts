@@ -183,6 +183,8 @@ async function revokeAccess(tx: Tx, payment: BogPayment): Promise<AccessRevocati
       const left = Math.max(0, card.promoCode.discountAmount ?? 0);
       return { revoked: true, note: `Gift card ${card.promoCode.code} deactivated (unspent balance was ${(left / 100).toFixed(2)} GEL of ${(card.amount / 100).toFixed(2)} GEL).` };
     }
+    case 'BOOK_ANIMATION':
+      return { revoked: false, note: 'Payment marked refunded. The book animation was not changed — handle it manually if needed.' };
     case 'CHILDRENS_BOOK':
       // The book's own lifecycle (generation, PDF, delivery) is owned by the
       // book services; the refund is marked on the payment (status

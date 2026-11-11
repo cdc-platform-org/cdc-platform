@@ -49,6 +49,10 @@ async function resolveReferenceLabel(purpose: string, referenceId: string): Prom
     const book = await prisma.bookProject.findUnique({ where: { id: referenceId }, select: { title: true } });
     return book?.title || "Children's book";
   }
+  if (purpose === 'BOOK_ANIMATION') {
+    const book = await prisma.bookProject.findUnique({ where: { id: referenceId }, select: { title: true } });
+    return `${book?.title || "Children's book"} (animated video)`;
+  }
   if (purpose === 'ENGLISH_TUTOR_SUBSCRIPTION') return 'AI English Tutor (30 days)';
   if (purpose === 'EDUCATOR_VIP') return 'Educator VIP (30 days)';
   if (purpose === 'BUSINESS_AI_AGENT') return 'Business AI agent (30 days)';
@@ -110,7 +114,7 @@ router.get('/course-payments', async (req: Request, res: Response) => {
     prisma.gig.findMany({ where: { id: { in: gigIds } }, select: { id: true, title: true } }),
     prisma.digitalProduct.findMany({ where: { id: { in: idsFor('PRODUCT') } }, select: { id: true, title: true } }),
     prisma.liveTraining.findMany({ where: { id: { in: idsFor('LIVE_TRAINING') } }, select: { id: true, title: true } }),
-    prisma.bookProject.findMany({ where: { id: { in: idsFor('CHILDRENS_BOOK') } }, select: { id: true, title: true } }),
+    prisma.bookProject.findMany({ where: { id: { in: [...idsFor('CHILDRENS_BOOK'), ...idsFor('BOOK_ANIMATION')] } }, select: { id: true, title: true } }),
   ]);
   const courseTitleById = new Map(courses.map((c) => [c.id, c.title]));
   const mentorNameById = new Map(mentors.map((m) => [m.id, m.name]));
@@ -126,6 +130,7 @@ router.get('/course-payments', async (req: Request, res: Response) => {
     if (p.purpose === 'PRODUCT') return productTitleById.get(p.referenceId) ?? '(deleted product)';
     if (p.purpose === 'LIVE_TRAINING') return trainingTitleById.get(p.referenceId) ?? '(deleted live training)';
     if (p.purpose === 'CHILDRENS_BOOK') return bookTitleById.get(p.referenceId) || "Children's book";
+    if (p.purpose === 'BOOK_ANIMATION') return `${bookTitleById.get(p.referenceId) || "Children's book"} (animated video)`;
     if (p.purpose === 'ENGLISH_TUTOR_SUBSCRIPTION') return 'AI English Tutor (30 days)';
     if (p.purpose === 'EDUCATOR_VIP') return 'Educator VIP (30 days)';
     if (p.purpose === 'BUSINESS_AI_AGENT') return 'Business AI agent (30 days)';

@@ -56,6 +56,7 @@ import PageThumbnail from '../../../src/components/tools/childrensBook/PageThumb
 import StoryTextEditor from '../../../src/components/tools/childrensBook/StoryTextEditor';
 import PrintSettingsPanel from '../../../src/components/tools/childrensBook/PrintSettingsPanel';
 import BookSharePanel from '../../../src/components/tools/childrensBook/BookSharePanel';
+import AnimationCard from '../../../src/components/tools/childrensBook/AnimationCard';
 import BookFontPicker from '../../../src/components/tools/childrensBook/BookFontPicker';
 import { BookFontId, DEFAULT_BOOK_FONT, bookFontFamily, bookFontOptions } from '../../../src/components/tools/childrensBook/bookFonts';
 // Style keys must match Backend/src/services/bookIllustrationStyles.ts.
@@ -1072,6 +1073,8 @@ function ChildrensBookContent() {
                     />
                   )}
 
+                  {(book.status === 'FINAL_READY' || book.status === 'COMPLETED') && acceptedCount === book.pageCount && <AnimationCard bookId={book.id} bookTitle={book.title} />}
+
                   {(book.status === 'FINAL_READY' || book.status === 'COMPLETED') && acceptedCount === book.pageCount && (
                     <PrintSettingsPanel
                       busy={busy}
@@ -1183,5 +1186,5 @@ export default function ChildrensBookPage() {
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'ka', ['common', 'childrensBook'])) },
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['common', 'childrensBook', 'bookAnimation'])) },
 });

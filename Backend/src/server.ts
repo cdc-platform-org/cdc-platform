@@ -115,6 +115,8 @@ import adminEnglishTutorRoutes from './routes/adminEnglishTutor';
 import educatorHubRoutes from './routes/educatorHub';
 import teacherQuizRoutes from './routes/teacherQuiz';
 import childrensBookRoutes from './routes/childrensBook';
+import bookAnimationRoutes from './routes/bookAnimation';
+import { resumeBookAnimations } from './services/bookAnimationService';
 import examProctoringRoutes from './routes/examProctoring';
 import proctoredPracticeRoutes from './routes/proctoredPractice';
 import { errorHandler } from './middleware/errorHandler';
@@ -381,6 +383,7 @@ app.use('/api/english-tutor', englishTutorRoutes);
 app.use('/api/admin/english-tutor', adminEnglishTutorRoutes);
 app.use('/api/educator-hub', educatorHubRoutes);
 app.use('/api/quiz', teacherQuizRoutes);
+app.use('/api/childrens-books', bookAnimationRoutes);
 app.use('/api/childrens-books', childrensBookRoutes);
 app.use('/api/mentor-applications', mentorApplicationRoutes);
 app.use('/api/admin/mentor-applications', adminMentorApplicationRoutes);
@@ -446,6 +449,8 @@ app.listen(PORT, () => {
   // Paid children's books whose generation never started (PAID) or was cut
   // off by a restart/deploy (FINAL_GENERATING) resume here.
   resumePendingFinalGenerations().catch((err) => console.error('[childrens-book] resume sweep failed:', err));
+  // Book animations cut off by a restart resume; a paid FAILED one is retried once.
+  resumeBookAnimations().catch((err) => console.error('[book-animation] resume sweep failed:', err));
 });
 
 // In-process fallback so 7-day auto-approve works out of the box on a single

@@ -41,6 +41,7 @@ import { completeEducatorVipPurchase, EDUCATOR_VIP_PRICE_GEL } from '../services
 import { assertAgentPurchasable, completeAgentPurchase, AgentCheckoutError, BUSINESS_AI_PRICE_GEL } from '../services/agentSubscriptionService';
 import { completeChildrensBookPurchase, assertBookReadyForCheckout, BookNotFoundError, BookNotEligibleForCheckoutError, BookPreviewNotConfirmedError } from '../services/bookPurchaseFulfillment';
 import { startFinalGeneration } from '../services/bookFinalGenerationService';
+import { completeBookAnimationPurchase } from '../services/bookAnimationService';
 import { isBookDevPaymentSimulationEnabled, resolveBookPayableAmountTetri } from '../services/bookMockConfig';
 import { calculateBookPrice } from '../services/bookStateService';
 import { calculateAudioPrice, calculateTotalBookPrice } from '../services/bookNarrationService';
@@ -1516,6 +1517,10 @@ export async function applyBogPaymentResult(
     if (handled) {
       await startFinalGeneration(bogPayment.referenceId).catch((err) => console.error('[bog-callback] Failed to start children\'s book generation:', err));
     }
+  } else if (bogPayment.purpose === 'BOOK_ANIMATION') {
+    // Idempotent: only a PAYMENT_PENDING animation moves to QUEUED; the
+    // render starts in the background (bookAnimationService.ts).
+    await completeBookAnimationPurchase({ bookProjectId: bogPayment.referenceId, paidVia: 'BOG' });
   } else if (bogPayment.purpose === 'GIFT_CARD') {
     // Mints the code and emails the recipient now (or on the chosen date).
     // Idempotent on retry — see giftCardService.fulfillGiftCardPurchase.

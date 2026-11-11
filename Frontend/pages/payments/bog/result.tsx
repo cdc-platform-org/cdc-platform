@@ -220,6 +220,7 @@ const purposeKey: Record<string, keyof typeof dict.en> = {
   GIG_ESCROW_FUNDING: 'gig',
   PRODUCT: 'product',
   CHILDRENS_BOOK: 'book',
+  BOOK_ANIMATION: 'book',
   GIFT_CARD: 'giftCard',
   EDUCATOR_VIP: 'educatorVip',
   BUSINESS_AI_AGENT: 'businessAi',
@@ -295,9 +296,9 @@ function BogResultContent() {
       }, 1800);
       return () => clearTimeout(redirect);
     }
-    if (status?.status === 'COMPLETED' && status.purpose === 'CHILDRENS_BOOK' && status.referenceId) {
+    if (status?.status === 'COMPLETED' && (status.purpose === 'CHILDRENS_BOOK' || status.purpose === 'BOOK_ANIMATION') && status.referenceId) {
       const redirect = setTimeout(() => {
-        router.push({ pathname: '/dashboard/tools/childrens-book', query: { bookId: status.referenceId } });
+        router.push({ pathname: '/dashboard/tools/childrens-book', query: { bookId: status.referenceId, ...(status.purpose === 'BOOK_ANIMATION' ? { animation: 'paid' } : {}) } });
       }, 1800);
       return () => clearTimeout(redirect);
     }
@@ -368,7 +369,7 @@ function BogResultContent() {
             {status.status === 'COMPLETED' && status.purpose === 'PRODUCT' && (
               <p className="text-xs text-gray-400 dark:text-slate-500">{t.redirectingToProduct}</p>
             )}
-            {status.status === 'COMPLETED' && status.purpose === 'CHILDRENS_BOOK' && status.referenceId && (
+            {status.status === 'COMPLETED' && (status.purpose === 'CHILDRENS_BOOK' || status.purpose === 'BOOK_ANIMATION') && status.referenceId && (
               <div className="space-y-2">
                 <p className="text-xs text-gray-400 dark:text-slate-500">{t.redirectingToBook}</p>
                 <Link
