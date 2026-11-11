@@ -10,7 +10,8 @@ jest.mock('../emailService', () => ({
   sendGiftCardDeliveredToBuyerEmail: (...args: unknown[]) => mockSendBuyerEmail(...args),
 }));
 
-import { fulfillGiftCardPurchase, sweepScheduledGiftCards, getGiftCardBalance, generateGiftCode } from '../giftCardService';
+import { fulfillGiftCardPurchase, sweepScheduledGiftCards, getGiftCardBalance, generateGiftCode, issueComplimentaryGiftCard } from '../giftCardService';
+import { issueComplimentaryGiftCardSchema } from '../../schemas/giftCardSchemas';
 import { computePromoPrice, quotePromoToCheckout, claimPromoRedemption, giftCardAmountOf, findValidPromoCode, PromoCodeError } from '../couponService';
 import { applyBogPaymentResult } from '../../routes/payments';
 import { buildGiftCardEmailHtml } from '../emailService';
@@ -150,5 +151,38 @@ describe('gift cards', () => {
     expect(html).not.toContain('<img src=x>');
     expect(html).not.toContain('evil.example');
     expect(html).toContain('50 <span');
+  });
+
+  it('an admin can issue a free gift card to an organization: code minted at once, emailed, no payment row', async () => {
+    const admin = await createUser();
+    const parsed = issueComplimentaryGiftCardSchema.parse({
+      amountGel: 300, recipientName: 'შპს მაგალითი', recipientType: 'ORGANIZATION', recipientEmail: 'HR@Example.com', message: 'მადლობა თანამშრომლობისთვის!',
+    });
+    expect(parsed.senderName).toBe('CDC');
+    expect(parsed.recipientEmail).toBe('hr@example.com');
+    const card = await issueComplimentaryGiftCard({
+      issuedById: admin.id, amountTetri: parsed.amountGel * 100, senderName: parsed.senderName, recipientName: parsed.recipientName,
+      recipientType: parsed.recipientType, recipientEmail: parsed.recipientEmail ?? null, message: parsed.message ?? null, design: parsed.design, deliverAt: new Date(),
+    });
+    expect(card).toMatchObject({ complimentary: true, recipientType: 'ORGANIZATION', status: 'DELIVERED', purchaserId: admin.id });
+    expect(card.promoCode).toMatchObject({ isGiftCard: true, applicableType: 'ALL', discountAmount: 30000 });
+    expect(mockSendGiftCardEmail).toHaveBeenCalledWith(expect.objectContaining({ to: 'hr@example.com', code: card.promoCode!.code }));
+    expect(await prisma.bogPayment.count({ where: { referenceId: card.id } })).toBe(0);
+  });
+
+  it('a free gift card can be scheduled for a later day', async () => {
+    const admin = await createUser();
+    const card = await issueComplimentaryGiftCard({
+      issuedById: admin.id, amountTetri: 2000, senderName: 'CDC', recipientName: 'ანა', recipientType: 'PERSON', recipientEmail: 'ana@example.com',
+      message: null, design: 'birthday', deliverAt: new Date(Date.now() + 5 * 86400000),
+    });
+    expect(card.status).toBe('SCHEDULED');
+    expect(card.promoCode).not.toBeNull();
+    expect(mockSendGiftCardEmail).not.toHaveBeenCalled();
+  });
+
+  it('rejects out-of-range admin amounts', () => {
+    expect(issueComplimentaryGiftCardSchema.safeParse({ amountGel: 0, recipientName: 'X' }).success).toBe(false);
+    expect(issueComplimentaryGiftCardSchema.safeParse({ amountGel: 5001, recipientName: 'X' }).success).toBe(false);
   });
 });

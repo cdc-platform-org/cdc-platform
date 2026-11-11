@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
-import { Gift, Search, Send } from 'lucide-react';
+import { Gift, Search, Send, Plus } from 'lucide-react';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
-import { getAdminGiftCards, deliverGiftCardNow, formatGel, AdminGiftCard } from '../../src/services/giftCardService';
+import { getAdminGiftCards, deliverGiftCardNow, formatGel, AdminGiftCard, AdminGiftCardTotals } from '../../src/services/giftCardService';
+import IssueGiftCardForm from '../../src/components/giftCards/IssueGiftCardForm';
 
 const STATUS_LABEL: Record<AdminGiftCard['status'], { label: string; cls: string }> = {
   PENDING_PAYMENT: { label: 'გადახდის მოლოდინში', cls: 'bg-amber-100 text-amber-800' },
@@ -14,7 +15,8 @@ const STATUS_LABEL: Record<AdminGiftCard['status'], { label: string; cls: string
 
 function AdminGiftCardsDashboard() {
   const [rows, setRows] = useState<AdminGiftCard[] | null>(null);
-  const [totals, setTotals] = useState<{ soldCount: number; soldAmount: number; outstandingBalance: number } | null>(null);
+  const [totals, setTotals] = useState<AdminGiftCardTotals | null>(null);
+  const [showIssue, setShowIssue] = useState(false);
   const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -61,20 +63,34 @@ function AdminGiftCardsDashboard() {
         <title>სასაჩუქრე ბარათები | CDC Admin</title>
       </Head>
       <div className="space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
             <Gift className="h-6 w-6 text-indigo-600" /> სასაჩუქრე ბარათები
           </h1>
           <p className="text-sm text-gray-500">
-            ყველა ნაყიდი ბარათი. კოდის გამორთვა ან ვადის შეცვლა შეგიძლია „პრომო კოდების“ გვერდზე (კოდები იწყება GIFT-ით). თანხის დაბრუნება: „ფინანსები“.
+            ყველა ნაყიდი და უფასოდ გაცემული ბარათი. კოდის გამორთვა ან ვადის შეცვლა შეგიძლია „პრომო კოდების“ გვერდზე (კოდები იწყება GIFT-ით). თანხის დაბრუნება: „ფინანსები“.
           </p>
         </div>
+          {!showIssue && (
+            <button
+              type="button"
+              onClick={() => setShowIssue(true)}
+              className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-700"
+            >
+              <Plus className="h-4 w-4" /> უფასო ბარათის გაცემა
+            </button>
+          )}
+        </div>
+
+        {showIssue && <IssueGiftCardForm onClose={() => setShowIssue(false)} onIssued={load} />}
 
         {totals && (
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
               { label: 'გაყიდული ბარათები', value: String(totals.soldCount) },
               { label: 'გაყიდვების ჯამი', value: `${formatGel(totals.soldAmount)} ₾` },
+              { label: 'უფასოდ გაცემული', value: `${totals.complimentaryCount ?? 0} · ${formatGel(totals.complimentaryAmount ?? 0)} ₾` },
               { label: 'გამოუყენებელი ნაშთი (ვალდებულება)', value: `${formatGel(totals.outstandingBalance)} ₾` },
             ].map((s) => (
               <div key={s.label} className="rounded-xl border border-gray-200 bg-white p-4">
@@ -108,7 +124,7 @@ function AdminGiftCardsDashboard() {
                 <tr>
                   <th className="px-4 py-3">კოდი</th>
                   <th className="px-4 py-3">თანხა / ნაშთი</th>
-                  <th className="px-4 py-3">მყიდველი</th>
+                  <th className="px-4 py-3">მყიდველი / გამცემი</th>
                   <th className="px-4 py-3">მიმღები</th>
                   <th className="px-4 py-3">სტატუსი</th>
                   <th className="px-4 py-3">თარიღი</th>
@@ -127,11 +143,17 @@ function AdminGiftCardsDashboard() {
                       {r.balance != null && <span className="block text-xs text-gray-500">ნაშთი: {formatGel(r.balance)} ₾ · {r.uses}× გამოყენება</span>}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="block">{r.purchaser.name}</span>
+                      <span className="block">
+                        {r.purchaser.name}
+                        {r.complimentary && <span className="ml-1 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-700">უფასო</span>}
+                      </span>
                       <span className="block text-xs text-gray-500">{r.purchaser.email}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="block">{r.recipientName}</span>
+                      <span className="block">
+                        {r.recipientType === 'ORGANIZATION' ? '🏢 ' : ''}
+                        {r.recipientName}
+                      </span>
                       <span className="block text-xs text-gray-500">{r.recipientEmail ?? 'დაბეჭდვით'}</span>
                     </td>
                     <td className="px-4 py-3">
