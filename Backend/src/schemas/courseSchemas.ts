@@ -47,7 +47,7 @@ export const courseCreateSchema = z
     language: z.enum(['GEORGIAN', 'ENGLISH', 'BOTH']).optional(),
     // Freelancer skills this course teaches (src/data/freelancerSkills.ts
     // values or free text) — auto-verifies each on a student's profile the
-    // moment they earn this course's certificate, see routes/courses.ts's
+    // moment they earn this course's certificate, see routes/courses's
     // autoVerifySkillsForCourse().
     skillsTaught: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
     // Omit/null = unlimited seats — see Course.maxCapacity's schema comment.
@@ -110,7 +110,7 @@ export const lessonCreateSchema = z.object({
 export const lessonUpdateSchema = lessonCreateSchema.partial().extend({
   // Manual fallback for when direct-upload-to-Bunny fails/isn't configured
   // — accepts either a raw Bunny Stream video GUID or a full embed URL
-  // (the URL is parsed down to just the ID before saving, see routes/courses.ts).
+  // (the URL is parsed down to just the ID before saving, see routes/courses/).
   bunnyVideoId: z.string().trim().max(500).optional().nullable(),
   // Only ever AI-generated before now (services/subtitleService.ts) — an
   // admin editing/polishing the generated notes is a plain field update,

@@ -87,7 +87,7 @@ export const updateProfileSchema = z.object({
     .optional()
     .nullable(),
   // Only actually required when changing payoutIban from an anomalous
-  // session (see routes/auth.ts's step-up gate) — optional here since the
+  // session (see routes/auth's step-up gate) — optional here since the
   // vast majority of profile updates never touch payoutIban at all and
   // must not be forced to carry a password.
   currentPassword: z.string().optional(),
@@ -119,7 +119,7 @@ export const updateProfileSchema = z.object({
   // Purely which dashboard quick-links are highlighted first (see
   // pages/dashboard.tsx's DashboardUnlockCards) — never gates capabilities,
   // so re-editable any time under /dashboard/settings unlike the one-time
-  // pick at registration (routes/auth.ts's /register).
+  // pick at registration (routes/auth's /register).
   primaryIntent: z.enum(['TALENT', 'EMPLOYER']).optional(),
 });
 

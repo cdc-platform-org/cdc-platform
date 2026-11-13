@@ -15,7 +15,7 @@ import { lockLearningTarget } from './learningCheckoutService';
 // from PlatformFeeSchedule's COURSE row (platformFeeScheduleService.ts),
 // admin-editable at /admin/commissions.
 //
-// Called from both routes/payments.ts (BOG) and routes/stripePayments.ts
+// Called from both routes/payments/ (BOG) and routes/stripePayments.ts
 // (Stripe) — the free/promo-bypass branch and the webhook-completion branch
 // in each — replacing what used to be four separate inline
 // courseEnrollment.create/.upsert call sites with one shared, atomic

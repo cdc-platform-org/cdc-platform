@@ -18,7 +18,7 @@ interface VerificationBadgesProps {
 // of the three, since each is earned through a completely different track:
 //   🎓 Student    — isVerifiedGraduate (completed a CDC course, or passed
 //                   the freelancer exam — both write the same flag, see
-//                   routes/courses.ts and routes/freelancerExam.ts).
+//                   routes/courses/ and routes/freelancerExam.ts).
 //   ⚡ Freelancer — an approved INDIVIDUAL identity-verification submission
 //                   (routes/adminVerifications.ts). Deliberately NOT
 //                   isVerifiedGraduate OR'd in here (unlike Backend's

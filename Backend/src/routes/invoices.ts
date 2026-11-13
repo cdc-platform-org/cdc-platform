@@ -78,7 +78,7 @@ export async function describePurchase(
 }
 
 // Course / Digital Product / Mentorship / Gig-escrow-funding purchase
-// invoice. One completed BogPayment (GEL, routes/payments.ts) or
+// invoice. One completed BogPayment (GEL, routes/payments/) or
 // StripePayment (USD/EUR, routes/stripePayments.ts) is one completed
 // checkout — the frontend's payment-history table merges both gateways
 // into one list and sends every "Download Invoice" click here regardless

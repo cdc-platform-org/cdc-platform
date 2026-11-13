@@ -6,7 +6,7 @@ import { STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET } from '../utils/env';
 // Stripe Checkout client — the international-currency counterpart to
 // bogPaymentService.ts. BOG stays the gateway for Georgian (GEL) users;
 // Stripe Checkout handles USD/EUR for everyone else (see routes/
-// stripePayments.ts, mirrors routes/payments.ts's four checkout flows).
+// stripePayments.ts, mirrors routes/payments's four checkout flows).
 // Docs: https://docs.stripe.com/api/checkout/sessions
 // ============================================================
 

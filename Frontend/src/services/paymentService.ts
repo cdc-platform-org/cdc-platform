@@ -10,7 +10,7 @@ export interface BogCheckoutResult {
 
 // Course and Product checkout can each bypass BOG at 0 GEL — a 100%
 // discount promo code (course only), or an admin-team account's unconditional
-// free test-mode bypass (both course and product, see routes/payments.ts).
+// free test-mode bypass (both course and product, see routes/payments/).
 // Mentorship/gig-escrow checkout have no such bypass and keep the plain
 // BogCheckoutResult above rather than every caller having to guard against a
 // null that can't actually happen for them.
@@ -74,7 +74,7 @@ export async function validatePromoCode(code: string, targetType: PromoTargetTyp
 export async function checkoutMentorship(params: {
   mentorId: string;
   // No amount/currency — the backend always charges the mentor's own
-  // mentorHourlyRate, looked up server-side (see routes/payments.ts).
+  // mentorHourlyRate, looked up server-side (see routes/payments/).
   note?: string;
   lang?: 'ka' | 'en';
   // ISO datetime string — must fall within one of the mentor's
@@ -93,7 +93,7 @@ export async function checkoutGigEscrow(gigId: string, lang?: 'ka' | 'en'): Prom
   return response.data;
 }
 
-// GEL-only for this MVP (no Stripe path yet) — see Backend/src/routes/payments.ts's
+// GEL-only for this MVP (no Stripe path yet) — see Backend/src/routes/payments's
 // checkout/hr-support route.
 export async function checkoutHRSupport(vacancyId: string, lang?: 'ka' | 'en'): Promise<BogCheckoutResult> {
   const response = await apiClient.post<BogCheckoutResult>(`/payments/checkout/hr-support/${vacancyId}`, {

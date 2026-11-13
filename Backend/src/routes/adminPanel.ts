@@ -402,7 +402,7 @@ router.get('/bog-payments', requireAdminRole('SUPER_ADMIN'), async (req, res) =>
 });
 
 // BOG (Bank of Georgia) payment gateway config — real integration lives in
-// services/bogPaymentService.ts + routes/payments.ts. clientId/secretKey here
+// services/bogPaymentService.ts + routes/payments/. clientId/secretKey here
 // are the OAuth2 client_credentials BOG issues per-merchant; they're the DB
 // fallback bogPaymentService reads when BOG_CLIENT_ID/BOG_SECRET_KEY env vars
 // aren't set (see getBogCredentials()).

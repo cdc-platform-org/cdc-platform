@@ -79,7 +79,7 @@ export interface Course {
   // profile once they earn this course's certificate, no AI test needed.
   skillsTaught: string[];
   // Null = unlimited seats. enrolledCount/seatsRemaining/isFull are computed
-  // server-side (Backend's routes/courses.ts withCapacityInfo) from a live
+  // server-side (Backend's routes/courses/ withCapacityInfo) from a live
   // CourseEnrollment count, never stored — always present on the API
   // response regardless of whether maxCapacity is set (isFull is simply
   // false and seatsRemaining null when it isn't).

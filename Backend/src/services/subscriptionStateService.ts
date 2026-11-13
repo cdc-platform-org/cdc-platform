@@ -15,7 +15,7 @@ import { hasAiAgentsSuiteAccess } from '../utils/aiAgentsSuiteAccess';
 //      the product. It exists ahead of its own UI.
 //   2. User.aiTrialEndsAt / aiSubscriptionActive — the system that actually
 //      gates access today (see utils/aiAgentsSuiteAccess.ts), granted
-//      automatically on KYC business verification (routes/auth.ts,
+//      automatically on KYC business verification (routes/auth/,
 //      routes/adminCompanies.ts) or manually by a SuperAdmin
 //      (routes/admin.ts's PATCH .../ai-trial).
 //

@@ -26,7 +26,7 @@ test.describe('Course Enrollment', () => {
     await page.goto(`/courses/${SEEDED_COURSE_ID}/learn`);
 
     // An enrolled student should never see the buy/checkout CTA that a
-    // non-enrolled visitor gets on the same route (routes/courses.ts's
+    // non-enrolled visitor gets on the same route (routes/courses's
     // checkCourseAccess would 403 the curriculum API call for them instead).
     await expect(page.getByText(/checkout|ყიდვა|შეიძინე/i)).toHaveCount(0);
     await expect(page.getByText('Section 1')).toBeVisible({ timeout: 10000 });

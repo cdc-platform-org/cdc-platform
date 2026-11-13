@@ -30,7 +30,7 @@ Three independent layers protecting Digital Store listings, added because the or
 - **2 GEL absolute floor** (`MIN_SALE_PRICE_MINOR = 200`) — covers BOG/Stripe per-transaction processing fees, shared with Course's own discount validation (`courseSchemas.ts`'s `validateCourseDiscount`) so the floor can't drift between the two mechanisms.
 - **80% maximum discount** (`MAX_DISCOUNT_PERCENT`) — specific to `DigitalProduct`; `Course` keeps its own pre-existing, independent 90% cap unchanged.
 
-**Checkout sync**: both BOG (`routes/payments.ts`) and Stripe (`routes/stripePayments.ts`) product checkout now charge `getCurrentProductPrice(product)` instead of the flat original price. The platform's 20% commission (`productSaleService.ts`) applies to whatever is actually charged — a 5 GEL sale nets the creator 4 GEL, same math as full price, no special-cased discount handling downstream.
+**Checkout sync**: both BOG (`routes/payments/`) and Stripe (`routes/stripePayments.ts`) product checkout now charge `getCurrentProductPrice(product)` instead of the flat original price. The platform's 20% commission (`productSaleService.ts`) applies to whatever is actually charged — a 5 GEL sale nets the creator 4 GEL, same math as full price, no special-cased discount handling downstream.
 
 Sale badges (`-X%`) and crossed-out original pricing are rendered on the marketplace listing, the product detail page, and the admin moderation queue.
 
@@ -93,7 +93,7 @@ Regression coverage lives in the backend learning ratings, live-training leads a
 | License metadata | `ProductLicenseType` (schema), `productSaleService.ts` |
 | Discount pricing | `Backend/src/services/productPricing.ts`, `pricingRules.ts` |
 | Course discount floor | `Backend/src/services/coursePricing.ts`, `schemas/courseSchemas.ts` |
-| Checkout price sync | `Backend/src/routes/payments.ts`, `stripePayments.ts` |
+| Checkout price sync | `Backend/src/routes/payments/`, `stripePayments.ts` |
 | Purchase continuity | `Frontend/pages/store/[id].tsx`, `src/context/AuthModalContext.tsx` |
 | AI fallback chain | `Backend/src/services/aiAgentService.ts` |
 | Sales count | `DigitalProduct.salesCount` (schema), `productSaleService.ts`, `products.ts`'s `/:id/claim` |

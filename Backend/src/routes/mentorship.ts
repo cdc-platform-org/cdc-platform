@@ -404,7 +404,7 @@ router.patch('/bookings/:id/recording', authenticate, requireApproved, async (re
 
 // Mentor self-serve: manually set/replace the Meet/Zoom link on their OWN
 // upcoming booking — googleMeetLink is normally auto-filled by the Calendar
-// integration at payment time (routes/payments.ts), but a mentor can
+// integration at payment time (routes/payments/), but a mentor can
 // override it here if that integration failed/isn't configured, or they
 // want to use a different tool. Scoped by mentorId, same as the recording
 // route above.

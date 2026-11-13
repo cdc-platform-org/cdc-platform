@@ -122,7 +122,7 @@ router.get('/user/:userId', async (req: Request, res: Response) => {
       sellerReviewCount: true,
       // Drives the "სტუდენტი" (Student) badge — anyone who's purchased at
       // least one course, one rung below isVerifiedGraduate ("ვერიფიცირებული")
-      // which is set automatically on course completion (see routes/courses.ts).
+      // which is set automatically on course completion (see routes/courses/).
       _count: { select: { courseEnrollments: true } },
     },
   });

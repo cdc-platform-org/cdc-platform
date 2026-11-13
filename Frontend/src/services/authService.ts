@@ -51,7 +51,7 @@ export async function deleteAccount(payload: DeleteAccountPayload): Promise<Dele
 }
 
 export async function loginWithGoogle(idToken: string, role?: 'Student' | 'Client'): Promise<AuthResponse> {
-  // role only matters for brand-new accounts (see Backend's routes/auth.ts
+  // role only matters for brand-new accounts (see Backend's routes/auth/
   // POST /google) — ignored if this Google identity already has an account.
   // Same no-timeout risk/fix as login() above.
   const response = await apiClient.post<AuthResponse>('/auth/google', { idToken, role }, { timeout: AUTH_REQUEST_TIMEOUT_MS });
@@ -127,11 +127,11 @@ export async function uploadVerificationDoc(file: File): Promise<User> {
 
 // INDIVIDUAL-level counterpart to uploadVerificationDoc above (BUSINESS) —
 // an ID card/passport scan, always lands PENDING for manual admin review
-// (see Backend's routes/auth.ts, no auto-approve heuristic exists for a
+// (see Backend's routes/auth/, no auto-approve heuristic exists for a
 // personal ID the way businessKycService.ts has one for a registry extract).
 // personalNumber (11-digit Georgian ID) is submitted in the same request as
 // the document itself — see the anti-fraud KYC comment on Backend's
-// routes/auth.ts's /me/individual-verification-doc for why.
+// routes/auth's /me/individual-verification-doc for why.
 export async function uploadIndividualVerificationDoc(file: File, personalNumber: string): Promise<User> {
   const formData = new FormData();
   formData.append('document', file);

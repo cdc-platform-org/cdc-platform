@@ -298,7 +298,7 @@ export async function resumeBookAnimations(): Promise<number> {
 
 // ---- Purchase / fulfilment ---------------------------------------------------
 
-// Called by the BOG callback (routes/payments.ts) and the free/promo/admin
+// Called by the BOG callback (routes/payments/) and the free/promo/admin
 // paths. Idempotent: only a PAYMENT_PENDING row moves to QUEUED.
 export async function completeBookAnimationPurchase(params: { bookProjectId: string; paidVia: string }): Promise<{ handled: boolean }> {
   const result = await prisma.bookAnimation.updateMany({

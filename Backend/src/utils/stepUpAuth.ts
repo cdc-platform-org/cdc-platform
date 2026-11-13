@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 // ============================================================
 // Step-up re-authentication — a lightweight PSD2/SCA-adjacent control for
 // the two financial actions sessionAnomalyService.detectSessionAnomaly can
-// flag: changing the payout IBAN (routes/auth.ts PUT /me) and requesting a
+// flag: changing the payout IBAN (routes/auth/ PUT /me) and requesting a
 // payout (routes/wallet.ts POST /payout-requests). Deliberately simple:
 // no separate re-authenticate endpoint or short-lived token, just require
 // the SAME request that's already anomalous to also carry the account's
@@ -27,7 +27,7 @@ export class StepUpRequiredError extends Error {
 
 // Throws StepUpRequiredError for every way step-up can fail — missing
 // password, wrong password, or an OAuth-only account with no real
-// password to check (same googleId gate as routes/auth.ts's existing
+// password to check (same googleId gate as routes/auth's existing
 // changePasswordSchema route) — so every call site maps this to the same
 // 403 { code: 'STEP_UP_REQUIRED', message } shape without needing to
 // distinguish the reason itself.

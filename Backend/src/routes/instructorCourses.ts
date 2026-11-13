@@ -20,7 +20,7 @@ import { sectionCreateSchema, sectionUpdateSchema, lessonCreateSchema, lessonUpd
 
 // ============================================================
 // INSTRUCTOR STUDIO — Mentor-owned course authoring, the self-service
-// counterpart to the admin-only editor in routes/courses.ts. A course
+// counterpart to the admin-only editor in routes/courses/. A course
 // created here always has instructorId set and enters the Mentor Course QA
 // pipeline (DRAFT -> PENDING_REVIEW -> NEEDS_REVISION -> APPROVED ->
 // PUBLISHED -> ARCHIVED — see Course.status's schema comment); it is
@@ -361,7 +361,7 @@ router.put('/lessons/:lessonId', async (req: Request, res: Response) => {
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
   try {
     await requireOwnedLesson(req.params.lessonId, req.user!.id);
-    // Mirrors admin routes/courses.ts's own PUT /lessons/:lessonId — a
+    // Mirrors admin routes/courses's own PUT /lessons/:lessonId — a
     // Mentor sets bunnyVideoId only as the manual-fallback text input, same
     // as the admin editor; the primary path is the upload route below.
     const { bunnyVideoId, ...rest } = result.data;

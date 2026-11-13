@@ -95,10 +95,10 @@ Money is always stored as `Int` minor units (tetri / cents), never `Float`.
 
 | Feature | Backend route(s) | Key backend services | Frontend |
 |---|---|---|---|
-| Auth, registration, OAuth, 2FA/step-up | `routes/auth.ts` | `utils/stepUpAuth`, `emailService` | `pages/auth/*`, `src/context/AuthContext.tsx` |
-| Courses & lessons | `courses.ts`, `instructorCourses.ts`, `adminCourseModeration.ts` | `coursePricing`, `courseSaleService`, `certificateService` | `pages/courses/**`, `pages/admin/courses.tsx`, `dashboard/instructor-studio` |
+| Auth, registration, OAuth, 2FA/step-up | `routes/auth/` | `utils/stepUpAuth`, `emailService` | `pages/auth/*`, `src/context/AuthContext.tsx` |
+| Courses & lessons | `courses/`, `instructorCourses.ts`, `adminCourseModeration.ts` | `coursePricing`, `courseSaleService`, `certificateService` | `pages/courses/**`, `pages/admin/courses.tsx`, `dashboard/instructor-studio` |
 | Live trainings | `liveTrainings.ts`, `adminLiveTrainings*.ts`, `liveTrainingInvites.ts`, `trainingGuides.ts` | `liveTrainingSaleService`, `liveTrainingPricing`, `trainingGuideService` | `pages/live-trainings/**`, `pages/admin/live-trainings/**` |
-| Checkout & payments (BOG) | `payments.ts` | `bogPaymentService`, `paymentGatewayService`, `learningCheckoutService`, `learningPaymentFulfillment`, `paymentReconciliationService` | `pages/payments/bog/result.tsx` |
+| Checkout & payments (BOG) | `payments/` (one file per checkout type; webhook in `bogCallback.ts`) | `bogPaymentService`, `paymentGatewayService`, `learningCheckoutService`, `learningPaymentFulfillment`, `paymentReconciliationService` | `pages/payments/bog/result.tsx` |
 | Payments (Stripe) | `stripePayments.ts` | `stripePaymentService`, `subscriptionStateService` | `pages/payments/stripe/result.tsx` |
 | Billing, invoices, wallet, payouts | `billing.ts`, `invoices.ts`, `wallet.ts`, `adminPayouts.ts`, `adminFinance.ts` | `billingService`, `invoiceService`, `bogPayoutService` | `dashboard/billing.tsx`, `wallet.tsx` |
 | Digital store (products) | `products.ts`, `adminProducts.ts`, `productReviews.ts` | `productSaleService`, `productPricing`, `productFileDelivery`, `productImageProtection` | `pages/store/**`, `pages/marketplace/` |
