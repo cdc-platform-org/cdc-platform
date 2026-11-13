@@ -10,6 +10,7 @@ import RichTextEditor from '../../src/components/shared/RichTextEditor';
 import MarkdownContent from '../../src/components/shared/MarkdownContent';
 import FileDropzone from '../../src/components/shared/FileDropzone';
 import ImageGalleryUploader from '../../src/components/shared/ImageGalleryUploader';
+import { PRODUCT_IMAGE_SIZE } from '../../src/components/shared/imageRatioCheck';
 import { assetFilenameFromUrl } from '../../src/utils/assetFilename';
 import {
   getAdminProducts,
@@ -36,6 +37,15 @@ import {
 } from '../../src/services/productService';
 import { getAiAutomationSettings, updateAiAutomationSettings } from '../../src/services/adminPanelService';
 import { formatPrice } from '../../src/utils/coursePricing';
+
+// Bilingual because this admin page is English-only while its editors work in
+// Georgian. Why 4:3 + centre: the store detail gallery is 4:3 and the store
+// card is 16:9 (crops top/bottom) — see imageRatioCheck.ts.
+const COVER_SIZE_HINT =
+  'რეკომენდებული: 2000×1500 px (4:3), მინ. 1200×900 · მთავარი ტექსტი/ობიექტი შუაში მოათავსე — მაღაზიის ბარათი ზემოდან და ქვემოდან ჭრის (16:9). ' +
+  'Recommended: 2000×1500 px (4:3), min 1200×900 · keep key content centred — the store card crops top/bottom (16:9). PNG/JPG, max 10MB.';
+const GALLERY_SIZE_HINT =
+  'რეკომენდებული: 2000×1500 px (4:3), მაქს. 15 სურათი · Recommended: 2000×1500 px (4:3), up to 15 images, max 10MB each.';
 
 const ASSET_ACCEPT = '.zip,.pdf,.epub,.rar,.7z,.fig,.sketch,.psd,.ai,.doc,.docx,.mp4,.mov';
 
@@ -435,12 +445,14 @@ function ModerationProductCard({
               onPreviewImagesChange={setEditPreviewImages}
               uploadImage={uploadProductImage}
               lang="en"
+              recommendedSize={PRODUCT_IMAGE_SIZE}
+              bilingualWarnings
               labels={{
                 coverLabel: 'Cover Image',
                 coverHint: 'Click or drop to replace',
-                coverSizeHint: 'Max 10MB',
+                coverSizeHint: COVER_SIZE_HINT,
                 galleryLabel: 'Screenshots',
-                gallerySizeHint: 'Max 10MB each, up to 15',
+                gallerySizeHint: GALLERY_SIZE_HINT,
                 addMore: 'Add more',
                 uploading: 'Uploading…',
                 remove: 'Remove',
@@ -978,12 +990,14 @@ function AdminProductsDashboard() {
             onPreviewImagesChange={setPreviewImages}
             uploadImage={uploadProductImage}
             lang="en"
+            recommendedSize={PRODUCT_IMAGE_SIZE}
+            bilingualWarnings
             labels={{
               coverLabel: 'Main Cover Image (required)',
               coverHint: imageUrl ? 'Click or drop to replace' : 'Click or drop an image',
-              coverSizeHint: 'Optimal Cover Size: 2000 × 1500 px (4:3 ratio). PNG/JPG, up to 10MB.',
+              coverSizeHint: COVER_SIZE_HINT,
               galleryLabel: 'Additional Screenshots',
-              gallerySizeHint: 'Upload up to 15 preview images (Optimal Size: 2000 × 1500 px, 4:3 ratio).',
+              gallerySizeHint: GALLERY_SIZE_HINT,
               addMore: 'Add',
               uploading: 'Uploading…',
               remove: 'Remove',
