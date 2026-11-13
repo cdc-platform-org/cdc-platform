@@ -27,3 +27,6 @@ runsA.json
 CRITICAL
 lint-dump.txt
 .claude/settings.local.json
+
+# Vercel CLI link (IDs only)
+.vercel
