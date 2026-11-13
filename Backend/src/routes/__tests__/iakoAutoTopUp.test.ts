@@ -8,9 +8,9 @@ import { prisma } from '../../lib/prisma';
 import { JWT_SECRET } from '../../utils/env';
 import { createUser } from '../../test/factories';
 import iakoRouter from '../iako';
-import adminIakoRouter from '../adminIako';
+import adminIakoRouter from '../admin/adminIako';
 import { errorHandler } from '../../middleware/errorHandler';
-import { callTextModel, isAiAgentConfigured, AiAgentError } from '../../services/aiAgentService';
+import { callTextModel, isAiAgentConfigured, AiAgentError } from '../../services/ai/aiAgentService';
 
 // ============================================================
 // IAKO controlled auto-top-up — Monday's Vibe Coding training policy is
@@ -26,13 +26,13 @@ import { callTextModel, isAiAgentConfigured, AiAgentError } from '../../services
 // shared, fixed digitalToolKey.
 // ============================================================
 
-jest.mock('../../services/aiAgentService', () => ({
+jest.mock('../../services/ai/aiAgentService', () => ({
   callTextModel: jest.fn(), isAiAgentConfigured: jest.fn(),
-  AiAgentError: jest.requireActual('../../services/aiAgentService').AiAgentError,
+  AiAgentError: jest.requireActual('../../services/ai/aiAgentService').AiAgentError,
 }));
-jest.mock('../../services/auditLogService', () => ({ logAdminAction: jest.fn().mockResolvedValue(undefined) }));
-jest.mock('../../services/imageStorage', () => ({ uploadImage: jest.fn().mockResolvedValue('https://cdn.example.test/iako-screenshots/shot.png') }));
-jest.mock('../../services/privateBlobStorage', () => ({
+jest.mock('../../services/account/auditLogService', () => ({ logAdminAction: jest.fn().mockResolvedValue(undefined) }));
+jest.mock('../../services/integrations/imageStorage', () => ({ uploadImage: jest.fn().mockResolvedValue('https://cdn.example.test/iako-screenshots/shot.png') }));
+jest.mock('../../services/integrations/privateBlobStorage', () => ({
   uploadPrivateBlob: jest.fn().mockResolvedValue(undefined),
   assertPrivateBlobContainer: jest.fn().mockResolvedValue(undefined),
   privateBlobExists: jest.fn().mockResolvedValue(true),

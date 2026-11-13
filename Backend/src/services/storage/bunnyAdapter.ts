@@ -1,10 +1,14 @@
+/**
+ * Service (storage).
+ * Exports: BunnyStorageAdapter.
+ */
 import {
   uploadToBunnyStorage,
   deleteFromBunnyStorage,
   deleteBunnyStorageUrlIfManaged,
   isBunnyStorageConfigured,
   BunnyStorageUploadError,
-} from '../bunnyStorage';
+} from '../integrations/bunnyStorage';
 import { BUNNY_CDN_URL, BACKEND_URL } from '../../utils/env';
 import { StorageAdapter, StorageSpace, UploadInput, UploadObject, AuthorizedDownload, StorageNotConfiguredError, StorageUploadError, WrongSpaceVisibilityError } from './types';
 import { getSpaceConfig, isPublicSpace } from './config';

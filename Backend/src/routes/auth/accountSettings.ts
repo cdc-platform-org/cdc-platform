@@ -6,8 +6,8 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../../lib/prisma';
 import { updateProfileSchema, changePasswordSchema } from '../../schemas/authSchemas';
 import { authenticate } from '../../middleware/auth';
-import { sendPayoutIbanChangedEmail } from '../../services/emailService';
-import { detectSessionAnomaly } from '../../services/sessionAnomalyService';
+import { sendPayoutIbanChangedEmail } from '../../services/integrations/emailService';
+import { detectSessionAnomaly } from '../../services/account/sessionAnomalyService';
 import { verifyStepUp, StepUpRequiredError } from '../../utils/stepUpAuth';
 import { toUserResponse } from './shared';
 

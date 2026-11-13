@@ -8,24 +8,24 @@ import { prisma } from '../../lib/prisma';
 import { JWT_SECRET } from '../../utils/env';
 import { createUser } from '../../test/factories';
 import iakoRouter from '../iako';
-import adminIakoRouter from '../adminIako';
+import adminIakoRouter from '../admin/adminIako';
 import { errorHandler } from '../../middleware/errorHandler';
-import { callTextModel, isAiAgentConfigured } from '../../services/aiAgentService';
+import { callTextModel, isAiAgentConfigured } from '../../services/ai/aiAgentService';
 
 // Kept in its own file/app instance, deliberately separate from
 // iako.test.ts's daily/hourly/total DB-backed quota suite — this file only
 // proves the IP-vs-user KEYING of the chatLimiter (15/min) added on top of
 // those quotas in routes/iako.ts, not the quota logic itself.
-jest.mock('../../services/aiAgentService', () => ({
+jest.mock('../../services/ai/aiAgentService', () => ({
   callTextModel: jest.fn(), isAiAgentConfigured: jest.fn(),
-  AiAgentError: jest.requireActual('../../services/aiAgentService').AiAgentError,
+  AiAgentError: jest.requireActual('../../services/ai/aiAgentService').AiAgentError,
 }));
-jest.mock('../../services/auditLogService', () => ({ logAdminAction: jest.fn().mockResolvedValue(undefined) }));
+jest.mock('../../services/account/auditLogService', () => ({ logAdminAction: jest.fn().mockResolvedValue(undefined) }));
 // iakoScreenshotService.ts imports privateBlobStorage.ts, which opens a real
 // Azure Blob container handle at module-import time — mocked here purely so
 // importing iakoRouter doesn't attempt a real network call, even though
 // these tests never attach a screenshot.
-jest.mock('../../services/privateBlobStorage', () => ({
+jest.mock('../../services/integrations/privateBlobStorage', () => ({
   uploadPrivateBlob: jest.fn().mockResolvedValue(undefined),
   assertPrivateBlobContainer: jest.fn().mockResolvedValue(undefined),
   privateBlobExists: jest.fn().mockResolvedValue(true),

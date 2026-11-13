@@ -7,23 +7,23 @@ import crypto from 'crypto';
 import { prisma } from '../../lib/prisma';
 import { PromoCode } from '@prisma/client';
 import { authenticate, requireApproved } from '../../middleware/auth';
-import { paymentModelForPurpose } from '../../services/paymentModel';
+import { paymentModelForPurpose } from '../../services/payments/paymentModel';
 import {
   quotePromoToCheckout,
   claimPromoRedemption,
   PromoCodeError,
   giftCardAmountOf,
-} from '../../services/couponService';
+} from '../../services/payments/couponService';
 import {
   completeChildrensBookPurchase,
   assertBookReadyForCheckout,
   BookNotFoundError,
   BookNotEligibleForCheckoutError,
   BookPreviewNotConfirmedError,
-} from '../../services/bookPurchaseFulfillment';
-import { isBookDevPaymentSimulationEnabled, resolveBookPayableAmountTetri } from '../../services/bookMockConfig';
-import { calculateBookPrice } from '../../services/bookStateService';
-import { calculateAudioPrice, calculateTotalBookPrice } from '../../services/bookNarrationService';
+} from '../../services/childrensBook/bookPurchaseFulfillment';
+import { isBookDevPaymentSimulationEnabled, resolveBookPayableAmountTetri } from '../../services/childrensBook/bookMockConfig';
+import { calculateBookPrice } from '../../services/childrensBook/bookStateService';
+import { calculateAudioPrice, calculateTotalBookPrice } from '../../services/childrensBook/bookNarrationService';
 import {
   checkoutRateLimit,
   CALLBACK_URL,

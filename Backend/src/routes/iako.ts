@@ -1,9 +1,18 @@
+/**
+ * Express router mounted at `/api/iako` (see server.ts).
+ * Endpoints:
+ *   GET /my-assistants
+ *   GET /live-training/:id/conversation
+ *   POST /live-training/:id/chat
+ *   GET /digital-tool/:key/conversation
+ *   POST /digital-tool/:key/chat
+ */
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { authenticate, requireNotBannedOrDeleted } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { iakoChatSchema } from '../schemas/iakoSchemas';
-import { askIakoAssistant, getConversation, listMyIakoAssistants, IakoError } from '../services/iakoAssistantService';
+import { askIakoAssistant, getConversation, listMyIakoAssistants, IakoError } from '../services/iako/iakoAssistantService';
 import { isDigitalToolKey } from '../config/digitalTools';
 
 const router = Router();

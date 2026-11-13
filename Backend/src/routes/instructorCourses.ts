@@ -1,9 +1,29 @@
+/**
+ * Express router mounted at `/api/instructor/courses` (see server.ts).
+ * Endpoints:
+ *   GET /
+ *   POST /
+ *   GET /:id
+ *   PUT /:id
+ *   DELETE /:id
+ *   GET /:id/quality-check
+ *   POST /:id/submit-for-review
+ *   POST /:id/thumbnail
+ *   POST /:id/cover-image
+ *   POST /:courseId/sections
+ *   PUT /sections/:sectionId
+ *   DELETE /sections/:sectionId
+ *   POST /sections/:sectionId/lessons
+ *   PUT /lessons/:lessonId
+ *   DELETE /lessons/:lessonId
+ *   POST /lessons/:lessonId/video
+ */
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireRole, requireApproved } from '../middleware/auth';
-import { uploadImage } from '../services/imageStorage';
+import { uploadImage } from '../services/integrations/imageStorage';
 import {
   createBunnyVideo,
   uploadBunnyVideoBinary,
@@ -11,7 +31,7 @@ import {
   getBunnyEmbedUrl,
   getBunnyThumbnailUrl,
   isBunnyConfigured,
-} from '../services/bunnyStreamService';
+} from '../services/integrations/bunnyStreamService';
 import {
   instructorCourseCreateSchema,
   instructorCourseUpdateSchema,

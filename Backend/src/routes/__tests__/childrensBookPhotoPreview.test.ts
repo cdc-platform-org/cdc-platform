@@ -11,19 +11,19 @@ import { createUser } from '../../test/factories';
 import childrensBookRoutes from '../childrensBook';
 import paymentsRouter from '../payments';
 import { errorHandler } from '../../middleware/errorHandler';
-import { createBogOrder } from '../../services/bogPaymentService';
+import { createBogOrder } from '../../services/payments/bogPaymentService';
 
 // ============================================================
 // Children's Book — optional character photo + appearance description,
 // extra story characters, and the mandatory book preview before payment.
 // ============================================================
 
-jest.mock('../../services/bogPaymentService', () => ({
-  ...jest.requireActual('../../services/bogPaymentService'),
+jest.mock('../../services/payments/bogPaymentService', () => ({
+  ...jest.requireActual('../../services/payments/bogPaymentService'),
   createBogOrder: jest.fn(),
 }));
-jest.mock('../../services/bookMockConfig', () => ({
-  ...jest.requireActual('../../services/bookMockConfig'),
+jest.mock('../../services/childrensBook/bookMockConfig', () => ({
+  ...jest.requireActual('../../services/childrensBook/bookMockConfig'),
   isBookDevPaymentSimulationEnabled: jest.fn(() => false),
 }));
 

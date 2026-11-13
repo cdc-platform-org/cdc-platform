@@ -11,7 +11,7 @@
 // utils/env.ts).
 import fs from 'fs';
 import path from 'path';
-import { generateCertificatePdf, generateVerificationCode } from '../src/services/certificateService';
+import { generateCertificatePdf, generateVerificationCode } from '../src/services/learning/certificateService';
 
 async function main() {
   const outPath = process.argv[2] || path.join(__dirname, '..', 'certificate-test.pdf');

@@ -1,3 +1,22 @@
+/**
+ * Express router mounted at `/api/english-tutor` (see server.ts).
+ * Endpoints:
+ *   GET /state
+ *   POST /trial/start
+ *   POST /subscription/cancel
+ *   PUT /goal
+ *   GET /resume-state
+ *   PUT /resume-state
+ *   GET /placement-test
+ *   POST /placement-test/submit
+ *   POST /lessons/generate
+ *   GET /lessons
+ *   GET /lessons/:id
+ *   POST /lessons/:id/submit
+ *   GET /progress
+ *   POST /flags
+ *   POST /lessons/:id/dialogue-message
+ */
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
@@ -19,20 +38,20 @@ import {
   DialogueContent,
   DialogueTurn,
   PlacementQuestion,
-} from '../services/englishTutorService';
+} from '../services/educator/englishTutorService';
 import { hasEnglishTutorProAccess } from '../utils/englishTutorAccess';
 import {
   hasReachedDailyLessonGenerationLimit,
   recordLessonGeneration,
   getDailyLessonGenerationUsage,
   DAILY_FREE_LESSON_GENERATION_LIMIT,
-} from '../services/englishTutorQuotaService';
+} from '../services/educator/englishTutorQuotaService';
 import {
   startTutorTrial,
   TutorTrialAlreadyUsedError,
   cancelTutorSubscriptionAutoRenew,
   TUTOR_TRIAL_DAYS,
-} from '../services/englishTutorSubscriptionService';
+} from '../services/educator/englishTutorSubscriptionService';
 
 const router = Router();
 router.use(authenticate, requireApproved);

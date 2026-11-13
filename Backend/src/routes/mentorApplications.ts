@@ -1,3 +1,9 @@
+/**
+ * Express router mounted at `/api/mentor-applications` (see server.ts).
+ * Endpoints:
+ *   POST /
+ *   GET /me
+ */
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved } from '../middleware/auth';

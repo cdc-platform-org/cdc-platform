@@ -4,7 +4,7 @@ import {
   calculateTotalBookPrice,
   canGenerateNarration,
   buildNarrationArtifactKey,
-} from '../bookNarrationService';
+} from '../childrensBook/bookNarrationService';
 
 describe('children book audio addon pricing', () => {
   it('uses a fixed +5 GEL addon and totals are book + audio', () => {

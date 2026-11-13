@@ -5,11 +5,11 @@ import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole, requireApproved } from '../../middleware/auth';
-import { BunnyStorageUploadError } from '../../services/bunnyStorage';
+import { BunnyStorageUploadError } from '../../services/integrations/bunnyStorage';
 import {
   uploadAssignmentSubmissionFile,
   resolveAssignmentSubmissionDeliveryUrl,
-} from '../../services/assignmentSubmissionDelivery';
+} from '../../services/learning/assignmentSubmissionDelivery';
 import { submitAssignmentSchema, gradeAssignmentSchema } from '../../schemas/courseSchemas';
 
 const router = Router();

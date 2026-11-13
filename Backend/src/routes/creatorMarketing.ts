@@ -1,9 +1,17 @@
+/**
+ * Express router mounted at `/api/instructor/marketing` (see server.ts).
+ * Endpoints:
+ *   POST /launch-kits
+ *   GET /launch-kits
+ *   GET /launch-kits/:id
+ *   DELETE /launch-kits/:id
+ */
 import { Router, Request, Response } from 'express';
 import { LaunchKitTargetType } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved } from '../middleware/auth';
-import { generateLaunchKit, MarketingAgentError } from '../services/marketingAgentService';
+import { generateLaunchKit, MarketingAgentError } from '../services/ai/marketingAgentService';
 
 // ============================================================
 // CREATOR-FACING AI SALES & MARKETING MANAGER — the self-service counterpart

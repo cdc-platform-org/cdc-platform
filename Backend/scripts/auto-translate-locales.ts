@@ -28,7 +28,7 @@ import {
   isAiTranslateConfigured,
   translateLocaleBatch,
   AiTranslateError,
-} from '../src/services/aiTranslateService';
+} from '../src/services/ai/aiTranslateService';
 
 const LOCALES_DIR = path.resolve(__dirname, '../../Frontend/public/locales');
 const SOURCE_LOCALE = 'en';

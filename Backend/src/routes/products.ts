@@ -1,3 +1,17 @@
+/**
+ * Express router mounted at `/api/products` (see server.ts).
+ * Endpoints:
+ *   GET /
+ *   GET /:id
+ *   POST /upload-image
+ *   POST /upload-video
+ *   POST /upload-file
+ *   POST /
+ *   GET /mine/submissions
+ *   PUT /:id/mine
+ *   POST /:id/claim
+ *   GET /:id/download
+ */
 import { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import path from 'path';
@@ -6,16 +20,16 @@ import { ProductLicenseType } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { authenticate, optionalAuthenticate, requireApproved } from '../middleware/auth';
 import { hasFreelancerRights } from '../utils/freelancerVerification';
-import { uploadImage } from '../services/imageStorage';
-import { BunnyStorageUploadError } from '../services/bunnyStorage';
+import { uploadImage } from '../services/integrations/imageStorage';
+import { BunnyStorageUploadError } from '../services/integrations/bunnyStorage';
 import { imageUpload, fileUpload, videoUpload, multerErrorHandler } from '../middleware/productUploads';
 import { fileFormatFromUrl, fileNameFromUrl, parseAdditionalFiles } from '../utils/fileFormat';
-import { moderateProduct, ModerationInput } from '../services/productModerationService';
-import { getAiAutomationSettings } from '../services/aiAutomationSettingsService';
-import { autoTranslateIfBlank } from '../services/aiTranslateService';
-import { protectProductPreviewImage } from '../services/productImageProtection';
-import { uploadProductFile, resolveProductFileDeliveryUrl } from '../services/productFileDelivery';
-import { withCurrentProductPrice, validateProductDiscount } from '../services/productPricing';
+import { moderateProduct, ModerationInput } from '../services/marketplace/productModerationService';
+import { getAiAutomationSettings } from '../services/ai/aiAutomationSettingsService';
+import { autoTranslateIfBlank } from '../services/ai/aiTranslateService';
+import { protectProductPreviewImage } from '../services/marketplace/productImageProtection';
+import { uploadProductFile, resolveProductFileDeliveryUrl } from '../services/marketplace/productFileDelivery';
+import { withCurrentProductPrice, validateProductDiscount } from '../services/marketplace/productPricing';
 
 // ISO string (or '' / null / undefined for "no sale end date") from the
 // form's <input type="datetime-local"> — mirrors courses.ts's identical

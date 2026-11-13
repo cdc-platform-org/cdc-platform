@@ -1,3 +1,38 @@
+/**
+ * Express router mounted at `/api/childrens-books` (see server.ts).
+ * Endpoints:
+ *   POST /
+ *   GET /style-samples/:style
+ *   GET /shared/:token
+ *   GET /shared/:token/cover
+ *   GET /shared/:token/portrait
+ *   GET /shared/:token/page/:pageNumber/image
+ *   GET /shared/:token/audio/page/:pageNumber
+ *   GET /shared/:token/audio/full-story.mp3
+ *   GET /
+ *   GET /:id
+ *   PUT /:id/character-config
+ *   PUT /:id/font
+ *   POST /:id/character-photo
+ *   GET /:id/character-photo
+ *   DELETE /:id/character-photo
+ *   PATCH /:id/audio-upgrade
+ *   POST /:id/story-plan
+ *   POST /:id/story-text/rewrite
+ *   PUT /:id/story-text
+ *   POST /:id/story-text/approve
+ *   POST /:id/story-text/regenerate
+ *   POST /:id/character-preview
+ *   GET /:id/character-preview/image
+ *   GET /:id/page/:pageNumber/image
+ *   POST /:id/character-approval
+ *   POST /:id/preview-confirm
+ *   POST /:id/payment/dev-simulate
+ *   POST /:id/final-generation/start
+ *   GET /:id/final-generation/status
+ *   POST /:id/revision
+ *   … and 11 more
+ */
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { prisma } from '../lib/prisma';
@@ -11,8 +46,8 @@ import {
   canStartFinalGeneration,
   canClaimRevision,
   buildLogicalOperationKey,
-} from '../services/bookStateService';
-import { generateStoryPlan, planPagesFromFreshStory, CharacterConfig, StoryPlan } from '../services/bookStoryPlanService';
+} from '../services/childrensBook/bookStateService';
+import { generateStoryPlan, planPagesFromFreshStory, CharacterConfig, StoryPlan } from '../services/childrensBook/bookStoryPlanService';
 import {
   writeStoryTexts,
   writeFreshStory,
@@ -22,11 +57,11 @@ import {
   validateStoryTextEdits,
   StoryTextEdit,
   MAX_STORY_TEXT_REGENERATIONS,
-} from '../services/bookStoryTextService';
-import { generateBookImage, isImageGenerationMocked } from '../services/bookImageGenerationService';
-import { runImageQa, isAcceptableQaStatus } from '../services/bookQaService';
-import { buildBookPdf, parsePrintSettings, printFileSuffix } from '../services/bookPdfService';
-import { storeBookAsset, readBookAsset, deleteBookAsset } from '../services/bookStorageService';
+} from '../services/childrensBook/bookStoryTextService';
+import { generateBookImage, isImageGenerationMocked } from '../services/childrensBook/bookImageGenerationService';
+import { runImageQa, isAcceptableQaStatus } from '../services/childrensBook/bookQaService';
+import { buildBookPdf, parsePrintSettings, printFileSuffix } from '../services/childrensBook/bookPdfService';
+import { storeBookAsset, readBookAsset, deleteBookAsset } from '../services/childrensBook/bookStorageService';
 import {
   validateCharacterExtras,
   appearancePromptLine,
@@ -43,20 +78,20 @@ import {
   pageStoryPromptLines,
   ALLOWED_CHARACTER_PHOTO_TYPES,
   MAX_CHARACTER_PHOTO_BYTES,
-} from '../services/bookCharacterDetailsService';
-import { isBookDevPaymentSimulationEnabled, isBookAiMocked } from '../services/bookMockConfig';
-import { completeChildrensBookPurchase } from '../services/bookPurchaseFulfillment';
-import { startFinalGeneration } from '../services/bookFinalGenerationService';
-import { buildAndStoreBookPdf, collectPdfPages } from '../services/bookFinishingService';
-import { createBookUrl, findBookByShareToken, newShareToken, pdfExtrasForBook, readExtras, saveExtras } from '../services/bookExtrasService';
-import { attachmentHeader, buildFullStoryMp3, latestNarrations } from '../services/bookAudioBundle';
-import { readCast, castPromptLine } from '../services/bookCastService';
-import { getStyleSample } from '../services/bookStyleSamples';
-import { calculateAudioPrice, calculateTotalBookPrice, canGenerateNarration, narrationLanguageForBook } from '../services/bookNarrationService';
-import { getBookNarrationProvider } from '../services/bookNarrationProviders';
-import { AzureSpeechError } from '../services/azureSpeechService';
-import { isIllustrationStyle, illustrationStylePromptLine } from '../services/bookIllustrationStyles';
-import { isBookFontId, DEFAULT_BOOK_FONT } from '../services/bookFonts';
+} from '../services/childrensBook/bookCharacterDetailsService';
+import { isBookDevPaymentSimulationEnabled, isBookAiMocked } from '../services/childrensBook/bookMockConfig';
+import { completeChildrensBookPurchase } from '../services/childrensBook/bookPurchaseFulfillment';
+import { startFinalGeneration } from '../services/childrensBook/bookFinalGenerationService';
+import { buildAndStoreBookPdf, collectPdfPages } from '../services/childrensBook/bookFinishingService';
+import { createBookUrl, findBookByShareToken, newShareToken, pdfExtrasForBook, readExtras, saveExtras } from '../services/childrensBook/bookExtrasService';
+import { attachmentHeader, buildFullStoryMp3, latestNarrations } from '../services/childrensBook/bookAudioBundle';
+import { readCast, castPromptLine } from '../services/childrensBook/bookCastService';
+import { getStyleSample } from '../services/childrensBook/bookStyleSamples';
+import { calculateAudioPrice, calculateTotalBookPrice, canGenerateNarration, narrationLanguageForBook } from '../services/childrensBook/bookNarrationService';
+import { getBookNarrationProvider } from '../services/childrensBook/bookNarrationProviders';
+import { AzureSpeechError } from '../services/ai/azureSpeechService';
+import { isIllustrationStyle, illustrationStylePromptLine } from '../services/childrensBook/bookIllustrationStyles';
+import { isBookFontId, DEFAULT_BOOK_FONT } from '../services/childrensBook/bookFonts';
 
 const router = Router();
 

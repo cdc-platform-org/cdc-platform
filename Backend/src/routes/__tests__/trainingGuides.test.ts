@@ -7,15 +7,15 @@ import { prisma } from '../../lib/prisma';
 import { JWT_SECRET } from '../../utils/env';
 import { createUser } from '../../test/factories';
 import trainingGuidesRouter from '../trainingGuides';
-import adminTrainingGuidesRouter from '../adminTrainingGuides';
+import adminTrainingGuidesRouter from '../admin/adminTrainingGuides';
 import { errorHandler } from '../../middleware/errorHandler';
-import { callTextModel, isAiAgentConfigured } from '../../services/aiAgentService';
-import { defaultGuideSettings, getTrainingGuides, localCalendarDate, resolveGuideSchedule, resolveIakoGuideContext, scheduledGuideDate } from '../../services/trainingGuideService';
+import { callTextModel, isAiAgentConfigured } from '../../services/ai/aiAgentService';
+import { defaultGuideSettings, getTrainingGuides, localCalendarDate, resolveGuideSchedule, resolveIakoGuideContext, scheduledGuideDate } from '../../services/learning/trainingGuideService';
 import { trainingDaySchema, guideSettingsSchema } from '../../schemas/trainingGuideSchemas';
-import { logAdminAction } from '../../services/auditLogService';
+import { logAdminAction } from '../../services/account/auditLogService';
 
-jest.mock('../../services/aiAgentService', () => ({ callTextModel: jest.fn(), isAiAgentConfigured: jest.fn() }));
-jest.mock('../../services/auditLogService', () => ({ logAdminAction: jest.fn().mockResolvedValue(undefined) }));
+jest.mock('../../services/ai/aiAgentService', () => ({ callTextModel: jest.fn(), isAiAgentConfigured: jest.fn() }));
+jest.mock('../../services/account/auditLogService', () => ({ logAdminAction: jest.fn().mockResolvedValue(undefined) }));
 
 type User = Awaited<ReturnType<typeof createUser>>;
 type Guides = Awaited<ReturnType<typeof getTrainingGuides>>;

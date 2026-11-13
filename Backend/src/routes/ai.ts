@@ -1,3 +1,17 @@
+/**
+ * Express router mounted at `/api/ai` (see server.ts).
+ * Endpoints:
+ *   POST /translate
+ *   POST /translate-studio-case
+ *   POST /translate-mentor
+ *   POST /translate-team-member
+ *   POST /translate-course
+ *   POST /translate-title-description
+ *   POST /translate-success-story
+ *   POST /course-tutor
+ *   GET /digital-store-marketing/usage
+ *   POST /digital-store-marketing
+ */
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { authenticate, requireAdminRole } from '../middleware/auth';
@@ -14,16 +28,16 @@ import {
   translateTitleAndDescription,
   isAiTranslateConfigured,
   AiTranslateError,
-} from '../services/aiTranslateService';
-import { generateTutorReply, isCourseTutorConfigured, CourseTutorError } from '../services/courseTutorService';
-import { isAiAgentConfigured } from '../services/aiAgentService';
-import { generateProductMarketingCopy, ProductMarketingError } from '../services/productMarketingAssistantService';
+} from '../services/ai/aiTranslateService';
+import { generateTutorReply, isCourseTutorConfigured, CourseTutorError } from '../services/learning/courseTutorService';
+import { isAiAgentConfigured } from '../services/ai/aiAgentService';
+import { generateProductMarketingCopy, ProductMarketingError } from '../services/ai/productMarketingAssistantService';
 import {
   getDailyMarketingGenerationUsage,
   hasReachedDailyMarketingGenerationLimit,
   recordMarketingGeneration,
-} from '../services/marketingAssistantQuotaService';
-import { logAiGeneration } from '../services/aiGenerationLogService';
+} from '../services/ai/marketingAssistantQuotaService';
+import { logAiGeneration } from '../services/ai/aiGenerationLogService';
 import { assertOwnedTarget, OwnershipError } from './creatorMarketing';
 import { LaunchKitTargetType } from '@prisma/client';
 

@@ -38,8 +38,22 @@ Money is always stored as `Int` minor units (tetri / cents), never `Float`.
 ├─ Backend/                 Express API
 │  ├─ src/
 │  │  ├─ server.ts          App setup + the full route mount table (/api/...)
-│  │  ├─ routes/            One file per URL area (thin HTTP layer)
-│  │  ├─ services/          Business logic, payments, AI, storage, e-mail
+│  │  ├─ routes/            One file (or folder) per URL area — thin HTTP layer
+│  │  │  ├─ admin/          Every /api/admin* router
+│  │  │  └─ auth/, courses/, payments/   Big areas split into sub-routers
+│  │  ├─ services/          Business logic, grouped by domain:
+│  │  │  ├─ account/        Access grants, audit log, KYC, moderation, cleanup
+│  │  │  ├─ ai/             AI providers + fallback chain (aiAgentService), speech, agents
+│  │  │  ├─ childrensBook/  Children's book generation, narration, animation, PDF
+│  │  │  ├─ content/        Blog helpers
+│  │  │  ├─ educator/       Educator Hub, teacher quiz, English tutor
+│  │  │  ├─ exams/          AI exams, proctoring, exam sessions/reports
+│  │  │  ├─ iako/           Iako assistant
+│  │  │  ├─ integrations/   E-mail, WhatsApp, Bunny, Azure Blob, Google Calendar/Classroom
+│  │  │  ├─ learning/       Courses, live trainings, certificates, mentorship scheduling
+│  │  │  ├─ marketplace/    Digital store products, gigs, listings
+│  │  │  ├─ payments/       BOG/Stripe, billing, invoices, escrow, coupons, gift cards
+│  │  │  └─ storage/        Storage adapters (Azure Blob / Bunny / local)
 │  │  ├─ schemas/           Zod request schemas used by routes
 │  │  ├─ middleware/        auth (authenticate, requireRole, requireAdminRole…), rate limits, errors
 │  │  ├─ utils/             Small pure helpers (env, slugify, exam scoring…)
@@ -70,10 +84,10 @@ Money is always stored as `Int` minor units (tetri / cents), never `Float`.
 └─ .github/workflows/       Legacy GitHub workflows (code now lives on Azure DevOps)
 ```
 
-> **Legacy folders.** `Frontend/components/`, `Frontend/context/`,
-> `Frontend/lib/` and `Backend/server.ts` (repo-level, not `src/`) are older
-> copies. New code goes under `Frontend/src/` and `Backend/src/`. They are
-> scheduled for clean-up in a later refactor step.
+> **Legacy folders.** `Frontend/components/` and `Frontend/context/` are older
+> copies (only `GroupTrainingModal` is still used, by `pages/trainings`). New UI
+> code goes under `Frontend/src/`. `Frontend/lib/` is live: it holds the
+> server-side helpers of the `pages/api/chat.ts` assistant.
 
 ---
 

@@ -1,11 +1,11 @@
-jest.mock('../aiAgentService', () => ({ callTextModel: jest.fn() }));
-jest.mock('../bookMockConfig', () => ({ ...jest.requireActual('../bookMockConfig'), isBookAiMocked: jest.fn(() => false) }));
-jest.mock('../bookImageGenerationService', () => ({ generateBookImage: jest.fn() }));
-jest.mock('../bookStorageService', () => ({ storeBookAsset: jest.fn(async () => undefined), readBookAsset: jest.fn(async () => Buffer.from('sheet')) }));
+jest.mock('../ai/aiAgentService', () => ({ callTextModel: jest.fn() }));
+jest.mock('../childrensBook/bookMockConfig', () => ({ ...jest.requireActual('../childrensBook/bookMockConfig'), isBookAiMocked: jest.fn(() => false) }));
+jest.mock('../childrensBook/bookImageGenerationService', () => ({ generateBookImage: jest.fn() }));
+jest.mock('../childrensBook/bookStorageService', () => ({ storeBookAsset: jest.fn(async () => undefined), readBookAsset: jest.fn(async () => Buffer.from('sheet')) }));
 
-import { callTextModel } from '../aiAgentService';
-import { generateBookImage } from '../bookImageGenerationService';
-import { castPromptLine, ensureBookCast, BookCast } from '../bookCastService';
+import { callTextModel } from '../ai/aiAgentService';
+import { generateBookImage } from '../childrensBook/bookImageGenerationService';
+import { castPromptLine, ensureBookCast, BookCast } from '../childrensBook/bookCastService';
 
 const look = 'a small round lavender creature the size of a cat, with big turquoise eyes and a glowing blue swirl tail';
 

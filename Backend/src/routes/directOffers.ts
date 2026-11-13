@@ -1,3 +1,9 @@
+/**
+ * Express router mounted at `/api/direct-offers` (see server.ts).
+ * Endpoints:
+ *   POST /
+ *   GET /
+ */
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireRole, requireApproved } from '../middleware/auth';

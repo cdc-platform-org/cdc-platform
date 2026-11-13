@@ -6,8 +6,8 @@ import {
   resolveMentorshipDispute,
   autoReleaseMentorshipEscrows,
   MentorshipEscrowError,
-} from '../mentorshipEscrowService';
-import { upsertCommissionPercentage } from '../platformFeeScheduleService';
+} from '../payments/mentorshipEscrowService';
+import { upsertCommissionPercentage } from '../payments/platformFeeScheduleService';
 import { createUser, createMentorshipBooking } from '../../test/factories';
 
 afterAll(async () => {

@@ -1,3 +1,23 @@
+/**
+ * Express router mounted at `/api/exam-proctoring` (see server.ts).
+ * Endpoints:
+ *   GET /candidate/:candidateToken
+ *   POST /candidate/:candidateToken/start
+ *   GET /submissions/:submissionToken/resume
+ *   POST /submissions/:submissionToken/events
+ *   POST /submissions/:submissionToken/submit
+ *   GET /submissions/:submissionToken/results
+ *   POST /sessions/parse-source
+ *   POST /sessions/parse-source-video
+ *   POST /sessions/parse-source-image
+ *   GET /sessions
+ *   POST /sessions
+ *   GET /sessions/:id
+ *   PATCH /sessions/:id
+ *   DELETE /sessions/:id
+ *   GET /submissions/:id/report.pdf
+ *   POST /submissions/:id/generate-retest
+ */
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
@@ -21,8 +41,8 @@ import {
   extractExamSourceFromImage,
   ExamProctoringAiError,
   isExamProctoringConfigured,
-} from '../services/examProctoringService';
-import { parseDocumentToMarkdown, DocumentParseError } from '../services/documentParserService';
+} from '../services/exams/examProctoringService';
+import { parseDocumentToMarkdown, DocumentParseError } from '../services/ai/documentParserService';
 import {
   isMediaStudioUploadConfigured,
   isMediaStudioYoutubeConfigured,
@@ -30,13 +50,13 @@ import {
   transcribeFromUpload,
   transcribeFromYoutube,
   MediaStudioError,
-} from '../services/mediaStudioService';
-import { recordExamGradingUsage } from '../services/billingService';
-import { generateExamReportPdf } from '../services/examReportService';
+} from '../services/ai/mediaStudioService';
+import { recordExamGradingUsage } from '../services/payments/billingService';
+import { generateExamReportPdf } from '../services/exams/examReportService';
 import { shuffleQuestionsForSubmission, displayedToCanonicalLetter } from '../utils/examShuffle';
-import { buildCandidateResults, ensureMcqExplanations, ensureCleanQuestionText, CandidateResults } from '../services/examResultsService';
+import { buildCandidateResults, ensureMcqExplanations, ensureCleanQuestionText, CandidateResults } from '../services/exams/examResultsService';
 import { computeExamTotalScore } from '../utils/examScoring';
-import { sendExamResultsEmail, examResultsUrl } from '../services/emailService';
+import { sendExamResultsEmail, examResultsUrl } from '../services/integrations/emailService';
 import { resolveNotificationLocale } from '../utils/notificationLocale';
 
 const router = Router();

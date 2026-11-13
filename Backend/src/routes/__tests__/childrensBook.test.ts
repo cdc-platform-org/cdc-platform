@@ -9,10 +9,10 @@ import { JWT_SECRET } from '../../utils/env';
 import { createUser } from '../../test/factories';
 import childrensBookRoutes from '../childrensBook';
 import { errorHandler } from '../../middleware/errorHandler';
-import { ALLOWED_PAGE_COUNTS, calculateBookPrice } from '../../services/bookStateService';
-import * as bookMockConfig from '../../services/bookMockConfig';
-import { writeStoryTexts, writeFreshStory } from '../../services/bookStoryTextService';
-import { waitForFinalGeneration, resumePendingFinalGenerations } from '../../services/bookFinalGenerationService';
+import { ALLOWED_PAGE_COUNTS, calculateBookPrice } from '../../services/childrensBook/bookStateService';
+import * as bookMockConfig from '../../services/childrensBook/bookMockConfig';
+import { writeStoryTexts, writeFreshStory } from '../../services/childrensBook/bookStoryTextService';
+import { waitForFinalGeneration, resumePendingFinalGenerations } from '../../services/childrensBook/bookFinalGenerationService';
 
 // bookMockConfig's ENABLE_BOOK_DEV_PAYMENT_SIMULATION read is frozen at
 // process start (utils/env.ts reads process.env once at import time, same
@@ -21,15 +21,15 @@ import { waitForFinalGeneration, resumePendingFinalGenerations } from '../../ser
 // unmocked "the default is off" assertion flaky depending on who's running
 // the suite. Mocked here instead of relying on env state, same reasoning
 // as teacherQuizFlow.test.ts's callTextModel mock.
-jest.mock('../../services/bookMockConfig', () => ({
-  ...jest.requireActual('../../services/bookMockConfig'),
+jest.mock('../../services/childrensBook/bookMockConfig', () => ({
+  ...jest.requireActual('../../services/childrensBook/bookMockConfig'),
   isBookDevPaymentSimulationEnabled: jest.fn(() => false),
 }));
 // re-require, since bookMockConfig reads process.env at call time.
 // Never call a real text model from route tests — the rewrite route's AI
 // step is stubbed per test.
-jest.mock('../../services/bookStoryTextService', () => ({
-  ...jest.requireActual('../../services/bookStoryTextService'),
+jest.mock('../../services/childrensBook/bookStoryTextService', () => ({
+  ...jest.requireActual('../../services/childrensBook/bookStoryTextService'),
   writeStoryTexts: jest.fn(),
   writeFreshStory: jest.fn(),
 }));

@@ -16,13 +16,13 @@ jest.mock('@google/generative-ai', () => ({
 // mock the "repair call fails" test made a real Azure request (which repaired
 // the text and failed the test). These tests cover the Gemini path only, so
 // the Azure fallback is switched off for the whole file.
-jest.mock('../azureOpenAiService', () => ({
-  ...jest.requireActual('../azureOpenAiService'),
+jest.mock('../ai/azureOpenAiService', () => ({
+  ...jest.requireActual('../ai/azureOpenAiService'),
   isAzureOpenAiConfigured: () => false,
   generateJsonViaAzureOpenAI: jest.fn().mockRejectedValue(new Error('Azure OpenAI is mocked off in this test file')),
 }));
 
-import { generateExamQuestions, ExamProctoringAiError } from '../examProctoringService';
+import { generateExamQuestions, ExamProctoringAiError } from '../exams/examProctoringService';
 
 function mockGeminiJson(payload: unknown) {
   mockGenerateContent.mockResolvedValue({

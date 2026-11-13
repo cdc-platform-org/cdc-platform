@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { prisma } from '../../lib/prisma';
-import { completeProductPurchase } from '../productSaleService';
-import { upsertCommissionPercentage } from '../platformFeeScheduleService';
+import { completeProductPurchase } from '../marketplace/productSaleService';
+import { upsertCommissionPercentage } from '../payments/platformFeeScheduleService';
 import { createUser } from '../../test/factories';
 
 afterAll(async () => {

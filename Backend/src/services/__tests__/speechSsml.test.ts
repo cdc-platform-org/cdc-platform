@@ -1,4 +1,4 @@
-import { AZURE_TTS_OUTPUT_FORMAT, buildSsml, normalizeTextForSpeech, speedToProsodyRate } from '../speechSsml';
+import { AZURE_TTS_OUTPUT_FORMAT, buildSsml, normalizeTextForSpeech, speedToProsodyRate } from '../ai/speechSsml';
 
 describe('normalizeTextForSpeech', () => {
   it('strips markdown, links and emoji instead of reading them aloud', () => {

@@ -8,15 +8,15 @@ import { JWT_SECRET } from '../../utils/env';
 import { createUser } from '../../test/factories';
 import childrensBookRoutes from '../childrensBook';
 import { errorHandler } from '../../middleware/errorHandler';
-import { AzureSpeechError } from '../../services/azureSpeechService';
+import { AzureSpeechError } from '../../services/ai/azureSpeechService';
 
 // Counts provider calls so the tests can assert which pages were (re)synthesized.
 const mockGenerate = jest.fn();
-jest.mock('../../services/bookNarrationProviders', () => ({
+jest.mock('../../services/childrensBook/bookNarrationProviders', () => ({
   getBookNarrationProvider: () => ({ generatePageNarration: (...args: unknown[]) => mockGenerate(...args) }),
 }));
-jest.mock('../../services/bookStorageService', () => ({
-  ...jest.requireActual('../../services/bookStorageService'),
+jest.mock('../../services/childrensBook/bookStorageService', () => ({
+  ...jest.requireActual('../../services/childrensBook/bookStorageService'),
   storeBookAsset: jest.fn(async () => undefined),
 }));
 

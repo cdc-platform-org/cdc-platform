@@ -7,7 +7,7 @@ import { prisma } from '../../lib/prisma';
 import { JWT_SECRET } from '../../utils/env';
 import { createUser } from '../../test/factories';
 import { PDFDocument } from 'pdf-lib';
-import { readExtras, BOOK_PDF_LAYOUT_VERSION } from '../../services/bookExtrasService';
+import { readExtras, BOOK_PDF_LAYOUT_VERSION } from '../../services/childrensBook/bookExtrasService';
 import childrensBookRoutes from '../childrensBook';
 import { errorHandler } from '../../middleware/errorHandler';
 import {
@@ -15,14 +15,14 @@ import {
   recoverStalledBooks,
   startFinalGeneration,
   waitForFinalGeneration,
-} from '../../services/bookFinalGenerationService';
+} from '../../services/childrensBook/bookFinalGenerationService';
 
 // Every image call goes through this mock: by default it returns the real
 // mock-mode placeholder, and a test queues failures in front of it.
 const queuedFailures: string[] = [];
 const imageCalls: string[] = [];
-jest.mock('../../services/bookImageGenerationService', () => {
-  const actual = jest.requireActual('../../services/bookImageGenerationService');
+jest.mock('../../services/childrensBook/bookImageGenerationService', () => {
+  const actual = jest.requireActual('../../services/childrensBook/bookImageGenerationService');
   return {
     ...actual,
     generateBookImage: jest.fn(async (params: { prompt: string }) => {
@@ -37,7 +37,7 @@ jest.mock('../../services/bookImageGenerationService', () => {
 });
 
 const narrationCalls: number[] = [];
-jest.mock('../../services/bookNarrationProviders', () => ({
+jest.mock('../../services/childrensBook/bookNarrationProviders', () => ({
   getBookNarrationProvider: () => ({
     generatePageNarration: async (input: { bookProjectId: string; pageNumber: number; revisionVersion?: number; language: string }) => {
       narrationCalls.push(input.pageNumber);

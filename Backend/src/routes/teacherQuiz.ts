@@ -1,7 +1,13 @@
+/**
+ * Express router mounted at `/api/quiz` (see server.ts).
+ * Endpoints:
+ *   GET /:shareToken
+ *   POST /:shareToken/submit
+ */
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rateLimit';
-import { getPublicQuiz, submitTeacherQuiz, TeacherQuizError } from '../services/teacherQuizService';
+import { getPublicQuiz, submitTeacherQuiz, TeacherQuizError } from '../services/educator/teacherQuizService';
 
 // ============================================================
 // PUBLIC — student-facing routes for a shared AI Educator VIP Hub quiz

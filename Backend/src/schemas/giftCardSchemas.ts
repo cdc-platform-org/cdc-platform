@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { GIFT_CARD_DESIGNS, GIFT_CARD_MAX_GEL, GIFT_CARD_MIN_GEL, GIFT_CARD_MAX_SCHEDULE_DAYS, COMPLIMENTARY_GIFT_CARD_MAX_GEL } from '../services/giftCardService';
+import { GIFT_CARD_DESIGNS, GIFT_CARD_MAX_GEL, GIFT_CARD_MIN_GEL, GIFT_CARD_MAX_SCHEDULE_DAYS, COMPLIMENTARY_GIFT_CARD_MAX_GEL } from '../services/payments/giftCardService';
 
 // Single-line text: no control characters / newlines (these go into an
 // email subject line).

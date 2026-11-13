@@ -2,13 +2,13 @@
 // about generateExamQuestions's own JSON-parsing/schema/length validation,
 // not about the Gemini/Azure resilience chain underneath it (that's
 // aiAgentService's own concern). No real network call happens here.
-jest.mock('../aiAgentService', () => ({
-  ...jest.requireActual('../aiAgentService'),
+jest.mock('../ai/aiAgentService', () => ({
+  ...jest.requireActual('../ai/aiAgentService'),
   callTextModel: jest.fn(),
 }));
 
-import { generateExamQuestions, AiExamGenerationError } from '../aiExamService';
-import { callTextModel } from '../aiAgentService';
+import { generateExamQuestions, AiExamGenerationError } from '../exams/aiExamService';
+import { callTextModel } from '../ai/aiAgentService';
 
 const mockedCallTextModel = callTextModel as jest.MockedFunction<typeof callTextModel>;
 

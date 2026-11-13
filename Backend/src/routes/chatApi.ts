@@ -1,9 +1,15 @@
+/**
+ * Express router mounted at `/api/v1` (see server.ts).
+ * Endpoints:
+ *   GET /agents/:agentId/config
+ *   POST /chat
+ */
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { rateLimit } from '../middleware/rateLimit';
 import { chatRequestSchema } from '../schemas/agentSchemas';
-import { generateAgentReply, isBusinessAiChatConfigured, BusinessAiChatError, ChatTurn } from '../services/businessAiChatService';
-import { recordAgentUsage } from '../services/billingService';
+import { generateAgentReply, isBusinessAiChatConfigured, BusinessAiChatError, ChatTurn } from '../services/ai/businessAiChatService';
+import { recordAgentUsage } from '../services/payments/billingService';
 
 const router = Router();
 

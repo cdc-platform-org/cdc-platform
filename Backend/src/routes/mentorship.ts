@@ -1,3 +1,29 @@
+/**
+ * Express router mounted at `/api/mentorship` (see server.ts).
+ * Endpoints:
+ *   POST /
+ *   GET /mine
+ *   GET /mentors
+ *   GET /mentors/:mentorId/availability
+ *   GET /mentors/:mentorId/slots
+ *   GET /bookings/mine
+ *   PATCH /bookings/:id/reschedule
+ *   POST /bookings/:id/cancel
+ *   POST /bookings/:id/confirm-session
+ *   POST /bookings/:id/dispute
+ *   GET /bookings/:id/messages
+ *   POST /bookings/:id/messages
+ *   PATCH /bookings/:id/recording
+ *   PATCH /bookings/:id/meeting-link
+ *   GET /me/profile
+ *   GET /me/availability
+ *   POST /me/availability
+ *   PUT /me/availability/:ruleId
+ *   DELETE /me/availability/:ruleId
+ *   GET /me/availability/exceptions
+ *   POST /me/availability/exceptions
+ *   DELETE /me/availability/exceptions/:exceptionId
+ */
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved, requireRole } from '../middleware/auth';
@@ -11,9 +37,9 @@ import {
 } from '../schemas/mentorshipSchemas';
 import { attachRecordingSchema, mentorAvailabilityRuleSchema, mentorAvailabilityExceptionSchema } from '../schemas/adminSchemas';
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
-import { generateMentorSlots, assertSlotAvailable, SlotUnavailableError } from '../services/mentorAvailabilityService';
-import { attachMentorshipRecording, MentorshipRecordingError } from '../services/mentorshipRecordingService';
-import { releaseMentorshipEscrow, flagMentorshipEscrowForReview, MentorshipEscrowError } from '../services/mentorshipEscrowService';
+import { generateMentorSlots, assertSlotAvailable, SlotUnavailableError } from '../services/learning/mentorAvailabilityService';
+import { attachMentorshipRecording, MentorshipRecordingError } from '../services/learning/mentorshipRecordingService';
+import { releaseMentorshipEscrow, flagMentorshipEscrowForReview, MentorshipEscrowError } from '../services/payments/mentorshipEscrowService';
 
 const router = Router();
 

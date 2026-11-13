@@ -1,3 +1,10 @@
+/**
+ * Express router mounted at `/api/reviews` (see server.ts).
+ * Endpoints:
+ *   POST /
+ *   GET /gig/:gigId
+ *   GET /user/:userId
+ */
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate } from '../middleware/auth';

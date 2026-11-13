@@ -1,8 +1,12 @@
+/**
+ * Service (storage).
+ * Exports: PRODUCT_FILE_MARKER_SCHEME, AzureBlobAdapter.
+ */
 import {
   uploadPrivateBlob,
   getSignedBlobUrl,
   privateBlobExists,
-} from '../privateBlobStorage';
+} from '../integrations/privateBlobStorage';
 import { StorageAdapter, StorageSpace, UploadInput, UploadObject, AuthorizedDownload, StorageNotConfiguredError, StorageUploadError, WrongSpaceVisibilityError } from './types';
 import { getSpaceConfig, isPublicSpace } from './config';
 

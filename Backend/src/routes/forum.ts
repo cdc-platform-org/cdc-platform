@@ -1,3 +1,24 @@
+/**
+ * Express router mounted at `/api/forum` (see server.ts).
+ * Endpoints:
+ *   GET /categories
+ *   GET /threads
+ *   GET /threads/:id
+ *   GET /quota
+ *   POST /threads
+ *   POST /threads/:id/like
+ *   DELETE /threads/:id/like
+ *   POST /threads/:id/pin
+ *   DELETE /threads/:id/pin
+ *   POST /threads/:id/lock
+ *   DELETE /threads/:id/lock
+ *   DELETE /threads/:id
+ *   GET /threads/:id/comments
+ *   POST /threads/:id/comments
+ *   POST /comments/:id/like
+ *   DELETE /comments/:id/like
+ *   DELETE /comments/:id
+ */
 import { Router, Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, optionalAuthenticate, requireApproved } from '../middleware/auth';

@@ -6,13 +6,13 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../../lib/prisma';
 import { JWT_SECRET } from '../../utils/env';
 import { createUser } from '../../test/factories';
-import adminProductsRouter from '../adminProducts';
+import adminProductsRouter from '../admin/adminProducts';
 import productsRouter from '../products';
 import aiRouter from '../ai';
 import { errorHandler } from '../../middleware/errorHandler';
-import { callTextModel, isAiAgentConfigured } from '../../services/aiAgentService';
+import { callTextModel, isAiAgentConfigured } from '../../services/ai/aiAgentService';
 
-jest.mock('../../services/aiAgentService', () => ({ callTextModel: jest.fn(), isAiAgentConfigured: jest.fn() }));
+jest.mock('../../services/ai/aiAgentService', () => ({ callTextModel: jest.fn(), isAiAgentConfigured: jest.fn() }));
 
 type User = Awaited<ReturnType<typeof createUser>>;
 let server: Server;

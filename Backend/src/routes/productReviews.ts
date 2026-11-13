@@ -1,14 +1,23 @@
+/**
+ * Express router mounted at `/api/product-reviews` (see server.ts).
+ * Endpoints:
+ *   POST /upload-image
+ *   POST /
+ *   GET /product/:productId
+ *   GET /seller/:sellerId
+ *   POST /:id/helpful
+ */
 import { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import path from 'path';
 import { prisma } from '../lib/prisma';
 import { authenticate, optionalAuthenticate, requireApproved } from '../middleware/auth';
 import { createProductReviewSchema } from '../schemas/productReviewSchemas';
-import { recomputeProductReviewAggregates } from '../services/productReviewAggregateService';
-import { uploadImage } from '../services/imageStorage';
-import { BunnyStorageUploadError } from '../services/bunnyStorage';
+import { recomputeProductReviewAggregates } from '../services/marketplace/productReviewAggregateService';
+import { uploadImage } from '../services/integrations/imageStorage';
+import { BunnyStorageUploadError } from '../services/integrations/bunnyStorage';
 import { imageUpload, multerErrorHandler } from '../middleware/productUploads';
-import { optimizeReviewImage } from '../services/reviewImageOptimization';
+import { optimizeReviewImage } from '../services/marketplace/reviewImageOptimization';
 
 const router = Router();
 const reviewerSelect = { select: { id: true, name: true, avatarUrl: true } };

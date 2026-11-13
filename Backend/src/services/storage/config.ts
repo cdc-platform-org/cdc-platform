@@ -1,3 +1,7 @@
+/**
+ * Service (storage).
+ * Exports: SpaceConfig, SPACES, getSpaceConfig, isPublicSpace, STORAGE_PROVIDER_ENV_KEYS.
+ */
 import { StorageProvider, StorageSpace, StorageVisibility } from './types';
 
 // ============================================================

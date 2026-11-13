@@ -1,9 +1,16 @@
+/**
+ * Express router mounted at `/api/invoices` (see server.ts).
+ * Endpoints:
+ *   GET /payment/:bogPaymentId/download
+ *   GET /gig-transaction/:gigTransactionId/download
+ *   GET /subscription/:subscriptionId/download
+ */
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireNotBannedOrDeleted } from '../middleware/auth';
-import { generateInvoicePdf, InvoiceData } from '../services/invoiceService';
-import { getCurrentCycleUsageTetri } from '../services/billingService';
+import { generateInvoicePdf, InvoiceData } from '../services/payments/invoiceService';
+import { getCurrentCycleUsageTetri } from '../services/payments/billingService';
 
 const router = Router();
 // requireNotBannedOrDeleted, not just authenticate: these routes hand back

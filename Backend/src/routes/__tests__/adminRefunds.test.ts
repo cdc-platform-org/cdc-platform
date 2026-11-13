@@ -8,15 +8,15 @@ import { BogPaymentPurpose } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { JWT_SECRET } from '../../utils/env';
 import { createCourse, createDigitalProduct, createUser } from '../../test/factories';
-import adminFinanceRouter from '../adminFinance';
-import adminPanelRouter from '../adminPanel';
+import adminFinanceRouter from '../admin/adminFinance';
+import adminPanelRouter from '../admin/adminPanel';
 import { errorHandler } from '../../middleware/errorHandler';
-import { refundBogOrder, BogRefundRejectedError } from '../../services/bogPaymentService';
+import { refundBogOrder, BogRefundRejectedError } from '../../services/payments/bogPaymentService';
 
 // Only the outbound HTTP call to BOG is mocked — everything else (DB writes,
 // access revocation, clawback, audit log) runs for real against the test DB.
-jest.mock('../../services/bogPaymentService', () => {
-  const actual = jest.requireActual('../../services/bogPaymentService');
+jest.mock('../../services/payments/bogPaymentService', () => {
+  const actual = jest.requireActual('../../services/payments/bogPaymentService');
   return { ...actual, refundBogOrder: jest.fn() };
 });
 

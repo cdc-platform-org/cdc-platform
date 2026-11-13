@@ -1,8 +1,13 @@
+/**
+ * Express router mounted at `/api/cyber-sentinel` (see server.ts).
+ * Endpoints:
+ *   POST /waitlist
+ */
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { rateLimit } from '../middleware/rateLimit';
 import { createCyberSentinelWaitlistSchema } from '../schemas/cyberSentinelSchemas';
-import { sendCyberSentinelWaitlistEmail } from '../services/emailService';
+import { sendCyberSentinelWaitlistEmail } from '../services/integrations/emailService';
 
 const router = Router();
 

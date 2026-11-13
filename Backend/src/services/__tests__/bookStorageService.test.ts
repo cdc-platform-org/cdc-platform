@@ -1,14 +1,14 @@
-jest.mock('../privateBlobStorage', () => ({
+jest.mock('../integrations/privateBlobStorage', () => ({
   uploadPrivateBlob: jest.fn(),
   getSignedBlobUrl: jest.fn(),
   deletePrivateBlob: jest.fn(),
   downloadPrivateBlob: jest.fn(async () => Buffer.from('blob-bytes')),
 }));
-jest.mock('../bookMockConfig', () => ({ shouldUseCloudBookStorage: jest.fn() }));
+jest.mock('../childrensBook/bookMockConfig', () => ({ shouldUseCloudBookStorage: jest.fn() }));
 
-import { readBookAsset } from '../bookStorageService';
-import { downloadPrivateBlob } from '../privateBlobStorage';
-import { shouldUseCloudBookStorage } from '../bookMockConfig';
+import { readBookAsset } from '../childrensBook/bookStorageService';
+import { downloadPrivateBlob } from '../integrations/privateBlobStorage';
+import { shouldUseCloudBookStorage } from '../childrensBook/bookMockConfig';
 
 describe('readBookAsset', () => {
   it('reads bytes from private Blob Storage in cloud mode (no SAS redirect)', async () => {

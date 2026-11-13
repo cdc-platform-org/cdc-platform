@@ -26,7 +26,7 @@ describe('paymentGatewayService.bindCard — STUB bypass gate', () => {
 
   it('falls back to STUB (verified:true, no network call) when STRIPE_SECRET_KEY is unset', async () => {
     process.env.STRIPE_SECRET_KEY = ''; // set (not deleted) so dotenv.config() won't repopulate it from Backend/.env
-    const { bindCard } = require('../paymentGatewayService');
+    const { bindCard } = require('../payments/paymentGatewayService');
 
     const result = await bindCard(validCardParams, user);
     expect(result.provider).toBe('STUB');
@@ -35,7 +35,7 @@ describe('paymentGatewayService.bindCard — STUB bypass gate', () => {
 
   it('rejects a non-Stripe token instead of falling back to STUB once STRIPE_SECRET_KEY is configured', async () => {
     process.env.STRIPE_SECRET_KEY = 'sk_test_fake_key_for_gate_test';
-    const { bindCard, PaymentGatewayError } = require('../paymentGatewayService');
+    const { bindCard, PaymentGatewayError } = require('../payments/paymentGatewayService');
 
     await expect(bindCard(validCardParams, user)).rejects.toThrow(PaymentGatewayError);
     await expect(bindCard(validCardParams, user)).rejects.toThrow('does not look like a valid card token');
@@ -43,7 +43,7 @@ describe('paymentGatewayService.bindCard — STUB bypass gate', () => {
 
   it('rejects an expired card regardless of provider configuration', async () => {
     process.env.STRIPE_SECRET_KEY = '';
-    const { bindCard, PaymentGatewayError } = require('../paymentGatewayService');
+    const { bindCard, PaymentGatewayError } = require('../payments/paymentGatewayService');
 
     await expect(
       bindCard({ ...validCardParams, expiryMonth: 1, expiryYear: 2020 }, user)

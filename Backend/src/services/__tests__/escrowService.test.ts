@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { prisma } from '../../lib/prisma';
-import { captureEscrow, releaseEscrow, refundEscrow } from '../escrowService';
-import { upsertCommissionPercentage } from '../platformFeeScheduleService';
+import { captureEscrow, releaseEscrow, refundEscrow } from '../payments/escrowService';
+import { upsertCommissionPercentage } from '../payments/platformFeeScheduleService';
 import {
   createUser,
   createVerifiedFreelancer,

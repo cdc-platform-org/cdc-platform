@@ -10,8 +10,8 @@ import { createUser } from '../../test/factories';
 import childrensBookRoutes from '../childrensBook';
 import paymentsRouter from '../payments';
 import { errorHandler } from '../../middleware/errorHandler';
-import { createBogOrder } from '../../services/bogPaymentService';
-import * as bookMockConfig from '../../services/bookMockConfig';
+import { createBogOrder } from '../../services/payments/bogPaymentService';
+import * as bookMockConfig from '../../services/childrensBook/bookMockConfig';
 
 // ============================================================
 // CDC CHILDREN'S BOOK — payment safety hardening.
@@ -25,12 +25,12 @@ import * as bookMockConfig from '../../services/bookMockConfig';
 // enabled, and succeeds normally when it is not.
 // ============================================================
 
-jest.mock('../../services/bogPaymentService', () => ({
-  ...jest.requireActual('../../services/bogPaymentService'),
+jest.mock('../../services/payments/bogPaymentService', () => ({
+  ...jest.requireActual('../../services/payments/bogPaymentService'),
   createBogOrder: jest.fn(),
 }));
-jest.mock('../../services/bookMockConfig', () => ({
-  ...jest.requireActual('../../services/bookMockConfig'),
+jest.mock('../../services/childrensBook/bookMockConfig', () => ({
+  ...jest.requireActual('../../services/childrensBook/bookMockConfig'),
   isBookDevPaymentSimulationEnabled: jest.fn(),
 }));
 

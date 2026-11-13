@@ -1,5 +1,5 @@
 import { prisma } from '../../lib/prisma';
-import { applyUserRoleChange, applyUserStatusChange, AdminUserActionError } from '../admin';
+import { applyUserRoleChange, applyUserStatusChange, AdminUserActionError } from '../admin/admin';
 import { createUser } from '../../test/factories';
 
 afterAll(async () => {

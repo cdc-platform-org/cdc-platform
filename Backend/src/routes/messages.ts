@@ -1,9 +1,15 @@
+/**
+ * Express router mounted at `/api/messages` (see server.ts).
+ * Endpoints:
+ *   POST /
+ *   GET /:otherUserId
+ */
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved, requireNotBannedOrDeleted } from '../middleware/auth';
 import { sendMessageSchema } from '../schemas/messageSchemas';
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
-import { requiresChatRequestConsent, hasAcceptedChatRequest } from '../services/chatConsentService';
+import { requiresChatRequestConsent, hasAcceptedChatRequest } from '../services/account/chatConsentService';
 
 const router = Router();
 const participantSelect = { select: { id: true, name: true, role: true } };

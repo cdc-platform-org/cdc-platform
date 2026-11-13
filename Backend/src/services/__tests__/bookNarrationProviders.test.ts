@@ -1,21 +1,21 @@
-import { AzureSpeechError } from '../azureSpeechService';
+import { AzureSpeechError } from '../ai/azureSpeechService';
 
 const mockSynthesize = jest.fn();
 const mockIsTtsConfigured = jest.fn();
 const mockIsBookAiMocked = jest.fn();
 
-jest.mock('../azureSpeechService', () => {
-  const actual = jest.requireActual('../azureSpeechService');
+jest.mock('../ai/azureSpeechService', () => {
+  const actual = jest.requireActual('../ai/azureSpeechService');
   return { ...actual, synthesizeSpeech: (...a: unknown[]) => mockSynthesize(...a), isTtsConfigured: () => mockIsTtsConfigured() };
 });
-jest.mock('../bookMockConfig', () => ({ isBookAiMocked: () => mockIsBookAiMocked() }));
+jest.mock('../childrensBook/bookMockConfig', () => ({ isBookAiMocked: () => mockIsBookAiMocked() }));
 
 import {
   AzureBookNarrationProvider,
   UnconfiguredBookNarrationProvider,
   getBookNarrationProvider,
-} from '../bookNarrationProviders';
-import { MockBookNarrationProvider } from '../bookNarrationService';
+} from '../childrensBook/bookNarrationProviders';
+import { MockBookNarrationProvider } from '../childrensBook/bookNarrationService';
 
 const MP3 = Buffer.from([0x49, 0x44, 0x33]);
 

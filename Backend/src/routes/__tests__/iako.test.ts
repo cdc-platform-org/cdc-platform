@@ -8,32 +8,32 @@ import { prisma } from '../../lib/prisma';
 import { JWT_SECRET } from '../../utils/env';
 import { createUser } from '../../test/factories';
 import iakoRouter from '../iako';
-import adminIakoRouter from '../adminIako';
-import adminAccessGrantRouter from '../adminAccessGrants';
-import adminLiveTrainingEnrollmentRouter from '../adminLiveTrainingEnrollments';
+import adminIakoRouter from '../admin/adminIako';
+import adminAccessGrantRouter from '../admin/adminAccessGrants';
+import adminLiveTrainingEnrollmentRouter from '../admin/adminLiveTrainingEnrollments';
 import liveTrainingInviteRouter from '../liveTrainingInvites';
 import { errorHandler } from '../../middleware/errorHandler';
-import { callTextModel, isAiAgentConfigured, AiAgentError } from '../../services/aiAgentService';
-import { uploadImage } from '../../services/imageStorage';
-import { uploadPrivateBlob } from '../../services/privateBlobStorage';
+import { callTextModel, isAiAgentConfigured, AiAgentError } from '../../services/ai/aiAgentService';
+import { uploadImage } from '../../services/integrations/imageStorage';
+import { uploadPrivateBlob } from '../../services/integrations/privateBlobStorage';
 
-jest.mock('../../services/aiAgentService', () => ({
+jest.mock('../../services/ai/aiAgentService', () => ({
   callTextModel: jest.fn(), isAiAgentConfigured: jest.fn(),
-  AiAgentError: jest.requireActual('../../services/aiAgentService').AiAgentError,
+  AiAgentError: jest.requireActual('../../services/ai/aiAgentService').AiAgentError,
 }));
-jest.mock('../../services/auditLogService', () => ({ logAdminAction: jest.fn().mockResolvedValue(undefined) }));
-jest.mock('../../services/imageStorage', () => ({ uploadImage: jest.fn().mockResolvedValue('https://cdn.example.test/iako-screenshots/shot.png') }));
+jest.mock('../../services/account/auditLogService', () => ({ logAdminAction: jest.fn().mockResolvedValue(undefined) }));
+jest.mock('../../services/integrations/imageStorage', () => ({ uploadImage: jest.fn().mockResolvedValue('https://cdn.example.test/iako-screenshots/shot.png') }));
 // The real module talks to Azure Blob (User Delegation Key + SAS) — no
 // network access in tests, so every screenshot-enabled test would otherwise
 // hang/fail against the fake AZURE_STORAGE_ACCOUNT_URL in setupEnv.ts.
-jest.mock('../../services/privateBlobStorage', () => ({
+jest.mock('../../services/integrations/privateBlobStorage', () => ({
   uploadPrivateBlob: jest.fn().mockResolvedValue(undefined),
   assertPrivateBlobContainer: jest.fn().mockResolvedValue(undefined),
   privateBlobExists: jest.fn().mockResolvedValue(true),
   getSignedBlobUrl: jest.fn().mockImplementation(async (blobName: string) => `https://test-blob.example.test/${blobName}?sig=test`),
 }));
-jest.mock('../../services/emailService', () => ({ sendLiveTrainingEnrollmentEmail: jest.fn().mockResolvedValue(undefined) }));
-jest.mock('../../services/whatsappService', () => ({ sendRegistrationStatusWhatsApp: jest.fn().mockResolvedValue(undefined), formatWhatsAppDate: jest.fn().mockReturnValue('December 2026') }));
+jest.mock('../../services/integrations/emailService', () => ({ sendLiveTrainingEnrollmentEmail: jest.fn().mockResolvedValue(undefined) }));
+jest.mock('../../services/integrations/whatsappService', () => ({ sendRegistrationStatusWhatsApp: jest.fn().mockResolvedValue(undefined), formatWhatsAppDate: jest.fn().mockReturnValue('December 2026') }));
 
 type User = Awaited<ReturnType<typeof createUser>>;
 let server: Server;

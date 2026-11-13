@@ -11,8 +11,8 @@ import childrensBookRoutes from '../childrensBook';
 import paymentsRouter from '../payments';
 import promosRouter from '../promos';
 import { errorHandler } from '../../middleware/errorHandler';
-import { createBogOrder } from '../../services/bogPaymentService';
-import * as bookMockConfig from '../../services/bookMockConfig';
+import { createBogOrder } from '../../services/payments/bogPaymentService';
+import * as bookMockConfig from '../../services/childrensBook/bookMockConfig';
 
 // ============================================================
 // PROMO CODES at checkout — Children's Book and IMIAKO PRO. A Children's Book code targets the
@@ -23,12 +23,12 @@ import * as bookMockConfig from '../../services/bookMockConfig';
 // this suite can never place a real BOG order.
 // ============================================================
 
-jest.mock('../../services/bogPaymentService', () => ({
-  ...jest.requireActual('../../services/bogPaymentService'),
+jest.mock('../../services/payments/bogPaymentService', () => ({
+  ...jest.requireActual('../../services/payments/bogPaymentService'),
   createBogOrder: jest.fn(),
 }));
-jest.mock('../../services/bookMockConfig', () => ({
-  ...jest.requireActual('../../services/bookMockConfig'),
+jest.mock('../../services/childrensBook/bookMockConfig', () => ({
+  ...jest.requireActual('../../services/childrensBook/bookMockConfig'),
   isBookDevPaymentSimulationEnabled: jest.fn(),
 }));
 

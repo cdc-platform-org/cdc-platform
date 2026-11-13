@@ -1,5 +1,5 @@
 import { prisma } from '../../lib/prisma';
-import { getSubscriptionState } from '../subscriptionStateService';
+import { getSubscriptionState } from '../payments/subscriptionStateService';
 import { createUser, createBillingSubscription } from '../../test/factories';
 import { BillingProductType } from '@prisma/client';
 

@@ -14,7 +14,7 @@
 //                     content) of every row classified "unexpected", so
 //                     each can be inspected individually.
 import { PrismaClient } from '@prisma/client';
-import { isPrivateVerificationDocRef } from '../src/services/verificationDocDelivery';
+import { isPrivateVerificationDocRef } from '../src/services/account/verificationDocDelivery';
 
 const prisma = new PrismaClient();
 

@@ -1,0 +1,165 @@
+/**
+ * Service (AI providers and agents).
+ * Exports: AzureSpeechError, isTtsConfigured, TtsVoice, listVoices, MAX_TTS_TEXT_LENGTH,
+ * synthesizeSpeech.
+ */
+import { AZURE_SPEECH_KEY, AZURE_SPEECH_REGION } from '../../utils/env';
+import { AZURE_TTS_OUTPUT_FORMAT, buildSsml, normalizeTextForSpeech } from './speechSsml';
+
+// ============================================================
+// Azure AI Speech (Cognitive Services) — text-to-speech for the Media
+// Studio tool's "multilingual voice narration" feature. Plain REST calls
+// against the Speech resource's own regional endpoint rather than the
+// microsoft-cognitiveservices-speech-sdk package — that SDK targets
+// long-lived streaming/mic scenarios and pulls in native bindings; a
+// single request-in, MP3-bytes-out synthesis call needs neither, so two
+// plain fetch() calls (list voices, synthesize) is the simpler and lighter
+// dependency-free choice, same "REST over SDK where REST is enough"
+// posture as bogPaymentService.ts's own comment about the BOG SDK.
+//
+// Deliberately NOT requireEnv() at import time — same "optional until
+// configured, 501 until set" posture as every other paid AI provider in
+// this codebase (see utils/env.ts's own comment on these two vars).
+// ============================================================
+
+export class AzureSpeechError extends Error {
+  status: number;
+  constructor(message: string, status: number = 502) {
+    super(message);
+    this.name = 'AzureSpeechError';
+    this.status = status;
+  }
+}
+
+// Plain fetch() never starts a timer on its own — if Azure accepts the TCP
+// connection but never responds (a real failure mode, distinct from a
+// prompt 4xx/5xx), the request hangs forever and ties up the Express
+// connection indefinitely. Same posture/reasoning as
+// utils/geminiRequestOptions.ts's GEMINI_REQUEST_TIMEOUT_MS.
+const AZURE_SPEECH_REQUEST_TIMEOUT_MS = 20_000;
+
+function isTimeoutError(err: unknown): boolean {
+  return err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
+}
+
+export function isTtsConfigured(): boolean {
+  return !!AZURE_SPEECH_KEY && !!AZURE_SPEECH_REGION;
+}
+
+function regionalHost(): string {
+  return `${AZURE_SPEECH_REGION}.tts.speech.microsoft.com`;
+}
+
+export interface TtsVoice {
+  shortName: string;
+  locale: string;
+  displayName: string;
+  localName: string;
+  gender: string;
+}
+
+// Azure's own voices/list response has many more fields (sample rate,
+// style lists, secondary locales, ...) — only what the UI's voice picker
+// actually needs is kept, same "narrow projection of an upstream response"
+// posture as this codebase's other third-party API wrappers.
+interface RawAzureVoice {
+  ShortName: string;
+  Locale: string;
+  DisplayName: string;
+  LocalName: string;
+  Gender: string;
+}
+
+// Voice list changes rarely (Azure ships new ones a few times a year) and
+// is identical for every caller of this deployment's Speech resource, so a
+// single process-wide cache is safe — avoids a round trip to Azure on
+// every page load of the voice picker. 6 hours is generous enough to never
+// meaningfully lag a real Azure release while still recovering from a
+// resource/region change without a redeploy.
+let voiceCache: { voices: TtsVoice[]; fetchedAt: number } | null = null;
+const VOICE_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+
+export async function listVoices(): Promise<TtsVoice[]> {
+  if (!isTtsConfigured()) {
+    throw new AzureSpeechError('Azure Speech is not configured (AZURE_SPEECH_KEY/AZURE_SPEECH_REGION missing).', 501);
+  }
+  if (voiceCache && Date.now() - voiceCache.fetchedAt < VOICE_CACHE_TTL_MS) {
+    return voiceCache.voices;
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`https://${regionalHost()}/cognitiveservices/voices/list`, {
+      headers: { 'Ocp-Apim-Subscription-Key': AZURE_SPEECH_KEY },
+      signal: AbortSignal.timeout(AZURE_SPEECH_REQUEST_TIMEOUT_MS),
+    });
+  } catch (err) {
+    if (isTimeoutError(err)) throw new AzureSpeechError('Azure Speech voices/list request timed out.', 503);
+    throw err;
+  }
+  if (!response.ok) {
+    throw new AzureSpeechError(`Azure Speech voices/list request failed (HTTP ${response.status}).`, response.status === 401 || response.status === 403 ? 502 : 503);
+  }
+  const raw = (await response.json()) as RawAzureVoice[];
+  const voices: TtsVoice[] = raw
+    // Only Neural voices are offered — the older non-neural voices Azure
+    // still lists sound noticeably more robotic and are being phased out
+    // account-wide, no reason to surface them in a fresh UI.
+    .filter((v) => v.ShortName.includes('Neural'))
+    .map((v) => ({ shortName: v.ShortName, locale: v.Locale, displayName: v.DisplayName, localName: v.LocalName, gender: v.Gender }));
+
+  voiceCache = { voices, fetchedAt: Date.now() };
+  return voices;
+}
+
+// Azure's real-time (non-batch) synthesis endpoint rejects requests well
+// before this on very long input in practice — capped here so a caller
+// gets one clear, immediate error instead of an opaque upstream 400.
+// Generous enough for a multi-page script (roughly 15-20 minutes of
+// narration at typical speaking pace).
+export const MAX_TTS_TEXT_LENGTH = 8000;
+
+export async function synthesizeSpeech(params: { text: string; voiceShortName: string; voiceLocale: string; speed: number }): Promise<Buffer> {
+  if (!isTtsConfigured()) {
+    throw new AzureSpeechError('Azure Speech is not configured (AZURE_SPEECH_KEY/AZURE_SPEECH_REGION missing).', 501);
+  }
+  if (params.text.length > MAX_TTS_TEXT_LENGTH) {
+    throw new AzureSpeechError(`Text is too long for a single narration (max ${MAX_TTS_TEXT_LENGTH} characters).`, 400);
+  }
+
+  // Clean-up + pauses + native 24 kHz output live in speechSsml.ts — see
+  // that file for why each rule makes narration sound more natural.
+  if (!normalizeTextForSpeech(params.text, params.voiceLocale)) {
+    throw new AzureSpeechError('There is no readable text to narrate.', 400);
+  }
+  const ssml = buildSsml({ text: params.text, voiceShortName: params.voiceShortName, locale: params.voiceLocale, speed: params.speed });
+
+  let response: Response;
+  try {
+    response = await fetch(`https://${regionalHost()}/cognitiveservices/v1`, {
+      method: 'POST',
+      headers: {
+        'Ocp-Apim-Subscription-Key': AZURE_SPEECH_KEY,
+        'Content-Type': 'application/ssml+xml',
+        'X-Microsoft-OutputFormat': AZURE_TTS_OUTPUT_FORMAT,
+        'User-Agent': 'cdc-platform-media-studio',
+      },
+      body: ssml,
+      // Long-form narration genuinely takes longer to synthesize than a
+      // voices/list lookup — same reasoning, more generous bound.
+      signal: AbortSignal.timeout(AZURE_SPEECH_REQUEST_TIMEOUT_MS * 3),
+    });
+  } catch (err) {
+    if (isTimeoutError(err)) throw new AzureSpeechError('Azure Speech synthesis request timed out.', 503);
+    throw err;
+  }
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    throw new AzureSpeechError(
+      `Azure Speech synthesis failed (HTTP ${response.status}).${detail ? ` ${detail.slice(0, 300)}` : ''}`,
+      response.status === 401 || response.status === 403 ? 502 : response.status === 429 ? 429 : 503
+    );
+  }
+  return Buffer.from(await response.arrayBuffer());
+}

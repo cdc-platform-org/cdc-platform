@@ -16,7 +16,7 @@ import {
   canGeneratePdf,
   canComplete,
   buildLogicalOperationKey,
-} from '../bookStateService';
+} from '../childrensBook/bookStateService';
 
 // Pure-function test suite — no Prisma client, no database, no network,
 // no Azure/text-AI calls anywhere in this file.

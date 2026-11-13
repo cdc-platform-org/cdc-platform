@@ -1,10 +1,16 @@
+/**
+ * Express router mounted at `/api/upload` (see server.ts).
+ * Endpoints:
+ *   POST /video
+ *   GET /video/:blobName
+ */
 import express, { Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
 import crypto from 'crypto';
 import { authenticate } from '../middleware/auth';
-import { shouldCompress, compressVideoBuffer } from '../services/videoCompressionService';
-import { privateContainerReady, uploadPrivateBlob, getSignedBlobUrl, privateBlobExists } from '../services/privateBlobStorage';
+import { shouldCompress, compressVideoBuffer } from '../services/integrations/videoCompressionService';
+import { privateContainerReady, uploadPrivateBlob, getSignedBlobUrl, privateBlobExists } from '../services/integrations/privateBlobStorage';
 
 const router = express.Router();
 

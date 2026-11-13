@@ -2,10 +2,10 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import sharp from 'sharp';
-import { probeDurationSeconds, renderAnimation, composeFrame } from '../bookAnimationRenderer';
-import { MUSIC_THEMES, synthesizeMusicWav } from '../bookAnimationMusic';
-import { animateMoments } from '../bookAnimationService';
-import { SoraError } from '../bookAnimationSora';
+import { probeDurationSeconds, renderAnimation, composeFrame } from '../childrensBook/bookAnimationRenderer';
+import { MUSIC_THEMES, synthesizeMusicWav } from '../childrensBook/bookAnimationMusic';
+import { animateMoments } from '../childrensBook/bookAnimationService';
+import { SoraError } from '../childrensBook/bookAnimationSora';
 
 jest.mock('../../lib/prisma', () => ({ prisma: {} }));
 

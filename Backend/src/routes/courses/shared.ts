@@ -6,7 +6,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../lib/prisma';
 import { requireNotBannedOrDeleted } from '../../middleware/auth';
-import { getBunnyEmbedUrl, getBunnyThumbnailUrl } from '../../services/bunnyStreamService';
+import { getBunnyEmbedUrl, getBunnyThumbnailUrl } from '../../services/integrations/bunnyStreamService';
 
 // zod validates discountEndDate as an ISO string (or '' / null / undefined
 // for "no sale end date") — Prisma's DateTime field needs an actual Date or

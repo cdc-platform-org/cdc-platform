@@ -1,3 +1,9 @@
+/**
+ * Express router mounted at `/api/notifications` (see server.ts).
+ * Endpoints:
+ *   GET /
+ *   POST /:id/read
+ */
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireNotBannedOrDeleted } from '../middleware/auth';

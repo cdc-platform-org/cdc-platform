@@ -1,19 +1,38 @@
+/**
+ * Express router mounted at `/api/cron` (see server.ts).
+ * Endpoints:
+ *   POST /auto-approve
+ *   POST /cleanup-deleted-accounts
+ *   POST /pause-expired-trial-agents
+ *   POST /sweep-expired-billing-trials
+ *   POST /rollover-billing-periods
+ *   POST /sweep-billing-trial-warnings
+ *   POST /sweep-billing-renewal-reminders
+ *   POST /generate-blog-draft
+ *   POST /scan-grant-opportunities
+ *   POST /cancel-abandoned-mentorship-bookings
+ *   POST /auto-release-mentorship-escrow
+ *   POST /auto-release-hr-support-escrow
+ *   POST /expire-overdue-vacancies
+ *   POST /reconcile-pending-payments
+ *   POST /sweep-expired-tutor-subscriptions
+ */
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { CRON_SECRET } from '../utils/env';
-import { autoApproveOverdueGigs } from '../services/gigApprovalService';
-import { cleanupExpiredDeletedAccounts } from '../services/accountCleanupService';
-import { pauseExpiredTrialAgents } from '../services/agentBillingService';
-import { sweepExpiredTrials, rolloverActiveBillingPeriods, sweepTrialEndingWarnings, sweepRenewalReminders } from '../services/billingService';
-import { cancelAbandonedMentorshipBookings } from '../services/mentorAvailabilityService';
-import { autoReleaseMentorshipEscrows } from '../services/mentorshipEscrowService';
-import { autoReleaseHRSupportEscrows } from '../services/hrSupportEscrowService';
-import { expireOverdueVacancies } from '../services/listingExpiryService';
-import { reconcilePendingPayments } from '../services/paymentReconciliationService';
-import { generateAndSaveBlogDraft, BlogAgentError } from '../services/blogAgentService';
-import { AiAgentError } from '../services/aiAgentService';
-import { scanAllActiveSources } from '../services/grantScoutService';
-import { sweepExpiredTutorSubscriptions } from '../services/englishTutorSubscriptionService';
+import { autoApproveOverdueGigs } from '../services/marketplace/gigApprovalService';
+import { cleanupExpiredDeletedAccounts } from '../services/account/accountCleanupService';
+import { pauseExpiredTrialAgents } from '../services/ai/agentBillingService';
+import { sweepExpiredTrials, rolloverActiveBillingPeriods, sweepTrialEndingWarnings, sweepRenewalReminders } from '../services/payments/billingService';
+import { cancelAbandonedMentorshipBookings } from '../services/learning/mentorAvailabilityService';
+import { autoReleaseMentorshipEscrows } from '../services/payments/mentorshipEscrowService';
+import { autoReleaseHRSupportEscrows } from '../services/payments/hrSupportEscrowService';
+import { expireOverdueVacancies } from '../services/marketplace/listingExpiryService';
+import { reconcilePendingPayments } from '../services/payments/paymentReconciliationService';
+import { generateAndSaveBlogDraft, BlogAgentError } from '../services/content/blogAgentService';
+import { AiAgentError } from '../services/ai/aiAgentService';
+import { scanAllActiveSources } from '../services/ai/grantScoutService';
+import { sweepExpiredTutorSubscriptions } from '../services/educator/englishTutorSubscriptionService';
 
 const router = Router();
 const expectedSecretBuffer = Buffer.from(CRON_SECRET);

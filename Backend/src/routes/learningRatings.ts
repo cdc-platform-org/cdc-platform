@@ -1,8 +1,14 @@
+/**
+ * Express router (mounted from server.ts).
+ * Endpoints:
+ *   GET /:id/ratings
+ *   PUT /:id/ratings
+ */
 import { Router } from 'express';
 import { authenticate, optionalAuthenticate, requireNotBannedOrDeleted } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { learningRatingSchema } from '../schemas/learningRatingSchemas';
-import { getLearningRatings, saveLearningRating, LearningRatingTarget } from '../services/learningRatingService';
+import { getLearningRatings, saveLearningRating, LearningRatingTarget } from '../services/learning/learningRatingService';
 
 export function createLearningRatingsRouter(target: LearningRatingTarget) {
   const router = Router();

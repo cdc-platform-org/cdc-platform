@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import Stripe from 'stripe';
 import { prisma } from '../../lib/prisma';
 import { applyStripePaymentResult } from '../stripePayments';
-import { upsertCommissionPercentage } from '../../services/platformFeeScheduleService';
+import { upsertCommissionPercentage } from '../../services/payments/platformFeeScheduleService';
 import { createUser, createCourse } from '../../test/factories';
 
 afterAll(async () => {

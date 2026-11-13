@@ -1,3 +1,14 @@
+/**
+ * Express router mounted at `/api/childrens-books` (see server.ts).
+ * Endpoints:
+ *   GET /:id/animation
+ *   POST /:id/animation
+ *   POST /:id/animation/simulate-payment
+ *   POST /:id/animation/retry
+ *   POST /:id/animation/admin-render
+ *   GET /shared/:token/animation
+ *   GET /animation-video/:animationId
+ */
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { PromoCode } from '@prisma/client';
@@ -5,16 +16,16 @@ import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole, requireApproved } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { JWT_SECRET } from '../utils/env';
-import { createBogOrder, BogNotConfiguredError } from '../services/bogPaymentService';
-import { paymentModelForPurpose } from '../services/paymentModel';
-import { quotePromoToCheckout, claimPromoRedemption, PromoCodeError, giftCardAmountOf } from '../services/couponService';
-import { isBookAiMocked, isBookDevPaymentSimulationEnabled } from '../services/bookMockConfig';
-import { readSoraConfig } from '../services/bookAnimationSora';
-import { findBookByShareToken } from '../services/bookExtrasService';
-import { getBookAssetUrl, isUsingCloudBookStorage, readBookAsset } from '../services/bookStorageService';
-import { attachmentHeader } from '../services/bookAudioBundle';
-import { ANIMATION_PRICE_TETRI, ANIMATION_PROMO_TARGET_ID } from '../services/bookAnimationPlan';
-import { completeBookAnimationPurchase, isBookAnimatable, queueFreeAnimation } from '../services/bookAnimationService';
+import { createBogOrder, BogNotConfiguredError } from '../services/payments/bogPaymentService';
+import { paymentModelForPurpose } from '../services/payments/paymentModel';
+import { quotePromoToCheckout, claimPromoRedemption, PromoCodeError, giftCardAmountOf } from '../services/payments/couponService';
+import { isBookAiMocked, isBookDevPaymentSimulationEnabled } from '../services/childrensBook/bookMockConfig';
+import { readSoraConfig } from '../services/childrensBook/bookAnimationSora';
+import { findBookByShareToken } from '../services/childrensBook/bookExtrasService';
+import { getBookAssetUrl, isUsingCloudBookStorage, readBookAsset } from '../services/childrensBook/bookStorageService';
+import { attachmentHeader } from '../services/childrensBook/bookAudioBundle';
+import { ANIMATION_PRICE_TETRI, ANIMATION_PROMO_TARGET_ID } from '../services/childrensBook/bookAnimationPlan';
+import { completeBookAnimationPurchase, isBookAnimatable, queueFreeAnimation } from '../services/childrensBook/bookAnimationService';
 
 // ============================================================
 // Children's Book — "animated video" add-on routes (mounted on

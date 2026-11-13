@@ -12,10 +12,10 @@ import paymentsRouter from '../payments';
 import agentsRouter from '../agents';
 import educatorHubRouter from '../educatorHub';
 import { errorHandler } from '../../middleware/errorHandler';
-import { createBogOrder } from '../../services/bogPaymentService';
-import { pauseExpiredTrialAgents } from '../../services/agentBillingService';
-import { completeAgentPurchase } from '../../services/agentSubscriptionService';
-import { completeEducatorVipPurchase } from '../../services/educatorVipService';
+import { createBogOrder } from '../../services/payments/bogPaymentService';
+import { pauseExpiredTrialAgents } from '../../services/ai/agentBillingService';
+import { completeAgentPurchase } from '../../services/ai/agentSubscriptionService';
+import { completeEducatorVipPurchase } from '../../services/educator/educatorVipService';
 
 // ============================================================
 // Self-service BOG checkout for Educator VIP (50 GEL / 30 days) and a
@@ -24,8 +24,8 @@ import { completeEducatorVipPurchase } from '../../services/educatorVipService';
 // a paid period. createBogOrder is mocked: no real BOG order is ever placed.
 // ============================================================
 
-jest.mock('../../services/bogPaymentService', () => ({
-  ...jest.requireActual('../../services/bogPaymentService'),
+jest.mock('../../services/payments/bogPaymentService', () => ({
+  ...jest.requireActual('../../services/payments/bogPaymentService'),
   createBogOrder: jest.fn(),
 }));
 

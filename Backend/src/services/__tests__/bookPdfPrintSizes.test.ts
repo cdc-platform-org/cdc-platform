@@ -1,5 +1,5 @@
 import { PDFDocument } from 'pdf-lib';
-import { buildBookPdf, parsePrintSettings, printFileSuffix, PrintSettings, BOOK_PDF_EXTRA_PAGES } from '../bookPdfService';
+import { buildBookPdf, parsePrintSettings, printFileSuffix, PrintSettings, BOOK_PDF_EXTRA_PAGES } from '../childrensBook/bookPdfService';
 
 const MM = 72 / 25.4;
 

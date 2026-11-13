@@ -10,15 +10,15 @@ import {
   generateCertificatePdf,
   generateVerificationCode,
   CertificateTemplateMissingError,
-} from '../../services/certificateService';
+} from '../../services/learning/certificateService';
 import {
   generateExamQuestions,
   isAiExamConfigured,
   AiExamGenerationError,
   GeneratedQuestion,
-} from '../../services/aiExamService';
-import { createExamSessionToken, verifyExamSessionToken, ExamSessionError } from '../../services/examSessionService';
-import { logAdminAction } from '../../services/auditLogService';
+} from '../../services/exams/aiExamService';
+import { createExamSessionToken, verifyExamSessionToken, ExamSessionError } from '../../services/exams/examSessionService';
+import { logAdminAction } from '../../services/account/auditLogService';
 import { requireCourseAccess } from './shared';
 
 const router = Router();

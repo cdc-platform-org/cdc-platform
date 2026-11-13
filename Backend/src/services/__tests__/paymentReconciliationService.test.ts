@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { prisma } from '../../lib/prisma';
-import { upsertCommissionPercentage } from '../platformFeeScheduleService';
+import { upsertCommissionPercentage } from '../payments/platformFeeScheduleService';
 import { createUser, createCourse, createMentorshipBooking } from '../../test/factories';
 
 // bogPaymentService/stripePaymentService make real network calls
@@ -9,18 +9,18 @@ import { createUser, createCourse, createMentorshipBooking } from '../../test/fa
 // everything else (prisma, applyBogPaymentResult, applyStripePaymentResult)
 // real" approach examProctoringService.test.ts uses for the Gemini SDK.
 const mockGetBogOrderDetails = jest.fn();
-jest.mock('../bogPaymentService', () => ({
-  ...jest.requireActual('../bogPaymentService'),
+jest.mock('../payments/bogPaymentService', () => ({
+  ...jest.requireActual('../payments/bogPaymentService'),
   getBogOrderDetails: (...args: unknown[]) => mockGetBogOrderDetails(...args),
 }));
 
 const mockGetStripeCheckoutSession = jest.fn();
-jest.mock('../stripePaymentService', () => ({
-  ...jest.requireActual('../stripePaymentService'),
+jest.mock('../payments/stripePaymentService', () => ({
+  ...jest.requireActual('../payments/stripePaymentService'),
   getStripeCheckoutSession: (...args: unknown[]) => mockGetStripeCheckoutSession(...args),
 }));
 
-import { reconcilePendingPayments } from '../paymentReconciliationService';
+import { reconcilePendingPayments } from '../payments/paymentReconciliationService';
 
 afterAll(async () => {
   await prisma.$disconnect();

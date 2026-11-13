@@ -7,7 +7,7 @@
 //
 //   npx ts-node-transpile-only scripts/verifyCertificateLayout.ts
 import { PDFDocument, PDFName, PDFArray, PDFRawStream, decodePDFRawStream } from 'pdf-lib';
-import { generateCertificatePdf, generateVerificationCode, G } from '../src/services/certificateService';
+import { generateCertificatePdf, generateVerificationCode, G } from '../src/services/learning/certificateService';
 
 // The artwork landmarks these constants are supposed to sit on, measured off a
 // 4x rasterised render of the template (see the sibling probe used during QA):

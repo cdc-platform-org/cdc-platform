@@ -1,9 +1,24 @@
+/**
+ * Express router mounted at `/api/agents` (see server.ts).
+ * Endpoints:
+ *   GET /
+ *   POST /
+ *   GET /:id
+ *   PUT /:id
+ *   DELETE /:id
+ *   GET /:id/knowledge
+ *   POST /:id/knowledge
+ *   PUT /:id/knowledge/:docId
+ *   DELETE /:id/knowledge/:docId
+ *   POST /:id/knowledge/upload
+ *   GET /:id/conversations
+ */
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved } from '../middleware/auth';
 import { createAgentSchema, updateAgentSchema, knowledgeDocumentSchema } from '../schemas/agentSchemas';
-import { parseDocumentToMarkdown, chunkMarkdown, DocumentParseError } from '../services/documentParserService';
+import { parseDocumentToMarkdown, chunkMarkdown, DocumentParseError } from '../services/ai/documentParserService';
 
 const router = Router();
 // Open to every approved account, not just Business (Client) — see

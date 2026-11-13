@@ -1,15 +1,27 @@
+/**
+ * Express router mounted at `/api/trainer` (see server.ts).
+ * Endpoints:
+ *   GET /me
+ *   GET /live-trainings
+ *   GET /live-trainings/:id
+ *   GET /live-trainings/:id/participants
+ *   GET /live-trainings/:id/guides
+ *   PUT /live-trainings/:id/guides/days/:dayId
+ *   POST /live-trainings/:id/trainer-video
+ *   DELETE /live-trainings/:id/trainer-video
+ */
 import { Router, Request, Response, NextFunction } from 'express';
 import path from 'path';
 import crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireNotBannedOrDeleted } from '../middleware/auth';
-import { requireTrainer, requireAssignedTraining, TrainerAccessError } from '../services/trainerAuthService';
-import { getTrainingGuides, getGuideMetrics, TrainingGuideError } from '../services/trainingGuideService';
+import { requireTrainer, requireAssignedTraining, TrainerAccessError } from '../services/learning/trainerAuthService';
+import { getTrainingGuides, getGuideMetrics, TrainingGuideError } from '../services/learning/trainingGuideService';
 import { trainingDaySchema } from '../schemas/trainingGuideSchemas';
 import { videoUpload, multerErrorHandler } from '../middleware/productUploads';
-import { uploadImage } from '../services/imageStorage';
-import { BunnyStorageUploadError } from '../services/bunnyStorage';
+import { uploadImage } from '../services/integrations/imageStorage';
+import { BunnyStorageUploadError } from '../services/integrations/bunnyStorage';
 
 // ============================================================
 // IAKO Trainer Tools — authenticated Trainer workspace (Phase 1 MVP).

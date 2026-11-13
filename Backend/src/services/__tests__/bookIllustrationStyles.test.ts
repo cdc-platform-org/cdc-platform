@@ -1,4 +1,4 @@
-import { ILLUSTRATION_STYLE_KEYS, illustrationStylePromptLine, isIllustrationStyle } from '../bookIllustrationStyles';
+import { ILLUSTRATION_STYLE_KEYS, illustrationStylePromptLine, isIllustrationStyle } from '../childrensBook/bookIllustrationStyles';
 
 describe('illustration styles', () => {
   it('offers the six wizard styles', () => {

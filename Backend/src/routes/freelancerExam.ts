@@ -1,9 +1,16 @@
+/**
+ * Express router mounted at `/api/freelancer-exam` (see server.ts).
+ * Endpoints:
+ *   GET /status
+ *   POST /generate
+ *   POST /:attemptId/submit
+ */
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved, requireRole } from '../middleware/auth';
-import { generateExamQuestions, GeneratedQuestion } from '../services/aiExamService';
+import { generateExamQuestions, GeneratedQuestion } from '../services/exams/aiExamService';
 import { isDigitalProfession, OUT_OF_SCOPE_MESSAGE } from '../utils/digitalProfessionScope';
 
 const router = Router();
