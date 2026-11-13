@@ -103,6 +103,9 @@ export interface DigitalProduct {
   purchased: boolean;
   status?: ProductStatus;
   rejectionReason?: string | null;
+  // True when the AI product agent made this listing (admin-only field —
+  // see Backend/src/services/productAgent/).
+  createdByAgent?: boolean;
   // AI moderation (Backend's productModerationService.ts) — set once at
   // submission/resubmission time, never re-run automatically. Only ever
   // populated on /admin/products (adminProducts.ts's GET / returns the raw

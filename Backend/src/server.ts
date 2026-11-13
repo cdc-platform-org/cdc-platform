@@ -103,6 +103,7 @@ import productRoutes from './routes/products';
 import adminProductRoutes from './routes/admin/adminProducts';
 import adminProductTemplateRoutes from './routes/admin/adminProductTemplates';
 import designRoutes from './routes/designs';
+import adminProductAgentRoutes from './routes/admin/adminProductAgent';
 import adminOpportunitiesRoutes from './routes/admin/adminOpportunities';
 import adminMarketingRoutes from './routes/admin/adminMarketing';
 import creatorMarketingRoutes from './routes/creatorMarketing';
@@ -369,6 +370,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/admin/products', adminProductRoutes);
 app.use('/api/admin/product-templates', adminProductTemplateRoutes);
 app.use('/api/designs', designRoutes);
+app.use('/api/admin/product-agent', adminProductAgentRoutes);
 app.use('/api/admin/opportunities', adminOpportunitiesRoutes);
 app.use('/api/admin/marketing', adminMarketingRoutes);
 app.use('/api/product-reviews', productReviewRoutes);
@@ -470,6 +472,7 @@ app.listen(PORT, () => {
 // caught), but the real production trigger should be POST /api/cron/auto-approve
 // from a single external scheduler, not this timer.
 import { scheduleJob } from './utils/scheduler';
+import { recoverInterruptedRuns, runDailyBatch } from './services/productAgent';
 import { sweepScheduledGiftCards } from './services/payments/giftCardService';
 
 // Gift cards scheduled for a later date (e.g. a birthday) are emailed by
@@ -481,6 +484,16 @@ scheduleJob('sweepScheduledGiftCards', '*/15 * * * *', async () => {
   } catch (err) {
     console.error('[gift-cards] scheduled delivery sweep failed:', err);
   }
+});
+
+// Product agent (services/productAgent/): hourly check that tops each
+// category up to its daily count from the configured hour on. Does nothing
+// while the agent is switched off in /admin/product-agent. Runs left
+// half-done by a restart are marked failed first.
+recoverInterruptedRuns().catch((err) => console.error('[product-agent] recovery failed:', err));
+scheduleJob('productAgentDailyBatch', '7 * * * *', async () => {
+  const result = await runDailyBatch();
+  if (result.queued > 0 || result.reason === 'monthly budget reached') console.log('[product-agent] batch:', result);
 });
 
 scheduleJob('autoApproveOverdueGigs', '0 * * * *', async () => {

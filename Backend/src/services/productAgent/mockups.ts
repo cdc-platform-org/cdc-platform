@@ -115,13 +115,19 @@ export async function wallMockup(cost: RunCost, frames: MockupFrame[], room: 'RO
 export async function flatLayMockup(cost: RunCost, pages: Buffer[]): Promise<Buffer> {
   const canvas = await toCanvas(await libraryImage(cost, 'DESK'));
   const shown = pages.slice(0, 3);
-  const angles = shown.length === 1 ? [0] : shown.length === 2 ? [-6, 5] : [-9, 0, 8];
-  const pageH = Math.round(OUT_H * (shown.length === 1 ? 0.8 : 0.66));
+  const angles = shown.length === 1 ? [0] : shown.length === 2 ? [-5, 5] : [-7, 0, 7];
+  const maxH = OUT_H * (shown.length === 1 ? 0.8 : 0.66);
+  const maxW = OUT_W * (shown.length === 1 ? 0.75 : 0.42);
   const layers: sharp.OverlayOptions[] = [];
-  const spread = Math.round(OUT_W * 0.2);
-  for (let i = 0; i < shown.length; i++) {
+  const spread = Math.round(OUT_W * 0.22);
+  // Back to front, so the first page (usually the cover) lies on top.
+  for (let i = shown.length - 1; i >= 0; i--) {
     const meta = await sharp(shown[i]).metadata();
-    const pageW = Math.round(pageH * ((meta.width ?? 210) / (meta.height ?? 297)));
+    // Fit by height for portrait pages, by width for wide ones (business
+    // cards), so the rotated page never exceeds the canvas.
+    const aspect = (meta.width ?? 210) / (meta.height ?? 297);
+    const pageH = Math.round(Math.min(maxH, maxW / aspect));
+    const pageW = Math.round(pageH * aspect);
     const paper = await sharp(shown[i]).resize(pageW, pageH, { fit: 'fill' }).flatten({ background: '#ffffff' }).png().toBuffer();
     const pad = 24;
     const withShadow = await sharp({ create: { width: pageW + pad * 2, height: pageH + pad * 2, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })

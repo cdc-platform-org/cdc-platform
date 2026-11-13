@@ -114,6 +114,7 @@ const NAV_ITEMS: NavItem[] = [
   // AI tools & store (site: AI ხელსაწყოები, მაღაზია)
   { href: '/admin/tools', labelKey: 'toolsCms', icon: Wrench, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'tools' },
   { href: '/admin/products', labelKey: 'products', icon: ShoppingBag, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'tools', badgeKey: 'pendingProducts' },
+  { href: '/admin/product-agent', labelKey: 'productAgent', icon: Bot, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'tools' },
   { href: '/admin/product-reviews', labelKey: 'productReviews', icon: Star, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'tools' },
   { href: '/admin/cyber-sentinel', labelKey: 'cyberSentinel', icon: Bug, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'tools', badgeKey: 'waitlistEntries', seenSection: 'waitlist' },
 

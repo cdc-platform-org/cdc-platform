@@ -169,7 +169,7 @@ function drawPage(type: PageType, lang: 'ka' | 'en', accent: string, soft: strin
     }
   } else {
     header(l, t.notes, accent, soft, t.date);
-    for (let yy = 34; yy < 285; yy += 6) for (let xx = M; xx <= W - M; xx += 6) l.rect(xx - 0.3, yy - 0.3, 0.6, 0.6, { shape: 'ellipse', fill: '#b8bcc4' });
+    linesIn(l, M, 32, W - 2 * M, 252, 8);
   }
   return { id: `p${idx}`, elements: l.elements };
 }
