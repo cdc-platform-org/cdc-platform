@@ -173,7 +173,7 @@ router.post('/:id/reject', async (req: Request, res: Response) => {
 // ============================================================
 // TAX ID ACCOUNT LIMIT — anti-fraud cap on how many accounts may verify
 // against the same Company ID (see BusinessAccountLimit's schema comment
-// and routes/auth.ts's BUSINESS_TAX_ID_DEFAULT_LIMIT).
+// and routes/auth's BUSINESS_TAX_ID_DEFAULT_LIMIT).
 // ============================================================
 
 const setTaxIdLimitSchema = z.object({

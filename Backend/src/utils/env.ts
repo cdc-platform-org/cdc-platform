@@ -41,7 +41,7 @@ export const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || '').trim().repl
 
 // GitHub/Facebook use the traditional server-side redirect + code-exchange
 // OAuth flow (unlike Google above, which verifies a client-side ID token
-// and never needs a secret for that) — see routes/auth.ts's /github and
+// and never needs a secret for that) — see routes/auth's /github and
 // /facebook routes. Same defensive trim/quote-strip as GOOGLE_CLIENT_ID.
 function cleanEnv(value: string | undefined): string {
   return (value || '').trim().replace(/^['"]|['"]$/g, '');
@@ -66,7 +66,7 @@ export const BUNNY_STREAM_LIBRARY_ID = process.env.BUNNY_STREAM_LIBRARY_ID || ''
 export const BUNNY_CDN_HOSTNAME = process.env.BUNNY_CDN_HOSTNAME || '';
 // Deliberately NOT requireEnv() — comma-separated allow-list of emails that
 // get auto-promoted to adminRole SUPER_ADMIN the moment they register, log
-// in, or sign in with Google (see routes/auth.ts's maybePromoteSuperAdmin).
+// in, or sign in with Google (see routes/auth's maybePromoteSuperAdmin).
 // Empty by default so this is opt-in per deployment, not a code-level
 // backdoor baked into every environment that runs this codebase.
 export const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS || '')
@@ -120,14 +120,14 @@ export const BUNNY_CDN_URL = process.env.BUNNY_CDN_URL || '';
 // This server's own public origin, e.g. "https://api.cdc.org.ge" — no
 // trailing slash. Used only to build a URL for the local-disk image-upload
 // fallback (services/imageStorage.ts) when Bunny Storage isn't configured;
-// same pattern/fallback as routes/payments.ts's BACKEND_URL.
+// same pattern/fallback as routes/payments's BACKEND_URL.
 export const BACKEND_URL = (process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 4000}`).replace(/\/$/, '');
 // GitHub/Facebook's redirect_uri must match character-for-character what's
 // registered in that provider's OAuth App dashboard (GitHub → Settings →
 // Developer settings → OAuth Apps; Facebook → App Dashboard → Facebook
 // Login → Settings) — a mismatch (including scheme) is exactly what
 // produces GitHub's "The redirect_uri is not associated with this
-// application". Same https-forcing safety net as routes/payments.ts's
+// application". Same https-forcing safety net as routes/payments's
 // resolveHttpsCallbackUrl(): BACKEND_URL degrading to its http://localhost
 // dev fallback in production (e.g. an unset Azure App Setting) would
 // otherwise silently send a redirect_uri neither provider ever accepts, with

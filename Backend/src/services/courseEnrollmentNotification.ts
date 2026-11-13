@@ -20,7 +20,7 @@ import { sendRegistrationStatusWhatsApp } from './whatsappService';
 // Student role/badge". Two things were verified before deciding what to
 // actually do here:
 //   1. Course/LiveTraining ACCESS was already role-agnostic before this —
-//      routes/courses.ts's checkCourseAccess gates purely on adminRole or a
+//      routes/courses's checkCourseAccess gates purely on adminRole or a
 //      real CourseEnrollment row, never on User.role. A Client account that
 //      buys a course could already fully access it; there was no functional
 //      access gap this needed to close.

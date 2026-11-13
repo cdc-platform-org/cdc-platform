@@ -31,12 +31,12 @@ export interface User {
   phone: string | null;
   payoutIban: string | null;
   // Set only via POST /auth/me/avatar (uploads to Bunny Storage) — never a
-  // freely-settable URL, see Backend's routes/auth.ts. Doubles as the
+  // freely-settable URL, see Backend's routes/auth/. Doubles as the
   // company logo for Client accounts.
   avatarUrl: string | null;
   // Set only via POST /auth/me/cv (uploads to Bunny Storage) — same field
   // an admin can also set for a Mentor via /admin/mentorship, see
-  // Backend's routes/auth.ts. Used both on the profile settings page and
+  // Backend's routes/auth/. Used both on the profile settings page and
   // on the "View CV" button on applicant cards (ApplicationsReviewList).
   cvUrl: string | null;
   bio: string | null;

@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../../src/context/AuthContext';
 
 // Landing point for the GitHub/Facebook redirect-based OAuth flow —
-// routes/auth.ts's /github/callback and /facebook/callback redirect the
+// routes/auth's /github/callback and /facebook/callback redirect the
 // browser here with ?token=<jwt> once sign-in succeeds server-side (unlike
 // Google's client-side flow, which never leaves the login page). This page
 // just finishes the same localStorage/cookie session setup login() does,

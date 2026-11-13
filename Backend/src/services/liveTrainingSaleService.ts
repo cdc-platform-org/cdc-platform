@@ -6,7 +6,7 @@ import { lockLearningTarget } from './learningCheckoutService';
 
 // ============================================================
 // Fulfillment for a paid LiveTraining seat — mirrors courseSaleService.ts's
-// completeCoursePurchase in shape (called from both routes/payments.ts's
+// completeCoursePurchase in shape (called from both routes/payments's
 // BOG callback and routes/stripePayments.ts's Stripe webhook, once
 // terminal COMPLETED status is confirmed), but simpler: a LiveTraining has
 // no instructor/commission split to pay out, so this only needs to flip

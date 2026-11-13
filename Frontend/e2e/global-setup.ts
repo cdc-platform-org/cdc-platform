@@ -7,7 +7,7 @@ import { TEST_EMAIL, TEST_PASSWORD } from './fixtures/auth';
 // storageState captures localStorage per-origin since 1.31) for every other
 // spec file to reuse via `test.use({ storageState: AUTH_STATE_PATH })`.
 // This is not just a speed optimization: Backend's POST /api/auth/login is
-// rate-limited to 10 attempts per 15 minutes per IP (see routes/auth.ts's
+// rate-limited to 10 attempts per 15 minutes per IP (see routes/auth's
 // loginRateLimit) — a full suite that logs in fresh for every test (this
 // one included ~13 logins in an earlier version) blows through that budget
 // partway through the run, and every test after that fails with "stuck on

@@ -161,7 +161,7 @@ declare global {
   namespace Express {
     interface Request {
       // Raw request body bytes, needed to verify the BOG `Callback-Signature`
-      // header (see routes/payments.ts) — re-serializing req.body with
+      // header (see routes/payments/) — re-serializing req.body with
       // JSON.stringify can reorder/reformat fields and break the signature.
       rawBody?: Buffer;
     }
@@ -436,7 +436,7 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 // then calls next(err) so errorHandler below still builds the client
 // response exactly as before. A no-op if SENTRY_DSN isn't set (see
 // instrument.ts). Most routes in this app catch their own errors and
-// respond directly rather than throwing (see routes/payments.ts's BOG
+// respond directly rather than throwing (see routes/payments's BOG
 // callback handler for the highest-value example) — those are captured
 // explicitly at the catch site instead, since they never reach here.
 Sentry.setupExpressErrorHandler(app);

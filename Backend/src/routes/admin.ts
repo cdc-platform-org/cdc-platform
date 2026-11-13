@@ -101,7 +101,7 @@ export async function applyUserStatusChange(params: {
   return updated;
 }
 
-// Same hash-the-token-not-the-password posture as routes/auth.ts's own
+// Same hash-the-token-not-the-password posture as routes/auth's own
 // forgot-password flow (duplicated rather than shared — a small pure
 // function, not worth a new module for one line).
 function hashResetToken(token: string): string {
@@ -331,11 +331,11 @@ router.post('/users/:id/ban', async (req: Request, res: Response) => {
 // Support-initiated password reset — an admin can't set or see a user's new
 // password directly (same "never handle a real password" posture as
 // bcrypt-hashed storage elsewhere), only trigger the same reset-link email
-// the user's own "Forgot password?" flow sends (routes/auth.ts's
+// the user's own "Forgot password?" flow sends (routes/auth's
 // POST /forgot-password). Lets support actually help a user locked out of
 // their email too, unlike the self-serve flow.
 //
-// Google-linked accounts are allowed through deliberately: routes/auth.ts's
+// Google-linked accounts are allowed through deliberately: routes/auth's
 // POST /reset-password already sets `password` unconditionally (no googleId
 // check) and POST /login has no googleId gate either, so completing this
 // flow just gives a Google-only account a real, usable password — letting

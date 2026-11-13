@@ -4,7 +4,7 @@ import { loginViaUI, TEST_EMAIL, TEST_PASSWORD } from './fixtures/auth';
 test.describe('User Authentication', () => {
   test('registers a new self-serve Student account and lands authenticated', async ({ page }) => {
     // Self-serve Student/Client signups are auto-approved (see backend's
-    // routes/auth.ts) — a fresh registration should reach /courses already
+    // routes/auth/) — a fresh registration should reach /courses already
     // logged in, no admin-approval interstitial.
     const uniqueEmail = `qa-e2e-register-${Date.now()}@cdc.test`;
 

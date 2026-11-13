@@ -16,7 +16,7 @@ export const EDUCATOR_VIP_PERIOD_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Fulfillment for a confirmed EDUCATOR_VIP payment (BOG callback in
-// routes/payments.ts). Extends from the later of now or the current paid
+// routes/payments/). Extends from the later of now or the current paid
 // period, so an early renewal never loses days. No recurring charge: access
 // simply lapses when educatorVipPaidUntil passes (hasEducatorVipAccess
 // compares the date, no sweep needed).
@@ -52,7 +52,7 @@ export async function startEducatorVipTrial(userId: string): Promise<{ educatorV
   return { educatorVipTrialEndDate };
 }
 
-// Called at every one of routes/auth.ts's successful-authentication points
+// Called at every one of routes/auth's successful-authentication points
 // (register, login, google, github/callback, facebook/callback) — rotates
 // this user's currentSessionId to a fresh, unguessable id and returns it so
 // the caller can embed it as the JWT's `sid` claim. A second login

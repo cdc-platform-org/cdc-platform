@@ -7,7 +7,7 @@ import { prisma } from '../lib/prisma';
 // before. Two pieces:
 //
 //   1. recordLoginEvent — called from every successful authentication
-//      point (routes/auth.ts's five signToken call sites: register,
+//      point (routes/auth's five signToken call sites: register,
 //      login, google, github/callback, facebook/callback) to build the
 //      history a later financial action gets compared against.
 //   2. detectSessionAnomaly — called from routes/wallet.ts at payout-

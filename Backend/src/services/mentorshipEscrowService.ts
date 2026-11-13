@@ -29,7 +29,7 @@ export class MentorshipEscrowError extends Error {
 }
 
 // Called once, right after the booking's payment is confirmed complete —
-// see routes/payments.ts's applyBogPaymentResult and
+// see routes/payments's applyBogPaymentResult and
 // routes/stripePayments.ts's applyStripePaymentResult, both MENTORSHIP
 // branches. Computes and LOCKS IN the commission split (never re-derived
 // later — a mentor's rate or the platform's fee could change before

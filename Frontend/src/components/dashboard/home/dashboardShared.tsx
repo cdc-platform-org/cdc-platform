@@ -63,7 +63,7 @@ export function ProgressBar({ percent }: { percent: number }) {
 
 // isVerifiedGraduate is the app-wide "verified freelancer" flag — set by
 // either graduating a course or passing the freelancer skill exam (see
-// Backend's routes/freelancerExam.ts and routes/courses.ts) — and gates gig/
+// Backend's routes/freelancerExam.ts and routes/courses/) — and gates gig/
 // vacancy applications, uncapped forum posting, and mentorship access.
 export function FreelancerExamCard({ user, t }: { user: User; t: DashboardStrings }) {
   if (user.isVerifiedGraduate) {

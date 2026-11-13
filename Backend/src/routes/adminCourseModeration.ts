@@ -9,11 +9,11 @@ import { getBunnyEmbedUrl, getBunnyThumbnailUrl } from '../services/bunnyStreamS
 // ADMIN COURSE MODERATION QUEUE — reviews Mentor-authored courses submitted
 // via routes/instructorCourses.ts's POST /:id/submit-for-review. Only
 // covers instructorId-not-null courses; the pre-existing admin-authored
-// catalog (routes/courses.ts) is untouched by this file and keeps managing
+// catalog (routes/courses/) is untouched by this file and keeps managing
 // its own `status` directly through the plain course editor.
 //
 // PUBLISHED is set ONLY from here (approve) or directly by an admin editing
-// their own admin-authored course in routes/courses.ts — never by
+// their own admin-authored course in routes/courses/ — never by
 // instructorCourses.ts, which enforces the spec's "only admins can publish"
 // guard by simply never exposing a route that could.
 // ============================================================

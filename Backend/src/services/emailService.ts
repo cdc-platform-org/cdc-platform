@@ -159,7 +159,7 @@ export async function sendGraduateStatusEmail(email: string, name: string): Prom
   await sendEmail(email, 'გილოცავთ! თქვენ ხართ CDC Graduate 🎓', html, link);
 }
 
-// Fired from routes/payments.ts's HR_SUPPORT callback branch once payment
+// Fired from routes/payments's HR_SUPPORT callback branch once payment
 // completes and escrow is captured — recipients come from
 // HR_SUPPORT_NOTIFICATION_EMAILS (utils/env.ts), not hardcoded here, so
 // changing who gets alerted is a config change, not a deploy.
@@ -219,7 +219,7 @@ export async function sendCertificateEmail(
 ): Promise<void> {
   const subject = lang === 'en' ? 'Your Certificate - CDC' : 'თქვენი სერტიფიკატი - CDC';
   // Public, no-login download of the exact same PDF that's attached — see
-  // GET /api/courses/certificates/download/:code (routes/courses.ts).
+  // GET /api/courses/certificates/download/:code (routes/courses/).
   const downloadUrl = `${httpsBackendUrl()}/api/courses/certificates/download/${verificationCode}`;
   const html = wrapTemplate(
     lang === 'en' ? 'Your Certificate is Ready' : 'თქვენი სერტიფიკატი მზადაა',
@@ -247,7 +247,7 @@ export async function sendCertificateEmail(
   }
 }
 
-// Fired once per completed mentorship booking (routes/payments.ts's BOG
+// Fired once per completed mentorship booking (routes/payments's BOG
 // callback, MENTORSHIP branch) — after the Google Calendar event has been
 // attempted, success or failure. `meetLink` is null when calendar sync
 // failed/isn't configured; every email still sends, just without a Meet
@@ -626,7 +626,7 @@ export async function sendSubscriptionCanceledEmail(email: string, productLabel:
 }
 
 // Fired whenever PUT /auth/me actually changes User.payoutIban (see
-// routes/auth.ts) — the one security-sensitive field that route lets a
+// routes/auth/) — the one security-sensitive field that route lets a
 // user change with nothing more than their existing session. This is the
 // account owner's only real-time signal that it happened, so an account-
 // takeover that quietly redirects future payouts doesn't go unnoticed

@@ -34,7 +34,7 @@ import { completeTutorSubscriptionPurchase, TUTOR_SUBSCRIPTION_PRICE_GEL } from 
 
 // ============================================================
 // Stripe Checkout routes — the international-currency (USD/EUR) sibling of
-// routes/payments.ts (BOG, GEL/ka). Deliberately a SEPARATE router/table/
+// routes/payments/ (BOG, GEL/ka). Deliberately a SEPARATE router/table/
 // fulfillment function rather than widening the BOG code path: this app has
 // no automated test coverage on payments, so the lower-risk choice here is
 // duplication over refactoring code real users already depend on. Mounted
@@ -605,7 +605,7 @@ router.post('/checkout/product/:productId', checkoutRateLimit, authenticate, req
   }
 
   // The actual charged amount when a discount is active — same reasoning as
-  // routes/payments.ts's BOG checkout: the platform's commission applies to
+  // routes/payments's BOG checkout: the platform's commission applies to
   // whatever this converts to, never the original price.
   let productPriceGel = getCurrentProductPrice(product);
   const rawPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode : null;

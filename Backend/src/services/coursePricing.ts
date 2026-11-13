@@ -25,7 +25,7 @@ export function getCurrentPrice(course: CoursePricingInput): number {
   return Math.round(discounted);
 }
 
-// Shape merged into every course API response — see routes/courses.ts.
+// Shape merged into every course API response — see routes/courses/.
 // discountedPrice/saleEndsAt are aliases (currentPrice-when-on-sale and
 // discountEndDate respectively), not new stored data — added so the
 // Frontend's product/course sale-badge display code can read one consistent
@@ -57,7 +57,7 @@ export function computeDiscount(promo: { discountPercent: number | null; discoun
 }
 
 // The actual checkout pricing rule when a promo code is applied — shared by
-// routes/promos.ts's validate endpoint and routes/payments.ts's checkout, so
+// routes/promos.ts's validate endpoint and routes/payments's checkout, so
 // the two can never disagree about the math:
 //   1. The promo discount is always computed against originalPrice, never
 //      against an already-discounted sale price (no stacking).

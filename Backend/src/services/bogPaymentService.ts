@@ -13,7 +13,7 @@ const RECEIPT_URL = (orderId: string) => `https://api.bog.ge/payments/v1/receipt
 const REFUND_URL = (orderId: string) => `https://api.bog.ge/payments/v1/payment/refund/${encodeURIComponent(orderId)}`;
 
 // Published by BOG for verifying the `Callback-Signature` header on
-// POST /api/payments/bog/callback — see routes/payments.ts. Must be verified
+// POST /api/payments/bog/callback — see routes/payments/. Must be verified
 // against the RAW request body bytes, before JSON parsing/re-serialization
 // (re-stringifying can reorder fields and break the signature match).
 // Source: https://api.bog.ge/docs/en/payments/standard-process/callback

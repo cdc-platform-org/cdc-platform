@@ -76,7 +76,7 @@ function requireAssignedSpecialistOrAdmin(req: Request, res: Response, next: Nex
 
 // Price breakdown for the pre-purchase modal — vacancy owner only. Reads
 // the vacancy's CURRENT applicant count (not yet snapshotted — that only
-// happens at checkout, see routes/payments.ts's HR_SUPPORT branch).
+// happens at checkout, see routes/payments's HR_SUPPORT branch).
 router.get('/quote/:vacancyId', authenticate, requireApproved, async (req: Request, res: Response) => {
   const vacancy = await prisma.vacancy.findUnique({ where: { id: req.params.vacancyId } });
   if (!vacancy) return res.status(404).json({ message: 'Vacancy not found.' });

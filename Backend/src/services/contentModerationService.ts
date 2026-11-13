@@ -32,7 +32,7 @@ export function isContentModerationConfigured(): boolean {
 // Fails OPEN (treated as safe) when Gemini isn't configured or the call
 // itself errors for a non-safety reason (network/quota/503) — a discussion
 // feature shouldn't go fully offline over a transient Gemini hiccup. Admins
-// can still delete a post after the fact (see routes/courses.ts's
+// can still delete a post after the fact (see routes/courses's
 // DELETE /discussion/:postId), same backstop role human moderation already
 // plays for the site-wide forum's approved-after-the-fact comments.
 export async function checkContentSafety(text: string): Promise<{ safe: boolean }> {

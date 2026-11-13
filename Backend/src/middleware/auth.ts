@@ -7,7 +7,7 @@ export interface AuthenticatedUser {
   id: string;
   role: 'Student' | 'Mentor' | 'SuperAdmin' | 'Client';
   email: string;
-  // The session id this JWT was issued with (routes/auth.ts's signToken) —
+  // The session id this JWT was issued with (routes/auth's signToken) —
   // undefined for any token signed before this field existed, which
   // requireCurrentEducatorSession below treats as "stale, reject" rather
   // than crashing on a missing claim.
@@ -140,7 +140,7 @@ export async function requireNotBannedOrDeleted(req: Request, res: Response, nex
 // account-sharing measure (see User.currentSessionId's own schema comment
 // for why this is scoped to just these routes rather than wired into
 // authenticate() itself). currentSessionId is rotated on every login
-// (routes/auth.ts's signToken → services/educatorVipService.ts's
+// (routes/auth's signToken → services/educatorVipService.ts's
 // issueSessionId), so a token whose `sid` claim no longer matches the DB
 // value was issued to a session a LATER login has since superseded —
 // reject it distinctly (409, not 401) so the frontend can show "signed in

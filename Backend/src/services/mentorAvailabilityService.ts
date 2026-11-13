@@ -2,7 +2,7 @@ import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 
 // Accepted by assertSlotAvailable so a caller can run it inside its own
-// $transaction (see routes/payments.ts and stripePayments.ts's mentorship
+// $transaction (see routes/payments/ and stripePayments.ts's mentorship
 // checkout) — every query inside then sees the same transactional
 // snapshot as the booking INSERT that follows it, closing the
 // check-then-create race two concurrent checkouts for the same slot would

@@ -4,7 +4,7 @@ import type { SupportedLocale } from '../../utils/locale';
 interface SocialLoginButtonsProps {
   lang: SupportedLocale;
   // Only meaningful on the register page — passed through the OAuth
-  // redirect round-trip (see routes/auth.ts's signOauthState) so a
+  // redirect round-trip (see routes/auth's signOauthState) so a
   // brand-new GitHub/Facebook signup gets the role the student picked
   // instead of always defaulting to Student.
   role?: 'Student' | 'Client';
@@ -19,7 +19,7 @@ const LABELS: Record<SupportedLocale, { github: string; facebook: string }> = {
   uk: { github: 'Продовжити з GitHub', facebook: 'Продовжити з Facebook' },
 };
 
-// GitHub/Facebook use the server-side redirect OAuth flow (routes/auth.ts's
+// GitHub/Facebook use the server-side redirect OAuth flow (routes/auth's
 // GET /auth/github and /auth/facebook), unlike Google's client-side SDK
 // button — these are plain links, not JS-rendered widgets, so a full page
 // navigation to the backend is correct here, not a click handler.

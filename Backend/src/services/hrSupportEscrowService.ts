@@ -31,7 +31,7 @@ export class HRSupportEscrowError extends Error {
 }
 
 // Called once, right after the request's payment is confirmed complete —
-// see routes/payments.ts's HR_SUPPORT branch. Computes and LOCKS IN the
+// see routes/payments's HR_SUPPORT branch. Computes and LOCKS IN the
 // commission split (never re-derived later), and places the request into
 // escrow. Idempotent: a webhook retry against a request that already has
 // commissionAmount set is a no-op.

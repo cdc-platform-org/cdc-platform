@@ -6,7 +6,7 @@ export const createMentorshipRequestSchema = z.object({
 
 // A mentor manually setting/editing the Meet/Zoom link on their own booking
 // — separate from googleMeetLink's usual auto-fill via the Calendar
-// integration (routes/payments.ts), for when that integration fails/isn't
+// integration (routes/payments/), for when that integration fails/isn't
 // configured or the mentor wants to use a different tool. Scheme-restricted
 // for the same reason attachRecordingSchema is (adminSchemas.ts) — this
 // renders straight into an <a href> for the student to click.

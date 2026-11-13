@@ -47,7 +47,7 @@ import { isIdentityVerified } from '../utils/freelancerVerification';
 // NOT wired into any route/cron in this pass — see callBogMassPayoutApi's
 // own comment for why, and the audit this file was designed alongside for
 // the account-takeover-via-IBAN-change vulnerability this risk engine's
-// ibanCooldown rule specifically closes (routes/auth.ts PUT /me).
+// ibanCooldown rule specifically closes (routes/auth/ PUT /me).
 // ============================================================
 
 // ---- Auto-approval rule thresholds ----------------------------------

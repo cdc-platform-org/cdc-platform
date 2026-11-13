@@ -10,7 +10,7 @@ import { uploadPrivateBlob, getSignedBlobUrl } from './privateBlobStorage';
 // container and store a `cdcblob://<blobName>` marker instead of a real
 // URL — the actual file is resolved on demand, short-lived, only for the
 // submission's own owner or an admin reviewing/grading it (see
-// routes/courses.ts's GET .../submissions/mine and GET /admin/submissions).
+// routes/courses's GET .../submissions/mine and GET /admin/submissions).
 //
 // Legacy rows keep whatever Bunny URL they already had —
 // resolveAssignmentSubmissionDeliveryUrl() passes anything that isn't one

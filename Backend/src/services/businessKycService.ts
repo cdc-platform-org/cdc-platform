@@ -181,7 +181,7 @@ export function taxIdsMatch(a: string, b: string): boolean {
   return na.length > 0 && na === nb;
 }
 
-// Single source of truth for the auto-approve decision, used by routes/auth.ts's
+// Single source of truth for the auto-approve decision, used by routes/auth's
 // upload handler — kept here (not inlined in the route) so the threshold and
 // its exact conditions live next to the parser that produces the values it
 // reads, rather than drifting out of sync in a second file.

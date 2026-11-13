@@ -41,7 +41,7 @@ export interface TutorSubscriptionResult {
 }
 
 // Fulfillment for a confirmed ENGLISH_TUTOR_SUBSCRIPTION payment — called
-// from both routes/payments.ts's BOG callback and routes/stripePayments.ts's
+// from both routes/payments's BOG callback and routes/stripePayments.ts's
 // Stripe webhook, once terminal COMPLETED status is confirmed. Idempotent
 // on a retried webhook delivery in the sense that it never loses time (an
 // early renewal EXTENDS from the later of "now" or the current
