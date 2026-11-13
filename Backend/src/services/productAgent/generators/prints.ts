@@ -74,7 +74,7 @@ Prefer portrait unless the theme suits square.`,
   const otherRoom = mainRoom === 'ROOM_LIVING' ? 'ROOM_BEDROOM' : 'ROOM_LIVING';
   const cover = await wallMockup(ctx.cost, frames, mainRoom);
   const gallery: Buffer[] = [];
-  for (let i = 0; i < arts.length; i++) gallery.push(await wallMockup(ctx.cost, [frames[i]], i % 2 ? mainRoom : otherRoom, 0.55));
+  for (let i = 0; i < arts.length; i++) gallery.push(await wallMockup(ctx.cost, [frames[i]], i % 2 ? mainRoom : otherRoom, 0.48));
   gallery.push(await wallMockup(ctx.cost, frames, otherRoom, 0.38));
 
   const big = specs[0];

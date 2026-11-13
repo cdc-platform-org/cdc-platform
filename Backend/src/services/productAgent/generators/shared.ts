@@ -70,8 +70,14 @@ export class Layout {
     this.elements.push({ id: o.id ?? this.id('shape'), type: 'shape', shape: o.shape ?? 'rect', xMm: x, yMm: y, wMm: w, hMm: h, fill: o.fill ?? null, stroke: o.stroke ?? null, strokeWidthMm: o.strokeWidthMm ?? 0, radiusMm: o.radiusMm ?? 0, opacity: o.opacity ?? 1, editable: false, locked: true, ...(o.dashMm ? { dashMm: o.dashMm } : {}) });
     return this;
   }
+  // Horizontal (h = 0) or vertical (w = 0) rule. The editor draws a "line"
+  // as a bar whose box is the line itself (min 0.5 mm per side), so the box
+  // gets that thickness; our PDF renderer still strokes it at widthMm.
   line(x: number, y: number, w: number, h: number, color = '#c9ccd1', widthMm = 0.25, dashMm?: number): this {
-    return this.rect(x, y, w, h, { shape: 'line', stroke: color, strokeWidthMm: widthMm, dashMm });
+    const t = Math.max(0.5, widthMm);
+    return w >= h
+      ? this.rect(x, y - t / 2, Math.max(w, 0.5), t, { shape: 'line', stroke: color, fill: color, strokeWidthMm: widthMm, dashMm })
+      : this.rect(x - t / 2, y, t, Math.max(h, 0.5), { shape: 'line', stroke: color, fill: color, strokeWidthMm: widthMm, dashMm });
   }
   image(x: number, y: number, w: number, h: number, src: string, o: Partial<ImageElement> = {}): this {
     this.elements.push({ id: o.id ?? this.id('image'), type: 'image', xMm: x, yMm: y, wMm: w, hMm: h, src, fit: o.fit ?? 'cover', clip: o.clip ?? 'rect', placeholder: o.placeholder ?? false, editable: o.editable ?? true, ...(o.opacity != null ? { opacity: o.opacity } : {}) });
@@ -121,6 +127,15 @@ export async function buildDocumentProduct(
     if (!res.ok) throw new Error(`Image fetch failed (${res.status})`);
     return Buffer.from(await res.arrayBuffer());
   };
+  // Limits of the CDC template editor (Backend/src/schemas/
+  // designTemplateSchemas.ts on the editor branch): a template it would
+  // refuse must never be shipped as "editable".
+  for (const spec of specs) {
+    if (spec.template.pages.length > 30) throw new Error(`${spec.fileBase}: more than 30 pages`);
+    spec.template.pages.forEach((p) => {
+      if (p.elements.length > 150) throw new Error(`${spec.fileBase}/${p.id}: ${p.elements.length} elements (editor limit 150)`);
+    });
+  }
   const files: DraftFile[] = [];
   const renders: Buffer[][] = [];
   for (const spec of specs) {

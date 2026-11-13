@@ -52,6 +52,7 @@ Money is always stored as `Int` minor units (tetri / cents), never `Float`.
 │  │  │  ├─ integrations/   E-mail, WhatsApp, Bunny, Azure Blob, Google Calendar/Classroom
 │  │  │  ├─ learning/       Courses, live trainings, certificates, mentorship scheduling
 │  │  │  ├─ marketplace/    Digital store products, gigs, listings
+│  │  │  ├─ productAgent/   AI agent that creates store products daily (generators/, template/ = cdc-template/1 → PDF)
 │  │  │  ├─ payments/       BOG/Stripe, billing, invoices, escrow, coupons, gift cards
 │  │  │  └─ storage/        Storage adapters (Azure Blob / Bunny / local)
 │  │  ├─ schemas/           Zod request schemas used by routes
@@ -117,6 +118,7 @@ Money is always stored as `Int` minor units (tetri / cents), never `Float`.
 | Billing, invoices, wallet, payouts | `billing.ts`, `invoices.ts`, `wallet.ts`, `adminPayouts.ts`, `adminFinance.ts` | `billingService`, `invoiceService`, `bogPayoutService` | `dashboard/billing.tsx`, `wallet.tsx` |
 | Digital store (products) | `products.ts`, `adminProducts.ts`, `productReviews.ts` | `productSaleService`, `productPricing`, `productFileDelivery`, `productImageProtection` | `pages/store/**`, `pages/marketplace/` |
 | Design editor (edit purchased templates, PDF/PNG export) | `designs.ts`, `admin/adminProductTemplates.ts` | `services/designs/` (designService, designAssets), schema `schemas/designTemplateSchemas.ts` | `pages/dashboard/designs/**`, `src/components/designEditor/`, format doc `docs/design-templates/` |
+| AI product agent | `admin/adminProductAgent.ts` (+ hourly job in `server.ts`) | `productAgent/` (runner `index.ts`, `generators/<category>.ts`, `mockups.ts`, `publish.ts`) | `pages/admin/product-agent.tsx`, `src/components/admin/productAgent/` |
 | Gigs, vacancies, escrow | `gigs.ts`, `vacancies.ts`, `directOffers.ts`, `orders.ts` | `escrowService`, `gigApprovalService` | `pages/gigs/**`, `pages/vacancies/**` |
 | Mentorship | `mentorship.ts`, `mentorApplications.ts`, `adminMentorship.ts` | `mentorshipEscrowService`, `mentorAvailabilityService` | `pages/mentors.tsx`, `dashboard/mentorship*.tsx` |
 | HR support | `hrSupport.ts`, `adminHRSupport.ts` | `hrSupportEscrowService`, `hrPricingService` | `dashboard/hr-support/**` |

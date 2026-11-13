@@ -59,7 +59,7 @@ Georgian must be natural and correct.`,
     l.text(20, 78, W - 40, 24, w.middleText, { id: 'middle-text', fontSizePt: 10, align: 'center', color, lineHeight: 1.4 });
     l.text(18, 106, W - 36, 8, w.dateLine, { id: 'date', fontSizePt: 12, fontWeight: 700, align: 'center', color, label: 'Date and time' });
     l.text(18, 116, W - 36, 12, w.placeLine, { id: 'place', fontSizePt: 10, align: 'center', color, label: 'Place' });
-    l.text(18, 132, W - 36, 10, w.rsvp, { id: 'rsvp', fontSizePt: 8.5, align: 'center', color, label: 'RSVP' });
+    l.text(26, 132, W - 52, 12, w.rsvp, { id: 'rsvp', fontSizePt: 8.5, align: 'center', color, label: 'RSVP' });
     tpl.pages.push({ id: 'front', elements: l.elements });
     return { template: tpl, fileBase: `${slug(brief.nameEn)}-${lang === 'ka' ? 'KA' : 'EN'}-5x7in` };
   });

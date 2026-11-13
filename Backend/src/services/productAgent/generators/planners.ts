@@ -91,16 +91,18 @@ function drawPage(type: PageType, lang: 'ka' | 'en', accent: string, soft: strin
     l.text(M, 248, 60, 6, t.notesLabel, { fontSizePt: 10, fontWeight: 700, color: accent });
     linesIn(l, M, 252, W - 2 * M, 34);
   } else if (type === 'habit') {
+    // Drawn as a grid of lines (not one circle per day) so the page stays
+    // well under the editor's 150-elements-per-page limit.
     header(l, t.habit, accent, soft, t.month);
     const nameW = 46;
     const cell = (W - 2 * M - nameW) / 31;
+    const rows = 18;
+    const top = 40;
+    const rowH = 13;
     l.text(M, 33, nameW, 6, t.habitCol, { fontSizePt: 9, fontWeight: 700, color: accent });
     for (let d = 0; d < 31; d++) l.text(M + nameW + d * cell, 33.5, cell, 5, String(d + 1), { fontSizePt: 5.5, align: 'center', color: '#6b7280', editable: false });
-    for (let r = 0; r < 18; r++) {
-      const y = 41 + r * 13;
-      l.line(M, y + 11, nameW - 2, 0, '#c9ccd1', 0.25);
-      for (let d = 0; d < 31; d++) l.rect(M + nameW + d * cell + cell * 0.12, y + 4, cell * 0.76, cell * 0.76, { shape: 'ellipse', stroke: soft, strokeWidthMm: 0.3 });
-    }
+    for (let r = 0; r <= rows; r++) l.line(M, top + r * rowH, W - 2 * M, 0, r === 0 ? accent : soft, r === 0 ? 0.5 : 0.3);
+    for (let d = 0; d <= 31; d++) l.line(M + nameW + d * cell, top, 0, rows * rowH, soft, 0.25);
   } else if (type === 'budget') {
     header(l, t.budget, accent, soft, t.month);
     const table = (y: number, title: string, rows: number) => {
@@ -165,7 +167,6 @@ function drawPage(type: PageType, lang: 'ka' | 'en', accent: string, soft: strin
     for (let r = 0; r < 26; r++) {
       const y = 41 + r * 9;
       l.line(M, y + 9, W - 2 * M, 0, '#d9dce1', 0.25);
-      for (let s = 0; s < 5; s++) l.rect(M + cw[0] + cw[1] + cw[2] + 2 + s * 5.5, y + 3, 4, 4, { shape: 'ellipse', stroke: accent, strokeWidthMm: 0.25 });
     }
   } else {
     header(l, t.notes, accent, soft, t.date);

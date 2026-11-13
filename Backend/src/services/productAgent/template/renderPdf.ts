@@ -162,7 +162,11 @@ function drawShape(page: PDFPage, el: ShapeElement, pageH: number): void {
   const fill = el.fill ? hex(el.fill) : undefined;
   const stroke = el.stroke && borderWidth > 0 ? hex(el.stroke) : undefined;
   if (el.shape === 'line') {
-    page.drawLine({ start: { x, y: yTop }, end: { x: x + w, y: yTop - h }, thickness: borderWidth || 0.5, color: stroke ?? hex(el.stroke ?? '#000000'), opacity, dashArray: dash });
+    // The box is the line (editor semantics): stroke along its long axis.
+    const color = hex(el.stroke ?? el.fill ?? '#000000');
+    const thickness = borderWidth || Math.min(w, h);
+    if (w >= h) page.drawLine({ start: { x, y: yTop - h / 2 }, end: { x: x + w, y: yTop - h / 2 }, thickness, color, opacity, dashArray: dash });
+    else page.drawLine({ start: { x: x + w / 2, y: yTop }, end: { x: x + w / 2, y: yTop - h }, thickness, color, opacity, dashArray: dash });
   } else if (el.shape === 'ellipse') {
     page.drawEllipse({ x: x + w / 2, y: yTop - h / 2, xScale: w / 2, yScale: h / 2, color: fill, borderColor: stroke, borderWidth, opacity, borderOpacity: opacity, borderDashArray: dash });
   } else if (el.radiusMm && el.radiusMm > 0) {
@@ -187,7 +191,8 @@ async function drawImage(doc: PDFDocument, page: PDFPage, el: ImageElement, page
     image = await doc.embedPng(await pipeline.composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer());
   } else {
     const meta = await sharp(source).metadata();
-    image = meta.hasAlpha ? await doc.embedPng(await pipeline.png().toBuffer()) : await doc.embedJpg(await pipeline.jpeg({ quality: 92 }).toBuffer());
+    // "contain" pads with transparency, which JPEG would turn black.
+    image = meta.hasAlpha || el.fit === 'contain' ? await doc.embedPng(await pipeline.png().toBuffer()) : await doc.embedJpg(await pipeline.jpeg({ quality: 92 }).toBuffer());
   }
   page.drawImage(image, { x: el.xMm * MM_TO_PT, y: pageH - (el.yMm + el.hMm) * MM_TO_PT, width: el.wMm * MM_TO_PT, height: el.hMm * MM_TO_PT, opacity: el.opacity ?? 1 });
 }
