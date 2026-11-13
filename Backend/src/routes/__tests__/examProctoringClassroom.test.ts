@@ -8,8 +8,8 @@ import examProctoringRouter from '../examProctoring';
 
 // AI calls are never reached in these tests (MCQ-only exam, no open
 // questions to grade) — mocked anyway so nothing can hit a real provider.
-jest.mock('../../services/examProctoringService', () => {
-  const actual = jest.requireActual('../../services/examProctoringService');
+jest.mock('../../services/exams/examProctoringService', () => {
+  const actual = jest.requireActual('../../services/exams/examProctoringService');
   return {
     ...actual,
     gradePracticalAnswer: jest.fn(),
@@ -18,8 +18,8 @@ jest.mock('../../services/examProctoringService', () => {
     generateMcqExplanations: jest.fn().mockResolvedValue({}),
   };
 });
-jest.mock('../../services/emailService', () => ({
-  ...jest.requireActual('../../services/emailService'),
+jest.mock('../../services/integrations/emailService', () => ({
+  ...jest.requireActual('../../services/integrations/emailService'),
   sendExamResultsEmail: jest.fn().mockResolvedValue(undefined),
 }));
 

@@ -8,12 +8,12 @@ import multer from 'multer';
 import path from 'path';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole } from '../../middleware/auth';
-import { uploadImage, deleteManagedImage } from '../../services/imageStorage';
-import { BunnyStorageUploadError } from '../../services/bunnyStorage';
+import { uploadImage, deleteManagedImage } from '../../services/integrations/imageStorage';
+import { BunnyStorageUploadError } from '../../services/integrations/bunnyStorage';
 import { courseCreateSchema, courseUpdateSchema } from '../../schemas/courseSchemas';
-import { getBunnyEmbedUrl } from '../../services/bunnyStreamService';
-import { withCurrentPrice, validateCourseDiscount } from '../../services/coursePricing';
-import { withCourseRatings } from '../../services/learningRatingService';
+import { getBunnyEmbedUrl } from '../../services/integrations/bunnyStreamService';
+import { withCurrentPrice, validateCourseDiscount } from '../../services/learning/coursePricing';
+import { withCourseRatings } from '../../services/learning/learningRatingService';
 import { toPrismaDiscountEndDate, toPrismaDiscountBadgeText, withCapacityInfo } from './shared';
 
 const router = Router();

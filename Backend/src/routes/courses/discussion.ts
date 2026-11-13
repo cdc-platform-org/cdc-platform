@@ -6,7 +6,7 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole } from '../../middleware/auth';
 import { rateLimit } from '../../middleware/rateLimit';
-import { checkContentSafety } from '../../services/contentModerationService';
+import { checkContentSafety } from '../../services/account/contentModerationService';
 import { courseDiscussionPostCreateSchema } from '../../schemas/courseSchemas';
 import { requireCourseAccess } from './shared';
 

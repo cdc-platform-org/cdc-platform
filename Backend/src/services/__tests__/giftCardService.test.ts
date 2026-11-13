@@ -4,17 +4,17 @@ import { createUser, createCourse } from '../../test/factories';
 
 const mockSendGiftCardEmail = jest.fn();
 const mockSendBuyerEmail = jest.fn();
-jest.mock('../emailService', () => ({
-  ...jest.requireActual('../emailService'),
+jest.mock('../integrations/emailService', () => ({
+  ...jest.requireActual('../integrations/emailService'),
   sendGiftCardEmail: (...args: unknown[]) => mockSendGiftCardEmail(...args),
   sendGiftCardDeliveredToBuyerEmail: (...args: unknown[]) => mockSendBuyerEmail(...args),
 }));
 
-import { fulfillGiftCardPurchase, sweepScheduledGiftCards, getGiftCardBalance, generateGiftCode, issueComplimentaryGiftCard } from '../giftCardService';
+import { fulfillGiftCardPurchase, sweepScheduledGiftCards, getGiftCardBalance, generateGiftCode, issueComplimentaryGiftCard } from '../payments/giftCardService';
 import { issueComplimentaryGiftCardSchema } from '../../schemas/giftCardSchemas';
-import { computePromoPrice, quotePromoToCheckout, claimPromoRedemption, giftCardAmountOf, findValidPromoCode, PromoCodeError } from '../couponService';
+import { computePromoPrice, quotePromoToCheckout, claimPromoRedemption, giftCardAmountOf, findValidPromoCode, PromoCodeError } from '../payments/couponService';
 import { applyBogPaymentResult } from '../../routes/payments';
-import { buildGiftCardEmailHtml } from '../emailService';
+import { buildGiftCardEmailHtml } from '../integrations/emailService';
 
 afterAll(async () => {
   await prisma.$disconnect();

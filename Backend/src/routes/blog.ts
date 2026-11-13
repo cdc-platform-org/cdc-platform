@@ -1,3 +1,16 @@
+/**
+ * Express router mounted at `/api/blog` (see server.ts).
+ * Endpoints:
+ *   GET /
+ *   GET /:idOrSlug
+ *   POST /
+ *   PUT /:id
+ *   DELETE /:id
+ *   GET /:idOrSlug/comments
+ *   POST /:idOrSlug/comments
+ *   DELETE /comments/:commentId
+ *   POST /upload-image
+ */
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
@@ -5,10 +18,10 @@ import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole, optionalAuthenticate } from '../middleware/auth';
 import { blogPostCreateSchema, blogPostUpdateSchema, blogCommentSchema } from '../schemas/blogSchemas';
-import { BunnyStorageUploadError } from '../services/bunnyStorage';
-import { uploadImage, deleteManagedImage } from '../services/imageStorage';
-import { createUniqueBlogSlug } from '../services/blogSlugService';
-import { processBlogCoverImage } from '../services/blogImageProcessing';
+import { BunnyStorageUploadError } from '../services/integrations/bunnyStorage';
+import { uploadImage, deleteManagedImage } from '../services/integrations/imageStorage';
+import { createUniqueBlogSlug } from '../services/content/blogSlugService';
+import { processBlogCoverImage } from '../services/content/blogImageProcessing';
 
 // Migrated from requireRole('SuperAdmin') to the admin-team adminRole system
 // (SUPER_ADMIN + ADMIN) — content management is explicitly ADMIN's domain

@@ -1,10 +1,22 @@
+/**
+ * Express router mounted at `/api/vacancies` (see server.ts).
+ * Endpoints:
+ *   GET /mine
+ *   GET /
+ *   GET /:id
+ *   POST /
+ *   PUT /:id
+ *   POST /:id/apply
+ *   GET /:id/applications
+ *   POST /:id/applications/:appId/review
+ */
 import { Router, Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireRole, requireApproved } from '../middleware/auth';
 import { postVacancySchema, updateVacancySchema, applyToVacancySchema, reviewVacancyApplicationSchema } from '../schemas/vacancySchemas';
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
-import { sendVacancyApplicationEmail } from '../services/emailService';
-import { hasReachedDailyPostLimit } from '../services/postingLimitService';
+import { sendVacancyApplicationEmail } from '../services/integrations/emailService';
+import { hasReachedDailyPostLimit } from '../services/marketplace/postingLimitService';
 import { canPostListing, VERIFICATION_REQUIRED_TO_POST_MESSAGE } from '../utils/freelancerVerification';
 const router = Router();
 // _count.courseEnrollments drives the "სტუდენტი" badge on listing cards —

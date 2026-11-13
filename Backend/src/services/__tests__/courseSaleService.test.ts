@@ -1,6 +1,6 @@
 import { prisma } from '../../lib/prisma';
-import { completeCoursePurchase } from '../courseSaleService';
-import { upsertCommissionPercentage } from '../platformFeeScheduleService';
+import { completeCoursePurchase } from '../learning/courseSaleService';
+import { upsertCommissionPercentage } from '../payments/platformFeeScheduleService';
 import { createUser, createCourse } from '../../test/factories';
 
 afterAll(async () => {

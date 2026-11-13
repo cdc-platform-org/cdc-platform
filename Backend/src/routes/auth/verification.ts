@@ -8,18 +8,18 @@ import multer from 'multer';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { authenticate } from '../../middleware/auth';
-import { sendBusinessVerifiedEmail } from '../../services/emailService';
-import { BunnyStorageUploadError, deleteBunnyStorageUrlIfManaged } from '../../services/bunnyStorage';
+import { sendBusinessVerifiedEmail } from '../../services/integrations/emailService';
+import { BunnyStorageUploadError, deleteBunnyStorageUrlIfManaged } from '../../services/integrations/bunnyStorage';
 import {
   uploadVerificationDoc,
   resolveVerificationDocDeliveryUrl,
   deleteVerificationDocIfManaged,
-} from '../../services/verificationDocDelivery';
+} from '../../services/account/verificationDocDelivery';
 import {
   parseBusinessDocument,
   isBusinessKycParsingConfigured,
   shouldAutoApprove,
-} from '../../services/businessKycService';
+} from '../../services/account/businessKycService';
 import { toUserResponse } from './shared';
 
 const router = Router();

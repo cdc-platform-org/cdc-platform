@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { prisma } from '../lib/prisma';
-import { captureEscrow } from '../services/escrowService';
-import { generateIdempotencyKey } from '../services/bogPayoutService';
+import { captureEscrow } from '../services/payments/escrowService';
+import { generateIdempotencyKey } from '../services/payments/bogPayoutService';
 import {
   GigBudgetType,
   GigStatus,

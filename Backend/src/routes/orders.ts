@@ -1,3 +1,11 @@
+/**
+ * Express router mounted at `/api/orders` (see server.ts).
+ * Endpoints:
+ *   GET /
+ *   GET /:id
+ *   POST /
+ *   PATCH /:id
+ */
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { orderCreateSchema, orderUpdateSchema } from '../schemas/orderSchemas';

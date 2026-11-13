@@ -1,3 +1,10 @@
+/**
+ * Express router mounted at `/api/wallet` (see server.ts).
+ * Endpoints:
+ *   GET /me
+ *   POST /payout-requests
+ *   GET /payout-requests
+ */
 import { randomUUID } from 'crypto';
 import { Router, Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
@@ -5,8 +12,8 @@ import { prisma } from '../lib/prisma';
 import { authenticate, requireRole, requireApproved, requireNotBannedOrDeleted } from '../middleware/auth';
 import { createPayoutRequestSchema } from '../schemas/payoutSchemas';
 import { isIdentityVerified } from '../utils/freelancerVerification';
-import { evaluateRiskTier, hasOpenDisputesForUser, generateIdempotencyKey } from '../services/bogPayoutService';
-import { detectSessionAnomaly } from '../services/sessionAnomalyService';
+import { evaluateRiskTier, hasOpenDisputesForUser, generateIdempotencyKey } from '../services/payments/bogPayoutService';
+import { detectSessionAnomaly } from '../services/account/sessionAnomalyService';
 import { verifyStepUp, StepUpRequiredError } from '../utils/stepUpAuth';
 const router = Router();
 

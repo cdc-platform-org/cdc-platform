@@ -17,12 +17,12 @@ import {
   uploadBunnyVideoBinary,
   deleteBunnyVideo,
   isBunnyConfigured,
-} from '../../services/bunnyStreamService';
+} from '../../services/integrations/bunnyStreamService';
 import {
   processLessonSubtitles,
   isSubtitlePipelineConfigured,
   regenerateLessonSubtitles,
-} from '../../services/subtitleService';
+} from '../../services/learning/subtitleService';
 import { lessonWithPlayback } from './shared';
 
 const router = Router();

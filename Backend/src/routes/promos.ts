@@ -1,7 +1,12 @@
+/**
+ * Express router mounted at `/api/promos` (see server.ts).
+ * Endpoints:
+ *   POST /validate
+ */
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { authenticate } from '../middleware/auth';
-import { findValidPromoCode, computePromoPrice, resolveTargetPrice, PromoCodeError, CouponTargetNotFoundError } from '../services/couponService';
+import { findValidPromoCode, computePromoPrice, resolveTargetPrice, PromoCodeError, CouponTargetNotFoundError } from '../services/payments/couponService';
 
 const router = Router();
 

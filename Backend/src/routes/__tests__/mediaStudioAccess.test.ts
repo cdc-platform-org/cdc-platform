@@ -8,11 +8,11 @@ import { JWT_SECRET } from '../../utils/env';
 import { createUser } from '../../test/factories';
 import mediaStudioRouter from '../mediaStudio';
 import { errorHandler } from '../../middleware/errorHandler';
-import { callTextModelPlain, AiAgentError } from '../../services/aiAgentService';
+import { callTextModelPlain, AiAgentError } from '../../services/ai/aiAgentService';
 
-jest.mock('../../services/aiAgentService', () => ({
+jest.mock('../../services/ai/aiAgentService', () => ({
   callTextModelPlain: jest.fn(),
-  AiAgentError: jest.requireActual('../../services/aiAgentService').AiAgentError,
+  AiAgentError: jest.requireActual('../../services/ai/aiAgentService').AiAgentError,
 }));
 
 type User = Awaited<ReturnType<typeof createUser>>;

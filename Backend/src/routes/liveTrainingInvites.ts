@@ -1,8 +1,13 @@
+/**
+ * Express router mounted at `/api/live-trainings/invites` (see server.ts).
+ * Endpoints:
+ *   POST /:token/redeem
+ */
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireNotBannedOrDeleted } from '../middleware/auth';
-import { redeemInvite, LiveTrainingInviteError } from '../services/liveTrainingInviteService';
+import { redeemInvite, LiveTrainingInviteError } from '../services/learning/liveTrainingInviteService';
 
 const router = Router();
 

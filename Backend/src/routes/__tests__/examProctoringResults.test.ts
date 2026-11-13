@@ -5,11 +5,11 @@ import { AddressInfo } from 'net';
 import { prisma } from '../../lib/prisma';
 import { createUser } from '../../test/factories';
 import examProctoringRouter from '../examProctoring';
-import { generateMcqExplanations } from '../../services/examProctoringService';
-import { sendExamResultsEmail, buildExamResultsEmailHtml } from '../../services/emailService';
+import { generateMcqExplanations } from '../../services/exams/examProctoringService';
+import { sendExamResultsEmail, buildExamResultsEmailHtml } from '../../services/integrations/emailService';
 
-jest.mock('../../services/examProctoringService', () => {
-  const actual = jest.requireActual('../../services/examProctoringService');
+jest.mock('../../services/exams/examProctoringService', () => {
+  const actual = jest.requireActual('../../services/exams/examProctoringService');
   return {
     ...actual,
     gradePracticalAnswer: jest.fn().mockResolvedValue({ score: 60, feedback: 'Good start, but mention photosynthesis.' }),
@@ -18,8 +18,8 @@ jest.mock('../../services/examProctoringService', () => {
     generateMcqExplanations: jest.fn(),
   };
 });
-jest.mock('../../services/emailService', () => ({
-  ...jest.requireActual('../../services/emailService'),
+jest.mock('../../services/integrations/emailService', () => ({
+  ...jest.requireActual('../../services/integrations/emailService'),
   sendExamResultsEmail: jest.fn().mockResolvedValue(undefined),
 }));
 

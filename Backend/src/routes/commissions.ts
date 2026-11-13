@@ -1,6 +1,11 @@
+/**
+ * Express router mounted at `/api/commissions` (see server.ts).
+ * Endpoints:
+ *   GET /
+ */
 import { Router, Request, Response } from 'express';
 import { authenticate } from '../middleware/auth';
-import { getEffectiveFeeSchedule } from '../services/platformFeeScheduleService';
+import { getEffectiveFeeSchedule } from '../services/payments/platformFeeScheduleService';
 
 const router = Router();
 

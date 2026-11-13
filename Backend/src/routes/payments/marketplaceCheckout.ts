@@ -8,11 +8,11 @@ import { prisma } from '../../lib/prisma';
 import { PromoCode } from '@prisma/client';
 import { authenticate, requireApproved } from '../../middleware/auth';
 import { requestHRSupportSchema } from '../../schemas/hrSupportSchemas';
-import { calculateHRSupportFee } from '../../services/hrPricingService';
-import { completeProductPurchase } from '../../services/productSaleService';
-import { paymentModelForPurpose } from '../../services/paymentModel';
-import { getCurrentProductPrice } from '../../services/productPricing';
-import { applyPromoToCheckout, PromoCodeError, giftCardAmountOf } from '../../services/couponService';
+import { calculateHRSupportFee } from '../../services/payments/hrPricingService';
+import { completeProductPurchase } from '../../services/marketplace/productSaleService';
+import { paymentModelForPurpose } from '../../services/payments/paymentModel';
+import { getCurrentProductPrice } from '../../services/marketplace/productPricing';
+import { applyPromoToCheckout, PromoCodeError, giftCardAmountOf } from '../../services/payments/couponService';
 import {
   checkoutRateLimit,
   CALLBACK_URL,

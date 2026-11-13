@@ -1,5 +1,5 @@
 import sharp from 'sharp';
-import { generateBookImage, isImageGenerationMocked } from '../bookImageGenerationService';
+import { generateBookImage, isImageGenerationMocked } from '../childrensBook/bookImageGenerationService';
 
 describe('children book mock image generation', () => {
   it('returns a visible PNG placeholder without contacting Azure', async () => {

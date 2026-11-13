@@ -1,3 +1,12 @@
+/**
+ * Express router mounted at `/api/gift-cards` (see server.ts).
+ * Endpoints:
+ *   GET /config
+ *   GET /balance
+ *   GET /my
+ *   GET /my/:id
+ *   POST /my/:id/resend
+ */
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate } from '../middleware/auth';
@@ -13,7 +22,7 @@ import {
   getGiftCardBalance,
   publicGiftCard,
   resendGiftCardEmail,
-} from '../services/giftCardService';
+} from '../services/payments/giftCardService';
 
 // Buying happens through POST /api/payments/checkout/gift-card (BOG).
 const router = Router();

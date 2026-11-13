@@ -15,7 +15,7 @@ import {
   resetPasswordSchema,
 } from '../../schemas/authSchemas';
 import { authenticate } from '../../middleware/auth';
-import { sendVerificationEmail, sendPasswordResetEmail } from '../../services/emailService';
+import { sendVerificationEmail, sendPasswordResetEmail } from '../../services/integrations/emailService';
 import {
   loginRateLimit,
   authRateLimit,

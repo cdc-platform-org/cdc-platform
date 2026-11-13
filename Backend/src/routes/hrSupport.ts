@@ -1,3 +1,15 @@
+/**
+ * Express router mounted at `/api/hr-support` (see server.ts).
+ * Endpoints:
+ *   GET /quote/:vacancyId
+ *   GET /mine
+ *   GET /assigned-to-me
+ *   GET /:id
+ *   POST /:id/confirm
+ *   POST /:id/dispute
+ *   PUT /:id/candidates/:evaluationId
+ *   POST /:id/deliver
+ */
 import { Router, Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved } from '../middleware/auth';
@@ -6,8 +18,8 @@ import {
   deliverHRSupportRequestSchema,
   disputeHRSupportRequestSchema,
 } from '../schemas/hrSupportSchemas';
-import { calculateHRSupportFee, HR_BASE_FEE, HR_INCLUDED_CANDIDATES, HR_EXTRA_CANDIDATE_FEE } from '../services/hrPricingService';
-import { markHRSupportDelivered, releaseHRSupportEscrow, flagHRSupportEscrowForReview, HRSupportEscrowError } from '../services/hrSupportEscrowService';
+import { calculateHRSupportFee, HR_BASE_FEE, HR_INCLUDED_CANDIDATES, HR_EXTRA_CANDIDATE_FEE } from '../services/payments/hrPricingService';
+import { markHRSupportDelivered, releaseHRSupportEscrow, flagHRSupportEscrowForReview, HRSupportEscrowError } from '../services/payments/hrSupportEscrowService';
 
 const router = Router();
 

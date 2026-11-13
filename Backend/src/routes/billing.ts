@@ -1,3 +1,17 @@
+/**
+ * Express router mounted at `/api/billing` (see server.ts).
+ * Endpoints:
+ *   POST /setup-intent
+ *   GET /payment-methods
+ *   POST /payment-methods
+ *   PATCH /payment-methods/:id/default
+ *   DELETE /payment-methods/:id
+ *   GET /subscriptions
+ *   POST /subscriptions/trial
+ *   PATCH /subscriptions/:id/auto-renew
+ *   POST /subscriptions/:id/cancel
+ *   GET /settings
+ */
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved, requireNotBannedOrDeleted } from '../middleware/auth';
@@ -19,9 +33,9 @@ import {
   getCurrentCycleUsageTetri,
   getBillingSettings,
   BillingError,
-} from '../services/billingService';
-import { PaymentGatewayError } from '../services/paymentGatewayService';
-import { getOrCreateStripeCustomerId, createStripeCardSetupIntent, StripeNotConfiguredError } from '../services/stripePaymentService';
+} from '../services/payments/billingService';
+import { PaymentGatewayError } from '../services/payments/paymentGatewayService';
+import { getOrCreateStripeCustomerId, createStripeCardSetupIntent, StripeNotConfiguredError } from '../services/payments/stripePaymentService';
 
 const router = Router();
 

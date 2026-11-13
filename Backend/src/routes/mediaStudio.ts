@@ -1,8 +1,15 @@
+/**
+ * Express router mounted at `/api/media-studio` (see server.ts).
+ * Endpoints:
+ *   POST /transcribe
+ *   POST /email
+ *   POST /translate
+ */
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
 import { authenticate } from '../middleware/auth';
-import { requireDigitalToolAccess } from '../services/digitalToolAccessService';
+import { requireDigitalToolAccess } from '../services/marketplace/digitalToolAccessService';
 import { rateLimit } from '../middleware/rateLimit';
 import { multerErrorHandler } from '../middleware/productUploads';
 import {
@@ -12,9 +19,9 @@ import {
   transcribeFromUpload,
   transcribeFromYoutube,
   MediaStudioError,
-} from '../services/mediaStudioService';
-import { sendMediaStudioExport } from '../services/emailService';
-import { callTextModelPlain, AiAgentError } from '../services/aiAgentService';
+} from '../services/ai/mediaStudioService';
+import { sendMediaStudioExport } from '../services/integrations/emailService';
+import { callTextModelPlain, AiAgentError } from '../services/ai/aiAgentService';
 
 // ============================================================
 // AI Voice & Video Media Studio — Feature B routes (video/audio ->

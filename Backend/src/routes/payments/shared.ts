@@ -11,7 +11,7 @@ import {
   BogNotConfiguredError,
   CreateBogOrderParams,
   CreateBogOrderResult,
-} from '../../services/bogPaymentService';
+} from '../../services/payments/bogPaymentService';
 
 export const FRONTEND_URL = process.env.FRONTEND_URL || 'https://cdc.org.ge';
 

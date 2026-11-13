@@ -1,3 +1,18 @@
+/**
+ * Express router mounted at `/api/educator-hub` (see server.ts).
+ * Endpoints:
+ *   GET /state
+ *   POST /trial/start
+ *   POST /generate-test
+ *   POST /quizzes
+ *   GET /quizzes/:quizId/submissions
+ *   POST /generate-rubric
+ *   POST /grade-homework
+ *   POST /generate-differentiated-task
+ *   POST /generate-lesson-plan
+ *   POST /generate-bureaucracy-doc
+ *   POST /generate-parent-letter
+ */
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
@@ -6,8 +21,8 @@ import { authenticate, requireApproved, requireCurrentEducatorSession } from '..
 import { rateLimit } from '../middleware/rateLimit';
 import { multerErrorHandler } from '../middleware/productUploads';
 import { hasEducatorVipAccess } from '../utils/educatorVipAccess';
-import { startEducatorVipTrial, EducatorTrialAlreadyUsedError, EDUCATOR_TRIAL_DAYS, EDUCATOR_VIP_PRICE_GEL } from '../services/educatorVipService';
-import { getEducatorUsage, hasReachedGenerationLimit, hasReachedGradingLimit, recordEducatorGeneration } from '../services/educatorUsageService';
+import { startEducatorVipTrial, EducatorTrialAlreadyUsedError, EDUCATOR_TRIAL_DAYS, EDUCATOR_VIP_PRICE_GEL } from '../services/educator/educatorVipService';
+import { getEducatorUsage, hasReachedGenerationLimit, hasReachedGradingLimit, recordEducatorGeneration } from '../services/educator/educatorUsageService';
 import {
   isAiAgentConfigured,
   generateTestAndAnswerKey,
@@ -18,8 +33,8 @@ import {
   generateBureaucracyDoc,
   generateParentLetter,
   EducatorAiError,
-} from '../services/educatorHubAiService';
-import { createTeacherQuiz, getQuizSubmissionsForTeacher, TeacherQuizError } from '../services/teacherQuizService';
+} from '../services/educator/educatorHubAiService';
+import { createTeacherQuiz, getQuizSubmissionsForTeacher, TeacherQuizError } from '../services/educator/teacherQuizService';
 
 const router = Router();
 router.use(authenticate, requireApproved);

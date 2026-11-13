@@ -1,3 +1,9 @@
+/**
+ * Express router mounted at `/api/v1/success-stories` (see server.ts).
+ * Endpoints:
+ *   GET /
+ *   GET /:slug
+ */
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 

@@ -8,15 +8,15 @@ import { JWT_SECRET } from '../../utils/env';
 import { createUser } from '../../test/factories';
 import coursesRouter from '../courses';
 import { errorHandler } from '../../middleware/errorHandler';
-import { getSignedBlobUrl } from '../../services/privateBlobStorage';
-import { isPrivateSubmissionRef } from '../../services/assignmentSubmissionDelivery';
+import { getSignedBlobUrl } from '../../services/integrations/privateBlobStorage';
+import { isPrivateSubmissionRef } from '../../services/learning/assignmentSubmissionDelivery';
 
 // courses.ts pulls in a wide surface (AI exam generation, subtitles,
 // certificates, content moderation) that none of the routes under test here
 // ever invoke — only the module that constructs an Azure client at import
 // time (privateBlobStorage.ts, via assignmentSubmissionDelivery.ts) needs
 // mocking to avoid a real network attempt, same reasoning as iako.test.ts.
-jest.mock('../../services/privateBlobStorage', () => ({
+jest.mock('../../services/integrations/privateBlobStorage', () => ({
   uploadPrivateBlob: jest.fn().mockResolvedValue(undefined),
   getSignedBlobUrl: jest.fn().mockImplementation(async (blobName: string, expiryMinutes = 15) => `https://test-blob.example.test/${blobName}?sig=test&exp=${expiryMinutes}`),
   deletePrivateBlob: jest.fn().mockResolvedValue(undefined),

@@ -8,14 +8,14 @@ import { JWT_SECRET } from '../../utils/env';
 import { createUser } from '../../test/factories';
 import { liveTrainingRegisterSchema } from '../../schemas/liveTrainingSchemas';
 import liveTrainingsRouter from '../liveTrainings';
-import adminLiveTrainingsRouter from '../adminLiveTrainings';
-import { sendLiveTrainingRegistrationEmail } from '../../services/emailService';
+import adminLiveTrainingsRouter from '../admin/adminLiveTrainings';
+import { sendLiveTrainingRegistrationEmail } from '../../services/integrations/emailService';
 
-jest.mock('../../services/emailService', () => ({
+jest.mock('../../services/integrations/emailService', () => ({
   sendLiveTrainingRegistrationEmail: jest.fn().mockResolvedValue(undefined),
   sendLiveTrainingEnrollmentEmail: jest.fn().mockResolvedValue(undefined),
 }));
-jest.mock('../../services/whatsappService', () => ({
+jest.mock('../../services/integrations/whatsappService', () => ({
   sendRegistrationStatusWhatsApp: jest.fn().mockResolvedValue(undefined),
   formatWhatsAppDate: jest.fn().mockReturnValue('September 2026'),
 }));

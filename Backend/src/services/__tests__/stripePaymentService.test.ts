@@ -1,4 +1,4 @@
-import { createStripeCheckoutSession, CreateStripeCheckoutSessionParams } from '../stripePaymentService';
+import { createStripeCheckoutSession, CreateStripeCheckoutSessionParams } from '../payments/stripePaymentService';
 
 const mockCreateSession = jest.fn();
 jest.mock('stripe', () => jest.fn().mockImplementation(() => ({

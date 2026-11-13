@@ -10,12 +10,12 @@ Stack: Express + Prisma (Backend), Next.js Pages Router + next-i18next (Frontend
 
 Three independent layers protecting Digital Store listings, added because the original upload flow stored both preview images and purchasable files on the same public, unauthenticated Bunny CDN path.
 
-**Preview image protection** (`Backend/src/services/productImageProtection.ts`) — runs only on `products.ts`/`adminProducts.ts`'s `/upload-image`, never on the shared `imageStorage.ts` used by avatars/course thumbnails/blog covers:
+**Preview image protection** (`Backend/src/services/marketplace/productImageProtection.ts`) — runs only on `products.ts`/`adminProducts.ts`'s `/upload-image`, never on the shared `imageStorage.ts` used by avatars/course thumbnails/blog covers:
 - Resizes to a 1600px longest-edge cap (`MAX_PREVIEW_DIMENSION`) — a legible preview, not a sellable-quality export.
 - Tiles a diagonal, semi-transparent "CDC.ORG.GE" watermark (`sharp` SVG composite, `tile: true`) across the full frame.
 - Recompresses to JPEG at quality 82. Never throws — a processing failure falls back to storing the original buffer untouched.
 
-**Private file delivery** (`Backend/src/services/productFileDelivery.ts` + `privateBlobStorage.ts`) — `/upload-file` now stores purchasable assets in the same private Azure Blob container `routes/upload.ts` already used for lesson videos (no anonymous reads; `DefaultAzureCredential` managed identity, no shared keys). `DigitalProduct.fileUrl` holds a `cdcblob://<blobName>` marker instead of a real URL; `GET /products/:id/download` mints a fresh 15-minute user-delegation-key-signed SAS URL from it (`DOWNLOAD_SAS_EXPIRY_MINUTES`), only after verifying a `COMPLETED` `ProductPurchase`. Pre-existing rows or an admin-pasted external URL pass through unchanged — same protection level they always had, not a regression. The marker format was chosen specifically to avoid a breaking schema/contract change: it still satisfies `z.string().url()` and every existing Frontend call site that reads `fileUrl`.
+**Private file delivery** (`Backend/src/services/marketplace/productFileDelivery.ts` + `privateBlobStorage.ts`) — `/upload-file` now stores purchasable assets in the same private Azure Blob container `routes/upload.ts` already used for lesson videos (no anonymous reads; `DefaultAzureCredential` managed identity, no shared keys). `DigitalProduct.fileUrl` holds a `cdcblob://<blobName>` marker instead of a real URL; `GET /products/:id/download` mints a fresh 15-minute user-delegation-key-signed SAS URL from it (`DOWNLOAD_SAS_EXPIRY_MINUTES`), only after verifying a `COMPLETED` `ProductPurchase`. Pre-existing rows or an admin-pasted external URL pass through unchanged — same protection level they always had, not a regression. The marker format was chosen specifically to avoid a breaking schema/contract change: it still satisfies `z.string().url()` and every existing Frontend call site that reads `fileUrl`.
 
 **License metadata** (`ProductLicenseType` enum: `PERSONAL_USE` / `COMMERCIAL_USE` / `EXTENDED_COMMERCIAL`) — `DigitalProduct.licenseType` defaults to the most restrictive option (`PERSONAL_USE`). Snapshotted onto `ProductPurchase.licenseType` at fulfillment time (`productSaleService.ts`'s `completeProductPurchase`, and the free `/:id/claim` path) so a later catalog edit to the license never retroactively changes what an existing buyer already purchased. Surfaced on the store product page, both submission forms, and the buyer's download view.
 
@@ -23,7 +23,7 @@ Three independent layers protecting Digital Store listings, added because the or
 
 ## Flexible Pricing Engine
 
-`DigitalProduct.discountedPrice` (absolute minor-unit sale price) + `saleEndsAt`, computed at *read time* via `Backend/src/services/productPricing.ts` — never a cron job; an expired sale reverts to `price` automatically the next time it's read. Mirrors the pre-existing `Course.discountPercent`/`discountEndDate` pattern (`coursePricing.ts`) in shape, but deliberately a separate mechanism: a Digital Store seller sets an absolute floor price, not a percentage, and only `DigitalProduct` has a per-item creator commission split.
+`DigitalProduct.discountedPrice` (absolute minor-unit sale price) + `saleEndsAt`, computed at *read time* via `Backend/src/services/marketplace/productPricing.ts` — never a cron job; an expired sale reverts to `price` automatically the next time it's read. Mirrors the pre-existing `Course.discountPercent`/`discountEndDate` pattern (`coursePricing.ts`) in shape, but deliberately a separate mechanism: a Digital Store seller sets an absolute floor price, not a percentage, and only `DigitalProduct` has a per-item creator commission split.
 
 **Validation** (`productPricing.ts`'s `validateProductDiscount`, mirrored client-side in `productService.ts` for real-time form feedback):
 - Must be a genuine reduction (`discountedPrice < price`).
@@ -46,7 +46,7 @@ This app's guest auth flow is an **in-place modal** (`AuthModalContext`), not a 
 
 ## Multi-Vendor AI Resilience
 
-`Backend/src/services/aiAgentService.ts`'s `callTextModel()` is the single choke point every AI feature (blog drafts, product moderation, grant scouting, marketing copy, exam generation, etc.) goes through — no caller constructs its own model client.
+`Backend/src/services/ai/aiAgentService.ts`'s `callTextModel()` is the single choke point every AI feature (blog drafts, product moderation, grant scouting, marketing copy, exam generation, etc.) goes through — no caller constructs its own model client.
 
 Fallback sequence, verified against the live implementation:
 1. `gemini-flash-latest`
@@ -60,7 +60,7 @@ Each Gemini model gets up to 2 attempts with a delay between them before falling
 
 ## B2B Escrow Flow
 
-Gig proposals are gated on `User.isVerifiedGraduate` (`routes/gigs.ts`) — set either by passing the freelancer skill exam or completing a CDC course. `services/escrowService.ts` applies the same `PLATFORM_COMMISSION_RATE = 0.2` (20%) split as the Digital Store's own commission constant — independently defined in each service rather than shared, since they're two separate revenue streams that happen to share a number today, not one policy.
+Gig proposals are gated on `User.isVerifiedGraduate` (`routes/gigs.ts`) — set either by passing the freelancer skill exam or completing a CDC course. `services/payments/escrowService.ts` applies the same `PLATFORM_COMMISSION_RATE = 0.2` (20%) split as the Digital Store's own commission constant — independently defined in each service rather than shared, since they're two separate revenue streams that happen to share a number today, not one policy.
 
 ---
 
@@ -88,12 +88,12 @@ Regression coverage lives in the backend learning ratings, live-training leads a
 
 | Capability | Key files |
 |---|---|
-| Preview watermarking | `Backend/src/services/productImageProtection.ts` |
-| Private file delivery | `Backend/src/services/privateBlobStorage.ts`, `productFileDelivery.ts` |
+| Preview watermarking | `Backend/src/services/marketplace/productImageProtection.ts` |
+| Private file delivery | `Backend/src/services/integrations/privateBlobStorage.ts`, `productFileDelivery.ts` |
 | License metadata | `ProductLicenseType` (schema), `productSaleService.ts` |
-| Discount pricing | `Backend/src/services/productPricing.ts`, `pricingRules.ts` |
-| Course discount floor | `Backend/src/services/coursePricing.ts`, `schemas/courseSchemas.ts` |
+| Discount pricing | `Backend/src/services/marketplace/productPricing.ts`, `pricingRules.ts` |
+| Course discount floor | `Backend/src/services/learning/coursePricing.ts`, `schemas/courseSchemas.ts` |
 | Checkout price sync | `Backend/src/routes/payments/`, `stripePayments.ts` |
 | Purchase continuity | `Frontend/pages/store/[id].tsx`, `src/context/AuthModalContext.tsx` |
-| AI fallback chain | `Backend/src/services/aiAgentService.ts` |
+| AI fallback chain | `Backend/src/services/ai/aiAgentService.ts` |
 | Sales count | `DigitalProduct.salesCount` (schema), `productSaleService.ts`, `products.ts`'s `/:id/claim` |

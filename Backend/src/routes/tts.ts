@@ -1,8 +1,14 @@
+/**
+ * Express router mounted at `/api/tts` (see server.ts).
+ * Endpoints:
+ *   GET /voices
+ *   POST /synthesize
+ */
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { authenticate } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
-import { isTtsConfigured, listVoices, synthesizeSpeech, AzureSpeechError, MAX_TTS_TEXT_LENGTH } from '../services/azureSpeechService';
+import { isTtsConfigured, listVoices, synthesizeSpeech, AzureSpeechError, MAX_TTS_TEXT_LENGTH } from '../services/ai/azureSpeechService';
 
 // ============================================================
 // Text-to-Speech routes — Feature A of the AI Voice & Video Media Studio

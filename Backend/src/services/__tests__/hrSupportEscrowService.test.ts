@@ -7,8 +7,8 @@ import {
   resolveHRSupportDispute,
   autoReleaseHRSupportEscrows,
   HRSupportEscrowError,
-} from '../hrSupportEscrowService';
-import { upsertCommissionPercentage } from '../platformFeeScheduleService';
+} from '../payments/hrSupportEscrowService';
+import { upsertCommissionPercentage } from '../payments/platformFeeScheduleService';
 import { createUser, createVacancy, createHRSupportRequest } from '../../test/factories';
 
 afterAll(async () => {

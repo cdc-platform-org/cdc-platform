@@ -1,7 +1,7 @@
-jest.mock('../bookStorageService', () => ({ readBookAsset: jest.fn(async () => Buffer.from('portrait')) }));
+jest.mock('../childrensBook/bookStorageService', () => ({ readBookAsset: jest.fn(async () => Buffer.from('portrait')) }));
 
-import { loadCharacterReference, consistencyPromptLine, pageStoryPromptLines } from '../bookCharacterDetailsService';
-import { readBookAsset } from '../bookStorageService';
+import { loadCharacterReference, consistencyPromptLine, pageStoryPromptLines } from '../childrensBook/bookCharacterDetailsService';
+import { readBookAsset } from '../childrensBook/bookStorageService';
 
 describe('character consistency across pages', () => {
   it('uses the approved portrait as reference even without a parent photo', async () => {

@@ -1,3 +1,7 @@
+/**
+ * Service (storage).
+ * Exports: getAdapterForProvider, getStorage, uploadToSpace.
+ */
 import { StorageAdapter, StorageProvider, StorageSpace, UploadInput, UploadObject } from './types';
 import { getSpaceConfig } from './config';
 import { BunnyStorageAdapter } from './bunnyAdapter';

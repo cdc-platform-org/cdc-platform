@@ -1,3 +1,15 @@
+/**
+ * Express router mounted at `/api/payments/stripe` (see server.ts).
+ * Endpoints:
+ *   POST /checkout/course/:courseId
+ *   POST /checkout/live-training/:id
+ *   POST /checkout/english-tutor
+ *   POST /checkout/mentorship
+ *   POST /checkout/gig/:gigId
+ *   POST /checkout/product/:productId
+ *   POST /webhook
+ *   GET /status/:paymentId
+ */
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import * as Sentry from '@sentry/node';
@@ -12,25 +24,25 @@ import {
   getStripeCheckoutSession,
   constructStripeWebhookEvent,
   StripeNotConfiguredError,
-} from '../services/stripePaymentService';
+} from '../services/payments/stripePaymentService';
 import { STRIPE_GEL_TO_USD_RATE, STRIPE_GEL_TO_EUR_RATE } from '../utils/env';
-import { captureEscrow } from '../services/escrowService';
-import { completeProductPurchase } from '../services/productSaleService';
-import { completeCoursePurchase } from '../services/courseSaleService';
-import { paymentModelForPurpose } from '../services/paymentModel';
-import { getCurrentPrice } from '../services/coursePricing';
-import { getCurrentProductPrice } from '../services/productPricing';
-import { applyPromoToCheckout, quotePromoToCheckout, PromoCodeError, rejectGiftCardCode } from '../services/couponService';
-import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/mentorAvailabilityService';
-import { createMentorshipCalendarEvent } from '../services/googleCalendarService';
-import { captureMentorshipEscrow } from '../services/mentorshipEscrowService';
-import { sendMentorshipBookingEmails } from '../services/emailService';
-import { notifyCourseEnrollment } from '../services/courseEnrollmentNotification';
-import { completeLiveTrainingPurchase, notifyLiveTrainingEnrollment } from '../services/liveTrainingSaleService';
-import { getCurrentLiveTrainingPrice } from '../services/liveTrainingPricing';
-import { reserveLearningCheckout } from '../services/learningCheckoutService';
-import { completeLearningPayment } from '../services/learningPaymentFulfillment';
-import { completeTutorSubscriptionPurchase, TUTOR_SUBSCRIPTION_PRICE_GEL } from '../services/englishTutorSubscriptionService';
+import { captureEscrow } from '../services/payments/escrowService';
+import { completeProductPurchase } from '../services/marketplace/productSaleService';
+import { completeCoursePurchase } from '../services/learning/courseSaleService';
+import { paymentModelForPurpose } from '../services/payments/paymentModel';
+import { getCurrentPrice } from '../services/learning/coursePricing';
+import { getCurrentProductPrice } from '../services/marketplace/productPricing';
+import { applyPromoToCheckout, quotePromoToCheckout, PromoCodeError, rejectGiftCardCode } from '../services/payments/couponService';
+import { assertSlotAvailable, SlotUnavailableError, DEFAULT_SESSION_MINUTES } from '../services/learning/mentorAvailabilityService';
+import { createMentorshipCalendarEvent } from '../services/integrations/googleCalendarService';
+import { captureMentorshipEscrow } from '../services/payments/mentorshipEscrowService';
+import { sendMentorshipBookingEmails } from '../services/integrations/emailService';
+import { notifyCourseEnrollment } from '../services/learning/courseEnrollmentNotification';
+import { completeLiveTrainingPurchase, notifyLiveTrainingEnrollment } from '../services/learning/liveTrainingSaleService';
+import { getCurrentLiveTrainingPrice } from '../services/learning/liveTrainingPricing';
+import { reserveLearningCheckout } from '../services/payments/learningCheckoutService';
+import { completeLearningPayment } from '../services/payments/learningPaymentFulfillment';
+import { completeTutorSubscriptionPurchase, TUTOR_SUBSCRIPTION_PRICE_GEL } from '../services/educator/englishTutorSubscriptionService';
 
 // ============================================================
 // Stripe Checkout routes — the international-currency (USD/EUR) sibling of

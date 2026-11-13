@@ -1,6 +1,14 @@
+/**
+ * Express router mounted at `/api/language-teacher` (see server.ts).
+ * Endpoints:
+ *   POST /explain
+ *   POST /translate
+ *   POST /analyze-pronunciation
+ *   POST /summarize
+ */
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
-import { callTextModel, callTextModelPlain, AiAgentError } from '../services/aiAgentService';
+import { callTextModel, callTextModelPlain, AiAgentError } from '../services/ai/aiAgentService';
 
 // ============================================================
 // AI Language Teacher — backs Frontend's SmartReader (src/components/tools/

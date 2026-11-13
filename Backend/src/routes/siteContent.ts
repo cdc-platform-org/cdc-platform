@@ -1,3 +1,8 @@
+/**
+ * Express router mounted at `/api/site-content` (see server.ts).
+ * Endpoints:
+ *   GET /:page
+ */
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 

@@ -1,7 +1,12 @@
+/**
+ * Express router mounted at `/api/digital-tools` (see server.ts).
+ * Endpoints:
+ *   GET /:key/access
+ */
 import { Router, Request, Response } from 'express';
 import { authenticate, requireNotBannedOrDeleted } from '../middleware/auth';
 import { isDigitalToolKey } from '../config/digitalTools';
-import { hasDigitalToolAccess } from '../services/digitalToolAccessService';
+import { hasDigitalToolAccess } from '../services/marketplace/digitalToolAccessService';
 
 const router = Router();
 

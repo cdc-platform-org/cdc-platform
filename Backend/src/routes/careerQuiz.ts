@@ -1,8 +1,14 @@
+/**
+ * Express router mounted at `/api/career-quiz` (see server.ts).
+ * Endpoints:
+ *   POST /submit
+ *   GET /mine
+ */
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate } from '../middleware/auth';
 import { careerQuizSubmitSchema } from '../schemas/careerQuizSchemas';
-import { countTodaysSubmissions, generateCareerQuizResult, CareerQuizNotConfiguredError, DAILY_QUIZ_LIMIT } from '../services/careerQuizService';
+import { countTodaysSubmissions, generateCareerQuizResult, CareerQuizNotConfiguredError, DAILY_QUIZ_LIMIT } from '../services/ai/careerQuizService';
 
 const router = Router();
 

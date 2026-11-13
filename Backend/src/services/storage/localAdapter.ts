@@ -1,3 +1,7 @@
+/**
+ * Service (storage).
+ * Exports: LOCAL_UPLOADS_ROOT, LocalStorageAdapter.
+ */
 import fs from 'fs/promises';
 import path from 'path';
 import { BACKEND_URL } from '../../utils/env';

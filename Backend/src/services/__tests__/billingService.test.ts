@@ -6,7 +6,7 @@ import {
   CardRemovalRequiresConfirmationError,
   PaymentMethodRequiredError,
   AlreadySubscribedError,
-} from '../billingService';
+} from '../payments/billingService';
 import { createUser, createVerifiedPaymentMethod, createBillingSubscription } from '../../test/factories';
 import { BillingProductType } from '@prisma/client';
 

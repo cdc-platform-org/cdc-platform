@@ -14,7 +14,7 @@ import {
   AUTO_APPROVAL_IBAN_COOLDOWN_DAYS,
   BogPayoutNotConfiguredError,
   SESSION_ANOMALY_REASON,
-} from '../bogPayoutService';
+} from '../payments/bogPayoutService';
 import { randomUUID } from 'crypto';
 import { createUser, createPayoutRequest, createGig, createGigApplication } from '../../test/factories';
 

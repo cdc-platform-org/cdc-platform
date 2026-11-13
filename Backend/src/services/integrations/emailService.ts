@@ -1,0 +1,1017 @@
+/**
+ * Service (external integrations).
+ * Exports: sendVerificationEmail, sendVacancyApplicationEmail, sendStudioInquiryEmail,
+ * sendGraduateStatusEmail, sendHRSupportRequestAlertEmail, sendCyberSentinelWaitlistEmail,
+ * sendCertificateEmail, MentorshipBookingEmailParams, sendMentorshipBookingEmails,
+ * sendRecordingReadyEmail, sendLiveTrainingRegistrationEmail, sendLiveTrainingEnrollmentEmail,
+ * sendBusinessVerifiedEmail, sendBusinessRejectedEmail, sendOfficialNotificationEmail,
+ * sendTrialEndingWarningEmail, sendPreDebitReminderEmail, sendSubscriptionCanceledEmail,
+ * sendPayoutIbanChangedEmail, sendMediaStudioExport, sendPasswordResetEmail, GiftCardEmailParams,
+ * buildGiftCardEmailHtml, sendGiftCardEmail, sendGiftCardDeliveredToBuyerEmail,
+ * ExamResultsEmailQuestion, ExamResultsEmailParams, buildExamResultsEmailHtml, examResultsUrl,
+ * sendExamResultsEmail.
+ */
+import { Resend } from 'resend';
+import { RESEND_API_KEY, EMAIL_FROM, SUPER_ADMIN_EMAILS, HR_SUPPORT_NOTIFICATION_EMAILS, BACKEND_URL } from '../../utils/env';
+import { buildMentorshipIcs } from './icsService';
+import { NotificationLocale } from '../../utils/notificationLocale';
+
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://cdc.org.ge';
+
+// BACKEND_URL isn't guaranteed https:// (see its own comment in utils/env.ts)
+// — same class of bug as payments.ts's callback URL, coerced the same way,
+// so a certificate download link never gets printed into an email as
+// http://localhost:4000/... in production.
+function httpsBackendUrl(): string {
+  return BACKEND_URL.startsWith('https://') ? BACKEND_URL : `https://${BACKEND_URL.replace(/^https?:\/\//, '')}`;
+}
+
+const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
+
+function wrapTemplate(title: string, bodyHtml: string, ctaLabel: string, ctaUrl: string): string {
+  return `<!DOCTYPE html>
+<html>
+  <body style="margin:0;padding:0;background-color:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+            <tr>
+              <td style="background:linear-gradient(135deg,#06b6d4,#7c3aed);padding:24px 32px;">
+                <span style="color:#ffffff;font-weight:900;font-size:18px;letter-spacing:0.05em;">CDC</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;">
+                <h1 style="margin:0 0 16px;font-size:20px;color:#0f172a;">${title}</h1>
+                <div style="font-size:14px;line-height:1.6;color:#475569;">${bodyHtml}</div>
+                <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:24px;">
+                  <tr>
+                    <td style="border-radius:10px;background:linear-gradient(135deg,#06b6d4,#2563eb);">
+                      <a href="${ctaUrl}" style="display:inline-block;padding:12px 28px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;border-radius:10px;">${ctaLabel}</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin-top:24px;font-size:12px;color:#94a3b8;word-break:break-all;">${ctaUrl}</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;">
+                <p style="margin:0;font-size:11px;color:#94a3b8;">CDC — Center for Digital Careers</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
+// AUDIT NOTE (fixed): both fallback branches below used to log
+// devFallbackLink unconditionally — for a password-reset/email-verification
+// link, that link CONTAINS the live, unexpired token. This check is against
+// the env var (RESEND_API_KEY unset), not NODE_ENV, so if that key is ever
+// simply forgotten in a real production deploy, every reset/verification
+// email would have silently printed a full-account-takeover token straight
+// to stdout instead of erroring loudly. The dev-mode convenience (reading
+// the link from the console when no provider is configured locally) is
+// worth keeping, but only when NOT in production; in production, missing
+// config now surfaces as a redacted error instead of leaking the token.
+const isProduction = process.env.NODE_ENV === 'production';
+
+async function sendEmail(to: string, subject: string, html: string, devFallbackLink: string): Promise<void> {
+  if (!resend) {
+    if (isProduction) {
+      console.error(`[emailService] RESEND_API_KEY is not configured — email to ${to} ("${subject}") was NOT sent.`);
+      return;
+    }
+    // No RESEND_API_KEY configured — this stands in for actually sending
+    // mail (same pattern as the pre-existing dev-mode verification email),
+    // so the flow is fully testable end-to-end without a real provider.
+    console.log(`[DEV EMAIL] To: ${to} | Subject: ${subject} | Link: ${devFallbackLink}`);
+    return;
+  }
+  try {
+    await resend.emails.send({ from: EMAIL_FROM, to, subject, html });
+  } catch (err) {
+    // Never let an email provider outage break the request that triggered
+    // it (registration, password reset) — log so the failure is visible,
+    // but only fall back to printing the actual link (with its live token)
+    // outside production, for the same reason as the branch above.
+    console.error(`[emailService] Resend send failed for ${to}:`, err);
+    if (!isProduction) {
+      console.log(`[DEV EMAIL FALLBACK] To: ${to} | Subject: ${subject} | Link: ${devFallbackLink}`);
+    }
+  }
+}
+
+export async function sendVerificationEmail(email: string, token: string): Promise<void> {
+  const link = `${FRONTEND_URL}/auth/verify-email?token=${token}`;
+  const html = wrapTemplate(
+    'დაადასტურეთ თქვენი ელ-ფოსტა',
+    'გმადლობთ CDC-ზე რეგისტრაციისთვის! დააჭირეთ ქვემოთ მოცემულ ღილაკს ანგარიშის დასადასტურებლად. ბმული ვალიდურია 24 საათის განმავლობაში.',
+    'ელ-ფოსტის დადასტურება',
+    link
+  );
+  await sendEmail(email, 'დაადასტურეთ თქვენი CDC ანგარიში', html, link);
+}
+
+export async function sendVacancyApplicationEmail(
+  employerEmail: string,
+  applicantName: string,
+  vacancyTitle: string,
+  applicantId: string
+): Promise<void> {
+  const link = `${FRONTEND_URL}/messages/${applicantId}`;
+  const html = wrapTemplate(
+    'ახალი განაცხადი ვაკანსიაზე',
+    `<strong>${applicantName}</strong>-მა გამოგიგზავნათ განაცხადი თქვენს ვაკანსიაზე „${vacancyTitle}“. დააჭირეთ ქვემოთ მოცემულ ღილაკს, რომ ნახოთ მისი შეტყობინება და დაუკავშირდეთ პირდაპირ პლატფორმაზე.`,
+    'შეტყობინების ნახვა',
+    link
+  );
+  await sendEmail(employerEmail, `ახალი განაცხადი: ${vacancyTitle}`, html, link);
+}
+
+export async function sendStudioInquiryEmail(
+  inquiryId: string,
+  name: string,
+  email: string,
+  projectType: string
+): Promise<void> {
+  if (SUPER_ADMIN_EMAILS.length === 0) {
+    // No admin recipients configured — same posture as an unconfigured
+    // Resend key: log so the inquiry is still discoverable, don't throw.
+    console.log(`[DEV EMAIL] No SUPER_ADMIN_EMAILS configured — new studio inquiry ${inquiryId} from ${email} not emailed.`);
+    return;
+  }
+  const link = `${FRONTEND_URL}/admin/studio`;
+  const html = wrapTemplate(
+    'New CDC Studio Inquiry',
+    `<strong>${name}</strong> (${email}) submitted a new project inquiry — type: <strong>${projectType}</strong>. Review it in the admin panel.`,
+    'View Inquiry',
+    link
+  );
+  await Promise.all(
+    SUPER_ADMIN_EMAILS.map((adminEmail) => sendEmail(adminEmail, `New Studio Inquiry: ${projectType}`, html, link))
+  );
+}
+
+// Fired once from graduateStatusService.grantGraduateStatus — same
+// congratulations copy as the in-app Notification it's paired with, sent
+// once per user the first time isVerifiedGraduate flips true (course exam
+// pass or an admin marking a LiveTraining/cohort enrollment complete).
+export async function sendGraduateStatusEmail(email: string, name: string): Promise<void> {
+  const link = `${FRONTEND_URL}/forum`;
+  const html = wrapTemplate(
+    'გილოცავთ კურსდამთავრებას! 🎓',
+    `<strong>${name}</strong>, გილოცავთ კურსის წარმატებით დასრულებას! 🎓 თქვენ ავტომატურად მოგენიჭათ Graduate სტატუსი და გაგეხსნათ ულიმიტო წვდომა CDC-ის დასაქმების ფორუმზე!`,
+    'ფორუმზე გადასვლა',
+    link
+  );
+  await sendEmail(email, 'გილოცავთ! თქვენ ხართ CDC Graduate 🎓', html, link);
+}
+
+// Fired from routes/payments's HR_SUPPORT callback branch once payment
+// completes and escrow is captured — recipients come from
+// HR_SUPPORT_NOTIFICATION_EMAILS (utils/env.ts), not hardcoded here, so
+// changing who gets alerted is a config change, not a deploy.
+export async function sendHRSupportRequestAlertEmail(params: {
+  requestId: string;
+  vacancyTitle: string;
+  employerName: string;
+  employerEmail: string;
+  candidateCount: number;
+  grossAmount: number;
+  currency: string;
+}): Promise<void> {
+  if (HR_SUPPORT_NOTIFICATION_EMAILS.length === 0) {
+    console.log(`[DEV EMAIL] No HR_SUPPORT_NOTIFICATION_EMAILS configured — HR request ${params.requestId} not emailed.`);
+    return;
+  }
+  const link = `${FRONTEND_URL}/admin/hr-requests`;
+  const amount = (params.grossAmount / 100).toFixed(2);
+  const html = wrapTemplate(
+    'New HR Assistance Request',
+    `<strong>${params.employerName}</strong> (${params.employerEmail}) paid for HR screening on their vacancy „${params.vacancyTitle}“ — <strong>${params.candidateCount} candidate(s)</strong>, <strong>${amount} ${params.currency}</strong>. Assign a specialist in the admin portal.`,
+    'Open HR Requests',
+    link
+  );
+  await Promise.all(
+    HR_SUPPORT_NOTIFICATION_EMAILS.map((adminEmail) => sendEmail(adminEmail, `New HR Assistance Request: ${params.vacancyTitle}`, html, link))
+  );
+}
+
+export async function sendCyberSentinelWaitlistEmail(entryId: string, name: string, email: string, os: string): Promise<void> {
+  if (SUPER_ADMIN_EMAILS.length === 0) {
+    console.log(`[DEV EMAIL] No SUPER_ADMIN_EMAILS configured — new Cyber Sentinel waitlist entry ${entryId} from ${email} not emailed.`);
+    return;
+  }
+  const link = `${FRONTEND_URL}/admin/cyber-sentinel`;
+  const html = wrapTemplate(
+    'New Cyber Sentinel Waitlist Signup',
+    `<strong>${name}</strong> (${email}) joined the Cyber Sentinel AI early-access waitlist — preferred OS: <strong>${os}</strong>.`,
+    'View Waitlist',
+    link
+  );
+  await Promise.all(SUPER_ADMIN_EMAILS.map((adminEmail) => sendEmail(adminEmail, 'New Cyber Sentinel Waitlist Signup', html, link)));
+}
+
+// Certificates are sent as a real attachment, not a link — bypasses
+// sendEmail()'s HTML-only helper since Resend's attachments param needs the
+// PDF buffer passed alongside the message. Same log-only fallback when
+// Resend isn't configured, so the flow stays testable without a real key.
+export async function sendCertificateEmail(
+  to: string,
+  studentName: string,
+  courseTitle: string,
+  pdfBuffer: Buffer,
+  filename: string,
+  verificationCode: string,
+  lang: 'ka' | 'en' = 'ka'
+): Promise<void> {
+  const subject = lang === 'en' ? 'Your Certificate - CDC' : 'თქვენი სერტიფიკატი - CDC';
+  // Public, no-login download of the exact same PDF that's attached — see
+  // GET /api/courses/certificates/download/:code (routes/courses/).
+  const downloadUrl = `${httpsBackendUrl()}/api/courses/certificates/download/${verificationCode}`;
+  const html = wrapTemplate(
+    lang === 'en' ? 'Your Certificate is Ready' : 'თქვენი სერტიფიკატი მზადაა',
+    lang === 'en'
+      ? `Congratulations, ${studentName}! Your certificate for completing <strong>${courseTitle}</strong> is attached to this email — you can also download it anytime using the button below.`
+      : `გილოცავთ, ${studentName}! თქვენი სერტიფიკატი კურსის „<strong>${courseTitle}</strong>“ დასრულებისთვის თანდართულია ამ წერილს — ასევე შეგიძლიათ ჩამოტვირთოთ ქვემოთ მოცემული ღილაკით ნებისმიერ დროს.`,
+    lang === 'en' ? 'Download Certificate' : 'სერტიფიკატის ჩამოტვირთვა',
+    downloadUrl
+  );
+  if (!resend) {
+    console.log(`[DEV EMAIL] To: ${to} | Subject: ${subject} | Certificate PDF attached (${pdfBuffer.length} bytes, not actually sent)`);
+    return;
+  }
+  try {
+    await resend.emails.send({
+      from: EMAIL_FROM,
+      to,
+      subject,
+      html,
+      attachments: [{ filename, content: pdfBuffer }],
+    });
+  } catch (err) {
+    console.error(`[emailService] Certificate email failed for ${to}:`, err);
+    throw err;
+  }
+}
+
+// Fired once per completed mentorship booking (routes/payments's BOG
+// callback, MENTORSHIP branch) — after the Google Calendar event has been
+// attempted, success or failure. `meetLink` is null when calendar sync
+// failed/isn't configured; every email still sends, just without a Meet
+// link line, per the "never let a calendar hiccup silently drop the
+// confirmation" requirement. Each recipient's send is independently
+// try/caught so one bad address can't suppress the other two.
+export interface MentorshipBookingEmailParams {
+  bookingId: string;
+  mentorName: string;
+  mentorEmail: string;
+  studentName: string;
+  studentEmail: string;
+  studentPhone: string;
+  scheduledAt: Date;
+  durationMinutes: number;
+  meetLink: string | null;
+  consultationDescription: string | null;
+}
+
+export async function sendMentorshipBookingEmails(params: MentorshipBookingEmailParams): Promise<void> {
+  const {
+    bookingId,
+    mentorName,
+    mentorEmail,
+    studentName,
+    studentEmail,
+    studentPhone,
+    scheduledAt,
+    durationMinutes,
+    meetLink,
+    consultationDescription,
+  } = params;
+
+  const whenStr = scheduledAt.toLocaleString('ka-GE', { timeZone: 'Asia/Tbilisi', dateStyle: 'full', timeStyle: 'short' });
+  const topicLine = consultationDescription ? `<p><strong>თემა:</strong> ${consultationDescription}</p>` : '';
+  const meetLine = meetLink
+    ? `<p><strong>Google Meet:</strong> <a href="${meetLink}">${meetLink}</a></p>`
+    : '<p>Google Meet ბმული ავტომატურად დაემატება მალე — შეამოწმეთ პირადი კაბინეტი.</p>';
+  const sessionsUrl = `${FRONTEND_URL}/dashboard/mentorship-sessions`;
+
+  // Mentor — plain HTML, no attachment.
+  const mentorHtml = wrapTemplate(
+    'ახალი მენტორის სესია დაჯავშნილია',
+    `<strong>${studentName}</strong>-მა დაჯავშნა სესია — <strong>${whenStr}</strong>.${topicLine}<p><strong>ტელეფონი:</strong> ${studentPhone}</p>${meetLine}`,
+    'პირადი კაბინეტის ნახვა',
+    sessionsUrl
+  );
+  await sendEmail(mentorEmail, `ახალი დაჯავშნა: ${studentName}`, mentorHtml, sessionsUrl);
+
+  // CDC Center/admin — reuses the same "notify the team" recipient list as
+  // sendStudioInquiryEmail, no-op (logged) if none configured.
+  if (SUPER_ADMIN_EMAILS.length > 0) {
+    const adminHtml = wrapTemplate(
+      'ახალი მენტორის დაჯავშნა (გადახდილი)',
+      `<strong>${studentName}</strong> ↔ <strong>${mentorName}</strong> — <strong>${whenStr}</strong>.${topicLine}${meetLine}`,
+      'ადმინ პანელის ნახვა',
+      `${FRONTEND_URL}/admin/mentorship`
+    );
+    await Promise.all(
+      SUPER_ADMIN_EMAILS.map((adminEmail) =>
+        sendEmail(adminEmail, `ახალი მენტორის სესია: ${studentName} ↔ ${mentorName}`, adminHtml, sessionsUrl)
+      )
+    );
+  } else {
+    console.log(`[emailService] No SUPER_ADMIN_EMAILS configured — mentorship booking ${bookingId} not emailed to admin.`);
+  }
+
+  // Student — with an .ics calendar invite attached, same
+  // attachments-bypass-sendEmail() shape as sendCertificateEmail, but never
+  // throws (a booking confirmation must never fail the payment callback
+  // that triggers it).
+  const studentHtml = wrapTemplate(
+    'თქვენი მენტორის სესია დადასტურებულია',
+    `თქვენი სესია მენტორთან <strong>${mentorName}</strong> დაჯავშნილია — <strong>${whenStr}</strong>.${topicLine}${meetLine}<p>კალენდარში დასამატებლად გახსენით თანდართული ფაილი.</p>`,
+    'პირადი კაბინეტის ნახვა',
+    sessionsUrl
+  );
+  if (!resend) {
+    console.log(`[DEV EMAIL] To: ${studentEmail} | Subject: მენტორის სესია დადასტურებულია | Meet: ${meetLink ?? '(pending)'}`);
+    return;
+  }
+  try {
+    const ics = buildMentorshipIcs({
+      bookingId,
+      mentorName,
+      studentName,
+      scheduledAt,
+      durationMinutes,
+      meetLink,
+      consultationDescription,
+    });
+    await resend.emails.send({
+      from: EMAIL_FROM,
+      to: studentEmail,
+      subject: 'თქვენი მენტორის სესია დადასტურებულია',
+      html: studentHtml,
+      attachments: [{ filename: 'mentorship-session.ics', content: Buffer.from(ics, 'utf-8') }],
+    });
+  } catch (err) {
+    console.error(`[emailService] Mentorship confirmation email failed for ${studentEmail}:`, err);
+  }
+}
+
+// Fired once, the first time a booking's recordingUrl is set (see
+// services/mentorshipRecordingService.ts) — never re-sent on a later edit
+// of an already-attached link. The CTA button links straight to the
+// external recording URL itself (Google Drive / Bunny / direct MP4 —
+// whatever the admin/mentor pasted), not back into the CDC dashboard.
+export async function sendRecordingReadyEmail(params: {
+  studentEmail: string;
+  studentName: string;
+  mentorName: string;
+  scheduledAt: Date;
+  recordingUrl: string;
+  consultationDescription: string | null;
+}): Promise<void> {
+  const { studentEmail, studentName, mentorName, scheduledAt, recordingUrl, consultationDescription } = params;
+  const whenStr = scheduledAt.toLocaleString('ka-GE', { timeZone: 'Asia/Tbilisi', dateStyle: 'full', timeStyle: 'short' });
+  const topicLine = consultationDescription ? `<p><strong>თემა:</strong> ${consultationDescription}</p>` : '';
+  const html = wrapTemplate(
+    'თქვენი მენტორობის სესიის ჩანაწერი მზადაა! 🎥',
+    `გამარჯობა, ${studentName}! თქვენი სესია მენტორთან <strong>${mentorName}</strong> — <strong>${whenStr}</strong> — ჩაწერილია და უკვე ხელმისაწვდომია ყურებისთვის.${topicLine}`,
+    'ჩანაწერის ყურება',
+    recordingUrl
+  );
+  await sendEmail(studentEmail, 'თქვენი მენტორობის სესიის ჩანაწერი მზადაა! 🎥', html, recordingUrl);
+}
+
+// ============================================================
+// LIVE TRAINING REGISTRATION & ENROLLMENT — two distinct emails for the two
+// distinct moments in a live training's funnel (see routes/liveTrainings.ts
+// and services/liveTrainingSaleService.ts's own comments on why lead
+// registration and enrollment are separate paths):
+//   Template A (this one) — an anonymous/unpaid lead just submitted the
+//   registration form (POST /:id/register). No seat is confirmed yet.
+//   Template B (below) — the user is now ACTIVELY enrolled with a real
+//   seat: a free training's self-serve enroll, a paid training's payment
+//   confirmation (BOG/Stripe webhook or the admin-test-mode 100%-off
+//   bypass), or an admin's manual grant.
+// Both use ka-GE/Asia/Tbilisi date formatting (same convention as
+// sendMentorshipBookingEmails' whenStr above) and the same "line already
+// reads fine without a real link yet" fallback sendMentorshipBookingEmails
+// uses for meetLink.
+// ============================================================
+function formatTrainingDate(date: Date | null, locale: NotificationLocale): string {
+  if (!date) return locale === 'en' ? 'to be confirmed soon' : 'დაზუსტდება მალე';
+  return date.toLocaleDateString(locale === 'en' ? 'en-US' : 'ka-GE', { timeZone: 'Asia/Tbilisi', dateStyle: 'long' });
+}
+
+const SIGNATURE_HTML: Record<NotificationLocale, string> = {
+  ka: 'პატივისცემით,<br/>CDC — Center of Digital Careers-ის გუნდი<br/>🌐 <a href="https://cdc.org.ge">cdc.org.ge</a><br/>✉️ <a href="mailto:contact@cdc.org.ge">contact@cdc.org.ge</a>',
+  en: 'Best regards,<br/>The CDC — Center of Digital Careers team<br/>🌐 <a href="https://cdc.org.ge">cdc.org.ge</a><br/>✉️ <a href="mailto:contact@cdc.org.ge">contact@cdc.org.ge</a>',
+};
+
+export async function sendLiveTrainingRegistrationEmail(params: {
+  email: string;
+  userName: string;
+  courseTitle: string;
+  startDate: Date | null;
+  liveTrainingId: string;
+  locale?: NotificationLocale;
+}): Promise<void> {
+  const { email, userName, courseTitle, startDate, liveTrainingId, locale = 'ka' } = params;
+  const startDateStr = formatTrainingDate(startDate, locale);
+  const trainingUrl = `${FRONTEND_URL}/live-trainings/${liveTrainingId}`;
+
+  const bodyHtml =
+    locale === 'en'
+      ? `
+    <p>Hello, <strong>${userName}</strong>!</p>
+    <p>Thank you for registering on the CDC (Center of Digital Careers) platform and for choosing our team on your digital career journey!</p>
+    <p>We've received your application for the course - "${courseTitle}".</p>
+    <p><strong>Next steps and important details:</strong></p>
+    <ul style="padding-left:20px;margin:0 0 16px;">
+      <li style="margin-bottom:8px;"><strong>Start date:</strong> the course starts on ${startDateStr}.</li>
+      <li style="margin-bottom:8px;"><strong>Group formation:</strong> to ensure a high-quality, interactive learning experience, the course starts once the minimum group size is reached. We'll contact you separately once the group is finalized to confirm the organizational details.</li>
+      <li><strong>Access & links:</strong> once your enrollment (payment) is confirmed, your Google Meet / online session link and your personal Google Classroom invite will automatically activate in your account.</li>
+    </ul>
+    <p>If you have any questions, you can reply directly to this email or contact us at: <strong>511 14 14 11</strong>.</p>
+    <p>We're looking forward to this learning journey together!</p>
+    <p style="margin-top:20px;">${SIGNATURE_HTML.en}</p>
+  `
+      : `
+    <p>გამარჯობა, <strong>${userName}</strong>!</p>
+    <p>მადლობას გიხდით CDC (Center of Digital Careers)-ის პლატფორმაზე დარეგისტრირებისთვის და ციფრული პროფესიის განვითარების გზაზე ჩვენი გუნდის არჩევისთვის!</p>
+    <p>გადავამოწმეთ თქვენი განაცხადი კურსზე - „${courseTitle}“.</p>
+    <p><strong>შემდეგი ნაბიჯები და მნიშვნელოვანი დეტალები:</strong></p>
+    <ul style="padding-left:20px;margin:0 0 16px;">
+      <li style="margin-bottom:8px;"><strong>სწავლის დაწყების თარიღი:</strong> კურსი დაიწყება ${startDateStr}-ს.</li>
+      <li style="margin-bottom:8px;"><strong>ჯგუფის დაკომპლექტება:</strong> სასწავლო პროცესის მაღალი ხარისხისა და ინტერაქციულობის უზრუნველსაყოფად, კურსი იწყება მინიმალური ნაკადის შევსებისთანავე. ჯგუფის საბოლოო დაკომპლექტებისთანავე დამატებით დაგიკავშირდებით ორგანიზაციული დეტალების დასაზუსტებლად.</li>
+      <li><strong>წვდომები და ბმულები:</strong> კურსზე ჩარიცხვის (საფასურის დადასტურების) შემდეგ, თქვენს პირად პროფილში ავტომატურად გააქტიურდება ლექციების Google Meet / ონლაინ შეხვედრის ბმული და პერსონალურ ციფრულ კლასში გასაწევრიანებელი მოწვევა.</li>
+    </ul>
+    <p>თუ რაიმე შეკითხვა გექნებათ, შეგიძლიათ პირდაპირ უპასუხოთ ამ წერილს ან დაგვიკავშირდეთ ნომერზე: <strong>511 14 14 11</strong>.</p>
+    <p>სიხარულით ველოდებით ჩვენს ერთობლივ სასწავლო მოგზაურობას!</p>
+    <p style="margin-top:20px;">${SIGNATURE_HTML.ka}</p>
+  `;
+
+  const html = wrapTemplate(
+    locale === 'en' ? 'Registration received! ✅' : 'რეგისტრაცია მიღებულია! ✅',
+    bodyHtml,
+    locale === 'en' ? 'Training details' : 'ტრენინგის დეტალები',
+    trainingUrl
+  );
+  const subject =
+    locale === 'en' ? `Confirming your registration for: ${courseTitle} | CDC` : `ადასტურებთ რეგისტრაციას კურსზე: ${courseTitle} | CDC`;
+  await sendEmail(email, subject, html, trainingUrl);
+}
+
+export async function sendLiveTrainingEnrollmentEmail(params: {
+  email: string;
+  userName: string;
+  courseTitle: string;
+  startDate: Date | null;
+  meetLink: string | null;
+  classroomLink: string | null;
+  locale?: NotificationLocale;
+}): Promise<void> {
+  const { email, userName, courseTitle, startDate, meetLink, classroomLink, locale = 'ka' } = params;
+  const startDateStr = formatTrainingDate(startDate, locale);
+  const dashboardUrl = `${FRONTEND_URL}/dashboard`;
+  // meetingUrl/classroomUrl are admin-attached-after-the-fact fields (see
+  // LiveTraining's own schema comment) AND time-gated on the dashboard side
+  // (routes/liveTrainings.ts's isMeetingLinkVisible — hidden until shortly
+  // before the session) — either way, "not present right now" is expected
+  // and normal at enrollment time, not an error, so this reads as a
+  // schedule note rather than a broken/missing link.
+  const LINK_NOT_YET_ACTIVE: Record<NotificationLocale, string> = {
+    ka: 'ბმული გააქტიურდება ლექციის დაწყებამდე 15 წუთით ადრე.',
+    en: 'The link will activate 15 minutes before the session starts.',
+  };
+
+  const bodyHtml =
+    locale === 'en'
+      ? `
+    <p>Hello, <strong>${userName}</strong>!</p>
+    <p>Congratulations! You've successfully enrolled in the course - "${courseTitle}".</p>
+    <p><strong>Your learning space details:</strong></p>
+    <ul style="padding-left:20px;margin:0 0 16px;">
+      <li style="margin-bottom:8px;"><strong>Start date:</strong> ${startDateStr}</li>
+      <li style="margin-bottom:8px;"><strong>Google Meet session link:</strong> ${meetLink ? `<a href="${meetLink}">${meetLink}</a>` : LINK_NOT_YET_ACTIVE.en}</li>
+      <li><strong>Digital Classroom join link:</strong> ${classroomLink ? `<a href="${classroomLink}">${classroomLink}</a>` : LINK_NOT_YET_ACTIVE.en}</li>
+    </ul>
+    <p>You can also view your lecture schedule, recordings, and course materials any time from your personal dashboard (<a href="${dashboardUrl}">cdc.org.ge/dashboard</a>).</p>
+    <p>If you have any questions, contact us at: <strong>511 14 14 11</strong>.</p>
+    <p>We wish you a successful and productive learning experience!</p>
+    <p style="margin-top:20px;">${SIGNATURE_HTML.en}</p>
+  `
+      : `
+    <p>გამარჯობა, <strong>${userName}</strong>!</p>
+    <p>გილოცავთ! თქვენ წარმატებით ჩაერიცხეთ კურსზე - „${courseTitle}“.</p>
+    <p><strong>თქვენი სასწავლო სივრცის დეტალები:</strong></p>
+    <ul style="padding-left:20px;margin:0 0 16px;">
+      <li style="margin-bottom:8px;"><strong>სწავლის დაწყების თარიღი:</strong> ${startDateStr}</li>
+      <li style="margin-bottom:8px;"><strong>Google Meet ლექციების ბმული:</strong> ${meetLink ? `<a href="${meetLink}">${meetLink}</a>` : LINK_NOT_YET_ACTIVE.ka}</li>
+      <li><strong>ციფრულ კლასში გაწევრიანების ბმული:</strong> ${classroomLink ? `<a href="${classroomLink}">${classroomLink}</a>` : LINK_NOT_YET_ACTIVE.ka}</li>
+    </ul>
+    <p>ასევე, თქვენს პირად დეშბორდზე (<a href="${dashboardUrl}">cdc.org.ge/dashboard</a>) ნებისმიერ დროს შეგიძლიათ ნახოთ ლექციების განრიგი, ჩანაწერები და სასწავლო მასალები.</p>
+    <p>შეკითხვების შემთხვევაში დაგვიკავშირდით: <strong>511 14 14 11</strong>.</p>
+    <p>წარმატებულ და პროდუქტიულ სწავლას გისურვებთ!</p>
+    <p style="margin-top:20px;">${SIGNATURE_HTML.ka}</p>
+  `;
+
+  const html = wrapTemplate(
+    locale === 'en' ? 'Congratulations on your enrollment! 🎉' : 'გილოცავთ ჩარიცხვას! 🎉',
+    bodyHtml,
+    locale === 'en' ? 'Go to dashboard' : 'დეშბორდზე გადასვლა',
+    dashboardUrl
+  );
+  const subject =
+    locale === 'en' ? `Congratulations! You're enrolled in: ${courseTitle} | CDC` : `გილოცავთ! ჩარიცხული ხართ კურსზე: ${courseTitle} | CDC`;
+  await sendEmail(email, subject, html, dashboardUrl);
+}
+
+// Fired once, the moment a Business account's public registry extract is
+// approved (routes/adminCompanies.ts's setVerified) — the same trigger
+// point that starts the 7-day AI Agents Suite trial, so this email is what
+// tells the business that trial is now live.
+export async function sendBusinessVerifiedEmail(email: string, companyName: string): Promise<void> {
+  const link = `${FRONTEND_URL}/dashboard/ai-tools`;
+  const html = wrapTemplate(
+    'თქვენი ბიზნეს ანგარიში დადასტურდა! ✅',
+    `გილოცავთ! <strong>${companyName || 'თქვენი კომპანია'}</strong>-ს საჯარო რეესტრის ამონაწერი დადასტურდა ადმინისტრაციის მიერ. ` +
+      `AI ინსტრუმენტები და 7-დღიანი უფასო საცდელი პერიოდი უკვე გააქტიურებულია თქვენი ანგარიშისთვის.`,
+    'AI ინსტრუმენტების გახსნა',
+    link
+  );
+  await sendEmail(email, 'თქვენი ბიზნეს ანგარიში დადასტურდა! ✅', html, link);
+}
+
+// Distinct from the auto-verify path's silence-on-pending: this fires only
+// for an admin's explicit reject action (see routes/adminCompanies.ts),
+// which is the one point in the KYC flow where a human-written reason
+// actually exists. `reason` is admin-authored, not AI output — see
+// businessKycReasoning on the User model for the AI's own explanation,
+// which is shown in the admin drawer but never sent to the business.
+export async function sendBusinessRejectedEmail(email: string, companyName: string, reason: string): Promise<void> {
+  const link = `${FRONTEND_URL}/onboarding`;
+  const html = wrapTemplate(
+    'თქვენი ბიზნეს დოკუმენტის განხილვა ⚠️',
+    `სამწუხაროდ, ვერ დავადასტურეთ <strong>${companyName || 'თქვენი კომპანიის'}</strong> რეგისტრაციის დოკუმენტი.<br><br>` +
+      `მიზეზი: ${reason}<br><br>` +
+      `გთხოვთ ატვირთოთ ახალი ან გასწორებული დოკუმენტი განხილვისთვის.`,
+    'დოკუმენტის ხელახლა ატვირთვა',
+    link
+  );
+  await sendEmail(email, 'თქვენი ბიზნეს დოკუმენტის განხილვა ⚠️', html, link);
+}
+
+// Fired alongside every in-app Notification row an admin creates (manual
+// POST /admin/notifications, or an automated system one — see that route
+// and every other prisma.notification.create call across this codebase)
+// so a notification isn't missed by someone who doesn't have the site open.
+// Deliberately generic ("you have an official notification") rather than
+// repeating the notification's own title/message in the email body — the
+// full content only ever lives on the platform, consistent with this
+// system being a one-way admin -> user channel with no reply-in-app
+// affordance (see NotificationBell.tsx's own comment).
+export async function sendOfficialNotificationEmail(email: string): Promise<void> {
+  const link = `${FRONTEND_URL}/dashboard/notifications`;
+  const html = wrapTemplate(
+    'თქვენ მიიღეთ ახალი შეტყობინება',
+    'ადმინისტრაციისგან მიღებული გაქვთ ახალი ოფიციალური შეტყობინება. გთხოვთ გაეცნოთ მას პლატფორმაზე.' +
+      '<p style="margin-top:20px;font-size:12px;color:#94a3b8;">კითხვების შემთხვევაში მოგვწერეთ პირდაპირ: contact@cdc.org.ge</p>',
+    'შეტყობინების ნახვა პლატფორმაზე',
+    link
+  );
+  await sendEmail(email, 'CDC პლატფორმის შეტყობინება / Official Notification from CDC', html, link);
+}
+
+// Fired once per subscription, ~24h before BillingSubscription.trialEndsAt
+// (see billingService.sweepTrialEndingWarnings) — paired with an identical
+// in-app Notification. Exact wording is the platform's explicit ethical-
+// billing commitment: the user is told before access could lapse, not
+// after. Never re-sent for the same trial (trialWarningSentAt guards it).
+export async function sendTrialEndingWarningEmail(email: string): Promise<void> {
+  const link = `${FRONTEND_URL}/dashboard/billing`;
+  const html = wrapTemplate(
+    'თქვენი საცდელი პერიოდი მალე იწურება',
+    'თქვენს საცდელ პერიოდს ვადა 1 დღეში ეწურება. წვდომის გასაგრძელებლად შეგიძლიათ გადაიხადოთ დაშბორდიდან.',
+    'ბილინგის გვერდის ნახვა',
+    link
+  );
+  await sendEmail(email, 'თქვენი საცდელი პერიოდი მალე იწურება — CDC', html, link);
+}
+
+// Fired once per billing cycle, ~24h before BillingSubscription.currentPeriodEnd
+// (see billingService.sweepRenewalReminders) — only for subscriptions with
+// autoRenew on and a verified card, i.e. a charge the user actually opted
+// into. This is the platform's "no surprise charges" commitment in
+// practice: always a heads-up before money moves, with an explicit way out
+// (delete the card) named right in the message. Exact wording as specified.
+export async function sendPreDebitReminderEmail(email: string): Promise<void> {
+  const link = `${FRONTEND_URL}/dashboard/settings`;
+  const html = wrapTemplate(
+    'მოახლოებული გადახდა თქვენს ანგარიშზე',
+    'თანხის ჩამოჭრის დროა. თუ გსურთ მომსახურების გაგრძელება, გთხოვთ დაახვედროთ საკმარისი თანხა ბარათზე. თუ არ გსურთ გაგრძელება, შეგიძლიათ წაშალოთ ბარათი პარამეტრებიდან.',
+    'ბარათის მართვა',
+    link
+  );
+  await sendEmail(email, 'მოახლოებული გადახდა თქვენს ანგარიშზე — CDC', html, link);
+}
+
+// Fired once per cancellation (see billingService.revokeAccessAndNotify) —
+// covers both triggers, the user's own "გამოწერის გაუქმება" button and a
+// removed payment method that instantly cancels the subscription it was
+// funding. Paired with an identical in-app Notification.
+export async function sendSubscriptionCanceledEmail(email: string, productLabel: string): Promise<void> {
+  const link = `${FRONTEND_URL}/dashboard/billing`;
+  const html = wrapTemplate(
+    'თქვენი გამოწერა გაუქმებულია',
+    `თქვენი გამოწერა <strong>${productLabel}</strong>-ზე გაუქმებულია და ულიმიტო წვდომა ამ სერვისზე შეწყდა დაუყოვნებლივ. თუ ეს შეცდომით მოხდა, შეგიძლიათ ნებისმიერ დროს ხელახლა გამოიწეროთ დაშბორდიდან.`,
+    'ბილინგის გვერდის ნახვა',
+    link
+  );
+  await sendEmail(email, 'თქვენი გამოწერა გაუქმებულია — CDC', html, link);
+}
+
+// Fired whenever PUT /auth/me actually changes User.payoutIban (see
+// routes/auth/) — the one security-sensitive field that route lets a
+// user change with nothing more than their existing session. This is the
+// account owner's only real-time signal that it happened, so an account-
+// takeover that quietly redirects future payouts doesn't go unnoticed
+// until money is already gone. Always sent, even to the email on file for
+// an account whose session was just hijacked — a legitimate change is a
+// harmless extra email; an illegitimate one is the whole point of sending it.
+export async function sendPayoutIbanChangedEmail(email: string): Promise<void> {
+  const link = `${FRONTEND_URL}/profile/settings`;
+  const html = wrapTemplate(
+    'თქვენი გადახდის IBAN შეიცვალა',
+    'თქვენს ანგარიშზე განახლდა თანხის გატანის საბანკო ანგარიშის ნომერი (IBAN). თუ ეს თქვენ არ გაგიკეთებიათ, დაუყოვნებლივ შეცვალეთ პაროლი და დაგვიკავშირდით.',
+    'ანგარიშის პარამეტრები',
+    link
+  );
+  await sendEmail(email, 'თქვენი გადახდის IBAN შეიცვალა — CDC', html, link);
+}
+
+// Basic HTML-escaping for AI-generated + user-edited free text landing
+// inside an HTML email body — without this, transcript/notes content
+// containing "<", ">", or "&" would corrupt the surrounding markup (at
+// best) or inject arbitrary HTML into an email sent from CDC's own
+// domain (at worst). ka+en only, same precedent as this file's other
+// dashboard-feature emails (sendRecordingReadyEmail, sendRecordingReady*
+// siblings) — not the full 9-locale sweep, since this is a one-off
+// user-triggered export, not site-wide UI copy.
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Very long AI transcripts are still useful in full, but an unbounded
+// email body risks provider size limits / being clipped by the reader's
+// inbox — capped generously (roughly 15-20 printed pages) with the export
+// buttons on the page itself as the real way to get the complete text
+// past this point.
+const MEDIA_STUDIO_EMAIL_MAX_CHARS = 60_000;
+function truncateForEmail(text: string, lang: 'ka' | 'en'): string {
+  if (text.length <= MEDIA_STUDIO_EMAIL_MAX_CHARS) return escapeHtml(text);
+  const notice = lang === 'en' ? '\n\n[Truncated — download the full text from the Media Studio page.]' : '\n\n[შემოკლებულია — სრული ტექსტი ჩამოტვირთეთ Media Studio გვერდიდან.]';
+  return escapeHtml(text.slice(0, MEDIA_STUDIO_EMAIL_MAX_CHARS) + notice);
+}
+
+// "Send via Email" action on the AI Voice & Video Media Studio's
+// transcript/notes editor (Frontend's MediaStudioPage) — a user-composed
+// destination address, unlike every other email in this file (which target
+// a fixed system-known recipient). Kept safe to expose despite that by the
+// route's own authentication + tight per-user rate limit (see
+// routes/mediaStudio.ts), not by restricting the recipient here.
+export async function sendMediaStudioExport(params: {
+  to: string;
+  senderEmail: string;
+  transcript?: string;
+  notes?: string;
+  lang?: 'ka' | 'en';
+}): Promise<void> {
+  const { to, senderEmail, transcript, notes, lang = 'ka' } = params;
+  const link = `${FRONTEND_URL}/dashboard/tools/media-studio`;
+
+  const sections: string[] = [];
+  if (notes) {
+    sections.push(
+      `<h3 style="margin:24px 0 8px;font-size:15px;color:#0f172a;">${lang === 'en' ? 'Notes & Summary' : 'კონსპექტი და შეჯამება'}</h3>` +
+        `<div style="white-space:pre-wrap;font-size:13px;line-height:1.7;color:#334155;">${truncateForEmail(notes, lang)}</div>`
+    );
+  }
+  if (transcript) {
+    sections.push(
+      `<h3 style="margin:24px 0 8px;font-size:15px;color:#0f172a;">${lang === 'en' ? 'Full Transcript' : 'სრული ტრანსკრიპტი'}</h3>` +
+        `<div style="white-space:pre-wrap;font-size:13px;line-height:1.7;color:#334155;">${truncateForEmail(transcript, lang)}</div>`
+    );
+  }
+
+  const intro =
+    lang === 'en'
+      ? `<strong>${escapeHtml(senderEmail)}</strong> shared this from CDC's AI Voice &amp; Video Media Studio.`
+      : `<strong>${escapeHtml(senderEmail)}</strong>-მა გაგიზიარათ ეს მასალა CDC-ის AI ხმოვანი და ვიდეო სტუდიიდან.`;
+
+  const html = wrapTemplate(
+    lang === 'en' ? 'AI Voice & Video Studio — Export' : 'AI ხმოვანი და ვიდეო სტუდია — ექსპორტი',
+    `<p>${intro}</p>${sections.join('')}`,
+    lang === 'en' ? 'Open Media Studio' : 'Media Studio-ს გახსნა',
+    link
+  );
+  const subject = lang === 'en' ? 'AI Voice & Video Studio — shared export' : 'AI ხმოვანი და ვიდეო სტუდია — გაზიარებული მასალა';
+
+  if (!resend) {
+    console.log(`[DEV EMAIL] To: ${to} | Subject: ${subject} | From: ${senderEmail} | (not actually sent — RESEND_API_KEY unset)`);
+    return;
+  }
+  await resend.emails.send({ from: EMAIL_FROM, to, subject, html, replyTo: senderEmail });
+}
+
+export async function sendPasswordResetEmail(email: string, token: string, lang: 'ka' | 'en' = 'ka'): Promise<void> {
+  const link = `${FRONTEND_URL}/reset-password?token=${token}`;
+  const html =
+    lang === 'en'
+      ? wrapTemplate(
+          'Reset Your Password',
+          'We received a request to reset your CDC account password. If you did not request this, simply ignore this email — your password will remain unchanged. This link is valid for 1 hour.',
+          'Reset Password',
+          link
+        )
+      : wrapTemplate(
+          'პაროლის აღდგენა',
+          'მიღებულია მოთხოვნა თქვენი CDC ანგარიშის პაროლის აღდგენაზე. თუ ეს თქვენ არ მოგითხოვიათ, უბრალოდ იგნორირება გაუკეთეთ ამ წერილს — თქვენი პაროლი უცვლელი დარჩება. ბმული ვალიდურია 1 საათის განმავლობაში.',
+          'პაროლის აღდგენა',
+          link
+        );
+  const subject = lang === 'en' ? 'CDC — Password Reset' : 'CDC — პაროლის აღდგენა';
+  await sendEmail(email, subject, html, link);
+}
+
+// ============================================================
+// GIFT CARDS — see services/giftCardService.ts. A branded, table-based card
+// (renders in Gmail/Outlook/Apple Mail; the gradient has a solid bgcolor
+// fallback for clients that drop CSS gradients). Every user-typed field
+// (names, message, product name) is HTML-escaped.
+// ============================================================
+const GIFT_CARD_THEMES: Record<string, { from: string; to: string; solid: string; accent: string; emoji: string; label: string }> = {
+  classic: { from: '#4f46e5', to: '#7c3aed', solid: '#5b3fe0', accent: '#c7d2fe', emoji: '🎁', label: 'სასაჩუქრე ბარათი' },
+  birthday: { from: '#ec4899', to: '#f97316', solid: '#f0567a', accent: '#fde68a', emoji: '🎂', label: 'გილოცავ დაბადების დღეს!' },
+  celebration: { from: '#0f172a', to: '#334155', solid: '#1e293b', accent: '#facc15', emoji: '✨', label: 'გილოცავ!' },
+  kids: { from: '#06b6d4', to: '#22c55e', solid: '#14b8a6', accent: '#fef08a', emoji: '🧸', label: 'საჩუქარი შენთვის' },
+};
+
+export interface GiftCardEmailParams {
+  to: string;
+  code: string;
+  amountTetri: number;
+  senderName: string;
+  recipientName: string;
+  message: string | null;
+  design: string;
+  expiresAt: Date | null;
+  suggestedItem: string | null;
+  suggestedUrl: string | null;
+}
+
+function formatGel(tetri: number): string {
+  const gel = tetri / 100;
+  return Number.isInteger(gel) ? `${gel}` : gel.toFixed(2);
+}
+
+function formatKaDate(d: Date): string {
+  const months = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
+  return `${d.getUTCDate()} ${months[d.getUTCMonth()]}, ${d.getUTCFullYear()}`;
+}
+
+// Only same-site links may appear as a button in our email.
+function safeSuggestedUrl(url: string | null): string | null {
+  if (!url || !url.startsWith('/') || url.startsWith('//')) return null;
+  return `${FRONTEND_URL}${url}`;
+}
+
+export function buildGiftCardEmailHtml(p: GiftCardEmailParams): string {
+  const t = GIFT_CARD_THEMES[p.design] ?? GIFT_CARD_THEMES.classic;
+  const redeemUrl = `${FRONTEND_URL}/gift-cards/redeem?code=${encodeURIComponent(p.code)}`;
+  const suggested = safeSuggestedUrl(p.suggestedUrl);
+  const message = p.message ? escapeHtml(p.message).replace(/\n/g, '<br/>') : '';
+  return `<!DOCTYPE html>
+<html>
+  <body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 12px;">
+      <tr><td align="center">
+        <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="max-width:520px;width:100%;">
+          <tr><td style="padding:0 4px 16px;font-size:15px;color:#334155;">
+            გამარჯობა, <strong>${escapeHtml(p.recipientName)}</strong>! <strong>${escapeHtml(p.senderName)}</strong> გიგზავნის საჩუქარს CDC-დან ${t.emoji}
+          </td></tr>
+          <tr><td>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${t.solid}" style="background:${t.solid};background-image:linear-gradient(135deg,${t.from},${t.to});border-radius:20px;overflow:hidden;">
+              <tr><td style="padding:28px 28px 8px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+                  <td style="color:#ffffff;font-weight:900;font-size:20px;letter-spacing:0.08em;">CDC</td>
+                  <td align="right" style="color:${t.accent};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">GIFT CARD</td>
+                </tr></table>
+              </td></tr>
+              <tr><td style="padding:20px 28px 0;color:${t.accent};font-size:14px;font-weight:600;">${t.emoji} ${t.label}</td></tr>
+              <tr><td style="padding:4px 28px 0;color:#ffffff;font-size:56px;font-weight:900;line-height:1.1;">${formatGel(p.amountTetri)} <span style="font-size:30px;">₾</span></td></tr>
+              <tr><td style="padding:8px 28px 0;color:#e2e8f0;font-size:13px;">ვის: ${escapeHtml(p.recipientName)} · ვისგან: ${escapeHtml(p.senderName)}</td></tr>
+              ${message ? `<tr><td style="padding:18px 28px 0;"><div style="background:rgba(255,255,255,0.14);border-radius:14px;padding:14px 16px;color:#ffffff;font-size:14px;line-height:1.6;font-style:italic;">“${message}”</div></td></tr>` : ''}
+              <tr><td style="padding:22px 28px 28px;">
+                <div style="background:#ffffff;border-radius:14px;padding:14px 16px;text-align:center;">
+                  <div style="font-size:11px;color:#64748b;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;">შენი კოდი · Your code</div>
+                  <div style="font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:24px;font-weight:800;color:#0f172a;letter-spacing:0.12em;">${escapeHtml(p.code)}</div>
+                </div>
+              </td></tr>
+            </table>
+          </td></tr>
+          <tr><td style="padding:24px 4px 0;font-size:14px;line-height:1.7;color:#475569;">
+            <strong>როგორ გამოვიყენო?</strong><br/>
+            1. აირჩიე ნებისმიერი კურსი, ტრენინგი, პროდუქტი ან AI საბავშვო წიგნი cdc.org.ge-ზე.<br/>
+            2. გადახდისას ჩაწერე ეს კოდი „პრომო კოდის“ ველში.<br/>
+            3. თანხა ჩამოგეჭრება ბარათიდან. ნაშთი შემდეგი ყიდვისთვის შეგრჩება.
+            ${p.expiresAt ? `<br/><span style="color:#94a3b8;font-size:12px;">მოქმედებს ${formatKaDate(p.expiresAt)}-მდე.</span>` : ''}
+            ${p.suggestedItem ? `<br/><br/>🎯 ${escapeHtml(p.senderName)} ფიქრობს, რომ მოგეწონება: <strong>${escapeHtml(p.suggestedItem)}</strong>` : ''}
+          </td></tr>
+          <tr><td style="padding:24px 4px 0;">
+            <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+              <td style="border-radius:12px;background:${t.solid};background-image:linear-gradient(135deg,${t.from},${t.to});">
+                <a href="${suggested ?? redeemUrl}" style="display:inline-block;padding:14px 30px;color:#ffffff;text-decoration:none;font-weight:800;font-size:15px;">საჩუქრის გამოყენება →</a>
+              </td>
+            </tr></table>
+          </td></tr>
+          <tr><td style="padding:28px 4px 0;font-size:11px;color:#94a3b8;">CDC — Center for Digital Careers · <a href="${redeemUrl}" style="color:#94a3b8;">ნაშთის შემოწმება</a></td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>`;
+}
+
+export async function sendGiftCardEmail(p: GiftCardEmailParams): Promise<void> {
+  const html = buildGiftCardEmailHtml(p);
+  await sendEmail(p.to, `🎁 ${p.senderName} გიგზავნის ${formatGel(p.amountTetri)} ₾-იან საჩუქარს CDC-დან`, html, `${FRONTEND_URL}/gift-cards/redeem?code=${p.code}`);
+}
+
+export async function sendGiftCardDeliveredToBuyerEmail(p: GiftCardEmailParams & { recipientEmail: string }): Promise<void> {
+  const link = `${FRONTEND_URL}/dashboard/gift-cards`;
+  const html = wrapTemplate(
+    'შენი საჩუქარი გაიგზავნა 🎉',
+    `${formatGel(p.amountTetri)} ₾-იანი სასაჩუქრე ბარათი გაეგზავნა მიმღებს: <strong>${escapeHtml(p.recipientName)}</strong> (${escapeHtml(p.recipientEmail)}). შენს დაფაზე ხედავ, გამოიყენა თუ არა, და იქიდანვე შეგიძლია ბარათის დაბეჭდვა ან ხელახლა გაგზავნა.`,
+    'ჩემი სასაჩუქრე ბარათები',
+    link
+  );
+  await sendEmail(p.to, 'შენი სასაჩუქრე ბარათი გაიგზავნა', html, link);
+}
+
+// ============================================================
+// AI PROCTORED EXAM — the student's own results (score + every question
+// with the correct answer and explanation), sent to the email they typed
+// before starting. Everything shown comes from AI output or student input,
+// so every field is HTML-escaped.
+// ============================================================
+export interface ExamResultsEmailQuestion {
+  number: number;
+  type: 'MCQ' | 'PRACTICAL' | 'CODE';
+  question: string;
+  options: Record<string, string> | null;
+  candidateAnswer: string | null;
+  correctAnswer: string | null;
+  isCorrect: boolean | null;
+  explanation: string | null;
+  aiScore: number | null;
+  aiFeedback: string | null;
+  expectedAnswer: string | null;
+}
+
+export interface ExamResultsEmailParams {
+  to: string;
+  locale: NotificationLocale;
+  examTitle: string;
+  candidateName: string;
+  totalScore: number | null;
+  correctCount: number;
+  mcqTotal: number;
+  flagged: boolean;
+  questions: ExamResultsEmailQuestion[];
+  resultsUrl: string;
+}
+
+const EXAM_RESULTS_COPY = {
+  ka: {
+    subject: (title: string) => `შენი შედეგები: ${title}`,
+    hello: (name: string) => `გამარჯობა, ${name}!`,
+    intro: 'გამოცდა დასრულდა. ქვემოთ არის შენი ქულა და ყველა კითხვა სწორი პასუხითა და ახსნით.',
+    score: 'ქულა',
+    correctOf: (c: number, n: number) => `სწორი პასუხი: ${c} / ${n}`,
+    flagged: 'გამოცდა დაფიქსირდა დარღვევების ან დროის ამოწურვის გამო. ღია კითხვები AI-მ არ შეაფასა, საბოლოო შედეგს მასწავლებელი გადახედავს.',
+    yourAnswer: 'შენი პასუხი',
+    noAnswer: 'პასუხი არ გაცემულა',
+    correct: 'სწორი პასუხი',
+    explanation: 'ახსნა',
+    feedback: 'შეფასება',
+    expected: 'რა უნდა ყოფილიყო პასუხში',
+    points: (s: number) => `${s} / 100`,
+    notGraded: 'ჯერ არ შეფასებულა',
+    cta: 'შედეგების ნახვა საიტზე',
+  },
+  en: {
+    subject: (title: string) => `Your results: ${title}`,
+    hello: (name: string) => `Hi ${name},`,
+    intro: 'Your exam is complete. Below are your score and every question with the correct answer and an explanation.',
+    score: 'Score',
+    correctOf: (c: number, n: number) => `Correct answers: ${c} / ${n}`,
+    flagged: 'This attempt was flagged (violations or time limit). Open questions were not AI-graded; your teacher will review the final result.',
+    yourAnswer: 'Your answer',
+    noAnswer: 'No answer',
+    correct: 'Correct answer',
+    explanation: 'Explanation',
+    feedback: 'Feedback',
+    expected: 'What a strong answer includes',
+    points: (s: number) => `${s} / 100`,
+    notGraded: 'Not graded yet',
+    cta: 'View results online',
+  },
+};
+
+export function buildExamResultsEmailHtml(p: ExamResultsEmailParams): string {
+  const c = EXAM_RESULTS_COPY[p.locale];
+  const e = (s: string) => escapeHtml(s).replace(/\n/g, '<br/>');
+  const optionText = (q: ExamResultsEmailQuestion, letter: string | null) =>
+    letter && q.options && q.options[letter] ? `${letter}. ${q.options[letter]}` : letter ?? '';
+
+  const rows = p.questions
+    .map((q) => {
+      let body = '';
+      if (q.type === 'MCQ') {
+        const mark = q.isCorrect ? '✅' : '❌';
+        const yours = q.candidateAnswer ? optionText(q, q.candidateAnswer) : c.noAnswer;
+        body += `<div style="margin-top:8px;color:${q.isCorrect ? '#047857' : '#b91c1c'};">${mark} ${c.yourAnswer}: <strong>${e(yours)}</strong></div>`;
+        if (!q.isCorrect && q.correctAnswer) {
+          body += `<div style="margin-top:4px;color:#047857;">${c.correct}: <strong>${e(optionText(q, q.correctAnswer))}</strong></div>`;
+        }
+        if (q.explanation) {
+          body += `<div style="margin-top:8px;padding:10px 12px;background:#f1f5f9;border-radius:8px;color:#334155;"><strong>${c.explanation}:</strong> ${e(q.explanation)}</div>`;
+        }
+      } else {
+        body += `<div style="margin-top:8px;color:#334155;">${c.yourAnswer}:</div>`;
+        body += `<div style="margin-top:4px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;color:#0f172a;${q.type === 'CODE' ? "font-family:Menlo,Consolas,monospace;font-size:12px;" : ''}">${q.candidateAnswer?.trim() ? e(q.candidateAnswer) : c.noAnswer}</div>`;
+        body += `<div style="margin-top:8px;color:#334155;"><strong>${c.score}:</strong> ${q.aiScore != null ? c.points(q.aiScore) : c.notGraded}</div>`;
+        if (q.aiFeedback) body += `<div style="margin-top:6px;padding:10px 12px;background:#f1f5f9;border-radius:8px;color:#334155;"><strong>${c.feedback}:</strong> ${e(q.aiFeedback)}</div>`;
+        if (q.expectedAnswer) body += `<div style="margin-top:6px;color:#475569;font-size:13px;"><strong>${c.expected}:</strong> ${e(q.expectedAnswer)}</div>`;
+      }
+      return `<tr><td style="padding:14px 0;border-top:1px solid #e2e8f0;font-size:14px;line-height:1.55;">
+        <div style="font-weight:700;color:#0f172a;">${q.number}. ${e(q.question)}</div>${body}
+      </td></tr>`;
+    })
+    .join('');
+
+  const scoreLine = p.totalScore != null ? `${Math.round(p.totalScore)}%` : '—';
+  return `<!DOCTYPE html>
+<html>
+  <body style="margin:0;padding:0;background-color:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 12px;">
+      <tr><td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+          <tr><td style="background:#2563eb;background-image:linear-gradient(135deg,#06b6d4,#7c3aed);padding:24px 28px;">
+            <span style="color:#ffffff;font-weight:900;font-size:18px;letter-spacing:0.05em;">CDC</span>
+            <div style="color:#e0f2fe;font-size:14px;margin-top:6px;">${e(p.examTitle)}</div>
+          </td></tr>
+          <tr><td style="padding:28px;">
+            <p style="margin:0 0 6px;font-size:15px;color:#0f172a;">${e(c.hello(p.candidateName))}</p>
+            <p style="margin:0 0 18px;font-size:14px;color:#475569;line-height:1.6;">${c.intro}</p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;border-radius:12px;">
+              <tr><td style="padding:16px 18px;">
+                <div style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">${c.score}</div>
+                <div style="font-size:36px;font-weight:900;color:#0f172a;line-height:1.2;">${scoreLine}</div>
+                ${p.mcqTotal > 0 ? `<div style="font-size:13px;color:#475569;">${c.correctOf(p.correctCount, p.mcqTotal)}</div>` : ''}
+              </td></tr>
+            </table>
+            ${p.flagged ? `<p style="margin:14px 0 0;padding:10px 12px;background:#fef3c7;border-radius:8px;font-size:13px;color:#92400e;">${c.flagged}</p>` : ''}
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:18px;">${rows}</table>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:22px;"><tr>
+              <td style="border-radius:10px;background:#2563eb;background-image:linear-gradient(135deg,#06b6d4,#2563eb);">
+                <a href="${p.resultsUrl}" style="display:inline-block;padding:12px 26px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;">${c.cta}</a>
+              </td>
+            </tr></table>
+          </td></tr>
+          <tr><td style="padding:16px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;">
+            <p style="margin:0;font-size:11px;color:#94a3b8;">CDC — Center for Digital Careers</p>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>`;
+}
+
+export function examResultsUrl(submissionToken: string, locale: NotificationLocale): string {
+  return `${FRONTEND_URL}${locale === 'en' ? '/en' : ''}/exam/result/${encodeURIComponent(submissionToken)}`;
+}
+
+export async function sendExamResultsEmail(p: ExamResultsEmailParams): Promise<void> {
+  const html = buildExamResultsEmailHtml(p);
+  await sendEmail(p.to, EXAM_RESULTS_COPY[p.locale].subject(p.examTitle), html, p.resultsUrl);
+}

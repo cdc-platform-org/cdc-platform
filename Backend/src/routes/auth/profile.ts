@@ -6,8 +6,8 @@ import multer from 'multer';
 import path from 'path';
 import { prisma } from '../../lib/prisma';
 import { authenticate } from '../../middleware/auth';
-import { BunnyStorageUploadError } from '../../services/bunnyStorage';
-import { uploadImage, deleteManagedImage } from '../../services/imageStorage';
+import { BunnyStorageUploadError } from '../../services/integrations/bunnyStorage';
+import { uploadImage, deleteManagedImage } from '../../services/integrations/imageStorage';
 import { toUserResponse } from './shared';
 
 const router = Router();

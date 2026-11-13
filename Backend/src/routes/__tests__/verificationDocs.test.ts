@@ -9,28 +9,28 @@ import { prisma } from '../../lib/prisma';
 import { JWT_SECRET } from '../../utils/env';
 import { createUser } from '../../test/factories';
 import authRouter from '../auth';
-import adminCompaniesRouter from '../adminCompanies';
-import adminVerificationsRouter from '../adminVerifications';
+import adminCompaniesRouter from '../admin/adminCompanies';
+import adminVerificationsRouter from '../admin/adminVerifications';
 import { errorHandler } from '../../middleware/errorHandler';
-import { uploadPrivateBlob, getSignedBlobUrl, deletePrivateBlob } from '../../services/privateBlobStorage';
-import { isPrivateVerificationDocRef } from '../../services/verificationDocDelivery';
-import { deleteBunnyStorageUrlIfManaged } from '../../services/bunnyStorage';
+import { uploadPrivateBlob, getSignedBlobUrl, deletePrivateBlob } from '../../services/integrations/privateBlobStorage';
+import { isPrivateVerificationDocRef } from '../../services/account/verificationDocDelivery';
+import { deleteBunnyStorageUrlIfManaged } from '../../services/integrations/bunnyStorage';
 
 // Business KYC upload conditionally runs AI parsing (businessKycService) —
 // GEMINI_API_KEY is set to a dummy value by test/setupEnv.ts so
 // isBusinessKycParsingConfigured() would otherwise report true and attempt
 // a real network call. Mocked off entirely here since these tests are about
 // storage destination, not the auto-approval heuristic.
-jest.mock('../../services/businessKycService', () => ({
+jest.mock('../../services/account/businessKycService', () => ({
   isBusinessKycParsingConfigured: jest.fn().mockReturnValue(false),
   parseBusinessDocument: jest.fn(),
   shouldAutoApprove: jest.fn().mockReturnValue(false),
 }));
-jest.mock('../../services/auditLogService', () => ({ logAdminAction: jest.fn().mockResolvedValue(undefined) }));
+jest.mock('../../services/account/auditLogService', () => ({ logAdminAction: jest.fn().mockResolvedValue(undefined) }));
 // Real module constructs a BlobServiceClient at import time — mocked so
 // importing verificationDocDelivery.ts (via auth.ts) never attempts a real
 // Azure connection, same reasoning as iako.test.ts's identical mock.
-jest.mock('../../services/privateBlobStorage', () => ({
+jest.mock('../../services/integrations/privateBlobStorage', () => ({
   uploadPrivateBlob: jest.fn().mockResolvedValue(undefined),
   getSignedBlobUrl: jest.fn().mockImplementation(async (blobName: string, expiryMinutes = 15) => `https://test-blob.example.test/${blobName}?sig=test&exp=${expiryMinutes}`),
   deletePrivateBlob: jest.fn().mockResolvedValue(undefined),
@@ -38,13 +38,13 @@ jest.mock('../../services/privateBlobStorage', () => ({
   assertPrivateBlobContainer: jest.fn().mockResolvedValue(undefined),
   privateContainerReady: Promise.resolve(),
 }));
-jest.mock('../../services/bunnyStorage', () => ({
+jest.mock('../../services/integrations/bunnyStorage', () => ({
   uploadToBunnyStorage: jest.fn(),
   isBunnyStorageConfigured: jest.fn().mockReturnValue(false),
   deleteFromBunnyStorage: jest.fn().mockResolvedValue(undefined),
   deleteBunnyStorageUrlIfManaged: jest.fn().mockResolvedValue(undefined),
-  BunnyStorageUploadError: jest.requireActual('../../services/bunnyStorage').BunnyStorageUploadError,
-  BunnyStorageNotConfiguredError: jest.requireActual('../../services/bunnyStorage').BunnyStorageNotConfiguredError,
+  BunnyStorageUploadError: jest.requireActual('../../services/integrations/bunnyStorage').BunnyStorageUploadError,
+  BunnyStorageNotConfiguredError: jest.requireActual('../../services/integrations/bunnyStorage').BunnyStorageNotConfiguredError,
   extractBunnyStorageUrls: jest.fn(),
 }));
 

@@ -1,9 +1,16 @@
+/**
+ * Express router mounted at `/api/live-trainings` (see server.ts).
+ * Endpoints:
+ *   GET /:trainingId/guide
+ *   PUT /:trainingId/guide/days/:dayId/progress
+ *   POST /:trainingId/guide/chat
+ */
 import { Router } from 'express';
 import { z } from 'zod';
 import { authenticate, requireNotBannedOrDeleted } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { guideChatSchema } from '../schemas/trainingGuideSchemas';
-import { answerTrainingGuide, getTrainingGuides, saveGuideProgress } from '../services/trainingGuideService';
+import { answerTrainingGuide, getTrainingGuides, saveGuideProgress } from '../services/learning/trainingGuideService';
 
 const router = Router();
 router.use('/:trainingId/guide', authenticate, requireNotBannedOrDeleted);

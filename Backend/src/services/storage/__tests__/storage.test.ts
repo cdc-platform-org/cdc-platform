@@ -4,8 +4,8 @@ import { AzureBlobAdapter } from '../azureBlobAdapter';
 import { LocalStorageAdapter } from '../localAdapter';
 import { WrongSpaceVisibilityError, StorageNotConfiguredError } from '../types';
 import { SPACES } from '../config';
-import * as bunnyStorage from '../../bunnyStorage';
-import * as privateBlobStorage from '../../privateBlobStorage';
+import * as bunnyStorage from '../../integrations/bunnyStorage';
+import * as privateBlobStorage from '../../integrations/privateBlobStorage';
 
 // ============================================================
 // Phase A storage-abstraction tests — the adapters are unit-tested with
@@ -14,7 +14,7 @@ import * as privateBlobStorage from '../../privateBlobStorage';
 // deleted (the whole point of Phase A).
 // ============================================================
 
-jest.mock('../../bunnyStorage', () => ({
+jest.mock('../../integrations/bunnyStorage', () => ({
   isBunnyStorageConfigured: jest.fn(),
   uploadToBunnyStorage: jest.fn(),
   deleteFromBunnyStorage: jest.fn(),
@@ -27,7 +27,7 @@ jest.mock('../../../utils/env', () => ({
   BUNNY_CDN_URL: 'https://cdn.example.test',
   BACKEND_URL: 'https://api.example.test',
 }));
-jest.mock('../../privateBlobStorage', () => ({
+jest.mock('../../integrations/privateBlobStorage', () => ({
   uploadPrivateBlob: jest.fn(),
   getSignedBlobUrl: jest.fn(),
   privateBlobExists: jest.fn(),

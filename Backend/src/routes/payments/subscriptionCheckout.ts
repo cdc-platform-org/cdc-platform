@@ -7,19 +7,19 @@ import crypto from 'crypto';
 import { prisma } from '../../lib/prisma';
 import { PromoCode } from '@prisma/client';
 import { authenticate, requireApproved } from '../../middleware/auth';
-import { paymentModelForPurpose } from '../../services/paymentModel';
-import { applyPromoToCheckout, PromoCodeError, giftCardAmountOf } from '../../services/couponService';
+import { paymentModelForPurpose } from '../../services/payments/paymentModel';
+import { applyPromoToCheckout, PromoCodeError, giftCardAmountOf } from '../../services/payments/couponService';
 import {
   completeTutorSubscriptionPurchase,
   TUTOR_SUBSCRIPTION_PRICE_GEL,
-} from '../../services/englishTutorSubscriptionService';
-import { completeEducatorVipPurchase, EDUCATOR_VIP_PRICE_GEL } from '../../services/educatorVipService';
+} from '../../services/educator/englishTutorSubscriptionService';
+import { completeEducatorVipPurchase, EDUCATOR_VIP_PRICE_GEL } from '../../services/educator/educatorVipService';
 import {
   assertAgentPurchasable,
   completeAgentPurchase,
   AgentCheckoutError,
   BUSINESS_AI_PRICE_GEL,
-} from '../../services/agentSubscriptionService';
+} from '../../services/ai/agentSubscriptionService';
 import {
   checkoutRateLimit,
   CALLBACK_URL,

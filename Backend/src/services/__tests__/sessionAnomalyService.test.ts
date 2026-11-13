@@ -1,5 +1,5 @@
 import { prisma } from '../../lib/prisma';
-import { recordLoginEvent, detectSessionAnomaly, ipSubnet, resolveGeoLocation, ANOMALY_LOOKBACK_HOURS } from '../sessionAnomalyService';
+import { recordLoginEvent, detectSessionAnomaly, ipSubnet, resolveGeoLocation, ANOMALY_LOOKBACK_HOURS } from '../account/sessionAnomalyService';
 import { createUser } from '../../test/factories';
 
 afterAll(async () => {

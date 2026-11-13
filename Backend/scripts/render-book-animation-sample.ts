@@ -11,8 +11,8 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { renderAnimation, RenderSegmentInput } from '../src/services/bookAnimationRenderer';
-import { MUSIC_THEMES } from '../src/services/bookAnimationMusic';
+import { renderAnimation, RenderSegmentInput } from '../src/services/childrensBook/bookAnimationRenderer';
+import { MUSIC_THEMES } from '../src/services/childrensBook/bookAnimationMusic';
 
 function optional(file: string): Buffer | null {
   for (const candidate of [file, file.replace(/\.wav$/, '.mp3')]) if (fs.existsSync(candidate)) return fs.readFileSync(candidate);

@@ -1,10 +1,10 @@
-jest.mock('../aiAgentService', () => ({ callTextModel: jest.fn() }));
-jest.mock('../bookMockConfig', () => ({ ...jest.requireActual('../bookMockConfig'), isBookAiMocked: jest.fn(() => false) }));
+jest.mock('../ai/aiAgentService', () => ({ callTextModel: jest.fn() }));
+jest.mock('../childrensBook/bookMockConfig', () => ({ ...jest.requireActual('../childrensBook/bookMockConfig'), isBookAiMocked: jest.fn(() => false) }));
 
-import { callTextModel } from '../aiAgentService';
-import { isBookAiMocked } from '../bookMockConfig';
-import { pickStoryIdea, STORY_IDEAS, writeFreshStory, StoryTextGenerationError } from '../bookStoryTextService';
-import { generateStoryPlan, syncScenesWithText, StoryPlan } from '../bookStoryPlanService';
+import { callTextModel } from '../ai/aiAgentService';
+import { isBookAiMocked } from '../childrensBook/bookMockConfig';
+import { pickStoryIdea, STORY_IDEAS, writeFreshStory, StoryTextGenerationError } from '../childrensBook/bookStoryTextService';
+import { generateStoryPlan, syncScenesWithText, StoryPlan } from '../childrensBook/bookStoryPlanService';
 
 const character = { name: 'Mimi', age: 5 };
 

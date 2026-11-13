@@ -8,8 +8,8 @@ import { prisma } from '../../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { authenticate, requireApproved } from '../../middleware/auth';
 import { checkoutMentorshipSchema } from '../../schemas/paymentSchemas';
-import { paymentModelForPurpose } from '../../services/paymentModel';
-import { assertSlotAvailable, SlotUnavailableError } from '../../services/mentorAvailabilityService';
+import { paymentModelForPurpose } from '../../services/payments/paymentModel';
+import { assertSlotAvailable, SlotUnavailableError } from '../../services/learning/mentorAvailabilityService';
 import { checkoutRateLimit, CALLBACK_URL, checkoutLang, resultRedirects, createBogOrderOrRespond } from './shared';
 
 const router = Router();

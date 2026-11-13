@@ -1,11 +1,29 @@
+/**
+ * Express router mounted at `/api/gigs` (see server.ts).
+ * Endpoints:
+ *   GET /
+ *   GET /mine
+ *   GET /assigned-to-me
+ *   GET /:id
+ *   POST /:id/request-mentor-help
+ *   POST /:id/dispute
+ *   POST /
+ *   POST /:id/apply
+ *   GET /:id/applications
+ *   POST /:id/applications/:appId/approve
+ *   POST /:id/applications/:appId/reject
+ *   POST /:id/submit
+ *   POST /:id/approve
+ *   POST /:id/test-capture-escrow
+ */
 import { Router, Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireRole, requireApproved } from '../middleware/auth';
 import { postGigSchema, applyToGigSchema, submitGigWorkSchema } from '../schemas/gigSchemas';
 import { openDisputeSchema } from '../schemas/disputeSchemas';
-import { captureEscrow } from '../services/escrowService';
-import { approveGigWork, GigApprovalError } from '../services/gigApprovalService';
-import { hasReachedDailyPostLimit } from '../services/postingLimitService';
+import { captureEscrow } from '../services/payments/escrowService';
+import { approveGigWork, GigApprovalError } from '../services/marketplace/gigApprovalService';
+import { hasReachedDailyPostLimit } from '../services/marketplace/postingLimitService';
 import { canPostListing, VERIFICATION_REQUIRED_TO_POST_MESSAGE } from '../utils/freelancerVerification';
 import { z } from 'zod';
 

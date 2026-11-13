@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { PDFDict, PDFDocument, PDFName } from 'pdf-lib';
-import { buildBookPdf } from '../bookPdfService';
-import { BOOK_FONT_IDS, BOOK_FONTS, DEFAULT_BOOK_FONT, isBookFontId, resolveBookFont } from '../bookFonts';
+import { buildBookPdf } from '../childrensBook/bookPdfService';
+import { BOOK_FONT_IDS, BOOK_FONTS, DEFAULT_BOOK_FONT, isBookFontId, resolveBookFont } from '../childrensBook/bookFonts';
 
 const TEXT = 'ნინო და Mimi ტყეში მიდიან — „რა ლამაზია!“ — 2026 ✨ said the owl.';
 

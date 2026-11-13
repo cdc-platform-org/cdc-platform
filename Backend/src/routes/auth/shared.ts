@@ -10,13 +10,13 @@ import { OAuth2Client } from 'google-auth-library';
 import { User } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { rateLimit } from '../../middleware/rateLimit';
-import { issueSessionId } from '../../services/educatorVipService';
+import { issueSessionId } from '../../services/educator/educatorVipService';
 import {
   JWT_SECRET,
   GOOGLE_CLIENT_ID,
   SUPER_ADMIN_EMAILS,
 } from '../../utils/env';
-import { recordLoginEvent } from '../../services/sessionAnomalyService';
+import { recordLoginEvent } from '../../services/account/sessionAnomalyService';
 
 export const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 

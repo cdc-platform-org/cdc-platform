@@ -1,3 +1,9 @@
+/**
+ * Express router mounted at `/api/proctored-practice` (see server.ts).
+ * Endpoints:
+ *   POST /generate
+ *   POST /grade-practical
+ */
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { authenticate, requireApproved } from '../middleware/auth';
@@ -7,7 +13,7 @@ import {
   generateExamQuestions,
   gradePracticalAnswer,
   ExamProctoringAiError,
-} from '../services/examProctoringService';
+} from '../services/exams/examProctoringService';
 
 // ============================================================
 // AI Proctored PRACTICE Exam — a self-service skill-assessment tool open to

@@ -2,8 +2,8 @@
 // as aiExamService.test.ts. No real Gemini call happens in this suite; it's
 // about the agent's own scan/merge/patch/branch logic, not the model
 // integration underneath (that's aiAgentService's own concern).
-jest.mock('../aiAgentService', () => ({
-  ...jest.requireActual('../aiAgentService'),
+jest.mock('../ai/aiAgentService', () => ({
+  ...jest.requireActual('../ai/aiAgentService'),
   callTextModel: jest.fn(),
 }));
 
@@ -11,8 +11,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { execFileSync } from 'child_process';
-import { scanMissingTranslations, patchLocaleFile, runI18nAutoTranslateAgent } from '../aiTranslationAgent';
-import { callTextModel } from '../aiAgentService';
+import { scanMissingTranslations, patchLocaleFile, runI18nAutoTranslateAgent } from '../ai/aiTranslationAgent';
+import { callTextModel } from '../ai/aiAgentService';
 
 const mockedCallTextModel = callTextModel as jest.MockedFunction<typeof callTextModel>;
 

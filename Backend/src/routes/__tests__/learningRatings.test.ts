@@ -8,7 +8,7 @@ import { prisma } from '../../lib/prisma';
 import { JWT_SECRET } from '../../utils/env';
 import { createUser, createCourse } from '../../test/factories';
 import { createLearningRatingsRouter } from '../learningRatings';
-import { getLearningRatings, LearningRatingTarget, withCourseRatings, withTrainingRatings } from '../../services/learningRatingService';
+import { getLearningRatings, LearningRatingTarget, withCourseRatings, withTrainingRatings } from '../../services/learning/learningRatingService';
 
 let server: Server;
 let baseUrl: string;

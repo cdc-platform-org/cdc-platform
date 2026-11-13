@@ -1,5 +1,5 @@
 import { PDFDocument } from 'pdf-lib';
-import { generateExamReportPdf } from '../examReportService';
+import { generateExamReportPdf } from '../exams/examReportService';
 
 // 2026-11-10: the old report stopped after one page (~11 questions). Every
 // question must now be included, in Georgian or English labels.

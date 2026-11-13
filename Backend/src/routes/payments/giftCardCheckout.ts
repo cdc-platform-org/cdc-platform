@@ -5,8 +5,8 @@ import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireApproved } from '../../middleware/auth';
-import { paymentModelForPurpose } from '../../services/paymentModel';
-import { cancelGiftCardPurchase } from '../../services/giftCardService';
+import { paymentModelForPurpose } from '../../services/payments/paymentModel';
+import { cancelGiftCardPurchase } from '../../services/payments/giftCardService';
 import { checkoutGiftCardSchema } from '../../schemas/giftCardSchemas';
 import { checkoutRateLimit, CALLBACK_URL, checkoutLang, resultRedirects, createBogOrderOrRespond } from './shared';
 

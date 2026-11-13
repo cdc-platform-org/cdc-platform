@@ -8,19 +8,19 @@ import crypto from 'crypto';
 import { prisma } from '../../lib/prisma';
 import { PromoCode } from '@prisma/client';
 import { authenticate, requireApproved } from '../../middleware/auth';
-import { completeCoursePurchase } from '../../services/courseSaleService';
-import { paymentModelForPurpose } from '../../services/paymentModel';
-import { getCurrentPrice } from '../../services/coursePricing';
+import { completeCoursePurchase } from '../../services/learning/courseSaleService';
+import { paymentModelForPurpose } from '../../services/payments/paymentModel';
+import { getCurrentPrice } from '../../services/learning/coursePricing';
 import {
   quotePromoToCheckout,
   PromoCodeError,
   giftCardAmountOf,
-} from '../../services/couponService';
-import { notifyCourseEnrollment } from '../../services/courseEnrollmentNotification';
-import { completeLiveTrainingPurchase, notifyLiveTrainingEnrollment } from '../../services/liveTrainingSaleService';
-import { getCurrentLiveTrainingPrice } from '../../services/liveTrainingPricing';
-import { reserveLearningCheckout } from '../../services/learningCheckoutService';
-import { sendRegistrationStatusWhatsApp, formatWhatsAppDate } from '../../services/whatsappService';
+} from '../../services/payments/couponService';
+import { notifyCourseEnrollment } from '../../services/learning/courseEnrollmentNotification';
+import { completeLiveTrainingPurchase, notifyLiveTrainingEnrollment } from '../../services/learning/liveTrainingSaleService';
+import { getCurrentLiveTrainingPrice } from '../../services/learning/liveTrainingPricing';
+import { reserveLearningCheckout } from '../../services/payments/learningCheckoutService';
+import { sendRegistrationStatusWhatsApp, formatWhatsAppDate } from '../../services/integrations/whatsappService';
 import { resolveNotificationLocale } from '../../utils/notificationLocale';
 import {
   checkoutRateLimit,

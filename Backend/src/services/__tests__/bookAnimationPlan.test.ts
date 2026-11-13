@@ -11,10 +11,10 @@ import {
   sanitizeKeyPages,
   segmentDuration,
   wrapSubtitle,
-} from '../bookAnimationPlan';
-import { buildSoraPrompt, generateSoraClip, normalizeSoraBase, readSoraConfig, SoraError } from '../bookAnimationSora';
-import { buildAssemblyGraph } from '../bookAnimationRenderer';
-import { MUSIC_THEMES, pickMusicTheme, synthesizeMusicWav } from '../bookAnimationMusic';
+} from '../childrensBook/bookAnimationPlan';
+import { buildSoraPrompt, generateSoraClip, normalizeSoraBase, readSoraConfig, SoraError } from '../childrensBook/bookAnimationSora';
+import { buildAssemblyGraph } from '../childrensBook/bookAnimationRenderer';
+import { MUSIC_THEMES, pickMusicTheme, synthesizeMusicWav } from '../childrensBook/bookAnimationMusic';
 
 jest.mock('../../lib/prisma', () => ({ prisma: {} }));
 

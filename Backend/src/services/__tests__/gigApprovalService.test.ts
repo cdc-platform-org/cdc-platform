@@ -1,5 +1,5 @@
 import { prisma } from '../../lib/prisma';
-import { approveGigWork, autoApproveOverdueGigs, GigApprovalError } from '../gigApprovalService';
+import { approveGigWork, autoApproveOverdueGigs, GigApprovalError } from '../marketplace/gigApprovalService';
 import { createUser, createUnverifiedFreelancer, setupHeldGigEscrow } from '../../test/factories';
 import { GigStatus, DisputeStatus } from '@prisma/client';
 

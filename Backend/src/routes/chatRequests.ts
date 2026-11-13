@@ -1,3 +1,13 @@
+/**
+ * Express router mounted at `/api/chat-requests` (see server.ts).
+ * Endpoints:
+ *   POST /
+ *   GET /incoming
+ *   GET /sent
+ *   GET /status/:otherUserId
+ *   POST /:id/accept
+ *   POST /:id/reject
+ */
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved } from '../middleware/auth';

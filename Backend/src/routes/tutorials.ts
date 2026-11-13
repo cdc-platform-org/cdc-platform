@@ -1,8 +1,17 @@
+/**
+ * Express router mounted at `/api/tutorials` (see server.ts).
+ * Endpoints:
+ *   GET /
+ *   GET /:id
+ *   POST /
+ *   PUT /:id
+ *   DELETE /:id
+ */
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireAdminRole, optionalAuthenticate } from '../middleware/auth';
 import { tutorialCreateSchema, tutorialUpdateSchema } from '../schemas/tutorialSchemas';
-import { autoTranslateIfBlank } from '../services/aiTranslateService';
+import { autoTranslateIfBlank } from '../services/ai/aiTranslateService';
 
 // Same shape as routes/blog.ts: one router, public read + admin-gated
 // write, rather than a separate /api/admin/tutorials CRUD router — mirrors

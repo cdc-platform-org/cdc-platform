@@ -1,7 +1,7 @@
-jest.mock('../aiAgentService', () => ({ callTextModel: jest.fn() }));
+jest.mock('../ai/aiAgentService', () => ({ callTextModel: jest.fn() }));
 
-import { callTextModel } from '../aiAgentService';
-import { isPlaceholderStoryText, writeStoryTexts, StoryTextGenerationError } from '../bookStoryTextService';
+import { callTextModel } from '../ai/aiAgentService';
+import { isPlaceholderStoryText, writeStoryTexts, StoryTextGenerationError } from '../childrensBook/bookStoryTextService';
 
 const scenes = [
   { pageNumber: 1, sceneDescription: 'Sofi discovers a mysterious glowing map in the attic', emotion: 'curious' },

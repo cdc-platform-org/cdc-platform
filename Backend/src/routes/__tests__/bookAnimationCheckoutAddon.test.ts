@@ -11,9 +11,9 @@ import childrensBookRoutes from '../childrensBook';
 import bookAnimationRoutes from '../bookAnimation';
 import paymentsRouter from '../payments';
 import { errorHandler } from '../../middleware/errorHandler';
-import { createBogOrder } from '../../services/bogPaymentService';
-import * as bookMockConfig from '../../services/bookMockConfig';
-import { queuePrepaidAnimations, waitForBookAnimation } from '../../services/bookAnimationService';
+import { createBogOrder } from '../../services/payments/bogPaymentService';
+import * as bookMockConfig from '../../services/childrensBook/bookMockConfig';
+import { queuePrepaidAnimations, waitForBookAnimation } from '../../services/childrensBook/bookAnimationService';
 
 // ============================================================
 // Children's Book: the animated video can be chosen at checkout, next to
@@ -22,12 +22,12 @@ import { queuePrepaidAnimations, waitForBookAnimation } from '../../services/boo
 // createBogOrder is mocked so this suite never places a real BOG order.
 // ============================================================
 
-jest.mock('../../services/bogPaymentService', () => ({
-  ...jest.requireActual('../../services/bogPaymentService'),
+jest.mock('../../services/payments/bogPaymentService', () => ({
+  ...jest.requireActual('../../services/payments/bogPaymentService'),
   createBogOrder: jest.fn(),
 }));
-jest.mock('../../services/bookMockConfig', () => ({
-  ...jest.requireActual('../../services/bookMockConfig'),
+jest.mock('../../services/childrensBook/bookMockConfig', () => ({
+  ...jest.requireActual('../../services/childrensBook/bookMockConfig'),
   isBookDevPaymentSimulationEnabled: jest.fn(),
 }));
 

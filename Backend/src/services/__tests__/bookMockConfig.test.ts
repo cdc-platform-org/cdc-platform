@@ -1,4 +1,4 @@
-import { resolveBookPayableAmountTetri } from '../bookMockConfig';
+import { resolveBookPayableAmountTetri } from '../childrensBook/bookMockConfig';
 
 // Pure-function test suite for the Children's Book QA payment discount —
 // no DB, no network, no real BOG call. See bookMockConfig.ts's own comment

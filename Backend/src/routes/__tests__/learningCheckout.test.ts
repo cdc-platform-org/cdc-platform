@@ -12,29 +12,29 @@ import paymentsRouter, { applyBogPaymentResult } from '../payments';
 import stripePaymentsRouter, { applyStripePaymentResult, markStripeCheckoutExpired } from '../stripePayments';
 import liveTrainingsRouter from '../liveTrainings';
 import { errorHandler } from '../../middleware/errorHandler';
-import { createBogOrder } from '../../services/bogPaymentService';
-import { createStripeCheckoutSession } from '../../services/stripePaymentService';
-import { notifyCourseEnrollment } from '../../services/courseEnrollmentNotification';
-import * as feeSchedule from '../../services/platformFeeScheduleService';
-import { quotePromoToCheckout, claimPromoRedemption } from '../../services/couponService';
+import { createBogOrder } from '../../services/payments/bogPaymentService';
+import { createStripeCheckoutSession } from '../../services/payments/stripePaymentService';
+import { notifyCourseEnrollment } from '../../services/learning/courseEnrollmentNotification';
+import * as feeSchedule from '../../services/payments/platformFeeScheduleService';
+import { quotePromoToCheckout, claimPromoRedemption } from '../../services/payments/couponService';
 
-jest.mock('../../services/bogPaymentService', () => ({
-  ...jest.requireActual('../../services/bogPaymentService'),
+jest.mock('../../services/payments/bogPaymentService', () => ({
+  ...jest.requireActual('../../services/payments/bogPaymentService'),
   createBogOrder: jest.fn(),
 }));
-jest.mock('../../services/stripePaymentService', () => ({
-  ...jest.requireActual('../../services/stripePaymentService'),
+jest.mock('../../services/payments/stripePaymentService', () => ({
+  ...jest.requireActual('../../services/payments/stripePaymentService'),
   createStripeCheckoutSession: jest.fn(),
 }));
-jest.mock('../../services/emailService', () => ({
+jest.mock('../../services/integrations/emailService', () => ({
   sendLiveTrainingRegistrationEmail: jest.fn().mockResolvedValue(undefined),
   sendLiveTrainingEnrollmentEmail: jest.fn().mockResolvedValue(undefined),
 }));
-jest.mock('../../services/whatsappService', () => ({
+jest.mock('../../services/integrations/whatsappService', () => ({
   sendRegistrationStatusWhatsApp: jest.fn().mockResolvedValue(undefined),
   formatWhatsAppDate: jest.fn().mockReturnValue('December 2026'),
 }));
-jest.mock('../../services/courseEnrollmentNotification', () => ({ notifyCourseEnrollment: jest.fn().mockResolvedValue(undefined) }));
+jest.mock('../../services/learning/courseEnrollmentNotification', () => ({ notifyCourseEnrollment: jest.fn().mockResolvedValue(undefined) }));
 
 let server: Server;
 let baseUrl: string;

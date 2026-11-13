@@ -1,3 +1,10 @@
+/**
+ * Express router mounted at `/api/skill-tests` (see server.ts).
+ * Endpoints:
+ *   POST /generate
+ *   POST /:attemptId/submit
+ *   GET /mine
+ */
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
@@ -11,7 +18,7 @@ import {
   SkillMcqQuestion,
   SkillPracticalQuestion,
   GENERIC_FALLBACK_QUESTIONS,
-} from '../services/skillTestService';
+} from '../services/learning/skillTestService';
 import { isDigitalProfession, OUT_OF_SCOPE_MESSAGE } from '../utils/digitalProfessionScope';
 import { isPredefinedSkill } from '../data/freelancerSkills';
 

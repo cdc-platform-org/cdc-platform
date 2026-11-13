@@ -1,4 +1,4 @@
-import { isAcceptableQaStatus } from '../bookQaService';
+import { isAcceptableQaStatus } from '../childrensBook/bookQaService';
 
 describe('isAcceptableQaStatus', () => {
   it('accepts PASS (mock) and PARTIAL (real image, vision-QA not wired yet)', () => {

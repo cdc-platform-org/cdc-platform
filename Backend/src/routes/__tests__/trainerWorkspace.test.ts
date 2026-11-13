@@ -7,13 +7,13 @@ import { prisma } from '../../lib/prisma';
 import { JWT_SECRET } from '../../utils/env';
 import { createUser } from '../../test/factories';
 import trainerWorkspaceRouter from '../trainerWorkspace';
-import adminTrainersRouter from '../adminTrainers';
-import adminLiveTrainingTrainersRouter from '../adminLiveTrainingTrainers';
+import adminTrainersRouter from '../admin/adminTrainers';
+import adminLiveTrainingTrainersRouter from '../admin/adminLiveTrainingTrainers';
 import { errorHandler } from '../../middleware/errorHandler';
-import { uploadImage } from '../../services/imageStorage';
+import { uploadImage } from '../../services/integrations/imageStorage';
 
-jest.mock('../../services/imageStorage', () => ({ uploadImage: jest.fn().mockResolvedValue('https://cdn.example.test/trainer-videos/clip.mp4') }));
-jest.mock('../../services/auditLogService', () => ({ logAdminAction: jest.fn().mockResolvedValue(undefined) }));
+jest.mock('../../services/integrations/imageStorage', () => ({ uploadImage: jest.fn().mockResolvedValue('https://cdn.example.test/trainer-videos/clip.mp4') }));
+jest.mock('../../services/account/auditLogService', () => ({ logAdminAction: jest.fn().mockResolvedValue(undefined) }));
 
 type User = Awaited<ReturnType<typeof createUser>>;
 let server: Server;

@@ -1,8 +1,13 @@
+/**
+ * Express router mounted at `/api/studio` (see server.ts).
+ * Endpoints:
+ *   POST /inquiries
+ */
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { rateLimit } from '../middleware/rateLimit';
 import { createStudioInquirySchema } from '../schemas/studioSchemas';
-import { sendStudioInquiryEmail } from '../services/emailService';
+import { sendStudioInquiryEmail } from '../services/integrations/emailService';
 
 const router = Router();
 

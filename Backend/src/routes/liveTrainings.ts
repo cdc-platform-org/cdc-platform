@@ -1,14 +1,24 @@
+/**
+ * Express router mounted at `/api/live-trainings` (see server.ts).
+ * Endpoints:
+ *   GET /mine
+ *   GET /
+ *   GET /:id
+ *   POST /:id/register
+ *   POST /:id/enroll
+ *   DELETE /:id/enroll
+ */
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, optionalAuthenticate, requireNotBannedOrDeleted } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { liveTrainingRegisterSchema } from '../schemas/liveTrainingSchemas';
-import { sendLiveTrainingRegistrationEmail, sendLiveTrainingEnrollmentEmail } from '../services/emailService';
-import { sendRegistrationStatusWhatsApp, formatWhatsAppDate } from '../services/whatsappService';
+import { sendLiveTrainingRegistrationEmail, sendLiveTrainingEnrollmentEmail } from '../services/integrations/emailService';
+import { sendRegistrationStatusWhatsApp, formatWhatsAppDate } from '../services/integrations/whatsappService';
 import { resolveNotificationLocale } from '../utils/notificationLocale';
-import { withCurrentLiveTrainingPrice, LiveTrainingPricingInput } from '../services/liveTrainingPricing';
-import { withTrainingRatings } from '../services/learningRatingService';
-import { lockLearningTarget, countPendingLearningSeats, reserveLearningCheckout } from '../services/learningCheckoutService';
+import { withCurrentLiveTrainingPrice, LiveTrainingPricingInput } from '../services/learning/liveTrainingPricing';
+import { withTrainingRatings } from '../services/learning/learningRatingService';
+import { lockLearningTarget, countPendingLearningSeats, reserveLearningCheckout } from '../services/payments/learningCheckoutService';
 
 const router = Router();
 

@@ -1,10 +1,15 @@
+/**
+ * Express router mounted at `/api/ai-agents` (see server.ts).
+ * Endpoints:
+ *   POST /generate
+ */
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { authenticate, requireApproved } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
-import { isAiAgentConfigured, generateAiAgentSuiteResponse, AiAgentSuiteTool, AiAgentError } from '../services/aiAgentService';
-import { getSubscriptionState } from '../services/subscriptionStateService';
-import { logAiGeneration } from '../services/aiGenerationLogService';
+import { isAiAgentConfigured, generateAiAgentSuiteResponse, AiAgentSuiteTool, AiAgentError } from '../services/ai/aiAgentService';
+import { getSubscriptionState } from '../services/payments/subscriptionStateService';
+import { logAiGeneration } from '../services/ai/aiGenerationLogService';
 
 const router = Router();
 router.use(authenticate, requireApproved);
