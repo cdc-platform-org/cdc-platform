@@ -1,8 +1,15 @@
-import { useRef, useState, DragEvent, ChangeEvent } from 'react';
+import { useRef, useState, DragEvent, ChangeEvent, SyntheticEvent } from 'react';
 import { ImagePlus, Plus, X } from 'lucide-react';
 import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../utils/imageUpload';
 import { onImageErrorFallback } from '../../utils/imageFallback';
 import { SupportedLocale } from '../../utils/locale';
+import {
+  RecommendedImageSize,
+  ImageDims,
+  coverWarnings,
+  galleryWarnings,
+  hasImageIssue,
+} from './imageRatioCheck';
 
 interface ImageGalleryUploaderProps {
   coverUrl: string;
@@ -36,6 +43,13 @@ interface ImageGalleryUploaderProps {
   };
   lang: SupportedLocale;
   disabled?: boolean;
+  // When set, every loaded cover/screenshot is measured and a non-blocking
+  // warning appears if its shape or resolution doesn't fit the store's
+  // containers (see imageRatioCheck.ts).
+  recommendedSize?: RecommendedImageSize;
+  // Show those warnings in Georgian AND English (admin panel, whose labels
+  // are bilingual) instead of only in `lang`.
+  bilingualWarnings?: boolean;
 }
 
 // 1 main cover + up to `maxGalleryImages` (default 15 — "16 images total")
@@ -52,7 +66,30 @@ export default function ImageGalleryUploader({
   labels,
   lang,
   disabled = false,
+  recommendedSize,
+  bilingualWarnings = false,
 }: ImageGalleryUploaderProps) {
+  // Natural size of each image, keyed by URL, filled from the preview <img>
+  // onLoad — so it also covers images saved before this check existed.
+  const [dims, setDims] = useState<Record<string, ImageDims>>({});
+  const record = (url: string, img: HTMLImageElement) => {
+    const { naturalWidth: w, naturalHeight: h } = img;
+    if (w > 0 && h > 0 && (dims[url]?.w !== w || dims[url]?.h !== h)) {
+      setDims((prev) => ({ ...prev, [url]: { w, h } }));
+    }
+  };
+  // onLoad for fresh loads + a ref check for images that finished loading
+  // before React attached the handler (cache hits / hydration).
+  const measure = (url: string) => ({
+    onLoad: (e: SyntheticEvent<HTMLImageElement>) => record(url, e.currentTarget),
+    ref: (img: HTMLImageElement | null) => {
+      if (img?.complete) record(url, img);
+    },
+  });
+  const coverIssues = coverUrl ? coverWarnings(dims[coverUrl], recommendedSize, lang, bilingualWarnings) : [];
+  const galleryIssueCount = previewImages.filter((u) => hasImageIssue(dims[u], recommendedSize)).length;
+  const galleryIssues = galleryWarnings(galleryIssueCount, recommendedSize, lang, bilingualWarnings);
+
   const [coverDragActive, setCoverDragActive] = useState(false);
   const [galleryDragActive, setGalleryDragActive] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
@@ -151,7 +188,7 @@ export default function ImageGalleryUploader({
           />
           {coverUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={coverUrl} alt="" onError={onImageErrorFallback} className="w-16 h-16 rounded-lg object-cover border border-gray-200 shrink-0" />
+            <img src={coverUrl} alt="" {...measure(coverUrl)} onError={onImageErrorFallback} className="w-16 h-16 rounded-lg object-cover border border-gray-200 shrink-0" />
           ) : (
             <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center shrink-0">
               <ImagePlus className="w-6 h-6 text-gray-400" />
@@ -159,6 +196,9 @@ export default function ImageGalleryUploader({
           )}
           <p className="text-xs text-gray-500">{uploadingCover ? labels.uploading : labels.coverHint}</p>
         </div>
+        {coverIssues.map((msg) => (
+          <p key={msg} className="text-[11px] text-amber-600 mt-1">⚠ {msg}</p>
+        ))}
       </div>
 
       {/* GALLERY — up to maxGalleryImages additional screenshots. */}
@@ -171,7 +211,15 @@ export default function ImageGalleryUploader({
           {previewImages.map((url) => (
             <div key={url} className="relative w-20 h-20 shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="" onError={onImageErrorFallback} className="w-full h-full rounded-lg object-cover border border-gray-200" />
+              <img src={url} alt="" {...measure(url)} onError={onImageErrorFallback} className="w-full h-full rounded-lg object-cover border border-gray-200" />
+              {hasImageIssue(dims[url], recommendedSize) && (
+                <span
+                  title={`${dims[url].w}×${dims[url].h} px`}
+                  className="absolute bottom-1 left-1 px-1 rounded bg-amber-500 text-white text-[10px] font-bold leading-4"
+                >
+                  !
+                </span>
+              )}
               <button
                 type="button"
                 onClick={() => removePreviewImage(url)}
@@ -225,6 +273,9 @@ export default function ImageGalleryUploader({
             </div>
           )}
         </div>
+        {galleryIssues.map((msg) => (
+          <p key={msg} className="text-[11px] text-amber-600 mt-1">⚠ {msg}</p>
+        ))}
       </div>
     </div>
   );
