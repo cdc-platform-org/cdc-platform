@@ -16,7 +16,8 @@ export interface AgentCategoryDefinition {
   storeCategory: string;
   // GEL, major units.
   defaultPriceGel: number;
-  // Rough USD per product at "high" image quality, for the admin page's
+  // USD per product at "high" image quality as measured in the 2026-11-14
+  // pilot run, for the admin page's
   // daily/monthly estimate only. The real cost of every run is measured
   // from Azure's token usage and stored on ProductAgentRun.
   estimatedCostUsd: number;
@@ -39,7 +40,7 @@ export const AGENT_CATEGORIES = {
     labelEn: 'Kids worksheets & coloring pages',
     storeCategory: 'Kids & Education / Worksheets & Coloring',
     defaultPriceGel: 9,
-    estimatedCostUsd: 0.6,
+    estimatedCostUsd: 0.3,
     needsFactCheck: false,
   },
   PLANNERS: {
@@ -63,7 +64,7 @@ export const AGENT_CATEGORIES = {
     labelEn: 'Small business templates',
     storeCategory: 'Small Business / Templates',
     defaultPriceGel: 15,
-    estimatedCostUsd: 0.1,
+    estimatedCostUsd: 0.12,
     needsFactCheck: false,
   },
   INVITATIONS: {
@@ -71,7 +72,7 @@ export const AGENT_CATEGORIES = {
     labelEn: 'Invitations & cards',
     storeCategory: 'Events / Invitations & Cards',
     defaultPriceGel: 8,
-    estimatedCostUsd: 0.45,
+    estimatedCostUsd: 0.25,
     needsFactCheck: false,
   },
   EXAM_PREP: {
@@ -79,7 +80,7 @@ export const AGENT_CATEGORIES = {
     labelEn: 'Exam prep materials',
     storeCategory: 'Education / Exam Prep',
     defaultPriceGel: 10,
-    estimatedCostUsd: 0.05,
+    estimatedCostUsd: 0.06,
     needsFactCheck: true,
   },
 } as const satisfies Record<string, AgentCategoryDefinition>;
