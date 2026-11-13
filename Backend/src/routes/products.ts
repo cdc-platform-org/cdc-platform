@@ -103,7 +103,12 @@ router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
 });
 
 router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => {
-  const product = await prisma.digitalProduct.findUnique({ where: { id: req.params.id } });
+  // Only the template's existence is selected — its JSON is the paid
+  // product and is served to buyers by routes/designs.ts alone.
+  const product = await prisma.digitalProduct.findUnique({
+    where: { id: req.params.id },
+    include: { editableTemplate: { select: { id: true } } },
+  });
   if (!product) return res.status(404).json({ message: 'Product not found.' });
   // Not-yet-approved products are only visible to whoever submitted them —
   // everyone else (including other logged-in users) gets a 404, same as if
@@ -140,6 +145,7 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
       howItWorksSteps: product.howItWorksSteps,
       fileFormat: fileFormatFromUrl(product.fileUrl),
       toolRoute: product.toolRoute,
+      hasEditableTemplate: !!product.editableTemplate,
       licenseType: product.licenseType,
       downloadsCount: product.downloadsCount,
       salesCount: product.salesCount,
