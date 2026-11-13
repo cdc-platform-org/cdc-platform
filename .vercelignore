@@ -1,0 +1,11 @@
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+Backend/
+my-vibe-app/
+**/test-results/
+**/playwright-report/
+**/.next*/
+*.patch
