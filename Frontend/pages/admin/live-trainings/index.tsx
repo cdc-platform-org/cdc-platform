@@ -1,12 +1,15 @@
+/**
+ * /admin/live-trainings — create, edit and list live trainings.
+ * This file owns form state and save logic; the form field groups and the
+ * list are in src/components/admin/liveTrainings/ (ScheduleFields,
+ * PriceFields, DiscountFields, CapacityFields, SessionDetailsFields,
+ * MediaFields, IakoAssistantFields, LiveTrainingList).
+ */
 import { useState, useEffect, useCallback, FormEvent, ChangeEvent } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
-import { Users } from 'lucide-react';
 import AdminGuard from '../../../src/components/admin/AdminGuard';
 import AdminLayout from '../../../src/components/admin/AdminLayout';
-import RichTextEditor from '../../../src/components/shared/RichTextEditor';
 import KaToEnButton from '../../../src/components/admin/KaToEnButton';
-import VideoEmbed, { parseVideoUrl } from '../../../src/components/shared/VideoEmbed';
 import { LiveTraining } from '../../../src/types/liveTraining';
 import { CourseLanguage } from '../../../src/types/lms';
 import {
@@ -23,6 +26,14 @@ import {
   IakoAssignmentMode, IakoKnowledgeSource, IakoProfile,
   assignIakoProfile, getIakoProfile, listIakoProfiles,
 } from '../../../src/services/iakoAssistantService';
+import ScheduleFields from '../../../src/components/admin/liveTrainings/ScheduleFields';
+import PriceFields from '../../../src/components/admin/liveTrainings/PriceFields';
+import DiscountFields from '../../../src/components/admin/liveTrainings/DiscountFields';
+import CapacityFields from '../../../src/components/admin/liveTrainings/CapacityFields';
+import SessionDetailsFields from '../../../src/components/admin/liveTrainings/SessionDetailsFields';
+import MediaFields from '../../../src/components/admin/liveTrainings/MediaFields';
+import IakoAssistantFields from '../../../src/components/admin/liveTrainings/IakoAssistantFields';
+import LiveTrainingList from '../../../src/components/admin/liveTrainings/LiveTrainingList';
 
 // <input type="datetime-local"> gives "YYYY-MM-DDTHH:mm" (local time, no
 // timezone) — the backend requires full ISO 8601. Same UTC-anchoring
@@ -534,382 +545,40 @@ function AdminLiveTrainingsDashboard() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">კატეგორია</label>
-                <input
-                  type="text"
-                  value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  className={inputClass}
-                  placeholder="მარკეტინგი, დიზაინი..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">თარიღი და დრო</label>
-                <input
-                  type="datetime-local"
-                  value={form.scheduledAtLocal}
-                  onChange={(e) => setForm({ ...form, scheduledAtLocal: e.target.value })}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">ტრენინგის ენა</label>
-                <select
-                  value={form.language}
-                  onChange={(e) => setForm({ ...form, language: e.target.value as CourseLanguage })}
-                  className={inputClass}
-                >
-                  <option value="GEORGIAN">🇬🇪 ქართული</option>
-                  <option value="ENGLISH">🇬🇧 ინგლისური</option>
-                  <option value="BOTH">🇬🇪🇬🇧 ორივე</option>
-                </select>
-              </div>
-            </div>
+            <ScheduleFields form={form} setForm={setForm} inputClass={inputClass} />
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  ფასი (ლარი ₾) <span className="text-gray-400 font-normal">(ცარიელი = უფასო)</span>
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={form.price != null ? form.price / 100 : ''}
-                  onChange={(e) => setForm({ ...form, price: e.target.value ? Math.round(Number(e.target.value) * 100) : null })}
-                  className={inputClass}
-                />
-                <p className="text-xs text-gray-400 mt-1">შეიყვანეთ თანხა ლარებში (მაგ. 300 ₾)</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">ფასის ტიპი</label>
-                <select
-                  value={form.priceType ?? 'MONTHLY'}
-                  onChange={(e) => setForm({ ...form, priceType: e.target.value as 'MONTHLY' | 'TOTAL' })}
-                  className={inputClass}
-                >
-                  <option value="MONTHLY">თვეში (განმეორებადი)</option>
-                  <option value="TOTAL">ჯამში (მთლიანი კურსი)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  ხანგრძლივობა (თვე) <span className="text-gray-400 font-normal">(არასავალდებულო)</span>
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  value={form.durationMonths ?? ''}
-                  onChange={(e) => setForm({ ...form, durationMonths: e.target.value ? Number(e.target.value) : null })}
-                  className={inputClass}
-                  placeholder="მაგ. 2"
-                />
-              </div>
-            </div>
+            <PriceFields form={form} setForm={setForm} inputClass={inputClass} />
 
-            <div className="rounded-xl border border-gray-200 p-4">
-              <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.isOnSale ?? false}
-                  onChange={(e) => setForm({ ...form, isOnSale: e.target.checked })}
-                  className="w-4 h-4 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
-                />
-                🏷️ ფასდაკლება / სპეციალური შეთავაზება
-              </label>
+            <DiscountFields form={form} setForm={setForm} inputClass={inputClass} />
 
-              {form.isOnSale && (
-                <div className="mt-4 space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">ფასდაკლება (%)</label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={90}
-                        placeholder="მაგ. 20"
-                        value={form.discountPercent ?? ''}
-                        onChange={(e) => setForm({ ...form, discountPercent: e.target.value ? Number(e.target.value) : null })}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        დასრულების თარიღი <span className="text-gray-400 font-normal">(არასავალდებულო)</span>
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={form.discountEndDateLocal}
-                        onChange={(e) => setForm({ ...form, discountEndDateLocal: e.target.value })}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        ბეჯის ტექსტი <span className="text-gray-400 font-normal">(არასავალდებულო)</span>
-                      </label>
-                      <input
-                        value={form.discountBadgeText}
-                        onChange={(e) => setForm({ ...form, discountBadgeText: e.target.value })}
-                        maxLength={40}
-                        placeholder={`-${form.discountPercent ?? 0}%`}
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-                  {form.price != null && form.discountPercent ? (
-                    <div className="rounded-lg bg-rose-50 border border-rose-200 px-4 py-3 text-sm">
-                      <span className="text-gray-500 line-through mr-2">{(form.price / 100).toFixed(2)} ₾</span>
-                      <span className="font-black text-rose-600">
-                        {(Math.round(form.price * (1 - form.discountPercent / 100)) / 100).toFixed(2)} ₾
-                      </span>
-                      <span className="text-rose-500 font-bold ml-2">{form.discountBadgeText.trim() || `-${form.discountPercent}%`}</span>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-400">ფასდაკლების ნახვისთვის მიუთითეთ ფასი და პროცენტი.</p>
-                  )}
-                </div>
-              )}
-            </div>
+            <CapacityFields form={form} setForm={setForm} inputClass={inputClass} />
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">მინ. ჯგუფი</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={form.minCapacity ?? 0}
-                  onChange={(e) => setForm({ ...form, minCapacity: Number(e.target.value) || 0 })}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">მაქს. ადგილები</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={form.maxCapacity}
-                  onChange={(e) => setForm({ ...form, maxCapacity: Number(e.target.value) || 1 })}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  ჩატარების გრაფიკი <span className="text-gray-400 font-normal">(არასავალდებულო)</span>
-                </label>
-                <input
-                  type="text"
-                  value={form.scheduleDays ?? ''}
-                  onChange={(e) => setForm({ ...form, scheduleDays: e.target.value })}
-                  placeholder="მაგ. ორშ - ოთხ | 19:00"
-                  className={inputClass}
-                />
-              </div>
-            </div>
+            <SessionDetailsFields
+              form={form}
+              setForm={setForm}
+              inputClass={inputClass}
+              handleGenerateWorkspace={handleGenerateWorkspace}
+              generatingWorkspace={generatingWorkspace}
+              workspaceStatus={workspaceStatus}
+              editingId={editingId}
+              editingTraining={editingTraining}
+              handleRegenerateSynopsis={handleRegenerateSynopsis}
+              regeneratingSynopsis={regeneratingSynopsis}
+              setSynopsisLang={setSynopsisLang}
+              synopsisLang={synopsisLang}
+              SYNOPSIS_VALUE={SYNOPSIS_VALUE}
+              SYNOPSIS_SETTER={SYNOPSIS_SETTER}
+              handleSaveSynopsis={handleSaveSynopsis}
+              savingSynopsis={savingSynopsis}
+            />
 
-            <div className="rounded-xl border border-cyan-200 bg-cyan-50/50 p-4 space-y-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-cyan-700">სესიის მართვა — მიერთება, ჩანაწერი და კონფირმირებული თარიღი</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">დაწყების დრო (კონფირმირებული)</label>
-                  <input
-                    type="datetime-local"
-                    value={form.startDateLocal}
-                    onChange={(e) => setForm({ ...form, startDateLocal: e.target.value })}
-                    className={inputClass}
-                  />
-                  <p className="text-xs text-gray-400 mt-1">ცალკეა საჯარო „თარიღი და დრო“-სგან — მიერთების ბმული სტუდენტების დაშბორდზე ამ დროის მიხედვით ჩნდება.</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">დასრულების დრო</label>
-                  <input
-                    type="datetime-local"
-                    value={form.endDateLocal}
-                    onChange={(e) => setForm({ ...form, endDateLocal: e.target.value })}
-                    className={inputClass}
-                  />
-                </div>
-              </div>
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <button
-                  type="button"
-                  onClick={handleGenerateWorkspace}
-                  disabled={generatingWorkspace}
-                  className="inline-flex items-center gap-2 text-xs font-bold text-white bg-gradient-to-r from-purple-500 to-cyan-600 px-4 py-2.5 rounded-lg border-none cursor-pointer disabled:opacity-60"
-                >
-                  {generatingWorkspace ? 'გენერირდება…' : '✨ ავტომატური გენერაცია (AI Workspace)'}
-                </button>
-                {workspaceStatus && (
-                  <p
-                    className={`text-xs font-semibold ${
-                      workspaceStatus.kind === 'success'
-                        ? 'text-emerald-600'
-                        : workspaceStatus.kind === 'partial'
-                          ? 'text-amber-600'
-                          : 'text-red-600'
-                    }`}
-                  >
-                    {workspaceStatus.message}
-                  </p>
-                )}
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">მიერთების ბმული (Zoom / Google Meet)</label>
-                  <input
-                    type="text"
-                    value={form.meetingUrl ?? ''}
-                    onChange={(e) => setForm({ ...form, meetingUrl: e.target.value })}
-                    placeholder="https://..."
-                    className={inputClass}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Google Classroom ბმული</label>
-                  <input
-                    type="text"
-                    value={form.classroomUrl ?? ''}
-                    onChange={(e) => setForm({ ...form, classroomUrl: e.target.value })}
-                    placeholder="https://classroom.google.com/..."
-                    className={inputClass}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">ჩანაწერის ბმული</label>
-                  <input
-                    type="text"
-                    value={form.recordingUrl ?? ''}
-                    onChange={(e) => setForm({ ...form, recordingUrl: e.target.value })}
-                    placeholder="https://..."
-                    className={inputClass}
-                  />
-                </div>
-              </div>
-
-              {editingId && editingTraining && (
-                <div className="border-t border-cyan-200 pt-4">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-sm font-medium text-gray-700">
-                      AI სინოფსისი (კონსპექტი) {editingTraining.synopsisStatus === 'FAILED' && editingTraining.synopsisError && (
-                        <span className="text-red-500 font-normal">— {editingTraining.synopsisError}</span>
-                      )}
-                      {editingTraining.synopsisStatus === 'PROCESSING' && <span className="text-amber-600 font-normal"> — გენერირდება…</span>}
-                    </label>
-                    {form.recordingUrl && (
-                      <button
-                        type="button"
-                        onClick={handleRegenerateSynopsis}
-                        disabled={regeneratingSynopsis || editingTraining.synopsisStatus === 'PROCESSING'}
-                        className="shrink-0 text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-lg disabled:opacity-50"
-                      >
-                        {regeneratingSynopsis ? 'იწყება…' : '✨ სინოფსისის თავიდან გენერირება'}
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex gap-1 mb-1.5">
-                    {(['Ka', 'En', 'Ru'] as const).map((l) => (
-                      <button
-                        key={l}
-                        type="button"
-                        onClick={() => setSynopsisLang(l)}
-                        className={`text-[11px] font-semibold px-2.5 py-1 rounded ${
-                          synopsisLang === l ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'
-                        }`}
-                      >
-                        {l.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-                  <RichTextEditor
-                    rows={5}
-                    value={SYNOPSIS_VALUE[synopsisLang]}
-                    onChange={SYNOPSIS_SETTER[synopsisLang]}
-                    placeholder="ავტომატურად გენერირდება ჩანაწერის ატვირთვისას — ან დაწერეთ/დაარედაქტირეთ ხელით."
-                    className="text-xs"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSaveSynopsis}
-                    disabled={savingSynopsis}
-                    className="mt-1.5 text-xs font-medium text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60"
-                  >
-                    {savingSynopsis ? 'ინახება…' : 'სინოფსისის შენახვა'}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  ქავერ ფოტო <span className="text-gray-400 font-normal">(რეკომენდებული ზომა: 1280 × 720px / 16:9)</span>
-                </label>
-                <div className="flex items-center gap-3">
-                  {form.thumbnailUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={form.thumbnailUrl} alt="" className="w-20 h-12 rounded-lg object-cover border border-gray-200 shrink-0" />
-                  )}
-                  <label className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-gray-300 text-sm font-medium text-gray-600 cursor-pointer hover:bg-gray-50">
-                    {imageUploading ? 'იტვირთება…' : form.thumbnailUrl ? 'ფოტოს შეცვლა' : '📁 ატვირთვა'}
-                    <input type="file" accept="image/*" onChange={handleCoverImageChange} className="hidden" disabled={imageUploading} />
-                  </label>
-                </div>
-              </div>
-              <div>
-                <label htmlFor="training-video-url" className="block text-sm font-medium text-gray-700 mb-1.5">YouTube / Video Trailer Link</label>
-                <input
-                  id="training-video-url"
-                  type="url"
-                  value={form.videoUrl ?? ''}
-                  onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
-                  placeholder="მაგ. https://www.youtube.com/watch?v=..."
-                  className={inputClass}
-                />
-                {form.videoUrl?.trim() && (
-                  <div className="mt-3">
-                    {parseVideoUrl(form.videoUrl.trim()) ? <VideoEmbed url={form.videoUrl.trim()} title="Training trailer preview" /> : (
-                      <p role="status" className="text-xs text-amber-700">გამოიყენეთ YouTube, Vimeo ან პირდაპირი MP4/WebM/OGG/MOV ბმული. ეს ბმული საჯარო გვერდზე ვერ გამოჩნდება.</p>
-                    )}
-                  </div>
-                )}
-              </div>
-              <div>
-                <label htmlFor="training-trainer-video-url" className="block text-sm font-medium text-gray-700 mb-1.5">
-                  ლექტორის ვიდეო <span className="text-gray-400 font-normal">(YouTube / Vimeo / MP4 — გამოჩნდება საჯარო გვერდზე)</span>
-                </label>
-                <input
-                  id="training-trainer-video-url"
-                  type="url"
-                  value={form.trainerVideoUrl ?? ''}
-                  onChange={(e) => setForm({ ...form, trainerVideoUrl: e.target.value })}
-                  placeholder="მაგ. https://www.youtube.com/watch?v=..."
-                  className={inputClass}
-                />
-                {form.trainerVideoUrl?.trim() && (
-                  <div className="mt-3">
-                    {parseVideoUrl(form.trainerVideoUrl.trim()) ? <VideoEmbed url={form.trainerVideoUrl.trim()} title="Trainer video preview" /> : (
-                      <p role="status" className="text-xs text-amber-700">გამოიყენეთ YouTube, Vimeo ან პირდაპირი MP4/WebM/OGG/MOV ბმული. ეს ბმული საჯარო გვერდზე ვერ გამოჩნდება.</p>
-                    )}
-                  </div>
-                )}
-              </div>
-              <div>
-                <label htmlFor="training-media-consent-url" className="block text-sm font-medium text-gray-700 mb-1.5">
-                  ფოტო/ვიდეო თანხმობის ფორმა <span className="text-gray-400 font-normal">(Google Forms ბმული — მთელი ტრენინგისთვის ერთხელ)</span>
-                </label>
-                <input
-                  id="training-media-consent-url"
-                  type="url"
-                  value={form.mediaConsentFormUrl ?? ''}
-                  onChange={(e) => setForm({ ...form, mediaConsentFormUrl: e.target.value })}
-                  placeholder="https://forms.gle/..."
-                  className={inputClass}
-                />
-                <p className="text-xs text-gray-400 mt-1.5">ცარიელი — მონაწილეს „ფოტო/ვიდეო თანხმობის" ღილაკი არ უჩანს.</p>
-              </div>
-            </div>
+            <MediaFields
+              form={form}
+              imageUploading={imageUploading}
+              handleCoverImageChange={handleCoverImageChange}
+              setForm={setForm}
+              inputClass={inputClass}
+            />
 
             <div className="flex gap-1 border-b border-gray-200">
               {(['ka', 'en'] as const).map((tab) => (
@@ -958,132 +627,29 @@ function AdminLiveTrainingsDashboard() {
               </>
             )}
 
-            <div className="rounded-xl border border-cyan-200 bg-cyan-50/40 p-4 sm:p-5 space-y-4">
-              <div>
-                <h3 className="text-sm font-bold text-gray-900">IAKO ასისტენტი</h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  დააკონფიგურირეთ AI მენტორი ამ ტრენინგისთვის. დატოვეთ Private / Testing რეჟიმში, სანამ არ იქნება მზად ჩარიცხულ მონაწილეებზე გასაშვებად.
-                </p>
-              </div>
-
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={iakoEnabled}
-                  onChange={(e) => setIakoEnabled(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
-                />
-                IAKO ჩართული
-              </label>
-
-              {iakoEnabled && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">IAKO პროფილი</label>
-                      <select value={iakoProfileId} onChange={(e) => setIakoProfileId(e.target.value)} className={inputClass}>
-                        <option value="">— აირჩიეთ პროფილი —</option>
-                        {iakoProfiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                      </select>
-                      {iakoReusedElsewhere && (
-                        <p className="text-xs text-amber-700 mt-1.5">
-                          ეს IAKO პროფილი გამოიყენება სხვა ტრენინგზეც/ტულზეც — მისი პერსონა და ცოდნის ბაზა საერთოა.
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">წვდომის რეჟიმი</label>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setIakoMode('TESTING')}
-                          className={`flex-1 rounded-lg border px-3 py-2.5 text-sm font-semibold ${iakoMode === 'TESTING' ? 'border-amber-500 bg-amber-50 text-amber-800' : 'border-gray-300 text-gray-500 hover:bg-gray-50'}`}
-                        >
-                          Private / Testing
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setIakoMode('LIVE')}
-                          className={`flex-1 rounded-lg border px-3 py-2.5 text-sm font-semibold ${iakoMode === 'LIVE' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-gray-300 text-gray-500 hover:bg-gray-50'}`}
-                        >
-                          Live
-                        </button>
-                      </div>
-                      {iakoMode === 'TESTING' ? (
-                        <p className="text-xs text-amber-700 mt-1.5">
-                          <span className="font-semibold">Private / Testing</span> — მხოლოდ ჩარიცხულმა ადმინისტრატორმა (SUPER_ADMIN/MANAGER) შეუძლია ამ IAKO-ს გამოყენება. ჩარიცხული მონაწილეები მას ვერც ხედავენ და ვერც წვდებიან.
-                        </p>
-                      ) : (
-                        <p className="text-xs text-emerald-700 mt-1.5">
-                          <span className="font-semibold">Live</span> — ავთენტიფიცირებულ მონაწილეებს აქტიური/დასრულებული ჩარიცხვით შეუძლიათ ამ IAKO-ს გამოყენება, მოქმედი ლიმიტების ფარგლებში.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {iakoDetail && (
-                    <div className="rounded-lg border border-gray-200 bg-white p-3.5 text-xs text-gray-600 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5">
-                      <div><span className="text-gray-400">პროფილი:</span> {iakoDetail.name}</div>
-                      <div><span className="text-gray-400">სტატუსი:</span> {iakoDetail.active ? 'აქტიური' : 'გამორთული'}</div>
-                      <div><span className="text-gray-400">Vision:</span> {iakoDetail.visionEnabled ? 'ჩართული' : 'გამორთული'}</div>
-                      <div><span className="text-gray-400">სულ მოთხოვნა (პროფილის ნაგულისხმევი):</span> {iakoDetail.defaultRequestLimit ?? '∞'}</div>
-                      <div><span className="text-gray-400">დღიური:</span> {iakoDetail.defaultDailyRequestLimit ?? '∞'}</div>
-                      <div><span className="text-gray-400">საათური:</span> {iakoDetail.defaultHourlyRequestLimit ?? '∞'}</div>
-                      <div><span className="text-gray-400">სქრინშოთი (სულ):</span> {iakoDetail.defaultScreenshotLimit ?? '∞'}</div>
-                      <div><span className="text-gray-400">სქრინშოთი/შეტყობინება:</span> {iakoDetail.defaultMaxScreenshotsPerMessage}</div>
-                      <div><span className="text-gray-400">ცოდნის ბაზა:</span> {iakoDetail.sources.length} დოკუმენტი / {iakoDetail.sources.reduce((sum, s) => sum + s.totalChunks, 0)} ნაწილი</div>
-                    </div>
-                  )}
-
-                  <div className="rounded-lg border border-gray-200 bg-white p-3.5 space-y-3">
-                    <h4 className="text-sm font-bold text-gray-900">კონტროლირებადი ავტომატური შევსება</h4>
-                    <p className="text-xs text-gray-500">
-                      მაგ: 200 → ავტომატურად +200 ერთხელ → მაქსიმუმ 400. ამის მეტი ავტომატურად არასდროს ემატება; შემდგომი კრედიტი მხოლოდ ადმინის ხელით.
-                    </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      <label className="text-xs font-medium text-gray-700">საწყისი სულ
-                        <input type="number" min={0} value={iakoInitialLimit} placeholder={String(iakoDetail?.defaultRequestLimit ?? 200)}
-                          onChange={(e) => setIakoInitialLimit(e.target.value)} className={`${inputClass} mt-1.5`} />
-                      </label>
-                      <label className="flex items-center gap-2 text-xs font-medium text-gray-700 mt-5">
-                        <input type="checkbox" checked={iakoAutoTopUpEnabled} onChange={(e) => setIakoAutoTopUpEnabled(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500" />
-                        ავტო-შევსება ჩართული
-                      </label>
-                    </div>
-                    {iakoAutoTopUpEnabled && (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        <label className="text-xs font-medium text-gray-700">შევსების ოდენობა
-                          <input type="number" min={1} value={iakoAutoTopUpAmount} placeholder="200" onChange={(e) => setIakoAutoTopUpAmount(e.target.value)} className={`${inputClass} mt-1.5`} />
-                        </label>
-                        <label className="text-xs font-medium text-gray-700">მაქს. ავტო-შევსებები
-                          <input type="number" min={1} value={iakoMaxAutoTopUps} onChange={(e) => setIakoMaxAutoTopUps(e.target.value)} className={`${inputClass} mt-1.5`} />
-                        </label>
-                        <label className="text-xs font-medium text-gray-700">მაქსიმალური ჯამი
-                          <input type="number" min={1} value={iakoMaxAutoTotal} placeholder="400" onChange={(e) => setIakoMaxAutoTotal(e.target.value)} className={`${inputClass} mt-1.5`} />
-                        </label>
-                      </div>
-                    )}
-                  </div>
-
-                  <p className="text-xs text-gray-500">
-                    სასწავლო მასალები IAKO-სთვის იმართება არჩეული IAKO პროფილის ცოდნის ბაზაში — არა Daily Guides-ის „ცოდნის ბაზა — წყაროებში".
-                  </p>
-
-                  <Link
-                    href={iakoProfileId ? `/admin/iako/profiles?id=${encodeURIComponent(iakoProfileId)}` : '/admin/iako/profiles'}
-                    className="inline-block text-xs font-semibold text-cyan-700 hover:text-cyan-900"
-                  >
-                    IAKO პროფილის მართვა →
-                  </Link>
-                </div>
-              )}
-
-              {iakoWarning && (
-                <div role="alert" className="rounded-lg bg-amber-50 border border-amber-300 px-3.5 py-2.5 text-xs text-amber-800">
-                  {iakoWarning}
-                </div>
-              )}
-            </div>
+            <IakoAssistantFields
+              iakoEnabled={iakoEnabled}
+              setIakoEnabled={setIakoEnabled}
+              iakoProfileId={iakoProfileId}
+              setIakoProfileId={setIakoProfileId}
+              inputClass={inputClass}
+              iakoProfiles={iakoProfiles}
+              iakoReusedElsewhere={iakoReusedElsewhere}
+              setIakoMode={setIakoMode}
+              iakoMode={iakoMode}
+              iakoDetail={iakoDetail}
+              iakoInitialLimit={iakoInitialLimit}
+              setIakoInitialLimit={setIakoInitialLimit}
+              iakoAutoTopUpEnabled={iakoAutoTopUpEnabled}
+              setIakoAutoTopUpEnabled={setIakoAutoTopUpEnabled}
+              iakoAutoTopUpAmount={iakoAutoTopUpAmount}
+              setIakoAutoTopUpAmount={setIakoAutoTopUpAmount}
+              iakoMaxAutoTopUps={iakoMaxAutoTopUps}
+              setIakoMaxAutoTopUps={setIakoMaxAutoTopUps}
+              iakoMaxAutoTotal={iakoMaxAutoTotal}
+              setIakoMaxAutoTotal={setIakoMaxAutoTotal}
+              iakoWarning={iakoWarning}
+            />
 
             <label className="flex items-center gap-2 text-sm text-gray-600">
               <input
@@ -1108,65 +674,13 @@ function AdminLiveTrainingsDashboard() {
           </form>
         </div>
 
-        <div>
-          <h2 className="text-base font-semibold text-gray-900 mb-4">ტრენინგები ({trainings.length})</h2>
-          {error && <div className="mb-5 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
-          {loading ? (
-            <p className="text-sm text-gray-400">Loading…</p>
-          ) : trainings.length === 0 ? (
-            <p className="text-sm text-gray-500">ტრენინგები ჯერ არ არის დამატებული.</p>
-          ) : (
-            <div className="space-y-3">
-              {trainings.map((t) => (
-                <div key={t.id} className="bg-white border border-gray-200 rounded-xl p-4">
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{t.category}</span>
-                        {!t.published && (
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded">დრაფტი</span>
-                        )}
-                        {t.isFull && (
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 bg-red-50 px-2 py-0.5 rounded">სავსეა</span>
-                        )}
-                        <span
-                          className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                            t.minThresholdMet ? 'text-emerald-600 bg-emerald-50' : 'text-gray-500 bg-gray-100'
-                          }`}
-                        >
-                          {t.minThresholdMet
-                            ? 'მინ. ჯგუფი შევსებულია'
-                            : `მინ. ${t.minCapacity}-კაციან ჯგუფს აკლია ${Math.max(0, t.minCapacity - t.registeredCount)} ადამიანი`}
-                        </span>
-                      </div>
-                      <h3 className="font-semibold text-sm text-gray-900 truncate mt-1">{t.title}</h3>
-                      <p className="text-xs text-gray-500">
-                        {new Date(t.scheduledAt).toLocaleString()} · {t.registeredCount} / {t.maxCapacity} რეგისტრირებული
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2 shrink-0">
-                      <Link href={`/admin/live-trainings/${t.id}/guides`} className="text-xs font-medium text-cyan-700 px-3 py-1.5 rounded-lg hover:bg-cyan-50">IAKO · გზამკვლევები</Link>
-                      <Link href={`/admin/live-trainings/${t.id}/trainers`} className="text-xs font-medium text-cyan-700 px-3 py-1.5 rounded-lg hover:bg-cyan-50">ტრენერები</Link>
-                      <Link href={`/admin/live-trainings/${t.id}/enrollments`} className="text-xs font-medium text-cyan-700 px-3 py-1.5 rounded-lg hover:bg-cyan-50">ჩარიცხვები · QR</Link>
-                      <Link
-                        href={`/admin/live-trainings/${t.id}/leads`}
-                        className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50"
-                      >
-                        <Users size={13} /> ლიდები და რეგისტრირებულები ({t.registeredCount})
-                      </Link>
-                      <button type="button" onClick={() => startEdit(t)} className="text-xs font-medium text-indigo-600 hover:text-indigo-800 px-3 py-1.5 rounded-lg hover:bg-indigo-50">
-                        რედაქტირება
-                      </button>
-                      <button type="button" onClick={() => handleDelete(t.id)} className="text-xs font-medium text-red-500 hover:text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-50">
-                        წაშლა
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <LiveTrainingList
+          trainings={trainings}
+          error={error}
+          loading={loading}
+          startEdit={startEdit}
+          handleDelete={handleDelete}
+        />
       </div>
     </>
   );
