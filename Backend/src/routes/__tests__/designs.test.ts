@@ -14,6 +14,18 @@ import { createUser, createDigitalProduct } from '../../test/factories';
 import designsRouter from '../designs';
 import adminTemplatesRouter from '../admin/adminProductTemplates';
 import { errorHandler } from '../../middleware/errorHandler';
+import sharp from 'sharp';
+
+// In-memory stand-in for the private Azure container.
+const blobs = new Map<string, Buffer>();
+jest.mock('../../services/integrations/privateBlobStorage', () => ({
+  uploadPrivateBlob: jest.fn(async (name: string, buffer: Buffer) => { blobs.set(name, buffer); }),
+  downloadPrivateBlob: jest.fn(async (name: string) => {
+    const blob = blobs.get(name);
+    if (!blob) throw new Error('not found');
+    return blob;
+  }),
+}));
 
 type User = Awaited<ReturnType<typeof createUser>>;
 let server: Server;
@@ -49,6 +61,9 @@ function request(path: string, user?: User, method = 'GET', body?: unknown) {
   });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function body(response: Response): Promise<any> { return response.json(); }
+
 const template = {
   format: 'cdc-template/1',
   title: 'CV',
@@ -81,12 +96,12 @@ describe('design editor API', () => {
       ...template, pages: [{ id: 'p1', elements: [{ ...template.pages[0].elements[0], fontFamily: 'Comic Sans' }] }],
     });
     expect(bad.status).toBe(400);
-    expect((await bad.json()).message).toMatch(/fontFamily/);
+    expect((await body(bad)).message).toMatch(/fontFamily/);
 
     const ok = await request(`/admin/product-templates/${product.id}`, admin, 'PUT', template);
     expect(ok.status).toBe(200);
     const again = await request(`/admin/product-templates/${product.id}`, admin, 'PUT', template);
-    expect((await again.json()).data.version).toBe(2);
+    expect((await body(again)).data.version).toBe(2);
   });
 
   it('gates designs on a completed purchase and supports save/reset/delete', async () => {
@@ -95,24 +110,24 @@ describe('design editor API', () => {
 
     expect((await request('/designs', stranger, 'POST', { productId: product.id })).status).toBe(403);
 
-    const listed = await (await request('/designs/products', buyer)).json();
+    const listed = await body(await request('/designs/products', buyer));
     expect(listed.data.map((p: { id: string }) => p.id)).toContain(product.id);
 
     const created = await request('/designs', buyer, 'POST', { productId: product.id });
     expect(created.status).toBe(201);
-    const { id } = (await created.json()).data;
+    const { id } = (await body(created)).data;
 
     // Someone else can't read it — and it reads as "not found", not "forbidden".
     expect((await request(`/designs/${id}`, stranger)).status).toBe(404);
 
-    const loaded = (await (await request(`/designs/${id}`, buyer)).json()).data;
+    const loaded = (await body(await request(`/designs/${id}`, buyer))).data;
     expect(loaded.data.pages[0].elements[0].text).toBe('სახელი გვარი');
 
     const edited = structuredClone(loaded.data);
     edited.pages[0].elements[0].text = 'ნინო ბერიძე';
     const saved = await request(`/designs/${id}`, buyer, 'PUT', { data: edited, title: 'ჩემი CV' });
     expect(saved.status).toBe(200);
-    const reloaded = (await (await request(`/designs/${id}`, buyer)).json()).data;
+    const reloaded = (await body(await request(`/designs/${id}`, buyer))).data;
     expect(reloaded.title).toBe('ჩემი CV');
     expect(reloaded.data.pages[0].elements[0].text).toBe('ნინო ბერიძე');
 
@@ -121,7 +136,7 @@ describe('design editor API', () => {
     evil.pages[0].elements.push({ id: 'img', type: 'image', xMm: 0, yMm: 0, wMm: 10, hMm: 10, src: 'javascript:alert(1)' });
     expect((await request(`/designs/${id}`, buyer, 'PUT', { data: evil })).status).toBe(400);
 
-    const reset = (await (await request(`/designs/${id}/reset`, buyer, 'POST')).json()).data;
+    const reset = (await body(await request(`/designs/${id}/reset`, buyer, 'POST'))).data;
     expect(reset.data.pages[0].elements[0].text).toBe('სახელი გვარი');
 
     // Refunded purchase → editor access is gone too.
@@ -136,11 +151,42 @@ describe('design editor API', () => {
   it('refuses asset refs that belong to someone else or to foreign hosts', async () => {
     const { admin, buyer, stranger, product } = await setup();
     await request(`/admin/product-templates/${product.id}`, admin, 'PUT', template);
-    const { id } = (await (await request('/designs', buyer, 'POST', { productId: product.id })).json()).data;
+    const { id } = (await body(await request('/designs', buyer, 'POST', { productId: product.id }))).data;
 
     const othersRef = `cdcdesign://design-asset-${stranger.id}-${crypto.randomUUID()}.webp`;
     expect((await request(`/designs/${id}/assets?ref=${encodeURIComponent(othersRef)}`, buyer)).status).toBe(404);
     const foreign = await request(`/designs/${id}/assets?ref=${encodeURIComponent('https://169.254.169.254/latest/meta-data')}`, buyer);
     expect(foreign.status).toBe(400);
+  });
+
+  it('stores uploads privately (re-encoded) and serves them only to their owner', async () => {
+    const { admin, buyer, product } = await setup();
+    await request(`/admin/product-templates/${product.id}`, admin, 'PUT', template);
+    const { id } = (await body(await request('/designs', buyer, 'POST', { productId: product.id }))).data;
+    const token = jwt.sign({ userId: buyer.id, role: buyer.role, email: buyer.email }, JWT_SECRET, { algorithm: 'HS256', expiresIn: '5m' });
+
+    const jpeg = await sharp({ create: { width: 64, height: 48, channels: 3, background: '#c05030' } }).jpeg().toBuffer();
+    const form = new FormData();
+    form.append('image', new Blob([new Uint8Array(jpeg)], { type: 'image/jpeg' }), 'me.jpg');
+    const uploaded = await fetch(`${baseUrl}/designs/${id}/assets`, {
+      method: 'POST', body: form, headers: { Authorization: `Bearer ${token}`, 'X-Forwarded-For': '198.18.9.1' },
+    });
+    expect(uploaded.status).toBe(201);
+    const { ref, width, height } = (await body(uploaded)).data;
+    expect(ref).toMatch(new RegExp(`^cdcdesign://design-asset-${buyer.id}-[0-9a-f-]{36}\.webp$`));
+    expect([width, height]).toEqual([64, 48]);
+
+    const served = await request(`/designs/${id}/assets?ref=${encodeURIComponent(ref)}`, buyer);
+    expect(served.status).toBe(200);
+    expect(served.headers.get('content-type')).toBe('image/webp');
+    expect((await sharp(Buffer.from(await served.arrayBuffer())).metadata()).format).toBe('webp');
+
+    // Not an image at all → rejected by sharp, nothing stored.
+    const bad = new FormData();
+    bad.append('image', new Blob([new Uint8Array(Buffer.from('not an image'))], { type: 'image/png' }), 'x.png');
+    const badUpload = await fetch(`${baseUrl}/designs/${id}/assets`, {
+      method: 'POST', body: bad, headers: { Authorization: `Bearer ${token}`, 'X-Forwarded-For': '198.18.9.2' },
+    });
+    expect(badUpload.status).toBe(400);
   });
 });

@@ -54,6 +54,7 @@ router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
   const products = await prisma.digitalProduct.findMany({
     where: { status: 'APPROVED', ...(category ? { category } : {}) },
     orderBy: { createdAt: 'desc' },
+    include: { editableTemplate: { select: { id: true } } },
   });
 
   const purchasedIds = req.user
@@ -97,6 +98,7 @@ router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
         reviewCount: p.reviewCount,
         createdAt: p.createdAt,
         purchased: purchasedIds.has(p.id),
+        hasEditableTemplate: !!p.editableTemplate,
       };
     }),
   });

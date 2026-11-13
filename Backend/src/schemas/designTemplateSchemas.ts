@@ -30,7 +30,7 @@ export const DESIGN_FONT_FAMILIES = [
   'Noto Sans Georgian',
   'Noto Serif Georgian',
   'Google Sans',
-  'BPG ExtraSquare Mtavruli',
+  'Literata', // Latin serif; Georgian letters fall back to Noto Serif Georgian
 ] as const;
 
 const MAX_PAGE_MM = 1200; // A0 is 841 x 1189 mm — the largest print we sell.

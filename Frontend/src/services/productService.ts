@@ -85,6 +85,8 @@ export interface DigitalProduct {
   // normal download flow once the product is owned. Null for a real
   // downloadable file, the common case.
   toolRoute?: string | null;
+  // True when the product opens in the in-platform design editor after purchase.
+  hasEditableTemplate?: boolean;
   licenseType: ProductLicenseType;
   downloadsCount: number;
   // Verified-purchase count only (COMPLETED ProductPurchase rows) — a free

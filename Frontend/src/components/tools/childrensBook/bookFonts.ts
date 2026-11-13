@@ -11,7 +11,7 @@ import localFont from 'next/font/local';
 // every letter with the first face that has it, exactly like the PDF does.
 // ============================================================
 
-const notoSansGeorgian = localFont({
+export const notoSansGeorgian = localFont({
   src: [
     { path: '../../../../node_modules/@fontsource/noto-sans-georgian/files/noto-sans-georgian-georgian-400-normal.woff2', weight: '400' },
     { path: '../../../../node_modules/@fontsource/noto-sans-georgian/files/noto-sans-georgian-georgian-700-normal.woff2', weight: '700' },
@@ -22,7 +22,7 @@ const notoSansGeorgian = localFont({
   // face and its Georgian partner in the stack and could draw the Georgian.
   adjustFontFallback: false,
 });
-const notoSansLatin = localFont({
+export const notoSansLatin = localFont({
   src: [
     { path: '../../../../node_modules/@fontsource/noto-sans-georgian/files/noto-sans-georgian-latin-400-normal.woff2', weight: '400' },
     { path: '../../../../node_modules/@fontsource/noto-sans-georgian/files/noto-sans-georgian-latin-700-normal.woff2', weight: '700' },
@@ -33,7 +33,7 @@ const notoSansLatin = localFont({
   // face and its Georgian partner in the stack and could draw the Georgian.
   adjustFontFallback: false,
 });
-const notoSerifGeorgian = localFont({
+export const notoSerifGeorgian = localFont({
   src: [
     { path: '../../../../node_modules/@fontsource/noto-serif-georgian/files/noto-serif-georgian-georgian-400-normal.woff2', weight: '400' },
     { path: '../../../../node_modules/@fontsource/noto-serif-georgian/files/noto-serif-georgian-georgian-700-normal.woff2', weight: '700' },
@@ -45,7 +45,7 @@ const notoSerifGeorgian = localFont({
   adjustFontFallback: false,
 });
 // FiraGO's "latin" file is the whole font, Georgian included.
-const firaGo = localFont({
+export const firaGo = localFont({
   src: [
     { path: '../../../../node_modules/@fontsource/firago/files/firago-latin-400-normal.woff2', weight: '400' },
     { path: '../../../../node_modules/@fontsource/firago/files/firago-latin-700-normal.woff2', weight: '700' },
@@ -56,7 +56,7 @@ const firaGo = localFont({
   // face and its Georgian partner in the stack and could draw the Georgian.
   adjustFontFallback: false,
 });
-const googleSansGeorgian = localFont({
+export const googleSansGeorgian = localFont({
   src: [
     { path: '../../../../node_modules/@fontsource/google-sans/files/google-sans-georgian-400-normal.woff2', weight: '400' },
     { path: '../../../../node_modules/@fontsource/google-sans/files/google-sans-georgian-700-normal.woff2', weight: '700' },
@@ -67,7 +67,7 @@ const googleSansGeorgian = localFont({
   // face and its Georgian partner in the stack and could draw the Georgian.
   adjustFontFallback: false,
 });
-const googleSansLatin = localFont({
+export const googleSansLatin = localFont({
   src: [
     { path: '../../../../node_modules/@fontsource/google-sans/files/google-sans-latin-400-normal.woff2', weight: '400' },
     { path: '../../../../node_modules/@fontsource/google-sans/files/google-sans-latin-700-normal.woff2', weight: '700' },
@@ -78,7 +78,7 @@ const googleSansLatin = localFont({
   // face and its Georgian partner in the stack and could draw the Georgian.
   adjustFontFallback: false,
 });
-const literata = localFont({
+export const literata = localFont({
   src: [
     { path: '../../../../node_modules/@fontsource/literata/files/literata-latin-400-normal.woff2', weight: '400' },
     { path: '../../../../node_modules/@fontsource/literata/files/literata-latin-700-normal.woff2', weight: '700' },
