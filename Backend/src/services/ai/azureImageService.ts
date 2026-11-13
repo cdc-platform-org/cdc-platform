@@ -93,7 +93,9 @@ export function classifyImageError(status: number | undefined, errorCode: string
 
 export interface GenerateImageParams {
   prompt: string;
-  size?: '1024x1024' | '1536x1024' | '1024x1536' | 'auto';
+  // gpt-image-2 also accepts larger custom sizes (e.g. '2048x3072', used by
+  // the product agent for print-resolution artwork), hence the open string.
+  size?: '1024x1024' | '1536x1024' | '1024x1536' | 'auto' | `${number}x${number}`;
   quality?: 'low' | 'medium' | 'high' | 'auto';
   outputFormat?: 'png' | 'jpeg' | 'webp';
   n?: number; // 1-10; this phase only ever calls with the default of 1.
@@ -111,6 +113,9 @@ export interface GenerateImageSuccess {
   requestId: string | null;
   mimeType: string;
   byteSize: number;
+  // Token usage Azure reports for the call (gpt-image models bill per
+  // token) — lets callers compute the real cost. Absent if not returned.
+  usage?: { inputTokens: number; outputTokens: number };
   buffer: Buffer; // Never logged — caller decides what to do with it (smoke test: write to a local temp file only).
 }
 
@@ -154,7 +159,7 @@ export async function generateImage(params: GenerateImageParams): Promise<Genera
               )
             ),
             n: params.n ?? 1,
-            size: params.size,
+            size: params.size as any,
             quality: params.quality,
             output_format: params.outputFormat,
           })
@@ -164,7 +169,7 @@ export async function generateImage(params: GenerateImageParams): Promise<Genera
             model: AZURE_IMAGE_DEPLOYMENT,
             prompt: params.prompt,
             n: params.n ?? 1,
-            size: params.size,
+            size: params.size as any,
             quality: params.quality,
             output_format: params.outputFormat,
           })
@@ -193,6 +198,7 @@ export async function generateImage(params: GenerateImageParams): Promise<Genera
       requestId,
       mimeType: OUTPUT_MIME[params.outputFormat ?? 'png'],
       byteSize: buffer.byteLength,
+      usage: data.usage ? { inputTokens: data.usage.input_tokens ?? 0, outputTokens: data.usage.output_tokens ?? 0 } : undefined,
       buffer,
     };
   } catch (err) {
