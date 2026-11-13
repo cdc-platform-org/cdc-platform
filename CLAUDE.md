@@ -23,3 +23,11 @@
 
 ## Core Motto
 > Loop gives movement, Graph gives context, Verification gives trust. The future is graph-backed loops: agents that act, remember, trace dependencies, retrieve the right context, and verify what changed.
+
+## 6. Codebase Map (read this before searching)
+- Full map: `docs/ARCHITECTURE.md` (folder layout, request flow, feature → file index). Business rules: `PROJECT_CONTEXT.md`.
+- Backend: `Backend/src/server.ts` holds the complete `/api/...` mount table → find the route file for any URL there. Routes in `Backend/src/routes/`, logic in `Backend/src/services/`, Zod schemas in `Backend/src/schemas/`, auth middleware in `Backend/src/middleware/auth.ts`, Prisma client in `Backend/src/lib/prisma.ts`, DB schema in `Backend/prisma/schema.prisma`.
+- Frontend: URLs = `Frontend/pages/**`; API clients = `Frontend/src/services/<area>Service.ts`; UI = `Frontend/src/components/<feature>/`; translations = `Frontend/public/locales/<lang>/<ns>.json`.
+- `Frontend/components|context|lib` and repo-level `Backend/server.ts` are legacy; put new code under `src/`.
+- Code style: each non-trivial file starts with a short header comment (purpose + what lives elsewhere); comment the *why* of non-obvious logic. Keep files under ~400 lines; split big ones into a folder with `index.ts`.
+- Source control: Azure DevOps remote `azure` (`main` = live). Never push to GitHub. Deploy only via `scripts/deploy-prod.ps1` with explicit approval.
