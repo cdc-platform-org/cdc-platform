@@ -217,7 +217,7 @@ export default function CookieConsentBanner() {
               <button
                 type="button"
                 onClick={acceptAll}
-                className="flex-1 text-xs font-bold px-3 py-2.5 rounded-xl text-white bg-gradient-to-r from-cyan-500 to-blue-600 border-none cursor-pointer hover:opacity-90 transition-opacity"
+                className="flex-1 text-xs font-bold px-3 py-2.5 rounded-xl text-white bg-cdc-primary hover:bg-cdc-primary-hover border-none cursor-pointer transition-colors"
               >
                 {t.acceptAll}
               </button>
@@ -280,7 +280,7 @@ export default function CookieConsentBanner() {
             <button
               type="button"
               onClick={savePreferences}
-              className="w-full text-sm font-bold px-4 py-3 rounded-xl text-white bg-gradient-to-r from-cyan-500 to-blue-600 border-none cursor-pointer hover:opacity-90 transition-opacity"
+              className="w-full text-sm font-bold px-4 py-3 rounded-xl text-white bg-cdc-primary hover:bg-cdc-primary-hover border-none cursor-pointer transition-colors"
             >
               {t.save}
             </button>

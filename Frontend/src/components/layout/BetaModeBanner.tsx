@@ -74,14 +74,14 @@ export default function BetaModeBanner() {
       // shift the box left without actually widening it to reach the real
       // right edge too — confirmed live as a real, screenshot-visible bug on
       // a sibling full-bleed element, not just a theoretical concern.
-      className="relative z-40 -mx-4 sm:-mx-6 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-b border-cyan-500/30"
+      className="relative z-40 -mx-4 sm:-mx-6 bg-cdc-primary"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex items-start sm:items-center justify-center gap-2 sm:gap-4">
-        <p className="flex-1 text-center text-[11px] sm:text-xs font-medium text-slate-200 leading-snug">
+        <p className="flex-1 text-center text-[11px] sm:text-xs font-medium text-white/90 leading-snug">
           {t.message}{' '}
           <a
             href={`mailto:${SUPPORT_EMAIL}`}
-            className="font-bold text-cyan-400 hover:text-cyan-300 underline underline-offset-2 whitespace-nowrap"
+            className="font-bold text-white hover:text-white/80 underline underline-offset-2 whitespace-nowrap"
           >
             {SUPPORT_EMAIL}
           </a>
@@ -90,7 +90,7 @@ export default function BetaModeBanner() {
           type="button"
           onClick={dismiss}
           aria-label={t.dismiss}
-          className="shrink-0 p-2.5 -m-1.5 sm:p-1 sm:m-0 rounded-lg border-none bg-transparent cursor-pointer text-slate-400 hover:text-white transition-colors"
+          className="shrink-0 p-2.5 -m-1.5 sm:p-1 sm:m-0 rounded-lg border-none bg-transparent cursor-pointer text-white/70 hover:text-white transition-colors"
         >
           <X className="w-3.5 h-3.5" />
         </button>

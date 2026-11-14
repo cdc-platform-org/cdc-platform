@@ -58,6 +58,7 @@ module.exports = {
           primary: token('primary'),   // main CTA / active state (violet)
           'primary-hover': token('primary-hover'),
           'primary-soft': token('primary-soft'), // tinted chips/badges bg
+          'primary-ink': token('primary-ink'),   // violet for text/icons (lighter in dark mode)
           accent: token('accent'),     // cyan highlight from the logo
           'accent-soft': token('accent-soft'),
         },
