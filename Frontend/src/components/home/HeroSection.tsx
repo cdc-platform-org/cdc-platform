@@ -1,13 +1,14 @@
 /**
  * Homepage hero (2026-11 redesign): light, centred headline block with the
- * key word in a soft violet highlight box, two CTAs, then the ambient hero
- * video framed as a large rounded card below — layout inspired by the
- * Figma e-learning template, colours from the CDC logo via cdc-* tokens
- * (works in dark mode too). Copy comes from the CMS override first, then
- * the `home` translations.
+ * key word in a soft violet highlight box, two CTAs, then the cover — an
+ * auto-advancing photo slideshow (HeroSlideshow.tsx) framed as a large
+ * rounded card. Layout inspired by the Figma e-learning template, colours
+ * from the CDC logo via cdc-* tokens (works in dark mode too). Copy comes
+ * from the CMS override first, then the `home` translations.
  */
 import Link from 'next/link';
 import { ArrowRight, Play, Sparkles } from 'lucide-react';
+import HeroSlideshow from './HeroSlideshow';
 import { HomepageContent } from '../../types/siteContent';
 import { Tutorial } from '../../types/tutorial';
 import type { TFunction } from 'i18next';
@@ -71,19 +72,11 @@ export default function HeroSection({ t, cms, translate, promoVideo, setShowProm
         </div>
       </div>
 
-      {/* Ambient hero video, framed as a big rounded card (no controls, not
-          focusable, purely decorative). */}
+      {/* Cover: auto-advancing photo slideshow of CDC events, framed as a
+          big rounded card (see HeroSlideshow for loading/motion rules). */}
       <div className="max-w-6xl mx-auto mt-10 sm:mt-16 rounded-[28px] border border-cdc-border bg-cdc-surface p-2 sm:p-3 shadow-card-hover">
         <div className="relative overflow-hidden rounded-[22px] aspect-[4/3] sm:aspect-video bg-slate-900">
-          <video
-            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-            src="/videos/hero.mp4"
-            autoPlay
-            loop
-            muted
-            playsInline
-            aria-hidden="true"
-          />
+          <HeroSlideshow alt="CDC — სტუდენტები და ტრენინგები / students and trainings" />
         </div>
       </div>
     </section>
