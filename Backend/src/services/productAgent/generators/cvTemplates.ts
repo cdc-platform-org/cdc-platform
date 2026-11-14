@@ -10,6 +10,7 @@ import sharp from 'sharp';
 import { z } from 'zod';
 import { writeJson } from '../ai';
 import { composeDescription } from '../listingText';
+import { themeNotes } from '../themes';
 import { Generator, Layout, LANGS, buildDocumentProduct, hexColor, newTemplate, slug } from './shared';
 import { TemplateFont, TemplatePage } from '../template/types';
 
@@ -132,7 +133,8 @@ export const generateCvTemplates: Generator = async (ctx) => {
 Return JSON {"nameKa","nameEn","introKa","introEn","layout":"sidebar|header","font":"FiraGO|Noto Sans Georgian|Noto Serif Georgian","accent":"#rrggbb (dark, white text readable on it)","ka":{person},"en":{person}}.
 person = {"name","jobTitle","summary","contacts":[3-4],"experience":[2-3 {"role","company","period","bullets":[1-3 short]}],"education":[1-2 {"degree","school","period"}],"skills":[5-8 short],"languages":[2-4],"letter":"cover letter, 3 short paragraphs, 150-220 words"}.
 Fill one full A4 page: a 3-sentence summary, 3 experience entries with 2-3 bullets each, 2 education entries, 7-8 skills — but keep each line short. introKa/En: 2-3 sentences describing the template for a shop listing.`,
-    `Theme: ${ctx.theme.theme}. Do not repeat these titles: ${ctx.theme.recentTitles.join('; ') || 'none'}.`,
+    `Theme: ${ctx.theme.theme}. 
+${themeNotes(ctx.theme)}`,
     briefSchema
   );
   const accent = hexColor(brief.accent, '#1f3a5f');

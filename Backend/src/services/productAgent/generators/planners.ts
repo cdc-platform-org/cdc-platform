@@ -9,6 +9,7 @@
 import { z } from 'zod';
 import { writeJson } from '../ai';
 import { composeDescription } from '../listingText';
+import { themeNotes } from '../themes';
 import { Generator, Layout, LANGS, buildDocumentProduct, hexColor, newTemplate, slug } from './shared';
 import { TemplatePage } from '../template/types';
 
@@ -193,7 +194,8 @@ export const generatePlanners: Generator = async (ctx) => {
     `You design printable planners for CDC Studio, a Georgian online shop. Choose a cohesive, modern, calm look.
 Return JSON {"nameKa","nameEn","introKa","introEn","coverLineKa","coverLineEn","accent":"#rrggbb (dark enough for white text)","soft":"#rrggbb (very light tint of accent)","pages":[4-7 of ${PAGE_TYPES.join('|')}]}.
 introKa/En: 2-3 sentences on who it is for and how it helps. Georgian must be natural and correct.`,
-    `Theme: ${ctx.theme.theme}. Do not repeat these titles: ${ctx.theme.recentTitles.join('; ') || 'none'}.`,
+    `Theme: ${ctx.theme.theme}. 
+${themeNotes(ctx.theme)}`,
     briefSchema
   );
   const accent = hexColor(brief.accent, '#2f5d62');

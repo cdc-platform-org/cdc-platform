@@ -12,6 +12,7 @@ import { writeJson, generateArtwork } from '../ai';
 import { composeDescription } from '../listingText';
 import { PORTRAIT_PRINT_SPECS, SQUARE_PRINT_SPECS, printPdfFromArtwork, cmLabel, inchLabel } from '../files';
 import { wallMockup } from '../mockups';
+import { themeNotes } from '../themes';
 import { Generator, slug } from './shared';
 import { DraftFile } from '../publish';
 
@@ -41,8 +42,8 @@ export const generatePrints: Generator = async (ctx) => {
     ctx.cost,
     SYSTEM,
     `Theme for this set: ${ctx.theme.theme}.
-Our best-selling prints (lean toward what sells, without copying): ${ctx.theme.bestSellers.join('; ') || 'none yet — our first and best seller is an impasto oil-painting floral set'}.
-Recent titles to NOT repeat: ${ctx.theme.recentTitles.join('; ') || 'none'}.
+${themeNotes(ctx.theme) || ''}
+Our first, best-selling listing is an impasto oil-painting floral set.
 Prefer portrait unless the theme suits square.`,
     briefSchema
   );
@@ -56,6 +57,7 @@ Prefer portrait unless the theme suits square.`,
         prompt: `${a.prompt}\n\nStyle for the whole set: ${brief.styleNotes}\nWall-art print, ${square ? 'square' : 'portrait 2:3'} composition with comfortable margins.`,
         size: square ? '2048x2048' : '2048x3072',
         quality: ctx.quality,
+        qa: 'art',
       })
     );
   }

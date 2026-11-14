@@ -10,6 +10,7 @@
 import { z } from 'zod';
 import { writeJson } from '../ai';
 import { composeDescription } from '../listingText';
+import { themeNotes } from '../themes';
 import { Generator, Layout, buildDocumentProduct, hexColor, newTemplate, slug } from './shared';
 import { TemplatePage } from '../template/types';
 
@@ -36,7 +37,8 @@ Accuracy is the top priority: only include facts you are certain of; the answer 
 Explanations are in Georgian (natural, correct Georgian); terms/examples may be in the subject language (e.g. English words for English learning).
 Return JSON {"nameKa","nameEn","introKa","introEn","levelKa","accent":"#rrggbb dark","items":[12-24 {"term","explanation","example"?}],"quiz":[8-12 {"question","options":[4],"answerIndex":0-3}]}.
 Keep each explanation under 200 characters.`,
-    `Topic: ${ctx.theme.theme}. Do not repeat these titles: ${ctx.theme.recentTitles.join('; ') || 'none'}.`,
+    `Topic: ${ctx.theme.theme}. 
+${themeNotes(ctx.theme)}`,
     briefSchema
   );
   const accent = hexColor(brief.accent, '#334e68');

@@ -9,6 +9,7 @@
 import { z } from 'zod';
 import { writeJson, generateArtwork } from '../ai';
 import { composeDescription } from '../listingText';
+import { themeNotes } from '../themes';
 import { Generator, Layout, LANGS, buildDocumentProduct, hexColor, newTemplate, slug } from './shared';
 
 const words = z.object({
@@ -42,12 +43,13 @@ Return JSON {"nameKa","nameEn","introKa","introEn","textColor":"#rrggbb readable
 w = {"topLine","mainLine","middleText","dateLine","placeLine","rsvp"}.
 backgroundPrompt: English prompt for a portrait invitation background: decorative elements ONLY around the edges/corners, a large plain light empty area in the centre for text, no text, no letters, no frames with writing.
 Georgian must be natural and correct.`,
-    `Occasion/theme: ${ctx.theme.theme}. Do not repeat these titles: ${ctx.theme.recentTitles.join('; ') || 'none'}.`,
+    `Occasion/theme: ${ctx.theme.theme}. 
+${themeNotes(ctx.theme)}`,
     briefSchema
   );
   const color = hexColor(brief.textColor, '#3d3a35');
   const assets = new Map<string, Buffer>([
-    ['bg', await generateArtwork(ctx.cost, { prompt: brief.backgroundPrompt, size: '1024x1536', quality: ctx.quality })],
+    ['bg', await generateArtwork(ctx.cost, { prompt: brief.backgroundPrompt, size: '1024x1536', quality: ctx.quality, qa: 'background' })],
   ]);
   const specs = LANGS.map((lang) => {
     const w = brief[lang];

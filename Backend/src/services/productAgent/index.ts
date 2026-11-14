@@ -15,6 +15,7 @@ import { GENERATORS } from './generators';
 import { publishDraft } from './publish';
 import { getProductAgentSettings, getSpendSummary, startOfUtcDay } from './settings';
 import { pickThemeContext } from './themes';
+import { refreshTrendBrief } from './trends';
 
 // One product at a time per instance: a print set holds three 2048×3072
 // images plus 4800×7200 upscales in memory, and Azure image rate limits are
@@ -85,6 +86,20 @@ export async function recoverInterruptedRuns(): Promise<void> {
   });
 }
 
+// The weekly "learning" step: a category that is in use gets a new market
+// brief once its latest one is a week old (trends.ts). Failure is logged and
+// the batch goes on with the older brief / evergreen pool.
+const BRIEF_REFRESH_MS = 7 * 86_400_000;
+async function ensureFreshBrief(category: AgentCategoryKey): Promise<void> {
+  const latest = await prisma.productAgentTrendBrief.findFirst({ where: { category }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } });
+  if (latest && Date.now() - latest.createdAt.getTime() < BRIEF_REFRESH_MS) return;
+  try {
+    await refreshTrendBrief(category);
+  } catch (err) {
+    console.error(`[product-agent] weekly trend brief for ${category} failed:`, err instanceof Error ? err.message : err);
+  }
+}
+
 // Called hourly. From the configured hour on, tops each category up to its
 // daily count (so a restart mid-batch simply continues), and stops as soon
 // as this month's spend reaches the budget. Today's runs are recounted
@@ -97,6 +112,7 @@ export async function runDailyBatch(): Promise<{ queued: number; reason?: string
   if (isAgentBusy()) return { queued: 0, reason: 'busy' };
   let queued = 0;
   for (const category of AGENT_CATEGORY_KEYS) {
+    if (settings.dailyCounts[category] > 0) await ensureFreshBrief(category);
     for (;;) {
       const doneToday = await prisma.productAgentRun.count({ where: { category, trigger: 'SCHEDULE', startedAt: { gte: startOfUtcDay() } } });
       if (doneToday >= settings.dailyCounts[category]) break;

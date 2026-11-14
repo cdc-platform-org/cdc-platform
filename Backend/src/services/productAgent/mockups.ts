@@ -45,7 +45,7 @@ async function libraryImage(cost: RunCost, kind: keyof typeof ROOM_PROMPTS): Pro
   const prompt = kind === 'DESK'
     ? `Photorealistic ${scene}. Soft natural daylight, gentle shadows, interior-magazine quality. No paper, no documents, no screens, no text.`
     : `Photorealistic interior photograph, straight-on eye-level view: ${scene}. The whole upper half of the picture is a plain, completely empty wall with nothing hanging on it, furniture only in the lower part of the picture. Soft natural daylight from a window on the side, interior-magazine quality. No artwork, no picture frames, no mirrors, no shelves on the wall, no text.`;
-  const buffer = await generateArtwork(cost, { prompt, size: '1536x1024', quality: 'medium', guardrails: false });
+  const buffer = await generateArtwork(cost, { prompt, size: '1536x1024', quality: 'medium', guardrails: false, qa: kind === 'DESK' ? undefined : 'room' });
   const url = await uploadImage({ buffer, mimetype: 'image/png', folderName: 'product-agent-assets', filename: `${kind.toLowerCase()}-${Date.now()}-${crypto.randomUUID()}.png` });
   await prisma.productAgentAsset.create({ data: { kind, url } });
   return buffer;

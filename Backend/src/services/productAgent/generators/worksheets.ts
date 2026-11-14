@@ -11,6 +11,7 @@
 import { z } from 'zod';
 import { writeJson, generateArtwork } from '../ai';
 import { composeDescription } from '../listingText';
+import { themeNotes } from '../themes';
 import { Generator, Layout, buildDocumentProduct, newTemplate, slug } from './shared';
 
 const briefSchema = z.object({
@@ -40,7 +41,8 @@ Return JSON {"nameKa","nameEn","introKa","introEn","ageKa","ageEn","items":[5-6 
 - prompt: English prompt for a cute black-and-white coloring-page drawing of that object/animal: thick clean outlines, simple shapes, white background, no shading, no grey fill, no text.
 - tracingLetters: 4–8 Georgian letters (the first letters of the words, plus related ones).
 Georgian must be natural and correct.`,
-    `Theme: ${ctx.theme.theme}. Do not repeat these titles: ${ctx.theme.recentTitles.join('; ') || 'none'}.`,
+    `Theme: ${ctx.theme.theme}. 
+${themeNotes(ctx.theme)}`,
     briefSchema
   );
 
@@ -52,6 +54,7 @@ Georgian must be natural and correct.`,
         prompt: `Children's coloring book page: ${brief.items[i].prompt}. Pure black outlines on pure white, thick even line weight, large simple areas to colour, centred, no background clutter.`,
         size: '1024x1536',
         quality: 'medium',
+        qa: 'lineart',
       })
     );
   }

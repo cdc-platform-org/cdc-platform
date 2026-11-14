@@ -77,14 +77,17 @@ function startOfUtcMonth(d = new Date()): Date {
 }
 
 export async function getSpendSummary(): Promise<{ todayUsd: number; monthUsd: number; monthProducts: number }> {
-  const [today, month, monthProducts] = await Promise.all([
+  const [today, month, monthProducts, briefsToday, briefsMonth] = await Promise.all([
     prisma.productAgentRun.aggregate({ _sum: { estimatedCostUsd: true }, where: { startedAt: { gte: startOfUtcDay() } } }),
     prisma.productAgentRun.aggregate({ _sum: { estimatedCostUsd: true }, where: { startedAt: { gte: startOfUtcMonth() } } }),
     prisma.productAgentRun.count({ where: { startedAt: { gte: startOfUtcMonth() }, status: 'SUCCEEDED' } }),
+    // Trend briefs (trends.ts) are agent spend too.
+    prisma.productAgentTrendBrief.aggregate({ _sum: { costUsd: true }, where: { createdAt: { gte: startOfUtcDay() } } }),
+    prisma.productAgentTrendBrief.aggregate({ _sum: { costUsd: true }, where: { createdAt: { gte: startOfUtcMonth() } } }),
   ]);
   return {
-    todayUsd: Math.round((today._sum.estimatedCostUsd ?? 0) * 100) / 100,
-    monthUsd: Math.round((month._sum.estimatedCostUsd ?? 0) * 100) / 100,
+    todayUsd: Math.round(((today._sum.estimatedCostUsd ?? 0) + (briefsToday._sum.costUsd ?? 0)) * 100) / 100,
+    monthUsd: Math.round(((month._sum.estimatedCostUsd ?? 0) + (briefsMonth._sum.costUsd ?? 0)) * 100) / 100,
     monthProducts,
   };
 }

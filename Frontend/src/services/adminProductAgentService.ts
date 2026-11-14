@@ -56,6 +56,15 @@ export interface AgentProduct {
   salesCount: number;
 }
 
+export interface TrendBrief {
+  id: string;
+  category: AgentCategoryKey;
+  themes: { theme: string; why: string; styleNotes?: string }[];
+  summary: string;
+  costUsd: number;
+  createdAt: string;
+}
+
 export interface ProductAgentOverview {
   settings: ProductAgentSettings;
   spend: { todayUsd: number; monthUsd: number; monthProducts: number };
@@ -64,6 +73,7 @@ export interface ProductAgentOverview {
   categories: AgentCategory[];
   runs: AgentRun[];
   products: AgentProduct[];
+  trendBriefs: TrendBrief[];
 }
 
 export async function getProductAgentOverview(): Promise<ProductAgentOverview> {
@@ -81,6 +91,12 @@ export async function runProductAgent(categories: AgentCategoryKey[]): Promise<s
   return res.data.data.runIds;
 }
 
-export async function deleteAgentProduct(id: string): Promise<void> {
-  await apiClient.delete(`/admin/product-agent/products/${id}`);
+// `reason` is remembered so the agent avoids similar products later.
+export async function deleteAgentProduct(id: string, reason?: string): Promise<void> {
+  await apiClient.delete(`/admin/product-agent/products/${id}`, { data: { reason } });
+}
+
+export async function refreshTrendBriefs(categories?: AgentCategoryKey[]): Promise<void> {
+  // Runs in the background on the server; new briefs appear in 1–2 minutes.
+  await apiClient.post('/admin/product-agent/trends/refresh', { categories });
 }

@@ -2229,6 +2229,23 @@ model ProductAgentRun {
   @@map("product_agent_runs")
 }
 
+// Weekly market brief per category (services/productAgent/trends.ts): the
+// themes the agent should make next, ranked, written by Azure OpenAI from
+// the season/holiday calendar plus how earlier agent products did (sold,
+// approved, rejected). The newest row per category drives theme choice.
+model ProductAgentTrendBrief {
+  id        String   @id @default(uuid())
+  category  String
+  // [{ theme, why, styleNotes }] best first
+  themes    Json
+  summary   String
+  costUsd   Float    @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([category, createdAt])
+  @@map("product_agent_trend_briefs")
+}
+
 // Reusable generated images, e.g. empty room backgrounds that every print
 // mockup is composited onto — generated once, reused across products so a
 // mockup costs nothing per product.

@@ -10,6 +10,7 @@
 import { z } from 'zod';
 import { writeJson, generateArtwork } from '../ai';
 import { composeDescription } from '../listingText';
+import { themeNotes } from '../themes';
 import { Generator, Layout, LANGS, buildDocumentProduct, hexColor, newTemplate, slug, DocumentFileSpec } from './shared';
 import { TemplateFont } from '../template/types';
 
@@ -97,13 +98,14 @@ Invent a FICTIONAL example business that fits the theme (example brand name, exa
 Return JSON {"nameKa","nameEn","introKa","introEn","accent":"#rrggbb (dark)","soft":"#rrggbb (light tint)","font":"FiraGO|Noto Sans Georgian|Noto Serif Georgian","illustrationPrompt","ka":{c},"en":{c}}.
 c = {"brand","tagline","listTitle","items":[6-10 {"name","note"?,"price":"25 ₾"}],"flyerHeadline","flyerText","flyerOffer","contact":[2-3],"personName","personRole"}.
 illustrationPrompt: English prompt for a stylish photo or illustration for the top of the flyer matching the business (no text, no logos). Georgian must be natural and correct.`,
-    `Theme: ${ctx.theme.theme}. Do not repeat these titles: ${ctx.theme.recentTitles.join('; ') || 'none'}.`,
+    `Theme: ${ctx.theme.theme}. 
+${themeNotes(ctx.theme)}`,
     briefSchema
   );
   const accent = hexColor(brief.accent, '#7a3e3e');
   const soft = hexColor(brief.soft, '#f6efe9');
   const assets = new Map<string, Buffer>([
-    ['illustration', await generateArtwork(ctx.cost, { prompt: brief.illustrationPrompt, size: '1536x1024', quality: 'medium' })],
+    ['illustration', await generateArtwork(ctx.cost, { prompt: brief.illustrationPrompt, size: '1536x1024', quality: 'medium', qa: 'background' })],
   ]);
   const specs: DocumentFileSpec[] = [];
   for (const lang of LANGS) {

@@ -11,12 +11,14 @@ import AdminLayout from '../../src/components/admin/AdminLayout';
 import AgentSettingsCard from '../../src/components/admin/productAgent/AgentSettingsCard';
 import AgentProductsList from '../../src/components/admin/productAgent/AgentProductsList';
 import AgentRunsTable from '../../src/components/admin/productAgent/AgentRunsTable';
+import TrendBriefsCard from '../../src/components/admin/productAgent/TrendBriefsCard';
 import {
   AgentCategoryKey,
   ProductAgentOverview,
   ProductAgentSettings,
   deleteAgentProduct,
   getProductAgentOverview,
+  refreshTrendBriefs,
   runProductAgent,
   updateProductAgentSettings,
 } from '../../src/services/adminProductAgentService';
@@ -85,14 +87,25 @@ function ProductAgentAdmin() {
 
   const remove = async (id: string) => {
     if (!window.confirm('წავშალო ეს პროდუქტი? ამას ვეღარ დააბრუნებ.')) return;
+    // Optional; the agent learns from it and avoids similar products.
+    const reason = window.prompt('რატომ შლი? (არასავალდებულო — აგენტი ამას გაითვალისწინებს)') ?? '';
     setActingId(id);
     try {
-      await deleteAgentProduct(id);
+      await deleteAgentProduct(id, reason.trim() || undefined);
       await load();
     } catch (err) {
       setError(errorText(err, 'წაშლა ვერ მოხერხდა.'));
     } finally {
       setActingId(null);
+    }
+  };
+
+  const refreshTrends = async () => {
+    try {
+      await refreshTrendBriefs();
+      setNotice('ტრენდების განახლება დაიწყო — 1–2 წუთში განაახლე გვერდი.');
+    } catch (err) {
+      setError(errorText(err, 'ტრენდების განახლება ვერ დაიწყო.'));
     }
   };
 
@@ -132,6 +145,7 @@ function ProductAgentAdmin() {
         {data && (
           <>
             <AgentSettingsCard settings={data.settings} categories={data.categories} busy={data.busy} configured={data.configured} onSave={save} onRun={run} />
+            <TrendBriefsCard briefs={data.trendBriefs} categories={data.categories} onRefresh={refreshTrends} />
             <section className="space-y-3">
               <h2 className="text-lg font-semibold text-gray-900">აგენტის შექმნილი პროდუქტები</h2>
               <AgentProductsList products={data.products} actingId={actingId} onApprove={approve} onDelete={remove} />

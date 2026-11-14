@@ -10,6 +10,7 @@
 import { z } from 'zod';
 import { generateImage, GenerateImageParams } from '../ai/azureImageService';
 import { callAzureChatCompletionFull } from '../ai/azureChatCompletionService';
+import { ArtworkKind, inspectArtwork } from './qa';
 
 // USD per 1M tokens. gpt-image-2's public rate is $30/M image output tokens
 // and $5/M text input (2026-11); Azure bills on the same token basis. The
@@ -48,15 +49,11 @@ const ART_GUARDRAILS =
   'Original artwork. Do not imitate any specific named artist, brand, logo, trademark or copyrighted character. ' +
   'No text, letters, numbers, signature or watermark anywhere in the image. No frame, no mat, no wall — only the flat artwork filling the whole canvas.';
 
-export async function generateArtwork(
-  cost: RunCost,
-  params: { prompt: string; size: GenerateImageParams['size']; quality: 'high' | 'medium'; guardrails?: boolean }
-): Promise<Buffer> {
-  const prompt = params.guardrails === false ? params.prompt : `${params.prompt}\n\n${ART_GUARDRAILS}`;
+async function generateOnce(cost: RunCost, prompt: string, size: GenerateImageParams['size'], quality: 'high' | 'medium'): Promise<Buffer> {
   // One retry on a transient failure only; a content-filter or schema error
   // would fail the same way again and just cost money.
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const result = await generateImage({ prompt, size: params.size, quality: params.quality, outputFormat: 'png' });
+    const result = await generateImage({ prompt, size, quality, outputFormat: 'png' });
     if (result.success) {
       cost.addImage(result.usage);
       return result.buffer;
@@ -68,6 +65,27 @@ export async function generateArtwork(
     await new Promise((r) => setTimeout(r, 15_000));
   }
   throw new Error('unreachable');
+}
+
+// Generates a picture and, when `qa` is given, has the vision model inspect
+// it (qa.ts); a failed inspection triggers ONE regeneration that is told
+// what was wrong. The second picture is used either way — a product is
+// still reviewed by the admin before it is published.
+export async function generateArtwork(
+  cost: RunCost,
+  params: { prompt: string; size: GenerateImageParams['size']; quality: 'high' | 'medium'; guardrails?: boolean; qa?: ArtworkKind }
+): Promise<Buffer> {
+  const prompt = params.guardrails === false ? params.prompt : `${params.prompt}
+
+${ART_GUARDRAILS}`;
+  const first = await generateOnce(cost, prompt, params.size, params.quality);
+  if (!params.qa) return first;
+  const verdict = await inspectArtwork(cost, first, params.qa);
+  if (verdict.ok) return first;
+  console.log(`[product-agent] image rejected by QA (${params.qa}): ${verdict.problems.join('; ')} — regenerating once`);
+  return generateOnce(cost, `${prompt}
+
+A previous attempt had these problems, avoid them: ${verdict.problems.join('; ')}.`, params.size, params.quality);
 }
 
 // One JSON-mode chat call validated against a Zod schema; on a schema
