@@ -5,6 +5,7 @@ import { checkoutEnglishTutorSubscription } from '../../services/paymentService'
 import { checkoutEnglishTutorSubscriptionStripe, stripeWithBogFallback } from '../../services/stripePaymentService';
 import { PromoValidationResult } from '../../services/paymentService';
 import PromoCodeField from '../shared/PromoCodeField';
+import CheckoutGatewayPicker, { useCheckoutGateway } from '../payments/CheckoutGatewayPicker';
 
 interface TutorPaywallModalProps {
   lang: 'ka' | 'en';
@@ -47,6 +48,7 @@ export default function TutorPaywallModal({ lang, trialAvailable, onClose, onTri
   const t = dict[lang];
   const [startingTrial, setStartingTrial] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
+  const { gateway, setGateway, stripeEnabled } = useCheckoutGateway(lang);
   const [error, setError] = useState<string | null>(null);
   const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
 
@@ -68,8 +70,8 @@ export default function TutorPaywallModal({ lang, trialAvailable, onClose, onTri
     setError(null);
     try {
       const result =
-        lang === 'ka'
-          ? await checkoutEnglishTutorSubscription('ka', appliedPromo?.code)
+        gateway === 'bog'
+          ? await checkoutEnglishTutorSubscription(lang, appliedPromo?.code)
           : await stripeWithBogFallback(
               () => checkoutEnglishTutorSubscriptionStripe(appliedPromo?.code, 'usd'),
               () => checkoutEnglishTutorSubscription('en', appliedPromo?.code),
@@ -127,6 +129,7 @@ export default function TutorPaywallModal({ lang, trialAvailable, onClose, onTri
             onChange={setAppliedPromo}
             disabled={checkingOut}
           />
+          <CheckoutGatewayPicker lang={lang} gateway={gateway} onChange={setGateway} stripeEnabled={stripeEnabled} disabled={checkingOut} />
           <button
             type="button"
             onClick={handleUpgrade}

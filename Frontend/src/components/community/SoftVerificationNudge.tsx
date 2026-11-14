@@ -2,6 +2,7 @@ import { useRouter } from 'next/router';
 import { Lightbulb } from 'lucide-react';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { resolveLocale } from '../../utils/locale';
+import VerificationBenefits from '../shared/VerificationBenefits';
 
 interface SoftVerificationNudgeProps {
   onContinueWithoutVerifying: () => void;
@@ -10,14 +11,14 @@ interface SoftVerificationNudgeProps {
 }
 
 const EN_STRINGS = {
-  message: 'Tip: Verified freelancers get hired 3x faster. Want to complete quick verification first?',
+  message: 'Tip: clients see a "Verified" badge next to your proposal. Want to complete quick verification first?',
   continueWithout: 'Continue without verifying',
   verify: 'Get verified (5 min)',
 };
 
 const dict = {
   ka: {
-    message: 'რჩევა: ვერიფიცირებული ფრილანსერები 3-ჯერ უფრო სწრაფად იღებენ შეკვეთებს. გსურთ გაიაროთ სწრაფი ვერიფიკაცია?',
+    message: 'რჩევა: კლიენტი თქვენს წინადადებასთან „ვერიფიცირებულ“ ნიშანს დაინახავს. გსურთ გაიაროთ სწრაფი ვერიფიკაცია?',
     continueWithout: 'გაგრძელება ვერიფიკაციის გარეშე',
     verify: 'ვერიფიკაციის გავლა (5 წთ)',
   },
@@ -36,7 +37,8 @@ const dict = {
 // gate (only wallet.ts's payout-requests still is).
 export default function SoftVerificationNudge({ onContinueWithoutVerifying, onVerify, onClose }: SoftVerificationNudgeProps) {
   const router = useRouter();
-  const t = dict[resolveLocale(router.locale)];
+  const locale = resolveLocale(router.locale);
+  const t = dict[locale];
   useEscapeToClose(true, onClose);
 
   return (
@@ -48,6 +50,8 @@ export default function SoftVerificationNudge({ onContinueWithoutVerifying, onVe
           </div>
           <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed font-medium">{t.message}</p>
         </div>
+
+        <VerificationBenefits lang={locale} compact className="mb-5" />
 
         <div className="flex flex-col gap-2">
           <button
