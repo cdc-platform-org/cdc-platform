@@ -38,8 +38,7 @@ export const PAYMENT_STATUS_BADGE: Record<string, string> = {
 };
 
 /** Shared card styling used by empty states and wallet panels. */
-export const CARD_CLASS =
-  'rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10';
+export const CARD_CLASS = 'rounded-card border border-cdc-border bg-cdc-surface shadow-card';
 
 /** Money is stored in minor units (tetri); this renders e.g. 1250 → "12.50 ₾". */
 export function formatGel(minorUnits: number): string {
@@ -52,9 +51,9 @@ export function formatMoney(minorUnits: number, currency: string): string {
 
 export function ProgressBar({ percent }: { percent: number }) {
   return (
-    <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+    <div className="w-full bg-cdc-primary-soft h-2 rounded-full overflow-hidden">
       <div
-        className="bg-gradient-to-r from-cyan-500 to-purple-500 h-full transition-all duration-300"
+        className="bg-cdc-primary h-full rounded-full transition-all duration-300"
         style={{ width: `${percent}%` }}
       />
     </div>
@@ -75,14 +74,14 @@ export function FreelancerExamCard({ user, t }: { user: User; t: DashboardString
     );
   }
   return (
-    <div className="rounded-2xl border border-cyan-300 dark:border-cyan-800 bg-cyan-50 dark:bg-cyan-950/30 p-4 flex flex-wrap items-center justify-between gap-3 h-full">
+    <div className="rounded-card border border-cdc-border bg-cdc-surface shadow-card p-5 flex flex-wrap items-center justify-between gap-3 h-full">
       <div>
-        <h2 className="text-sm font-extrabold tracking-wide text-slate-800 dark:text-slate-100">{t.examTitle}</h2>
-        <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">{t.examPendingBody}</p>
+        <h2 className="text-sm font-bold text-cdc-ink">{t.examTitle}</h2>
+        <p className="text-xs text-cdc-muted mt-1">{t.examPendingBody}</p>
       </div>
       <Link
         href="/freelancer/exam"
-        className="inline-block text-xs font-bold text-white bg-slate-900 dark:bg-cyan-600 px-4 py-2.5 rounded-xl no-underline shrink-0"
+        className="vip-btn-primary shrink-0 no-underline"
       >
         {t.examStart}
       </Link>
