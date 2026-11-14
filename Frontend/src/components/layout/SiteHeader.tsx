@@ -112,25 +112,26 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
   const topLinkClass = (active: boolean) =>
     `relative inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13.5px] font-semibold no-underline transition-colors duration-150 ${
       active
-        ? 'text-slate-900 dark:text-white bg-slate-900/[0.06] dark:bg-white/10'
-        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-900/[0.04] dark:hover:bg-white/[0.06]'
+        ? 'text-cdc-primary-ink bg-cdc-primary-soft'
+        : 'text-cdc-muted hover:text-cdc-ink hover:bg-cdc-bg'
     }`;
 
   return (
     // Full-bleed edge-to-edge (-mx-4 sm:-mx-6 cancels _app.tsx's app-shell
-    // wrapper padding) so the glass background spans the true viewport width.
+    // wrapper padding) so the bar spans the true viewport width. 2026-11
+    // redesign: a solid surface bar with a hairline border (cdc-* tokens from
+    // tailwind.config.js, so dark mode follows automatically); a soft shadow
+    // appears only once the page is scrolled.
     <nav
-      className={`sticky top-0 z-50 -mx-4 sm:-mx-6 border-b backdrop-blur-xl transition-[background-color,box-shadow,border-color] duration-300 ${
-        scrolled
-          ? 'bg-white/85 dark:bg-[#0b0f19]/80 border-slate-200/80 dark:border-white/10 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.18)]'
-          : 'bg-white/70 dark:bg-[#0b0f19]/60 border-transparent'
+      className={`sticky top-0 z-50 -mx-4 sm:-mx-6 border-b border-cdc-border bg-cdc-surface/95 backdrop-blur-xl transition-shadow duration-300 ${
+        scrolled ? 'shadow-[0_8px_30px_-16px_rgba(21,19,43,0.22)]' : ''
       }`}
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 px-4 sm:px-6 h-16 sm:h-[72px]">
         <div className="flex-1 flex items-center min-w-fit">
           <Link href="/" className="flex items-center gap-2.5 shrink-0 no-underline text-current" aria-label="CDC">
             <Image src="/images/cdc-logo.png" alt="CDC" width={44} height={44} priority className="h-10 w-auto rounded-xl object-cover shadow-sm ring-1 ring-black/5 dark:ring-white/10" />
-            <span className="hidden sm:inline font-black text-[15px] tracking-tight text-slate-900 dark:text-white">CDC</span>
+            <span className="hidden sm:inline font-black text-[15px] tracking-tight text-cdc-ink">CDC</span>
           </Link>
         </div>
 
@@ -140,7 +141,7 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
           {entries.map((entry) =>
             entry.kind === 'link' ? (
               <Link key={entry.key} href={entry.href} className={topLinkClass(isActive(asPath, entry.href))}>
-                {entry.highlight && <Sparkles className="w-3.5 h-3.5 text-cyan-500" />}
+                {entry.highlight && <Sparkles className="w-3.5 h-3.5 text-cdc-accent" />}
                 {nav.links[entry.key]}
               </Link>
             ) : (
@@ -150,7 +151,7 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
                   <ChevronDown className="w-3.5 h-3.5 opacity-60 transition-transform duration-200 group-hover:rotate-180 group-focus-within:rotate-180" />
                 </Link>
                 <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 transition-all duration-200">
-                  <div className="w-[22rem] rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white/95 dark:bg-[#0e1422]/95 backdrop-blur-xl p-2 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.35)]">
+                  <div className="w-[22rem] rounded-card border border-cdc-border bg-cdc-surface p-2 shadow-[0_24px_60px_-20px_rgba(21,19,43,0.3)]">
                     {entry.items.map((item) => {
                       const copy = nav.items[item.key];
                       const Icon = item.icon;
@@ -158,14 +159,14 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
                         <Link
                           key={item.key}
                           href={item.href}
-                          className="flex items-start gap-3 rounded-xl px-3 py-2.5 no-underline transition-colors hover:bg-slate-100/80 dark:hover:bg-white/[0.06] focus-visible:bg-slate-100/80 dark:focus-visible:bg-white/[0.06] outline-none"
+                          className="flex items-start gap-3 rounded-xl px-3 py-2.5 no-underline transition-colors hover:bg-cdc-bg focus-visible:bg-cdc-bg outline-none"
                         >
-                          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500/15 to-purple-600/15 text-cyan-600 dark:text-cyan-300 ring-1 ring-cyan-500/20">
+                          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cdc-primary-soft text-cdc-primary-ink">
                             <Icon className="w-[18px] h-[18px]" />
                           </span>
                           <span className="min-w-0 whitespace-normal">
-                            <span className="block text-sm font-bold text-slate-900 dark:text-white">{copy.title}</span>
-                            <span className="block text-xs leading-snug text-slate-500 dark:text-slate-400">{copy.desc}</span>
+                            <span className="block text-sm font-bold text-cdc-ink">{copy.title}</span>
+                            <span className="block text-xs leading-snug text-cdc-muted">{copy.desc}</span>
                           </span>
                         </Link>
                       );
@@ -190,7 +191,7 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
               type="button"
               onClick={toggleDarkMode}
               aria-label="Toggle dark mode"
-              className="p-2 rounded-full border-none bg-transparent cursor-pointer text-slate-600 dark:text-slate-300 hover:bg-slate-900/[0.05] dark:hover:bg-white/10 transition-colors"
+              className="p-2 rounded-full border-none bg-transparent cursor-pointer text-cdc-muted hover:text-cdc-ink hover:bg-cdc-bg transition-colors"
             >
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
@@ -200,7 +201,7 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
                 <button
                   type="button"
                   onClick={() => openAuthModal()}
-                  className="hidden sm:inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold border-none cursor-pointer text-white bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 transition-colors shadow-sm"
+                  className="hidden sm:inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold border-none cursor-pointer text-white bg-cdc-primary hover:bg-cdc-primary-hover transition-colors shadow-sm"
                 >
                   {t.login}
                   <ArrowRight className="w-4 h-4" />
@@ -211,7 +212,7 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
               <button
                 type="button"
                 onClick={() => openAuthModal()}
-                className="sm:hidden rounded-full px-3.5 py-1.5 text-xs font-bold border-none cursor-pointer text-white bg-slate-900 dark:bg-white dark:text-slate-900 whitespace-nowrap"
+                className="sm:hidden rounded-lg px-3.5 py-1.5 text-xs font-bold border-none cursor-pointer text-white bg-cdc-primary whitespace-nowrap"
               >
                 {t.login}
               </button>
@@ -221,7 +222,7 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
               onClick={() => setMobileMenuOpen((open) => !open)}
               aria-label="Toggle menu"
               aria-expanded={mobileMenuOpen}
-              className="min-[1420px]:hidden p-2 rounded-full border-none bg-transparent cursor-pointer text-slate-800 dark:text-slate-200 hover:bg-slate-900/[0.05] dark:hover:bg-white/10"
+              className="min-[1420px]:hidden p-2 rounded-full border-none bg-transparent cursor-pointer text-cdc-ink hover:bg-cdc-bg"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -230,10 +231,10 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
       </div>
 
       {mobileMenuOpen && (
-        <div className="min-[1420px]:hidden border-t border-slate-200/80 dark:border-white/10 px-4 sm:px-6 pb-[calc(var(--tabbar-h,0px)+1.5rem)] overflow-y-auto overscroll-contain max-h-[calc(100dvh-4rem)]">
+        <div className="min-[1420px]:hidden border-t border-cdc-border px-4 sm:px-6 pb-[calc(var(--tabbar-h,0px)+1.5rem)] overflow-y-auto overscroll-contain max-h-[calc(100dvh-4rem)]">
           <div className="max-w-2xl mx-auto">
             {isAuthenticated && user ? (
-              <Link href={dashboardHref} className="mt-4 flex items-center gap-3 rounded-2xl p-3 no-underline text-current bg-slate-100/70 dark:bg-white/[0.05]">
+              <Link href={dashboardHref} className="mt-4 flex items-center gap-3 rounded-2xl p-3 no-underline text-current bg-cdc-bg">
                 <div className="w-11 h-11 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800 shrink-0 flex items-center justify-center">
                   {user.avatarUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -252,7 +253,7 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
                   setMobileMenuOpen(false);
                   openAuthModal();
                 }}
-                className="w-full mt-4 text-base font-bold px-4 py-3.5 rounded-2xl border-none cursor-pointer text-white bg-slate-900 dark:bg-white dark:text-slate-900"
+                className="w-full mt-4 text-base font-bold px-4 py-3.5 rounded-2xl border-none cursor-pointer text-white bg-cdc-primary hover:bg-cdc-primary-hover"
               >
                 {t.login}
               </button>
@@ -272,7 +273,7 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
                   href={entry.href}
                   className={`mt-3 flex items-center gap-2 rounded-xl px-3 py-3 text-base font-bold no-underline ${
                     entry.highlight
-                      ? 'text-white bg-gradient-to-r from-cyan-500 to-purple-600'
+                      ? 'text-white bg-cdc-primary'
                       : 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06]'
                   }`}
                 >
@@ -291,7 +292,7 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
                           href={item.href}
                           className="flex items-center gap-3 rounded-xl px-3 py-3 no-underline text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.06]"
                         >
-                          <Icon className="w-5 h-5 shrink-0 text-cyan-600 dark:text-cyan-400" />
+                          <Icon className="w-5 h-5 shrink-0 text-cdc-primary-ink" />
                           <span className="text-[15px] font-semibold">{nav.items[item.key].title}</span>
                         </Link>
                       );
