@@ -28,6 +28,8 @@ import { findToolEntry } from '../../src/utils/toolCatalog';
 import { CatalogAiTeacherCard, CatalogCourseCard, CatalogLiveTrainingCard } from '../../src/components/courses/catalog/CatalogCards';
 import CatalogFilters, { type PriceFilter, type SortMode } from '../../src/components/courses/catalog/CatalogFilters';
 import PromoCheckoutModal from '../../src/components/shared/PromoCheckoutModal';
+import FeaturedCourseRail from '../../src/components/courses/FeaturedCourseRail';
+import { CourseCardSkeleton } from '../../src/components/courses/CourseCard';
 import { isPublishedCourse } from '../../src/utils/courseCatalog';
 
 type ContentTab = 'all' | 'courses' | 'live' | 'ai-teachers';
@@ -103,6 +105,7 @@ export default function CoursesPage() {
   const [priceFilter, setPriceFilter] = useState<PriceFilter>('all');
   const [sort, setSort] = useState<SortMode>('recommended');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const closeFilters = useCallback(() => setFiltersOpen(false), []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -285,7 +288,7 @@ export default function CoursesPage() {
     });
 
   return (
-    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-cdc-bg text-cdc-ink flex flex-col">
+    <div className="learning-surface -mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-cdc-bg text-cdc-ink flex flex-col">
       <Head>
         <title>{`${t('title')} | CDC`}</title>
       </Head>
@@ -311,10 +314,12 @@ export default function CoursesPage() {
 
         {/* Page heading + EDUPRO-style search bar with a square filter
             button (the button opens the filter drawer on mobile). */}
-        <h1 style={{ lineHeight: 1.25 }} className="text-3xl sm:text-4xl font-extrabold tracking-tight text-cdc-ink">{t('title')}</h1>
+        <h1 style={{ lineHeight: 1.25 }} className="text-4xl sm:text-6xl font-extrabold tracking-tight text-cdc-ink">{t('academy.eyebrow')}</h1>
         <p className="mt-2 text-cdc-muted">{t('subtitle')}</p>
 
-        <div className="mt-6 flex items-center gap-3">
+        {contentTab === 'all' && !search && !category && <FeaturedCourseRail courses={courses} loading={loading} lang={lang} />}
+
+        <div className="mt-8 flex items-center gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-cdc-muted" aria-hidden="true" />
             <input
@@ -330,7 +335,8 @@ export default function CoursesPage() {
             type="button"
             onClick={() => setFiltersOpen((v) => !v)}
             aria-label={t('filtersToggle')}
-            className="lg:hidden shrink-0 w-[52px] h-[52px] rounded-2xl bg-cdc-primary text-white flex items-center justify-center border-none cursor-pointer hover:bg-cdc-primary-hover"
+            aria-expanded={filtersOpen}
+            className="shrink-0 w-[52px] h-[52px] rounded-2xl bg-cdc-primary text-white flex items-center justify-center border-none cursor-pointer hover:bg-cdc-primary-hover"
           >
             <SlidersHorizontal className="w-5 h-5" aria-hidden="true" />
           </button>
@@ -364,19 +370,19 @@ export default function CoursesPage() {
         {contentTab === 'ai-teachers' ? (
           <div>
             <p className="text-sm text-cdc-muted mb-6 max-w-2xl">{t('aiTeachersSubtitle')}</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-6">{aiTeacherCards(AI_TEACHERS)}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">{aiTeacherCards(AI_TEACHERS)}</div>
           </div>
         ) : loading ? (
-          <p className="text-cdc-muted text-sm">{t('loading')}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">{Array.from({length:8},(_,i)=><CourseCardSkeleton key={i} label={t('loading')} />)}</div>
         ) : courses.length === 0 && liveTrainings.length === 0 && contentTab !== 'all' ? (
           <p className="text-cdc-muted text-sm">{t('empty')}</p>
         ) : (
-          <div className="flex flex-col lg:flex-row gap-8">
+          <div>
             <CatalogFilters
               t={t}
               lang={lang}
               open={filtersOpen}
-              onClose={() => setFiltersOpen(false)}
+              onClose={closeFilters}
               categories={categories}
               category={category}
               setCategory={setCategory}
@@ -395,11 +401,17 @@ export default function CoursesPage() {
             />
 
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-cdc-muted mb-4">{resultsLabel}</p>
+              <div className="mb-6 flex flex-col sm:flex-row gap-4 sm:items-center border-y border-cdc-border py-4">
+                <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1" aria-label={t('categoryLabel')}>
+                  {[null, ...categories].map(cat => <button key={cat || 'all'} type="button" aria-pressed={category === cat} onClick={() => setCategory(cat)} className={`shrink-0 rounded-full border px-4 py-2 text-xs font-semibold ${category === cat ? 'bg-cdc-ink text-cdc-surface border-cdc-ink' : 'border-cdc-border text-cdc-muted hover:text-cdc-ink'}`}>{cat || t('academy.allCategories')}</button>)}
+                </div>
+                <label className="flex shrink-0 items-center gap-2 text-xs text-cdc-muted">{t('sortLabel')}<select aria-label={t('sortLabel')} value={sort} onChange={event => setSort(event.target.value as SortMode)} className="rounded-lg border border-cdc-border bg-cdc-surface px-3 py-2 text-cdc-ink"><option value="recommended">{t('sortRecommended')}</option><option value="price_asc">{t('sortPriceAsc')}</option><option value="price_desc">{t('sortPriceDesc')}</option></select></label>
+              </div>
+              <p role="status" className="text-sm font-semibold text-cdc-muted mb-4">{resultsLabel}</p>
               {totalResultsCount === 0 ? (
                 <p className="text-cdc-muted text-sm">{t('noResults')}</p>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-6">
+                <div data-testid="course-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
                   {filteredCourses.map((course) => (
                     <CatalogCourseCard key={course.id} course={course} lang={lang} t={t} enrolling={enrollingId === course.id} onEnroll={handleEnroll} />
                   ))}

@@ -24,7 +24,9 @@ import CheckoutGatewayPicker, { useCheckoutGateway } from '../../../src/componen
 import { courseLanguageBadge } from '../../../src/utils/courseLanguage';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useAuthModal } from '../../../src/context/AuthModalContext';
-import VideoEmbed, { parseVideoUrl } from '../../../src/components/shared/VideoEmbed';
+import { parseVideoUrl } from '../../../src/components/shared/VideoEmbed';
+import CoursePreviewPlayer from '../../../src/components/courses/CoursePreviewPlayer';
+import CourseDetailTabs, { type DetailTab } from '../../../src/components/courses/detail/CourseDetailTabs';
 import SEOHead from '../../../src/components/seo/SEOHead';
 import LearningRatingsSection from '../../../src/components/shared/LearningRatingsSection';
 import LearningRatingSummary from '../../../src/components/shared/LearningRatingSummary';
@@ -64,6 +66,7 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
   const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
   const [applyingPromo, setApplyingPromo] = useState(false);
+  const [detailTab, setDetailTab] = useState<DetailTab>('overview');
   const [playingTrailer, setPlayingTrailer] = useState(false);
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
@@ -160,7 +163,7 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
   const allLessons = syllabus.flatMap((s) => s.lessons);
   const totalLessonCount = allLessons.length;
   const totalDurationSeconds = allLessons.reduce((sum, l) => sum + l.durationSeconds, 0);
-  const shell = '-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen flex flex-col bg-cdc-bg text-cdc-ink';
+  const shell = 'learning-surface -mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen flex flex-col bg-cdc-bg text-cdc-ink';
 
   if (loading) {
     return (
@@ -211,10 +214,10 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
           {t('backToCourses')}
         </Link>
 
-        <div id="course" className="mt-6 grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] gap-8 xl:gap-12 items-start scroll-mt-28">
+        <div id="course" className="mt-6 grid grid-cols-1 lg:grid-cols-[minmax(0,65fr)_minmax(300px,35fr)] gap-8 xl:gap-12 items-start scroll-mt-28">
           <div className="min-w-0 lg:col-start-1 lg:row-start-1">
-            <div id="trailer" className="relative aspect-video overflow-hidden rounded-3xl bg-cdc-surface border border-cdc-border scroll-mt-28">
-              {playingTrailer && course.introVideoUrl && parseVideoUrl(course.introVideoUrl) ? <VideoEmbed url={course.introVideoUrl} title={title} /> : <>
+            <div id="trailer" className="relative aspect-video overflow-hidden rounded-xl bg-cdc-surface border border-cdc-border scroll-mt-28">
+              {playingTrailer && course.introVideoUrl && parseVideoUrl(course.introVideoUrl) ? <CoursePreviewPlayer url={course.introVideoUrl} title={title} /> : <>
                 {heroImage && <img src={heroImage} alt={title} className="absolute inset-0 h-full w-full object-cover" />}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
                 {course.introVideoUrl && parseVideoUrl(course.introVideoUrl) ? <button type="button" onClick={() => setPlayingTrailer(true)} aria-label={t('detailPage.watchTrailer')} className="absolute inset-0 group flex flex-col gap-4 items-center justify-center text-white focus-visible:outline focus-visible:outline-4 focus-visible:outline-cdc-primary focus-visible:-outline-offset-4">
@@ -225,35 +228,37 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
             </div>
             <div className="pt-7">
               <div className="flex flex-wrap gap-2"><span className="cdc-chip text-cdc-primary-ink">{course.category}</span><span className="cdc-chip">{courseLanguageBadge(course.language, lang)}</span></div>
-              <h1 className="blog-heading-safe mt-4 text-3xl md:text-5xl font-extrabold leading-tight">{title}</h1>
-              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2"><LearningRatingSummary {...course} lang={lang} /><span className="inline-flex items-center gap-2 text-sm text-cdc-muted"><Users className="h-4 w-4" />{t('detailPage.students', { count: course.enrolledCount })}</span></div>
-              {course.mentorName && <a href="#instructor" className="mt-5 inline-flex items-center gap-3 text-cdc-ink no-underline">
-                {course.mentorAvatarUrl ? <img src={course.mentorAvatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" /> : <span className="h-12 w-12 rounded-full bg-cdc-primary-soft text-cdc-primary-ink flex items-center justify-center font-bold">{course.mentorName.slice(0, 2)}</span>}
-                <span><span className="block font-bold">{course.mentorName}</span><span className="text-sm text-cdc-muted">{course.mentorTitle || t('mentor')}</span></span>
-              </a>}
+
             </div>
           </div>
           <aside className="lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-24 min-w-0">
             <CoursePurchaseCard {...ctaProps} lang={lang} appliedPromo={appliedPromo} promoInput={promoInput} setPromoInput={setPromoInput} applyingPromo={applyingPromo} promoError={promoError} onApplyPromo={handleApplyPromo} onRemovePromo={() => { setAppliedPromo(null); setPromoInput(''); }}
-              topSlot={<div className="mb-5"><span className="inline-flex rounded-full bg-cdc-primary-soft text-cdc-primary-ink px-3 py-1 text-xs font-bold">{t(isNew ? 'detailPage.new' : 'detailPage.courseAccess')}</span></div>}
+              topSlot={<div className="mb-6"><span className="inline-flex rounded bg-cdc-primary-soft text-cdc-primary-ink px-2 py-1 text-[10px] font-bold">{t(isNew ? 'detailPage.new' : 'detailPage.courseAccess')}</span><h1 className="blog-heading-safe mt-3 text-2xl xl:text-3xl font-extrabold leading-tight">{title}</h1><LearningRatingSummary {...course} lang={lang} /><p className="mt-3 text-sm text-cdc-muted">{course.mentorName}<span className="block mt-1 text-xs">{course.mentorTitle}</span></p><p className="mt-3 inline-flex gap-2 text-xs text-cdc-muted"><Users className="h-3.5 w-3.5" />{t('detailPage.students', { count: course.enrolledCount })}</p></div>}
               ctaSlot={!enrolled && !course.isFull && effectivePrice > 0 ? <CheckoutGatewayPicker lang={lang} gateway={gateway} onChange={setGateway} stripeEnabled={stripeEnabled} disabled={processing} /> : null}
-              bottomSlot={<div className="mt-6 rounded-2xl border border-cdc-primary/30 bg-cdc-primary-soft p-5"><p className="text-lg font-extrabold text-cdc-primary-ink">{t('detailPage.subscription')}</p><Link href="/contact?subject=course-subscription" className="mt-4 flex justify-center rounded-full bg-cdc-surface border border-cdc-border px-5 py-3 text-sm font-bold text-cdc-ink no-underline">{t('detailPage.subscribe')}</Link></div>}
+              bottomSlot={<><dl className="mt-6 grid grid-cols-2 gap-x-5 gap-y-4 border-t border-cdc-border pt-5 text-xs">{[[t('academy.duration'), formatTotalDuration(totalDurationSeconds, lang)], [t('academy.lessons'), String(totalLessonCount)], [t('academy.language'), courseLanguageBadge(course.language, lang)], [t('academy.level'), t('academy.levelUnknown')]].map(([label, value]) => <div key={label}><dt className="text-cdc-muted">{label}</dt><dd className="mt-1 font-bold">{value}</dd></div>)}</dl><div className="mt-6 rounded-lg border border-cdc-primary/30 p-5"><p className="text-base font-extrabold text-cdc-primary-ink">{t('detailPage.subscription')}</p><p className="mt-2 text-xs text-cdc-muted">{t('academy.subscriptionNote')}</p><Link href="/contact?subject=course-subscription" className="mt-4 flex justify-center rounded-md border border-cdc-primary px-5 py-3 text-sm font-bold text-cdc-primary-ink no-underline">{t('detailPage.subscribe')}</Link></div></>}
+
             />
           </aside>
           <div className="min-w-0 space-y-10 lg:col-start-1 lg:row-start-2">
             {error && <p role="alert" className="rounded-xl bg-red-500/10 p-4 text-red-600 dark:text-red-300">{error}</p>}
+            <CourseDetailTabs value={detailTab} onChange={setDetailTab} />
+            <div id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" hidden={detailTab !== 'overview'} className="space-y-10">
             <section id="details" className="scroll-mt-28 border-t border-cdc-border pt-8">
               <h2 className="text-2xl font-extrabold mb-5">{t('detailPage.learn')}</h2>
               {course.skillsTaught?.length > 0 && <ul className="grid sm:grid-cols-2 gap-4 mb-6">{course.skillsTaught.map(skill => <li key={skill} className="flex gap-3"><Check className="h-5 w-5 shrink-0 text-cdc-primary-ink" />{skill}</li>)}</ul>}
               <MarkdownContent content={description} />
               <div className="mt-6 flex flex-wrap gap-5 text-sm text-cdc-muted"><span className="inline-flex gap-2 items-center"><BookOpen className="h-4 w-4" />{totalLessonCount} {t('courseLessons')}</span><span className="inline-flex gap-2 items-center"><Clock className="h-4 w-4" />{formatTotalDuration(totalDurationSeconds, lang)}</span></div>
             </section>
-            <section id="lessons" className="scroll-mt-28 border-t border-cdc-border pt-8"><h2 className="text-2xl font-extrabold mb-5">{t('syllabus')}</h2><CourseSyllabus syllabus={syllabus} enrolled={enrolled} t={t} onPreview={setPreviewLesson} onLocked={() => setShowPaywall(true)} /></section>
+
             <section id="instructor" className="scroll-mt-28 border-t border-cdc-border pt-8"><h2 className="text-2xl font-extrabold mb-5">{t('mentor')}</h2>
-              {course.mentorName ? <div className="flex items-center gap-5 rounded-3xl bg-cdc-surface border border-cdc-border p-6">{course.mentorAvatarUrl && <img src={course.mentorAvatarUrl} alt={course.mentorName} className="h-24 w-24 rounded-2xl object-cover" />}<div><h3 className="text-xl font-bold">{course.mentorName}</h3><p className="mt-2 text-cdc-muted">{course.mentorTitle || t('mentor')}</p></div></div> : <p className="text-cdc-muted">{t('detailPage.instructorSoon')}</p>}
+              {course.mentorName ? <div className="flex items-center gap-5 rounded-xl bg-cdc-surface border border-cdc-border p-6">{course.mentorAvatarUrl && <img src={course.mentorAvatarUrl} alt={course.mentorName} className="h-24 w-24 rounded-2xl object-cover" />}<div><h3 className="text-xl font-bold">{course.mentorName}</h3><p className="mt-2 text-cdc-muted">{course.mentorTitle || t('mentor')}</p></div></div> : <p className="text-cdc-muted">{t('detailPage.instructorSoon')}</p>}
             </section>
-            <section className="border-t border-cdc-border pt-8"><h2 className="text-2xl font-extrabold mb-5">{t('detailPage.reviews')}</h2><LearningRatingsSection target="courses" targetId={course.id} lang={lang} onChange={(summary) => setCourse(current => current ? { ...current, ...summary } : current)} /></section>
+
             <section className="border-t border-cdc-border pt-8"><h2 className="text-2xl font-extrabold mb-5">{t('detailPage.faq')}</h2>{['access', 'preview', 'payment'].map(key => <details key={key} className="border-b border-cdc-border py-5"><summary className="cursor-pointer font-bold">{t(`detailPage.faqItems.${key}.question`)}</summary><p className="pt-3 text-sm leading-relaxed text-cdc-muted">{t(`detailPage.faqItems.${key}.answer`)}</p></details>)}</section>
+            </div>
+            <div id="panel-curriculum" role="tabpanel" aria-labelledby="tab-curriculum" hidden={detailTab !== 'curriculum'}>            <section id="lessons" className="scroll-mt-28 border-t border-cdc-border pt-8"><h2 className="text-2xl font-extrabold mb-5">{t('syllabus')}</h2><CourseSyllabus syllabus={syllabus} enrolled={enrolled} t={t} onPreview={setPreviewLesson} onLocked={() => setShowPaywall(true)} /></section></div>
+            <div id="panel-projects" role="tabpanel" aria-labelledby="tab-projects" hidden={detailTab !== 'projects'} className="rounded-xl border border-dashed border-cdc-border p-8 text-center"><h2 className="text-xl font-bold">{t('academy.projects')}</h2><p className="mt-3 text-sm text-cdc-muted">{t('academy.projectsEmpty')}</p></div>
+            <div id="panel-reviews" role="tabpanel" aria-labelledby="tab-reviews" hidden={detailTab !== 'reviews'}>            <section className="border-t border-cdc-border pt-8"><h2 className="text-2xl font-extrabold mb-5">{t('detailPage.reviews')}</h2><LearningRatingsSection target="courses" targetId={course.id} lang={lang} onChange={(summary) => setCourse(current => current ? { ...current, ...summary } : current)} /></section></div>
           </div>
         </div>
       </div>
@@ -298,9 +303,9 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
 
 
       <SiteFooter />
-      <nav aria-label={t('detailPage.navigation')} className="fixed inset-x-0 z-40 border-t border-cdc-border bg-cdc-surface/95 backdrop-blur-xl shadow-lg" style={{ bottom: 'var(--tabbar-h, 0px)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <nav aria-label={t('detailPage.navigation')} className="fixed inset-x-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[min(760px,calc(100%-24px))] z-40 rounded-xl border border-white/10 bg-neutral-900/95 text-white backdrop-blur-xl shadow-xl" style={{ bottom: 'calc(var(--tabbar-h, 0px) + 12px)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3 sm:gap-6">
-          <div className="flex-1 min-w-0 flex items-center gap-5 overflow-x-auto whitespace-nowrap text-xs sm:text-sm font-bold">{['course', 'trailer', 'details', 'lessons', 'instructor'].map(id => <a key={id} href={`#${id}`} className="py-2 text-cdc-muted hover:text-cdc-primary-ink no-underline">{t(`detailPage.nav.${id}`)}</a>)}</div>
+          <div className="flex-1 min-w-0 flex items-center gap-5 overflow-x-auto whitespace-nowrap text-xs sm:text-sm font-bold">{['course', 'trailer', 'details', 'lessons', 'instructor'].map(id => <a key={id} href={`#${id}`} onClick={() => setDetailTab(id === 'lessons' ? 'curriculum' : 'overview')} className="py-2 text-white/70 hover:text-white no-underline">{t(`detailPage.nav.${id}`)}</a>)}</div>
           <CourseCtaButton {...ctaProps} showPrice className="shrink-0 text-xs sm:text-sm" />
         </div>
       </nav>

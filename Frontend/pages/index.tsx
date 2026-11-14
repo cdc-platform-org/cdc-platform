@@ -422,7 +422,7 @@ export default function Home() {
   };
 
   return (
-    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen font-sans antialiased transition-colors duration-300 relative text-cdc-ink bg-cdc-bg">
+    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 learning-surface min-h-screen font-sans antialiased transition-colors duration-300 relative text-cdc-ink bg-cdc-bg">
       <SEOHead
         title="ციფრული პროფესიების ცენტრი (CDC) - საუკეთესო პროფესიები საქართველოში"
         description="ციფრული პროფესიების ცენტრი (CDC) გთავაზობთ ტოპ 10 პროფესიას საქართველოში, მათ შორის მაღალანაზღაურებადი პროფესიები, AI ტესტების გენერატორი და მასწავლებლის ასისტენტი."
@@ -445,7 +445,7 @@ export default function Home() {
       {/* 🧭 NAVIGATION — the shared site header (same menu on every page). */}
       <SiteHeader darkMode={darkMode} onToggleDarkMode={toggleDarkMode} />
 
-      <HeroSection t={t} cms={cms} translate={translate} promoVideo={promoVideo} setShowPromoVideo={setShowPromoVideo} />
+      <HeroSection courses={courses} coursesLoading={coursesLoading} t={t} cms={cms} translate={translate} promoVideo={promoVideo} setShowPromoVideo={setShowPromoVideo} />
 
       <AboutBentoSection t={t} darkMode={darkMode} cms={cms} translate={translate} />
 
@@ -486,5 +486,5 @@ export default function Home() {
 }
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'ka', ['home'])) },
+  props: { ...(await serverSideTranslations(locale ?? 'ka', ['home', 'courses'])) },
 });

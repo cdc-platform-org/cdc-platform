@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { Menu, X, LayoutDashboard, GraduationCap, LogOut, ShieldCheck, ChevronDown, CalendarClock, Sun, Moon, ArrowRight, Sparkles } from 'lucide-react';
+import { Menu, X, LayoutDashboard, GraduationCap, LogOut, ShieldCheck, CalendarClock, Sun, Moon, ArrowRight, Sparkles } from 'lucide-react';
 import LanguageSwitcher from './LanguageSwitcher';
 import UserMenu from './UserMenu';
 import NotificationBell from './NotificationBell';
 import HeaderSearch from './HeaderSearch';
+import NavigationMegaMenu from './NavigationMegaMenu';
 import { useAuth } from '../../context/AuthContext';
 import { useAuthModal } from '../../context/AuthModalContext';
 import { resolveLocale } from '../../utils/locale';
@@ -110,7 +111,7 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
   const asPath = router.asPath;
 
   const topLinkClass = (active: boolean) =>
-    `relative inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13.5px] font-semibold no-underline transition-colors duration-150 ${
+    `relative inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-[13px] font-semibold no-underline transition-colors duration-150 ${
       active
         ? 'text-cdc-primary-ink bg-cdc-primary-soft'
         : 'text-cdc-muted hover:text-cdc-ink hover:bg-cdc-bg'
@@ -127,17 +128,16 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
         scrolled ? 'shadow-[0_8px_30px_-16px_rgba(21,19,43,0.22)]' : ''
       }`}
     >
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 px-4 sm:px-6 h-16 sm:h-[72px]">
-        <div className="flex-1 flex items-center min-w-fit">
+      <div className="max-w-[1440px] mx-auto flex items-center justify-between gap-3 px-4 sm:px-6 h-16 sm:h-[72px]">
+        <div className="flex items-center shrink-0">
           <Link href="/" className="flex items-center gap-2.5 shrink-0 no-underline text-current" aria-label="CDC">
             <Image src="/images/cdc-logo.png" alt="CDC" width={44} height={44} priority className="h-10 w-auto rounded-xl object-cover shadow-sm ring-1 ring-black/5 dark:ring-white/10" />
             <span className="hidden sm:inline font-black text-[15px] tracking-tight text-cdc-ink">CDC</span>
           </Link>
         </div>
 
-        {/* Desktop menu (1420px+; burger drawer below). Dropdowns open on hover and on keyboard focus
-            (focus-within), so they work without a mouse too. */}
-        <div className="hidden min-[1420px]:flex items-center gap-0.5 whitespace-nowrap">
+        {/* Desktop menu (1280px+; burger drawer below). Dropdowns support click, ArrowDown, Escape and keyboard focus. */}
+        <div className="hidden min-[1280px]:flex items-center gap-0.5 whitespace-nowrap">
           {entries.map((entry) =>
             entry.kind === 'link' ? (
               <Link key={entry.key} href={entry.href} className={topLinkClass(isActive(asPath, entry.href))}>
@@ -145,44 +145,16 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
                 {nav.links[entry.key]}
               </Link>
             ) : (
-              <div key={entry.key} className="relative group">
-                <Link href={entry.href} className={topLinkClass(groupActive(asPath, entry))} aria-haspopup="true">
-                  {nav.groups[entry.key]}
-                  <ChevronDown className="w-3.5 h-3.5 opacity-60 transition-transform duration-200 group-hover:rotate-180 group-focus-within:rotate-180" />
-                </Link>
-                <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 z-[60] opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 transition-all duration-200">
-                  <div className="w-[22rem] rounded-card border border-cdc-border bg-cdc-surface p-2 shadow-[0_24px_60px_-20px_rgba(21,19,43,0.3)]">
-                    {entry.items.map((item) => {
-                      const copy = nav.items[item.key];
-                      const Icon = item.icon;
-                      return (
-                        <Link
-                          key={item.key}
-                          href={item.href}
-                          className="flex items-start gap-3 rounded-xl px-3 py-2.5 no-underline transition-colors hover:bg-cdc-bg focus-visible:bg-cdc-bg outline-none"
-                        >
-                          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cdc-primary-soft text-cdc-primary-ink">
-                            <Icon className="w-[18px] h-[18px]" />
-                          </span>
-                          <span className="min-w-0 whitespace-normal">
-                            <span className="block text-sm font-bold text-cdc-ink">{copy.title}</span>
-                            <span className="block text-xs leading-snug text-cdc-muted">{copy.desc}</span>
-                          </span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
+              <NavigationMegaMenu key={entry.key} entry={entry} locale={lang} active={groupActive(asPath, entry)} triggerClass={topLinkClass(groupActive(asPath, entry))} />
             )
           )}
         </div>
 
-        {/* Actions: search, language, theme, bell, account, burger (< 1420px). */}
-        <div className="flex-1 flex justify-end">
-          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-            <div className="hidden md:block">
-              <HeaderSearch darkMode={darkMode} lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+        {/* Actions: search, language, theme, bell, account, burger (< 1280px). */}
+        <div className="flex-1 min-w-0 flex justify-end">
+          <div className="flex w-full min-w-0 items-center justify-end gap-1 sm:gap-1.5">
+            <div className="hidden md:block min-w-0 flex-1 max-w-[420px]">
+              <HeaderSearch prominent darkMode={darkMode} lang={lang === 'ka' ? 'GEO' : 'ENG'} />
             </div>
             <div className="hidden sm:block">
               <LanguageSwitcher />
@@ -222,7 +194,7 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
               onClick={() => setMobileMenuOpen((open) => !open)}
               aria-label="Toggle menu"
               aria-expanded={mobileMenuOpen}
-              className="min-[1420px]:hidden p-2 rounded-full border-none bg-transparent cursor-pointer text-cdc-ink hover:bg-cdc-bg"
+              className="min-[1280px]:hidden p-2 rounded-full border-none bg-transparent cursor-pointer text-cdc-ink hover:bg-cdc-bg"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -231,7 +203,7 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
       </div>
 
       {mobileMenuOpen && (
-        <div className="min-[1420px]:hidden border-t border-cdc-border px-4 sm:px-6 pb-[calc(var(--tabbar-h,0px)+1.5rem)] overflow-y-auto overscroll-contain max-h-[calc(100dvh-4rem)]">
+        <div className="min-[1280px]:hidden border-t border-cdc-border px-4 sm:px-6 pb-[calc(var(--tabbar-h,0px)+1.5rem)] overflow-y-auto overscroll-contain max-h-[calc(100dvh-4rem)]">
           <div className="max-w-2xl mx-auto">
             {isAuthenticated && user ? (
               <Link href={dashboardHref} className="mt-4 flex items-center gap-3 rounded-2xl p-3 no-underline text-current bg-cdc-bg">
@@ -260,7 +232,7 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
             )}
 
             <div className="md:hidden mt-4">
-              <HeaderSearch darkMode={darkMode} lang={lang === 'ka' ? 'GEO' : 'ENG'} />
+              <HeaderSearch prominent darkMode={darkMode} lang={lang === 'ka' ? 'GEO' : 'ENG'} />
             </div>
             <div className="sm:hidden mt-3">
               <LanguageSwitcher />

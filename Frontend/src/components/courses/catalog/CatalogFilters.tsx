@@ -1,11 +1,5 @@
-/**
- * Filter panel for the /courses catalog: category, language, price,
- * discounted-only and sort. An in-flow sticky card on desktop, a slide-over
- * drawer with backdrop on mobile (opened from the filter button next to the
- * search bar). 2026-11 redesign: EDUPRO-style grouped options on cdc-*
- * tokens. State lives in pages/courses/index.tsx; search is in the page's
- * top search bar, not here.
- */
+/** Advanced catalog filters in an accessible drawer on every screen size. */
+import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import type { ReactNode } from 'react';
@@ -57,22 +51,43 @@ function Option({ checked, onChange, children, type = 'radio' }: { checked: bool
 
 export default function CatalogFilters(p: CatalogFiltersProps) {
   const { t } = p;
+  const panel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!p.open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const previous = document.activeElement as HTMLElement | null;
+    panel.current?.querySelector<HTMLButtonElement>('button')?.focus();
+    const close = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') p.onClose();
+      if (event.key === 'Tab') {
+        const items = panel.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input, select');
+        if (!items?.length) return;
+        const first = items[0], last = items[items.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
+    };
+    document.addEventListener('keydown', close);
+    return () => { document.removeEventListener('keydown', close); document.body.style.overflow = previousOverflow; previous?.focus(); };
+  }, [p.open, p.onClose]);
+  if (!p.open) return null;
   return (
     <aside>
-      {p.open && <div className="lg:hidden fixed inset-0 bg-black/50 z-40" onClick={p.onClose} />}
-      <div
-        className={`fixed lg:static inset-y-0 left-0 z-50 lg:z-auto w-80 max-w-[85vw] lg:w-64 shrink-0 flex flex-col lg:block bg-cdc-surface lg:bg-transparent transition-transform duration-300 ease-in-out lg:transition-none ${
+      {p.open && <div className="fixed inset-0 bg-black/50 z-[90]" onClick={p.onClose} />}
+      <div ref={panel} role="dialog" aria-modal="true" aria-label={t('filtersDrawerTitle')}
+        className={`fixed inset-y-0 left-0 z-[100] w-80 max-w-[85vw] shrink-0 flex flex-col bg-cdc-surface transition-transform duration-300 ease-in-out ${
           p.open ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0`}
+        }`}
       >
-        <div className="lg:hidden flex items-center justify-between px-5 py-4 border-b border-cdc-border shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-cdc-border shrink-0">
           <span className="text-base font-bold text-cdc-ink">{t('filtersDrawerTitle')}</span>
-          <button type="button" onClick={p.onClose} aria-label="Close" className="p-1.5 rounded-lg text-cdc-muted hover:bg-cdc-bg border-none bg-transparent cursor-pointer">
+          <button type="button" onClick={p.onClose} aria-label={p.lang === 'ka' ? 'დახურვა' : 'Close'} className="p-1.5 rounded-lg text-cdc-muted hover:bg-cdc-bg border-none bg-transparent cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto lg:overflow-visible p-5 space-y-6 lg:sticky lg:top-24 lg:rounded-card lg:border lg:border-cdc-border lg:bg-cdc-surface">
+        <div className="flex-1 overflow-y-auto  p-5 space-y-6 ">
           <Group title={t('categoryLabel')}>
             <Option checked={p.category === null} onChange={() => p.setCategory(null)}>{t('allCategories')}</Option>
             {p.categories.map((cat) => (
@@ -118,7 +133,7 @@ export default function CatalogFilters(p: CatalogFiltersProps) {
           )}
         </div>
 
-        <div className="lg:hidden shrink-0 p-4 border-t border-cdc-border">
+        <div className="shrink-0 p-4 border-t border-cdc-border">
           <button type="button" onClick={p.onClose} className="vip-btn-primary w-full py-3 cursor-pointer">
             {p.showResultsLabel}
           </button>

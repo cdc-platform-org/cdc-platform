@@ -221,3 +221,13 @@ html {
   ::-webkit-scrollbar-thumb:hover { background-color: rgba(100, 116, 139, 0.55); }
 }
 
+
+/* Editorial learning surfaces. Keep global admin/product themes unchanged. */
+.learning-surface { --cdc-bg: 250 250 250; --cdc-surface: 255 255 255; --cdc-ink: 17 17 17; --cdc-border: 230 230 230; --cdc-muted: 100 100 106; }
+.dark .learning-surface { --cdc-bg: 11 10 28; --cdc-surface: 21 19 43; --cdc-ink: 240 239 248; --cdc-border: 45 42 72; --cdc-muted: 160 158 184; }
+.learning-primary { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 2.75rem; padding: .65rem .85rem; border-radius: .375rem; background: rgb(var(--cdc-primary)); color: white; font-size: .8125rem; font-weight: 700; transition: background-color .18s ease, box-shadow .18s ease; }
+.learning-primary:hover { background: rgb(var(--cdc-primary-hover)); }
+.learning-primary:focus-visible { outline: 2px solid rgb(var(--cdc-primary)); outline-offset: 3px; }
+.learning-course-card { box-shadow: 0 2px 8px rgb(0 0 0 / .035); transition: box-shadow .2s ease, border-color .2s ease; }
+.learning-course-card:hover { border-color: rgb(var(--cdc-primary) / .3); box-shadow: 0 8px 22px rgb(0 0 0 / .07); }
+@media (prefers-reduced-motion: reduce) { .learning-primary, .learning-course-card { transition: none; } }
