@@ -34,6 +34,7 @@ const STATUS_OPTIONS: { value: ToolCatalogStatus; label: string }[] = [
   { value: 'ACTIVE', label: 'Active' },
   { value: 'COMING_SOON', label: 'Coming Soon / მალე' },
   { value: 'DISABLED', label: 'Disabled' },
+  { value: 'ADMIN_ONLY', label: 'Admin only / მხოლოდ ადმინი (პირადი გამოყენება)' },
 ];
 
 function emptyEntry(slug = ''): ToolCatalogEntry {

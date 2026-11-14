@@ -1,6 +1,7 @@
 import apiClient from './apiClient';
 
-export type ProductStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'NEEDS_REVISION';
+// ARCHIVED = soft-deleted by an admin: hidden from the store, purchases kept.
+export type ProductStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'NEEDS_REVISION' | 'ARCHIVED';
 
 // Must match Backend's adminProducts.ts HOW_IT_WORKS_ICONS exactly — an
 // icon name outside this list fails validation server-side at save time.
@@ -61,6 +62,8 @@ export interface DigitalProduct {
   // saleActive.
   discountedPrice: number | null;
   saleEndsAt: string | null;
+  // Scheduled sale start — only present on admin responses (raw rows).
+  saleStartsAt?: string | null;
   currentPrice: number;
   saleActive: boolean;
   category: string;
@@ -214,6 +217,7 @@ export interface CreateProductPayload {
   licenseType?: ProductLicenseType; // omit to default to PERSONAL_USE (see Backend schema)
   discountedPrice?: number | null; // major-unit GEL — null clears an existing sale
   saleEndsAt?: string | null; // ISO string from <input type="datetime-local">, or null for "never expires"
+  saleStartsAt?: string | null; // admin only — ISO string, or null for "starts immediately"
 }
 
 // Admin-authored — published immediately (no moderation needed).
@@ -262,6 +266,7 @@ export interface UpdateProductPayload {
   licenseType?: ProductLicenseType;
   discountedPrice?: number | null;
   saleEndsAt?: string | null;
+  saleStartsAt?: string | null;
   // Exactly 3 entries or omit/null to clear back to the page's generic
   // fallback copy — enforced server-side (adminProducts.ts).
   howItWorksSteps?: HowItWorksStep[] | null;
@@ -275,6 +280,17 @@ export interface UpdateProductPayload {
 
 export async function updateProductAdmin(id: string, payload: UpdateProductPayload): Promise<DigitalProduct> {
   const response = await apiClient.put<{ data: DigitalProduct }>(`/admin/products/${id}`, payload);
+  return response.data.data;
+}
+
+// Soft delete / undo — see Backend adminProducts.ts /:id/archive.
+export async function archiveProduct(id: string): Promise<DigitalProduct> {
+  const response = await apiClient.post<{ data: DigitalProduct }>(`/admin/products/${id}/archive`);
+  return response.data.data;
+}
+
+export async function restoreProduct(id: string): Promise<DigitalProduct> {
+  const response = await apiClient.post<{ data: DigitalProduct }>(`/admin/products/${id}/restore`);
   return response.data.data;
 }
 

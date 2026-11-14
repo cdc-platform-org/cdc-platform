@@ -38,7 +38,7 @@ import SEOHead from '@/src/components/seo/SEOHead';
 import { buildSoftwareApplicationSchema } from '@/src/utils/seo';
 import { getSiteContent } from '@/src/services/siteContentService';
 import { ToolCatalogContent } from '@/src/types/siteContent';
-import { customToolEntries, findToolEntry, overrideText } from '@/src/utils/toolCatalog';
+import { customToolEntries, findToolEntry, isHiddenAdminOnly, overrideText } from '@/src/utils/toolCatalog';
 import { resolveBlogImageUrl } from '@/src/services/blogService';
 import { onImageErrorFallback } from '@/src/utils/imageFallback';
 import VideoEmbed, { parseVideoUrl } from '@/src/components/shared/VideoEmbed';
@@ -599,6 +599,7 @@ export default function ToolsPage() {
   const { t: tEdu } = useTranslation('educatorHub');
   const { t: tCB } = useTranslation('childrensBook');
   const { isAuthenticated, user } = useAuth();
+  const viewerIsAdmin = !!user?.adminRole;
   const { openAuthModal } = useAuthModal();
   const [showWaitlistModal, setShowWaitlistModal] = useState(false);
   const [overviewModal, setOverviewModal] = useState<'enterpriseAi' | 'examProctoring' | 'agsaia' | null>(null);
@@ -778,8 +779,10 @@ export default function ToolsPage() {
       cta: { label: t.agsaiaContact, href: 'mailto:contact@cdc.org.ge', external: false },
       onLearnMore: () => setOverviewModal('agsaia'),
     },
-    ...customToolEntries(toolCatalog?.tools).map((entry, i) => customEntryCard(entry, catLang, i)),
+    ...customToolEntries(toolCatalog?.tools, viewerIsAdmin).map((entry, i) => customEntryCard(entry, catLang, i)),
   ] as CatalogCardData[]).filter((card) => {
+    // "Admin only" tools: invisible to everyone outside the admin team.
+    if (isHiddenAdminOnly(toolCatalog?.tools, card.key, viewerIsAdmin)) return false;
     // Hidden when an admin sets the tool-catalog entry to DISABLED (same
     // rule as marketplace/index.tsx's SaaS cards).
     const cms = card.key === 'childrens-book' ? childrensBookCms : card.key === 'english-tutor' ? englishTutorCms : undefined;

@@ -17,8 +17,8 @@ import { MARKETPLACE_CATEGORIES } from '../../src/data/marketplaceCategories';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
 import { getSiteContent } from '../../src/services/siteContentService';
-import { ToolCatalogContent } from '../../src/types/siteContent';
-import { findToolEntry, overrideText, overrideList } from '../../src/utils/toolCatalog';
+import { ToolCatalogContent, ToolCatalogEntry } from '../../src/types/siteContent';
+import { findToolEntry, isHiddenAdminOnly, overrideText, overrideList } from '../../src/utils/toolCatalog';
 import { resolveBlogImageUrl } from '../../src/services/blogService';
 
 // CDC-built AI tools cross-listed under the Digital AI Tools category — these are
@@ -90,7 +90,8 @@ function MarketplaceContent() {
   const { t: th } = useTranslation('home');
   const { t: tCB } = useTranslation('childrensBook');
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const viewerIsAdmin = !!user?.adminRole;
   const { openAuthModal } = useAuthModal();
   // MARKETPLACE_CATEGORIES.value only carries ka/en fields (it's the literal
   // ?category= filter value, matching DigitalProduct.category as sellers
@@ -293,7 +294,7 @@ function MarketplaceContent() {
     },
   };
 
-  type SaasToolCopy = { title: string; desc: string; badge: string; cta: string; features?: string[]; imageUrl?: string; status: 'ACTIVE' | 'COMING_SOON' | 'DISABLED' };
+  type SaasToolCopy = { title: string; desc: string; badge: string; cta: string; features?: string[]; imageUrl?: string; status: ToolCatalogEntry['status'] };
 
   // Layers pages/admin/tools.tsx's saved overrides on top of the defaults
   // above — a DISABLED entry is hidden entirely, COMING_SOON swaps the CTA
@@ -406,7 +407,7 @@ function MarketplaceContent() {
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('saasToolsSubheading')}</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {SAAS_TOOLS.filter(({ id }) => saasToolCopy[id].status !== 'DISABLED').map(({ id, href, icon: Icon, accent }) => {
+              {SAAS_TOOLS.filter(({ id }) => saasToolCopy[id].status !== 'DISABLED' && !isHiddenAdminOnly(toolCatalog?.tools, id, viewerIsAdmin)).map(({ id, href, icon: Icon, accent }) => {
                 const copy = saasToolCopy[id];
                 const comingSoon = copy.status === 'COMING_SOON';
                 return (

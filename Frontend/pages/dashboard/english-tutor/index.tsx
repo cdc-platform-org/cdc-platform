@@ -2,6 +2,7 @@ import { useRouter } from 'next/router';
 import ToolGuideButton from '../../../src/components/tools/ToolGuideButton';
 import { GraduationCap } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
+import AdminOnlyToolGate from '../../../src/components/tools/AdminOnlyToolGate';
 import EnglishTutorPanel from '../../../src/components/dashboard/EnglishTutorPanel';
 import SEOHead from '../../../src/components/seo/SEOHead';
 import { resolveLocale, contentLocale } from '../../../src/utils/locale';
@@ -49,7 +50,7 @@ export default function EnglishTutorPage() {
           for. Same fix applied to media-studio.tsx. */}
       <SEOHead title={t.title} description={t.subtitle} noIndex />
       <ProtectedRoute>
-        <EnglishTutorContent />
+        <AdminOnlyToolGate slug="english-tutor"><EnglishTutorContent /></AdminOnlyToolGate>
       </ProtectedRoute>
     </>
   );

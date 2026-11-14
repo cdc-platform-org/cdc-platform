@@ -12,6 +12,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
+import AdminOnlyToolGate from '../../../src/components/tools/AdminOnlyToolGate';
 import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
 import SEOHead from '../../../src/components/seo/SEOHead';
 import CertificateBuilder from '../../../src/components/certificates/CertificateBuilder';
@@ -624,7 +625,7 @@ export default function EducatorHubPage() {
       <SEOHead title={t('pageTitle', 'AI მასწავლებლის VIP ასისტენტი')} description={t('pageSubtitle', 'AI ხელსაწყოები თქვენი ყოველკვირეული დავალებებისთვის')} noIndex />
       <ProtectedRoute>
         <ToolErrorBoundary>
-          <EducatorHubContent />
+          <AdminOnlyToolGate slug="educator-hub"><EducatorHubContent /></AdminOnlyToolGate>
         </ToolErrorBoundary>
       </ProtectedRoute>
     </>

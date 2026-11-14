@@ -3,6 +3,7 @@ import ToolGuideButton from '../../../src/components/tools/ToolGuideButton';
 import Head from 'next/head';
 import { ShieldCheck } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
+import AdminOnlyToolGate from '../../../src/components/tools/AdminOnlyToolGate';
 import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
 import ExamProctoringTab from '../../../src/components/dashboard/ExamProctoringTab';
 import { resolveLocale } from '@/src/utils/locale';
@@ -64,7 +65,7 @@ export default function ProctoredExamPage() {
   return (
     <ProtectedRoute>
       <ToolErrorBoundary>
-        <ProctoredExamContent />
+        <AdminOnlyToolGate slug="proctoring"><ProctoredExamContent /></AdminOnlyToolGate>
       </ToolErrorBoundary>
     </ProtectedRoute>
   );

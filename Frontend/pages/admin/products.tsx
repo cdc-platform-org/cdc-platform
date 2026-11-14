@@ -19,6 +19,8 @@ import {
   rejectProduct,
   requestProductChanges,
   updateProductAdmin,
+  archiveProduct,
+  restoreProduct,
   uploadProductImage,
   uploadProductFile,
   uploadProductVideo,
@@ -38,6 +40,7 @@ import {
 import { getAiAutomationSettings, updateAiAutomationSettings } from '../../src/services/adminPanelService';
 import { formatPrice } from '../../src/utils/coursePricing';
 import ProductTemplatePanel from '../../src/components/admin/ProductTemplatePanel';
+import ProductPricingPanel from '../../src/components/admin/ProductPricingPanel';
 
 // Bilingual because this admin page is English-only while its editors work in
 // Georgian. Why 4:3 + centre: the store detail gallery is 4:3 and the store
@@ -59,6 +62,7 @@ const STATUS_BADGE: Record<string, string> = {
   APPROVED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   REJECTED: 'bg-red-50 text-red-700 border-red-200',
   NEEDS_REVISION: 'bg-orange-50 text-orange-700 border-orange-200',
+  ARCHIVED: 'bg-gray-100 text-gray-600 border-gray-300',
 };
 
 // KA/EN tabbed title+description editor, shared by the "Add Product
@@ -294,16 +298,21 @@ function ModerationProductCard({
   onReject,
   onRequestChanges,
   onSave,
+  onArchive,
+  onRestore,
 }: {
   product: AdminProduct;
   acting: boolean;
   onApprove: () => void;
   onReject: () => void;
   onRequestChanges: () => void;
+  onArchive: () => void;
+  onRestore: () => void;
   onSave: (patch: UpdateProductPayload) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
   const [showTemplate, setShowTemplate] = useState(false);
+  const [showPricing, setShowPricing] = useState(false);
   const [title, setTitle] = useState(p.title);
   const [description, setDescription] = useState(p.description);
   const [titleEn, setTitleEn] = useState(p.titleEn ?? '');
@@ -635,11 +644,20 @@ function ModerationProductCard({
           </div>
         )}
         {showTemplate && <ProductTemplatePanel productId={p.id} />}
+        {showPricing && <ProductPricingPanel product={p} onSave={onSave} onClose={() => setShowPricing(false)} />}
       </div>
       {!editing && (
         <div className="flex flex-col gap-2 shrink-0 justify-center">
           <button type="button" onClick={startEdit} disabled={acting} className="text-xs font-medium text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 disabled:opacity-60">
             Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowPricing((v) => !v)}
+            disabled={acting}
+            className="text-xs font-medium text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-lg hover:bg-indigo-50 disabled:opacity-60"
+          >
+            ფასი / ფასდაკლება
           </button>
           <button type="button" onClick={togglePurchases} className="text-xs font-medium text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50">
             {showPurchases ? 'Hide Purchases' : 'Purchases'}
@@ -654,6 +672,25 @@ function ModerationProductCard({
           >
             <Sparkles className="w-3.5 h-3.5" /> Launch Kit
           </button>
+          {p.status === 'ARCHIVED' ? (
+            <button
+              type="button"
+              onClick={onRestore}
+              disabled={acting}
+              className="text-xs font-medium text-white bg-emerald-600 px-3 py-1.5 rounded-lg hover:bg-emerald-700 disabled:opacity-60"
+            >
+              აღდგენა
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onArchive}
+              disabled={acting}
+              className="text-xs font-medium text-gray-700 border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-60"
+            >
+              დამალვა (არქივი)
+            </button>
+          )}
           {p.status === 'PENDING' && (
             <>
               <button
@@ -901,6 +938,44 @@ function AdminProductsDashboard() {
     }
   };
 
+  // Soft delete with an explicit confirm: the product leaves the store, but
+  // buyers keep their downloads and it can be restored any time.
+  const handleArchive = async (p: AdminProduct) => {
+    const sold = p.salesCount ?? 0;
+    const msg = [
+      `დავმალო „${p.title}"?`,
+      '',
+      'პროდუქტი გაქრება მაღაზიიდან და ვეღარავინ იყიდის.',
+      ...(sold > 0 ? [`${sold} მყიდველს შეუნარჩუნდება ჩამოტვირთვის უფლება.`] : []),
+      'ნებისმიერ დროს შეგიძლია აღადგინო ("ARCHIVED" ჩანართიდან).',
+    ].join('\n');
+    if (!window.confirm(msg)) return;
+    setActionError(null);
+    setActingId(p.id);
+    try {
+      const updated = await archiveProduct(p.id);
+      setProducts((prev) => prev.map((x) => (x.id === p.id ? { ...x, ...updated } : x)));
+    } catch (err: any) {
+      setActionError(err?.response?.data?.message ?? 'Failed to archive.');
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    if (!window.confirm('აღვადგინო პროდუქტი? ისევ გამოჩნდება მაღაზიაში და გაიყიდება.')) return;
+    setActionError(null);
+    setActingId(id);
+    try {
+      const updated = await restoreProduct(id);
+      setProducts((prev) => prev.map((x) => (x.id === id ? { ...x, ...updated } : x)));
+    } catch (err: any) {
+      setActionError(err?.response?.data?.message ?? 'Failed to restore.');
+    } finally {
+      setActingId(null);
+    }
+  };
+
   const handleUpdate = async (id: string, patch: UpdateProductPayload) => {
     setActionError(null);
     setActingId(id);
@@ -1089,7 +1164,7 @@ function AdminProductsDashboard() {
         </form>
 
         <div className="flex items-center gap-2 mb-4">
-          {['PENDING', 'NEEDS_REVISION', 'APPROVED', 'REJECTED', ''].map((s) => (
+          {['PENDING', 'NEEDS_REVISION', 'APPROVED', 'REJECTED', 'ARCHIVED', ''].map((s) => (
             <button
               key={s}
               type="button"
@@ -1119,6 +1194,8 @@ function AdminProductsDashboard() {
                 onReject={() => handleReject(p.id)}
                 onRequestChanges={() => handleRequestChanges(p.id)}
                 onSave={(patch) => handleUpdate(p.id, patch)}
+                onArchive={() => handleArchive(p)}
+                onRestore={() => handleRestore(p.id)}
               />
             ))}
           </div>

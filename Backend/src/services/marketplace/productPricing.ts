@@ -25,10 +25,13 @@ export interface ProductPricingInput {
   price: number;
   discountedPrice: number | null;
   saleEndsAt: Date | null;
+  // Optional scheduled start; older callers/rows without it behave as "already started".
+  saleStartsAt?: Date | null;
 }
 
 export function isProductSaleActive(product: ProductPricingInput): boolean {
   if (!product.discountedPrice) return false;
+  if (product.saleStartsAt && product.saleStartsAt.getTime() > Date.now()) return false;
   if (product.saleEndsAt && product.saleEndsAt.getTime() <= Date.now()) return false;
   return true;
 }

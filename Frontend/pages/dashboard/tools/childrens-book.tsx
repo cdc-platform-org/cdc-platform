@@ -6,6 +6,7 @@ import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { BookOpen, Sparkles, CheckCircle2, Loader2, Download, RefreshCw, ArrowLeft, ArrowRight, Headphones, PlayCircle, PenLine, Clapperboard } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
+import AdminOnlyToolGate from '../../../src/components/tools/AdminOnlyToolGate';
 import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
 import GiftThisButton from '../../../src/components/giftCards/GiftThisButton';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
@@ -1208,7 +1209,7 @@ export default function ChildrensBookPage() {
       <SEOHead title={t('pageTitle')} description={t('pageSubtitle')} noIndex />
       <ProtectedRoute>
         <ToolErrorBoundary>
-          <ChildrensBookContent />
+          <AdminOnlyToolGate slug="childrens-book"><ChildrensBookContent /></AdminOnlyToolGate>
         </ToolErrorBoundary>
       </ProtectedRoute>
     </>

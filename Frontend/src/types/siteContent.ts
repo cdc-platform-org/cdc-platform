@@ -80,7 +80,10 @@ export interface AgencyContent {
 // that page's existing static/i18n copy. Same ka/en-pair convention as
 // AgencyPortfolioItem above; features are longer so they're an array
 // rather than one field.
-export type ToolCatalogStatus = 'ACTIVE' | 'COMING_SOON' | 'DISABLED';
+// ADMIN_ONLY = hidden from everyone except the admin team, who still see and
+// use it (the tool's API also refuses non-admin writes — Backend
+// middleware/toolVisibility.ts).
+export type ToolCatalogStatus = 'ACTIVE' | 'COMING_SOON' | 'DISABLED' | 'ADMIN_ONLY';
 
 export interface ToolCatalogEntry {
   slug: string;
