@@ -12,6 +12,8 @@
  *   POST /:id/approve
  *   POST /:id/reject
  *   POST /:id/request-changes
+ *   POST /:id/archive
+ *   POST /:id/restore
  */
 import { Router, Request, Response, NextFunction } from 'express';
 import path from 'path';
@@ -27,11 +29,20 @@ import { autoTranslateIfBlank } from '../../services/ai/aiTranslateService';
 import { protectProductPreviewImage } from '../../services/marketplace/productImageProtection';
 import { uploadProductFile, resolveProductFileDeliveryUrl } from '../../services/marketplace/productFileDelivery';
 import { withCurrentProductPrice, validateProductDiscount } from '../../services/marketplace/productPricing';
+import { logAdminAction } from '../../services/account/auditLogService';
 
 function toPrismaSaleEndsAt(value: string | null | undefined): Date | null | undefined {
   if (value === undefined) return undefined;
   if (!value) return null;
   return new Date(value);
+}
+
+// A scheduled sale must end after it starts — otherwise it would silently
+// never be live. Either side may be blank (open-ended).
+function validateSaleWindow(start: string | null | undefined, end: string | null | undefined): string | null {
+  if (!start || !end) return null;
+  if (new Date(end).getTime() <= new Date(start).getTime()) return 'Sale end date must be after the start date.';
+  return null;
 }
 
 // Prisma's Json? columns need the explicit Prisma.JsonNull sentinel to set
@@ -155,6 +166,8 @@ const createSchema = z.object({
   licenseType: z.nativeEnum(ProductLicenseType).optional(),
   discountedPrice: z.number().min(0).optional().nullable(),
   saleEndsAt: z.string().datetime().optional().nullable().or(z.literal('')),
+  // Optional scheduled start of the sale — same ISO/empty conventions as saleEndsAt.
+  saleStartsAt: z.string().datetime().optional().nullable().or(z.literal('')),
   howItWorksSteps: howItWorksStepsSchema,
   // Marks this as a web tool/SaaS product — /store/[id] shows "Launch Tool"
   // linking here instead of the normal download flow. A plain in-app path
@@ -184,7 +197,10 @@ router.post('/', async (req: Request, res: Response) => {
     'adminProducts'
   );
 
-  const { discountedPrice, saleEndsAt, howItWorksSteps, ...rest } = result.data;
+  const saleWindowError = validateSaleWindow(result.data.saleStartsAt, result.data.saleEndsAt);
+  if (saleWindowError) return res.status(400).json({ message: saleWindowError });
+
+  const { discountedPrice, saleEndsAt, saleStartsAt, howItWorksSteps, ...rest } = result.data;
   const product = await prisma.digitalProduct.create({
     data: {
       ...rest,
@@ -193,6 +209,7 @@ router.post('/', async (req: Request, res: Response) => {
       price: priceMinor,
       discountedPrice: discountedPriceMinor,
       saleEndsAt: toPrismaSaleEndsAt(saleEndsAt) ?? null,
+      saleStartsAt: toPrismaSaleEndsAt(saleStartsAt) ?? null,
       howItWorksSteps: toPrismaJson(howItWorksSteps),
       status: 'APPROVED',
     },
@@ -258,6 +275,8 @@ const updateSchema = z.object({
   licenseType: z.nativeEnum(ProductLicenseType).optional(),
   discountedPrice: z.number().min(0).optional().nullable(),
   saleEndsAt: z.string().datetime().optional().nullable().or(z.literal('')),
+  // Optional scheduled start of the sale — same ISO/empty conventions as saleEndsAt.
+  saleStartsAt: z.string().datetime().optional().nullable().or(z.literal('')),
   howItWorksSteps: howItWorksStepsSchema,
   toolRoute: z.string().max(500).optional().nullable(),
 });
@@ -285,7 +304,11 @@ router.put('/:id', async (req: Request, res: Response) => {
     'adminProducts'
   );
 
-  const { price, discountedPrice, saleEndsAt, howItWorksSteps, ...rest } = result.data;
+  const { price, discountedPrice, saleEndsAt, saleStartsAt, howItWorksSteps, ...rest } = result.data;
+  const effectiveStart = saleStartsAt !== undefined ? saleStartsAt : existing.saleStartsAt?.toISOString() ?? null;
+  const effectiveEnd = saleEndsAt !== undefined ? saleEndsAt : existing.saleEndsAt?.toISOString() ?? null;
+  const saleWindowError = validateSaleWindow(effectiveStart, effectiveEnd);
+  if (saleWindowError) return res.status(400).json({ message: saleWindowError });
   const priceMinor = price !== undefined ? Math.round(price * 100) : existing.price;
   const discountedPriceMinor =
     discountedPrice !== undefined ? (discountedPrice != null ? Math.round(discountedPrice * 100) : null) : existing.discountedPrice;
@@ -304,9 +327,24 @@ router.put('/:id', async (req: Request, res: Response) => {
         ...(price !== undefined ? { price: priceMinor } : {}),
         discountedPrice: discountedPriceMinor,
         ...(saleEndsAt !== undefined ? { saleEndsAt: toPrismaSaleEndsAt(saleEndsAt) } : {}),
+        ...(saleStartsAt !== undefined ? { saleStartsAt: toPrismaSaleEndsAt(saleStartsAt) } : {}),
         ...(howItWorksSteps !== undefined ? { howItWorksSteps: toPrismaJson(howItWorksSteps) } : {}),
       },
     });
+    if (priceMinor !== existing.price || discountedPriceMinor !== existing.discountedPrice || saleEndsAt !== undefined || saleStartsAt !== undefined) {
+      await logAdminAction({
+        action: 'products.updatePricing',
+        targetType: 'DigitalProduct',
+        targetId: existing.id,
+        performedById: req.user!.id,
+        metadata: {
+          price: { from: existing.price, to: updated.price },
+          discountedPrice: { from: existing.discountedPrice, to: updated.discountedPrice },
+          saleStartsAt: updated.saleStartsAt,
+          saleEndsAt: updated.saleEndsAt,
+        },
+      });
+    }
     res.json({ data: withCurrentProductPrice(updated) });
   } catch (err: any) {
     if (err.code === 'P2025') return res.status(404).json({ message: 'Product not found.' });
@@ -401,6 +439,46 @@ router.post('/:id/request-changes', async (req: Request, res: Response) => {
   }
 
   res.json({ data: updated });
+});
+
+// ============================================================
+// Soft delete. A product is never hard-deleted from the admin panel:
+// ProductPurchase/reviews/user designs reference it, and buyers keep
+// lifetime download rights (products.ts's /:id/download ignores status).
+// ARCHIVED hides it from the public catalog and blocks new checkouts
+// (marketplaceCheckout.ts, stripePayments.ts, products.ts /:id/claim all
+// require APPROVED); restore puts it straight back on sale.
+// ============================================================
+router.post('/:id/archive', async (req: Request, res: Response) => {
+  const product = await prisma.digitalProduct.findUnique({ where: { id: req.params.id }, select: { id: true, status: true, title: true } });
+  if (!product) return res.status(404).json({ message: 'Product not found.' });
+  if (product.status === 'ARCHIVED') return res.status(400).json({ message: 'Product is already archived.' });
+
+  const updated = await prisma.digitalProduct.update({ where: { id: product.id }, data: { status: 'ARCHIVED' } });
+  await logAdminAction({
+    action: 'products.archive',
+    targetType: 'DigitalProduct',
+    targetId: product.id,
+    performedById: req.user!.id,
+    metadata: { previousStatus: product.status, title: product.title },
+  });
+  res.json({ data: withCurrentProductPrice(updated) });
+});
+
+router.post('/:id/restore', async (req: Request, res: Response) => {
+  const product = await prisma.digitalProduct.findUnique({ where: { id: req.params.id }, select: { id: true, status: true, title: true } });
+  if (!product) return res.status(404).json({ message: 'Product not found.' });
+  if (product.status !== 'ARCHIVED') return res.status(400).json({ message: 'Only archived products can be restored.' });
+
+  const updated = await prisma.digitalProduct.update({ where: { id: product.id }, data: { status: 'APPROVED' } });
+  await logAdminAction({
+    action: 'products.restore',
+    targetType: 'DigitalProduct',
+    targetId: product.id,
+    performedById: req.user!.id,
+    metadata: { title: product.title },
+  });
+  res.json({ data: withCurrentProductPrice(updated) });
 });
 
 export default router;

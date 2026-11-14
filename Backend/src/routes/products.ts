@@ -116,7 +116,16 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
   // everyone else (including other logged-in users) gets a 404, same as if
   // it didn't exist. Admins review these via GET /admin/products instead.
   if (product.status !== 'APPROVED' && product.submittedById !== req.user?.id) {
-    return res.status(404).json({ message: 'Product not found.' });
+    // An archived product stays reachable for people who already bought it,
+    // so they can still open its page and re-download what they paid for.
+    const ownsArchived =
+      product.status === 'ARCHIVED' &&
+      !!req.user &&
+      (await prisma.productPurchase.findFirst({
+        where: { userId: req.user.id, productId: product.id, paymentStatus: 'COMPLETED' },
+        select: { id: true },
+      })) !== null;
+    if (!ownsArchived) return res.status(404).json({ message: 'Product not found.' });
   }
 
   let purchased = false;
@@ -465,6 +474,10 @@ router.put('/:id/mine', authenticate, requireApproved, async (req: Request, res:
   if (product.status === 'APPROVED') {
     return res.status(400).json({ message: 'This product is already published and can no longer be edited here.' });
   }
+  // Archived by an admin — resubmitting would silently un-archive it via PENDING.
+  if (product.status === 'ARCHIVED') {
+    return res.status(400).json({ message: 'This product was archived by an admin and can no longer be edited.' });
+  }
 
   const result = updateMySubmissionSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
@@ -547,7 +560,7 @@ router.put('/:id/mine', authenticate, requireApproved, async (req: Request, res:
 // ============================================================
 router.post('/:id/claim', authenticate, requireApproved, async (req: Request, res: Response) => {
   const product = await prisma.digitalProduct.findUnique({ where: { id: req.params.id } });
-  if (!product) return res.status(404).json({ message: 'Product not found.' });
+  if (!product || product.status !== 'APPROVED') return res.status(404).json({ message: 'Product not found.' });
   if (product.price > 0) {
     return res.status(400).json({ message: 'This product is not free — use the checkout flow instead.' });
   }

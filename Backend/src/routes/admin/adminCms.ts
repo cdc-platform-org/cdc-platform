@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole } from '../../middleware/auth';
 import { logAdminAction } from '../../services/account/auditLogService';
+import { invalidateToolVisibilityCache } from '../../middleware/toolVisibility';
 import { extractBunnyStorageUrls, deleteBunnyStorageUrlIfManaged } from '../../services/integrations/bunnyStorage';
 
 const router = Router();
@@ -41,6 +42,8 @@ router.put('/:page', async (req: Request, res: Response) => {
     update: { content: result.data.content, updatedById: req.user!.id },
     create: { page: req.params.page, content: result.data.content, updatedById: req.user!.id },
   });
+
+  if (req.params.page === 'tool-catalog') invalidateToolVisibilityCache();
 
   if (previous) {
     const oldUrls = extractBunnyStorageUrls(previous.content);

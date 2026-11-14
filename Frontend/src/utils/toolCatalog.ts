@@ -33,10 +33,20 @@ export const BUILT_IN_TOOL_SLUGS = [
   'ag-saia',
 ];
 
-export function customToolEntries(tools: ToolCatalogEntry[] | undefined): ToolCatalogEntry[] {
+// Card slug -> catalog slug where a page's card key differs from the CMS slug.
+const CARD_KEY_TO_SLUG: Record<string, string> = { exam: 'exam-screening' };
+
+// True when a tool set to "Admin only" must be hidden from this viewer.
+export function isHiddenAdminOnly(tools: ToolCatalogEntry[] | undefined, cardKey: string, viewerIsAdmin: boolean): boolean {
+  if (viewerIsAdmin) return false;
+  return findToolEntry(tools, CARD_KEY_TO_SLUG[cardKey] ?? cardKey)?.status === 'ADMIN_ONLY';
+}
+
+export function customToolEntries(tools: ToolCatalogEntry[] | undefined, viewerIsAdmin = false): ToolCatalogEntry[] {
   return (tools ?? []).filter(
     (t) =>
       t.status !== 'DISABLED' &&
+      (viewerIsAdmin || t.status !== 'ADMIN_ONLY') &&
       !BUILT_IN_TOOL_SLUGS.includes(t.slug.trim()) &&
       Boolean((t.titleKa ?? '').trim() || (t.titleEn ?? '').trim()),
   );

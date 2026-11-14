@@ -603,7 +603,8 @@ router.post('/checkout/gig/:gigId', checkoutRateLimit, authenticate, requireAppr
 // ============================================================
 router.post('/checkout/product/:productId', checkoutRateLimit, authenticate, requireApproved, async (req: Request, res: Response) => {
   const product = await prisma.digitalProduct.findUnique({ where: { id: req.params.productId } });
-  if (!product) return res.status(404).json({ message: 'Product not found.' });
+  // Only published products can be bought — archived/pending/rejected ones 404.
+  if (!product || product.status !== 'APPROVED') return res.status(404).json({ message: 'Product not found.' });
   if (product.price <= 0) return res.status(400).json({ message: 'This product is free — claim it directly instead of checking out.' });
   const existingPurchase = await prisma.productPurchase.findUnique({
     where: { userId_productId: { userId: req.user!.id, productId: product.id } },

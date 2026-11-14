@@ -2030,6 +2030,10 @@ model DigitalProduct {
   // moment, getCurrentProductPrice() reverts to `price` automatically — no
   // cron needed, same as Course.discountEndDate.
   saleEndsAt         DateTime?
+  // Null = the sale is live as soon as discountedPrice is set. Lets an admin
+  // schedule a discount ahead of time (e.g. a weekend sale); before this
+  // moment getCurrentProductPrice() still charges `price`.
+  saleStartsAt       DateTime?
   category           String
   imageUrl           String
   // Up to 4 additional showcase screenshots shown alongside imageUrl (the
@@ -2102,7 +2106,10 @@ model DigitalProduct {
   // restrictive option so an admin/submitter has to deliberately opt into a
   // broader license rather than one being granted by omission.
   licenseType        ProductLicenseType @default(PERSONAL_USE)
-  // "PENDING" | "APPROVED" | "REJECTED" | "NEEDS_REVISION" — admin-created
+  // "PENDING" | "APPROVED" | "REJECTED" | "NEEDS_REVISION" | "ARCHIVED".
+  // ARCHIVED = soft-deleted by an admin (adminProducts.ts /:id/archive): gone
+  // from the public catalog and checkout, but every purchase, download and
+  // review stays intact, and /:id/restore brings it back. Admin-created
   // products (see adminProducts.ts) are inserted as APPROVED directly;
   // graduate/verified-freelancer submissions (products.ts's POST /) start
   // PENDING (or land directly on APPROVED/NEEDS_REVISION when

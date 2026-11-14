@@ -23,6 +23,7 @@ import {
   Square,
 } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
+import AdminOnlyToolGate from '../../../src/components/tools/AdminOnlyToolGate';
 import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
 import DigitalToolAccessGate from '../../../src/components/tools/DigitalToolAccessGate';
 import SEOHead from '../../../src/components/seo/SEOHead';
@@ -909,9 +910,11 @@ export default function MediaStudioPage() {
       <SEOHead title={t('pageTitle')} description={t('catalogDesc')} noIndex />
       <ProtectedRoute>
         <ToolErrorBoundary>
-          <DigitalToolAccessGate toolKey="media-studio" toolTitle={t('pageTitle')} toolSubtitle={t('pageSubtitle')} toolIcon={Mic} accent="pink">
+          <AdminOnlyToolGate slug="media-studio">
+            <DigitalToolAccessGate toolKey="media-studio" toolTitle={t('pageTitle')} toolSubtitle={t('pageSubtitle')} toolIcon={Mic} accent="pink">
             <MediaStudioContent />
           </DigitalToolAccessGate>
+          </AdminOnlyToolGate>
         </ToolErrorBoundary>
       </ProtectedRoute>
     </>

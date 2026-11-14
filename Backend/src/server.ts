@@ -79,6 +79,7 @@ import aiRoutes from './routes/ai';
 import agentsRoutes from './routes/agents';
 import ttsRoutes from './routes/tts';
 import mediaStudioRoutes from './routes/mediaStudio';
+import { requireToolVisible } from './middleware/toolVisibility';
 import chatApiRoutes from './routes/chatApi';
 import adminPromosRoutes from './routes/admin/adminPromos';
 import adminProjectsRoutes from './routes/admin/adminProjects';
@@ -312,7 +313,7 @@ app.use('/api/chat-requests', chatRequestRoutes);
 app.use('/api/cron', cronRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/exam-proctoring', examProctoringRoutes);
-app.use('/api/proctored-practice', proctoredPracticeRoutes);
+app.use('/api/proctored-practice', requireToolVisible('proctoring'), proctoredPracticeRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/payments/stripe', stripePaymentRoutes);
 app.use('/api/forum', forumRoutes);
@@ -336,13 +337,13 @@ app.use('/api/site-content', siteContentRoutes);
 app.use('/api/admin/cms', adminCmsRoutes);
 app.use('/api/studio', studioRoutes);
 app.use('/api/admin/studio', adminStudioRoutes);
-app.use('/api/cyber-sentinel', cyberSentinelRoutes);
+app.use('/api/cyber-sentinel', requireToolVisible('cyber-sentinel'), cyberSentinelRoutes);
 app.use('/api/admin/cyber-sentinel', adminCyberSentinelRoutes);
 app.use('/api/admin/companies', adminCompaniesRoutes);
 app.use('/api/admin/individual-verifications', adminVerificationsRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/tts', ttsRoutes);
-app.use('/api/media-studio', mediaStudioRoutes);
+app.use('/api/media-studio', requireToolVisible('media-studio'), mediaStudioRoutes);
 // CDC Business AI — /api/agents is the authenticated dashboard-facing CRUD
 // (config, knowledge base, analytics); /api/v1/chat is the public,
 // unauthenticated endpoint the embeddable widget calls directly from
@@ -391,11 +392,12 @@ app.use('/api/promos', promoRoutes);
 app.use('/api/gift-cards', giftCardRoutes);
 app.use('/api/projects', projectsRoutes);
 app.use('/api/ai-agents', aiAgentsSuiteRoutes);
-app.use('/api/english-tutor', englishTutorRoutes);
+app.use('/api/english-tutor', requireToolVisible('english-tutor'), englishTutorRoutes);
 app.use('/api/admin/english-tutor', adminEnglishTutorRoutes);
-app.use('/api/educator-hub', educatorHubRoutes);
+app.use('/api/educator-hub', requireToolVisible('educator-hub'), educatorHubRoutes);
 app.use('/api/quiz', teacherQuizRoutes);
-app.use('/api/childrens-books', bookAnimationRoutes);
+// requireToolVisible: blocks writes when an admin set the tool to "Admin only" (middleware/toolVisibility.ts).
+app.use('/api/childrens-books', requireToolVisible('childrens-book'), bookAnimationRoutes);
 app.use('/api/childrens-books', childrensBookRoutes);
 app.use('/api/coloring-pages', coloringPageRoutes);
 app.use('/api/mentor-applications', mentorApplicationRoutes);
