@@ -2,6 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   CDC design tokens (2026-11 redesign)
+   Space-separated RGB channels so Tailwind's `cdc-*` colours (see
+   tailwind.config.js) support opacity modifiers like bg-cdc-primary/10.
+   Brand hues come from the CDC logo: violet (primary), cyan (accent).
+   Light is the default theme; `.dark` on <html> (pages/_document.tsx,
+   toggled in SiteHeader) swaps the same tokens for dark mode.
+   ============================================================ */
+:root {
+  --cdc-bg: 245 245 249;          /* #F5F5F9 page background */
+  --cdc-surface: 255 255 255;     /* cards / header */
+  --cdc-border: 232 232 240;      /* #E8E8F0 hairlines */
+  --cdc-ink: 21 19 43;            /* #15132B text */
+  --cdc-muted: 108 106 130;       /* #6C6A82 secondary text */
+  --cdc-primary: 109 40 217;      /* #6D28D9 violet CTA (white text ≈ 7:1) */
+  --cdc-primary-hover: 91 33 182; /* #5B21B6 */
+  --cdc-primary-soft: 243 238 255;/* #F3EEFF chips, selected rows */
+  --cdc-accent: 8 145 178;        /* #0891B2 cyan, readable on white */
+  --cdc-accent-soft: 230 249 252; /* #E6F9FC */
+}
+.dark {
+  --cdc-bg: 11 10 28;             /* #0B0A1C violet-navy, like the logo */
+  --cdc-surface: 21 19 43;        /* #15132B */
+  --cdc-border: 45 42 72;         /* #2D2A48 */
+  --cdc-ink: 240 239 248;
+  --cdc-muted: 160 158 184;
+  --cdc-primary: 139 92 246;      /* #8B5CF6 brighter on dark */
+  --cdc-primary-hover: 167 139 250;
+  --cdc-primary-soft: 46 30 92;
+  --cdc-accent: 34 211 238;       /* #22D3EE */
+  --cdc-accent-soft: 14 48 64;
+}
+
+body {
+  background-color: rgb(var(--cdc-bg));
+  color: rgb(var(--cdc-ink));
+}
+
 /* AUDIT NOTE (fixed): a GL-Kirovi @font-face used to live here, pointing at
    /fonts/gl-kirovi-bold-39756223608.ttf — a file that has never actually
    existed in this repo's public/fonts/ (confirmed via a full production QA
@@ -84,7 +122,7 @@ select:focus-visible,
 textarea:focus-visible,
 [role="button"]:focus-visible,
 [tabindex]:not([tabindex="-1"]):focus-visible {
-  outline: 2px solid #22d3ee;
+  outline: 2px solid rgb(var(--cdc-primary));
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -96,32 +134,35 @@ html, body {
 }
 
 @layer components {
-  /* Glass card — the VIP surface used for cards/panels across the redesign. */
+  /* Card — flat white surface, hairline border, soft lift on hover
+     (Figma-template style). Token-based, so dark mode needs no override. */
   .vip-card {
-    @apply relative rounded-2xl border backdrop-blur-md transition-all duration-300;
-    @apply border-slate-200 bg-white/80;
+    @apply relative rounded-card border border-cdc-border bg-cdc-surface shadow-card transition-all duration-300;
   }
   .vip-card:hover {
-    @apply -translate-y-0.5 border-cyan-400/50 shadow-lg shadow-cyan-500/10;
-  }
-  :is(.dark) .vip-card {
-    @apply border-white/10 bg-white/5;
+    @apply -translate-y-0.5 border-cdc-primary/30 shadow-card-hover;
   }
 
-  /* Primary CTA — brand gradient, glow + lift on hover, tactile press. */
+  /* Primary CTA — solid brand violet (calmer than the old gradient). */
   .vip-btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border-none px-5 py-2.5 text-sm font-black text-white transition-all duration-200;
-    @apply bg-gradient-to-r from-cyan-500 to-purple-600;
-    @apply hover:-translate-y-0.5 hover:shadow-lg hover:shadow-cyan-500/30 active:translate-y-0;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border-none px-5 py-2.5 text-sm font-bold text-white transition-all duration-200;
+    @apply bg-cdc-primary hover:bg-cdc-primary-hover;
+    @apply hover:-translate-y-0.5 hover:shadow-lg hover:shadow-cdc-primary/25 active:translate-y-0;
   }
 
-  /* Secondary/outline — glass, glowing border on hover. */
+  /* Secondary — white/surface with hairline border. */
   .vip-btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-black transition-all duration-200;
-    @apply border-slate-200 text-slate-700 hover:bg-slate-100;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-bold transition-all duration-200;
+    @apply border-cdc-border bg-cdc-surface text-cdc-ink hover:border-cdc-primary/40 hover:bg-cdc-primary-soft;
   }
-  :is(.dark) .vip-btn-secondary {
-    @apply border-white/10 bg-white/5 text-slate-200 hover:border-cyan-400/50 hover:bg-white/10;
+
+  /* Small tag/pill, e.g. "4 კვირა", "დამწყები" on course cards. */
+  .cdc-chip {
+    @apply inline-flex items-center gap-1 rounded-lg border border-cdc-border bg-cdc-surface px-2.5 py-1 text-xs font-medium text-cdc-muted;
+  }
+  /* Tinted label above a headline ("✦ CDC Academy"). */
+  .cdc-eyebrow {
+    @apply inline-flex items-center gap-2 rounded-lg bg-cdc-primary-soft px-3 py-1.5 text-sm font-semibold text-cdc-primary;
   }
 
   /* Destructive action. */
@@ -151,7 +192,7 @@ html {
 }
 
 ::selection {
-  background: rgba(34, 211, 238, 0.28);
+  background: rgb(var(--cdc-primary) / 0.22);
 }
 
 /* Section headings get a short brand-gradient accent underneath. Centered

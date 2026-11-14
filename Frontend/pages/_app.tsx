@@ -106,7 +106,7 @@ function App({ Component, pageProps }: AppProps) {
             /public. Opens standalone, without browser chrome. */}
         <link rel="manifest" href="/manifest.webmanifest" />
         <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-        <meta name="theme-color" content="#0e1422" media="(prefers-color-scheme: dark)" />
+        <meta name="theme-color" content="#0b0a1c" media="(prefers-color-scheme: dark)" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="CDC" />
