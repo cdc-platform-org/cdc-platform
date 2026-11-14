@@ -147,5 +147,41 @@
   "badgeLiveTraining": "LIVE TRAINING",
   "liveTrainingSeatsLeft": "{{count}} seat left",
   "liveTrainingSeatsLeftPlural": "{{count}} seats left",
-  "liveTrainingFull": "Full"
+  "liveTrainingFull": "Full",
+  "detailPage": {
+    "buy": "Buy",
+    "watchTrailer": "Watch trailer",
+    "trailerUnavailable": "Trailer coming soon",
+    "students": "{{count}} students",
+    "courseAccess": "Learn at your own pace",
+    "subscription": "All courses for 50 ₾ / month",
+    "subscribe": "Subscribe",
+    "learn": "What you’ll learn",
+    "instructorSoon": "Instructor details coming soon",
+    "reviews": "Student reviews",
+    "faq": "Frequently asked questions",
+    "navigation": "Course sections",
+    "nav": {
+      "course": "Course",
+      "trailer": "Trailer",
+      "details": "Details",
+      "lessons": "Lessons",
+      "instructor": "Instructor"
+    },
+    "faqItems": {
+      "access": {
+        "question": "How do I start learning?",
+        "answer": "Sign in and purchase the course. If you already have access, select Continue learning."
+      },
+      "preview": {
+        "question": "Can I preview the course?",
+        "answer": "Watch the trailer above or open lessons marked as a free preview in the curriculum."
+      },
+      "payment": {
+        "question": "How can I pay?",
+        "answer": "Choose an available payment provider in the purchase panel. Any active discount is shown before checkout."
+      }
+    },
+    "new": "New"
+  }
 }

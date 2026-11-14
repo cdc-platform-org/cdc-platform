@@ -1,9 +1,5 @@
-/**
- * Course detail page (/courses/[id]): loads the course + syllabus, enrollment
- * state, promo codes and checkout (BOG for ka, Stripe otherwise). 2026-11
- * EDUPRO-style layout: hero media with an overlapping info card, Overview /
- * Syllabus tabs, sticky purchase card and a mobile bottom CTA — the pieces
- * live in src/components/courses/detail/.
+/** Course detail: trailer, responsive purchase panel, curriculum and reviews.
+ * Checkout and enrollment use the existing course payment services.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
@@ -11,32 +7,24 @@ import Link from 'next/link';
 import { GetServerSideProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { BookOpen, Clock, Lock, RefreshCw, X } from 'lucide-react';
+import { BookOpen, Clock, Lock, RefreshCw, X, Play, Users, Check } from 'lucide-react';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
 import BackButton from '../../../src/components/common/BackButton';
 import MarkdownContent from '../../../src/components/shared/MarkdownContent';
 import CourseVideoPlayer from '../../../src/components/courses/CourseVideoPlayer';
-import VideoTutorialLink from '../../../src/components/shared/VideoTutorialLink';
 import { useEscapeToClose } from '../../../src/hooks/useEscapeToClose';
 import { Course, SyllabusSection, SyllabusLesson } from '../../../src/types/lms';
 import { getCourse, getProgressSummary, getSyllabus } from '../../../src/services/courseService';
 import { checkoutCourse, validatePromoCode, PromoValidationResult } from '../../../src/services/paymentService';
-import CoursePurchaseCard, { CourseCtaButton, CourseMobileCta } from '../../../src/components/courses/detail/CoursePurchaseCard';
+import CoursePurchaseCard, { CourseCtaButton } from '../../../src/components/courses/detail/CoursePurchaseCard';
 import CourseSyllabus from '../../../src/components/courses/detail/CourseSyllabus';
 import { checkoutCourseStripe, stripeWithBogFallback } from '../../../src/services/stripePaymentService';
 import CheckoutGatewayPicker, { useCheckoutGateway } from '../../../src/components/payments/CheckoutGatewayPicker';
-import { formatPrice } from '../../../src/utils/coursePricing';
 import { courseLanguageBadge } from '../../../src/utils/courseLanguage';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useAuthModal } from '../../../src/context/AuthModalContext';
-import SocialShareButtons from '../../../src/components/shared/SocialShareButtons';
-import GiftThisButton from '../../../src/components/giftCards/GiftThisButton';
-import SuccessStoriesCarousel from '../../../src/components/shared/SuccessStoriesCarousel';
-import CourseLeaderboard from '../../../src/components/shared/CourseLeaderboard';
-import CourseHeroBanner from '../../../src/components/shared/CourseHeroBanner';
-import VideoEmbed from '../../../src/components/shared/VideoEmbed';
-import VIPAudioNarrator from '../../../src/components/ui/VIPAudioNarrator';
+import VideoEmbed, { parseVideoUrl } from '../../../src/components/shared/VideoEmbed';
 import SEOHead from '../../../src/components/seo/SEOHead';
 import LearningRatingsSection from '../../../src/components/shared/LearningRatingsSection';
 import LearningRatingSummary from '../../../src/components/shared/LearningRatingSummary';
@@ -76,7 +64,13 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
   const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
   const [applyingPromo, setApplyingPromo] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'syllabus'>('overview');
+  const [playingTrailer, setPlayingTrailer] = useState(false);
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEscapeToClose(!!previewLesson, () => setPreviewLesson(null));
   useEscapeToClose(showPaywall, () => setShowPaywall(false));
@@ -193,145 +187,74 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
   // What the buy button actually charges right now — a 100% discount promo
   // brings this to 0 just as much as a course that's simply free on its
   // own, so both cases get the same "activate for free" label/copy.
-  const effectivePrice = appliedPromo ? appliedPromo.discountedAmount : course.currentPrice;
-  const ctaProps = { course, t, enrolled, processing, effectivePrice, onEnroll: handleEnroll };
+  // The API owns course sale eligibility; also expire a sale while this page stays open.
+  const saleActive = course.saleActive && (!course.discountEndDate || now === null || new Date(course.discountEndDate).getTime() > now);
+  const pricedCourse = { ...course, saleActive, currentPrice: saleActive ? course.currentPrice : course.originalPrice };
+  const effectivePrice = appliedPromo ? Math.min(appliedPromo.discountedAmount, pricedCourse.currentPrice) : pricedCourse.currentPrice;
+  const ctaProps = { course: pricedCourse, t, enrolled, processing, effectivePrice, now, onEnroll: handleEnroll };
+  const isNew = now !== null && now >= new Date(course.createdAt).getTime() && now - new Date(course.createdAt).getTime() < 30 * 86400000;
   const heroImage = course.coverImageUrl || course.thumbnailUrl;
+  const title = (lang === 'en' && course.titleEn) || course.title;
   const description = (lang === 'en' && course.descriptionEn) || course.description;
 
   return (
     <div className={shell}>
       <SEOHead
-        title={course.title}
+        title={title}
         description={course.description.replace(/[#*`_>-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 200)}
         ogImage={course.thumbnailUrl ?? undefined}
         ogType="product"
       />
       <SiteHeader />
-      <div className="max-w-7xl mx-auto py-8 sm:py-12 pb-32 lg:pb-12 flex-1 w-full">
+      <div className="max-w-7xl mx-auto py-8 sm:py-12 pb-40 lg:pb-28 flex-1 w-full">
         <Link href="/courses" className="text-sm font-semibold text-cdc-muted hover:text-cdc-ink no-underline">
           {t('backToCourses')}
         </Link>
 
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-8 items-start">
-          <div className="min-w-0">
-            {/* Hero media + overlapping info card (EDUPRO course detail). */}
-            {heroImage ? (
-              course.coverImageUrl ? (
-                <div className="overflow-hidden rounded-card">
-                  <CourseHeroBanner src={course.coverImageUrl} alt={course.title} />
-                </div>
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={heroImage} alt="" className="w-full aspect-video object-cover rounded-card" />
-              )
-            ) : (
-              <div className="w-full aspect-[21/9] rounded-card bg-gradient-to-br from-violet-700 via-indigo-700 to-cyan-700" aria-hidden="true" />
-            )}
-
-            <div className="vip-card hover:translate-y-0 relative -mt-10 mx-3 sm:mx-6 p-5 sm:p-7">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="cdc-chip text-cdc-primary-ink">{course.category}</span>
-                <span className="cdc-chip">{courseLanguageBadge(course.language, lang)}</span>
-              </div>
-              <h1 style={{ lineHeight: 1.3 }} className="blog-heading-safe mt-4 text-2xl md:text-4xl font-extrabold text-cdc-ink">{course.title}</h1>
-              <LearningRatingSummary {...course} lang={lang} />
-              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-cdc-muted">
-                {totalLessonCount > 0 && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <BookOpen className="w-4 h-4 text-cdc-primary-ink" aria-hidden="true" />
-                    {totalLessonCount} {t('courseLessons')}
-                  </span>
-                )}
-                {totalDurationSeconds > 0 && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-cdc-primary-ink" aria-hidden="true" />
-                    {formatTotalDuration(totalDurationSeconds, lang)}
-                  </span>
-                )}
-                <span className="ml-auto text-xl font-extrabold text-cdc-ink">{formatPrice(course.currentPrice)}</span>
-              </div>
-              <div className="mt-5 flex flex-wrap items-center gap-3">
-                <SocialShareButtons title={course.title} lang={lang} />
-                <GiftThisButton priceMinor={course.currentPrice} itemTitle={course.title} itemPath={`/courses/${course.id}`} lang={lang} />
-              </div>
+        <div id="course" className="mt-6 grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] gap-8 xl:gap-12 items-start scroll-mt-28">
+          <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+            <div id="trailer" className="relative aspect-video overflow-hidden rounded-3xl bg-cdc-surface border border-cdc-border scroll-mt-28">
+              {playingTrailer && course.introVideoUrl && parseVideoUrl(course.introVideoUrl) ? <VideoEmbed url={course.introVideoUrl} title={title} /> : <>
+                {heroImage && <img src={heroImage} alt={title} className="absolute inset-0 h-full w-full object-cover" />}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
+                {course.introVideoUrl && parseVideoUrl(course.introVideoUrl) ? <button type="button" onClick={() => setPlayingTrailer(true)} aria-label={t('detailPage.watchTrailer')} className="absolute inset-0 group flex flex-col gap-4 items-center justify-center text-white focus-visible:outline focus-visible:outline-4 focus-visible:outline-cdc-primary focus-visible:-outline-offset-4">
+                  <span className="flex h-20 w-20 items-center justify-center rounded-full bg-cdc-primary shadow-xl transition-transform group-hover:scale-110"><Play className="h-8 w-8 fill-current ml-1" /></span>
+                  <span className="text-sm font-bold">{t('detailPage.watchTrailer')}</span>
+                </button> : <p className="absolute bottom-6 left-6 text-white text-sm">{t('detailPage.trailerUnavailable')}</p>}
+              </>}
             </div>
-
-            {/* About / Curriculum tabs */}
-            <div className="mt-8 grid grid-cols-2 gap-1 p-1 rounded-2xl bg-cdc-surface border border-cdc-border">
-              {(['overview', 'syllabus'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  className={`py-2.5 rounded-xl text-sm font-bold border-none cursor-pointer transition-colors ${
-                    activeTab === tab ? 'bg-cdc-primary text-white' : 'bg-transparent text-cdc-muted hover:text-cdc-ink'
-                  }`}
-                >
-                  {t(tab)}
-                </button>
-              ))}
+            <div className="pt-7">
+              <div className="flex flex-wrap gap-2"><span className="cdc-chip text-cdc-primary-ink">{course.category}</span><span className="cdc-chip">{courseLanguageBadge(course.language, lang)}</span></div>
+              <h1 className="blog-heading-safe mt-4 text-3xl md:text-5xl font-extrabold leading-tight">{title}</h1>
+              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2"><LearningRatingSummary {...course} lang={lang} /><span className="inline-flex items-center gap-2 text-sm text-cdc-muted"><Users className="h-4 w-4" />{t('detailPage.students', { count: course.enrolledCount })}</span></div>
+              {course.mentorName && <a href="#instructor" className="mt-5 inline-flex items-center gap-3 text-cdc-ink no-underline">
+                {course.mentorAvatarUrl ? <img src={course.mentorAvatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" /> : <span className="h-12 w-12 rounded-full bg-cdc-primary-soft text-cdc-primary-ink flex items-center justify-center font-bold">{course.mentorName.slice(0, 2)}</span>}
+                <span><span className="block font-bold">{course.mentorName}</span><span className="text-sm text-cdc-muted">{course.mentorTitle || t('mentor')}</span></span>
+              </a>}
             </div>
-
-            {error && <div className="mt-6 rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-600 dark:text-red-300">{error}</div>}
-
-            <div className="mt-6">
-              {activeTab === 'overview' ? (
-                <>
-                  <div className="mb-4">
-                    <VIPAudioNarrator text={description} speechLang={lang === 'ka' ? 'ka-GE' : 'en-US'} lang={lang} stripMarkdown />
-                  </div>
-                  <div className="vip-card hover:translate-y-0 p-5 sm:p-7">
-                    <MarkdownContent content={description} />
-                  </div>
-                  {course.introVideoUrl && (
-                    <div className="mt-6 overflow-hidden rounded-card">
-                      <VideoEmbed url={course.introVideoUrl} title={course.title} />
-                    </div>
-                  )}
-                  {course.mentorName && (
-                    <div className="mt-6">
-                      <h2 className="text-lg font-bold text-cdc-ink mb-3">{t('mentor')}</h2>
-                      <div className="vip-card hover:translate-y-0 p-4 flex items-center gap-4">
-                        {course.mentorAvatarUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={course.mentorAvatarUrl} alt={course.mentorName} className="w-14 h-14 rounded-full object-cover ring-2 ring-cdc-border shrink-0" />
-                        ) : (
-                          <div className="w-14 h-14 rounded-full bg-cdc-primary text-white flex items-center justify-center text-sm font-bold shrink-0">{course.mentorName.slice(0, 2)}</div>
-                        )}
-                        <div className="min-w-0">
-                          <p className="text-base font-bold text-cdc-ink">{course.mentorName}</p>
-                          {course.mentorTitle && <p className="text-sm text-cdc-muted">{course.mentorTitle}</p>}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <CourseSyllabus syllabus={syllabus} enrolled={enrolled} t={t} onPreview={setPreviewLesson} onLocked={() => setShowPaywall(true)} />
-              )}
-            </div>
-
-            <CourseLeaderboard courseId={course.id} lang={lang} />
-            <LearningRatingsSection target="courses" targetId={course.id} lang={lang} onChange={(summary) => setCourse((current) => current ? { ...current, averageRating: summary.averageRating, reviewCount: summary.reviewCount } : current)} />
           </div>
-
-          <aside className="lg:sticky lg:top-24">
-            <CoursePurchaseCard
-              {...ctaProps}
-              lang={lang}
-              appliedPromo={appliedPromo}
-              promoInput={promoInput}
-              setPromoInput={setPromoInput}
-              applyingPromo={applyingPromo}
-              promoError={promoError}
-              onApplyPromo={handleApplyPromo}
-              onRemovePromo={() => { setAppliedPromo(null); setPromoInput(''); }}
-              topSlot={!enrolled ? <div className="flex justify-end mb-3"><VideoTutorialLink lang={lang} /></div> : null}
-              ctaSlot={!enrolled && !course.isFull && effectivePrice > 0 ? (
-                <CheckoutGatewayPicker lang={lang} gateway={gateway} onChange={setGateway} stripeEnabled={stripeEnabled} disabled={processing} />
-              ) : null}
+          <aside className="lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-24 min-w-0">
+            <CoursePurchaseCard {...ctaProps} lang={lang} appliedPromo={appliedPromo} promoInput={promoInput} setPromoInput={setPromoInput} applyingPromo={applyingPromo} promoError={promoError} onApplyPromo={handleApplyPromo} onRemovePromo={() => { setAppliedPromo(null); setPromoInput(''); }}
+              topSlot={<div className="mb-5"><span className="inline-flex rounded-full bg-cdc-primary-soft text-cdc-primary-ink px-3 py-1 text-xs font-bold">{t(isNew ? 'detailPage.new' : 'detailPage.courseAccess')}</span></div>}
+              ctaSlot={!enrolled && !course.isFull && effectivePrice > 0 ? <CheckoutGatewayPicker lang={lang} gateway={gateway} onChange={setGateway} stripeEnabled={stripeEnabled} disabled={processing} /> : null}
+              bottomSlot={<div className="mt-6 rounded-2xl border border-cdc-primary/30 bg-cdc-primary-soft p-5"><p className="text-lg font-extrabold text-cdc-primary-ink">{t('detailPage.subscription')}</p><Link href="/contact?subject=course-subscription" className="mt-4 flex justify-center rounded-full bg-cdc-surface border border-cdc-border px-5 py-3 text-sm font-bold text-cdc-ink no-underline">{t('detailPage.subscribe')}</Link></div>}
             />
           </aside>
+          <div className="min-w-0 space-y-10 lg:col-start-1 lg:row-start-2">
+            {error && <p role="alert" className="rounded-xl bg-red-500/10 p-4 text-red-600 dark:text-red-300">{error}</p>}
+            <section id="details" className="scroll-mt-28 border-t border-cdc-border pt-8">
+              <h2 className="text-2xl font-extrabold mb-5">{t('detailPage.learn')}</h2>
+              {course.skillsTaught?.length > 0 && <ul className="grid sm:grid-cols-2 gap-4 mb-6">{course.skillsTaught.map(skill => <li key={skill} className="flex gap-3"><Check className="h-5 w-5 shrink-0 text-cdc-primary-ink" />{skill}</li>)}</ul>}
+              <MarkdownContent content={description} />
+              <div className="mt-6 flex flex-wrap gap-5 text-sm text-cdc-muted"><span className="inline-flex gap-2 items-center"><BookOpen className="h-4 w-4" />{totalLessonCount} {t('courseLessons')}</span><span className="inline-flex gap-2 items-center"><Clock className="h-4 w-4" />{formatTotalDuration(totalDurationSeconds, lang)}</span></div>
+            </section>
+            <section id="lessons" className="scroll-mt-28 border-t border-cdc-border pt-8"><h2 className="text-2xl font-extrabold mb-5">{t('syllabus')}</h2><CourseSyllabus syllabus={syllabus} enrolled={enrolled} t={t} onPreview={setPreviewLesson} onLocked={() => setShowPaywall(true)} /></section>
+            <section id="instructor" className="scroll-mt-28 border-t border-cdc-border pt-8"><h2 className="text-2xl font-extrabold mb-5">{t('mentor')}</h2>
+              {course.mentorName ? <div className="flex items-center gap-5 rounded-3xl bg-cdc-surface border border-cdc-border p-6">{course.mentorAvatarUrl && <img src={course.mentorAvatarUrl} alt={course.mentorName} className="h-24 w-24 rounded-2xl object-cover" />}<div><h3 className="text-xl font-bold">{course.mentorName}</h3><p className="mt-2 text-cdc-muted">{course.mentorTitle || t('mentor')}</p></div></div> : <p className="text-cdc-muted">{t('detailPage.instructorSoon')}</p>}
+            </section>
+            <section className="border-t border-cdc-border pt-8"><h2 className="text-2xl font-extrabold mb-5">{t('detailPage.reviews')}</h2><LearningRatingsSection target="courses" targetId={course.id} lang={lang} onChange={(summary) => setCourse(current => current ? { ...current, ...summary } : current)} /></section>
+            <section className="border-t border-cdc-border pt-8"><h2 className="text-2xl font-extrabold mb-5">{t('detailPage.faq')}</h2>{['access', 'preview', 'payment'].map(key => <details key={key} className="border-b border-cdc-border py-5"><summary className="cursor-pointer font-bold">{t(`detailPage.faqItems.${key}.question`)}</summary><p className="pt-3 text-sm leading-relaxed text-cdc-muted">{t(`detailPage.faqItems.${key}.answer`)}</p></details>)}</section>
+          </div>
         </div>
       </div>
 
@@ -372,10 +295,15 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
         </div>
       )}
 
-      <SuccessStoriesCarousel lang={lang} />
+
 
       <SiteFooter />
-      <CourseMobileCta {...ctaProps} />
+      <nav aria-label={t('detailPage.navigation')} className="fixed inset-x-0 z-40 border-t border-cdc-border bg-cdc-surface/95 backdrop-blur-xl shadow-lg" style={{ bottom: 'var(--tabbar-h, 0px)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3 sm:gap-6">
+          <div className="flex-1 min-w-0 flex items-center gap-5 overflow-x-auto whitespace-nowrap text-xs sm:text-sm font-bold">{['course', 'trailer', 'details', 'lessons', 'instructor'].map(id => <a key={id} href={`#${id}`} className="py-2 text-cdc-muted hover:text-cdc-primary-ink no-underline">{t(`detailPage.nav.${id}`)}</a>)}</div>
+          <CourseCtaButton {...ctaProps} showPrice className="shrink-0 text-xs sm:text-sm" />
+        </div>
+      </nav>
     </div>
   );
 }

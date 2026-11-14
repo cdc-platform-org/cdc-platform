@@ -1,8 +1,4 @@
-/**
- * Course curriculum list (EDUPRO-style 2026-11 redesign): one card per
- * section, lessons with numbered circles, a free-preview button or a lock
- * for guests, and lesson duration. Used on pages/courses/[id]/index.tsx.
- */
+/** Accessible section accordions for the course detail curriculum. */
 import { Lock, Play } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import { SyllabusLesson, SyllabusSection } from '../../../types/lms';
@@ -27,15 +23,15 @@ export default function CourseSyllabus({ syllabus, enrolled, t, onPreview, onLoc
   return (
     <div className="space-y-4">
       {syllabus.map((section, sIdx) => (
-        <div key={section.id} className="rounded-card border border-cdc-border bg-cdc-surface overflow-hidden">
-          <div className="px-5 py-4 flex items-center justify-between gap-3">
+        <details open={sIdx === 0} key={section.id} className="rounded-card border border-cdc-border bg-cdc-surface overflow-hidden">
+          <summary className="cursor-pointer px-5 py-4 flex items-center justify-between gap-3">
             <p className="text-sm font-bold text-cdc-ink">
               <span className="text-cdc-primary-ink">{sIdx + 1}.</span> {section.title}
             </p>
             <span className="text-xs font-semibold text-cdc-muted shrink-0">
               {section.lessons.length} {t('courseLessons')}
             </span>
-          </div>
+          </summary>
           {section.lessons.length > 0 && (
             <ul className="list-none m-0 p-0 border-t border-cdc-border divide-y divide-cdc-border">
               {section.lessons.map((lesson) => {
@@ -69,7 +65,7 @@ export default function CourseSyllabus({ syllabus, enrolled, t, onPreview, onLoc
               })}
             </ul>
           )}
-        </div>
+        </details>
       ))}
     </div>
   );
