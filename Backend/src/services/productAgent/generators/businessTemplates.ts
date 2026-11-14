@@ -120,7 +120,7 @@ ${themeNotes(ctx.theme)}`,
     bc.pages.push(...card(c, accent, soft, brief.font));
     specs.push({ template: list, fileBase: `${base}-price-list-${L}-A4` }, { template: fl, fileBase: `${base}-flyer-${L}-A4` }, { template: bc, fileBase: `${base}-business-card-${L}-90x50mm` });
   }
-  const built = await buildDocumentProduct(ctx, specs, assets, { includeJson: true });
+  const built = await buildDocumentProduct(ctx, specs, assets, { editable: true });
   return {
     category: ctx.category,
     titleKa: `CDC Studio — ${brief.nameKa} | ფასების სია, ფლაერი და სავიზიტო ბარათი | რედაქტირებადი შაბლონი`,
@@ -142,5 +142,6 @@ ${themeNotes(ctx.theme)}`,
     cover: built.cover,
     gallery: built.gallery,
     files: built.files,
+    editorTemplate: built.editorTemplate,
   };
 };

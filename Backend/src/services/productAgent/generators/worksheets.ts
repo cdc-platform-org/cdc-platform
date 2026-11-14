@@ -97,7 +97,7 @@ ${themeNotes(ctx.theme)}`,
     tpl.pages.push({ id: `t${p}`, elements: l.elements });
   }
 
-  const built = await buildDocumentProduct(ctx, [{ template: tpl, fileBase: `${slug(brief.nameEn)}-KA-A4` }], assets, { includeJson: true });
+  const built = await buildDocumentProduct(ctx, [{ template: tpl, fileBase: `${slug(brief.nameEn)}-KA-A4` }], assets, { editable: true });
   const pages = tpl.pages.length;
   return {
     category: ctx.category,
@@ -120,5 +120,6 @@ ${themeNotes(ctx.theme)}`,
     cover: built.cover,
     gallery: built.gallery,
     files: built.files,
+    editorTemplate: built.editorTemplate,
   };
 };

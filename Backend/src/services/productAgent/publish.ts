@@ -13,6 +13,8 @@ import { uploadImage } from '../integrations/imageStorage';
 import { protectProductPreviewImage } from '../marketplace/productImageProtection';
 import { uploadProductFile } from '../marketplace/productFileDelivery';
 import { AGENT_CATEGORIES, AgentCategoryKey } from './categories';
+import { upsertProductTemplate } from '../designs/designService';
+import type { DesignTemplate } from '../../schemas/designTemplateSchemas';
 
 export interface DraftFile {
   buffer: Buffer;
@@ -31,6 +33,9 @@ export interface ProductDraft {
   cover: Buffer;
   gallery: Buffer[];
   files: DraftFile[];
+  // Editable layout for the CDC design editor (ProductTemplate), already
+  // validated by designService.parseTemplateOrThrow.
+  editorTemplate?: DesignTemplate;
 }
 
 async function uploadPreview(buffer: Buffer): Promise<string> {
@@ -71,5 +76,6 @@ export async function publishDraft(draft: ProductDraft): Promise<string> {
     },
     select: { id: true },
   });
+  if (draft.editorTemplate) await upsertProductTemplate(product.id, draft.editorTemplate);
   return product.id;
 }

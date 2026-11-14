@@ -207,7 +207,7 @@ ${themeNotes(ctx.theme)}`,
     pages.forEach((p, i) => tpl.pages.push(drawPage(p, lang, accent, soft, i + 1)));
     return { template: tpl, fileBase: `${slug(brief.nameEn)}-${lang === 'ka' ? 'KA' : 'EN'}-A4` };
   });
-  const built = await buildDocumentProduct(ctx, specs, new Map(), { includeJson: true });
+  const built = await buildDocumentProduct(ctx, specs, new Map(), { editable: true });
   const n = pages.length + 1;
   const pageListKa = pages.map((p) => L.ka[p]).join(', ');
   const pageListEn = pages.map((p) => L.en[p]).join(', ');
@@ -232,5 +232,6 @@ ${themeNotes(ctx.theme)}`,
     cover: built.cover,
     gallery: built.gallery,
     files: built.files,
+    editorTemplate: built.editorTemplate,
   };
 };

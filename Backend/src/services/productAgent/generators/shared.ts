@@ -15,6 +15,8 @@ import { renderTemplatePdf } from '../template/renderPdf';
 import { renderPdfPages } from '../files';
 import { flatLayMockup } from '../mockups';
 import { uploadImage } from '../../integrations/imageStorage';
+import { parseTemplateOrThrow } from '../../designs/designService';
+import type { DesignTemplate } from '../../../schemas/designTemplateSchemas';
 
 export interface GeneratorContext {
   cost: RunCost;
@@ -91,8 +93,8 @@ export interface DocumentFileSpec {
 }
 
 // Generated pictures referenced from templates as "asset:<key>" are uploaded
-// once to public storage (the editor loads them by URL) and the template
-// JSON is rewritten to those URLs before it is shipped.
+// to public storage (the editor loads them by URL, Bunny CDN host only) and
+// the template JSON is rewritten to those URLs before it is attached.
 async function uploadTemplateAssets(templates: CdcTemplate[], assets: Map<string, Buffer>): Promise<CdcTemplate[]> {
   const urls = new Map<string, string>();
   for (const [key, buffer] of assets) {
@@ -109,14 +111,18 @@ async function uploadTemplateAssets(templates: CdcTemplate[], assets: Map<string
   }));
 }
 
-// Renders every template to a PDF, builds the store mockups from the first
-// file's pages, and returns the files (PDF + editable JSON per template).
+// Renders every template to a PDF and builds the store mockups from the
+// first file's pages. With `editable`, the FIRST template (the main piece,
+// Georgian edition) is validated against the design editor's schema and
+// returned as `editorTemplate`; publish.ts attaches it to the product so
+// buyers open it in the CDC editor (one template per product is the
+// editor's model — the other pieces ship as PDFs).
 export async function buildDocumentProduct(
   ctx: GeneratorContext,
   specs: DocumentFileSpec[],
   assets: Map<string, Buffer>,
-  opts: { includeJson: boolean }
-): Promise<{ files: DraftFile[]; cover: Buffer; gallery: Buffer[]; pageCounts: number[] }> {
+  opts: { editable: boolean }
+): Promise<{ files: DraftFile[]; cover: Buffer; gallery: Buffer[]; pageCounts: number[]; editorTemplate?: DesignTemplate }> {
   const resolve = async (src: string) => {
     if (src.startsWith('asset:')) {
       const b = assets.get(src.slice(6));
@@ -127,15 +133,6 @@ export async function buildDocumentProduct(
     if (!res.ok) throw new Error(`Image fetch failed (${res.status})`);
     return Buffer.from(await res.arrayBuffer());
   };
-  // Limits of the CDC template editor (Backend/src/schemas/
-  // designTemplateSchemas.ts on the editor branch): a template it would
-  // refuse must never be shipped as "editable".
-  for (const spec of specs) {
-    if (spec.template.pages.length > 30) throw new Error(`${spec.fileBase}: more than 30 pages`);
-    spec.template.pages.forEach((p) => {
-      if (p.elements.length > 150) throw new Error(`${spec.fileBase}/${p.id}: ${p.elements.length} elements (editor limit 150)`);
-    });
-  }
   const files: DraftFile[] = [];
   const renders: Buffer[][] = [];
   for (const spec of specs) {
@@ -143,18 +140,19 @@ export async function buildDocumentProduct(
     files.push({ buffer: pdf, name: `${spec.fileBase}.pdf`, mimetype: 'application/pdf' });
     renders.push(await renderPdfPages(pdf, Math.min(4, spec.template.pages.length)));
   }
-  if (opts.includeJson) {
-    const finalTemplates = await uploadTemplateAssets(specs.map((s) => s.template), assets);
-    finalTemplates.forEach((t, i) => {
-      files.push({ buffer: Buffer.from(JSON.stringify(t, null, 2)), name: `${specs[i].fileBase}.cdc-template.json`, mimetype: 'application/json' });
-    });
+  let editorTemplate: DesignTemplate | undefined;
+  if (opts.editable) {
+    // Same validation the admin "attach template" endpoint uses, so the
+    // editor never receives a template it would refuse.
+    const [main] = await uploadTemplateAssets([specs[0].template], assets);
+    editorTemplate = parseTemplateOrThrow(main);
   }
   const firstPages = renders.flatMap((r) => r.slice(0, 1));
   const coverPages = renders[0].length >= 3 ? renders[0].slice(0, 3) : [...renders[0], ...firstPages.slice(1)].slice(0, 3);
   const cover = await flatLayMockup(ctx.cost, coverPages);
   const gallery: Buffer[] = [];
   for (const page of renders.flat().slice(0, 4)) gallery.push(await flatLayMockup(ctx.cost, [page]));
-  return { files, cover, gallery, pageCounts: specs.map((s) => s.template.pages.length) };
+  return { files, cover, gallery, pageCounts: specs.map((s) => s.template.pages.length), editorTemplate };
 }
 
 export function newTemplate(title: string, locale: 'ka' | 'en', widthMm: number, heightMm: number, fonts: TemplateFont[] = ['FiraGO']): CdcTemplate {

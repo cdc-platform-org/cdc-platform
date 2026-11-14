@@ -65,7 +65,7 @@ ${themeNotes(ctx.theme)}`,
     tpl.pages.push({ id: 'front', elements: l.elements });
     return { template: tpl, fileBase: `${slug(brief.nameEn)}-${lang === 'ka' ? 'KA' : 'EN'}-5x7in` };
   });
-  const built = await buildDocumentProduct(ctx, specs, assets, { includeJson: true });
+  const built = await buildDocumentProduct(ctx, specs, assets, { editable: true });
   return {
     category: ctx.category,
     titleKa: `CDC Studio — ${brief.nameKa} | რედაქტირებადი მოსაწვევი | 5 × 7 დიუმი (12.7 × 17.8 სმ)`,
@@ -87,5 +87,6 @@ ${themeNotes(ctx.theme)}`,
     cover: built.cover,
     gallery: built.gallery,
     files: built.files,
+    editorTemplate: built.editorTemplate,
   };
 };

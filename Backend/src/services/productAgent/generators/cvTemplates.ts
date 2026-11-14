@@ -146,7 +146,7 @@ ${themeNotes(ctx.theme)}`,
     tpl.pages.push(letterPage(p, lang, accent, brief.font));
     return { template: tpl, fileBase: `${slug(brief.nameEn)}-${lang === 'ka' ? 'KA' : 'EN'}-A4` };
   });
-  const built = await buildDocumentProduct(ctx, specs, assets, { includeJson: true });
+  const built = await buildDocumentProduct(ctx, specs, assets, { editable: true });
   return {
     category: ctx.category,
     titleKa: `CDC Studio — ${brief.nameKa} | CV და სამოტივაციო წერილის შაბლონი | ქართული და ინგლისური`,
@@ -168,5 +168,6 @@ ${themeNotes(ctx.theme)}`,
     cover: built.cover,
     gallery: built.gallery,
     files: built.files,
+    editorTemplate: built.editorTemplate,
   };
 };
