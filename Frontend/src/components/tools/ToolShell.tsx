@@ -12,7 +12,7 @@ import BackButton from '../common/BackButton';
 //   - one page width (max-w-6xl) and one background for every tool;
 //   - the tool's own color appears only on its icon tile (`accent`);
 //     everything else (buttons, focus rings, active tabs) uses the brand
-//     cyan → purple;
+//     violet via the cdc-* tokens (2026-11 redesign; dark mode for free);
 //   - status (trial / active / VIP price) sits in the header as chips, and
 //     the page's one primary action sits on the right of the header.
 
@@ -40,8 +40,8 @@ export function ToolIconTile({ icon: Icon, accent = 'cyan', size = 'md' }: { ico
 export type ToolChipTone = 'neutral' | 'brand' | 'success' | 'warning' | 'danger' | 'vip';
 
 const CHIP_TONE: Record<ToolChipTone, string> = {
-  neutral: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
-  brand: 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-500/30',
+  neutral: 'bg-cdc-bg text-cdc-muted border-cdc-border',
+  brand: 'bg-cdc-primary-soft text-cdc-primary-ink border-cdc-primary/20',
   success: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30',
   warning: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30',
   danger: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-300 dark:border-red-500/30',
@@ -50,7 +50,7 @@ const CHIP_TONE: Record<ToolChipTone, string> = {
 
 export function ToolChip({ tone = 'neutral', icon: Icon, children }: { tone?: ToolChipTone; icon?: LucideIcon; children: ReactNode }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border ${CHIP_TONE[tone]}`}>
+    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg border ${CHIP_TONE[tone]}`}>
       {Icon && <Icon className="w-3.5 h-3.5" aria-hidden />}
       {children}
     </span>
@@ -75,8 +75,8 @@ export function ToolPageHeader({ icon, accent = 'cyan', title, subtitle, chips, 
         <ToolIconTile icon={icon} accent={accent} />
         <div className="min-w-0 flex-1">
           {chips && <div className="flex flex-wrap items-center gap-2 mb-2">{chips}</div>}
-          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">{title}</h1>
-          {subtitle && <p className="text-sm md:text-[15px] text-slate-600 dark:text-slate-400 mt-1.5 max-w-3xl leading-relaxed">{subtitle}</p>}
+          <h1 style={{ lineHeight: 1.3 }} className="text-2xl md:text-3xl font-extrabold tracking-tight text-cdc-ink">{title}</h1>
+          {subtitle && <p className="text-sm md:text-[15px] text-cdc-muted mt-1.5 max-w-3xl leading-relaxed">{subtitle}</p>}
         </div>
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2 md:justify-end shrink-0">{actions}</div>}
@@ -96,12 +96,12 @@ interface ToolShellProps {
 
 export default function ToolShell({ children, backHref = '/dashboard/tools', width = 'default', hideBack = false }: ToolShellProps) {
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-cdc-bg text-cdc-ink flex flex-col">
       <SiteHeader />
       <main className={`${width === 'narrow' ? 'max-w-4xl' : 'max-w-6xl'} mx-auto px-4 sm:px-6 pt-6 md:pt-8 pb-16 flex-1 w-full`}>
         {!hideBack && (
           <div className="mb-5 no-print">
-            <BackButton fallbackHref={backHref} className="dark:text-slate-400 dark:hover:text-slate-100" />
+            <BackButton fallbackHref={backHref} className="text-cdc-muted hover:text-cdc-ink" />
           </div>
         )}
         {children}
@@ -125,7 +125,7 @@ export interface ToolTab<K extends string> {
 export function ToolTabs<K extends string>({ tabs, active, onChange, ariaLabel }: { tabs: ToolTab<K>[]; active: K; onChange: (k: K) => void; ariaLabel?: string }) {
   return (
     <div className="-mx-4 sm:mx-0 mb-6 no-print">
-      <div role="tablist" aria-label={ariaLabel} className="flex gap-1 overflow-x-auto px-4 sm:px-1 py-1 sm:rounded-2xl sm:bg-white sm:dark:bg-slate-900 sm:border sm:border-slate-200 sm:dark:border-slate-800 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div role="tablist" aria-label={ariaLabel} className="flex gap-1 overflow-x-auto px-4 sm:px-1 py-1 sm:rounded-2xl sm:bg-cdc-surface sm:border sm:border-cdc-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {tabs.map(({ key, label, icon: Icon }) => {
           const selected = key === active;
           return (
@@ -137,8 +137,8 @@ export function ToolTabs<K extends string>({ tabs, active, onChange, ariaLabel }
               onClick={() => onChange(key)}
               className={`shrink-0 inline-flex items-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2.5 text-sm font-bold border-none cursor-pointer transition-colors ${
                 selected
-                  ? 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white shadow-md shadow-cyan-500/20'
-                  : 'bg-white sm:bg-transparent dark:bg-slate-900 sm:dark:bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+                  ? 'bg-cdc-primary text-white shadow-sm'
+                  : 'bg-cdc-surface sm:bg-transparent text-cdc-muted hover:text-cdc-ink hover:bg-cdc-bg'
               }`}
             >
               {Icon && <Icon className="w-4 h-4" aria-hidden />}
@@ -154,19 +154,19 @@ export function ToolTabs<K extends string>({ tabs, active, onChange, ariaLabel }
 // Shared look for "you can't use this yet" / "nothing here yet" blocks.
 export function ToolStateCard({ icon, accent = 'cyan', title, body, children }: { icon: LucideIcon; accent?: ToolAccent; title: ReactNode; body?: ReactNode; children?: ReactNode }) {
   return (
-    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 px-6 py-12 md:py-16 text-center shadow-sm">
+    <div className="rounded-card border border-cdc-border bg-cdc-surface px-6 py-12 md:py-16 text-center shadow-card">
       <div className="flex justify-center mb-5"><ToolIconTile icon={icon} accent={accent} size="lg" /></div>
-      <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white mb-2">{title}</h2>
-      {body && <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto leading-relaxed">{body}</p>}
+      <h2 className="text-xl md:text-2xl font-extrabold text-cdc-ink mb-2">{title}</h2>
+      {body && <p className="text-sm text-cdc-muted max-w-md mx-auto leading-relaxed">{body}</p>}
       {children && <div className="mt-6 flex flex-wrap justify-center gap-3">{children}</div>}
     </div>
   );
 }
 
 export const toolPrimaryButton =
-  'inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold text-sm px-5 py-3 no-underline border-none cursor-pointer shadow-md shadow-cyan-500/20 hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed';
+  'inline-flex items-center justify-center gap-2 rounded-xl bg-cdc-primary hover:bg-cdc-primary-hover text-white font-bold text-sm px-5 py-3 no-underline border-none cursor-pointer shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 export const toolSecondaryButton =
-  'inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-bold text-sm px-5 py-3 no-underline cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800';
+  'inline-flex items-center justify-center gap-2 rounded-xl border border-cdc-border bg-cdc-surface text-cdc-ink font-bold text-sm px-5 py-3 no-underline cursor-pointer hover:border-cdc-primary/40 hover:bg-cdc-primary-soft transition-colors';
 
 export function ToolLinkButton({ href, children, variant = 'primary' }: { href: string; children: ReactNode; variant?: 'primary' | 'secondary' }) {
   const cls = variant === 'primary' ? toolPrimaryButton : toolSecondaryButton;

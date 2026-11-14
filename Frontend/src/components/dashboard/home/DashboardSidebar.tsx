@@ -1,7 +1,7 @@
 /**
  * Left-hand navigation of /dashboard. Grouped the way people think about
  * their account: learning, what they bought / use, money, workspace and
- * account settings. "tab" items switch the panel in place; "link" items go
+ * account settings. 2026-11 redesign: cdc-* tokens, violet active item. "tab" items switch the panel in place; "link" items go
  * to their own /dashboard/* pages. Entries hidden for a user are `false`
  * in the list and filtered out; an empty section is not rendered.
  */
@@ -50,8 +50,8 @@ interface DashboardSidebarProps {
 const sideItemClass = (active: boolean) =>
   `w-full flex items-center gap-2.5 text-left px-3 py-2.5 rounded-xl text-sm font-semibold transition border-none cursor-pointer no-underline ${
     active
-      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
-      : 'bg-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-white/[0.06]'
+      ? 'bg-cdc-primary text-white shadow-sm'
+      : 'bg-transparent text-cdc-muted hover:text-cdc-ink hover:bg-cdc-bg'
   }`;
 
 export default function DashboardSidebar({
@@ -110,14 +110,14 @@ export default function DashboardSidebar({
   ];
 
   return (
-    <nav className="md:sticky md:top-24 self-start min-w-0 rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-white/[0.03] backdrop-blur p-2.5 space-y-3">
+    <nav className="order-last md:order-none md:sticky md:top-24 self-start min-w-0 rounded-card border border-cdc-border bg-cdc-surface shadow-card p-2.5 space-y-3">
       {sections.map((section, sectionIndex) => {
         const items = section.items.filter((item): item is SideItem => Boolean(item));
         if (items.length === 0) return null;
         return (
           <div key={section.title ?? sectionIndex} className="space-y-0.5">
             {section.title && (
-              <p className="px-3 pt-1 pb-1 text-[10.5px] font-black uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">{section.title}</p>
+              <p className="px-3 pt-1 pb-1 text-[11px] font-bold uppercase tracking-[0.12em] text-cdc-muted/80">{section.title}</p>
             )}
             {items.map((item) => {
               const Icon = item.icon;
@@ -135,14 +135,14 @@ export default function DashboardSidebar({
                   <Icon className="w-4 h-4 shrink-0" />
                   <span className="flex-1">{item.label}</span>
                   {!!item.badge && item.badge > 0 && (
-                    <span className={`text-[11px] font-bold px-1.5 rounded ${active ? 'bg-white/20 dark:bg-slate-900/10' : 'bg-slate-200 dark:bg-slate-700'}`}>{item.badge}</span>
+                    <span className={`text-[11px] font-bold px-1.5 rounded ${active ? 'bg-white/20' : 'bg-cdc-primary-soft text-cdc-primary-ink'}`}>{item.badge}</span>
                   )}
                 </button>
               );
             })}
             {/* Verified graduates get a "talk to a mentor" shortcut under Learning. */}
             {section.title === learningTitle && user?.isVerifiedGraduate && (
-              <button type="button" onClick={onOpenMentorship} className={`${sideItemClass(false)} !text-cyan-700 dark:!text-cyan-300`}>
+              <button type="button" onClick={onOpenMentorship} className={`${sideItemClass(false)} !text-cdc-primary-ink`}>
                 <Wifi className="w-4 h-4 shrink-0" />
                 <span className="flex-1">{t.mentorshipButton}</span>
               </button>
@@ -150,7 +150,7 @@ export default function DashboardSidebar({
           </div>
         );
       })}
-      <div className="border-t border-slate-200 dark:border-white/10 pt-2">
+      <div className="border-t border-cdc-border pt-2">
         <button
           type="button"
           onClick={onLogout}

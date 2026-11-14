@@ -229,7 +229,7 @@ function DashboardContent() {
   const purchasesLabel = lang === 'ka' ? 'ჩემი შენაძენები' : 'My purchases';
 
   return (
-    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
+    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-cdc-bg text-cdc-ink flex flex-col">
       <Head>
         <title>{`${t.title} | CDC Platform`}</title>
       </Head>
@@ -254,7 +254,7 @@ function DashboardContent() {
 
         <div className="md:col-span-3 xl:col-span-4 space-y-6 min-w-0">
           {loading ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t.loading}</p>
+            <p className="text-sm text-cdc-muted">{t.loading}</p>
           ) : (
             <>
               {activeTab === 'overview' && (
@@ -289,7 +289,7 @@ function DashboardContent() {
               )}
 
               {activeTab === 'courses' && (
-                <CoursesTab t={t} user={user} courses={courses} certificatesEarned={certificatesEarned} cert={cert} />
+                <CoursesTab t={t} lang={lang} user={user} courses={courses} certificatesEarned={certificatesEarned} cert={cert} />
               )}
 
               {activeTab === 'wallet' && (

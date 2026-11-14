@@ -478,21 +478,21 @@ function CatalogCardMedia({ card }: { card: CatalogCardData }) {
   const video = card.videoUrl?.trim();
   if (video && parseVideoUrl(video)) {
     return (
-      <div className="w-full">
+      <div className="w-full overflow-hidden rounded-xl">
         <VideoEmbed url={video} title={card.title} />
       </div>
     );
   }
   if (card.imageUrl && card.imageUrl.trim()) {
     return (
-      <div className="w-full aspect-[16/10] overflow-hidden bg-slate-100 dark:bg-slate-800">
+      <div className="w-full aspect-[16/10] overflow-hidden rounded-xl bg-cdc-primary-soft">
         {/* eslint-disable-next-line @next/next/no-img-element -- admin-uploaded CMS image on the API origin */}
         <img src={resolveBlogImageUrl(card.imageUrl)} alt={card.title} onError={onImageErrorFallback} loading="lazy" className="w-full h-full object-cover" />
       </div>
     );
   }
   return (
-    <div className={`w-full aspect-[16/10] flex items-center justify-center bg-gradient-to-br ${card.comingSoon ? 'from-slate-100 to-slate-50 dark:from-slate-800/60 dark:to-slate-900' : 'from-cyan-50 via-white to-purple-50 dark:from-cyan-500/10 dark:via-slate-900 dark:to-purple-500/10'}`}>
+    <div className={`w-full aspect-[16/10] rounded-xl flex items-center justify-center ${card.comingSoon ? 'bg-cdc-bg' : 'bg-cdc-primary-soft'}`}>
       <div className={card.comingSoon ? 'opacity-70 grayscale-[30%]' : ''}>
         <ToolIconTile icon={card.icon} accent={card.accent} size="lg" />
       </div>
@@ -504,9 +504,9 @@ function CatalogCard({ card, learnMoreLabel, comingSoonLabel }: { card: CatalogC
   const cta = card.cta;
   const ctaClass = `${card.comingSoon ? toolSecondaryButton : toolPrimaryButton} w-full`;
   return (
-    <article className="group rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 overflow-hidden flex flex-col shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-cyan-300 dark:hover:border-cyan-500/40 transition-all">
+    <article className="group vip-card p-4 sm:p-5 flex flex-col">
       <CatalogCardMedia card={card} />
-      <div className="p-5 md:p-6 flex flex-col flex-1">
+      <div className="pt-4 flex flex-col flex-1">
         <div className="flex items-center gap-2 mb-2 min-h-[24px]">
           {card.comingSoon ? (
             <ToolChip tone="warning" icon={Lock}>{comingSoonLabel}</ToolChip>
@@ -514,13 +514,13 @@ function CatalogCard({ card, learnMoreLabel, comingSoonLabel }: { card: CatalogC
             card.badge && <ToolChip tone="success">{card.badge}</ToolChip>
           )}
         </div>
-        <h3 className="text-lg font-black tracking-tight text-slate-900 dark:text-white leading-snug mb-2">{card.title}</h3>
-        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3 mb-3">{card.description}</p>
-        {card.tag && <p className="text-xs font-bold text-purple-700 dark:text-purple-300 mb-3">{card.tag}</p>}
+        <h3 className="text-lg font-bold text-cdc-ink leading-snug mb-2">{card.title}</h3>
+        <p className="text-sm text-cdc-muted leading-relaxed line-clamp-3 mb-3">{card.description}</p>
+        {card.tag && <p className="text-xs font-bold text-cdc-primary-ink mb-3">{card.tag}</p>}
         {card.features.length > 0 && (
           <ul className="space-y-2 mb-5">
             {card.features.slice(0, 3).map(({ label }) => (
-              <li key={label} className="flex items-start gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <li key={label} className="flex items-start gap-2 text-sm text-cdc-ink">
                 <Check className="w-4 h-4 text-emerald-500 shrink-0" aria-hidden />
                 <span>{label}</span>
               </li>
@@ -543,7 +543,7 @@ function CatalogCard({ card, learnMoreLabel, comingSoonLabel }: { card: CatalogC
             <button
               type="button"
               onClick={card.onLearnMore}
-              className="inline-flex items-center justify-center gap-1.5 text-sm font-bold text-cyan-700 dark:text-cyan-400 bg-transparent border-none cursor-pointer py-2 hover:underline"
+              className="inline-flex items-center justify-center gap-1.5 text-sm font-bold text-cdc-primary-ink bg-transparent border-none cursor-pointer py-2 hover:underline"
             >
               <Info className="w-4 h-4" aria-hidden />
               {learnMoreLabel}
@@ -789,7 +789,7 @@ export default function ToolsPage() {
   const comingSoonCards = allCards.filter((c) => c.comingSoon);
 
   return (
-    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
+    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-cdc-bg text-cdc-ink flex flex-col">
       <SEOHead
         title={t.title}
         description={META_DESCRIPTION[router.locale ?? 'ka'] ?? META_DESCRIPTION.en}
@@ -804,23 +804,23 @@ export default function ToolsPage() {
 
       <SiteHeader />
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-12 flex-1 w-full">
+      <div className="max-w-7xl mx-auto py-8 sm:py-12 flex-1 w-full">
         <div className="mb-4">
-          <BackButton fallbackHref="/" className="dark:text-slate-400 dark:hover:text-slate-100" />
+          <BackButton fallbackHref="/" className="text-cdc-muted hover:text-cdc-ink" />
         </div>
 
         <div className="mb-10 md:mb-12 text-center max-w-2xl mx-auto">
-          <span className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-widest px-4 py-2 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-full border border-purple-500/20 mb-4">
+          <span className="cdc-eyebrow mb-4">
             <Sparkles className="w-3.5 h-3.5" />
             CDC AI
           </span>
-          <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-3">{t.title}</h1>
-          <p className="text-sm md:text-base text-slate-600 dark:text-slate-400 leading-relaxed mb-3">{t.subtitle}</p>
+          <h1 style={{ lineHeight: 1.25 }} className="text-3xl md:text-5xl font-extrabold tracking-tight text-cdc-ink mb-3">{t.title}</h1>
+          <p className="text-sm md:text-lg text-cdc-muted leading-relaxed mb-3">{t.subtitle}</p>
           <a
             href="https://www.cdc.org.ge/"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors"
+            className="inline-flex items-center gap-1 text-xs text-cdc-muted hover:text-cdc-primary-ink transition-colors"
           >
             {t.poweredBy}
           </a>
@@ -828,7 +828,7 @@ export default function ToolsPage() {
 
         {/* Available tools: one uniform card per product (same size, same
             button style). A tool's own color appears only on its icon tile. */}
-        <h2 className="text-lg font-black mb-4 flex items-center gap-2">
+        <h2 className="text-xl sm:text-2xl font-extrabold text-cdc-ink mb-5 flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden />
           {t.availableHeading}
         </h2>
@@ -840,7 +840,7 @@ export default function ToolsPage() {
 
         {comingSoonCards.length > 0 && (
           <>
-            <h2 className="text-lg font-black mb-4 flex items-center gap-2">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-cdc-ink mb-5 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-amber-500" aria-hidden />
               {t.comingSoonHeading}
             </h2>
@@ -856,11 +856,11 @@ export default function ToolsPage() {
             separate concept from CDC's own SaaS products above. */}
         <Link
           href="/marketplace"
-          className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 md:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4 no-underline text-current hover:border-purple-400 transition-colors"
+          className="vip-card p-6 md:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4 no-underline text-current"
         >
           <div>
-            <h3 className="text-base font-black tracking-wide mb-1">{t.storeCta}</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400">{t.storeCtaDesc}</p>
+            <h3 className="text-base font-bold text-cdc-ink mb-1">{t.storeCta}</h3>
+            <p className="text-sm text-cdc-muted">{t.storeCtaDesc}</p>
           </div>
           <span className={toolSecondaryButton}>{t.storeCtaButton} →</span>
         </Link>
@@ -873,7 +873,7 @@ export default function ToolsPage() {
       {overviewModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-8" onClick={() => setOverviewModal(null)}>
           <div
-            className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-2xl max-h-full overflow-y-auto p-6 sm:p-8"
+            className="relative bg-cdc-surface border border-cdc-border rounded-card shadow-xl w-full max-w-2xl max-h-full overflow-y-auto p-6 sm:p-8"
             onClick={(e) => e.stopPropagation()}
           >
             <button

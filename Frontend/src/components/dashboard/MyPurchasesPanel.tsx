@@ -105,13 +105,13 @@ interface Props {
 }
 
 const btnPrimary =
-  'inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-lg bg-slate-900 dark:bg-cyan-600 text-white no-underline border-none cursor-pointer disabled:opacity-50';
+  'inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-lg bg-cdc-primary hover:bg-cdc-primary-hover text-white no-underline border-none cursor-pointer disabled:opacity-50';
 const btnSecondary =
   'inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-transparent no-underline cursor-pointer disabled:opacity-50';
 
 function Row({ icon: Icon, title, meta, children }: { icon: typeof BookOpen; title: string; meta?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 flex-wrap">
+    <div className="flex items-center gap-3 p-3.5 rounded-xl border border-cdc-border bg-cdc-surface flex-wrap">
       <div className="shrink-0 w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
         <Icon className="w-4 h-4 text-slate-600 dark:text-slate-300" />
       </div>
