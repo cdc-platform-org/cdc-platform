@@ -1,6 +1,6 @@
 import SimpleSiteLayout from '@/src/components/layout/SimpleSiteLayout';
 import LegalSections from '@/src/components/layout/LegalSections';
-import { privacyPolicy, lastUpdated } from '@/src/data/legalContent';
+import { privacyPolicy, lastUpdated } from '@/src/data/legal';
 import { merchantInfo } from '@/src/data/merchantInfo';
 
 const heading = { ka: 'კონფიდენციალურობის პოლიტიკა', en: 'Privacy Policy' };

@@ -25,6 +25,7 @@ import { checkoutCourse, validatePromoCode, PromoValidationResult } from '../../
 import CoursePurchaseCard, { CourseCtaButton, CourseMobileCta } from '../../../src/components/courses/detail/CoursePurchaseCard';
 import CourseSyllabus from '../../../src/components/courses/detail/CourseSyllabus';
 import { checkoutCourseStripe, stripeWithBogFallback } from '../../../src/services/stripePaymentService';
+import CheckoutGatewayPicker, { useCheckoutGateway } from '../../../src/components/payments/CheckoutGatewayPicker';
 import { formatPrice } from '../../../src/utils/coursePricing';
 import { courseLanguageBadge } from '../../../src/utils/courseLanguage';
 import { useAuth } from '../../../src/context/AuthContext';
@@ -56,6 +57,7 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
   // badges, sale countdown, formatTotalDuration) — falls back to English for
   // de/es/fr/uk visitors rather than Georgian.
   const lang = router.locale === 'ka' ? 'ka' : 'en';
+  const { gateway, setGateway, stripeEnabled } = useCheckoutGateway(lang);
   const { t } = useTranslation('courses');
   const courseId = typeof router.query.id === 'string' ? router.query.id : null;
   const { isAuthenticated } = useAuth();
@@ -113,10 +115,10 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
     setError(null);
     setProcessing(true);
     try {
-      // Georgian users pay via BOG (GEL); everyone else via Stripe (USD/EUR).
+      // Buyer-chosen gateway (CheckoutGatewayPicker): BOG/GEL or Stripe/USD.
       const result =
-        lang === 'ka'
-          ? await checkoutCourse(courseId, appliedPromo?.code, 'ka')
+        gateway === 'bog'
+          ? await checkoutCourse(courseId, appliedPromo?.code, lang)
           : await stripeWithBogFallback(
               () => checkoutCourseStripe(courseId, appliedPromo?.code, 'usd'),
               () => checkoutCourse(courseId, appliedPromo?.code, 'en'),
@@ -325,6 +327,9 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
               onApplyPromo={handleApplyPromo}
               onRemovePromo={() => { setAppliedPromo(null); setPromoInput(''); }}
               topSlot={!enrolled ? <div className="flex justify-end mb-3"><VideoTutorialLink lang={lang} /></div> : null}
+              ctaSlot={!enrolled && !course.isFull && effectivePrice > 0 ? (
+                <CheckoutGatewayPicker lang={lang} gateway={gateway} onChange={setGateway} stripeEnabled={stripeEnabled} disabled={processing} />
+              ) : null}
             />
           </aside>
         </div>

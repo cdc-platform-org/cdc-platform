@@ -5,6 +5,7 @@ import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { resolveLocale } from '../../utils/locale';
 import { ApiErrorReason } from '../../utils/apiErrorMessages';
 import { useVerificationDrawer } from '../../context/VerificationDrawerContext';
+import VerificationBenefits from './VerificationBenefits';
 
 interface PermissionDeniedModalProps {
   reason: ApiErrorReason;
@@ -114,6 +115,7 @@ export default function PermissionDeniedModal({ reason, context, onClose }: Perm
         </div>
         <h2 className="text-base font-black text-slate-900 dark:text-white mb-2">{t.titles[reason]}</h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-6">{body}</p>
+        {reason === 'VERIFICATION_REQUIRED' && <VerificationBenefits lang={lang} compact className="mb-5 text-left" />}
 
         <div className="flex flex-col gap-2">
           {(reason === 'BANNED' || reason === 'DEACTIVATED' || (reason === 'ROLE_RESTRICTED' && context === 'posting')) && (

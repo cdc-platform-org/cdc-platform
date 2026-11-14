@@ -71,6 +71,8 @@ interface CardProps extends CtaProps {
   onRemovePromo: () => void;
   lang: 'ka' | 'en';
   topSlot?: ReactNode;
+  // Rendered right above the main button (e.g. the BOG/Stripe gateway picker).
+  ctaSlot?: ReactNode;
   bottomSlot?: ReactNode;
 }
 
@@ -91,6 +93,7 @@ export default function CoursePurchaseCard(p: CardProps) {
       </div>
       {countdown && <p className="mt-2 text-xs font-bold text-rose-600 dark:text-rose-400">⏳ {countdown}</p>}
 
+      {p.ctaSlot && <div className="mt-5">{p.ctaSlot}</div>}
       <CourseCtaButton {...p} className="mt-5 w-full" />
 
       {!enrolled && effectivePrice > 0 && (

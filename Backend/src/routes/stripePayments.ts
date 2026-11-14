@@ -1,6 +1,7 @@
 /**
  * Express router mounted at `/api/payments/stripe` (see server.ts).
  * Endpoints:
+ *   GET  /config (public: is Stripe enabled)
  *   POST /checkout/course/:courseId
  *   POST /checkout/live-training/:id
  *   POST /checkout/english-tutor
@@ -24,6 +25,7 @@ import {
   getStripeCheckoutSession,
   constructStripeWebhookEvent,
   StripeNotConfiguredError,
+  isStripeReady,
 } from '../services/payments/stripePaymentService';
 import { STRIPE_GEL_TO_USD_RATE, STRIPE_GEL_TO_EUR_RATE } from '../utils/env';
 import { captureEscrow } from '../services/payments/escrowService';
@@ -127,6 +129,22 @@ async function createStripeSessionOrRespond(
     return null as any;
   }
 }
+
+// ============================================================
+// PUBLIC CONFIG — lets checkout pages show the "international card (USD)"
+// option only when Stripe is really configured. Without it the frontend
+// would offer USD and then silently fall back to BOG/GEL on the 501.
+// Exposes a boolean and the manual FX rates only, never a key.
+// ============================================================
+router.get('/config', async (_req: Request, res: Response) => {
+  res.set('Cache-Control', 'public, max-age=300');
+  res.json({
+    enabled: await isStripeReady(),
+    currencies: ['USD', 'EUR'],
+    gelToUsd: STRIPE_GEL_TO_USD_RATE,
+    gelToEur: STRIPE_GEL_TO_EUR_RATE,
+  });
+});
 
 // ============================================================
 // CHECKOUT — COURSE

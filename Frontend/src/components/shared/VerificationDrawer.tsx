@@ -7,6 +7,7 @@ import { uploadVerificationDoc, uploadIndividualVerificationDoc, updateProfile, 
 import { resolveLocale } from '@/src/utils/locale';
 import { JOB_CATEGORIES, JOB_CATEGORY_LABEL } from '@/src/utils/jobCategory';
 import { JobCategory } from '@/src/types/community';
+import VerificationBenefits from './VerificationBenefits';
 
 const EN_STRINGS = {
   title: 'Verify Your Account',
@@ -242,6 +243,8 @@ export default function VerificationDrawer() {
             {message}
           </div>
         )}
+
+        <VerificationBenefits lang={lang} className="mx-6 mt-5" />
 
         <div className="flex gap-1 px-6 mt-5 border-b border-slate-200 dark:border-slate-800">
           <button

@@ -1,17 +1,14 @@
 import { useRouter } from 'next/router';
 import SimpleSiteLayout from '@/src/components/layout/SimpleSiteLayout';
 import LegalSections from '@/src/components/layout/LegalSections';
-import { termsAndConditions, lastUpdated, FullLocale } from '@/src/data/legalContent';
+import { termsAndConditions, lastUpdated, FullLocale } from '@/src/data/legal';
 import { merchantInfo } from '@/src/data/merchantInfo';
 
 const heading = { ka: 'წესები და პირობები', en: 'Terms & Conditions' };
 const updatedLabel = { ka: 'ბოლო განახლება', en: 'Last updated' };
 
-// Localized heading/"last updated" label for every site locale — the body
-// content itself (termsAndConditions) is fully translated per locale too;
-// only the <title>/nav chrome from SimpleSiteLayout stays GEO/ENG (see that
-// component's own comment — it's shared with /privacy, /about,
-// /refund-policy, which are not yet translated past ka/en).
+// Localized heading/"last updated" label for every site locale. The body
+// itself exists in ka and en only (see TRANSLATION_NOTICE below).
 const pageHeading: Record<FullLocale, string> = {
   ka: 'წესები და პირობები',
   en: 'Terms & Conditions',
@@ -46,6 +43,10 @@ const idCodeLabel: Record<FullLocale, string> = {
   az: 'ID Kodu',
 };
 
+// Only ka/en terms are maintained (see src/data/legal/index.ts); other
+// locales read the current English text instead of an outdated translation.
+const TRANSLATION_NOTICE = 'The Georgian and English versions are the official texts. The English version is shown below.';
+
 function isFullLocale(locale: string | undefined): locale is FullLocale {
   return !!locale && locale in pageHeading;
 }
@@ -70,7 +71,10 @@ export default function TermsPage() {
           <p className="text-xs text-slate-500 mb-10">
             {merchantInfo.orgNameKa} / {merchantInfo.orgNameEn} — {idCodeLabel[locale]} {merchantInfo.identificationCode}
           </p>
-          <LegalSections sections={termsAndConditions[locale]} />
+          {locale !== 'ka' && locale !== 'en' && (
+            <p className="text-xs text-amber-500 mb-8">{TRANSLATION_NOTICE}</p>
+          )}
+          <LegalSections sections={locale === 'ka' ? termsAndConditions.ka : termsAndConditions.en} />
         </>
       )}
     </SimpleSiteLayout>

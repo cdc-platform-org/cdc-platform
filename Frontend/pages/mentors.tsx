@@ -14,6 +14,7 @@ import { useAuthModal } from '../src/context/AuthModalContext';
 import { getMentors, getMentorSlots, mentorTitle, mentorBio, PublicMentor, MentorSlot } from '../src/services/mentorshipService';
 import { checkoutMentorship } from '../src/services/paymentService';
 import { checkoutMentorshipStripe, stripeWithBogFallback } from '../src/services/stripePaymentService';
+import CheckoutGatewayPicker, { useCheckoutGateway } from '../src/components/payments/CheckoutGatewayPicker';
 import { formatPrice } from '../src/utils/coursePricing';
 import { resolveLocale, SupportedLocale } from '@/src/utils/locale';
 import VideoTutorialLink from '../src/components/shared/VideoTutorialLink';
@@ -42,6 +43,7 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: S
   const router = useRouter();
   // Mentor profiles only store ka/en text — collapse for this lookup only.
   const contentLang = lang === 'ka' ? 'ka' : 'en';
+  const { gateway, setGateway, stripeEnabled } = useCheckoutGateway(lang);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [slots, setSlots] = useState<MentorSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(true);
@@ -93,15 +95,15 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: S
     setSubmitting(true);
     setError(null);
     try {
-      // Georgian users pay via BOG (GEL); everyone else via Stripe (USD/EUR).
+      // Buyer-chosen gateway (CheckoutGatewayPicker): BOG/GEL or Stripe/USD.
       const { redirectUrl } =
-        lang === 'ka'
+        gateway === 'bog'
           ? await checkoutMentorship({
               mentorId: mentor.id,
               scheduledAt: selectedSlot,
               studentPhone: phone.trim(),
               consultationDescription: topic.trim() || undefined,
-              lang: 'ka',
+              lang: contentLang,
             })
           : await stripeWithBogFallback(
               () =>
@@ -323,6 +325,8 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: S
                 <li>{t('policyPoint3')}</li>
               </ul>
             </div>
+
+            <div className="mb-5"><CheckoutGatewayPicker lang={lang} gateway={gateway} onChange={setGateway} stripeEnabled={stripeEnabled} disabled={submitting} /></div>
 
             <div className="flex gap-2">
               <button
