@@ -10,6 +10,7 @@ import { getBlogPosts, blogTitle } from '../../services/blogService';
 import { getProducts } from '../../services/productService';
 import { formatPrice } from '../../utils/coursePricing';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
+import { isPublishedCourse } from '../../utils/courseCatalog';
 
 const dict = {
   GEO: {
@@ -83,7 +84,7 @@ export default function HeaderSearch({ darkMode, lang }: { darkMode: boolean; la
         getBlogPosts().catch(() => []),
         getProducts().catch(() => []),
       ]);
-      setCourses(coursesData.filter((c) => c.published));
+      setCourses(coursesData.filter(isPublishedCourse));
       setPosts(postsData.filter((p) => p.published));
       setProducts(productsData);
       setDataLoaded(true);

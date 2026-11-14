@@ -10,6 +10,7 @@ import { getCourses } from '../src/services/courseService';
 import { getBlogPosts, blogTitle, blogDescription } from '../src/services/blogService';
 import { formatPrice } from '../src/utils/coursePricing';
 import { resolveLocale } from '@/src/utils/locale';
+import { isPublishedCourse } from '../src/utils/courseCatalog';
 
 const dict = {
   ka: {
@@ -101,7 +102,7 @@ export default function SearchPage() {
     setLoading(true);
     try {
       const [coursesData, postsData] = await Promise.all([getCourses(), getBlogPosts().catch(() => [])]);
-      setCourses(coursesData.filter((c) => c.published));
+      setCourses(coursesData.filter(isPublishedCourse));
       setPosts(postsData.filter((p) => p.published));
     } finally {
       setLoading(false);

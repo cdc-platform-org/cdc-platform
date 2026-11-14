@@ -65,6 +65,9 @@ export interface Course {
   currentPrice: number;
   saleActive: boolean;
   published: boolean;
+  // Newer API responses send `status` instead of `published` — use
+  // utils/courseCatalog.ts isPublishedCourse() rather than either field.
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | string | null;
   mentorName: string | null;
   mentorTitle: string | null;
   thumbnailUrl: string | null;

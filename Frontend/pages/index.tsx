@@ -42,6 +42,7 @@ import BlogSection from '../src/components/home/BlogSection';
 import FaqSection from '../src/components/home/FaqSection';
 import AiChatPanel from '../src/components/home/AiChatPanel';
 import SectionHeader from '../src/components/home/SectionHeader';
+import { isPublishedCourse } from '../src/utils/courseCatalog';
 
 export default function Home() {
   const router = useRouter();
@@ -179,7 +180,7 @@ export default function Home() {
 
   useEffect(() => {
     getCourses()
-      .then((data) => setCourses(data.filter((c) => c.published)))
+      .then((data) => setCourses(data.filter(isPublishedCourse)))
       .catch(() => setCourses([]))
       .finally(() => setCoursesLoading(false));
   }, []);

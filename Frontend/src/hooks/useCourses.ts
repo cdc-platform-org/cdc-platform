@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Course } from '../types/lms';
 import { getCourses } from '../services/courseService';
+import { isPublishedCourse } from '../utils/courseCatalog';
 
 export function useCourses() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -8,7 +9,7 @@ export function useCourses() {
 
   useEffect(() => {
     getCourses()
-      .then((data) => setCourses(data.filter((c) => c.published)))
+      .then((data) => setCourses(data.filter(isPublishedCourse)))
       .finally(() => setLoading(false));
   }, []);
 
