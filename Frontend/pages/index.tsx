@@ -41,6 +41,7 @@ import ToolsShowcaseSection from '../src/components/home/ToolsShowcaseSection';
 import BlogSection from '../src/components/home/BlogSection';
 import FaqSection from '../src/components/home/FaqSection';
 import AiChatPanel from '../src/components/home/AiChatPanel';
+import SectionHeader from '../src/components/home/SectionHeader';
 
 export default function Home() {
   const router = useRouter();
@@ -420,7 +421,7 @@ export default function Home() {
   };
 
   return (
-    <div className={`-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen font-sans antialiased transition-colors duration-300 relative ${darkMode ? 'text-slate-200 bg-[#0b0f19]' : 'text-slate-800 bg-[#f8fafc]'}`}>
+    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen font-sans antialiased transition-colors duration-300 relative text-cdc-ink bg-cdc-bg">
       <SEOHead
         title="ციფრული პროფესიების ცენტრი (CDC) - საუკეთესო პროფესიები საქართველოში"
         description="ციფრული პროფესიების ცენტრი (CDC) გთავაზობთ ტოპ 10 პროფესიას საქართველოში, მათ შორის მაღალანაზღაურებადი პროფესიები, AI ტესტების გენერატორი და მასწავლებლის ასისტენტი."
@@ -439,12 +440,6 @@ export default function Home() {
       />
 
       <HomeOverlays aiInfoModal={aiInfoModal} setAiInfoModal={setAiInfoModal} darkMode={darkMode} t={t} toastMessage={toastMessage} checkoutCourseItem={checkoutCourseItem} contentLang={contentLang} enrollingId={enrollingId} checkoutError={checkoutError} startCheckout={startCheckout} setCheckoutCourseItem={setCheckoutCourseItem} setCheckoutError={setCheckoutError} showPromoVideo={showPromoVideo} promoVideo={promoVideo} setShowPromoVideo={setShowPromoVideo} />
-
-      {/* BACKGROUND GLOW ORBS */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-        <div className="absolute top-[20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-cyan-500/5 blur-[120px] dark:bg-cyan-500/10" />
-        <div className="absolute top-[50%] right-[-10%] w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[150px] dark:bg-purple-500/5" />
-      </div>
 
       {/* 🧭 NAVIGATION — the shared site header (same menu on every page). */}
       <SiteHeader darkMode={darkMode} onToggleDarkMode={toggleDarkMode} />
@@ -471,12 +466,10 @@ export default function Home() {
 
       {/* 👥 OFFICIAL TEAM SECTION — real, admin-managed data from GET /api/team */}
       <TeamSection lang={contentLang} darkMode={darkMode} />
-      <section id="ai-tools" className="py-16 sm:py-28">
-        <div className="max-w-7xl mx-auto px-0 sm:px-6">
-          <h2 className="section-title text-center mb-10 sm:mb-16 text-2xl md:text-[2.15rem] font-black tracking-wide">
-            AI English Learning Tools
-          </h2>
-          <div className="bg-slate-100 dark:bg-slate-900 p-4 sm:p-8 rounded-3xl shadow-lg">
+      <section id="ai-tools" className="py-16 sm:py-24">
+        <div className="max-w-7xl mx-auto">
+          <SectionHeader title="AI English Learning Tools" />
+          <div className="vip-card p-4 sm:p-8">
             <SmartReader />
           </div>
         </div>

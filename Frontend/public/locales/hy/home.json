@@ -99,5 +99,6 @@
   "startTest": "Սկսել Թեստը",
   "startTestMessage": "Սկսել թեստը",
   "chatInputPlaceholder": "Գրեք պատասխան...",
-  "chatConnectionError": "❌ Սխալ՝ օգնականին կապվելիս։"
+  "chatConnectionError": "❌ Սխալ՝ օգնականին կապվելիս։",
+  "viewAllCourses": "Բոլոր դասընթացները"
 }

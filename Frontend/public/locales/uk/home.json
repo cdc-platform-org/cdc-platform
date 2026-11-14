@@ -99,5 +99,6 @@
   "startTest": "Почати тест",
   "startTestMessage": "Почати тест",
   "chatInputPlaceholder": "Введіть відповідь...",
-  "chatConnectionError": "❌ Помилка з'єднання з асистентом."
+  "chatConnectionError": "❌ Помилка з'єднання з асистентом.",
+  "viewAllCourses": "Усі курси"
 }

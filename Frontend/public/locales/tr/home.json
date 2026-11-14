@@ -99,5 +99,6 @@
   "startTest": "Teste Başla",
   "startTestMessage": "Testi başlat",
   "chatInputPlaceholder": "Bir yanıt yazın...",
-  "chatConnectionError": "❌ Asistana bağlanırken hata oluştu."
+  "chatConnectionError": "❌ Asistana bağlanırken hata oluştu.",
+  "viewAllCourses": "Tüm kurslar"
 }

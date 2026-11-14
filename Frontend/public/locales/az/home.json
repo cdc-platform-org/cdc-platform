@@ -99,5 +99,6 @@
   "startTest": "Testə Başla",
   "startTestMessage": "Testə başla",
   "chatInputPlaceholder": "Cavab yazın...",
-  "chatConnectionError": "❌ Köməkçiyə qoşularkən xəta baş verdi."
+  "chatConnectionError": "❌ Köməkçiyə qoşularkən xəta baş verdi.",
+  "viewAllCourses": "Bütün kurslar"
 }
