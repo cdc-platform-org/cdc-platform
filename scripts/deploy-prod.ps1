@@ -48,7 +48,10 @@ $VercelProjectId = 'prj_nLtJUVmvrlOAKcNlrUu7t1gLSC3L'   # cdc-public-site
 
 function Fail([string] $msg) { Write-Host "REFUSED: $msg" -ForegroundColor Red; Write-Host 'Nothing was built, updated or restarted.'; exit 1 }
 function Step([string] $msg) { Write-Host "==> $msg" -ForegroundColor Cyan }
-function Az { $out = & az @args; if ($LASTEXITCODE -ne 0) { throw "az $($args -join ' ') failed ($LASTEXITCODE)" }; $out }
+# PowerShell names are case-insensitive: a bare `az` inside function `Az`
+# calls the function itself (call depth overflow). Resolve the real CLI once.
+$AzCli = (Get-Command az -CommandType Application | Select-Object -First 1).Source
+function Az { $out = & $AzCli @args; if ($LASTEXITCODE -ne 0) { throw "az $($args -join ' ') failed ($LASTEXITCODE)" }; $out }
 
 $repoRoot = (git rev-parse --show-toplevel).Trim()
 Set-Location $repoRoot
@@ -81,7 +84,7 @@ if (-not $FrontendOnly) {
   Write-Host "Target image  : $image"
 
   # ---- Build ---------------------------------------------------------------
-  $exists = & az acr repository show -n $AcrName --image "${ImageName}:${Sha}" --query digest -o tsv 2>$null
+  $exists = & $AzCli acr repository show -n $AcrName --image "${ImageName}:${Sha}" --query digest -o tsv 2>$null
   if ($LASTEXITCODE -eq 0 -and $exists) {
     Step "Image already in ACR ($exists), skipping build"
   } else {
