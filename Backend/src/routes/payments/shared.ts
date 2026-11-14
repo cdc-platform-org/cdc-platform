@@ -75,7 +75,7 @@ export class BookCheckoutInProgressError extends Error {}
 
 export async function findReusablePendingOrder(
   userId: string,
-  purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT' | 'HR_SUPPORT' | 'LIVE_TRAINING' | 'ENGLISH_TUTOR_SUBSCRIPTION' | 'CHILDRENS_BOOK' | 'GIFT_CARD' | 'EDUCATOR_VIP' | 'BUSINESS_AI_AGENT',
+  purpose: 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT' | 'HR_SUPPORT' | 'LIVE_TRAINING' | 'ENGLISH_TUTOR_SUBSCRIPTION' | 'CHILDRENS_BOOK' | 'GIFT_CARD' | 'EDUCATOR_VIP' | 'BUSINESS_AI_AGENT' | 'COLORING_CREDITS',
   referenceId: string,
   expectedAmount?: number,
   expectedPromoId?: string | null

@@ -13,6 +13,7 @@ import mentorshipCheckoutRoutes from './mentorshipCheckout';
 import marketplaceCheckoutRoutes from './marketplaceCheckout';
 import childrensBookCheckoutRoutes from './childrensBookCheckout';
 import giftCardCheckoutRoutes from './giftCardCheckout';
+import coloringCreditsCheckoutRoutes from './coloringCreditsCheckout';
 import bogCallbackRoutes from './bogCallback';
 import paymentHistoryRoutes from './paymentHistory';
 
@@ -24,6 +25,7 @@ router.use(mentorshipCheckoutRoutes);
 router.use(marketplaceCheckoutRoutes);
 router.use(childrensBookCheckoutRoutes);
 router.use(giftCardCheckoutRoutes);
+router.use(coloringCreditsCheckoutRoutes);
 router.use(bogCallbackRoutes);
 router.use(paymentHistoryRoutes);
 

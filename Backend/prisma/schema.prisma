@@ -276,6 +276,10 @@ enum BogPaymentPurpose {
   // is looked up by bookProjectId). DIRECT model, flat 10 GEL. See
   // services/bookAnimationService.ts.
   BOOK_ANIMATION
+  // A pack of AI coloring-page credits (referenceId ->
+  // ColoringCreditPurchase.id). DIRECT model. Fulfillment adds the pack's
+  // credits to ColoringAccount.balance — see services/coloringPages/.
+  COLORING_CREDITS
 }
 
 // Whether a payment settles straight to its destination the moment it
@@ -810,6 +814,9 @@ model User {
   liveTrainingEnrollments       LiveTrainingEnrollment[]
   careerQuizSubmissions         CareerQuizSubmission[]
   bookProjects                  BookProject[]
+  coloringAccount               ColoringAccount?
+  coloringPages                 ColoringPage[]
+  coloringCreditPurchases       ColoringCreditPurchase[]
   chatRequestsSent              ChatRequest[]                  @relation("ChatRequestsSent")
   chatRequestsReceived          ChatRequest[]                  @relation("ChatRequestsReceived")
   chatFlagsAsSender             ChatFlag[]                     @relation("ChatFlagsAsSender")
@@ -5995,4 +6002,73 @@ model BookGenerationEvent {
   @@unique([logicalOperationKey, attemptNumber])
   @@index([bookProjectId])
   @@map("book_generation_events")
+}
+
+// ============================================================
+// AI COLORING PAGES — a user types any (kid-safe) topic and gets a
+// printable black-and-white coloring page drawn by Azure gpt-image-2.
+// Paid with prepaid credits (packs bought via BOG, see
+// services/coloringPages/coloringPacks.ts). One credit = one successful
+// page; a blocked or failed attempt refunds its reserved credit.
+// ============================================================
+
+model ColoringAccount {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Paid credits left. Never negative (enforced by the conditional
+  // decrement in coloringCreditService.reserveCredit).
+  balance   Int      @default(0)
+  // The one free trial page every account gets; true once it is used.
+  freeUsed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("coloring_accounts")
+}
+
+enum ColoringPageStatus {
+  GENERATING
+  READY
+  BLOCKED
+  FAILED
+}
+
+model ColoringPage {
+  id            String             @id @default(uuid())
+  userId        String
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // What the user typed (trimmed, max 200 chars) and the English subject
+  // the safety step turned it into (the only text sent to the image model).
+  topic         String
+  subject       String?
+  status        ColoringPageStatus @default(GENERATING)
+  // FREE = the trial page, CREDIT = a paid credit. Recorded so a refund on
+  // failure gives back exactly what was taken.
+  paidWith      String
+  // Private blob path of the PNG; null until READY.
+  blobName      String?
+  // Short machine reason when BLOCKED/FAILED (never shown raw to users).
+  blockedReason String?
+  costUsd       Float              @default(0)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([userId, createdAt])
+  @@map("coloring_pages")
+}
+
+model ColoringCreditPurchase {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  packId      String
+  credits     Int
+  amountTetri Int
+  // PENDING -> COMPLETED (credits added once) or FAILED.
+  status      String    @default("PENDING")
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([userId, createdAt])
+  @@map("coloring_credit_purchases")
 }

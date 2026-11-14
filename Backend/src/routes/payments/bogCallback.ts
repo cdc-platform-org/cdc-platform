@@ -27,6 +27,7 @@ import { completeChildrensBookPurchase } from '../../services/childrensBook/book
 import { startFinalGeneration } from '../../services/childrensBook/bookFinalGenerationService';
 import { completeBookAnimationPurchase } from '../../services/childrensBook/bookAnimationService';
 import { fulfillGiftCardPurchase, cancelGiftCardPurchase, releaseGiftCardHold } from '../../services/payments/giftCardService';
+import { completeColoringCreditPurchase, failColoringCreditPurchase } from '../../services/coloringPages/coloringCreditService';
 
 const router = Router();
 
@@ -116,6 +117,8 @@ export async function applyBogPaymentResult(
       });
     } else if (failedPayment.purpose === 'GIFT_CARD') {
       await cancelGiftCardPurchase(failedPayment.referenceId);
+    } else if (failedPayment.purpose === 'COLORING_CREDITS') {
+      await failColoringCreditPurchase(failedPayment.referenceId);
     } else if (failedPayment.purpose === 'HR_SUPPORT') {
       // Same reasoning as MENTORSHIP above — the request row is created
       // up-front (see routes/payments/'s checkout/hr-support route) so a
@@ -269,6 +272,9 @@ export async function applyBogPaymentResult(
     // Idempotent: only a PAYMENT_PENDING animation moves to QUEUED; the
     // render starts in the background (bookAnimationService.ts).
     await completeBookAnimationPurchase({ bookProjectId: bogPayment.referenceId, paidVia: 'BOG' });
+  } else if (bogPayment.purpose === 'COLORING_CREDITS') {
+    // Adds the pack's credits once — idempotent (PENDING -> COMPLETED claim).
+    await completeColoringCreditPurchase(bogPayment.referenceId);
   } else if (bogPayment.purpose === 'GIFT_CARD') {
     // Mints the code and emails the recipient now (or on the chosen date).
     // Idempotent on retry — see giftCardService.fulfillGiftCardPurchase.
