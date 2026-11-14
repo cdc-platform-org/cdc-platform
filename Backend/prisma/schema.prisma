@@ -2119,6 +2119,11 @@ model DigitalProduct {
   submittedById      String?
   submittedBy        User?              @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
   launchKits         LaunchKit[]
+  // True when the product agent (services/productAgent/) generated this
+  // listing. Such rows are created PENDING so an admin reviews them first;
+  // the admin products page shows an "AI agent" badge from this flag.
+  createdByAgent     Boolean            @default(false)
+  agentRuns          ProductAgentRun[]
   // Denormalized rollup of `reviews` (ProductReview), same pattern as
   // User.averageRating/reviewCount — recomputed on every review create/delete.
   averageRating      Float?
@@ -2130,6 +2135,7 @@ model DigitalProduct {
   // every admin page load — this model had zero indexes before, forcing a
   // full-table scan on both.
   @@index([status, category])
+  @@index([createdByAgent, createdAt])
   @@map("digital_products")
 }
 
@@ -2173,6 +2179,85 @@ model UserDesign {
   @@index([userId, updatedAt])
   @@index([productId])
   @@map("user_designs")
+}
+
+// ============================================================
+// Product agent (services/productAgent/) — creates digital store products
+// (wall prints, worksheets, planners, templates...) on a daily schedule.
+// Singleton settings row, same convention as AiAutomationSettings: no row
+// until an admin saves, defaults live in productAgent/settings.ts.
+// ============================================================
+model ProductAgentSettings {
+  id               String   @id @default(uuid())
+  // Master switch for the daily schedule. Manual "create one now" runs from
+  // the admin page work even when this is off.
+  enabled          Boolean  @default(false)
+  // { "PRINTS": 10, "PLANNERS": 2, ... } — products per day per category.
+  dailyCounts      Json     @default("{}")
+  // gpt-image-2 quality for every generated image: "high" | "medium".
+  imageQuality     String   @default("high")
+  // Hard stop: no scheduled run starts once this month's estimated spend
+  // (sum of ProductAgentRun.estimatedCostUsd) reaches this.
+  monthlyBudgetUsd Float    @default(300)
+  // Hour (UTC) the daily batch starts.
+  runHourUtc       Int      @default(5)
+  updatedAt        DateTime @updatedAt
+
+  @@map("product_agent_settings")
+}
+
+// One attempt to create one product. Also the cost ledger: estimatedCostUsd
+// is computed from the image/text token usage Azure returns.
+model ProductAgentRun {
+  id               String          @id @default(uuid())
+  category         String
+  // "RUNNING" | "SUCCEEDED" | "FAILED"
+  status           String          @default("RUNNING")
+  // "SCHEDULE" | "MANUAL"
+  trigger          String
+  theme            String?
+  productId        String?
+  product          DigitalProduct? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  imageCount       Int             @default(0)
+  estimatedCostUsd Float           @default(0)
+  error            String?
+  startedAt        DateTime        @default(now())
+  finishedAt       DateTime?
+
+  @@index([category, startedAt])
+  @@index([startedAt])
+  @@map("product_agent_runs")
+}
+
+// Weekly market brief per category (services/productAgent/trends.ts): the
+// themes the agent should make next, ranked, written by Azure OpenAI from
+// the season/holiday calendar plus how earlier agent products did (sold,
+// approved, rejected). The newest row per category drives theme choice.
+model ProductAgentTrendBrief {
+  id        String   @id @default(uuid())
+  category  String
+  // [{ theme, why, styleNotes }] best first
+  themes    Json
+  summary   String
+  costUsd   Float    @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([category, createdAt])
+  @@map("product_agent_trend_briefs")
+}
+
+// Reusable generated images, e.g. empty room backgrounds that every print
+// mockup is composited onto — generated once, reused across products so a
+// mockup costs nothing per product.
+model ProductAgentAsset {
+  id        String   @id @default(uuid())
+  // e.g. "ROOM_LIVING", "ROOM_BEDROOM", "DESK"
+  kind      String
+  url       String
+  createdAt DateTime @default(now())
+
+  @@index([kind])
+  @@map("product_agent_assets")
 }
 
 // ============================================================
@@ -3485,43 +3570,43 @@ enum ExamSessionStatus {
 }
 
 model ExamSession {
-  id              String            @id @default(uuid())
-  businessId      String
-  business        User              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  id                     String            @id @default(uuid())
+  businessId             String
+  business               User              @relation(fields: [businessId], references: [id], onDelete: Cascade)
   // Set only when this session is a LiveTraining/cohort's final exam,
   // created from the admin panel (routes/adminLiveTrainings.ts) rather than
   // the standalone Business exam-proctoring tool — null for every other
   // session. businessId above still points at the admin who generated it
   // (ownership/audit trail), this is purely a "which cohort" tag.
-  liveTrainingId  String?
-  liveTraining    LiveTraining?     @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
-  title           String
-  description     String?
+  liveTrainingId         String?
+  liveTraining           LiveTraining?     @relation(fields: [liveTrainingId], references: [id], onDelete: Cascade)
+  title                  String
+  description            String?
   // Free-text steer for the AI question generator, e.g. "Senior React
   // Developer — hooks, state management, performance" — same role as
   // Exam.aiPromptContext elsewhere in this schema.
-  topic           String
+  topic                  String
   // Parsed Markdown text from an optional PDF/DOCX exam-source upload (see
   // documentParserService.parseDocumentToMarkdown, same parser used for
   // Agent knowledge uploads) — appended to `topic` as extra grounding
   // context for the AI question generator when present. Null when the exam
   // was created from `topic` alone with no file.
-  rawContent      String?
-  mcqCount        Int               @default(5)
-  durationMinutes Int               @default(30)
+  rawContent             String?
+  mcqCount               Int               @default(5)
+  durationMinutes        Int               @default(30)
   // When true, a student sees their score plus every question with the
   // correct answer and an explanation right after submitting, and the same
   // results are emailed to the address they typed before starting. The
   // teacher can switch it off (e.g. while other groups still have to sit
   // the same exam) from the dashboard.
-  showResultsToCandidate Boolean    @default(true)
-  status          ExamSessionStatus @default(ACTIVE)
+  showResultsToCandidate Boolean           @default(true)
+  status                 ExamSessionStatus @default(ACTIVE)
   // Public shareable link uses this, never the real id — same reasoning as
   // AgentConversation.visitorRef being client-opaque, but here it's the
   // session itself that must not be guessable/enumerable.
-  candidateToken  String            @unique @default(uuid())
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  candidateToken         String            @unique @default(uuid())
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
 
   questions   ExamQuestion[]
   submissions ExamSubmission[]
@@ -5714,9 +5799,9 @@ model BookProject {
   // Audio Story add-on snapshot for a purchased book. `audioAddOnPurchased`
   // is a persisted entitlement, not a current UI flag — once the user has
   // paid, future price changes must not alter their existing access.
-  audioAddOnPurchased Boolean @default(false)
-  audioPriceGel       Int     @default(0)
-  totalPriceGel       Int     @default(0)
+  audioAddOnPurchased     Boolean @default(false)
+  audioPriceGel           Int     @default(0)
+  totalPriceGel           Int     @default(0)
   // Animated video add-on chosen at book checkout (paid together with the
   // book; totalPriceGel includes it). The render is queued once the book is
   // finished — bookAnimationService.queuePrepaidAnimations.
@@ -5725,8 +5810,8 @@ model BookProject {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  pages            BookPage[]
-  generationEvents BookGenerationEvent[]
+  pages              BookPage[]
+  generationEvents   BookGenerationEvent[]
   narrationArtifacts BookNarrationArtifact[]
   animation          BookAnimation?
 
@@ -5817,24 +5902,24 @@ enum BookAnimationStatus {
 // recovery sweep resumes QUEUED/RENDERING rows and retries a paid FAILED
 // row once (autoRetried).
 model BookAnimation {
-  id            String              @id @default(uuid())
-  bookProjectId String              @unique
-  bookProject   BookProject         @relation(fields: [bookProjectId], references: [id], onDelete: Cascade)
-  userId        String
-  status        BookAnimationStatus @default(PAYMENT_PENDING)
+  id              String              @id @default(uuid())
+  bookProjectId   String              @unique
+  bookProject     BookProject         @relation(fields: [bookProjectId], references: [id], onDelete: Cascade)
+  userId          String
+  status          BookAnimationStatus @default(PAYMENT_PENDING)
   // 'BOG' | 'PROMO' | 'ADMIN' — informational only.
-  paidVia       String?
-  paidAt        DateTime?
-  videoKey      String?
-  durationSec   Float?
-  error         String?
+  paidVia         String?
+  paidAt          DateTime?
+  videoKey        String?
+  durationSec     Float?
+  error           String?
   // Cost tracking: Sora seconds actually billed (successful clips only)
   // and which pages got a Sora clip.
-  soraSecondsUsed Int     @default(0)
-  soraPages       Int[]   @default([])
+  soraSecondsUsed Int                 @default(0)
+  soraPages       Int[]               @default([])
   renderMs        Int?
-  attemptCount    Int     @default(0)
-  autoRetried     Boolean @default(false)
+  attemptCount    Int                 @default(0)
+  autoRetried     Boolean             @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -5844,9 +5929,9 @@ model BookAnimation {
 }
 
 model BookNarrationArtifact {
-  id            String               @id @default(uuid())
+  id            String      @id @default(uuid())
   bookProjectId String
-  bookProject   BookProject          @relation(fields: [bookProjectId], references: [id], onDelete: Cascade)
+  bookProject   BookProject @relation(fields: [bookProjectId], references: [id], onDelete: Cascade)
 
   pageNumber      Int
   revisionVersion Int                 @default(0)

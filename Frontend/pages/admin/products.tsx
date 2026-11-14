@@ -421,7 +421,7 @@ function ModerationProductCard({
   };
 
   return (
-    <div className="flex gap-4 bg-white border border-gray-200 rounded-xl p-4">
+    <div id={`product-${p.id}`} className="flex gap-4 bg-white border border-gray-200 rounded-xl p-4 scroll-mt-24">
       <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0">
         <Image src={p.imageUrl} alt={p.title} fill className="object-cover" unoptimized />
       </div>
@@ -429,6 +429,11 @@ function ModerationProductCard({
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-600">{p.category}</span>
           <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${STATUS_BADGE[p.status ?? 'PENDING']}`}>{p.status}</span>
+          {p.createdByAgent && (
+            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-indigo-600 text-white" title="Created by the AI product agent — see /admin/product-agent">
+              AI აგენტი
+            </span>
+          )}
         </div>
 
         {editing ? (
@@ -753,6 +758,13 @@ function AdminProductsDashboard() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // /admin/product-agent links here as #product-<id>; the list renders
+  // after the fetch, so the browser's own hash jump happens too early.
+  useEffect(() => {
+    if (loading || typeof window === 'undefined' || !window.location.hash.startsWith('#product-')) return;
+    document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [loading]);
 
   const visible = useMemo(
     () => (statusFilter ? products.filter((p) => p.status === statusFilter) : products),

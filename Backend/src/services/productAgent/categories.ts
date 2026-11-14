@@ -1,0 +1,93 @@
+/**
+ * Product agent — the product categories the agent can create.
+ * Exports: AGENT_CATEGORIES, AgentCategoryKey, AGENT_CATEGORY_KEYS, isAgentCategoryKey.
+ *
+ * One entry per category: the store category string the listing is filed
+ * under, the default price, and the rough cost per product shown to the
+ * admin before they raise a daily count. The generator for each category
+ * lives in ./generators/<file>.ts and is wired up in ./generators/index.ts.
+ */
+
+export interface AgentCategoryDefinition {
+  labelKa: string;
+  labelEn: string;
+  // DigitalProduct.category value. Uses the same "Group / Sub-group" shape
+  // as the admin's manually listed wall-print set.
+  storeCategory: string;
+  // GEL, major units.
+  defaultPriceGel: number;
+  // USD per product at "high" image quality as measured in the 2026-11-14
+  // pilot run, for the admin page's
+  // daily/monthly estimate only. The real cost of every run is measured
+  // from Azure's token usage and stored on ProductAgentRun.
+  estimatedCostUsd: number;
+  // Exam material can carry factual mistakes; the admin page says so and
+  // these always stay PENDING for a human check.
+  needsFactCheck: boolean;
+}
+
+export const AGENT_CATEGORIES = {
+  PRINTS: {
+    labelKa: 'კედლის პრინტები',
+    labelEn: 'Wall art prints',
+    storeCategory: 'Digital Art / Prints & Illustrations',
+    defaultPriceGel: 15,
+    estimatedCostUsd: 1.2,
+    needsFactCheck: false,
+  },
+  KIDS_WORKSHEETS: {
+    labelKa: 'საბავშვო სამუშაო ფურცლები და გასაფერადებლები',
+    labelEn: 'Kids worksheets & coloring pages',
+    storeCategory: 'Kids & Education / Worksheets & Coloring',
+    defaultPriceGel: 9,
+    estimatedCostUsd: 0.3,
+    needsFactCheck: false,
+  },
+  PLANNERS: {
+    labelKa: 'პლანერები და ტრეკერები',
+    labelEn: 'Planners & trackers',
+    storeCategory: 'Planners & Organizers / Printable Planners',
+    defaultPriceGel: 9,
+    estimatedCostUsd: 0.05,
+    needsFactCheck: false,
+  },
+  CV_TEMPLATES: {
+    labelKa: 'CV და სამოტივაციო წერილის შაბლონები',
+    labelEn: 'CV & cover letter templates',
+    storeCategory: 'Career / CV & Cover Letter Templates',
+    defaultPriceGel: 12,
+    estimatedCostUsd: 0.05,
+    needsFactCheck: false,
+  },
+  BUSINESS_TEMPLATES: {
+    labelKa: 'მცირე ბიზნესის შაბლონები',
+    labelEn: 'Small business templates',
+    storeCategory: 'Small Business / Templates',
+    defaultPriceGel: 15,
+    estimatedCostUsd: 0.12,
+    needsFactCheck: false,
+  },
+  INVITATIONS: {
+    labelKa: 'მოსაწვევები და ბარათები',
+    labelEn: 'Invitations & cards',
+    storeCategory: 'Events / Invitations & Cards',
+    defaultPriceGel: 8,
+    estimatedCostUsd: 0.25,
+    needsFactCheck: false,
+  },
+  EXAM_PREP: {
+    labelKa: 'გამოცდისთვის მოსამზადებელი მასალა',
+    labelEn: 'Exam prep materials',
+    storeCategory: 'Education / Exam Prep',
+    defaultPriceGel: 10,
+    estimatedCostUsd: 0.06,
+    needsFactCheck: true,
+  },
+} as const satisfies Record<string, AgentCategoryDefinition>;
+
+export type AgentCategoryKey = keyof typeof AGENT_CATEGORIES;
+export const AGENT_CATEGORY_KEYS = Object.keys(AGENT_CATEGORIES) as AgentCategoryKey[];
+
+export function isAgentCategoryKey(value: unknown): value is AgentCategoryKey {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(AGENT_CATEGORIES, value);
+}
