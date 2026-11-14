@@ -372,7 +372,7 @@ export interface AdminProductPurchase {
 
 // Whether each buyer has ever actually downloaded the file — the deciding
 // fact for a refund request (non-refundable once downloaded, see
-// legalContent.ts's Digital Store refund clause).
+// src/data/legal/refund.ts's Digital Store refund clause).
 export async function getProductPurchases(productId: string): Promise<AdminProductPurchase[]> {
   const response = await apiClient.get<{ data: AdminProductPurchase[] }>(`/admin/products/${productId}/purchases`);
   return response.data.data;

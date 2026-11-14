@@ -12,6 +12,7 @@ import GiftThisButton from '../../src/components/giftCards/GiftThisButton';
 import { LiveTraining } from '../../src/types/liveTraining';
 import { getLiveTraining, registerForLiveTraining, enrollInLiveTraining, checkoutLiveTraining } from '../../src/services/liveTrainingService';
 import { checkoutLiveTrainingStripe, stripeWithBogFallback } from '../../src/services/stripePaymentService';
+import CheckoutGatewayPicker, { useCheckoutGateway } from '../../src/components/payments/CheckoutGatewayPicker';
 import { validatePromoCode, PromoValidationResult } from '../../src/services/paymentService';
 import { resolveLocale } from '@/src/utils/locale';
 import { courseLanguageBadge } from '@/src/utils/courseLanguage';
@@ -128,6 +129,7 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
   const router = useRouter();
   const id = typeof router.query.id === 'string' ? router.query.id : null;
   const lang = resolveLocale(router.locale);
+  const { gateway, setGateway, stripeEnabled } = useCheckoutGateway(lang);
   const t = dict[lang];
   const contentLang = lang === 'ka' ? 'ka' : 'en';
   const { isAuthenticated } = useAuth();
@@ -220,17 +222,17 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
     setEnrolling(true);
     try {
       if (training.price && training.price > 0) {
-        // Priced training — real payment required. Georgian users pay via
-        // BOG (GEL); everyone else via Stripe (USD/EUR), same gateway split
-        // as courses/[id]/index.tsx's startCheckout. Never sets `enrolled`
+        // Priced training — real payment required. Gateway is the buyer's
+        // choice in CheckoutGatewayPicker (BOG/GEL or Stripe/USD), same as
+        // courses/[id]/index.tsx's startCheckout. Never sets `enrolled`
         // locally here — the real LiveTrainingEnrollment is only created
         // once the gateway confirms payment (see
         // liveTrainingSaleService.completeLiveTrainingPurchase), so the
         // success banner is only ever shown from training.isEnrolled
         // (server-verified) after that round-trip, not from this click.
         const result =
-          lang === 'ka'
-            ? await checkoutLiveTraining(id, appliedPromo?.code, 'ka')
+          gateway === 'bog'
+            ? await checkoutLiveTraining(id, appliedPromo?.code, lang === 'ka' ? 'ka' : 'en')
             : await stripeWithBogFallback(
                 () => checkoutLiveTrainingStripe(id, appliedPromo?.code, 'usd'),
                 () => checkoutLiveTraining(id, appliedPromo?.code, 'en'),
@@ -448,6 +450,9 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
                     )}
                     {promoError && <p role="alert" className="text-xs text-red-400 mt-1">{promoError}</p>}
                   </div>
+                )}
+                {!!training.price && training.price > 0 && (
+                  <div className="text-left"><CheckoutGatewayPicker lang={lang} gateway={gateway} onChange={setGateway} stripeEnabled={stripeEnabled} disabled={enrolling} /></div>
                 )}
                 <button
                   type="button"

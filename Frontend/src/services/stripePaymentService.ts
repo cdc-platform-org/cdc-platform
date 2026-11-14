@@ -94,6 +94,25 @@ export function isStripeNotConfiguredError(err: unknown): boolean {
   return (err as { response?: { status?: number } })?.response?.status === 501;
 }
 
+export interface StripePublicConfig {
+  enabled: boolean;
+  gelToUsd?: number;
+  gelToEur?: number;
+}
+
+// One request per page load: every checkout picker on the page shares it.
+// Any failure is treated as "Stripe off" so checkout still works via BOG.
+let stripeConfigPromise: Promise<StripePublicConfig> | null = null;
+export function getStripeConfig(): Promise<StripePublicConfig> {
+  if (!stripeConfigPromise) {
+    stripeConfigPromise = apiClient
+      .get<StripePublicConfig>('/payments/stripe/config')
+      .then((r) => ({ ...r.data, enabled: Boolean(r.data?.enabled) }))
+      .catch(() => ({ enabled: false }));
+  }
+  return stripeConfigPromise;
+}
+
 export async function stripeWithBogFallback<S, B>(stripeCheckout: () => Promise<S>, bogCheckout: () => Promise<B>): Promise<S | B> {
   try {
     return await stripeCheckout();

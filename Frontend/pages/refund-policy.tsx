@@ -1,6 +1,6 @@
 import SimpleSiteLayout from '@/src/components/layout/SimpleSiteLayout';
 import LegalSections from '@/src/components/layout/LegalSections';
-import { refundPolicy, lastUpdated } from '@/src/data/legalContent';
+import { refundPolicy, lastUpdated } from '@/src/data/legal';
 import { merchantInfo } from '@/src/data/merchantInfo';
 
 const heading = { ka: 'თანხის დაბრუნებისა და გაუქმების პოლიტიკა', en: 'Refund & Cancellation Policy' };

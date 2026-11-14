@@ -33,6 +33,7 @@ import {
 } from '../../src/services/productService';
 import { checkoutProduct, validatePromoCode, PromoValidationResult } from '../../src/services/paymentService';
 import { checkoutProductStripe, stripeWithBogFallback } from '../../src/services/stripePaymentService';
+import CheckoutGatewayPicker, { useCheckoutGateway } from '../../src/components/payments/CheckoutGatewayPicker';
 import { formatPrice } from '../../src/utils/coursePricing';
 import { resolveLocale } from '@/src/utils/locale';
 import { localizePromoError } from '../../src/components/shared/PromoCodeField';
@@ -61,6 +62,7 @@ function StoreProductContent({ initialProduct }: { initialProduct: DigitalProduc
   const lang = resolveLocale(router.locale);
   // Products only store ka/en text (title/titleEn etc.) — collapse for content lookups.
   const contentLang = lang === 'ka' ? 'ka' : 'en';
+  const { gateway, setGateway, stripeEnabled } = useCheckoutGateway(lang);
   const { user, isAuthenticated } = useAuth();
   const { openAuthModal } = useAuthModal();
 
@@ -105,10 +107,10 @@ function StoreProductContent({ initialProduct }: { initialProduct: DigitalProduc
     setActionError(null);
     setSubmitting(true);
     try {
-      // Georgian users pay via BOG (GEL); everyone else via Stripe (USD/EUR).
+      // Buyer-chosen gateway (CheckoutGatewayPicker): BOG/GEL or Stripe/USD.
       const result =
-        lang === 'ka'
-          ? await checkoutProduct(product.id, appliedPromo?.code, 'ka')
+        gateway === 'bog'
+          ? await checkoutProduct(product.id, appliedPromo?.code, lang === 'ka' ? 'ka' : 'en')
           : await stripeWithBogFallback(
               () => checkoutProductStripe(product.id, appliedPromo?.code, 'usd'),
               () => checkoutProduct(product.id, appliedPromo?.code, 'en'),
@@ -355,6 +357,10 @@ function StoreProductContent({ initialProduct }: { initialProduct: DigitalProduc
                     )}
                     {promoError && <p className="text-xs text-red-500 mt-1">{promoError}</p>}
                   </div>
+                )}
+
+                {product.price > 0 && (
+                  <CheckoutGatewayPicker lang={lang} gateway={gateway} onChange={setGateway} stripeEnabled={stripeEnabled} disabled={submitting} />
                 )}
 
                 <button

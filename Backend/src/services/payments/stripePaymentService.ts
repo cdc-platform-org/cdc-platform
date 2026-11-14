@@ -33,6 +33,27 @@ function getStripeClient(): Stripe {
   return cachedClient;
 }
 
+// "Can Stripe take a payment right now?" — a key alone is not enough: a
+// Stripe account that hasn't finished activation has charges_enabled=false
+// and every checkout would fail. Cached so the public /config endpoint
+// doesn't hit Stripe on every page view; a failed lookup counts as "not
+// ready" so checkout pages fall back to BOG instead of offering a dead option.
+const READY_CACHE_MS = 10 * 60 * 1000;
+let readyCache: { value: boolean; at: number } | null = null;
+export async function isStripeReady(): Promise<boolean> {
+  if (!STRIPE_SECRET_KEY) return false;
+  if (readyCache && Date.now() - readyCache.at < READY_CACHE_MS) return readyCache.value;
+  let value = false;
+  try {
+    const account = await getStripeClient().accounts.retrieveCurrent();
+    value = Boolean(account.charges_enabled);
+  } catch (err) {
+    console.error('[stripe] readiness check failed:', err instanceof Error ? err.message : err);
+  }
+  readyCache = { value, at: Date.now() };
+  return value;
+}
+
 export interface CreateStripeCheckoutSessionParams {
   externalOrderId: string;
   // Minor currency units (cents), same convention as CreateBogOrderParams.amount
