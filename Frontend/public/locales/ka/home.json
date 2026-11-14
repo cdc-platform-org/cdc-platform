@@ -99,5 +99,6 @@
   "startTest": "დავიწყოთ ტესტი",
   "startTestMessage": "დავიწყოთ ტესტი",
   "chatInputPlaceholder": "ჩაწერეთ პასუხი...",
-  "chatConnectionError": "❌ ასისტენტთან კავშირის ხარვეზი."
+  "chatConnectionError": "❌ ასისტენტთან კავშირის ხარვეზი.",
+  "viewAllCourses": "ყველა კურსი"
 }

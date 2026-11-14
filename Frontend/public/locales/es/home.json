@@ -99,5 +99,6 @@
   "startTest": "Iniciar Prueba",
   "startTestMessage": "Iniciar la prueba",
   "chatInputPlaceholder": "Escribe una respuesta...",
-  "chatConnectionError": "❌ Error al conectar con el asistente."
+  "chatConnectionError": "❌ Error al conectar con el asistente.",
+  "viewAllCourses": "Todos los cursos"
 }
