@@ -1,10 +1,17 @@
+/**
+ * Course detail page (/courses/[id]): loads the course + syllabus, enrollment
+ * state, promo codes and checkout (BOG for ka, Stripe otherwise). 2026-11
+ * EDUPRO-style layout: hero media with an overlapping info card, Overview /
+ * Syllabus tabs, sticky purchase card and a mobile bottom CTA — the pieces
+ * live in src/components/courses/detail/.
+ */
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { GetServerSideProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { Play, Lock, X, RefreshCw } from 'lucide-react';
+import { BookOpen, Clock, Lock, RefreshCw, X } from 'lucide-react';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
 import BackButton from '../../../src/components/common/BackButton';
@@ -15,9 +22,11 @@ import { useEscapeToClose } from '../../../src/hooks/useEscapeToClose';
 import { Course, SyllabusSection, SyllabusLesson } from '../../../src/types/lms';
 import { getCourse, getProgressSummary, getSyllabus } from '../../../src/services/courseService';
 import { checkoutCourse, validatePromoCode, PromoValidationResult } from '../../../src/services/paymentService';
+import CoursePurchaseCard, { CourseCtaButton, CourseMobileCta } from '../../../src/components/courses/detail/CoursePurchaseCard';
+import CourseSyllabus from '../../../src/components/courses/detail/CourseSyllabus';
 import { checkoutCourseStripe, stripeWithBogFallback } from '../../../src/services/stripePaymentService';
 import CheckoutGatewayPicker, { useCheckoutGateway } from '../../../src/components/payments/CheckoutGatewayPicker';
-import { formatPrice, getSaleCountdownLabel } from '../../../src/utils/coursePricing';
+import { formatPrice } from '../../../src/utils/coursePricing';
 import { courseLanguageBadge } from '../../../src/utils/courseLanguage';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useAuthModal } from '../../../src/context/AuthModalContext';
@@ -40,18 +49,6 @@ function formatTotalDuration(totalSeconds: number, lang: 'ka' | 'en'): string {
   if (hours === 0) return lang === 'ka' ? `${minutes} წუთი` : `${minutes} min`;
   if (minutes === 0) return lang === 'ka' ? `${hours} სთ` : `${hours}h`;
   return lang === 'ka' ? `${hours} სთ ${minutes} წთ` : `${hours}h ${minutes}m`;
-}
-
-function formatDiscount(promo: PromoValidationResult): string {
-  if (promo.discountPercent) return `-${promo.discountPercent}%`;
-  if (promo.discountAmount) return `-${formatPrice(promo.discountAmount)}`;
-  return '';
-}
-
-function formatLessonDuration(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 export default function CourseDetailPage({ initialCourse }: { initialCourse: Course | null }) {
@@ -79,6 +76,7 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
   const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
   const [applyingPromo, setApplyingPromo] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'syllabus'>('overview');
 
   useEscapeToClose(!!previewLesson, () => setPreviewLesson(null));
   useEscapeToClose(showPaywall, () => setShowPaywall(false));
@@ -168,23 +166,24 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
   const allLessons = syllabus.flatMap((s) => s.lessons);
   const totalLessonCount = allLessons.length;
   const totalDurationSeconds = allLessons.reduce((sum, l) => sum + l.durationSeconds, 0);
+  const shell = '-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen flex flex-col bg-cdc-bg text-cdc-ink';
 
   if (loading) {
     return (
-      <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+      <div className={shell}>
         <SiteHeader />
-        <div className="flex-1 flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">{t('loading')}</div>
+        <div className="flex-1 flex items-center justify-center text-sm text-cdc-muted">{t('loading')}</div>
         <SiteFooter />
       </div>
     );
   }
   if (notFound || !course) {
     return (
-      <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+      <div className={shell}>
         <SiteHeader />
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-sm text-slate-600 dark:text-slate-300">
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-sm text-cdc-muted">
           <p>{t('notFound')}</p>
-          <BackButton fallbackHref="/courses" className="dark:text-slate-400 dark:hover:text-slate-100" />
+          <BackButton fallbackHref="/courses" className="text-cdc-muted hover:text-cdc-ink" />
         </div>
         <SiteFooter />
       </div>
@@ -193,11 +192,14 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
 
   // What the buy button actually charges right now — a 100% discount promo
   // brings this to 0 just as much as a course that's simply free on its
-  // own, so both cases get the same "activate for free" label/copy below.
+  // own, so both cases get the same "activate for free" label/copy.
   const effectivePrice = appliedPromo ? appliedPromo.discountedAmount : course.currentPrice;
+  const ctaProps = { course, t, enrolled, processing, effectivePrice, onEnroll: handleEnroll };
+  const heroImage = course.coverImageUrl || course.thumbnailUrl;
+  const description = (lang === 'en' && course.descriptionEn) || course.description;
 
   return (
-    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
+    <div className={shell}>
       <SEOHead
         title={course.title}
         description={course.description.replace(/[#*`_>-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 200)}
@@ -205,247 +207,132 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
         ogType="product"
       />
       <SiteHeader />
-      <div className="max-w-3xl mx-auto px-6 py-16 flex-1 w-full">
-        <Link href="/courses" className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white no-underline">
+      <div className="max-w-7xl mx-auto py-8 sm:py-12 pb-32 lg:pb-12 flex-1 w-full">
+        <Link href="/courses" className="text-sm font-semibold text-cdc-muted hover:text-cdc-ink no-underline">
           {t('backToCourses')}
         </Link>
 
-        {course.coverImageUrl && (
-          <div className="mt-6">
-            <CourseHeroBanner src={course.coverImageUrl} alt={course.title} />
-          </div>
-        )}
-
-        <div className="mt-6 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-purple-600 dark:text-purple-300 bg-purple-500/10 border-purple-500/20">
-              {course.category}
-            </span>
-            <span className="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-slate-600 dark:text-slate-300 bg-slate-500/10 border-slate-500/20 whitespace-nowrap">
-              {courseLanguageBadge(course.language, lang)}
-            </span>
-            {course.saleActive && (
-              <span className="text-[10px] font-black text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500">
-                {course.discountBadgeText || `-${course.discountPercent}% ${t('saleOffSuffix')}`}
-              </span>
-            )}
-          </div>
-          <div className="flex items-baseline gap-2">
-            {course.saleActive && <s className="text-sm text-slate-500">{formatPrice(course.originalPrice)}</s>}
-            <span className="text-lg font-black text-cyan-600 dark:text-cyan-300">{formatPrice(course.currentPrice)}</span>
-          </div>
-        </div>
-        <h1 className="blog-heading-safe text-3xl md:text-4xl font-black mt-4 mb-4">{course.title}</h1>
-        <LearningRatingSummary {...course} lang={lang} />
-        <div className="mb-6 flex flex-wrap items-center gap-3">
-          <SocialShareButtons title={course.title} lang={lang} />
-          <GiftThisButton priceMinor={course.currentPrice} itemTitle={course.title} itemPath={`/courses/${course.id}`} lang={lang} />
-        </div>
-        <div className="mb-4">
-          <VIPAudioNarrator
-            text={(lang === 'en' && course.descriptionEn) || course.description}
-            speechLang={lang === 'ka' ? 'ka-GE' : 'en-US'}
-            lang={lang}
-            stripMarkdown
-          />
-        </div>
-        <MarkdownContent content={(lang === 'en' && course.descriptionEn) || course.description} className="mb-8" />
-
-        {course.introVideoUrl && (
-          <div className="mb-8">
-            <VideoEmbed url={course.introVideoUrl} title={course.title} />
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-4 mb-8">
-          {course.mentorName && (
-            <div className="flex-1 min-w-[220px] flex items-center gap-4 p-4 rounded-xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-              {course.mentorAvatarUrl ? (
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-8 items-start">
+          <div className="min-w-0">
+            {/* Hero media + overlapping info card (EDUPRO course detail). */}
+            {heroImage ? (
+              course.coverImageUrl ? (
+                <div className="overflow-hidden rounded-card">
+                  <CourseHeroBanner src={course.coverImageUrl} alt={course.title} />
+                </div>
+              ) : (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={course.mentorAvatarUrl}
-                  alt={course.mentorName}
-                  className="w-12 h-12 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white text-sm font-black shrink-0">
-                  {course.mentorName.slice(0, 2)}
-                </div>
-              )}
-              <div>
-                <p className="text-[11px] uppercase tracking-widest text-slate-500 font-bold">{t('mentor')}</p>
-                <p className="text-sm font-bold text-slate-900 dark:text-white">{course.mentorName}</p>
-                {course.mentorTitle && <p className="text-xs text-slate-500 dark:text-slate-400">{course.mentorTitle}</p>}
-              </div>
-            </div>
-          )}
-          {totalLessonCount > 0 && (
-            <div className="flex-1 min-w-[220px] flex items-center gap-4 p-4 rounded-xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-              <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-cyan-600 dark:text-cyan-300 text-lg shrink-0">⏱️</div>
-              <div>
-                <p className="text-[11px] uppercase tracking-widest text-slate-500 font-bold">{t('duration')}</p>
-                <p className="text-sm font-bold text-slate-900 dark:text-white">{formatTotalDuration(totalDurationSeconds, lang)}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{totalLessonCount} {t('courseLessons')}</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {error && <div className="mb-6 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-600 dark:text-red-300">{error}</div>}
-
-        {course.saleActive && getSaleCountdownLabel(course.discountEndDate, lang) && (
-          <p className="text-xs font-bold text-rose-500 dark:text-rose-400 mb-3">⏳ {getSaleCountdownLabel(course.discountEndDate, lang)}</p>
-        )}
-        <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10">
-          {!enrolled && (
-            <div className="flex justify-end mb-2">
-              <VideoTutorialLink lang={lang} />
-            </div>
-          )}
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-baseline gap-3">
-              {(course.saleActive || appliedPromo) && <s className="text-lg text-slate-500">{formatPrice(course.originalPrice)}</s>}
-              <span className="text-3xl font-black text-slate-900 dark:text-white">
-                {formatPrice(effectivePrice)}
-              </span>
-            </div>
-            {enrolled ? (
-              <Link
-                href={`/courses/${course.id}/learn`}
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black px-6 py-3.5 rounded-xl text-sm uppercase tracking-widest no-underline shadow-lg hover:shadow-xl transition-all"
-              >
-                {t('continueLearning')}
-              </Link>
-            ) : course.isFull ? (
-              <span className="inline-flex items-center gap-2 bg-slate-300 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-black px-6 py-3.5 rounded-xl text-sm uppercase tracking-widest cursor-not-allowed">
-                {t('soldOut')}
-              </span>
+                <img src={heroImage} alt="" className="w-full aspect-video object-cover rounded-card" />
+              )
             ) : (
-              <div className="space-y-3">
-              {effectivePrice > 0 && (
-                <CheckoutGatewayPicker lang={lang} gateway={gateway} onChange={setGateway} stripeEnabled={stripeEnabled} disabled={processing} />
-              )}
-              <button
-                type="button"
-                onClick={handleEnroll}
-                disabled={processing}
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black px-6 py-3.5 rounded-xl text-sm uppercase tracking-widest shadow-lg hover:shadow-xl transition-all disabled:opacity-60"
-              >
-                {processing ? (effectivePrice === 0 ? t('activating') : t('detailEnrolling')) : effectivePrice === 0 ? t('enrollFree') : t('enroll')}
-              </button>
-              </div>
+              <div className="w-full aspect-[21/9] rounded-card bg-gradient-to-br from-violet-700 via-indigo-700 to-cyan-700" aria-hidden="true" />
             )}
-          </div>
 
-          {!enrolled && effectivePrice > 0 && (
-            <p
-              className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400"
-              title={t('refundGuaranteeDetail') as string}
-            >
-              <RefreshCw className="w-3.5 h-3.5 shrink-0" />
-              {t('refundGuarantee')}
-            </p>
-          )}
-
-          {!enrolled && (
-            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-              {appliedPromo ? (
-                <div className="flex items-center gap-2 flex-wrap text-xs bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl px-3 py-2.5">
-                  <span className="font-bold text-emerald-700 dark:text-emerald-400">
-                    ✓ {t('promoApplied')}: {appliedPromo.code}
+            <div className="vip-card hover:translate-y-0 relative -mt-10 mx-3 sm:mx-6 p-5 sm:p-7">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="cdc-chip text-cdc-primary-ink">{course.category}</span>
+                <span className="cdc-chip">{courseLanguageBadge(course.language, lang)}</span>
+              </div>
+              <h1 style={{ lineHeight: 1.3 }} className="blog-heading-safe mt-4 text-2xl md:text-4xl font-extrabold text-cdc-ink">{course.title}</h1>
+              <LearningRatingSummary {...course} lang={lang} />
+              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-cdc-muted">
+                {totalLessonCount > 0 && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <BookOpen className="w-4 h-4 text-cdc-primary-ink" aria-hidden="true" />
+                    {totalLessonCount} {t('courseLessons')}
                   </span>
-                  {formatDiscount(appliedPromo) && (
-                    <span className="font-black text-[11px] text-white bg-emerald-600 px-2 py-0.5 rounded-full">
-                      {formatDiscount(appliedPromo)}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAppliedPromo(null);
-                      setPromoInput('');
-                    }}
-                    className="ml-auto text-emerald-700/70 dark:text-emerald-400/70 hover:text-emerald-800 dark:hover:text-emerald-300 bg-transparent border-none cursor-pointer underline"
-                  >
-                    {t('promoRemove')}
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">{t('promoLabel')}</p>
-                  <div className="flex items-center gap-2">
-                    <input
-                      value={promoInput}
-                      onChange={(e) => setPromoInput(e.target.value)}
-                      placeholder={t('promoPlaceholder')}
-                      className="flex-1 max-w-[220px] rounded-lg border border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleApplyPromo}
-                      disabled={applyingPromo || !promoInput.trim()}
-                      className="text-xs font-bold text-cyan-700 dark:text-cyan-400 bg-cyan-50/80 dark:bg-cyan-500/10 backdrop-blur-md border border-cyan-500/30 rounded-lg px-3.5 py-2.5 cursor-pointer hover:bg-cyan-100 dark:hover:bg-cyan-500/20 disabled:opacity-50 transition-colors"
-                    >
-                      {applyingPromo ? t('promoApplying') : t('promoApply')}
-                    </button>
-                  </div>
-                </div>
-              )}
-              {promoError && <p className="text-xs text-red-500 mt-1.5">{promoError}</p>}
+                )}
+                {totalDurationSeconds > 0 && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-cdc-primary-ink" aria-hidden="true" />
+                    {formatTotalDuration(totalDurationSeconds, lang)}
+                  </span>
+                )}
+                <span className="ml-auto text-xl font-extrabold text-cdc-ink">{formatPrice(course.currentPrice)}</span>
+              </div>
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                <SocialShareButtons title={course.title} lang={lang} />
+                <GiftThisButton priceMinor={course.currentPrice} itemTitle={course.title} itemPath={`/courses/${course.id}`} lang={lang} />
+              </div>
             </div>
-          )}
-        </div>
 
-        {/* Syllabus */}
-        <div className="mt-12">
-          <h2 className="text-xl font-black mb-5">{t('syllabus')}</h2>
-          {syllabus.length === 0 ? (
-            <p className="text-sm text-slate-500">{t('noSyllabus')}</p>
-          ) : (
-            <div className="space-y-3">
-              {syllabus.map((section, sIdx) => (
-                <div key={section.id} className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                  <div className="px-4 py-3 bg-slate-100 dark:bg-slate-900/60 text-sm font-bold text-slate-900 dark:text-white">
-                    {sIdx + 1}. {section.title}
-                  </div>
-                  {section.lessons.length > 0 && (
-                    <div className="divide-y divide-slate-200 dark:divide-slate-800/80">
-                      {section.lessons.map((lesson) => (
-                        <div key={lesson.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-xs text-slate-600 dark:text-slate-300">
-                          <span className="flex-1">{lesson.title}</span>
-                          {!enrolled &&
-                            (lesson.isFreePreview && lesson.embedUrl ? (
-                              <button
-                                type="button"
-                                onClick={() => setPreviewLesson(lesson)}
-                                className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-cyan-600 dark:text-cyan-400 bg-transparent border border-cyan-500/30 rounded-full px-2 py-0.5 cursor-pointer hover:bg-cyan-500/10"
-                              >
-                                <Play className="w-2.5 h-2.5" />
-                                {t('preview')}
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => setShowPaywall(true)}
-                                title={t('locked')}
-                                className="inline-flex items-center text-slate-400 bg-transparent border-none cursor-pointer p-0.5"
-                              >
-                                <Lock className="w-3 h-3" />
-                              </button>
-                            ))}
-                          <span className="text-slate-500 shrink-0">{formatLessonDuration(lesson.durationSeconds)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+            {/* About / Curriculum tabs */}
+            <div className="mt-8 grid grid-cols-2 gap-1 p-1 rounded-2xl bg-cdc-surface border border-cdc-border">
+              {(['overview', 'syllabus'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={`py-2.5 rounded-xl text-sm font-bold border-none cursor-pointer transition-colors ${
+                    activeTab === tab ? 'bg-cdc-primary text-white' : 'bg-transparent text-cdc-muted hover:text-cdc-ink'
+                  }`}
+                >
+                  {t(tab)}
+                </button>
               ))}
             </div>
-          )}
-        </div>
 
-        <CourseLeaderboard courseId={course.id} lang={lang} />
-        <LearningRatingsSection target="courses" targetId={course.id} lang={lang} onChange={(summary) => setCourse((current) => current ? { ...current, averageRating: summary.averageRating, reviewCount: summary.reviewCount } : current)} />
+            {error && <div className="mt-6 rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-600 dark:text-red-300">{error}</div>}
+
+            <div className="mt-6">
+              {activeTab === 'overview' ? (
+                <>
+                  <div className="mb-4">
+                    <VIPAudioNarrator text={description} speechLang={lang === 'ka' ? 'ka-GE' : 'en-US'} lang={lang} stripMarkdown />
+                  </div>
+                  <div className="vip-card hover:translate-y-0 p-5 sm:p-7">
+                    <MarkdownContent content={description} />
+                  </div>
+                  {course.introVideoUrl && (
+                    <div className="mt-6 overflow-hidden rounded-card">
+                      <VideoEmbed url={course.introVideoUrl} title={course.title} />
+                    </div>
+                  )}
+                  {course.mentorName && (
+                    <div className="mt-6">
+                      <h2 className="text-lg font-bold text-cdc-ink mb-3">{t('mentor')}</h2>
+                      <div className="vip-card hover:translate-y-0 p-4 flex items-center gap-4">
+                        {course.mentorAvatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={course.mentorAvatarUrl} alt={course.mentorName} className="w-14 h-14 rounded-full object-cover ring-2 ring-cdc-border shrink-0" />
+                        ) : (
+                          <div className="w-14 h-14 rounded-full bg-cdc-primary text-white flex items-center justify-center text-sm font-bold shrink-0">{course.mentorName.slice(0, 2)}</div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-base font-bold text-cdc-ink">{course.mentorName}</p>
+                          {course.mentorTitle && <p className="text-sm text-cdc-muted">{course.mentorTitle}</p>}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <CourseSyllabus syllabus={syllabus} enrolled={enrolled} t={t} onPreview={setPreviewLesson} onLocked={() => setShowPaywall(true)} />
+              )}
+            </div>
+
+            <CourseLeaderboard courseId={course.id} lang={lang} />
+            <LearningRatingsSection target="courses" targetId={course.id} lang={lang} onChange={(summary) => setCourse((current) => current ? { ...current, averageRating: summary.averageRating, reviewCount: summary.reviewCount } : current)} />
+          </div>
+
+          <aside className="lg:sticky lg:top-24">
+            <CoursePurchaseCard
+              {...ctaProps}
+              lang={lang}
+              appliedPromo={appliedPromo}
+              promoInput={promoInput}
+              setPromoInput={setPromoInput}
+              applyingPromo={applyingPromo}
+              promoError={promoError}
+              onApplyPromo={handleApplyPromo}
+              onRemovePromo={() => { setAppliedPromo(null); setPromoInput(''); }}
+              topSlot={!enrolled ? <div className="flex justify-end mb-3"><VideoTutorialLink lang={lang} /></div> : null}
+              ctaSlot={!enrolled && !course.isFull && effectivePrice > 0 ? (
+                <CheckoutGatewayPicker lang={lang} gateway={gateway} onChange={setGateway} stripeEnabled={stripeEnabled} disabled={processing} />
+              ) : null}
+            />
+          </aside>
+        </div>
       </div>
 
       {previewLesson && (
@@ -464,36 +351,20 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
 
       {showPaywall && (
         <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowPaywall(false)}>
-          <div
-            className="max-w-md w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl text-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Lock className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-            <h3 className="text-base font-black text-slate-900 dark:text-white mb-2">{t('paywallTitle')}</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{t('paywallBody')}</p>
-            {course.isFull ? (
-              <span className="block w-full rounded-xl bg-slate-300 dark:bg-slate-700 px-5 py-3 text-sm font-black text-slate-600 dark:text-slate-300 cursor-not-allowed">
-                {t('soldOut')}
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setShowPaywall(false);
-                  handleEnroll();
-                }}
-                disabled={processing}
-                className="w-full rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-3 text-sm font-black text-white disabled:opacity-60"
-              >
-                {processing ? t('detailEnrolling') : t('buyCourse')}
-              </button>
-            )}
+          <div className="max-w-md w-full vip-card hover:translate-y-0 p-6 text-center" onClick={(e) => e.stopPropagation()}>
+            <span className="mx-auto mb-3 w-14 h-14 rounded-full bg-cdc-primary-soft text-cdc-primary-ink flex items-center justify-center">
+              <Lock className="w-6 h-6" aria-hidden="true" />
+            </span>
+            <h3 className="text-base font-bold text-cdc-ink mb-2">{t('paywallTitle')}</h3>
+            <p className="text-sm text-cdc-muted mb-6">{t('paywallBody')}</p>
+            <CourseCtaButton
+              {...ctaProps}
+              onEnroll={() => { setShowPaywall(false); handleEnroll(); }}
+              className="w-full"
+            />
             {!course.isFull && (
-              <p
-                className="mt-3 inline-flex items-center justify-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400"
-                title={t('refundGuaranteeDetail') as string}
-              >
-                <RefreshCw className="w-3.5 h-3.5 shrink-0" />
+              <p className="mt-3 inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400" title={t('refundGuaranteeDetail') as string}>
+                <RefreshCw className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                 {t('refundGuarantee')}
               </p>
             )}
@@ -504,6 +375,7 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
       <SuccessStoriesCarousel lang={lang} />
 
       <SiteFooter />
+      <CourseMobileCta {...ctaProps} />
     </div>
   );
 }
