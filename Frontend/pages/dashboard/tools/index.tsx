@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
-import { Bot, GraduationCap, Mic, Bug, Sparkles, Calendar, BookOpen, ShieldCheck, LayoutGrid, Loader2 } from 'lucide-react';
+import { Bot, GraduationCap, Mic, Bug, Sparkles, Calendar, BookOpen, ShieldCheck, LayoutGrid, Loader2, Palette } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import { useAuth } from '../../../src/context/AuthContext';
 import { getMyAgents } from '../../../src/services/agentService';
@@ -42,6 +42,8 @@ const EN_STRINGS = {
   educatorAvailableDesc: 'Tests, rubrics and lesson plans for teachers — 5-day free trial',
   childrensBook: "AI Children's Book",
   childrensBookDesc: 'A personalized illustrated book starring your child',
+  coloringPages: 'AI Coloring Pages',
+  coloringPagesDesc: 'Printable coloring pages on any topic — first page free',
   proctoredExam: 'AI-Proctored Exam',
   proctoredExamDesc: 'Create exams and send students a supervised exam link',
   open: 'Open',
@@ -84,6 +86,8 @@ const dict = {
     educatorAvailableDesc: 'ტესტები, რუბრიკები და გაკვეთილის გეგმები მასწავლებლებისთვის — 5 დღე უფასოდ',
     childrensBook: 'AI საბავშვო წიგნი',
     childrensBookDesc: 'პერსონალური ილუსტრირებული წიგნი, სადაც მთავარი გმირი თქვენი შვილია',
+    coloringPages: 'AI გასაფერადებელი გვერდები',
+    coloringPagesDesc: 'დასაბეჭდი გასაფერადებელი გვერდები ნებისმიერ თემაზე — პირველი უფასოა',
     proctoredExam: 'AI ზედამხედველობით გამოცდა',
     proctoredExamDesc: 'შექმენით გამოცდა და გაუგზავნეთ სტუდენტებს ბმული',
     open: 'გახსნა',
@@ -330,6 +334,18 @@ function MyToolsContent() {
     badgeLabel: t.statusAvailable,
     dateLine: null,
     manageHref: '/dashboard/tools/childrens-book',
+    actionLabel: t.start,
+  });
+  cards.push({
+    key: 'coloring-pages',
+    icon: Palette,
+    accent: 'emerald',
+    title: t.coloringPages,
+    description: t.coloringPagesDesc,
+    badge: 'AVAILABLE',
+    badgeLabel: t.statusAvailable,
+    dateLine: null,
+    manageHref: '/dashboard/tools/coloring-pages',
     actionLabel: t.start,
   });
   cards.push({

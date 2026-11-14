@@ -223,6 +223,13 @@ export const AZURE_IMAGE_ENDPOINT = (process.env.AZURE_IMAGE_ENDPOINT || '').tri
 export const AZURE_IMAGE_API_KEY = (process.env.AZURE_IMAGE_API_KEY || '').trim();
 export const AZURE_IMAGE_DEPLOYMENT = (process.env.AZURE_IMAGE_DEPLOYMENT || '').trim();
 
+// Azure AI Content Safety ("cdc-content-safety", westeurope) — screens the
+// coloring-page tool's topic text and finished images for sexual, hate,
+// violence and self-harm content. Optional like every AI provider here:
+// when unset the coloring tool refuses to generate (fails closed).
+export const AZURE_CONTENT_SAFETY_ENDPOINT = (process.env.AZURE_CONTENT_SAFETY_ENDPOINT || '').trim().replace(/\/+$/, '');
+export const AZURE_CONTENT_SAFETY_KEY = (process.env.AZURE_CONTENT_SAFETY_KEY || '').trim();
+
 // Secondary Azure OpenAI resource (a separate region/deployment) — see
 // services/azureChatCompletionService.ts's multi-region failover. On the
 // newer Azure OpenAI "v1" API surface, so it's addressed with the plain
