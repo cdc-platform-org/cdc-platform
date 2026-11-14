@@ -116,6 +116,7 @@ Money is always stored as `Int` minor units (tetri / cents), never `Float`.
 | Payments (Stripe) | `stripePayments.ts` | `stripePaymentService`, `subscriptionStateService` | `pages/payments/stripe/result.tsx` |
 | Billing, invoices, wallet, payouts | `billing.ts`, `invoices.ts`, `wallet.ts`, `adminPayouts.ts`, `adminFinance.ts` | `billingService`, `invoiceService`, `bogPayoutService` | `dashboard/billing.tsx`, `wallet.tsx` |
 | Digital store (products) | `products.ts`, `adminProducts.ts`, `productReviews.ts` | `productSaleService`, `productPricing`, `productFileDelivery`, `productImageProtection` | `pages/store/**`, `pages/marketplace/` |
+| Design editor (edit purchased templates, PDF/PNG export) | `designs.ts`, `admin/adminProductTemplates.ts` | `services/designs/` (designService, designAssets), schema `schemas/designTemplateSchemas.ts` | `pages/dashboard/designs/**`, `src/components/designEditor/`, format doc `docs/design-templates/` |
 | Gigs, vacancies, escrow | `gigs.ts`, `vacancies.ts`, `directOffers.ts`, `orders.ts` | `escrowService`, `gigApprovalService` | `pages/gigs/**`, `pages/vacancies/**` |
 | Mentorship | `mentorship.ts`, `mentorApplications.ts`, `adminMentorship.ts` | `mentorshipEscrowService`, `mentorAvailabilityService` | `pages/mentors.tsx`, `dashboard/mentorship*.tsx` |
 | HR support | `hrSupport.ts`, `adminHRSupport.ts` | `hrSupportEscrowService`, `hrPricingService` | `dashboard/hr-support/**` |

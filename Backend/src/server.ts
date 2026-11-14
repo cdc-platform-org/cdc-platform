@@ -101,6 +101,8 @@ import notificationRoutes from './routes/notifications';
 import adminNotificationRoutes from './routes/admin/adminNotifications';
 import productRoutes from './routes/products';
 import adminProductRoutes from './routes/admin/adminProducts';
+import adminProductTemplateRoutes from './routes/admin/adminProductTemplates';
+import designRoutes from './routes/designs';
 import adminOpportunitiesRoutes from './routes/admin/adminOpportunities';
 import adminMarketingRoutes from './routes/admin/adminMarketing';
 import creatorMarketingRoutes from './routes/creatorMarketing';
@@ -266,6 +268,11 @@ app.use(
     },
   })
 );
+// Design documents (editor saves, admin template uploads) can exceed the
+// default 100 KB JSON limit — a multi-page planner is a few hundred KB. The
+// services cap them at MAX_DESIGN_JSON_BYTES; this parser runs first so the
+// global one below skips already-parsed bodies.
+app.use(['/api/designs', '/api/admin/product-templates'], express.json({ limit: '2mb' }));
 app.use(express.json({ verify: (req, _res, buf) => { (req as express.Request).rawBody = buf; } }));
 app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
 
@@ -360,6 +367,8 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin/notifications', adminNotificationRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/admin/products', adminProductRoutes);
+app.use('/api/admin/product-templates', adminProductTemplateRoutes);
+app.use('/api/designs', designRoutes);
 app.use('/api/admin/opportunities', adminOpportunitiesRoutes);
 app.use('/api/admin/marketing', adminMarketingRoutes);
 app.use('/api/product-reviews', productReviewRoutes);

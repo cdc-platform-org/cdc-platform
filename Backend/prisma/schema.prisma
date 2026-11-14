@@ -763,6 +763,7 @@ model User {
   skillTestAttempts             SkillTestAttempt[]
   verifiedSkills                VerifiedSkill[]
   productPurchases              ProductPurchase[]
+  userDesigns                   UserDesign[]
   assignmentSubmissions         AssignmentSubmission[]
   submittedProducts             DigitalProduct[]               @relation("SubmittedProducts")
   productReviewsGiven           ProductReview[]                @relation("ProductReviewsGiven")
@@ -2084,6 +2085,11 @@ model DigitalProduct {
   salesCount         Int                @default(0)
   createdAt          DateTime           @default(now())
   purchases          ProductPurchase[]
+  // Editable "cdc-template/1" layout buyers open in the in-platform design
+  // editor (routes/designs.ts). Kept in its own table so the public product
+  // queries never select it by accident — it IS the paid product.
+  editableTemplate   ProductTemplate?
+  userDesigns        UserDesign[]
   // Usage terms attached to this listing — snapshotted onto ProductPurchase
   // at fulfillment time (see productSaleService.ts). Defaults to the most
   // restrictive option so an admin/submitter has to deliberately opt into a
@@ -2125,6 +2131,48 @@ model DigitalProduct {
   // full-table scan on both.
   @@index([status, category])
   @@map("digital_products")
+}
+
+// ============================================================
+// DESIGN EDITOR — editable templates for Digital Store products and the
+// buyer's own edited copies. Format + validation: schemas/
+// designTemplateSchemas.ts; access rules: services/designs/.
+// ============================================================
+
+model ProductTemplate {
+  id        String         @id @default(uuid())
+  productId String         @unique
+  product   DigitalProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  // A validated "cdc-template/1" document (designTemplateSchema).
+  data      Json
+  // Bumped on every admin replace, so a buyer's design can show "the
+  // template was updated" later without diffing JSON.
+  version   Int            @default(1)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@map("product_templates")
+}
+
+model UserDesign {
+  id              String         @id @default(uuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId       String
+  // Cascade: a design only exists as an edit of a product's template; if
+  // the product row is ever hard-deleted the purchase (and access) goes too.
+  product         DigitalProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  title           String
+  // The buyer's edited "cdc-template/1" document.
+  data            Json
+  // ProductTemplate.version this design was copied from.
+  templateVersion Int            @default(1)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([userId, updatedAt])
+  @@index([productId])
+  @@map("user_designs")
 }
 
 // ============================================================

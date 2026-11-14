@@ -37,6 +37,7 @@ import {
 } from '../../src/services/productService';
 import { getAiAutomationSettings, updateAiAutomationSettings } from '../../src/services/adminPanelService';
 import { formatPrice } from '../../src/utils/coursePricing';
+import ProductTemplatePanel from '../../src/components/admin/ProductTemplatePanel';
 
 // Bilingual because this admin page is English-only while its editors work in
 // Georgian. Why 4:3 + centre: the store detail gallery is 4:3 and the store
@@ -302,6 +303,7 @@ function ModerationProductCard({
   onSave: (patch: UpdateProductPayload) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
+  const [showTemplate, setShowTemplate] = useState(false);
   const [title, setTitle] = useState(p.title);
   const [description, setDescription] = useState(p.description);
   const [titleEn, setTitleEn] = useState(p.titleEn ?? '');
@@ -627,6 +629,7 @@ function ModerationProductCard({
             )}
           </div>
         )}
+        {showTemplate && <ProductTemplatePanel productId={p.id} />}
       </div>
       {!editing && (
         <div className="flex flex-col gap-2 shrink-0 justify-center">
@@ -635,6 +638,9 @@ function ModerationProductCard({
           </button>
           <button type="button" onClick={togglePurchases} className="text-xs font-medium text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50">
             {showPurchases ? 'Hide Purchases' : 'Purchases'}
+          </button>
+          <button type="button" onClick={() => setShowTemplate((v) => !v)} className="text-xs font-medium text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50">
+            {showTemplate ? 'Hide Template' : 'Editable Template'}
           </button>
           <button
             type="button"

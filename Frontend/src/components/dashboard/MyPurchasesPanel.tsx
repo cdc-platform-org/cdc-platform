@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { useState } from 'react';
-import { BookOpen, Download, GraduationCap, ShoppingBag, Loader2, Clock, ArrowRight } from 'lucide-react';
+import { BookOpen, Download, GraduationCap, ShoppingBag, Loader2, Clock, ArrowRight, PenTool } from 'lucide-react';
 import { MyCourseWithProgress } from '../../types/lms';
 import { DigitalProduct, productTitle } from '../../services/productService';
 import { BookListItem, downloadBookPdf } from '../../services/childrensBookService';
@@ -23,6 +23,7 @@ const copy = {
     read: 'წაკითხვა',
     continue: 'გაგრძელება',
     download: 'ჩამოტვირთვა',
+    edit: 'რედაქტირება',
     preparePdf: 'PDF-ის მომზადება',
     downloadFailed: 'ჩამოტვირთვა ვერ მოხერხდა. სცადე თავიდან.',
     statusPaymentPending: 'გადახდა მოწმდება…',
@@ -47,6 +48,7 @@ const copy = {
     read: 'Read',
     continue: 'Continue',
     download: 'Download',
+    edit: 'Edit',
     preparePdf: 'Prepare PDF',
     downloadFailed: 'Download failed. Please try again.',
     statusPaymentPending: 'Confirming payment…',
@@ -214,6 +216,12 @@ export default function MyPurchasesPanel({
       <Link href={`/store/${product.id}`} className={btnSecondary}>
         {t.open}
       </Link>
+      {product.hasEditableTemplate && (
+        <Link href={`/dashboard/designs?product=${product.id}`} className={btnSecondary}>
+          <PenTool className="w-3.5 h-3.5" />
+          {t.edit}
+        </Link>
+      )}
       <button
         type="button"
         className={btnPrimary}

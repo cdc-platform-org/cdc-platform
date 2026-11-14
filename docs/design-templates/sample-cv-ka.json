@@ -1,0 +1,27 @@
+{
+  "format": "cdc-template/1",
+  "title": "CV — კლასიკური",
+  "locale": "ka",
+  "page": { "widthMm": 210, "heightMm": 297, "background": "#ffffff" },
+  "fonts": ["FiraGO", "Noto Serif Georgian"],
+  "pages": [
+    {
+      "id": "p1",
+      "elements": [
+        { "id": "sidebar", "type": "shape", "shape": "rect", "xMm": 0, "yMm": 0, "wMm": 70, "hMm": 297, "fill": "#1e3a5f", "editable": false, "locked": true },
+        { "id": "photoFrame", "type": "shape", "shape": "ellipse", "xMm": 15, "yMm": 18, "wMm": 40, "hMm": 40, "fill": "#cbd5e1", "label": "Photo frame" },
+        { "id": "name", "type": "text", "xMm": 80, "yMm": 20, "wMm": 120, "hMm": 14, "text": "ნინო ბერიძე", "fontFamily": "Noto Serif Georgian", "fontSizePt": 30, "fontWeight": 700, "color": "#1e3a5f", "label": "სახელი და გვარი" },
+        { "id": "role", "type": "text", "xMm": 80, "yMm": 36, "wMm": 120, "hMm": 8, "text": "მარკეტინგის მენეჯერი", "fontFamily": "FiraGO", "fontSizePt": 14, "color": "#475569", "label": "პოზიცია" },
+        { "id": "divider", "type": "shape", "shape": "line", "xMm": 80, "yMm": 50, "wMm": 115, "hMm": 0.6, "stroke": "#1e3a5f" },
+        { "id": "contactTitle", "type": "text", "xMm": 10, "yMm": 70, "wMm": 52, "hMm": 7, "text": "კონტაქტი", "fontFamily": "FiraGO", "fontSizePt": 13, "fontWeight": 700, "color": "#ffffff", "letterSpacing": 50 },
+        { "id": "contact", "type": "text", "xMm": 10, "yMm": 80, "wMm": 52, "hMm": 30, "text": "+995 555 00 00 00\nnino@example.com\nთბილისი, საქართველო", "fontFamily": "FiraGO", "fontSizePt": 10, "color": "#e2e8f0", "lineHeight": 1.5 },
+        { "id": "skillsTitle", "type": "text", "xMm": 10, "yMm": 120, "wMm": 52, "hMm": 7, "text": "უნარები", "fontFamily": "FiraGO", "fontSizePt": 13, "fontWeight": 700, "color": "#ffffff", "letterSpacing": 50 },
+        { "id": "skills", "type": "text", "xMm": 10, "yMm": 130, "wMm": 52, "hMm": 40, "text": "• ციფრული მარკეტინგი\n• SEO / SEM\n• გუნდის მართვა\n• Excel, Canva, Figma", "fontFamily": "FiraGO", "fontSizePt": 10, "color": "#e2e8f0", "lineHeight": 1.5 },
+        { "id": "aboutTitle", "type": "text", "xMm": 80, "yMm": 58, "wMm": 115, "hMm": 8, "text": "ჩემ შესახებ", "fontFamily": "FiraGO", "fontSizePt": 14, "fontWeight": 700, "color": "#1e3a5f" },
+        { "id": "about", "type": "text", "xMm": 80, "yMm": 68, "wMm": 115, "hMm": 30, "text": "5 წლიანი გამოცდილება ციფრულ მარკეტინგში. მიყვარს მონაცემებზე დაფუძნებული გადაწყვეტილებები და კრეატიული კამპანიები.", "fontFamily": "FiraGO", "fontSizePt": 10.5, "color": "#334155", "lineHeight": 1.5, "align": "justify" },
+        { "id": "expTitle", "type": "text", "xMm": 80, "yMm": 100, "wMm": 115, "hMm": 8, "text": "გამოცდილება", "fontFamily": "FiraGO", "fontSizePt": 14, "fontWeight": 700, "color": "#1e3a5f" },
+        { "id": "exp", "type": "text", "xMm": 80, "yMm": 110, "wMm": 115, "hMm": 60, "text": "2021 — დღემდე · მარკეტინგის მენეჯერი, შპს „მაგალითი“\nკამპანიების დაგეგმვა და ბიუჯეტის მართვა.\n\n2019 — 2021 · SMM სპეციალისტი, შპს „სტარტაპი“\nსოციალური ქსელების მართვა, კონტენტის შექმნა.", "fontFamily": "FiraGO", "fontSizePt": 10.5, "color": "#334155", "lineHeight": 1.5 }
+      ]
+    }
+  ]
+}
