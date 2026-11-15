@@ -418,7 +418,7 @@ function LearnContent() {
                     )}
                   </div>
                 )}
-                <DesignStudio2in1 lang={lang} onSubmitWork={activeLesson ? handleStudioSubmitWork : undefined} />
+                <DesignStudio2in1 lang={lang} onSubmitWork={activeLesson ? async (file: File) => { if (!courseId) return; const fd = new FormData(); fd.append('file', file); await api.post(`/courses/${courseId}/lessons/${activeLesson.id}/assignments`, fd); setSubmittedLessonIds((prev) => new Set(prev).add(activeLesson.id)); } : undefined} />
               </div>
             )}
             {activeTab === 'conspectus' &&
