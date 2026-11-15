@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../services/apiClient';
+import { speakNaturally, stopNaturalSpeech } from '../utils/naturalSpeech';
 
 interface WordAnalysis {
   word: string;
@@ -24,7 +25,11 @@ export function useSmartReader(initialText: string) {
   const [wordScores, setWordScores] = useState<WordAnalysis[]>([]);
   const [teacherAdvice, setTeacherAdvice] = useState<string | null>(null);
 
-  const words = text.split(/(\s+)/);
+  useEffect(() => {
+    setIsPlaying(false);
+    setCurrentWordIdx(-1);
+    return () => stopNaturalSpeech();
+  }, [text, learningLang, playbackSpeed]);
 
   const handleTextSelection = () => {
     const selection = window.getSelection();
@@ -36,27 +41,18 @@ export function useSmartReader(initialText: string) {
   };
 
   const togglePlay = () => {
-    if (!('speechSynthesis' in window)) return;
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = playbackSpeed;
-
-    utterance.onboundary = (event) => {
-      const wordIndex = words.findIndex((word) => text.indexOf(word) === event.charIndex);
-      setCurrentWordIdx(wordIndex);
-    };
-
-    utterance.onend = () => {
+    const locale = ({ English: 'en-US', Georgian: 'ka-GE', Spanish: 'es-ES', French: 'fr-FR', German: 'de-DE' } as Record<string, string>)[learningLang] ?? 'en-US';
+    const finish = () => {
       setIsPlaying(false);
       setCurrentWordIdx(-1);
     };
 
     if (isPlaying) {
-      window.speechSynthesis.cancel();
+      stopNaturalSpeech();
       setIsPlaying(false);
     } else {
-      window.speechSynthesis.speak(utterance);
       setIsPlaying(true);
+      void speakNaturally(text, locale, playbackSpeed, { onEnd: finish, onError: finish });
     }
   };
 

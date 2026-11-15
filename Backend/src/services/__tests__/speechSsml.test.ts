@@ -38,7 +38,7 @@ describe('buildSsml', () => {
     expect(ssml).toContain('xmlns:mstts="https://www.w3.org/2001/mstts"');
     expect(ssml).toContain('<voice name="ka-GE-EkaNeural">');
     expect(ssml).toContain('<mstts:silence type="Leading-exact" value="80ms"/>');
-    expect(ssml).toContain('პირველი. <break time="550ms"/> მეორე.');
+    expect(ssml).toContain('<p>პირველი.</p><p>მეორე.</p>');
     expect(ssml).not.toContain('<prosody');
   });
 
@@ -50,5 +50,11 @@ describe('buildSsml', () => {
 
   it('uses the native 24 kHz neural output format', () => {
     expect(AZURE_TTS_OUTPUT_FORMAT).toBe('audio-24khz-96kbitrate-mono-mp3');
+  });
+
+  it('leaves expressive styles off unless the caller supplies a supported style', () => {
+    expect(buildSsml({ text: 'გამარჯობა', voiceShortName: 'ka-GE-EkaNeural', locale: 'ka-GE' })).not.toContain('express-as');
+    expect(buildSsml({ text: 'Hello', voiceShortName: 'en-US-JennyNeural', locale: 'en-US', style: 'narration-professional' }))
+      .toContain('<mstts:express-as style="narration-professional">');
   });
 });

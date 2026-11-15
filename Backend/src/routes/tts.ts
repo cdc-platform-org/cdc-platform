@@ -59,7 +59,7 @@ router.post('/synthesize', authenticate, requireDigitalToolAccess('media-studio'
   if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
 
   try {
-    const audio = await synthesizeSpeech(parsed.data);
+    const audio = await synthesizeSpeech({ ...parsed.data, narration: true });
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Content-Disposition', 'attachment; filename="narration.mp3"');
     res.send(audio);

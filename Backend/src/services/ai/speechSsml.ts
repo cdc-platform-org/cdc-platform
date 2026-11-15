@@ -16,10 +16,6 @@
 // and is still small enough for long narrations.
 export const AZURE_TTS_OUTPUT_FORMAT = 'audio-24khz-96kbitrate-mono-mp3';
 
-// Pause inserted between paragraphs — longer than Azure's own sentence
-// pause, roughly the breath a human reader takes before a new paragraph.
-const PARAGRAPH_BREAK_MS = 550;
-
 // Trims the default silence Azure adds before/after the audio, so chunks
 // played back-to-back (VIPAudioNarrator, book pages) don't have dead air.
 const LEADING_SILENCE_MS = 80;
@@ -114,17 +110,21 @@ export function speedToProsodyRate(speed: number): string | null {
  * `locale` are attribute values — callers must pass validated/allowlisted
  * values; they are still escaped here as defense in depth.
  */
-export function buildSsml(params: { text: string; voiceShortName: string; locale: string; speed?: number }): string {
+export function buildSsml(params: { text: string; voiceShortName: string; locale: string; speed?: number; style?: string }): string {
   const locale = escapeSsml(params.locale);
   const voice = escapeSsml(params.voiceShortName);
   const normalized = normalizeTextForSpeech(params.text, params.locale);
   const body = normalized
     .split('\n\n')
-    .map((paragraph) => escapeSsml(paragraph))
-    .join(` <break time="${PARAGRAPH_BREAK_MS}ms"/> `);
+    // Semantic paragraphs let the selected neural voice choose its own
+    // phrasing and breaths rather than imposing the same pause everywhere.
+    .map((paragraph) => `<p>${escapeSsml(paragraph)}</p>`)
+    .join('');
 
   const rate = speedToProsodyRate(params.speed ?? 1);
-  const content = rate ? `<prosody rate="${rate}">${body}</prosody>` : body;
+  const paced = rate ? `<prosody rate="${rate}">${body}</prosody>` : body;
+  // Only pass a style advertised by voices/list for this exact voice.
+  const content = params.style ? `<mstts:express-as style="${escapeSsml(params.style)}">${paced}</mstts:express-as>` : paced;
 
   return (
     `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="https://www.w3.org/2001/mstts" xml:lang="${locale}">` +

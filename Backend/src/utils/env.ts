@@ -281,7 +281,7 @@ export const AZURE_SPEECH_REGION = cleanEnv(process.env.AZURE_SPEECH_REGION);
 // voice short name works (e.g. ka-GE-GiorgiNeural); its locale is derived
 // from the name's first two segments.
 export const AZURE_SPEECH_VOICE = cleanEnv(process.env.AZURE_SPEECH_VOICE) || 'ka-GE-EkaNeural';
-export const AZURE_SPEECH_VOICE_EN = cleanEnv(process.env.AZURE_SPEECH_VOICE_EN) || 'en-US-AnaNeural';
+export const AZURE_SPEECH_VOICE_EN = cleanEnv(process.env.AZURE_SPEECH_VOICE_EN) || 'en-US-JennyNeural';
 // Children's Book product (Phase 5+/Batch A+) — controls whether AI calls
 // (story plan/character preview/final generation) are mocked locally
 // instead of hitting real Azure. Mocking is HARD-forced in production
