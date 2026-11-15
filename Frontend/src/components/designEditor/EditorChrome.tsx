@@ -19,6 +19,9 @@ interface TopBarProps {
   zoom: number;
   exporting: string | null;
   uploading: boolean;
+  vectorPage: boolean;
+  transparentExport: boolean;
+  onTransparentExport: (value: boolean) => void;
   onTitle: (title: string) => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -26,7 +29,7 @@ interface TopBarProps {
   onAdd: (kind: 'text' | 'rect' | 'ellipse' | 'line') => void;
   onAddImage: (file: File) => void;
   onReset: () => void;
-  onExport: (kind: 'png' | 'pdf') => void;
+  onExport: (kind: 'png' | 'pdf' | 'svg') => void;
 }
 
 export function EditorTopBar(props: TopBarProps) {
@@ -63,6 +66,15 @@ export function EditorTopBar(props: TopBarProps) {
       </div>
 
       <div className="flex items-center gap-1 ml-auto">
+        {props.vectorPage && <>
+          <label className="inline-flex items-center gap-1.5 px-2 text-xs">
+            <input type="checkbox" checked={props.transparentExport} onChange={event => props.onTransparentExport(event.target.checked)} />
+            {t.transparentBackground}
+          </label>
+          <button type="button" className={button} disabled={!!props.exporting} onClick={() => props.onExport('svg')}>
+            <Download size={16} />{props.exporting === 'svg' ? t.exporting : t.downloadSvg}
+          </button>
+        </>}
         <button type="button" className={button} title={t.resetDesign} aria-label={t.resetDesign} onClick={props.onReset}><RotateCcw size={16} /></button>
         <button type="button" className={button} disabled={!!props.exporting} onClick={() => props.onExport('png')}>
           <Download size={16} />{props.exporting === 'png' ? t.exporting : t.downloadPng}

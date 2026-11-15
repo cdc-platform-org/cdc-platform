@@ -114,7 +114,7 @@ function ProductAgentAdmin() {
       <Head>
         <title>AI პროდუქტების აგენტი | Admin</title>
       </Head>
-      <div className="p-6 max-w-6xl mx-auto space-y-8">
+      <div className="sm:p-6 max-w-6xl mx-auto space-y-8">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -164,7 +164,7 @@ function ProductAgentAdmin() {
 export default function AdminProductAgentPage() {
   return (
     <AdminGuard requiredTiers={['SUPER_ADMIN', 'MANAGER']}>
-      <AdminLayout>
+      <AdminLayout responsive>
         <ProductAgentAdmin />
       </AdminLayout>
     </AdminGuard>

@@ -9,6 +9,7 @@ export type AgentCategoryKey =
   | 'PLANNERS'
   | 'CV_TEMPLATES'
   | 'BUSINESS_TEMPLATES'
+  | 'VECTOR_LOGOS'
   | 'INVITATIONS'
   | 'EXAM_PREP';
 

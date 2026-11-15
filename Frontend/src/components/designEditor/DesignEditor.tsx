@@ -15,7 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, type FabricObject, Textbox } from 'fabric';
 import type { DesignElement, DesignTemplate } from '../../types/designTemplate';
 import type { DesignRecord } from '../../services/designService';
-import { resetDesign, uploadDesignImage } from '../../services/designService';
+import { resetDesign, uploadDesignImage, exportDesignSvg } from '../../services/designService';
 import { useDesignDocument } from './useDesignDocument';
 import { collectImageSources, elementIdOf, pageBackgroundColor, readBack, renderPage } from './fabricMapping';
 import * as ops from './docOps';
@@ -44,6 +44,7 @@ export default function DesignEditor({ record, t }: { record: DesignRecord; t: D
   const [fitScale, setFitScale] = useState(2);
   const [uploading, setUploading] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
+  const [transparentExport, setTransparentExport] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -232,16 +233,23 @@ export default function DesignEditor({ record, t }: { record: DesignRecord; t: D
     update(ops.updateElement(docRef.current, pageIndex, id, { src: uploaded.ref, placeholder: false } as Partial<DesignElement>));
   };
 
-  const runExport = async (kind: 'png' | 'pdf') => {
+  const currentPage = doc.pages[pageIndex] ?? doc.pages[0];
+  const vectorPage = typeof currentPage.background !== 'object' && currentPage.elements.every(el => el.type !== 'image');
+  const runExport = async (kind: 'png' | 'pdf' | 'svg') => {
     setExporting(kind);
     setError(null);
     try {
       const current = docRef.current;
+      const name = safeFilename(current.title || record.title);
+      if (kind === 'svg') {
+        const blob = await exportDesignSvg(record.id, current, pageIndex, transparentExport);
+        downloadBlob(blob, current.pages.length > 1 ? `${name}-${pageIndex + 1}.svg` : `${name}.svg`);
+        return;
+      }
       await loaderRef.current?.ensure(collectImageSources(current.pages));
       const cache = loaderRef.current!.cache;
-      const name = safeFilename(current.title || record.title);
       if (kind === 'png') {
-        const blob = await exportPagePng(current, pageIndex, cache);
+        const blob = await exportPagePng(current, pageIndex, cache, vectorPage && transparentExport);
         downloadBlob(blob, current.pages.length > 1 ? `${name}-${pageIndex + 1}.png` : `${name}.png`);
       } else {
         downloadBlob(await exportPdf(current, cache), `${name}.pdf`);
@@ -282,6 +290,7 @@ export default function DesignEditor({ record, t }: { record: DesignRecord; t: D
       <EditorTopBar
         t={t} title={doc.title ?? ''} saveState={saveState} canUndo={canUndo} canRedo={canRedo} zoom={zoom}
         exporting={exporting} uploading={uploading}
+        vectorPage={vectorPage} transparentExport={transparentExport} onTransparentExport={setTransparentExport}
         onTitle={(title) => update({ ...docRef.current, title }, { coalesce: 'title' })}
         onUndo={undo} onRedo={redo}
         onZoom={(delta) => setZoom((value) => Math.min(4, Math.max(0.25, value + delta)))}

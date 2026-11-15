@@ -6,6 +6,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { execFileSync } from 'child_process';
 import jwt from 'jsonwebtoken';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { JWT_SECRET } from '../../utils/env';
 import { createUser } from '../../test/factories';
@@ -31,7 +32,10 @@ beforeAll(async () => {
   url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 afterAll(async () => {
-  if (original) await prisma.siteContent.upsert({ where: { page: 'about' }, create: original, update: { content: original.content!, updatedById: original.updatedById, updatedAt: original.updatedAt } });
+  if (original) {
+    const content = original.content === null ? Prisma.JsonNull : original.content;
+    await prisma.siteContent.upsert({ where: { page: 'about' }, create: { ...original, content }, update: { content, updatedById: original.updatedById, updatedAt: original.updatedAt } });
+  }
   else await prisma.siteContent.deleteMany({ where: { page: 'about' } });
   if (server) await new Promise<void>(resolve => server.close(() => resolve()));
   await prisma.$disconnect();

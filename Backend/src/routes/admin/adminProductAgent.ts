@@ -71,7 +71,7 @@ router.post('/run', async (req: Request, res: Response) => {
   }
 });
 
-// Takes ~15 s per category, so it runs in the background (a 7-category
+// Takes ~15 s per category, so it runs in the background (a full-category
 // refresh would outlive App Service's request timeout); new briefs show up
 // on the next page load. Failures are logged by refreshAllTrendBriefs.
 router.post('/trends/refresh', async (req: Request, res: Response) => {

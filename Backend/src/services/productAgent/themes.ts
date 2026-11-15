@@ -79,6 +79,16 @@ export const THEME_POOLS: Record<AgentCategoryKey, string[]> = {
     'graduation party invitation',
     'save-the-date card with floral corners',
   ],
+  VECTOR_LOGOS: [
+    'geometric identity for a fictional digital design studio, interlocking rounded forms',
+    'minimal logo for a fictional software startup, modular geometric symbol',
+    'botanical identity for a fictional wellness studio, overlapping elliptical petals',
+    'architectural logo for a fictional interiors practice, balanced lines and arches',
+    'playful identity for a fictional creative workshop, rhythmic circles and bars',
+    'modern logo for a fictional coffee roaster, warm geometric emblem',
+    'abstract growth symbol for a fictional career coaching studio',
+    'circular identity for a fictional photography studio, elegant negative space',
+  ],
   EXAM_PREP: [
     'English vocabulary B1: 100 essential words with a practice quiz',
     'English grammar: present tenses cheat sheet with exercises',

@@ -67,6 +67,15 @@ export const AGENT_CATEGORIES = {
     estimatedCostUsd: 0.12,
     needsFactCheck: false,
   },
+  VECTOR_LOGOS: {
+    labelKa: 'ვექტორული ლოგოების შაბლონები',
+    labelEn: 'Editable vector logo templates',
+    storeCategory: 'Design & Graphics / Vector Logos',
+    defaultPriceGel: 15,
+    // Text-model brief only; previews are rendered locally, not generated images.
+    estimatedCostUsd: 0.05,
+    needsFactCheck: false,
+  },
   INVITATIONS: {
     labelKa: 'მოსაწვევები და ბარათები',
     labelEn: 'Invitations & cards',

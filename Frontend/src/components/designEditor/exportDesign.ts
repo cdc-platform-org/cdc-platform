@@ -23,7 +23,7 @@ function pxPerMmFor(template: DesignTemplate, dpi: number): number {
 }
 
 async function renderPageToBlob(
-  template: DesignTemplate, pageIndex: number, images: ImageCache, dpi: number, type: 'image/png' | 'image/jpeg',
+  template: DesignTemplate, pageIndex: number, images: ImageCache, dpi: number, type: 'image/png' | 'image/jpeg', transparent = false,
 ): Promise<Blob> {
   await ensureDesignFontsLoaded();
   const pxPerMm = pxPerMmFor(template, dpi);
@@ -33,6 +33,7 @@ async function renderPageToBlob(
   const canvas = new StaticCanvas(element, { width, height, enableRetinaScaling: false, renderOnAddRemove: false });
   try {
     renderPage(canvas, template, template.pages[pageIndex], pxPerMm, images, false);
+    if (transparent) { canvas.backgroundColor = ''; canvas.backgroundImage = undefined; }
     canvas.renderAll();
     const blob = await new Promise<Blob | null>((resolve) => element.toBlob(resolve, type, 0.92));
     if (!blob) throw new Error('Canvas export failed');
@@ -42,8 +43,8 @@ async function renderPageToBlob(
   }
 }
 
-export async function exportPagePng(template: DesignTemplate, pageIndex: number, images: ImageCache): Promise<Blob> {
-  return renderPageToBlob(template, pageIndex, images, PRINT_DPI, 'image/png');
+export async function exportPagePng(template: DesignTemplate, pageIndex: number, images: ImageCache, transparent = false): Promise<Blob> {
+  return renderPageToBlob(template, pageIndex, images, PRINT_DPI, 'image/png', transparent);
 }
 
 export async function exportPdf(

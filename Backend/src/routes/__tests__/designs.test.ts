@@ -88,6 +88,27 @@ async function setup() {
 }
 
 describe('design editor API', () => {
+  it('exports current vector edits only for the owner with an active purchase', async () => {
+    const {admin,buyer,stranger,product} = await setup();
+    await request(`/admin/product-templates/${product.id}`,admin,'PUT',template);
+    const {id} = (await body(await request('/designs',buyer,'POST',{productId:product.id}))).data;
+    const edited = structuredClone(template);
+    edited.pages[0].elements[0].text = 'ჩემი ახალი ბრენდი';
+    const payload = {data:edited,pageIndex:0,transparent:true};
+    expect((await request(`/designs/${id}/export-svg`,stranger,'POST',payload)).status).toBe(404);
+    const response = await request(`/designs/${id}/export-svg`,buyer,'POST',payload);
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('image/svg+xml');
+    expect(response.headers.get('cache-control')).toContain('no-store');
+    const svg = await response.text();
+    expect(svg).toContain('ჩემი ახალი ბრენდი');
+    expect(svg).not.toContain('data-page-background');
+    expect((await body(await request(`/designs/${id}`,buyer))).data.data.pages[0].elements[0].text).toBe('სახელი გვარი');
+    expect((await request(`/designs/${id}/export-svg`,buyer,'POST',{...payload,pageIndex:9})).status).toBe(400);
+    expect((await request(`/designs/${id}/export-svg`,buyer,'POST',{...payload,transparent:'true'})).status).toBe(400);
+    await prisma.productPurchase.update({where:{userId_productId:{userId:buyer.id,productId:product.id}},data:{paymentStatus:'REFUNDED'}});
+    expect((await request(`/designs/${id}/export-svg`,buyer,'POST',payload)).status).toBe(403);
+  });
   it('lets only admins attach a valid template and rejects invalid ones', async () => {
     const { admin, buyer, product } = await setup();
     expect((await request(`/admin/product-templates/${product.id}`, buyer, 'PUT', template)).status).toBe(403);

@@ -3,6 +3,7 @@
 // buttons. Used by pages/admin/product-agent.tsx.
 import { useEffect, useMemo, useState } from 'react';
 import { Play, Save } from 'lucide-react';
+import { useRouter } from 'next/router';
 import { AgentCategory, AgentCategoryKey, ProductAgentSettings } from '../../../services/adminProductAgentService';
 
 interface Props {
@@ -20,6 +21,7 @@ const qualityFactor = (q: 'high' | 'medium', c: AgentCategory) => (q === 'medium
 const TBILISI_OFFSET = 4;
 
 export default function AgentSettingsCard({ settings, categories, busy, configured, onSave, onRun }: Props) {
+  const {locale} = useRouter();
   const [draft, setDraft] = useState(settings);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState<string | null>(null);
@@ -83,8 +85,9 @@ export default function AgentSettingsCard({ settings, categories, busy, configur
             {categories.map((c) => (
               <tr key={c.key} className="border-b last:border-0">
                 <td className="py-2 pr-3">
-                  <div className="font-medium text-gray-900">{c.labelKa}</div>
+                  <div className="font-medium text-gray-900">{locale === 'en' ? c.labelEn : c.labelKa}</div>
                   <div className="text-xs text-gray-400">{c.storeCategory}{c.needsFactCheck ? ' · ფაქტების შემოწმება სავალდებულოა' : ''}</div>
+                  {c.key === 'VECTOR_LOGOS' && <div className="mt-1 text-xs text-gray-500">{locale === 'en' ? 'SVG + transparent PNG · editable text, colors and symbol parts' : 'SVG + გამჭვირვალე PNG · ტექსტის, ფერებისა და სიმბოლოს ნაწილების რედაქტირება'}</div>}
                 </td>
                 <td className="py-2 pr-3">
                   <input
