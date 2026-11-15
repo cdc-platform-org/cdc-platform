@@ -3,7 +3,7 @@
  * and Student Digital Skill Passports.
  */
 
-import api from './api';
+import api from './apiClient';
 
 export interface ReadinessRecord {
   id: string;

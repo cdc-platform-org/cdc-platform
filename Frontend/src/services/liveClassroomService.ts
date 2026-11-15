@@ -3,7 +3,7 @@
  * session recording storage, and automated student email notifications.
  */
 
-import api from './api';
+import api from './apiClient';
 
 export interface StudentScreenFrame {
   userId: string;

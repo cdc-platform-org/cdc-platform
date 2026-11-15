@@ -6,7 +6,7 @@ import { QrCode, ShieldCheck, Calendar, UserCheck, Copy, Check, ExternalLink, Sp
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
-import api from '../../src/services/api';
+import api from '../../src/services/apiClient';
 
 interface PassportData {
   passportCode: string;

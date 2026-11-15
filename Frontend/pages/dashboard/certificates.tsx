@@ -248,7 +248,7 @@ function CertificatesContent() {
       <SiteHeader />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 w-full">
-        <BackButton fallbackHref="/dashboard" className="dark:text-slate-400 dark:hover:text-slate-100" />
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><BackButton fallbackHref="/dashboard" className="dark:text-slate-400 dark:hover:text-slate-100" />
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 md:py-12 flex-1 w-full">
