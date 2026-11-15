@@ -1,304 +1,79 @@
+/**
+ * @fileoverview HTTP routes for 4-Pillar Pre-Exam Readiness Dossiers & Digital Skill Passports.
+ * Delegates all business logic to `readinessScoringService` and `digitalPassportService`.
+ */
+
 import { Router, Request, Response } from 'express';
-import { prisma } from '../lib/prisma';
 import { authenticate } from '../middleware/auth';
+import {
+  getOrSyncCourseReadiness,
+  evaluateSubmissionWithAi,
+  recordAttendanceCheckpoint,
+  recordLecturerEvaluation,
+} from '../services/readinessScoringService';
+import {
+  getStudentDigitalPassport,
+  getPublicDigitalPassportByCode,
+} from '../services/digitalPassportService';
 
 const router = Router();
 
-function buildPassportCode(userId: string): string {
-  return `CDC-PASS-${userId.replace(/-/g, '').slice(0, 10).toUpperCase()}`;
-}
-
-function resolveUserIdFromCode(code: string): string {
-  return code.replace(/^CDC-PASS-/i, '').toLowerCase();
-}
-
-// 1. 4-Pillar Pre-Exam Readiness Dossier (25% AI + 25% Attendance + 25% Assignments + 25% Lecturer = 100%)
 router.get('/readiness/:courseId', authenticate, async (req: Request, res: Response) => {
-  const userId = req.user!.id;
-  const { courseId } = req.params;
-
-  const [course, lessons, progressRows, submissions, existing] = await Promise.all([
-    prisma.course.findUnique({ where: { id: courseId }, select: { id: true, title: true, titleEn: true, category: true, skillsTaught: true } }),
-    prisma.courseLesson.findMany({ where: { section: { courseId } }, select: { id: true, assignmentPrompt: true } }),
-    prisma.lessonProgress.findMany({ where: { userId, lesson: { section: { courseId } }, completed: true } }),
-    prisma.assignmentSubmission.findMany({ where: { userId, lesson: { section: { courseId } } } }),
-    prisma.courseReadinessRecord.findUnique({ where: { userId_courseId: { userId, courseId } } }),
-  ]);
-
-  if (!course) return res.status(404).json({ message: 'Course not found' });
-
-  const totalLessons = Math.max(1, lessons.length);
-  const attendanceScore = Math.min(100, Math.round((progressRows.length / totalLessons) * 100));
-
-  const assignmentLessons = lessons.filter((l) => !!l.assignmentPrompt);
-  const validSubs = submissions.filter((s) => s.status !== 'NEEDS_REVISION');
-  const assignmentsScore =
-    assignmentLessons.length === 0
-      ? 100
-      : Math.min(100, Math.round((validSubs.length / assignmentLessons.length) * 100));
-
-  const aiMentorScore = existing?.aiMentorScore ?? Math.min(100, Math.round((attendanceScore * 0.4 + assignmentsScore * 0.6)));
-  const lecturerScore = existing?.lecturerScore ?? aiMentorScore;
-
-  const totalScore = Math.round((aiMentorScore + attendanceScore + assignmentsScore + lecturerScore) / 4);
-  const eligibleForExam = totalScore >= 90;
-
-  const record = await prisma.courseReadinessRecord.upsert({
-    where: { userId_courseId: { userId, courseId } },
-    update: { attendanceScore, assignmentsScore, aiMentorScore, lecturerScore, totalScore },
-    create: {
-      userId,
-      courseId,
-      aiMentorScore,
-      attendanceScore,
-      assignmentsScore,
-      lecturerScore,
-      totalScore,
-      aiCritique:
-        totalScore >= 90
-          ? 'სტუდენტმა წარმატებით დაასრულა პრაქტიკული დავალებები და აკმაყოფილებს გამოცდაზე დაშვების 90%-იან სტანდარტს.'
-          : 'საჭიროა დარჩენილი პრაქტიკული დავალებების სრულყოფა და მასალის გამეორება 90%-იანი ზღვრის გადასალახად.',
-      lecturerName: 'CDC AI & Faculty Board',
-    },
-  });
-
-  return res.json({
-    record,
-    eligibleForExam,
-    threshold: 90,
-    courseTitle: course.title,
-  });
+  const result = await getOrSyncCourseReadiness(req.user!.id, req.params.courseId);
+  if (!result) return res.status(404).json({ message: 'Course not found' });
+  return res.json(result);
 });
 
-// 1b. AI Mentor evaluates submitted work & updates the 25% AI Mentor pillar + critique
 router.post('/readiness/:courseId/ai-evaluate', authenticate, async (req: Request, res: Response) => {
-  const userId = req.user!.id;
-  const { courseId } = req.params;
-  const { lessonTitle, assignmentPrompt, submissionNote, hasFile } = req.body as {
-    lessonTitle?: string;
-    assignmentPrompt?: string;
-    submissionNote?: string;
-    hasFile?: boolean;
-  };
-
-  const existing = await prisma.courseReadinessRecord.findUnique({
-    where: { userId_courseId: { userId, courseId } },
+  const result = await evaluateSubmissionWithAi({
+    userId: req.user!.id,
+    courseId: req.params.courseId,
+    lessonTitle: req.body?.lessonTitle,
+    assignmentPrompt: req.body?.assignmentPrompt,
+    submissionNote: req.body?.submissionNote,
+    hasFile: req.body?.hasFile,
   });
-
-  // Score calculation based on deliverable completeness, prompt alignment & studio submission
-  const baseScore = hasFile ? 92 : 84;
-  const noteBonus = submissionNote && submissionNote.trim().length > 15 ? 4 : 2;
-  const newAiScore = Math.min(100, Math.max(existing?.aiMentorScore ?? 0, baseScore + noteBonus));
-
-  const attendanceScore = existing?.attendanceScore ?? 90;
-  const assignmentsScore = Math.max(existing?.assignmentsScore ?? 0, hasFile ? 95 : 88);
-  const lecturerScore = existing?.lecturerScore ?? newAiScore;
-  const totalScore = Math.round((newAiScore + attendanceScore + assignmentsScore + lecturerScore) / 4);
-
-  const aiCritique = `AI მენტორის შეფასება (${lessonTitle || 'პრაქტიკული დავალება'}): ნამუშევარი წარმატებით ატვირთულია და შეესაბამება დავალების პირობას${assignmentPrompt ? ` („${assignmentPrompt.slice(0, 80)}...“)` : ''}. კომპოზიცია და სტრუქტურა გამართულია (${newAiScore}/100). რჩევა: გადაამოწმეთ დეტალების კონტრასტი და ექსპორტის ხარისხი საბოლოო გამოცდამდე.`;
-
-  const record = await prisma.courseReadinessRecord.upsert({
-    where: { userId_courseId: { userId, courseId } },
-    update: { aiMentorScore: newAiScore, assignmentsScore, lecturerScore, totalScore, aiCritique },
-    create: {
-      userId,
-      courseId,
-      aiMentorScore: newAiScore,
-      attendanceScore,
-      assignmentsScore,
-      lecturerScore,
-      totalScore,
-      aiCritique,
-      lecturerName: 'CDC AI & Faculty Board',
-    },
-  });
-
-  return res.json({ record, eligibleForExam: totalScore >= 90, aiCritique });
+  return res.json(result);
 });
 
-// 1c. Video Proctoring & AI Checkpoint ping -> boosts the 25% Attendance pillar
 router.post('/readiness/:courseId/attendance-ping', authenticate, async (req: Request, res: Response) => {
-  const userId = req.user!.id;
-  const { courseId } = req.params;
-  const { checkpointPassed } = req.body as { checkpointPassed?: boolean };
-
-  const existing = await prisma.courseReadinessRecord.findUnique({
-    where: { userId_courseId: { userId, courseId } },
-  });
-
-  const boostedAttendance = Math.min(100, Math.max(existing?.attendanceScore ?? 85, checkpointPassed ? 98 : 94));
-  const aiMentorScore = existing?.aiMentorScore ?? 90;
-  const assignmentsScore = existing?.assignmentsScore ?? 90;
-  const lecturerScore = existing?.lecturerScore ?? aiMentorScore;
-  const totalScore = Math.round((aiMentorScore + boostedAttendance + assignmentsScore + lecturerScore) / 4);
-
-  const record = await prisma.courseReadinessRecord.upsert({
-    where: { userId_courseId: { userId, courseId } },
-    update: { attendanceScore: boostedAttendance, totalScore },
-    create: {
-      userId,
-      courseId,
-      aiMentorScore,
-      attendanceScore: boostedAttendance,
-      assignmentsScore,
-      lecturerScore,
-      totalScore,
-      lecturerName: 'CDC AI & Faculty Board',
-    },
-  });
-
-  return res.json({ record, eligibleForExam: totalScore >= 90 });
+  const result = await recordAttendanceCheckpoint(
+    req.user!.id,
+    req.params.courseId,
+    Boolean(req.body?.checkpointPassed)
+  );
+  return res.json(result);
 });
 
-// 2. Lecturer / Trainer updates their 25% evaluation score & note
 router.post('/readiness/:courseId/lecturer-grade', authenticate, async (req: Request, res: Response) => {
-  const { courseId } = req.params;
   const { studentId, lecturerScore, lecturerNote, lecturerName } = req.body as {
-    studentId: string;
-    lecturerScore: number;
+    studentId?: string;
+    lecturerScore?: number;
     lecturerNote?: string;
     lecturerName?: string;
   };
-
   if (!studentId || typeof lecturerScore !== 'number') {
     return res.status(400).json({ message: 'studentId and lecturerScore are required' });
   }
-
-  const clamped = Math.max(0, Math.min(100, Math.round(lecturerScore)));
-  const existing = await prisma.courseReadinessRecord.findUnique({
-    where: { userId_courseId: { userId: studentId, courseId } },
+  const result = await recordLecturerEvaluation({
+    studentId,
+    courseId: req.params.courseId,
+    lecturerScore,
+    lecturerNote,
+    lecturerName: lecturerName ?? req.user?.email ?? 'CDC Lecturer',
   });
-
-  const aiMentorScore = existing?.aiMentorScore ?? 90;
-  const attendanceScore = existing?.attendanceScore ?? 90;
-  const assignmentsScore = existing?.assignmentsScore ?? 90;
-  const totalScore = Math.round((aiMentorScore + attendanceScore + assignmentsScore + clamped) / 4);
-
-  const updated = await prisma.courseReadinessRecord.upsert({
-    where: { userId_courseId: { userId: studentId, courseId } },
-    update: {
-      lecturerScore: clamped,
-      lecturerNote: lecturerNote ?? existing?.lecturerNote,
-      lecturerName: lecturerName ?? req.user?.email ?? 'CDC Lecturer',
-      totalScore,
-    },
-    create: {
-      userId: studentId,
-      courseId,
-      aiMentorScore,
-      attendanceScore,
-      assignmentsScore,
-      lecturerScore: clamped,
-      lecturerNote,
-      lecturerName: lecturerName ?? req.user?.email ?? 'CDC Lecturer',
-      totalScore,
-    },
-  });
-
-  return res.json({ record: updated, eligibleForExam: totalScore >= 90 });
+  return res.json(result);
 });
 
-async function assemblePassportPayload(userId: string) {
-  const [user, records, enrollments, certificates] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, name: true, email: true, role: true, isVerifiedGraduate: true, createdAt: true },
-    }),
-    prisma.courseReadinessRecord.findMany({
-      where: { userId },
-      include: { course: { select: { id: true, title: true, titleEn: true, category: true, skillsTaught: true } } },
-      orderBy: { updatedAt: 'desc' },
-    }),
-    prisma.liveTrainingEnrollment.findMany({
-      where: { userId },
-      include: { liveTraining: { select: { id: true, title: true, titleEn: true, category: true, scheduledAt: true } } },
-      orderBy: { enrolledAt: 'desc' },
-    }),
-    prisma.certificate.findMany({
-      where: { userId },
-      include: { course: { select: { title: true, titleEn: true, skillsTaught: true } } },
-      orderBy: { issuedAt: 'desc' },
-    }),
-  ]);
-
-  if (!user) return null;
-
-  const skills = Array.from(
-    new Set([
-      ...records.flatMap((r) => r.course.skillsTaught ?? []),
-      ...certificates.flatMap((c) => c.course.skillsTaught ?? []),
-    ])
-  );
-
-  return {
-    passportCode: buildPassportCode(user.id),
-    student: {
-      name: user.name,
-      role: user.role,
-      isVerifiedGraduate: user.isVerifiedGraduate,
-      memberSince: user.createdAt,
-    },
-    stats: {
-      coursesEvaluated: records.length,
-      liveTrainingsAttended: enrollments.length,
-      certificatesIssued: certificates.length,
-      averageReadiness:
-        records.length > 0 ? Math.round(records.reduce((acc, r) => acc + r.totalScore, 0) / records.length) : 0,
-    },
-    skills,
-    courseHistory: records.map((r) => ({
-      id: r.id,
-      courseTitle: r.course.title,
-      courseTitleEn: r.course.titleEn,
-      category: r.course.category,
-      mentorOrLecturer: r.lecturerName || 'CDC AI & Faculty Board',
-      evaluatedAt: r.evaluatedAt,
-      totalScore: r.totalScore,
-      breakdown: {
-        aiMentor: r.aiMentorScore,
-        attendance: r.attendanceScore,
-        assignments: r.assignmentsScore,
-        lecturer: r.lecturerScore,
-      },
-      passedThreshold: r.totalScore >= 90,
-    })),
-    liveTrainingHistory: enrollments.map((e) => ({
-      id: e.id,
-      title: e.liveTraining.title,
-      titleEn: e.liveTraining.titleEn,
-      category: e.liveTraining.category,
-      status: e.status,
-      date: e.completedAt || e.enrolledAt,
-    })),
-    certificates: certificates.map((c) => ({
-      id: c.id,
-      code: c.certificateNumber,
-      courseTitle: c.course.title,
-      issuedAt: c.issuedAt,
-    })),
-  };
-}
-
-// 3. Authenticated student's own Digital Passport
 router.get('/passport/me', authenticate, async (req: Request, res: Response) => {
-  const payload = await assemblePassportPayload(req.user!.id);
+  const payload = await getStudentDigitalPassport(req.user!.id);
   if (!payload) return res.status(404).json({ message: 'Student not found' });
   return res.json(payload);
 });
 
-// 4. Public verification endpoint when scanning the student's QR code
 router.get('/passport/public/:code', async (req: Request, res: Response) => {
-  const prefix = resolveUserIdFromCode(req.params.code);
-  if (prefix.length < 8) return res.status(400).json({ message: 'Invalid passport code' });
-
-  const users = await prisma.user.findMany({
-    where: { id: { startsWith: prefix } },
-    select: { id: true },
-    take: 1,
-  });
-
-  if (users.length === 0) return res.status(404).json({ message: 'Digital Passport not found' });
-  const payload = await assemblePassportPayload(users[0].id);
+  const payload = await getPublicDigitalPassportByCode(req.params.code);
+  if (!payload) return res.status(404).json({ message: 'Digital Passport not found' });
   return res.json(payload);
 });
 
