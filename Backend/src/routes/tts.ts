@@ -1,3 +1,4 @@
+import { requireDigitalToolAccess } from '../services/marketplace/digitalToolAccessService';
 /**
  * Express router mounted at `/api/tts` (see server.ts).
  * Endpoints:
@@ -50,7 +51,7 @@ const synthesizeRateLimit = rateLimit({
   message: 'Too many narration requests. Please wait a few minutes before trying again.',
 });
 
-router.post('/synthesize', authenticate, synthesizeRateLimit, async (req: Request, res: Response) => {
+router.post('/synthesize', authenticate, requireDigitalToolAccess('media-studio'), synthesizeRateLimit, async (req: Request, res: Response) => {
   if (!isTtsConfigured()) {
     return res.status(501).json({ message: 'Text-to-speech is not configured yet (AZURE_SPEECH_KEY/AZURE_SPEECH_REGION).' });
   }
@@ -58,7 +59,7 @@ router.post('/synthesize', authenticate, synthesizeRateLimit, async (req: Reques
   if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
 
   try {
-    const audio = await synthesizeSpeech(parsed.data);
+    const audio = await synthesizeSpeech({ ...parsed.data, narration: true });
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Content-Disposition', 'attachment; filename="narration.mp3"');
     res.send(audio);

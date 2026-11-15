@@ -125,6 +125,7 @@ const NAV_ITEMS: NavItem[] = [
 
   // Site content (site: მთავარი, ბლოგი, ჩვენ შესახებ)
   { href: '/admin/cms/homepage', labelKey: 'cms', icon: PenTool, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  { href: '/admin/cms/about', labelKey: 'aboutCms', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/blog', labelKey: 'blog', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/success-stories', labelKey: 'successStories', icon: Award, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/team-trainers', labelKey: 'teamTrainers', icon: UsersRound, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },

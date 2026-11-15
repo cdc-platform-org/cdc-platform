@@ -21,6 +21,11 @@ import {
 // mock-mode placeholder, and a test queues failures in front of it.
 const queuedFailures: string[] = [];
 const imageCalls: string[] = [];
+const queuedReviews: Array<{ status: 'PASS' | 'FAIL'; mocked: boolean; reviewUnavailable: boolean; notes: string }> = [];
+jest.mock('../../services/childrensBook/bookSceneQaService', () => {
+  const actual = jest.requireActual('../../services/childrensBook/bookSceneQaService');
+  return { ...actual, reviewBookScene: jest.fn(async (input) => queuedReviews.shift() ?? actual.reviewBookScene(input)) };
+});
 jest.mock('../../services/childrensBook/bookImageGenerationService', () => {
   const actual = jest.requireActual('../../services/childrensBook/bookImageGenerationService');
   return {
@@ -85,6 +90,7 @@ beforeEach(() => {
   imageCalls.length = 0;
   narrationCalls.length = 0;
   sleeps.length = 0;
+  queuedReviews.length = 0;
 });
 
 async function request(path: string, user: User, method = 'GET', body?: unknown) {
@@ -147,14 +153,95 @@ describe("Children's Book — final generation recovers on its own", () => {
   it('a content-filter refusal is retried with a softened prompt', async () => {
     const user = await createUser();
     const bookId = await createPaidBook(user);
-    queuedFailures.push('CONTENT_FILTER');
+    queuedFailures.push('CONTENT_FILTER', 'CONTENT_FILTER');
+    const firstPage = await prisma.bookPage.findFirstOrThrow({ where: { bookProjectId: bookId }, orderBy: { pageNumber: 'asc' } });
 
     await startFinalGeneration(bookId);
     await waitForFinalGeneration(bookId);
 
     expect(imageCalls[0]).not.toContain('family-friendly');
     expect(imageCalls[1]).toContain('family-friendly');
+    expect(imageCalls[2]).toContain(firstPage.storyText);
     expect((await prisma.bookProject.findUnique({ where: { id: bookId } }))!.status).toBe('COMPLETED');
+  });
+
+  it('repairs a mismatched animal using the reviewer feedback and the unchanged approved page text', async () => {
+    const user = await createUser();
+    const bookId = await createPaidBook(user);
+    const page = await prisma.bookPage.findFirstOrThrow({ where: { bookProjectId: bookId }, orderBy: { pageNumber: 'asc' } });
+    const approvedText = 'Mimi meets a bear in the forest.';
+    await prisma.bookPage.update({ where: { id: page.id }, data: { storyText: approvedText } });
+    queuedReviews.push({ status: 'FAIL', mocked: true, reviewUnavailable: false, notes: 'Replace the rabbit with a bear in the forest.' });
+
+    await startFinalGeneration(bookId);
+    await waitForFinalGeneration(bookId);
+
+    expect(imageCalls[1]).toContain('Replace the rabbit with a bear');
+    expect(imageCalls[0]).toContain(approvedText);
+    expect(imageCalls[1]).toContain(approvedText);
+    const events = await prisma.bookGenerationEvent.findMany({ where: { bookProjectId: bookId, operationType: 'FINAL_PAGE', pageNumber: page.pageNumber }, orderBy: { attemptNumber: 'asc' } });
+    expect(events.map((event) => event.success)).toEqual([false, true]);
+    const accepted = await prisma.bookPage.findUniqueOrThrow({ where: { id: page.id } });
+    expect(accepted.acceptedEventId).toBe(events[1].id);
+    expect(accepted.storyText).toBe(approvedText);
+  });
+
+  it('stops on an unavailable reviewer without accepting artwork or finishing the PDF', async () => {
+    const user = await createUser();
+    const bookId = await createPaidBook(user);
+    queuedReviews.push({ status: 'FAIL', mocked: false, reviewUnavailable: true, notes: 'Scene review unavailable.' });
+    await startFinalGeneration(bookId);
+    await waitForFinalGeneration(bookId);
+    expect(imageCalls).toHaveLength(1);
+    const book = await prisma.bookProject.findUniqueOrThrow({ where: { id: bookId } });
+    expect(book.status).toBe('FAILED');
+    expect(book.pdfStatus).not.toBe('CURRENT');
+    expect(await prisma.bookPage.count({ where: { bookProjectId: bookId, acceptedEventId: { not: null } } })).toBe(0);
+  });
+
+  it('carries scene corrections into the next automatic retry round', async () => {
+    const user = await createUser();
+    const bookId = await createPaidBook(user);
+    queuedReviews.push(...Array.from({ length: 3 }, () => ({ status: 'FAIL' as const, mocked: true, reviewUnavailable: false, notes: 'The forest needs the approved bear.' })));
+    await startFinalGeneration(bookId);
+    await waitForFinalGeneration(bookId);
+    // Three failed images for page 1, then pages 2-5, then page 1 again.
+    expect(imageCalls[7]).toContain('The forest needs the approved bear.');
+    expect((await prisma.bookProject.findUniqueOrThrow({ where: { id: bookId } })).status).toBe('COMPLETED');
+  });
+
+  it('does not spend image calls when an approved project has missing page text', async () => {
+    const user = await createUser();
+    const bookId = await createPaidBook(user);
+    const page = await prisma.bookPage.findFirstOrThrow({ where: { bookProjectId: bookId } });
+    await prisma.bookPage.update({ where: { id: page.id }, data: { storyText: null } });
+    await startFinalGeneration(bookId);
+    await waitForFinalGeneration(bookId);
+    expect(imageCalls).toHaveLength(0);
+    expect((await prisma.bookProject.findUniqueOrThrow({ where: { id: bookId } })).status).toBe('FAILED');
+  });
+
+  it('does not draw paid pages without explicit text approval', async () => {
+    const user = await createUser();
+    const bookId = await createPaidBook(user);
+    const book = await prisma.bookProject.findUniqueOrThrow({ where: { id: bookId } });
+    await prisma.bookProject.update({ where: { id: bookId }, data: { storyPlan: { ...(book.storyPlan as any), textApprovedAt: null } } });
+    expect(await startFinalGeneration(bookId)).toBe('NOT_ELIGIBLE');
+    expect(imageCalls).toHaveLength(0);
+  });
+
+  it('keeps the accepted illustration and free revision when a replacement fails scene review', async () => {
+    const user = await createUser();
+    const bookId = await createPaidBook(user);
+    await startFinalGeneration(bookId);
+    await waitForFinalGeneration(bookId);
+    const page = await prisma.bookPage.findFirstOrThrow({ where: { bookProjectId: bookId }, orderBy: { pageNumber: 'asc' } });
+    queuedReviews.push({ status: 'FAIL', mocked: true, reviewUnavailable: false, notes: 'The animal does not match.' });
+    const response = await request(`/api/childrens-books/${bookId}/revision`, user, 'POST', { pageNumber: page.pageNumber });
+    expect(response.status).toBe(200);
+    expect((await response.json() as any).qa).toBe('FAIL');
+    expect((await prisma.bookProject.findUniqueOrThrow({ where: { id: bookId } })).revisionUsed).toBe(false);
+    expect((await prisma.bookPage.findUniqueOrThrow({ where: { id: page.id } })).acceptedEventId).toBe(page.acceptedEventId);
   });
 
   it('a configuration error stops at once (no paid retries) and the book waits for the recovery sweep', async () => {

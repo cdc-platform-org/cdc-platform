@@ -1,3 +1,5 @@
+import { getAiToolSubscriptionState } from '../../../src/services/aiToolSubscriptionService';
+import DigitalToolAccessGate from '../../../src/components/tools/DigitalToolAccessGate';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import ToolGuideButton from '../../../src/components/tools/ToolGuideButton';
 import { GetServerSideProps } from 'next';
@@ -110,6 +112,8 @@ function GenerationProgress({ accepted, total }: { accepted: number; total: numb
 }
 
 function ChildrensBookContent() {
+  const [includedAccess, setIncludedAccess] = useState(false);
+  useEffect(() => { let active = true; getAiToolSubscriptionState('childrens-book').then(state => { if (active) setIncludedAccess(state.collegeAccess || !!state.subscriptionEndsAt); }).catch(() => {}); return () => { active = false; }; }, []);
   const { t } = useTranslation('childrensBook');
   const router = useRouter();
   const bookId = typeof router.query.bookId === 'string' ? router.query.bookId : null;
@@ -136,11 +140,11 @@ function ChildrensBookContent() {
   // code can already be priced — the preview's total shows it too, not only
   // the pay button.
   const promoApplicable = !!book && TEXT_EDITABLE_STATUSES.includes(book.status) && !devPaymentSimulationEnabled;
-  const bookTotal = book ? book.totalPriceGel || book.priceGel : 0;
+  const bookTotal = includedAccess ? 0 : book ? book.totalPriceGel || book.priceGel : 0;
   // Apply the create-form code as soon as the book can be priced (and again
   // after the audio add-on changes the price, which clears the preview).
   useEffect(() => {
-    if (!book || !promoApplicable || appliedPromo) return;
+    if (!book || includedAccess || !promoApplicable || appliedPromo) return;
     const code = readPendingBookPromo(book.id);
     if (!code) return;
     let cancelled = false;
@@ -547,7 +551,7 @@ function ChildrensBookContent() {
                         className={`rounded-xl border-2 px-3 py-3 text-left transition ${form.pageCount === count ? 'border-purple-500 bg-purple-50 text-purple-800 shadow-sm' : 'border-gray-200 bg-white text-gray-700 hover:border-purple-300'}`}
                       >
                         <div className="text-lg font-bold">{t('pagesCount', { value: count })}</div>
-                        <div className="text-xs opacity-75">{t('priceGel', { amount: count * 100 / 100 })}</div>
+                        <div className="text-xs opacity-75">{t('priceGel', { amount: includedAccess ? 0 : count })}</div>
                       </button>
                     ))}
                   </div>
@@ -684,7 +688,7 @@ function ChildrensBookContent() {
             </dl>
             <div className="mt-4 pt-4 border-t border-gray-100 flex items-baseline justify-between">
               <span className="text-sm font-semibold text-gray-700">{t('summaryPrice')}</span>
-              <span className="text-2xl font-black text-gray-900">{t('priceGel', { amount: form.pageCount })}</span>
+              <span className="text-2xl font-black text-gray-900">{t('priceGel', { amount: includedAccess ? 0 : form.pageCount })}</span>
             </div>
             <p className="mt-2 text-xs text-gray-500">{t('summaryNote')}</p>
           </aside>
@@ -774,7 +778,7 @@ function ChildrensBookContent() {
                 </button>
               </div>
               <p className="text-sm text-gray-600 mt-3">
-                {t('priceBreakdown', { book: book.priceGel / 100, audio: book.audioAddOnPurchased ? book.audioPriceGel / 100 : 0, total: bookTotal / 100 })}
+                {t('priceBreakdown', { book: includedAccess ? 0 : book.priceGel / 100, audio: !includedAccess && book.audioAddOnPurchased ? book.audioPriceGel / 100 : 0, total: bookTotal / 100 })}
                 {book.animationAddOnPurchased && <> · {t('animationPriceLine', { amount: 10 })}</>}
               </p>
             </div>
@@ -1209,7 +1213,7 @@ export default function ChildrensBookPage() {
       <SEOHead title={t('pageTitle')} description={t('pageSubtitle')} noIndex />
       <ProtectedRoute>
         <ToolErrorBoundary>
-          <AdminOnlyToolGate slug="childrens-book"><ChildrensBookContent /></AdminOnlyToolGate>
+          <AdminOnlyToolGate slug="childrens-book"><DigitalToolAccessGate toolKey="childrens-book"><ChildrensBookContent /></DigitalToolAccessGate></AdminOnlyToolGate>
         </ToolErrorBoundary>
       </ProtectedRoute>
     </>

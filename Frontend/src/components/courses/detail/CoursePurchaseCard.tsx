@@ -1,17 +1,11 @@
-/**
- * Purchase card on the course detail page: price (with sale/promo strike-
- * through), enroll / continue / sold-out button, refund note and promo-code
- * field. 2026-11 redesign (EDUPRO style): sticky white card in the right
- * column on desktop; on phones the page also shows a fixed bottom CTA bar
- * (CourseMobileCta). Checkout logic stays in pages/courses/[id]/index.tsx.
- */
+/** Purchase controls used only on the single course detail page. */
 import Link from 'next/link';
-import { ArrowRight, RefreshCw } from 'lucide-react';
+import { ShoppingCart, RefreshCw } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import type { ReactNode } from 'react';
 import { Course } from '../../../types/lms';
 import { PromoValidationResult } from '../../../services/paymentService';
-import { formatPrice, getSaleCountdownLabel } from '../../../utils/coursePricing';
+import { formatPrice } from '../../../utils/coursePricing';
 
 type T = TFunction<'courses', undefined>;
 
@@ -29,16 +23,14 @@ interface CtaProps {
   effectivePrice: number;
   onEnroll: () => void;
   className?: string;
+  showPrice?: boolean;
+  now?: number | null;
 }
 
 /** The main action button, shared by the card and the mobile bottom bar. */
-export function CourseCtaButton({ course, t, enrolled, processing, effectivePrice, onEnroll, className = '' }: CtaProps) {
-  const base = `inline-flex items-center justify-between gap-3 rounded-full pl-6 pr-1.5 py-1.5 text-base font-bold no-underline ${className}`;
-  const circle = (
-    <span className="w-10 h-10 shrink-0 rounded-full bg-white text-cdc-primary flex items-center justify-center" aria-hidden="true">
-      <ArrowRight className="w-5 h-5" />
-    </span>
-  );
+export function CourseCtaButton({ course, t, enrolled, processing, effectivePrice, onEnroll, showPrice = false, className = '' }: CtaProps) {
+  const base = `inline-flex items-center justify-center gap-3 rounded-md px-5 py-3.5 text-sm font-bold no-underline ${className}`;
+  const circle = <ShoppingCart className="h-4 w-4 shrink-0" aria-hidden="true" />;
   if (enrolled) {
     return (
       <Link href={`/courses/${course.id}/learn`} className={`${base} bg-emerald-600 text-white hover:bg-emerald-700`}>
@@ -52,7 +44,7 @@ export function CourseCtaButton({ course, t, enrolled, processing, effectivePric
   }
   const label = processing
     ? effectivePrice === 0 ? t('activating') : t('detailEnrolling')
-    : effectivePrice === 0 ? t('enrollFree') : `${String(t('enroll')).replace(/\s*→\s*$/, '')} · ${formatPrice(effectivePrice)}`;
+    : effectivePrice === 0 ? t('enrollFree') : `${t('detailPage.buy')}${showPrice ? ` – ${formatPrice(effectivePrice)}` : ''}`;
   return (
     <button type="button" onClick={onEnroll} disabled={processing} className={`${base} border-none cursor-pointer bg-cdc-primary text-white hover:bg-cdc-primary-hover disabled:opacity-60`}>
       {label}
@@ -78,20 +70,21 @@ interface CardProps extends CtaProps {
 
 export default function CoursePurchaseCard(p: CardProps) {
   const { course, t, enrolled, effectivePrice, appliedPromo } = p;
-  const countdown = course.saleActive ? getSaleCountdownLabel(course.discountEndDate, p.lang) : null;
+  const remaining = p.now != null && course.saleActive && course.discountEndDate ? Math.max(0, Math.floor((Date.parse(course.discountEndDate) - p.now) / 1000)) : 0;
+  const countdown = remaining > 0 ? `${Math.floor(remaining / 86400)} ${t('academy.daysShort')} · ${[Math.floor(remaining / 3600) % 24, Math.floor(remaining / 60) % 60, remaining % 60].map(value => String(value).padStart(2, '0')).join(':')}` : null;
   return (
-    <div className="vip-card hover:translate-y-0 p-6">
+    <div className="rounded-xl border border-cdc-border bg-cdc-surface p-5 xl:p-6">
       {p.topSlot}
-      <div className="flex items-baseline gap-3">
-        <span className="text-3xl font-extrabold text-cdc-ink">{formatPrice(effectivePrice)}</span>
-        {(course.saleActive || appliedPromo) && <s className="text-lg text-cdc-muted">{formatPrice(course.originalPrice)}</s>}
+      <div className="flex flex-wrap items-baseline gap-3">
+        <span className="text-3xl xl:text-4xl font-extrabold text-cdc-ink">{formatPrice(effectivePrice)}</span>
+        {course.saleActive && <s className="text-lg text-cdc-muted">{formatPrice(course.originalPrice)}</s>}
         {course.saleActive && (
           <span className="ml-auto text-xs font-bold text-white px-2.5 py-1 rounded-lg bg-rose-600">
-            {course.discountBadgeText || `-${course.discountPercent}% ${t('saleOffSuffix')}`}
+            {`-${course.discountPercent}%`}
           </span>
         )}
       </div>
-      {countdown && <p className="mt-2 text-xs font-bold text-rose-600 dark:text-rose-400">⏳ {countdown}</p>}
+      {countdown && <p className="mt-2 text-xs font-bold text-rose-600 dark:text-rose-400">{t('academy.saleEndsIn')} {countdown}</p>}
 
       {p.ctaSlot && <div className="mt-5">{p.ctaSlot}</div>}
       <CourseCtaButton {...p} className="mt-5 w-full" />
@@ -135,15 +128,6 @@ export default function CoursePurchaseCard(p: CardProps) {
         </div>
       )}
       {p.bottomSlot}
-    </div>
-  );
-}
-
-/** Fixed bottom CTA on phones/tablets (sits above the mobile tab bar). */
-export function CourseMobileCta(props: CtaProps) {
-  return (
-    <div className="lg:hidden fixed left-0 right-0 z-40 px-4 pb-3 pt-3 bg-gradient-to-t from-cdc-bg via-cdc-bg/95 to-transparent" style={{ bottom: 'var(--tabbar-h, 0px)' }}>
-      <CourseCtaButton {...props} className="w-full shadow-card-hover" />
     </div>
   );
 }

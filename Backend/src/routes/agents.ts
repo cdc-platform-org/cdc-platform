@@ -1,3 +1,5 @@
+import { hasIncludedAiToolAccess } from '../services/payments/aiToolSubscriptionService';
+import { requireDigitalToolAccess } from '../services/marketplace/digitalToolAccessService';
 /**
  * Express router mounted at `/api/agents` (see server.ts).
  * Endpoints:
@@ -28,11 +30,10 @@ const router = Router();
 // is still scoped to the caller's own agents via plain ownership checks
 // (not a role gate), same posture as gigs.ts/vacancies.ts's
 // requireGigOwnerOrAdmin pattern.
-router.use(authenticate, requireApproved);
+router.use(authenticate, requireApproved, requireDigitalToolAccess('chatbot-builder'));
 
 // Starter Plan limits — see Frontend's data/productOverviews.ts (the
 // Product Overview tab this backs) for the exact copy shown to admins.
-const TRIAL_PERIOD_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 // Only a TRIAL/ACTIVE agent counts against this — a PAUSED one (expired
 // trial or manually paused) doesn't block creating a fresh replacement,
 // so a lapsed trial always has a clear path forward rather than a dead end.
@@ -80,7 +81,8 @@ router.post('/', async (req: Request, res: Response) => {
     data: {
       ...result.data,
       businessId: req.user!.id,
-      trialEndsAt: new Date(Date.now() + TRIAL_PERIOD_MS),
+      status: 'ACTIVE',
+      trialEndsAt: new Date(),
     },
   });
   res.status(201).json({ data: agent });
@@ -100,7 +102,7 @@ router.put('/:id', loadOwnedAgent, async (req: Request, res: Response) => {
   if (result.data.status === 'ACTIVE' && req.agent!.status !== 'ACTIVE') {
     const isAdmin = req.user!.role === 'SuperAdmin';
     const paid = !!req.agent!.paidUntil && req.agent!.paidUntil.getTime() > Date.now();
-    if (!isAdmin && !paid) {
+    if (!isAdmin && !paid && !await hasIncludedAiToolAccess(req.user!.id, 'chatbot-builder')) {
       return res.status(402).json({ code: 'PAYMENT_REQUIRED', message: 'To switch this agent on, pay for a month first.' });
     }
     const others = await prisma.agent.count({ where: { businessId: req.agent!.businessId, id: { not: req.agent!.id }, status: { in: ['TRIAL', 'ACTIVE'] } } });

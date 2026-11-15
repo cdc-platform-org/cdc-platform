@@ -161,7 +161,9 @@ export function canStartFinalGeneration(book: {
   // exists only after approval, so FAILED + characterBible means the final
   // run failed after payment (a preview failure has no Character Bible).
   const statusOk = book.status === 'PAID' || book.status === 'FINAL_GENERATING' || (book.status === 'FAILED' && book.characterBible != null);
-  return statusOk && book.characterBible != null && book.styleBible != null && book.storyPlan != null;
+  const approval = (book.storyPlan as { textApprovedAt?: unknown } | null)?.textApprovedAt;
+  const textApproved = typeof approval === 'string' && Number.isFinite(Date.parse(approval));
+  return statusOk && textApproved && book.characterBible != null && book.styleBible != null;
 }
 
 // Revision claim eligibility (Phase 5.1 §Corrected Revision Concurrency):

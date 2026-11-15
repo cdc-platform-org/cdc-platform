@@ -1,6 +1,7 @@
 import apiClient from './apiClient';
 
 export type PaymentPurpose =
+  | 'AI_TOOL_SUBSCRIPTION'
   | 'COURSE'
   | 'MENTORSHIP'
   | 'GIG_ESCROW_FUNDING'

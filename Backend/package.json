@@ -12,6 +12,7 @@
     "db:generate": "prisma generate",
     "db:seed": "prisma db seed",
     "db:seed:forum": "ts-node prisma/seedForum.ts",
+    "db:seed:about": "ts-node --project tsconfig.seed-about.json scripts/seedAbout.ts",
     "db:seed:e2e": "ts-node prisma/seedE2E.ts",
     "translate:locales": "ts-node scripts/auto-translate-locales.ts",
     "verification-docs:audit": "ts-node scripts/verification-doc-storage-audit.ts",

@@ -1,0 +1,5 @@
+.hub h1 { line-height: 1.14 !important; letter-spacing: -.035em !important; overflow-wrap: anywhere; }
+.hub h2, .hub h3 { line-height: 1.35 !important; letter-spacing: -.015em !important; }
+.hub p { overflow-wrap: anywhere; }
+.hub button, .hub a, .hub select { -webkit-tap-highlight-color: transparent; }
+.hub a:focus-visible, .hub button:focus-visible, .hub select:focus-visible { outline: 2px solid rgb(var(--cdc-primary)); outline-offset: 4px; }

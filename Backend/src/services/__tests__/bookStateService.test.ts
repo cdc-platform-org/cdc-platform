@@ -108,33 +108,36 @@ describe('BookStatus transitions', () => {
 });
 
 describe('final generation eligibility', () => {
+  it.each([undefined, null, '', 'invalid', true])('requires explicit valid text approval: %s', (approval) => {
+    expect(canStartFinalGeneration({ status: 'PAID' as any, characterBible: {}, styleBible: {}, storyPlan: { textApprovedAt: approval } })).toBe(false);
+  });
   it('requires PAID for the initial run', () => {
-    const base = { characterBible: { x: 1 }, styleBible: { y: 1 }, storyPlan: { z: 1 } };
+    const base = { characterBible: { x: 1 }, styleBible: { y: 1 }, storyPlan: { textApprovedAt: '2026-11-15T12:00:00Z' } };
     expect(canStartFinalGeneration({ status: 'PAID' as any, ...base })).toBe(true);
     expect(canStartFinalGeneration({ status: 'CHARACTER_APPROVED' as any, ...base })).toBe(false);
     expect(canStartFinalGeneration({ status: 'PAYMENT_PENDING' as any, ...base })).toBe(false);
   });
 
   it('allows a resumed run from FINAL_GENERATING itself', () => {
-    const base = { characterBible: { x: 1 }, styleBible: { y: 1 }, storyPlan: { z: 1 } };
+    const base = { characterBible: { x: 1 }, styleBible: { y: 1 }, storyPlan: { textApprovedAt: '2026-11-15T12:00:00Z' } };
     expect(canStartFinalGeneration({ status: 'FINAL_GENERATING' as any, ...base })).toBe(true);
   });
 
   it('allows resuming a paid book from FAILED only when a Character Bible exists', () => {
-    const base = { characterBible: { x: 1 }, styleBible: { y: 1 }, storyPlan: { z: 1 } };
+    const base = { characterBible: { x: 1 }, styleBible: { y: 1 }, storyPlan: { textApprovedAt: '2026-11-15T12:00:00Z' } };
     expect(canStartFinalGeneration({ status: 'FAILED' as any, ...base })).toBe(true);
     expect(canStartFinalGeneration({ status: 'FAILED' as any, ...base, characterBible: null })).toBe(false);
   });
 
   it('missing Character Bible blocks final generation', () => {
     expect(
-      canStartFinalGeneration({ status: 'PAID' as any, characterBible: null, styleBible: { y: 1 }, storyPlan: { z: 1 } })
+      canStartFinalGeneration({ status: 'PAID' as any, characterBible: null, styleBible: { y: 1 }, storyPlan: { textApprovedAt: '2026-11-15T12:00:00Z' } })
     ).toBe(false);
   });
 
   it('missing Style Bible blocks final generation', () => {
     expect(
-      canStartFinalGeneration({ status: 'PAID' as any, characterBible: { x: 1 }, styleBible: null, storyPlan: { z: 1 } })
+      canStartFinalGeneration({ status: 'PAID' as any, characterBible: { x: 1 }, styleBible: null, storyPlan: { textApprovedAt: '2026-11-15T12:00:00Z' } })
     ).toBe(false);
   });
 

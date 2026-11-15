@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Play, Pause, Sparkles } from 'lucide-react';
+import { cloudVoiceFor, pickNaturalVoice as pickVoice, splitSpeechText as splitForTts } from '../../utils/naturalSpeech';
+import { normalizeTextForSpeech } from '../../utils/speechSsml';
 
-// Reusable narration button built on the native Web Speech API
-// (window.speechSynthesis) — no backend call, no API cost, works offline.
+// Reusable narration button: Azure neural voices for Georgian/English,
+// with a matching browser voice when cloud speech is unavailable.
 // Used on: course lesson notes (conspectus), community forum threads, and
 // as a per-message speaker button in CourseTutorPanel's AI replies.
 //
@@ -14,20 +16,6 @@ import { Play, Pause, Sparkles } from 'lucide-react';
 // router.locale — narrating English fallback text with a Turkish/Armenian/
 // etc. voice would mispronounce it.
 const SPEEDS = [1, 1.25, 1.5, 2] as const;
-
-// Georgian narration fallback, for the large share of browsers that ship
-// zero Georgian speechSynthesis voices — proxied server-side through
-// /api/tts to Azure Cognitive Services Speech (see that route's own
-// comment for why: a real, documented TTS API with genuine Georgian neural
-// voices, unlike an earlier attempt at Google Translate's undocumented
-// translate_tts endpoint, which turned out to reject Georgian outright).
-// Azure's REST TTS endpoint accepts thousands of characters per request,
-// comfortably more than any single lesson conspectus/forum post here, but
-// text is still split on sentence boundaries and played back-to-back —
-// mainly so the progress bar has more than one waypoint on long narrations,
-// not because of a hard per-request limit like the old Google endpoint had.
-const TTS_CHUNK_LIMIT = 1500;
-const AZURE_VOICE = 'ka-GE-EkaNeural';
 
 // Average speaking rate used to estimate a narration's total duration for
 // the seek bar's timestamp display ("0:45 / 2:10") — neither playback
@@ -67,49 +55,6 @@ function extractClientX(e: MouseEvent | TouchEvent): number | null {
   return e.clientX;
 }
 
-function splitForTts(input: string): string[] {
-  const sentences = input.match(/[^.!?։\n]+[.!?։]*\s*/g) ?? [input];
-  const chunks: string[] = [];
-  let current = '';
-  for (const sentence of sentences) {
-    if ((current + sentence).length > TTS_CHUNK_LIMIT) {
-      if (current.trim()) chunks.push(current.trim());
-      if (sentence.length > TTS_CHUNK_LIMIT) {
-        // Over-long run-on sentence: cut at the last comma/space before the
-        // limit rather than mid-word, so the voice never stops inside a word.
-        let rest = sentence;
-        while (rest.length > TTS_CHUNK_LIMIT) {
-          const window = rest.slice(0, TTS_CHUNK_LIMIT);
-          const cut = Math.max(window.lastIndexOf(', '), window.lastIndexOf(' '));
-          const at = cut > TTS_CHUNK_LIMIT / 2 ? cut + 1 : TTS_CHUNK_LIMIT;
-          chunks.push(rest.slice(0, at).trim());
-          rest = rest.slice(at);
-        }
-        current = rest;
-      } else {
-        current = sentence;
-      }
-    } else {
-      current += sentence;
-    }
-  }
-  if (current.trim()) chunks.push(current.trim());
-  return chunks.filter(Boolean);
-}
-
-function stripMarkdownForSpeech(input: string): string {
-  return input
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/`([^`]+)`/g, '$1')
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/[*_~#]/g, ' ')
-    .replace(/^\s*[-•]\s+/gm, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 // getVoices() can return an empty list on the very first call in Chrome —
 // the real list only exists once the async 'voiceschanged' event fires.
 // Waits for that (with a short timeout fallback for browsers that never
@@ -132,23 +77,6 @@ function getVoicesAsync(): Promise<SpeechSynthesisVoice[]> {
       resolve(window.speechSynthesis.getVoices());
     }, 500);
   });
-}
-
-// Matches on the language's primary subtag only ('ka' out of 'ka-GE') since
-// installed voices report their own lang tag inconsistently across OSes/
-// browsers. For non-Georgian languages, prefers a voice whose name signals
-// a higher-quality engine (Chrome/Edge label these "Google ..."/
-// "Microsoft ... Natural/Neural") over a generic platform default, since
-// those are audibly better for long-form narration.
-function pickVoice(voices: SpeechSynthesisVoice[], bcp47Lang: string): SpeechSynthesisVoice | null {
-  const primary = bcp47Lang.split('-')[0].toLowerCase();
-  const candidates = voices.filter((v) => v.lang.toLowerCase().startsWith(primary));
-  if (candidates.length === 0) return null;
-  if (primary !== 'ka') {
-    const highQuality = candidates.find((v) => /natural|neural|google/i.test(v.name));
-    if (highQuality) return highQuality;
-  }
-  return candidates[0];
 }
 
 interface VIPAudioNarratorProps {
@@ -202,6 +130,10 @@ export default function VIPAudioNarrator({
   // not an empty one, so that check would stay "true" forever after the
   // first fallback use.
   const fallbackActiveRef = useRef(false);
+  const playbackGenerationRef = useRef(0);
+  const rateRef = useRef(1);
+  const pausedRef = useRef(false);
+  const loadingAudioRef = useRef(false);
 
   // ---- Seek bar state ----
   // 0-1 fraction of the whole narration while a drag is in progress; null
@@ -223,18 +155,20 @@ export default function VIPAudioNarrator({
     setSupported(
       typeof window !== 'undefined' &&
         'speechSynthesis' in window &&
-        typeof (window as any).SpeechSynthesisUtterance !== 'undefined'
+        typeof SpeechSynthesisUtterance !== 'undefined'
     );
   }, []);
 
   useEffect(() => {
-    cleanTextRef.current = stripMarkdown ? stripMarkdownForSpeech(text) : text;
-  }, [text, stripMarkdown]);
+    cleanTextRef.current = stripMarkdown ? normalizeTextForSpeech(text, speechLang) : text;
+  }, [text, stripMarkdown, speechLang]);
 
   const stopFallbackAudio = useCallback(() => {
+    playbackGenerationRef.current += 1;
     const audio = audioRef.current;
     if (audio) {
       audio.pause();
+      audio.onended = audio.onerror = audio.onplay = audio.ontimeupdate = null;
       audio.src = '';
     }
     if (objectUrlRef.current) {
@@ -244,25 +178,46 @@ export default function VIPAudioNarrator({
     fallbackChunksRef.current = [];
     fallbackIndexRef.current = 0;
     fallbackActiveRef.current = false;
+    pausedRef.current = false;
+    loadingAudioRef.current = false;
   }, []);
 
   // Stop narration when the underlying content changes (e.g. the student
   // switches lessons) or this button unmounts — never leave a stale
   // utterance/audio chunk talking over new content.
   useEffect(() => {
+    setPlaying(false);
+    setPaused(false);
+    setProgress(0);
     return () => {
       if (supported) window.speechSynthesis.cancel();
       stopFallbackAudio();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supported, text]);
+  }, [supported, text, speechLang]);
 
-  const reportFallbackFailure = (reason: 'not_configured' | 'unauthorized' | 'error') => {
+  const reportFallbackFailure = useCallback((reason: 'not_configured' | 'unauthorized' | 'error') => {
+    // Cloud availability must not remove an installed, matching voice.
+    const voice = supported ? pickVoice(window.speechSynthesis.getVoices(), speechLang) : null;
+    if (voice && fallbackActiveRef.current) {
+      const remaining = fallbackChunksRef.current.slice(fallbackIndexRef.current).join(' ');
+      stopFallbackAudio();
+      const utterance = new SpeechSynthesisUtterance(remaining);
+      utterance.lang = speechLang;
+      utterance.voice = voice;
+      utterance.rate = rateRef.current;
+      utterance.onend = () => { setPlaying(false); setPaused(false); setProgress(1); };
+      utterance.onerror = () => { setPlaying(false); setPaused(false); };
+      window.speechSynthesis.speak(utterance);
+      setPlaying(true);
+      setPaused(false);
+      return;
+    }
     setPlaying(false);
     setPaused(false);
     setFallbackFailure(reason);
     setTimeout(() => setFallbackFailure(null), 4000);
-  };
+  }, [supported, speechLang, stopFallbackAudio]);
 
   // Plays fallbackChunksRef sequentially from fallbackIndexRef through one
   // <audio> element, fetching each chunk from /api/tts first (rather than
@@ -271,6 +226,8 @@ export default function VIPAudioNarrator({
   // doesn't expose the HTTP status, which is what reportFallbackFailure
   // needs to distinguish "not configured" from "bad key" from "other".
   const playFallbackChunk = useCallback(async (atRate: number, seekToFraction?: number) => {
+    const generation = ++playbackGenerationRef.current;
+    loadingAudioRef.current = true;
     const chunks = fallbackChunksRef.current;
     const index = fallbackIndexRef.current;
     if (index >= chunks.length) {
@@ -282,12 +239,15 @@ export default function VIPAudioNarrator({
 
     let response: Response;
     try {
-      response = await fetch(`/api/tts?text=${encodeURIComponent(chunks[index])}&voice=${encodeURIComponent(AZURE_VOICE)}`);
+      const voice = cloudVoiceFor(speechLang);
+      response = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: chunks[index], voice, speed: 1 }) });
     } catch {
+      if (generation !== playbackGenerationRef.current) return;
       reportFallbackFailure('error');
       return;
     }
 
+    if (generation !== playbackGenerationRef.current) return;
     if (!response.ok) {
       if (response.status === 501) reportFallbackFailure('not_configured');
       else if (response.status === 401 || response.status === 403) reportFallbackFailure('unauthorized');
@@ -295,14 +255,22 @@ export default function VIPAudioNarrator({
       return;
     }
 
+    let blob: Blob;
+    try { blob = await response.blob(); } catch {
+      if (generation === playbackGenerationRef.current) reportFallbackFailure('error');
+      return;
+    }
+    if (generation !== playbackGenerationRef.current) return;
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
-    const objectUrl = URL.createObjectURL(await response.blob());
+    const objectUrl = URL.createObjectURL(blob);
     objectUrlRef.current = objectUrl;
 
     if (!audioRef.current) audioRef.current = new Audio();
     const audio = audioRef.current;
     audio.src = objectUrl;
-    audio.playbackRate = atRate;
+    audio.preservesPitch = true;
+    audio.playbackRate = rateRef.current;
+    loadingAudioRef.current = false;
     // The seek bar's "jump to a different, not-yet-loaded chunk" path (see
     // performSeek) — the target chunk's real duration isn't known until its
     // metadata loads, so the jump-to-position within it happens here, once,
@@ -310,7 +278,7 @@ export default function VIPAudioNarrator({
     // actually parsed the audio.
     if (seekToFraction != null) {
       const onLoadedMetadata = () => {
-        audio.currentTime = seekToFraction * (audio.duration || 0);
+        if (generation === playbackGenerationRef.current) audio.currentTime = seekToFraction * (audio.duration || 0);
         audio.removeEventListener('loadedmetadata', onLoadedMetadata);
       };
       audio.addEventListener('loadedmetadata', onLoadedMetadata);
@@ -321,12 +289,14 @@ export default function VIPAudioNarrator({
       setProgress(Math.min(1, (index + chunkProgress) / chunks.length));
     };
     audio.onended = () => {
+      if (generation !== playbackGenerationRef.current) return;
       fallbackIndexRef.current += 1;
-      playFallbackChunk(atRate);
+      playFallbackChunk(rateRef.current);
     };
-    audio.onerror = () => reportFallbackFailure('error');
-    audio.play().catch(() => reportFallbackFailure('error'));
-  }, []);
+    const playbackFailed = () => { if (generation === playbackGenerationRef.current) reportFallbackFailure('error'); };
+    audio.onerror = playbackFailed;
+    if (!pausedRef.current) audio.play().catch(playbackFailed);
+  }, [speechLang, reportFallbackFailure]);
 
   const startFallback = useCallback(
     (atRate: number) => {
@@ -335,6 +305,7 @@ export default function VIPAudioNarrator({
       fallbackActiveRef.current = true;
       fallbackChunksRef.current = chunks;
       fallbackIndexRef.current = 0;
+      pausedRef.current = false;
       setPlaying(true);
       setPaused(false);
       setProgress(0);
@@ -349,24 +320,17 @@ export default function VIPAudioNarrator({
       if (supported) window.speechSynthesis.cancel();
       stopFallbackAudio();
 
-      const voice = supported ? pickVoice(await getVoicesAsync(), speechLang) : null;
-      const isGeorgian = speechLang.split('-')[0].toLowerCase() === 'ka';
-
-      // Never let the platform fall back to whatever default voice it picks
-      // for an unmatched lang — for Georgian specifically that's typically
-      // an English voice attempting Georgian text letter-by-letter, which
-      // reads as broken rather than merely accented. Seamlessly hand off to
-      // the Azure Speech fallback instead of just erroring out — most
-      // browsers ship zero Georgian speechSynthesis voices, so this is the
-      // common path for `ka`, not a rare edge case. /api/tts only knows a
-      // Georgian voice, so a non-Georgian text on a browser with no
-      // speechSynthesis support at all has no working engine either way —
-      // reported directly rather than attempted against the wrong voice.
-      if (isGeorgian && !voice) {
+      rateRef.current = atRate;
+      if (cloudVoiceFor(speechLang)) {
         startFallback(atRate);
         return;
       }
-      if (!supported) {
+      const generation = playbackGenerationRef.current;
+      const voice = supported ? pickVoice(await getVoicesAsync(), speechLang) : null;
+      if (generation !== playbackGenerationRef.current) return;
+
+      // Never read a language using an unrelated default voice.
+      if (!supported || !voice) {
         reportFallbackFailure('error');
         return;
       }
@@ -394,7 +358,7 @@ export default function VIPAudioNarrator({
       setPaused(false);
       setProgress(0);
     },
-    [supported, speechLang, stopFallbackAudio, startFallback]
+    [supported, speechLang, stopFallbackAudio, startFallback, reportFallbackFailure]
   );
 
   const usingFallback = () => fallbackActiveRef.current;
@@ -422,6 +386,7 @@ export default function VIPAudioNarrator({
       const targetCharIndex = Math.round(clamped * fullText.length);
 
       if (usingFallback()) {
+        pausedRef.current = false;
         const chunks = fallbackChunksRef.current;
         let charsBefore = 0;
         let targetChunkIndex = chunks.length - 1;
@@ -485,7 +450,7 @@ export default function VIPAudioNarrator({
       setPaused(false);
       setProgress(clamped);
     },
-    [rate, speechLang, supported, playFallbackChunk]
+    [rate, speechLang, supported, playFallbackChunk, reportFallbackFailure]
   );
 
   const fractionFromClientX = useCallback((clientX: number): number => {
@@ -541,12 +506,14 @@ export default function VIPAudioNarrator({
 
   const toggle = () => {
     if (usingFallback()) {
-      const audio = audioRef.current!;
+      const audio = audioRef.current;
       if (playing && !paused) {
-        audio.pause();
+        pausedRef.current = true;
+        audio?.pause();
         setPaused(true);
       } else if (playing && paused) {
-        audio.play();
+        pausedRef.current = false;
+        if (!loadingAudioRef.current) audio?.play().catch(() => reportFallbackFailure('error'));
         setPaused(false);
       } else {
         startFallback(rate);
@@ -582,6 +549,7 @@ export default function VIPAudioNarrator({
   };
 
   const handleRateChange = (next: number) => {
+    rateRef.current = next;
     setRate(next);
     if (!playing) return;
     if (usingFallback()) {

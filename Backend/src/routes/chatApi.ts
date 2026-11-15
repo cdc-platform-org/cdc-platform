@@ -1,3 +1,4 @@
+import { hasIncludedAiToolAccess } from '../services/payments/aiToolSubscriptionService';
 /**
  * Express router mounted at `/api/v1` (see server.ts).
  * Endpoints:
@@ -55,7 +56,7 @@ const KNOWLEDGE_DOC_LIMIT = 40;
 router.get('/agents/:agentId/config', async (req: Request, res: Response) => {
   const agent = await prisma.agent.findUnique({
     where: { id: req.params.agentId },
-    select: { id: true, name: true, primaryColor: true, status: true, trialEndsAt: true, allowedOrigins: true },
+    select: { id: true, name: true, primaryColor: true, status: true, trialEndsAt: true, paidUntil: true, businessId: true, allowedOrigins: true },
   });
   if (!agent) return res.status(404).json({ message: 'Agent not found.' });
 
@@ -64,7 +65,9 @@ router.get('/agents/:agentId/config', async (req: Request, res: Response) => {
     return res.status(403).json({ message: 'This origin is not authorized to use this agent.' });
   }
 
-  const trialExpired = agent.status === 'TRIAL' && agent.trialEndsAt.getTime() <= Date.now();
+  const includedAccess = await hasIncludedAiToolAccess(agent.businessId, 'chatbot-builder');
+  const validPaidPeriod = !!agent.paidUntil && agent.paidUntil.getTime() > Date.now();
+  const trialExpired = !includedAccess && !validPaidPeriod && !(agent.status === 'TRIAL' && agent.trialEndsAt.getTime() > Date.now());
   res.json({
     id: agent.id,
     name: agent.name,
@@ -97,7 +100,9 @@ router.post('/chat', chatRateLimit, async (req: Request, res: Response) => {
   // Subscription/trial guard — never auto-charges anything here, just
   // decides whether to answer. PAUSED is set explicitly (by the business,
   // or by the trial-expiry cron, see services/agentBillingService.ts).
-  const trialExpired = agent.status === 'TRIAL' && agent.trialEndsAt.getTime() <= Date.now();
+  const includedAccess = await hasIncludedAiToolAccess(agent.businessId, 'chatbot-builder');
+  const validPaidPeriod = !!agent.paidUntil && agent.paidUntil.getTime() > Date.now();
+  const trialExpired = !includedAccess && !validPaidPeriod && !(agent.status === 'TRIAL' && agent.trialEndsAt.getTime() > Date.now());
   if (agent.status === 'PAUSED' || trialExpired) {
     // No LLM call is made — this is the actual "reject the completion
     // request" enforcement, before any usage/cost is incurred. `reason`

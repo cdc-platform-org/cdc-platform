@@ -56,6 +56,7 @@ export interface TtsVoice {
   displayName: string;
   localName: string;
   gender: string;
+  styles: string[];
 }
 
 // Azure's own voices/list response has many more fields (sample rate,
@@ -68,6 +69,7 @@ interface RawAzureVoice {
   DisplayName: string;
   LocalName: string;
   Gender: string;
+  StyleList?: string[];
 }
 
 // Voice list changes rarely (Azure ships new ones a few times a year) and
@@ -106,7 +108,7 @@ export async function listVoices(): Promise<TtsVoice[]> {
     // still lists sound noticeably more robotic and are being phased out
     // account-wide, no reason to surface them in a fresh UI.
     .filter((v) => v.ShortName.includes('Neural'))
-    .map((v) => ({ shortName: v.ShortName, locale: v.Locale, displayName: v.DisplayName, localName: v.LocalName, gender: v.Gender }));
+    .map((v) => ({ shortName: v.ShortName, locale: v.Locale, displayName: v.DisplayName, localName: v.LocalName, gender: v.Gender, styles: v.StyleList ?? [] }));
 
   voiceCache = { voices, fetchedAt: Date.now() };
   return voices;
@@ -119,7 +121,7 @@ export async function listVoices(): Promise<TtsVoice[]> {
 // narration at typical speaking pace).
 export const MAX_TTS_TEXT_LENGTH = 8000;
 
-export async function synthesizeSpeech(params: { text: string; voiceShortName: string; voiceLocale: string; speed: number }): Promise<Buffer> {
+export async function synthesizeSpeech(params: { text: string; voiceShortName: string; voiceLocale: string; speed: number; narration?: boolean }): Promise<Buffer> {
   if (!isTtsConfigured()) {
     throw new AzureSpeechError('Azure Speech is not configured (AZURE_SPEECH_KEY/AZURE_SPEECH_REGION missing).', 501);
   }
@@ -132,7 +134,15 @@ export async function synthesizeSpeech(params: { text: string; voiceShortName: s
   if (!normalizeTextForSpeech(params.text, params.voiceLocale)) {
     throw new AzureSpeechError('There is no readable text to narrate.', 400);
   }
-  const ssml = buildSsml({ text: params.text, voiceShortName: params.voiceShortName, locale: params.voiceLocale, speed: params.speed });
+  let style: string | undefined;
+  if (params.narration) {
+    // Style support is voice-specific. Georgian voices continue using
+    // their normal neural intonation when no narrative style is offered.
+    const voices = await listVoices().catch(() => [] as TtsVoice[]);
+    const supported = voices.find((v) => v.shortName === params.voiceShortName)?.styles ?? [];
+    style = ['narration-relaxed', 'narration-professional', 'gentle'].find((candidate) => supported.includes(candidate));
+  }
+  const ssml = buildSsml({ text: params.text, voiceShortName: params.voiceShortName, locale: params.voiceLocale, speed: params.speed, style });
 
   let response: Response;
   try {

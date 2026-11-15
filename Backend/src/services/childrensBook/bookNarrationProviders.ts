@@ -16,7 +16,7 @@ import {
 } from './bookNarrationService';
 
 // Slightly slower than conversational pace — a children's story read-aloud.
-const BOOK_NARRATION_SPEED = 0.9;
+const BOOK_NARRATION_SPEED = 0.96;
 
 // "ka-GE-EkaNeural" -> "ka-GE"
 function localeOfVoice(voiceShortName: string): string {
@@ -29,7 +29,7 @@ export interface AzureBookNarrationOptions {
 }
 
 // Real narration through the existing Media Studio Azure Speech wrapper
-// (azureSpeechService.ts). Output is that wrapper's MP3 (16kHz/128kbps mono),
+// (azureSpeechService.ts). Output is that wrapper's MP3 (24kHz/96kbps mono),
 // stored under a .mp3 key with audio/mpeg — the audio routes serve whatever
 // mimeType the artifact row records, so no route change is needed for it.
 export class AzureBookNarrationProvider implements BookNarrationProvider {
@@ -58,6 +58,7 @@ export class AzureBookNarrationProvider implements BookNarrationProvider {
       voiceShortName: voice,
       voiceLocale: localeOfVoice(voice),
       speed: BOOK_NARRATION_SPEED,
+      narration: true,
     });
 
     const revisionVersion = input.revisionVersion ?? 0;

@@ -9,17 +9,17 @@ const copy = {
   ka: {
     checking: 'შემოწმდება წვდომა…',
     title: 'ეს ხელსაწყო წვდომას საჭიროებს',
-    body: 'თქვენ ჯერ არ გაქვთ ამ ხელსაწყოს გამოყენების უფლება. დაგვიკავშირდით წვდომის მისაღებად.',
+    body: 'ამ ინსტრუმენტის გამოწერა შეგიძლია ციფრულ მარკეტში. სწავლის პერიოდში კოლეჯის წვდომა უფასოა.',
     contact: 'წვდომის მოთხოვნა',
-    browse: 'სხვა ხელსაწყოები',
+    browse: 'AI ინსტრუმენტების მარკეტი',
     mailSubject: 'ხელსაწყოზე წვდომის მოთხოვნა',
   },
   en: {
     checking: 'Checking access…',
     title: 'This tool requires access',
-    body: 'You don’t have access to this tool yet. Contact us to request it.',
+    body: 'Subscribe to this tool in the Digital Market. College access is included while you study.',
     contact: 'Request access',
-    browse: 'Browse other tools',
+    browse: 'AI tools in the Digital Market',
     mailSubject: 'Tool access request',
   },
 };
@@ -77,8 +77,8 @@ export default function DigitalToolAccessGate({ toolKey, children, toolTitle, to
       {header}
       <div role="alert">
         <ToolStateCard icon={Lock} accent={accent} title={t.title} body={t.body}>
-          <ToolLinkButton href={`mailto:contact@cdc.org.ge?subject=${subject}`}><Mail className="w-4 h-4" aria-hidden />{t.contact}</ToolLinkButton>
-          <ToolLinkButton href="/tools" variant="secondary"><LayoutGrid className="w-4 h-4" aria-hidden />{t.browse}</ToolLinkButton>
+          <ToolLinkButton variant="secondary" href={`mailto:contact@cdc.org.ge?subject=${subject}`}><Mail className="w-4 h-4" aria-hidden />{t.contact}</ToolLinkButton>
+          <ToolLinkButton href={`/marketplace?category=${encodeURIComponent(lang === 'ka' ? 'ციფრული AI ხელსაწყოები' : 'Digital AI Tools')}`}><LayoutGrid className="w-4 h-4" aria-hidden />{t.browse}</ToolLinkButton>
         </ToolStateCard>
       </div>
     </ToolShell>

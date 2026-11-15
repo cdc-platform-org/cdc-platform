@@ -14,6 +14,7 @@ interface LightboxProps {
   index: number | null;
   onClose: () => void;
   onIndexChange: (index: number) => void;
+  labels?: { close: string; previous: string; next: string; zoomIn: string; zoomOut: string };
 }
 
 const SWIPE_THRESHOLD_PX = 50;
@@ -33,7 +34,7 @@ function distanceBetween(a: React.Touch, b: React.Touch): number {
 // zoomed in; swipe-to-navigate only applies at the default 1x zoom, so
 // panning and navigating gestures never fight each other). Renders nothing
 // when index is null.
-export default function Lightbox({ images, index, onClose, onIndexChange }: LightboxProps) {
+export default function Lightbox({ images, index, onClose, onIndexChange, labels = { close: 'Close', previous: 'Previous image', next: 'Next image', zoomIn: 'Zoom in', zoomOut: 'Zoom out' } }: LightboxProps) {
   const isOpen = index !== null && images.length > 0;
   const touchStartX = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -49,7 +50,10 @@ export default function Lightbox({ images, index, onClose, onIndexChange }: Ligh
   // Move focus into the dialog on open so keyboard/screen-reader users land
   // somewhere sensible rather than the still-focused trigger button behind it.
   useEffect(() => {
-    if (isOpen) containerRef.current?.focus();
+    if (!isOpen) return;
+    const previous = document.activeElement as HTMLElement | null;
+    containerRef.current?.focus();
+    return () => { if (previous?.isConnected) previous.focus(); };
   }, [isOpen]);
 
   // Reset zoom/pan whenever the viewed image changes (including on open) —
@@ -79,7 +83,14 @@ export default function Lightbox({ images, index, onClose, onIndexChange }: Ligh
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') goPrev();
+      if (e.key === 'Tab') {
+        const buttons = containerRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)');
+        if (!buttons?.length) return;
+        const first = buttons[0]; const last = buttons[buttons.length - 1];
+        if (e.shiftKey && (document.activeElement === first || document.activeElement === containerRef.current)) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+      else if (e.key === 'ArrowLeft') goPrev();
       else if (e.key === 'ArrowRight') goNext();
       else if (e.key === '+' || e.key === '=') zoomIn();
       else if (e.key === '-') zoomOut();
@@ -174,7 +185,7 @@ export default function Lightbox({ images, index, onClose, onIndexChange }: Ligh
           e.stopPropagation();
           onClose();
         }}
-        aria-label="Close"
+        aria-label={labels.close}
         className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10 flex items-center justify-center w-10 h-10 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors cursor-pointer"
       >
         <X size={20} />
@@ -186,7 +197,7 @@ export default function Lightbox({ images, index, onClose, onIndexChange }: Ligh
           type="button"
           onClick={zoomOut}
           disabled={scale <= MIN_SCALE}
-          aria-label="Zoom out"
+          aria-label={labels.zoomOut}
           className="flex items-center justify-center w-10 h-10 rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
         >
           <ZoomOut size={18} />
@@ -195,7 +206,7 @@ export default function Lightbox({ images, index, onClose, onIndexChange }: Ligh
           type="button"
           onClick={zoomIn}
           disabled={scale >= MAX_SCALE}
-          aria-label="Zoom in"
+          aria-label={labels.zoomIn}
           className="flex items-center justify-center w-10 h-10 rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
         >
           <ZoomIn size={18} />
@@ -209,7 +220,7 @@ export default function Lightbox({ images, index, onClose, onIndexChange }: Ligh
             e.stopPropagation();
             goPrev();
           }}
-          aria-label="Previous image"
+          aria-label={labels.previous}
           className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors cursor-pointer"
         >
           <ChevronLeft size={24} />
@@ -251,7 +262,7 @@ export default function Lightbox({ images, index, onClose, onIndexChange }: Ligh
             e.stopPropagation();
             goNext();
           }}
-          aria-label="Next image"
+          aria-label={labels.next}
           className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors cursor-pointer"
         >
           <ChevronRight size={24} />

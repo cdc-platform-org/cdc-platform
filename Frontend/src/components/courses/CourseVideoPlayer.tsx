@@ -1,3 +1,6 @@
+import { useTranslation } from 'next-i18next';
+import { parseVideoUrl } from '../shared/VideoEmbed';
+import MinimalVideo from './MinimalVideo';
 import { useAuth } from '../../context/AuthContext';
 
 interface CourseVideoPlayerProps {
@@ -11,11 +14,12 @@ interface CourseVideoPlayerProps {
 // protection, which Bunny Stream doesn't provide at this tier.
 export default function CourseVideoPlayer({ embedUrl, title }: CourseVideoPlayerProps) {
   const { user } = useAuth();
+  const { t } = useTranslation('courses');
   const watermarkText = user?.email ?? '';
 
   return (
     <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden">
-      {embedUrl ? (
+      {embedUrl && parseVideoUrl(embedUrl)?.kind === 'file' ? <MinimalVideo key={embedUrl} src={embedUrl} title={title} /> : embedUrl ? (
         <iframe
           key={embedUrl}
           src={embedUrl}
@@ -27,7 +31,7 @@ export default function CourseVideoPlayer({ embedUrl, title }: CourseVideoPlayer
         />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-400">
-          Video is not available for this lesson yet.
+          {t('academy.videoUnavailable')}
         </div>
       )}
 

@@ -1,3 +1,4 @@
+import DigitalToolAccessGate from '../../../src/components/tools/DigitalToolAccessGate';
 import { useRouter } from 'next/router';
 import ToolGuideButton from '../../../src/components/tools/ToolGuideButton';
 import { GraduationCap } from 'lucide-react';
@@ -50,7 +51,7 @@ export default function EnglishTutorPage() {
           for. Same fix applied to media-studio.tsx. */}
       <SEOHead title={t.title} description={t.subtitle} noIndex />
       <ProtectedRoute>
-        <AdminOnlyToolGate slug="english-tutor"><EnglishTutorContent /></AdminOnlyToolGate>
+        <AdminOnlyToolGate slug="english-tutor"><DigitalToolAccessGate toolKey="english-tutor"><EnglishTutorContent /></DigitalToolAccessGate></AdminOnlyToolGate>
       </ProtectedRoute>
     </>
   );

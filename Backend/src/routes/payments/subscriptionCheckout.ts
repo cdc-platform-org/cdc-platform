@@ -1,3 +1,4 @@
+import { hasActiveCollegeAiAccess } from '../../services/learning/collegeAiAccessService';
 /**
  * BOG checkout for flat-price AI subscriptions: English tutor (IMIAKO),
  * Educator VIP and Business AI agents.
@@ -46,6 +47,7 @@ router.post(
   authenticate,
   requireApproved,
   async (req: Request, res: Response) => {
+    if (await hasActiveCollegeAiAccess(req.user!.id)) return res.json({ enrolled: true, redirectUrl: null, included: true });
     // A pending order is only reused when it was opened with the same promo
     // code (or none), so a buyer who comes back with a code never lands on
     // an earlier full-price BOG order.
@@ -147,6 +149,7 @@ async function flatAiToolCheckout(
     complete: () => Promise<unknown>;
   }
 ) {
+  if (await hasActiveCollegeAiAccess(req.user!.id)) return res.json({ enrolled: true, redirectUrl: null, included: true });
   const requestedPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode.trim().toUpperCase() : '';
   const requestedPromoId = requestedPromoCode
     ? (await prisma.promoCode.findUnique({ where: { code: requestedPromoCode }, select: { id: true } }))?.id ?? 'unknown-promo'

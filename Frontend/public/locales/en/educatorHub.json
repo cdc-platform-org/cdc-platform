@@ -1,7 +1,7 @@
 {
   "pageTitle": "AI Educator VIP Hub",
   "pageSubtitle": "AI tools built for your highest-pain weekly workflows — tests, rubrics, and homework grading, in minutes.",
-  "vipBadge": "VIP 50 ₾/mo",
+  "vipBadge": "VIP 29 ₾/mo",
   "trialCta": "Start 5-Day Free Trial",
   "trialStarting": "Starting your trial…",
   "trialStartError": "Could not start your trial. Please try again.",
@@ -184,7 +184,7 @@
   "downloadCertificate": "Download Certificate #{{index}}",
   "certificatesTitle": "Certificate & Diploma Builder",
   "certificatesDescription": "Create printable certificates and diplomas for your students in seconds.",
-  "vipTrialUsedDesc": "Your free trial has ended. To keep VIP, pay 50 GEL for 30 days. Have a promo code? Enter it below.",
+  "vipTrialUsedDesc": "Your free trial has ended. To keep VIP, pay 29 GEL for 30 days. Have a promo code? Enter it below.",
   "vipRequestCta": "Request VIP activation",
   "vipRequestSubject": "AI Educator VIP activation"
 }

@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { Mail, Phone } from 'lucide-react';
 import { useRouter } from 'next/router';
 import { merchantInfo } from '@/src/data/merchantInfo';
+import { NAV_DICT } from '@/src/data/siteNavigation';
+import { MARKETPLACE_CATEGORIES } from '@/src/data/marketplaceCategories';
 import { resolveLocale } from '@/src/utils/locale';
 
 const SOCIAL_LINKS = [
@@ -45,7 +47,7 @@ const SOCIAL_LINKS = [
 const STRINGS = {
   ka: {
     tagline: 'ვასწავლით ციფრულ პროფესიებს გურიაში — HEKS/EPER Georgia-ს მხარდაჭერით.',
-    coursesHeading: 'კურსები',
+    coursesHeading: 'ციფრული კოლეჯი',
     courses: 'კურსები',
     giftCards: 'სასაჩუქრე ბარათი',
     cases: 'წარმატებული სტუდენტები',
@@ -56,7 +58,7 @@ const STRINGS = {
     jobs: 'ვაკანსიები და პროექტები',
     mentors: 'მენტორები',
     forum: 'ფორუმი',
-    marketplace: 'ციფრული მაღაზია',
+    marketplace: 'ციფრული მარკეტი',
     studio: 'CDC Studio',
     helpHeading: 'დახმარება',
     tutorials: 'ვიდეო ტუტორიალები',
@@ -64,7 +66,7 @@ const STRINGS = {
     contactPage: 'დაგვიკავშირდით',
     legalHeading: 'სამართლებრივი',
     privacy: 'კონფიდენციალურობის პოლიტიკა',
-    terms: 'წესები და პირობები',
+    terms: 'გამოყენების წესები და პირობები',
     refund: 'თანხის დაბრუნების პოლიტიკა',
     rights: 'ყველა უფლება დაცულია.',
     followUs: 'გამოგვყევით',
@@ -72,7 +74,7 @@ const STRINGS = {
   },
   en: {
     tagline: 'Teaching digital professions in Guria — supported by HEKS/EPER Georgia.',
-    coursesHeading: 'Courses',
+    coursesHeading: 'Digital College',
     courses: 'All Courses',
     giftCards: 'Gift cards',
     cases: 'Success Stories',
@@ -83,7 +85,7 @@ const STRINGS = {
     jobs: 'Jobs & Projects',
     mentors: 'Mentors',
     forum: 'Forum',
-    marketplace: 'Marketplace',
+    marketplace: 'Digital Market',
     studio: 'CDC Studio',
     helpHeading: 'Help',
     tutorials: 'Video Tutorials',
@@ -269,6 +271,7 @@ export default function SiteFooter() {
             <li><Link href="/community" className={navLink}>{t.jobs}</Link></li>
             <li><Link href="/mentors" className={navLink}>{t.mentors}</Link></li>
             <li><Link href="/marketplace" className={navLink}>{t.marketplace}</Link></li>
+            <li><Link href={`/marketplace?category=${encodeURIComponent(MARKETPLACE_CATEGORIES[0].value[lang === 'ka' ? 'ka' : 'en'])}`} className={navLink}>{NAV_DICT[lang].items.aiToolsLink.title}</Link></li>
             <li><Link href="/forum" className={navLink}>{t.forum}</Link></li>
             <li><Link href="/agency" className={navLink}>{t.studio}</Link></li>
             <li><Link href="/cases" className={navLink}>{t.caseStudies}</Link></li>

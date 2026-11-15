@@ -4,6 +4,7 @@ import { X, Volume2, Snail, Mic, Loader2, Lightbulb, Flame, BookOpen, PenLine, H
 import { CourseLesson, Exercise, EXERCISE_SKILLS, Skill } from './curriculum';
 import { checkAnswer, CheckResult, fillName } from './answerCheck';
 import { speakEnglish, canSpeak, canRecognize, listenOnce } from './speech';
+import { stopNaturalSpeech } from '../../../utils/naturalSpeech';
 
 export interface LessonResult {
   lessonId: string;
@@ -143,6 +144,7 @@ interface Feedback {
 }
 
 export default function LessonPlayer({ lesson, lang, nameEn, nameKa, onExit, onComplete }: LessonPlayerProps) {
+  useEffect(() => () => stopNaturalSpeech(), [lesson.id]);
   const t = dict[lang];
   const [queue, setQueue] = useState<Exercise[]>(lesson.exercises);
   const [pos, setPos] = useState(0);

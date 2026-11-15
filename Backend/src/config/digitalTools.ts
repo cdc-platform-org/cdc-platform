@@ -16,6 +16,12 @@ export interface DigitalToolDefinition {
 }
 
 export const DIGITAL_TOOLS: readonly DigitalToolDefinition[] = [
+  { key: 'english-tutor', label: 'AI English Tutor', linkedProductId: null },
+  { key: 'proctoring', label: 'AI Exam Proctoring', linkedProductId: null },
+  { key: 'smart-reader', label: 'AI Smart Reader', linkedProductId: null },
+  { key: 'ai-agents', label: 'AI Agents', linkedProductId: null },
+  { key: 'childrens-book', label: 'AI Books', linkedProductId: null },
+  { key: 'coloring-pages', label: 'AI Coloring Pages', linkedProductId: null },
   { key: 'educator-hub', label: 'Educator Hub', linkedProductId: null },
   { key: 'media-studio', label: 'Media Studio', linkedProductId: null },
   { key: 'chatbot-builder', label: 'AI Chatbot Builder', linkedProductId: null },

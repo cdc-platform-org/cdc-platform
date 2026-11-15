@@ -34,7 +34,7 @@ export const BUILT_IN_TOOL_SLUGS = [
 ];
 
 // Card slug -> catalog slug where a page's card key differs from the CMS slug.
-const CARD_KEY_TO_SLUG: Record<string, string> = { exam: 'exam-screening' };
+const CARD_KEY_TO_SLUG: Record<string, string> = { exam: 'exam-screening', 'chatbot-builder': 'enterprise-ai', 'ai-agents': 'enterprise-ai' };
 
 // True when a tool set to "Admin only" must be hidden from this viewer.
 export function isHiddenAdminOnly(tools: ToolCatalogEntry[] | undefined, cardKey: string, viewerIsAdmin: boolean): boolean {

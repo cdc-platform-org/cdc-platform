@@ -1,3 +1,4 @@
+import { requireDigitalToolAccess } from '../services/marketplace/digitalToolAccessService';
 /**
  * Express router mounted at `/api/ai` (see server.ts).
  * Endpoints:
@@ -288,7 +289,7 @@ const courseTutorRateLimit = rateLimit({
   message: 'Too many tutor messages. Please wait a moment before sending more.',
 });
 
-router.post('/course-tutor', authenticate, courseTutorRateLimit, async (req: Request, res: Response) => {
+router.post('/course-tutor', authenticate, requireDigitalToolAccess('ai-agents'), courseTutorRateLimit, async (req: Request, res: Response) => {
   if (!isCourseTutorConfigured()) {
     return res.status(501).json({ message: 'AI Course Tutor is not configured yet (GEMINI_API_KEY).' });
   }

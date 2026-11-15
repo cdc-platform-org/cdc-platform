@@ -29,7 +29,7 @@ describe('AzureBookNarrationProvider', () => {
 
   it('synthesizes Georgian pages with the configured KA voice and its locale', async () => {
     const result = await provider.generatePageNarration({ bookProjectId: 'b1', pageNumber: 2, language: 'KA', text: ' გამარჯობა ' });
-    expect(mockSynthesize).toHaveBeenCalledWith(expect.objectContaining({ text: 'გამარჯობა', voiceShortName: 'ka-GE-GiorgiNeural', voiceLocale: 'ka-GE' }));
+    expect(mockSynthesize).toHaveBeenCalledWith(expect.objectContaining({ text: 'გამარჯობა', voiceShortName: 'ka-GE-GiorgiNeural', voiceLocale: 'ka-GE', speed: 0.96, narration: true }));
     expect(result.buffer).toBe(MP3);
     expect(result.mimeType).toBe('audio/mpeg');
     expect(result.language).toBe('KA');

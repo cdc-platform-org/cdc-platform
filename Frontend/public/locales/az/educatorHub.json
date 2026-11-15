@@ -1,7 +1,7 @@
 {
   "pageTitle": "AI Educator VIP Hub",
   "pageSubtitle": "Həftəlik ən çox vaxt aparan işləriniz üçün süni intellekt alətləri — testlər, qiymətləndirmə rubrikləri və ev tapşırıqlarının yoxlanması, dəqiqələr ərzində.",
-  "vipBadge": "VIP 50 ₾/ay",
+  "vipBadge": "VIP 29 ₾/ay",
   "trialCta": "5 Günlük Pulsuz Sınaq Başlat",
   "trialStarting": "Sınaq müddətiniz başladılır…",
   "trialStartError": "Sınaq müddətini başlatmaq mümkün olmadı. Yenidən cəhd edin.",
@@ -184,7 +184,7 @@
   "downloadCertificate": "Sertifikat #{{index}} Yüklə",
   "certificatesTitle": "Sertifikat və Diplom Generatoru",
   "certificatesDescription": "Şagirdləriniz üçün saniyələr ərzində çap edilə bilən sertifikatlar və diplomlar yaradın.",
-  "vipTrialUsedDesc": "Your free trial has ended. To keep VIP, pay 50 GEL for 30 days. Have a promo code? Enter it below.",
+  "vipTrialUsedDesc": "Your free trial has ended. To keep VIP, pay 29 GEL for 30 days. Have a promo code? Enter it below.",
   "vipRequestCta": "Request VIP activation",
   "vipRequestSubject": "AI Educator VIP activation"
 }

@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import { createPortal } from 'react-dom';
+import type { ReactNode } from 'react';
 import { Search, X } from 'lucide-react';
 import { Course } from '../../types/lms';
 import { BlogPost } from '../../types/blog';
@@ -11,6 +13,8 @@ import { getProducts } from '../../services/productService';
 import { formatPrice } from '../../utils/coursePricing';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { isPublishedCourse } from '../../utils/courseCatalog';
+
+function SearchPortal({ children }: { children: ReactNode }) { return createPortal(children, document.body); }
 
 const dict = {
   GEO: {
@@ -45,7 +49,7 @@ function matches(query: string, ...fields: (string | null | undefined)[]): boole
 
 const RESULT_LIMIT = 4;
 
-export default function HeaderSearch({ darkMode, lang }: { darkMode: boolean; lang: 'GEO' | 'ENG' }) {
+export default function HeaderSearch({ darkMode, lang, prominent = false }: { darkMode: boolean; lang: 'GEO' | 'ENG'; prominent?: boolean }) {
   const router = useRouter();
   const t = dict[lang];
   const [open, setOpen] = useState(false);
@@ -56,6 +60,7 @@ export default function HeaderSearch({ darkMode, lang }: { darkMode: boolean; la
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [products, setProducts] = useState<DigitalProduct[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEscapeToClose(open, () => setOpen(false));
 
@@ -72,7 +77,21 @@ export default function HeaderSearch({ darkMode, lang }: { darkMode: boolean; la
   }, []);
 
   useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 50);
+    if (!open) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const timer = window.setTimeout(() => inputRef.current?.focus(), 50);
+    const trap = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      const controls = dialogRef.current?.querySelectorAll<HTMLElement>('input,button,a[href]');
+      if (!controls?.length) return;
+      const first = controls[0], last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', trap);
+    return () => { window.clearTimeout(timer); document.body.style.overflow = overflow; document.removeEventListener('keydown', trap); previous?.focus(); };
   }, [open]);
 
   const loadData = useCallback(async () => {
@@ -128,24 +147,18 @@ export default function HeaderSearch({ darkMode, lang }: { darkMode: boolean; la
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label={lang === 'GEO' ? 'ძებნა' : 'Search'}
-        title={lang === 'GEO' ? 'ძებნა (Ctrl+K)' : 'Search (Ctrl+K)'}
-        className={`flex items-center justify-center rounded-xl border p-2.5 transition-colors cursor-pointer ${
-          darkMode ? 'border-slate-700 bg-[#161f30] text-slate-300 hover:bg-slate-800' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-        }`}
-      >
-        <Search className="w-4 h-4" />
-      </button>
+      {prominent ? <form onSubmit={event => { event.preventDefault(); goToFullResults(); }} className="relative min-w-0 w-full">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-cdc-muted" />
+        <input type="search" value={query} onChange={event => { setQuery(event.target.value); setOpen(true); }} onClick={() => setOpen(true)} onKeyDown={event => { if (event.key === 'ArrowDown') { event.preventDefault(); setOpen(true); } }} aria-label={t.placeholder} placeholder={t.placeholder} className="w-full rounded-lg border border-cdc-border bg-cdc-bg py-2.5 pl-9 pr-3 text-xs text-cdc-ink focus:outline-none focus:ring-2 focus:ring-cdc-primary/40" />
+      </form> : <button type="button" onClick={() => setOpen(true)} aria-label={lang === 'GEO' ? 'ძებნა' : 'Search'} className="rounded-lg border border-cdc-border p-2.5 text-cdc-muted hover:bg-cdc-bg"><Search className="h-4 w-4" /></button>}
 
       {open && (
-        <div
+        <SearchPortal><div
           className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-start justify-center pt-[10vh] px-4"
           onClick={close}
         >
           <div
+            ref={dialogRef} role="dialog" aria-modal="true" aria-label={t.placeholder}
             className={`w-full max-w-xl rounded-2xl border shadow-2xl overflow-hidden ${darkMode ? 'bg-[#0e1422] border-slate-800' : 'bg-white border-slate-200'}`}
             onClick={(e) => e.stopPropagation()}
           >
@@ -236,7 +249,7 @@ export default function HeaderSearch({ darkMode, lang }: { darkMode: boolean; la
               </button>
             )}
           </div>
-        </div>
+        </div></SearchPortal>
       )}
     </>
   );

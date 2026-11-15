@@ -59,7 +59,7 @@ import {
   MAX_STORY_TEXT_REGENERATIONS,
 } from '../services/childrensBook/bookStoryTextService';
 import { generateBookImage, isImageGenerationMocked } from '../services/childrensBook/bookImageGenerationService';
-import { runImageQa, isAcceptableQaStatus } from '../services/childrensBook/bookQaService';
+import { reviewBookScene } from '../services/childrensBook/bookSceneQaService';
 import { buildBookPdf, parsePrintSettings, printFileSuffix } from '../services/childrensBook/bookPdfService';
 import { storeBookAsset, readBookAsset, deleteBookAsset } from '../services/childrensBook/bookStorageService';
 import {
@@ -1090,8 +1090,9 @@ router.post('/:id/revision', authenticate, async (req: Request, res: Response) =
     siblingsPromptLine(characterBible),
     extraCharactersPromptLine(characterBible),
     castPromptLine(cast, pageNumber, castSheet.length > 0),
-    planPage ? `Original scene: ${planPage.sceneDescription}.` : '',
+    planPage && planPage.sceneSourceText === page.storyText?.trim() ? `Original scene: ${planPage.sceneDescription}.` : '',
     typeof note === 'string' && note.trim() ? `Requested change: ${note.trim()}.` : '',
+    'The approved page text takes precedence over reference sheets and revision notes. Keep the exact species, setting and action described; include only companions present on this page.',
     'No readable text or letters anywhere in the image.',
   ].filter(Boolean).join(' ');
 
@@ -1103,7 +1104,9 @@ router.post('/:id/revision', authenticate, async (req: Request, res: Response) =
   const started = new Date();
   const result = await generateBookImage({ prompt, size: '1024x1024', quality: 'medium', referenceImages: revisionReferences });
   const completed = new Date();
-  const qa = runImageQa({ imageSuccess: result.success, byteSize: result.success ? result.byteSize : 0 });
+  const qa = result.success
+    ? await reviewBookScene({ buffer: result.buffer, storyText: page.storyText })
+    : { status: 'FAIL' as const, notes: 'Image generation failed.' };
 
   const event = await prisma.bookGenerationEvent.create({
     data: {
@@ -1118,14 +1121,14 @@ router.post('/:id/revision', authenticate, async (req: Request, res: Response) =
       requestedSize: '1024x1024',
       requestId: result.success ? result.requestId : result.requestId,
       latencyMs: result.latencyMs,
-      success: result.success && isAcceptableQaStatus(qa.status),
-      errorClassification: result.success ? (isAcceptableQaStatus(qa.status) ? null : 'REQUEST_SCHEMA') : result.errorClassification,
+      success: result.success && qa.status === 'PASS',
+      errorClassification: result.success ? (qa.status === 'PASS' ? null : 'REQUEST_SCHEMA') : result.errorClassification,
       startedAt: started,
       completedAt: completed,
     },
   });
 
-  if (result.success && isAcceptableQaStatus(qa.status)) {
+  if (result.success && qa.status === 'PASS') {
     const key = `books/${book.id}/events/${event.id}.png`;
     await storeBookAsset(key, result.buffer, result.mimeType);
     const narrationProvider = getBookNarrationProvider();
@@ -1171,7 +1174,7 @@ router.post('/:id/revision', authenticate, async (req: Request, res: Response) =
 
     await prisma.bookPage.update({
       where: { id: page.id },
-      data: { revisionVersion: 1, acceptedEventId: event.id, qaStatus: qa.status, sceneSpec: { ...(page.sceneSpec as any), imageKey: key, imageMimeType: result.mimeType } as any },
+      data: { revisionVersion: 1, acceptedEventId: event.id, qaStatus: qa.status, sceneSpec: { ...(page.sceneSpec as any), imageKey: key, imageMimeType: result.mimeType, sceneQa: qa } as any },
     });
     await prisma.bookProject.update({ where: { id: book.id }, data: { status: 'FINAL_READY', revisionUsed: true, pdfStatus: 'STALE' } });
   } else {

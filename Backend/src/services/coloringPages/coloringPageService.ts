@@ -1,3 +1,4 @@
+import { hasIncludedAiToolAccess } from '../payments/aiToolSubscriptionService';
 /**
  * Generates one coloring page end to end: limits -> topic safety -> reserve
  * credit -> gpt-image-2 -> image safety -> store PNG (or refund).
@@ -66,11 +67,12 @@ export async function generateColoringPage(userId: string, rawTopic: string) {
     throw new ColoringGenerationError('BLOCKED', 'This topic is not allowed.', decision.reason);
   }
 
+  const includedAccess = await hasIncludedAiToolAccess(userId, 'coloring-pages');
   let source: CreditSource;
   let page: { id: string };
   try {
     ({ source, page } = await prisma.$transaction(async (tx) => {
-      const s = await reserveCredit(tx, userId);
+      const s: CreditSource = includedAccess ? 'SUBSCRIPTION' : await reserveCredit(tx, userId);
       const p = await tx.coloringPage.create({
         data: { userId, topic, subject: decision.subject, status: 'GENERATING', paidWith: s, costUsd: decision.textCostUsd },
         select: { id: true },

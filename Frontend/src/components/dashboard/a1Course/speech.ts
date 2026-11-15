@@ -1,34 +1,15 @@
-// Browser-native speech helpers for the A1 course. Both run entirely in
-// the browser (no backend call, no per-use cost): speechSynthesis for
-// listening exercises, the Web Speech recognition API for speaking ones.
+// A1 listening uses cloud neural narration with browser fallback;
+// speaking exercises use the browser's speech recognition API.
 
-let cachedVoice: SpeechSynthesisVoice | null | undefined;
-
-function englishVoice(): SpeechSynthesisVoice | null {
-  if (cachedVoice !== undefined && cachedVoice !== null) return cachedVoice;
-  const voices = window.speechSynthesis.getVoices();
-  if (!voices.length) return null;
-  cachedVoice =
-    voices.find((v) => v.lang === 'en-US' && /google|natural|online/i.test(v.name)) ||
-    voices.find((v) => v.lang === 'en-US') ||
-    voices.find((v) => v.lang.startsWith('en')) ||
-    null;
-  return cachedVoice;
-}
+import { speakNaturally } from '../../../utils/naturalSpeech';
 
 export function canSpeak(): boolean {
-  return typeof window !== 'undefined' && 'speechSynthesis' in window;
+  return typeof window !== 'undefined' && ('Audio' in window || 'speechSynthesis' in window);
 }
 
 export function speakEnglish(text: string, slow = false): void {
   if (!canSpeak()) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'en-US';
-  u.rate = slow ? 0.55 : 0.85;
-  const voice = englishVoice();
-  if (voice) u.voice = voice;
-  window.speechSynthesis.speak(u);
+  void speakNaturally(text, 'en-US', slow ? 0.8 : 1);
 }
 
 // ---- Recognition ----

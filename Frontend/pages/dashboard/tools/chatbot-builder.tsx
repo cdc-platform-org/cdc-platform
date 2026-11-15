@@ -1,3 +1,4 @@
+import DigitalToolAccessGate from '../../../src/components/tools/DigitalToolAccessGate';
 import { useRouter } from 'next/router';
 import ToolGuideButton from '../../../src/components/tools/ToolGuideButton';
 import Head from 'next/head';
@@ -61,7 +62,7 @@ export default function ChatbotBuilderPage() {
   return (
     <ProtectedRoute>
       <ToolErrorBoundary>
-        <ChatbotBuilderContent />
+        <DigitalToolAccessGate toolKey="chatbot-builder"><ChatbotBuilderContent /></DigitalToolAccessGate>
       </ToolErrorBoundary>
     </ProtectedRoute>
   );

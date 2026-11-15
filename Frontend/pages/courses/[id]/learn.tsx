@@ -340,7 +340,7 @@ function LearnContent() {
   }
 
   return (
-    <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-950 text-slate-100">
+    <div className="learning-surface -mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-cdc-bg text-cdc-ink">
       <Head>
         <title>{`${course.title} | CDC Learn`}</title>
       </Head>
@@ -348,22 +348,22 @@ function LearnContent() {
 
       <div className="flex flex-col lg:flex-row">
         {/* MAIN CONTENT — ~70% */}
-        <div className="flex-1 lg:w-[70%] p-4 md:p-8">
+        <div className="flex-1 lg:w-[65%] p-4 md:p-8">
           <div className="mb-4">
-            <BackButton fallbackHref={`/courses/${courseId}`} className="text-slate-400 hover:text-slate-100" />
+            <BackButton fallbackHref={`/courses/${courseId}`} className="text-cdc-muted hover:text-cdc-ink" />
           </div>
           <CourseVideoPlayer embedUrl={activeLesson?.embedUrl ?? null} title={activeLesson?.title ?? course.title} />
 
           <h1 className="blog-heading-safe text-xl font-bold mt-6">{activeLesson?.title ?? course.title}</h1>
 
-          <div className="flex gap-2 mt-6 border-b border-slate-800">
+          <div className="flex gap-2 overflow-x-auto mt-6 border-b border-cdc-border">
             {(['overview', 'conspectus', 'resources', 'assignment', 'discussion'] as const).map((tab) => (
               <button
                 key={tab}
                 type="button"
                 onClick={() => setActiveTab(tab)}
                 className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors bg-transparent cursor-pointer ${
-                  activeTab === tab ? 'border-cyan-400 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'
+                  activeTab === tab ? 'border-cdc-primary text-cdc-primary-ink' : 'border-transparent text-cdc-muted hover:text-cdc-ink'
                 }`}
               >
                 {t(tab)}
@@ -371,7 +371,7 @@ function LearnContent() {
             ))}
           </div>
 
-          <div className="py-6 text-sm leading-relaxed text-slate-300">
+          <div className="py-6 text-sm leading-relaxed text-cdc-muted">
             {activeTab === 'overview' && <p>{course.description}</p>}
             {activeTab === 'conspectus' &&
               (conspectusText ? (
@@ -384,7 +384,7 @@ function LearnContent() {
                       stripMarkdown
                     />
                   </div>
-                  <MarkdownContent content={conspectusText} className="!text-slate-300" />
+                  <MarkdownContent content={conspectusText} className="!text-cdc-muted" />
                 </>
               ) : activeLesson?.conspectusStatus === 'PENDING' || activeLesson?.conspectusStatus === 'PROCESSING' ? (
                 <p className="flex items-center gap-2 text-slate-500">
@@ -413,7 +413,7 @@ function LearnContent() {
             {activeTab === 'assignment' &&
               (activeLesson?.assignmentPrompt ? (
                 <div className="space-y-4">
-                  <p className="text-slate-200">{activeLesson.assignmentPrompt}</p>
+                  <p className="text-cdc-ink">{activeLesson.assignmentPrompt}</p>
                   <AssignmentPanel lessonId={activeLesson.id} t={t} />
                 </div>
               ) : (
@@ -424,9 +424,9 @@ function LearnContent() {
         </div>
 
         {/* SIDEBAR — ~30% */}
-        <aside className="lg:w-[30%] shrink-0 border-t lg:border-t-0 lg:border-l border-slate-800 bg-slate-900/40 p-4 md:p-6">
+        <aside className="lg:w-[35%] shrink-0 border-t lg:border-t-0 lg:border-l border-cdc-border bg-cdc-surface p-4 md:p-6">
           <div className="mb-5">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-300 mb-2">
+            <div className="flex items-center justify-between text-xs font-semibold text-cdc-muted mb-2">
               <span>{t('curriculum')}</span>
               <span>{progress?.percent ?? 0}% {t('completed')}</span>
             </div>
@@ -473,11 +473,11 @@ function LearnContent() {
             {sections.map((section) => {
               const expanded = expandedSectionIds.has(section.id);
               return (
-                <div key={section.id} className="rounded-xl border border-slate-800 overflow-hidden">
+                <div key={section.id} className="rounded-xl border border-cdc-border overflow-hidden">
                   <button
                     type="button"
                     onClick={() => toggleSection(section.id)}
-                    className="w-full flex items-center justify-between px-4 py-3 bg-slate-900/60 text-left text-sm font-semibold cursor-pointer border-none text-slate-100"
+                    className="w-full flex items-center justify-between px-4 py-3 bg-cdc-bg text-left text-sm font-semibold cursor-pointer border-none text-cdc-ink"
                   >
                     <span>{section.title}</span>
                     <span className={`transition-transform ${expanded ? 'rotate-180' : ''}`}>▾</span>
@@ -490,7 +490,7 @@ function LearnContent() {
                           type="button"
                           onClick={() => setActiveLessonId(lesson.id)}
                           className={`w-full flex items-center gap-3 px-4 py-3 text-left text-xs cursor-pointer border-none transition-colors ${
-                            lesson.id === activeLessonId ? 'bg-cyan-500/10 text-white' : 'bg-transparent text-slate-300 hover:bg-slate-800/60'
+                            lesson.id === activeLessonId ? 'bg-cdc-primary-soft text-cdc-primary-ink' : 'bg-transparent text-cdc-muted hover:bg-cdc-bg'
                           }`}
                         >
                           <span

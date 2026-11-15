@@ -1,6 +1,6 @@
 import apiClient from './apiClient';
 
-export type BogPaymentPurpose = 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT' | 'HR_SUPPORT' | 'LIVE_TRAINING' | 'ENGLISH_TUTOR_SUBSCRIPTION' | 'CHILDRENS_BOOK' | 'GIFT_CARD' | 'EDUCATOR_VIP' | 'BUSINESS_AI_AGENT' | 'BOOK_ANIMATION';
+export type BogPaymentPurpose = 'AI_TOOL_SUBSCRIPTION' | 'COURSE' | 'MENTORSHIP' | 'GIG_ESCROW_FUNDING' | 'PRODUCT' | 'HR_SUPPORT' | 'LIVE_TRAINING' | 'ENGLISH_TUTOR_SUBSCRIPTION' | 'CHILDRENS_BOOK' | 'GIFT_CARD' | 'EDUCATOR_VIP' | 'BUSINESS_AI_AGENT' | 'BOOK_ANIMATION';
 export type BogPaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
 export interface BogCheckoutResult {
@@ -119,7 +119,7 @@ export async function checkoutEnglishTutorSubscription(lang?: 'ka' | 'en', promo
   return response.data;
 }
 
-// Educator VIP (50 GEL / 30 days) and one Business AI agent (49 GEL / 30
+// Educator VIP (29 GEL / 30 days) and one Business AI agent (29 GEL / 30
 // days). Same response shape as the tutor checkout: enrolled=true when a
 // 100% promo code made it free (no BOG redirect).
 export async function checkoutEducatorVip(lang?: 'ka' | 'en', promoCode?: string): Promise<TutorSubscriptionCheckoutResult> {

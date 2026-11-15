@@ -1,3 +1,4 @@
+import { AI_TOOL_MONTHLY_PRICE_MINOR } from '../../config/aiToolSubscriptions';
 /**
  * Service (Educator Hub & English tutor).
  * Exports: TUTOR_TRIAL_DAYS, TUTOR_SUBSCRIPTION_PRICE_GEL, TUTOR_SUBSCRIPTION_PERIOD_DAYS,
@@ -16,7 +17,7 @@ import { prisma } from '../../lib/prisma';
 // ============================================================
 
 export const TUTOR_TRIAL_DAYS = 5;
-export const TUTOR_SUBSCRIPTION_PRICE_GEL = 5000; // 50.00 GEL, minor units (tetri)
+export const TUTOR_SUBSCRIPTION_PRICE_GEL = AI_TOOL_MONTHLY_PRICE_MINOR;
 export const TUTOR_SUBSCRIPTION_PERIOD_DAYS = 30;
 
 export class TutorTrialAlreadyUsedError extends Error {

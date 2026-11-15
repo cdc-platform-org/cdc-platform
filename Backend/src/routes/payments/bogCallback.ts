@@ -4,6 +4,7 @@
  * payment purpose; it is also used by admin reconciliation
  * (paymentReconciliationService, adminFinance).
  */
+import { completeAiToolSubscriptionPayment } from '../../services/payments/aiToolSubscriptionService';
 import { Router, Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 import { prisma } from '../../lib/prisma';
@@ -131,6 +132,7 @@ export async function applyBogPaymentResult(
     return;
   }
 
+  if (await completeAiToolSubscriptionPayment(bogPaymentId, rawCallback)) return;
   if (await completeLearningPayment('BOG', bogPaymentId, rawCallback)) return;
 
   const bogPayment = await prisma.bogPayment.update({

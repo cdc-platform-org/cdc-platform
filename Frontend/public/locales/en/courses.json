@@ -147,5 +147,80 @@
   "badgeLiveTraining": "LIVE TRAINING",
   "liveTrainingSeatsLeft": "{{count}} seat left",
   "liveTrainingSeatsLeftPlural": "{{count}} seats left",
-  "liveTrainingFull": "Full"
+  "liveTrainingFull": "Full",
+  "detailPage": {
+    "buy": "Buy",
+    "watchTrailer": "Watch trailer",
+    "trailerUnavailable": "Trailer coming soon",
+    "students": "{{count}} students",
+    "courseAccess": "Learn at your own pace",
+    "subscription": "AI tools in the Digital Market",
+    "subscribe": "Explore AI tools",
+    "learn": "What you’ll learn",
+    "instructorSoon": "Instructor details coming soon",
+    "reviews": "Student reviews",
+    "faq": "Frequently asked questions",
+    "navigation": "Course sections",
+    "nav": {
+      "course": "Course",
+      "trailer": "Trailer",
+      "details": "Details",
+      "lessons": "Lessons",
+      "instructor": "Instructor"
+    },
+    "faqItems": {
+      "access": {
+        "question": "How do I start learning?",
+        "answer": "Sign in and purchase the course. If you already have access, select Continue learning."
+      },
+      "preview": {
+        "question": "Can I preview the course?",
+        "answer": "Watch the trailer above or open lessons marked as a free preview in the curriculum."
+      },
+      "payment": {
+        "question": "How can I pay?",
+        "answer": "Choose an available payment provider in the purchase panel. Any active discount is shown before checkout."
+      }
+    },
+    "new": "New"
+  },
+  "academy": {
+    "save": "Save {{title}}",
+    "unsave": "Remove {{title}} from saved courses",
+    "deviceSaved": "Saved on this device",
+    "cdcTeam": "CDC Academy",
+    "students": "students",
+    "featured": "Popular with our learners",
+    "previous": "Previous courses",
+    "next": "Next courses",
+    "eyebrow": "CDC ACADEMY",
+    "headline": "Make room for your next big idea.",
+    "intro": "Learn from working professionals. Build practical skills. Create something of your own.",
+    "browse": "Explore courses",
+    "allCategories": "All categories",
+    "saved": "Saved on this device",
+    "projects": "Student projects",
+    "projectsEmpty": "Student projects are not publicly available for this course yet.",
+    "overview": "Overview",
+    "curriculum": "Curriculum",
+    "reviews": "Reviews",
+    "courseContent": "Course content",
+    "duration": "Duration",
+    "lessons": "Lessons",
+    "language": "Language",
+    "level": "Level",
+    "levelUnknown": "Not specified",
+    "videoUnavailable": "Video is not available for this lesson yet.",
+    "play": "Play",
+    "pause": "Pause",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "fullscreen": "Fullscreen",
+    "seek": "Video position",
+    "volume": "Volume",
+    "trailer": "Course trailer",
+    "subscriptionNote": "Find available tools and their access options in one place.",
+    "saleEndsIn": "Sale ends in",
+    "daysShort": "d"
+  }
 }

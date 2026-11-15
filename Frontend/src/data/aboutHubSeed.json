@@ -1,0 +1,554 @@
+{
+  "schemaVersion": 1,
+  "overview": {
+    "title": {
+      "ka": "ახალი უნარები.\nახალი კარიერა.",
+      "en": "Digital skills.\nReal possibilities."
+    },
+    "intro": {
+      "ka": "სწავლა, პრაქტიკა და პროფესიული განვითარება ერთ სივრცეში. გაიცანით ადამიანები და ინიციატივები ციფრული პროფესიების ცენტრის უკან.",
+      "en": "Learning, practice and professional growth in one place. Meet the people and initiatives behind the Center of Digital Careers."
+    },
+    "mission": {
+      "ka": "CDC არის ციფრული კარიერის ეკოსისტემა, რომელიც 2023 წელს HEKS/EPER Georgia-ს მხარდაჭერით შეიქმნა. ჩვენი მისიაა ახალგაზრდებისა და ქალებისთვის პრაქტიკული ციფრული განათლების ხელმისაწვდომობა და პროფესიული შესაძლებლობების გაფართოება.",
+      "en": "CDC is a digital career ecosystem established in 2023 with the support of HEKS/EPER Georgia. Our mission is to make practical digital education accessible to young people and women and expand their professional opportunities."
+    },
+    "vision": {
+      "ka": "ციფრული პროფესიის შესწავლიდან პირველ პროექტამდე და ახალ კარიერამდე — შესაძლებლობა ყველასთვის, განურჩევლად საცხოვრებელი ადგილისა.",
+      "en": "From learning a digital profession to a first project and a new career — opportunities for everyone, wherever they live."
+    },
+    "heroImage": "/images/heks-eper.jpg",
+    "stats": [
+      {
+        "value": "120",
+        "label": {
+          "ka": "პროგრამის მონაწილე",
+          "en": "program participants"
+        },
+        "isDemo": true
+      },
+      {
+        "value": "18",
+        "label": {
+          "ka": "პრაქტიკული ვორქშოფი",
+          "en": "hands-on workshops"
+        },
+        "isDemo": true
+      },
+      {
+        "value": "4",
+        "label": {
+          "ka": "რეგიონული ინიციატივა",
+          "en": "regional initiatives"
+        },
+        "isDemo": true
+      }
+    ],
+    "accreditations": [
+      {
+        "id": "documents",
+        "title": {
+          "ka": "აკრედიტაციები და დოკუმენტები",
+          "en": "Accreditations & documents"
+        },
+        "summary": {
+          "ka": "ოფიციალური სტატუსი და დამადასტურებელი დოკუმენტები გამოქვეყნდება გადამოწმების შემდეგ. ამ ჩანაწერში აკრედიტაცია არ არის დადასტურებული.",
+          "en": "Official status and supporting documents will be published after verification. No accreditation is claimed by this placeholder."
+        },
+        "category": "institutional",
+        "imageUrl": "",
+        "startDate": "",
+        "endDate": "",
+        "partners": {
+          "ka": "",
+          "en": ""
+        },
+        "metric": {
+          "ka": "",
+          "en": ""
+        },
+        "metricValue": "",
+        "url": "",
+        "isDemo": true
+      }
+    ],
+    "team": [
+      {
+        "id": "learning-team",
+        "title": {
+          "ka": "სასწავლო მიმართულების ხელმძღვანელი",
+          "en": "Learning programme lead"
+        },
+        "summary": {
+          "ka": "პროგრამების განვითარება, ხარისხი და სტუდენტების მხარდაჭერა. გუნდის წევრის პროფილი დასამატებელია.",
+          "en": "Programme development, quality and learner support. Team member profile to be added."
+        },
+        "category": "team",
+        "imageUrl": "",
+        "startDate": "",
+        "endDate": "",
+        "partners": {
+          "ka": "",
+          "en": ""
+        },
+        "metric": {
+          "ka": "",
+          "en": ""
+        },
+        "metricValue": "",
+        "url": "",
+        "isDemo": true
+      },
+      {
+        "id": "career-team",
+        "title": {
+          "ka": "კარიერული განვითარების მენტორი",
+          "en": "Career development mentor"
+        },
+        "summary": {
+          "ka": "პორტფოლიოს განვითარება და კარიერის შემდეგი ნაბიჯის დაგეგმვა. გუნდის წევრის პროფილი დასამატებელია.",
+          "en": "Portfolio development and planning the next career step. Team member profile to be added."
+        },
+        "category": "team",
+        "imageUrl": "",
+        "startDate": "",
+        "endDate": "",
+        "partners": {
+          "ka": "",
+          "en": ""
+        },
+        "metric": {
+          "ka": "",
+          "en": ""
+        },
+        "metricValue": "",
+        "url": "",
+        "isDemo": true
+      }
+    ]
+  },
+  "gallery": [
+    {
+      "id": "training-ui",
+      "title": {
+        "ka": "UX/UI დიზაინის პრაქტიკული ტრენინგი",
+        "en": "Hands-on UX/UI training"
+      },
+      "summary": {
+        "ka": "პროტოტიპების შექმნა და იდეების განხილვა სასწავლო ჯგუფში.",
+        "en": "Building prototypes and exploring ideas as a learning group."
+      },
+      "category": "training",
+      "imageUrl": "/images/about/workshop.jpg",
+      "startDate": "",
+      "endDate": "",
+      "partners": {
+        "ka": "",
+        "en": ""
+      },
+      "metric": {
+        "ka": "",
+        "en": ""
+      },
+      "metricValue": "",
+      "url": "",
+      "isDemo": true
+    },
+    {
+      "id": "workshop-ai",
+      "title": {
+        "ka": "AI ინსტრუმენტების ვორქშოფი",
+        "en": "AI tools workshop"
+      },
+      "summary": {
+        "ka": "ყოველდღიური ამოცანების გადაჭრა ციფრული ინსტრუმენტებით.",
+        "en": "Solving everyday tasks with digital tools."
+      },
+      "category": "workshop",
+      "imageUrl": "/images/about/collaboration.jpg",
+      "startDate": "",
+      "endDate": "",
+      "partners": {
+        "ka": "",
+        "en": ""
+      },
+      "metric": {
+        "ka": "",
+        "en": ""
+      },
+      "metricValue": "",
+      "url": "",
+      "isDemo": true
+    },
+    {
+      "id": "bootcamp-web",
+      "title": {
+        "ka": "ვებდეველოპმენტის ბუთქემფი",
+        "en": "Web development bootcamp"
+      },
+      "summary": {
+        "ka": "პირველი ვებსაიტის გუნდურად შექმნის პროცესი.",
+        "en": "Working together to build a first website."
+      },
+      "category": "bootcamp",
+      "imageUrl": "/images/about/bootcamp.jpg",
+      "startDate": "",
+      "endDate": "",
+      "partners": {
+        "ka": "",
+        "en": ""
+      },
+      "metric": {
+        "ka": "",
+        "en": ""
+      },
+      "metricValue": "",
+      "url": "",
+      "isDemo": true
+    },
+    {
+      "id": "event-portfolio",
+      "title": {
+        "ka": "პორტფოლიოს განხილვის დღე",
+        "en": "Portfolio review day"
+      },
+      "summary": {
+        "ka": "მენტორების უკუკავშირი და გამოცდილების გაზიარება.",
+        "en": "Mentor feedback and shared experiences."
+      },
+      "category": "event",
+      "imageUrl": "/images/about/community.jpg",
+      "startDate": "",
+      "endDate": "",
+      "partners": {
+        "ka": "",
+        "en": ""
+      },
+      "metric": {
+        "ka": "",
+        "en": ""
+      },
+      "metricValue": "",
+      "url": "",
+      "isDemo": true
+    },
+    {
+      "id": "training-python",
+      "title": {
+        "ka": "Python-ის სასწავლო ლაბორატორია",
+        "en": "Python learning lab"
+      },
+      "summary": {
+        "ka": "პირველი პროგრამა, გუნდური ამოცანა და პრაქტიკა.",
+        "en": "A first programme, a team challenge and hands-on practice."
+      },
+      "category": "training",
+      "imageUrl": "/images/about/bootcamp.jpg",
+      "startDate": "",
+      "endDate": "",
+      "partners": {
+        "ka": "",
+        "en": ""
+      },
+      "metric": {
+        "ka": "",
+        "en": ""
+      },
+      "metricValue": "",
+      "url": "",
+      "isDemo": true
+    },
+    {
+      "id": "event-community",
+      "title": {
+        "ka": "ციფრული კარიერის შეხვედრა",
+        "en": "Digital careers meetup"
+      },
+      "summary": {
+        "ka": "ახალი ნაცნობობა, იდეები და პროფესიული შესაძლებლობები.",
+        "en": "New connections, ideas and professional possibilities."
+      },
+      "category": "event",
+      "imageUrl": "/images/about/collaboration.jpg",
+      "startDate": "",
+      "endDate": "",
+      "partners": {
+        "ka": "",
+        "en": ""
+      },
+      "metric": {
+        "ka": "",
+        "en": ""
+      },
+      "metricValue": "",
+      "url": "",
+      "isDemo": true
+    }
+  ],
+  "projects": [
+    {
+      "id": "regional-skills",
+      "title": {
+        "ka": "ციფრული უნარები რეგიონებისთვის",
+        "en": "Digital skills for the regions"
+      },
+      "summary": {
+        "ka": "შერეული სასწავლო პროგრამა რეგიონებში მცხოვრები ახალგაზრდებისთვის: ციფრული წიგნიერება, პორტფოლიო და კარიერული კონსულტაცია.",
+        "en": "A blended learning programme for young people in the regions: digital literacy, portfolio building and career guidance."
+      },
+      "category": "regional",
+      "imageUrl": "/images/about/community.jpg",
+      "startDate": "2025-03-01",
+      "endDate": "2025-09-30",
+      "partners": {
+        "ka": "ადგილობრივი სათემო ორგანიზაცია",
+        "en": "Local community organisation"
+      },
+      "metric": {
+        "ka": "მონაწილე — საილუსტრაციო მონაცემი",
+        "en": "participants — illustrative data"
+      },
+      "metricValue": "40",
+      "url": "",
+      "isDemo": true
+    },
+    {
+      "id": "design-pathway",
+      "title": {
+        "ka": "დიზაინიდან პირველ პროექტამდე",
+        "en": "From design to a first project"
+      },
+      "summary": {
+        "ka": "სასწავლო პროგრამა პრაქტიკული ბრიფებით, მენტორული მხარდაჭერითა და შემაჯამებელი პორტფოლიოთი.",
+        "en": "A learning programme with practical briefs, mentor support and a final portfolio."
+      },
+      "category": "education",
+      "imageUrl": "/images/about/workshop.jpg",
+      "startDate": "2025-10-01",
+      "endDate": "2026-02-28",
+      "partners": {
+        "ka": "საგანმანათლებლო პარტნიორი",
+        "en": "Education partner"
+      },
+      "metric": {
+        "ka": "პორტფოლიო — საილუსტრაციო მონაცემი",
+        "en": "portfolios — illustrative data"
+      },
+      "metricValue": "12",
+      "url": "",
+      "isDemo": true
+    },
+    {
+      "id": "women-digital",
+      "title": {
+        "ka": "ქალების ციფრული შესაძლებლობები",
+        "en": "Digital opportunities for women"
+      },
+      "summary": {
+        "ka": "საგრანტო ინიციატივის ნიმუში: ციფრული ინსტრუმენტები, ფრილანსის საფუძვლები და პროფესიული ქსელის განვითარება.",
+        "en": "An example grant initiative: digital tools, freelance foundations and professional network building."
+      },
+      "category": "grant",
+      "imageUrl": "/images/about/collaboration.jpg",
+      "startDate": "2026-04-01",
+      "endDate": "2026-10-31",
+      "partners": {
+        "ka": "ინსტიტუციური მხარდამჭერი",
+        "en": "Institutional supporter"
+      },
+      "metric": {
+        "ka": "შეხვედრა — საილუსტრაციო მონაცემი",
+        "en": "sessions — illustrative data"
+      },
+      "metricValue": "6",
+      "url": "",
+      "isDemo": true
+    }
+  ],
+  "stories": [
+    {
+      "id": "career-design",
+      "title": {
+        "ka": "მომსახურების სფეროდან UX/UI დიზაინამდე",
+        "en": "From customer service to UX/UI design"
+      },
+      "summary": {
+        "ka": "საილუსტრაციო გზა: ახალი პროფესიის შესწავლა, პირველი ქეისის აწყობა და დიზაინერის პოზიციისთვის მომზადება.",
+        "en": "An illustrative journey: learning a new profession, building a first case study and preparing for a design role."
+      },
+      "category": "transition",
+      "imageUrl": "/images/about/workshop.jpg",
+      "startDate": "",
+      "endDate": "",
+      "partners": {
+        "ka": "",
+        "en": ""
+      },
+      "metric": {
+        "ka": "კარიერის ცვლილება",
+        "en": "Career transition"
+      },
+      "metricValue": "",
+      "url": "",
+      "isDemo": true
+    },
+    {
+      "id": "freelance-web",
+      "title": {
+        "ka": "პირველი ვებსაიტი, პირველი დამკვეთი",
+        "en": "First website, first client"
+      },
+      "summary": {
+        "ka": "საილუსტრაციო გზა: სასწავლო პროექტიდან პორტფოლიომდე და პირველი ფრილანს შეკვეთის შესრულებამდე.",
+        "en": "An illustrative journey: from a course project to a portfolio and a first freelance assignment."
+      },
+      "category": "freelance",
+      "imageUrl": "/images/about/bootcamp.jpg",
+      "startDate": "",
+      "endDate": "",
+      "partners": {
+        "ka": "",
+        "en": ""
+      },
+      "metric": {
+        "ka": "პირველი ფრილანს პროექტი",
+        "en": "First freelance project"
+      },
+      "metricValue": "",
+      "url": "",
+      "isDemo": true
+    },
+    {
+      "id": "career-data",
+      "title": {
+        "ka": "მონაცემებთან მუშაობიდან ახალ როლამდე",
+        "en": "From data skills to a new role"
+      },
+      "summary": {
+        "ka": "საილუსტრაციო გზა: Python-ისა და მონაცემთა ანალიზის პრაქტიკა, შემაჯამებელი პროექტი და სამუშაოს ძიებისთვის მომზადება.",
+        "en": "An illustrative journey: practising Python and data analysis, completing a capstone and preparing for a job search."
+      },
+      "category": "employment",
+      "imageUrl": "/images/about/community.jpg",
+      "startDate": "",
+      "endDate": "",
+      "partners": {
+        "ka": "",
+        "en": ""
+      },
+      "metric": {
+        "ka": "დასაქმებისთვის მზადება",
+        "en": "Employment preparation"
+      },
+      "metricValue": "",
+      "url": "",
+      "isDemo": true
+    }
+  ],
+  "partners": [
+    {
+      "id": "heks-eper",
+      "title": {
+        "ka": "HEKS/EPER Georgia",
+        "en": "HEKS/EPER Georgia"
+      },
+      "summary": {
+        "ka": "ცენტრის დაფუძნების მხარდამჭერი, პროექტის „სოციალური ინოვაციების პლატფორმა — ფაზა 2“ ფარგლებში, 2023 წელს.",
+        "en": "Supported the center's establishment under the Social Innovation Platform — Phase 2 project in 2023."
+      },
+      "category": "donor",
+      "imageUrl": "",
+      "startDate": "",
+      "endDate": "",
+      "partners": {
+        "ka": "",
+        "en": ""
+      },
+      "metric": {
+        "ka": "",
+        "en": ""
+      },
+      "metricValue": "",
+      "url": "",
+      "isDemo": false
+    },
+    {
+      "id": "technology-partner",
+      "title": {
+        "ka": "ტექნოლოგიური პარტნიორი",
+        "en": "Technology partner"
+      },
+      "summary": {
+        "ka": "შესაძლო თანამშრომლობის ნიმუში: პრაქტიკული ბრიფები, მენტორები და თანამედროვე ციფრული ინსტრუმენტები.",
+        "en": "An example collaboration: practical briefs, mentors and modern digital tools."
+      },
+      "category": "technology",
+      "imageUrl": "",
+      "startDate": "",
+      "endDate": "",
+      "partners": {
+        "ka": "",
+        "en": ""
+      },
+      "metric": {
+        "ka": "",
+        "en": ""
+      },
+      "metricValue": "",
+      "url": "",
+      "isDemo": true
+    },
+    {
+      "id": "community-partner",
+      "title": {
+        "ka": "რეგიონული სათემო პარტნიორი",
+        "en": "Regional community partner"
+      },
+      "summary": {
+        "ka": "შესაძლო თანამშრომლობის ნიმუში: ადგილობრივი მონაწილეების ჩართულობა და სასწავლო სივრცის მხარდაჭერა.",
+        "en": "An example collaboration: reaching local learners and supporting learning spaces."
+      },
+      "category": "community",
+      "imageUrl": "",
+      "startDate": "",
+      "endDate": "",
+      "partners": {
+        "ka": "",
+        "en": ""
+      },
+      "metric": {
+        "ka": "",
+        "en": ""
+      },
+      "metricValue": "",
+      "url": "",
+      "isDemo": true
+    },
+    {
+      "id": "education-partner",
+      "title": {
+        "ka": "საგანმანათლებლო პარტნიორი",
+        "en": "Education partner"
+      },
+      "summary": {
+        "ka": "შესაძლო თანამშრომლობის ნიმუში: ერთობლივი სასწავლო აქტივობები და გამოცდილების გაზიარება.",
+        "en": "An example collaboration: joint learning activities and knowledge sharing."
+      },
+      "category": "education",
+      "imageUrl": "",
+      "startDate": "",
+      "endDate": "",
+      "partners": {
+        "ka": "",
+        "en": ""
+      },
+      "metric": {
+        "ka": "",
+        "en": ""
+      },
+      "metricValue": "",
+      "url": "",
+      "isDemo": true
+    }
+  ]
+}

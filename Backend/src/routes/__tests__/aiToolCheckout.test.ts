@@ -18,8 +18,8 @@ import { completeAgentPurchase } from '../../services/ai/agentSubscriptionServic
 import { completeEducatorVipPurchase } from '../../services/educator/educatorVipService';
 
 // ============================================================
-// Self-service BOG checkout for Educator VIP (50 GEL / 30 days) and a
-// Business AI agent (49 GEL / 30 days), each with a promo code field, plus
+// Self-service BOG checkout for Educator VIP (29 GEL / 30 days) and a
+// Business AI agent (29 GEL / 30 days), each with a promo code field, plus
 // the Business AI rule that an owner can't switch an agent back on without
 // a paid period. createBogOrder is mocked: no real BOG order is ever placed.
 // ============================================================
@@ -88,16 +88,16 @@ async function createAgent(user: User, overrides: Partial<Prisma.AgentUncheckedC
 }
 
 describe('Educator VIP checkout', () => {
-  it('opens a 50 GEL BOG order, and a promo code lowers it', async () => {
+  it('opens a 29 GEL BOG order, and a promo code lowers it', async () => {
     const teacher = await createUser();
     const full = await request('/api/payments/checkout/educator-vip', teacher, 'POST', {});
     expect(full.status).toBe(201);
-    expect(jest.mocked(createBogOrder).mock.calls[0][0].amount).toBe(5000);
+    expect(jest.mocked(createBogOrder).mock.calls[0][0].amount).toBe(2900);
 
     const code = await promo('educator-hub', 20);
     const discounted = await request('/api/payments/checkout/educator-vip', teacher, 'POST', { promoCode: code.code });
     expect(discounted.status).toBe(201);
-    expect(jest.mocked(createBogOrder).mock.calls[1][0].amount).toBe(4000);
+    expect(jest.mocked(createBogOrder).mock.calls[1][0].amount).toBe(2320);
     const row = await prisma.bogPayment.findFirstOrThrow({ where: { userId: teacher.id, purpose: 'EDUCATOR_VIP', promoCodeId: code.id } });
     expect(row.status).toBe('PENDING');
   });
@@ -131,12 +131,12 @@ describe('Educator VIP checkout', () => {
 });
 
 describe('Business AI agent checkout', () => {
-  it('opens a 49 GEL BOG order for the owner\'s agent, with promo support', async () => {
+  it('opens a 29 GEL BOG order for the owner\'s agent, with promo support', async () => {
     const owner = await createUser();
     const agent = await createAgent(owner, { status: 'PAUSED', trialEndsAt: new Date(Date.now() - DAY) });
     const full = await request(`/api/payments/checkout/business-ai/${agent.id}`, owner, 'POST', {});
     expect(full.status).toBe(201);
-    expect(jest.mocked(createBogOrder).mock.calls[0][0].amount).toBe(4900);
+    expect(jest.mocked(createBogOrder).mock.calls[0][0].amount).toBe(2900);
 
     const code = await promo('business-ai', 100);
     const free = await request(`/api/payments/checkout/business-ai/${agent.id}`, owner, 'POST', { promoCode: code.code });
@@ -162,7 +162,7 @@ describe('Business AI agent checkout', () => {
     const owner = await createUser();
     const agent = await createAgent(owner, { status: 'PAUSED', trialEndsAt: new Date(Date.now() - DAY) });
     const res = await request(`/api/agents/${agent.id}`, owner, 'PUT', { status: 'ACTIVE' });
-    expect(res.status).toBe(402);
+    expect(res.status).toBe(403);
     expect((await prisma.agent.findUniqueOrThrow({ where: { id: agent.id } })).status).toBe('PAUSED');
 
     // Inside a paid period, resuming works again.

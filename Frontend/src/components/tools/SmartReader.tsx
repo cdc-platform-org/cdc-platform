@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { speakNaturally, stopNaturalSpeech } from '../../utils/naturalSpeech';
 import { useSmartReader } from '@/src/hooks/useSmartReader';
 import apiClient from '../../services/apiClient';
 
 type TeacherAction = 'pronounce' | 'explain' | 'translate';
 
 export const SmartReader: React.FC = () => {
+  useEffect(() => () => stopNaturalSpeech(), []);
   const {
     text,
     setText,
@@ -52,10 +54,8 @@ export const SmartReader: React.FC = () => {
     setPopupPos(null);
 
     if (action === 'pronounce') {
-      if (!('speechSynthesis' in window)) return;
-      const utterance = new SpeechSynthesisUtterance(selectedText);
-      utterance.rate = 0.8;
-      window.speechSynthesis.speak(utterance);
+      const locale = ({ English: 'en-US', Georgian: 'ka-GE', Spanish: 'es-ES', French: 'fr-FR', German: 'de-DE' } as Record<string, string>)[learningLang] ?? 'en-US';
+      void speakNaturally(selectedText, locale, 0.9);
       return;
     }
 

@@ -1,3 +1,4 @@
+import { AI_TOOL_MONTHLY_PRICE_MINOR } from '../../config/aiToolSubscriptions';
 /**
  * Service (AI providers and agents).
  * Exports: BUSINESS_AI_PRICE_GEL, BUSINESS_AI_PERIOD_DAYS, AgentCheckoutError, assertAgentPurchasable,
@@ -12,7 +13,7 @@ import { prisma } from '../../lib/prisma';
 // agentBillingService pauses the agent and the owner pays again.
 // ============================================================
 
-export const BUSINESS_AI_PRICE_GEL = 4900; // 49.00 GEL, minor units (tetri)
+export const BUSINESS_AI_PRICE_GEL = AI_TOOL_MONTHLY_PRICE_MINOR;
 export const BUSINESS_AI_PERIOD_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 

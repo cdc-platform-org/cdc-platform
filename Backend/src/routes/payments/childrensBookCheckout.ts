@@ -1,3 +1,4 @@
+import { hasIncludedAiToolAccess } from '../../services/payments/aiToolSubscriptionService';
 /**
  * BOG checkout for a personalised children's book (plus optional audio /
  * animation add-ons).
@@ -92,9 +93,10 @@ router.post(
     // never leaves the book stuck in PAYMENT_PENDING and a lost status race
     // never spends a use.
     const rawPromoCode = typeof req.body?.promoCode === 'string' && req.body.promoCode.trim() ? req.body.promoCode : null;
-    let chargeAmount = payableAmountGel;
+    const includedAccess = await hasIncludedAiToolAccess(req.user!.id, 'childrens-book');
+    let chargeAmount = includedAccess ? 0 : payableAmountGel;
     let appliedPromo: PromoCode | null = null;
-    if (rawPromoCode) {
+    if (rawPromoCode && !includedAccess) {
       try {
         const applied = await quotePromoToCheckout(rawPromoCode, 'CHILDRENS_BOOK', book.id, payableAmountGel);
         chargeAmount = applied.chargeAmount;

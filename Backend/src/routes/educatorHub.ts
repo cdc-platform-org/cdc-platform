@@ -20,6 +20,8 @@ import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved, requireCurrentEducatorSession } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { multerErrorHandler } from '../middleware/productUploads';
+import { hasAccessGrant } from '../services/account/accessGrantService';
+import { hasActiveCollegeAiAccess } from '../services/learning/collegeAiAccessService';
 import { hasEducatorVipAccess } from '../utils/educatorVipAccess';
 import { startEducatorVipTrial, EducatorTrialAlreadyUsedError, EDUCATOR_TRIAL_DAYS, EDUCATOR_VIP_PRICE_GEL } from '../services/educator/educatorVipService';
 import { getEducatorUsage, hasReachedGenerationLimit, hasReachedGradingLimit, recordEducatorGeneration } from '../services/educator/educatorUsageService';
@@ -47,7 +49,7 @@ async function requireEducatorVipAccess(req: Request, res: Response, next: NextF
     where: { id: req.user!.id },
     select: { role: true, educatorVipActive: true, educatorVipTrialEndDate: true, educatorVipPaidUntil: true },
   });
-  if (!user || !hasEducatorVipAccess(user)) {
+  if (!user || (!hasEducatorVipAccess(user) && !await hasActiveCollegeAiAccess(req.user!.id) && !await hasAccessGrant('DIGITAL_TOOL', 'educator-hub', { userId: req.user!.id }))) {
     return res.status(403).json({
       code: 'VIP_REQUIRED',
       message: 'AI Educator VIP-ს გამოსაყენებლად საჭიროა აქტიური გამოწერა ან საცდელი პერიოდი.',
@@ -69,13 +71,15 @@ router.get('/state', async (req: Request, res: Response) => {
   });
   if (!user) return res.status(404).json({ message: 'User not found.' });
 
-  const hasAccess = hasEducatorVipAccess(user);
+  const collegeAccess = await hasActiveCollegeAiAccess(req.user!.id);
+  const hasAccess = collegeAccess || hasEducatorVipAccess(user) || await hasAccessGrant('DIGITAL_TOOL', 'educator-hub', { userId: req.user!.id });
   const trialActive = !!user.educatorVipTrialEndDate && user.educatorVipTrialEndDate.getTime() > Date.now();
   const usage = hasAccess ? await getEducatorUsage(req.user!.id) : null;
 
   res.json({
     data: {
       hasAccess,
+      collegeAccess,
       isVipActive: user.educatorVipActive || (!!user.educatorVipPaidUntil && user.educatorVipPaidUntil.getTime() > Date.now()),
       // When the paid period ends (null for an admin grant or no purchase).
       educatorVipPaidUntil: user.educatorVipPaidUntil,
