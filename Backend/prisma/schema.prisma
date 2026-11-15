@@ -390,11 +390,11 @@ enum BookGenerationOperationType {
 // ============================================================
 
 model User {
-  id                            String                @id @default(uuid())
-  email                         String                @unique
+  id                            String                  @id @default(uuid())
+  email                         String                  @unique
   password                      String
   name                          String
-  role                          Role                  @default(Student)
+  role                          Role                    @default(Student)
   // Captures `role` at the moment POST /admin/mentorship/mentors/promote
   // overwrites it with `Mentor` — the only way to know which of Student/
   // Client to revert to on POST /admin/mentorship/mentors/:userId/demote,
@@ -406,14 +406,14 @@ model User {
   // every admin panel load — the User model previously had zero @@index
   // declarations beyond the implicit unique indexes, forcing a full-table
   // scan+sort as the user table grows.
-  status                        UserStatus            @default(PENDING_APPROVAL)
+  status                        UserStatus              @default(PENDING_APPROVAL)
   rejectionReason               String?
-  earningsBalance               Int                   @default(0)
+  earningsBalance               Int                     @default(0)
   // Denormalized rollup of `reviewsReceived`, recomputed on every new review —
   // avoids an AVG() aggregate query every time a rating needs to be displayed
   // (profile pages, gig/vacancy cards, etc).
   averageRating                 Float?
-  reviewCount                   Int                   @default(0)
+  reviewCount                   Int                     @default(0)
   // Same denormalized-rollup pattern as averageRating/reviewCount above, but
   // for this user's Digital Store listings as a seller/creator (ProductReview,
   // recomputed on every product review create/delete) — deliberately a
@@ -422,11 +422,11 @@ model User {
   // for users who have never had a product reviewed (including anyone who
   // has never submitted a product at all).
   sellerRating                  Float?
-  sellerReviewCount             Int                   @default(0)
+  sellerReviewCount             Int                     @default(0)
   // Set only by a SuperAdmin (POST /api/admin/users/:id/verify-graduate) once
   // they've confirmed the user actually completed a CDC course — there is no
   // automated course-completion pipeline yet, so this is a manual gate.
-  isVerifiedGraduate            Boolean               @default(false)
+  isVerifiedGraduate            Boolean                 @default(false)
   // Grants access to /admin/hr-requests's specialist-facing screens
   // (assigned requests, candidate scoring matrix) — deliberately NOT part
   // of AdminRoleTier/requireAdminRole: an HR specialist is very likely an
@@ -434,7 +434,8 @@ model User {
   // assigned to them, never the general admin panel a SUPER_ADMIN/MANAGER/
   // MODERATOR gets. Set manually by a SuperAdmin for now (no self-serve
   // application flow yet).
-  isHrSpecialist                Boolean               @default(false)
+  isHrSpecialist                Boolean                 @default(false)
+  readinessRecords              CourseReadinessRecord[]
   // Set when a freelancer skill exam attempt is force-submitted for
   // repeated anti-cheat violations (tab switch/fullscreen exit, see
   // routes/freelancerExam.ts) — blocks starting a new attempt until this
@@ -446,7 +447,7 @@ model User {
   // per-skill system from isVerifiedGraduate above: a skill here only shows
   // a "Verified" badge (see VerifiedSkill) once the freelancer passes an
   // AI-generated test for it, or a completed course auto-verifies it.
-  freelancerSkills              String[]              @default([])
+  freelancerSkills              String[]                @default([])
   // Soft-delete: set the moment the user confirms account deletion. The
   // account is deactivated immediately (blocked from logging in or taking
   // marketplace actions). 60 days later, the cleanup cron either hard-deletes
@@ -462,18 +463,18 @@ model User {
   // Existing rows are backfilled to their createdAt at migration time so this
   // new gate doesn't retroactively lock out accounts that predate it.
   emailVerifiedAt               DateTime?
-  emailVerificationToken        String?               @unique
+  emailVerificationToken        String?                 @unique
   emailVerificationTokenExpires DateTime?
   // Self-service password reset (POST /api/auth/forgot-password + /reset-password).
-  passwordResetToken            String?               @unique
+  passwordResetToken            String?                 @unique
   passwordResetTokenExpires     DateTime?
   // Set for accounts created (or later linked) via Google/GitHub/Facebook
   // Sign-In. Such accounts get a random unusable password hash — there is
   // no password-based login path for them unless they later set one (see
   // routes/auth.ts).
-  googleId                      String?               @unique
-  githubId                      String?               @unique
-  facebookId                    String?               @unique
+  googleId                      String?                 @unique
+  githubId                      String?                 @unique
+  facebookId                    String?                 @unique
   // Internal admin-team tier (see AdminRole) — null means "not on the admin
   // team." Independent of `role`; set only via the admin Team Management
   // panel (SUPER_ADMIN-only) or the one-off seed utility.
@@ -482,7 +483,7 @@ model User {
   // self-service account deletion). A banned user is blocked from logging in
   // and from every requireApproved-gated action, same enforcement points as
   // deletion, but reversible and admin-controlled.
-  isBanned                      Boolean               @default(false)
+  isBanned                      Boolean                 @default(false)
   bannedAt                      DateTime?
   banReason                     String?
   // Legal identity fields — self-reported by the student under
@@ -503,7 +504,7 @@ model User {
   // any number of NULLs (users who haven't submitted individual
   // verification yet) but rejects a second account claiming the same
   // number — see routes/auth.ts's /me/individual-verification-doc.
-  personalNumber                String?               @unique
+  personalNumber                String?                 @unique
   phone                         String?
   // Default IBAN pre-filled into new payout requests — the request itself
   // still stores its own snapshot, so changing this later doesn't alter
@@ -545,12 +546,12 @@ model User {
   // publish the profile via PUT /mentors/:mentorId/profile. No mentor-facing
   // route ever writes this field; only the admin one does, same posture as
   // course pricing/catalog content.
-  mentorPublished               Boolean               @default(false)
-  mentorSkills                  String[]              @default([])
+  mentorPublished               Boolean                 @default(false)
+  mentorSkills                  String[]                @default([])
   // Spoken languages, e.g. ["ქართული", "English"] — free-text tags picked
   // from a curated checklist in the admin UI, not a DB enum (same posture
   // as mentorSkills).
-  mentorLanguages               String[]              @default([])
+  mentorLanguages               String[]                @default([])
   // CV/résumé (PDF/DOCX), uploaded via POST /admin/mentorship/mentors/:id/cv
   // — a public CDN URL like the other Bunny-Storage-backed uploads in this
   // codebase; there's nothing sensitive in a mentor's own public CV.
@@ -572,9 +573,9 @@ model User {
   // submissions. Uploading a new doc after rejection resets status back to
   // PENDING so a resubmission always lands back in the review queue.
   verificationDocUrl            String?
-  verificationLevel             VerificationLevel     @default(NONE)
-  isVerified                    Boolean               @default(false)
-  verificationStatus            VerificationStatus?   @default(UNVERIFIED)
+  verificationLevel             VerificationLevel       @default(NONE)
+  isVerified                    Boolean                 @default(false)
+  verificationStatus            VerificationStatus?     @default(UNVERIFIED)
   // Self-reported identification code (ს/კ) — compared against whatever
   // ID the AI parser extracts from the uploaded document (see
   // services/businessKycService.ts) to auto-verify on an exact match.
@@ -635,7 +636,7 @@ model User {
   // this model).
   trialStartDate                DateTime?
   aiTrialEndsAt                 DateTime?
-  aiSubscriptionActive          Boolean               @default(false)
+  aiSubscriptionActive          Boolean                 @default(false)
   // AI English Tutor (Frontend's /dashboard/english-tutor) — a fully
   // separate B2C product from the Business AI Agents Suite fields directly
   // above (this one is Student-facing, gates individual lesson generation,
@@ -646,7 +647,7 @@ model User {
   // already has three loosely-related trial/subscription systems that need
   // reconciling one day; giving a fourth, unrelated product the exact same
   // boolean would only make that worse. See utils/englishTutorAccess.ts.
-  tutorSubscriptionTier         TutorSubscriptionTier @default(FREE)
+  tutorSubscriptionTier         TutorSubscriptionTier   @default(FREE)
   // The student's chosen native/support language for AI English Tutor
   // lessons (e.g. "ka", "az", "hy", "ru") — remembered across sessions so
   // they don't have to re-pick every time, but deliberately decoupled from
@@ -687,7 +688,7 @@ model User {
   // renew now" reminder fires before that happens — same
   // reminder-not-silent-auto-charge posture as this codebase's other
   // manually-driven money flows.
-  tutorSubscriptionAutoRenew    Boolean               @default(true)
+  tutorSubscriptionAutoRenew    Boolean                 @default(true)
   // Set (or extended, on an early renewal) by
   // completeTutorSubscriptionPurchase — null until the student's first real
   // purchase.
@@ -707,7 +708,7 @@ model User {
   // aiSubscriptionActive's own admin-grant model, while the trial itself is
   // cardless and self-service (see educatorVipTrialStartDate below),
   // matching tutorTrialStartDate's model. See utils/educatorVipAccess.ts.
-  educatorVipActive             Boolean               @default(false)
+  educatorVipActive             Boolean                 @default(false)
   // End of the self-service paid period (BOG checkout EDUCATOR_VIP, 30 days
   // per purchase, extended from the later of now/this value). Separate from
   // educatorVipActive, which stays the admin's open-ended manual grant.
@@ -729,7 +730,7 @@ model User {
   // CHECKED by that one feature's routes, so it can't accidentally lock out
   // legitimate multi-device use of the rest of the site for a non-VIP user.
   currentSessionId              String?
-  createdAt                     DateTime              @default(now())
+  createdAt                     DateTime                @default(now())
 
   postedGigs                    Gig[]                          @relation("PostedGigs")
   assignedGigs                  Gig[]                          @relation("AssignedGigs")
@@ -1396,22 +1397,23 @@ model Course {
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
-  orders             Order[]                @relation("OrderCourses")
-  enrollments        CourseEnrollment[]
-  ratings            CourseRating[]
-  sections           CourseSection[]
-  certificates       CourseCertificate[]
+  orders                 Order[]                 @relation("OrderCourses")
+  enrollments            CourseEnrollment[]
+  ratings                CourseRating[]
+  sections               CourseSection[]
+  certificates           CourseCertificate[]
   // One AI-generated certification exam per course, if configured by an
   // admin — courses without one keep the old "100% lessons" certificate gate
   // (see routes/courses.ts's GET /:id/certificate).
-  exam               Exam?
-  discussionPosts    CourseDiscussionPost[]
+  exam                   Exam?
+  discussionPosts        CourseDiscussionPost[]
   // Set once a LiveTraining recording gets turned into this course — see
   // LiveTraining.convertedToCourseId's own comment for why this is a link
   // rather than a merge.
-  liveTrainingSource LiveTraining?
-  launchKits         LaunchKit[]
-  reviewHistory      CourseReviewHistory[]
+  liveTrainingSource     LiveTraining?
+  launchKits             LaunchKit[]
+  reviewHistory          CourseReviewHistory[]
+  courseReadinessRecords CourseReadinessRecord[]
 
   @@index([status])
   @@index([instructorId])
@@ -6080,4 +6082,27 @@ model ColoringCreditPurchase {
 
   @@index([userId, createdAt])
   @@map("coloring_credit_purchases")
+}
+
+model CourseReadinessRecord {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId         String
+  course           Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  aiMentorScore    Int      @default(0) // 0..100 (weight 25%)
+  attendanceScore  Int      @default(0) // 0..100 (weight 25%)
+  assignmentsScore Int      @default(0) // 0..100 (weight 25%)
+  lecturerScore    Int      @default(0) // 0..100 (weight 25%)
+  totalScore       Int      @default(0) // Weighted average 0..100 (must be >= 90 to unlock exam)
+  aiCritique       String?
+  lecturerNote     String?
+  lecturerName     String?
+  evaluatedAt      DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+  @@map("course_readiness_records")
 }
