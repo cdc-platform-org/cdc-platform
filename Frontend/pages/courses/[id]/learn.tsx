@@ -183,6 +183,9 @@ function LearnContent() {
   const [examStatus, setExamStatus] = useState<ExamStatus | null>(null);
   const [submittedLessonIds, setSubmittedLessonIds] = useState<Set<string>>(new Set());
   const [readinessData, setReadinessData] = useState<any>(null);
+  const [aiCritiqueBanner, setAiCritiqueBanner] = useState<string | null>(null);
+  const [cameraVerified, setCameraVerified] = useState(false);
+  const [checkpointAnswered, setCheckpointAnswered] = useState(false);
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
   const [expandedSectionIds, setExpandedSectionIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<'overview' | 'studio' | 'conspectus' | 'resources' | 'assignment' | 'discussion'>('overview');
