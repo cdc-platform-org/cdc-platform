@@ -189,7 +189,7 @@ function LearnContent() {
   const [checkpointAnswered, setCheckpointAnswered] = useState(false);
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
   const [expandedSectionIds, setExpandedSectionIds] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'overview' | 'studio' | 'conspectus' | 'resources' | 'assignment' | 'discussion'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'studio' | 'code' | 'conspectus' | 'resources' | 'assignment' | 'discussion'>('overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloadingCert, setDownloadingCert] = useState(false);
@@ -382,7 +382,7 @@ function LearnContent() {
           <h1 className="blog-heading-safe text-xl font-bold mt-6">{activeLesson?.title ?? course.title}</h1>
 
           <div className="flex gap-2 overflow-x-auto mt-6 border-b border-cdc-border">
-            {(['overview', 'studio', 'conspectus', 'resources', 'assignment', 'discussion'] as const).map((tab) => (
+            {(['overview', 'studio', 'code', 'conspectus', 'resources', 'assignment', 'discussion'] as const).map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -398,7 +398,8 @@ function LearnContent() {
 
           <div className="py-6 text-sm leading-relaxed text-cdc-muted">
             {activeTab === 'overview' && <p>{course.description}</p>}
-            {activeTab === 'studio' && (
+            {activeTab === 'code' && <div className="mt-6"><CodeSqlStudio /></div>}
+          {activeTab === 'studio' && (
               <div className="space-y-3">
                 {activeLesson?.assignmentPrompt && (
                   <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-3.5 text-xs text-slate-200 flex flex-wrap items-center justify-between gap-2">
