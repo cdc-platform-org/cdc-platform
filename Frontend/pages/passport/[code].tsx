@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { ShieldCheck, UserCheck, Calendar } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
-import api from '../../src/services/api';
+import api from '../../src/services/apiClient';
 
 export default function PublicPassportVerificationPage() {
   const router = useRouter();
