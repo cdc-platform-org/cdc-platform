@@ -117,7 +117,15 @@ function AssignmentPanel({ lessonId, t }: { lessonId: string; t: TFunction; }) {
   if (submission === undefined) return null;
 
   if (submission && submission.status !== 'NEEDS_REVISION') {
-    return (
+    const handleStudioSubmitWork = async (file: File) => {
+    if (!activeLesson || !courseId) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    await api.post(`/courses/${courseId}/lessons/${activeLesson.id}/assignments`, formData);
+    setSubmittedLessonIds((prev) => new Set(prev).add(activeLesson.id));
+  };
+
+  return (
       <div className="space-y-2">
         <p className={submission.status === 'APPROVED' ? 'text-emerald-400 font-bold' : 'text-slate-300'}>
           {submission.status === 'APPROVED' ? t('assignmentApproved') : t('assignmentSubmitted')}
@@ -130,6 +138,14 @@ function AssignmentPanel({ lessonId, t }: { lessonId: string; t: TFunction; }) {
       </div>
     );
   }
+
+  const handleStudioSubmitWork = async (file: File) => {
+    if (!activeLesson || !courseId) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    await api.post(`/courses/${courseId}/lessons/${activeLesson.id}/assignments`, formData);
+    setSubmittedLessonIds((prev) => new Set(prev).add(activeLesson.id));
+  };
 
   return (
     <div className="space-y-3">
@@ -355,7 +371,15 @@ function LearnContent() {
   }
 
   if (error || !course) {
-    return (
+    const handleStudioSubmitWork = async (file: File) => {
+    if (!activeLesson || !courseId) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    await api.post(`/courses/${courseId}/lessons/${activeLesson.id}/assignments`, formData);
+    setSubmittedLessonIds((prev) => new Set(prev).add(activeLesson.id));
+  };
+
+  return (
       <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-950 text-slate-300 text-sm">
         <SiteHeader />
         <p>{error ?? t('notEnrolled')}</p>
@@ -363,6 +387,14 @@ function LearnContent() {
       </div>
     );
   }
+
+  const handleStudioSubmitWork = async (file: File) => {
+    if (!activeLesson || !courseId) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    await api.post(`/courses/${courseId}/lessons/${activeLesson.id}/assignments`, formData);
+    setSubmittedLessonIds((prev) => new Set(prev).add(activeLesson.id));
+  };
 
   return (
     <div className="learning-surface -mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-cdc-bg text-cdc-ink">
@@ -584,7 +616,15 @@ function LearnContent() {
           <div className="space-y-3">
             {sections.map((section) => {
               const expanded = expandedSectionIds.has(section.id);
-              return (
+              const handleStudioSubmitWork = async (file: File) => {
+    if (!activeLesson || !courseId) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    await api.post(`/courses/${courseId}/lessons/${activeLesson.id}/assignments`, formData);
+    setSubmittedLessonIds((prev) => new Set(prev).add(activeLesson.id));
+  };
+
+  return (
                 <div key={section.id} className="rounded-xl border border-cdc-border overflow-hidden">
                   <button
                     type="button"
@@ -716,6 +756,14 @@ function LearnContent() {
 }
 
 export default function LearnPage() {
+  const handleStudioSubmitWork = async (file: File) => {
+    if (!activeLesson || !courseId) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    await api.post(`/courses/${courseId}/lessons/${activeLesson.id}/assignments`, formData);
+    setSubmittedLessonIds((prev) => new Set(prev).add(activeLesson.id));
+  };
+
   return (
     <ProtectedRoute>
       <ToolErrorBoundary>
