@@ -43,6 +43,7 @@ import { resolveLocale } from '@/src/utils/locale';
 // nothing that needs to exist in the server-rendered HTML anyway.
 const CourseTutorPanel = dynamic(() => import('../../../src/components/courses/CourseTutorPanel'), { ssr: false });
 const DesignStudio2in1 = dynamic(() => import('../../../src/components/courses/DesignStudio2in1'), { ssr: false });
+const CodeSqlStudio = dynamic(() => import('../../../src/components/courses/CodeSqlStudio'), { ssr: false });
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -390,7 +391,7 @@ function LearnContent() {
                   activeTab === tab ? 'border-cdc-primary text-cdc-primary-ink' : 'border-transparent text-cdc-muted hover:text-cdc-ink'
                 }`}
               >
-                {tab === 'studio' ? (lang === 'ka' ? '🎨 დიზაინის სტუდია (Ps / Ai)' : '🎨 Design Studio (Ps / Ai)') : t(tab)}
+                {tab === 'studio' ? (lang === 'ka' ? '🎨 დიზაინის სტუდია (Ps / Ai)' : '🎨 Design Studio (Ps / Ai)') : tab === 'code' ? (lang === 'ka' ? '💻 კოდის / SQL სტუდია' : '💻 Code / SQL Studio') : t(tab)}
               </button>
             ))}
           </div>
